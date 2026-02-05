@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Claude Code configuration toolkit for teams",
   "bin": {
-    "devlyn": "./bin/devlyn.js"
+    "devlyn": "bin/devlyn.js"
   },
   "files": [
     "bin",
@@ -20,6 +20,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/fysoul17/devlyn-cli"
+    "url": "git+https://github.com/fysoul17/devlyn-cli.git"
   }
 }
