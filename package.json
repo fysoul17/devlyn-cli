@@ -1,0 +1,25 @@
+{
+  "name": "devlyn-cli",
+  "version": "1.0.0",
+  "description": "Claude Code configuration toolkit for teams",
+  "bin": {
+    "devlyn": "./bin/devlyn.js"
+  },
+  "files": [
+    "bin",
+    "config"
+  ],
+  "keywords": [
+    "claude",
+    "claude-code",
+    "ai",
+    "config",
+    "devlyn"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/devlyn-cli"
+  }
+}
