@@ -125,6 +125,10 @@ Contributions are welcome! Feel free to open an issue or submit a pull request.
 4. Push to the branch (`git push origin feat/my-feature`)
 5. Open a Pull Request
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=fysoul17/devlyn-cli&type=Date)](https://star-history.com/#fysoul17/devlyn-cli&Date)
+
 ## License
 
 [MIT](LICENSE) — Donut Studio
