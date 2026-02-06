@@ -290,6 +290,15 @@ async function init(skipPrompts = false) {
   const targetDir = getTargetDir();
   log('\n📁 Installing core config to .claude/', 'green');
   copyRecursive(CONFIG_SOURCE, targetDir, targetDir);
+
+  // Copy CLAUDE.md to project root
+  const claudeMdSrc = path.join(__dirname, '..', 'CLAUDE.md');
+  const claudeMdDest = path.join(process.cwd(), 'CLAUDE.md');
+  if (fs.existsSync(claudeMdSrc)) {
+    fs.copyFileSync(claudeMdSrc, claudeMdDest);
+    log('  → CLAUDE.md', 'dim');
+  }
+
   log('\n✅ Core config installed!', 'green');
 
   // Skip prompts if -y flag or non-interactive
