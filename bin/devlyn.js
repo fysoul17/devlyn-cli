@@ -59,6 +59,7 @@ ${g}                v${PKG.version} ${COLORS.dim}· ${k}🍩 by Donut Studio${r}
 const SKILL_PACKS = [
   { name: 'vercel-labs/agent-skills', desc: 'React, Next.js, React Native best practices' },
   { name: 'supabase/agent-skills', desc: 'Supabase integration patterns' },
+  { name: 'coreyhaines31/marketingskills', desc: 'Marketing automation and content skills' },
 ];
 
 function log(msg, color = 'reset') {
