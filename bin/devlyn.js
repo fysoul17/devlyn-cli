@@ -6,6 +6,7 @@ const readline = require('readline');
 const { execSync } = require('child_process');
 
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
+const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
 
 function getTargetDir() {
@@ -56,10 +57,14 @@ ${g}                v${PKG.version} ${COLORS.dim}· ${k}🍩 by Donut Studio${r}
   console.log(logo);
 }
 
-const SKILL_PACKS = [
-  { name: 'vercel-labs/agent-skills', desc: 'React, Next.js, React Native best practices' },
-  { name: 'supabase/agent-skills', desc: 'Supabase integration patterns' },
-  { name: 'coreyhaines31/marketingskills', desc: 'Marketing automation and content skills' },
+const OPTIONAL_ADDONS = [
+  // Local optional skills (copied to .claude/skills/)
+  { name: 'cloudflare-nextjs-setup', desc: 'Cloudflare Workers + Next.js deployment with OpenNext', type: 'local' },
+  { name: 'prompt-engineering', desc: 'Claude 4 prompt optimization using Anthropic best practices', type: 'local' },
+  // External skill packs (installed via npx skills add)
+  { name: 'vercel-labs/agent-skills', desc: 'React, Next.js, React Native best practices', type: 'external' },
+  { name: 'supabase/agent-skills', desc: 'Supabase integration patterns', type: 'external' },
+  { name: 'coreyhaines31/marketingskills', desc: 'Marketing automation and content skills', type: 'external' },
 ];
 
 function log(msg, color = 'reset') {
@@ -153,6 +158,14 @@ function listContents() {
     }
   }
 
+  // List optional addons
+  log('\n📦 Optional Addons:', 'blue');
+  OPTIONAL_ADDONS.forEach((addon) => {
+    const tag = addon.type === 'local' ? `${COLORS.magenta}skill${COLORS.reset}` : `${COLORS.cyan}pack${COLORS.reset}`;
+    log(`  ${COLORS.green}${addon.name}${COLORS.reset} ${COLORS.dim}[${tag}${COLORS.dim}]${COLORS.reset}`);
+    log(`     ${COLORS.dim}${addon.desc}${COLORS.reset}`);
+  });
+
   log('');
 }
 
@@ -197,7 +210,8 @@ function multiSelect(items) {
         const checkbox = selected.has(i) ? `${COLORS.green}◉${COLORS.reset}` : `${COLORS.dim}○${COLORS.reset}`;
         const pointer = i === cursor ? `${COLORS.cyan}❯${COLORS.reset}` : ' ';
         const name = i === cursor ? `${COLORS.cyan}${item.name}${COLORS.reset}` : item.name;
-        console.log(`${pointer} ${checkbox} ${name}`);
+        const tag = item.type === 'local' ? `${COLORS.magenta}skill${COLORS.reset}` : `${COLORS.cyan}pack${COLORS.reset}`;
+        console.log(`${pointer} ${checkbox} ${name} ${COLORS.dim}[${tag}${COLORS.dim}]${COLORS.reset}`);
         console.log(`    ${COLORS.dim}${item.desc}${COLORS.reset}`);
       });
     };
@@ -267,6 +281,21 @@ function multiSelect(items) {
   });
 }
 
+function installLocalSkill(skillName) {
+  const src = path.join(OPTIONAL_SKILLS_SOURCE, skillName);
+  const targetDir = getTargetDir();
+  const dest = path.join(targetDir, 'skills', skillName);
+
+  if (!fs.existsSync(src)) {
+    log(`   ⚠️  Skill "${skillName}" not found`, 'yellow');
+    return false;
+  }
+
+  log(`\n🛠️  Installing ${skillName}...`, 'cyan');
+  copyRecursive(src, dest, targetDir);
+  return true;
+}
+
 function installSkillPack(packName) {
   try {
     log(`\n📦 Installing ${packName}...`, 'cyan');
@@ -276,6 +305,13 @@ function installSkillPack(packName) {
     log(`   ⚠️  Failed to install ${packName}`, 'yellow');
     return false;
   }
+}
+
+function installAddon(addon) {
+  if (addon.type === 'local') {
+    return installLocalSkill(addon.name);
+  }
+  return installSkillPack(addon.name);
 }
 
 async function init(skipPrompts = false) {
@@ -304,26 +340,30 @@ async function init(skipPrompts = false) {
 
   // Skip prompts if -y flag or non-interactive
   if (skipPrompts || !process.stdin.isTTY) {
-    log('\n💡 Add skill packs later with:', 'dim');
-    SKILL_PACKS.forEach((pack) => {
-      log(`   npx skills add ${pack.name}`, 'dim');
+    log('\n💡 Add optional skills & packs later:', 'dim');
+    OPTIONAL_ADDONS.forEach((addon) => {
+      if (addon.type === 'local') {
+        log(`   npx devlyn-cli  (select "${addon.name}" during install)`, 'dim');
+      } else {
+        log(`   npx skills add ${addon.name}`, 'dim');
+      }
     });
     log('');
     return;
   }
 
-  // Ask about skill packs
-  log('\n📚 Optional skill packs:\n', 'blue');
+  // Ask about optional addons (local skills + external packs)
+  log('\n📚 Optional skills & packs:\n', 'blue');
 
-  const selectedPacks = await multiSelect(SKILL_PACKS);
+  const selectedAddons = await multiSelect(OPTIONAL_ADDONS);
 
-  if (selectedPacks.length > 0) {
-    for (const pack of selectedPacks) {
-      installSkillPack(pack.name);
+  if (selectedAddons.length > 0) {
+    for (const addon of selectedAddons) {
+      installAddon(addon);
     }
   } else {
-    log('💡 No skill packs selected', 'dim');
-    log('   Add later with: npx skills add <pack-name>\n', 'dim');
+    log('💡 No optional addons selected', 'dim');
+    log('   Run again to add them later\n', 'dim');
   }
 
   log('\n✨ All done!', 'green');
@@ -337,8 +377,12 @@ function showHelp() {
   log('  npx devlyn-cli list     List available commands & templates');
   log('  npx devlyn-cli -y       Install without prompts');
   log('  npx devlyn-cli --help   Show this help\n');
-  log('Skill packs:', 'green');
-  SKILL_PACKS.forEach((pack) => {
+  log('Optional skills (select during install):', 'green');
+  OPTIONAL_ADDONS.filter((a) => a.type === 'local').forEach((skill) => {
+    log(`  ${skill.name}  ${COLORS.dim}${skill.desc}${COLORS.reset}`);
+  });
+  log('\nExternal skill packs:', 'green');
+  OPTIONAL_ADDONS.filter((a) => a.type === 'external').forEach((pack) => {
     log(`  npx skills add ${pack.name}`);
   });
   log('');

@@ -49,7 +49,7 @@ npx devlyn-cli list
 your-project/
 ├── .claude/
 │   ├── commands/              # 9 slash commands
-│   ├── skills/                # 3 reusable AI skills
+│   ├── skills/                # 2 core skills + optional addons
 │   ├── templates/             # Document templates
 │   └── commit-conventions.md  # Commit message standards
 └── CLAUDE.md                  # Project-level instructions
@@ -78,7 +78,6 @@ Skills are triggered automatically based on conversation context.
 | Skill | Description |
 |---|---|
 | `investigate` | Parallel code exploration with structured progress checkpoints |
-| `prompt-engineering` | Claude prompt optimization based on Anthropic best practices |
 | `feature-gap-analysis` | Identify missing features by comparing against baselines or competitors |
 
 ## Templates
@@ -89,17 +88,17 @@ Skills are triggered automatically based on conversation context.
 | `template-feature.spec.md` | Feature specification template |
 | `prompt-templates.md` | Reusable prompt snippets for common tasks |
 
-## Optional Skill Packs
+## Optional Skills & Packs
 
-During installation, you can choose to add third-party skill packs:
+During installation, you can choose to add optional skills and third-party skill packs:
 
-```bash
-# Vercel — React, Next.js, and React Native best practices
-npx skills add vercel-labs/agent-skills
-
-# Supabase — Supabase integration patterns
-npx skills add supabase/agent-skills
-```
+| Addon | Type | Description |
+|---|---|---|
+| `cloudflare-nextjs-setup` | skill | Cloudflare Workers + Next.js deployment with OpenNext |
+| `prompt-engineering` | skill | Claude 4 prompt optimization using Anthropic best practices |
+| `vercel-labs/agent-skills` | pack | React, Next.js, React Native best practices |
+| `supabase/agent-skills` | pack | Supabase integration patterns |
+| `coreyhaines31/marketingskills` | pack | Marketing automation and content skills |
 
 ## How It Works
 
