@@ -61,6 +61,7 @@ const OPTIONAL_ADDONS = [
   // Local optional skills (copied to .claude/skills/)
   { name: 'cloudflare-nextjs-setup', desc: 'Cloudflare Workers + Next.js deployment with OpenNext', type: 'local' },
   { name: 'prompt-engineering', desc: 'Claude 4 prompt optimization using Anthropic best practices', type: 'local' },
+  { name: 'pyx-scan', desc: 'Check whether an AI agent skill is safe before installing', type: 'local' },
   // External skill packs (installed via npx skills add)
   { name: 'vercel-labs/agent-skills', desc: 'React, Next.js, React Native best practices', type: 'external' },
   { name: 'supabase/agent-skills', desc: 'Supabase integration patterns', type: 'external' },

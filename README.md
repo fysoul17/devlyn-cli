@@ -96,6 +96,7 @@ During installation, you can choose to add optional skills and third-party skill
 |---|---|---|
 | `cloudflare-nextjs-setup` | skill | Cloudflare Workers + Next.js deployment with OpenNext |
 | `prompt-engineering` | skill | Claude 4 prompt optimization using Anthropic best practices |
+| `pyx-scan` | skill | Check whether an AI agent skill is safe before installing |
 | `vercel-labs/agent-skills` | pack | React, Next.js, React Native best practices |
 | `supabase/agent-skills` | pack | Supabase integration patterns |
 | `coreyhaines31/marketingskills` | pack | Marketing automation and content skills |
