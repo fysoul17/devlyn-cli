@@ -340,3 +340,8 @@ Create `docs/design/` directory if needed. Save all 5 HTML files.
 </output_format>
 
 Make bold choices. Each design should be portfolio-worthy—something you'd proudly present.
+
+<next_step>
+After the user picks a style, suggest:
+→ Run `/devlyn.design-system [style-number]` to extract design tokens from the chosen style into a reusable design system reference.
+</next_step>

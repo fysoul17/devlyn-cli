@@ -19,7 +19,16 @@ When investigating bugs, analyzing features, or exploring code:
    - Remaining unknowns
    - Recommended next steps
 
-For complex investigations, use `/investigate` skill or spawn parallel Task agents to explore different areas simultaneously.
+For complex investigations, use `/devlyn.team-resolve` to assemble a multi-perspective investigation team, or spawn parallel Task agents to explore different areas simultaneously.
+
+## UI/UX Workflow
+
+The full design-to-implementation pipeline:
+
+1. `/devlyn.design-ui` → Generate 5 style explorations
+2. `/devlyn.design-system [N]` → Extract tokens from chosen style
+3. `/devlyn.implement-ui` → Team implements or improves UI from design system
+4. `/devlyn.team-resolve [feature]` → Add features on top
 
 ## Feature Development
 
@@ -32,7 +41,9 @@ For complex features, use the Plan agent to design the approach before implement
 
 ## Debugging Workflow
 
-Use `/devlyn.resolve` for systematic bug fixing with test-driven validation.
+- **Simple bugs**: Use `/devlyn.resolve` for systematic bug fixing with test-driven validation
+- **Complex bugs**: Use `/devlyn.team-resolve` for multi-perspective investigation with a full agent team
+- **Post-fix review**: Use `/devlyn.team-review` for thorough multi-reviewer validation
 
 ## Communication Style
 

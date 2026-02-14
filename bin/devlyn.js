@@ -337,6 +337,23 @@ async function init(skipPrompts = false) {
     log('  → CLAUDE.md', 'dim');
   }
 
+  // Enable agent teams in project settings
+  const settingsPath = path.join(targetDir, 'settings.json');
+  let settings = {};
+  if (fs.existsSync(settingsPath)) {
+    try {
+      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    } catch {
+      settings = {};
+    }
+  }
+  if (!settings.env) settings.env = {};
+  if (!settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) {
+    settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = '1';
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+    log('  → settings.json (agent teams enabled)', 'dim');
+  }
+
   log('\n✅ Core config installed!', 'green');
 
   // Skip prompts if -y flag or non-interactive

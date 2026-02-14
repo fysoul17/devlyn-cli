@@ -18,7 +18,7 @@
 devlyn-cli installs a curated `.claude/` configuration into any project, giving your team:
 
 - Battle-tested slash commands for debugging, code review, UI design, and more
-- Reusable AI agent skills for investigation and prompt engineering
+- Reusable AI agent skills for debugging, code review, and UI implementation
 - Product and feature spec templates
 - Commit message conventions
 
@@ -48,8 +48,8 @@ npx devlyn-cli list
 ```
 your-project/
 ├── .claude/
-│   ├── commands/              # 9 slash commands
-│   ├── skills/                # 2 core skills + optional addons
+│   ├── commands/              # 12 slash commands
+│   ├── skills/                # 3 core skills + optional addons
 │   ├── templates/             # Document templates
 │   └── commit-conventions.md  # Commit message standards
 └── CLAUDE.md                  # Project-level instructions
@@ -62,8 +62,11 @@ Slash commands are invoked directly in Claude Code conversations (e.g., `/devlyn
 | Command | Description |
 |---|---|
 | `/devlyn.resolve` | Systematic bug fixing with root-cause analysis and test-driven validation |
+| `/devlyn.team-resolve` | Team-based issue resolution — spawns specialized agent teammates (root cause analyst, test engineer, security auditor, etc.) |
 | `/devlyn.review` | Post-implementation code review — security, quality, best practices |
-| `/devlyn.ui` | Generate 5 distinct UI style explorations from a spec or reference image |
+| `/devlyn.team-review` | Team-based multi-perspective code review — spawns specialized reviewers (security, quality, testing, product, performance) |
+| `/devlyn.design-ui` | Generate 5 distinct UI style explorations from a spec or reference image |
+| `/devlyn.implement-ui` | Team-based UI implementation/improvement — spawns component architect, UX engineer, accessibility engineer, responsive engineer, visual QA |
 | `/devlyn.feature-spec` | Transform product specs into implementable feature specifications |
 | `/devlyn.product-spec` | Generate or incrementally update product spec documents |
 | `/devlyn.discover-product` | Scan a codebase to generate feature-oriented product documentation |
@@ -77,8 +80,9 @@ Skills are triggered automatically based on conversation context.
 
 | Skill | Description |
 |---|---|
-| `investigate` | Parallel code exploration with structured progress checkpoints |
-| `feature-gap-analysis` | Identify missing features by comparing against baselines or competitors |
+| `root-cause-analysis` | 5 Whys methodology, evidence standards, and no-workaround rules for debugging |
+| `code-review-standards` | Severity framework, quality bar, and approval criteria for code reviews |
+| `ui-implementation-standards` | Design system fidelity, accessibility, animation quality, and responsive standards for UI work |
 
 ## Templates
 
