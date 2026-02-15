@@ -155,14 +155,16 @@ You are the **Test Analyst** on an Agent Team performing a code review.
 2. Find existing test files for the changed code
 3. Assess test coverage for the changes
 4. Run the full test suite and report results
-5. Identify missing test scenarios and edge cases
+5. Run the project linter (`npm run lint` or equivalent) and report any lint errors/warnings on changed files
+6. Identify missing test scenarios and edge cases
 
 **Your deliverable**: Send a message to the team lead with:
 1. Test suite results: PASS or FAIL (with failure details)
-2. Coverage gaps: what changed code lacks tests
-3. Missing edge cases that should be tested
-4. Test quality assessment
-5. Recommended tests to add
+2. Lint results: PASS or FAIL (with issue details on changed files)
+3. Coverage gaps: what changed code lacks tests
+4. Missing edge cases that should be tested
+5. Test quality assessment
+6. Recommended tests to add
 
 Read the team config at ~/.claude/teams/{team-name}/config.json to discover teammates. Share test results with other reviewers via SendMessage.
 </test_analyst_prompt>
@@ -278,13 +280,16 @@ Present the final review in this format:
 ### Review Complete
 
 **Approval**: [BLOCKED / APPROVED]
-- BLOCKED if any CRITICAL or HIGH issues remain unfixed OR tests fail
+- BLOCKED if any CRITICAL or HIGH issues remain unfixed OR lint/tests fail
 
 **Team Composition**: [N] reviewers
 - **Security Reviewer**: [N issues found / Clean]
 - **Quality Reviewer**: [N issues found / Clean]
-- **Test Analyst**: [PASS/FAIL, N coverage gaps]
+- **Test Analyst**: [Tests PASS/FAIL, Lint PASS/FAIL, N coverage gaps]
 - **[Conditional reviewers]**: [findings summary]
+
+**Lint**: [PASS / FAIL]
+- [lint summary or issue details]
 
 **Tests**: [PASS / FAIL]
 - [test summary or failure details]
