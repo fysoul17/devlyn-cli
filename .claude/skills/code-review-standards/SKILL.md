@@ -49,11 +49,13 @@ Severity framework and quality bar for reviewing code changes. Apply this framew
 **BLOCKED** if any of:
 - CRITICAL issues remain unfixed
 - HIGH issues remain unfixed
+- Lint fails
 - Tests fail
 
 **APPROVED** when:
 - All CRITICAL and HIGH issues are fixed
 - MEDIUM issues are fixed or have concrete justification for deferral
+- Lint passes
 - Test suite passes
 
 ## Review Process
@@ -62,8 +64,9 @@ Severity framework and quality bar for reviewing code changes. Apply this framew
 2. Check each file against the severity framework
 3. For each issue: state severity, file:line, what it is, why it matters
 4. Fix issues directly — don't just list them
-5. Run the test suite after all fixes
-6. If tests fail → use `/devlyn.resolve` or `/devlyn.team-resolve` to fix
+5. Run linter (`npm run lint` or equivalent) and fix all reported issues
+6. Run the test suite after all fixes
+7. If lint or tests fail → use `/devlyn.resolve` or `/devlyn.team-resolve` to fix
 
 ## Routing
 

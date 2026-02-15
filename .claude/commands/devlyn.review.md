@@ -5,8 +5,9 @@ Perform a comprehensive post-implementation review. After receiving tool results
 2. Read all changed files in parallel (use parallel tool calls)
 3. Check each file against the review checklist below
 4. Fix issues directly—do not just suggest fixes
-5. Run test suite to verify changes don't break existing functionality
-6. If tests fail → use devlyn.resolve workflow to fix, then re-run tests
+5. Run linter (`npm run lint` or equivalent) and fix all reported lint issues
+6. Run test suite to verify changes don't break existing functionality
+7. If lint or tests fail → use devlyn.resolve workflow to fix, then re-run
 7. Generate summary report with file:line references
 8. Block approval if any CRITICAL or HIGH issues remain unfixed OR tests fail
 </procedure>
@@ -79,7 +80,10 @@ Be persistent. Complete the full review before stopping.
 
 **Approval**: [BLOCKED / APPROVED]
 
-- BLOCKED if any CRITICAL or HIGH issues remain unfixed OR tests fail
+- BLOCKED if any CRITICAL or HIGH issues remain unfixed OR lint/tests fail
+
+**Lint**: [PASS / FAIL]
+- [lint summary or issue details]
 
 **Tests**: [PASS / FAIL]
 - [test summary or failure details]
