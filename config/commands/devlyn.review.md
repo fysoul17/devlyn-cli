@@ -1,15 +1,19 @@
 Perform a comprehensive post-implementation review. After receiving tool results, carefully reflect on their quality and determine optimal next steps before proceeding.
 
+<escalation>
+If the changeset is large (10+ files), touches multiple domains (UI + API + auth), or requires multi-perspective judgment, escalate to `/devlyn.team-review` instead of solo review.
+</escalation>
+
 <procedure>
 1. Run `git diff --name-only HEAD` to get all changed files
 2. Read all changed files in parallel (use parallel tool calls)
 3. Check each file against the review checklist below
-4. Fix issues directly—do not just suggest fixes
+4. Fix issues directly — do not just suggest fixes
 5. Run linter (`npm run lint` or equivalent) and fix all reported lint issues
 6. Run test suite to verify changes don't break existing functionality
-7. If lint or tests fail → use devlyn.resolve workflow to fix, then re-run
-7. Generate summary report with file:line references
-8. Block approval if any CRITICAL or HIGH issues remain unfixed OR tests fail
+7. If lint or tests fail → use `/devlyn.resolve` workflow to fix, then re-run
+8. Generate summary report with file:line references
+9. Block approval if any CRITICAL or HIGH issues remain unfixed OR tests fail
 </procedure>
 
 <investigate_before_fixing>
@@ -24,8 +28,6 @@ Make all independent tool calls in parallel. When reviewing 5 files, run 5 read 
 
 ## CRITICAL — Security (must fix, blocks approval)
 
-Security vulnerabilities can cause data breaches and system compromise:
-
 - Hardcoded credentials, API keys, tokens, secrets
 - SQL injection (unsanitized queries)
 - XSS (unescaped user input in HTML/JSX)
@@ -34,8 +36,6 @@ Security vulnerabilities can cause data breaches and system compromise:
 - Path traversal (unsanitized file paths)
 
 ## HIGH — Code Quality (must fix, blocks approval)
-
-These issues cause bugs or significant maintenance burden:
 
 - Functions > 50 lines → split
 - Files > 800 lines → decompose
@@ -47,11 +47,42 @@ These issues cause bugs or significant maintenance burden:
 
 ## MEDIUM — Best Practices (fix or justify)
 
+**Logic & structure**:
 - Mutation where immutable patterns preferred
 - Missing tests for new functionality
-- Accessibility gaps (alt text, ARIA, keyboard nav)
 - Inconsistent naming or structure
 - Over-engineering: unnecessary abstractions, unused config, premature optimization
+
+**UI & interaction** (apply when components or pages changed):
+- Missing UI states: every async operation must handle loading, error, empty, and disabled — flag any that are absent
+- UX regressions: existing user flows that may now be broken
+- Copy/text: placeholder text, inconsistent wording, or developer-written strings left in
+
+**Visual & design** (apply when styles, layout, or tokens changed):
+- Raw values where design tokens should be used (hardcoded colors, px spacing, font sizes)
+- Visual inconsistency vs. existing components
+- Responsive/breakpoint gaps
+
+**Accessibility** (apply when any UI changed):
+- Missing semantic HTML (div used as button, etc.)
+- Interactive elements without accessible labels (aria-label, aria-labelledby)
+- Missing keyboard navigation support
+- Insufficient color contrast
+- Missing focus indicators (outline: none without replacement)
+- Dynamic content not announced to screen readers (aria-live)
+- Form inputs without associated labels
+
+**Performance** (apply when data fetching, loops, or rendering changed):
+- N+1 query or API call patterns (calls inside loops)
+- Unnecessary re-renders (React: missing memo, unstable references, inline objects/functions)
+- Unbounded data fetching without pagination
+- Memory leaks (event listeners, subscriptions, timers not cleaned up)
+
+**API** (apply when routes, endpoints, or schema changed):
+- Breaking changes: removed fields, renamed endpoints, changed response shapes
+- HTTP verb or status code misuse
+- Missing input validation at the API boundary
+- Inconsistency with existing API conventions (naming, error envelope, auth)
 
 ## LOW — Cleanup (fix if quick)
 
@@ -91,6 +122,8 @@ Be persistent. Complete the full review before stopping.
 **Fixed**:
 - [CRITICAL] file.ts:42 — Removed hardcoded API key
 - [HIGH] utils.ts:156 — Split 80-line function
+- [MEDIUM/UI] Button.tsx:23 — Added loading and error states
+- [MEDIUM/A11y] Input.tsx:11 — Added aria-label to unlabeled input
 
 **Verified**:
 - Authentication flow handles edge cases
