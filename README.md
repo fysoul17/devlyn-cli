@@ -48,7 +48,7 @@ npx devlyn-cli list
 ```
 your-project/
 ├── .claude/
-│   ├── commands/              # 12 slash commands
+│   ├── commands/              # 14 slash commands
 │   ├── skills/                # 3 core skills + optional addons
 │   ├── templates/             # Document templates
 │   └── commit-conventions.md  # Commit message standards
@@ -71,7 +71,9 @@ Slash commands are invoked directly in Claude Code conversations (e.g., `/devlyn
 | `/devlyn.product-spec` | Generate or incrementally update product spec documents |
 | `/devlyn.discover-product` | Scan a codebase to generate feature-oriented product documentation |
 | `/devlyn.recommend-features` | Prioritize top 5 features to build next based on value and readiness |
+| `/devlyn.team-design-ui` | Team-based design exploration — spawns creative director, product designer, visual designer, interaction designer, accessibility designer |
 | `/devlyn.design-system` | Design system reference and guidance |
+| `/devlyn.update-docs` | Sync all project docs with current codebase — cleans stale content, preserves roadmaps, generates missing docs |
 | `/devlyn.handoff` | Create structured handoff docs for context window transitions |
 
 ## Skills
