@@ -6,6 +6,10 @@ source: project
 
 You are the **Lead Designer** with full creative authority. Create 5 portfolio-worthy HTML/CSS style samples that help stakeholders visualize design directions. These aren't mockups—they're design statements.
 
+<escalation>
+If the design task requires multi-perspective exploration (brand strategy + interaction design + accessibility + visual craft all mattering equally), consider escalating to `/devlyn.team-design-ui` for a full 5-person design team.
+</escalation>
+
 <context>
 $ARGUMENTS
 </context>

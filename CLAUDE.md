@@ -52,6 +52,20 @@ For complex features, use the Plan agent to design the approach before implement
 - **Complex bugs**: Use `/devlyn.team-resolve` for multi-perspective investigation with a full agent team
 - **Post-fix review**: Use `/devlyn.team-review` for thorough multi-reviewer validation
 
+## Maintenance Workflow
+
+- **Codebase cleanup**: Use `/devlyn.clean` to detect and remove dead code, unused dependencies, complexity hotspots, and tech debt
+- **Focused cleanup**: Use `/devlyn.clean [category]` for targeted sweeps (dead code, deps, tests, complexity, hygiene)
+- **Periodic maintenance sequence**: `/devlyn.clean` → `/devlyn.update-docs` → `/devlyn.review`
+
+## Context Window Management
+
+When a conversation approaches context limits (50k+ tokens):
+1. Check usage with `/context`
+2. Create a HANDOFF.md summarizing: what was attempted, what succeeded, what failed, and next steps
+3. Start a new session with `/clear`
+4. Load context: `@HANDOFF.md Read this file and continue the work`
+
 ## Communication Style
 
 - Lead with **objective data** (popularity, benchmarks, community adoption) before personal opinions

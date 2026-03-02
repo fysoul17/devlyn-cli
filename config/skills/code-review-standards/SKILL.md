@@ -58,16 +58,6 @@ Severity framework and quality bar for reviewing code changes. Apply this framew
 - Lint passes
 - Test suite passes
 
-## Review Process
-
-1. Read all changed files before making any judgment
-2. Check each file against the severity framework
-3. For each issue: state severity, file:line, what it is, why it matters
-4. Fix issues directly — don't just list them
-5. Run linter (`npm run lint` or equivalent) and fix all reported issues
-6. Run the test suite after all fixes
-7. If lint or tests fail → use `/devlyn.resolve` or `/devlyn.team-resolve` to fix
-
 ## Routing
 
 - **Quick review** (few files, straightforward changes): Use `/devlyn.review`

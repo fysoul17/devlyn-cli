@@ -9,6 +9,11 @@ const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
 
+// Files removed in previous versions that should be cleaned up on upgrade
+const DEPRECATED_FILES = [
+  'commands/devlyn.handoff.md', // removed in v0.2.0
+];
+
 function getTargetDir() {
   try {
     return path.join(process.cwd(), '.claude');
@@ -170,6 +175,19 @@ function listContents() {
   log('');
 }
 
+function cleanupDeprecated(targetDir) {
+  let removed = 0;
+  for (const relPath of DEPRECATED_FILES) {
+    const fullPath = path.join(targetDir, relPath);
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+      log(`  ✕ ${relPath} (deprecated)`, 'dim');
+      removed++;
+    }
+  }
+  return removed;
+}
+
 function copyRecursive(src, dest, baseDir) {
   const stats = fs.statSync(src);
 
@@ -328,6 +346,12 @@ async function init(skipPrompts = false) {
   const targetDir = getTargetDir();
   log('\n📁 Installing core config to .claude/', 'green');
   copyRecursive(CONFIG_SOURCE, targetDir, targetDir);
+
+  // Remove deprecated files from previous versions
+  const removed = cleanupDeprecated(targetDir);
+  if (removed > 0) {
+    log(`\n🧹 Cleaned up ${removed} deprecated file${removed > 1 ? 's' : ''}`, 'yellow');
+  }
 
   // Copy CLAUDE.md to project root
   const claudeMdSrc = path.join(__dirname, '..', 'CLAUDE.md');

@@ -49,7 +49,7 @@ npx devlyn-cli list
 your-project/
 ├── .claude/
 │   ├── commands/              # 14 slash commands
-│   ├── skills/                # 3 core skills + optional addons
+│   ├── skills/                # 5 core skills + optional addons
 │   ├── templates/             # Document templates
 │   └── commit-conventions.md  # Commit message standards
 └── CLAUDE.md                  # Project-level instructions
@@ -74,7 +74,7 @@ Slash commands are invoked directly in Claude Code conversations (e.g., `/devlyn
 | `/devlyn.team-design-ui` | Team-based design exploration — spawns creative director, product designer, visual designer, interaction designer, accessibility designer |
 | `/devlyn.design-system` | Design system reference and guidance |
 | `/devlyn.update-docs` | Sync all project docs with current codebase — cleans stale content, preserves roadmaps, generates missing docs |
-| `/devlyn.handoff` | Create structured handoff docs for context window transitions |
+| `/devlyn.clean` | Detect and remove dead code, unused dependencies, complexity hotspots, and tech debt |
 
 ## Skills
 
@@ -85,6 +85,8 @@ Skills are triggered automatically based on conversation context.
 | `root-cause-analysis` | 5 Whys methodology, evidence standards, and no-workaround rules for debugging |
 | `code-review-standards` | Severity framework, quality bar, and approval criteria for code reviews |
 | `ui-implementation-standards` | Design system fidelity, accessibility, animation quality, and responsive standards for UI work |
+| `code-health-standards` | Dead code prevention, dependency discipline, complexity thresholds, and production hygiene |
+| `workflow-routing` | SDLC phase map — guides you to the right command for your current task |
 
 ## Templates
 

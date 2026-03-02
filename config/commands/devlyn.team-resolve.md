@@ -106,7 +106,7 @@ Stop criteria:
 - You've found a missing validation, wrong assumption, or incorrect logic
 - Further "whys" leave the codebase (external dependency, infrastructure)
 
-NEVER stop at "the code does X" — always ask WHY the code does X.
+Don't stop at "the code does X" — always ask WHY the code does X.
 
 **Tools available**: Read, Grep, Glob, Bash (read-only commands like git log, git blame, ls, etc.)
 
@@ -463,7 +463,7 @@ Present the synthesis to the user before implementing.
 ## Phase 5: IMPLEMENTATION (You, Team Lead)
 
 <no_workarounds>
-ABSOLUTE RULE: Never implement a workaround. Every fix MUST address the root cause.
+Every fix must address the root cause. Do not implement workarounds.
 
 Workaround indicators (if you catch yourself doing any of these, STOP):
 - Adding `|| defaultValue` to mask null/undefined
