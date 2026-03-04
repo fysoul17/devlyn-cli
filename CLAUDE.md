@@ -39,6 +39,19 @@ The full design-to-implementation pipeline:
 
 For complex features, use the Plan agent to design the approach before implementation.
 
+## Vibe Coding Workflow
+
+The recommended sequence after writing code:
+
+1. **Write code** (vibe coding)
+2. `/simplify` → Quick cleanup pass (reuse, quality, efficiency)
+3. `/devlyn.review` → Thorough solo review with security-first checklist
+4. `/devlyn.team-review` → Multi-perspective team review (for important PRs)
+5. `/devlyn.clean` → Periodic codebase-wide hygiene
+6. `/devlyn.update-docs` → Keep docs in sync
+
+Steps 4-6 are optional depending on the scope of changes. `/simplify` should always run before `/devlyn.review` to catch low-hanging fruit cheaply.
+
 ## Documentation Workflow
 
 - **Sync docs with codebase**: Use `/devlyn.update-docs` to clean up stale content, update outdated info, and generate missing docs
@@ -56,7 +69,7 @@ For complex features, use the Plan agent to design the approach before implement
 
 - **Codebase cleanup**: Use `/devlyn.clean` to detect and remove dead code, unused dependencies, complexity hotspots, and tech debt
 - **Focused cleanup**: Use `/devlyn.clean [category]` for targeted sweeps (dead code, deps, tests, complexity, hygiene)
-- **Periodic maintenance sequence**: `/devlyn.clean` → `/devlyn.update-docs` → `/devlyn.review`
+- **Periodic maintenance sequence**: `/devlyn.clean` → `/simplify` → `/devlyn.update-docs` → `/devlyn.review`
 
 ## Context Window Management
 
