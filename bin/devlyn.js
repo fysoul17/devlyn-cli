@@ -65,6 +65,7 @@ ${g}                v${PKG.version} ${COLORS.dim}· ${k}🍩 by Donut Studio${r}
 const OPTIONAL_ADDONS = [
   // Local optional skills (copied to .claude/skills/)
   { name: 'cloudflare-nextjs-setup', desc: 'Cloudflare Workers + Next.js deployment with OpenNext', type: 'local' },
+  { name: 'generate-skill', desc: 'Create well-structured Claude Code skills following Anthropic best practices', type: 'local' },
   { name: 'prompt-engineering', desc: 'Claude 4 prompt optimization using Anthropic best practices', type: 'local' },
   { name: 'pyx-scan', desc: 'Check whether an AI agent skill is safe before installing', type: 'local' },
   // External skill packs (installed via npx skills add)
