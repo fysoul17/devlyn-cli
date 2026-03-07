@@ -72,6 +72,7 @@ const OPTIONAL_ADDONS = [
   { name: 'vercel-labs/agent-skills', desc: 'React, Next.js, React Native best practices', type: 'external' },
   { name: 'supabase/agent-skills', desc: 'Supabase integration patterns', type: 'external' },
   { name: 'coreyhaines31/marketingskills', desc: 'Marketing automation and content skills', type: 'external' },
+  { name: 'anthropics/skills', desc: 'Official Anthropic skill-creator with eval framework and description optimizer', type: 'external' },
 ];
 
 function log(msg, color = 'reset') {
