@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="540" height="195" viewBox="0 0 540 195" fill="none" role="img" aria-label="DEVLYN by Donut Studio">
+  <title>DEVLYN</title>
+  <desc>The Skills and Commands Toolkit for Claude Code by Donut Studio</desc>
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#875fff"/>
+      <stop offset="50%" stop-color="#af5fff"/>
+      <stop offset="100%" stop-color="#ff87ff"/>
+    </linearGradient>
+    <clipPath id="c">
+      <rect width="540" height="195" rx="12"/>
+    </clipPath>
+  </defs>
+  <rect width="540" height="195" rx="12" fill="#0d1117"/>
+  <rect width="540" height="2" fill="url(#g)" opacity="0.4" clip-path="url(#c)"/>
+  <text xml:space="preserve" x="52" y="38" font-family="SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace" font-size="14"><tspan fill="#875fff">██████╗ </tspan><tspan fill="#af5fff">███████╗</tspan><tspan fill="#ff87ff">██╗   ██╗</tspan><tspan fill="#875fff">██╗     </tspan><tspan fill="#af5fff">██╗   ██╗</tspan><tspan fill="#ff87ff">███╗   ██╗</tspan></text>
+  <text xml:space="preserve" x="52" y="58" font-family="SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace" font-size="14"><tspan fill="#875fff">██╔══██╗</tspan><tspan fill="#af5fff">██╔════╝</tspan><tspan fill="#ff87ff">██║   ██║</tspan><tspan fill="#875fff">██║     </tspan><tspan fill="#af5fff">╚██╗ ██╔╝</tspan><tspan fill="#ff87ff">████╗  ██║</tspan></text>
+  <text xml:space="preserve" x="52" y="78" font-family="SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace" font-size="14"><tspan fill="#875fff">██║  ██║</tspan><tspan fill="#af5fff">█████╗  </tspan><tspan fill="#ff87ff">██║   ██║</tspan><tspan fill="#875fff">██║      </tspan><tspan fill="#af5fff">╚████╔╝ </tspan><tspan fill="#ff87ff">██╔██╗ ██║</tspan></text>
+  <text xml:space="preserve" x="52" y="98" font-family="SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace" font-size="14"><tspan fill="#875fff">██║  ██║</tspan><tspan fill="#af5fff">██╔══╝  </tspan><tspan fill="#ff87ff">╚██╗ ██╔╝</tspan><tspan fill="#875fff">██║       </tspan><tspan fill="#af5fff">╚██╔╝  </tspan><tspan fill="#ff87ff">██║╚██╗██║</tspan></text>
+  <text xml:space="preserve" x="52" y="118" font-family="SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace" font-size="14"><tspan fill="#875fff">██████╔╝</tspan><tspan fill="#af5fff">███████╗</tspan><tspan fill="#ff87ff"> ╚████╔╝ </tspan><tspan fill="#875fff">███████╗   </tspan><tspan fill="#af5fff">██║   </tspan><tspan fill="#ff87ff">██║ ╚████║</tspan></text>
+  <text xml:space="preserve" x="52" y="138" font-family="SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace" font-size="14" fill="#585858">╚═════╝ ╚══════╝  ╚═══╝  ╚══════╝   ╚═╝   ╚═╝  ╚═══╝</text>
+  <rect x="195" y="155" width="150" height="0.5" fill="url(#g)" opacity="0.25" rx="0.25"/>
+  <circle cx="232" cy="177" r="14" fill="url(#g)" opacity="0.1"/>
+  <circle cx="232" cy="177" r="10" fill="url(#g)"/>
+  <circle cx="232" cy="177" r="4" fill="#0d1117"/>
+  <rect x="229" y="169" width="1.5" height="3.5" rx="0.75" fill="#ff6b6b" transform="rotate(-30 230 171)"/>
+  <rect x="238" y="173" width="1.5" height="3.5" rx="0.75" fill="#ffd93d" transform="rotate(25 239 175)"/>
+  <rect x="226" y="178" width="1.5" height="3.5" rx="0.75" fill="#69ff94" transform="rotate(50 227 180)"/>
+  <rect x="236" y="183" width="1.5" height="3.5" rx="0.75" fill="#6bc5ff" transform="rotate(-20 237 185)"/>
+  <text xml:space="preserve" x="250" y="182" font-family="SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace" font-size="12"><tspan fill="#585858">by </tspan><tspan fill="url(#g)">Donut Studio</tspan></text>
+</svg>
