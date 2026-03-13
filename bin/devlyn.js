@@ -71,7 +71,7 @@ const OPTIONAL_ADDONS = [
   { name: 'better-auth-setup', desc: 'Production-ready Better Auth + Hono + Drizzle + PostgreSQL auth setup', type: 'local' },
   { name: 'pyx-scan', desc: 'Check whether an AI agent skill is safe before installing', type: 'local' },
   // Local optional commands (copied to .claude/commands/)
-  { name: 'pencil-sync', desc: 'Sync designs between codebase and Pencil (.pen files) via MCP', type: 'command' },
+  { name: 'devlyn.pencil-sync', desc: 'Sync designs between codebase and Pencil (.pen files) via MCP', type: 'command' },
   // External skill packs (installed via npx skills add)
   { name: 'vercel-labs/agent-skills', desc: 'React, Next.js, React Native best practices', type: 'external' },
   { name: 'supabase/agent-skills', desc: 'Supabase integration patterns', type: 'external' },
