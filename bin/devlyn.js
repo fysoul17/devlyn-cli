@@ -7,6 +7,7 @@ const { execSync } = require('child_process');
 
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
+const OPTIONAL_COMMANDS_SOURCE = path.join(__dirname, '..', 'optional-commands');
 const PKG = require('../package.json');
 
 // Files removed in previous versions that should be cleaned up on upgrade
@@ -69,6 +70,8 @@ const OPTIONAL_ADDONS = [
   { name: 'prompt-engineering', desc: 'Claude 4 prompt optimization using Anthropic best practices', type: 'local' },
   { name: 'better-auth-setup', desc: 'Production-ready Better Auth + Hono + Drizzle + PostgreSQL auth setup', type: 'local' },
   { name: 'pyx-scan', desc: 'Check whether an AI agent skill is safe before installing', type: 'local' },
+  // Local optional commands (copied to .claude/commands/)
+  { name: 'pencil-sync', desc: 'Sync designs between codebase and Pencil (.pen files) via MCP', type: 'command' },
   // External skill packs (installed via npx skills add)
   { name: 'vercel-labs/agent-skills', desc: 'React, Next.js, React Native best practices', type: 'external' },
   { name: 'supabase/agent-skills', desc: 'Supabase integration patterns', type: 'external' },
@@ -170,7 +173,9 @@ function listContents() {
   // List optional addons
   log('\n📦 Optional Addons:', 'blue');
   OPTIONAL_ADDONS.forEach((addon) => {
-    const tag = addon.type === 'local' ? `${COLORS.magenta}skill${COLORS.reset}` : `${COLORS.cyan}pack${COLORS.reset}`;
+    const tagLabel = addon.type === 'command' ? 'cmd' : addon.type === 'local' ? 'skill' : 'pack';
+    const tagColor = addon.type === 'command' ? COLORS.green : addon.type === 'local' ? COLORS.magenta : COLORS.cyan;
+    const tag = `${tagColor}${tagLabel}${COLORS.reset}`;
     log(`  ${COLORS.green}${addon.name}${COLORS.reset} ${COLORS.dim}[${tag}${COLORS.dim}]${COLORS.reset}`);
     log(`     ${COLORS.dim}${addon.desc}${COLORS.reset}`);
   });
@@ -232,7 +237,9 @@ function multiSelect(items) {
         const checkbox = selected.has(i) ? `${COLORS.green}◉${COLORS.reset}` : `${COLORS.dim}○${COLORS.reset}`;
         const pointer = i === cursor ? `${COLORS.cyan}❯${COLORS.reset}` : ' ';
         const name = i === cursor ? `${COLORS.cyan}${item.name}${COLORS.reset}` : item.name;
-        const tag = item.type === 'local' ? `${COLORS.magenta}skill${COLORS.reset}` : `${COLORS.cyan}pack${COLORS.reset}`;
+        const tagLabel = item.type === 'command' ? 'cmd' : item.type === 'local' ? 'skill' : 'pack';
+        const tagColor = item.type === 'command' ? COLORS.green : item.type === 'local' ? COLORS.magenta : COLORS.cyan;
+        const tag = `${tagColor}${tagLabel}${COLORS.reset}`;
         console.log(`${pointer} ${checkbox} ${name} ${COLORS.dim}[${tag}${COLORS.dim}]${COLORS.reset}`);
         console.log(`    ${COLORS.dim}${item.desc}${COLORS.reset}`);
       });
@@ -318,6 +325,30 @@ function installLocalSkill(skillName) {
   return true;
 }
 
+function installLocalCommand(commandName) {
+  const src = path.join(OPTIONAL_COMMANDS_SOURCE, commandName);
+  const targetDir = getTargetDir();
+  const destDir = path.join(targetDir, 'commands');
+
+  if (!fs.existsSync(src)) {
+    log(`   ⚠️  Command pack "${commandName}" not found`, 'yellow');
+    return false;
+  }
+
+  log(`\n📋 Installing ${commandName} commands...`, 'cyan');
+
+  if (!fs.existsSync(destDir)) {
+    fs.mkdirSync(destDir, { recursive: true });
+  }
+
+  const files = fs.readdirSync(src).filter((f) => f.endsWith('.md'));
+  for (const file of files) {
+    fs.copyFileSync(path.join(src, file), path.join(destDir, file));
+    log(`  → commands/${file}`, 'dim');
+  }
+  return true;
+}
+
 function installSkillPack(packName) {
   try {
     log(`\n📦 Installing ${packName}...`, 'cyan');
@@ -332,6 +363,9 @@ function installSkillPack(packName) {
 function installAddon(addon) {
   if (addon.type === 'local') {
     return installLocalSkill(addon.name);
+  }
+  if (addon.type === 'command') {
+    return installLocalCommand(addon.name);
   }
   return installSkillPack(addon.name);
 }
@@ -385,9 +419,9 @@ async function init(skipPrompts = false) {
 
   // Skip prompts if -y flag or non-interactive
   if (skipPrompts || !process.stdin.isTTY) {
-    log('\n💡 Add optional skills & packs later:', 'dim');
+    log('\n💡 Add optional addons later:', 'dim');
     OPTIONAL_ADDONS.forEach((addon) => {
-      if (addon.type === 'local') {
+      if (addon.type === 'local' || addon.type === 'command') {
         log(`   npx devlyn-cli  (select "${addon.name}" during install)`, 'dim');
       } else {
         log(`   npx skills add ${addon.name}`, 'dim');
