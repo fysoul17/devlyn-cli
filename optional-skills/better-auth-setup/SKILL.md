@@ -1,22 +1,30 @@
 ---
 name: better-auth-setup
 description: >
-  Production-ready Better Auth integration for Bun + Hono + Drizzle + PostgreSQL projects.
-  Sets up email/password auth, session cookies, API key auth, organization/multi-tenant support,
-  email verification, CORS, security headers, auth middleware, tenant context, and test infrastructure
-  in one pass with zero gotchas. Use this skill whenever setting up authentication in a new
-  Hono/Bun project, adding Better Auth to an existing project, or when the user mentions Better Auth,
-  auth setup, login, signup, session management, API keys, or multi-tenant auth. Also use when
-  debugging auth issues in a Hono + Better Auth stack.
+  Production-ready Better Auth integration for fullstack projects. Covers both the backend
+  (Bun + Hono + Drizzle + PostgreSQL) and the frontend reverse proxy architecture (Next.js,
+  Cloudflare Workers, or any framework proxying auth requests to a separate backend). Sets up
+  email/password auth, session cookies, OAuth providers (Google, GitHub), API key auth,
+  organization/multi-tenant support, email verification, CORS, security headers, auth middleware,
+  tenant context, proxy forwarding headers, dynamic baseURL with allowedHosts, cookie prefix
+  handling, and test infrastructure — all in one pass with zero gotchas. Use this skill whenever
+  setting up Better Auth, adding OAuth/social login, configuring a reverse proxy for auth,
+  debugging redirect_uri_mismatch errors, fixing state_mismatch cookie issues, session cookies
+  not persisting after OAuth callback, or when the user mentions Better Auth, OAuth proxy,
+  auth setup, login, signup, session management, API keys, multi-tenant auth, or
+  "session cookie not working".
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
-argument-hint: "[new-project-path or 'debug']"
+argument-hint: "[new-project-path | 'debug' | 'proxy']"
 ---
 
 # Better Auth Production Setup
 
-Set up a complete, production-hardened authentication system using Better Auth with Bun + Hono + Drizzle ORM + PostgreSQL. This skill incorporates lessons from real production deployments where each "gotcha" caused hours of debugging.
+Set up a complete, production-hardened authentication system using Better Auth. This skill covers two deployment architectures:
 
-The setup produces a dual-auth system: session cookies for browser users and API keys for programmatic access, with multi-tenant organization support and plan-based access control.
+1. **Backend-only** — Better Auth running directly in a Hono + Bun + Drizzle + PostgreSQL API server
+2. **Fullstack with proxy** — A separate frontend (e.g., Next.js on Cloudflare Workers) that proxies auth requests to the backend
+
+The setup produces a dual-auth system: session cookies for browser users and API keys for programmatic access, with multi-tenant organization support and plan-based access control. Every configuration choice addresses a real production gotcha that caused hours of debugging.
 
 ## Reference Files
 
@@ -27,16 +35,34 @@ Read these when each step directs you to them:
 - `${CLAUDE_SKILL_DIR}/references/api-keys.md` — Key generation, CRUD routes, security patterns
 - `${CLAUDE_SKILL_DIR}/references/config-and-entry.md` — Env config, error types, entry point wiring
 - `${CLAUDE_SKILL_DIR}/references/testing.md` — Test preload, seed factory, integration patterns
+- `${CLAUDE_SKILL_DIR}/references/proxy-setup.md` — Reverse proxy architecture, forwarding headers, OAuth callback routing
+- `${CLAUDE_SKILL_DIR}/references/proxy-gotchas.md` — Proxy-specific troubleshooting (redirect_uri_mismatch, state_mismatch, cookie prefix issues)
 
 ## Handling Input
 
 Parse `$ARGUMENTS` to determine the mode:
 
-- **Empty or project path**: Run the full setup workflow (Steps 1-11)
+- **Empty or project path**: Detect architecture, then run the full setup workflow
 - **`debug`**: Skip to the verification checklist (Step 11) to diagnose an existing setup
+- **`proxy`**: Skip to proxy-specific steps (Steps 12-14) for an existing backend
 - **Specific step number** (e.g., `step 3`): Jump to that step for targeted work
 
 If `$ARGUMENTS` is empty, ask the user for the project path or confirm the current directory.
+
+## Step 0: Detect Architecture
+
+Before starting, determine the deployment architecture:
+
+1. Check if the project has a **separate frontend** that proxies to the backend (look for Next.js, proxy routes, `API_URL` env vars)
+2. Check if the **current project IS the backend** (Hono, Express, or similar server framework with Better Auth)
+
+| Architecture | Signals | Steps |
+|---|---|---|
+| Backend-only | Hono/Express project, no frontend proxy | Steps 1-11 |
+| Frontend proxy (setting up frontend) | Next.js/Remix project with `API_URL` pointing to a backend | Steps 12-14 |
+| Fullstack (both) | Both projects accessible | Steps 1-14 |
+
+If uncertain, ask the user which architecture they're using.
 
 ---
 
@@ -111,6 +137,9 @@ export const auth = betterAuth({
   // Always set basePath explicitly — missing this causes route mismatches
   // between where Hono mounts auth routes and where Better Auth handles them.
   basePath: "/auth",
+
+  // For backend-only: use a static baseURL.
+  // For proxy architecture: use allowedHosts (see Step 12).
   baseURL: config.BETTER_AUTH_URL,
   secret: config.BETTER_AUTH_SECRET,
 
@@ -414,7 +443,162 @@ Always append a unique suffix (UUID slice or timestamp) to prevent collisions.
 
 ---
 
+---
+
+## Proxy Architecture (Steps 12-14)
+
+These steps apply when the frontend is a separate application that proxies auth requests to the backend. Read `${CLAUDE_SKILL_DIR}/references/proxy-setup.md` for the complete guide with code examples.
+
+### Step 12: Configure Dynamic baseURL on Backend
+
+**Entry:** Backend auth works directly (Steps 1-11 complete or existing backend).
+**Exit:** Backend derives baseURL per-request from forwarded headers.
+
+Replace the static `baseURL` in `src/lib/auth.ts` with `allowedHosts`:
+
+```typescript
+export const auth = betterAuth({
+  baseURL: {
+    allowedHosts: [
+      "your-frontend.com",      // Frontend domain (via proxy)
+      "your-backend.fly.dev",   // Backend domain (direct access)
+      "localhost",              // Local development
+      "*.fly.dev",              // Platform internal routing
+    ],
+    fallback: process.env.BETTER_AUTH_URL,
+  },
+  basePath: "/auth",
+  advanced: {
+    trustedProxyHeaders: true,  // Read X-Forwarded-Host from the proxy
+  },
+  // ... rest of config unchanged
+});
+```
+
+**Why `allowedHosts` instead of a static baseURL:**
+- A static `baseURL` caches on first request (often a health check with internal hostname)
+- `trustedProxyHeaders: true` alone does NOT work when `baseURL` is set — the static value takes precedence
+- The `BETTER_AUTH_URL` env var also overrides forwarded headers
+- `allowedHosts` derives baseURL per-request and never caches
+
+Add Google OAuth (or other social providers):
+
+```typescript
+socialProviders: {
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+  },
+},
+```
+
+---
+
+### Step 13: Configure Frontend Proxy
+
+**Entry:** Backend uses `allowedHosts` with `trustedProxyHeaders`.
+**Exit:** Frontend proxies auth requests and OAuth callbacks correctly.
+
+The frontend proxy must do three things. Read `${CLAUDE_SKILL_DIR}/references/proxy-setup.md` for complete code.
+
+#### 13a. Create two proxy routes
+
+| Frontend Route | Backend Route | Purpose |
+|---|---|---|
+| `/api/auth/*` | `/auth/*` | Auth-client API calls (browser) |
+| `/auth/*` | `/auth/*` | OAuth callbacks (Google redirects here) |
+
+The second route is critical — Better Auth constructs OAuth callback URLs from `{baseURL}{basePath}/callback/{provider}`. When it derives baseURL from the frontend origin, the callback becomes `https://your-frontend.com/auth/callback/google`.
+
+#### 13b. Set forwarding headers (not just strip them)
+
+```typescript
+// Strip user-provided headers to prevent spoofing
+headers.delete("x-forwarded-for");
+headers.delete("x-forwarded-host");
+headers.delete("x-forwarded-proto");
+headers.delete("x-real-ip");
+headers.delete("cf-connecting-ip");
+
+// Then set correct values from the actual request
+headers.set("x-forwarded-host", url.host);
+headers.set("x-forwarded-proto", url.protocol.replace(":", ""));
+```
+
+#### 13c. Rewrite Location headers
+
+When the backend returns a redirect, rewrite the `Location` header to point to the frontend origin.
+
+---
+
+### Step 14: Configure Frontend Middleware
+
+**Entry:** Proxy routes working.
+**Exit:** Middleware detects session cookies correctly, including `__Secure-` prefix.
+
+In production with HTTPS, Better Auth adds a `__Secure-` prefix to cookie names. Your middleware MUST check for both:
+
+```typescript
+const SESSION_COOKIES = [
+  "__Secure-better-auth.session_token",  // Production (HTTPS)
+  "better-auth.session_token",            // Development (HTTP)
+];
+
+const hasSession = SESSION_COOKIES.some(
+  (name) => !!request.cookies.get(name)?.value,
+);
+```
+
+This is the most insidious gotcha in the proxy architecture — OAuth completes successfully, session is created, cookie is set, but the frontend middleware doesn't recognize it because it only checks the unprefixed name.
+
+Configure the OAuth provider (Google Console example):
+- **Authorized JavaScript origins**: `https://your-frontend.com`
+- **Authorized redirect URIs**: `https://your-frontend.com/auth/callback/google`
+
+The redirect URI uses `/auth/callback/google`, NOT `/api/auth/callback/google`.
+
+---
+
+### Step 15: Verify Proxy Setup
+
+In addition to the Step 11 checklist, verify:
+
+**Proxy**
+- [ ] Proxy route exists at `/api/auth/*` (for auth-client API calls)
+- [ ] Proxy route exists at `/auth/*` (for OAuth callbacks)
+- [ ] Proxy strips THEN sets `X-Forwarded-Host` and `X-Forwarded-Proto`
+- [ ] Proxy rewrites `Location` headers from backend origin to frontend origin
+
+**Dynamic baseURL**
+- [ ] Backend uses `allowedHosts` (not a static `baseURL` string)
+- [ ] `allowedHosts` includes frontend domain, backend domain, and `localhost`
+- [ ] `fallback` is set for health checks
+- [ ] `trustedProxyHeaders: true` is in `advanced` config
+
+**OAuth**
+- [ ] Google Console redirect URI is `https://{frontend}/auth/callback/google`
+- [ ] Verification curl returns `redirect_uri` with frontend domain (not backend)
+
+**Cookies**
+- [ ] Middleware checks both `__Secure-better-auth.session_token` and `better-auth.session_token`
+
+Test with:
+```bash
+curl -s -X POST "https://your-frontend.com/api/auth/sign-in/social" \
+  -H "Content-Type: application/json" \
+  -d '{"provider":"google","callbackURL":"/dashboard"}' | \
+  python3 -c "import sys,json,urllib.parse; data=json.load(sys.stdin); url=data.get('url',''); params=urllib.parse.parse_qs(urllib.parse.urlparse(url).query); print('redirect_uri:', params.get('redirect_uri',['N/A'])[0])"
+```
+
+Expected: `redirect_uri: https://your-frontend.com/auth/callback/google`
+
+For detailed troubleshooting of proxy-specific failures, read `${CLAUDE_SKILL_DIR}/references/proxy-gotchas.md`.
+
+---
+
 ## Quick Reference: Common Mistakes
+
+### Backend Mistakes
 
 | Mistake | Consequence | Prevention |
 |---------|-------------|------------|
@@ -427,6 +611,18 @@ Always append a unique suffix (UUID slice or timestamp) to prevent collisions.
 | `RESEND_API_KEY` in tests | Real emails to test addresses | Clear in test preload |
 | Generic 403 for no org | Frontend can't show helpful UX | Distinct `no_organization` code |
 | `credentials: true` + `*` | Browser rejects response | Specific origins with credentials |
+
+### Proxy Mistakes
+
+| Mistake | Consequence | Prevention |
+|---------|-------------|------------|
+| Static `baseURL` with proxy | OAuth callback uses wrong domain | Use `allowedHosts` + `fallback` |
+| `trustedProxyHeaders` without `allowedHosts` | Static baseURL or env var overrides | `allowedHosts` bypasses priority chain |
+| Only `/api/auth/*` proxy route | OAuth callback 404 (Google redirects to `/auth/callback/*`) | Add `/auth/*` proxy route |
+| Proxy only strips headers | Backend doesn't know frontend origin | Strip THEN set `X-Forwarded-Host` |
+| Middleware checks only `better-auth.session_token` | Authenticated users redirected to sign-in | Check both `__Secure-` prefixed and plain |
+| Google Console redirect URI with `/api/auth/` | `redirect_uri_mismatch` from Google | Use `/auth/callback/google` (not `/api/auth/`) |
+| `BETTER_AUTH_URL` env var set | Overrides forwarded headers | Use `allowedHosts` with `fallback` instead |
 
 <example>
 **User**: "Set up Better Auth in my new Hono project at ./my-api"
@@ -447,4 +643,19 @@ Always append a unique suffix (UUID slice or timestamp) to prevent collisions.
 13. Create src/index.ts with correct middleware order
 14. Create test utilities (setup.ts, db.ts, app.ts)
 15. Run verification checklist
+</example>
+
+<example>
+**User**: "I have a Next.js frontend and Hono backend. I need Google OAuth working through the proxy."
+
+**Steps taken**:
+1. Detect proxy architecture (Step 0)
+2. Update backend auth.ts: replace static baseURL with allowedHosts + trustedProxyHeaders (Step 12)
+3. Add Google social provider to auth config (Step 12)
+4. Create /api/auth/* and /auth/* proxy routes on frontend (Step 13)
+5. Set forwarding headers in proxy (Step 13)
+6. Add Location header rewriting (Step 13)
+7. Update frontend middleware to check both cookie names (Step 14)
+8. Configure Google Console redirect URI (Step 14)
+9. Run proxy verification checklist (Step 15)
 </example>
