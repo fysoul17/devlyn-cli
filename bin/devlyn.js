@@ -70,6 +70,7 @@ const OPTIONAL_ADDONS = [
   { name: 'prompt-engineering', desc: 'Claude 4 prompt optimization using Anthropic best practices', type: 'local' },
   { name: 'better-auth-setup', desc: 'Production-ready Better Auth + Hono + Drizzle + PostgreSQL auth setup', type: 'local' },
   { name: 'pyx-scan', desc: 'Check whether an AI agent skill is safe before installing', type: 'local' },
+  { name: 'dokkit', desc: 'Document template filling for DOCX/HWPX — ingest, fill, review, export', type: 'local' },
   // Local optional commands (copied to .claude/commands/)
   { name: 'devlyn.pencil-sync', desc: 'Sync designs between codebase and Pencil (.pen files) via MCP', type: 'command' },
   // External skill packs (installed via npx skills add)
