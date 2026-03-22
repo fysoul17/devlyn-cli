@@ -6,6 +6,22 @@ $ARGUMENTS
 
 <team_workflow>
 
+<code_quality_standards>
+Every line of code produced by this team must be **production-grade**. This is not a prototype — treat every fix and feature as code that ships to real users at scale.
+
+**Non-negotiable standards**:
+- **Root cause fixes only** — never workarounds, never "good enough for now" (see `<no_workarounds>` below)
+- **Graceful error handling** — errors are caught, surfaced to the user with actionable context, and logged. No silent swallowing. No raw stack traces in UI. Every failure path has a recovery or clear error state.
+- **Robust edge case coverage** — handle nulls, empty states, concurrent access, network failures, partial data, and boundary conditions. If it can happen in production, handle it.
+- **Optimized for performance** — no unnecessary re-renders, no N+1 queries, no unbounded loops, no blocking I/O on hot paths. Profile before and after when touching performance-sensitive code.
+- **Scalable patterns** — solutions must work at 10x the current load. Avoid patterns that degrade with data size (O(n²) where O(n) is possible, in-memory aggregation of unbounded datasets, missing pagination).
+- **Best practice adherence** — follow the language/framework idioms of the codebase. Use established patterns over novel approaches. Leverage the type system. Prefer composition over inheritance. Keep functions focused and testable.
+- **Clean interfaces** — clear contracts between modules. No leaky abstractions. Inputs validated at boundaries. Return types are explicit, not `any`.
+- **Defensive but not paranoid** — validate external inputs rigorously, trust internal interfaces. Don't add guards for impossible states — instead, make impossible states unrepresentable through types.
+
+Every teammate should evaluate their findings and recommendations against these standards. The Team Lead enforces them during synthesis and implementation.
+</code_quality_standards>
+
 ## Phase 1: INTAKE (You are the Team Lead — work solo first)
 
 Before spawning any teammates, do your own investigation:
@@ -487,8 +503,15 @@ Implementation order:
 3. Incorporate security constraints from the Security Auditor (if present)
 4. Respect architectural patterns flagged by the Architecture Reviewer (if present)
 5. Apply UX requirements from the UX Designer and Accessibility Auditor (if present)
-6. Run the failing test — if it still fails, revert and re-analyze (never layer fixes)
-7. Run the full test suite for regressions
+6. **Quality gate** — before running tests, review your own code against `<code_quality_standards>`:
+   - Is error handling graceful and user-facing (not silent, not raw)?
+   - Are edge cases handled (nulls, empty, concurrent, partial data)?
+   - Is the solution performant at scale (no O(n²), no unbounded loops)?
+   - Does the code follow existing codebase patterns and idioms?
+   - Are interfaces clean and types explicit (no `any`, no leaky abstractions)?
+   - If any check fails, refactor BEFORE proceeding to tests
+7. Run the failing test — if it still fails, revert and re-analyze (never layer fixes)
+8. Run the full test suite for regressions
 
 ## Phase 6: CLEANUP
 
@@ -531,6 +554,12 @@ Present findings in this format:
 ### Verification
 - [ ] Failing test now passes
 - [ ] No regressions in full test suite
+- [ ] Root cause addressed (no workarounds — see `<no_workarounds>` criteria)
+- [ ] Error handling is graceful with user-facing messages
+- [ ] Edge cases covered (nulls, empty states, boundaries, concurrent access)
+- [ ] Performance verified (no O(n²), no N+1, no unbounded operations)
+- [ ] Code follows existing codebase patterns and idioms
+- [ ] Types are explicit, interfaces are clean, no `any` leaks
 - [ ] UX/accessibility concerns addressed (if applicable)
 - [ ] Manual verification (if applicable)
 
