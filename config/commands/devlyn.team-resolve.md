@@ -471,7 +471,7 @@ After receiving all teammate findings:
 1. Read all findings carefully
 2. If teammates disagree on root cause → re-examine the contested evidence yourself by reading the specific files and lines they reference
 3. Compile a unified root cause analysis
-4. If the fix is complex (multiple files, architectural change) → enter plan mode and present to user for approval
+4. If the fix is complex (multiple files, architectural change) → call the `EnterPlanMode` tool to enter plan mode and present the implementation plan to the user for approval before writing any code
 5. If the fix is simple and all teammates agree → proceed directly
 
 Present the synthesis to the user before implementing.
@@ -492,7 +492,7 @@ Workaround indicators (if you catch yourself doing any of these, STOP):
 
 If the true fix requires significant refactoring:
 1. Document why in the root cause analysis
-2. Present the scope to the user in plan mode
+2. Call the `EnterPlanMode` tool to present the scope to the user and get approval before proceeding
 3. Get approval before proceeding
 4. Never ship a workaround "for now"
 </no_workarounds>
