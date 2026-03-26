@@ -78,6 +78,7 @@ const OPTIONAL_ADDONS = [
   { name: 'supabase/agent-skills', desc: 'Supabase integration patterns', type: 'external' },
   { name: 'coreyhaines31/marketingskills', desc: 'Marketing automation and content skills', type: 'external' },
   { name: 'anthropics/skills', desc: 'Official Anthropic skill-creator with eval framework and description optimizer', type: 'external' },
+  { name: 'Leonxlnx/taste-skill', desc: 'Premium frontend design skills — modern layouts, animations, and visual refinement', type: 'external' },
 ];
 
 function log(msg, color = 'reset') {
