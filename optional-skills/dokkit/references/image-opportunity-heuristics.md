@@ -113,7 +113,7 @@ Each opportunity is added to the field's `image_opportunities` array:
 - `insertion_point.strategy`: Always `"after_paragraph"` for section content
 - `insertion_point.anchor_text`: Distinctive Korean phrase from the paragraph (used by filler to locate insertion point)
 - `generation_prompt`: English prompt for AI image generation
-- `preset`: Maps to `scripts/source_images.py` preset parameter
+- `preset`: Maps to `.claude/skills/dokkit/scripts/source_images.py` preset parameter
 - `content_type`: One of `flowchart`, `diagram`, `data`, `concept`, `infographic`
 - `rationale`: Brief explanation of why an image helps here
 - `dimensions`: Default size — filler may adjust based on content_type

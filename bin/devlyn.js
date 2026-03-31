@@ -6,9 +6,45 @@ const readline = require('readline');
 const { execSync } = require('child_process');
 
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
+const AGENTS_SOURCE = path.join(__dirname, '..', 'config', 'agents');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const OPTIONAL_COMMANDS_SOURCE = path.join(__dirname, '..', 'optional-commands');
 const PKG = require('../package.json');
+
+// Cross-CLI agent installation targets
+// Each entry maps a CLI tool to where its agent instructions should be placed
+const CLI_TARGETS = {
+  codex: {
+    name: 'Codex CLI (OpenAI)',
+    instructionsFile: 'AGENTS.md',
+    configDir: null, // Codex uses AGENTS.md at project root
+    detect: () => fs.existsSync(path.join(process.cwd(), 'AGENTS.md')) || fs.existsSync(path.join(process.cwd(), '.codex')),
+  },
+  gemini: {
+    name: 'Gemini CLI (Google)',
+    instructionsFile: 'GEMINI.md',
+    configDir: null, // Gemini uses GEMINI.md at project root
+    detect: () => fs.existsSync(path.join(process.cwd(), 'GEMINI.md')) || fs.existsSync(path.join(process.cwd(), '.gemini')),
+  },
+  cursor: {
+    name: 'Cursor',
+    instructionsFile: '.cursorrules',
+    configDir: '.cursor/rules',
+    detect: () => fs.existsSync(path.join(process.cwd(), '.cursorrules')) || fs.existsSync(path.join(process.cwd(), '.cursor')),
+  },
+  copilot: {
+    name: 'GitHub Copilot',
+    instructionsFile: '.github/copilot-instructions.md',
+    configDir: '.github/copilot/agents',
+    detect: () => fs.existsSync(path.join(process.cwd(), '.github', 'copilot-instructions.md')) || fs.existsSync(path.join(process.cwd(), '.github', 'copilot')),
+  },
+  windsurf: {
+    name: 'Windsurf',
+    instructionsFile: '.windsurfrules',
+    configDir: '.windsurf/rules',
+    detect: () => fs.existsSync(path.join(process.cwd(), '.windsurfrules')) || fs.existsSync(path.join(process.cwd(), '.windsurf')),
+  },
+};
 
 // Files removed in previous versions that should be cleaned up on upgrade
 const DEPRECATED_FILES = [
@@ -372,6 +408,77 @@ function installAddon(addon) {
   return installSkillPack(addon.name);
 }
 
+function detectOtherCLIs() {
+  const detected = [];
+  for (const [key, cli] of Object.entries(CLI_TARGETS)) {
+    if (cli.detect()) {
+      detected.push(key);
+    }
+  }
+  return detected;
+}
+
+function installAgentsForCLI(cliKey) {
+  const cli = CLI_TARGETS[cliKey];
+  if (!cli) return false;
+  if (!fs.existsSync(AGENTS_SOURCE)) return false;
+
+  const agents = fs.readdirSync(AGENTS_SOURCE).filter((f) => f.endsWith('.md'));
+  if (agents.length === 0) return false;
+
+  log(`\n🤖 Installing agents for ${cli.name}...`, 'cyan');
+
+  if (cli.configDir) {
+    // CLI supports an agents directory — copy agent files there
+    const destDir = path.join(process.cwd(), cli.configDir);
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+    for (const file of agents) {
+      const src = path.join(AGENTS_SOURCE, file);
+      const dest = path.join(destDir, file);
+      fs.copyFileSync(src, dest);
+      log(`  → ${cli.configDir}/${file}`, 'dim');
+    }
+  } else {
+    // CLI uses a single instructions file — append agent content
+    const destFile = path.join(process.cwd(), cli.instructionsFile);
+    const separator = '\n\n---\n\n# Devlyn Agent Instructions\n\n';
+    const agentContent = agents.map((file) => {
+      return fs.readFileSync(path.join(AGENTS_SOURCE, file), 'utf8');
+    }).join('\n\n---\n\n');
+
+    let existing = '';
+    if (fs.existsSync(destFile)) {
+      existing = fs.readFileSync(destFile, 'utf8');
+      // Remove previous devlyn agent section if present
+      const devlynMarker = '# Devlyn Agent Instructions';
+      const markerIdx = existing.indexOf(devlynMarker);
+      if (markerIdx > 0) {
+        // Find the separator before the marker (---\n\n)
+        const sepIdx = existing.lastIndexOf('---', markerIdx);
+        existing = existing.slice(0, sepIdx > 0 ? sepIdx : markerIdx).trimEnd();
+      }
+    }
+
+    fs.writeFileSync(destFile, existing + separator + agentContent + '\n');
+    log(`  → ${cli.instructionsFile} (agent instructions appended)`, 'dim');
+  }
+
+  return true;
+}
+
+function installAgentsForAllDetected() {
+  const detected = detectOtherCLIs();
+  if (detected.length === 0) return 0;
+
+  let installed = 0;
+  for (const cliKey of detected) {
+    if (installAgentsForCLI(cliKey)) installed++;
+  }
+  return installed;
+}
+
 async function init(skipPrompts = false) {
   showLogo();
   log('─'.repeat(44), 'dim');
@@ -417,6 +524,16 @@ async function init(skipPrompts = false) {
     log('  → settings.json (agent teams enabled)', 'dim');
   }
 
+  // Install agents for other detected CLIs
+  const detected = detectOtherCLIs();
+  if (detected.length > 0) {
+    log(`\n🔍 Detected other AI CLIs: ${detected.map((k) => CLI_TARGETS[k].name).join(', ')}`, 'blue');
+    const agentsInstalled = installAgentsForAllDetected();
+    if (agentsInstalled > 0) {
+      log(`  ✅ Agent instructions installed for ${agentsInstalled} CLI${agentsInstalled > 1 ? 's' : ''}`, 'green');
+    }
+  }
+
   log('\n✅ Core config installed!', 'green');
 
   // Skip prompts if -y flag or non-interactive
@@ -454,10 +571,12 @@ async function init(skipPrompts = false) {
 function showHelp() {
   showLogo();
   log('Usage:', 'green');
-  log('  npx devlyn-cli          Install/update .claude config');
-  log('  npx devlyn-cli list     List available commands & templates');
-  log('  npx devlyn-cli -y       Install without prompts');
-  log('  npx devlyn-cli --help   Show this help\n');
+  log('  npx devlyn-cli              Install/update .claude config');
+  log('  npx devlyn-cli list         List available commands & templates');
+  log('  npx devlyn-cli -y           Install without prompts');
+  log('  npx devlyn-cli agents       Install agents for detected CLIs');
+  log('  npx devlyn-cli agents all   Install agents for all supported CLIs');
+  log('  npx devlyn-cli --help       Show this help\n');
   log('Optional skills (select during install):', 'green');
   OPTIONAL_ADDONS.filter((a) => a.type === 'local').forEach((skill) => {
     log(`  ${skill.name}  ${COLORS.dim}${skill.desc}${COLORS.reset}`);
@@ -466,6 +585,10 @@ function showHelp() {
   OPTIONAL_ADDONS.filter((a) => a.type === 'external').forEach((pack) => {
     log(`  npx skills add ${pack.name}`);
   });
+  log('\nSupported CLIs for agent installation:', 'green');
+  for (const [key, cli] of Object.entries(CLI_TARGETS)) {
+    log(`  ${key.padEnd(10)} ${cli.name}`);
+  }
   log('');
 }
 
@@ -486,6 +609,38 @@ switch (command) {
   case 'ls':
     listContents();
     break;
+  case 'agents': {
+    showLogo();
+    log('─'.repeat(44), 'dim');
+    const subArg = args[1];
+    if (subArg === 'all') {
+      // Install for all supported CLIs regardless of detection
+      log('\n🤖 Installing agents for all supported CLIs...', 'blue');
+      let count = 0;
+      for (const cliKey of Object.keys(CLI_TARGETS)) {
+        if (installAgentsForCLI(cliKey)) count++;
+      }
+      log(`\n✅ Agents installed for ${count} CLI${count !== 1 ? 's' : ''}`, 'green');
+    } else if (subArg && CLI_TARGETS[subArg]) {
+      // Install for a specific CLI
+      installAgentsForCLI(subArg);
+      log('\n✅ Done!', 'green');
+    } else {
+      // Auto-detect and install
+      const detected = detectOtherCLIs();
+      if (detected.length === 0) {
+        log('\n🔍 No other AI CLIs detected in this project.', 'yellow');
+        log('   Use `npx devlyn-cli agents all` to install for all supported CLIs', 'dim');
+        log(`   Supported: ${Object.keys(CLI_TARGETS).join(', ')}`, 'dim');
+      } else {
+        log(`\n🔍 Detected: ${detected.map((k) => CLI_TARGETS[k].name).join(', ')}`, 'blue');
+        const count = installAgentsForAllDetected();
+        log(`\n✅ Agents installed for ${count} CLI${count !== 1 ? 's' : ''}`, 'green');
+      }
+    }
+    log('');
+    break;
+  }
   case 'init':
   case undefined:
     init(false);

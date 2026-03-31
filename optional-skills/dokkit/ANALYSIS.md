@@ -67,6 +67,36 @@ Detect as `field_type: "tip_box"` with `action: "delete"`.
 
 **`has_formatting` flag**: For mapped fields where `mapped_value` is >100 chars and contains markdown syntax (`**bold**`, `## heading`, `- bullet`, `1. numbered`), set `has_formatting: true`.
 
+### 8. Korean Template Placeholder Patterns
+These patterns indicate unfilled fields that MUST be replaced with real values:
+- `OO` (더블 O) — placeholder for names, organizations, fields of study (e.g., "OO학", "OO기업", "OO전자")
+- `00.00` — placeholder for dates (e.g., "00.00 ~ 00.00" means "MM.YY ~ MM.YY")
+- `00명` / `00개` / `00년` — placeholder for counts/durations
+- `000원` / `0,000,000` — placeholder for amounts
+- `'00.00` — placeholder for dates in parenthetical context (e.g., "완료('00.00)")
+
+These are NOT empty cells — they contain placeholder text that looks like data. The analyzer MUST detect them and map real values from source context.
+
+## Section Content Quality Standards
+
+For `section_content` fields (the narrative body of each numbered section), the `mapped_value` must be a **complete, professional-quality narrative** — NOT raw data extracts.
+
+### What "good" section content looks like:
+- 500+ characters per section minimum
+- Specific statistics from survey/research data (e.g., "83%가 사용 의향", "월 9,900원")
+- Named organizations (e.g., "한국난독증협회", "웅진씽크빅")
+- Concrete implementation plans with phases
+- Market analysis with TAM/SAM/SOM numbers
+- Sub-sections following the template's `◦` heading structure
+- Evidence-based claims with source attribution
+
+### What "bad" section content looks like:
+- Just the template headings without substance
+- Raw bullet points from source data without synthesis
+- Generic descriptions without specific numbers
+- Placeholder text remaining (OO, 00.00)
+- Less than 200 characters
+
 ## Section Detection
 
 Group fields into logical sections:
@@ -181,7 +211,8 @@ Write to `.dokkit/analysis.json`:
     "image_fields": 2,
     "image_fields_sourced": 1,
     "image_fields_pending": 1,
-    "tip_boxes": 3
+    "tip_boxes": 3,
+    "section_image_opportunities": 6
   }
 }
 ```

@@ -60,7 +60,7 @@ def parse_image(file_path: str, project_dir: str = ".") -> dict:
     mime_type = mime_map.get(ext, "image/png")
 
     # Call Gemini Vision
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
     payload = {
         "contents": [{
@@ -79,9 +79,9 @@ def parse_image(file_path: str, project_dir: str = ".") -> dict:
     }
 
     req = urllib.request.Request(
-        url,
+        f"{url}?key={api_key}",
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+        headers={"Content-Type": "application/json"},
         method="POST",
     )
 

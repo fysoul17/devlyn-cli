@@ -23,9 +23,18 @@ Language options (--lang):
     <code>    Any ISO 639-1 language code.
     <a>+<b>   Mixed: primary language + secondary language.
 
+    python source_images.py generate \\
+        --prompt "인포그래픽 제목: AI 감정 케어 플랫폼" \\
+        --preset infographic \\
+        --output-dir .dokkit/images/ \\
+        --project-dir . \\
+        --field-id field_014 \\
+        --purpose "스마트 관광용 AR앱 활용"
+
 Output:
     Prints __RESULT__ JSON to stdout:
-    {"image_id": "...", "file_path": "...", "source_type": "generated"|"searched"}
+    {"image_id": "...", "file_path": "...", "source_type": "generated"|"searched",
+     "field_id": "...", "purpose": "..."}
 
 Requires:
     GEMINI_API_KEY in .env or environment variables.
@@ -249,15 +258,17 @@ def generate_image(
                 with open(file_path, "wb") as f:
                     f.write(img_bytes)
 
-                return {
+                result = {
                     "image_id": image_id,
                     "file_path": str(file_path),
                     "source_type": "generated",
                     "file_size": len(img_bytes),
                     "lang": lang,
                     "preset": preset,
+                    "prompt": prompt,
                     "model": IMAGE_MODEL,
                 }
+                return result
 
     return {"error": "No image data in Gemini response"}
 
@@ -308,6 +319,12 @@ def parse_args(argv: list) -> dict:
         elif arg == "--query" and i + 1 < len(argv):
             args["query"] = argv[i + 1]
             i += 2
+        elif arg == "--field-id" and i + 1 < len(argv):
+            args["field_id"] = argv[i + 1]
+            i += 2
+        elif arg == "--purpose" and i + 1 < len(argv):
+            args["purpose"] = argv[i + 1]
+            i += 2
         elif arg == "--no-enhance":
             args["no_enhance"] = True
             i += 1
@@ -341,6 +358,27 @@ def main():
             aspect_ratio=args.get("aspect_ratio", ""),
             no_enhance=args.get("no_enhance", False),
         )
+
+        # Attach field_id and purpose if provided
+        if "field_id" in args:
+            result["field_id"] = args["field_id"]
+        if "purpose" in args:
+            result["purpose"] = args["purpose"]
+
+        # Append to image manifest for tracking
+        if "error" not in result:
+            output_dir = args.get("output_dir", ".dokkit/images/")
+            manifest_path = Path(output_dir).parent / "image_manifest.json"
+            manifest = []
+            if manifest_path.exists():
+                try:
+                    with open(manifest_path, "r", encoding="utf-8") as mf:
+                        manifest = json.load(mf)
+                except (json.JSONDecodeError, IOError):
+                    manifest = []
+            manifest.append(result)
+            with open(manifest_path, "w", encoding="utf-8") as mf:
+                json.dump(manifest, mf, ensure_ascii=False, indent=2)
 
     elif command == "search":
         query = args.get("query")

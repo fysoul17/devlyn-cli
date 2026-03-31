@@ -369,9 +369,28 @@ Always call after row insertion/deletion. Duplicate rowAddr causes Polaris to si
 - `hp:pos`: `flowWithText="0"` `horzRelTo="COLUMN"`
 - Sequential IDs: find max existing `id` in section XML + 1
 
+### Rule 10: Section Content Table Preservation (DOCX + HWPX)
+
+When filling `section_content` fields, the content range often contains embedded `<w:tbl>` (DOCX) or `<hp:tbl>` (HWPX) elements — schedule tables, budget tables, team rosters. These are handled separately as `table_content` fields.
+
+**NEVER remove or replace table elements during section content filling.** Only operate on paragraph elements (`<w:p>` / `<hp:p>`).
+
+```python
+# DOCX: Only remove paragraphs within range, skip tables
+W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+children = list(body)
+for i in range(start_idx, end_idx + 1):
+    child = children[i]
+    tag = child.tag.split('}')[-1]
+    if tag == 'p':
+        body.remove(child)  # Replace with new content
+    # else: skip — tables, bookmarks, sectPr are preserved
+```
+
 ## References
 
 See `references/field-detection-patterns.md` for advanced detection heuristics.
 See `references/section-range-detection.md` for dynamic section content range detection (HWPX).
+See `references/docx-section-range-detection.md` for dynamic section content range detection (DOCX).
 See `references/section-image-interleaving.md` for image interleaving algorithm in section content.
 See `references/image-xml-patterns.md` for complete image element structures and `build_hwpx_pic_element()`.

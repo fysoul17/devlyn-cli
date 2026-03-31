@@ -187,12 +187,12 @@ File path to the template document (DOCX or HWPX).
 
 **Phase 3 — Source Images**:
 7. **Cell-level images**: For each `field_type: "image"` with `image_file: null` and `image_type: "figure"`:
-   - Run: `python scripts/source_images.py generate --prompt "<prompt>" --preset technical_illustration --output-dir .dokkit/images/ --project-dir . --lang ko`
+   - Run: `python .claude/skills/dokkit/scripts/source_images.py generate --prompt "<prompt>" --preset technical_illustration --output-dir .dokkit/images/ --project-dir . --lang ko`
    - Parse `__RESULT__` JSON, update `analysis.json`
    - Skip photo/signature types (require user-provided files)
    - Default `--lang ko` (Korean only). Override with user instruction if needed.
 8. **Section content images**: For each `image_opportunities` entry with `status: "pending"`:
-   - Run: `python scripts/source_images.py generate --prompt "<generation_prompt>" --preset <preset> --output-dir .dokkit/images/ --project-dir . --lang ko`
+   - Run: `python .claude/skills/dokkit/scripts/source_images.py generate --prompt "<generation_prompt>" --preset <preset> --output-dir .dokkit/images/ --project-dir . --lang ko`
    - On failure: set `status: "skipped"`, log reason
    - Use `--lang ko+en` if the content contains technical terms that benefit from English (e.g., architecture diagrams with API names).
 9. Report: "Sourced X/Y images"
@@ -200,14 +200,21 @@ File path to the template document (DOCX or HWPX).
 **Phase 4 — Fill**:
 10. Spawn the **dokkit-filler** agent in fill mode
 
-**Phase 5 — Review and Auto-Fix Loop**:
-11. Evaluate fill result: count fields by confidence, identify fixable issues
-12. **Auto-fix**: For fixable issues, spawn **dokkit-filler** in modify mode
-    - Re-map low-confidence fields where better data exists
-    - Fix formatting issues (date formats, truncated text)
-    - Do NOT auto-fix: unfilled fields, image fields without sources
-13. If auto-fix made changes, re-evaluate. Maximum 2 iterations.
-14. Present **final review** table (section-by-section with confidence)
+**Phase 5 — Quality Gates and Auto-Fix Loop**:
+11. Run quality gates on the filled document (check in the output DOCX XML):
+    - **QG1**: Total text character count ≥ 6,000 (production target: 7,500+)
+    - **QG2**: Zero remaining `00.00` date placeholders (search for `00.00` in text)
+    - **QG3**: Zero remaining `OO` name placeholders (search for `OO학`, `OO기업`, `OO전자` patterns)
+    - **QG4**: Zero remaining `이미지 영역` text
+    - **QG5**: Each section_content field has ≥ 300 chars filled
+    - **QG6**: Image count ≥ 10 (drawings in the document)
+12. **Auto-fix**: For each failed quality gate, spawn **dokkit-filler** in modify mode:
+    - QG1/QG5 fail: "Enrich section content with more detail from source data. Sections need specific statistics, market analysis, product descriptions."
+    - QG2/QG3 fail: "Replace remaining placeholders: [list of 00.00 and OO locations] with values derived from source context."
+    - QG4 fail: "Remove remaining '이미지 영역' placeholder text at [locations]."
+    - QG6 fail: Image generation may have failed — log but don't block export.
+13. If auto-fix made changes, re-run quality gates. Maximum 2 iterations.
+14. Present **final review** table (section-by-section with confidence) and quality gate results
 
 **Phase 6 — Export**:
 15. Export in same format as input template via **dokkit-exporter** agent
@@ -219,7 +226,7 @@ File path to the template document (DOCX or HWPX).
 ### Delegation
 
 **Agent 1 — Analyzer** (dokkit-analyzer):
-> "Analyze the template at `<path>`. Detect all fillable fields INCLUDING image fields. Map to sources. Write `analysis.json`."
+> "Analyze the template at `<path>`. Detect ALL fillable fields INCLUDING image fields, Korean placeholder patterns (OO, 00.00), and section content areas. For section_content fields: SYNTHESIZE rich, detailed narrative content from ALL available sources — do NOT just extract raw data. Each section must have 500+ chars with specific statistics, named organizations, concrete plans. For table_content fields: generate specific values (real dates, amounts, names) from source context. Write `analysis.json`."
 
 **Agent 2 — Filler** (dokkit-filler, fill mode):
 > "Fill the template using `analysis.json`. Mode: fill. Insert images where `image_file` is populated. Interleave section content images at anchor points."
@@ -265,8 +272,8 @@ File path to the template document (DOCX or HWPX).
 > "Analyze the template at `<path>`. Detect all fillable fields INCLUDING image fields. Map to sources. Write `analysis.json`."
 
 **Image sourcing** (inline, between agents):
-- **Pass A — Cell-level**: For `field_type: "image"` with `image_file: null` and `image_type: "figure"`, run `python scripts/source_images.py generate --prompt "..." --preset ... --output-dir .dokkit/images/ --project-dir . --lang ko`
-- **Pass B — Section content**: For `image_opportunities` with `status: "pending"`, run `python scripts/source_images.py generate --prompt "..." --preset ... --output-dir .dokkit/images/ --project-dir . --lang ko`
+- **Pass A — Cell-level**: For `field_type: "image"` with `image_file: null` and `image_type: "figure"`, run `python .claude/skills/dokkit/scripts/source_images.py generate --prompt "..." --preset ... --output-dir .dokkit/images/ --project-dir . --lang ko`
+- **Pass B — Section content**: For `image_opportunities` with `status: "pending"`, run `python .claude/skills/dokkit/scripts/source_images.py generate --prompt "..." --preset ... --output-dir .dokkit/images/ --project-dir . --lang ko`
 - Default language is `ko` (Korean only). Use `--lang ko+en` for mixed content, or `--lang en` for English-only.
 
 **Then**: Spawn the dokkit-filler agent in fill mode:

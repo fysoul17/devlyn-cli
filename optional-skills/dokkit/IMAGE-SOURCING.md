@@ -25,7 +25,7 @@ Via `/dokkit modify "use <file>"`:
 
 ### 3. AI Generation
 ```bash
-python scripts/source_images.py generate \
+python .claude/skills/dokkit/scripts/source_images.py generate \
   --prompt "인포그래픽: AI 감정 케어 플랫폼 4단계 로드맵" \
   --preset infographic \
   --output-dir .dokkit/images/ \
@@ -61,7 +61,7 @@ Use `--aspect-ratio 16:9` to override. Use `--no-enhance` to skip preset style i
 
 ### 4. Web Search
 ```bash
-python scripts/source_images.py search \
+python .claude/skills/dokkit/scripts/source_images.py search \
   --query "company logo example" \
   --output-dir .dokkit/images/
 ```

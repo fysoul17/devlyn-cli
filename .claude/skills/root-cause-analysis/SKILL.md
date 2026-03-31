@@ -56,14 +56,6 @@ Every fix MUST address the root cause. Stop immediately if you catch yourself:
 
 If the real fix requires significant refactoring, present the scope to the user — never ship a workaround "for now".
 
-## Test-Driven Validation
-
-1. Write a failing test that reproduces the issue
-2. Implement the fix
-3. Run the test — if it still fails, **revert completely** and try the next hypothesis
-4. Never layer fixes on top of failed attempts
-5. Run the full test suite for regressions
-
 ## Routing
 
 - **Simple issue** (single file, obvious cause): Use `/devlyn.resolve`
