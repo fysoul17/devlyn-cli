@@ -63,8 +63,29 @@ const DEPRECATED_FILES = [
   'commands/devlyn.team-resolve.md',
   'commands/devlyn.team-review.md',
   'commands/devlyn.update-docs.md',
-  'commands/devlyn.pencil-pull.md', // migrated to skills/devlyn-pencil-pull
-  'commands/devlyn.pencil-push.md', // migrated to skills/devlyn-pencil-push
+  'commands/devlyn.pencil-pull.md', // migrated to skills/devlyn:pencil-pull
+  'commands/devlyn.pencil-push.md', // migrated to skills/devlyn:pencil-push
+];
+
+// Skill directories renamed from devlyn-* to devlyn:* in v0.7.x
+const DEPRECATED_DIRS = [
+  'skills/devlyn-clean',
+  'skills/devlyn-design-system',
+  'skills/devlyn-design-ui',
+  'skills/devlyn-discover-product',
+  'skills/devlyn-evaluate',
+  'skills/devlyn-feature-spec',
+  'skills/devlyn-implement-ui',
+  'skills/devlyn-product-spec',
+  'skills/devlyn-recommend-features',
+  'skills/devlyn-resolve',
+  'skills/devlyn-review',
+  'skills/devlyn-team-design-ui',
+  'skills/devlyn-team-resolve',
+  'skills/devlyn-team-review',
+  'skills/devlyn-update-docs',
+  'skills/devlyn-pencil-pull',
+  'skills/devlyn-pencil-push',
 ];
 
 function getTargetDir() {
@@ -123,8 +144,8 @@ const OPTIONAL_ADDONS = [
   { name: 'better-auth-setup', desc: 'Production-ready Better Auth + Hono + Drizzle + PostgreSQL auth setup', type: 'local' },
   { name: 'pyx-scan', desc: 'Check whether an AI agent skill is safe before installing', type: 'local' },
   { name: 'dokkit', desc: 'Document template filling for DOCX/HWPX — ingest, fill, review, export', type: 'local' },
-  { name: 'devlyn-pencil-pull', desc: 'Pull Pencil designs into code with exact visual fidelity', type: 'local' },
-  { name: 'devlyn-pencil-push', desc: 'Push codebase UI to Pencil canvas for design sync', type: 'local' },
+  { name: 'devlyn:pencil-pull', desc: 'Pull Pencil designs into code with exact visual fidelity', type: 'local' },
+  { name: 'devlyn:pencil-push', desc: 'Push codebase UI to Pencil canvas for design sync', type: 'local' },
   // External skill packs (installed via npx skills add)
   { name: 'vercel-labs/agent-skills', desc: 'React, Next.js, React Native best practices', type: 'external' },
   { name: 'supabase/agent-skills', desc: 'Supabase integration patterns', type: 'external' },
@@ -229,6 +250,14 @@ function cleanupDeprecated(targetDir) {
     if (fs.existsSync(fullPath)) {
       fs.unlinkSync(fullPath);
       log(`  ✕ ${relPath} (deprecated)`, 'dim');
+      removed++;
+    }
+  }
+  for (const relPath of DEPRECATED_DIRS) {
+    const fullPath = path.join(targetDir, relPath);
+    if (fs.existsSync(fullPath)) {
+      fs.rmSync(fullPath, { recursive: true });
+      log(`  ✕ ${relPath}/ (renamed)`, 'dim');
       removed++;
     }
   }
