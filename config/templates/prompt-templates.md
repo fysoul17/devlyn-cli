@@ -23,7 +23,7 @@ Start with the minimum viable solution, then improve if time allows.
 
 ## Debugging
 
-For systematic debugging, use `/devlyn.resolve [issue description]` which includes:
+For systematic debugging, use `/devlyn:resolve [issue description]` which includes:
 - Code path mapping
 - Hypothesis-driven analysis
 - Test-driven fix validation
@@ -61,7 +61,7 @@ have working, tested code ready for PR.
 For complex bugs that need autonomous resolution:
 
 ```
-/devlyn.resolve [bug description]
+/devlyn:resolve [bug description]
 
 After analysis, implement the fix autonomously:
 - Write failing test first

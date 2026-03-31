@@ -28,16 +28,16 @@ When investigating bugs, analyzing features, or exploring code:
    - Remaining unknowns
    - Recommended next steps
 
-For complex investigations, use `/devlyn.team-resolve` to assemble a multi-perspective investigation team, or spawn parallel Task agents to explore different areas simultaneously.
+For complex investigations, use `/devlyn:team-resolve` to assemble a multi-perspective investigation team, or spawn parallel Task agents to explore different areas simultaneously.
 
 ## UI/UX Workflow
 
 The full design-to-implementation pipeline:
 
-1. `/devlyn.design-ui` → Generate 5 style explorations
-2. `/devlyn.design-system [N]` → Extract tokens from chosen style
-3. `/devlyn.implement-ui` → Team implements or improves UI from design system
-4. `/devlyn.team-resolve [feature]` → Add features on top
+1. `/devlyn:design-ui` → Generate 5 style explorations
+2. `/devlyn:design-system [N]` → Extract tokens from chosen style
+3. `/devlyn:implement-ui` → Team implements or improves UI from design system
+4. `/devlyn:team-resolve [feature]` → Add features on top
 
 ## Feature Development
 
@@ -54,31 +54,31 @@ The recommended sequence after writing code:
 
 1. **Write code** (vibe coding)
 2. `/simplify` → Quick cleanup pass (reuse, quality, efficiency)
-3. `/devlyn.review` → Thorough solo review with security-first checklist
-4. `/devlyn.team-review` → Multi-perspective team review (for important PRs)
-5. `/devlyn.clean` → Periodic codebase-wide hygiene
-6. `/devlyn.update-docs` → Keep docs in sync
+3. `/devlyn:review` → Thorough solo review with security-first checklist
+4. `/devlyn:team-review` → Multi-perspective team review (for important PRs)
+5. `/devlyn:clean` → Periodic codebase-wide hygiene
+6. `/devlyn:update-docs` → Keep docs in sync
 
-Steps 4-6 are optional depending on the scope of changes. `/simplify` should always run before `/devlyn.review` to catch low-hanging fruit cheaply.
+Steps 4-6 are optional depending on the scope of changes. `/simplify` should always run before `/devlyn:review` to catch low-hanging fruit cheaply.
 
 ## Documentation Workflow
 
-- **Sync docs with codebase**: Use `/devlyn.update-docs` to clean up stale content, update outdated info, and generate missing docs
-- **Focused doc update**: Use `/devlyn.update-docs [area]` for targeted updates (e.g., "API reference", "getting-started")
+- **Sync docs with codebase**: Use `/devlyn:update-docs` to clean up stale content, update outdated info, and generate missing docs
+- **Focused doc update**: Use `/devlyn:update-docs [area]` for targeted updates (e.g., "API reference", "getting-started")
 - Preserves all forward-looking content: roadmaps, future plans, visions, open questions
 - If no docs exist, proposes a tailored docs structure and generates initial content
 
 ## Debugging Workflow
 
-- **Simple bugs**: Use `/devlyn.resolve` for systematic bug fixing with test-driven validation
-- **Complex bugs**: Use `/devlyn.team-resolve` for multi-perspective investigation with a full agent team
-- **Post-fix review**: Use `/devlyn.team-review` for thorough multi-reviewer validation
+- **Simple bugs**: Use `/devlyn:resolve` for systematic bug fixing with test-driven validation
+- **Complex bugs**: Use `/devlyn:team-resolve` for multi-perspective investigation with a full agent team
+- **Post-fix review**: Use `/devlyn:team-review` for thorough multi-reviewer validation
 
 ## Maintenance Workflow
 
-- **Codebase cleanup**: Use `/devlyn.clean` to detect and remove dead code, unused dependencies, complexity hotspots, and tech debt
-- **Focused cleanup**: Use `/devlyn.clean [category]` for targeted sweeps (dead code, deps, tests, complexity, hygiene)
-- **Periodic maintenance sequence**: `/devlyn.clean` → `/simplify` → `/devlyn.update-docs` → `/devlyn.review`
+- **Codebase cleanup**: Use `/devlyn:clean` to detect and remove dead code, unused dependencies, complexity hotspots, and tech debt
+- **Focused cleanup**: Use `/devlyn:clean [category]` for targeted sweeps (dead code, deps, tests, complexity, hygiene)
+- **Periodic maintenance sequence**: `/devlyn:clean` → `/simplify` → `/devlyn:update-docs` → `/devlyn:review`
 
 ## Context Window Management
 

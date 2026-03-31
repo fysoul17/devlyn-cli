@@ -1,8 +1,8 @@
-Assemble a world-class design team to generate 5 radically distinct, portfolio-worthy UI style explorations. Like `/devlyn.design-ui` but powered by a full team of design specialists — Creative Director, Product Designer, Visual Designer, Interaction Designer, and Accessibility Designer — who collaborate to produce 5 stunning HTML design samples that go far beyond what a single designer could achieve.
+Assemble a world-class design team to generate 5 radically distinct, portfolio-worthy UI style explorations. Like `/devlyn:design-ui` but powered by a full team of design specialists — Creative Director, Product Designer, Visual Designer, Interaction Designer, and Accessibility Designer — who collaborate to produce 5 stunning HTML design samples that go far beyond what a single designer could achieve.
 
 This is design exploration only. After the user picks a style:
-→ `/devlyn.design-system [N]` to extract tokens
-→ `/devlyn.implement-ui` to build it
+→ `/devlyn:design-system [N]` to extract tokens
+→ `/devlyn:implement-ui` to build it
 
 <brief>
 $ARGUMENTS
@@ -677,6 +677,6 @@ After all 5 HTML files are generated:
 
 <next_step>
 After the user picks a style, suggest:
-→ Run `/devlyn.design-system [style-number]` to extract design tokens from the chosen style into a reusable design system reference.
-→ Then run `/devlyn.implement-ui` to build the production UI from that design system.
+→ Run `/devlyn:design-system [style-number]` to extract design tokens from the chosen style into a reusable design system reference.
+→ Then run `/devlyn:implement-ui` to build the production UI from that design system.
 </next_step>

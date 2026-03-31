@@ -220,7 +220,7 @@ Present the summary:
 ### Recommendations
 - {Any manual follow-up needed}
 - {Docs that would benefit from human review or expansion}
-- Suggestion: run `/devlyn.update-docs` periodically to keep docs in sync
+- Suggestion: run `/devlyn:update-docs` periodically to keep docs in sync
 ```
 
 </process>
@@ -239,7 +239,7 @@ Suggest structure based on project type:
 ```yaml
 web_app:
   docs/
-    - product-spec.md         # Product specification (suggest /devlyn.product-spec)
+    - product-spec.md         # Product specification (suggest /devlyn:product-spec)
     - architecture.md         # System architecture and tech decisions
     - getting-started.md      # Developer setup guide
     - deployment.md           # Deployment instructions
@@ -282,13 +282,13 @@ docs/
 └── {file4}.md    — {purpose}
 
 ### Generation Plan
-- `product-spec.md` → I recommend running `/devlyn.product-spec` separately for this
+- `product-spec.md` → I recommend running `/devlyn:product-spec` separately for this
 - `{other docs}` → I'll generate from codebase analysis
 
 Create this documentation structure?
 ```
 
-Wait for user approval, then generate initial content for each approved doc by scanning the codebase. For product specs and feature specs, recommend the dedicated commands (`/devlyn.product-spec`, `/devlyn.feature-spec`) rather than generating them inline.
+Wait for user approval, then generate initial content for each approved doc by scanning the codebase. For product specs and feature specs, recommend the dedicated commands (`/devlyn:product-spec`, `/devlyn:feature-spec`) rather than generating them inline.
 
 </no_docs_mode>
 
@@ -400,7 +400,7 @@ Read the team config at ~/.claude/teams/{team-name}/config.json to discover team
 
 ## Handling Focus Area Arguments
 
-If the user provides a focus area (e.g., `/devlyn.update-docs API docs` or `/devlyn.update-docs getting-started`):
+If the user provides a focus area (e.g., `/devlyn:update-docs API docs` or `/devlyn:update-docs getting-started`):
 
 1. Still run Phase 1 (codebase understanding) but at reduced depth — focus on the relevant area
 2. In Phase 2, only inventory docs related to the focus area
@@ -415,7 +415,7 @@ This enables quick, targeted doc updates without a full sync.
 
 ### Example 1: Small project with stale docs
 
-Input: `/devlyn.update-docs`
+Input: `/devlyn:update-docs`
 
 Phase 1-3 discovers:
 - 3 doc files: README.md, docs/api.md, docs/setup.md
@@ -434,7 +434,7 @@ Updates:
 
 ### Example 2: No docs at all
 
-Input: `/devlyn.update-docs`
+Input: `/devlyn:update-docs`
 
 No docs/ folder found. Project identified as a Next.js web app.
 
@@ -442,7 +442,7 @@ Plan:
 ```
 No documentation found. Proposed structure:
 docs/
-├── product-spec.md      -> Run /devlyn.product-spec to generate
+├── product-spec.md      -> Run /devlyn:product-spec to generate
 ├── architecture.md      -> System design overview (will generate)
 ├── getting-started.md   -> Dev setup guide (will generate)
 └── deployment.md        -> Deployment instructions (will generate)
@@ -450,13 +450,13 @@ docs/
 
 ### Example 3: Focused update
 
-Input: `/devlyn.update-docs API reference`
+Input: `/devlyn:update-docs API reference`
 
 Only inventories API-related docs. Updates endpoint signatures, request/response schemas, and auth requirements to match current code.
 
 ### Example 4: Large project triggering team mode
 
-Input: `/devlyn.update-docs`
+Input: `/devlyn:update-docs`
 
 Phase 4 discovers 14 doc files spanning API docs, user guides, architecture specs, and feature specs. Spawns 3-person team (codebase-analyst, doc-reviewer, content-organizer) for parallel analysis, then synthesizes findings into a comprehensive plan.
 

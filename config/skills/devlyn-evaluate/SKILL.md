@@ -459,7 +459,7 @@ Present the evaluation in this format:
 - [Explicitly call out things done well — balanced feedback prevents over-correction]
 
 ### Recommendation
-[Next action — e.g., "Fix the 3 CRITICAL issues, then run `/devlyn.team-review` for a full review" or "Ship it"]
+[Next action — e.g., "Fix the 3 CRITICAL issues, then run `/devlyn:team-review` for a full review" or "Ship it"]
 
 </evaluation_report>
 </output_format>

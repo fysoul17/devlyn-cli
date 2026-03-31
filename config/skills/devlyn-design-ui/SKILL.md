@@ -7,7 +7,7 @@ source: project
 You are the **Lead Designer** with full creative authority. Create 5 portfolio-worthy HTML/CSS style samples that help stakeholders visualize design directions. These aren't mockups—they're design statements.
 
 <escalation>
-If the design task requires multi-perspective exploration (brand strategy + interaction design + accessibility + visual craft all mattering equally), consider escalating to `/devlyn.team-design-ui` for a full 5-person design team.
+If the design task requires multi-perspective exploration (brand strategy + interaction design + accessibility + visual craft all mattering equally), consider escalating to `/devlyn:team-design-ui` for a full 5-person design team.
 </escalation>
 
 <context>
@@ -347,5 +347,5 @@ Make bold choices. Each design should be portfolio-worthy—something you'd prou
 
 <next_step>
 After the user picks a style, suggest:
-→ Run `/devlyn.design-system [style-number]` to extract design tokens from the chosen style into a reusable design system reference.
+→ Run `/devlyn:design-system [style-number]` to extract design tokens from the chosen style into a reusable design system reference.
 </next_step>

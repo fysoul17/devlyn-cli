@@ -7,7 +7,7 @@ Severity framework and quality bar for reviewing code changes. Apply this framew
 - Post-implementation review
 - Code review requests
 - PR review or diff analysis
-- Any use of `/devlyn.review` or `/devlyn.team-review`
+- Any use of `/devlyn:review` or `/devlyn:team-review`
 
 ## Severity Framework
 
@@ -60,5 +60,5 @@ Severity framework and quality bar for reviewing code changes. Apply this framew
 
 ## Routing
 
-- **Quick review** (few files, straightforward changes): Use `/devlyn.review`
-- **Thorough review** (many files, security-sensitive, user-facing): Use `/devlyn.team-review` for multi-perspective coverage
+- **Quick review** (few files, straightforward changes): Use `/devlyn:review`
+- **Thorough review** (many files, security-sensitive, user-facing): Use `/devlyn:team-review` for multi-perspective coverage

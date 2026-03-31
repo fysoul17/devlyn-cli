@@ -20,7 +20,7 @@ When in doubt, enter plan mode.
 </default_to_plan_mode>
 
 <escalation>
-Escalate to `/devlyn.team-resolve` if ANY of the following are true:
+Escalate to `/devlyn:team-resolve` if ANY of the following are true:
 - Investigation reveals the issue spans 3+ modules
 - Root cause is unclear after applying 5 Whys to all plausible hypotheses
 - Competing hypotheses can't be ruled out without parallel investigation
@@ -64,7 +64,7 @@ Choose the right technique based on the issue:
 1. **[Hypothesis A]** — Evidence for: [...] Evidence against: [...]
 2. **[Hypothesis B]** — Evidence for: [...] Evidence against: [...]
 - Rule out hypotheses by reading the code — do not guess
-- If hypotheses can't be ruled out solo, escalate to `/devlyn.team-resolve`
+- If hypotheses can't be ruled out solo, escalate to `/devlyn:team-resolve`
 </analysis_approach>
 
 <test_driven_validation>
@@ -154,5 +154,5 @@ Analysis:
 2. In plan mode, present fix options if multiple valid solutions exist
 3. Write failing test before implementing
 4. Only mark complete after full test suite passes
-5. If stuck after 2 hypothesis attempts → escalate to `/devlyn.team-resolve`
+5. If stuck after 2 hypothesis attempts → escalate to `/devlyn:team-resolve`
 </next_steps>

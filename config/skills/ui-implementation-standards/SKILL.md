@@ -7,7 +7,7 @@ Quality framework for building and improving UI from design systems. Apply these
 - Building UI components or pages
 - Implementing designs from a design system
 - Improving or refactoring existing UI
-- Any use of `/devlyn.implement-ui`, `/devlyn.design-ui`, or `/devlyn.design-system`
+- Any use of `/devlyn:implement-ui`, `/devlyn:design-ui`, or `/devlyn:design-system`
 - Frontend development tasks involving visual design
 
 ## Design System Fidelity
@@ -69,6 +69,6 @@ Every interactive component or data-dependent view needs all states:
 
 ## Routing
 
-- **Build new UI or improve existing**: Use `/devlyn.implement-ui` for a full team approach
-- **Add features to existing UI**: Use `/devlyn.team-resolve` with the feature description
-- **Review UI code quality**: Use `/devlyn.team-review` for multi-perspective code review
+- **Build new UI or improve existing**: Use `/devlyn:implement-ui` for a full team approach
+- **Add features to existing UI**: Use `/devlyn:team-resolve` with the feature description
+- **Review UI code quality**: Use `/devlyn:team-review` for multi-perspective code review

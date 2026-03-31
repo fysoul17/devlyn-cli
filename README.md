@@ -68,46 +68,46 @@ your-project/
 
 ## Commands
 
-Slash commands are invoked directly in Claude Code conversations (e.g., type `/devlyn.resolve`).
+Slash commands are invoked directly in Claude Code conversations (e.g., type `/devlyn:resolve`).
 
 ### Debugging & Resolution
 
 | Command | Description |
 |---|---|
-| `/devlyn.resolve` | Systematic bug fixing with root-cause analysis and test-driven validation |
-| `/devlyn.team-resolve` | Spawns a full agent team — root cause analyst, test engineer, security auditor — to investigate complex issues |
+| `/devlyn:resolve` | Systematic bug fixing with root-cause analysis and test-driven validation |
+| `/devlyn:team-resolve` | Spawns a full agent team — root cause analyst, test engineer, security auditor — to investigate complex issues |
 
 ### Code Review & Quality
 
 | Command | Description |
 |---|---|
-| `/devlyn.review` | Post-implementation review — security, quality, best practices checklist |
-| `/devlyn.team-review` | Multi-perspective team review with specialized reviewers (security, quality, testing, performance, product) |
-| `/devlyn.clean` | Detect and remove dead code, unused dependencies, complexity hotspots, and tech debt |
+| `/devlyn:review` | Post-implementation review — security, quality, best practices checklist |
+| `/devlyn:team-review` | Multi-perspective team review with specialized reviewers (security, quality, testing, performance, product) |
+| `/devlyn:clean` | Detect and remove dead code, unused dependencies, complexity hotspots, and tech debt |
 
 ### UI Design & Implementation
 
 | Command | Description |
 |---|---|
-| `/devlyn.design-ui` | Generate 5 radically distinct UI style explorations from a spec or reference image |
-| `/devlyn.team-design-ui` | Spawns a design team — creative director, product designer, visual designer, interaction designer, accessibility designer |
-| `/devlyn.design-system` | Extract design system tokens from a chosen style for exact reproduction |
-| `/devlyn.implement-ui` | Team-based UI build — component architect, UX engineer, accessibility engineer, responsive engineer, visual QA |
+| `/devlyn:design-ui` | Generate 5 radically distinct UI style explorations from a spec or reference image |
+| `/devlyn:team-design-ui` | Spawns a design team — creative director, product designer, visual designer, interaction designer, accessibility designer |
+| `/devlyn:design-system` | Extract design system tokens from a chosen style for exact reproduction |
+| `/devlyn:implement-ui` | Team-based UI build — component architect, UX engineer, accessibility engineer, responsive engineer, visual QA |
 
 ### Product & Planning
 
 | Command | Description |
 |---|---|
-| `/devlyn.product-spec` | Generate or incrementally update product spec documents |
-| `/devlyn.feature-spec` | Transform product specs into implementable feature specifications |
-| `/devlyn.discover-product` | Scan codebase to generate feature-oriented product documentation |
-| `/devlyn.recommend-features` | Prioritize top 5 features to build next based on value and readiness |
+| `/devlyn:product-spec` | Generate or incrementally update product spec documents |
+| `/devlyn:feature-spec` | Transform product specs into implementable feature specifications |
+| `/devlyn:discover-product` | Scan codebase to generate feature-oriented product documentation |
+| `/devlyn:recommend-features` | Prioritize top 5 features to build next based on value and readiness |
 
 ### Documentation
 
 | Command | Description |
 |---|---|
-| `/devlyn.update-docs` | Sync all project docs with current codebase — cleans stale content, preserves roadmaps, generates missing docs |
+| `/devlyn:update-docs` | Sync all project docs with current codebase — cleans stale content, preserves roadmaps, generates missing docs |
 
 ## Skills
 
@@ -131,18 +131,18 @@ The full fix → polish → review → maintain cycle:
 
 | Step | Command | What It Does |
 |---|---|---|
-| 1. **Resolve** | `/devlyn.resolve` or `/devlyn.team-resolve` | Fix the issue — solo for focused bugs (1-2 modules), team for complex issues (3+ modules) |
+| 1. **Resolve** | `/devlyn:resolve` or `/devlyn:team-resolve` | Fix the issue — solo for focused bugs (1-2 modules), team for complex issues (3+ modules) |
 | 2. **Simplify** | `/simplify` | Quick cleanup pass for reuse, quality, and efficiency *(built-in Claude Code command)* |
-| 3. **Review** | `/devlyn.review` or `/devlyn.team-review` | Audit the changes — solo for small PRs (< 10 files), team for large PRs (10+ files) |
+| 3. **Review** | `/devlyn:review` or `/devlyn:team-review` | Audit the changes — solo for small PRs (< 10 files), team for large PRs (10+ files) |
 | | | *If the review finds issues, loop back to step 1* |
-| 4. **Clean** | `/devlyn.clean` | Remove dead code, unused dependencies, and complexity hotspots |
-| 5. **Document** | `/devlyn.update-docs` | Sync project documentation with the current codebase |
+| 4. **Clean** | `/devlyn:clean` | Remove dead code, unused dependencies, and complexity hotspots |
+| 5. **Document** | `/devlyn:update-docs` | Sync project documentation with the current codebase |
 
 Steps 4-5 are optional — run them periodically rather than on every PR. Steps 1-3 are the core loop.
 
-> **Tip:** Consider running `/devlyn.review` once more after steps 4-5. `/devlyn.clean` removes code and `/devlyn.update-docs` changes docs — a final review pass catches accidental regressions from cleanup.
+> **Tip:** Consider running `/devlyn:review` once more after steps 4-5. `/devlyn:clean` removes code and `/devlyn:update-docs` changes docs — a final review pass catches accidental regressions from cleanup.
 
-> **Scope matching matters.** For a simple one-file bug, `/devlyn.resolve` + `/devlyn.review` (solo) is fast. For a multi-module feature, `/devlyn.team-resolve` + `/devlyn.team-review` (team) gives you parallel specialist perspectives. Don't over-tool simple changes.
+> **Scope matching matters.** For a simple one-file bug, `/devlyn:resolve` + `/devlyn:review` (solo) is fast. For a multi-module feature, `/devlyn:team-resolve` + `/devlyn:team-review` (team) gives you parallel specialist perspectives. Don't over-tool simple changes.
 
 ### UI Design Pipeline
 
@@ -150,11 +150,11 @@ A full explore → extract → build pipeline:
 
 | Step | Command | What It Does |
 |---|---|---|
-| 1. **Explore** | `/devlyn.design-ui` | Generates 5 radically distinct style options from a spec or reference image |
-| 2. **Extract** | `/devlyn.design-system` | Pulls exact design tokens (colors, spacing, typography) from your chosen style |
-| 3. **Build** | `/devlyn.implement-ui` | Spawns a build team (component architect, UX engineer, accessibility engineer, responsive engineer, visual QA) |
+| 1. **Explore** | `/devlyn:design-ui` | Generates 5 radically distinct style options from a spec or reference image |
+| 2. **Extract** | `/devlyn:design-system` | Pulls exact design tokens (colors, spacing, typography) from your chosen style |
+| 3. **Build** | `/devlyn:implement-ui` | Spawns a build team (component architect, UX engineer, accessibility engineer, responsive engineer, visual QA) |
 
-> For design exploration with a full creative team, use `/devlyn.team-design-ui` instead of step 1.
+> For design exploration with a full creative team, use `/devlyn:team-design-ui` instead of step 1.
 
 After building, follow the [recommended workflow](#recommended-workflow) starting from step 2 (simplify) to review and polish the implementation.
 
@@ -164,12 +164,12 @@ These commands work independently, outside of the main workflow:
 
 | Command | What It Does |
 |---|---|
-| `/devlyn.clean [focus]` | Focused cleanup — e.g., `/devlyn.clean dependencies` or `/devlyn.clean dead-code` |
-| `/devlyn.update-docs [area]` | Focused doc sync — e.g., `/devlyn.update-docs API reference` |
-| `/devlyn.product-spec` | Generate or update a product specification |
-| `/devlyn.feature-spec` | Transform a product spec into an implementable feature spec |
-| `/devlyn.discover-product` | Scan codebase to auto-generate product documentation |
-| `/devlyn.recommend-features` | Prioritize top 5 features to build next |
+| `/devlyn:clean [focus]` | Focused cleanup — e.g., `/devlyn:clean dependencies` or `/devlyn:clean dead-code` |
+| `/devlyn:update-docs [area]` | Focused doc sync — e.g., `/devlyn:update-docs API reference` |
+| `/devlyn:product-spec` | Generate or update a product specification |
+| `/devlyn:feature-spec` | Transform a product spec into an implementable feature spec |
+| `/devlyn:discover-product` | Scan codebase to auto-generate product documentation |
+| `/devlyn:recommend-features` | Prioritize top 5 features to build next |
 
 ## Optional Skills & Packs
 
@@ -205,7 +205,7 @@ Installed via the [skills CLI](https://github.com/anthropics/skills) (`npx skill
 1. **Run `npx devlyn-cli`** in your project root
 2. The CLI copies config files into `.claude/` and `CLAUDE.md` to the project root
 3. Claude Code automatically reads `.claude/commands/` and `.claude/skills/` on startup
-4. Invoke commands like `/devlyn.resolve` in your Claude Code session — skills activate on their own
+4. Invoke commands like `/devlyn:resolve` in your Claude Code session — skills activate on their own
 
 The installation is **idempotent** — run it again anytime to update to the latest config.
 

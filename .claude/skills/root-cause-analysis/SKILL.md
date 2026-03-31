@@ -8,7 +8,7 @@ Standard methodology for investigating bugs, issues, and unexpected behavior. Ap
 - Error logs or stack traces need diagnosis
 - "Why does X happen?" or "What's causing X?" questions
 - Debugging sessions
-- Any use of `/devlyn.resolve` or `/devlyn.team-resolve`
+- Any use of `/devlyn:resolve` or `/devlyn:team-resolve`
 
 ## 5 Whys Protocol
 
@@ -58,5 +58,5 @@ If the real fix requires significant refactoring, present the scope to the user 
 
 ## Routing
 
-- **Simple issue** (single file, obvious cause): Use `/devlyn.resolve`
-- **Complex issue** (multi-module, unclear cause, security implications): Use `/devlyn.team-resolve` for multi-perspective investigation
+- **Simple issue** (single file, obvious cause): Use `/devlyn:resolve`
+- **Complex issue** (multi-module, unclear cause, security implications): Use `/devlyn:team-resolve` for multi-perspective investigation

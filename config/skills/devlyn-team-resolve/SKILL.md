@@ -564,7 +564,7 @@ Present findings in this format:
 - [ ] Manual verification (if applicable)
 
 ### Recommendation
-Run `/devlyn.team-review` to validate the fix meets all quality standards with a full multi-perspective review.
+Run `/devlyn:team-review` to validate the fix meets all quality standards with a full multi-perspective review.
 
 </team_resolution>
 </output_format>

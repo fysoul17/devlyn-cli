@@ -8,7 +8,7 @@ Standards for keeping codebases lean and maintainable. Apply these thresholds du
 - Adding dependencies
 - Creating new files or modules
 - Refactoring or restructuring code
-- Any use of `/devlyn.clean`, `/devlyn.resolve`, or `/devlyn.review`
+- Any use of `/devlyn:clean`, `/devlyn:resolve`, or `/devlyn:review`
 
 ## Dead Code Prevention
 
@@ -70,5 +70,5 @@ Code committed to production should not contain:
 
 ## Routing
 
-- **Active cleanup**: Use `/devlyn.clean` to scan and remove accumulated debt
-- **Focused cleanup**: Use `/devlyn.clean [category]` for targeted sweeps (dead code, deps, tests, complexity, hygiene)
+- **Active cleanup**: Use `/devlyn:clean` to scan and remove accumulated debt
+- **Focused cleanup**: Use `/devlyn:clean [category]` for targeted sweeps (dead code, deps, tests, complexity, hygiene)

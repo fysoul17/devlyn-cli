@@ -418,7 +418,7 @@ After receiving all reviewer findings:
 After all fixes are applied:
 
 1. Run the full test suite
-2. If tests fail → chain to `/devlyn.team-resolve` for the failing tests
+2. If tests fail → chain to `/devlyn:team-resolve` for the failing tests
 3. Re-read fixed files to verify fixes didn't introduce new issues
 4. Generate the final review summary
 
@@ -468,7 +468,7 @@ Present the final review in this format:
 - [MEDIUM/severity] description — [concrete reason for deferral]
 
 ### Recommendation
-If any issues were deferred or if the fix was complex, consider running `/devlyn.team-resolve` on the specific concern for deeper analysis.
+If any issues were deferred or if the fix was complex, consider running `/devlyn:team-resolve` on the specific concern for deeper analysis.
 
 </team_review_summary>
 </output_format>

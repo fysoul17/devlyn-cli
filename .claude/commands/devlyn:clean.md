@@ -15,7 +15,7 @@ $ARGUMENTS
 </user_input>
 
 <escalation>
-If the cleanup reveals deeply intertwined architectural debt — circular dependencies, god objects woven into multiple systems, or patterns that can't be safely removed without redesigning interfaces — escalate to `/devlyn.team-resolve` with your findings so a multi-perspective team can plan the refactor.
+If the cleanup reveals deeply intertwined architectural debt — circular dependencies, god objects woven into multiple systems, or patterns that can't be safely removed without redesigning interfaces — escalate to `/devlyn:team-resolve` with your findings so a multi-perspective team can plan the refactor.
 </escalation>
 
 <process>
@@ -221,7 +221,7 @@ Present the final summary:
 
 ### Recommendations
 - {Any follow-up actions needed}
-- Schedule: run `/devlyn.clean` periodically to prevent debt accumulation
+- Schedule: run `/devlyn:clean` periodically to prevent debt accumulation
 ```
 
 </process>
@@ -230,7 +230,7 @@ Present the final summary:
 
 ## Handling Focus Area Arguments
 
-If the user provides a focus area (e.g., `/devlyn.clean dependencies` or `/devlyn.clean tests`):
+If the user provides a focus area (e.g., `/devlyn:clean dependencies` or `/devlyn:clean tests`):
 
 1. Still run Phase 1 (codebase understanding) at reduced depth
 2. In Phase 2, only run the relevant analysis category:
@@ -266,7 +266,7 @@ When in doubt, classify as P3 (flagged) rather than P0 (auto-remove).
 
 ### Example 1: Small project cleanup
 
-Input: `/devlyn.clean`
+Input: `/devlyn:clean`
 
 Finds: 2 orphan files, 3 unused deps, 8 console.logs, 1 stale test.
 
@@ -278,7 +278,7 @@ Tests pass. 340 lines removed.
 
 ### Example 2: Focused dependency cleanup
 
-Input: `/devlyn.clean deps`
+Input: `/devlyn:clean deps`
 
 Scans only dependency hygiene. Finds `moment` (replaced by `dayjs` already in use), `lodash` (only `_.get` used — replaceable with optional chaining). Presents targeted plan.
 

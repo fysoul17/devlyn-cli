@@ -13,9 +13,9 @@ This command expects a design system at `docs/design-system.md`. If it doesn't e
 ```
 No design system found at docs/design-system.md
 Run the pipeline first:
-  1. /devlyn.design-ui → Generate style explorations
-  2. /devlyn.design-system [style-number] → Extract design tokens
-  3. /devlyn.implement-ui → Build/improve UI (this command)
+  1. /devlyn:design-ui → Generate style explorations
+  2. /devlyn:design-system [style-number] → Extract design tokens
+  3. /devlyn:implement-ui → Build/improve UI (this command)
 ```
 </prerequisites>
 
@@ -459,8 +459,8 @@ Present the result in this format:
 - [ ] Semantic HTML throughout
 
 ### Next Steps
-- Run `/devlyn.team-review` to validate code quality
-- Run `/devlyn.team-resolve [feature]` to add features on top of this UI
+- Run `/devlyn:team-review` to validate code quality
+- Run `/devlyn:team-resolve [feature]` to add features on top of this UI
 
 </team_build_summary>
 </output_format>
