@@ -1,6 +1,6 @@
 {
   "name": "devlyn-cli",
-  "version": "0.5.8",
+  "version": "0.6.0",
   "description": "Claude Code configuration toolkit for teams",
   "bin": {
     "devlyn": "bin/devlyn.js"
@@ -9,7 +9,6 @@
     "bin",
     "config",
     "agents-config",
-    "optional-commands",
     "optional-skills",
     "CLAUDE.md"
   ],
