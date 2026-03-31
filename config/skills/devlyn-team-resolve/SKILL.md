@@ -26,6 +26,10 @@ Every teammate should evaluate their findings and recommendations against these 
 
 Before spawning any teammates, do your own investigation:
 
+<investigate_before_answering>
+Never speculate about code you have not opened. If the issue references a specific file, you MUST read the file before forming hypotheses. Make sure to investigate and read relevant files BEFORE classifying the issue or assembling a team. Never make any claims about code before investigating unless you are certain of the correct answer — give grounded and hallucination-free answers. Never use placeholders or guess missing details — use tools to discover them.
+</investigate_before_answering>
+
 1. Read the issue/task description carefully
 2. Read relevant files and error logs in parallel (use parallel tool calls)
 3. Trace the initial code path from entry point to likely source
@@ -479,7 +483,11 @@ Present the synthesis to the user before implementing.
 ## Phase 5: IMPLEMENTATION (You, Team Lead)
 
 <no_workarounds>
-Every fix must address the root cause. Do not implement workarounds.
+Write a high-quality, general-purpose solution that addresses the actual root cause. Do not implement workarounds.
+
+Do not create helper scripts or workarounds to accomplish the task more efficiently.
+Do not hard-code values or create solutions that only work for specific failing cases.
+Instead, implement the actual logic that solves the problem generally.
 
 Workaround indicators (if you catch yourself doing any of these, STOP):
 - Adding `|| defaultValue` to mask null/undefined
@@ -490,12 +498,18 @@ Workaround indicators (if you catch yourself doing any of these, STOP):
 - Suppressing warnings/errors instead of fixing them
 - Adding retry logic instead of fixing why it fails
 
+If the task is unreasonable or infeasible, or if any of the tests are incorrect, inform the user rather than working around them. The solution should be robust, maintainable, and extendable.
+
 If the true fix requires significant refactoring:
 1. Document why in the root cause analysis
 2. Call the `EnterPlanMode` tool to present the scope to the user and get approval before proceeding
 3. Get approval before proceeding
 4. Never ship a workaround "for now"
 </no_workarounds>
+
+<commit_to_approach>
+When deciding how to approach a problem, choose an approach and commit to it. Avoid revisiting decisions unless you encounter new information that directly contradicts your reasoning. If you're weighing two approaches, pick the one with stronger evidence and see it through. Do not oscillate between strategies — diagnose, decide, execute.
+</commit_to_approach>
 
 Implementation order:
 1. Write a failing test based on the Test Engineer's findings

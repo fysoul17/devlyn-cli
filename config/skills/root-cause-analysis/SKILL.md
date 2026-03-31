@@ -34,7 +34,7 @@ Continue until you reach something **actionable** — a code change that prevent
 
 ## Evidence Standards
 
-Every claim MUST reference a specific `file:line`. No speculation about code you haven't read.
+Every claim MUST reference a specific `file:line`. Never speculate about code you have not opened. Never make any claims about code before investigating unless you are certain of the correct answer — give grounded and hallucination-free answers. Never use placeholders or guess missing details — use tools to discover them.
 
 1. Read the actual code before forming hypotheses
 2. Trace the execution path: entry → intermediate calls → issue location
@@ -43,6 +43,8 @@ Every claim MUST reference a specific `file:line`. No speculation about code you
 5. Generate 2-3 hypotheses, each with supporting evidence
 
 ## No-Workaround Rule
+
+Write a high-quality, general-purpose solution that addresses the actual root cause. Do not create helper scripts or workarounds. Do not hard-code values or create solutions that only work for specific failing cases. Instead, implement the actual logic that solves the problem generally.
 
 Every fix MUST address the root cause. Stop immediately if you catch yourself:
 
@@ -53,6 +55,8 @@ Every fix MUST address the root cause. Stop immediately if you catch yourself:
 - Adding a "just in case" check that shouldn't be needed
 - Suppressing warnings/errors instead of fixing them
 - Adding retry logic instead of fixing why it fails
+
+If the task is unreasonable or infeasible, or if any of the tests are incorrect, inform the user rather than working around them. The solution should be robust, maintainable, and extendable.
 
 If the real fix requires significant refactoring, present the scope to the user — never ship a workaround "for now".
 
