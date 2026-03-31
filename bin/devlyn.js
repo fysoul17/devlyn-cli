@@ -6,7 +6,7 @@ const readline = require('readline');
 const { execSync } = require('child_process');
 
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
-const AGENTS_SOURCE = path.join(__dirname, '..', 'config', 'agents');
+const AGENTS_SOURCE = path.join(__dirname, '..', 'agents-config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const OPTIONAL_COMMANDS_SOURCE = path.join(__dirname, '..', 'optional-commands');
 const PKG = require('../package.json');
