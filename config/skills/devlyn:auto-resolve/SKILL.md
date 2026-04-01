@@ -17,6 +17,7 @@ $ARGUMENTS
 2. Determine optional flags from the input (defaults in parentheses):
    - `--max-rounds N` (2) — max evaluate-fix loops before stopping with a report
    - `--skip-review` (false) — skip team-review phase
+   - `--security-review` (auto) — run dedicated security audit. Auto-detects: runs when changes touch auth, secrets, user data, API endpoints, env/config, or crypto. Force with `--security-review always` or skip with `--security-review skip`
    - `--skip-clean` (false) — skip clean phase
    - `--skip-docs` (false) — skip update-docs phase
 
@@ -27,7 +28,7 @@ $ARGUMENTS
 ```
 Auto-resolve pipeline starting
 Task: [extracted task description]
-Phases: Build → Evaluate → [Fix loop if needed] → Simplify → [Review] → [Clean] → [Docs]
+Phases: Build → Evaluate → [Fix loop if needed] → Simplify → [Review] → [Security] → [Clean] → [Docs]
 Max evaluation rounds: [N]
 ```
 
@@ -174,7 +175,41 @@ Clean up the team after completion.
 1. If CRITICAL issues remain unfixed, log a warning in the final report
 2. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): review fixes complete"` if there are changes
 
-## PHASE 5: CLEAN (skippable)
+## PHASE 5: SECURITY REVIEW (conditional)
+
+Determine whether to run this phase:
+- If `--security-review always` → run
+- If `--security-review skip` → skip
+- If `--security-review auto` (default) → auto-detect by scanning changed files for security-sensitive patterns:
+  - Run `git diff main --name-only` and check for files matching: `*auth*`, `*login*`, `*session*`, `*token*`, `*secret*`, `*crypt*`, `*password*`, `*api*`, `*middleware*`, `*env*`, `*config*`, `*permission*`, `*role*`, `*access*`
+  - Also run `git diff main` and scan for patterns: `API_KEY`, `SECRET`, `TOKEN`, `PASSWORD`, `PRIVATE_KEY`, `Bearer`, `jwt`, `bcrypt`, `crypto`, `env.`, `process.env`
+  - If any match → run. If no matches → skip and note "Security review skipped — no security-sensitive changes detected."
+
+Spawn a subagent using the Agent tool for a dedicated security audit.
+
+Agent prompt — pass this to the Agent tool:
+
+You are a security auditor performing a dedicated security review. This is NOT a general code review — focus exclusively on security concerns.
+
+Examine all recent changes (use `git diff main` to see what changed). For every changed file:
+
+1. **Input validation**: Trace every user input from entry point to storage/output. Check for: SQL injection, XSS, command injection, path traversal, SSRF.
+2. **Authentication & authorization**: Are new endpoints properly protected? Are auth checks consistent with existing patterns? Any privilege escalation paths?
+3. **Secrets & credentials**: Grep for hardcoded API keys, tokens, passwords, private keys. Check that secrets come from env vars, not source code. Verify .gitignore covers sensitive files.
+4. **Data exposure**: Are error messages leaking internal details? Are logs capturing sensitive data? Are API responses returning more data than needed?
+5. **Dependencies**: If package.json/requirements.txt changed, run the package manager's audit command (npm audit, pip-audit, etc.).
+6. **CSRF/CORS**: For new endpoints with side effects, verify CSRF protection. Check CORS configuration for overly permissive origins.
+
+For each finding, provide: severity (CRITICAL/HIGH/MEDIUM), file:line, OWASP category, description, and suggested fix.
+
+Fix any CRITICAL findings directly. For HIGH findings, fix if straightforward, otherwise document clearly.
+
+**After the agent completes**:
+1. If CRITICAL issues were found and fixed, this is expected — continue
+2. If CRITICAL issues remain unfixed, log a warning in the final report
+3. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): security review complete"` if there are changes
+
+## PHASE 6: CLEAN (skippable)
 
 Skip if `--skip-clean` was set.
 
@@ -187,7 +222,7 @@ Scan the codebase for dead code, unused dependencies, and code hygiene issues in
 **After the agent completes**:
 1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): cleanup complete"` if there are changes
 
-## PHASE 6: DOCS (skippable)
+## PHASE 7: DOCS (skippable)
 
 Skip if `--skip-docs` was set.
 
@@ -200,7 +235,7 @@ Synchronize documentation with recent code changes. Use `git log --oneline -20` 
 **After the agent completes**:
 1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): docs updated"` if there are changes
 
-## PHASE 7: FINAL REPORT
+## PHASE 8: FINAL REPORT
 
 After all phases complete:
 
@@ -225,6 +260,7 @@ After all phases complete:
 | Fix rounds | [N rounds / skipped] | [what was fixed] |
 | Simplify | [completed / skipped] | [changes made] |
 | Review (team-review) | [completed / skipped] | [findings summary] |
+| Security review | [completed / skipped / auto-skipped] | [findings or "no security-sensitive changes"] |
 | Clean | [completed / skipped] | [items cleaned] |
 | Docs (update-docs) | [completed / skipped] | [docs updated] |
 

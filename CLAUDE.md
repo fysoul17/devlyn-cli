@@ -56,7 +56,7 @@ For hands-free build-evaluate-polish cycles — works for bugs, features, refact
 /devlyn:auto-resolve [task description]
 ```
 
-This runs the full pipeline automatically: **Build → Evaluate → Fix Loop → Simplify → Review → Clean → Docs**. Each phase runs as a separate subagent with its own context. Communication between phases happens via files (`.claude/done-criteria.md`, `.claude/EVAL-FINDINGS.md`).
+This runs the full pipeline automatically: **Build → Evaluate → Fix Loop → Simplify → Review → Security Review → Clean → Docs**. Each phase runs as a separate subagent with its own context. Communication between phases happens via files (`.claude/done-criteria.md`, `.claude/EVAL-FINDINGS.md`).
 
 Optional flags:
 - `--max-rounds 3` — increase max evaluate-fix iterations (default: 2)

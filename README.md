@@ -142,6 +142,7 @@ One command runs the full cycle — no human intervention needed:
 | **Fix Loop** | If evaluation fails, fixes findings and re-evaluates (up to N rounds) |
 | **Simplify** | Quick cleanup pass for reuse and efficiency |
 | **Review** | Multi-perspective team review |
+| **Security** | Dedicated OWASP-focused audit (auto-detects when changes touch auth, secrets, APIs) |
 | **Clean** | Remove dead code and unused dependencies |
 | **Docs** | Sync documentation with changes |
 
