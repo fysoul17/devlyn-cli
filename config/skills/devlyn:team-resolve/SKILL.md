@@ -1,3 +1,8 @@
+---
+name: devlyn:team-resolve
+description: Multi-perspective issue resolution using a specialized agent team. Use this for complex bugs spanning multiple modules, feature implementations requiring diverse expertise, or any issue where a single perspective is insufficient. Assembles root-cause analysts, test engineers, security auditors, and other specialists as needed. Use when the user says "fix this bug", "resolve this issue", "team resolve", or describes a problem that needs investigation.
+---
+
 Resolve the following issue by assembling a specialized Agent Team to investigate, analyze, and fix it. Each teammate brings a different engineering perspective — like a real team tackling a hard problem together.
 
 <issue>
@@ -83,6 +88,34 @@ Team assembling for: [issue summary]
 Issue type: [classification]
 Teammates: [list of roles being spawned and why each was chosen]
 ```
+
+## Phase 1.5: DEFINITION OF DONE (Sprint Contract)
+
+Before any code is written, define what "done" looks like. This prevents self-evaluation bias and gives external evaluators (like `/devlyn:evaluate`) concrete criteria to grade against.
+
+1. Based on your Phase 1 investigation, write testable success criteria to `.claude/done-criteria.md`:
+
+```markdown
+# Done Criteria: [issue summary]
+
+## Success Criteria
+- [ ] [Specific, verifiable criterion — e.g., "User sees error toast when API returns 401, not blank screen"]
+- [ ] [Each criterion must be testable: runnable test, observable behavior, or measurable metric]
+- [ ] [Include edge cases discovered during investigation]
+
+## Out of Scope
+- [Explicitly list what this fix does NOT address]
+
+## Verification Method
+- [How to verify: test command, manual steps, or expected UI behavior]
+```
+
+2. Each criterion must be:
+   - **Verifiable** — a test can assert it, or a human can observe it in under 30 seconds
+   - **Specific** — "handles errors correctly" is too vague; "returns 400 with `{error: 'missing_field', field: 'email'}` when email is omitted" is specific
+   - **Scoped** — tied to THIS issue, not aspirational improvements
+
+3. This file serves as the contract between the generator (you) and any external evaluator. Do not skip it.
 
 ## Phase 2: TEAM ASSEMBLY
 
@@ -517,13 +550,7 @@ Implementation order:
 3. Incorporate security constraints from the Security Auditor (if present)
 4. Respect architectural patterns flagged by the Architecture Reviewer (if present)
 5. Apply UX requirements from the UX Designer and Accessibility Auditor (if present)
-6. **Quality gate** — before running tests, review your own code against `<code_quality_standards>`:
-   - Is error handling graceful and user-facing (not silent, not raw)?
-   - Are edge cases handled (nulls, empty, concurrent, partial data)?
-   - Is the solution performant at scale (no O(n²), no unbounded loops)?
-   - Does the code follow existing codebase patterns and idioms?
-   - Are interfaces clean and types explicit (no `any`, no leaky abstractions)?
-   - If any check fails, refactor BEFORE proceeding to tests
+6. **Update done-criteria.md** — mark each criterion you believe is satisfied. Do NOT self-evaluate quality — that is the evaluator's job. Your role is to implement, not to judge your own work.
 7. Run the failing test — if it still fails, revert and re-analyze (never layer fixes)
 8. Run the full test suite for regressions
 
@@ -578,7 +605,8 @@ Present findings in this format:
 - [ ] Manual verification (if applicable)
 
 ### Recommendation
-Run `/devlyn:team-review` to validate the fix meets all quality standards with a full multi-perspective review.
+- Run `/devlyn:evaluate` to grade this work against the done criteria with an independent evaluator team
+- Or run `/devlyn:auto-resolve` next time for the fully automated pipeline (build → evaluate → fix loop → simplify → review → clean → docs)
 
 </team_resolution>
 </output_format>

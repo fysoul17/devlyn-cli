@@ -1,3 +1,8 @@
+---
+name: devlyn:evaluate
+description: Independent evaluation of work quality by assembling a specialized evaluator team. Use this to grade work produced by another session, PR, branch, or changeset. Evaluators audit correctness, architecture, security, frontend quality, spec compliance, and test coverage. Use when the user says "evaluate this", "check the quality", "grade this work", "review the changes", or wants an independent quality assessment of recent implementation work.
+---
+
 Evaluate work produced by another session, PR, or changeset by assembling a specialized Agent Team. Each evaluator audits the work from a different quality dimension — correctness, architecture, error handling, type safety, and spec compliance — providing evidence-based findings with file:line references.
 
 <evaluation_target>
@@ -18,14 +23,16 @@ Before spawning any evaluators, understand what you're evaluating:
    - **"recent changes"** or no argument: Use `git diff HEAD` for unstaged changes, `git status` for new files
    - **Running session / live monitoring**: Take a baseline snapshot with `git status --short | wc -l`, then poll every 30-45 seconds for new changes using `git status` and `find . -newer <reference-file> -type f`. Report findings incrementally as changes appear.
 
-2. Build the evaluation baseline:
+2. **Check for done criteria**: Read `.claude/done-criteria.md` if it exists. This file contains testable success criteria written by the generator (e.g., `/devlyn:team-resolve` Phase 1.5). When present, it is the primary grading rubric — every criterion in it must be verified. When absent, fall back to the evaluation checklists below.
+
+3. Build the evaluation baseline:
    - Run `git status --short` to see all changed and new files
    - Run `git diff --stat` for a change summary
    - Read all changed/new files in parallel (use parallel tool calls)
    - If a spec file exists (HANDOFF.md, RFC, issue), read it to understand intent
 
-3. Classify the work using the evaluation matrix below
-4. Decide which evaluators to spawn (minimum viable team)
+4. Classify the work using the evaluation matrix below
+5. Decide which evaluators to spawn (minimum viable team)
 
 <evaluation_classification>
 Classify the work and select evaluators:
@@ -52,6 +59,68 @@ Classify the work and select evaluators:
 **Performance-sensitive changes (queries, loops, polling, rendering)**:
 - Add: performance-evaluator
 </evaluation_classification>
+
+<evaluator_calibration>
+**CRITICAL — Read before grading.** Out of the box, you will be too lenient. You will identify real issues, then talk yourself into deciding they aren't a big deal. Fight this tendency.
+
+**Calibration rule**: When in doubt, score DOWN, not up. A false negative (missing a bug) ships broken code. A false positive (flagging a non-issue) costs a few minutes of review. The cost is asymmetric — always err toward strictness.
+
+**Example: Borderline issue that IS a real problem**
+```javascript
+// Evaluator found: catch block logs but doesn't surface error to user
+try {
+  const data = await fetchUserProfile(id);
+  setProfile(data);
+} catch (error) {
+  console.error('Failed to fetch profile:', error);
+}
+```
+**Wrong evaluation**: "MEDIUM — error is logged, which is acceptable for debugging."
+**Correct evaluation**: "HIGH — user sees no feedback when profile fails to load. The UI stays in loading state forever. Must show error state with retry option. file:line evidence: `ProfilePage.tsx:42`"
+
+**Why**: Logging is not error handling. The user's experience is broken. This is the #1 pattern evaluators incorrectly downgrade.
+
+**Example: Borderline issue that is NOT a real problem**
+```javascript
+// Evaluator found: variable could be const instead of let
+let userName = getUserName(session);
+return <Header name={userName} />;
+```
+**Wrong evaluation**: "MEDIUM — should use const for immutable bindings."
+**Correct evaluation**: "LOW (note only) — stylistic preference, linter will catch this. Not worth a finding."
+
+**Why**: Don't waste evaluation cycles on linter-catchable style issues. Focus on behavior, not aesthetics.
+
+**Example: Self-praise to avoid**
+**Wrong evaluation**: "The error handling throughout this codebase is generally quite good, with most paths properly covered."
+**Correct evaluation**: Evaluate each path individually. "3 of 7 async operations have proper error states. 4 are missing: `file:line`, `file:line`, `file:line`, `file:line`."
+
+**Why**: Generalized praise hides specific gaps. Count the instances. Name the files.
+</evaluator_calibration>
+
+<product_quality_criteria>
+In addition to technical checklists, evaluate these product quality dimensions. These catch issues that pass all technical checks but still produce mediocre software.
+
+**Product Depth** (weight: HIGH):
+Does this feel like a real product feature or a demo stub? Are the workflows complete end-to-end, or do they dead-end? Can a user actually accomplish their goal without workarounds?
+- GOOD: User can create, edit, delete, and search — full CRUD with proper empty/error/loading states
+- BAD: User can create but editing shows a form that doesn't save, search is hardcoded, delete has no confirmation
+
+**Design Quality** (weight: MEDIUM — only when UI changes present):
+Does the UI have a coherent visual identity? Do colors, typography, spacing, and layout work together as a system? Or is it generic defaults and mismatched components?
+- GOOD: Consistent spacing scale, intentional color palette, clear visual hierarchy
+- BAD: Mixed spacing values, default component library with no customization, no visual rhythm
+
+**Craft** (weight: LOW — usually handled by baseline):
+Technical execution of the UI — typography hierarchy, contrast ratios, alignment, responsive behavior. Most competent implementations pass here.
+
+**Functionality** (weight: HIGH):
+Can users understand what the interface does, find primary actions, and complete tasks without guessing? Are affordances clear? Is feedback immediate?
+- GOOD: Primary action is visually prominent, form validation is inline, success/error feedback is instant
+- BAD: Multiple equal-weight buttons with unclear labels, validation only on submit, no loading indicators
+
+Include a **Product Quality Score** in the evaluation report: each dimension rated 1-5 with a one-line justification.
+</product_quality_criteria>
 
 Announce to the user:
 ```
@@ -228,6 +297,14 @@ LOW (note):
 4. For each catch block: is the error surfaced to the user or silently swallowed?
 5. Check for React anti-patterns: uncontrolled-to-controlled switches, direct DOM mutation, missing cleanup
 6. Compare against existing components for pattern consistency
+7. **Live app testing** (when browser tools are available): If `mcp__claude-in-chrome__*` tools are available, test the running application directly:
+   - Navigate to the affected pages
+   - Click through the user flow end-to-end
+   - Test interactive elements (forms, buttons, modals, navigation)
+   - Verify loading, error, and empty states render correctly
+   - Screenshot any visual issues as evidence
+   - Test responsive behavior at mobile/tablet/desktop widths
+   If browser tools are NOT available, skip this step and note "Live testing skipped — no browser tools" in your deliverable.
 
 **Your deliverable**: Send a message to the team lead with:
 1. Component quality assessment for each new/changed component
@@ -235,6 +312,7 @@ LOW (note):
 3. Silent failure points that violate error handling policy
 4. React anti-patterns found
 5. Pattern consistency with existing components
+6. Live testing results (if browser tools were available): screenshots, interaction bugs, visual regressions
 
 Read the team config at ~/.claude/teams/{team-name}/config.json to discover teammates. Coordinate with api-contract-evaluator about client-server type alignment via SendMessage.
 </frontend_evaluator_prompt>
@@ -405,7 +483,31 @@ After receiving all evaluator findings:
 
 ## Phase 5: REPORT
 
-Present the evaluation report to the user.
+1. Present the evaluation report to the user (format below).
+
+2. **Write findings to `.claude/EVAL-FINDINGS.md`** for downstream consumption by other agents (e.g., `/devlyn:auto-resolve` orchestrator or a follow-up `/devlyn:team-resolve`). This file enables the feedback loop — the generator can read it and fix the issues without human relay.
+
+```markdown
+# Evaluation Findings
+
+## Verdict: [PASS / PASS WITH ISSUES / NEEDS WORK / BLOCKED]
+
+## Done Criteria Results (if done-criteria.md existed)
+- [x] [criterion] — VERIFIED: [evidence]
+- [ ] [criterion] — FAILED: [what's wrong, file:line]
+
+## Findings Requiring Action
+### CRITICAL
+- `file:line` — [description] — Fix: [suggested approach]
+
+### HIGH
+- `file:line` — [description] — Fix: [suggested approach]
+
+## Cross-Cutting Patterns
+- [pattern description]
+```
+
+3. Do NOT delete `.claude/done-criteria.md` or `.claude/EVAL-FINDINGS.md` — downstream consumers (e.g., `/devlyn:auto-resolve` orchestrator or a follow-up `/devlyn:team-resolve`) may need to read them. The orchestrator or user is responsible for cleanup.
 
 ## Phase 6: CLEANUP
 

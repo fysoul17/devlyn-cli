@@ -26,7 +26,7 @@
 
 devlyn-cli solves this by installing a curated `.claude/` configuration into any project:
 
-- **14 slash commands** for debugging, code review, UI design, documentation, and more
+- **16 slash commands** for debugging, code review, UI design, documentation, and more
 - **5 core skills** that activate automatically based on conversation context
 - **Agent team workflows** that spawn specialized AI teammates for complex tasks
 - **Product & feature spec templates** for structured planning
@@ -58,7 +58,7 @@ npx devlyn-cli list
 ```
 your-project/
 ├── .claude/
-│   ├── commands/              # 14 slash commands
+│   ├── commands/              # 16 slash commands
 │   ├── skills/                # 5 core skills + any optional addons
 │   ├── templates/             # Product spec, feature spec, prompt templates
 │   ├── commit-conventions.md  # Commit message standards
@@ -76,6 +76,7 @@ Slash commands are invoked directly in Claude Code conversations (e.g., type `/d
 |---|---|
 | `/devlyn:resolve` | Systematic bug fixing with root-cause analysis and test-driven validation |
 | `/devlyn:team-resolve` | Spawns a full agent team — root cause analyst, test engineer, security auditor — to investigate complex issues |
+| `/devlyn:auto-resolve` | Fully automated pipeline for any task — bugs, features, refactors, chores. Build → evaluate → fix loop → simplify → review → clean → docs. One command, zero human intervention |
 
 ### Code Review & Quality
 
@@ -83,6 +84,7 @@ Slash commands are invoked directly in Claude Code conversations (e.g., type `/d
 |---|---|
 | `/devlyn:review` | Post-implementation review — security, quality, best practices checklist |
 | `/devlyn:team-review` | Multi-perspective team review with specialized reviewers (security, quality, testing, performance, product) |
+| `/devlyn:evaluate` | Independent quality evaluation — assembles evaluator team to grade work against done criteria with calibrated, skeptical grading |
 | `/devlyn:clean` | Detect and remove dead code, unused dependencies, complexity hotspots, and tech debt |
 
 ### UI Design & Implementation
@@ -125,24 +127,43 @@ Skills are **not invoked manually** — they activate automatically when Claude 
 
 Commands are designed to compose. Pick the right tool based on scope, then chain them together.
 
-### Recommended Workflow
+### Automated Pipeline (Recommended)
 
-The full fix → polish → review → maintain cycle:
+One command runs the full cycle — no human intervention needed:
+
+```bash
+/devlyn:auto-resolve fix the auth bug where users see blank screen on 401
+```
+
+| Phase | What Happens |
+|---|---|
+| **Build** | `team-resolve` investigates and implements, writes testable done criteria |
+| **Evaluate** | Independent evaluator grades against done criteria with calibrated skepticism |
+| **Fix Loop** | If evaluation fails, fixes findings and re-evaluates (up to N rounds) |
+| **Simplify** | Quick cleanup pass for reuse and efficiency |
+| **Review** | Multi-perspective team review |
+| **Clean** | Remove dead code and unused dependencies |
+| **Docs** | Sync documentation with changes |
+
+Each phase runs as a separate subagent (fresh context), communicates via files, and commits a git checkpoint for rollback safety. Skip phases with flags: `--skip-review`, `--skip-clean`, `--skip-docs`, `--max-rounds 3`.
+
+### Manual Workflow
+
+For step-by-step control between phases:
 
 | Step | Command | What It Does |
 |---|---|---|
 | 1. **Resolve** | `/devlyn:resolve` or `/devlyn:team-resolve` | Fix the issue — solo for focused bugs (1-2 modules), team for complex issues (3+ modules) |
-| 2. **Simplify** | `/simplify` | Quick cleanup pass for reuse, quality, and efficiency *(built-in Claude Code command)* |
-| 3. **Review** | `/devlyn:review` or `/devlyn:team-review` | Audit the changes — solo for small PRs (< 10 files), team for large PRs (10+ files) |
-| | | *If the review finds issues, loop back to step 1* |
-| 4. **Clean** | `/devlyn:clean` | Remove dead code, unused dependencies, and complexity hotspots |
-| 5. **Document** | `/devlyn:update-docs` | Sync project documentation with the current codebase |
+| 2. **Evaluate** | `/devlyn:evaluate` | Independent quality evaluation — grades against done criteria written in step 1 |
+| | | *If the evaluation finds issues: `/devlyn:team-resolve "Fix issues in .claude/EVAL-FINDINGS.md"`* |
+| 3. **Simplify** | `/simplify` | Quick cleanup pass for reuse, quality, and efficiency *(built-in Claude Code command)* |
+| 4. **Review** | `/devlyn:review` or `/devlyn:team-review` | Audit the changes — solo for small PRs (< 10 files), team for large PRs (10+ files) |
+| 5. **Clean** | `/devlyn:clean` | Remove dead code, unused dependencies, and complexity hotspots |
+| 6. **Document** | `/devlyn:update-docs` | Sync project documentation with the current codebase |
 
-Steps 4-5 are optional — run them periodically rather than on every PR. Steps 1-3 are the core loop.
+Steps 5-6 are optional — run them periodically rather than on every PR.
 
-> **Tip:** Consider running `/devlyn:review` once more after steps 4-5. `/devlyn:clean` removes code and `/devlyn:update-docs` changes docs — a final review pass catches accidental regressions from cleanup.
-
-> **Scope matching matters.** For a simple one-file bug, `/devlyn:resolve` + `/devlyn:review` (solo) is fast. For a multi-module feature, `/devlyn:team-resolve` + `/devlyn:team-review` (team) gives you parallel specialist perspectives. Don't over-tool simple changes.
+> **Scope matching matters.** For a simple one-file bug, `/devlyn:resolve` + `/devlyn:review` (solo) is fast. For a multi-module feature, `/devlyn:auto-resolve` handles everything. Don't over-tool simple changes.
 
 ### UI Design Pipeline
 

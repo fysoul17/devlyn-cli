@@ -48,6 +48,36 @@ The full design-to-implementation pipeline:
 
 For complex features, use the Plan agent to design the approach before implementation.
 
+## Automated Pipeline (Recommended Starting Point)
+
+For hands-free build-evaluate-polish cycles — works for bugs, features, refactors, and chores:
+
+```
+/devlyn:auto-resolve [task description]
+```
+
+This runs the full pipeline automatically: **Build → Evaluate → Fix Loop → Simplify → Review → Clean → Docs**. Each phase runs as a separate subagent with its own context. Communication between phases happens via files (`.claude/done-criteria.md`, `.claude/EVAL-FINDINGS.md`).
+
+Optional flags:
+- `--max-rounds 3` — increase max evaluate-fix iterations (default: 2)
+- `--skip-review` — skip team-review phase
+- `--skip-clean` — skip clean phase
+- `--skip-docs` — skip update-docs phase
+
+## Manual Pipeline (Step-by-Step Control)
+
+When you want to run each step yourself with review between phases:
+
+1. `/devlyn:team-resolve [issue]` → Investigate + implement (writes `.claude/done-criteria.md`)
+2. `/devlyn:evaluate` → Grade against done-criteria (writes `.claude/EVAL-FINDINGS.md`)
+3. If findings exist: `/devlyn:team-resolve "Fix issues in .claude/EVAL-FINDINGS.md"` → Fix loop
+4. `/simplify` → Quick cleanup pass
+5. `/devlyn:team-review` → Multi-perspective team review (for important PRs)
+6. `/devlyn:clean` → Codebase hygiene
+7. `/devlyn:update-docs` → Keep docs in sync
+
+Steps 5-7 are optional depending on scope.
+
 ## Vibe Coding Workflow
 
 The recommended sequence after writing code:
@@ -72,6 +102,7 @@ Steps 4-6 are optional depending on the scope of changes. `/simplify` should alw
 
 - **Simple bugs**: Use `/devlyn:resolve` for systematic bug fixing with test-driven validation
 - **Complex bugs**: Use `/devlyn:team-resolve` for multi-perspective investigation with a full agent team
+- **Hands-free**: Use `/devlyn:auto-resolve` for fully automated resolve → evaluate → fix → polish pipeline
 - **Post-fix review**: Use `/devlyn:team-review` for thorough multi-reviewer validation
 
 ## Maintenance Workflow
