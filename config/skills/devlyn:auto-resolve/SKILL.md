@@ -34,7 +34,7 @@ Max evaluation rounds: [N]
 
 ## PHASE 1: BUILD
 
-Spawn a subagent using the Agent tool to investigate and implement the fix. The subagent does NOT have access to skills, so include all necessary instructions inline.
+Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` to investigate and implement the fix. The subagent does NOT have access to skills, so include all necessary instructions inline.
 
 Agent prompt — pass this to the Agent tool:
 
@@ -72,7 +72,7 @@ The task is: [paste the task description here]
 
 ## PHASE 2: EVALUATE
 
-Spawn a subagent using the Agent tool to evaluate the work. Include all evaluation instructions inline.
+Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` to evaluate the work. Include all evaluation instructions inline.
 
 Agent prompt — pass this to the Agent tool:
 
@@ -131,7 +131,7 @@ Do NOT delete `.claude/done-criteria.md` or `.claude/EVAL-FINDINGS.md` — the o
 
 Track the current round number. If `round >= max-rounds`, stop the loop and proceed to PHASE 3 with a warning that unresolved findings remain.
 
-Spawn a subagent using the Agent tool to fix the evaluation findings.
+Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` to fix the evaluation findings.
 
 Agent prompt — pass this to the Agent tool:
 
@@ -148,7 +148,7 @@ For each finding: read the referenced file:line, understand the issue, implement
 
 ## PHASE 3: SIMPLIFY
 
-Spawn a subagent using the Agent tool for a quick cleanup pass.
+Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` for a quick cleanup pass.
 
 Agent prompt — pass this to the Agent tool:
 
@@ -161,7 +161,7 @@ Review the recently changed files (use `git diff HEAD~1` to see what changed). L
 
 Skip if `--skip-review` was set.
 
-Spawn a subagent using the Agent tool for a multi-perspective review.
+Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` for a multi-perspective review.
 
 Agent prompt — pass this to the Agent tool:
 
@@ -185,7 +185,7 @@ Determine whether to run this phase:
   - Also run `git diff main` and scan for patterns: `API_KEY`, `SECRET`, `TOKEN`, `PASSWORD`, `PRIVATE_KEY`, `Bearer`, `jwt`, `bcrypt`, `crypto`, `env.`, `process.env`
   - If any match → run. If no matches → skip and note "Security review skipped — no security-sensitive changes detected."
 
-Spawn a subagent using the Agent tool for a dedicated security audit.
+Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` for a dedicated security audit.
 
 Agent prompt — pass this to the Agent tool:
 
@@ -213,7 +213,7 @@ Fix any CRITICAL findings directly. For HIGH findings, fix if straightforward, o
 
 Skip if `--skip-clean` was set.
 
-Spawn a subagent using the Agent tool.
+Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
 
 Agent prompt — pass this to the Agent tool:
 
@@ -226,7 +226,7 @@ Scan the codebase for dead code, unused dependencies, and code hygiene issues in
 
 Skip if `--skip-docs` was set.
 
-Spawn a subagent using the Agent tool.
+Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
 
 Agent prompt — pass this to the Agent tool:
 
