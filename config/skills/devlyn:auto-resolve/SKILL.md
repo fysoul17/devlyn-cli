@@ -26,21 +26,7 @@ $ARGUMENTS
    Codex examples: `--with-codex` (both), `--with-codex evaluate`, `--with-codex review`
    If no flags are present, use defaults.
 
-3. **Pre-flight check** — If `--with-codex` is enabled, call `mcp__codex-cli__ping` to verify the Codex MCP server is available.
-   - **If ping succeeds**: continue normally.
-   - **If ping fails or `mcp__codex-cli__ping` tool is not found**: warn the user with this message and ask how to proceed:
-     ```
-     ⚠ Codex MCP server not detected. --with-codex requires codex-mcp-server.
-
-     To install:
-       npm i -g @openai/codex
-       claude mcp add codex-cli -- npx -y codex-mcp-server
-
-     Options:
-       [1] Continue without --with-codex (Claude-only evaluation/review)
-       [2] Abort pipeline
-     ```
-     If the user chooses [1], disable `--with-codex` and continue. If [2], stop.
+3. **If `--with-codex` is enabled**: Read `references/codex-integration.md` and run the "PRE-FLIGHT CHECK" section to verify Codex MCP server availability before proceeding.
 
 4. Announce the pipeline plan:
 ```

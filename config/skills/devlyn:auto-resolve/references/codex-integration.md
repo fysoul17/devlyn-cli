@@ -6,6 +6,27 @@ Codex is accessed via `mcp__codex-cli__*` MCP tools (provided by codex-mcp-serve
 
 ---
 
+## PRE-FLIGHT CHECK
+
+Before starting the pipeline, verify the Codex MCP server is available by calling `mcp__codex-cli__ping`.
+
+- **If ping succeeds**: continue normally.
+- **If ping fails or `mcp__codex-cli__ping` tool is not found**: warn the user and ask how to proceed:
+  ```
+  ⚠ Codex MCP server not detected. --with-codex requires codex-mcp-server.
+
+  To install:
+    npm i -g @openai/codex
+    claude mcp add codex-cli -- npx -y codex-mcp-server
+
+  Options:
+    [1] Continue without --with-codex (Claude-only evaluation/review)
+    [2] Abort pipeline
+  ```
+  If the user chooses [1], disable `--with-codex` and continue. If [2], stop.
+
+---
+
 ## PHASE 2-CODEX: CROSS-MODEL EVALUATE
 
 Run after the Claude evaluator (Phase 2) completes, only if `--with-codex` includes `evaluate` or `both`.
