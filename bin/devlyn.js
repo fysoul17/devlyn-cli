@@ -521,10 +521,29 @@ async function init(skipPrompts = false) {
     }
   }
   if (!settings.env) settings.env = {};
+  // Auto-allow pipeline files so auto-resolve doesn't prompt for permission
+  if (!settings.permissions) settings.permissions = {};
+  if (!settings.permissions.allow) settings.permissions.allow = [];
+  const pipelinePermissions = [
+    'Write:.claude/done-criteria.md',
+    'Write:.claude/EVAL-FINDINGS.md',
+    'Edit:.claude/done-criteria.md',
+    'Edit:.claude/EVAL-FINDINGS.md',
+  ];
+  let settingsChanged = false;
+  for (const perm of pipelinePermissions) {
+    if (!settings.permissions.allow.includes(perm)) {
+      settings.permissions.allow.push(perm);
+      settingsChanged = true;
+    }
+  }
   if (!settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) {
     settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = '1';
+    settingsChanged = true;
+  }
+  if (settingsChanged) {
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-    log('  → settings.json (agent teams enabled)', 'dim');
+    log('  → settings.json (agent teams + pipeline permissions)', 'dim');
   }
 
   // Install agents for other detected CLIs
