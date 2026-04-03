@@ -152,6 +152,8 @@ const OPTIONAL_ADDONS = [
   { name: 'coreyhaines31/marketingskills', desc: 'Marketing automation and content skills', type: 'external' },
   { name: 'anthropics/skills', desc: 'Official Anthropic skill-creator with eval framework and description optimizer', type: 'external' },
   { name: 'Leonxlnx/taste-skill', desc: 'Premium frontend design skills — modern layouts, animations, and visual refinement', type: 'external' },
+  // MCP servers (installed via claude mcp add)
+  { name: 'codex-cli', desc: 'Codex MCP server for cross-model evaluation via OpenAI Codex', type: 'mcp', command: 'npx -y codex-mcp-server' },
 ];
 
 function log(msg, color = 'reset') {
@@ -233,8 +235,8 @@ function listContents() {
   // List optional addons
   log('\n📦 Optional Addons:', 'blue');
   OPTIONAL_ADDONS.forEach((addon) => {
-    const tagLabel = addon.type === 'local' ? 'skill' : 'pack';
-    const tagColor = addon.type === 'local' ? COLORS.magenta : COLORS.cyan;
+    const tagLabel = addon.type === 'mcp' ? 'mcp' : addon.type === 'local' ? 'skill' : 'pack';
+    const tagColor = addon.type === 'mcp' ? COLORS.green : addon.type === 'local' ? COLORS.magenta : COLORS.cyan;
     const tag = `${tagColor}${tagLabel}${COLORS.reset}`;
     log(`  ${COLORS.green}${addon.name}${COLORS.reset} ${COLORS.dim}[${tag}${COLORS.dim}]${COLORS.reset}`);
     log(`     ${COLORS.dim}${addon.desc}${COLORS.reset}`);
@@ -305,8 +307,8 @@ function multiSelect(items) {
         const checkbox = selected.has(i) ? `${COLORS.green}◉${COLORS.reset}` : `${COLORS.dim}○${COLORS.reset}`;
         const pointer = i === cursor ? `${COLORS.cyan}❯${COLORS.reset}` : ' ';
         const name = i === cursor ? `${COLORS.cyan}${item.name}${COLORS.reset}` : item.name;
-        const tagLabel = item.type === 'local' ? 'skill' : 'pack';
-        const tagColor = item.type === 'local' ? COLORS.magenta : COLORS.cyan;
+        const tagLabel = item.type === 'mcp' ? 'mcp' : item.type === 'local' ? 'skill' : 'pack';
+        const tagColor = item.type === 'mcp' ? COLORS.green : item.type === 'local' ? COLORS.magenta : COLORS.cyan;
         const tag = `${tagColor}${tagLabel}${COLORS.reset}`;
         console.log(`${pointer} ${checkbox} ${name} ${COLORS.dim}[${tag}${COLORS.dim}]${COLORS.reset}`);
         console.log(`    ${COLORS.dim}${item.desc}${COLORS.reset}`);
@@ -393,6 +395,18 @@ function installLocalSkill(skillName) {
   return true;
 }
 
+function installMcpServer(name, command) {
+  try {
+    log(`\n🔌 Installing MCP server: ${name}...`, 'cyan');
+    execSync(`claude mcp add ${name} -- ${command}`, { stdio: 'inherit' });
+    return true;
+  } catch (error) {
+    log(`   ⚠️  Failed to install MCP server "${name}"`, 'yellow');
+    log(`   Run manually: claude mcp add ${name} -- ${command}`, 'dim');
+    return false;
+  }
+}
+
 function installSkillPack(packName) {
   try {
     log(`\n📦 Installing ${packName}...`, 'cyan');
@@ -407,6 +421,9 @@ function installSkillPack(packName) {
 function installAddon(addon) {
   if (addon.type === 'local') {
     return installLocalSkill(addon.name);
+  }
+  if (addon.type === 'mcp') {
+    return installMcpServer(addon.name, addon.command);
   }
   return installSkillPack(addon.name);
 }
@@ -606,6 +623,10 @@ function showHelp() {
   log('\nExternal skill packs:', 'green');
   OPTIONAL_ADDONS.filter((a) => a.type === 'external').forEach((pack) => {
     log(`  npx skills add ${pack.name}`);
+  });
+  log('\nMCP servers:', 'green');
+  OPTIONAL_ADDONS.filter((a) => a.type === 'mcp').forEach((mcp) => {
+    log(`  claude mcp add ${mcp.name} -- ${mcp.command}  ${COLORS.dim}${mcp.desc}${COLORS.reset}`);
   });
   log('\nSupported CLIs for agent installation:', 'green');
   for (const [key, cli] of Object.entries(CLI_TARGETS)) {
