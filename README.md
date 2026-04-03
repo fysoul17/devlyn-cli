@@ -76,7 +76,7 @@ Slash commands are invoked directly in Claude Code conversations (e.g., type `/d
 |---|---|
 | `/devlyn:resolve` | Systematic bug fixing with root-cause analysis and test-driven validation |
 | `/devlyn:team-resolve` | Spawns a full agent team — root cause analyst, test engineer, security auditor — to investigate complex issues |
-| `/devlyn:auto-resolve` | Fully automated pipeline for any task — bugs, features, refactors, chores. Build → evaluate → fix loop → simplify → review → clean → docs. One command, zero human intervention |
+| `/devlyn:auto-resolve` | Fully automated pipeline for any task — bugs, features, refactors, chores. Build → evaluate → fix loop → simplify → review → clean → docs. One command, zero human intervention. Supports `--with-codex` for cross-model evaluation via OpenAI Codex |
 
 ### Code Review & Quality
 
@@ -146,7 +146,7 @@ One command runs the full cycle — no human intervention needed:
 | **Clean** | Remove dead code and unused dependencies |
 | **Docs** | Sync documentation with changes |
 
-Each phase runs as a separate subagent (fresh context), communicates via files, and commits a git checkpoint for rollback safety. Skip phases with flags: `--skip-review`, `--skip-clean`, `--skip-docs`, `--max-rounds 3`.
+Each phase runs as a separate subagent (fresh context), communicates via files, and commits a git checkpoint for rollback safety. Skip phases with flags: `--skip-review`, `--skip-clean`, `--skip-docs`, `--max-rounds 3`, `--with-codex` (cross-model evaluation via OpenAI Codex).
 
 ### Manual Workflow
 
@@ -208,6 +208,9 @@ Copied directly into your `.claude/skills/` directory.
 | `prompt-engineering` | Claude 4 prompt optimization using official Anthropic best practices |
 | `better-auth-setup` | Production-ready Better Auth + Hono + Drizzle + PostgreSQL auth setup |
 | `pyx-scan` | Check whether an AI agent skill is safe before installing |
+| `dokkit` | Document template filling for DOCX/HWPX — ingest, fill, review, export |
+| `devlyn:pencil-pull` | Pull Pencil designs into code with exact visual fidelity |
+| `devlyn:pencil-push` | Push codebase UI to Pencil canvas for design sync |
 
 ### Community Packs
 
@@ -219,6 +222,7 @@ Installed via the [skills CLI](https://github.com/anthropics/skills) (`npx skill
 | `supabase/agent-skills` | Supabase integration patterns |
 | `coreyhaines31/marketingskills` | Marketing automation and content skills |
 | `anthropics/skills` | Official Anthropic skill-creator with eval framework and description optimizer |
+| `Leonxlnx/taste-skill` | Premium frontend design skills — modern layouts, animations, and visual refinement |
 
 > **Want to add a pack?** Open a PR adding your pack to the `OPTIONAL_ADDONS` array in [`bin/devlyn.js`](bin/devlyn.js).
 

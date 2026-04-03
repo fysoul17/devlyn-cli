@@ -20,8 +20,10 @@ $ARGUMENTS
    - `--security-review` (auto) — run dedicated security audit. Auto-detects: runs when changes touch auth, secrets, user data, API endpoints, env/config, or crypto. Force with `--security-review always` or skip with `--security-review skip`
    - `--skip-clean` (false) — skip clean phase
    - `--skip-docs` (false) — skip update-docs phase
+   - `--with-codex` (false) — use OpenAI Codex as a cross-model evaluator/reviewer via `mcp__codex-cli__*` MCP tools. Accepts: `evaluate`, `review`, or `both` (default when flag is present without value). When enabled, Codex provides an independent second opinion from a different model family, creating a GAN-like dynamic where Claude builds and Codex critiques.
 
    Flags can be passed naturally: `/devlyn:auto-resolve fix the auth bug --max-rounds 3 --skip-docs`
+   Codex examples: `--with-codex` (both), `--with-codex evaluate`, `--with-codex review`
    If no flags are present, use defaults.
 
 3. Announce the pipeline plan:
@@ -30,6 +32,7 @@ Auto-resolve pipeline starting
 Task: [extracted task description]
 Phases: Build → Evaluate → [Fix loop if needed] → Simplify → [Review] → [Security] → [Clean] → [Docs]
 Max evaluation rounds: [N]
+Cross-model evaluation (Codex): [evaluate / review / both / disabled]
 ```
 
 ## PHASE 1: BUILD
@@ -120,12 +123,13 @@ Do NOT delete `.claude/done-criteria.md` or `.claude/EVAL-FINDINGS.md` — the o
 **After the agent completes**:
 1. Read `.claude/EVAL-FINDINGS.md`
 2. Extract the verdict
-3. Branch on verdict:
+3. **If `--with-codex` includes `evaluate` or `both`**: Read `references/codex-integration.md` and follow the "PHASE 2-CODEX: CROSS-MODEL EVALUATE" section. This runs Codex as a second evaluator and merges findings into `EVAL-FINDINGS.md`.
+4. Branch on verdict (from the merged findings if Codex was used):
    - `PASS` → skip to PHASE 3
    - `PASS WITH ISSUES` → skip to PHASE 3 (issues are shippable)
    - `NEEDS WORK` → go to PHASE 2.5 (fix loop)
    - `BLOCKED` → go to PHASE 2.5 (fix loop)
-4. If `.claude/EVAL-FINDINGS.md` was not created, treat as PASS WITH ISSUES and log a warning
+5. If `.claude/EVAL-FINDINGS.md` was not created, treat as PASS WITH ISSUES and log a warning
 
 ## PHASE 2.5: FIX LOOP (conditional)
 
@@ -171,7 +175,9 @@ Each reviewer evaluates from their perspective, sends findings with file:line ev
 
 Clean up the team after completion.
 
-**After the agent completes**:
+**If `--with-codex` includes `review` or `both`**: Read `references/codex-integration.md` and follow the "PHASE 4B: CODEX REVIEW" section. This runs Codex's independent code review and reconciles findings with the Claude team review.
+
+**After the review phase completes**:
 1. If CRITICAL issues remain unfixed, log a warning in the final report
 2. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): review fixes complete"` if there are changes
 
@@ -256,10 +262,12 @@ After all phases complete:
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Build (team-resolve) | [completed] | [brief summary] |
-| Evaluate | [PASS/NEEDS WORK after N rounds] | [verdict + key findings] |
+| Evaluate (Claude) | [PASS/NEEDS WORK after N rounds] | [verdict + key findings] |
+| Evaluate (Codex) | [completed / skipped] | [Codex-only findings count, merged verdict] |
 | Fix rounds | [N rounds / skipped] | [what was fixed] |
 | Simplify | [completed / skipped] | [changes made] |
-| Review (team-review) | [completed / skipped] | [findings summary] |
+| Review (Claude team) | [completed / skipped] | [findings summary] |
+| Review (Codex) | [completed / skipped] | [Codex-only findings, agreed findings] |
 | Security review | [completed / skipped / auto-skipped] | [findings or "no security-sensitive changes"] |
 | Clean | [completed / skipped] | [items cleaned] |
 | Docs (update-docs) | [completed / skipped] | [docs updated] |

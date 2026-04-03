@@ -63,6 +63,7 @@ Optional flags:
 - `--skip-review` — skip team-review phase
 - `--skip-clean` — skip clean phase
 - `--skip-docs` — skip update-docs phase
+- `--with-codex [evaluate|review|both]` — use OpenAI Codex as cross-model evaluator/reviewer (requires codex-mcp-server)
 
 ## Manual Pipeline (Step-by-Step Control)
 
