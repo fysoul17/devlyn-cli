@@ -6,9 +6,9 @@
   <img alt="DEVLYN" src="assets/logo.svg" width="540" />
 </picture>
 
-### The Skills & Commands Toolkit for Claude Code
+### Context Engineering & Harness Engineering Toolkit for Claude Code
 
-**Ship better code with battle-tested AI workflows — debugging, code review, UI design, product specs, and more.**
+**Structured prompts, agent orchestration, and automated pipelines — debugging, code review, UI design, product specs, and more.**
 
 [![npm version](https://img.shields.io/npm/v/devlyn-cli.svg)](https://www.npmjs.com/package/devlyn-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -24,13 +24,26 @@
 
 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) is powerful out of the box — but teams need **consistent, repeatable workflows**. Without shared conventions, every developer prompts differently, reviews differently, and debugs differently.
 
-devlyn-cli solves this by installing a curated `.claude/` configuration into any project:
+devlyn-cli solves this with two complementary engineering approaches:
+
+### Context Engineering
+
+Structured prompts and role-based instructions that shape _what the AI knows and how it thinks_ for each task.
 
 - **16 slash commands** for debugging, code review, UI design, documentation, and more
 - **5 core skills** that activate automatically based on conversation context
-- **Agent team workflows** that spawn specialized AI teammates for complex tasks
+- **Agent team workflows** that spawn specialized AI teammates with role-specific expertise
 - **Product & feature spec templates** for structured planning
-- **Commit conventions** for consistent git history
+
+### Harness Engineering
+
+Pipeline orchestration that controls _how agents execute_ — permissions, state management, multi-phase workflows, and cross-model evaluation.
+
+- **`/devlyn:auto-resolve`** — 8-phase automated pipeline (build → evaluate → fix loop → simplify → review → security → clean → docs)
+- **`bypassPermissions` mode** for autonomous subagent execution
+- **File-based state machine** — agents communicate via `.claude/done-criteria.md` and `EVAL-FINDINGS.md`
+- **Git checkpoints** at each phase for rollback safety
+- **Cross-model evaluation** via `--with-codex` flag (OpenAI Codex as independent evaluator)
 
 **Zero dependencies. One command. Works with any project.**
 
