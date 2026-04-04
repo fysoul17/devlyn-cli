@@ -89,7 +89,10 @@ test.describe('Smoke Tests', () => {
       const pageUrl = page.url();
       expect(title, 'Page shows a browser error — server may be down').not.toBe(pageUrl);
 
-      await page.screenshot({ path: `.devlyn/screenshots/smoke${route.replace(/\//g, '-') || '-root'}.png`, fullPage: true });
+      await page.screenshot({ path: `${SCREENSHOT_DIR}/smoke/${route.replace(/^\//, '').replace(/\//g, '-') || 'root'}.png`, fullPage: true });
+      // SCREENSHOT_DIR is the topic-scoped dir set up in PHASE 1 of SKILL.md
+      // (e.g., .devlyn/screenshots/add-login-page). Inject it at test-generation
+      // time so every test writes into the same per-run folder.
 
       if (errors.length > 0) {
         test.info().annotations.push({ type: 'console_errors', description: errors.join(' | ') });
@@ -123,7 +126,7 @@ test('flow: [criterion description]', async ({ page }) => {
   await expect(page.locator('[verification selector]')).toBeVisible();
 
   // Screenshot
-  await page.screenshot({ path: '.devlyn/screenshots/flow-[name].png' });
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/feature/[criterion-slug]-step[N].png` });
 });
 ```
 
@@ -135,7 +138,7 @@ test.describe('Visual - Mobile', () => {
   for (const route of ROUTES) {
     test(`visual-mobile: ${route}`, async ({ page }) => {
       await page.goto(`http://localhost:${PORT}${route}`, { waitUntil: 'networkidle' });
-      await page.screenshot({ path: `.devlyn/screenshots/visual-mobile${route.replace(/\//g, '-') || '-root'}.png`, fullPage: true });
+      await page.screenshot({ path: `${SCREENSHOT_DIR}/visual/mobile-${route.replace(/^\//, '').replace(/\//g, '-') || 'root'}.png`, fullPage: true });
     });
   }
 });
@@ -145,7 +148,7 @@ test.describe('Visual - Desktop', () => {
   for (const route of ROUTES) {
     test(`visual-desktop: ${route}`, async ({ page }) => {
       await page.goto(`http://localhost:${PORT}${route}`, { waitUntil: 'networkidle' });
-      await page.screenshot({ path: `.devlyn/screenshots/visual-desktop${route.replace(/\//g, '-') || '-root'}.png`, fullPage: true });
+      await page.screenshot({ path: `${SCREENSHOT_DIR}/visual/desktop-${route.replace(/^\//, '').replace(/\//g, '-') || 'root'}.png`, fullPage: true });
     });
   }
 });
@@ -154,7 +157,7 @@ test.describe('Visual - Desktop', () => {
 ## Execution
 
 ```bash
-mkdir -p .devlyn/screenshots
+mkdir -p "$SCREENSHOT_DIR"/{smoke,feature,visual}
 npx playwright test .devlyn/browser-test.spec.ts \
   --reporter=json \
   --output=.devlyn/playwright-results \
@@ -182,7 +185,7 @@ rm -rf .devlyn/playwright-results
 rm -f .devlyn/playwright-output.json
 ```
 
-Keep `.devlyn/screenshots/` — those are evidence referenced by the report.
+Keep `$SCREENSHOT_DIR` (`.devlyn/screenshots/<topic-slug>/`) — those are evidence referenced by the report. Don't touch other topics' directories.
 
 ## Limitations vs Tier 1
 
