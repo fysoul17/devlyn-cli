@@ -154,6 +154,7 @@ const OPTIONAL_ADDONS = [
   { name: 'Leonxlnx/taste-skill', desc: 'Premium frontend design skills — modern layouts, animations, and visual refinement', type: 'external' },
   // MCP servers (installed via claude mcp add)
   { name: 'codex-cli', desc: 'Codex MCP server for cross-model evaluation via OpenAI Codex', type: 'mcp', command: 'npx -y codex-mcp-server' },
+  { name: 'playwright', desc: 'Playwright MCP for browser testing — powers devlyn:browser-validate Tier 2', type: 'mcp', command: 'npx -y @anthropic-ai/mcp-playwright' },
 ];
 
 function log(msg, color = 'reset') {
@@ -544,8 +545,10 @@ async function init(skipPrompts = false) {
   const pipelinePermissions = [
     'Write(.claude/done-criteria.md)',
     'Write(.claude/EVAL-FINDINGS.md)',
+    'Write(.claude/BROWSER-RESULTS.md)',
     'Edit(.claude/done-criteria.md)',
     'Edit(.claude/EVAL-FINDINGS.md)',
+    'Edit(.claude/BROWSER-RESULTS.md)',
     'Bash(git add *)',
     'Bash(git commit *)',
     'Bash(git diff *)',

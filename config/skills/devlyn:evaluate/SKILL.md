@@ -297,14 +297,9 @@ LOW (note):
 4. For each catch block: is the error surfaced to the user or silently swallowed?
 5. Check for React anti-patterns: uncontrolled-to-controlled switches, direct DOM mutation, missing cleanup
 6. Compare against existing components for pattern consistency
-7. **Live app testing** (when browser tools are available): If `mcp__claude-in-chrome__*` tools are available, test the running application directly:
-   - Navigate to the affected pages
-   - Click through the user flow end-to-end
-   - Test interactive elements (forms, buttons, modals, navigation)
-   - Verify loading, error, and empty states render correctly
-   - Screenshot any visual issues as evidence
-   - Test responsive behavior at mobile/tablet/desktop widths
-   If browser tools are NOT available, skip this step and note "Live testing skipped — no browser tools" in your deliverable.
+7. **Browser evidence** (when available): Read `.claude/BROWSER-RESULTS.md` if it exists — it contains pre-collected smoke test results, flow test results, console errors, network failures, and screenshots from the `devlyn:browser-validate` skill. Use this as additional evidence in your evaluation. Do not re-run smoke tests that are already covered.
+   If the dev server is still running and you need deeper investigation on a specific interaction, use browser tools directly (check if `mcp__claude-in-chrome__*` tools are available, or fall back to Playwright). Focus on verifying specific findings, not duplicating the full smoke/flow suite.
+   If neither `.claude/BROWSER-RESULTS.md` exists nor browser tools are available, note "Live testing skipped — no browser validation available" in your deliverable.
 
 **Your deliverable**: Send a message to the team lead with:
 1. Component quality assessment for each new/changed component
@@ -312,7 +307,7 @@ LOW (note):
 3. Silent failure points that violate error handling policy
 4. React anti-patterns found
 5. Pattern consistency with existing components
-6. Live testing results (if browser tools were available): screenshots, interaction bugs, visual regressions
+6. Browser validation results (from BROWSER-RESULTS.md or live testing): screenshots, interaction bugs, runtime errors, visual regressions
 
 Read the team config at ~/.claude/teams/{team-name}/config.json to discover teammates. Coordinate with api-contract-evaluator about client-server type alignment via SendMessage.
 </frontend_evaluator_prompt>

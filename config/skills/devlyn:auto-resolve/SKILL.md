@@ -19,6 +19,7 @@ $ARGUMENTS
    - `--skip-review` (false) — skip team-review phase
    - `--security-review` (auto) — run dedicated security audit. Auto-detects: runs when changes touch auth, secrets, user data, API endpoints, env/config, or crypto. Force with `--security-review always` or skip with `--security-review skip`
    - `--skip-clean` (false) — skip clean phase
+   - `--skip-browser` (false) — skip browser validation phase (auto-skipped for non-web changes)
    - `--skip-docs` (false) — skip update-docs phase
    - `--with-codex` (false) — use OpenAI Codex as a cross-model evaluator/reviewer via `mcp__codex-cli__*` MCP tools. Accepts: `evaluate`, `review`, or `both` (default when flag is present without value). When enabled, Codex provides an independent second opinion from a different model family, creating a GAN-like dynamic where Claude builds and Codex critiques.
 
@@ -32,7 +33,7 @@ $ARGUMENTS
 ```
 Auto-resolve pipeline starting
 Task: [extracted task description]
-Phases: Build → Evaluate → [Fix loop if needed] → Simplify → [Review] → [Security] → [Clean] → [Docs]
+Phases: Build → [Browser] → Evaluate → [Fix loop if needed] → Simplify → [Review] → [Security] → [Clean] → [Docs]
 Max evaluation rounds: [N]
 Cross-model evaluation (Codex): [evaluate / review / both / disabled]
 ```
@@ -74,6 +75,24 @@ The task is: [paste the task description here]
 2. Run `git diff --stat` to confirm code was actually changed
 3. If no changes were made, report failure and stop
 4. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): phase 1 — build complete"` to create a rollback point
+
+## PHASE 1.5: BROWSER VALIDATE (conditional)
+
+Skip if `--skip-browser` was set.
+
+1. **Check relevance**: Run `git diff --name-only` and check for web-relevant files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.css`, `*.html`, `page.*`, `layout.*`, `route.*`). If none found, skip and note "Browser validation skipped — no web changes detected."
+
+2. **Run validation**: Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
+
+Agent prompt — pass this to the Agent tool:
+
+You are a browser validation agent. Read the skill instructions at `.claude/skills/devlyn:browser-validate/SKILL.md` and follow the full workflow to validate this web application. The dev server should be started, tested, and left running (pass `--keep-server` internally) — the pipeline will clean it up later. Write your findings to `.claude/BROWSER-RESULTS.md`.
+
+**After the agent completes**:
+1. Read `.claude/BROWSER-RESULTS.md`
+2. Extract the verdict
+3. If `BLOCKED` → the app doesn't even render. Go directly to PHASE 2.5 fix loop with browser findings as context.
+4. Otherwise → continue to PHASE 2 (the evaluator will read `BROWSER-RESULTS.md` as additional evidence)
 
 ## PHASE 2: EVALUATE
 
@@ -250,6 +269,9 @@ After all phases complete:
 1. Clean up temporary files:
    - Delete `.claude/done-criteria.md`
    - Delete `.claude/EVAL-FINDINGS.md`
+   - Delete `.claude/BROWSER-RESULTS.md` (if exists)
+   - Delete `.claude/screenshots/` directory (if exists)
+   - Kill any dev server process still running from browser validation
 
 2. Run `git log --oneline -10` to show commits made during the pipeline
 
@@ -264,6 +286,7 @@ After all phases complete:
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Build (team-resolve) | [completed] | [brief summary] |
+| Browser validate | [completed / skipped / auto-skipped] | [verdict, tier used, console errors, flow results] |
 | Evaluate (Claude) | [PASS/NEEDS WORK after N rounds] | [verdict + key findings] |
 | Evaluate (Codex) | [completed / skipped] | [Codex-only findings count, merged verdict] |
 | Fix rounds | [N rounds / skipped] | [what was fixed] |
