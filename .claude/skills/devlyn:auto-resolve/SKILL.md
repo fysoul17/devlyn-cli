@@ -91,8 +91,12 @@ You are a browser validation agent. Read the skill instructions at `.claude/skil
 **After the agent completes**:
 1. Read `.claude/BROWSER-RESULTS.md`
 2. Extract the verdict
-3. If `BLOCKED` → the app doesn't even render. Go directly to PHASE 2.5 fix loop with browser findings as context.
-4. Otherwise → continue to PHASE 2 (the evaluator will read `BROWSER-RESULTS.md` as additional evidence)
+3. Branch on verdict:
+   - `PASS` → continue to PHASE 2
+   - `PASS WITH ISSUES` → continue to PHASE 2 (evaluator reads browser results as extra context)
+   - `PARTIALLY VERIFIED` → continue to PHASE 2, but flag to the evaluator that browser coverage was incomplete — unverified features should be weighted more heavily
+   - `NEEDS WORK` → features don't work in the browser. Go to PHASE 2.5 fix loop. Fix agent reads `.claude/BROWSER-RESULTS.md` for which criterion failed, at what step, with what error. After fixing, re-run PHASE 1.5 to verify the fix before proceeding to Evaluate.
+   - `BLOCKED` → app doesn't render. Go to PHASE 2.5 fix loop. After fixing, re-run PHASE 1.5.
 
 ## PHASE 2: EVALUATE
 
