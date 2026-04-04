@@ -56,10 +56,13 @@ For hands-free build-evaluate-polish cycles — works for bugs, features, refact
 /devlyn:auto-resolve [task description]
 ```
 
-This runs the full pipeline automatically: **Build → Evaluate → Fix Loop → Simplify → Review → Security Review → Clean → Docs**. Each phase runs as a separate subagent with its own context. Communication between phases happens via files (`.claude/done-criteria.md`, `.claude/EVAL-FINDINGS.md`).
+This runs the full pipeline automatically: **Build → Browser Validate → Evaluate → Fix Loop → Simplify → Review → Security Review → Clean → Docs**. Each phase runs as a separate subagent with its own context. Communication between phases happens via files (`.claude/done-criteria.md`, `.claude/EVAL-FINDINGS.md`, `.claude/BROWSER-RESULTS.md`).
+
+For web projects, the Browser Validate phase starts the dev server and tests the implemented feature in a real browser — clicking buttons, filling forms, verifying results. If the feature doesn't work, findings feed back into the fix loop.
 
 Optional flags:
 - `--max-rounds 3` — increase max evaluate-fix iterations (default: 2)
+- `--skip-browser` — skip browser validation phase (auto-skipped for non-web changes)
 - `--skip-review` — skip team-review phase
 - `--skip-clean` — skip clean phase
 - `--skip-docs` — skip update-docs phase
@@ -98,6 +101,13 @@ Steps 4-6 are optional depending on the scope of changes. `/simplify` should alw
 - **Focused doc update**: Use `/devlyn:update-docs [area]` for targeted updates (e.g., "API reference", "getting-started")
 - Preserves all forward-looking content: roadmaps, future plans, visions, open questions
 - If no docs exist, proposes a tailored docs structure and generates initial content
+
+## Browser Testing Workflow
+
+- **Standalone**: Use `/devlyn:browser-validate` to test any web feature in the browser — starts the dev server, tests the feature end-to-end, fixes issues it finds
+- **In pipeline**: Auto-resolve includes browser validation automatically for web projects (between Build and Evaluate phases)
+- **Tiered**: Uses chrome MCP tools if available, falls back to Playwright, then curl
+- **Feature-first**: Tests the implemented feature (from done-criteria), not just "does the page load"
 
 ## Debugging Workflow
 

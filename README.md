@@ -39,9 +39,10 @@ Structured prompts and role-based instructions that shape _what the AI knows and
 
 Pipeline orchestration that controls _how agents execute_ — permissions, state management, multi-phase workflows, and cross-model evaluation.
 
-- **`/devlyn:auto-resolve`** — 8-phase automated pipeline (build → evaluate → fix loop → simplify → review → security → clean → docs)
+- **`/devlyn:auto-resolve`** — 9-phase automated pipeline (build → browser validate → evaluate → fix loop → simplify → review → security → clean → docs)
+- **`/devlyn:browser-validate`** — feature verification in a real browser with tiered fallback (Chrome MCP → Playwright → curl)
 - **`bypassPermissions` mode** for autonomous subagent execution
-- **File-based state machine** — agents communicate via `.claude/done-criteria.md` and `EVAL-FINDINGS.md`
+- **File-based state machine** — agents communicate via `.claude/done-criteria.md`, `EVAL-FINDINGS.md`, and `BROWSER-RESULTS.md`
 - **Git checkpoints** at each phase for rollback safety
 - **Cross-model evaluation** via `--with-codex` flag (OpenAI Codex as independent evaluator)
 
@@ -89,7 +90,8 @@ Slash commands are invoked directly in Claude Code conversations (e.g., type `/d
 |---|---|
 | `/devlyn:resolve` | Systematic bug fixing with root-cause analysis and test-driven validation |
 | `/devlyn:team-resolve` | Spawns a full agent team — root cause analyst, test engineer, security auditor — to investigate complex issues |
-| `/devlyn:auto-resolve` | Fully automated pipeline for any task — bugs, features, refactors, chores. Build → evaluate → fix loop → simplify → review → clean → docs. One command, zero human intervention. Supports `--with-codex` for cross-model evaluation via OpenAI Codex |
+| `/devlyn:auto-resolve` | Fully automated pipeline for any task — bugs, features, refactors, chores. Build → browser validate → evaluate → fix loop → simplify → review → clean → docs. One command, zero human intervention. Supports `--with-codex` for cross-model evaluation via OpenAI Codex |
+| `/devlyn:browser-validate` | Verify implemented features work in a real browser — starts dev server, tests the feature end-to-end (clicks, forms, verification), with tiered fallback (Chrome MCP → Playwright → curl) |
 
 ### Code Review & Quality
 
@@ -151,6 +153,7 @@ One command runs the full cycle — no human intervention needed:
 | Phase | What Happens |
 |---|---|
 | **Build** | `team-resolve` investigates and implements, writes testable done criteria |
+| **Browser Validate** | For web projects: starts dev server, tests the implemented feature end-to-end in a real browser, fixes issues found |
 | **Evaluate** | Independent evaluator grades against done criteria with calibrated skepticism |
 | **Fix Loop** | If evaluation fails, fixes findings and re-evaluates (up to N rounds) |
 | **Simplify** | Quick cleanup pass for reuse and efficiency |
@@ -159,7 +162,7 @@ One command runs the full cycle — no human intervention needed:
 | **Clean** | Remove dead code and unused dependencies |
 | **Docs** | Sync documentation with changes |
 
-Each phase runs as a separate subagent (fresh context), communicates via files, and commits a git checkpoint for rollback safety. Skip phases with flags: `--skip-review`, `--skip-clean`, `--skip-docs`, `--max-rounds 3`, `--with-codex` (cross-model evaluation via OpenAI Codex).
+Each phase runs as a separate subagent (fresh context), communicates via files, and commits a git checkpoint for rollback safety. Skip phases with flags: `--skip-browser`, `--skip-review`, `--skip-clean`, `--skip-docs`, `--max-rounds 3`, `--with-codex` (cross-model evaluation via OpenAI Codex).
 
 ### Manual Workflow
 
@@ -236,6 +239,15 @@ Installed via the [skills CLI](https://github.com/anthropics/skills) (`npx skill
 | `coreyhaines31/marketingskills` | Marketing automation and content skills |
 | `anthropics/skills` | Official Anthropic skill-creator with eval framework and description optimizer |
 | `Leonxlnx/taste-skill` | Premium frontend design skills — modern layouts, animations, and visual refinement |
+
+### MCP Servers
+
+Installed via `claude mcp add` during setup.
+
+| Server | Description |
+|---|---|
+| `codex-cli` | Codex MCP server for cross-model evaluation via OpenAI Codex |
+| `playwright` | Playwright MCP for browser testing — powers `devlyn:browser-validate` Tier 2 |
 
 > **Want to add a pack?** Open a PR adding your pack to the `OPTIONAL_ADDONS` array in [`bin/devlyn.js`](bin/devlyn.js).
 
