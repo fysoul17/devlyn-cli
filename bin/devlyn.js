@@ -542,10 +542,15 @@ async function init(skipPrompts = false) {
   if (!settings.permissions) settings.permissions = {};
   if (!settings.permissions.allow) settings.permissions.allow = [];
   const pipelinePermissions = [
-    'Write:.claude/done-criteria.md',
-    'Write:.claude/EVAL-FINDINGS.md',
-    'Edit:.claude/done-criteria.md',
-    'Edit:.claude/EVAL-FINDINGS.md',
+    'Write(.claude/done-criteria.md)',
+    'Write(.claude/EVAL-FINDINGS.md)',
+    'Edit(.claude/done-criteria.md)',
+    'Edit(.claude/EVAL-FINDINGS.md)',
+    'Bash(git add *)',
+    'Bash(git commit *)',
+    'Bash(git diff *)',
+    'Bash(git status *)',
+    'Bash(git log *)',
   ];
   let settingsChanged = false;
   for (const perm of pipelinePermissions) {

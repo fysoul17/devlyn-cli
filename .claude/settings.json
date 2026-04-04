@@ -1,5 +1,18 @@
 {
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Write(.claude/done-criteria.md)",
+      "Write(.claude/EVAL-FINDINGS.md)",
+      "Edit(.claude/done-criteria.md)",
+      "Edit(.claude/EVAL-FINDINGS.md)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git diff *)",
+      "Bash(git status *)",
+      "Bash(git log *)"
+    ]
   }
 }
