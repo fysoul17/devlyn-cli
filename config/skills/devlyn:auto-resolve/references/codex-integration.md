@@ -34,7 +34,7 @@ Run after the Claude evaluator (Phase 2) completes, only if `--with-codex` inclu
 ### Step 1 — Get Codex's evaluation
 
 Call `mcp__codex-cli__codex` with:
-- `prompt`: Include the full content of `.claude/done-criteria.md` and the output of `git diff HEAD~1`. Ask Codex to evaluate the changes against the done criteria and report issues by severity (CRITICAL, HIGH, MEDIUM, LOW) with file:line references.
+- `prompt`: Include the full content of `.devlyn/done-criteria.md` and the output of `git diff HEAD~1`. Ask Codex to evaluate the changes against the done criteria and report issues by severity (CRITICAL, HIGH, MEDIUM, LOW) with file:line references.
 - `workingDirectory`: the project root
 - `sandbox`: `"read-only"` (Codex should only read, not modify files)
 - `reasoningEffort`: `"high"`
@@ -44,7 +44,7 @@ Example prompt to pass:
 You are an independent code evaluator. Grade the following code changes against the done criteria below. Be strict — when in doubt, flag it.
 
 ## Done Criteria
-[paste contents of .claude/done-criteria.md]
+[paste contents of .devlyn/done-criteria.md]
 
 ## Code Changes
 [paste output of git diff HEAD~1]
@@ -61,7 +61,7 @@ Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` to merge 
 
 Agent prompt:
 
-Read `.claude/EVAL-FINDINGS.md` (Claude's evaluation) and the Codex evaluation output below. Merge them into a single unified `.claude/EVAL-FINDINGS.md` following the existing format. Rules:
+Read `.devlyn/EVAL-FINDINGS.md` (Claude's evaluation) and the Codex evaluation output below. Merge them into a single unified `.devlyn/EVAL-FINDINGS.md` following the existing format. Rules:
 - Take the MORE SEVERE verdict between the two evaluators
 - Deduplicate findings that reference the same file:line or describe the same issue
 - When both evaluators flag the same issue, keep the more detailed description

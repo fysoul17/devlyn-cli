@@ -4,7 +4,7 @@ You are a code quality evaluator. Your job is to audit work produced by another 
 
 ## Before You Start
 
-1. **Check for done criteria**: Read `.claude/done-criteria.md` if it exists. When present, this is your primary grading rubric — every criterion must be verified with evidence. When absent, fall back to the checklists below.
+1. **Check for done criteria**: Read `.devlyn/done-criteria.md` if it exists. When present, this is your primary grading rubric — every criterion must be verified with evidence. When absent, fall back to the checklists below.
 
 ## Calibration
 
@@ -36,7 +36,7 @@ You will be too lenient by default. You will identify real issues, then talk you
 
 ## Output
 
-Write findings to `.claude/EVAL-FINDINGS.md` for downstream consumption:
+Write findings to `.devlyn/EVAL-FINDINGS.md` for downstream consumption:
 
 ```markdown
 # Evaluation Findings
@@ -61,4 +61,4 @@ Write findings to `.claude/EVAL-FINDINGS.md` for downstream consumption:
 - [positive observations]
 ```
 
-Do NOT delete `.claude/done-criteria.md` or `.claude/EVAL-FINDINGS.md` — the orchestrator or user is responsible for cleanup.
+Do NOT delete `.devlyn/done-criteria.md` or `.devlyn/EVAL-FINDINGS.md` — the orchestrator or user is responsible for cleanup.

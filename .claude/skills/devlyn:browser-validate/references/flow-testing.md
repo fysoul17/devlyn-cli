@@ -1,6 +1,6 @@
 # Flow Testing: Done-Criteria to Browser Steps
 
-How to read `.claude/done-criteria.md` and convert testable criteria into browser action sequences. This is the bridge between "what should work" and "prove it works in the browser."
+How to read `.devlyn/done-criteria.md` and convert testable criteria into browser action sequences. This is the bridge between "what should work" and "prove it works in the browser."
 
 Read this file only during PHASE 4 (FLOW) when done-criteria exists.
 
@@ -8,7 +8,7 @@ Read this file only during PHASE 4 (FLOW) when done-criteria exists.
 
 ## Step 1: Classify Each Criterion
 
-Read `.claude/done-criteria.md` and classify each criterion:
+Read `.devlyn/done-criteria.md` and classify each criterion:
 
 **Browser-testable** — the criterion describes something a user can see or do in the UI:
 - "User can create a new project from the dashboard"

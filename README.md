@@ -42,7 +42,7 @@ Pipeline orchestration that controls _how agents execute_ — permissions, state
 - **`/devlyn:auto-resolve`** — 9-phase automated pipeline (build → browser validate → evaluate → fix loop → simplify → review → security → clean → docs)
 - **`/devlyn:browser-validate`** — feature verification in a real browser with tiered fallback (Chrome MCP → Playwright → curl)
 - **`bypassPermissions` mode** for autonomous subagent execution
-- **File-based state machine** — agents communicate via `.claude/done-criteria.md`, `EVAL-FINDINGS.md`, and `BROWSER-RESULTS.md`
+- **File-based state machine** — agents communicate via `.devlyn/done-criteria.md`, `EVAL-FINDINGS.md`, and `BROWSER-RESULTS.md`
 - **Git checkpoints** at each phase for rollback safety
 - **Cross-model evaluation** via `--with-codex` flag (OpenAI Codex as independent evaluator)
 
@@ -172,7 +172,7 @@ For step-by-step control between phases:
 |---|---|---|
 | 1. **Resolve** | `/devlyn:resolve` or `/devlyn:team-resolve` | Fix the issue — solo for focused bugs (1-2 modules), team for complex issues (3+ modules) |
 | 2. **Evaluate** | `/devlyn:evaluate` | Independent quality evaluation — grades against done criteria written in step 1 |
-| | | *If the evaluation finds issues: `/devlyn:team-resolve "Fix issues in .claude/EVAL-FINDINGS.md"`* |
+| | | *If the evaluation finds issues: `/devlyn:team-resolve "Fix issues in .devlyn/EVAL-FINDINGS.md"`* |
 | 3. **Simplify** | `/simplify` | Quick cleanup pass for reuse, quality, and efficiency *(built-in Claude Code command)* |
 | 4. **Review** | `/devlyn:review` or `/devlyn:team-review` | Audit the changes — solo for small PRs (< 10 files), team for large PRs (10+ files) |
 | 5. **Clean** | `/devlyn:clean` | Remove dead code, unused dependencies, and complexity hotspots |

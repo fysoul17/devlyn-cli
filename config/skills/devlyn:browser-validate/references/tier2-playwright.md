@@ -44,7 +44,7 @@ Generate a temporary test script from the test steps, run it with Playwright's J
 
 ## Script Generation
 
-For each phase (smoke, flow, visual), generate a test script at `.claude/browser-test.spec.ts`.
+For each phase (smoke, flow, visual), generate a test script at `.devlyn/browser-test.spec.ts`.
 
 ### Smoke Test Script Template
 
@@ -89,7 +89,7 @@ test.describe('Smoke Tests', () => {
       const pageUrl = page.url();
       expect(title, 'Page shows a browser error — server may be down').not.toBe(pageUrl);
 
-      await page.screenshot({ path: `.claude/screenshots/smoke${route.replace(/\//g, '-') || '-root'}.png`, fullPage: true });
+      await page.screenshot({ path: `.devlyn/screenshots/smoke${route.replace(/\//g, '-') || '-root'}.png`, fullPage: true });
 
       if (errors.length > 0) {
         test.info().annotations.push({ type: 'console_errors', description: errors.join(' | ') });
@@ -123,7 +123,7 @@ test('flow: [criterion description]', async ({ page }) => {
   await expect(page.locator('[verification selector]')).toBeVisible();
 
   // Screenshot
-  await page.screenshot({ path: '.claude/screenshots/flow-[name].png' });
+  await page.screenshot({ path: '.devlyn/screenshots/flow-[name].png' });
 });
 ```
 
@@ -135,7 +135,7 @@ test.describe('Visual - Mobile', () => {
   for (const route of ROUTES) {
     test(`visual-mobile: ${route}`, async ({ page }) => {
       await page.goto(`http://localhost:${PORT}${route}`, { waitUntil: 'networkidle' });
-      await page.screenshot({ path: `.claude/screenshots/visual-mobile${route.replace(/\//g, '-') || '-root'}.png`, fullPage: true });
+      await page.screenshot({ path: `.devlyn/screenshots/visual-mobile${route.replace(/\//g, '-') || '-root'}.png`, fullPage: true });
     });
   }
 });
@@ -145,7 +145,7 @@ test.describe('Visual - Desktop', () => {
   for (const route of ROUTES) {
     test(`visual-desktop: ${route}`, async ({ page }) => {
       await page.goto(`http://localhost:${PORT}${route}`, { waitUntil: 'networkidle' });
-      await page.screenshot({ path: `.claude/screenshots/visual-desktop${route.replace(/\//g, '-') || '-root'}.png`, fullPage: true });
+      await page.screenshot({ path: `.devlyn/screenshots/visual-desktop${route.replace(/\//g, '-') || '-root'}.png`, fullPage: true });
     });
   }
 });
@@ -154,16 +154,16 @@ test.describe('Visual - Desktop', () => {
 ## Execution
 
 ```bash
-mkdir -p .claude/screenshots
-npx playwright test .claude/browser-test.spec.ts \
+mkdir -p .devlyn/screenshots
+npx playwright test .devlyn/browser-test.spec.ts \
   --reporter=json \
-  --output=.claude/playwright-results \
-  2>&1 | tee .claude/playwright-output.json
+  --output=.devlyn/playwright-results \
+  2>&1 | tee .devlyn/playwright-output.json
 ```
 
 ## Parsing Results
 
-Read `.claude/playwright-output.json`. The JSON structure contains:
+Read `.devlyn/playwright-output.json`. The JSON structure contains:
 - `suites[].specs[].tests[].results[].status` — `"passed"`, `"failed"`, `"timedOut"`
 - `suites[].specs[].tests[].results[].errors` — error messages with stack traces
 - `suites[].specs[].tests[].annotations` — custom annotations (console_errors, network_failures)
@@ -177,12 +177,12 @@ Map these to BROWSER-RESULTS.md findings:
 
 After parsing results:
 ```bash
-rm -f .claude/browser-test.spec.ts
-rm -rf .claude/playwright-results
-rm -f .claude/playwright-output.json
+rm -f .devlyn/browser-test.spec.ts
+rm -rf .devlyn/playwright-results
+rm -f .devlyn/playwright-output.json
 ```
 
-Keep `.claude/screenshots/` — those are evidence referenced by the report.
+Keep `.devlyn/screenshots/` — those are evidence referenced by the report.
 
 ## Limitations vs Tier 1
 

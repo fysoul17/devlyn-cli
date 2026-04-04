@@ -23,7 +23,7 @@ Before spawning any evaluators, understand what you're evaluating:
    - **"recent changes"** or no argument: Use `git diff HEAD` for unstaged changes, `git status` for new files
    - **Running session / live monitoring**: Take a baseline snapshot with `git status --short | wc -l`, then poll every 30-45 seconds for new changes using `git status` and `find . -newer <reference-file> -type f`. Report findings incrementally as changes appear.
 
-2. **Check for done criteria**: Read `.claude/done-criteria.md` if it exists. This file contains testable success criteria written by the generator (e.g., `/devlyn:team-resolve` Phase 1.5). When present, it is the primary grading rubric — every criterion in it must be verified. When absent, fall back to the evaluation checklists below.
+2. **Check for done criteria**: Read `.devlyn/done-criteria.md` if it exists. This file contains testable success criteria written by the generator (e.g., `/devlyn:team-resolve` Phase 1.5). When present, it is the primary grading rubric — every criterion in it must be verified. When absent, fall back to the evaluation checklists below.
 
 3. Build the evaluation baseline:
    - Run `git status --short` to see all changed and new files
@@ -297,9 +297,9 @@ LOW (note):
 4. For each catch block: is the error surfaced to the user or silently swallowed?
 5. Check for React anti-patterns: uncontrolled-to-controlled switches, direct DOM mutation, missing cleanup
 6. Compare against existing components for pattern consistency
-7. **Browser evidence** (when available): Read `.claude/BROWSER-RESULTS.md` if it exists — it contains pre-collected smoke test results, flow test results, console errors, network failures, and screenshots from the `devlyn:browser-validate` skill. Use this as additional evidence in your evaluation. Do not re-run smoke tests that are already covered.
+7. **Browser evidence** (when available): Read `.devlyn/BROWSER-RESULTS.md` if it exists — it contains pre-collected smoke test results, flow test results, console errors, network failures, and screenshots from the `devlyn:browser-validate` skill. Use this as additional evidence in your evaluation. Do not re-run smoke tests that are already covered.
    If the dev server is still running and you need deeper investigation on a specific interaction, use browser tools directly (check if `mcp__claude-in-chrome__*` tools are available, or fall back to Playwright). Focus on verifying specific findings, not duplicating the full smoke/flow suite.
-   If neither `.claude/BROWSER-RESULTS.md` exists nor browser tools are available, note "Live testing skipped — no browser validation available" in your deliverable.
+   If neither `.devlyn/BROWSER-RESULTS.md` exists nor browser tools are available, note "Live testing skipped — no browser validation available" in your deliverable.
 
 **Your deliverable**: Send a message to the team lead with:
 1. Component quality assessment for each new/changed component
@@ -480,7 +480,7 @@ After receiving all evaluator findings:
 
 1. Present the evaluation report to the user (format below).
 
-2. **Write findings to `.claude/EVAL-FINDINGS.md`** for downstream consumption by other agents (e.g., `/devlyn:auto-resolve` orchestrator or a follow-up `/devlyn:team-resolve`). This file enables the feedback loop — the generator can read it and fix the issues without human relay.
+2. **Write findings to `.devlyn/EVAL-FINDINGS.md`** for downstream consumption by other agents (e.g., `/devlyn:auto-resolve` orchestrator or a follow-up `/devlyn:team-resolve`). This file enables the feedback loop — the generator can read it and fix the issues without human relay.
 
 ```markdown
 # Evaluation Findings
@@ -502,7 +502,7 @@ After receiving all evaluator findings:
 - [pattern description]
 ```
 
-3. Do NOT delete `.claude/done-criteria.md` or `.claude/EVAL-FINDINGS.md` — downstream consumers (e.g., `/devlyn:auto-resolve` orchestrator or a follow-up `/devlyn:team-resolve`) may need to read them. The orchestrator or user is responsible for cleanup.
+3. Do NOT delete `.devlyn/done-criteria.md` or `.devlyn/EVAL-FINDINGS.md` — downstream consumers (e.g., `/devlyn:auto-resolve` orchestrator or a follow-up `/devlyn:team-resolve`) may need to read them. The orchestrator or user is responsible for cleanup.
 
 ## Phase 6: CLEANUP
 

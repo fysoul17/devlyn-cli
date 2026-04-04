@@ -93,7 +93,7 @@ Teammates: [list of roles being spawned and why each was chosen]
 
 Before any code is written, define what "done" looks like. This prevents self-evaluation bias and gives external evaluators (like `/devlyn:evaluate`) concrete criteria to grade against.
 
-1. Based on your Phase 1 investigation, write testable success criteria to `.claude/done-criteria.md`:
+1. Based on your Phase 1 investigation, write testable success criteria to `.devlyn/done-criteria.md`:
 
 ```markdown
 # Done Criteria: [issue summary]

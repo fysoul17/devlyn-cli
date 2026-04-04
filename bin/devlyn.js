@@ -528,6 +528,19 @@ async function init(skipPrompts = false) {
     log('  → CLAUDE.md', 'dim');
   }
 
+  // Add .devlyn/ (pipeline state directory) to .gitignore
+  const gitignorePath = path.join(process.cwd(), '.gitignore');
+  const gitignoreEntry = '.devlyn/';
+  let gitignoreContent = fs.existsSync(gitignorePath)
+    ? fs.readFileSync(gitignorePath, 'utf8')
+    : '';
+  if (!gitignoreContent.split('\n').some((line) => line.trim() === gitignoreEntry || line.trim() === '.devlyn')) {
+    const prefix = gitignoreContent && !gitignoreContent.endsWith('\n') ? '\n' : '';
+    const header = gitignoreContent ? '\n# devlyn-cli pipeline state\n' : '# devlyn-cli pipeline state\n';
+    fs.writeFileSync(gitignorePath, gitignoreContent + prefix + header + gitignoreEntry + '\n');
+    log('  → .gitignore (added .devlyn/)', 'dim');
+  }
+
   // Enable agent teams in project settings
   const settingsPath = path.join(targetDir, 'settings.json');
   let settings = {};
@@ -539,16 +552,12 @@ async function init(skipPrompts = false) {
     }
   }
   if (!settings.env) settings.env = {};
-  // Auto-allow pipeline files so auto-resolve doesn't prompt for permission
+  // Auto-allow pipeline state directory and common git commands so auto-resolve doesn't prompt
   if (!settings.permissions) settings.permissions = {};
   if (!settings.permissions.allow) settings.permissions.allow = [];
   const pipelinePermissions = [
-    'Write(.claude/done-criteria.md)',
-    'Write(.claude/EVAL-FINDINGS.md)',
-    'Write(.claude/BROWSER-RESULTS.md)',
-    'Edit(.claude/done-criteria.md)',
-    'Edit(.claude/EVAL-FINDINGS.md)',
-    'Edit(.claude/BROWSER-RESULTS.md)',
+    'Write(.devlyn/**)',
+    'Edit(.devlyn/**)',
     'Bash(git add *)',
     'Bash(git commit *)',
     'Bash(git diff *)',

@@ -56,7 +56,7 @@ For hands-free build-evaluate-polish cycles — works for bugs, features, refact
 /devlyn:auto-resolve [task description]
 ```
 
-This runs the full pipeline automatically: **Build → Browser Validate → Evaluate → Fix Loop → Simplify → Review → Security Review → Clean → Docs**. Each phase runs as a separate subagent with its own context. Communication between phases happens via files (`.claude/done-criteria.md`, `.claude/EVAL-FINDINGS.md`, `.claude/BROWSER-RESULTS.md`).
+This runs the full pipeline automatically: **Build → Browser Validate → Evaluate → Fix Loop → Simplify → Review → Security Review → Clean → Docs**. Each phase runs as a separate subagent with its own context. Communication between phases happens via files (`.devlyn/done-criteria.md`, `.devlyn/EVAL-FINDINGS.md`, `.devlyn/BROWSER-RESULTS.md`).
 
 For web projects, the Browser Validate phase starts the dev server and tests the implemented feature in a real browser — clicking buttons, filling forms, verifying results. If the feature doesn't work, findings feed back into the fix loop.
 
@@ -72,9 +72,9 @@ Optional flags:
 
 When you want to run each step yourself with review between phases:
 
-1. `/devlyn:team-resolve [issue]` → Investigate + implement (writes `.claude/done-criteria.md`)
-2. `/devlyn:evaluate` → Grade against done-criteria (writes `.claude/EVAL-FINDINGS.md`)
-3. If findings exist: `/devlyn:team-resolve "Fix issues in .claude/EVAL-FINDINGS.md"` → Fix loop
+1. `/devlyn:team-resolve [issue]` → Investigate + implement (writes `.devlyn/done-criteria.md`)
+2. `/devlyn:evaluate` → Grade against done-criteria (writes `.devlyn/EVAL-FINDINGS.md`)
+3. If findings exist: `/devlyn:team-resolve "Fix issues in .devlyn/EVAL-FINDINGS.md"` → Fix loop
 4. `/simplify` → Quick cleanup pass
 5. `/devlyn:team-review` → Multi-perspective team review (for important PRs)
 6. `/devlyn:clean` → Codebase hygiene

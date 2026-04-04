@@ -53,7 +53,7 @@ Investigate and implement the following task. Work through these phases in order
 - **UI/UX**: review existing components, design system, and user flows.
 Read relevant files in parallel. Build a clear picture of what exists and what needs to change.
 
-**Phase B — Define done criteria**: Before writing any code, create `.claude/done-criteria.md` with testable success criteria. Each criterion must be verifiable (a test can assert it or a human can observe it in under 30 seconds), specific (not vague like "handles errors correctly"), and scoped to this task. Include an "Out of Scope" section and a "Verification Method" section. This file is required — downstream evaluation depends on it.
+**Phase B — Define done criteria**: Before writing any code, create `.devlyn/done-criteria.md` with testable success criteria. Each criterion must be verifiable (a test can assert it or a human can observe it in under 30 seconds), specific (not vague like "handles errors correctly"), and scoped to this task. Include an "Out of Scope" section and a "Verification Method" section. This file is required — downstream evaluation depends on it.
 
 **Phase C — Assemble a team**: Use TeamCreate to create a team. Select teammates based on task type:
 - Bug fix: root-cause-analyst + test-engineer (+ security-auditor, performance-engineer as needed)
@@ -64,14 +64,14 @@ Each teammate investigates from their perspective and sends findings back.
 
 **Phase D — Synthesize and implement**: After all teammates report, compile findings into a unified plan. Implement the solution — no workarounds, no hardcoded values, no silent error swallowing. For bugs: write a failing test first, then fix. For features: implement following existing patterns, then write tests. For refactors: ensure tests pass before and after.
 
-**Phase E — Update done criteria**: Mark each criterion in `.claude/done-criteria.md` as satisfied. Run the full test suite.
+**Phase E — Update done criteria**: Mark each criterion in `.devlyn/done-criteria.md` as satisfied. Run the full test suite.
 
 **Phase F — Cleanup**: Shut down all teammates and delete the team.
 
 The task is: [paste the task description here]
 
 **After the agent completes**:
-1. Verify `.claude/done-criteria.md` exists — if missing, create a basic one from the agent's output summary
+1. Verify `.devlyn/done-criteria.md` exists — if missing, create a basic one from the agent's output summary
 2. Run `git diff --stat` to confirm code was actually changed
 3. If no changes were made, report failure and stop
 4. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): phase 1 — build complete"` to create a rollback point
@@ -86,16 +86,16 @@ Skip if `--skip-browser` was set.
 
 Agent prompt — pass this to the Agent tool:
 
-You are a browser validation agent. Read the skill instructions at `.claude/skills/devlyn:browser-validate/SKILL.md` and follow the full workflow to validate this web application. The dev server should be started, tested, and left running (pass `--keep-server` internally) — the pipeline will clean it up later. Write your findings to `.claude/BROWSER-RESULTS.md`.
+You are a browser validation agent. Read the skill instructions at `.claude/skills/devlyn:browser-validate/SKILL.md` and follow the full workflow to validate this web application. The dev server should be started, tested, and left running (pass `--keep-server` internally) — the pipeline will clean it up later. Write your findings to `.devlyn/BROWSER-RESULTS.md`.
 
 **After the agent completes**:
-1. Read `.claude/BROWSER-RESULTS.md`
+1. Read `.devlyn/BROWSER-RESULTS.md`
 2. Extract the verdict
 3. Branch on verdict:
    - `PASS` → continue to PHASE 2
    - `PASS WITH ISSUES` → continue to PHASE 2 (evaluator reads browser results as extra context)
    - `PARTIALLY VERIFIED` → continue to PHASE 2, but flag to the evaluator that browser coverage was incomplete — unverified features should be weighted more heavily
-   - `NEEDS WORK` → features don't work in the browser. Go to PHASE 2.5 fix loop. Fix agent reads `.claude/BROWSER-RESULTS.md` for which criterion failed, at what step, with what error. After fixing, re-run PHASE 1.5 to verify the fix before proceeding to Evaluate.
+   - `NEEDS WORK` → features don't work in the browser. Go to PHASE 2.5 fix loop. Fix agent reads `.devlyn/BROWSER-RESULTS.md` for which criterion failed, at what step, with what error. After fixing, re-run PHASE 1.5 to verify the fix before proceeding to Evaluate.
    - `BLOCKED` → app doesn't render. Go to PHASE 2.5 fix loop. After fixing, re-run PHASE 1.5.
 
 ## PHASE 2: EVALUATE
@@ -106,7 +106,7 @@ Agent prompt — pass this to the Agent tool:
 
 You are an independent evaluator. Your job is to grade work produced by another agent, not to praise it. You will be too lenient by default — fight this tendency. When in doubt, score DOWN, not up. A false negative (missing a bug) ships broken code. A false positive (flagging a non-issue) costs minutes of review. The cost is asymmetric.
 
-**Step 1 — Read the done criteria**: Read `.claude/done-criteria.md`. This is your primary grading rubric. Every criterion must be verified with evidence.
+**Step 1 — Read the done criteria**: Read `.devlyn/done-criteria.md`. This is your primary grading rubric. Every criterion must be verified with evidence.
 
 **Step 2 — Discover changes**: Run `git diff HEAD~1` and `git status` to see what changed. Read all changed/new files in parallel.
 
@@ -119,7 +119,7 @@ You are an independent evaluator. Your job is to grade work produced by another 
 
 **Step 4 — Grade against done criteria**: For each criterion in done-criteria.md, mark VERIFIED (with evidence) or FAILED (with file:line and what's wrong).
 
-**Step 5 — Write findings**: Write `.claude/EVAL-FINDINGS.md` with this exact structure:
+**Step 5 — Write findings**: Write `.devlyn/EVAL-FINDINGS.md` with this exact structure:
 
 ```
 # Evaluation Findings
@@ -143,10 +143,10 @@ Calibration examples to guide your judgment:
 - A `let` that could be `const` = LOW note only. Linters catch this.
 - "The error handling is generally quite good" = WRONG. Count the instances. Name the files. "3 of 7 async ops have error states. 4 are missing: file:line, file:line..."
 
-Do NOT delete `.claude/done-criteria.md` or `.claude/EVAL-FINDINGS.md` — the orchestrator needs them.
+Do NOT delete `.devlyn/done-criteria.md` or `.devlyn/EVAL-FINDINGS.md` — the orchestrator needs them.
 
 **After the agent completes**:
-1. Read `.claude/EVAL-FINDINGS.md`
+1. Read `.devlyn/EVAL-FINDINGS.md`
 2. Extract the verdict
 3. **If `--with-codex` includes `evaluate` or `both`**: Read `references/codex-integration.md` and follow the "PHASE 2-CODEX: CROSS-MODEL EVALUATE" section. This runs Codex as a second evaluator and merges findings into `EVAL-FINDINGS.md`.
 4. Branch on verdict (from the merged findings if Codex was used):
@@ -154,7 +154,7 @@ Do NOT delete `.claude/done-criteria.md` or `.claude/EVAL-FINDINGS.md` — the o
    - `PASS WITH ISSUES` → skip to PHASE 3 (issues are shippable)
    - `NEEDS WORK` → go to PHASE 2.5 (fix loop)
    - `BLOCKED` → go to PHASE 2.5 (fix loop)
-5. If `.claude/EVAL-FINDINGS.md` was not created, treat as PASS WITH ISSUES and log a warning
+5. If `.devlyn/EVAL-FINDINGS.md` was not created, treat as PASS WITH ISSUES and log a warning
 
 ## PHASE 2.5: FIX LOOP (conditional)
 
@@ -164,11 +164,11 @@ Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` to fix th
 
 Agent prompt — pass this to the Agent tool:
 
-Read `.claude/EVAL-FINDINGS.md` — it contains specific issues found by an independent evaluator. Fix every CRITICAL and HIGH finding. Address MEDIUM findings if straightforward.
+Read `.devlyn/EVAL-FINDINGS.md` — it contains specific issues found by an independent evaluator. Fix every CRITICAL and HIGH finding. Address MEDIUM findings if straightforward.
 
-The original done criteria are in `.claude/done-criteria.md` — your fixes must still satisfy those criteria. Do not delete or weaken criteria to make them pass.
+The original done criteria are in `.devlyn/done-criteria.md` — your fixes must still satisfy those criteria. Do not delete or weaken criteria to make them pass.
 
-For each finding: read the referenced file:line, understand the issue, implement the fix. No workarounds — fix the actual root cause. Run tests after fixing. Update `.claude/done-criteria.md` to mark fixed items.
+For each finding: read the referenced file:line, understand the issue, implement the fix. No workarounds — fix the actual root cause. Run tests after fixing. Update `.devlyn/done-criteria.md` to mark fixed items.
 
 **After the agent completes**:
 1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): fix round [N] complete"` to preserve the fix
@@ -271,10 +271,7 @@ Synchronize documentation with recent code changes. Use `git log --oneline -20` 
 After all phases complete:
 
 1. Clean up temporary files:
-   - Delete `.claude/done-criteria.md`
-   - Delete `.claude/EVAL-FINDINGS.md`
-   - Delete `.claude/BROWSER-RESULTS.md` (if exists)
-   - Delete `.claude/screenshots/` directory (if exists)
+   - Delete the `.devlyn/` directory entirely (contains done-criteria.md, EVAL-FINDINGS.md, BROWSER-RESULTS.md, screenshots/, playwright temp files)
    - Kill any dev server process still running from browser validation
 
 2. Run `git log --oneline -10` to show commits made during the pipeline

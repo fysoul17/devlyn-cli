@@ -15,7 +15,7 @@ $ARGUMENTS
 
 ## PHASE 1: DETECT
 
-1. **What was built**: This is the most important input. Read `.claude/done-criteria.md` if it exists — it tells you what the feature is supposed to do. If it doesn't exist, read `git diff --stat` and `git log -1` to understand what changed. You need to know what to test before anything else.
+1. **What was built**: This is the most important input. Read `.devlyn/done-criteria.md` if it exists — it tells you what the feature is supposed to do. If it doesn't exist, read `git diff --stat` and `git log -1` to understand what changed. You need to know what to test before anything else.
 
 2. **Framework detection**: Read `package.json` → identify framework and start command from `scripts.dev`, `scripts.start`, or `scripts.preview`.
 
@@ -65,7 +65,7 @@ If the app isn't rendering, the verdict is BLOCKED — feature testing can't hap
 
 This is the primary purpose of browser validation. Everything else is in service of getting here.
 
-Read `.claude/done-criteria.md` (or infer from git diff what was built). For each criterion that describes something a user can do or see in the UI, test it end-to-end in the browser:
+Read `.devlyn/done-criteria.md` (or infer from git diff what was built). For each criterion that describes something a user can do or see in the UI, test it end-to-end in the browser:
 
 1. **Plan the test**: What would a user do to verify this feature works? Navigate where, click what, type what, expect what result?
 2. **Execute it**: Navigate to the page, find the interactive elements, perform the actions, verify the outcome. Read `references/flow-testing.md` for patterns on converting criteria to browser steps.
@@ -88,7 +88,7 @@ Judgment-based — look at the screenshots and report visible issues.
 
 ## PHASE 6: REPORT
 
-Write `.claude/BROWSER-RESULTS.md`:
+Write `.devlyn/BROWSER-RESULTS.md`:
 
 ```markdown
 # Browser Validation Results
