@@ -71,7 +71,12 @@ Identify fields with `find` first, then use `form_input` with the field selector
 ```
 computer → screenshot action captures the visible viewport
 ```
-Save screenshots with descriptive names: `smoke-root.png`, `flow-create-project-step3.png`, `visual-mobile-dashboard.png`.
+Save screenshots into the topic-scoped directory that PHASE 1 set up (`.devlyn/screenshots/<topic-slug>/`), organized by phase:
+- Smoke: `<topic>/smoke/<route>.png` — e.g., `smoke/root.png`, `smoke/dashboard.png`
+- Feature: `<topic>/feature/<criterion>-step<N>.png` — e.g., `feature/create-project-step3.png`
+- Visual: `<topic>/visual/<viewport>-<route>.png` — e.g., `visual/mobile-dashboard.png`
+
+Since `computer → screenshot` writes to a default location, move/rename the captured file into the right subdirectory immediately after taking it, so evidence paths in the report match this scheme.
 
 ### Resize viewport
 ```

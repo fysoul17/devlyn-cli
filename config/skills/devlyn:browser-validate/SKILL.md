@@ -35,12 +35,32 @@ $ARGUMENTS
    - `--port PORT` — override detected port
    - `--tier N` — force a specific tier (1, 2, or 3)
    - `--mobile-only` / `--desktop-only` — limit viewport testing
+   - `--topic SLUG` — override the auto-derived screenshot topic slug
+
+8. **Derive the screenshot topic slug**. All screenshots for this run go under `.devlyn/screenshots/<topic-slug>/` so runs for different features don't pile up together. Resolution order:
+   1. `--topic` flag value, kebab-cased
+   2. First non-blank heading/line of `.devlyn/done-criteria.md` (strip `#`, kebab-case, max 40 chars)
+   3. Current git branch name, if not `main`/`master`/`HEAD`
+   4. Fallback: `run-<YYYYMMDD-HHMM>`
+
+   Then wipe and recreate the topic dir (fresh evidence per run; don't touch other topics' dirs):
+   ```bash
+   SCREENSHOT_DIR=".devlyn/screenshots/<topic-slug>"
+   rm -rf "$SCREENSHOT_DIR"
+   mkdir -p "$SCREENSHOT_DIR"/{smoke,feature,visual}
+   ```
+
+   Record `$SCREENSHOT_DIR` and reuse it through the run. All screenshot paths below are **relative to `$SCREENSHOT_DIR`**:
+   - Smoke: `smoke/<route-slug>.png` (root → `smoke/root.png`)
+   - Feature: `feature/<criterion-slug>-step<N>.png`
+   - Visual: `visual/<viewport>-<route-slug>.png` (e.g., `visual/mobile-dashboard.png`)
 
 Announce:
 ```
 Browser validation starting
 Feature: [what was built, from done-criteria or git diff]
 Framework: [detected] | Port: [PORT] | Tier: [N — name]
+Topic: [topic-slug] → .devlyn/screenshots/<topic-slug>/
 Phases: Server → Smoke → Feature Test → Visual → Report
 ```
 
