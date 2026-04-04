@@ -71,9 +71,11 @@ Read `.claude/done-criteria.md` (or infer from git diff what was built). For eac
 2. **Execute it**: Navigate to the page, find the interactive elements, perform the actions, verify the outcome. Read `references/flow-testing.md` for patterns on converting criteria to browser steps.
 3. **Capture evidence**: Screenshot at each key step. Record console errors and network failures that happen during the interaction.
 4. **If it fails — try to fix**: Read the error (console, network, or the UI state) to understand why the feature broke. Fix the source code, let hot-reload update, and re-test. Up to 2 fix attempts per criterion.
-5. **Record the result**: For each criterion — PASS (feature works as specified), FAIL (feature doesn't work, include what went wrong), or SKIPPED (criterion isn't browser-testable, e.g., "API returns 401").
+5. **Record the result**: For each criterion — PASS (feature works as specified), FAIL (feature doesn't work, include what went wrong), SKIPPED (criterion isn't browser-testable, e.g., "API returns 401"), or UNVERIFIABLE (feature depends on external services not available in the test environment — e.g., real API keys, third-party auth, paid services).
 
-The verdict depends primarily on this phase. If the implemented features don't work in the browser, the validation fails — even if every page renders perfectly and the layout looks great.
+**Don't churn on external dependencies.** If a feature test is blocked because an API times out, a third-party service isn't configured, or auth credentials aren't available — that's not a bug to fix, it's a test environment limitation. Note it as UNVERIFIABLE, move on to the next criterion. Don't spend more than 30 seconds waiting for a response that's never coming. The goal is to verify what *can* be verified in the current environment, and be honest about what can't.
+
+The verdict depends primarily on this phase. If the implemented features don't work in the browser, the validation fails — even if every page renders perfectly and the layout looks great. And if most features couldn't be verified due to environment limitations, be honest about that — don't call it PASS.
 
 ## PHASE 5: VISUAL (supporting check)
 
@@ -91,12 +93,13 @@ Write `.claude/BROWSER-RESULTS.md`:
 ```markdown
 # Browser Validation Results
 
-## Verdict: [PASS / PASS WITH ISSUES / NEEDS WORK / BLOCKED]
+## Verdict: [PASS / PASS WITH ISSUES / NEEDS WORK / PARTIALLY VERIFIED / BLOCKED]
 Verdict rules:
 - BLOCKED = server won't start or app doesn't render
-- NEEDS WORK = implemented features don't work in the browser (this is the primary failure mode)
-- PASS WITH ISSUES = features work but visual issues or minor warnings exist
-- PASS = features verified working, pages render, layout clean
+- NEEDS WORK = implemented features don't work in the browser
+- PARTIALLY VERIFIED = some features verified working, but others couldn't be tested due to environment limitations (missing API keys, external service dependencies). Be explicit about what was and wasn't verified.
+- PASS WITH ISSUES = all testable features work but visual issues or minor warnings exist
+- PASS = all testable features verified working, pages render, layout clean
 
 ## What Was Tested
 [Brief description of the feature/task from done-criteria or git diff]
@@ -104,7 +107,10 @@ Verdict rules:
 ## Feature Verification (primary)
 | Criterion | Test Steps | Result | Evidence |
 |-----------|-----------|--------|----------|
-| [what should work] | [what you did] | PASS/FAIL/SKIPPED | [screenshot, errors, what went wrong] |
+| [what should work] | [what you did] | PASS/FAIL/SKIPPED/UNVERIFIABLE | [screenshot, errors, what went wrong] |
+
+## Unverifiable Features (if any)
+[List features that couldn't be tested and why — e.g., "Badge rendering requires /api/backends/status which needs real API keys not present in test env. Verified via source code and unit tests instead."]
 
 ## Smoke Test (prerequisite)
 | Route | Renders | Console Errors | Network Failures |
