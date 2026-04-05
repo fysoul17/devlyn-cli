@@ -61,7 +61,7 @@ This runs the full pipeline automatically: **Build → Browser Validate → Eval
 For web projects, the Browser Validate phase starts the dev server and tests the implemented feature in a real browser — clicking buttons, filling forms, verifying results. If the feature doesn't work, findings feed back into the fix loop.
 
 Optional flags:
-- `--max-rounds 3` — increase max evaluate-fix iterations (default: 2)
+- `--max-rounds 6` — increase max evaluate-fix iterations (default: 4)
 - `--skip-browser` — skip browser validation phase (auto-skipped for non-web changes)
 - `--skip-review` — skip team-review phase
 - `--skip-clean` — skip clean phase

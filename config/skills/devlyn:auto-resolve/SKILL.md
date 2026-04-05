@@ -25,7 +25,7 @@ This pipeline runs hands-free. The user launches it to walk away and come back t
 
 1. Extract the task/issue description from `<pipeline_config>`.
 2. Determine optional flags from the input (defaults in parentheses):
-   - `--max-rounds N` (2) — max evaluate-fix loops before stopping with a report
+   - `--max-rounds N` (4) — max evaluate-fix loops before stopping with a report
    - `--skip-review` (false) — skip team-review phase
    - `--security-review` (auto) — run dedicated security audit. Auto-detects: runs when changes touch auth, secrets, user data, API endpoints, env/config, or crypto. Force with `--security-review always` or skip with `--security-review skip`
    - `--skip-clean` (false) — skip clean phase
@@ -146,7 +146,9 @@ You are an independent evaluator. Your job is to grade work produced by another 
 - pattern description
 ```
 
-Verdict rules: BLOCKED = any CRITICAL issues. NEEDS WORK = HIGH issues that should be fixed. PASS WITH ISSUES = only MEDIUM/LOW. PASS = clean.
+Verdict rules: BLOCKED = any CRITICAL issues. NEEDS WORK = HIGH or MEDIUM issues that should be fixed. PASS WITH ISSUES = only LOW cosmetic notes. PASS = clean.
+
+Important: Do NOT label findings as "pre-existing" or "out of scope" to avoid fixing them. If a problem exists in the current code and relates to the done criteria, it's a finding regardless of when it was introduced. The goal is working software, not blame attribution.
 
 Calibration examples to guide your judgment:
 - A catch block that logs but doesn't surface error to user = HIGH (not MEDIUM). Logging is not error handling.
@@ -161,10 +163,10 @@ Do NOT delete `.devlyn/done-criteria.md` or `.devlyn/EVAL-FINDINGS.md` — the o
 3. **If `--with-codex` includes `evaluate` or `both`**: Read `references/codex-integration.md` and follow the "PHASE 2-CODEX: CROSS-MODEL EVALUATE" section. This runs Codex as a second evaluator and merges findings into `EVAL-FINDINGS.md`.
 4. Branch on verdict (from the merged findings if Codex was used):
    - `PASS` → skip to PHASE 3
-   - `PASS WITH ISSUES` → skip to PHASE 3 (issues are shippable)
+   - `PASS WITH ISSUES` → go to PHASE 2.5 (fix loop) — LOW-only issues are still issues; fix them
    - `NEEDS WORK` → go to PHASE 2.5 (fix loop)
    - `BLOCKED` → go to PHASE 2.5 (fix loop)
-5. If `.devlyn/EVAL-FINDINGS.md` was not created, treat as PASS WITH ISSUES and log a warning
+5. If `.devlyn/EVAL-FINDINGS.md` was not created, treat as NEEDS WORK and log a warning — absence of evidence is not evidence of absence
 
 ## PHASE 2.5: FIX LOOP (conditional)
 
@@ -174,7 +176,7 @@ Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` to fix th
 
 Agent prompt — pass this to the Agent tool:
 
-Read `.devlyn/EVAL-FINDINGS.md` — it contains specific issues found by an independent evaluator. Fix every CRITICAL and HIGH finding. Address MEDIUM findings if straightforward.
+Read `.devlyn/EVAL-FINDINGS.md` — it contains specific issues found by an independent evaluator. Fix every finding regardless of severity (CRITICAL, HIGH, MEDIUM, and LOW). The pipeline loops until the evaluator returns PASS — there is no "shippable with issues" shortcut.
 
 The original done criteria are in `.devlyn/done-criteria.md` — your fixes must still satisfy those criteria. Do not delete or weaken criteria to make them pass.
 
