@@ -11,6 +11,16 @@ $ARGUMENTS
 
 <pipeline_workflow>
 
+<autonomy_contract>
+This pipeline runs hands-free. The user launches it to walk away and come back to finished work, so the quality of this run is measured by how far it gets without human intervention. Apply these behaviors throughout every phase:
+
+1. **Make decisions autonomously and log them in the final report.** When you would otherwise ask the user something ("Should I commit this?", "Ready to proceed?", "Which approach?"), pick the safe default, proceed, and record the decision in PHASE 8's report so the user can review it at the end.
+2. **Run only the phases defined below, in the order given.** Doc updates, roadmap edits, changelog entries, and planning-doc changes belong in PHASE 7 (Docs). Resist inserting them earlier as freelance pre-work.
+3. **Delegate all file changes to spawned subagents.** As the orchestrator, your actions are: parse input, spawn phase agents, read handoff files (`.devlyn/*.md`), run `git` commands, branch on verdicts, and emit the final report.
+4. **Continue through the pipeline by default.** Stop only for: (a) a subagent reporting an unrecoverable failure, (b) PHASE 1 producing zero code changes, (c) `max-rounds` reached — in which case continue to PHASE 3 with a warning rather than halting. Every other situation means move on to the next phase.
+5. **Treat questions as a signal to act instead.** If you notice yourself drafting a question to the user mid-pipeline, convert it into a decision + log entry and spawn the next phase.
+</autonomy_contract>
+
 ## PHASE 0: PARSE INPUT
 
 1. Extract the task/issue description from `<pipeline_config>`.
