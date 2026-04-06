@@ -23,10 +23,12 @@ $ARGUMENTS
 
 4. **Affected routes**: Map changed files to routes (e.g., `app/dashboard/page.tsx` → `/dashboard`).
 
-5. **Tier selection** — pick the best available browser tool:
-   - Check if `mcp__claude-in-chrome__*` tools exist → **Tier 1** (Chrome DevTools). Read `references/tier1-chrome.md`.
-   - Else check if `mcp__playwright__*` tools exist or `npx playwright --version` succeeds → **Tier 2** (Playwright). Read `references/tier2-playwright.md`.
-   - Else → **Tier 3** (HTTP smoke). Read `references/tier3-curl.md`.
+5. **Tier selection** — pick the best available browser tool. **You must verify each tier actually works before committing to it** — tools can be registered but not connected:
+   - **Tier 1 probe** (Chrome DevTools): Check if `mcp__claude-in-chrome__*` tools exist. If they do, load `mcp__claude-in-chrome__tabs_context_mcp` via ToolSearch and call it. If the call **succeeds** (returns tab data without error), use Tier 1. Read `references/tier1-chrome.md`. If the call **fails** (timeout, connection error, extension not running), Tier 1 is unavailable — fall through to Tier 2.
+   - **Tier 2 probe** (Playwright): Check if `mcp__playwright__*` tools exist (try ToolSearch for `mcp__playwright__browser_navigate`). If they exist and respond, use Tier 2 Mode A. Else run `npx playwright --version 2>/dev/null` — if it succeeds, use Tier 2 Mode B. Read `references/tier2-playwright.md`.
+   - **Tier 3** (HTTP smoke): Fallback when no browser tool is functional. Read `references/tier3-curl.md`.
+   
+   **Critical rule**: Never treat a tier as available just because its tools appear in the tool list. Deferred/registered tools may not have a running backend. Always probe before committing.
 
 6. **Skip gate**: If no web-relevant files changed (no `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.astro`, `*.css`, `*.scss`, `*.html`, `page.*`, `layout.*`, `route.*`, `+page.*`, `+layout.*`), skip. Report: "Browser validation skipped — no web changes detected."
 
@@ -78,6 +80,8 @@ Get the dev server running. If it doesn't start, diagnose and fix — don't just
 Quick check that the app is alive. This is not the main test — it's a gate to make sure feature testing is even possible.
 
 Navigate to `/` and each affected route. For each page, judge: is this the actual application, or an error page? A connection error, framework error overlay, or blank shell is not the app. If broken, try to fix (read console errors, fix source, let hot-reload pick it up). Up to 2 fix attempts per route.
+
+**Tier downgrade on failure**: If you're on Tier 1 or Tier 2 Mode A and the browser tool consistently fails during smoke (connection errors, timeouts, extension disconnected), **do not skip browser testing**. Instead, downgrade to the next tier (Tier 1 → Tier 2 → Tier 3), re-read the corresponding reference file, and retry the smoke phase with the new tier. Announce: `"Tier [N] browser tools not responding — downgrading to Tier [N+1]."` The goal is to always run the best available browser test, not to give up.
 
 If the app isn't rendering, the verdict is BLOCKED — feature testing can't happen.
 

@@ -101,10 +101,11 @@ You are a browser validation agent. Read the skill instructions at `.claude/skil
 **After the agent completes**:
 1. Read `.devlyn/BROWSER-RESULTS.md`
 2. Extract the verdict
-3. Branch on verdict:
+3. **Validate the verdict is real**: If the verdict says "code-level pass" or indicates no actual browser interaction occurred (no screenshots taken, no pages navigated, no DOM inspected), the validation did NOT happen. Treat this as if no browser validation ran — re-run PHASE 1.5 with `--tier 2` to force Playwright, or `--tier 3` for HTTP smoke. A "PARTIALLY VERIFIED" based on reading source code is not browser validation.
+4. Branch on verdict:
    - `PASS` → continue to PHASE 2
    - `PASS WITH ISSUES` → continue to PHASE 2 (evaluator reads browser results as extra context)
-   - `PARTIALLY VERIFIED` → continue to PHASE 2, but flag to the evaluator that browser coverage was incomplete — unverified features should be weighted more heavily
+   - `PARTIALLY VERIFIED` → continue to PHASE 2, but flag to the evaluator that browser coverage was incomplete — unverified features should be weighted more heavily. This verdict is only valid when features were actually tested in a browser and some couldn't be verified due to environment limitations (missing API keys, external services). It is NOT valid as a substitute for "browser tools didn't work."
    - `NEEDS WORK` → features don't work in the browser. Go to PHASE 2.5 fix loop. Fix agent reads `.devlyn/BROWSER-RESULTS.md` for which criterion failed, at what step, with what error. After fixing, re-run PHASE 1.5 to verify the fix before proceeding to Evaluate.
    - `BLOCKED` → app doesn't render. Go to PHASE 2.5 fix loop. After fixing, re-run PHASE 1.5.
 
