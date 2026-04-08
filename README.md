@@ -6,7 +6,7 @@
   <img alt="DEVLYN" src="assets/logo.svg" width="540" />
 </picture>
 
-### The AI Development Toolkit for Claude Code
+### Context Engineering & Harness Engineering Toolkit for Claude Code
 
 **Ideate. Resolve. Ship. — All from your terminal.**
 
