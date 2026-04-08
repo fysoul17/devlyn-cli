@@ -30,7 +30,7 @@ devlyn-cli solves this with two complementary engineering approaches:
 
 Structured prompts and role-based instructions that shape _what the AI knows and how it thinks_ for each task.
 
-- **16 slash commands** for debugging, code review, UI design, documentation, and more
+- **17 slash commands** for ideation, debugging, code review, UI design, documentation, and more
 - **5 core skills** that activate automatically based on conversation context
 - **Agent team workflows** that spawn specialized AI teammates with role-specific expertise
 - **Product & feature spec templates** for structured planning
@@ -111,10 +111,11 @@ Slash commands are invoked directly in Claude Code conversations (e.g., type `/d
 | `/devlyn:design-system` | Extract design system tokens from a chosen style for exact reproduction |
 | `/devlyn:implement-ui` | Team-based UI build — component architect, UX engineer, accessibility engineer, responsive engineer, visual QA |
 
-### Product & Planning
+### Ideation & Planning
 
 | Command | Description |
 |---|---|
+| `/devlyn:ideate` | Transform unstructured ideas into auto-resolve-ready planning documents through structured brainstorming, research, and multi-perspective synthesis. Produces a three-layer document architecture (Vision → Roadmap → per-item specs) that feeds directly into `auto-resolve` |
 | `/devlyn:product-spec` | Generate or incrementally update product spec documents |
 | `/devlyn:feature-spec` | Transform product specs into implementable feature specifications |
 | `/devlyn:discover-product` | Scan codebase to generate feature-oriented product documentation |
@@ -181,6 +182,34 @@ For step-by-step control between phases:
 Steps 5-6 are optional — run them periodically rather than on every PR.
 
 > **Scope matching matters.** For a simple one-file bug, `/devlyn:resolve` + `/devlyn:review` (solo) is fast. For a multi-module feature, `/devlyn:auto-resolve` handles everything. Don't over-tool simple changes.
+
+### Ideation → Implementation Pipeline
+
+Go from raw ideas to shipped code with zero context loss:
+
+```bash
+# 1. Brainstorm and plan — interactive back-and-forth
+/devlyn:ideate "I want to build a habit tracking app with AI nudges..."
+
+# 2. Review the generated docs
+#    docs/VISION.md        — strategic north star
+#    docs/ROADMAP.md       — indexed roadmap with links
+#    docs/roadmap/phase-1/ — auto-resolve-ready specs per item
+
+# 3. Implement each item hands-free
+/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-1/1.1-user-auth.md"
+/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-1/1.2-dashboard.md"
+```
+
+The ideation skill produces a **three-layer document architecture** designed to eliminate context pollution:
+
+| Layer | File | Purpose | Who Reads It |
+|---|---|---|---|
+| Strategic | `VISION.md` | North star, principles, anti-goals | Humans, ideation skill |
+| Tactical | `ROADMAP.md` | Indexed table linking to per-item specs | Humans, ideation skill |
+| Operational | `roadmap/phase-N/item.md` | Self-contained spec with requirements, constraints, out-of-scope | `auto-resolve` |
+
+Each item spec carries just enough context for `auto-resolve` to work autonomously — nothing more. Supports multiple modes: **Greenfield** (new project), **Expand** (add to existing), **Deep-dive** (explore one feature), **Research-first** (synthesize resources), and **Replan** (reprioritize).
 
 ### UI Design Pipeline
 
