@@ -8,7 +8,7 @@
 
 ### Context Engineering & Harness Engineering Toolkit for Claude Code
 
-**Ideate. Resolve. Ship. — All from your terminal.**
+**Structured prompts, agent orchestration, and automated pipelines — debugging, code review, UI design, product specs, and more.**
 
 [![npm version](https://img.shields.io/npm/v/devlyn-cli.svg)](https://www.npmjs.com/package/devlyn-cli)
 [![npm downloads](https://img.shields.io/npm/dw/devlyn-cli.svg)](https://www.npmjs.com/package/devlyn-cli)
