@@ -7,6 +7,19 @@ description: Transform unstructured ideas into implementation-ready planning doc
 
 Turn unstructured thinking into auto-resolve-ready documents. The output is a precision-engineered context pipeline — each document layer serves a specific role so that implementation agents receive exactly the context they need, nothing more.
 
+<hard_boundary>
+This skill is a PLANNING tool, not an IMPLEMENTATION tool. Your output is documents (VISION.md, ROADMAP.md, item specs) — never code changes.
+
+When the user describes a bug, improvement, or feature request through ideate, they want it CAPTURED in the roadmap, not FIXED in the codebase. Even if the fix seems trivial and obvious, resist the urge to implement it. The user chose `/devlyn:ideate` over `/devlyn:resolve` for a reason — they want planning, not coding.
+
+Concretely:
+- Do NOT read source code to find and fix issues
+- Do NOT edit application files (.tsx, .ts, .py, .js, etc.)
+- DO create or update roadmap documents (VISION.md, ROADMAP.md, item specs)
+- DO explore and research the problem space to write better specs
+- If you catch yourself about to open a source file to make a code change, stop — that's a signal you've left ideation mode
+</hard_boundary>
+
 <why_this_matters>
 When ideas flow directly from conversation to `/devlyn:auto-resolve`, context degrades at each handoff:
 - Abstract vision statements cause over-engineering (the agent optimizes for principles instead of deliverables)
@@ -71,6 +84,7 @@ Before starting, identify what the user needs:
 |--------|------|----------|
 | No existing docs, new project or idea | **Greenfield** | Full flow: Frame → Explore → Converge → Document |
 | Existing docs, user adds new ideas | **Expand** | Lighter Frame, focused Explore on new area, merge into existing phases |
+| Existing docs, user describes a single bug/improvement/idea | **Quick Add** | Read existing roadmap, create one item spec, add row to ROADMAP.md |
 | One specific feature needs deep thought | **Deep-dive** | Intensive Explore on one topic, output 1-3 specs |
 | User shares links/resources to process | **Research-first** | Lead with Explore (research synthesis), then standard flow |
 | Existing roadmap, user wants to reprioritize | **Replan** | Read existing docs, focus on Converge, update documents |
@@ -99,6 +113,30 @@ Expand is the most common mode after initial setup — the user already has Visi
 - If new items change the meaning of existing items, flag this: "Adding [X] may affect the scope of existing item [Y]. Should we update [Y]'s spec?"
 
 In Replan mode, also read existing docs first, then focus on the Converge phase to reprioritize.
+
+### Quick Add Mode Detail
+
+Quick Add is for when the user has a single concrete idea, bug report, or improvement — they don't need a full ideation session, just a new entry in the roadmap. This is the most common trigger for misuse: the request looks like a simple fix, so the temptation is to implement it. Don't. Capture it.
+
+**On entry:**
+1. Read `docs/ROADMAP.md` and relevant phase `_overview.md` files
+2. Identify the best-fit phase for the new item (or suggest a new phase if it doesn't fit)
+3. Determine the next available item ID (e.g., if phase 2 has 2.1-2.4, the new item is 2.5)
+
+**Workflow (minimal — no full Frame/Explore/Converge):**
+1. Confirm the idea with the user: "I'll add this as [item title] in Phase [N]. That sound right?"
+2. Ask 1-2 clarifying questions if the requirement is unclear (skip if the user gave enough detail)
+3. Generate the item spec following `references/templates/item-spec.md`
+4. Add a row to `docs/ROADMAP.md`
+5. Output confirmation: the file path and a suggested auto-resolve command
+
+**Example output:**
+```
+Added: docs/roadmap/phase-2/2.5-back-to-review-button.md
+
+To implement:
+/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-2/2.5-back-to-review-button.md"
+```
 
 ### Context Archiving
 
