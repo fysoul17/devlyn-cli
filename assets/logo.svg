@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="540" height="195" viewBox="0 0 540 195" fill="none" role="img" aria-label="DEVLYN by Donut Studio">
+<svg xmlns="http://www.w3.org/2000/svg" width="540" height="195" viewBox="0 0 540 195" fill="none" role="img" aria-label="DEVLYN by Nocodecat @ Donut Studio">
   <title>DEVLYN</title>
-  <desc>The Skills and Commands Toolkit for Claude Code by Donut Studio</desc>
+  <desc>The Skills and Commands Toolkit for Claude Code by Nocodecat @ Donut Studio</desc>
   <defs>
     <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#875fff"/>
@@ -27,5 +27,5 @@
   <rect x="238" y="173" width="1.5" height="3.5" rx="0.75" fill="#ffd93d" transform="rotate(25 239 175)"/>
   <rect x="226" y="178" width="1.5" height="3.5" rx="0.75" fill="#69ff94" transform="rotate(50 227 180)"/>
   <rect x="236" y="183" width="1.5" height="3.5" rx="0.75" fill="#6bc5ff" transform="rotate(-20 237 185)"/>
-  <text xml:space="preserve" x="250" y="182" font-family="SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace" font-size="12"><tspan fill="#585858">by </tspan><tspan fill="url(#g)">Donut Studio</tspan></text>
+  <text xml:space="preserve" x="250" y="182" font-family="SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace" font-size="12"><tspan fill="#585858">by </tspan><tspan fill="url(#g)">Nocodecat @ Donut Studio</tspan></text>
 </svg>

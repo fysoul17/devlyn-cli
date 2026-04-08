@@ -214,4 +214,4 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 ## License
 
-[MIT](LICENSE) — Donut Studio
+[MIT](LICENSE) — Nocodecat @ Donut Studio
