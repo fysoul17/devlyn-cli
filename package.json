@@ -1,7 +1,8 @@
 {
   "name": "devlyn-cli",
-  "version": "1.6.0",
-  "description": "Claude Code configuration toolkit for teams",
+  "version": "1.7.0",
+  "description": "AI development toolkit for Claude Code — ideate, auto-resolve, and ship with context engineering and agent orchestration",
+  "homepage": "https://github.com/fysoul17/devlyn-cli#readme",
   "bin": {
     "devlyn": "bin/devlyn.js"
   },
@@ -16,8 +17,17 @@
     "claude",
     "claude-code",
     "ai",
-    "config",
-    "devlyn"
+    "ai-agent",
+    "ai-tools",
+    "context-engineering",
+    "harness-engineering",
+    "agent-orchestration",
+    "prompt-engineering",
+    "code-review",
+    "devlyn",
+    "developer-tools",
+    "automation",
+    "cli"
   ],
   "author": "",
   "license": "MIT",

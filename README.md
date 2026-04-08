@@ -6,324 +6,207 @@
   <img alt="DEVLYN" src="assets/logo.svg" width="540" />
 </picture>
 
-### Context Engineering & Harness Engineering Toolkit for Claude Code
+### The AI Development Toolkit for Claude Code
 
-**Structured prompts, agent orchestration, and automated pipelines — debugging, code review, UI design, product specs, and more.**
+**Ideate. Resolve. Ship. — All from your terminal.**
 
 [![npm version](https://img.shields.io/npm/v/devlyn-cli.svg)](https://www.npmjs.com/package/devlyn-cli)
+[![npm downloads](https://img.shields.io/npm/dw/devlyn-cli.svg)](https://www.npmjs.com/package/devlyn-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-compatible-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
 
-[Get Started](#get-started) · [Commands](#commands) · [Skills](#skills) · [Workflows](#workflows) · [Optional Packs](#optional-skills--packs) · [Contributing](#contributing)
+If devlyn-cli saved you time, [give it a star](https://github.com/fysoul17/devlyn-cli) — it helps others find it too.
 
 </div>
 
 ---
 
-## Why devlyn-cli?
-
-[Claude Code](https://docs.anthropic.com/en/docs/claude-code) is powerful out of the box — but teams need **consistent, repeatable workflows**. Without shared conventions, every developer prompts differently, reviews differently, and debugs differently.
-
-devlyn-cli solves this with two complementary engineering approaches:
-
-### Context Engineering
-
-Structured prompts and role-based instructions that shape _what the AI knows and how it thinks_ for each task.
-
-- **17 slash commands** for ideation, debugging, code review, UI design, documentation, and more
-- **5 core skills** that activate automatically based on conversation context
-- **Agent team workflows** that spawn specialized AI teammates with role-specific expertise
-- **Product & feature spec templates** for structured planning
-
-### Harness Engineering
-
-Pipeline orchestration that controls _how agents execute_ — permissions, state management, multi-phase workflows, and cross-model evaluation.
-
-- **`/devlyn:auto-resolve`** — 9-phase automated pipeline (build → browser validate → evaluate → fix loop → simplify → review → security → clean → docs)
-- **`/devlyn:browser-validate`** — feature verification in a real browser with tiered fallback (Chrome MCP → Playwright → curl)
-- **`bypassPermissions` mode** for autonomous subagent execution
-- **File-based state machine** — agents communicate via `.devlyn/done-criteria.md`, `EVAL-FINDINGS.md`, and `BROWSER-RESULTS.md`
-- **Git checkpoints** at each phase for rollback safety
-- **Cross-model evaluation** via `--with-codex` flag (OpenAI Codex as independent evaluator)
-
-**Zero dependencies. One command. Works with any project.**
-
-## Get Started
+## Install
 
 ```bash
 npx devlyn-cli
 ```
 
-The interactive installer walks you through setup — select optional skills, choose community packs, done.
+That's it. The interactive installer handles everything. Run it again anytime to update.
 
-```bash
-# Non-interactive install (CI/CD friendly)
-npx devlyn-cli -y
+---
 
-# Update to the latest version
-npx devlyn-cli@latest
+## How It Works — Two Commands, Full Cycle
 
-# See everything that's included
-npx devlyn-cli list
-```
-
-### What Gets Installed
+devlyn-cli turns Claude Code into an autonomous development pipeline. The core loop is simple:
 
 ```
-your-project/
-├── .claude/
-│   ├── commands/              # 16 slash commands
-│   ├── skills/                # 5 core skills + any optional addons
-│   ├── templates/             # Product spec, feature spec, prompt templates
-│   ├── commit-conventions.md  # Commit message standards
-│   └── settings.json          # Agent teams enabled
-└── CLAUDE.md                  # Project-level AI instructions
+ideate  →  auto-resolve  →  ship  →  repeat
 ```
 
-## Commands
+### Step 1 — Plan with `/devlyn:ideate`
 
-Slash commands are invoked directly in Claude Code conversations (e.g., type `/devlyn:resolve`).
+Turn a raw idea into structured, implementation-ready specs.
+
+```
+/devlyn:ideate "I want to build a habit tracking app with AI nudges"
+```
+
+This produces three documents through interactive brainstorming:
+
+| Document | What It Contains |
+|---|---|
+| `docs/VISION.md` | North star, principles, anti-goals |
+| `docs/ROADMAP.md` | Phased roadmap with links to each spec |
+| `docs/roadmap/phase-N/*.md` | Self-contained spec per feature — ready for auto-resolve |
+
+Need to add features later? Run ideate again — it expands the existing roadmap.
+
+### Step 2 — Build with `/devlyn:auto-resolve`
+
+Point it at a spec (or just describe what you want) and walk away.
+
+```
+/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-1/1.1-user-auth.md"
+```
+
+It runs a **9-phase pipeline** autonomously:
+
+```
+Build → Browser Test → Evaluate → Fix Loop → Simplify → Review → Security → Clean → Docs
+```
+
+- Each phase runs as a separate agent with fresh context
+- Git checkpoints at every phase for safe rollback
+- Browser validation tests your feature end-to-end (clicks, forms, verification)
+- Evaluation grades against done-criteria — if it fails, auto-fix and re-evaluate
+
+Skip phases you don't need: `--skip-browser`, `--skip-review`, `--skip-clean`, `--skip-docs`, `--max-rounds 6`
+
+### Bonus — Dual-Model Mode with Codex
+
+Install the Codex MCP server during setup, then:
+
+```
+/devlyn:auto-resolve "fix the auth bug" --with-codex
+```
+
+Claude builds, **OpenAI Codex evaluates independently** — two models collaborating, catching what a single model misses.
+
+> `--with-codex evaluate` (default) · `--with-codex review` · `--with-codex both`
+
+---
+
+## Manual Commands
+
+When you want step-by-step control instead of the full pipeline.
 
 ### Debugging & Resolution
 
-| Command | Description |
+| Command | Use When |
 |---|---|
-| `/devlyn:resolve` | Systematic bug fixing with root-cause analysis and test-driven validation |
-| `/devlyn:team-resolve` | Spawns a full agent team — root cause analyst, test engineer, security auditor — to investigate complex issues |
-| `/devlyn:auto-resolve` | Fully automated pipeline for any task — bugs, features, refactors, chores. Build → browser validate → evaluate → fix loop → simplify → review → clean → docs. One command, zero human intervention. Supports `--with-codex` for cross-model evaluation via OpenAI Codex |
-| `/devlyn:browser-validate` | Verify implemented features work in a real browser — starts dev server, tests the feature end-to-end (clicks, forms, verification), with tiered fallback (Chrome MCP → Playwright → curl) |
+| `/devlyn:resolve` | Simple bugs (1-2 files) |
+| `/devlyn:team-resolve` | Complex issues — spawns root-cause analyst, test engineer, security auditor |
+| `/devlyn:browser-validate` | Test a web feature in a real browser (Chrome MCP → Playwright → curl fallback) |
 
 ### Code Review & Quality
 
-| Command | Description |
+| Command | Use When |
 |---|---|
-| `/devlyn:review` | Post-implementation review — security, quality, best practices checklist |
-| `/devlyn:team-review` | Multi-perspective team review with specialized reviewers (security, quality, testing, performance, product) |
-| `/devlyn:evaluate` | Independent quality evaluation — assembles evaluator team to grade work against done criteria with calibrated, skeptical grading |
-| `/devlyn:clean` | Detect and remove dead code, unused dependencies, complexity hotspots, and tech debt |
-
-### UI Design & Implementation
-
-| Command | Description |
-|---|---|
-| `/devlyn:design-ui` | Generate 5 radically distinct UI style explorations from a spec or reference image |
-| `/devlyn:team-design-ui` | Spawns a design team — creative director, product designer, visual designer, interaction designer, accessibility designer |
-| `/devlyn:design-system` | Extract design system tokens from a chosen style for exact reproduction |
-| `/devlyn:implement-ui` | Team-based UI build — component architect, UX engineer, accessibility engineer, responsive engineer, visual QA |
-
-### Ideation & Planning
-
-| Command | Description |
-|---|---|
-| `/devlyn:ideate` | Transform unstructured ideas into auto-resolve-ready planning documents through structured brainstorming, research, and multi-perspective synthesis. Produces a three-layer document architecture (Vision → Roadmap → per-item specs) that feeds directly into `auto-resolve` |
-| `/devlyn:product-spec` | Generate or incrementally update product spec documents |
-| `/devlyn:feature-spec` | Transform product specs into implementable feature specifications |
-| `/devlyn:discover-product` | Scan codebase to generate feature-oriented product documentation |
-| `/devlyn:recommend-features` | Prioritize top 5 features to build next based on value and readiness |
-
-### Documentation
-
-| Command | Description |
-|---|---|
-| `/devlyn:update-docs` | Sync all project docs with current codebase — cleans stale content, preserves roadmaps, generates missing docs |
-
-## Skills
-
-Skills are **not invoked manually** — they activate automatically when Claude Code detects a relevant conversation context. Think of them as always-on expertise that shapes how the AI approaches specific types of work.
-
-| Skill | When It Activates | What It Does |
-|---|---|---|
-| `root-cause-analysis` | Debugging conversations | Enforces 5 Whys methodology, evidence standards, and no-workaround rules |
-| `code-review-standards` | Code review tasks | Applies severity framework, quality bar, and approval criteria |
-| `ui-implementation-standards` | UI/frontend work | Ensures design fidelity, accessibility, animation quality, and responsive standards |
-| `code-health-standards` | Code maintenance | Enforces dead code prevention, dependency discipline, and complexity thresholds |
-| `workflow-routing` | Any task | SDLC phase map — guides you to the right command for your current task |
-
-## Workflows
-
-Commands are designed to compose. Pick the right tool based on scope, then chain them together.
-
-### Automated Pipeline (Recommended)
-
-One command runs the full cycle — no human intervention needed:
-
-```bash
-/devlyn:auto-resolve fix the auth bug where users see blank screen on 401
-```
-
-| Phase | What Happens |
-|---|---|
-| **Build** | `team-resolve` investigates and implements, writes testable done criteria |
-| **Browser Validate** | For web projects: starts dev server, tests the implemented feature end-to-end in a real browser, fixes issues found |
-| **Evaluate** | Independent evaluator grades against done criteria with calibrated skepticism |
-| **Fix Loop** | If evaluation fails, fixes findings and re-evaluates (up to N rounds) |
-| **Simplify** | Quick cleanup pass for reuse and efficiency |
-| **Review** | Multi-perspective team review |
-| **Security** | Dedicated OWASP-focused audit (auto-detects when changes touch auth, secrets, APIs) |
-| **Clean** | Remove dead code and unused dependencies |
-| **Docs** | Sync documentation with changes |
-
-Each phase runs as a separate subagent (fresh context), communicates via files, and commits a git checkpoint for rollback safety. Skip phases with flags: `--skip-browser`, `--skip-review`, `--skip-clean`, `--skip-docs`, `--max-rounds 3`, `--with-codex` (cross-model evaluation via OpenAI Codex).
-
-### Manual Workflow
-
-For step-by-step control between phases:
-
-| Step | Command | What It Does |
-|---|---|---|
-| 1. **Resolve** | `/devlyn:resolve` or `/devlyn:team-resolve` | Fix the issue — solo for focused bugs (1-2 modules), team for complex issues (3+ modules) |
-| 2. **Evaluate** | `/devlyn:evaluate` | Independent quality evaluation — grades against done criteria written in step 1 |
-| | | *If the evaluation finds issues: `/devlyn:team-resolve "Fix issues in .devlyn/EVAL-FINDINGS.md"`* |
-| 3. **Simplify** | `/simplify` | Quick cleanup pass for reuse, quality, and efficiency *(built-in Claude Code command)* |
-| 4. **Review** | `/devlyn:review` or `/devlyn:team-review` | Audit the changes — solo for small PRs (< 10 files), team for large PRs (10+ files) |
-| 5. **Clean** | `/devlyn:clean` | Remove dead code, unused dependencies, and complexity hotspots |
-| 6. **Document** | `/devlyn:update-docs` | Sync project documentation with the current codebase |
-
-Steps 5-6 are optional — run them periodically rather than on every PR.
-
-> **Scope matching matters.** For a simple one-file bug, `/devlyn:resolve` + `/devlyn:review` (solo) is fast. For a multi-module feature, `/devlyn:auto-resolve` handles everything. Don't over-tool simple changes.
-
-### Ideation → Implementation Pipeline
-
-Go from raw ideas to shipped code with zero context loss:
-
-```bash
-# 1. Brainstorm and plan — interactive back-and-forth
-/devlyn:ideate "I want to build a habit tracking app with AI nudges..."
-
-# 2. Review the generated docs
-#    docs/VISION.md        — strategic north star
-#    docs/ROADMAP.md       — indexed roadmap with links
-#    docs/roadmap/phase-1/ — auto-resolve-ready specs per item
-
-# 3. Implement each item hands-free
-/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-1/1.1-user-auth.md"
-/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-1/1.2-dashboard.md"
-```
-
-The ideation skill produces a **three-layer document architecture** designed to eliminate context pollution:
-
-| Layer | File | Purpose | Who Reads It |
-|---|---|---|---|
-| Strategic | `VISION.md` | North star, principles, anti-goals | Humans, ideation skill |
-| Tactical | `ROADMAP.md` | Indexed table linking to per-item specs | Humans, ideation skill |
-| Operational | `roadmap/phase-N/item.md` | Self-contained spec with requirements, constraints, out-of-scope | `auto-resolve` |
-
-Each item spec carries just enough context for `auto-resolve` to work autonomously — nothing more. Supports multiple modes: **Greenfield** (new project), **Expand** (add to existing), **Deep-dive** (explore one feature), **Research-first** (synthesize resources), and **Replan** (reprioritize).
+| `/devlyn:review` | Solo review — security, quality, best practices checklist |
+| `/devlyn:team-review` | Multi-reviewer team — security, testing, performance, product perspectives |
+| `/devlyn:evaluate` | Grade work against done-criteria with calibrated skepticism |
+| `/devlyn:clean` | Remove dead code, unused deps, complexity hotspots |
 
 ### UI Design Pipeline
 
-A full explore → extract → build pipeline:
-
 | Step | Command | What It Does |
 |---|---|---|
-| 1. **Explore** | `/devlyn:design-ui` | Generates 5 radically distinct style options from a spec or reference image |
-| 2. **Extract** | `/devlyn:design-system` | Pulls exact design tokens (colors, spacing, typography) from your chosen style |
-| 3. **Build** | `/devlyn:implement-ui` | Spawns a build team (component architect, UX engineer, accessibility engineer, responsive engineer, visual QA) |
+| 1 | `/devlyn:design-ui` | Generate 5 distinct style explorations |
+| 2 | `/devlyn:design-system` | Extract design tokens from chosen style |
+| 3 | `/devlyn:implement-ui` | Team builds it — component architect, UX, accessibility, responsive, visual QA |
 
-> For design exploration with a full creative team, use `/devlyn:team-design-ui` instead of step 1.
+> Use `/devlyn:team-design-ui` for step 1 with a full creative team.
 
-After building, follow the [recommended workflow](#recommended-workflow) starting from step 2 (simplify) to review and polish the implementation.
-
-### Standalone Tools
-
-These commands work independently, outside of the main workflow:
+### Planning & Docs
 
 | Command | What It Does |
 |---|---|
-| `/devlyn:clean [focus]` | Focused cleanup — e.g., `/devlyn:clean dependencies` or `/devlyn:clean dead-code` |
-| `/devlyn:update-docs [area]` | Focused doc sync — e.g., `/devlyn:update-docs API reference` |
-| `/devlyn:product-spec` | Generate or update a product specification |
-| `/devlyn:feature-spec` | Transform a product spec into an implementable feature spec |
-| `/devlyn:discover-product` | Scan codebase to auto-generate product documentation |
+| `/devlyn:product-spec` | Generate or update product specs |
+| `/devlyn:feature-spec` | Turn product spec → implementable feature spec |
+| `/devlyn:discover-product` | Scan codebase → auto-generate product docs |
 | `/devlyn:recommend-features` | Prioritize top 5 features to build next |
+| `/devlyn:update-docs` | Sync all docs with current codebase |
 
-## Optional Skills & Packs
+---
 
-During installation, the interactive selector lets you add optional skills and community packs.
+## Auto-Activated Skills
 
-### Skills
+These activate automatically — no commands needed. They shape how Claude thinks during relevant tasks.
 
-Copied directly into your `.claude/skills/` directory.
+| Skill | Activates During |
+|---|---|
+| `root-cause-analysis` | Debugging — enforces 5 Whys, evidence standards |
+| `code-review-standards` | Reviews — severity framework, approval criteria |
+| `ui-implementation-standards` | UI work — design fidelity, accessibility, responsiveness |
+| `code-health-standards` | Maintenance — dead code prevention, complexity thresholds |
+| `workflow-routing` | Any task — guides you to the right command |
+
+---
+
+## Optional Add-ons
+
+Selected during install. Run `npx devlyn-cli` again to add more.
+
+<details>
+<summary><strong>Skills</strong> — copied to <code>.claude/skills/</code></summary>
 
 | Skill | Description |
 |---|---|
-| `cloudflare-nextjs-setup` | Cloudflare Workers + Next.js deployment with OpenNext |
-| `generate-skill` | Create well-structured Claude Code skills following Anthropic best practices |
-| `prompt-engineering` | Claude 4 prompt optimization using official Anthropic best practices |
-| `better-auth-setup` | Production-ready Better Auth + Hono + Drizzle + PostgreSQL auth setup |
-| `pyx-scan` | Check whether an AI agent skill is safe before installing |
-| `dokkit` | Document template filling for DOCX/HWPX — ingest, fill, review, export |
-| `devlyn:pencil-pull` | Pull Pencil designs into code with exact visual fidelity |
-| `devlyn:pencil-push` | Push codebase UI to Pencil canvas for design sync |
+| `cloudflare-nextjs-setup` | Cloudflare Workers + Next.js with OpenNext |
+| `generate-skill` | Create Claude Code skills following Anthropic best practices |
+| `prompt-engineering` | Claude 4 prompt optimization |
+| `better-auth-setup` | Better Auth + Hono + Drizzle + PostgreSQL |
+| `pyx-scan` | Check if an AI agent skill is safe before installing |
+| `dokkit` | Document template filling for DOCX/HWPX |
+| `devlyn:pencil-pull` | Pull Pencil designs into code |
+| `devlyn:pencil-push` | Push codebase UI to Pencil canvas |
 
-### Community Packs
+</details>
 
-Installed via the [skills CLI](https://github.com/anthropics/skills) (`npx skills add`). These are maintained by their respective communities.
+<details>
+<summary><strong>Community Packs</strong> — installed via <a href="https://github.com/anthropics/skills">skills CLI</a></summary>
 
 | Pack | Description |
 |---|---|
 | `vercel-labs/agent-skills` | React, Next.js, React Native best practices |
 | `supabase/agent-skills` | Supabase integration patterns |
 | `coreyhaines31/marketingskills` | Marketing automation and content skills |
-| `anthropics/skills` | Official Anthropic skill-creator with eval framework and description optimizer |
-| `Leonxlnx/taste-skill` | Premium frontend design skills — modern layouts, animations, and visual refinement |
+| `anthropics/skills` | Official Anthropic skill-creator with eval framework |
+| `Leonxlnx/taste-skill` | Premium frontend design skills |
 
-### MCP Servers
+</details>
 
-Installed via `claude mcp add` during setup.
+<details>
+<summary><strong>MCP Servers</strong> — installed via <code>claude mcp add</code></summary>
 
 | Server | Description |
 |---|---|
-| `codex-cli` | Codex MCP server for cross-model evaluation via OpenAI Codex |
-| `playwright` | Playwright MCP for browser testing — powers `devlyn:browser-validate` Tier 2 |
+| `codex-cli` | Codex MCP server — enables `--with-codex` dual-model mode |
+| `playwright` | Playwright MCP — powers browser-validate Tier 2 |
 
-> **Want to add a pack?** Open a PR adding your pack to the `OPTIONAL_ADDONS` array in [`bin/devlyn.js`](bin/devlyn.js).
+</details>
 
-## How It Works
+> **Want to add a pack?** Open a PR adding it to the `OPTIONAL_ADDONS` array in [`bin/devlyn.js`](bin/devlyn.js).
 
-1. **Run `npx devlyn-cli`** in your project root
-2. The CLI copies config files into `.claude/` and `CLAUDE.md` to the project root
-3. Claude Code automatically reads `.claude/commands/` and `.claude/skills/` on startup
-4. Invoke commands like `/devlyn:resolve` in your Claude Code session — skills activate on their own
-
-The installation is **idempotent** — run it again anytime to update to the latest config.
-
-## Creating Your Own Skills
-
-Want to author custom skills for your team or the community?
-
-1. **During install**, select the `generate-skill` optional skill — or —
-2. **Install the official Anthropic skill-creator** pack:
-   ```bash
-   npx skills add anthropics/skills
-   ```
-
-Both provide structured templates, best practices, and eval frameworks for writing high-quality Claude Code skills.
-
-See the [Claude Code skills documentation](https://docs.anthropic.com/en/docs/claude-code/skills) for the full specification.
+---
 
 ## Requirements
 
 - **Node.js 18+**
-- **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** CLI installed and configured
+- **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** installed and configured
 
 ## Contributing
 
-Contributions are welcome! Here are some ways to get involved:
-
-- **Add a command** — Create a new `.md` file in `config/commands/`
-- **Add a skill** — Create a new directory in `config/skills/` with a `SKILL.md`
-- **Add an optional skill** — Add to `optional-skills/` and the `OPTIONAL_ADDONS` array
-- **Suggest a community pack** — Open a PR to add it to the pack list
-
-### Development
-
-1. Fork the repository
-2. Create your branch (`git checkout -b feat/my-feature`)
-3. Commit your changes following the included [commit conventions](config/commit-conventions.md)
-4. Push to the branch (`git push origin feat/my-feature`)
-5. Open a Pull Request
+- **Add a command** — `.md` file in `config/commands/`
+- **Add a skill** — directory in `config/skills/` with `SKILL.md`
+- **Add optional skill** — add to `optional-skills/` and `OPTIONAL_ADDONS`
+- **Suggest a pack** — PR to the pack list
 
 ## Star History
 

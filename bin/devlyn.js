@@ -594,15 +594,9 @@ async function init(skipPrompts = false) {
 
   // Skip prompts if -y flag or non-interactive
   if (skipPrompts || !process.stdin.isTTY) {
-    log('\n💡 Add optional addons later:', 'dim');
-    OPTIONAL_ADDONS.forEach((addon) => {
-      if (addon.type === 'local') {
-        log(`   npx devlyn-cli  (select "${addon.name}" during install)`, 'dim');
-      } else {
-        log(`   npx skills add ${addon.name}`, 'dim');
-      }
-    });
-    log('');
+    log('\n💡 Add optional addons later: run `npx devlyn-cli` without -y', 'dim');
+    log(`\n${COLORS.dim}   Enjoying devlyn? Star it on GitHub — it helps others find it:${COLORS.reset}`);
+    log(`   ${COLORS.purple}→ https://github.com/fysoul17/devlyn-cli${COLORS.reset}\n`);
     return;
   }
 
@@ -621,7 +615,9 @@ async function init(skipPrompts = false) {
   }
 
   log('\n✨ All done!', 'green');
-  log('   Run `npx devlyn-cli` again to update\n', 'dim');
+  log('   Run `npx devlyn-cli` again to update', 'dim');
+  log(`\n${COLORS.dim}   Enjoying devlyn? Star it on GitHub — it helps others find it:${COLORS.reset}`);
+  log(`   ${COLORS.purple}→ https://github.com/fysoul17/devlyn-cli${COLORS.reset}\n`);
 }
 
 function showHelp() {
