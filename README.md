@@ -31,12 +31,12 @@ That's it. The interactive installer handles everything. Run it again anytime to
 
 ---
 
-## How It Works — Two Commands, Full Cycle
+## How It Works — Three Steps, Full Cycle
 
 devlyn-cli turns Claude Code into an autonomous development pipeline. The core loop is simple:
 
 ```
-ideate  →  auto-resolve  →  ship  →  repeat
+ideate  →  auto-resolve  →  preflight  →  fix gaps  →  ship
 ```
 
 ### Step 1 — Plan with `/devlyn:ideate`
@@ -77,6 +77,26 @@ Build → Browser Test → Evaluate → Fix Loop → Simplify → Review → Sec
 - Evaluation grades against done-criteria — if it fails, auto-fix and re-evaluate
 
 Skip phases you don't need: `--skip-browser`, `--skip-review`, `--skip-clean`, `--skip-docs`, `--max-rounds 6`
+
+### Step 3 — Verify with `/devlyn:preflight`
+
+After implementing all roadmap items, run a final alignment check:
+
+```
+/devlyn:preflight
+```
+
+Reads every commitment from your vision, roadmap, and item specs, then audits the codebase evidence-based. Catches what you missed:
+
+| Category | What It Finds |
+|---|---|
+| `MISSING` | In roadmap but not implemented |
+| `INCOMPLETE` | Started but unfinished |
+| `DIVERGENT` | Implemented differently than spec |
+| `BROKEN` | Has a bug preventing it from working |
+| `STALE_DOC` | Docs don't match current code |
+
+Confirmed gaps become new roadmap items — feed them back into auto-resolve. Use `--autofix` to do this automatically, or `--phase 2` to check only one phase.
 
 ### Bonus — Dual-Model Mode with Codex
 
@@ -127,6 +147,7 @@ When you want step-by-step control instead of the full pipeline.
 
 | Command | What It Does |
 |---|---|
+| `/devlyn:preflight` | Verify codebase matches vision/roadmap — gap analysis with evidence |
 | `/devlyn:product-spec` | Generate or update product specs |
 | `/devlyn:feature-spec` | Turn product spec → implementable feature spec |
 | `/devlyn:discover-product` | Scan codebase → auto-generate product docs |

@@ -68,6 +68,26 @@ Optional flags:
 - `--skip-docs` — skip update-docs phase
 - `--with-codex [evaluate|review|both]` — use OpenAI Codex as cross-model evaluator/reviewer (requires codex-mcp-server)
 
+## Preflight Check (Post-Roadmap Verification)
+
+After completing a roadmap (or a phase), verify that everything was actually implemented correctly:
+
+```
+/devlyn:preflight
+```
+
+This reads every commitment from VISION.md, ROADMAP.md, and item specs, then audits the codebase evidence-based. Finds: missing features, incomplete implementations, spec divergence, bugs, stale documentation. Also checks in the browser for web projects.
+
+Output: `.devlyn/PREFLIGHT-REPORT.md` with categorized findings (MISSING, INCOMPLETE, DIVERGENT, BROKEN, STALE_DOC). Confirmed gaps can be promoted to new roadmap items for auto-resolve.
+
+Optional flags:
+- `--phase N` — audit only phase N items
+- `--autofix` — auto-promote CRITICAL/HIGH findings and run auto-resolve
+- `--skip-browser` — skip browser validation
+- `--skip-docs` — skip documentation audit
+
+**Recommended workflow**: `/devlyn:ideate` → `/devlyn:auto-resolve` (repeat) → `/devlyn:preflight` → fix gaps → `/devlyn:preflight` (verify)
+
 ## Manual Pipeline (Step-by-Step Control)
 
 When you want to run each step yourself with review between phases:
