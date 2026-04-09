@@ -31,6 +31,8 @@ This pipeline runs hands-free. The user launches it to walk away and come back t
    - `--skip-clean` (false) — skip clean phase
    - `--skip-browser` (false) — skip browser validation phase (auto-skipped for non-web changes)
    - `--skip-docs` (false) — skip update-docs phase
+   - `--skip-build-gate` (false) — skip the deterministic build gate (Phase 1.4). Not recommended — the build gate is the primary defense against "tests pass locally, breaks in CI/Docker/production" class of bugs.
+   - `--build-gate MODE` (auto) — controls build gate behavior. `auto`: detect project type and run appropriate build/typecheck/lint commands; if Dockerfile(s) are present, Docker builds are included automatically. `strict`: auto + treat warnings as errors. `no-docker`: auto but skip Docker builds even if Dockerfiles exist (for faster iteration). `skip`: same as --skip-build-gate.
    - `--with-codex` (false) — use OpenAI Codex as a cross-model evaluator/reviewer via `mcp__codex-cli__*` MCP tools. Accepts: `evaluate`, `review`, or `both` (default when flag is present without value). When enabled, Codex provides an independent second opinion from a different model family, creating a GAN-like dynamic where Claude builds and Codex critiques.
 
    Flags can be passed naturally: `/devlyn:auto-resolve fix the auth bug --max-rounds 3 --skip-docs`
@@ -43,7 +45,7 @@ This pipeline runs hands-free. The user launches it to walk away and come back t
 ```
 Auto-resolve pipeline starting
 Task: [extracted task description]
-Phases: Build → [Browser] → Evaluate → [Fix loop if needed] → Simplify → [Review] → [Security] → [Clean] → [Docs]
+Phases: Build → Build Gate → [Browser] → Evaluate → [Fix loop if needed] → Simplify → [Review] → [Security] → [Clean] → [Docs]
 Max evaluation rounds: [N]
 Cross-model evaluation (Codex): [evaluate / review / both / disabled]
 ```
@@ -85,6 +87,63 @@ The task is: [paste the task description here]
 2. Run `git diff --stat` to confirm code was actually changed
 3. If no changes were made, report failure and stop
 4. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): phase 1 — build complete"` to create a rollback point
+
+## PHASE 1.4: BUILD GATE
+
+Skip if `--skip-build-gate` or `--build-gate skip` was set.
+
+This phase runs the project's real build, typecheck, and lint commands — the same ones CI, Docker, and production environments will run. It catches the entire class of bugs that LLM-based evaluation and test suites cannot: type errors in un-tested files, cross-package type drift in monorepos, lint violations, missing production dependencies, and Dockerfile copy mismatches.
+
+This is deterministic — if the compiler says no, the pipeline stops. No LLM judgment involved.
+
+Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
+
+Agent prompt — pass this to the Agent tool:
+
+You are the build gate agent. Read `references/build-gate.md` from the auto-resolve skill directory for the full project-type detection matrix and execution rules.
+
+Your job: detect every project type in this repo, run their build/typecheck/lint commands, and report results. You do NOT reason about code quality — you run commands and faithfully report what they output.
+
+1. Read the detection matrix in `references/build-gate.md`
+2. Scan the repo to detect all matching project types (a monorepo may match several)
+3. Detect the package manager (npm/pnpm/yarn/bun) per the rules in the reference file
+4. Run all gate commands. Sequential within a project type, parallel across unrelated types.
+5. If `--build-gate strict` is set, apply strict-mode flags per the reference file
+6. Run Dockerfile builds if Dockerfiles are detected, UNLESS `--build-gate no-docker` is set (see reference file)
+7. Write results to `.devlyn/BUILD-GATE.md` following the output format in the reference file
+
+For failures: include the FULL error output (not truncated) and extract root file:line references with concrete fix guidance so the fix agent knows exactly where to look.
+
+**After the agent completes**:
+1. Read `.devlyn/BUILD-GATE.md`
+2. Extract verdict
+3. Branch:
+   - `PASS` → continue to PHASE 1.5
+   - `FAIL` → go to PHASE 1.4-fix (build gate fix loop)
+
+## PHASE 1.4-fix: BUILD GATE FIX LOOP
+
+Triggered only when PHASE 1.4 returns FAIL.
+
+Track a round counter (shared with the main fix loop counter against `max-rounds`). If `round >= max-rounds`, stop with a clear failure report — do NOT continue to evaluate/browser/etc. Code that doesn't build cannot be meaningfully evaluated or tested.
+
+Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
+
+Agent prompt — pass this to the Agent tool:
+
+Read `.devlyn/BUILD-GATE.md` — it contains deterministic build/typecheck/lint failures from real compiler output. These are not opinions; the compiler rejected this code. Fix every listed failure at the root cause level.
+
+For each failure:
+1. Read the referenced file:line and enough surrounding context to understand the error
+2. For type errors: check BOTH sides of the type contract — the consumer AND the type definition. The fix may belong to either side. Do NOT suppress errors with `any`, `@ts-ignore`, `as unknown as`, `// eslint-disable`, or equivalent escape hatches.
+3. For lint errors: fix the underlying issue, do not disable the rule.
+4. For missing module/dependency errors: investigate the cause — it may be a missing dep in package.json, a typo in the import path, or a tsconfig paths misconfiguration.
+5. After fixing, do NOT re-run the build yourself. The orchestrator re-runs PHASE 1.4.
+
+**After the agent completes**:
+1. **Checkpoint**: `git add -A && git commit -m "chore(pipeline): build gate fix round [N]"`
+2. Increment round counter
+3. Go back to PHASE 1.4 (re-run the gate)
 
 ## PHASE 1.5: BROWSER VALIDATE (conditional)
 
@@ -284,7 +343,7 @@ Synchronize documentation with recent code changes. Use `git log --oneline -20` 
 After all phases complete:
 
 1. Clean up temporary files:
-   - Delete the `.devlyn/` directory entirely (contains done-criteria.md, EVAL-FINDINGS.md, BROWSER-RESULTS.md, screenshots/, playwright temp files)
+   - Delete the `.devlyn/` directory entirely (contains done-criteria.md, BUILD-GATE.md, EVAL-FINDINGS.md, BROWSER-RESULTS.md, screenshots/, playwright temp files)
    - Kill any dev server process still running from browser validation
 
 2. Run `git log --oneline -10` to show commits made during the pipeline
@@ -300,6 +359,7 @@ After all phases complete:
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Build (team-resolve) | [completed] | [brief summary] |
+| Build gate | [completed / skipped / FAIL after N rounds] | [project types detected, commands run, pass/fail per command] |
 | Browser validate | [completed / skipped / auto-skipped] | [verdict, tier used, console errors, flow results] |
 | Evaluate (Claude) | [PASS/NEEDS WORK after N rounds] | [verdict + key findings] |
 | Evaluate (Codex) | [completed / skipped] | [Codex-only findings count, merged verdict] |

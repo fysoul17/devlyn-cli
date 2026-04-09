@@ -56,13 +56,17 @@ For hands-free build-evaluate-polish cycles — works for bugs, features, refact
 /devlyn:auto-resolve [task description]
 ```
 
-This runs the full pipeline automatically: **Build → Browser Validate → Evaluate → Fix Loop → Simplify → Review → Security Review → Clean → Docs**. Each phase runs as a separate subagent with its own context. Communication between phases happens via files (`.devlyn/done-criteria.md`, `.devlyn/EVAL-FINDINGS.md`, `.devlyn/BROWSER-RESULTS.md`).
+This runs the full pipeline automatically: **Build → Build Gate → Browser Validate → Evaluate → Fix Loop → Simplify → Review → Security Review → Clean → Docs**. Each phase runs as a separate subagent with its own context. Communication between phases happens via files (`.devlyn/done-criteria.md`, `.devlyn/BUILD-GATE.md`, `.devlyn/EVAL-FINDINGS.md`, `.devlyn/BROWSER-RESULTS.md`).
+
+The **Build Gate** (Phase 1.4) runs real compilers, typecheckers, and linters — the same commands CI/Docker/production will run. It auto-detects project types (Next.js, Rust, Go, Solidity, Expo, Swift, etc.) and Dockerfiles. This is the primary defense against "tests pass locally, breaks in CI/Docker" class of bugs (type errors in un-tested files, cross-package drift, Dockerfile copy mismatches).
 
 For web projects, the Browser Validate phase starts the dev server and tests the implemented feature in a real browser — clicking buttons, filling forms, verifying results. If the feature doesn't work, findings feed back into the fix loop.
 
 Optional flags:
 - `--max-rounds 6` — increase max evaluate-fix iterations (default: 4)
 - `--skip-browser` — skip browser validation phase (auto-skipped for non-web changes)
+- `--skip-build-gate` — skip the deterministic build gate (not recommended)
+- `--build-gate strict` — treat warnings as errors; `--build-gate no-docker` — skip Docker builds for speed
 - `--skip-review` — skip team-review phase
 - `--skip-clean` — skip clean phase
 - `--skip-docs` — skip update-docs phase
@@ -76,7 +80,7 @@ After completing a roadmap (or a phase), verify that everything was actually imp
 /devlyn:preflight
 ```
 
-This reads every commitment from VISION.md, ROADMAP.md, and item specs, then audits the codebase evidence-based. Finds: missing features, incomplete implementations, spec divergence, bugs, stale documentation. Also checks in the browser for web projects.
+This reads every commitment from VISION.md, ROADMAP.md, and item specs, then audits the codebase evidence-based. The code auditor now runs real build/typecheck commands as its first step — any project that doesn't compile is flagged as BROKEN at CRITICAL severity before individual commitments are even checked. Also checks in the browser for web projects.
 
 Output: `.devlyn/PREFLIGHT-REPORT.md` with categorized findings (MISSING, INCOMPLETE, DIVERGENT, BROKEN, STALE_DOC). Confirmed gaps can be promoted to new roadmap items for auto-resolve.
 

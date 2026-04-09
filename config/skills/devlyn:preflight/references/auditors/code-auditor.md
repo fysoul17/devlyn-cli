@@ -8,6 +8,19 @@ You are auditing a codebase against its planning commitments. Your job is to ver
 
 Read `.devlyn/commitment-registry.md` for the full list of commitments to verify. Skip any items in the "Not Started (Planned)" section — those are acknowledged future work, not gaps.
 
+**Step 0 — Build health check**: Before auditing individual commitments, verify the project actually builds. Detect the project type(s) and run their build/typecheck commands:
+- `package.json` with `next` → `npx tsc --noEmit && npx next build`
+- `package.json` with `vite` + `tsconfig.json` → `npx tsc --noEmit`
+- `Cargo.toml` → `cargo check --all-targets`
+- `go.mod` → `go build ./... && go vet ./...`
+- `foundry.toml` → `forge build`
+- `hardhat.config.*` → `npx hardhat compile`
+- Monorepo (`pnpm-workspace.yaml`/`turbo.json`) → workspace-wide build
+- `Dockerfile*` → `docker build` (if Docker available)
+- For other project types, look for a `build` script in `package.json` or equivalent
+
+Any build/typecheck failure is a BROKEN finding at CRITICAL severity — code that doesn't compile cannot fulfill any commitment. Include the full compiler error output with file:line references. This catches type errors, missing imports, cross-package drift, and Dockerfile build failures that text-based code reading alone cannot detect.
+
 **For each active commitment (not planned):**
 1. Search the codebase for its implementation (use Grep, Glob, Read in parallel where possible)
 2. Read the implementing code thoroughly — line by line for critical paths

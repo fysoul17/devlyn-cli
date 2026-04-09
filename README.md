@@ -65,18 +65,20 @@ Point it at a spec (or just describe what you want) and walk away.
 /devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-1/1.1-user-auth.md"
 ```
 
-It runs a **9-phase pipeline** autonomously:
+It runs a **10-phase pipeline** autonomously:
 
 ```
-Build → Browser Test → Evaluate → Fix Loop → Simplify → Review → Security → Clean → Docs
+Build → Build Gate → Browser Test → Evaluate → Fix Loop → Simplify → Review → Security → Clean → Docs
 ```
 
 - Each phase runs as a separate agent with fresh context
 - Git checkpoints at every phase for safe rollback
+- **Build Gate** runs your project's real compilers, typecheckers, and linters — catches type errors, cross-package drift, and Docker build failures that tests alone miss. Auto-detects project type (Next.js, Rust, Go, Solidity, Expo, Swift, and more) and Dockerfiles.
 - Browser validation tests your feature end-to-end (clicks, forms, verification)
 - Evaluation grades against done-criteria — if it fails, auto-fix and re-evaluate
 
-Skip phases you don't need: `--skip-browser`, `--skip-review`, `--skip-clean`, `--skip-docs`, `--max-rounds 6`
+Skip phases you don't need: `--skip-browser`, `--skip-review`, `--skip-clean`, `--skip-docs`, `--skip-build-gate`, `--max-rounds 6`
+Customize the build gate: `--build-gate strict` (warnings = errors), `--build-gate no-docker` (skip Docker builds for speed)
 
 ### Step 3 — Verify with `/devlyn:preflight`
 
