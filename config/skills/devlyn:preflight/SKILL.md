@@ -329,6 +329,7 @@ Triage complete.
 
 Next steps:
 - To implement fixes: /devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-N/[id]-[name].md"
+  - For high-stakes fixes (CRITICAL severity or complex DIVERGENT findings), add `--with-codex both` to cross-validate the fix and review with Codex
 - To re-run preflight after fixes: /devlyn:preflight [same flags]
 - To add new features discovered during audit: /devlyn:ideate expand
 ```
