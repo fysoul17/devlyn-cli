@@ -138,6 +138,7 @@ ${g}                v${PKG.version} ${COLORS.dim}· ${k}🍩 by Nocodecat @ Donu
 
 const OPTIONAL_ADDONS = [
   // Local optional skills (copied to .claude/skills/)
+  { name: 'asset-creator', desc: 'AI pixel art game asset pipeline — generate, chroma-key, catalog', type: 'local' },
   { name: 'cloudflare-nextjs-setup', desc: 'Cloudflare Workers + Next.js deployment with OpenNext', type: 'local' },
   { name: 'generate-skill', desc: 'Create well-structured Claude Code skills following Anthropic best practices', type: 'local' },
   { name: 'prompt-engineering', desc: 'Claude 4 prompt optimization using Anthropic best practices', type: 'local' },
