@@ -45,7 +45,7 @@ This pipeline runs hands-free. The user launches it to walk away and come back t
 ```
 Auto-resolve pipeline starting
 Task: [extracted task description]
-Phases: Build → Build Gate → [Browser] → Evaluate → [Fix loop if needed] → Simplify → [Review] → [Security] → [Clean] → [Docs]
+Phases: Build → Build Gate → [Browser] → Evaluate → [Fix loop if needed] → Simplify → [Review] → Challenge → [Security] → [Clean] → [Docs]
 Max evaluation rounds: [N]
 Cross-model evaluation (Codex): [evaluate / review / both / disabled]
 ```
@@ -278,6 +278,55 @@ Clean up the team after completion.
 1. If CRITICAL issues remain unfixed, log a warning in the final report
 2. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): review fixes complete"` if there are changes
 
+## PHASE 4.5: CHALLENGE
+
+Every prior phase used checklists, done-criteria, or structured categories. This phase is deliberately different — it's a fresh pair of eyes with no checklist, no prior context, and a skeptical mandate. The subagent hasn't seen the done-criteria, the eval findings, or the review results. It reads the raw diff cold and asks: "would I mass-ship this?"
+
+This is what catches the things structured reviews miss — subtle logic that technically works but isn't the right approach, assumptions nobody questioned, patterns that are fine but not best-practice, and integration seams that look correct in isolation but feel wrong when you read the whole changeset.
+
+Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
+
+Agent prompt — pass this to the Agent tool:
+
+You are a senior engineer doing a final skeptical review before this code ships to production. You have NOT seen any prior reviews, test results, or design docs — read the code cold.
+
+Run `git diff main` to see all changes. Read every changed file in full (not just the diff hunks — you need surrounding context).
+
+Your job is NOT to check boxes. Your job is to find the things that would make a staff engineer say "hold on, let's talk about this before we ship." Think about:
+
+- Would this approach survive a 10x traffic spike? A midnight oncall page? A junior dev maintaining it 6 months from now?
+- Are there assumptions baked in that nobody stated out loud? Hardcoded limits, implicit ordering, missing edge cases in business logic?
+- Is the error handling actually helpful, or does it just prevent crashes while leaving the user confused?
+- Are there simpler, more idiomatic ways to do what this code does? Not "clever" alternatives — genuinely better approaches?
+- Would you mass-confidence approve this PR, or would you leave comments?
+
+Be brutally honest. Do NOT start with praise. Do NOT soften findings. Every finding must include `file:line` and a concrete fix — not "consider improving" but "change X to Y because Z."
+
+Write `.devlyn/CHALLENGE-FINDINGS.md`:
+
+```
+# Challenge Findings
+## Verdict: [PASS / NEEDS WORK]
+## Findings
+### [severity: CRITICAL / HIGH / MEDIUM]
+- `file:line` — what's wrong — Fix: concrete change
+```
+
+Verdict: PASS only if you would mass-confidently mass-ship this code with your name on it. If you found anything CRITICAL or HIGH, verdict is NEEDS WORK.
+
+**After the agent completes**:
+1. Read `.devlyn/CHALLENGE-FINDINGS.md`
+2. Extract the verdict
+3. Branch:
+   - `PASS` → continue to PHASE 5
+   - `NEEDS WORK` → spawn a fix subagent with `mode: "bypassPermissions"`:
+
+     Read `.devlyn/CHALLENGE-FINDINGS.md` — it contains findings from a fresh skeptical review. Fix every CRITICAL and HIGH finding at the root cause. For MEDIUM findings, fix if straightforward. After fixing, run the test suite to verify nothing broke.
+
+   After the fix agent completes:
+   1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): challenge fixes complete"`
+   2. Continue to PHASE 5 (do NOT re-run the challenge — one pass is sufficient to avoid infinite loops)
+
 ## PHASE 5: SECURITY REVIEW (conditional)
 
 Determine whether to run this phase:
@@ -343,7 +392,7 @@ Synchronize documentation with recent code changes. Use `git log --oneline -20` 
 After all phases complete:
 
 1. Clean up temporary files:
-   - Delete the `.devlyn/` directory entirely (contains done-criteria.md, BUILD-GATE.md, EVAL-FINDINGS.md, BROWSER-RESULTS.md, screenshots/, playwright temp files)
+   - Delete the `.devlyn/` directory entirely (contains done-criteria.md, BUILD-GATE.md, EVAL-FINDINGS.md, BROWSER-RESULTS.md, CHALLENGE-FINDINGS.md, screenshots/, playwright temp files)
    - Kill any dev server process still running from browser validation
 
 2. Run `git log --oneline -10` to show commits made during the pipeline
@@ -367,6 +416,7 @@ After all phases complete:
 | Simplify | [completed / skipped] | [changes made] |
 | Review (Claude team) | [completed / skipped] | [findings summary] |
 | Review (Codex) | [completed / skipped] | [Codex-only findings, agreed findings] |
+| Challenge | [PASS / NEEDS WORK] | [findings count, fixes applied] |
 | Security review | [completed / skipped / auto-skipped] | [findings or "no security-sensitive changes"] |
 | Clean | [completed / skipped] | [items cleaned] |
 | Docs (update-docs) | [completed / skipped] | [docs updated] |

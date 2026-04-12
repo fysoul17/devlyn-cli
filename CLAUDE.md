@@ -56,9 +56,11 @@ For hands-free build-evaluate-polish cycles — works for bugs, features, refact
 /devlyn:auto-resolve [task description]
 ```
 
-This runs the full pipeline automatically: **Build → Build Gate → Browser Validate → Evaluate → Fix Loop → Simplify → Review → Security Review → Clean → Docs**. Each phase runs as a separate subagent with its own context. Communication between phases happens via files (`.devlyn/done-criteria.md`, `.devlyn/BUILD-GATE.md`, `.devlyn/EVAL-FINDINGS.md`, `.devlyn/BROWSER-RESULTS.md`).
+This runs the full pipeline automatically: **Build → Build Gate → Browser Validate → Evaluate → Fix Loop → Simplify → Review → Challenge → Security Review → Clean → Docs**. Each phase runs as a separate subagent with its own context. Communication between phases happens via files (`.devlyn/done-criteria.md`, `.devlyn/BUILD-GATE.md`, `.devlyn/EVAL-FINDINGS.md`, `.devlyn/BROWSER-RESULTS.md`, `.devlyn/CHALLENGE-FINDINGS.md`).
 
 The **Build Gate** (Phase 1.4) runs real compilers, typecheckers, and linters — the same commands CI/Docker/production will run. It auto-detects project types (Next.js, Rust, Go, Solidity, Expo, Swift, etc.) and Dockerfiles. This is the primary defense against "tests pass locally, breaks in CI/Docker" class of bugs (type errors in un-tested files, cross-package drift, Dockerfile copy mismatches).
+
+The **Challenge** phase (Phase 4.5) is a fresh skeptical review with no checklist — a subagent reads the entire diff cold with zero context from prior phases and asks "would I ship this to production with my name on it?" This catches the subtle issues that structured checklist-driven reviews miss: wrong-but-working approaches, unstated assumptions, non-idiomatic patterns, and integration gaps.
 
 For web projects, the Browser Validate phase starts the dev server and tests the implemented feature in a real browser — clicking buttons, filling forms, verifying results. If the feature doesn't work, findings feed back into the fix loop.
 
