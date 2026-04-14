@@ -9,6 +9,10 @@
   "files": [
     "bin",
     "config",
+    "!config/skills/preflight-workspace",
+    "!config/skills/preflight-workspace/**",
+    "!config/skills/devlyn:ideate-workspace",
+    "!config/skills/devlyn:ideate-workspace/**",
     "agents-config",
     "optional-skills",
     "CLAUDE.md"

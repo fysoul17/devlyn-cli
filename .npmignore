@@ -1,0 +1,21 @@
+# Eval / development workspaces for skills — never ship these to npm.
+# These directories hold pre-edit skill snapshots, subagent test outputs,
+# grading JSON, timing data, and benchmark results. Useful locally for
+# iteration but noise (and sometimes sensitive) for downstream users.
+config/skills/preflight-workspace
+config/skills/devlyn:ideate-workspace
+config/skills/preflight-workspace/**
+config/skills/devlyn:ideate-workspace/**
+
+# Nested test-project sandboxes that sometimes sit under workspaces
+config/skills/preflight-workspace/test-project
+config/skills/preflight-workspace/test-project/**
+
+# Dotfiles and local-only files
+.DS_Store
+*.log
+.gitignore
+
+# Development-only files that occasionally land in config/
+*.bak
+*.tmp
