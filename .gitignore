@@ -2,3 +2,4 @@ node_modules/
 .DS_Store
 *.log
 config/skills/preflight-workspace/
+config/skills/devlyn:ideate-workspace/

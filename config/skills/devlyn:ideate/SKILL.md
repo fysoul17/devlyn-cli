@@ -1,6 +1,6 @@
 ---
 name: devlyn:ideate
-description: Transform unstructured ideas into implementation-ready planning documents through structured brainstorming, research, and multi-perspective synthesis. Produces a three-layer document architecture (Vision, Roadmap index, auto-resolve-ready specs) that eliminates context pollution in the implementation pipeline. Use when the user wants to brainstorm, plan a new project or feature set, explore possibilities, create a vision and roadmap, or structure scattered ideas into an actionable plan. Triggers on "let's brainstorm", "let's plan", "ideate", "I have an idea for", "help me think through", "let's explore", new project planning, feature discovery, roadmap creation, or when the user is throwing ideas that need structuring. Also triggers when the user shares links or resources for a new initiative and needs them synthesized into a plan, or wants to update an existing roadmap with new ideas.
+description: Transforms unstructured ideas into implementation-ready planning documents through structured brainstorming, research, and a built-in self-skeptical rubric pass. Produces a three-layer document architecture (Vision, Roadmap index, auto-resolve-ready specs) to eliminate context pollution in the implementation pipeline. Optional --with-codex flag adds OpenAI Codex as a cross-model critic. Use when the user wants to brainstorm, plan a new project or feature set, create a vision and roadmap, or structure scattered ideas into an actionable plan. Triggers on "let's brainstorm", "let's plan", "ideate", "I have an idea for", "help me think through", "let's explore", new project planning, feature discovery, roadmap creation, or when the user is throwing ideas that need structuring.
 ---
 
 # Ideation to Implementation Bridge
@@ -19,6 +19,14 @@ Concretely:
 - DO explore and research the problem space to write better specs
 - If you catch yourself about to open a source file to make a code change, stop — that's a signal you've left ideation mode
 </hard_boundary>
+
+## Arguments
+
+Parse these from the user's invocation message:
+
+- `--with-codex` (default: off) — bare flag. When set, OpenAI Codex runs an independent rubric pass during Phase 3.5 CHALLENGE via `mcp__codex-cli__*` MCP tools, using the same rubric as the solo pass. Codex always runs at `reasoningEffort: "xhigh"` — the entire reason for the flag is maximum reasoning from a second model family.
+
+**If `--with-codex` is set**: read `references/challenge-rubric.md` and `references/codex-debate.md` up front, then run the pre-flight check described in `codex-debate.md` to verify the Codex MCP server is available before starting the pipeline. If the server is unavailable and the user opts to continue without Codex, the solo CHALLENGE pass still runs — only the cross-model rubric pass is disabled.
 
 <why_this_matters>
 When ideas flow directly from conversation to `/devlyn:auto-resolve`, context degrades at each handoff:
@@ -271,8 +279,47 @@ Within each phase:
 ### Architecture Decisions
 Surface decisions that affect multiple items — technology choices, data model, integration approaches, UX patterns. For each: **What** was decided, **Why** (tradeoffs), and **What alternatives** were considered. These become decision records.
 
-### Confirmation
-Before generating documents, present a final summary:
+### Internal draft — do not show the user yet
+
+At this point you have an internal convergence draft: themes, phases, items, decisions. **Do not present it to the user yet.** Phase 3.5 CHALLENGE runs next, and the user will see exactly one summary — the post-challenge plan, with visibility into what CHALLENGE changed. Showing the pre-challenge draft first and then changing it after challenge creates a two-round confirmation loop that burns the user's trust.
+
+## Phase 3.5: CHALLENGE
+
+<phase_goal>Apply a strict 5-axis rubric to the internal convergence draft, then present one post-challenge summary to the user for confirmation. Always runs.</phase_goal>
+
+<thinking_effort>
+Engage maximum thinking effort here — both the solo rubric pass and, if enabled, the Codex pass. Use extended thinking ("ultrathink") when reading each item, applying each axis, and producing revisions. The default Claude failure mode in self-review is nodding along to the draft you just produced; shallow thinking here is the exact pattern this phase exists to prevent.
+
+Before finalizing the rubric pass, verify your findings against the rubric one more time: every flagged item should have a specific Quote, a failing axis, and a concrete revision — not a vague concern.
+</thinking_effort>
+
+The user has been burned by plans that look good on the surface but fall apart under scrutiny. Every time they accept a plan and then ask "is this no-workaround, no-guesswork, no-overengineering, world-class best practice, optimized?" the honest answer is almost always no. This phase makes that the *default* behavior — the plan challenges itself before the user has to.
+
+### The rubric — single source of truth
+
+Read `references/challenge-rubric.md` before starting. That file is the only definition of the 5 axes, the finding format, the hard rule about respecting explicit user intent, and the good-vs-bad examples. Both the solo pass and the Codex pass use the same rubric; do not re-derive it inline.
+
+### Solo pass (always runs)
+
+Apply the rubric to the internal convergence draft. Produce findings in the format specified in `challenge-rubric.md` (Severity / Quote / Axis / Why / Fix).
+
+For Quick Add with one new item, one solo pass is enough. For a full greenfield or expand plan, run the rubric once, revise, and run it again on the revision. If a third pass would be needed, the plan has structural problems that belong in the user-facing summary as open questions — surface them rather than iterating further.
+
+If the plan came from one model in one pass, it almost always fails at least one axis somewhere. Nodding along to your own draft defeats the entire point of the phase.
+
+### Codex pass (only if `--with-codex` is set)
+
+If the flag is set you have already loaded `references/codex-debate.md` during argument parsing — follow its "PHASE 3.5-CODEX" section now. Codex applies the rubric from `challenge-rubric.md` independently at `reasoningEffort: "xhigh"`. Reconcile findings as `codex-debate.md` describes — findings raised by both sides get "confirmed by both", Codex-only findings get prefixed `[codex]` in internal notes so the user can see where each push came from.
+
+### Respect explicit user intent
+
+The rubric is a quality lens, not an override. If a finding conflicts with something the user explicitly and clearly asked for, follow the "Hard rule" section in `challenge-rubric.md`: record the finding, **do not silently rewrite the plan**, and surface it as an open question in the summary below. The user makes the call.
+
+### User-facing summary (the first and only time the user sees the plan)
+
+After the rubric pass(es), present the post-challenge plan to the user for confirmation. This is the first time the user sees the converged plan — by design, so they see a rubric-checked result rather than a draft that immediately gets revised.
+
+Format:
 ```
 Vision: [one sentence]
 Phases: [N] phases, [M] total items
@@ -280,9 +327,24 @@ Phase 1 ([theme]): [items with brief descriptions]
 Phase 2 ([theme]): [items]
 Key decisions: [list]
 Deferred: [items with reasons]
+
+## CHALLENGE results
+
+Solo pass: [N findings, M applied]
+Codex pass: [N findings, M applied]   ← only if --with-codex was set
+
+Changes applied during CHALLENGE:
+- [item]: [what changed and which axis triggered it]
+
+Open questions for you (rubric flagged something you explicitly asked for):
+- [item]: rubric says [finding]; you asked for [original]; here is the tradeoff — proceed as-is, or adopt the alternative?
 ```
 
-Get explicit confirmation before proceeding to document generation.
+Get explicit confirmation before proceeding to DOCUMENT.
+
+### Quick Add mode
+
+For single-item additions, run one solo rubric pass on just the new item. Even then do not skip — single-item additions are exactly where overengineering and workarounds slip in unnoticed, because the lack of surrounding context makes a bad item look self-contained and harmless.
 
 ## Phase 4: DOCUMENT
 
@@ -376,6 +438,9 @@ Before finalizing, verify:
 - [ ] No spec requires reading VISION.md to be understood (self-contained)
 - [ ] Dependencies between items are documented in both specs
 - [ ] Architecture decisions include reasoning and alternatives considered
+- [ ] CHALLENGE ran against `references/challenge-rubric.md` (solo, plus Codex if `--with-codex` was set); no item still fails any axis at CRITICAL or HIGH severity
+- [ ] User saw the post-challenge plan as the first and only confirmation prompt — no pre-challenge draft was shown first
+- [ ] Any rubric finding that conflicted with explicit user intent was surfaced as an open question, not silently applied
 
 ## Language
 
