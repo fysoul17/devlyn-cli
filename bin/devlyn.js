@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const readline = require('readline');
 const { execSync } = require('child_process');
 
@@ -579,6 +580,29 @@ async function init(skipPrompts = false) {
   if (settingsChanged) {
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
     log('  → settings.json (agent teams + pipeline permissions)', 'dim');
+  }
+
+  // Configure global Claude Code settings (~/.claude/settings.json)
+  const globalClaudeDir = path.join(os.homedir(), '.claude');
+  const globalSettingsPath = path.join(globalClaudeDir, 'settings.json');
+  let globalSettings = {};
+  if (fs.existsSync(globalSettingsPath)) {
+    try {
+      globalSettings = JSON.parse(fs.readFileSync(globalSettingsPath, 'utf8'));
+    } catch {
+      globalSettings = {};
+    }
+  }
+  if (!globalSettings.env) globalSettings.env = {};
+  let globalSettingsChanged = false;
+  if (!globalSettings.env.CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING) {
+    globalSettings.env.CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING = '1';
+    globalSettingsChanged = true;
+  }
+  if (globalSettingsChanged) {
+    if (!fs.existsSync(globalClaudeDir)) fs.mkdirSync(globalClaudeDir, { recursive: true });
+    fs.writeFileSync(globalSettingsPath, JSON.stringify(globalSettings, null, 2) + '\n');
+    log('  → ~/.claude/settings.json (disabled adaptive thinking)', 'dim');
   }
 
   // Install agents for other detected CLIs
