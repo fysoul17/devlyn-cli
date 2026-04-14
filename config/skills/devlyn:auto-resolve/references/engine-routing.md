@@ -50,11 +50,11 @@ The `model` field accepts any string — pass `"gpt-5.4"` even if the MCP schema
 | product-designer | **Claude** | — | Ambiguous requirements, user intent = Claude strength |
 | ui-designer | **Claude** | — | Visual spec, design reasoning = non-coding task |
 | ux-designer | **Claude** | — | User flow analysis = ambiguous intent handling |
-| accessibility-auditor | **Codex** | read-only | WCAG pattern checking in code = SWE-bench Pro > GPQA gap |
+| accessibility-auditor | **Claude** | — | A/B test: Claude found 12 issues (1 CRITICAL) vs Codex 4. WCAG auditing requires thoroughness and domain knowledge depth, not code generation speed. Claude 3x coverage. |
 | product-analyst | **Claude** | — | Requirements clarity, scope judgment = ambiguity handling |
 | architecture-reviewer | **Claude** | — | Codebase-wide pattern review = MRCR long-context (+28pp) |
 | performance-engineer | **Codex** | read-only | Terminal tasks + algorithm analysis = Terminal-Bench (+9.7pp) |
-| api-designer | **Codex** | read-only | API code pattern matching = SWE-bench Pro (+11.7pp) |
+| api-designer | **Dual** | read-only | A/B test: Claude found 9 issues, Codex found 6, with unique findings on both sides (Claude: --version, exit codes; Codex: YAML folded scalar parsing bug). Dual maximizes coverage for API surface review. |
 
 ### team-review roles
 
@@ -65,18 +65,18 @@ The `model` field accepts any string — pass `"gpt-5.4"` even if the MCP schema
 | test-analyst | **Codex** | workspace-write | Test gap analysis + test code suggestions |
 | ux-reviewer | **Claude** | — | UX flow assessment = ambiguity handling |
 | ui-reviewer | **Claude** | — | Design token consistency = non-coding task |
-| accessibility-reviewer | **Codex** | read-only | WCAG code patterns = SWE-bench Pro |
+| accessibility-reviewer | **Claude** | — | Same rationale as team-resolve accessibility-auditor: Claude 3x finding coverage on WCAG audits |
 | product-validator | **Claude** | — | Business logic intent = ambiguity handling |
-| api-reviewer | **Codex** | read-only | API pattern consistency = SWE-bench Pro |
+| api-reviewer | **Dual** | read-only | Same rationale as team-resolve api-designer: both models find unique API issues |
 | performance-reviewer | **Codex** | read-only | Algorithm complexity = Terminal-Bench (+9.7pp) |
 
 ### Summary distribution
 
 | Engine | team-resolve (12) | team-review (9) | Total |
 |--------|-------------------|-----------------|-------|
-| Claude | 6 | 3 | 9 |
-| Codex | 4 | 3 | 7 |
-| Dual | 2 | 3 | 5 |
+| Claude | 7 | 4 | 11 |
+| Codex | 2 | 2 | 4 |
+| Dual | 3 | 3 | 6 |
 
 ---
 
