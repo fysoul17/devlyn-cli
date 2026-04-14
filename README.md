@@ -79,6 +79,7 @@ Build → Build Gate → Browser Test → Evaluate → Fix Loop → Simplify →
 
 Skip phases you don't need: `--skip-browser`, `--skip-review`, `--skip-clean`, `--skip-docs`, `--skip-build-gate`, `--max-rounds 6`
 Customize the build gate: `--build-gate strict` (warnings = errors), `--build-gate no-docker` (skip Docker builds for speed)
+Use dual-model routing: `--engine auto` (Codex builds, Claude evaluates — see below)
 
 ### Step 3 — Verify with `/devlyn:preflight`
 
@@ -108,11 +109,42 @@ Install the Codex MCP server during setup, then:
 /devlyn:auto-resolve "fix the auth bug" --engine auto
 ```
 
-**`--engine auto`** routes each pipeline phase and team role to the optimal model (Claude Opus 4.6 or GPT-5.4) based on benchmark data. Codex handles implementation (SWE-bench Pro +11.7pp), Claude handles evaluation and architecture review (MRCR +28pp). Security roles run both models in parallel for maximum coverage.
+**`--engine auto`** routes each pipeline phase and team role to the optimal model (Claude Opus 4.6 or GPT-5.4) — validated through A/B testing, not just benchmarks.
 
-> `--engine auto` (recommended) · `--engine codex` (force Codex for implementation) · `--engine claude` (default, Claude only)
+> `--engine auto` (recommended) · `--engine codex` (force Codex for build) · `--engine claude` (default, Claude only)
 
-Also works with `/devlyn:ideate --engine auto` and `/devlyn:preflight --engine auto`.
+Works across the full pipeline:
+
+```
+/devlyn:auto-resolve "implement feature" --engine auto
+/devlyn:ideate "plan new project" --engine auto
+/devlyn:preflight --engine auto
+```
+
+<details>
+<summary><strong>How routing works</strong> — A/B tested on 6 roles, 11 integration tests</summary>
+
+**Pipeline phases** — builder and critic are always different models (GAN dynamic):
+
+| Phase | Model | Why |
+|---|---|---|
+| Build (implementation) | **Codex GPT-5.4** | SWE-bench Pro +11.7pp for hard coding tasks |
+| Evaluate | **Claude** | Long-context (MRCR +28pp) for full-diff grading |
+| Fix Loop | **Codex GPT-5.4** | Same advantage as Build |
+| Challenge | **Claude** | Fresh skeptical review needs different model family |
+| Browser Validate | **Claude** | Chrome MCP session-bound |
+
+**Team roles** — each of 21 roles routes to the best model:
+
+| Engine | Roles | Examples |
+|---|---|---|
+| Claude (11) | Analysis, design, architecture | root-cause-analyst, architecture-reviewer, ux-designer, product-analyst |
+| Codex (4) | Code generation, performance | implementation-planner, test-engineer, performance-engineer |
+| Dual (6) | Both models find unique issues | security-auditor, quality-reviewer, api-designer |
+
+**Key finding**: Benchmark predictions were only 33% accurate. 4 of 6 A/B-tested roles needed routing changes after real testing — proving that benchmarks alone are insufficient for optimal routing.
+
+</details>
 
 <details>
 <summary>Legacy: <code>--with-codex</code> (superseded by <code>--engine</code>)</summary>
@@ -122,6 +154,8 @@ Also works with `/devlyn:ideate --engine auto` and `/devlyn:preflight --engine a
 ```
 
 > `--with-codex evaluate` (default) · `--with-codex review` · `--with-codex both`
+
+`--engine auto` subsumes `--with-codex both` with broader coverage — Codex is used for build, fix, and 4 team roles, not just evaluate/review.
 
 </details>
 
@@ -194,6 +228,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 | Skill | Description |
 |---|---|
+| `asset-creator` | AI pixel art game asset pipeline — generate, chroma-key, catalog |
 | `cloudflare-nextjs-setup` | Cloudflare Workers + Next.js with OpenNext |
 | `generate-skill` | Create Claude Code skills following Anthropic best practices |
 | `prompt-engineering` | Claude 4 prompt optimization |
