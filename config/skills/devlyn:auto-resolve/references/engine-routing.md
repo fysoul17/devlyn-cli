@@ -43,7 +43,7 @@ The `model` field accepts any string — pass `"gpt-5.4"` even if the MCP schema
 
 | Role | Engine | Sandbox | Rationale |
 |------|--------|---------|-----------|
-| root-cause-analyst | **Codex** | read-only | Bug diagnosis = SWE-bench Pro (+11.7pp) |
+| root-cause-analyst | **Claude** | — | A/B test: Claude traced git history (15 tool calls) finding exact commit + unchecked migration plan. Codex analyzed structure well but lacked git history depth. Tool access > SWE-bench Pro advantage for this role. |
 | test-engineer | **Codex** | workspace-write | Test code generation = HumanEval (+2.7pp), needs file write |
 | security-auditor | **Dual** | read-only | Semgrep: both find unique vulns; GAN > single model |
 | implementation-planner | **Codex** | read-only | Implementation planning = SWE-bench Pro (+11.7pp) |
@@ -74,8 +74,8 @@ The `model` field accepts any string — pass `"gpt-5.4"` even if the MCP schema
 
 | Engine | team-resolve (12) | team-review (9) | Total |
 |--------|-------------------|-----------------|-------|
-| Claude | 5 | 3 | 8 |
-| Codex | 5 | 4 | 9 |
+| Claude | 6 | 3 | 9 |
+| Codex | 4 | 4 | 8 |
 | Dual | 2 | 2 | 4 |
 
 ---
