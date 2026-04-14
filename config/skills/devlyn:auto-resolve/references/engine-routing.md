@@ -61,7 +61,7 @@ The `model` field accepts any string — pass `"gpt-5.4"` even if the MCP schema
 | Role | Engine | Sandbox | Rationale |
 |------|--------|---------|-----------|
 | security-reviewer | **Dual** | read-only | Same as team-resolve security-auditor |
-| quality-reviewer | **Codex** | read-only | Code quality/bug detection = SWE-bench Pro (+11.7pp) |
+| quality-reviewer | **Dual** | read-only | A/B test: Claude found 14 issues (2 HIGH), Codex found 11 (3 HIGH), only ~6 overlap. Dual yields ~19 unique findings (+36-73% coverage). Both models find HIGH-severity issues the other misses. |
 | test-analyst | **Codex** | workspace-write | Test gap analysis + test code suggestions |
 | ux-reviewer | **Claude** | — | UX flow assessment = ambiguity handling |
 | ui-reviewer | **Claude** | — | Design token consistency = non-coding task |
@@ -75,8 +75,8 @@ The `model` field accepts any string — pass `"gpt-5.4"` even if the MCP schema
 | Engine | team-resolve (12) | team-review (9) | Total |
 |--------|-------------------|-----------------|-------|
 | Claude | 6 | 3 | 9 |
-| Codex | 4 | 4 | 8 |
-| Dual | 2 | 2 | 4 |
+| Codex | 4 | 3 | 7 |
+| Dual | 2 | 3 | 5 |
 
 ---
 
