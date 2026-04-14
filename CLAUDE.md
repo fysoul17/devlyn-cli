@@ -72,7 +72,8 @@ Optional flags:
 - `--skip-review` — skip team-review phase
 - `--skip-clean` — skip clean phase
 - `--skip-docs` — skip update-docs phase
-- `--with-codex [evaluate|review|both]` — use OpenAI Codex as cross-model evaluator/reviewer (requires codex-mcp-server)
+- `--engine auto|codex|claude` — intelligent model routing. `auto` routes each phase and team role to the optimal model (Claude or Codex GPT-5.4) based on benchmark data. `codex` forces Codex for implementation, Claude for evaluation. `claude` (default) uses Claude for everything. Requires codex-mcp-server.
+- `--with-codex [evaluate|review|both]` — (legacy, superseded by `--engine`) use OpenAI Codex as cross-model evaluator/reviewer (requires codex-mcp-server)
 
 ## Preflight Check (Post-Roadmap Verification)
 
@@ -91,6 +92,7 @@ Optional flags:
 - `--autofix` — auto-promote CRITICAL/HIGH findings and run auto-resolve
 - `--skip-browser` — skip browser validation
 - `--skip-docs` — skip documentation audit
+- `--engine auto|codex|claude` — route code-auditor to Codex (better at code analysis), docs/browser to Claude
 
 **Recommended workflow**: `/devlyn:ideate` → `/devlyn:auto-resolve` (repeat) → `/devlyn:preflight` → fix gaps → `/devlyn:preflight` (verify)
 

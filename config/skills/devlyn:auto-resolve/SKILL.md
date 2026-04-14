@@ -33,28 +33,36 @@ This pipeline runs hands-free. The user launches it to walk away and come back t
    - `--skip-docs` (false) — skip update-docs phase
    - `--skip-build-gate` (false) — skip the deterministic build gate (Phase 1.4). Not recommended — the build gate is the primary defense against "tests pass locally, breaks in CI/Docker/production" class of bugs.
    - `--build-gate MODE` (auto) — controls build gate behavior. `auto`: detect project type and run appropriate build/typecheck/lint commands; if Dockerfile(s) are present, Docker builds are included automatically. `strict`: auto + treat warnings as errors. `no-docker`: auto but skip Docker builds even if Dockerfiles exist (for faster iteration). `skip`: same as --skip-build-gate.
-   - `--with-codex` (false) — use OpenAI Codex as a cross-model evaluator/reviewer via `mcp__codex-cli__*` MCP tools. Accepts: `evaluate`, `review`, or `both` (default when flag is present without value). When enabled, Codex provides an independent second opinion from a different model family, creating a GAN-like dynamic where Claude builds and Codex critiques.
+   - `--with-codex` (false) — use OpenAI Codex as a cross-model evaluator/reviewer via `mcp__codex-cli__*` MCP tools. Accepts: `evaluate`, `review`, or `both` (default when flag is present without value). When enabled, Codex provides an independent second opinion from a different model family, creating a GAN-like dynamic where Claude builds and Codex critiques. **Ignored if `--engine` is set** (engine routing subsumes this).
+   - `--engine MODE` (claude) — controls which model handles each pipeline phase and team role. Modes:
+     - `claude` (default): all phases use Claude subagents. Current behavior, no Codex calls.
+     - `codex`: Codex handles implementation/analysis phases, Claude handles orchestration, evaluation, and Chrome MCP.
+     - `auto`: each phase and team role routes to the optimal model based on benchmark data. Recommended when Codex MCP server is available. Subsumes `--with-codex both`.
 
    Flags can be passed naturally: `/devlyn:auto-resolve fix the auth bug --max-rounds 3 --skip-docs`
-   Codex examples: `--with-codex` (both), `--with-codex evaluate`, `--with-codex review`
+   Engine examples: `--engine auto`, `--engine codex`, `--engine claude`
+   Codex examples (legacy): `--with-codex` (both), `--with-codex evaluate`, `--with-codex review`
    If no flags are present, use defaults.
 
-3. **If `--with-codex` is enabled**: Read `references/codex-integration.md` and run the "PRE-FLIGHT CHECK" section to verify Codex MCP server availability before proceeding.
+3. **If `--engine` is `auto` or `codex`**: Read `references/engine-routing.md` for the full routing table. Then call `mcp__codex-cli__ping` to verify the Codex MCP server is available. If ping fails, warn the user and offer: [1] Continue with `--engine claude` (fallback), [2] Abort. If `--engine` is not set but `--with-codex` is enabled, read `references/codex-integration.md` instead and run its pre-flight check.
 
 4. Announce the pipeline plan:
 ```
 Auto-resolve pipeline starting
 Task: [extracted task description]
+Engine: [auto / codex / claude]
 Phases: Build → Build Gate → [Browser] → Evaluate → [Fix loop if needed] → Simplify → [Review] → Challenge → [Security] → [Clean] → [Docs]
 Max evaluation rounds: [N]
-Cross-model evaluation (Codex): [evaluate / review / both / disabled]
+Cross-model evaluation (Codex): [evaluate / review / both / disabled / subsumed by --engine]
 ```
 
 ## PHASE 1: BUILD
 
+**Engine routing**: If `--engine` is `auto` or `codex`, read `references/engine-routing.md` "How to Spawn a Codex BUILD/FIX Agent" section. Call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "workspace-write"`, `fullAuto: true`, and the full agent prompt below as the `prompt` parameter. If `--engine` is `claude` (default), spawn a Claude subagent as described below.
+
 Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` to investigate and implement the fix. The subagent does NOT have access to skills, so include all necessary instructions inline.
 
-Agent prompt — pass this to the Agent tool:
+Agent prompt — pass this to the Agent tool (or to `mcp__codex-cli__codex` prompt if engine routes to Codex):
 
 Investigate and implement the following task. Work through these phases in order:
 
@@ -73,6 +81,8 @@ Read relevant files in parallel. Build a clear picture of what exists and what n
 - Refactor: architecture-reviewer + test-engineer
 - UI/UX: product-designer + ux-designer + ui-designer (+ accessibility-auditor as needed)
 Each teammate investigates from their perspective and sends findings back.
+
+**Engine routing for teammates**: If the orchestrator's `--engine` is `auto` or `codex`, read `references/engine-routing.md` for per-role routing. Roles marked **Codex** are called via `mcp__codex-cli__codex` instead of spawning Agent teammates — include the full role prompt and issue context inline. Roles marked **Claude** use normal Agent teammates. Roles marked **Dual** run both in parallel and merge findings. The orchestrator relays Codex role outputs to Claude teammates that need them.
 
 **Phase D — Synthesize and implement**: After all teammates report, compile findings into a unified plan. Implement the solution — no workarounds, no hardcoded values, no silent error swallowing. For bugs: write a failing test first, then fix. For features: implement following existing patterns, then write tests. For refactors: ensure tests pass before and after.
 
@@ -127,9 +137,11 @@ Triggered only when PHASE 1.4 returns FAIL.
 
 Track a round counter (shared with the main fix loop counter against `max-rounds`). If `round >= max-rounds`, stop with a clear failure report — do NOT continue to evaluate/browser/etc. Code that doesn't build cannot be meaningfully evaluated or tested.
 
+**Engine routing**: Same as PHASE 2.5 FIX LOOP — if `--engine` is `auto` or `codex`, use `mcp__codex-cli__codex` with `workspace-write` and `fullAuto: true`. If `--engine` is `claude`, spawn a Claude subagent.
+
 Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
 
-Agent prompt — pass this to the Agent tool:
+Agent prompt — pass this to the Agent tool (or to `mcp__codex-cli__codex` prompt if engine routes to Codex):
 
 Read `.devlyn/BUILD-GATE.md` — it contains deterministic build/typecheck/lint failures from real compiler output. These are not opinions; the compiler rejected this code. Fix every listed failure at the root cause level.
 
@@ -220,7 +232,8 @@ Do NOT delete `.devlyn/done-criteria.md` or `.devlyn/EVAL-FINDINGS.md` — the o
 **After the agent completes**:
 1. Read `.devlyn/EVAL-FINDINGS.md`
 2. Extract the verdict
-3. **If `--with-codex` includes `evaluate` or `both`**: Read `references/codex-integration.md` and follow the "PHASE 2-CODEX: CROSS-MODEL EVALUATE" section. This runs Codex as a second evaluator and merges findings into `EVAL-FINDINGS.md`.
+3. **If `--engine` is `auto` or `codex`**: The evaluate phase always uses Claude (see `references/engine-routing.md`). When `--engine auto`, the builder was Codex — Claude evaluating Codex's work creates the GAN dynamic automatically. No separate Codex evaluation pass is needed.
+   **If `--engine` is not set and `--with-codex` includes `evaluate` or `both`** (legacy): Read `references/codex-integration.md` and follow the "PHASE 2-CODEX: CROSS-MODEL EVALUATE" section. This runs Codex as a second evaluator and merges findings into `EVAL-FINDINGS.md`.
 4. Branch on verdict (from the merged findings if Codex was used):
    - `PASS` → skip to PHASE 3
    - `PASS WITH ISSUES` → go to PHASE 2.5 (fix loop) — LOW-only issues are still issues; fix them
@@ -232,9 +245,11 @@ Do NOT delete `.devlyn/done-criteria.md` or `.devlyn/EVAL-FINDINGS.md` — the o
 
 Track the current round number. If `round >= max-rounds`, stop the loop and proceed to PHASE 3 with a warning that unresolved findings remain.
 
+**Engine routing**: If `--engine` is `auto` or `codex`, call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "workspace-write"`, `fullAuto: true`, and the fix prompt below. Use a fresh call each round (no sessionId reuse — sandbox/fullAuto only apply on first call of a session). If `--engine` is `claude`, spawn a Claude subagent as below.
+
 Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` to fix the evaluation findings.
 
-Agent prompt — pass this to the Agent tool:
+Agent prompt — pass this to the Agent tool (or to `mcp__codex-cli__codex` prompt if engine routes to Codex):
 
 Read `.devlyn/EVAL-FINDINGS.md` — it contains specific issues found by an independent evaluator. Fix every finding regardless of severity (CRITICAL, HIGH, MEDIUM, and LOW). The pipeline loops until the evaluator returns PASS — there is no "shippable with issues" shortcut.
 
@@ -268,11 +283,14 @@ Agent prompt — pass this to the Agent tool:
 
 Review all recent changes in this codebase (use `git diff main` and `git status` to determine scope). Assemble a review team using TeamCreate with specialized reviewers: security reviewer, quality reviewer, test analyst. Add UX reviewer, performance reviewer, or API reviewer based on the changes.
 
+**Engine routing for reviewers**: If the orchestrator passed `--engine auto` or `--engine codex`, read `references/engine-routing.md` for per-role routing in the "team-review roles" table. Route each reviewer to Claude Agent or `mcp__codex-cli__codex` accordingly. For Dual roles (security-reviewer), run both models in parallel and merge findings per the "How to Spawn a Dual Role" section. For `--engine claude`, all reviewers are Claude Agent teammates.
+
 Each reviewer evaluates from their perspective, sends findings with file:line evidence grouped by severity (CRITICAL, HIGH, MEDIUM, LOW). After all reviewers report, synthesize findings, deduplicate, and fix any CRITICAL issues directly. For HIGH issues, fix if straightforward.
 
 Clean up the team after completion.
 
-**If `--with-codex` includes `review` or `both`**: Read `references/codex-integration.md` and follow the "PHASE 4B: CODEX REVIEW" section. This runs Codex's independent code review and reconciles findings with the Claude team review.
+**If `--engine` is set**: engine routing already handles cross-model review via per-role routing — skip the legacy `--with-codex` review step below.
+**If `--with-codex` includes `review` or `both`** (legacy, only when `--engine` is not set): Read `references/codex-integration.md` and follow the "PHASE 4B: CODEX REVIEW" section. This runs Codex's independent code review and reconciles findings with the Claude team review.
 
 **After the review phase completes**:
 1. If CRITICAL issues remain unfixed, log a warning in the final report
@@ -403,6 +421,7 @@ After all phases complete:
 ### Auto-Resolve Pipeline Complete
 
 **Task**: [original task description]
+**Engine**: [auto / codex / claude — if auto, note which phases used which model]
 
 **Pipeline Summary**:
 | Phase | Status | Notes |

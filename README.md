@@ -100,17 +100,30 @@ Reads every commitment from your vision, roadmap, and item specs, then audits th
 
 Confirmed gaps become new roadmap items — feed them back into auto-resolve. Use `--autofix` to do this automatically, or `--phase 2` to check only one phase.
 
-### Bonus — Dual-Model Mode with Codex
+### Bonus — Intelligent Model Routing with `--engine`
 
 Install the Codex MCP server during setup, then:
+
+```
+/devlyn:auto-resolve "fix the auth bug" --engine auto
+```
+
+**`--engine auto`** routes each pipeline phase and team role to the optimal model (Claude Opus 4.6 or GPT-5.4) based on benchmark data. Codex handles implementation (SWE-bench Pro +11.7pp), Claude handles evaluation and architecture review (MRCR +28pp). Security roles run both models in parallel for maximum coverage.
+
+> `--engine auto` (recommended) · `--engine codex` (force Codex for implementation) · `--engine claude` (default, Claude only)
+
+Also works with `/devlyn:ideate --engine auto` and `/devlyn:preflight --engine auto`.
+
+<details>
+<summary>Legacy: <code>--with-codex</code> (superseded by <code>--engine</code>)</summary>
 
 ```
 /devlyn:auto-resolve "fix the auth bug" --with-codex
 ```
 
-Claude builds, **OpenAI Codex evaluates independently** — two models collaborating, catching what a single model misses.
-
 > `--with-codex evaluate` (default) · `--with-codex review` · `--with-codex both`
+
+</details>
 
 ---
 
@@ -210,7 +223,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 | Server | Description |
 |---|---|
-| `codex-cli` | Codex MCP server — enables `--with-codex` dual-model mode |
+| `codex-cli` | Codex MCP server — enables `--engine auto/codex` intelligent model routing and legacy `--with-codex` mode |
 | `playwright` | Playwright MCP — powers browser-validate Tier 2 |
 
 </details>

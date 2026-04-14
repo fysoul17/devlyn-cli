@@ -66,9 +66,28 @@ Use the Agent Teams infrastructure:
 
 **IMPORTANT**: When spawning reviewers, replace `{team-name}` in each prompt below with the actual team name you chose. Include the specific changed file paths in each reviewer's spawn prompt.
 
+### Engine-Routed Reviewer Spawning
+
+If the caller passed `--engine auto` or `--engine codex` (check the orchestrator's context or the pipeline config), read the auto-resolve skill's `references/engine-routing.md` for per-role routing under "team-review roles".
+
+**For roles routed to Codex**: Instead of spawning a Claude Agent reviewer, call `mcp__codex-cli__codex` with:
+- `model`: `"gpt-5.4"`
+- `reasoningEffort`: `"xhigh"`
+- `sandbox`: per routing table (`"read-only"` or `"workspace-write"`)
+- `workingDirectory`: project root
+- `prompt`: the full reviewer prompt below, with changed file paths and diff included inline
+
+Codex reviewers cannot use TeamCreate/SendMessage — the Review Lead (you) collects their output directly from the MCP call response and relays cross-cutting findings to other reviewers.
+
+**For roles routed to Claude**: Spawn via Task tool as normal (prompts below).
+
+**For Dual roles** (e.g., security-reviewer): Run BOTH a Claude Agent reviewer AND a `mcp__codex-cli__codex` call in parallel with the same prompt. Merge findings per `engine-routing.md` "How to Spawn a Dual Role" section.
+
+If `--engine claude` or no `--engine` flag: all roles use Claude Agent reviewers (current default behavior).
+
 ### Reviewer Prompts
 
-When spawning each reviewer via the Task tool, use these prompts:
+When spawning each reviewer via the Task tool (or passing to `mcp__codex-cli__codex` for Codex-routed roles), use these prompts:
 
 <security_reviewer_prompt>
 You are the **Security Reviewer** on an Agent Team performing a code review.

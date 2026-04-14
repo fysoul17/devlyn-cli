@@ -24,9 +24,15 @@ Concretely:
 
 Parse these from the user's invocation message:
 
-- `--with-codex` (default: off) — bare flag. When set, OpenAI Codex runs an independent rubric pass during Phase 3.5 CHALLENGE via `mcp__codex-cli__*` MCP tools, using the same rubric as the solo pass. Codex always runs at `reasoningEffort: "xhigh"` — the entire reason for the flag is maximum reasoning from a second model family.
+- `--with-codex` (default: off) — bare flag. When set, OpenAI Codex runs an independent rubric pass during Phase 3.5 CHALLENGE via `mcp__codex-cli__*` MCP tools, using the same rubric as the solo pass. Codex always runs at `reasoningEffort: "xhigh"` — the entire reason for the flag is maximum reasoning from a second model family. **Ignored if `--engine` is set** (engine routing subsumes this).
+- `--engine MODE` (claude) — controls which model handles each ideation phase. Modes:
+  - `claude` (default): all phases use Claude. Current behavior.
+  - `codex`: Codex handles FRAME/EXPLORE/CONVERGE/DOCUMENT, Claude runs CHALLENGE (role reversal — builder and critic are always different models).
+  - `auto`: Claude handles FRAME/EXPLORE/CONVERGE/DOCUMENT (ambiguous intent, writing quality), Codex runs the CHALLENGE rubric pass as critic (GAN dynamic). Subsumes `--with-codex`. Recommended when Codex MCP is available.
 
-**If `--with-codex` is set**: read `references/challenge-rubric.md` and `references/codex-debate.md` up front, then run the pre-flight check described in `codex-debate.md` to verify the Codex MCP server is available before starting the pipeline. If the server is unavailable and the user opts to continue without Codex, the solo CHALLENGE pass still runs — only the cross-model rubric pass is disabled.
+**If `--engine` is `auto` or `codex`**: call `mcp__codex-cli__ping` to verify the Codex MCP server is available. If ping fails, warn the user and offer: [1] Continue with `--engine claude`, [2] Abort. Also read `references/challenge-rubric.md` up front. The engine routing table is defined in the auto-resolve skill's `references/engine-routing.md` under "Pipeline Phase Routing (ideate)".
+
+**If `--engine` is not set and `--with-codex` is set** (legacy): read `references/challenge-rubric.md` and `references/codex-debate.md` up front, then run the pre-flight check described in `codex-debate.md` to verify the Codex MCP server is available before starting the pipeline. If the server is unavailable and the user opts to continue without Codex, the solo CHALLENGE pass still runs — only the cross-model rubric pass is disabled.
 
 <why_this_matters>
 When ideas flow directly from conversation to `/devlyn:auto-resolve`, context degrades at each handoff:
@@ -307,9 +313,13 @@ For Quick Add with one new item, one solo pass is enough. For a full greenfield 
 
 If the plan came from one model in one pass, it almost always fails at least one axis somewhere. Nodding along to your own draft defeats the entire point of the phase.
 
-### Codex pass (only if `--with-codex` is set)
+### Codex pass (engine-routed or legacy `--with-codex`)
 
-If the flag is set you have already loaded `references/codex-debate.md` during argument parsing — follow its "PHASE 3.5-CODEX" section now. Codex applies the rubric from `challenge-rubric.md` independently at `reasoningEffort: "xhigh"`. Reconcile findings as `codex-debate.md` describes — findings raised by both sides get "confirmed by both", Codex-only findings get prefixed `[codex]` in internal notes so the user can see where each push came from.
+**If `--engine auto`**: Codex runs the CHALLENGE rubric pass automatically. Call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "read-only"`, and the packaged plan + rubric as prompt (same format as `codex-debate.md` Step 2). Reconcile findings: same finding from both → "confirmed by both", Codex-only → prefix `[codex]`.
+
+**If `--engine codex`**: Role reversal — Codex built the plan (FRAME/EXPLORE/CONVERGE/DOCUMENT), so Claude runs the solo CHALLENGE pass. Do NOT also run Codex on CHALLENGE — builder and critic must be different models. Skip this section entirely.
+
+**If `--engine claude` or `--engine` not set, and `--with-codex` is set** (legacy): follow `references/codex-debate.md` "PHASE 3.5-CODEX" section. Codex applies the rubric from `challenge-rubric.md` independently at `reasoningEffort: "xhigh"`. Reconcile findings as `codex-debate.md` describes — findings raised by both sides get "confirmed by both", Codex-only findings get prefixed `[codex]` in internal notes so the user can see where each push came from.
 
 ### Respect explicit user intent
 
@@ -345,6 +355,12 @@ Get explicit confirmation before proceeding to DOCUMENT.
 ### Quick Add mode
 
 For single-item additions, run one solo rubric pass on just the new item. Even then do not skip — single-item additions are exactly where overengineering and workarounds slip in unnoticed, because the lack of surrounding context makes a bad item look self-contained and harmless.
+
+## Engine Routing for FRAME / EXPLORE / CONVERGE / DOCUMENT
+
+**If `--engine codex`**: Phases 1-3 and Phase 4 are delegated to Codex. For each phase, call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "workspace-write"`, and the phase instructions + user context as the prompt. Use `sessionId` to maintain conversational context across phases (note: sandbox/fullAuto only apply on the first call). Claude remains the orchestrator — it reads Codex's output, manages the conversation with the user (confirmation prompts, clarifying questions), and routes findings between phases.
+
+**If `--engine auto` or `--engine claude`**: All planning phases use Claude directly (current behavior). Claude's ambiguous intent handling and writing quality benchmarks favor it for planning tasks.
 
 ## Phase 4: DOCUMENT
 

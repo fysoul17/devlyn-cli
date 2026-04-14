@@ -1,15 +1,17 @@
-# Codex Cross-Model Rubric Pass
+# Codex Cross-Model Rubric Pass (Legacy)
+
+> **Note**: This file is the legacy `--with-codex` integration for ideate. For the newer `--engine` flag (which subsumes `--with-codex`), see the engine routing section in SKILL.md. Only read this file when `--with-codex` is set AND `--engine` is NOT set.
 
 ## Contents
 - Pre-flight check (verify Codex MCP server availability)
 - PHASE 3.5-CODEX: packaging the plan, calling Codex, reconciling findings with the solo pass
 - Cost notes (one Codex call per ideation session)
 
-Instructions for using OpenAI Codex as an independent critic during Phase 3.5 CHALLENGE. Only read this file when `--with-codex` is set. The 5-axis rubric itself lives in `challenge-rubric.md` — Claude loads that file directly from SKILL.md, not via this file.
+Instructions for using OpenAI Codex as an independent critic during Phase 3.5 CHALLENGE.  The 5-axis rubric itself lives in `challenge-rubric.md` — Claude loads that file directly from SKILL.md, not via this file.
 
 Codex is accessed via `mcp__codex-cli__*` MCP tools (provided by codex-mcp-server). The intent: one opinionated rubric pass from a different model family, applied right before the user sees the plan. Two model families catch different blind spots; one pass at maximum effort catches more than multiple shallow passes.
 
-**Always use `reasoningEffort: "xhigh"` and `sandbox: "read-only"` for every Codex call in this file.** Maximum reasoning is the whole reason the `--with-codex` flag exists — lowering it defeats the purpose of bringing in a second model.
+**Always use `model: "gpt-5.4"`, `reasoningEffort: "xhigh"` and `sandbox: "read-only"` for every Codex call in this file.** Maximum reasoning is the whole reason the `--with-codex` flag exists — lowering it defeats the purpose of bringing in a second model. Pass `model: "gpt-5.4"` explicitly as the MCP schema default may be outdated.
 
 ---
 
@@ -69,6 +71,7 @@ Call `mcp__codex-cli__codex` with:
 - `prompt`: the packaged context above, followed by the instructions below
 - `workingDirectory`: the project root
 - `sandbox`: `"read-only"`
+- `model`: `"gpt-5.4"` — pass explicitly; the MCP schema default may still show `gpt-5.3-codex`
 - `reasoningEffort`: `"xhigh"` — the highest setting in the Codex enum (`none < minimal < low < medium < high < xhigh`). Always pick the top level; this is the entire reason for the flag.
 
 Instructions to append to the packaged context. **Before sending, inline the full text of `references/challenge-rubric.md` into the prompt under a `## Rubric` heading** — Codex does not have filesystem access to this project, so Claude must ship the rubric itself. Claude already has the rubric loaded from Phase 3.5 setup.

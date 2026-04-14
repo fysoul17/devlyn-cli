@@ -130,9 +130,28 @@ Use the Agent Teams infrastructure:
 
 **IMPORTANT**: When spawning teammates, replace `{team-name}` in each prompt below with the actual team name you chose (e.g., `resolve-null-user-crash`). Include the relevant file paths from your Phase 1 investigation in the spawn prompt.
 
+### Engine-Routed Teammate Spawning
+
+If the caller passed `--engine auto` or `--engine codex` (check the orchestrator's context or the pipeline config), read the auto-resolve skill's `references/engine-routing.md` for per-role routing under "team-resolve roles".
+
+**For roles routed to Codex**: Instead of spawning a Claude Agent teammate, call `mcp__codex-cli__codex` with:
+- `model`: `"gpt-5.4"`
+- `reasoningEffort`: `"xhigh"`
+- `sandbox`: per routing table (`"read-only"` or `"workspace-write"`)
+- `workingDirectory`: project root
+- `prompt`: the full teammate prompt below, with issue context and file paths included inline
+
+Codex roles cannot use TeamCreate/SendMessage — the Team Lead (you) relays their findings to other teammates and collects their output directly from the MCP call response.
+
+**For roles routed to Claude**: Spawn via Task tool as normal (prompts below).
+
+**For Dual roles** (e.g., security-auditor): Run BOTH a Claude Agent teammate AND a `mcp__codex-cli__codex` call in parallel with the same prompt. Merge findings per `engine-routing.md` "How to Spawn a Dual Role" section.
+
+If `--engine claude` or no `--engine` flag: all roles use Claude Agent teammates (current default behavior).
+
 ### Teammate Prompts
 
-When spawning each teammate via the Task tool, use these prompts:
+When spawning each teammate via the Task tool (or passing to `mcp__codex-cli__codex` for Codex-routed roles), use these prompts:
 
 <root_cause_analyst_prompt>
 You are the **Root Cause Analyst** on an Agent Team resolving an issue.

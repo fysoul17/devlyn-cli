@@ -1,6 +1,8 @@
-# Codex Cross-Model Integration
+# Codex Cross-Model Integration (Legacy)
 
-Instructions for using OpenAI Codex as an independent evaluator/reviewer in the auto-resolve pipeline. Only read this file when `--with-codex` is enabled.
+> **Note**: This file is the legacy `--with-codex` integration. For the newer `--engine` flag (which subsumes `--with-codex`), see `references/engine-routing.md`. Only read this file when `--with-codex` is enabled AND `--engine` is NOT set.
+
+Instructions for using OpenAI Codex as an independent evaluator/reviewer in the auto-resolve pipeline.
 
 Codex is accessed via `mcp__codex-cli__*` MCP tools (provided by codex-mcp-server). This creates a GAN-like adversarial dynamic — Claude builds and Codex critiques, reducing shared blind spots between model families.
 
@@ -37,7 +39,8 @@ Call `mcp__codex-cli__codex` with:
 - `prompt`: Include the full content of `.devlyn/done-criteria.md` and the output of `git diff HEAD~1`. Ask Codex to evaluate the changes against the done criteria and report issues by severity (CRITICAL, HIGH, MEDIUM, LOW) with file:line references.
 - `workingDirectory`: the project root
 - `sandbox`: `"read-only"` (Codex should only read, not modify files)
-- `reasoningEffort`: `"high"`
+- `reasoningEffort`: `"high"` (note: for `--engine auto`, the engine-routing.md uses `"xhigh"` by default)
+- `model`: `"gpt-5.4"` (pass explicitly — the MCP schema default may be outdated)
 
 Example prompt to pass:
 ```

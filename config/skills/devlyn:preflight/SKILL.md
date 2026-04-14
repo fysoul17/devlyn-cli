@@ -44,8 +44,15 @@ Parse from `<preflight_config>`:
 - `--autofix` — auto-promote all findings to roadmap items and run auto-resolve on each
 - `--skip-browser` — skip browser validation
 - `--skip-docs` — skip documentation audit
+- `--engine MODE` (claude) — controls which model handles audit phases. Modes:
+  - `claude` (default): all auditors use Claude subagents.
+  - `codex`: code-auditor uses Codex, docs-auditor and browser-auditor use Claude.
+  - `auto`: code-auditor uses Codex (SWE-bench Pro +11.7pp for code analysis), docs-auditor uses Claude (writing quality), browser-auditor uses Claude (Chrome MCP). Recommended when Codex MCP is available.
 
 Example: `/devlyn:preflight --phase 2 --skip-browser`
+Example with engine: `/devlyn:preflight --engine auto`
+
+**If `--engine` is `auto` or `codex`**: call `mcp__codex-cli__ping` to verify Codex MCP availability. If ping fails, fall back to `--engine claude` with a warning.
 
 ## PHASE 0: DISCOVER & SCOPE
 
@@ -127,6 +134,8 @@ Total commitments: [N]
 Spawn all applicable auditors in parallel. Each reads `.devlyn/commitment-registry.md` and investigates from their perspective.
 
 ### code-auditor (always)
+
+**Engine routing**: If `--engine auto` or `--engine codex`, call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "read-only"`, and the full code-auditor prompt (read from `references/auditors/code-auditor.md`). Include the commitment registry content inline in the prompt since Codex cannot read `.devlyn/commitment-registry.md` directly in read-only sandbox. If `--engine claude`, spawn a Claude subagent as below.
 
 Spawn a subagent with `mode: "bypassPermissions"`. Read the full prompt from `references/auditors/code-auditor.md` and pass it to the subagent.
 
