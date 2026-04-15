@@ -197,7 +197,7 @@ mcp__codex-cli__codex({
 
 ## Override Behavior
 
-- `--engine claude` → all roles and phases use Claude (current default behavior, no Codex calls)
+- `--engine claude` → all roles and phases use Claude (no Codex calls)
 - `--engine codex` → all phases use Codex for implementation/analysis, Claude only for orchestration and Chrome MCP
 - `--engine auto` → each role and phase routes to the optimal model per this table
 - `--engine auto` is the recommended default when Codex MCP server is available

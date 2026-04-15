@@ -44,10 +44,10 @@ Parse from `<preflight_config>`:
 - `--autofix` — auto-promote all findings to roadmap items and run auto-resolve on each
 - `--skip-browser` — skip browser validation
 - `--skip-docs` — skip documentation audit
-- `--engine MODE` (claude) — controls which model handles audit phases. Modes:
-  - `claude` (default): all auditors use Claude subagents.
+- `--engine MODE` (auto) — controls which model handles audit phases. Modes:
+  - `auto` (default): code-auditor uses Codex (SWE-bench Pro +11.7pp for code analysis), docs-auditor uses Claude (writing quality), browser-auditor uses Claude (Chrome MCP). Requires Codex MCP server.
   - `codex`: code-auditor uses Codex, docs-auditor and browser-auditor use Claude.
-  - `auto`: code-auditor uses Codex (SWE-bench Pro +11.7pp for code analysis), docs-auditor uses Claude (writing quality), browser-auditor uses Claude (Chrome MCP). Recommended when Codex MCP is available.
+  - `claude`: all auditors use Claude subagents. No Codex calls.
 
 Example: `/devlyn:preflight --phase 2 --skip-browser`
 Example with engine: `/devlyn:preflight --engine auto`

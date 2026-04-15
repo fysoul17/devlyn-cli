@@ -34,10 +34,10 @@ This pipeline runs hands-free. The user launches it to walk away and come back t
    - `--skip-build-gate` (false) — skip the deterministic build gate (Phase 1.4). Not recommended — the build gate is the primary defense against "tests pass locally, breaks in CI/Docker/production" class of bugs.
    - `--build-gate MODE` (auto) — controls build gate behavior. `auto`: detect project type and run appropriate build/typecheck/lint commands; if Dockerfile(s) are present, Docker builds are included automatically. `strict`: auto + treat warnings as errors. `no-docker`: auto but skip Docker builds even if Dockerfiles exist (for faster iteration). `skip`: same as --skip-build-gate.
    - `--with-codex` (false) — use OpenAI Codex as a cross-model evaluator/reviewer via `mcp__codex-cli__*` MCP tools. Accepts: `evaluate`, `review`, or `both` (default when flag is present without value). When enabled, Codex provides an independent second opinion from a different model family, creating a GAN-like dynamic where Claude builds and Codex critiques. **Ignored if `--engine` is set** (engine routing subsumes this).
-   - `--engine MODE` (claude) — controls which model handles each pipeline phase and team role. Modes:
-     - `claude` (default): all phases use Claude subagents. Current behavior, no Codex calls.
+   - `--engine MODE` (auto) — controls which model handles each pipeline phase and team role. Modes:
+     - `auto` (default): each phase and team role routes to the optimal model based on benchmark data. Requires Codex MCP server. Subsumes `--with-codex both`.
      - `codex`: Codex handles implementation/analysis phases, Claude handles orchestration, evaluation, and Chrome MCP.
-     - `auto`: each phase and team role routes to the optimal model based on benchmark data. Recommended when Codex MCP server is available. Subsumes `--with-codex both`.
+     - `claude`: all phases use Claude subagents. No Codex calls.
 
    Flags can be passed naturally: `/devlyn:auto-resolve fix the auth bug --max-rounds 3 --skip-docs`
    Engine examples: `--engine auto`, `--engine codex`, `--engine claude`
@@ -58,7 +58,7 @@ Cross-model evaluation (Codex): [evaluate / review / both / disabled / subsumed 
 
 ## PHASE 1: BUILD
 
-**Engine routing**: If `--engine` is `auto` or `codex`, read `references/engine-routing.md` "How to Spawn a Codex BUILD/FIX Agent" section. Call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "workspace-write"`, `fullAuto: true`, and the full agent prompt below as the `prompt` parameter. If `--engine` is `claude` (default), spawn a Claude subagent as described below.
+**Engine routing**: If `--engine` is `auto` or `codex`, read `references/engine-routing.md` "How to Spawn a Codex BUILD/FIX Agent" section. Call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "workspace-write"`, `fullAuto: true`, and the full agent prompt below as the `prompt` parameter. If `--engine` is `claude`, spawn a Claude subagent as described below.
 
 Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` to investigate and implement the fix. The subagent does NOT have access to skills, so include all necessary instructions inline.
 

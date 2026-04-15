@@ -25,10 +25,10 @@ Concretely:
 Parse these from the user's invocation message:
 
 - `--with-codex` (default: off) — bare flag. When set, OpenAI Codex runs an independent rubric pass during Phase 3.5 CHALLENGE via `mcp__codex-cli__*` MCP tools, using the same rubric as the solo pass. Codex always runs at `reasoningEffort: "xhigh"` — the entire reason for the flag is maximum reasoning from a second model family. **Ignored if `--engine` is set** (engine routing subsumes this).
-- `--engine MODE` (claude) — controls which model handles each ideation phase. Modes:
-  - `claude` (default): all phases use Claude. Current behavior.
+- `--engine MODE` (auto) — controls which model handles each ideation phase. Modes:
+  - `auto` (default): Claude handles FRAME/EXPLORE/CONVERGE/DOCUMENT (ambiguous intent, writing quality), Codex runs the CHALLENGE rubric pass as critic (GAN dynamic). Subsumes `--with-codex`. Requires Codex MCP server.
   - `codex`: Codex handles FRAME/EXPLORE/CONVERGE/DOCUMENT, Claude runs CHALLENGE (role reversal — builder and critic are always different models).
-  - `auto`: Claude handles FRAME/EXPLORE/CONVERGE/DOCUMENT (ambiguous intent, writing quality), Codex runs the CHALLENGE rubric pass as critic (GAN dynamic). Subsumes `--with-codex`. Recommended when Codex MCP is available.
+  - `claude`: all phases use Claude. No Codex calls.
 
 **If `--engine` is `auto` or `codex`**: call `mcp__codex-cli__ping` to verify the Codex MCP server is available. If ping fails, warn the user and offer: [1] Continue with `--engine claude`, [2] Abort. Also read `references/challenge-rubric.md` up front. The engine routing table is defined in the auto-resolve skill's `references/engine-routing.md` under "Pipeline Phase Routing (ideate)".
 

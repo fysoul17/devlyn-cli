@@ -83,7 +83,7 @@ Codex reviewers cannot use TeamCreate/SendMessage — the Review Lead (you) coll
 
 **For Dual roles** (e.g., security-reviewer): Run BOTH a Claude Agent reviewer AND a `mcp__codex-cli__codex` call in parallel with the same prompt. Merge findings per `engine-routing.md` "How to Spawn a Dual Role" section.
 
-If `--engine claude` or no `--engine` flag: all roles use Claude Agent reviewers (current default behavior).
+If `--engine auto` or no `--engine` flag: routes each reviewer role to the optimal model based on benchmark data (see `engine-routing.md`). If `--engine claude`: all roles use Claude Agent reviewers.
 
 ### Reviewer Prompts
 

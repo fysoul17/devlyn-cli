@@ -111,7 +111,7 @@ Install the Codex MCP server during setup, then:
 
 **`--engine auto`** routes each pipeline phase and team role to the optimal model (Claude Opus 4.6 or GPT-5.4) — validated through A/B testing, not just benchmarks.
 
-> `--engine auto` (recommended) · `--engine codex` (force Codex for build) · `--engine claude` (default, Claude only)
+> `--engine auto` (default, recommended) · `--engine codex` (force Codex for build) · `--engine claude` (Claude only)
 
 Works across the full pipeline:
 

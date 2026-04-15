@@ -72,7 +72,7 @@ Optional flags:
 - `--skip-review` — skip team-review phase
 - `--skip-clean` — skip clean phase
 - `--skip-docs` — skip update-docs phase
-- `--engine auto|codex|claude` — intelligent model routing. `auto` routes each phase and team role to the optimal model (Claude or Codex GPT-5.4) based on benchmark data. `codex` forces Codex for implementation, Claude for evaluation. `claude` (default) uses Claude for everything. Requires codex-mcp-server.
+- `--engine auto|codex|claude` — intelligent model routing. `auto` (default) routes each phase and team role to the optimal model (Claude or Codex GPT-5.4) based on benchmark data. `codex` forces Codex for implementation, Claude for evaluation. `claude` uses Claude for everything. Requires codex-mcp-server for `auto` and `codex` modes.
 - `--with-codex [evaluate|review|both]` — (legacy, superseded by `--engine`) use OpenAI Codex as cross-model evaluator/reviewer (requires codex-mcp-server)
 
 ## Preflight Check (Post-Roadmap Verification)
