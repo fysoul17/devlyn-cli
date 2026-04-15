@@ -115,7 +115,8 @@ Expand is the most common mode after initial setup — the user already has Visi
 **On entry:**
 1. Read `docs/VISION.md`, `docs/ROADMAP.md`, and existing phase `_overview.md` files to understand the established context
 2. Scan existing item specs to understand what's built and what's planned
-3. Summarize your understanding: "Here's what exists: [phases, item count, current status]. You want to add [new area]. Does this expand an existing phase or warrant a new one?"
+3. **Run the Archive Pass** (see Context Archiving below) before summarizing. Summarizing a stale roadmap to the user wastes the exchange — they'll see "Phase 1 has 4 items" when really all 4 are already Done and the phase should be collapsed.
+4. Summarize your understanding: "Here's what exists: [phases, item count, current status]. You want to add [new area]. Does this expand an existing phase or warrant a new one?"
 
 **During ideation:**
 - FRAME is lighter — the vision already exists, focus on framing the NEW area only
@@ -129,7 +130,7 @@ Expand is the most common mode after initial setup — the user already has Visi
 - New item specs can reference existing items in their Dependencies section
 - If new items change the meaning of existing items, flag this: "Adding [X] may affect the scope of existing item [Y]. Should we update [Y]'s spec?"
 
-In Replan mode, also read existing docs first, then focus on the Converge phase to reprioritize.
+In Replan mode: read existing docs first, **run the Archive Pass** (see Context Archiving below) before any reprioritization — you can't sensibly reorder work that's already finished — then focus on the Converge phase to reprioritize what remains. The Archive Pass also surfaces Backlog items whose Revisit date has passed, which are natural candidates when replanning.
 
 ### Quick Add Mode Detail
 
@@ -137,8 +138,9 @@ Quick Add is for when the user has a single concrete idea, bug report, or improv
 
 **On entry:**
 1. Read `docs/ROADMAP.md` and relevant phase `_overview.md` files
-2. Identify the best-fit phase for the new item (or suggest a new phase if it doesn't fit)
-3. Determine the next available item ID (e.g., if phase 2 has 2.1-2.4, the new item is 2.5)
+2. **Run the Archive Pass first** (see Context Archiving below). Do this *before* you figure out where the new item goes — a stale roadmap will mislead phase selection and ID numbering. If the pass moves a phase out of the active section, the new item's natural home may change.
+3. Identify the best-fit phase for the new item (or suggest a new phase if it doesn't fit)
+4. Determine the next available item ID (e.g., if phase 2 has 2.1-2.4, the new item is 2.5)
 
 **Workflow (minimal — no full Frame/Explore/Converge):**
 1. Confirm the idea with the user: "I'll add this as [item title] in Phase [N]. That sound right?"
@@ -157,12 +159,25 @@ To implement:
 
 ### Context Archiving
 
-As projects progress, completed work accumulates and dilutes the active roadmap. Archive stale context at these trigger points:
+ROADMAP.md is the tactical index. Every row that isn't Planned / In Progress / Blocked is noise — it dilutes attention, pads the file past its 150-line target, and makes future ideation sessions read stale context they'll have to mentally filter out. Done work should move; it shouldn't disappear.
 
-**When an entire phase is complete:**
-1. Move the phase's table from the active section to a `## Completed` section at the bottom of ROADMAP.md
-2. Keep it collapsed — just phase name, completion date, and item count
-3. Item spec files stay in place (they're self-contained and may be referenced by dependencies)
+The goal state: the active section of ROADMAP.md only lists work that still needs doing. Everything completed lives under a collapsed `## Completed` block at the bottom. Item spec files themselves stay in place — they remain on disk at `docs/roadmap/phase-N/{id}.md` because other specs may reference them — only the index row moves.
+
+#### The Archive Pass
+
+Run this at the start of every Quick Add, Expand, and Replan session (each mode's "On entry" checklist tells you when). It's deterministic and cheap. Never skip it to "save time" — the time you save by skipping it is immediately spent by you and the user arguing about a roadmap that shows phantom work.
+
+1. **Read `docs/ROADMAP.md`.** For each phase, look at the Status column of every row.
+2. **For each phase where every row is `Done`:** archive the whole phase.
+   - Cut the phase's `## Phase N: …` heading and table out of the active section.
+   - If no `## Completed` section exists yet at the bottom of the file, create one.
+   - Add a `<details>` block inside Completed for this phase (see format below). Use the latest completion date you can find in the item spec frontmatter (`completed:` field, or today's date if absent). Item count is the row count.
+3. **For individual `Done` rows inside an otherwise-active phase:** leave them in place. A row only moves when its whole phase is finished. (Mixed-state phases stay mixed so the user can see recent wins alongside open work.)
+4. **Scan the Backlog table.** Surface any row whose "Revisit" date has passed — mention it to the user as a replan candidate. Don't auto-promote it; that's a conversation.
+5. **Scan `docs/roadmap/decisions/`.** Flag any decision whose status is `accepted` but whose reasoning is visibly contradicted by the work that's now Done. Don't silently edit decisions; raise them as open questions.
+6. **Report what you did.** Before moving on to the mode's main work, tell the user in one short paragraph: "Archived Phase 1 (3 items). Active roadmap is now Phase 2 (2 items). Proceeding with [Quick Add / Expand / Replan]." Skip the report only if nothing changed.
+
+**Completed block format** (place at the bottom of ROADMAP.md, below Decisions):
 
 ```markdown
 ## Completed
@@ -178,16 +193,13 @@ As projects progress, completed work accumulates and dilutes the active roadmap.
 </details>
 ```
 
-**When entering Expand or Replan mode:**
-1. Scan ROADMAP.md for items marked Done — if all items in a phase are Done, archive that phase
-2. Check Backlog for items whose "Revisit" date has passed — surface them as candidates for the new phase
-3. Review decisions — flag any marked `accepted` that may need revisiting given new context
+If the `## Completed` section already exists and you're archiving an additional phase, append a new `<details>` block — don't rewrite existing ones.
 
-**When a decision becomes outdated:**
-- Don't delete it — mark status as `superseded` and add a note pointing to the replacement decision
-- This preserves the reasoning history for future reference
+#### Outdated decisions
 
-The goal: ROADMAP.md's active section should only show work that's planned, in-progress, or blocked. Everything else moves to Completed or gets re-evaluated.
+When a decision becomes wrong because the world changed under it:
+- Don't delete it — set its `status:` to `superseded` in the decision file's frontmatter and add a one-line pointer to the replacement decision record.
+- This preserves the reasoning history for future reference, which matters more than a tidy decisions table.
 
 ## Phase 1: FRAME
 

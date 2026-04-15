@@ -402,9 +402,37 @@ Skip if `--skip-docs` was set.
 
 Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
 
-Agent prompt — pass this to the Agent tool:
+Agent prompt — pass this to the Agent tool (include the original task description from `<pipeline_config>` so the agent can detect spec paths):
 
-Synchronize documentation with recent code changes. Use `git log --oneline -20` and `git diff main` to understand what changed. Update any docs that reference changed APIs, features, or behaviors. Do not create new documentation files unless the changes introduced entirely new features with no existing docs. Preserve all forward-looking content: roadmaps, future plans, visions, open questions.
+You are the Docs phase of the auto-resolve pipeline. You have two jobs, in this order.
+
+**Job 1 — Roadmap Sync** (run first, only if this task implemented a roadmap item)
+
+The ideate skill produces specs at `docs/roadmap/phase-N/{id}-{slug}.md` and tracks them in `docs/ROADMAP.md`. When auto-resolve finishes a task for one of those specs, the index lies until someone flips it — and nobody does, so it rots. Your job is to flip it.
+
+1. **Detect whether this task was a spec implementation.** Look at the original task description you were passed. Match against this regex: `docs/roadmap/phase-\d+/[^\s"'\`)]+\.md`. If there is no match, or if `docs/ROADMAP.md` does not exist in the repo, Job 1 is a no-op — skip straight to Job 2.
+2. **Sanity-check against the diff.** Run `git diff main --stat` (or `git diff HEAD~N --stat` if on main). If the diff is empty or contains only doc changes, the build phase produced nothing — do NOT flip any status. Leave Job 1 untouched and continue to Job 2.
+3. **Read the spec file** at the matched path. If its frontmatter already has `status: done`, Job 1 is already done — skip to Job 2. Otherwise:
+   - Set `status: done` in the frontmatter.
+   - Add a `completed: YYYY-MM-DD` field (use today's date from `date +%Y-%m-%d`).
+   - Do not change any other fields, and do not touch the body of the spec.
+4. **Update `docs/ROADMAP.md`.** Find the row whose `#` column matches the spec's `id` (e.g., row starting `| 2.3 |`). Change its Status column to `Done`. Do not touch any other row, and do not reformat the table.
+5. **Check whether the phase is now fully Done.** Read every row of the phase's table (the one containing the just-flipped row). If every row's Status is `Done`, archive the phase:
+   - Cut the phase's `## Phase N: …` heading and table out of the active section of ROADMAP.md.
+   - If no `## Completed` section exists at the bottom of the file, create one just above end-of-file (below Decisions if Decisions exists).
+   - Add a `<details>` block for the phase inside Completed, using the format defined in the devlyn:ideate skill's Context Archiving section. Pull each item's completion date from its spec file's `completed:` frontmatter; if a spec has none, use today's date.
+   - Item spec files stay on disk — do not delete them. Only the index row moves.
+6. **Report.** In your summary, say explicitly what you did: "Flipped spec 2.3 to done, updated ROADMAP.md row." And if applicable: "Phase 2 was fully Done — archived to Completed block."
+
+**Safety invariants** — violating any of these means stop Job 1 and report it:
+- Never flip a spec to `done` without a non-empty `git diff` touching non-doc files.
+- Never flip multiple specs in one run — one task, one spec.
+- Never edit a row whose `#` doesn't exactly match the spec's `id`.
+- Never delete spec files.
+
+**Job 2 — General doc sync**
+
+Synchronize the rest of the documentation with recent code changes. Use `git log --oneline -20` and `git diff main` to understand what changed. Update any docs that reference changed APIs, features, or behaviors. Do not create new documentation files unless the changes introduced entirely new features with no existing docs. Preserve all forward-looking content: future plans, visions, open questions. (Job 1 already handled the roadmap index — don't second-guess it here.)
 
 **After the agent completes**:
 1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): docs updated"` if there are changes

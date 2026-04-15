@@ -3,3 +3,4 @@ node_modules/
 *.log
 config/skills/preflight-workspace/
 config/skills/devlyn:ideate-workspace/
+config/skills/roadmap-archival-workspace/
