@@ -599,10 +599,14 @@ async function init(skipPrompts = false) {
     globalSettings.env.CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING = '1';
     globalSettingsChanged = true;
   }
+  if (!globalSettings.env.ENABLE_PROMPT_CACHING_1H) {
+    globalSettings.env.ENABLE_PROMPT_CACHING_1H = 'true';
+    globalSettingsChanged = true;
+  }
   if (globalSettingsChanged) {
     if (!fs.existsSync(globalClaudeDir)) fs.mkdirSync(globalClaudeDir, { recursive: true });
     fs.writeFileSync(globalSettingsPath, JSON.stringify(globalSettings, null, 2) + '\n');
-    log('  → ~/.claude/settings.json (disabled adaptive thinking)', 'dim');
+    log('  → ~/.claude/settings.json (disabled adaptive thinking, enabled 1h prompt caching)', 'dim');
   }
 
   // Install agents for other detected CLIs
