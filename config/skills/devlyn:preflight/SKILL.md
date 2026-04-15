@@ -52,7 +52,9 @@ Parse from `<preflight_config>`:
 Example: `/devlyn:preflight --phase 2 --skip-browser`
 Example with engine: `/devlyn:preflight --engine auto`
 
-**If `--engine` is `auto` or `codex`**: call `mcp__codex-cli__ping` to verify Codex MCP availability. If ping fails, fall back to `--engine claude` with a warning.
+**Engine pre-flight** (runs unless `--engine claude` was explicitly passed):
+- The default engine is `auto`. If the user did not pass `--engine`, the engine is `auto` — NOT `claude`.
+- Call `mcp__codex-cli__ping` to verify Codex MCP availability. If ping fails, fall back to `--engine claude` with a warning.
 
 ## PHASE 0: DISCOVER & SCOPE
 

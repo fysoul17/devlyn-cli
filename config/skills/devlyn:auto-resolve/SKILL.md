@@ -42,9 +42,13 @@ This pipeline runs hands-free. The user launches it to walk away and come back t
    Flags can be passed naturally: `/devlyn:auto-resolve fix the auth bug --max-rounds 3 --skip-docs`
    Engine examples: `--engine auto`, `--engine codex`, `--engine claude`
    Codex examples (legacy): `--with-codex` (both), `--with-codex evaluate`, `--with-codex review`
-   If no flags are present, use defaults.
+   If no flags are present, use defaults. **The default engine is `auto` — if the user does not pass `--engine`, treat it as `--engine auto`.**
 
-3. **If `--engine` is `auto` or `codex`**: Read `references/engine-routing.md` for the full routing table. Then call `mcp__codex-cli__ping` to verify the Codex MCP server is available. If ping fails, warn the user and offer: [1] Continue with `--engine claude` (fallback), [2] Abort. If `--engine` is not set but `--with-codex` is enabled, read `references/codex-integration.md` instead and run its pre-flight check.
+3. **Engine pre-flight** (runs unless `--engine claude` was explicitly passed):
+   - The default engine is `auto`. If the user did not pass `--engine`, the engine is `auto` — NOT `claude`.
+   - Read `references/engine-routing.md` for the full routing table.
+   - Call `mcp__codex-cli__ping` to verify the Codex MCP server is available. If ping fails, warn the user and offer: [1] Continue with `--engine claude` (fallback), [2] Abort.
+   - Exception: if `--engine` is not set AND `--with-codex` is explicitly enabled (legacy), read `references/codex-integration.md` instead and run its pre-flight check.
 
 4. Announce the pipeline plan:
 ```

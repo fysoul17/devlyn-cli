@@ -30,9 +30,12 @@ Parse these from the user's invocation message:
   - `codex`: Codex handles FRAME/EXPLORE/CONVERGE/DOCUMENT, Claude runs CHALLENGE (role reversal — builder and critic are always different models).
   - `claude`: all phases use Claude. No Codex calls.
 
-**If `--engine` is `auto` or `codex`**: call `mcp__codex-cli__ping` to verify the Codex MCP server is available. If ping fails, warn the user and offer: [1] Continue with `--engine claude`, [2] Abort. Also read `references/challenge-rubric.md` up front. The engine routing table is defined in the auto-resolve skill's `references/engine-routing.md` under "Pipeline Phase Routing (ideate)".
+**Engine pre-flight** (runs unless `--engine claude` was explicitly passed):
+- The default engine is `auto`. If the user did not pass `--engine`, the engine is `auto` — NOT `claude`.
+- Call `mcp__codex-cli__ping` to verify the Codex MCP server is available. If ping fails, warn the user and offer: [1] Continue with `--engine claude`, [2] Abort.
+- Also read `references/challenge-rubric.md` up front. The engine routing table is defined in the auto-resolve skill's `references/engine-routing.md` under "Pipeline Phase Routing (ideate)".
 
-**If `--engine` is not set and `--with-codex` is set** (legacy): read `references/challenge-rubric.md` and `references/codex-debate.md` up front, then run the pre-flight check described in `codex-debate.md` to verify the Codex MCP server is available before starting the pipeline. If the server is unavailable and the user opts to continue without Codex, the solo CHALLENGE pass still runs — only the cross-model rubric pass is disabled.
+**If `--engine` is not set and `--with-codex` is explicitly set** (legacy): read `references/challenge-rubric.md` and `references/codex-debate.md` up front, then run the pre-flight check described in `codex-debate.md` to verify the Codex MCP server is available before starting the pipeline. If the server is unavailable and the user opts to continue without Codex, the solo CHALLENGE pass still runs — only the cross-model rubric pass is disabled.
 
 <why_this_matters>
 When ideas flow directly from conversation to `/devlyn:auto-resolve`, context degrades at each handoff:
