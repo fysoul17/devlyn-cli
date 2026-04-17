@@ -1,6 +1,6 @@
 ---
 name: devlyn:ideate
-description: Transforms unstructured ideas into implementation-ready planning documents through structured brainstorming, research, and a built-in self-skeptical rubric pass. Produces a three-layer document architecture (Vision, Roadmap index, auto-resolve-ready specs) to eliminate context pollution in the implementation pipeline. Optional --with-codex flag adds OpenAI Codex as a cross-model critic. Use when the user wants to brainstorm, plan a new project or feature set, create a vision and roadmap, or structure scattered ideas into an actionable plan. Triggers on "let's brainstorm", "let's plan", "ideate", "I have an idea for", "help me think through", "let's explore", new project planning, feature discovery, roadmap creation, or when the user is throwing ideas that need structuring.
+description: Transforms unstructured ideas into implementation-ready planning documents through structured brainstorming, research, and a built-in self-skeptical rubric pass. Produces a three-layer document architecture (Vision, Roadmap index, auto-resolve-ready specs) to eliminate context pollution in the implementation pipeline. Default `--engine auto` routes the CHALLENGE rubric pass to OpenAI Codex (GPT-5.4) as a cross-model critic for a GAN dynamic. Use when the user wants to brainstorm, plan a new project or feature set, create a vision and roadmap, or structure scattered ideas into an actionable plan. Triggers on "let's brainstorm", "let's plan", "ideate", "I have an idea for", "help me think through", "let's explore", new project planning, feature discovery, roadmap creation, or when the user is throwing ideas that need structuring.
 ---
 
 # Ideation to Implementation Bridge
@@ -24,18 +24,17 @@ Concretely:
 
 Parse these from the user's invocation message:
 
-- `--with-codex` (default: off) — bare flag. When set, OpenAI Codex runs an independent rubric pass during Phase 3.5 CHALLENGE via `mcp__codex-cli__*` MCP tools, using the same rubric as the solo pass. Codex always runs at `reasoningEffort: "xhigh"` — the entire reason for the flag is maximum reasoning from a second model family. **Ignored if `--engine` is set** (engine routing subsumes this).
 - `--engine MODE` (auto) — controls which model handles each ideation phase. Modes:
-  - `auto` (default): Claude handles FRAME/EXPLORE/CONVERGE/DOCUMENT (ambiguous intent, writing quality), Codex runs the CHALLENGE rubric pass as critic (GAN dynamic). Subsumes `--with-codex`. Requires Codex MCP server.
+  - `auto` (default): Claude handles FRAME/EXPLORE/CONVERGE/DOCUMENT (ambiguous intent, writing quality), Codex runs the CHALLENGE rubric pass as critic (GAN dynamic). Requires Codex MCP server.
   - `codex`: Codex handles FRAME/EXPLORE/CONVERGE/DOCUMENT, Claude runs CHALLENGE (role reversal — builder and critic are always different models).
   - `claude`: all phases use Claude. No Codex calls.
 
 **Engine pre-flight** (runs unless `--engine claude` was explicitly passed):
-- The default engine is `auto`. If the user did not pass `--engine`, the engine is `auto` — NOT `claude`.
+- The default engine is `auto`. If the user did not pass `--engine`, the engine is `auto` — not `claude`.
 - Call `mcp__codex-cli__ping` to verify the Codex MCP server is available. If ping fails, warn the user and offer: [1] Continue with `--engine claude`, [2] Abort.
-- Also read `references/challenge-rubric.md` up front. The engine routing table is defined in the auto-resolve skill's `references/engine-routing.md` under "Pipeline Phase Routing (ideate)".
+- Read `references/challenge-rubric.md` up front. The engine routing table lives in the auto-resolve skill's `references/engine-routing.md` under "Pipeline Phase Routing (ideate)" — read that on demand when routing decisions are needed.
 
-**If `--engine` is not set and `--with-codex` is explicitly set** (legacy): read `references/challenge-rubric.md` and `references/codex-debate.md` up front, then run the pre-flight check described in `codex-debate.md` to verify the Codex MCP server is available before starting the pipeline. If the server is unavailable and the user opts to continue without Codex, the solo CHALLENGE pass still runs — only the cross-model rubric pass is disabled.
+**Consolidated flag**: `--with-codex` was rolled into the smarter `--engine auto` default. If the user passes it, inform them once and proceed with `--engine auto`: "Note: `--with-codex` was consolidated into `--engine auto` (default), which routes the CHALLENGE rubric pass to Codex automatically. No flag needed. Continuing with `--engine auto`."
 
 <why_this_matters>
 When ideas flow directly from conversation to `/devlyn:auto-resolve`, context degrades at each handoff:
@@ -223,6 +222,10 @@ Don't write documents yet. The output of this phase is a shared mental model bet
 
 This is the creative core — the phase that should take the most conversational turns. The user chose to ideate with AI because they want perspectives, research, and creative expansion they wouldn't get alone.
 
+<use_parallel_tool_calls>
+EXPLORE often needs several independent lookups: web search for prior art, doc fetches, repo greps for existing patterns. When tool calls have no dependencies on each other, issue them in parallel in the same response. Spawn subagents in parallel when fanning out across distinct research topics. Only chain calls that depend on a previous call's output. Pace research across turns rather than front-loading every lookup before the user has framed direction — EXPLORE is dialogue-driven, parallel is just for the lookups inside any single turn.
+</use_parallel_tool_calls>
+
 <research_protocol>
 When relevant, actively research before and during brainstorming:
 - **Existing solutions**: What's already out there? (web search, documentation)
@@ -328,13 +331,60 @@ For Quick Add with one new item, one solo pass is enough. For a full greenfield 
 
 If the plan came from one model in one pass, it almost always fails at least one axis somewhere. Nodding along to your own draft defeats the entire point of the phase.
 
-### Codex pass (engine-routed or legacy `--with-codex`)
+### Codex critic pass (engine-routed)
 
-**If `--engine auto`**: Codex runs the CHALLENGE rubric pass automatically. Call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "read-only"`, and the packaged plan + rubric as prompt (same format as `codex-debate.md` Step 2). Reconcile findings: same finding from both → "confirmed by both", Codex-only → prefix `[codex]`.
+**If `--engine auto`** (default): Codex runs the CHALLENGE rubric pass automatically as critic.
 
-**If `--engine codex`**: Role reversal — Codex built the plan (FRAME/EXPLORE/CONVERGE/DOCUMENT), so Claude runs the solo CHALLENGE pass. Do NOT also run Codex on CHALLENGE — builder and critic must be different models. Skip this section entirely.
+Call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "read-only"`, `workingDirectory: <project root>`. The `prompt` parameter is built from the packaged plan + the inlined rubric + the appended Codex instructions. Codex has no filesystem access to this project, so everything it needs travels in the prompt.
 
-**If `--engine claude` or `--engine` not set, and `--with-codex` is set** (legacy): follow `references/codex-debate.md` "PHASE 3.5-CODEX" section. Codex applies the rubric from `challenge-rubric.md` independently at `reasoningEffort: "xhigh"`. Reconcile findings as `codex-debate.md` describes — findings raised by both sides get "confirmed by both", Codex-only findings get prefixed `[codex]` in internal notes so the user can see where each push came from.
+**Step 1 — Package the post-solo plan.** Build the prompt with these sections in this order:
+
+```
+## Problem framing (from FRAME phase)
+[problem statement, constraints, success criteria, anti-goals]
+
+## Confirmed facts vs assumptions
+Confirmed by user: [list each fact the user explicitly confirmed]
+Assumptions (not yet confirmed): [list each assumption the agent made]
+
+## Plan (post-solo-CHALLENGE)
+Vision: [one sentence]
+Phase 1 ([theme]): [items with one-line descriptions and dependencies]
+Phase 2 ([theme]): ...
+Architecture decisions: [each with what / why / alternatives considered]
+Deferred to backlog: [items + reason]
+
+## Findings from the solo rubric pass
+[list each with: severity, axis, quote, why, fix, whether applied]
+
+## Rubric
+[INLINE the full text of references/challenge-rubric.md here verbatim — Codex needs the rubric definition in the prompt itself]
+
+## Your job
+You are applying an independent rubric pass to the PLANNING document above. This is a roadmap, not code — judge the shape of the plan, not implementation details. The user explicitly asked to be challenged because soft-pedaled plans waste their time.
+
+You are running AFTER a solo pass by Claude. Catch what the solo pass missed; do not just agree with what it already caught. For each existing solo finding, reply either "confirmed" (with one-line agreement) or "I would frame this differently" (with a reason). Then add your own findings that the solo pass missed.
+
+Use the finding format from the rubric above: Severity / Quote / Axis / Why / Fix. The Quote field is load-bearing — anchor each finding to a specific line from the plan.
+
+Respect explicit user intent. If the user confirmed something in the "Confirmed facts" section, the rubric does not override it silently. Raise the conflict as a note and let the orchestrator surface it to the user.
+
+End with a verdict: PASS / PASS WITH MINOR FIXES / FAIL — REVISION REQUIRED, plus a one-line explanation.
+```
+
+**Step 2 — Reconcile.** Merge the two finding lists:
+- Same finding from both → keep the more specific wording, mark "confirmed by both"
+- Codex-only → prefix `[codex]` in internal notes so the user-facing summary can attribute correctly
+- Solo-only → keep as-is
+- Conflicts (solo says X, Codex says not-X) → record both, do not silently pick one; if material, surface as an open question in the user-facing summary
+
+If Codex raised CRITICAL or HIGH findings the solo pass missed, apply the fixes to the plan before presenting the user-facing summary — unless fixing would change something the user explicitly confirmed, in which case follow the rubric's "Respect explicit user intent" rule.
+
+**Do not loop.** One Codex pass is enough. If the result is still FAIL after reconciliation, the plan has structural problems that belong in the user-facing summary as open questions rather than further iteration.
+
+**If `--engine codex`**: Role reversal — Codex built the plan, so Claude runs the solo CHALLENGE pass and that is the only pass. Do not also run Codex on CHALLENGE — builder and critic should always be different models. Skip this section.
+
+**If `--engine claude`**: No Codex calls. The solo pass is the only pass.
 
 ### Respect explicit user intent
 
@@ -356,7 +406,7 @@ Deferred: [items with reasons]
 ## CHALLENGE results
 
 Solo pass: [N findings, M applied]
-Codex pass: [N findings, M applied]   ← only if --with-codex was set
+Codex pass: [N findings, M applied]   ← only on --engine auto
 
 Changes applied during CHALLENGE:
 - [item]: [what changed and which axis triggered it]
@@ -469,7 +519,7 @@ Before finalizing, verify:
 - [ ] No spec requires reading VISION.md to be understood (self-contained)
 - [ ] Dependencies between items are documented in both specs
 - [ ] Architecture decisions include reasoning and alternatives considered
-- [ ] CHALLENGE ran against `references/challenge-rubric.md` (solo, plus Codex if `--with-codex` was set); no item still fails any axis at CRITICAL or HIGH severity
+- [ ] CHALLENGE ran against `references/challenge-rubric.md` (solo, plus Codex critic on `--engine auto`); no item still fails any axis at CRITICAL or HIGH severity
 - [ ] User saw the post-challenge plan as the first and only confirmation prompt — no pre-challenge draft was shown first
 - [ ] Any rubric finding that conflicted with explicit user intent was surfaced as an open question, not silently applied
 

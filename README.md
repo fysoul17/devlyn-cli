@@ -146,19 +146,6 @@ Works across the full pipeline:
 
 </details>
 
-<details>
-<summary>Legacy: <code>--with-codex</code> (superseded by <code>--engine</code>)</summary>
-
-```
-/devlyn:auto-resolve "fix the auth bug" --with-codex
-```
-
-> `--with-codex evaluate` (default) · `--with-codex review` · `--with-codex both`
-
-`--engine auto` subsumes `--with-codex both` with broader coverage — Codex is used for build, fix, and 4 team roles, not just evaluate/review.
-
-</details>
-
 ---
 
 ## Manual Commands
@@ -258,7 +245,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 | Server | Description |
 |---|---|
-| `codex-cli` | Codex MCP server — enables `--engine auto/codex` intelligent model routing and legacy `--with-codex` mode |
+| `codex-cli` | Codex MCP server — enables `--engine auto/codex` intelligent model routing |
 | `playwright` | Playwright MCP — powers browser-validate Tier 2 |
 
 </details>

@@ -1,5 +1,15 @@
 # Project Instructions
 
+## Quick Start
+
+For most work, the recommended sequence is:
+
+1. `/devlyn:ideate` — turn an idea into roadmap-ready specs
+2. `/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-N/X-name.md"` — hands-free build → evaluate → polish
+3. `/devlyn:preflight` — verify the implementation matches the roadmap before shipping
+
+All three default to `--engine auto`, which routes each phase to the optimal model (Codex GPT-5.4 for hard coding, Claude Opus 4.7 for evaluation/critique). The cross-model GAN dynamic — different models build vs critique — catches what single-model pipelines miss.
+
 ## General
 
 - Proactively use subagents and skills where needed
@@ -20,7 +30,7 @@
 When investigating bugs, analyzing features, or exploring code:
 
 1. **Define exit criteria upfront** - Ask "What does 'done' look like?" before starting
-2. **Checkpoint progress** - Use TodoWrite every 5-10 minutes to save findings
+2. **Checkpoint progress** - Use the task tools (TaskCreate / TaskUpdate) every 5-10 minutes to save findings
 3. **Output intermediate summaries** - Provide "Current Understanding" snapshots so work isn't lost if interrupted
 4. **Always deliver findings** - Never end mid-analysis; at minimum output:
    - Files examined
@@ -28,7 +38,7 @@ When investigating bugs, analyzing features, or exploring code:
    - Remaining unknowns
    - Recommended next steps
 
-For complex investigations, use `/devlyn:team-resolve` to assemble a multi-perspective investigation team, or spawn parallel Task agents to explore different areas simultaneously.
+For complex investigations, use `/devlyn:team-resolve` to assemble a multi-perspective investigation team, or spawn parallel Agent subagents to explore different areas simultaneously.
 
 ## UI/UX Workflow
 
@@ -42,11 +52,11 @@ The full design-to-implementation pipeline:
 ## Feature Development
 
 1. **Plan first** - Always output a concrete implementation plan with specific file changes before writing code
-2. **Track progress** - Use TodoWrite to checkpoint each phase
+2. **Track progress** - Use the task tools (TaskCreate / TaskUpdate) to checkpoint each phase
 3. **Test validation** - Write tests alongside implementation; iterate until green
 4. **Small commits** - Commit working increments rather than large changesets
 
-For complex features, use the Plan agent to design the approach before implementation.
+For complex features, spawn the `Plan` subagent (`Agent` tool with `subagent_type: "Plan"`) to design the approach before implementation.
 
 ## Automated Pipeline (Recommended Starting Point)
 
@@ -72,8 +82,7 @@ Optional flags:
 - `--skip-review` — skip team-review phase
 - `--skip-clean` — skip clean phase
 - `--skip-docs` — skip update-docs phase
-- `--engine auto|codex|claude` — intelligent model routing. `auto` (default) routes each phase and team role to the optimal model (Claude or Codex GPT-5.4) based on benchmark data. `codex` forces Codex for implementation, Claude for evaluation. `claude` uses Claude for everything. Requires codex-mcp-server for `auto` and `codex` modes.
-- `--with-codex [evaluate|review|both]` — (legacy, superseded by `--engine`) use OpenAI Codex as cross-model evaluator/reviewer (requires codex-mcp-server)
+- `--engine auto|codex|claude` — intelligent model routing. `auto` (default) routes each phase and team role to the optimal model based on benchmark data: Codex GPT-5.4 handles BUILD and FIX (SWE-bench Pro lead), Claude Opus 4.7 handles EVALUATE and CHALLENGE (long-context retrieval + skeptical reasoning). Different models build vs critique — the cross-model GAN dynamic catches what single-model pipelines miss. `codex` forces Codex for implementation, Claude for orchestration and Chrome MCP. `claude` uses Claude for everything. Requires codex-mcp-server for `auto` and `codex` modes.
 
 ## Preflight Check (Post-Roadmap Verification)
 
@@ -92,7 +101,7 @@ Optional flags:
 - `--autofix` — auto-promote CRITICAL/HIGH findings and run auto-resolve
 - `--skip-browser` — skip browser validation
 - `--skip-docs` — skip documentation audit
-- `--engine auto|codex|claude` — route code-auditor to Codex (better at code analysis), docs/browser to Claude
+- `--engine auto|codex|claude` — `auto` (default) routes the code-auditor to Codex (SWE-bench Pro +11.7pp on code analysis); the docs-auditor and browser-auditor always use Claude regardless of `--engine` (writing-quality strength on docs drift; Chrome MCP tools are session-bound to Claude Code)
 
 **Recommended workflow**: `/devlyn:ideate` → `/devlyn:auto-resolve` (repeat) → `/devlyn:preflight` → fix gaps → `/devlyn:preflight` (verify)
 
@@ -152,11 +161,13 @@ Steps 4-6 are optional depending on the scope of changes. `/simplify` should alw
 
 ## Context Window Management
 
-When a conversation approaches context limits (50k+ tokens):
-1. Check usage with `/context`
-2. Create a HANDOFF.md summarizing: what was attempted, what succeeded, what failed, and next steps
-3. Start a new session with `/clear`
-4. Load context: `@HANDOFF.md Read this file and continue the work`
+Claude 4.5 / 4.6 / 4.7 models auto-compact the conversation as it approaches the context limit, so you can keep working indefinitely without manual handoffs in most cases. Don't stop early due to token-budget concerns — the model continues from where it left off after compaction.
+
+For genuinely multi-context-window work (e.g., a roadmap with many phases), persist state to disk so the next instance can resume:
+- All `auto-resolve` and `preflight` runs already write durable state to `.devlyn/*.md` (done-criteria, BUILD-GATE, EVAL-FINDINGS, BROWSER-RESULTS, CHALLENGE-FINDINGS, PREFLIGHT-REPORT) and to git commits — pick up by reading those files plus `git log`.
+- For long investigations, write progress notes to a `HANDOFF.md` and resume with `@HANDOFF.md continue from where this left off` if you need a fresh window.
+
+Manually clearing with `/clear` is rarely necessary — only do it when context is genuinely irrelevant to the next task.
 
 ## Communication Style
 

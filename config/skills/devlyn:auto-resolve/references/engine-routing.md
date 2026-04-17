@@ -116,7 +116,7 @@ Rationale for `--engine auto` choices:
 
 Rationale:
 - FRAME/EXPLORE/CONVERGE: Claude — ambiguous intent handling, multi-perspective reasoning.
-- CHALLENGE: When `--engine auto`, Codex runs the rubric pass as critic (same role as `--with-codex` but automatic). When `--engine codex`, Claude runs the challenge (role reversal — builder and critic are always different models).
+- CHALLENGE: When `--engine auto`, Codex runs the rubric pass as critic — automatic on every run. When `--engine codex`, Claude runs the challenge (role reversal — builder and critic are always different models).
 - DOCUMENT: Claude — writing quality for spec generation.
 
 ---
@@ -127,9 +127,11 @@ Rationale:
 |-------|--------------|----------------|-----------------|
 | EXTRACT COMMITMENTS | Claude | Codex | Claude |
 | CODE AUDIT | **Codex** | Codex | Claude |
-| DOCS AUDIT | **Claude** | Codex | Claude |
+| DOCS AUDIT | **Claude** | **Claude** | Claude |
 | BROWSER AUDIT | Claude (Chrome MCP) | Claude | Claude |
 | SYNTHESIZE | Claude | Claude | Claude |
+
+DOCS AUDIT is always Claude regardless of `--engine` — writing-quality strength on documentation drift detection (READMEs, VISION.md prose, spec status accuracy) is the deciding factor, not code analysis. BROWSER AUDIT is always Claude because Chrome MCP tools are session-bound to Claude Code.
 
 ---
 
@@ -199,7 +201,4 @@ mcp__codex-cli__codex({
 
 - `--engine claude` → all roles and phases use Claude (no Codex calls)
 - `--engine codex` → all phases use Codex for implementation/analysis, Claude only for orchestration and Chrome MCP
-- `--engine auto` → each role and phase routes to the optimal model per this table
-- `--engine auto` is the recommended default when Codex MCP server is available
-
-`--engine` and `--with-codex` are **mutually exclusive**. `--engine auto` subsumes `--with-codex both` — it uses Codex where it's optimal (broader than just evaluate/review). If both flags are passed, `--engine` takes precedence and `--with-codex` is ignored with a warning.
+- `--engine auto` (default) → each role and phase routes to the optimal model per this table

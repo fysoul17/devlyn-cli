@@ -7,7 +7,7 @@
 - Finding format
 - Examples (good vs bad findings, plus a detour-sequencing example)
 
-The 5-axis rubric applied in Phase 3.5 CHALLENGE of `devlyn:ideate`. Both the solo Claude pass and the Codex pass (when `--with-codex` is set) use this file — there is exactly one definition of the rubric, and both paths read it directly from SKILL.md.
+The 5-axis rubric applied in Phase 3.5 CHALLENGE of `devlyn:ideate`. Both the solo Claude pass and the Codex critic pass (on `--engine auto`) use this file — there is exactly one definition of the rubric, and `SKILL.md` instructs both passes to read it directly from here.
 
 The rubric exists because plans produced in a single pass, by a single model, in a single conversation almost always fail at least one axis somewhere. The user's historical experience: every time they asked "is this really no-workaround, no-guesswork, no-overengineering, world-class, optimized?", the honest answer was no. This phase makes the answer honestly yes before the user even has to ask.
 

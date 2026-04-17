@@ -58,6 +58,10 @@ Example with engine: `/devlyn:preflight --engine auto`
 
 ## PHASE 0: DISCOVER & SCOPE
 
+<use_parallel_tool_calls>
+Phase 0 and Phase 1 do many independent reads (planning docs, item specs, prior state). When tool calls have no dependencies between them, issue them in parallel in a single response — that includes globbing for spec files and reading several specs at once. Only chain calls that depend on values from a previous call.
+</use_parallel_tool_calls>
+
 1. **Find planning documents** — search in parallel:
    - `docs/VISION.md`
    - `docs/ROADMAP.md`
@@ -80,7 +84,7 @@ Scope: [Phase N / All phases]
 Documents: VISION.md, ROADMAP.md, [N] item specs
 Deferred items (excluded): [N]
 Previous run: [found — will show delta / none]
-Phases: Extract → Audit → [Browser] → [Docs] → Report → Triage
+Phases: 1 Extract → 2 Audit (code + docs + browser) → 3 Report → 4 Triage
 ```
 
 ## PHASE 1: EXTRACT COMMITMENTS
@@ -102,9 +106,9 @@ Read all in-scope planning documents and build a **commitment registry** — eve
    - Items with `status: cut` in ROADMAP.md
    - Out of Scope entries — these are anti-commitments (things promised NOT to build)
 
-5. **Separate planned items**: Items with `status: planned` in their spec frontmatter or "Planned" in ROADMAP.md are NOT expected to be implemented yet. Include them in a `[PLANNED]` section of the registry for visibility, but do NOT audit them or report them as findings. This distinction matters — flagging planned items as MISSING creates noise and buries the real gaps in work that was supposed to be done.
+5. **Separate planned items**: Items with `status: planned` in their spec frontmatter or "Planned" in ROADMAP.md are not expected to be implemented yet. Include them in a `[PLANNED]` section of the registry for visibility, but do **not** audit them or report them as findings. Flagging planned items as MISSING creates noise and buries the real gaps in work that was supposed to be done.
 
-5. **Write to `.devlyn/commitment-registry.md`**:
+6. **Write to `.devlyn/commitment-registry.md`**:
 
 ```markdown
 # Commitment Registry
@@ -137,19 +141,19 @@ Spawn all applicable auditors in parallel. Each reads `.devlyn/commitment-regist
 
 ### code-auditor (always)
 
-**Engine routing**: If `--engine auto` or `--engine codex`, call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "read-only"`, and the full code-auditor prompt (read from `references/auditors/code-auditor.md`). Include the commitment registry content inline in the prompt since Codex cannot read `.devlyn/commitment-registry.md` directly in read-only sandbox. If `--engine claude`, spawn a Claude subagent as below.
-
-Spawn a subagent with `mode: "bypassPermissions"`. Read the full prompt from `references/auditors/code-auditor.md` and pass it to the subagent.
+Engine routes per the auto-resolve skill's `references/engine-routing.md` ("Pipeline Phase Routing (preflight)" → CODE AUDIT row): Codex on `--engine auto`/`codex`, Claude on `--engine claude`. When the route is **Codex**, call `mcp__codex-cli__codex` with the auditor prompt inline (Codex cannot read `.devlyn/commitment-registry.md` directly under `read-only` sandbox, so paste the registry into the prompt). When the route is **Claude**, spawn a subagent with `mode: "bypassPermissions"`. Read the auditor prompt from `references/auditors/code-auditor.md` either way.
 
 The code-auditor classifies each commitment as IMPLEMENTED, MISSING, INCOMPLETE, DIVERGENT, or BROKEN — with file:line evidence. Also catches cross-feature integration gaps and constraint violations. Writes to `.devlyn/audit-code.md`.
 
 ### docs-auditor (unless --skip-docs)
 
-Spawn a subagent with `mode: "bypassPermissions"`. Read the full prompt from `references/auditors/docs-auditor.md` and pass it to the subagent.
+Always Claude (writing-quality strength) regardless of `--engine`. Spawn a subagent with `mode: "bypassPermissions"`. Read the full prompt from `references/auditors/docs-auditor.md` and pass it to the subagent.
 
 Checks: ROADMAP.md status accuracy, README alignment, API doc coverage, VISION.md currency, item spec status. Writes to `.devlyn/audit-docs.md`.
 
 ### browser-auditor (conditional)
+
+Always Claude (Chrome MCP tools are session-bound) regardless of `--engine`.
 
 **Skip conditions** (check in order):
 1. `--skip-browser` flag → skip
@@ -340,7 +344,7 @@ Triage complete.
 
 Next steps:
 - To implement fixes: /devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-N/[id]-[name].md"
-  - For high-stakes fixes (CRITICAL severity or complex DIVERGENT findings), add `--with-codex both` to cross-validate the fix and review with Codex
+  - For CRITICAL severity or complex DIVERGENT findings, the default `--engine auto` already routes BUILD/FIX to Codex and EVALUATE/CHALLENGE to Claude (cross-model GAN dynamic). No extra flag needed.
 - To re-run preflight after fixes: /devlyn:preflight [same flags]
 - To add new features discovered during audit: /devlyn:ideate expand
 ```

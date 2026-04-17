@@ -11,6 +11,14 @@ $ARGUMENTS
 
 <pipeline_workflow>
 
+<orchestrator_context>
+This pipeline is long-horizon agentic work. As the orchestrator, you spawn many subagents and read their handoff files; your own context grows over the run.
+
+- Your context window is auto-compacted as it approaches its limit, so do not stop tasks early due to token-budget concerns. Keep the run going.
+- All durable state lives in `.devlyn/*.md` (done-criteria, BUILD-GATE, EVAL-FINDINGS, BROWSER-RESULTS, CHALLENGE-FINDINGS) and in git commits. If your context is cleared mid-run, the next instance can resume from those files plus `git log`. Keep them up to date.
+- Best results come from `xhigh` effort. If you are running on lower effort and notice shallow reasoning during phase decisions, escalate.
+</orchestrator_context>
+
 <autonomy_contract>
 This pipeline runs hands-free. The user launches it to walk away and come back to finished work, so the quality of this run is measured by how far it gets without human intervention. Apply these behaviors throughout every phase:
 
@@ -20,6 +28,17 @@ This pipeline runs hands-free. The user launches it to walk away and come back t
 4. **Continue through the pipeline by default.** Stop only for: (a) a subagent reporting an unrecoverable failure, (b) PHASE 1 producing zero code changes, (c) `max-rounds` reached — in which case continue to PHASE 3 with a warning rather than halting. Every other situation means move on to the next phase.
 5. **Treat questions as a signal to act instead.** If you notice yourself drafting a question to the user mid-pipeline, convert it into a decision + log entry and spawn the next phase.
 </autonomy_contract>
+
+<engine_routing_convention>
+Every phase in this pipeline routes its work to the optimal model per `references/engine-routing.md`. The convention is the same everywhere:
+
+- The phase prompt body below is **engine-agnostic** — same instructions whether Codex or Claude executes it.
+- For phases routed to **Codex** (per the routing table), call `mcp__codex-cli__codex` per the patterns in `engine-routing.md` (How to Spawn a Codex BUILD/FIX Agent / How to Spawn a Codex Role / How to Spawn a Dual Role).
+- For phases routed to **Claude**, spawn an Agent subagent with `mode: "bypassPermissions"` and pass the prompt body verbatim.
+- `--engine claude` forces all phases to Claude. `--engine codex` forces implementation/analysis to Codex (Claude still handles orchestration and Chrome MCP). `--engine auto` (default) uses the routing table per phase.
+
+Phase-level "Engine routing" notes below are short reminders only — `engine-routing.md` is the single source of truth.
+</engine_routing_convention>
 
 ## PHASE 0: PARSE INPUT
 
@@ -33,22 +52,21 @@ This pipeline runs hands-free. The user launches it to walk away and come back t
    - `--skip-docs` (false) — skip update-docs phase
    - `--skip-build-gate` (false) — skip the deterministic build gate (Phase 1.4). Not recommended — the build gate is the primary defense against "tests pass locally, breaks in CI/Docker/production" class of bugs.
    - `--build-gate MODE` (auto) — controls build gate behavior. `auto`: detect project type and run appropriate build/typecheck/lint commands; if Dockerfile(s) are present, Docker builds are included automatically. `strict`: auto + treat warnings as errors. `no-docker`: auto but skip Docker builds even if Dockerfiles exist (for faster iteration). `skip`: same as --skip-build-gate.
-   - `--with-codex` (false) — use OpenAI Codex as a cross-model evaluator/reviewer via `mcp__codex-cli__*` MCP tools. Accepts: `evaluate`, `review`, or `both` (default when flag is present without value). When enabled, Codex provides an independent second opinion from a different model family, creating a GAN-like dynamic where Claude builds and Codex critiques. **Ignored if `--engine` is set** (engine routing subsumes this).
    - `--engine MODE` (auto) — controls which model handles each pipeline phase and team role. Modes:
-     - `auto` (default): each phase and team role routes to the optimal model based on benchmark data. Requires Codex MCP server. Subsumes `--with-codex both`.
+     - `auto` (default): each phase and team role routes to the optimal model based on benchmark data. Requires Codex MCP server. Codex handles BUILD/FIX (SWE-bench Pro lead) and several team roles; Claude handles EVALUATE, CHALLENGE, BROWSER, and orchestration — creating a GAN-like dynamic where the builder and critic are always different models.
      - `codex`: Codex handles implementation/analysis phases, Claude handles orchestration, evaluation, and Chrome MCP.
      - `claude`: all phases use Claude subagents. No Codex calls.
 
    Flags can be passed naturally: `/devlyn:auto-resolve fix the auth bug --max-rounds 3 --skip-docs`
    Engine examples: `--engine auto`, `--engine codex`, `--engine claude`
-   Codex examples (legacy): `--with-codex` (both), `--with-codex evaluate`, `--with-codex review`
-   If no flags are present, use defaults. **The default engine is `auto` — if the user does not pass `--engine`, treat it as `--engine auto`.**
+   If no flags are present, use defaults. The default engine is `auto` — if the user does not pass `--engine`, treat it as `--engine auto`.
+
+   **Consolidated flag**: `--with-codex` (and its variants `evaluate`/`review`/`both`) was rolled into the smarter `--engine auto` default. If the user passes it, inform them once and proceed with `--engine auto`: "Note: `--with-codex` was consolidated into `--engine auto` (default), which provides broader Codex coverage — Codex now handles BUILD, FIX, and several team roles automatically. No flag needed. Continuing with `--engine auto`."
 
 3. **Engine pre-flight** (runs unless `--engine claude` was explicitly passed):
-   - The default engine is `auto`. If the user did not pass `--engine`, the engine is `auto` — NOT `claude`.
+   - The default engine is `auto`. If the user did not pass `--engine`, the engine is `auto` — not `claude`.
    - Read `references/engine-routing.md` for the full routing table.
    - Call `mcp__codex-cli__ping` to verify the Codex MCP server is available. If ping fails, warn the user and offer: [1] Continue with `--engine claude` (fallback), [2] Abort.
-   - Exception: if `--engine` is not set AND `--with-codex` is explicitly enabled (legacy), read `references/codex-integration.md` instead and run its pre-flight check.
 
 4. Announce the pipeline plan:
 ```
@@ -57,16 +75,13 @@ Task: [extracted task description]
 Engine: [auto / codex / claude]
 Phases: Build → Build Gate → [Browser] → Evaluate → [Fix loop if needed] → Simplify → [Review] → Challenge → [Security] → [Clean] → [Docs]
 Max evaluation rounds: [N]
-Cross-model evaluation (Codex): [evaluate / review / both / disabled / subsumed by --engine]
 ```
 
 ## PHASE 1: BUILD
 
-**Engine routing**: If `--engine` is `auto` or `codex`, read `references/engine-routing.md` "How to Spawn a Codex BUILD/FIX Agent" section. Call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "workspace-write"`, `fullAuto: true`, and the full agent prompt below as the `prompt` parameter. If `--engine` is `claude`, spawn a Claude subagent as described below.
+**Engine**: BUILD row of the routing table — Codex on `auto`/`codex`, Claude on `claude`. Per `<engine_routing_convention>` above. Subagents do not have access to skills, so the prompt below includes everything they need inline.
 
-Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` to investigate and implement the fix. The subagent does NOT have access to skills, so include all necessary instructions inline.
-
-Agent prompt — pass this to the Agent tool (or to `mcp__codex-cli__codex` prompt if engine routes to Codex):
+Agent prompt — pass this to the spawned executor:
 
 Investigate and implement the following task. Work through these phases in order:
 
@@ -84,9 +99,7 @@ Read relevant files in parallel. Build a clear picture of what exists and what n
 - Feature: implementation-planner + test-engineer (+ ux-designer, architecture-reviewer, api-designer as needed)
 - Refactor: architecture-reviewer + test-engineer
 - UI/UX: product-designer + ux-designer + ui-designer (+ accessibility-auditor as needed)
-Each teammate investigates from their perspective and sends findings back.
-
-**Engine routing for teammates**: If the orchestrator's `--engine` is `auto` or `codex`, read `references/engine-routing.md` for per-role routing. Roles marked **Codex** are called via `mcp__codex-cli__codex` instead of spawning Agent teammates — include the full role prompt and issue context inline. Roles marked **Claude** use normal Agent teammates. Roles marked **Dual** run both in parallel and merge findings. The orchestrator relays Codex role outputs to Claude teammates that need them.
+Each teammate investigates from their perspective and sends findings back. Per-role engine routing follows the team-resolve table in `references/engine-routing.md`; Dual roles run both models in parallel.
 
 **Phase D — Synthesize and implement**: After all teammates report, compile findings into a unified plan. Implement the solution — no workarounds, no hardcoded values, no silent error swallowing. For bugs: write a failing test first, then fix. For features: implement following existing patterns, then write tests. For refactors: ensure tests pass before and after.
 
@@ -139,13 +152,11 @@ For failures: include the FULL error output (not truncated) and extract root fil
 
 Triggered only when PHASE 1.4 returns FAIL.
 
-Track a round counter (shared with the main fix loop counter against `max-rounds`). If `round >= max-rounds`, stop with a clear failure report — do NOT continue to evaluate/browser/etc. Code that doesn't build cannot be meaningfully evaluated or tested.
+Track a round counter. The build-gate fix loop and the main evaluate fix loop share **one global round counter** capped at `max-rounds` — increments from this loop and from PHASE 2.5 both count against the same total. If `round >= max-rounds`, stop with a clear failure report and do not continue to evaluate/browser/etc. Code that doesn't build cannot be meaningfully evaluated or tested.
 
-**Engine routing**: Same as PHASE 2.5 FIX LOOP — if `--engine` is `auto` or `codex`, use `mcp__codex-cli__codex` with `workspace-write` and `fullAuto: true`. If `--engine` is `claude`, spawn a Claude subagent.
+**Engine**: FIX LOOP row of the routing table.
 
-Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
-
-Agent prompt — pass this to the Agent tool (or to `mcp__codex-cli__codex` prompt if engine routes to Codex):
+Agent prompt — pass this to the spawned executor:
 
 Read `.devlyn/BUILD-GATE.md` — it contains deterministic build/typecheck/lint failures from real compiler output. These are not opinions; the compiler rejected this code. Fix every listed failure at the root cause level.
 
@@ -158,7 +169,7 @@ For each failure:
 
 **After the agent completes**:
 1. **Checkpoint**: `git add -A && git commit -m "chore(pipeline): build gate fix round [N]"`
-2. Increment round counter
+2. Increment the global round counter (shared with PHASE 2.5)
 3. Go back to PHASE 1.4 (re-run the gate)
 
 ## PHASE 1.5: BROWSER VALIDATE (conditional)
@@ -186,11 +197,23 @@ You are a browser validation agent. Read the skill instructions at `.claude/skil
 
 ## PHASE 2: EVALUATE
 
-Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` to evaluate the work. Include all evaluation instructions inline.
+**Engine**: EVALUATE row of the routing table — Claude on every engine. When `--engine auto`, Codex built the code, so Claude evaluating Codex's work is the GAN dynamic by default; no separate Codex evaluation pass is needed.
 
-Agent prompt — pass this to the Agent tool:
+Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`. Include all evaluation instructions inline (subagents do not have access to skills).
 
-You are an independent evaluator. Your job is to grade work produced by another agent, not to praise it. You will be too lenient by default — fight this tendency. When in doubt, score DOWN, not up. A false negative (missing a bug) ships broken code. A false positive (flagging a non-issue) costs minutes of review. The cost is asymmetric.
+Agent prompt — pass this to the spawned executor:
+
+You are an independent evaluator. Your job is to grade work produced by another agent against a specific rubric, not to praise it.
+
+<investigate_before_answering>
+Never claim a file:line or assert a behavior you have not opened and read. The done-criteria file is the rubric — read it first. Then read every changed/new file in full before marking anything VERIFIED or FAILED. Findings without a real file:line behind them are speculation; exclude them.
+</investigate_before_answering>
+
+<coverage_over_filtering>
+Your goal is coverage at this stage, not severity filtering. Report every issue you find — uncertain ones, low-severity ones, all of them. The fix loop and the orchestrator's verdict logic do the filtering downstream. Each finding includes its severity and your confidence so the downstream layers can rank them; your job is to surface them, not pre-decide which ones matter.
+
+This matters because under-reporting is the asymmetric cost: a missed bug ships broken code, a flagged non-issue costs a few minutes of review.
+</coverage_over_filtering>
 
 **Step 1 — Read the done criteria**: Read `.devlyn/done-criteria.md`. This is your primary grading rubric. Every criterion must be verified with evidence.
 
@@ -215,56 +238,64 @@ You are an independent evaluator. Your job is to grade work produced by another 
 - [ ] criterion — FAILED: what's wrong, file:line
 ## Findings Requiring Action
 ### CRITICAL
-- `file:line` — description — Fix: suggested approach
+- `file:line` — description — Confidence: high/med/low — Fix: suggested approach
 ### HIGH
-- `file:line` — description — Fix: suggested approach
+- `file:line` — description — Confidence: high/med/low — Fix: suggested approach
+### MEDIUM / LOW
+- `file:line` — description — Confidence: high/med/low — Fix: suggested approach
 ## Cross-Cutting Patterns
 - pattern description
 ```
 
-Verdict rules: BLOCKED = any CRITICAL issues. NEEDS WORK = HIGH or MEDIUM issues that should be fixed. PASS WITH ISSUES = only LOW cosmetic notes. PASS = clean.
+Verdict rules:
+- `BLOCKED` — any CRITICAL issues
+- `NEEDS WORK` — HIGH or MEDIUM issues
+- `PASS WITH ISSUES` — only LOW cosmetic notes
+- `PASS` — clean
 
-Important: Do NOT label findings as "pre-existing" or "out of scope" to avoid fixing them. If a problem exists in the current code and relates to the done criteria, it's a finding regardless of when it was introduced. The goal is working software, not blame attribution.
+Findings labeled "pre-existing" or "out of scope" still count if they relate to the done criteria. The goal is working software, not blame attribution.
 
-Calibration examples to guide your judgment:
-- A catch block that logs but doesn't surface error to user = HIGH (not MEDIUM). Logging is not error handling.
-- A `let` that could be `const` = LOW note only. Linters catch this.
-- "The error handling is generally quite good" = WRONG. Count the instances. Name the files. "3 of 7 async ops have error states. 4 are missing: file:line, file:line..."
+Calibration examples:
+- A catch block that logs but doesn't surface the error to the user → HIGH (not MEDIUM). Logging is not error handling.
+- A `let` that could be `const` → LOW. Linters catch this.
+- "The error handling is generally quite good" is not a finding. Count the instances and name the files. "3 of 7 async ops have error states. 4 are missing: file:line, file:line…"
 
-Do NOT delete `.devlyn/done-criteria.md` or `.devlyn/EVAL-FINDINGS.md` — the orchestrator needs them.
+Do not delete `.devlyn/done-criteria.md` or `.devlyn/EVAL-FINDINGS.md` — the orchestrator needs them.
 
 **After the agent completes**:
 1. Read `.devlyn/EVAL-FINDINGS.md`
 2. Extract the verdict
-3. **If `--engine` is `auto` or `codex`**: The evaluate phase always uses Claude (see `references/engine-routing.md`). When `--engine auto`, the builder was Codex — Claude evaluating Codex's work creates the GAN dynamic automatically. No separate Codex evaluation pass is needed.
-   **If `--engine` is not set and `--with-codex` includes `evaluate` or `both`** (legacy): Read `references/codex-integration.md` and follow the "PHASE 2-CODEX: CROSS-MODEL EVALUATE" section. This runs Codex as a second evaluator and merges findings into `EVAL-FINDINGS.md`.
-4. Branch on verdict (from the merged findings if Codex was used):
+3. Branch on verdict:
    - `PASS` → skip to PHASE 3
    - `PASS WITH ISSUES` → go to PHASE 2.5 (fix loop) — LOW-only issues are still issues; fix them
    - `NEEDS WORK` → go to PHASE 2.5 (fix loop)
    - `BLOCKED` → go to PHASE 2.5 (fix loop)
-5. If `.devlyn/EVAL-FINDINGS.md` was not created, treat as NEEDS WORK and log a warning — absence of evidence is not evidence of absence
+4. If `.devlyn/EVAL-FINDINGS.md` was not created, treat as NEEDS WORK and log a warning — absence of evidence is not evidence of absence
 
 ## PHASE 2.5: FIX LOOP (conditional)
 
 Track the current round number. If `round >= max-rounds`, stop the loop and proceed to PHASE 3 with a warning that unresolved findings remain.
 
-**Engine routing**: If `--engine` is `auto` or `codex`, call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "workspace-write"`, `fullAuto: true`, and the fix prompt below. Use a fresh call each round (no sessionId reuse — sandbox/fullAuto only apply on first call of a session). If `--engine` is `claude`, spawn a Claude subagent as below.
+**Engine**: FIX LOOP row of the routing table. Use a fresh Codex call each round (no `sessionId` reuse — sandbox/fullAuto only apply on the first call of a session).
 
-Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` to fix the evaluation findings.
+Agent prompt — pass this to the spawned executor:
 
-Agent prompt — pass this to the Agent tool (or to `mcp__codex-cli__codex` prompt if engine routes to Codex):
+Read every findings file present in `.devlyn/`:
+- `.devlyn/EVAL-FINDINGS.md` — issues from the independent evaluator (PHASE 2)
+- `.devlyn/BROWSER-RESULTS.md` — issues from browser validation (PHASE 1.5), if present and the verdict is `NEEDS WORK` or `BLOCKED`
 
-Read `.devlyn/EVAL-FINDINGS.md` — it contains specific issues found by an independent evaluator. Fix every finding regardless of severity (CRITICAL, HIGH, MEDIUM, and LOW). The pipeline loops until the evaluator returns PASS — there is no "shippable with issues" shortcut.
+Fix every finding regardless of severity (CRITICAL, HIGH, MEDIUM, and LOW). The pipeline loops until the relevant verdict returns PASS — there is no "shippable with issues" shortcut.
 
 The original done criteria are in `.devlyn/done-criteria.md` — your fixes must still satisfy those criteria. Do not delete or weaken criteria to make them pass.
 
-For each finding: read the referenced file:line, understand the issue, implement the fix. No workarounds — fix the actual root cause. Run tests after fixing. Update `.devlyn/done-criteria.md` to mark fixed items.
+For each finding: read the referenced file:line (or browser step / console error), understand the issue, implement the fix. No workarounds — fix the actual root cause. Run tests after fixing. Update `.devlyn/done-criteria.md` to mark fixed items.
 
 **After the agent completes**:
 1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): fix round [N] complete"` to preserve the fix
-2. Increment round counter
-3. Go back to PHASE 2 (re-evaluate)
+2. Increment the global round counter (shared with PHASE 1.4-fix)
+3. Re-run the phase that triggered the fix:
+   - If invoked from PHASE 2 (eval failure) → go back to PHASE 2 to re-evaluate
+   - If invoked from PHASE 1.5 (browser failure) → go back to PHASE 1.5 to re-validate the browser, then proceed to PHASE 2 only if browser passes
 
 ## PHASE 3: SIMPLIFY
 
@@ -281,20 +312,17 @@ Review the recently changed files (use `git diff HEAD~1` to see what changed). L
 
 Skip if `--skip-review` was set.
 
-Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` for a multi-perspective review.
+**Engine**: REVIEW (team) — per-role routing per the team-review table in `references/engine-routing.md`. Dual roles run both models in parallel and merge findings.
 
-Agent prompt — pass this to the Agent tool:
+Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
 
-Review all recent changes in this codebase (use `git diff main` and `git status` to determine scope). Assemble a review team using TeamCreate with specialized reviewers: security reviewer, quality reviewer, test analyst. Add UX reviewer, performance reviewer, or API reviewer based on the changes.
+Agent prompt — pass this to the spawned executor:
 
-**Engine routing for reviewers**: If the orchestrator passed `--engine auto` or `--engine codex`, read `references/engine-routing.md` for per-role routing in the "team-review roles" table. Route each reviewer to Claude Agent or `mcp__codex-cli__codex` accordingly. For Dual roles (security-reviewer), run both models in parallel and merge findings per the "How to Spawn a Dual Role" section. For `--engine claude`, all reviewers are Claude Agent teammates.
+Review all recent changes in this codebase (use `git diff main` and `git status` to determine scope). Assemble a review team using TeamCreate with specialized reviewers: security reviewer, quality reviewer, test analyst. Add UX reviewer, performance reviewer, or API reviewer based on the changes. Per-role engine routing follows the team-review table in `references/engine-routing.md`; Dual roles run both models in parallel and merge findings.
 
-Each reviewer evaluates from their perspective, sends findings with file:line evidence grouped by severity (CRITICAL, HIGH, MEDIUM, LOW). After all reviewers report, synthesize findings, deduplicate, and fix any CRITICAL issues directly. For HIGH issues, fix if straightforward.
+Each reviewer reports findings with file:line evidence grouped by severity (CRITICAL, HIGH, MEDIUM, LOW) and a confidence level. After all reviewers report, synthesize findings, deduplicate, and fix any CRITICAL issues directly. For HIGH issues, fix if straightforward.
 
 Clean up the team after completion.
-
-**If `--engine` is set**: engine routing already handles cross-model review via per-role routing — skip the legacy `--with-codex` review step below.
-**If `--with-codex` includes `review` or `both`** (legacy, only when `--engine` is not set): Read `references/codex-integration.md` and follow the "PHASE 4B: CODEX REVIEW" section. This runs Codex's independent code review and reconciles findings with the Claude team review.
 
 **After the review phase completes**:
 1. If CRITICAL issues remain unfixed, log a warning in the final report
@@ -306,23 +334,27 @@ Every prior phase used checklists, done-criteria, or structured categories. This
 
 This is what catches the things structured reviews miss — subtle logic that technically works but isn't the right approach, assumptions nobody questioned, patterns that are fine but not best-practice, and integration seams that look correct in isolation but feel wrong when you read the whole changeset.
 
+**Engine**: CHALLENGE row — Claude on every engine. The diff was likely produced by Codex on `--engine auto`; Claude reading it cold preserves the cross-model dynamic.
+
 Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
 
-Agent prompt — pass this to the Agent tool:
+Agent prompt — pass this to the spawned executor:
 
-You are a senior engineer doing a final skeptical review before this code ships to production. You have NOT seen any prior reviews, test results, or design docs — read the code cold.
+You are a senior engineer doing a final skeptical review before this code ships to production. You have not seen any prior reviews, test results, or design docs — read the code cold.
 
-Run `git diff main` to see all changes. Read every changed file in full (not just the diff hunks — you need surrounding context).
+<investigate_before_answering>
+Anchor every finding in code you have actually opened. Run `git diff main` for the change surface, then read each changed file in full (not just the hunks — surrounding context matters). Findings without a real file:line and a quote from the code are speculation; exclude them.
+</investigate_before_answering>
 
-Your job is NOT to check boxes. Your job is to find the things that would make a staff engineer say "hold on, let's talk about this before we ship." Think about:
+Your job is not to check boxes. Your job is to find the things that would make a staff engineer say "hold on, let's talk about this before we ship." Think about:
 
 - Would this approach survive a 10x traffic spike? A midnight oncall page? A junior dev maintaining it 6 months from now?
 - Are there assumptions baked in that nobody stated out loud? Hardcoded limits, implicit ordering, missing edge cases in business logic?
 - Is the error handling actually helpful, or does it just prevent crashes while leaving the user confused?
 - Are there simpler, more idiomatic ways to do what this code does? Not "clever" alternatives — genuinely better approaches?
-- Would you mass-confidence approve this PR, or would you leave comments?
+- Would you confidently approve this PR, or would you leave comments?
 
-Be brutally honest. Do NOT start with praise. Do NOT soften findings. Every finding must include `file:line` and a concrete fix — not "consider improving" but "change X to Y because Z."
+Be direct and concrete. Do not open with praise. Every finding must include `file:line` and a concrete fix — not "consider improving" but "change X to Y because Z."
 
 Write `.devlyn/CHALLENGE-FINDINGS.md`:
 
@@ -334,7 +366,27 @@ Write `.devlyn/CHALLENGE-FINDINGS.md`:
 - `file:line` — what's wrong — Fix: concrete change
 ```
 
-Verdict: PASS only if you would mass-confidently mass-ship this code with your name on it. If you found anything CRITICAL or HIGH, verdict is NEEDS WORK.
+<examples>
+<example index="1">
+GOOD finding (anchored, specific, fixable):
+### CRITICAL
+- `src/api/orders/cancel.ts:42` — `await db.transaction(...)` is missing — the read of `order.status` and the write of `order.status = "cancelled"` are not atomic, so two concurrent cancellations both succeed and the inventory hook fires twice. Fix: wrap the read+write in `db.transaction()` and re-check `order.status === "pending"` inside the transaction before the update.
+</example>
+<example index="2">
+BAD finding (vague, unanchored, not actionable):
+### HIGH
+- The error handling could be improved. Consider being more defensive throughout.
+
+Why this is bad: no file:line, no specific failure, no concrete fix. Either delete the finding or replace it with a real one anchored to a specific call site.
+</example>
+<example index="3">
+GOOD finding (idiom / approach issue):
+### MEDIUM
+- `src/components/UserList.tsx:18-34` — fetching `/api/users` inside `useEffect` and managing loading/error state by hand re-implements what the project already does with the `useFetch` hook in `src/hooks/useFetch.ts`. Fix: replace the manual `useState`+`useEffect` with `useFetch('/api/users')` so this list inherits retry, cache, and abort handling.
+</example>
+</examples>
+
+Verdict: `PASS` only if you would confidently ship this code with your name on it. If you found anything CRITICAL or HIGH, verdict is `NEEDS WORK`.
 
 **After the agent completes**:
 1. Read `.devlyn/CHALLENGE-FINDINGS.md`
@@ -458,22 +510,20 @@ After all phases complete:
 **Pipeline Summary**:
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Build (team-resolve) | [completed] | [brief summary] |
+| Build (team-resolve) | [completed] | [brief summary; engine that ran it] |
 | Build gate | [completed / skipped / FAIL after N rounds] | [project types detected, commands run, pass/fail per command] |
 | Browser validate | [completed / skipped / auto-skipped] | [verdict, tier used, console errors, flow results] |
-| Evaluate (Claude) | [PASS/NEEDS WORK after N rounds] | [verdict + key findings] |
-| Evaluate (Codex) | [completed / skipped] | [Codex-only findings count, merged verdict] |
+| Evaluate | [PASS/NEEDS WORK after N rounds] | [verdict + key findings] |
 | Fix rounds | [N rounds / skipped] | [what was fixed] |
 | Simplify | [completed / skipped] | [changes made] |
-| Review (Claude team) | [completed / skipped] | [findings summary] |
-| Review (Codex) | [completed / skipped] | [Codex-only findings, agreed findings] |
+| Review (team) | [completed / skipped] | [findings summary; per-role engines if --engine auto] |
 | Challenge | [PASS / NEEDS WORK] | [findings count, fixes applied] |
 | Security review | [completed / skipped / auto-skipped] | [findings or "no security-sensitive changes"] |
 | Clean | [completed / skipped] | [items cleaned] |
 | Docs (update-docs) | [completed / skipped] | [docs updated] |
 
-**Evaluation Rounds**: [N] of [max-rounds] used
-**Final Verdict**: [last evaluation verdict]
+**Evaluation Rounds**: [N] of [max-rounds] used (shared budget across PHASE 1.4-fix and PHASE 2.5)
+**Final Verdict**: [last evaluation verdict, or "BUILD GATE FAILED — code does not compile" if PHASE 1.4 exhausted the round budget before PHASE 2 ran]
 
 **Commits created**:
 [git log output]
