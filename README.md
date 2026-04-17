@@ -109,7 +109,7 @@ Install the Codex MCP server during setup, then:
 /devlyn:auto-resolve "fix the auth bug" --engine auto
 ```
 
-**`--engine auto`** routes each pipeline phase and team role to the optimal model (Claude Opus 4.6 or GPT-5.4) — validated through A/B testing, not just benchmarks.
+**`--engine auto`** routes each pipeline phase and team role to the optimal model (Claude Opus 4.7 or GPT-5.4) — validated through A/B testing, not just benchmarks.
 
 > `--engine auto` (default, recommended) · `--engine codex` (force Codex for build) · `--engine claude` (Claude only)
 
@@ -143,6 +143,18 @@ Works across the full pipeline:
 | Dual (6) | Both models find unique issues | security-auditor, quality-reviewer, api-designer |
 
 **Key finding**: Benchmark predictions were only 33% accurate. 4 of 6 A/B-tested roles needed routing changes after real testing — proving that benchmarks alone are insufficient for optimal routing.
+
+</details>
+
+<details>
+<summary><strong>What's new in 1.13.0</strong> — Opus 4.7 pipeline pass</summary>
+
+Core pipeline skills (`ideate`, `auto-resolve`, `preflight`) rewritten against Anthropic's Opus 4.7 prompting guidance, validated by multi-round comprehension and quality-grading subagents.
+
+- **4.7 prompt patterns** — `<investigate_before_answering>` on evaluator and challenge, `<coverage_over_filtering>` with per-finding confidence, 3 few-shot examples in the Challenge phase, `<orchestrator_context>` (auto-compaction + xhigh effort), `<use_parallel_tool_calls>` in ideate EXPLORE and preflight Phase 0.
+- **`--with-codex` consolidated into `--engine auto`** — auto now covers BUILD/FIX + team roles + ideate CHALLENGE critic (broader than `--with-codex both` ever was). Legacy flag still accepted with a graceful handoff.
+- **Bug fixes** — PHASE 1.5 BLOCKED browser failures re-route correctly via PHASE 2.5; PHASE 1.4-fix and PHASE 2.5 share one global round counter; preflight PHASE 1 numbering fixed; build-gate-exhausted now produces a graceful final report.
+- **CLAUDE.md refresh** (shipped to `npx` installers) — Quick Start pointing to ideate → auto-resolve → preflight, Context Window Management updated for Opus 4.7 auto-compaction, terminology refresh (TodoWrite → task tools, Task agents → Agent subagents).
 
 </details>
 
