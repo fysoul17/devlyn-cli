@@ -32,18 +32,9 @@ Parse these from the user's invocation message:
 **Engine pre-flight** (runs unless `--engine claude` was explicitly passed):
 - The default engine is `auto`. If the user did not pass `--engine`, the engine is `auto` — not `claude`.
 - Call `mcp__codex-cli__ping` to verify the Codex MCP server is available. If ping fails, warn the user and offer: [1] Continue with `--engine claude`, [2] Abort.
-- Read `references/challenge-rubric.md` up front. The engine routing table lives in the auto-resolve skill's `references/engine-routing.md` under "Pipeline Phase Routing (ideate)" — read that on demand when routing decisions are needed.
+- Read `references/challenge-rubric.md` up front.
 
 **Consolidated flag**: `--with-codex` was rolled into the smarter `--engine auto` default. If the user passes it, inform them once and proceed with `--engine auto`: "Note: `--with-codex` was consolidated into `--engine auto` (default), which routes the CHALLENGE rubric pass to Codex automatically. No flag needed. Continuing with `--engine auto`."
-
-<why_this_matters>
-When ideas flow directly from conversation to `/devlyn:auto-resolve`, context degrades at each handoff:
-- Abstract vision statements cause over-engineering (the agent optimizes for principles instead of deliverables)
-- Full roadmaps create attention noise (49 irrelevant items dilute focus on item #3)
-- Done criteria generated from vague prompts miss the user's actual intent
-
-This skill solves the context engineering problem by producing **self-contained specs** — each carries just enough context for auto-resolve to work autonomously.
-</why_this_matters>
 
 ## Output Architecture
 
@@ -104,6 +95,8 @@ Before starting, identify what the user needs:
 | One specific feature needs deep thought | **Deep-dive** | Intensive Explore on one topic, output 1-3 specs |
 | User shares links/resources to process | **Research-first** | Lead with Explore (research synthesis), then standard flow |
 | Existing roadmap, user wants to reprioritize | **Replan** | Read existing docs, focus on Converge, update documents |
+
+**Tie-breaks when a request matches two modes:** choose the narrowest mode that satisfies the request. Quick Add wins over Expand when the user has one concrete item in mind. Research-first wins over Deep-dive when links or resources are the primary input. Deep-dive wins over Expand when one topic specifically needs depth. Replan is chosen only when priority or order changes are explicit. If two modes still look equally plausible after applying these rules, present the top two to the user and let them pick — silently choosing one wastes the session if the other was right.
 
 Announce the detected mode and confirm before proceeding.
 
@@ -207,7 +200,7 @@ When a decision becomes wrong because the world changed under it:
 The biggest risk in ideation is premature convergence — jumping to solutions before understanding the problem. This phase prevents that.
 
 Establish through conversation:
-1. **Problem statement**: What problem or opportunity? For whom? Why now?
+1. **Job-to-be-Done**: In one sentence — "When [situation], [user] wants to [motivation], so they can [outcome]." Capture this before anything else. If the user cannot produce it, that is itself the finding — pause and explore the situation until the sentence exists. A bare problem statement without this frame is a state description, not a job, and downstream specs built from it will describe system behavior instead of customer progress.
 2. **Constraints**: What can't change? (tech stack, timeline, existing commitments)
 3. **Success criteria**: How will we know this worked? (outcomes, not outputs)
 4. **Anti-goals**: What are we explicitly NOT trying to do?
@@ -232,6 +225,7 @@ When relevant, actively research before and during brainstorming:
 - **Technical feasibility**: Can this be built within the constraints? Where are the hard parts?
 - **Patterns and prior art**: How have similar problems been solved?
 - **Market/user context**: Who else needs this? What do they currently use?
+- **Evidence discipline**: Treat prior art as source-backed only when verified by a fetched link or documentation the user can open. If a pattern is inferred from memory or analogy, label it `[UNVERIFIED]` inline and do not present it as market fact. The CHALLENGE rubric's NO GUESSWORK axis fires hard on unlabeled claims that look authoritative but are actually recall.
 
 Not every ideation needs all of these — a personal side project doesn't need market research. Judge what's relevant and use subagents for parallel research when multiple topics need investigation.
 </research_protocol>
@@ -317,8 +311,6 @@ Engage maximum thinking effort here — both the solo rubric pass and, if enable
 Before finalizing the rubric pass, verify your findings against the rubric one more time: every flagged item should have a specific Quote, a failing axis, and a concrete revision — not a vague concern.
 </thinking_effort>
 
-The user has been burned by plans that look good on the surface but fall apart under scrutiny. Every time they accept a plan and then ask "is this no-workaround, no-guesswork, no-overengineering, world-class best practice, optimized?" the honest answer is almost always no. This phase makes that the *default* behavior — the plan challenges itself before the user has to.
-
 ### The rubric — single source of truth
 
 Read `references/challenge-rubric.md` before starting. That file is the only definition of the 5 axes, the finding format, the hard rule about respecting explicit user intent, and the good-vs-bad examples. Both the solo pass and the Codex pass use the same rubric; do not re-derive it inline.
@@ -328,8 +320,6 @@ Read `references/challenge-rubric.md` before starting. That file is the only def
 Apply the rubric to the internal convergence draft. Produce findings in the format specified in `challenge-rubric.md` (Severity / Quote / Axis / Why / Fix).
 
 For Quick Add with one new item, one solo pass is enough. For a full greenfield or expand plan, run the rubric once, revise, and run it again on the revision. If a third pass would be needed, the plan has structural problems that belong in the user-facing summary as open questions — surface them rather than iterating further.
-
-If the plan came from one model in one pass, it almost always fails at least one axis somewhere. Nodding along to your own draft defeats the entire point of the phase.
 
 ### Codex critic pass (engine-routed)
 
@@ -522,6 +512,7 @@ Before finalizing, verify:
 - [ ] CHALLENGE ran against `references/challenge-rubric.md` (solo, plus Codex critic on `--engine auto`); no item still fails any axis at CRITICAL or HIGH severity
 - [ ] User saw the post-challenge plan as the first and only confirmation prompt — no pre-challenge draft was shown first
 - [ ] Any rubric finding that conflicted with explicit user intent was surfaced as an open question, not silently applied
+- [ ] Every requirement is traceable to a confirmed fact, a verified source, or an explicitly labeled assumption — no unmarked guesses slipped into the specs
 
 ## Language
 

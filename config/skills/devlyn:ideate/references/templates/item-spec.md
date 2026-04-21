@@ -22,6 +22,10 @@ depends-on: []
 <!-- Extract only the relevant context from the vision — don't make the implementation agent read the full vision document. -->
 [Project] does [what]. This feature [enables/improves/fixes] [specific user capability].
 
+## Customer Frame
+<!-- One sentence. When [situation], [user] wants to [motivation] so they can [outcome]. -->
+<!-- Use this to resolve ambiguous requirements: prefer the behavior that best serves this user outcome, and do not add capabilities outside this frame. -->
+
 ## Objective
 <!-- One sentence: what the user can do after this is implemented. -->
 

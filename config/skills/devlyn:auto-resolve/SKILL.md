@@ -77,6 +77,58 @@ Phases: Build → Build Gate → [Browser] → Evaluate → [Fix loop if needed]
 Max evaluation rounds: [N]
 ```
 
+## PHASE 0.5: SPEC PREFLIGHT (conditional)
+
+This phase exists because the ideate skill produces specs that are explicitly designed to be auto-resolve's contract — `Requirements` *are* the done-criteria, `Out of Scope` bounds over-building, `Dependencies` gates sequencing. When a run ignores that contract and re-derives everything from the raw task string, 25–40% of BUILD's reasoning is spent re-inventing material the spec already owns. This phase makes the contract load-bearing.
+
+Scan the task description from `<pipeline_config>` for a path matching the regex `docs/roadmap/phase-\d+/[^\s"'`)]+\.md`. If no match, skip this entire phase (non-spec tasks fall back to BUILD's open-ended discovery — that mode is still supported).
+
+If a match is found:
+
+1. **Read the spec file.** If the file does not exist, stop with a `BLOCKED` verdict in the final report — do not proceed to BUILD with a missing spec. The task description is lying and recovering from that silently is worse than halting.
+
+2. **Verify internal dependencies.** For each entry under the spec's `## Dependencies` → `Internal` list (e.g., `1.1 User Auth`), locate the matching spec file at `docs/roadmap/phase-*/[id]-*.md` and read its frontmatter `status` field. If any internal dependency does not have `status: done`, stop with a `BLOCKED` verdict listing the unmet deps. Implementing out of sequence wastes the whole pipeline and produces code that fails at the first integration point.
+
+3. **Write `.devlyn/SPEC-CONTEXT.md`** so downstream subagents read spec-owned content from a single canonical place without re-parsing the spec file. Copy these spec sections verbatim (do not paraphrase or compress — they are the contract):
+
+   ```
+   ---
+   id: [from frontmatter]
+   complexity: [from frontmatter]
+   priority: [from frontmatter]
+   depends-on: [from frontmatter]
+   source-spec: [path to the spec file]
+   ---
+
+   ## Customer Frame
+   [verbatim]
+
+   ## Objective
+   [verbatim]
+
+   ## Requirements
+   [verbatim — these become done-criteria in PHASE 1]
+
+   ## Constraints
+   [verbatim]
+
+   ## Out of Scope
+   [verbatim — honored explicitly by BUILD in Phase D]
+
+   ## Architecture Notes
+   [verbatim, or "(none)" if absent]
+
+   ## Dependencies
+   [verbatim]
+
+   ## Verification
+   [verbatim]
+   ```
+
+4. **Announce the preflight outcome.** One line: `Spec preflight: [spec path] — complexity [low/medium/high], [N] internal deps verified done, proceeding.` This appears in the final report under the Build row.
+
+Downstream phases detect `.devlyn/SPEC-CONTEXT.md` and prefer its content over re-derivation. If it is absent, they use their current open-ended behavior.
+
 ## PHASE 1: BUILD
 
 **Engine**: BUILD row of the routing table — Codex on `auto`/`codex`, Claude on `claude`. Per `<engine_routing_convention>` above. Subagents do not have access to skills, so the prompt below includes everything they need inline.
@@ -85,16 +137,28 @@ Agent prompt — pass this to the spawned executor:
 
 Investigate and implement the following task. Work through these phases in order:
 
-**Phase A — Understand the task**: Read the task description carefully. Classify the task type:
+**Phase A — Understand the task**: If `.devlyn/SPEC-CONTEXT.md` exists, read it first. The spec has already decided the task shape — use its `Objective`, `Constraints`, `Architecture Notes`, `Dependencies`, and `complexity` as the exploration boundary. Do not re-classify the task type open-endedly; the spec already bounds the problem. Read only the files the spec implicates (Architecture Notes + Dependencies + any existing files touched by referenced patterns), then move on.
+
+If no spec context file exists, read the raw task description and classify the task type:
 - **Bug fix**: trace from symptom to root cause. Read error logs and affected code paths.
 - **Feature**: explore the codebase to find existing patterns, integration points, and relevant modules.
 - **Refactor/Chore**: understand current implementation, identify what needs to change and why.
 - **UI/UX**: review existing components, design system, and user flows.
 Read relevant files in parallel. Build a clear picture of what exists and what needs to change.
 
-**Phase B — Define done criteria**: Before writing any code, create `.devlyn/done-criteria.md` with testable success criteria. Each criterion must be verifiable (a test can assert it or a human can observe it in under 30 seconds), specific (not vague like "handles errors correctly"), and scoped to this task. Include an "Out of Scope" section and a "Verification Method" section. This file is required — downstream evaluation depends on it.
+**Phase B — Define done criteria**: Before writing any code, create `.devlyn/done-criteria.md`.
 
-**Phase C — Assemble a team**: Use TeamCreate to create a team. Select teammates based on task type:
+First check whether `.devlyn/SPEC-CONTEXT.md` exists (produced by PHASE 0.5 when this run implements an ideate-produced spec). If it does, the spec is the contract — copy its `## Requirements` section verbatim into `done-criteria.md` as the primary done-criteria list, copy its `## Out of Scope` section as an `## Out of Scope` section in done-criteria.md, and copy its `## Verification` section as a `## Verification Method` section. Do not paraphrase, compress, or re-derive these — the ideate skill's CHALLENGE rubric already validated them, and weakening them here silently undoes that work. You may ADD criteria the spec obviously missed (e.g., if Requirements mention an API but omit an obvious error state) but never REMOVE or reword existing ones.
+
+If `.devlyn/SPEC-CONTEXT.md` does not exist, synthesize done-criteria from the raw task description. Each criterion must be verifiable (a test can assert it or a human can observe it in under 30 seconds), specific (not vague like "handles errors correctly"), and scoped to this task. Include an "Out of Scope" section and a "Verification Method" section.
+
+This file is required — downstream evaluation depends on it.
+
+**Phase C — Assemble a team (complexity-gated)**: Check `.devlyn/SPEC-CONTEXT.md` frontmatter for `complexity`.
+
+If `complexity: low` AND the spec does not touch security/auth/API/data/UI risk areas (check by greping the spec for keywords: `auth`, `login`, `session`, `token`, `secret`, `password`, `crypto`, `api`, `env`, `permission`, `access`, `database`, `migration`, `payment`), skip TeamCreate entirely and implement directly — the multi-perspective team exists to catch ambiguity that low-complexity specs have already resolved.
+
+Otherwise (complexity medium or high, risk areas present, or no spec context), use TeamCreate to create a team. Select teammates based on task type:
 - Bug fix: root-cause-analyst + test-engineer (+ security-auditor, performance-engineer as needed)
 - Feature: implementation-planner + test-engineer (+ ux-designer, architecture-reviewer, api-designer as needed)
 - Refactor: architecture-reviewer + test-engineer
