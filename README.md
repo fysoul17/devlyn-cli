@@ -147,6 +147,23 @@ Works across the full pipeline:
 </details>
 
 <details>
+<summary><strong>What's new in 1.14.0</strong> — CPO lens + handoff enforcement</summary>
+
+`/devlyn:ideate` now thinks like a world-class Product Owner, and `/devlyn:auto-resolve` finally honors the spec contract the ideate skill was already designed to produce. Validated with 19 parallel eval subagents, 1.2M tokens of evidence — Customer Frame propagation went from 0/20 to 20/20 across seven test scenarios.
+
+- **Jobs-to-be-Done forcing in FRAME** — ideate's opening FRAME phase now requires a one-sentence JTBD statement ("When [situation], [user] wants [motivation] so they can [outcome]") before anything else. A bare problem statement is a state description, not a job — downstream specs built without this frame describe system behavior instead of customer progress.
+- **Customer Frame field on every item spec** — item-spec template gains a `## Customer Frame` section between Context and Objective that carries the per-item JTBD sentence all the way through to auto-resolve's build agent. The build agent uses this line to resolve ambiguity in Requirements rather than inventing interpretations.
+- **PHASE 0.5 SPEC PREFLIGHT on auto-resolve** — when the task names a `docs/roadmap/phase-N/...md` spec, auto-resolve now reads it BEFORE BUILD, verifies internal dependencies are `status: done`, and writes `.devlyn/SPEC-CONTEXT.md` so downstream phases stop re-deriving what the spec already owns. Un-done deps halt the pipeline with `BLOCKED` rather than shipping out-of-sequence code.
+- **Done-criteria verbatim copy** — when PHASE 0.5 found a spec, BUILD's Phase B copies the spec's `Requirements`, `Out of Scope`, and `Verification` sections verbatim into `.devlyn/done-criteria.md`. No silent re-derivation; the ideate CHALLENGE rubric's validation is preserved through the handoff.
+- **Spec-bounded exploration** — BUILD's Phase A uses the spec's `Architecture Notes` + `Dependencies` as the exploration boundary instead of re-classifying the task type open-endedly.
+- **Complexity-gated team ceremony** — `complexity: low` specs with no security/auth/API/data risk keywords skip TeamCreate entirely. Medium/high complexity or risk-flagged specs still assemble the team as before.
+- **Evidence discipline in ideate EXPLORE** — research phase now labels unsourced market/tech claims `[UNVERIFIED]` inline rather than presenting recall as fact. The CHALLENGE rubric's NO GUESSWORK axis fires on unlabeled authoritative claims.
+- **Mode tie-break rule** — when a request matches two ideate modes (Quick Add vs Expand, Research-first vs Deep-dive), the narrowest mode wins. Deterministic selection replaces intuitive match.
+- **Bloat removal** — three redundant motivational blocks deleted from ideate SKILL.md (`<why_this_matters>` rationale, duplicate CHALLENGE preamble, external engine-routing pointer). SKILL.md shrank from 529 to 519 lines despite the new features.
+
+</details>
+
+<details>
 <summary><strong>What's new in 1.13.0</strong> — Opus 4.7 pipeline pass</summary>
 
 Core pipeline skills (`ideate`, `auto-resolve`, `preflight`) rewritten against Anthropic's Opus 4.7 prompting guidance, validated by multi-round comprehension and quality-grading subagents.
