@@ -66,7 +66,7 @@ For hands-free build-evaluate-polish cycles — works for bugs, features, refact
 /devlyn:auto-resolve [task description]
 ```
 
-This runs the full pipeline automatically: **Build → Build Gate → Browser Validate → Evaluate → Fix Loop → Simplify → Review → Challenge → Security Review → Clean → Docs**. Each phase runs as a separate subagent with its own context. Communication between phases happens via files (`.devlyn/done-criteria.md`, `.devlyn/BUILD-GATE.md`, `.devlyn/EVAL-FINDINGS.md`, `.devlyn/BROWSER-RESULTS.md`, `.devlyn/CHALLENGE-FINDINGS.md`).
+This runs the full pipeline automatically: **Build → Build Gate → Browser Validate → Evaluate → Fix Loop → Simplify → Review → Challenge → Security Review → Clean → Docs**. Each phase runs as a separate subagent with its own context. Communication between phases happens via `.devlyn/pipeline.state.json` (control plane: source pointers, per-criterion status, phase verdicts) plus per-phase structured artifacts: `<phase>.findings.jsonl` (SARIF-aligned machine-readable findings) + `<phase>.log.md` (human prose + raw output). Fix-loop consumes a minimal `fix-batch.round-<N>.json` packet assembled from open/blocking findings — not the full findings stream.
 
 The **Build Gate** (Phase 1.4) runs real compilers, typecheckers, and linters — the same commands CI/Docker/production will run. It auto-detects project types (Next.js, Rust, Go, Solidity, Expo, Swift, etc.) and Dockerfiles. This is the primary defense against "tests pass locally, breaks in CI/Docker" class of bugs (type errors in un-tested files, cross-package drift, Dockerfile copy mismatches).
 
@@ -119,6 +119,8 @@ When you want to run each step yourself with review between phases:
 
 Steps 5-7 are optional depending on scope.
 
+Note: the manual-pipeline commands (`team-resolve`, `evaluate`) still use the older `done-criteria.md` / `EVAL-FINDINGS.md` markdown format. Auto-resolve uses the structured `pipeline.state.json` + JSONL findings format. The two formats do not interoperate — don't mix a manual-pipeline step into an auto-resolve run or vice versa.
+
 ## Vibe Coding Workflow
 
 The recommended sequence after writing code:
@@ -164,7 +166,8 @@ Steps 4-6 are optional depending on the scope of changes. `/simplify` should alw
 Claude 4.5 / 4.6 / 4.7 models auto-compact the conversation as it approaches the context limit, so you can keep working indefinitely without manual handoffs in most cases. Don't stop early due to token-budget concerns — the model continues from where it left off after compaction.
 
 For genuinely multi-context-window work (e.g., a roadmap with many phases), persist state to disk so the next instance can resume:
-- All `auto-resolve` and `preflight` runs already write durable state to `.devlyn/*.md` (done-criteria, BUILD-GATE, EVAL-FINDINGS, BROWSER-RESULTS, CHALLENGE-FINDINGS, PREFLIGHT-REPORT) and to git commits — pick up by reading those files plus `git log`.
+- `auto-resolve` runs write durable state to `.devlyn/pipeline.state.json` (control plane) plus `<phase>.findings.jsonl` + `<phase>.log.md` for any phase that emitted findings, plus git commits. Pick up by reading `pipeline.state.json` first — it records the run's route, source pointers, per-criterion status, and per-phase verdict — then drill into the relevant JSONL/log files only if needed.
+- `preflight` writes `.devlyn/PREFLIGHT-REPORT.md` — same pattern as before.
 - For long investigations, write progress notes to a `HANDOFF.md` and resume with `@HANDOFF.md continue from where this left off` if you need a fresh window.
 
 Manually clearing with `/clear` is rarely necessary — only do it when context is genuinely irrelevant to the next task.
