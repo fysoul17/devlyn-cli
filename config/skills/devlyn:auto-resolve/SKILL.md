@@ -15,7 +15,7 @@ $ARGUMENTS
 This pipeline is long-horizon agentic work. As the orchestrator, you spawn many subagents and read their handoff files; your own context grows over the run.
 
 - Your context window is auto-compacted as it approaches its limit, so do not stop tasks early due to token-budget concerns. Keep the run going.
-- All durable state lives in `.devlyn/*.md` (done-criteria, BUILD-GATE, EVAL-FINDINGS, BROWSER-RESULTS, CHALLENGE-FINDINGS) and in git commits. If your context is cleared mid-run, the next instance can resume from those files plus `git log`. Keep them up to date.
+- All durable state lives in `.devlyn/pipeline.state.json` (control plane: source pointers, criteria status, phase verdicts) plus per-phase artifact files (`BUILD-GATE.md`, `EVAL-FINDINGS.md`, `BROWSER-RESULTS.md`, `CHALLENGE-FINDINGS.md`) and in git commits. `pipeline.state.json` is the single authoritative record of what phase reached what verdict on which criterion. Its schema is defined in `references/pipeline-state.md`.
 - Best results come from `xhigh` effort. If you are running on lower effort and notice shallow reasoning during phase decisions, escalate.
 </orchestrator_context>
 
@@ -68,7 +68,18 @@ Phase-level "Engine routing" notes below are short reminders only — `engine-ro
    - Read `references/engine-routing.md` for the full routing table.
    - Call `mcp__codex-cli__ping` to verify the Codex MCP server is available. If ping fails, warn the user and offer: [1] Continue with `--engine claude` (fallback), [2] Abort.
 
-4. Announce the pipeline plan:
+4. **Initialize `.devlyn/pipeline.state.json` skeleton** (schema: `references/pipeline-state.md`):
+   - `version: "1.0"`
+   - `run_id`: `ar-<YYYYMMDD>-<HHMMSS>-<6-random-hex>` (generate via `date -u +%Y%m%d-%H%M%S` + `openssl rand -hex 3`)
+   - `started_at`: current UTC ISO-8601
+   - `engine`: `auto` / `codex` / `claude` (from flag)
+   - `base_ref.branch`: `git rev-parse --abbrev-ref HEAD`
+   - `base_ref.sha`: `git rev-parse HEAD`
+   - `rounds.max_rounds`: from `--max-rounds` flag (default 4)
+   - `rounds.global: 0`
+   - Empty `phases`, `criteria`, `route` (PHASE 0.5 and downstream phases populate these)
+
+5. Announce the pipeline plan:
 ```
 Auto-resolve pipeline starting
 Task: [extracted task description]
@@ -77,57 +88,38 @@ Phases: Build → Build Gate → [Browser] → Evaluate → [Fix loop if needed]
 Max evaluation rounds: [N]
 ```
 
-## PHASE 0.5: SPEC PREFLIGHT (conditional)
+## PHASE 0.5: SPEC PREFLIGHT & SOURCE RESOLUTION
 
-This phase exists because the ideate skill produces specs that are explicitly designed to be auto-resolve's contract — `Requirements` *are* the done-criteria, `Out of Scope` bounds over-building, `Dependencies` gates sequencing. When a run ignores that contract and re-derives everything from the raw task string, 25–40% of BUILD's reasoning is spent re-inventing material the spec already owns. This phase makes the contract load-bearing.
+This phase captures the contract. The ideate skill produces specs designed as auto-resolve's contract — `Requirements` are the done-criteria, `Out of Scope` bounds over-building, `Dependencies` gates sequencing. Phase 0.5 records that contract in `.devlyn/pipeline.state.json:source` so every downstream phase reads the same canonical source. **No copy of the spec is made** — the spec file itself is the source of truth; state.json stores pointers, integrity hashes, and per-criterion status.
 
-Scan the task description from `<pipeline_config>` for a path matching the regex `docs/roadmap/phase-\d+/[^\s"'`)]+\.md`. If no match, skip this entire phase (non-spec tasks fall back to BUILD's open-ended discovery — that mode is still supported).
+State.json was created in PHASE 0. This phase populates `source`, `criteria[]`, and `route.stage_a`.
 
-If a match is found:
+**Step 1 — Detect the source.** Scan `<pipeline_config>` task description for a path matching `docs/roadmap/phase-\d+/[^\s"'`)]+\.md`.
 
-1. **Read the spec file.** If the file does not exist, stop with a `BLOCKED` verdict in the final report — do not proceed to BUILD with a missing spec. The task description is lying and recovering from that silently is worse than halting.
+**If a spec path is found (spec-driven run):**
 
-2. **Verify internal dependencies.** For each entry under the spec's `## Dependencies` → `Internal` list (e.g., `1.1 User Auth`), locate the matching spec file at `docs/roadmap/phase-*/[id]-*.md` and read its frontmatter `status` field. If any internal dependency does not have `status: done`, stop with a `BLOCKED` verdict listing the unmet deps. Implementing out of sequence wastes the whole pipeline and produces code that fails at the first integration point.
+**Step 2a — Read the spec file.** If the file does not exist, stop with a `BLOCKED` verdict in the final report. Do not proceed to BUILD with a missing spec — the task description lies and silent recovery is worse than halting.
 
-3. **Write `.devlyn/SPEC-CONTEXT.md`** so downstream subagents read spec-owned content from a single canonical place without re-parsing the spec file. Copy these spec sections verbatim (do not paraphrase or compress — they are the contract):
+**Step 2b — Verify internal dependencies.** For each entry under `## Dependencies → Internal` (e.g. `1.1 User Auth`), locate `docs/roadmap/phase-*/[id]-*.md` and check frontmatter `status`. Any dep without `status: done` → stop with `BLOCKED` listing the unmet deps. Implementing out of sequence wastes the pipeline.
 
-   ```
-   ---
-   id: [from frontmatter]
-   complexity: [from frontmatter]
-   priority: [from frontmatter]
-   depends-on: [from frontmatter]
-   source-spec: [path to the spec file]
-   ---
+**Step 2c — Populate state.json source + criteria:**
+- `source.type = "spec"`
+- `source.spec_path = "<matched path>"`
+- `source.spec_sha256 = sha256(<file contents>)` via `sha256sum <path>` (Linux) or `shasum -a 256 <path>` (macOS)
+- `source.criteria_anchors = ["spec://requirements", "spec://out-of-scope", "spec://verification", "spec://constraints", "spec://architecture-notes", "spec://dependencies"]`
+- `criteria[]`: one entry per `- [ ]` item in the spec's `## Requirements` section, in document order. Each entry: `{ "id": "C<N>", "ref": "spec://requirements/<N-1>", "status": "pending", "evidence": [], "failed_by_finding_ids": [] }` (N is 1-indexed; ref index is 0-indexed per anchor syntax).
 
-   ## Customer Frame
-   [verbatim]
+**Step 2d — Announce.** One line: `Spec preflight: <spec path> — complexity <value>, <N> internal deps verified done, <M> criteria extracted, proceeding.` Surfaces in the final report.
 
-   ## Objective
-   [verbatim]
+**If no spec path is found (ad-hoc run):**
 
-   ## Requirements
-   [verbatim — these become done-criteria in PHASE 1]
+- `source.type = "generated"`
+- `source.criteria_path = ".devlyn/criteria.generated.md"` (Phase 1 Phase B creates this file)
+- `source.criteria_anchors = ["criteria.generated://requirements", "criteria.generated://out-of-scope", "criteria.generated://verification"]`
+- `criteria = []` (Phase 1 Phase B populates these)
+- Announce: `No spec detected — BUILD will synthesize criteria into .devlyn/criteria.generated.md.`
 
-   ## Constraints
-   [verbatim]
-
-   ## Out of Scope
-   [verbatim — honored explicitly by BUILD in Phase D]
-
-   ## Architecture Notes
-   [verbatim, or "(none)" if absent]
-
-   ## Dependencies
-   [verbatim]
-
-   ## Verification
-   [verbatim]
-   ```
-
-4. **Announce the preflight outcome.** One line: `Spec preflight: [spec path] — complexity [low/medium/high], [N] internal deps verified done, proceeding.` This appears in the final report under the Build row.
-
-Downstream phases detect `.devlyn/SPEC-CONTEXT.md` and prefer its content over re-derivation. If it is absent, they use their current open-ended behavior.
+Every downstream phase reads `pipeline.state.json` first and follows `source.spec_path` or `source.criteria_path` to the canonical criteria text. No intermediate copy exists.
 
 ## PHASE 1: BUILD
 
@@ -137,28 +129,42 @@ Agent prompt — pass this to the spawned executor:
 
 Investigate and implement the following task. Work through these phases in order:
 
-**Phase A — Understand the task**: If `.devlyn/SPEC-CONTEXT.md` exists, read it first. The spec has already decided the task shape — use its `Objective`, `Constraints`, `Architecture Notes`, `Dependencies`, and `complexity` as the exploration boundary. Do not re-classify the task type open-endedly; the spec already bounds the problem. Read only the files the spec implicates (Architecture Notes + Dependencies + any existing files touched by referenced patterns), then move on.
+**Phase A — Understand the task**: Read `.devlyn/pipeline.state.json`. If `source.type == "spec"`, open the spec file at `source.spec_path` directly and read it. The spec has already decided the task shape — use its `Objective`, `Constraints`, `Architecture Notes`, `Dependencies`, and frontmatter `complexity` as the exploration boundary. Do not re-classify the task type open-endedly; the spec already bounds the problem. Read only the files the spec implicates (Architecture Notes + Dependencies + any existing files touched by referenced patterns), then move on.
 
-If no spec context file exists, read the raw task description and classify the task type:
+If `source.type == "generated"`, read the raw task description from `<pipeline_config>` and classify the task type:
 - **Bug fix**: trace from symptom to root cause. Read error logs and affected code paths.
 - **Feature**: explore the codebase to find existing patterns, integration points, and relevant modules.
 - **Refactor/Chore**: understand current implementation, identify what needs to change and why.
 - **UI/UX**: review existing components, design system, and user flows.
 Read relevant files in parallel. Build a clear picture of what exists and what needs to change.
 
-**Phase B — Define done criteria**: Before writing any code, create `.devlyn/done-criteria.md`.
+**Phase B — Resolve criteria source**: Read `.devlyn/pipeline.state.json:source`.
 
-First check whether `.devlyn/SPEC-CONTEXT.md` exists (produced by PHASE 0.5 when this run implements an ideate-produced spec). If it does, the spec is the contract — copy its `## Requirements` section verbatim into `done-criteria.md` as the primary done-criteria list, copy its `## Out of Scope` section as an `## Out of Scope` section in done-criteria.md, and copy its `## Verification` section as a `## Verification Method` section. Do not paraphrase, compress, or re-derive these — the ideate skill's CHALLENGE rubric already validated them, and weakening them here silently undoes that work. You may ADD criteria the spec obviously missed (e.g., if Requirements mention an API but omit an obvious error state) but never REMOVE or reword existing ones.
+- **If `source.type == "spec"`**: the spec file is canonical. Phase 0.5 has already populated `criteria[]` in state.json from the spec's `## Requirements` section. **Do not create any criteria file** — read the Requirements, Out of Scope, Constraints, Architecture Notes, and Verification sections directly from `source.spec_path` whenever you need them. Copying them anywhere else would silently drift from the contract the ideate CHALLENGE rubric validated.
 
-If `.devlyn/SPEC-CONTEXT.md` does not exist, synthesize done-criteria from the raw task description. Each criterion must be verifiable (a test can assert it or a human can observe it in under 30 seconds), specific (not vague like "handles errors correctly"), and scoped to this task. Include an "Out of Scope" section and a "Verification Method" section.
+- **If `source.type == "generated"`**: no spec exists. Create `.devlyn/criteria.generated.md` once with three sections:
+  ```
+  ## Requirements
+  - [ ] <specific, testable criterion>
+  ...
+  ## Out of Scope
+  - <explicit exclusion>
+  ...
+  ## Verification
+  - <observable verification step>
+  ```
+  Each Requirement must be verifiable (a test can assert it, or a human can observe it in under 30 seconds), specific (not "handles errors correctly"), and scoped to this task. Then update state.json `criteria[]` with one entry per Requirement: `{ "id": "C<N>", "ref": "criteria.generated://requirements/<N-1>", "status": "pending", "evidence": [], "failed_by_finding_ids": [] }`.
 
-This file is required — downstream evaluation depends on it.
+After this phase, either `source.spec_path` (spec-driven) or `.devlyn/criteria.generated.md` (ad-hoc) is the single canonical criteria source. No other criteria file is produced.
 
-**Phase C — Assemble a team (complexity-gated)**: Check `.devlyn/SPEC-CONTEXT.md` frontmatter for `complexity`.
+**Phase C — Assemble a team (complexity-gated)**: Determine complexity.
 
-If `complexity: low` AND the spec does not touch security/auth/API/data/UI risk areas (check by greping the spec for keywords: `auth`, `login`, `session`, `token`, `secret`, `password`, `crypto`, `api`, `env`, `permission`, `access`, `database`, `migration`, `payment`), skip TeamCreate entirely and implement directly — the multi-perspective team exists to catch ambiguity that low-complexity specs have already resolved.
+- If `source.type == "spec"`: read the spec file's frontmatter `complexity` field.
+- If `source.type == "generated"`: classify from task scope — `low` (single file, no API changes), `medium` (multi-file, no cross-boundary), or `high` (cross-boundary, security-sensitive, or new subsystem).
 
-Otherwise (complexity medium or high, risk areas present, or no spec context), use TeamCreate to create a team. Select teammates based on task type:
+If `complexity == "low"` AND the task does not touch risk areas (grep the spec or task description for: `auth`, `login`, `session`, `token`, `secret`, `password`, `crypto`, `api`, `env`, `permission`, `access`, `database`, `migration`, `payment`), skip TeamCreate entirely and implement directly — the multi-perspective team exists to catch ambiguity that low-complexity work has already resolved.
+
+Otherwise (complexity medium or high, or risk areas present), use TeamCreate to create a team. Select teammates based on task type:
 - Bug fix: root-cause-analyst + test-engineer (+ security-auditor, performance-engineer as needed)
 - Feature: implementation-planner + test-engineer (+ ux-designer, architecture-reviewer, api-designer as needed)
 - Refactor: architecture-reviewer + test-engineer
@@ -167,14 +173,14 @@ Each teammate investigates from their perspective and sends findings back. Per-r
 
 **Phase D — Synthesize and implement**: After all teammates report, compile findings into a unified plan. Implement the solution — no workarounds, no hardcoded values, no silent error swallowing. For bugs: write a failing test first, then fix. For features: implement following existing patterns, then write tests. For refactors: ensure tests pass before and after.
 
-**Phase E — Update done criteria**: Mark each criterion in `.devlyn/done-criteria.md` as satisfied. Run the full test suite.
+**Phase E — Mark criteria implemented**: In `.devlyn/pipeline.state.json`, for each criterion you satisfied, update its entry to `status: "implemented"` and append an `evidence` record `{"file": "...", "line": N, "note": "brief description"}` pointing to the implementation. Run the full test suite.
 
 **Phase F — Cleanup**: Shut down all teammates and delete the team.
 
 The task is: [paste the task description here]
 
 **After the agent completes**:
-1. Verify `.devlyn/done-criteria.md` exists — if missing, create a basic one from the agent's output summary
+1. Verify `.devlyn/pipeline.state.json` exists and `criteria[]` has at least one entry with `status != "pending"` — if missing or all still pending, the agent did not follow instructions; re-spawn BUILD with an explicit reminder to update state.json
 2. Run `git diff --stat` to confirm code was actually changed
 3. If no changes were made, report failure and stop
 4. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): phase 1 — build complete"` to create a rollback point
@@ -270,7 +276,7 @@ Agent prompt — pass this to the spawned executor:
 You are an independent evaluator. Your job is to grade work produced by another agent against a specific rubric, not to praise it.
 
 <investigate_before_answering>
-Never claim a file:line or assert a behavior you have not opened and read. The done-criteria file is the rubric — read it first. Then read every changed/new file in full before marking anything VERIFIED or FAILED. Findings without a real file:line behind them are speculation; exclude them.
+Never claim a file:line or assert a behavior you have not opened and read. The canonical criteria source (see Step 1) is the rubric — read it first. Then read every changed/new file in full before marking anything VERIFIED or FAILED. Findings without a real file:line behind them are speculation; exclude them.
 </investigate_before_answering>
 
 <coverage_over_filtering>
@@ -279,7 +285,7 @@ Your goal is coverage at this stage, not severity filtering. Report every issue 
 This matters because under-reporting is the asymmetric cost: a missed bug ships broken code, a flagged non-issue costs a few minutes of review.
 </coverage_over_filtering>
 
-**Step 1 — Read the done criteria**: Read `.devlyn/done-criteria.md`. This is your primary grading rubric. Every criterion must be verified with evidence.
+**Step 1 — Read the criteria source**: Open `.devlyn/pipeline.state.json`. Follow `source.spec_path` (spec-driven) or `source.criteria_path` (generated). Read the Requirements, Out of Scope, and Verification sections from that file directly — this is your primary grading rubric. The `criteria[]` array in state.json lists the IDs (`C1..CN`) and their current status set by BUILD. Every criterion must be verified with evidence.
 
 **Step 2 — Discover changes**: Run `git diff HEAD~1` and `git status` to see what changed. Read all changed/new files in parallel.
 
@@ -290,7 +296,7 @@ This matters because under-reporting is the asymmetric cost: a missed bug ships 
 - Frontend (if UI changed): missing error/loading/empty states, React anti-patterns, server/client boundaries
 - Test coverage: untested modules, missing edge cases
 
-**Step 4 — Grade against done criteria**: For each criterion in done-criteria.md, mark VERIFIED (with evidence) or FAILED (with file:line and what's wrong).
+**Step 4 — Grade against criteria**: For each criterion in `pipeline.state.json:criteria[]` (mapped to its line in the canonical source file), mark VERIFIED (update `status: "verified"` + `evidence` array) or FAILED (update `status: "failed"` + `failed_by_finding_ids` referencing the relevant finding IDs in your findings output). Work directly on state.json — do not produce a separate criteria tracking file.
 
 **Step 5 — Write findings**: Write `.devlyn/EVAL-FINDINGS.md` with this exact structure:
 
@@ -317,14 +323,14 @@ Verdict rules:
 - `PASS WITH ISSUES` — only LOW cosmetic notes
 - `PASS` — clean
 
-Findings labeled "pre-existing" or "out of scope" still count if they relate to the done criteria. The goal is working software, not blame attribution.
+Findings labeled "pre-existing" or "out of scope" still count if they relate to the criteria. The goal is working software, not blame attribution.
 
 Calibration examples:
 - A catch block that logs but doesn't surface the error to the user → HIGH (not MEDIUM). Logging is not error handling.
 - A `let` that could be `const` → LOW. Linters catch this.
 - "The error handling is generally quite good" is not a finding. Count the instances and name the files. "3 of 7 async ops have error states. 4 are missing: file:line, file:line…"
 
-Do not delete `.devlyn/done-criteria.md` or `.devlyn/EVAL-FINDINGS.md` — the orchestrator needs them.
+Do not delete `.devlyn/pipeline.state.json` or `.devlyn/EVAL-FINDINGS.md` — the orchestrator needs them.
 
 **After the agent completes**:
 1. Read `.devlyn/EVAL-FINDINGS.md`
@@ -350,9 +356,9 @@ Read every findings file present in `.devlyn/`:
 
 Fix every finding regardless of severity (CRITICAL, HIGH, MEDIUM, and LOW). The pipeline loops until the relevant verdict returns PASS — there is no "shippable with issues" shortcut.
 
-The original done criteria are in `.devlyn/done-criteria.md` — your fixes must still satisfy those criteria. Do not delete or weaken criteria to make them pass.
+The original criteria are tracked in `.devlyn/pipeline.state.json:criteria[]`, with the full text at `source.spec_path` or `source.criteria_path` (follow the pointer). Your fixes must still satisfy those criteria. Do not delete or weaken criteria to make them pass.
 
-For each finding: read the referenced file:line (or browser step / console error), understand the issue, implement the fix. No workarounds — fix the actual root cause. Run tests after fixing. Update `.devlyn/done-criteria.md` to mark fixed items.
+For each finding: read the referenced file:line (or browser step / console error), understand the issue, implement the fix. No workarounds — fix the actual root cause. Run tests after fixing. When a previously-failed criterion is now satisfied, update its entry in state.json: clear `failed_by_finding_ids`, set `status: "implemented"`, and add an `evidence` record.
 
 **After the agent completes**:
 1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): fix round [N] complete"` to preserve the fix
@@ -394,7 +400,7 @@ Clean up the team after completion.
 
 ## PHASE 4.5: CHALLENGE
 
-Every prior phase used checklists, done-criteria, or structured categories. This phase is deliberately different — it's a fresh pair of eyes with no checklist, no prior context, and a skeptical mandate. The subagent hasn't seen the done-criteria, the eval findings, or the review results. It reads the raw diff cold and asks: "would I mass-ship this?"
+Every prior phase used checklists, criteria, or structured categories. This phase is deliberately different — it's a fresh pair of eyes with no checklist, no prior context, and a skeptical mandate. The subagent hasn't seen the criteria, the eval findings, or the review results. It reads the raw diff cold and asks: "would I mass-ship this?"
 
 This is what catches the things structured reviews miss — subtle logic that technically works but isn't the right approach, assumptions nobody questioned, patterns that are fine but not best-practice, and integration seams that look correct in isolation but feel wrong when you read the whole changeset.
 
@@ -558,7 +564,7 @@ Synchronize the rest of the documentation with recent code changes. Use `git log
 After all phases complete:
 
 1. Clean up temporary files:
-   - Delete the `.devlyn/` directory entirely (contains done-criteria.md, BUILD-GATE.md, EVAL-FINDINGS.md, BROWSER-RESULTS.md, CHALLENGE-FINDINGS.md, screenshots/, playwright temp files)
+   - Delete the `.devlyn/` directory entirely (contains pipeline.state.json, criteria.generated.md if ad-hoc, BUILD-GATE.md, EVAL-FINDINGS.md, BROWSER-RESULTS.md, CHALLENGE-FINDINGS.md, screenshots/, playwright temp files)
    - Kill any dev server process still running from browser validation
 
 2. Run `git log --oneline -10` to show commits made during the pipeline
