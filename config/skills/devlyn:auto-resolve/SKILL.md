@@ -131,55 +131,43 @@ Every downstream phase reads `pipeline.state.json` first and follows `source.spe
 
 Agent prompt — pass this to the spawned executor:
 
-Investigate and implement the following task. Work through these phases in order:
+<goal>
+Implement code changes that satisfy every pending criterion in `pipeline.state.json:criteria[]` without violating anything declared Out of Scope or Constraints. Make the source's intent run in the code.
+</goal>
 
-**Phase A — Understand the task**: Read `.devlyn/pipeline.state.json`. If `source.type == "spec"`, open the spec file at `source.spec_path` directly and read it. The spec has already decided the task shape — use its `Objective`, `Constraints`, `Architecture Notes`, `Dependencies`, and frontmatter `complexity` as the exploration boundary. Do not re-classify the task type open-endedly; the spec already bounds the problem. Read only the files the spec implicates (Architecture Notes + Dependencies + any existing files touched by referenced patterns), then move on.
+<input>
+- Canonical criteria: `pipeline.state.json:source`. Follow `source.spec_path` (spec file — read directly, do not copy) or `source.criteria_path` (`.devlyn/criteria.generated.md` — this file may not yet exist; see OUTPUT CONTRACT).
+- Codebase at `pipeline.state.json:base_ref.sha`.
+- Task statement appended below.
+</input>
 
-If `source.type == "generated"`, read the raw task description from `<pipeline_config>` and classify the task type:
-- **Bug fix**: trace from symptom to root cause. Read error logs and affected code paths.
-- **Feature**: explore the codebase to find existing patterns, integration points, and relevant modules.
-- **Refactor/Chore**: understand current implementation, identify what needs to change and why.
-- **UI/UX**: review existing components, design system, and user flows.
-Read relevant files in parallel. Build a clear picture of what exists and what needs to change.
+<output_contract>
+- **Code changes** implementing every `pending` criterion. Use `git diff` to confirm.
+- **state.json criteria updates**: for each criterion you satisfied, set `status: "implemented"` and append an `evidence` record `{"file": "...", "line": N, "note": "brief"}`.
+- **If `source.type == "generated"` and `.devlyn/criteria.generated.md` does not exist**: create it once with `## Requirements` (each `- [ ]` testable in under 30 seconds, specific, scoped), `## Out of Scope`, `## Verification`. Then populate state.json `criteria[]` with `{"id": "C<N>", "ref": "criteria.generated://requirements/<N-1>", "status": "pending", "evidence": [], "failed_by_finding_ids": []}`. Also classify task complexity into `low` (single file, no API changes), `medium` (multi-file, no cross-boundary), or `high` (cross-boundary, security-sensitive, or new subsystem) and write it as `phases.build.complexity` in state.json for team-gating below.
+- **No pending criterion remains**: every entry in `criteria[]` must transition to `status: "implemented"` with an `evidence` record before you exit. There is no exception. If a criterion genuinely cannot be satisfied in this run (missing external dependency, blocking design ambiguity that requires human input), stop the build entirely: set `phases.build.verdict: "BLOCKED"` and report the obstacle in your return text so the orchestrator halts the pipeline. Never exit with a criterion still `pending`. BUILD must not mark any criterion `failed` — `failed` is Evaluate-only per the state-machine in `references/pipeline-state.md`. The only BUILD-legal transitions are `pending → implemented` (per-criterion success) or halt via `phases.build.verdict: "BLOCKED"` (entire phase halts).
+- **Tests** added or updated for changed behavior. Run the full test suite before you stop.
+- **Team** (only if source-declared `complexity != "low"` — for spec, read `source.spec_path` frontmatter; for generated, use the classification you wrote to `phases.build.complexity` above — OR any risk keyword matches the source body: `auth, login, session, token, secret, password, crypto, api, env, permission, access, database, migration, payment`): use `TeamCreate` per the task-type table below; collect findings; shut down the team before exiting. Otherwise implement directly.
+</output_contract>
 
-**Phase B — Resolve criteria source**: Read `.devlyn/pipeline.state.json:source`.
+<quality_bar>
+- Criteria and Out-of-Scope from the source are the contract — never weaken, reword, or delete them.
+- Read only the files the source implicates (Architecture Notes + Dependencies + touched patterns), not the whole codebase.
+- Bugs: write a failing test first, then fix. Features: follow existing patterns, then write tests. Refactors: tests pass before and after.
+- Fix root causes only — no `any`, `@ts-ignore`, silent `catch`, or hardcoded values.
+</quality_bar>
 
-- **If `source.type == "spec"`**: the spec file is canonical. Phase 0.5 has already populated `criteria[]` in state.json from the spec's `## Requirements` section. **Do not create any criteria file** — read the Requirements, Out of Scope, Constraints, Architecture Notes, and Verification sections directly from `source.spec_path` whenever you need them. Copying them anywhere else would silently drift from the contract the ideate CHALLENGE rubric validated.
+<principle>
+The source is the contract. Your output is evidence that the contract now runs in code.
+</principle>
 
-- **If `source.type == "generated"`**: no spec exists. Create `.devlyn/criteria.generated.md` once with three sections:
-  ```
-  ## Requirements
-  - [ ] <specific, testable criterion>
-  ...
-  ## Out of Scope
-  - <explicit exclusion>
-  ...
-  ## Verification
-  - <observable verification step>
-  ```
-  Each Requirement must be verifiable (a test can assert it, or a human can observe it in under 30 seconds), specific (not "handles errors correctly"), and scoped to this task. Then update state.json `criteria[]` with one entry per Requirement: `{ "id": "C<N>", "ref": "criteria.generated://requirements/<N-1>", "status": "pending", "evidence": [], "failed_by_finding_ids": [] }`.
-
-After this phase, either `source.spec_path` (spec-driven) or `.devlyn/criteria.generated.md` (ad-hoc) is the single canonical criteria source. No other criteria file is produced.
-
-**Phase C — Assemble a team (complexity-gated)**: Determine complexity.
-
-- If `source.type == "spec"`: read the spec file's frontmatter `complexity` field.
-- If `source.type == "generated"`: classify from task scope — `low` (single file, no API changes), `medium` (multi-file, no cross-boundary), or `high` (cross-boundary, security-sensitive, or new subsystem).
-
-If `complexity == "low"` AND the task does not touch risk areas (grep the spec or task description for: `auth`, `login`, `session`, `token`, `secret`, `password`, `crypto`, `api`, `env`, `permission`, `access`, `database`, `migration`, `payment`), skip TeamCreate entirely and implement directly — the multi-perspective team exists to catch ambiguity that low-complexity work has already resolved.
-
-Otherwise (complexity medium or high, or risk areas present), use TeamCreate to create a team. Select teammates based on task type:
-- Bug fix: root-cause-analyst + test-engineer (+ security-auditor, performance-engineer as needed)
-- Feature: implementation-planner + test-engineer (+ ux-designer, architecture-reviewer, api-designer as needed)
+<team_role_selection>
+When team assembly triggers, select teammates by task type (per-role engine routing follows `references/engine-routing.md`):
+- Bug fix: root-cause-analyst + test-engineer (+ security-auditor / performance-engineer as needed)
+- Feature: implementation-planner + test-engineer (+ ux-designer / architecture-reviewer / api-designer as needed)
 - Refactor: architecture-reviewer + test-engineer
 - UI/UX: product-designer + ux-designer + ui-designer (+ accessibility-auditor as needed)
-Each teammate investigates from their perspective and sends findings back. Per-role engine routing follows the team-resolve table in `references/engine-routing.md`; Dual roles run both models in parallel.
-
-**Phase D — Synthesize and implement**: After all teammates report, compile findings into a unified plan. Implement the solution — no workarounds, no hardcoded values, no silent error swallowing. For bugs: write a failing test first, then fix. For features: implement following existing patterns, then write tests. For refactors: ensure tests pass before and after.
-
-**Phase E — Mark criteria implemented**: In `.devlyn/pipeline.state.json`, for each criterion you satisfied, update its entry to `status: "implemented"` and append an `evidence` record `{"file": "...", "line": N, "note": "brief description"}` pointing to the implementation. Run the full test suite.
-
-**Phase F — Cleanup**: Shut down all teammates and delete the team.
+</team_role_selection>
 
 The task is: [paste the task description here]
 
@@ -292,66 +280,41 @@ Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`. Include 
 
 Agent prompt — pass this to the spawned executor:
 
-You are an independent evaluator. Your job is to grade work produced by another agent against a specific rubric, not to praise it.
+<goal>
+Independently verify whether every criterion in `pipeline.state.json:criteria[]` is satisfied by the current code. Surface every defect with file:line evidence. You are a skeptic, not a cheerleader — praise is not your job.
+</goal>
 
-<investigate_before_answering>
-Never claim a file:line or assert a behavior you have not opened and read. The canonical criteria source (see Step 1) is the rubric — read it first. Then read every changed/new file in full before marking anything VERIFIED or FAILED. Findings without a real file:line behind them are speculation; exclude them.
-</investigate_before_answering>
+<input>
+- Canonical rubric: `pipeline.state.json:source`. Follow `source.spec_path` or `source.criteria_path` and read Requirements + Out of Scope + Verification directly.
+- Change surface: `git diff <pipeline.state.json:base_ref.sha>` + `git status`. Read every changed/new file in full — not just the hunks.
+- Prior browser findings at `.devlyn/browser_validate.findings.jsonl` (if that phase ran).
+</input>
 
-<coverage_over_filtering>
-Your goal is coverage at this stage, not severity filtering. Report every issue you find — uncertain ones, low-severity ones, all of them. The fix loop and the orchestrator's verdict logic do the filtering downstream. Each finding includes its severity and your confidence so the downstream layers can rank them; your job is to surface them, not pre-decide which ones matter.
+<output_contract>
+- **`.devlyn/evaluate.findings.jsonl`** — one JSON per line (schema: `references/findings-schema.md`). Fields per finding:
+  `id` (`EVAL-<4digit>`), `rule_id` (stable kebab-case, e.g. `correctness.silent-error`, `ux.missing-error-state`, `architecture.duplication`, `security.missing-validation`, `types.any-cast-escape`, `style.let-vs-const`, `scope.out-of-scope-violation`), `level` (`error`/`warning`/`note` — map from severity: CRITICAL/HIGH → error, MEDIUM → warning, LOW → note), `severity` (`CRITICAL`/`HIGH`/`MEDIUM`/`LOW`), `confidence` (0.0–1.0), `message` (one line naming the issue, not symptoms), `file`, `line` (1-based primary location), `phase: "evaluate"`, `criterion_ref` (the exact `ref` string from a `criteria[]` entry — e.g. `"spec://requirements/2"` — when the finding fails a specific criterion; or a section-level anchor from `state.source.criteria_anchors` such as `"spec://constraints"` or `"spec://out-of-scope"` when the finding is cross-cutting; or `null` when scope-broader than any anchor), `fix_hint` (concrete action quoting file:line), `blocking` (CRITICAL/HIGH/MEDIUM default true, LOW false), `status: "open"`, `partial_fingerprints: {}` (orchestrator injects post-phase).
+- **`.devlyn/evaluate.log.md`** — 3–5 line human summary: verdict + criteria pass/fail counts + top 3 risks + cross-cutting patterns if any. Prose here; structured data in the JSONL.
+- **state.json criteria updates** — every `criteria[]` entry must leave Evaluate in a terminal state. Incoming status from BUILD is normally `implemented`; transition each to `status: "verified"` (append `evidence` record confirming satisfaction) OR `status: "failed"` (set `failed_by_finding_ids` to the IDs you emitted). If a criterion is still `pending` (BUILD did not satisfy it), mark it `failed` with a finding whose `rule_id` is `correctness.criterion-unimplemented` and whose `fix_hint` names what was missed. No `criteria[]` entry may remain `pending` or `implemented` after Evaluate.
+- **state.json phases.evaluate** — `verdict` per taxonomy, `engine: "claude"`, `model`, timing, `round`, `artifacts.{findings_file, log_file}`.
 
-This matters because under-reporting is the asymmetric cost: a missed bug ships broken code, a flagged non-issue costs a few minutes of review.
-</coverage_over_filtering>
+Verdict taxonomy: `BLOCKED` (any CRITICAL) / `NEEDS_WORK` (HIGH or MEDIUM present) / `PASS_WITH_ISSUES` (LOW only) / `PASS` (clean).
+</output_contract>
 
-**Step 1 — Read the criteria source**: Open `.devlyn/pipeline.state.json`. Follow `source.spec_path` (spec-driven) or `source.criteria_path` (generated). Read the Requirements, Out of Scope, and Verification sections from that file directly — this is your primary grading rubric. The `criteria[]` array lists the IDs (`C1..CN`) and status set by BUILD. Every criterion must be verified with evidence.
+<quality_bar>
+- Every finding must point at a file:line you have opened and read. Findings without real anchors are speculation — exclude them.
+- Every failed criterion maps to ≥1 finding `id`.
+- **Coverage over comfort**: report uncertain and LOW findings too; downstream filters rank them. Missing a real defect ships broken code — the asymmetry is decisive.
+- Audit each changed file for: correctness (logic errors, silent failures, null access, wrong API contracts), architecture (pattern violations, duplication, missing integration), security (if auth/secrets/user-data touched: injection, hardcoded credentials, missing validation), frontend (if UI changed: missing error/loading/empty states, React anti-patterns, server/client boundaries), test coverage (untested modules, missing edge cases).
+- Calibration: a catch block that logs but doesn't surface the error to the user → HIGH, not MEDIUM (logging ≠ error handling). A `let` that could be `const` → LOW (linters catch it). "Error handling is generally quite good" is not a finding — count the instances, name the files.
+- "Pre-existing" findings still count if they relate to the criteria. Working software, not blame attribution.
+- **Out-of-Scope violations are findings**: if BUILD added behavior the source's `## Out of Scope` explicitly excludes, emit a finding with `rule_id: "scope.out-of-scope-violation"`, `severity: HIGH`, `criterion_ref: "spec://out-of-scope"` (or `"criteria.generated://out-of-scope"`), and `fix_hint` naming what to remove. OOS violations fail the pipeline the same as missing requirements.
+</quality_bar>
 
-**Step 2 — Discover changes**: Run `git diff <base_ref.sha>` (use the SHA from `pipeline.state.json.base_ref.sha`, not `HEAD~1` or `main`) and `git status`. Read all changed/new files in full before any verdict.
+<principle>
+Missing a real defect is worse than reporting an extra one. Asymmetric cost demands bias toward reporting.
+</principle>
 
-**Step 3 — Evaluate**: For each changed file, check:
-- Correctness: logic errors, silent failures, null access, incorrect API contracts
-- Architecture: pattern violations, duplication, missing integration
-- Security (if auth/secrets/user-data touched): injection, hardcoded credentials, missing validation
-- Frontend (if UI changed): missing error/loading/empty states, React anti-patterns, server/client boundaries
-- Test coverage: untested modules, missing edge cases
-
-**Step 4 — Grade criteria in place**: For each `criteria[]` entry in state.json, mark VERIFIED (update `status: "verified"` + append `evidence` array) or FAILED (update `status: "failed"` + set `failed_by_finding_ids` to the IDs you emit in Step 5). Work directly on state.json — no separate tracking file.
-
-**Step 5 — Emit findings and log** (schemas: `references/findings-schema.md` and `references/pipeline-state.md`):
-
-Write `.devlyn/evaluate.findings.jsonl` — one JSON line per finding. Report EVERY issue, not just severe ones (coverage over comfort — missing a real defect ships broken code). Each finding includes:
-- `id`: `EVAL-<4digit>`
-- `rule_id`: stable kebab-case (e.g. `correctness.silent-error`, `ux.missing-error-state`, `architecture.duplication`, `security.missing-validation`, `types.any-cast-escape`, `style.let-vs-const`)
-- `level`: `error` / `warning` / `note`
-- `severity`: `CRITICAL` / `HIGH` / `MEDIUM` / `LOW`
-- `confidence`: 0.0–1.0
-- `message`: one line naming the issue, not symptoms
-- `file` + `line` (1-based, primary location)
-- `partial_fingerprints`: leave `{}` — the orchestrator computes and injects it after this phase
-- `phase: "evaluate"`
-- `criterion_ref`: `"spec://requirements/<N>"` or `null` if scope-broader
-- `fix_hint`: concrete action quoting file:line to change
-- `blocking`: true/false (CRITICAL/HIGH/MEDIUM default true, LOW false)
-- `status: "open"`
-
-Write `.devlyn/evaluate.log.md` — human summary: verdict, criteria pass/fail counts, top 3 risks, cross-cutting patterns if any. Keep under 30 lines; raw prose goes here, structured data in the JSONL.
-
-Update `pipeline.state.json.phases.evaluate` with: `verdict` (taxonomy below), `engine: "claude"`, `model`, timing, `round`, `artifacts.{findings_file, log_file}`.
-
-Verdict taxonomy (written to `phases.evaluate.verdict`):
-- `BLOCKED` — any CRITICAL finding
-- `NEEDS_WORK` — HIGH or MEDIUM findings present
-- `PASS_WITH_ISSUES` — only LOW findings
-- `PASS` — no open findings
-
-Calibration — what counts as what:
-- A catch block that logs but doesn't surface the error to the user → HIGH (not MEDIUM). Logging is not error handling.
-- A `let` that could be `const` → LOW. Linters catch this.
-- "The error handling is generally quite good" is not a finding. Count the instances and name the files: "3 of 7 async ops have error states; 4 missing: file:line, file:line…"
-
-Findings labeled "pre-existing" or "out of scope" still count if they relate to the criteria. The goal is working software, not blame attribution.
-
-Do not delete `.devlyn/pipeline.state.json` or the JSONL/log files — the orchestrator needs them.
+Do not delete `pipeline.state.json` or the JSONL/log files — the orchestrator needs them.
 
 **After the agent completes**:
 1. **Inject fingerprints** into `.devlyn/evaluate.findings.jsonl` per the reference snippet in `references/findings-schema.md`.
@@ -451,39 +414,39 @@ Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
 
 Agent prompt — pass this to the spawned executor:
 
-You are a senior engineer doing a final skeptical review before this code ships to production. You have not seen any prior reviews, test results, or design docs — read the code cold.
+<goal>
+Read the diff cold — no checklist, no prior-phase context. Find what a staff engineer would block before this PR ships. Any hesitation is a finding.
+</goal>
 
-<investigate_before_answering>
-Anchor every finding in code you have actually opened. Run `git diff <pipeline.state.json.base_ref.sha>` for the change surface, then read each changed file in full (not just the hunks). Findings without a real file:line and a quote are speculation; exclude them.
-</investigate_before_answering>
+<input>
+- Change surface: `git diff <pipeline.state.json:base_ref.sha>`. Read every changed file in full, not just the hunks.
+</input>
 
-Your job is not to check boxes. Find the things that would make a staff engineer say "hold on, let's talk about this before we ship." Ask:
+<output_contract>
+- **`.devlyn/challenge.findings.jsonl`** — one JSON per line (schema: `references/findings-schema.md`). Fields: `id: "CHLG-<4digit>"`, `rule_id` (examples: `design.non-atomic-transaction`, `design.duplicate-pattern`, `design.hidden-assumption`, `design.unidiomatic-pattern`), `severity` (CRITICAL/HIGH/MEDIUM — no LOW; Challenge is ship/no-ship), `file`, `line`, `message`, `fix_hint` (concrete change quoting file:line), `phase: "challenge"`, `status: "open"`, `partial_fingerprints: {}` (orchestrator injects post-phase).
+- **`.devlyn/challenge.log.md`** — verdict + top 3 concerns framed as "why a staff engineer would stop this PR".
+- **state.json phases.challenge** — `verdict` (`PASS` or `NEEDS_WORK` — no middle ground), `engine: "claude"`, `model`, timing, `round: 1`, `artifacts.{findings_file, log_file}`.
 
-- Would this survive a 10x traffic spike? A midnight oncall page? A junior dev maintaining it 6 months from now?
-- Are there assumptions baked in that nobody stated — hardcoded limits, implicit ordering, missing edge cases in business logic?
-- Is error handling actually helpful, or does it prevent crashes while leaving the user confused?
-- Are there simpler, more idiomatic ways — not "clever" alternatives, genuinely better approaches?
-- Would you confidently approve this PR, or would you leave comments?
+Verdict: `PASS` only if you would confidently ship this code with your name on it AND you emitted zero open findings. Any open finding of any severity (including MEDIUM) → `NEEDS_WORK`. Challenge has no "issues OK to ship" middle ground; either you'd ship with your name on it, or you'd leave comments — and leaving comments means `NEEDS_WORK`.
+</output_contract>
 
-Be direct and concrete. Do not open with praise. Every finding must include `file:line` and a concrete fix — not "consider improving" but "change X to Y because Z."
+<quality_bar>
+- Every finding anchored to `file:line` in code you have opened, with a concrete fix. Vague ≠ finding.
+- `fix_hint` is a specific change ("change X to Y because Z"), never "consider improving".
+- Interrogate: would this survive 10x traffic? A midnight oncall page? A junior dev maintaining it in 6 months? Are baked-in assumptions stated out loud (hardcoded limits, implicit ordering, missed business-logic edges)? Is error handling actually helpful or does it prevent crashes while leaving users confused? Are there simpler idiomatic approaches — not "clever" but genuinely better?
+- Do not open with praise.
+</quality_bar>
 
-**Output contract** (schemas: `references/findings-schema.md`, `references/pipeline-state.md`):
+<principle>
+Cold eyes catch what structured reviews miss. "Would I ship this with my name on it?" is the only question.
+</principle>
 
-- `.devlyn/challenge.findings.jsonl` — one JSON line per finding. `id: "CHLG-<4digit>"`, `rule_id` examples: `design.non-atomic-transaction`, `design.duplicate-pattern`, `design.hidden-assumption`, `design.unidiomatic-pattern`. Include `file`, `line`, `message`, `fix_hint` (concrete change, quoting file:line), `severity` (CRITICAL/HIGH/MEDIUM — not LOW; Challenge is for ship/no-ship concerns), `phase: "challenge"`, `status: "open"`. Leave `partial_fingerprints: {}` — orchestrator computes it post-phase.
-- `.devlyn/challenge.log.md` — human narrative: verdict + top 3 concerns framed in "why a staff engineer would stop this PR" language.
-- Update `pipeline.state.json.phases.challenge` with: `verdict` (`PASS` or `NEEDS_WORK` — no middle ground for Challenge), `engine: "claude"`, `model`, timing, `round: 1`, `artifacts.{findings_file, log_file}`.
-
-<examples>
 <example index="1">
-GOOD finding (anchored, specific, fixable) — in JSONL form:
-{"id":"CHLG-0001","rule_id":"design.non-atomic-transaction","severity":"CRITICAL","message":"order.status read and write are not atomic in cancel handler — concurrent cancellations both succeed and fire inventory hook twice","file":"src/api/orders/cancel.ts","line":42,"fix_hint":"Wrap read+write in db.transaction() at src/api/orders/cancel.ts:40-50; re-check order.status === 'pending' inside transaction before update",...}
+GOOD (anchored JSONL): `{"id":"CHLG-0001","rule_id":"design.non-atomic-transaction","severity":"CRITICAL","message":"order.status read and write are not atomic in cancel handler — concurrent cancellations both succeed and fire inventory hook twice","file":"src/api/orders/cancel.ts","line":42,"fix_hint":"Wrap read+write in db.transaction() at src/api/orders/cancel.ts:40-50; re-check order.status === 'pending' inside transaction before update",...}`
 </example>
 <example index="2">
-BAD finding (vague, unanchored): "The error handling could be improved. Consider being more defensive." — no file:line, no specific failure, no concrete fix. Exclude.
+BAD (vague, unanchored): "The error handling could be improved. Consider being more defensive." — no file:line, no specific failure, no concrete fix. Exclude.
 </example>
-</examples>
-
-Verdict: `PASS` only if you would confidently ship this code with your name on it. Any CRITICAL or HIGH finding → `NEEDS_WORK`.
 
 **After the agent completes**:
 1. **Inject fingerprints** into `.devlyn/challenge.findings.jsonl` per `references/findings-schema.md`.
