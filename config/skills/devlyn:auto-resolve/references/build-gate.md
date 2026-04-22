@@ -82,35 +82,49 @@ Use `--build-gate no-docker` to skip Docker builds for faster iteration during d
 
 ## Output Format
 
-Write results to `.devlyn/BUILD-GATE.md`:
+Emit two files plus one state update (schemas: `references/findings-schema.md`, `references/pipeline-state.md`).
+
+### 1. `.devlyn/build_gate.findings.jsonl`
+
+One JSON line per failing command's extracted root cause. Do NOT emit findings for PASSING commands. Each line follows the canonical findings schema:
+
+```jsonl
+{"id":"BGATE-0001","rule_id":"build.type-error","level":"error","severity":"HIGH","confidence":0.99,"message":"Property 'config' does not exist on type 'SettingsTabsProps'","file":"dashboard/app/(dashboard)/settings/page.tsx","line":90,"partial_fingerprints":{"location_hash":"<sha1>","rule_message_hash":"<sha1>"},"phase":"build_gate","criterion_ref":null,"fix_hint":"Read dashboard/app/(dashboard)/settings/page.tsx:88-93 and dashboard/components/settings/SettingsTabs.tsx (the SettingsTabsProps type definition). Either add 'config' to SettingsTabsProps or remove the prop from the parent.","blocking":true,"status":"open"}
+```
+
+Leave `partial_fingerprints` as `{}` in each finding — the orchestrator computes and injects it after PHASE 1.4 completes. Normalization rules are too subtle for per-agent ad-hoc implementation; bookkeeping is centralized. See `findings-schema.md` for the reference snippet.
+
+Suggested `rule_id` values: `build.type-error`, `build.lint-violation`, `build.dep-missing`, `build.docker-copy-mismatch`, `build.module-not-found`, `build.compile-error`.
+
+### 2. `.devlyn/build_gate.log.md`
+
+Human-readable run log. This is where the FULL raw stderr/stdout lives — not in the JSONL `message`. Structure:
 
 ```markdown
-# Build Gate Results
-## Verdict: [PASS / FAIL]
+# Build Gate Run Log
 ## Detected Project Types
 - [type] ([path/])
-## Gate Commands Run
-| # | Command | Dir | Exit | Status | Time |
-|---|---|---|---|---|---|
-| 1 | `npx tsc --noEmit` | dashboard/ | 0 | PASS | 4.2s |
-| 2 | `npx next build` | dashboard/ | 1 | FAIL | 9.8s |
-| 3 | `cargo check --all-targets` | services/indexer/ | 0 | PASS | 12.1s |
 
-## Failures
+## Commands
+| # | Command | Dir | Exit | Time |
+|---|---|---|---|---|
+| 1 | `npx tsc --noEmit` | dashboard/ | 0 | 4.2s |
+| 2 | `npx next build` | dashboard/ | 1 | 9.8s |
 
-### Command #2: `npx next build` (dashboard/, exit 1)
-```
-[full error output — do NOT truncate. Build errors reference files from earlier in output.]
-```
+## Raw Output — failing commands only
 
-**Root file:line(s)**:
-- `dashboard/app/(dashboard)/settings/page.tsx:90` — Type error: Property 'config' does not exist on type 'SettingsTabsProps'
-
-**Fix guidance**:
-Read `dashboard/app/(dashboard)/settings/page.tsx:88-93` and `dashboard/components/settings/SettingsTabs.tsx` (the SettingsTabsProps type definition). Either add `config` to SettingsTabsProps or remove the prop from the parent. Then re-run `npx next build` from `dashboard/` to verify.
+### #2: `npx next build` (dashboard/, exit 1)
+\`\`\`
+[full raw output — keep for debugging]
+\`\`\`
 ```
 
-Verdict rules:
-- Any exit code != 0 → **FAIL**
-- All exit codes == 0 → **PASS**
-- No gates detected → **PASS** with note "No build gate detected — project type unknown. Consider adding `--build-gate deploy` if Dockerfiles are present."
+### 3. Update `pipeline.state.json`
+
+Set `phases.build_gate`:
+- `verdict`: `PASS` if all exit codes == 0, else `FAIL`. If no gates detected, `PASS` with a note in log.md ("No build gate detected — project type unknown; consider adding `--build-gate deploy` if Dockerfiles are present.")
+- `engine: "bash"`, `model: null`
+- `started_at`, `completed_at`, `duration_ms`, `round`
+- `artifacts.findings_file: ".devlyn/build_gate.findings.jsonl"`, `artifacts.log_file: ".devlyn/build_gate.log.md"`
+
+The orchestrator branches on `phases.build_gate.verdict` — it does NOT re-read the findings or log file for routing decisions.

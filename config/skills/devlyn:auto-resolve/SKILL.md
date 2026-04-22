@@ -15,7 +15,7 @@ $ARGUMENTS
 This pipeline is long-horizon agentic work. As the orchestrator, you spawn many subagents and read their handoff files; your own context grows over the run.
 
 - Your context window is auto-compacted as it approaches its limit, so do not stop tasks early due to token-budget concerns. Keep the run going.
-- All durable state lives in `.devlyn/pipeline.state.json` (control plane: source pointers, criteria status, phase verdicts) plus per-phase artifact files (`BUILD-GATE.md`, `EVAL-FINDINGS.md`, `BROWSER-RESULTS.md`, `CHALLENGE-FINDINGS.md`) and in git commits. `pipeline.state.json` is the single authoritative record of what phase reached what verdict on which criterion. Its schema is defined in `references/pipeline-state.md`.
+- All durable state lives in `.devlyn/pipeline.state.json` (control plane: source pointers, criteria status, phase verdicts) plus per-phase artifacts — `<phase>.findings.jsonl` (SARIF-aligned structured findings) and `<phase>.log.md` (human prose + raw detail) for phases that emit findings (build_gate, browser_validate, evaluate, challenge, security_review) — and in git commits. `pipeline.state.json` is the **single authoritative verdict source** — orchestrator branching reads `phases.<name>.verdict` directly, never parses artifact files. Schemas: `references/pipeline-state.md`, `references/findings-schema.md`.
 - Best results come from `xhigh` effort. If you are running on lower effort and notice shallow reasoning during phase decisions, escalate.
 </orchestrator_context>
 
@@ -28,6 +28,10 @@ This pipeline runs hands-free. The user launches it to walk away and come back t
 4. **Continue through the pipeline by default.** Stop only for: (a) a subagent reporting an unrecoverable failure, (b) PHASE 1 producing zero code changes, (c) `max-rounds` reached — in which case continue to PHASE 3 with a warning rather than halting. Every other situation means move on to the next phase.
 5. **Treat questions as a signal to act instead.** If you notice yourself drafting a question to the user mid-pipeline, convert it into a decision + log entry and spawn the next phase.
 </autonomy_contract>
+
+<harness_principles>
+Before acting: verify state, source, diff base, and artifact contracts. Prefer deletion or reuse over new machinery. Change only files the task requires. Each phase optimizes for its declared success criteria, not for completing a checklist. Fix root causes only — no `any`, `@ts-ignore`, silent catches, or hardcoded values. Label hypotheses explicitly; back claims with file:line evidence. Align structured outputs with production standards (SARIF `partialFingerprints`, semver, ISO-8601).
+</harness_principles>
 
 <engine_routing_convention>
 Every phase in this pipeline routes its work to the optimal model per `references/engine-routing.md`. The convention is the same everywhere:
@@ -197,9 +201,9 @@ Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
 
 Agent prompt — pass this to the Agent tool:
 
-You are the build gate agent. Read `references/build-gate.md` from the auto-resolve skill directory for the full project-type detection matrix and execution rules.
+You are the build gate agent. Read `references/build-gate.md` for the project-type detection matrix and execution rules, and `references/findings-schema.md` for the findings output format.
 
-Your job: detect every project type in this repo, run their build/typecheck/lint commands, and report results. You do NOT reason about code quality — you run commands and faithfully report what they output.
+Your job: detect every project type in this repo, run their build/typecheck/lint commands, and emit structured results. You do NOT reason about code quality — you run commands and faithfully report what they output.
 
 1. Read the detection matrix in `references/build-gate.md`
 2. Scan the repo to detect all matching project types (a monorepo may match several)
@@ -207,13 +211,16 @@ Your job: detect every project type in this repo, run their build/typecheck/lint
 4. Run all gate commands. Sequential within a project type, parallel across unrelated types.
 5. If `--build-gate strict` is set, apply strict-mode flags per the reference file
 6. Run Dockerfile builds if Dockerfiles are detected, UNLESS `--build-gate no-docker` is set (see reference file)
-7. Write results to `.devlyn/BUILD-GATE.md` following the output format in the reference file
 
-For failures: include the FULL error output (not truncated) and extract root file:line references with concrete fix guidance so the fix agent knows exactly where to look.
+**Output contract** (see `references/findings-schema.md` and `references/pipeline-state.md`):
+
+- `.devlyn/build_gate.findings.jsonl` — one JSON line per compiler/typecheck/lint failure. `rule_id` examples: `build.type-error`, `build.lint-violation`, `build.dep-missing`, `build.docker-copy-mismatch`. Each finding MUST include `file` + `line` + concise `message` (not the full stack trace) + concrete `fix_hint`. Leave `partial_fingerprints` as `{}` or omit the field — the orchestrator computes and injects it after this phase completes (see `references/findings-schema.md`).
+- `.devlyn/build_gate.log.md` — human summary. Detected project types, commands run with exit codes and timing, and the full raw stderr/stdout from failing commands (this is where long compiler output lives, NOT in the JSONL `message`).
+- Update `pipeline.state.json.phases.build_gate` with: `verdict` (`PASS` if all exit 0, else `FAIL`), `engine: "bash"`, `started_at`, `completed_at`, `duration_ms`, `round` (current round number), `artifacts.findings_file` and `artifacts.log_file` paths.
 
 **After the agent completes**:
-1. Read `.devlyn/BUILD-GATE.md`
-2. Extract verdict
+1. **Inject fingerprints.** Run the reference snippet from `references/findings-schema.md` over `.devlyn/build_gate.findings.jsonl` — compute `partial_fingerprints` for each line and write back. This is deterministic orchestrator bookkeeping; do not delegate to the subagent.
+2. Read `pipeline.state.json.phases.build_gate.verdict`
 3. Branch:
    - `PASS` → continue to PHASE 1.5
    - `FAIL` → go to PHASE 1.4-fix (build gate fix loop)
@@ -226,15 +233,17 @@ Track a round counter. The build-gate fix loop and the main evaluate fix loop sh
 
 **Engine**: FIX LOOP row of the routing table.
 
+Before spawning the fix agent, the orchestrator assembles `.devlyn/fix-batch.round-<N>.json` by reading `.devlyn/build_gate.findings.jsonl`, filtering to `status == "open"` entries, and packaging only the minimum needed (`id`, `rule_id`, `severity`, `file`, `line`, `message`, `fix_hint`, `partial_fingerprints`) plus the acceptance command (`.devlyn/build_gate.log.md` → "Commands" table). The fix agent receives the packet path — it does NOT re-parse prior findings files or the full compiler log.
+
 Agent prompt — pass this to the spawned executor:
 
-Read `.devlyn/BUILD-GATE.md` — it contains deterministic build/typecheck/lint failures from real compiler output. These are not opinions; the compiler rejected this code. Fix every listed failure at the root cause level.
+Read `.devlyn/fix-batch.round-<N>.json` — it contains the open, blocking build-gate failures extracted from real compiler output. These are not opinions; the compiler rejected this code. Fix every listed entry at the root cause.
 
-For each failure:
-1. Read the referenced file:line and enough surrounding context to understand the error
-2. For type errors: check BOTH sides of the type contract — the consumer AND the type definition. The fix may belong to either side. Do NOT suppress errors with `any`, `@ts-ignore`, `as unknown as`, `// eslint-disable`, or equivalent escape hatches.
+For each entry:
+1. Read the referenced `file:line` and enough surrounding context to understand the error. If you need the raw compiler output, `.devlyn/build_gate.log.md` has the full stderr/stdout.
+2. For type errors: check BOTH sides of the type contract — the consumer AND the type definition. Do NOT suppress with `any`, `@ts-ignore`, `as unknown as`, `// eslint-disable`, or equivalent escape hatches.
 3. For lint errors: fix the underlying issue, do not disable the rule.
-4. For missing module/dependency errors: investigate the cause — it may be a missing dep in package.json, a typo in the import path, or a tsconfig paths misconfiguration.
+4. For missing module/dependency errors: investigate root cause — missing dep in package.json, typo in import path, or tsconfig paths misconfiguration.
 5. After fixing, do NOT re-run the build yourself. The orchestrator re-runs PHASE 1.4.
 
 **After the agent completes**:
@@ -246,24 +255,34 @@ For each failure:
 
 Skip if `--skip-browser` was set.
 
-1. **Check relevance**: Run `git diff --name-only` and check for web-relevant files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.css`, `*.html`, `page.*`, `layout.*`, `route.*`). If none found, skip and note "Browser validation skipped — no web changes detected."
+1. **Check relevance**: Run `git diff --name-only <pipeline.state.json.base_ref.sha>` (use the frozen run-start SHA, not ambient HEAD — after fix-round checkpoint commits, ambient diffs silently return empty and would auto-skip this phase incorrectly). Check the output for web-relevant files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.css`, `*.html`, `page.*`, `layout.*`, `route.*`). If none found, skip and note "Browser validation skipped — no web changes detected."
 
 2. **Run validation**: Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
 
 Agent prompt — pass this to the Agent tool:
 
-You are a browser validation agent. Read the skill instructions at `.claude/skills/devlyn:browser-validate/SKILL.md` and follow the full workflow to validate this web application. The dev server should be started, tested, and left running (pass `--keep-server` internally) — the pipeline will clean it up later. Write your findings to `.devlyn/BROWSER-RESULTS.md`.
+You are a browser validation agent. Read `.claude/skills/devlyn:browser-validate/SKILL.md` for the full workflow and `references/findings-schema.md` for the findings output format. Start the dev server, test the implemented feature end-to-end, and leave the server running (pass `--keep-server` internally) — the pipeline will clean it up later.
+
+**Output contract**:
+- `.devlyn/browser_validate.findings.jsonl` — one JSON line per browser-observable failure (`rule_id` examples: `browser.render-failure`, `browser.feature-broken`, `browser.console-error`, `browser.network-error`, `browser.accessibility-violation`). Each with `file` + `line` where a source-code file was implicated (or the page route + component path); `message` short; `fix_hint` concrete with file:line. Leave `partial_fingerprints` as `{}` — the orchestrator computes it after the phase completes.
+- `.devlyn/browser_validate.log.md` — human summary: which tier was used (chrome MCP / Playwright / curl), dev server URL, screenshots taken, pages navigated, console errors collected, flow steps executed per feature from `pipeline.state.json:criteria[]`.
+- Update `pipeline.state.json.phases.browser_validate` with `verdict`, `engine: "claude"`, timing, `round`, and `artifacts.{findings_file, log_file}`.
+
+Verdict taxonomy (written to state.json):
+- `PASS` — every criterion verified in a real browser, no blocking errors
+- `PASS_WITH_ISSUES` — criteria verified; LOW-severity findings only
+- `PARTIALLY_VERIFIED` — actual browser interaction happened, but some criteria unverifiable due to environment limits (missing API keys, external services). NOT valid as a substitute for "browser tools didn't work."
+- `NEEDS_WORK` — one or more criteria failed in the browser (populates findings with `blocking: true`)
+- `BLOCKED` — app does not render at all
 
 **After the agent completes**:
-1. Read `.devlyn/BROWSER-RESULTS.md`
-2. Extract the verdict
-3. **Validate the verdict is real**: If the verdict says "code-level pass" or indicates no actual browser interaction occurred (no screenshots taken, no pages navigated, no DOM inspected), the validation did NOT happen. Treat this as if no browser validation ran — re-run PHASE 1.5 with `--tier 2` to force Playwright, or `--tier 3` for HTTP smoke. A "PARTIALLY VERIFIED" based on reading source code is not browser validation.
+1. **Inject fingerprints** into `.devlyn/browser_validate.findings.jsonl` (if present and non-empty) per `references/findings-schema.md`.
+2. Read `pipeline.state.json.phases.browser_validate.verdict`
+3. **Sanity check**: if the verdict is `PASS`/`PASS_WITH_ISSUES` but `browser_validate.log.md` shows no screenshots taken and no pages navigated, treat as if no browser validation ran — re-run PHASE 1.5 with `--tier 2` to force Playwright, or `--tier 3` for HTTP smoke. A code-level verdict is not browser validation.
 4. Branch on verdict:
-   - `PASS` → continue to PHASE 2
-   - `PASS WITH ISSUES` → continue to PHASE 2 (evaluator reads browser results as extra context)
-   - `PARTIALLY VERIFIED` → continue to PHASE 2, but flag to the evaluator that browser coverage was incomplete — unverified features should be weighted more heavily. This verdict is only valid when features were actually tested in a browser and some couldn't be verified due to environment limitations (missing API keys, external services). It is NOT valid as a substitute for "browser tools didn't work."
-   - `NEEDS WORK` → features don't work in the browser. Go to PHASE 2.5 fix loop. Fix agent reads `.devlyn/BROWSER-RESULTS.md` for which criterion failed, at what step, with what error. After fixing, re-run PHASE 1.5 to verify the fix before proceeding to Evaluate.
-   - `BLOCKED` → app doesn't render. Go to PHASE 2.5 fix loop. After fixing, re-run PHASE 1.5.
+   - `PASS` / `PASS_WITH_ISSUES` → continue to PHASE 2
+   - `PARTIALLY_VERIFIED` → continue to PHASE 2, flag to evaluator via a note in state.json that browser coverage was incomplete
+   - `NEEDS_WORK` / `BLOCKED` → go to PHASE 2.5 fix loop; after fixing, re-run PHASE 1.5 before PHASE 2
 
 ## PHASE 2: EVALUATE
 
@@ -285,9 +304,9 @@ Your goal is coverage at this stage, not severity filtering. Report every issue 
 This matters because under-reporting is the asymmetric cost: a missed bug ships broken code, a flagged non-issue costs a few minutes of review.
 </coverage_over_filtering>
 
-**Step 1 — Read the criteria source**: Open `.devlyn/pipeline.state.json`. Follow `source.spec_path` (spec-driven) or `source.criteria_path` (generated). Read the Requirements, Out of Scope, and Verification sections from that file directly — this is your primary grading rubric. The `criteria[]` array in state.json lists the IDs (`C1..CN`) and their current status set by BUILD. Every criterion must be verified with evidence.
+**Step 1 — Read the criteria source**: Open `.devlyn/pipeline.state.json`. Follow `source.spec_path` (spec-driven) or `source.criteria_path` (generated). Read the Requirements, Out of Scope, and Verification sections from that file directly — this is your primary grading rubric. The `criteria[]` array lists the IDs (`C1..CN`) and status set by BUILD. Every criterion must be verified with evidence.
 
-**Step 2 — Discover changes**: Run `git diff HEAD~1` and `git status` to see what changed. Read all changed/new files in parallel.
+**Step 2 — Discover changes**: Run `git diff <base_ref.sha>` (use the SHA from `pipeline.state.json.base_ref.sha`, not `HEAD~1` or `main`) and `git status`. Read all changed/new files in full before any verdict.
 
 **Step 3 — Evaluate**: For each changed file, check:
 - Correctness: logic errors, silent failures, null access, incorrect API contracts
@@ -296,51 +315,53 @@ This matters because under-reporting is the asymmetric cost: a missed bug ships 
 - Frontend (if UI changed): missing error/loading/empty states, React anti-patterns, server/client boundaries
 - Test coverage: untested modules, missing edge cases
 
-**Step 4 — Grade against criteria**: For each criterion in `pipeline.state.json:criteria[]` (mapped to its line in the canonical source file), mark VERIFIED (update `status: "verified"` + `evidence` array) or FAILED (update `status: "failed"` + `failed_by_finding_ids` referencing the relevant finding IDs in your findings output). Work directly on state.json — do not produce a separate criteria tracking file.
+**Step 4 — Grade criteria in place**: For each `criteria[]` entry in state.json, mark VERIFIED (update `status: "verified"` + append `evidence` array) or FAILED (update `status: "failed"` + set `failed_by_finding_ids` to the IDs you emit in Step 5). Work directly on state.json — no separate tracking file.
 
-**Step 5 — Write findings**: Write `.devlyn/EVAL-FINDINGS.md` with this exact structure:
+**Step 5 — Emit findings and log** (schemas: `references/findings-schema.md` and `references/pipeline-state.md`):
 
-```
-# Evaluation Findings
-## Verdict: [PASS / PASS WITH ISSUES / NEEDS WORK / BLOCKED]
-## Done Criteria Results
-- [x] criterion — VERIFIED: evidence
-- [ ] criterion — FAILED: what's wrong, file:line
-## Findings Requiring Action
-### CRITICAL
-- `file:line` — description — Confidence: high/med/low — Fix: suggested approach
-### HIGH
-- `file:line` — description — Confidence: high/med/low — Fix: suggested approach
-### MEDIUM / LOW
-- `file:line` — description — Confidence: high/med/low — Fix: suggested approach
-## Cross-Cutting Patterns
-- pattern description
-```
+Write `.devlyn/evaluate.findings.jsonl` — one JSON line per finding. Report EVERY issue, not just severe ones (coverage over comfort — missing a real defect ships broken code). Each finding includes:
+- `id`: `EVAL-<4digit>`
+- `rule_id`: stable kebab-case (e.g. `correctness.silent-error`, `ux.missing-error-state`, `architecture.duplication`, `security.missing-validation`, `types.any-cast-escape`, `style.let-vs-const`)
+- `level`: `error` / `warning` / `note`
+- `severity`: `CRITICAL` / `HIGH` / `MEDIUM` / `LOW`
+- `confidence`: 0.0–1.0
+- `message`: one line naming the issue, not symptoms
+- `file` + `line` (1-based, primary location)
+- `partial_fingerprints`: leave `{}` — the orchestrator computes and injects it after this phase
+- `phase: "evaluate"`
+- `criterion_ref`: `"spec://requirements/<N>"` or `null` if scope-broader
+- `fix_hint`: concrete action quoting file:line to change
+- `blocking`: true/false (CRITICAL/HIGH/MEDIUM default true, LOW false)
+- `status: "open"`
 
-Verdict rules:
-- `BLOCKED` — any CRITICAL issues
-- `NEEDS WORK` — HIGH or MEDIUM issues
-- `PASS WITH ISSUES` — only LOW cosmetic notes
-- `PASS` — clean
+Write `.devlyn/evaluate.log.md` — human summary: verdict, criteria pass/fail counts, top 3 risks, cross-cutting patterns if any. Keep under 30 lines; raw prose goes here, structured data in the JSONL.
+
+Update `pipeline.state.json.phases.evaluate` with: `verdict` (taxonomy below), `engine: "claude"`, `model`, timing, `round`, `artifacts.{findings_file, log_file}`.
+
+Verdict taxonomy (written to `phases.evaluate.verdict`):
+- `BLOCKED` — any CRITICAL finding
+- `NEEDS_WORK` — HIGH or MEDIUM findings present
+- `PASS_WITH_ISSUES` — only LOW findings
+- `PASS` — no open findings
+
+Calibration — what counts as what:
+- A catch block that logs but doesn't surface the error to the user → HIGH (not MEDIUM). Logging is not error handling.
+- A `let` that could be `const` → LOW. Linters catch this.
+- "The error handling is generally quite good" is not a finding. Count the instances and name the files: "3 of 7 async ops have error states; 4 missing: file:line, file:line…"
 
 Findings labeled "pre-existing" or "out of scope" still count if they relate to the criteria. The goal is working software, not blame attribution.
 
-Calibration examples:
-- A catch block that logs but doesn't surface the error to the user → HIGH (not MEDIUM). Logging is not error handling.
-- A `let` that could be `const` → LOW. Linters catch this.
-- "The error handling is generally quite good" is not a finding. Count the instances and name the files. "3 of 7 async ops have error states. 4 are missing: file:line, file:line…"
-
-Do not delete `.devlyn/pipeline.state.json` or `.devlyn/EVAL-FINDINGS.md` — the orchestrator needs them.
+Do not delete `.devlyn/pipeline.state.json` or the JSONL/log files — the orchestrator needs them.
 
 **After the agent completes**:
-1. Read `.devlyn/EVAL-FINDINGS.md`
-2. Extract the verdict
+1. **Inject fingerprints** into `.devlyn/evaluate.findings.jsonl` per the reference snippet in `references/findings-schema.md`.
+2. Read `pipeline.state.json.phases.evaluate.verdict`
 3. Branch on verdict:
    - `PASS` → skip to PHASE 3
-   - `PASS WITH ISSUES` → go to PHASE 2.5 (fix loop) — LOW-only issues are still issues; fix them
-   - `NEEDS WORK` → go to PHASE 2.5 (fix loop)
+   - `PASS_WITH_ISSUES` → go to PHASE 2.5 (fix loop) — LOW-only issues are still issues; fix them
+   - `NEEDS_WORK` → go to PHASE 2.5 (fix loop)
    - `BLOCKED` → go to PHASE 2.5 (fix loop)
-4. If `.devlyn/EVAL-FINDINGS.md` was not created, treat as NEEDS WORK and log a warning — absence of evidence is not evidence of absence
+4. If `phases.evaluate.verdict` is `null` or the findings/log files were not written, treat as `NEEDS_WORK` and log a warning — absence of evidence is not evidence of absence.
 
 ## PHASE 2.5: FIX LOOP (conditional)
 
@@ -348,24 +369,44 @@ Track the current round number. If `round >= max-rounds`, stop the loop and proc
 
 **Engine**: FIX LOOP row of the routing table. Use a fresh Codex call each round (no `sessionId` reuse — sandbox/fullAuto only apply on the first call of a session).
 
-Agent prompt — pass this to the spawned executor:
+**Before spawning the fix agent, the orchestrator assembles a fix-batch packet.** Read `.devlyn/evaluate.findings.jsonl` (and `.devlyn/browser_validate.findings.jsonl` if the PHASE 1.5 verdict was `NEEDS_WORK` or `BLOCKED`), filter to entries with `status == "open"`, and write `.devlyn/fix-batch.round-<N>.json`:
 
-Read every findings file present in `.devlyn/`:
-- `.devlyn/EVAL-FINDINGS.md` — issues from the independent evaluator (PHASE 2)
-- `.devlyn/BROWSER-RESULTS.md` — issues from browser validation (PHASE 1.5), if present and the verdict is `NEEDS WORK` or `BLOCKED`
+```json
+{
+  "round": <N>,
+  "max_rounds": <from state.rounds.max_rounds>,
+  "base_ref_sha": "<state.base_ref.sha>",
+  "criteria_source": "<state.source.spec_path or state.source.criteria_path>",
+  "findings": [
+    { "id": "EVAL-0007", "rule_id": "...", "severity": "HIGH", "file": "...", "line": 84, "message": "...", "fix_hint": "...", "criterion_ref": "spec://requirements/2", "partial_fingerprints": {...} },
+    ...
+  ],
+  "failed_criteria": ["C2", "C3"],
+  "acceptance": {
+    "build_gate_cmd": "<from build-gate log>",
+    "test_cmd": "<language-appropriate: 'pnpm test' / 'cargo test' / etc.>"
+  }
+}
+```
 
-Fix every finding regardless of severity (CRITICAL, HIGH, MEDIUM, and LOW). The pipeline loops until the relevant verdict returns PASS — there is no "shippable with issues" shortcut.
+The fix agent receives this packet and does NOT re-parse the full findings files — the packet is the minimum sufficient context. Agents that need raw detail (full stderr, full browser flow log) can read `.devlyn/build_gate.log.md` or `.devlyn/browser_validate.log.md` on demand.
 
-The original criteria are tracked in `.devlyn/pipeline.state.json:criteria[]`, with the full text at `source.spec_path` or `source.criteria_path` (follow the pointer). Your fixes must still satisfy those criteria. Do not delete or weaken criteria to make them pass.
+Agent prompt — pass this to the spawned executor (include the packet path):
 
-For each finding: read the referenced file:line (or browser step / console error), understand the issue, implement the fix. No workarounds — fix the actual root cause. Run tests after fixing. When a previously-failed criterion is now satisfied, update its entry in state.json: clear `failed_by_finding_ids`, set `status: "implemented"`, and add an `evidence` record.
+Read `.devlyn/fix-batch.round-<N>.json` — it contains the open, blocking findings from independent evaluation and/or browser validation. Fix every listed entry at the root cause. The pipeline loops until the relevant verdict returns `PASS` — there is no "shippable with issues" shortcut.
+
+The original criteria are tracked in `pipeline.state.json:criteria[]`, with full text at `source.spec_path` or `source.criteria_path` (follow the pointer). Your fixes must still satisfy those criteria. Do not delete or weaken criteria to make them pass.
+
+For each finding in the packet: read the referenced `file:line`, understand the issue, implement the fix. No workarounds — fix the actual root cause, no `any`/`@ts-ignore`/silent catches. Run tests after fixing. If you need the full raw output for a build failure or browser flow, open `.devlyn/build_gate.log.md` or `.devlyn/browser_validate.log.md` directly.
+
+When a previously-failed criterion is now satisfied, update its entry in state.json: clear `failed_by_finding_ids`, set `status: "implemented"`, and add an `evidence` record.
 
 **After the agent completes**:
-1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): fix round [N] complete"` to preserve the fix
+1. **Checkpoint**: `git add -A && git commit -m "chore(pipeline): fix round [N] complete"` to preserve the fix
 2. Increment the global round counter (shared with PHASE 1.4-fix)
 3. Re-run the phase that triggered the fix:
    - If invoked from PHASE 2 (eval failure) → go back to PHASE 2 to re-evaluate
-   - If invoked from PHASE 1.5 (browser failure) → go back to PHASE 1.5 to re-validate the browser, then proceed to PHASE 2 only if browser passes
+   - If invoked from PHASE 1.5 (browser failure) → go back to PHASE 1.5 to re-validate, then PHASE 2 only if browser passes
 
 ## PHASE 3: SIMPLIFY
 
@@ -373,7 +414,7 @@ Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` for a qui
 
 Agent prompt — pass this to the Agent tool:
 
-Review the recently changed files (use `git diff HEAD~1` to see what changed). Look for: code that could reuse existing utilities instead of reimplementing, quality issues (unclear naming, unnecessary complexity), and efficiency improvements (redundant operations, missing early returns). Fix any issues found. Keep changes minimal — this is a polish pass, not a rewrite.
+Review the recently changed files (use `git diff <pipeline.state.json.base_ref.sha>` — the frozen run-start SHA — to see what changed since the pipeline started). Look for: code that could reuse existing utilities instead of reimplementing, quality issues (unclear naming, unnecessary complexity), and efficiency improvements (redundant operations, missing early returns). Fix any issues found. Keep changes minimal — this is a polish pass, not a rewrite.
 
 **After the agent completes**:
 1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): simplify pass complete"` if there are changes
@@ -388,7 +429,7 @@ Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
 
 Agent prompt — pass this to the spawned executor:
 
-Review all recent changes in this codebase (use `git diff main` and `git status` to determine scope). Assemble a review team using TeamCreate with specialized reviewers: security reviewer, quality reviewer, test analyst. Add UX reviewer, performance reviewer, or API reviewer based on the changes. Per-role engine routing follows the team-review table in `references/engine-routing.md`; Dual roles run both models in parallel and merge findings.
+Review all recent changes in this codebase (use `git diff <pipeline.state.json.base_ref.sha>` and `git status` to determine scope — all phases share the same frozen base SHA for consistent diffs). Assemble a review team using TeamCreate with specialized reviewers: security reviewer, quality reviewer, test analyst. Add UX reviewer, performance reviewer, or API reviewer based on the changes. Per-role engine routing follows the team-review table in `references/engine-routing.md`; Dual roles run both models in parallel and merge findings.
 
 Each reviewer reports findings with file:line evidence grouped by severity (CRITICAL, HIGH, MEDIUM, LOW) and a confidence level. After all reviewers report, synthesize findings, deduplicate, and fix any CRITICAL issues directly. For HIGH issues, fix if straightforward.
 
@@ -413,63 +454,47 @@ Agent prompt — pass this to the spawned executor:
 You are a senior engineer doing a final skeptical review before this code ships to production. You have not seen any prior reviews, test results, or design docs — read the code cold.
 
 <investigate_before_answering>
-Anchor every finding in code you have actually opened. Run `git diff main` for the change surface, then read each changed file in full (not just the hunks — surrounding context matters). Findings without a real file:line and a quote from the code are speculation; exclude them.
+Anchor every finding in code you have actually opened. Run `git diff <pipeline.state.json.base_ref.sha>` for the change surface, then read each changed file in full (not just the hunks). Findings without a real file:line and a quote are speculation; exclude them.
 </investigate_before_answering>
 
-Your job is not to check boxes. Your job is to find the things that would make a staff engineer say "hold on, let's talk about this before we ship." Think about:
+Your job is not to check boxes. Find the things that would make a staff engineer say "hold on, let's talk about this before we ship." Ask:
 
-- Would this approach survive a 10x traffic spike? A midnight oncall page? A junior dev maintaining it 6 months from now?
-- Are there assumptions baked in that nobody stated out loud? Hardcoded limits, implicit ordering, missing edge cases in business logic?
-- Is the error handling actually helpful, or does it just prevent crashes while leaving the user confused?
-- Are there simpler, more idiomatic ways to do what this code does? Not "clever" alternatives — genuinely better approaches?
+- Would this survive a 10x traffic spike? A midnight oncall page? A junior dev maintaining it 6 months from now?
+- Are there assumptions baked in that nobody stated — hardcoded limits, implicit ordering, missing edge cases in business logic?
+- Is error handling actually helpful, or does it prevent crashes while leaving the user confused?
+- Are there simpler, more idiomatic ways — not "clever" alternatives, genuinely better approaches?
 - Would you confidently approve this PR, or would you leave comments?
 
 Be direct and concrete. Do not open with praise. Every finding must include `file:line` and a concrete fix — not "consider improving" but "change X to Y because Z."
 
-Write `.devlyn/CHALLENGE-FINDINGS.md`:
+**Output contract** (schemas: `references/findings-schema.md`, `references/pipeline-state.md`):
 
-```
-# Challenge Findings
-## Verdict: [PASS / NEEDS WORK]
-## Findings
-### [severity: CRITICAL / HIGH / MEDIUM]
-- `file:line` — what's wrong — Fix: concrete change
-```
+- `.devlyn/challenge.findings.jsonl` — one JSON line per finding. `id: "CHLG-<4digit>"`, `rule_id` examples: `design.non-atomic-transaction`, `design.duplicate-pattern`, `design.hidden-assumption`, `design.unidiomatic-pattern`. Include `file`, `line`, `message`, `fix_hint` (concrete change, quoting file:line), `severity` (CRITICAL/HIGH/MEDIUM — not LOW; Challenge is for ship/no-ship concerns), `phase: "challenge"`, `status: "open"`. Leave `partial_fingerprints: {}` — orchestrator computes it post-phase.
+- `.devlyn/challenge.log.md` — human narrative: verdict + top 3 concerns framed in "why a staff engineer would stop this PR" language.
+- Update `pipeline.state.json.phases.challenge` with: `verdict` (`PASS` or `NEEDS_WORK` — no middle ground for Challenge), `engine: "claude"`, `model`, timing, `round: 1`, `artifacts.{findings_file, log_file}`.
 
 <examples>
 <example index="1">
-GOOD finding (anchored, specific, fixable):
-### CRITICAL
-- `src/api/orders/cancel.ts:42` — `await db.transaction(...)` is missing — the read of `order.status` and the write of `order.status = "cancelled"` are not atomic, so two concurrent cancellations both succeed and the inventory hook fires twice. Fix: wrap the read+write in `db.transaction()` and re-check `order.status === "pending"` inside the transaction before the update.
+GOOD finding (anchored, specific, fixable) — in JSONL form:
+{"id":"CHLG-0001","rule_id":"design.non-atomic-transaction","severity":"CRITICAL","message":"order.status read and write are not atomic in cancel handler — concurrent cancellations both succeed and fire inventory hook twice","file":"src/api/orders/cancel.ts","line":42,"fix_hint":"Wrap read+write in db.transaction() at src/api/orders/cancel.ts:40-50; re-check order.status === 'pending' inside transaction before update",...}
 </example>
 <example index="2">
-BAD finding (vague, unanchored, not actionable):
-### HIGH
-- The error handling could be improved. Consider being more defensive throughout.
-
-Why this is bad: no file:line, no specific failure, no concrete fix. Either delete the finding or replace it with a real one anchored to a specific call site.
-</example>
-<example index="3">
-GOOD finding (idiom / approach issue):
-### MEDIUM
-- `src/components/UserList.tsx:18-34` — fetching `/api/users` inside `useEffect` and managing loading/error state by hand re-implements what the project already does with the `useFetch` hook in `src/hooks/useFetch.ts`. Fix: replace the manual `useState`+`useEffect` with `useFetch('/api/users')` so this list inherits retry, cache, and abort handling.
+BAD finding (vague, unanchored): "The error handling could be improved. Consider being more defensive." — no file:line, no specific failure, no concrete fix. Exclude.
 </example>
 </examples>
 
-Verdict: `PASS` only if you would confidently ship this code with your name on it. If you found anything CRITICAL or HIGH, verdict is `NEEDS WORK`.
+Verdict: `PASS` only if you would confidently ship this code with your name on it. Any CRITICAL or HIGH finding → `NEEDS_WORK`.
 
 **After the agent completes**:
-1. Read `.devlyn/CHALLENGE-FINDINGS.md`
-2. Extract the verdict
+1. **Inject fingerprints** into `.devlyn/challenge.findings.jsonl` per `references/findings-schema.md`.
+2. Read `pipeline.state.json.phases.challenge.verdict`
 3. Branch:
    - `PASS` → continue to PHASE 5
-   - `NEEDS WORK` → spawn a fix subagent with `mode: "bypassPermissions"`:
-
-     Read `.devlyn/CHALLENGE-FINDINGS.md` — it contains findings from a fresh skeptical review. Fix every CRITICAL and HIGH finding at the root cause. For MEDIUM findings, fix if straightforward. After fixing, run the test suite to verify nothing broke.
+   - `NEEDS_WORK` → **assemble `.devlyn/fix-batch.challenge.json`** from `.devlyn/challenge.findings.jsonl` (same packet shape as PHASE 2.5's `fix-batch.round-<N>.json`: filter `status == "open"` + `severity in {CRITICAL, HIGH}` + optionally MEDIUM if straightforward; include minimal keys + acceptance commands). Then spawn a fix subagent with `mode: "bypassPermissions"` that reads the packet path only — not the full findings file — and fixes every listed entry at the root cause. After fixing, run the test suite.
 
    After the fix agent completes:
-   1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): challenge fixes complete"`
-   2. Continue to PHASE 5 (do NOT re-run the challenge — one pass is sufficient to avoid infinite loops)
+   1. **Checkpoint**: `git add -A && git commit -m "chore(pipeline): challenge fixes complete"`
+   2. Continue to PHASE 5 (do NOT re-run challenge — one pass is sufficient to avoid infinite loops)
 
 ## PHASE 5: SECURITY REVIEW (conditional)
 
@@ -477,8 +502,8 @@ Determine whether to run this phase:
 - If `--security-review always` → run
 - If `--security-review skip` → skip
 - If `--security-review auto` (default) → auto-detect by scanning changed files for security-sensitive patterns:
-  - Run `git diff main --name-only` and check for files matching: `*auth*`, `*login*`, `*session*`, `*token*`, `*secret*`, `*crypt*`, `*password*`, `*api*`, `*middleware*`, `*env*`, `*config*`, `*permission*`, `*role*`, `*access*`
-  - Also run `git diff main` and scan for patterns: `API_KEY`, `SECRET`, `TOKEN`, `PASSWORD`, `PRIVATE_KEY`, `Bearer`, `jwt`, `bcrypt`, `crypto`, `env.`, `process.env`
+  - Run `git diff <pipeline.state.json.base_ref.sha> --name-only` and check for files matching: `*auth*`, `*login*`, `*session*`, `*token*`, `*secret*`, `*crypt*`, `*password*`, `*api*`, `*middleware*`, `*env*`, `*config*`, `*permission*`, `*role*`, `*access*`
+  - Also run `git diff <pipeline.state.json.base_ref.sha>` and scan for patterns: `API_KEY`, `SECRET`, `TOKEN`, `PASSWORD`, `PRIVATE_KEY`, `Bearer`, `jwt`, `bcrypt`, `crypto`, `env.`, `process.env`
   - If any match → run. If no matches → skip and note "Security review skipped — no security-sensitive changes detected."
 
 Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` for a dedicated security audit.
@@ -487,7 +512,7 @@ Agent prompt — pass this to the Agent tool:
 
 You are a security auditor performing a dedicated security review. This is NOT a general code review — focus exclusively on security concerns.
 
-Examine all recent changes (use `git diff main` to see what changed). For every changed file:
+Examine all recent changes (use `git diff <pipeline.state.json.base_ref.sha>` to see what changed since the pipeline started). For every changed file:
 
 1. **Input validation**: Trace every user input from entry point to storage/output. Check for: SQL injection, XSS, command injection, path traversal, SSRF.
 2. **Authentication & authorization**: Are new endpoints properly protected? Are auth checks consistent with existing patterns? Any privilege escalation paths?
@@ -533,7 +558,7 @@ You are the Docs phase of the auto-resolve pipeline. You have two jobs, in this 
 The ideate skill produces specs at `docs/roadmap/phase-N/{id}-{slug}.md` and tracks them in `docs/ROADMAP.md`. When auto-resolve finishes a task for one of those specs, the index lies until someone flips it — and nobody does, so it rots. Your job is to flip it.
 
 1. **Detect whether this task was a spec implementation.** Look at the original task description you were passed. Match against this regex: `docs/roadmap/phase-\d+/[^\s"'\`)]+\.md`. If there is no match, or if `docs/ROADMAP.md` does not exist in the repo, Job 1 is a no-op — skip straight to Job 2.
-2. **Sanity-check against the diff.** Run `git diff main --stat` (or `git diff HEAD~N --stat` if on main). If the diff is empty or contains only doc changes, the build phase produced nothing — do NOT flip any status. Leave Job 1 untouched and continue to Job 2.
+2. **Sanity-check against the diff.** Run `git diff <pipeline.state.json.base_ref.sha> --stat`. If the diff is empty or contains only doc changes, the build phase produced nothing — do NOT flip any status. Leave Job 1 untouched and continue to Job 2.
 3. **Read the spec file** at the matched path. If its frontmatter already has `status: done`, Job 1 is already done — skip to Job 2. Otherwise:
    - Set `status: done` in the frontmatter.
    - Add a `completed: YYYY-MM-DD` field (use today's date from `date +%Y-%m-%d`).
@@ -554,7 +579,7 @@ The ideate skill produces specs at `docs/roadmap/phase-N/{id}-{slug}.md` and tra
 
 **Job 2 — General doc sync**
 
-Synchronize the rest of the documentation with recent code changes. Use `git log --oneline -20` and `git diff main` to understand what changed. Update any docs that reference changed APIs, features, or behaviors. Do not create new documentation files unless the changes introduced entirely new features with no existing docs. Preserve all forward-looking content: future plans, visions, open questions. (Job 1 already handled the roadmap index — don't second-guess it here.)
+Synchronize the rest of the documentation with recent code changes. Use `git log --oneline -20` and `git diff <pipeline.state.json.base_ref.sha>` to understand what changed since the pipeline started. Update any docs that reference changed APIs, features, or behaviors. Do not create new documentation files unless the changes introduced entirely new features with no existing docs. Preserve all forward-looking content: future plans, visions, open questions. (Job 1 already handled the roadmap index — don't second-guess it here.)
 
 **After the agent completes**:
 1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): docs updated"` if there are changes
@@ -564,7 +589,7 @@ Synchronize the rest of the documentation with recent code changes. Use `git log
 After all phases complete:
 
 1. Clean up temporary files:
-   - Delete the `.devlyn/` directory entirely (contains pipeline.state.json, criteria.generated.md if ad-hoc, BUILD-GATE.md, EVAL-FINDINGS.md, BROWSER-RESULTS.md, CHALLENGE-FINDINGS.md, screenshots/, playwright temp files)
+   - Delete the `.devlyn/` directory entirely (contains pipeline.state.json, criteria.generated.md if ad-hoc, `<phase>.findings.jsonl` + `<phase>.log.md` for each phase that emitted findings, fix-batch.round-N.json per fix round, screenshots/, playwright temp files)
    - Kill any dev server process still running from browser validation
 
 2. Run `git log --oneline -10` to show commits made during the pipeline

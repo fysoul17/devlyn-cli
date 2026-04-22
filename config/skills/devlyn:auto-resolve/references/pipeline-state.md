@@ -74,9 +74,8 @@ Created by PHASE 0 on run start. Deleted by PHASE 8 (FINAL REPORT) as part of cl
       "duration_ms": <int> | null,
       "round": <int>,
       "artifacts": {
-        "verdict_file": "<path>",
-        "findings_file": "<path>",
-        "log_file": "<path>"
+        "findings_file": "<path>" | null,
+        "log_file": "<path>" | null
       }
     }
   },
@@ -130,10 +129,10 @@ One entry per testable criterion extracted from the source.
 
 Key is phase name: one of `build`, `build_gate`, `browser_validate`, `evaluate`, `fix_loop`, `simplify`, `review`, `challenge`, `security_review`, `clean`, `docs`, `final_report`. Value is the phase execution record.
 
-- `verdict` — phase's final verdict, or `null` if not started or in progress.
+- `verdict` — phase's final verdict, or `null` if not started or in progress. This is the **single canonical verdict source** — orchestrator branches on this field directly, never by parsing artifact files.
 - `engine` / `model` — which model ran this phase. `bash` for build-gate (deterministic, model-agnostic).
 - `round` — which fix-loop round this execution belongs to. Phases that run once always have `1`. `build_gate` and `evaluate` increment with fix-loop iterations.
-- `artifacts` — explicit pointers to the phase's three output files (verdict, findings, log). See `references/findings-schema.md` for findings format.
+- `artifacts` — explicit pointers to the phase's output files. Phases that emit structured findings (Build Gate, Browser Validate, Evaluate, Challenge, Security Review) write both `findings_file` and `log_file`. Phases that fix-in-place (Simplify, Clean, Docs) leave both `null` — their output is the git commits they produce. See `references/findings-schema.md` for findings format.
 
 ### Rounds
 
@@ -231,9 +230,8 @@ Violations indicate a bug in the orchestrator. Do not attempt silent recovery.
       "started_at": "2026-04-22T16:30:48Z", "completed_at": "2026-04-22T16:31:30Z",
       "duration_ms": 42100, "round": 1,
       "artifacts": {
-        "verdict_file": ".devlyn/build.verdict",
-        "findings_file": ".devlyn/build.findings.jsonl",
-        "log_file": ".devlyn/build.log.md"
+        "findings_file": null,
+        "log_file": null
       }
     },
     "build_gate": {
@@ -241,7 +239,6 @@ Violations indicate a bug in the orchestrator. Do not attempt silent recovery.
       "started_at": "2026-04-22T16:31:30Z", "completed_at": "2026-04-22T16:31:48Z",
       "duration_ms": 18200, "round": 1,
       "artifacts": {
-        "verdict_file": ".devlyn/build_gate.verdict",
         "findings_file": ".devlyn/build_gate.findings.jsonl",
         "log_file": ".devlyn/build_gate.log.md"
       }
@@ -251,7 +248,6 @@ Violations indicate a bug in the orchestrator. Do not attempt silent recovery.
       "started_at": "2026-04-22T16:31:48Z", "completed_at": "2026-04-22T16:33:12Z",
       "duration_ms": 83900, "round": 1,
       "artifacts": {
-        "verdict_file": ".devlyn/evaluate.verdict",
         "findings_file": ".devlyn/evaluate.findings.jsonl",
         "log_file": ".devlyn/evaluate.log.md"
       }

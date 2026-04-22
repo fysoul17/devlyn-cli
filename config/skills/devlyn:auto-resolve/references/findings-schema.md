@@ -97,6 +97,8 @@ If full SARIF export is ever needed, each record converts cleanly one-to-one.
 
 Two stable hashes following SARIF `partialFingerprints` convention. See SARIF 2.1.0 §3.27.17 for background.
 
+**Who computes them**: the **orchestrator**, NOT the producing subagent. Subagents emit findings without the `partial_fingerprints` field (or with an empty `{}`). The orchestrator reads the JSONL after the phase completes and post-processes each line to compute and inject `partial_fingerprints`. This separation matters because fingerprint determinism is operational bookkeeping, not semantic judgment — delegating it to the subagent has empirically produced ~20% correct results because normalization rules are too subtle for ad-hoc interpretation.
+
 1. **`location_hash`** — `sha1(rule_id + "|" + normalize_path(file) + "|" + line)` hex-encoded.
    - `normalize_path`: strip leading `./`, lowercase drive letters on Windows, always forward slashes.
    - Stable when re-evaluating at the same `(rule_id, file, line)`.
@@ -105,7 +107,29 @@ Two stable hashes following SARIF `partialFingerprints` convention. See SARIF 2.
 2. **`rule_message_hash`** — `sha1(rule_id + "|" + normalize_message(message))` hex-encoded.
    - `normalize_message`: lowercase; collapse runs of whitespace to single space; replace digit sequences with `N`; strip trailing punctuation.
    - Stable across minor message rewording and line shifts.
-   - Breaks when the rule semantics change (e.g., evaluator reframes the finding).
+   - Breaks when the rule semantics change.
+
+**Reference implementation** (the orchestrator runs this after each phase that emits findings):
+
+```python
+import hashlib, re, json
+
+def normalize_path(p):
+    p = p.lstrip('./').replace('\\', '/')
+    return p
+
+def normalize_message(m):
+    m = m.lower()
+    m = re.sub(r'\s+', ' ', m).strip()
+    m = re.sub(r'\d+', 'N', m)
+    m = re.sub(r'[.,;:!?]+$', '', m)
+    return m
+
+def compute_fingerprints(finding):
+    loc = hashlib.sha1(f"{finding['rule_id']}|{normalize_path(finding['file'])}|{finding['line']}".encode()).hexdigest()
+    msg = hashlib.sha1(f"{finding['rule_id']}|{normalize_message(finding['message'])}".encode()).hexdigest()
+    return {"location_hash": loc, "rule_message_hash": msg}
+```
 
 **Dedup rule**: findings A and B are the SAME logical issue if `A.location_hash == B.location_hash` OR `A.rule_message_hash == B.rule_message_hash`.
 
@@ -129,14 +153,19 @@ Both hashes are needed — one alone misses a common case:
 
 ## Dedup and round handling
 
-Each phase writes a fresh `.findings.jsonl` on each execution (fix rounds re-run Evaluate, which produces a new file). The orchestrator reconciles across rounds:
+Each phase writes a fresh `.findings.jsonl` on each execution (fix rounds re-run Evaluate, which produces a new file). The orchestrator reconciles across rounds in TWO steps:
 
-1. Read prior round's `evaluate.findings.jsonl` (if any).
-2. Run current Evaluate; it writes its `evaluate.findings.jsonl`.
-3. For each finding in the new file:
-   - If a prior open finding has a matching fingerprint → reuse the prior `id`, keep `status: open`.
+**Step 1 — Fingerprint injection** (deterministic, always runs):
+- Immediately after the phase subagent finishes, the orchestrator reads the new `<phase>.findings.jsonl`.
+- For every line with missing or empty `partial_fingerprints`, compute the two hashes using the Reference implementation above and write the JSONL back in place.
+- This centralizes normalization rules so every finding shares the same fingerprint convention regardless of which subagent/model produced it.
+
+**Step 2 — Cross-round reconciliation** (fix-loop rounds only):
+1. Read prior round's `<phase>.findings.jsonl` (if any).
+2. For each finding in the new file:
+   - If a prior open finding has a matching fingerprint (either hash matches) → reuse the prior `id`, keep `status: open`.
    - Otherwise → assign a new `id`.
-4. For each prior open finding NOT matched by the new file:
+3. For each prior open finding NOT matched by the new file:
    - Set its `status: resolved` in the prior file (findings files are mutated only for status transitions; content is append-only otherwise).
 
 Fix-batch packet construction (see fix-loop phase docs): orchestrator concatenates all phases' `.findings.jsonl`, filters for `status == "open"`, drops `blocking == false` findings when the round budget is tight, and writes the result to `.devlyn/fix-batch.round-<N>.json`.
