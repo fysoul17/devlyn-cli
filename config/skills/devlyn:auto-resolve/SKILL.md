@@ -1,645 +1,308 @@
 ---
 name: devlyn:auto-resolve
-description: Fully automated build-evaluate-polish pipeline for any task type — bug fixes, new features, refactors, chores, and more. Use this as the default starting point when the user wants hands-free implementation with zero human intervention. Runs the full cycle — build, evaluate, fix loop, simplify, review, clean, docs — as a single command. Use when the user says "auto resolve", "build this", "implement this feature", "fix this", "run the full pipeline", "refactor this", or wants to walk away and come back to finished work.
+description: Fully automated build-evaluate-polish pipeline for any task type — bug fixes, new features, refactors, chores. Use this as the default starting point when the user wants hands-free implementation with zero human intervention. Runs the full cycle — build, evaluate, fix loop, simplify, review, clean, docs — as a single command. Use when the user says "auto resolve", "build this", "implement this feature", "fix this", "run the full pipeline", "refactor this", or wants to walk away and come back to finished work.
 ---
 
-Fully automated resolve-evaluate-polish pipeline. One command, zero human intervention. Spawns a subagent for each phase, uses file-based handoff between phases, and loops on evaluation feedback until the work passes or max rounds are reached.
+Orchestrator for the hands-free implementation pipeline. Spawns one subagent per phase, uses file-based handoff, and loops on evaluation feedback until the work passes or `max_rounds` is reached. The orchestrator itself does not write code — it parses input, spawns phases, reads handoff artifacts, runs git commands, branches on verdicts, and emits the final report.
 
 <pipeline_config>
 $ARGUMENTS
 </pipeline_config>
 
-<pipeline_workflow>
-
 <orchestrator_context>
-This pipeline is long-horizon agentic work. As the orchestrator, you spawn many subagents and read their handoff files; your own context grows over the run.
-
-- Your context window is auto-compacted as it approaches its limit, so do not stop tasks early due to token-budget concerns. Keep the run going.
-- All durable state lives in `.devlyn/pipeline.state.json` (control plane: source pointers, criteria status, phase verdicts) plus per-phase artifacts — `<phase>.findings.jsonl` (SARIF-aligned structured findings) and `<phase>.log.md` (human prose + raw detail) for phases that emit findings (build_gate, browser_validate, evaluate, challenge, security_review) — and in git commits. `pipeline.state.json` is the **single authoritative verdict source** — orchestrator branching reads `phases.<name>.verdict` directly, never parses artifact files. Schemas: `references/pipeline-state.md`, `references/findings-schema.md`.
-- Best results come from `xhigh` effort. If you are running on lower effort and notice shallow reasoning during phase decisions, escalate.
+Long-horizon agentic work. Your context auto-compacts as it approaches the limit — do not stop early due to token-budget concerns. All durable state lives in `.devlyn/pipeline.state.json` (control plane: pointers, criteria, verdicts) plus `<phase>.findings.jsonl` + `<phase>.log.md` for phases that emit findings. `state.json` is the **single authoritative verdict source** — branch on `phases.<name>.verdict` directly, never parse artifact files. At PHASE 8, the run's `.devlyn/*` artifacts are **archived** to `.devlyn/runs/<run_id>/` (last 10 kept). Schemas: `references/pipeline-state.md`, `references/findings-schema.md`. Best results come from `xhigh` reasoning effort.
 </orchestrator_context>
 
 <autonomy_contract>
-This pipeline runs hands-free. The user launches it to walk away and come back to finished work, so the quality of this run is measured by how far it gets without human intervention. Apply these behaviors throughout every phase:
+This pipeline runs hands-free. Measured by how far it gets without human intervention.
 
-1. **Make decisions autonomously and log them in the final report.** When you would otherwise ask the user something ("Should I commit this?", "Ready to proceed?", "Which approach?"), pick the safe default, proceed, and record the decision in PHASE 8's report so the user can review it at the end.
-2. **Run only the phases defined below, in the order given.** Doc updates, roadmap edits, changelog entries, and planning-doc changes belong in PHASE 7 (Docs). Resist inserting them earlier as freelance pre-work.
-3. **Delegate all file changes to spawned subagents.** As the orchestrator, your actions are: parse input, spawn phase agents, read handoff files (`.devlyn/*.md`), run `git` commands, branch on verdicts, and emit the final report.
-4. **Continue through the pipeline by default.** Stop only for: (a) a subagent reporting an unrecoverable failure, (b) PHASE 1 producing zero code changes, (c) `max-rounds` reached — in which case continue to PHASE 3 with a warning rather than halting. Every other situation means move on to the next phase.
-5. **Treat questions as a signal to act instead.** If you notice yourself drafting a question to the user mid-pipeline, convert it into a decision + log entry and spawn the next phase.
+1. **Never prompt the user mid-pipeline.** When you'd otherwise ask ("should I commit?", "which approach?"), pick the safe default, proceed, and log it in the final report.
+2. **Codex availability**: on `--engine auto`/`codex`, call `mcp__codex-cli__ping` at the start. **If ping fails, silently fall back to `--engine claude`** and log `engine downgraded: codex-ping failed` in the final report. Do NOT present a [1]/[2] menu. Do NOT abort.
+3. **Run only the phases defined below, in order.** Doc updates, roadmap edits, and changelog belong in PHASE 7 (DOCS). Don't insert them earlier.
+4. **Delegate all file changes to spawned subagents.** Orchestrator actions: parse input, spawn phase agents, read handoff files, run `git`, branch on verdicts, emit report, archive.
+5. **Continue by default.** Stop only for: (a) unrecoverable subagent failure, (b) PHASE 1 producing zero code changes, (c) build-gate / browser fix-loop exhausting `max_rounds` (halt → FINAL REPORT). Eval/Challenge/Review/Security exhaustion proceeds with warning — never halts.
 </autonomy_contract>
 
 <harness_principles>
-Before acting: verify state, source, diff base, and artifact contracts. Prefer deletion or reuse over new machinery. Change only files the task requires. Each phase optimizes for its declared success criteria, not for completing a checklist. Fix root causes only — no `any`, `@ts-ignore`, silent catches, or hardcoded values. Label hypotheses explicitly; back claims with file:line evidence. Align structured outputs with production standards (SARIF `partialFingerprints`, semver, ISO-8601).
+Before acting: verify state, source integrity, diff base, artifact contracts. Prefer deletion or reuse over new machinery. Change only files the task requires. Each phase optimizes for its declared success criteria, not a checklist. Fix root causes only — no `any`, `@ts-ignore`, silent catches, hardcoded values. Label hypotheses explicitly; back claims with file:line evidence.
 </harness_principles>
 
 <engine_routing_convention>
-Every phase in this pipeline routes its work to the optimal model per `references/engine-routing.md`. The convention is the same everywhere:
+Every phase routes to the optimal model per `references/engine-routing.md`:
 
-- The phase prompt body below is **engine-agnostic** — same instructions whether Codex or Claude executes it.
-- For phases routed to **Codex** (per the routing table), call `mcp__codex-cli__codex` per the patterns in `engine-routing.md` (How to Spawn a Codex BUILD/FIX Agent / How to Spawn a Codex Role / How to Spawn a Dual Role).
-- For phases routed to **Claude**, spawn an Agent subagent with `mode: "bypassPermissions"` and pass the prompt body verbatim.
-- `--engine claude` forces all phases to Claude. `--engine codex` forces implementation/analysis to Codex (Claude still handles orchestration and Chrome MCP). `--engine auto` (default) uses the routing table per phase.
+- Phase prompt bodies (in `references/phases/`) are engine-agnostic.
+- Phases routed to **Codex**: call `mcp__codex-cli__codex` per the spawn patterns in `engine-routing.md`.
+- Phases routed to **Claude**: spawn an `Agent` subagent with `mode: "bypassPermissions"`, passing the phase body verbatim.
+- Phases routed to **Dual** (e.g., security_review on `--engine auto`): spawn both in parallel; orchestrator merges findings.
+- `--engine claude` forces all phases to Claude. `--engine codex` forces implementation to Codex, orchestration/Chrome MCP stays Claude. `--engine auto` (default) uses the routing table.
 
-Phase-level "Engine routing" notes below are short reminders only — `engine-routing.md` is the single source of truth.
+On Codex-ping failure, silent fallback to `--engine claude` per `<autonomy_contract>`.
 </engine_routing_convention>
 
-## PHASE 0: PARSE INPUT
+<post_eval_invariant>
+Once `state.eval_passed_sha` is non-null (PHASE 2 returned PASS or PASS_WITH_ISSUES at least once), the following phases run **findings-only** — they emit `.findings.jsonl` + `.log.md` but do NOT write code or commit: SIMPLIFY, REVIEW, CHALLENGE, SECURITY REVIEW, CLEAN. If any of these emit NEEDS_WORK/BLOCKED verdicts, the orchestrator routes the findings to PHASE 2.5 (UNIFIED FIX LOOP). After the fix, EVALUATE re-runs — all semantic changes verify through EVAL.
 
-1. Extract the task/issue description from `<pipeline_config>`.
-2. Determine optional flags from the input (defaults in parentheses):
-   - `--max-rounds N` (4) — max evaluate-fix loops before stopping with a report
-   - `--skip-review` (false) — skip team-review phase
-   - `--security-review` (auto) — run dedicated security audit. Auto-detects: runs when changes touch auth, secrets, user data, API endpoints, env/config, or crypto. Force with `--security-review always` or skip with `--security-review skip`
-   - `--skip-clean` (false) — skip clean phase
-   - `--skip-browser` (false) — skip browser validation phase (auto-skipped for non-web changes)
-   - `--skip-docs` (false) — skip update-docs phase
-   - `--skip-build-gate` (false) — skip the deterministic build gate (Phase 1.4). Not recommended — the build gate is the primary defense against "tests pass locally, breaks in CI/Docker/production" class of bugs.
-   - `--route MODE` (auto) — selects pipeline shape per `references/pipeline-routing.md`. `auto` (default): orchestrator decides per spec/task signals (Stage A in PHASE 0.5; Stage B checkpoint after PHASE 1.4). Explicit: `fast` (minimal phase set for low-risk / low-complexity work), `standard` (default medium), `strict` (full pipeline + team + mandatory security + build-gate strict+docker). User-explicit value disables Stage B auto-escalation; user intent wins.
-   - `--build-gate MODE` (auto) — controls build gate behavior. `auto`: detect project type and run appropriate build/typecheck/lint commands; if Dockerfile(s) are present, Docker builds are included automatically. `strict`: auto + treat warnings as errors. `no-docker`: auto but skip Docker builds even if Dockerfiles exist (for faster iteration). `skip`: same as --skip-build-gate.
-   - `--engine MODE` (auto) — controls which model handles each pipeline phase and team role. Modes:
-     - `auto` (default): each phase and team role routes to the optimal model based on benchmark data. Requires Codex MCP server. Codex handles BUILD/FIX (SWE-bench Pro lead) and several team roles; Claude handles EVALUATE, CHALLENGE, BROWSER, and orchestration — creating a GAN-like dynamic where the builder and critic are always different models.
-     - `codex`: Codex handles implementation/analysis phases, Claude handles orchestration, evaluation, and Chrome MCP.
-     - `claude`: all phases use Claude subagents. No Codex calls.
+DOCS (PHASE 7) is the only post-EVAL phase allowed to commit, and only for doc files (`*.md` and YAML frontmatter).
 
-   Flags can be passed naturally: `/devlyn:auto-resolve fix the auth bug --max-rounds 3 --skip-docs`
-   Engine examples: `--engine auto`, `--engine codex`, `--engine claude`
-   If no flags are present, use defaults. The default engine is `auto` — if the user does not pass `--engine`, treat it as `--engine auto`.
+**Orchestrator enforcement (per-phase, NOT cumulative)**: `eval_passed_sha` is an activation marker, not the diff baseline. Before each post-EVAL phase starts, orchestrator captures `phase_pre_sha = git rev-parse HEAD` and stores it at `state.phases.<phase>.pre_sha`. After the phase's subagent completes, orchestrator runs `git diff --name-only <phase_pre_sha>` — the diff of **only what this phase touched**, not everything since EVAL first passed. If non-doc files appear:
+- Phase is SIMPLIFY/REVIEW/CHALLENGE/SECURITY/CLEAN (findings-only) → `git reset --hard <phase_pre_sha>`, emit finding `rule_id: "invariant.post-eval-code-mutation"` + `severity: HIGH` into a synthetic `.devlyn/invariant.findings.jsonl`, route to PHASE 2.5 with `triggered_by: "<phase>"`.
+- Phase is DOCS → same check, but against the doc-file allowlist; non-allowlisted paths trigger the revert-and-find flow.
 
-   **Consolidated flag**: `--with-codex` (and its variants `evaluate`/`review`/`both`) was rolled into the smarter `--engine auto` default. If the user passes it, inform them once and proceed with `--engine auto`: "Note: `--with-codex` was consolidated into `--engine auto` (default), which provides broader Codex coverage — Codex now handles BUILD, FIX, and several team roles automatically. No flag needed. Continuing with `--engine auto`."
+This per-phase baseline is the correct reference because fix-loop commits between one post-EVAL phase and the next are legitimate (they were already re-EVALed) — they only become part of the baseline for whichever post-EVAL phase runs next. Using `eval_passed_sha` as the cumulative baseline (as the earlier draft of this invariant did) would falsely attribute fix-loop commits to the current phase.
 
-3. **Engine pre-flight** (runs unless `--engine claude` was explicitly passed):
-   - The default engine is `auto`. If the user did not pass `--engine`, the engine is `auto` — not `claude`.
-   - Read `references/engine-routing.md` for the full routing table.
-   - Call `mcp__codex-cli__ping` to verify the Codex MCP server is available. If ping fails, warn the user and offer: [1] Continue with `--engine claude` (fallback), [2] Abort.
+Doc-file allowlist (for DOCS): `*.md`, `.mdx`, files under `docs/`, `README*`, `CHANGELOG*`, `CLAUDE.md`, spec files under `docs/roadmap/phase-*/`, frontmatter in those files. Any other path triggers the revert-and-find flow.
+</post_eval_invariant>
 
-4. **Initialize `.devlyn/pipeline.state.json` skeleton** (schema: `references/pipeline-state.md`):
-   - `version: "1.0"`
-   - `run_id`: `ar-<YYYYMMDD>-<HHMMSS>-<6-random-hex>` (generate via `date -u +%Y%m%d-%H%M%S` + `openssl rand -hex 3`)
-   - `started_at`: current UTC ISO-8601
-   - `engine`: `auto` / `codex` / `claude` (from flag)
-   - `base_ref.branch`: `git rev-parse --abbrev-ref HEAD`
-   - `base_ref.sha`: `git rev-parse HEAD`
-   - `rounds.max_rounds`: from `--max-rounds` flag (default 4)
-   - `rounds.global: 0`
-   - Empty `phases`, `criteria`, `route` (PHASE 0.5 and downstream phases populate these)
+## PHASE 0: PARSE + PREFLIGHT + ROUTE
 
-5. Announce the pipeline plan:
+1. **Parse flags** from `<pipeline_config>`:
+   - `--max-rounds N` (4)
+   - `--route MODE` (auto) — per `references/pipeline-routing.md`
+   - `--engine MODE` (auto) — per `references/engine-routing.md`
+   - `--bypass <phase>[,<phase>...]` — skip specific phases. Valid: `build-gate`, `browser`, `simplify`, `review`, `challenge`, `security`, `clean`, `docs`. Deprecated aliases `--skip-*` and `--security-review skip` still work; log `deprecated flag — use --bypass` once on use.
+   - `--build-gate MODE` (auto) — `auto` / `strict` / `no-docker`.
+
+2. **Engine pre-flight** (unless `--engine claude`): call `mcp__codex-cli__ping`. On failure, silent fallback to `--engine claude`, log `engine downgraded`. Never prompt the user.
+
+3. **Initialize `pipeline.state.json`** per `references/pipeline-state.md`:
+   - `version: "1.1"`
+   - `run_id: "ar-$(date -u +%Y%m%dT%H%M%SZ)-<12-hex>"` (UUIDv7 short or `openssl rand -hex 6`)
+   - `started_at`, `engine`, `base_ref.{branch, sha}`, `rounds.max_rounds`
+   - `eval_passed_sha: null`
+   - `route.bypasses: [<parsed from --bypass>]`
+   - Empty `phases`, `criteria`, `route.selected`.
+
+4. **Spec preflight** (if `<pipeline_config>` contains a path matching `docs/roadmap/phase-\d+/[^\s"'`)]+\.md`):
+   - Read the spec. If missing → `BLOCKED`.
+   - Verify internal dependencies: each entry under `## Dependencies → Internal` → find `docs/roadmap/phase-*/[id]-*.md`, check `status: done`. Any unmet dep → `BLOCKED`.
+   - Populate `state.source`: `type: "spec"`, `spec_path`, `spec_sha256 = sha256(spec)`, `criteria_anchors: ["spec://requirements", "spec://out-of-scope", "spec://verification", "spec://constraints", "spec://architecture-notes", "spec://dependencies"]`.
+   - Populate `state.criteria[]`: one per `- [ ]` in `## Requirements`, `status: pending`.
+
+   If no spec path found:
+   - `source.type: "generated"`, `source.criteria_path: ".devlyn/criteria.generated.md"` (PHASE 1 creates it), `criteria_anchors: ["criteria.generated://requirements", "criteria.generated://out-of-scope", "criteria.generated://verification"]`, `criteria: []`.
+
+5. **Compute Stage A route** per `references/pipeline-routing.md#stage-a`. Write to `state.route.{selected, user_override, stage_a}`.
+
+6. **Announce** (single line):
 ```
-Auto-resolve pipeline starting
-Task: [extracted task description]
-Engine: [auto / codex / claude]
-Route: [fast / standard / strict / auto — Stage A decides in PHASE 0.5 if auto]
-Phases: Build → Build Gate → [Browser] → Evaluate → [Fix loop if needed] → [per-route optional phases]
-Max evaluation rounds: [N]
+Auto-resolve starting — run <run_id> — task: <desc>
+Engine: <engine>, Route: <selected> (<stage_a_reasons>), Bypasses: <bypasses|none>, Max rounds: <N>
 ```
-
-## PHASE 0.5: SPEC PREFLIGHT & SOURCE RESOLUTION
-
-This phase captures the contract. The ideate skill produces specs designed as auto-resolve's contract — `Requirements` are the done-criteria, `Out of Scope` bounds over-building, `Dependencies` gates sequencing. Phase 0.5 records that contract in `.devlyn/pipeline.state.json:source` so every downstream phase reads the same canonical source. **No copy of the spec is made** — the spec file itself is the source of truth; state.json stores pointers, integrity hashes, and per-criterion status.
-
-State.json was created in PHASE 0. This phase populates `source`, `criteria[]`, and `route.stage_a`.
-
-**Step 1 — Detect the source.** Scan `<pipeline_config>` task description for a path matching `docs/roadmap/phase-\d+/[^\s"'`)]+\.md`.
-
-**If a spec path is found (spec-driven run):**
-
-**Step 2a — Read the spec file.** If the file does not exist, stop with a `BLOCKED` verdict in the final report. Do not proceed to BUILD with a missing spec — the task description lies and silent recovery is worse than halting.
-
-**Step 2b — Verify internal dependencies.** For each entry under `## Dependencies → Internal` (e.g. `1.1 User Auth`), locate `docs/roadmap/phase-*/[id]-*.md` and check frontmatter `status`. Any dep without `status: done` → stop with `BLOCKED` listing the unmet deps. Implementing out of sequence wastes the pipeline.
-
-**Step 2c — Populate state.json source + criteria:**
-- `source.type = "spec"`
-- `source.spec_path = "<matched path>"`
-- `source.spec_sha256 = sha256(<file contents>)` via `sha256sum <path>` (Linux) or `shasum -a 256 <path>` (macOS)
-- `source.criteria_anchors = ["spec://requirements", "spec://out-of-scope", "spec://verification", "spec://constraints", "spec://architecture-notes", "spec://dependencies"]`
-- `criteria[]`: one entry per `- [ ]` item in the spec's `## Requirements` section, in document order. Each entry: `{ "id": "C<N>", "ref": "spec://requirements/<N-1>", "status": "pending", "evidence": [], "failed_by_finding_ids": [] }` (N is 1-indexed; ref index is 0-indexed per anchor syntax).
-
-**Step 2d — Announce.** One line: `Spec preflight: <spec path> — complexity <value>, <N> internal deps verified done, <M> criteria extracted, proceeding.` Surfaces in the final report.
-
-**If no spec path is found (ad-hoc run):**
-
-- `source.type = "generated"`
-- `source.criteria_path = ".devlyn/criteria.generated.md"` (Phase 1 Phase B creates this file)
-- `source.criteria_anchors = ["criteria.generated://requirements", "criteria.generated://out-of-scope", "criteria.generated://verification"]`
-- `criteria = []` (Phase 1 Phase B populates these)
-- Announce: `No spec detected — BUILD will synthesize criteria into .devlyn/criteria.generated.md.`
-
-Every downstream phase reads `pipeline.state.json` first and follows `source.spec_path` or `source.criteria_path` to the canonical criteria text. No intermediate copy exists.
-
-**Step 3 — Compute Stage A routing decision** (per `references/pipeline-routing.md`):
-
-Decision order (first match wins; short-circuit):
-
-1. **User override**: if `--route` is `fast`, `standard`, or `strict`, set `route.selected = <value>`, `route.user_override = true`, `route.stage_a.reasons = ["user explicit override: --route <value>"]`. Stage B (post-build checkpoint) will be skipped. Done.
-2. **Risk keyword scan**: grep the source body (spec for spec-driven; task description for generated) for any of: `auth, login, session, token, secret, password, crypto, api, env, permission, access, database, migration, payment`. Any hit → `route.selected = "strict"`, reasons list which keywords matched. Done.
-3. **Spec-driven, complexity-based**: for `source.type == "spec"`, read `spec.frontmatter.complexity`:
-   - `"high"` → `route.selected = "strict"`
-   - `"medium"` → `route.selected = "standard"`
-   - `"low"` → `route.selected = "fast"`
-   - Reasons include the complexity value, dep count, and "0 risk keywords".
-4. **Generated task, complexity deferred**: for `source.type == "generated"`, set `route.selected = "standard"` as a safe default; reasons say `"source.type=generated, Stage A defers complexity-based routing to Stage B post-BUILD"`. BUILD will write `phases.build.complexity` and Stage B consults it.
-
-Write `route.stage_a.at` (current UTC ISO-8601) and `route.stage_a.reasons` to state.json. Update the preflight announce line to include the selected route:
-
-`Spec preflight: <spec path> — complexity <value>, <N> deps done, <M> criteria, route=<fast/standard/strict> (reasons: <comma-separated>), proceeding.`
 
 ## PHASE 1: BUILD
 
-**Engine**: BUILD row of the routing table — Codex on `auto`/`codex`, Claude on `claude`. Per `<engine_routing_convention>` above. Subagents do not have access to skills, so the prompt below includes everything they need inline.
-
-Agent prompt — pass this to the spawned executor:
-
-<goal>
-Implement code changes that satisfy every pending criterion in `pipeline.state.json:criteria[]` without violating anything declared Out of Scope or Constraints. Make the source's intent run in the code.
-</goal>
-
-<input>
-- Canonical criteria: `pipeline.state.json:source`. Follow `source.spec_path` (spec file — read directly, do not copy) or `source.criteria_path` (`.devlyn/criteria.generated.md` — this file may not yet exist; see OUTPUT CONTRACT).
-- Codebase at `pipeline.state.json:base_ref.sha`.
-- Task statement appended below.
-</input>
-
-<output_contract>
-- **Code changes** implementing every `pending` criterion. Use `git diff` to confirm.
-- **state.json criteria updates**: for each criterion you satisfied, set `status: "implemented"` and append an `evidence` record `{"file": "...", "line": N, "note": "brief"}`.
-- **If `source.type == "generated"` and `.devlyn/criteria.generated.md` does not exist**: create it once with `## Requirements` (each `- [ ]` testable in under 30 seconds, specific, scoped), `## Out of Scope`, `## Verification`. Then populate state.json `criteria[]` with `{"id": "C<N>", "ref": "criteria.generated://requirements/<N-1>", "status": "pending", "evidence": [], "failed_by_finding_ids": []}`. Also classify task complexity into `low` (single file, no API changes), `medium` (multi-file, no cross-boundary), or `high` (cross-boundary, security-sensitive, or new subsystem) and write it as `phases.build.complexity` in state.json for team-gating below.
-- **No pending criterion remains**: every entry in `criteria[]` must transition to `status: "implemented"` with an `evidence` record before you exit. There is no exception. If a criterion genuinely cannot be satisfied in this run (missing external dependency, blocking design ambiguity that requires human input), stop the build entirely: set `phases.build.verdict: "BLOCKED"` and report the obstacle in your return text so the orchestrator halts the pipeline. Never exit with a criterion still `pending`. BUILD must not mark any criterion `failed` — `failed` is Evaluate-only per the state-machine in `references/pipeline-state.md`. The only BUILD-legal transitions are `pending → implemented` (per-criterion success) or halt via `phases.build.verdict: "BLOCKED"` (entire phase halts).
-- **Tests** added or updated for changed behavior. Run the full test suite before you stop.
-- **Team** (assemble if ANY of: `state.route.selected == "strict"` (mandatory) OR source-declared `complexity != "low"` — for spec, read `source.spec_path` frontmatter; for generated, use the classification you wrote to `phases.build.complexity` above — OR any risk keyword matches the source body: `auth, login, session, token, secret, password, crypto, api, env, permission, access, database, migration, payment`): use `TeamCreate` per the task-type table below; collect findings; shut down the team before exiting. Otherwise implement directly.
-</output_contract>
-
-<quality_bar>
-- Criteria and Out-of-Scope from the source are the contract — never weaken, reword, or delete them.
-- Read only the files the source implicates (Architecture Notes + Dependencies + touched patterns), not the whole codebase.
-- Bugs: write a failing test first, then fix. Features: follow existing patterns, then write tests. Refactors: tests pass before and after.
-- Fix root causes only — no `any`, `@ts-ignore`, silent `catch`, or hardcoded values.
-</quality_bar>
-
-<principle>
-The source is the contract. Your output is evidence that the contract now runs in code.
-</principle>
-
-<team_role_selection>
-When team assembly triggers, select teammates by task type (per-role engine routing follows `references/engine-routing.md`):
-- Bug fix: root-cause-analyst + test-engineer (+ security-auditor / performance-engineer as needed)
-- Feature: implementation-planner + test-engineer (+ ux-designer / architecture-reviewer / api-designer as needed)
-- Refactor: architecture-reviewer + test-engineer
-- UI/UX: product-designer + ux-designer + ui-designer (+ accessibility-auditor as needed)
-</team_role_selection>
-
-The task is: [paste the task description here]
+**Engine**: BUILD row of routing table. Spawn per `<engine_routing_convention>`. Agent prompt body: **`references/phases/phase-1-build.md`** — read it, paste it verbatim into the agent prompt, and append the task description at the bottom.
 
 **After the agent completes**:
-1. Verify `.devlyn/pipeline.state.json` exists and `criteria[]` has at least one entry with `status != "pending"` — if missing or all still pending, the agent did not follow instructions; re-spawn BUILD with an explicit reminder to update state.json
-2. Run `git diff --stat` to confirm code was actually changed
-3. If no changes were made, report failure and stop
-4. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): phase 1 — build complete"` to create a rollback point
+1. Verify `criteria[]` has ≥1 entry with `status != "pending"`. If not, re-spawn with an explicit reminder.
+2. `git diff --stat` — if no changes, stop with failure.
+3. Checkpoint: `git add -A && git commit -m "chore(pipeline): phase 1 — build complete"`.
 
 ## PHASE 1.4: BUILD GATE
 
-Skip if `--skip-build-gate` or `--build-gate skip` was set.
+Skip if `build-gate` in `state.route.bypasses` or `--build-gate skip` passed. Deterministic — same commands CI/Docker/production run.
 
-This phase runs the project's real build, typecheck, and lint commands — the same ones CI, Docker, and production environments will run. It catches the entire class of bugs that LLM-based evaluation and test suites cannot: type errors in un-tested files, cross-package type drift in monorepos, lint violations, missing production dependencies, and Dockerfile copy mismatches.
-
-This is deterministic — if the compiler says no, the pipeline stops. No LLM judgment involved.
-
-Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
-
-Agent prompt — pass this to the Agent tool:
-
-You are the build gate agent. Read `references/build-gate.md` for the project-type detection matrix and execution rules, and `references/findings-schema.md` for the findings output format.
-
-Your job: detect every project type in this repo, run their build/typecheck/lint commands, and emit structured results. You do NOT reason about code quality — you run commands and faithfully report what they output.
-
-1. Read the detection matrix in `references/build-gate.md`
-2. Scan the repo to detect all matching project types (a monorepo may match several)
-3. Detect the package manager (npm/pnpm/yarn/bun) per the rules in the reference file
-4. Run all gate commands. Sequential within a project type, parallel across unrelated types.
-5. If `--build-gate strict` is set **OR** `pipeline.state.json.route.selected == "strict"`, apply strict-mode flags per the reference file. Strict route forces strict build gate by default; `--skip-build-gate` still bypasses (user flags always win — the bypass is logged in the final report's `Guardrails bypassed` field per `references/pipeline-routing.md`).
-6. Run Dockerfile builds if Dockerfiles are detected, UNLESS `--build-gate no-docker` is set (see reference file)
-
-**Output contract** (see `references/findings-schema.md` and `references/pipeline-state.md`):
-
-- `.devlyn/build_gate.findings.jsonl` — one JSON line per compiler/typecheck/lint failure. `rule_id` examples: `build.type-error`, `build.lint-violation`, `build.dep-missing`, `build.docker-copy-mismatch`. Each finding MUST include `file` + `line` + concise `message` (not the full stack trace) + concrete `fix_hint`. Leave `partial_fingerprints` as `{}` or omit the field — the orchestrator computes and injects it after this phase completes (see `references/findings-schema.md`).
-- `.devlyn/build_gate.log.md` — human summary. Detected project types, commands run with exit codes and timing, and the full raw stderr/stdout from failing commands (this is where long compiler output lives, NOT in the JSONL `message`).
-- Update `pipeline.state.json.phases.build_gate` with: `verdict` (`PASS` if all exit 0, else `FAIL`), `engine: "bash"`, `started_at`, `completed_at`, `duration_ms`, `round` (current round number), `artifacts.findings_file` and `artifacts.log_file` paths.
+Spawn a Claude `Agent` with `mode: "bypassPermissions"`. Prompt: "Read `references/build-gate.md` (detection matrix, commands, package manager, monorepo, strict, Docker) and `references/findings-schema.md` (output format). Run all matched gates. Apply strict flags if `--build-gate strict` OR `state.route.selected == "strict"`. Run Docker unless `--build-gate no-docker`. Emit `.devlyn/build_gate.findings.jsonl` + `.devlyn/build_gate.log.md`; update `state.phases.build_gate`."
 
 **After the agent completes**:
-1. **Inject fingerprints.** Run the reference snippet from `references/findings-schema.md` over `.devlyn/build_gate.findings.jsonl` — compute `partial_fingerprints` for each line and write back. This is deterministic orchestrator bookkeeping; do not delegate to the subagent.
-2. Read `pipeline.state.json.phases.build_gate.verdict`
-3. **Route Stage B checkpoint** (only runs when `phases.build_gate.verdict == "PASS"` and `route.user_override == false`; per `references/pipeline-routing.md`):
-
-   Gather real diff signals against `base_ref.sha`:
-   - `diff_files = git diff --name-only <base_ref.sha> | wc -l`
-   - `diff_lines = git diff --shortstat <base_ref.sha>` total changed
-   - `risk_in_diff = git diff <base_ref.sha>` greps any of the 14 risk-class keywords
-   - `api_surface = diff --name-only` matches `src/api/`, `routes/`, `handlers/`, `app/api/`
-   - `cross_boundary = diff --name-only` spans ≥3 top-level directories
-   - `tests_absent = any new file under src/ without a corresponding test file`
-
-   Apply escalation rules (any match escalates one tier, `strict` is the cap):
-   - `risk_in_diff` → force `strict`
-   - `cross_boundary` OR `diff_files > 10` OR `diff_lines > 400` → escalate one tier (`fast → standard`, `standard → strict`)
-   - `api_surface` OR `tests_absent` → escalate `fast → standard` (no effect at `standard` or `strict`)
-
-   If any rule fires, update `route.selected` to the new tier, set `route.stage_b.at` (current UTC ISO-8601), `route.stage_b.escalated_from` (prior route), and `route.stage_b.reasons` listing each triggering signal. Never de-escalate.
-
-4. Branch:
-   - `PASS` → continue to PHASE 1.5
-   - `FAIL` → go to PHASE 1.4-fix (build gate fix loop) — Stage B does not run; diff is not yet stable.
-
-## PHASE 1.4-fix: BUILD GATE FIX LOOP
-
-Triggered only when PHASE 1.4 returns FAIL.
-
-Track a round counter. The build-gate fix loop and the main evaluate fix loop share **one global round counter** capped at `max-rounds` — increments from this loop and from PHASE 2.5 both count against the same total. If `round >= max-rounds`, stop with a clear failure report and do not continue to evaluate/browser/etc. Code that doesn't build cannot be meaningfully evaluated or tested.
-
-**Engine**: FIX LOOP row of the routing table.
-
-Before spawning the fix agent, the orchestrator assembles `.devlyn/fix-batch.round-<N>.json` by reading `.devlyn/build_gate.findings.jsonl`, filtering to `status == "open"` entries, and packaging only the minimum needed (`id`, `rule_id`, `severity`, `file`, `line`, `message`, `fix_hint`, `partial_fingerprints`) plus the acceptance command (`.devlyn/build_gate.log.md` → "Commands" table). The fix agent receives the packet path — it does NOT re-parse prior findings files or the full compiler log.
-
-Agent prompt — pass this to the spawned executor:
-
-Read `.devlyn/fix-batch.round-<N>.json` — it contains the open, blocking build-gate failures extracted from real compiler output. These are not opinions; the compiler rejected this code. Fix every listed entry at the root cause.
-
-For each entry:
-1. Read the referenced `file:line` and enough surrounding context to understand the error. If you need the raw compiler output, `.devlyn/build_gate.log.md` has the full stderr/stdout.
-2. For type errors: check BOTH sides of the type contract — the consumer AND the type definition. Do NOT suppress with `any`, `@ts-ignore`, `as unknown as`, `// eslint-disable`, or equivalent escape hatches.
-3. For lint errors: fix the underlying issue, do not disable the rule.
-4. For missing module/dependency errors: investigate root cause — missing dep in package.json, typo in import path, or tsconfig paths misconfiguration.
-5. After fixing, do NOT re-run the build yourself. The orchestrator re-runs PHASE 1.4.
-
-**After the agent completes**:
-1. **Checkpoint**: `git add -A && git commit -m "chore(pipeline): build gate fix round [N]"`
-2. Increment the global round counter (shared with PHASE 2.5)
-3. Go back to PHASE 1.4 (re-run the gate)
+1. **Inject fingerprints** into `build_gate.findings.jsonl` per `references/findings-schema.md`.
+2. Read `state.phases.build_gate.verdict`.
+3. **Stage B routing** (only if `verdict == "PASS"` and `state.route.user_override == false`): apply the escalation rules from `references/pipeline-routing.md#stage-b`. Gather signals: diff files, diff lines, risk keywords in diff content, API surface, tests absent, cross-boundary. Apply the escalation rules from pipeline-routing.md. Write `state.route.stage_b.{at, escalated_from, reasons}` on escalation.
+4. Branch: `PASS` → PHASE 1.5; `FAIL` → PHASE 2.5 with `triggered_by: "build_gate"`.
 
 ## PHASE 1.5: BROWSER VALIDATE (conditional)
 
-Skip if `--skip-browser` was set.
+Skip if `browser` in `state.route.bypasses`. Check relevance: `git diff --name-only <state.base_ref.sha>` for `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.css`, `*.html`, `page.*`, `layout.*`, `route.*`. None → skip with note.
 
-1. **Check relevance**: Run `git diff --name-only <pipeline.state.json.base_ref.sha>` (use the frozen run-start SHA, not ambient HEAD — after fix-round checkpoint commits, ambient diffs silently return empty and would auto-skip this phase incorrectly). Check the output for web-relevant files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.css`, `*.html`, `page.*`, `layout.*`, `route.*`). If none found, skip and note "Browser validation skipped — no web changes detected."
-
-2. **Run validation**: Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
-
-Agent prompt — pass this to the Agent tool:
-
-You are a browser validation agent. Read `.claude/skills/devlyn:browser-validate/SKILL.md` for the full workflow and `references/findings-schema.md` for the findings output format. Start the dev server, test the implemented feature end-to-end, and leave the server running (pass `--keep-server` internally) — the pipeline will clean it up later.
-
-**Output contract**:
-- `.devlyn/browser_validate.findings.jsonl` — one JSON line per browser-observable failure (`rule_id` examples: `browser.render-failure`, `browser.feature-broken`, `browser.console-error`, `browser.network-error`, `browser.accessibility-violation`). Each with `file` + `line` where a source-code file was implicated (or the page route + component path); `message` short; `fix_hint` concrete with file:line. Leave `partial_fingerprints` as `{}` — the orchestrator computes it after the phase completes.
-- `.devlyn/browser_validate.log.md` — human summary: which tier was used (chrome MCP / Playwright / curl), dev server URL, screenshots taken, pages navigated, console errors collected, flow steps executed per feature from `pipeline.state.json:criteria[]`.
-- Update `pipeline.state.json.phases.browser_validate` with `verdict`, `engine: "claude"`, timing, `round`, and `artifacts.{findings_file, log_file}`.
-
-Verdict taxonomy (written to state.json):
-- `PASS` — every criterion verified in a real browser, no blocking errors
-- `PASS_WITH_ISSUES` — criteria verified; LOW-severity findings only
-- `PARTIALLY_VERIFIED` — actual browser interaction happened, but some criteria unverifiable due to environment limits (missing API keys, external services). NOT valid as a substitute for "browser tools didn't work."
-- `NEEDS_WORK` — one or more criteria failed in the browser (populates findings with `blocking: true`)
-- `BLOCKED` — app does not render at all
+Spawn a Claude `Agent` with `mode: "bypassPermissions"`. Prompt: "Read `.claude/skills/devlyn:browser-validate/SKILL.md` for the tiered browser workflow (Chrome MCP → Playwright → curl) and `references/findings-schema.md` for output format. Start the dev server, test the implemented feature end-to-end against `pipeline.state.json:criteria[]`, leave the server running (`--keep-server`). Emit `.devlyn/browser_validate.findings.jsonl` + `.devlyn/browser_validate.log.md`; update `state.phases.browser_validate`. Verdict: `PASS` / `PASS_WITH_ISSUES` / `PARTIALLY_VERIFIED` / `NEEDS_WORK` / `BLOCKED`."
 
 **After the agent completes**:
-1. **Inject fingerprints** into `.devlyn/browser_validate.findings.jsonl` (if present and non-empty) per `references/findings-schema.md`.
-2. Read `pipeline.state.json.phases.browser_validate.verdict`
-3. **Sanity check**: if the verdict is `PASS`/`PASS_WITH_ISSUES` but `browser_validate.log.md` shows no screenshots taken and no pages navigated, treat as if no browser validation ran — re-run PHASE 1.5 with `--tier 2` to force Playwright, or `--tier 3` for HTTP smoke. A code-level verdict is not browser validation.
-4. Branch on verdict:
-   - `PASS` / `PASS_WITH_ISSUES` → continue to PHASE 2
-   - `PARTIALLY_VERIFIED` → continue to PHASE 2, flag to evaluator via a note in state.json that browser coverage was incomplete
-   - `NEEDS_WORK` / `BLOCKED` → go to PHASE 2.5 fix loop; after fixing, re-run PHASE 1.5 before PHASE 2
+1. **Inject fingerprints**.
+2. **Sanity check**: if verdict claims `PASS`/`PASS_WITH_ISSUES` but log shows zero screenshots AND zero page navigations, treat as unverified — re-run at `--tier 2` (Playwright) or `--tier 3` (HTTP smoke). A code-level verdict is not browser validation.
+3. Branch: `PASS`/`PASS_WITH_ISSUES`/`PARTIALLY_VERIFIED` → PHASE 2 (flag partial coverage in state.json note if partial); `NEEDS_WORK`/`BLOCKED` → PHASE 2.5 with `triggered_by: "browser_validate"`.
 
 ## PHASE 2: EVALUATE
 
-**Engine**: EVALUATE row of the routing table — Claude on every engine. When `--engine auto`, Codex built the code, so Claude evaluating Codex's work is the GAN dynamic by default; no separate Codex evaluation pass is needed.
-
-Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`. Include all evaluation instructions inline (subagents do not have access to skills).
-
-Agent prompt — pass this to the spawned executor:
-
-<goal>
-Independently verify whether every criterion in `pipeline.state.json:criteria[]` is satisfied by the current code. Surface every defect with file:line evidence. You are a skeptic, not a cheerleader — praise is not your job.
-</goal>
-
-<input>
-- Canonical rubric: `pipeline.state.json:source`. Follow `source.spec_path` or `source.criteria_path` and read Requirements + Out of Scope + Verification directly.
-- Change surface: `git diff <pipeline.state.json:base_ref.sha>` + `git status`. Read every changed/new file in full — not just the hunks.
-- Prior browser findings at `.devlyn/browser_validate.findings.jsonl` (if that phase ran).
-</input>
-
-<output_contract>
-- **`.devlyn/evaluate.findings.jsonl`** — one JSON per line (schema: `references/findings-schema.md`). Fields per finding:
-  `id` (`EVAL-<4digit>`), `rule_id` (stable kebab-case, e.g. `correctness.silent-error`, `ux.missing-error-state`, `architecture.duplication`, `security.missing-validation`, `types.any-cast-escape`, `style.let-vs-const`, `scope.out-of-scope-violation`), `level` (`error`/`warning`/`note` — map from severity: CRITICAL/HIGH → error, MEDIUM → warning, LOW → note), `severity` (`CRITICAL`/`HIGH`/`MEDIUM`/`LOW`), `confidence` (0.0–1.0), `message` (one line naming the issue, not symptoms), `file`, `line` (1-based primary location), `phase: "evaluate"`, `criterion_ref` (the exact `ref` string from a `criteria[]` entry — e.g. `"spec://requirements/2"` — when the finding fails a specific criterion; or a section-level anchor from `state.source.criteria_anchors` such as `"spec://constraints"` or `"spec://out-of-scope"` when the finding is cross-cutting; or `null` when scope-broader than any anchor), `fix_hint` (concrete action quoting file:line), `blocking` (CRITICAL/HIGH/MEDIUM default true, LOW false), `status: "open"`, `partial_fingerprints: {}` (orchestrator injects post-phase).
-- **`.devlyn/evaluate.log.md`** — 3–5 line human summary: verdict + criteria pass/fail counts + top 3 risks + cross-cutting patterns if any. Prose here; structured data in the JSONL.
-- **state.json criteria updates** — every `criteria[]` entry must leave Evaluate in a terminal state. Incoming status from BUILD is normally `implemented`; transition each to `status: "verified"` (append `evidence` record confirming satisfaction) OR `status: "failed"` (set `failed_by_finding_ids` to the IDs you emitted). If a criterion is still `pending` (BUILD did not satisfy it), mark it `failed` with a finding whose `rule_id` is `correctness.criterion-unimplemented` and whose `fix_hint` names what was missed. No `criteria[]` entry may remain `pending` or `implemented` after Evaluate.
-- **state.json phases.evaluate** — `verdict` per taxonomy, `engine: "claude"`, `model`, timing, `round`, `artifacts.{findings_file, log_file}`.
-
-Verdict taxonomy: `BLOCKED` (any CRITICAL) / `NEEDS_WORK` (HIGH or MEDIUM present) / `PASS_WITH_ISSUES` (LOW only) / `PASS` (clean).
-</output_contract>
-
-<quality_bar>
-- Every finding must point at a file:line you have opened and read. Findings without real anchors are speculation — exclude them.
-- Every failed criterion maps to ≥1 finding `id`.
-- **Coverage over comfort**: report uncertain and LOW findings too; downstream filters rank them. Missing a real defect ships broken code — the asymmetry is decisive.
-- Audit each changed file for: correctness (logic errors, silent failures, null access, wrong API contracts), architecture (pattern violations, duplication, missing integration), security (if auth/secrets/user-data touched: injection, hardcoded credentials, missing validation), frontend (if UI changed: missing error/loading/empty states, React anti-patterns, server/client boundaries), test coverage (untested modules, missing edge cases).
-- Calibration: a catch block that logs but doesn't surface the error to the user → HIGH, not MEDIUM (logging ≠ error handling). A `let` that could be `const` → LOW (linters catch it). "Error handling is generally quite good" is not a finding — count the instances, name the files.
-- "Pre-existing" findings still count if they relate to the criteria. Working software, not blame attribution.
-- **Out-of-Scope violations are findings**: if BUILD added behavior the source's `## Out of Scope` explicitly excludes, emit a finding with `rule_id: "scope.out-of-scope-violation"`, `severity: HIGH`, `criterion_ref: "spec://out-of-scope"` (or `"criteria.generated://out-of-scope"`), and `fix_hint` naming what to remove. OOS violations fail the pipeline the same as missing requirements.
-</quality_bar>
-
-<principle>
-Missing a real defect is worse than reporting an extra one. Asymmetric cost demands bias toward reporting.
-</principle>
-
-Do not delete `pipeline.state.json` or the JSONL/log files — the orchestrator needs them.
+**Engine**: EVALUATE row — always Claude (GAN dynamic when BUILD was Codex). Spawn per `<engine_routing_convention>`. Agent prompt body: **`references/phases/phase-2-evaluate.md`**.
 
 **After the agent completes**:
-1. **Inject fingerprints** into `.devlyn/evaluate.findings.jsonl` per the reference snippet in `references/findings-schema.md`.
-2. Read `pipeline.state.json.phases.evaluate.verdict`
-3. Branch on verdict:
-   - `PASS` → skip to PHASE 3
-   - `PASS_WITH_ISSUES` → go to PHASE 2.5 (fix loop) — LOW-only issues are still issues; fix them
-   - `NEEDS_WORK` → go to PHASE 2.5 (fix loop)
-   - `BLOCKED` → go to PHASE 2.5 (fix loop)
-4. If `phases.evaluate.verdict` is `null` or the findings/log files were not written, treat as `NEEDS_WORK` and log a warning — absence of evidence is not evidence of absence.
+1. **Inject fingerprints** into `evaluate.findings.jsonl`.
+2. Read `state.phases.evaluate.verdict`.
+3. **If first-time PASS or PASS_WITH_ISSUES** and `state.eval_passed_sha == null`: set `state.eval_passed_sha = git rev-parse HEAD`. This activates `<post_eval_invariant>`.
+4. Branch:
+   - `PASS` → next phase per route (SIMPLIFY for standard/strict; FINAL REPORT for fast).
+   - `PASS_WITH_ISSUES` → **terminal for this phase** (LOW-only findings do not trigger fix loop; they are logged and proceed). Move to next phase per route. `state.eval_passed_sha` set as above.
+   - `NEEDS_WORK` / `BLOCKED` → PHASE 2.5 with `triggered_by: "evaluate"`.
 
-## PHASE 2.5: FIX LOOP (conditional)
+## PHASE 2.5: UNIFIED FIX LOOP
 
-Track the current round number. If `round >= max-rounds`, stop the loop and proceed to PHASE 3 with a warning that unresolved findings remain.
+Single fix loop for every trigger (build_gate / browser_validate / evaluate / challenge / simplify / review / security_review / clean). `state.rounds.global` is the shared counter; every entry increments it.
 
-**Engine**: FIX LOOP row of the routing table. Use a fresh Codex call each round (no `sessionId` reuse — sandbox/fullAuto only apply on the first call of a session).
+**Exhaustion check first**: if `state.rounds.global >= state.rounds.max_rounds`, apply per-trigger exhaustion from `references/pipeline-routing.md#--max-rounds-exhaustion`:
+- `build_gate` / `browser_validate` → **halt** — skip to PHASE 8 with exhaustion banner.
+- everything else → **proceed_with_warning** — skip to next phase per route; final report shows `EVAL EXHAUSTED` / etc. banner.
 
-**Before spawning the fix agent, the orchestrator assembles a fix-batch packet.** Read `.devlyn/evaluate.findings.jsonl` (and `.devlyn/browser_validate.findings.jsonl` if the PHASE 1.5 verdict was `NEEDS_WORK` or `BLOCKED`), filter to entries with `status == "open"`, and write `.devlyn/fix-batch.round-<N>.json`:
-
+**Fix-batch packet assembly** (orchestrator, before spawn): read the trigger's `.findings.jsonl` (plus browser_validate if `triggered_by == "browser_validate"` or `"evaluate"` and browser also had open findings — see pipeline-routing.md), filter `status == "open"`, write `.devlyn/fix-batch.round-<N>.json`:
 ```json
 {
-  "round": <N>,
-  "max_rounds": <from state.rounds.max_rounds>,
+  "round": <N>, "max_rounds": <state.rounds.max_rounds>,
   "base_ref_sha": "<state.base_ref.sha>",
-  "criteria_source": "<state.source.spec_path or state.source.criteria_path>",
-  "findings": [
-    { "id": "EVAL-0007", "rule_id": "...", "severity": "HIGH", "file": "...", "line": 84, "message": "...", "fix_hint": "...", "criterion_ref": "spec://requirements/2", "partial_fingerprints": {...} },
-    ...
-  ],
-  "failed_criteria": ["C2", "C3"],
-  "acceptance": {
-    "build_gate_cmd": "<from build-gate log>",
-    "test_cmd": "<language-appropriate: 'pnpm test' / 'cargo test' / etc.>"
-  }
+  "criteria_source": "<state.source.spec_path or criteria_path>",
+  "triggered_by": "<trigger phase>",
+  "findings": [ /* minimal: id, rule_id, severity, file, line, message, fix_hint, criterion_ref, partial_fingerprints */ ],
+  "failed_criteria": ["<C ids>"],
+  "acceptance": {"build_gate_cmd": "<from build-gate log>", "test_cmd": "<pnpm test/cargo test/etc>"}
 }
 ```
 
-The fix agent receives this packet and does NOT re-parse the full findings files — the packet is the minimum sufficient context. Agents that need raw detail (full stderr, full browser flow log) can read `.devlyn/build_gate.log.md` or `.devlyn/browser_validate.log.md` on demand.
+**Engine**: FIX LOOP row (Codex on `auto`/`codex`, Claude on `claude`). Use a fresh Codex call each round (no `sessionId` reuse).
 
-Agent prompt — pass this to the spawned executor (include the packet path):
-
-Read `.devlyn/fix-batch.round-<N>.json` — it contains the open, blocking findings from independent evaluation and/or browser validation. Fix every listed entry at the root cause. The pipeline loops until the relevant verdict returns `PASS` — there is no "shippable with issues" shortcut.
-
-The original criteria are tracked in `pipeline.state.json:criteria[]`, with full text at `source.spec_path` or `source.criteria_path` (follow the pointer). Your fixes must still satisfy those criteria. Do not delete or weaken criteria to make them pass.
-
-For each finding in the packet: read the referenced `file:line`, understand the issue, implement the fix. No workarounds — fix the actual root cause, no `any`/`@ts-ignore`/silent catches. Run tests after fixing. If you need the full raw output for a build failure or browser flow, open `.devlyn/build_gate.log.md` or `.devlyn/browser_validate.log.md` directly.
-
-When a previously-failed criterion is now satisfied, update its entry in state.json: clear `failed_by_finding_ids`, set `status: "implemented"`, and add an `evidence` record.
+Spawn per `<engine_routing_convention>`. Agent prompt (inline — short enough): "Read `.devlyn/fix-batch.round-<N>.json` — contains the open, blocking findings from <triggered_by>. Fix every listed entry at the root cause. Criteria live at `pipeline.state.json:criteria[]` (text at `source.spec_path` / `source.criteria_path`) — fixes must still satisfy them; do not weaken criteria. For each finding: read the referenced `file:line`, understand the issue, implement the fix. No workarounds — no `any`, `@ts-ignore`, silent catches. Run tests after fixing. Raw failure detail: `.devlyn/build_gate.log.md` / `.devlyn/browser_validate.log.md`. When a previously-failed criterion is now satisfied, update its entry: clear `failed_by_finding_ids`, set `status: "implemented"`, add `evidence`."
 
 **After the agent completes**:
-1. **Checkpoint**: `git add -A && git commit -m "chore(pipeline): fix round [N] complete"` to preserve the fix
-2. Increment the global round counter (shared with PHASE 1.4-fix)
-3. Re-run the phase that triggered the fix:
-   - If invoked from PHASE 2 (eval failure) → go back to PHASE 2 to re-evaluate
-   - If invoked from PHASE 1.5 (browser failure) → go back to PHASE 1.5 to re-validate, then PHASE 2 only if browser passes
+1. Checkpoint: `git add -A && git commit -m "chore(pipeline): fix round <N> (<triggered_by>)"`.
+2. Increment `state.rounds.global`.
+3. Route back:
+   - `triggered_by: "build_gate"` → PHASE 1.4 (re-run gate).
+   - `triggered_by: "browser_validate"` → PHASE 1.5 (re-validate).
+   - `triggered_by: "evaluate" | "challenge" | "simplify" | "review" | "security_review" | "clean"` → **PHASE 2 (re-EVALUATE)**. This enforces `<post_eval_invariant>`: all post-EVAL findings come back through EVAL.
 
-## PHASE 3: SIMPLIFY (route-gated)
+## PHASE 3: SIMPLIFY (findings-only, route-gated)
 
-Skip if `pipeline.state.json.route.selected == "fast"` — the fast route skips polish phases by design. User `--skip-*` flag for simplify does not exist; route controls inclusion.
+Skip if `state.route.selected == "fast"` OR `simplify` in `state.route.bypasses`.
 
-Otherwise (`standard` or `strict`), spawn a subagent using the Agent tool with `mode: "bypassPermissions"` for a quick cleanup pass.
+Spawn a Claude `Agent` with `mode: "bypassPermissions"`. Prompt: "Review recently changed files (`git diff <state.base_ref.sha>`). Look for: code that could reuse existing utilities, unclear naming, unnecessary complexity, redundant operations. **Do NOT write code.** Emit `.devlyn/simplify.findings.jsonl` with `rule_id` like `quality.duplication`, `quality.over-abstraction`, `quality.unclear-naming`; one line per finding; severities LOW–HIGH. Plus `.devlyn/simplify.log.md` summary. Update `state.phases.simplify`. Verdict: `PASS` (zero findings), `PASS_WITH_ISSUES` (LOW only), `NEEDS_WORK` (MEDIUM+HIGH), `BLOCKED` (any CRITICAL)."
 
-Agent prompt — pass this to the Agent tool:
-
-Review the recently changed files (use `git diff <pipeline.state.json.base_ref.sha>` — the frozen run-start SHA — to see what changed since the pipeline started). Look for: code that could reuse existing utilities instead of reimplementing, quality issues (unclear naming, unnecessary complexity), and efficiency improvements (redundant operations, missing early returns). Fix any issues found. Keep changes minimal — this is a polish pass, not a rewrite.
-
-**After the agent completes**:
-1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): simplify pass complete"` if there are changes
-
-## PHASE 4: REVIEW (route-gated + skippable)
-
-Skip if `--skip-review` was set. Additionally, skip if `pipeline.state.json.route.selected != "strict"` — team review is strict-route only; `fast` and `standard` rely on PHASE 2 EVALUATE + PHASE 4.5 CHALLENGE for quality coverage.
-
-**Engine**: REVIEW (team) — per-role routing per the team-review table in `references/engine-routing.md`. Dual roles run both models in parallel and merge findings.
-
-Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
-
-Agent prompt — pass this to the spawned executor:
-
-Review all recent changes in this codebase (use `git diff <pipeline.state.json.base_ref.sha>` and `git status` to determine scope — all phases share the same frozen base SHA for consistent diffs). Assemble a review team using TeamCreate with specialized reviewers: security reviewer, quality reviewer, test analyst. Add UX reviewer, performance reviewer, or API reviewer based on the changes. Per-role engine routing follows the team-review table in `references/engine-routing.md`; Dual roles run both models in parallel and merge findings.
-
-Each reviewer reports findings with file:line evidence grouped by severity (CRITICAL, HIGH, MEDIUM, LOW) and a confidence level. After all reviewers report, synthesize findings, deduplicate, and fix any CRITICAL issues directly. For HIGH issues, fix if straightforward.
-
-Clean up the team after completion.
-
-**After the review phase completes**:
-1. If CRITICAL issues remain unfixed, log a warning in the final report
-2. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): review fixes complete"` if there are changes
-
-## PHASE 4.5: CHALLENGE (route-gated)
-
-Skip if `pipeline.state.json.route.selected == "fast"` — the fast route reserves Challenge for `standard` and `strict` where the full-diff cold read adds ship-readiness value worth the token cost.
-
-Every prior phase used checklists, criteria, or structured categories. This phase is deliberately different — it's a fresh pair of eyes with no checklist, no prior context, and a skeptical mandate. The subagent hasn't seen the criteria, the eval findings, or the review results. It reads the raw diff cold and asks: "would I mass-ship this?"
-
-This is what catches the things structured reviews miss — subtle logic that technically works but isn't the right approach, assumptions nobody questioned, patterns that are fine but not best-practice, and integration seams that look correct in isolation but feel wrong when you read the whole changeset.
-
-**Engine**: CHALLENGE row — Claude on every engine. The diff was likely produced by Codex on `--engine auto`; Claude reading it cold preserves the cross-model dynamic.
-
-Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
-
-Agent prompt — pass this to the spawned executor:
-
-<goal>
-Read the diff cold — no checklist, no prior-phase context. Find what a staff engineer would block before this PR ships. Any hesitation is a finding.
-</goal>
-
-<input>
-- Change surface: `git diff <pipeline.state.json:base_ref.sha>`. Read every changed file in full, not just the hunks.
-</input>
-
-<output_contract>
-- **`.devlyn/challenge.findings.jsonl`** — one JSON per line (schema: `references/findings-schema.md`). Fields: `id: "CHLG-<4digit>"`, `rule_id` (examples: `design.non-atomic-transaction`, `design.duplicate-pattern`, `design.hidden-assumption`, `design.unidiomatic-pattern`), `severity` (CRITICAL/HIGH/MEDIUM — no LOW; Challenge is ship/no-ship), `file`, `line`, `message`, `fix_hint` (concrete change quoting file:line), `phase: "challenge"`, `status: "open"`, `partial_fingerprints: {}` (orchestrator injects post-phase).
-- **`.devlyn/challenge.log.md`** — verdict + top 3 concerns framed as "why a staff engineer would stop this PR".
-- **state.json phases.challenge** — `verdict` (`PASS` or `NEEDS_WORK` — no middle ground), `engine: "claude"`, `model`, timing, `round: 1`, `artifacts.{findings_file, log_file}`.
-
-Verdict: `PASS` only if you would confidently ship this code with your name on it AND you emitted zero open findings. Any open finding of any severity (including MEDIUM) → `NEEDS_WORK`. Challenge has no "issues OK to ship" middle ground; either you'd ship with your name on it, or you'd leave comments — and leaving comments means `NEEDS_WORK`.
-</output_contract>
-
-<quality_bar>
-- Every finding anchored to `file:line` in code you have opened, with a concrete fix. Vague ≠ finding.
-- `fix_hint` is a specific change ("change X to Y because Z"), never "consider improving".
-- Interrogate: would this survive 10x traffic? A midnight oncall page? A junior dev maintaining it in 6 months? Are baked-in assumptions stated out loud (hardcoded limits, implicit ordering, missed business-logic edges)? Is error handling actually helpful or does it prevent crashes while leaving users confused? Are there simpler idiomatic approaches — not "clever" but genuinely better?
-- Do not open with praise.
-</quality_bar>
-
-<principle>
-Cold eyes catch what structured reviews miss. "Would I ship this with my name on it?" is the only question.
-</principle>
-
-<example index="1">
-GOOD (anchored JSONL): `{"id":"CHLG-0001","rule_id":"design.non-atomic-transaction","severity":"CRITICAL","message":"order.status read and write are not atomic in cancel handler — concurrent cancellations both succeed and fire inventory hook twice","file":"src/api/orders/cancel.ts","line":42,"fix_hint":"Wrap read+write in db.transaction() at src/api/orders/cancel.ts:40-50; re-check order.status === 'pending' inside transaction before update",...}`
-</example>
-<example index="2">
-BAD (vague, unanchored): "The error handling could be improved. Consider being more defensive." — no file:line, no specific failure, no concrete fix. Exclude.
-</example>
+**Before spawn**: capture `phase_pre_sha = git rev-parse HEAD` and store at `state.phases.simplify.pre_sha`.
 
 **After the agent completes**:
-1. **Inject fingerprints** into `.devlyn/challenge.findings.jsonl` per `references/findings-schema.md`.
-2. Read `pipeline.state.json.phases.challenge.verdict`
-3. Branch:
-   - `PASS` → continue to PHASE 5
-   - `NEEDS_WORK` → **assemble `.devlyn/fix-batch.challenge.json`** from `.devlyn/challenge.findings.jsonl` (same packet shape as PHASE 2.5's `fix-batch.round-<N>.json`: filter `status == "open"` + `severity in {CRITICAL, HIGH}` + optionally MEDIUM if straightforward; include minimal keys + acceptance commands). Then spawn a fix subagent with `mode: "bypassPermissions"` that reads the packet path only — not the full findings file — and fixes every listed entry at the root cause. After fixing, run the test suite.
+1. Inject fingerprints.
+2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha>` — non-empty means the subagent ignored the findings-only contract. `git reset --hard <phase_pre_sha>`, emit `invariant.post-eval-code-mutation` finding, route to PHASE 2.5.
+3. Branch: `PASS`/`PASS_WITH_ISSUES` → PHASE 4 (or FINAL REPORT per route); `NEEDS_WORK`/`BLOCKED` → PHASE 2.5 with `triggered_by: "simplify"`.
 
-   After the fix agent completes:
-   1. **Checkpoint**: `git add -A && git commit -m "chore(pipeline): challenge fixes complete"`
-   2. Continue to PHASE 5 (do NOT re-run challenge — one pass is sufficient to avoid infinite loops)
+## PHASE 4: REVIEW (findings-only, strict-only)
 
-## PHASE 5: SECURITY REVIEW (route-gated + conditional)
+Skip if `state.route.selected != "strict"` OR `review` in `state.route.bypasses`.
 
-Determine whether to run this phase (user `--security-review` flag always wins; then route; then auto-detect):
+**Engine**: REVIEW (team) per `references/engine-routing.md#team-review-roles`. Dual roles run both models in parallel; orchestrator merges.
 
-- If `--security-review skip` → skip.
-- If `--security-review always` → run.
-- If `pipeline.state.json.route.selected == "strict"` → **run** by default (strict route was selected because something risky is in play; security review is the default guardrail). `--security-review skip` still bypasses — bypasses are logged in the final report's `Guardrails bypassed` field per `references/pipeline-routing.md`.
-- If `pipeline.state.json.route.selected == "fast"` → skip (fast-route assumes no risk; Stage A/B would have escalated if risk was detected).
-- Otherwise (`standard` with `--security-review auto` default): auto-detect by scanning changed files for security-sensitive patterns:
-  - Run `git diff <pipeline.state.json.base_ref.sha> --name-only` and check for files matching: `*auth*`, `*login*`, `*session*`, `*token*`, `*secret*`, `*crypt*`, `*password*`, `*api*`, `*middleware*`, `*env*`, `*config*`, `*permission*`, `*role*`, `*access*`
-  - Also run `git diff <pipeline.state.json.base_ref.sha>` and scan for patterns: `API_KEY`, `SECRET`, `TOKEN`, `PASSWORD`, `PRIVATE_KEY`, `Bearer`, `jwt`, `bcrypt`, `crypto`, `env.`, `process.env`
-  - If any match → run. If no matches → skip and note "Security review skipped — standard route, no security-sensitive changes detected."
+Spawn a Claude `Agent` with `mode: "bypassPermissions"`. Prompt: "Assemble a review team via `TeamCreate` with: security-reviewer, quality-reviewer, test-analyst. Add ux-reviewer/performance-reviewer/api-reviewer based on changes. Per-role engine routing: see `references/engine-routing.md`. Each reviewer reports findings with `file:line` + severity + confidence. **Do NOT write code.** Synthesize into `.devlyn/review.findings.jsonl` + `.devlyn/review.log.md`. Clean up team. Update `state.phases.review`."
 
-Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` for a dedicated security audit.
-
-Agent prompt — pass this to the Agent tool:
-
-You are a security auditor performing a dedicated security review. This is NOT a general code review — focus exclusively on security concerns.
-
-Examine all recent changes (use `git diff <pipeline.state.json.base_ref.sha>` to see what changed since the pipeline started). For every changed file:
-
-1. **Input validation**: Trace every user input from entry point to storage/output. Check for: SQL injection, XSS, command injection, path traversal, SSRF.
-2. **Authentication & authorization**: Are new endpoints properly protected? Are auth checks consistent with existing patterns? Any privilege escalation paths?
-3. **Secrets & credentials**: Grep for hardcoded API keys, tokens, passwords, private keys. Check that secrets come from env vars, not source code. Verify .gitignore covers sensitive files.
-4. **Data exposure**: Are error messages leaking internal details? Are logs capturing sensitive data? Are API responses returning more data than needed?
-5. **Dependencies**: If package.json/requirements.txt changed, run the package manager's audit command (npm audit, pip-audit, etc.).
-6. **CSRF/CORS**: For new endpoints with side effects, verify CSRF protection. Check CORS configuration for overly permissive origins.
-
-For each finding, provide: severity (CRITICAL/HIGH/MEDIUM), file:line, OWASP category, description, and suggested fix.
-
-Fix any CRITICAL findings directly. For HIGH findings, fix if straightforward, otherwise document clearly.
+**Before spawn**: capture `phase_pre_sha = git rev-parse HEAD` and store at `state.phases.review.pre_sha`.
 
 **After the agent completes**:
-1. If CRITICAL issues were found and fixed, this is expected — continue
-2. If CRITICAL issues remain unfixed, log a warning in the final report
-3. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): security review complete"` if there are changes
+1. Inject fingerprints.
+2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha>` — non-empty → revert + emit invariant finding + route to fix loop.
+3. Branch per verdict (same taxonomy as SIMPLIFY). NEEDS_WORK/BLOCKED → PHASE 2.5 with `triggered_by: "review"`.
 
-## PHASE 6: CLEAN (route-gated + skippable)
+## PHASE 4.5: CHALLENGE (findings-only, route-gated)
 
-Skip if `--skip-clean` was set. Additionally, skip if `pipeline.state.json.route.selected != "strict"` — hygiene cleanup is strict-route only; `fast` and `standard` rely on PHASE 3 SIMPLIFY for lightweight polish.
+Skip if `state.route.selected == "fast"` OR `challenge` in `state.route.bypasses`.
 
-Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
+**Engine**: CHALLENGE row — always Claude. Spawn per `<engine_routing_convention>`. Agent prompt body: **`references/phases/phase-4.5-challenge.md`**.
 
-Agent prompt — pass this to the Agent tool:
-
-Scan the codebase for dead code, unused dependencies, and code hygiene issues in recently changed files. Focus on: unused imports, unreachable code paths, unused variables, dependencies in package.json that are no longer imported. Keep the scope tight — only clean what's related to recent work. Remove what's confirmed dead, leave anything ambiguous.
+**Before spawn**: capture `phase_pre_sha = git rev-parse HEAD` and store at `state.phases.challenge.pre_sha`.
 
 **After the agent completes**:
-1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): cleanup complete"` if there are changes
+1. Inject fingerprints.
+2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha>` — non-empty → revert + emit invariant finding + route to fix loop.
+3. Branch: `PASS` → PHASE 5; `NEEDS_WORK` → PHASE 2.5 with `triggered_by: "challenge"`.
 
-## PHASE 7: DOCS (skippable)
+## PHASE 5: SECURITY REVIEW (findings-only, conditional)
 
-Skip if `--skip-docs` was set. Additionally, skip if `pipeline.state.json.route.selected == "fast"` — fast-route defers docs sync (user re-runs on a separate pass or moves to `standard` if docs coverage matters for this task).
+Skip if `security` in `state.route.bypasses`. Otherwise:
+- `state.route.selected == "strict"` → run (mandatory).
+- `state.route.selected == "fast"` → skip (Stage A/B would have escalated if risk detected).
+- `state.route.selected == "standard"` → auto-detect: `git diff --name-only` for security-sensitive files OR `git diff` for `API_KEY|SECRET|TOKEN|PASSWORD|PRIVATE_KEY|Bearer|jwt|bcrypt|crypto|env\.|process\.env`. Any match → run.
 
-Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
+**Engine**: SECURITY row — Dual on `auto`. Spawn per `<engine_routing_convention>`. Agent prompt body: **`references/phases/phase-5-security.md`**.
 
-Agent prompt — pass this to the Agent tool (include the original task description from `<pipeline_config>` so the agent can detect spec paths):
-
-You are the Docs phase of the auto-resolve pipeline. You have two jobs, in this order.
-
-**Job 1 — Roadmap Sync** (run first, only if this task implemented a roadmap item)
-
-The ideate skill produces specs at `docs/roadmap/phase-N/{id}-{slug}.md` and tracks them in `docs/ROADMAP.md`. When auto-resolve finishes a task for one of those specs, the index lies until someone flips it — and nobody does, so it rots. Your job is to flip it.
-
-1. **Detect whether this task was a spec implementation.** Look at the original task description you were passed. Match against this regex: `docs/roadmap/phase-\d+/[^\s"'\`)]+\.md`. If there is no match, or if `docs/ROADMAP.md` does not exist in the repo, Job 1 is a no-op — skip straight to Job 2.
-2. **Sanity-check against the diff.** Run `git diff <pipeline.state.json.base_ref.sha> --stat`. If the diff is empty or contains only doc changes, the build phase produced nothing — do NOT flip any status. Leave Job 1 untouched and continue to Job 2.
-3. **Read the spec file** at the matched path. If its frontmatter already has `status: done`, Job 1 is already done — skip to Job 2. Otherwise:
-   - Set `status: done` in the frontmatter.
-   - Add a `completed: YYYY-MM-DD` field (use today's date from `date +%Y-%m-%d`).
-   - Do not change any other fields, and do not touch the body of the spec.
-4. **Update `docs/ROADMAP.md`.** Find the row whose `#` column matches the spec's `id` (e.g., row starting `| 2.3 |`). Change its Status column to `Done`. Do not touch any other row, and do not reformat the table.
-5. **Check whether the phase is now fully Done.** Read every row of the phase's table (the one containing the just-flipped row). If every row's Status is `Done`, archive the phase:
-   - Cut the phase's `## Phase N: …` heading and table out of the active section of ROADMAP.md.
-   - If no `## Completed` section exists at the bottom of the file, create one just above end-of-file (below Decisions if Decisions exists).
-   - Add a `<details>` block for the phase inside Completed, using the format defined in the devlyn:ideate skill's Context Archiving section. Pull each item's completion date from its spec file's `completed:` frontmatter; if a spec has none, use today's date.
-   - Item spec files stay on disk — do not delete them. Only the index row moves.
-6. **Report.** In your summary, say explicitly what you did: "Flipped spec 2.3 to done, updated ROADMAP.md row." And if applicable: "Phase 2 was fully Done — archived to Completed block."
-
-**Safety invariants** — violating any of these means stop Job 1 and report it:
-- Never flip a spec to `done` without a non-empty `git diff` touching non-doc files.
-- Never flip multiple specs in one run — one task, one spec.
-- Never edit a row whose `#` doesn't exactly match the spec's `id`.
-- Never delete spec files.
-
-**Job 2 — General doc sync**
-
-Synchronize the rest of the documentation with recent code changes. Use `git log --oneline -20` and `git diff <pipeline.state.json.base_ref.sha>` to understand what changed since the pipeline started. Update any docs that reference changed APIs, features, or behaviors. Do not create new documentation files unless the changes introduced entirely new features with no existing docs. Preserve all forward-looking content: future plans, visions, open questions. (Job 1 already handled the roadmap index — don't second-guess it here.)
+**Before spawn**: capture `phase_pre_sha = git rev-parse HEAD` and store at `state.phases.security_review.pre_sha`.
 
 **After the agent completes**:
-1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): docs updated"` if there are changes
+1. Inject fingerprints.
+2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha>` — non-empty → revert + emit invariant finding + route to fix loop.
+3. Branch per verdict. `NEEDS_WORK`/`BLOCKED` → PHASE 2.5 with `triggered_by: "security_review"`.
 
-## PHASE 8: FINAL REPORT
+## PHASE 6: CLEAN (findings-only, strict-only)
 
-After all phases complete:
+Skip if `state.route.selected != "strict"` OR `clean` in `state.route.bypasses`.
 
-1. Clean up temporary files:
-   - Delete the `.devlyn/` directory entirely (contains pipeline.state.json, criteria.generated.md if ad-hoc, `<phase>.findings.jsonl` + `<phase>.log.md` for each phase that emitted findings, fix-batch.round-N.json per fix round, screenshots/, playwright temp files)
-   - Kill any dev server process still running from browser validation
+Spawn a Claude `Agent` with `mode: "bypassPermissions"`. Prompt: "Scan recently changed files (`git diff <state.base_ref.sha>`) for dead code, unused imports, unreachable paths, unused variables, dependencies in package.json no longer imported. **Do NOT write code.** Emit `.devlyn/clean.findings.jsonl` with `rule_id` like `hygiene.dead-code`, `hygiene.unused-import`, `hygiene.unused-dep` (usually LOW, sometimes MEDIUM) + `.devlyn/clean.log.md`. Update `state.phases.clean`."
 
-2. Run `git log --oneline -10` to show commits made during the pipeline
+**Before spawn**: capture `phase_pre_sha = git rev-parse HEAD` and store at `state.phases.clean.pre_sha`.
 
-3. Present the report:
+**After the agent completes**:
+1. Inject fingerprints.
+2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha>` — non-empty → revert + emit invariant finding + route to fix loop.
+3. Branch per verdict. `NEEDS_WORK`/`BLOCKED` → PHASE 2.5 with `triggered_by: "clean"`.
 
+## PHASE 7: DOCS (doc-file mutations only)
+
+Skip if `docs` in `state.route.bypasses` OR `state.route.selected == "fast"`.
+
+Spawn a Claude `Agent` with `mode: "bypassPermissions"`. Include the original task description. Prompt: "You have two jobs:
+
+**Job 1 — Roadmap sync**: If the task matched `docs/roadmap/phase-\d+/[^\s\"']+\.md`, and `git diff <state.base_ref.sha> --stat` touches non-doc files:
+1. Read the spec. If `status: done` already, skip to Job 2.
+2. Set `status: done` in frontmatter + `completed: <today>`. Do not touch body.
+3. Update `docs/ROADMAP.md`: find the row whose `#` column matches the spec id; change Status to `Done`.
+4. If the phase is now fully Done: archive the phase block into a `## Completed <details>` block at the bottom of ROADMAP.md (format per `devlyn:ideate#context-archiving`). Item spec files stay on disk.
+
+**Job 2 — General doc sync**: Update docs referencing changed APIs/features/behaviors. Use `git log --oneline -20` + `git diff <state.base_ref.sha>`. Preserve forward-looking content (future plans, visions, open questions).
+
+**Safety**: never flip a spec `done` without a non-empty non-doc diff; never flip multiple specs in one run; never touch files outside the doc-file allowlist (`*.md`, `.mdx`, `docs/`, `README*`, `CHANGELOG*`, `CLAUDE.md`, frontmatter in specs)."
+
+**Before spawn**: capture `phase_pre_sha = git rev-parse HEAD` and store at `state.phases.docs.pre_sha`.
+
+**After the agent completes**:
+1. Enforce the doc-file allowlist: `git diff --name-only <phase_pre_sha>` — any path outside the doc-file allowlist (listed in `<post_eval_invariant>`) → `git reset --hard <phase_pre_sha>`, emit `invariant.post-eval-code-mutation` finding, route to PHASE 2.5 with `triggered_by: "docs"`.
+2. If allowlist honored and there are changes: `git add -A && git commit -m "chore(pipeline): docs updated"`.
+
+## PHASE 8: FINAL REPORT + ARCHIVE
+
+1. **Terminal verdict** per `references/pipeline-routing.md#terminal-state-algorithm`. Scan all `<phase>.findings.jsonl` for `status == "open"` findings and apply the precedence table.
+
+2. **Render report**:
 ```
-### Auto-Resolve Pipeline Complete
+### Auto-Resolve Complete — run <run_id>
 
-**Task**: [original task description]
-**Engine**: [auto / codex / claude — if auto, note which phases used which model]
-**Route**: [fast / standard / strict] (user_override: [true/false])
-  Stage A reasons: [comma-separated from state.route.stage_a.reasons]
-  Stage B: [either "no escalation" OR "escalated from <prior> — reasons: <comma-separated>"]
-  Phases skipped by route: [list optional phases skipped because of route; e.g. "review(team), security(auto-detect), clean" for standard]
+Task: <original task>
+Engine: <engine> (downgraded: <reason or no>)
+Route: <selected> (user_override: <t/f>)
+  Stage A: <reasons>
+  Stage B: <no escalation | escalated from X — reasons>
 
-**Pipeline Summary**:
-| Phase | Status | Notes |
-|-------|--------|-------|
-| Build (team-resolve) | [completed] | [brief summary; engine that ran it] |
-| Build gate | [completed / skipped / FAIL after N rounds] | [project types detected, commands run, pass/fail per command] |
-| Browser validate | [completed / skipped / auto-skipped] | [verdict, tier used, console errors, flow results] |
-| Evaluate | [PASS/NEEDS WORK after N rounds] | [verdict + key findings] |
-| Fix rounds | [N rounds / skipped] | [what was fixed] |
-| Simplify | [completed / skipped] | [changes made] |
-| Review (team) | [completed / skipped] | [findings summary; per-role engines if --engine auto] |
-| Challenge | [PASS / NEEDS WORK] | [findings count, fixes applied] |
-| Security review | [completed / skipped / auto-skipped] | [findings or "no security-sensitive changes"] |
-| Clean | [completed / skipped] | [items cleaned] |
-| Docs (update-docs) | [completed / skipped] | [docs updated] |
+Terminal verdict: <PASS / PASS_WITH_ISSUES / NEEDS_WORK / BLOCKED>
+<banner if applicable: "⚠ BUILD GATE EXHAUSTED" / "⚠ EVAL EXHAUSTED — open findings: <list file:line>" />
 
-**Evaluation Rounds**: [N] of [max-rounds] used (shared budget across PHASE 1.4-fix and PHASE 2.5)
-**Final Verdict**: [last evaluation verdict, or "BUILD GATE FAILED — code does not compile" if PHASE 1.4 exhausted the round budget before PHASE 2 ran]
-**⚠ Max-rounds exhaustion**: if the fix loop (PHASE 2.5 or 1.4-fix) exited because `rounds.global >= max_rounds` with findings still open, add a prominent warning block at the TOP of this report listing every `status: "open"` finding with its `file:line` — the user is shipping code with known unresolved issues and must see them before reviewing the diff. Template: `⚠ MAX ROUNDS EXHAUSTED — N HIGH/CRITICAL findings unresolved: [list]`.
-**Guardrails bypassed**: if any of `--skip-build-gate`, `--skip-browser`, `--security-review skip` (on strict), or `--max-rounds exhausted` fired, list them here so the user sees exactly what was traded.
+Pipeline summary:
+| Phase | Verdict | Notes |
+|-------|---------|-------|
+| BUILD | <v> | <engine, team on/off> |
+| BUILD GATE | <v> | <project types, commands> |
+| BROWSER | <v / skipped — no web> | <tier, flow> |
+| EVAL (round <N>) | <v> | <finding count by severity> |
+| FIX ROUNDS | <N of max> | <triggered_by history> |
+| SIMPLIFY | <v / skipped-route / skipped-bypass> | <finding count> |
+| REVIEW | <v / skipped> | <finding count> |
+| CHALLENGE | <v / skipped> | <finding count> |
+| SECURITY | <v / skipped> | <finding count> |
+| CLEAN | <v / skipped> | <finding count> |
+| DOCS | <completed / skipped> | <specs flipped, roadmap archived> |
 
-**Commits created**:
-[git log output]
+Guardrails bypassed: <state.route.bypasses or "none">
 
-**What to do next**:
-- Review the changes: `git diff main`
-- If satisfied, squash pipeline commits: `git rebase -i main` (combine the chore commits into meaningful ones)
-- If not satisfied, run specific fixes: `/devlyn:team-resolve [specific issue]`
-- For a final human review: `/devlyn:team-review`
+Commits: <git log --oneline from state.base_ref.sha>
+
+Audit trail: .devlyn/runs/<run_id>/
+
+Next steps:
+- Review: git diff <base_ref.sha>
+- Squash: git rebase -i <base_ref.sha>
+- Re-run fixes: /devlyn:auto-resolve "<narrower task>"
 ```
 
-</pipeline_workflow>
+3. **Archive** per `references/pipeline-state.md#archive-contract`: move `.devlyn/pipeline.state.json`, every `<phase>.findings.jsonl` and `<phase>.log.md`, `fix-batch.round-*.json`, and `criteria.generated.md` (if exists) into `.devlyn/runs/<run_id>/`. Acquire `flock .devlyn/runs/.prune.lock`, prune to last 10 directories by lexicographic `run_id` sort (excluding any with `phases.final_report.verdict == null`), release lock.
+
+4. Kill dev server from PHASE 1.5 if still running.

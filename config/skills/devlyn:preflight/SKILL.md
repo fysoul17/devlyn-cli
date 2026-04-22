@@ -54,7 +54,7 @@ Example with engine: `/devlyn:preflight --engine auto`
 
 **Engine pre-flight** (runs unless `--engine claude` was explicitly passed):
 - The default engine is `auto`. If the user did not pass `--engine`, the engine is `auto` — NOT `claude`.
-- Call `mcp__codex-cli__ping` to verify Codex MCP availability. If ping fails, fall back to `--engine claude` with a warning.
+- Call `mcp__codex-cli__ping` to verify Codex MCP availability. On failure, **silently fall back to `--engine claude`** and note `engine downgraded: codex-ping failed` in the final preflight report header. Do not abort. Matches the hands-off contract used by auto-resolve and ideate.
 
 ## PHASE 0: DISCOVER & SCOPE
 

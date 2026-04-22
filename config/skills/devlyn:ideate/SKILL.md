@@ -31,7 +31,7 @@ Parse these from the user's invocation message:
 
 **Engine pre-flight** (runs unless `--engine claude` was explicitly passed):
 - The default engine is `auto`. If the user did not pass `--engine`, the engine is `auto` — not `claude`.
-- Call `mcp__codex-cli__ping` to verify the Codex MCP server is available. If ping fails, warn the user and offer: [1] Continue with `--engine claude`, [2] Abort.
+- Call `mcp__codex-cli__ping` to verify Codex MCP availability. On failure, **silently fall back to `--engine claude`** and note `engine downgraded: codex-ping failed` in your eventual output summary. Do not present a menu; do not abort. This matches auto-resolve's hands-off contract.
 - Read `references/challenge-rubric.md` up front.
 
 **Consolidated flag**: `--with-codex` was rolled into the smarter `--engine auto` default. If the user passes it, inform them once and proceed with `--engine auto`: "Note: `--with-codex` was consolidated into `--engine auto` (default), which routes the CHALLENGE rubric pass to Codex automatically. No flag needed. Continuing with `--engine auto`."
@@ -327,40 +327,7 @@ For Quick Add with one new item, one solo pass is enough. For a full greenfield 
 
 Call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "read-only"`, `workingDirectory: <project root>`. The `prompt` parameter is built from the packaged plan + the inlined rubric + the appended Codex instructions. Codex has no filesystem access to this project, so everything it needs travels in the prompt.
 
-**Step 1 — Package the post-solo plan.** Build the prompt with these sections in this order:
-
-```
-## Problem framing (from FRAME phase)
-[problem statement, constraints, success criteria, anti-goals]
-
-## Confirmed facts vs assumptions
-Confirmed by user: [list each fact the user explicitly confirmed]
-Assumptions (not yet confirmed): [list each assumption the agent made]
-
-## Plan (post-solo-CHALLENGE)
-Vision: [one sentence]
-Phase 1 ([theme]): [items with one-line descriptions and dependencies]
-Phase 2 ([theme]): ...
-Architecture decisions: [each with what / why / alternatives considered]
-Deferred to backlog: [items + reason]
-
-## Findings from the solo rubric pass
-[list each with: severity, axis, quote, why, fix, whether applied]
-
-## Rubric
-[INLINE the full text of references/challenge-rubric.md here verbatim — Codex needs the rubric definition in the prompt itself]
-
-## Your job
-You are applying an independent rubric pass to the PLANNING document above. This is a roadmap, not code — judge the shape of the plan, not implementation details. The user explicitly asked to be challenged because soft-pedaled plans waste their time.
-
-You are running AFTER a solo pass by Claude. Catch what the solo pass missed; do not just agree with what it already caught. For each existing solo finding, reply either "confirmed" (with one-line agreement) or "I would frame this differently" (with a reason). Then add your own findings that the solo pass missed.
-
-Use the finding format from the rubric above: Severity / Quote / Axis / Why / Fix. The Quote field is load-bearing — anchor each finding to a specific line from the plan.
-
-Respect explicit user intent. If the user confirmed something in the "Confirmed facts" section, the rubric does not override it silently. Raise the conflict as a note and let the orchestrator surface it to the user.
-
-End with a verdict: PASS / PASS WITH MINOR FIXES / FAIL — REVISION REQUIRED, plus a one-line explanation.
-```
+**Step 1 — Package the post-solo plan.** Build the prompt per `references/codex-critic-template.md` (section order, rubric inlining, Codex-specific instructions all live there verbatim — follow the template structure, fill in the plan/findings sections).
 
 **Step 2 — Reconcile.** Merge the two finding lists:
 - Same finding from both → keep the more specific wording, mark "confirmed by both"

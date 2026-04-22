@@ -191,7 +191,7 @@ mcp__codex-cli__codex({
 })
 ```
 
-**After Codex completes**: verify changes were made (`git diff --stat`), then proceed to the next phase as normal. The file-based handoff (`.devlyn/done-criteria.md`, `.devlyn/EVAL-FINDINGS.md`, etc.) works identically — Codex writes the same files Claude would.
+**After Codex completes**: verify changes were made (`git diff --stat`), then proceed to the next phase as normal. The file-based handoff (`pipeline.state.json` + `<phase>.findings.jsonl` + `<phase>.log.md`) works identically — Codex writes the same files Claude would.
 
 **Session management**: For FIX LOOP iterations, use a fresh call each time (no `sessionId` reuse) because sandbox/fullAuto parameters only apply on the first call of a session.
 
