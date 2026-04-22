@@ -4,3 +4,4 @@ node_modules/
 config/skills/preflight-workspace/
 config/skills/devlyn:ideate-workspace/
 config/skills/roadmap-archival-workspace/
+config/skills/devlyn:auto-resolve-workspace/
