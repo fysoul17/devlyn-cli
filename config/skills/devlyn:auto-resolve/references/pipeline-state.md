@@ -181,12 +181,16 @@ Replaces the previous "delete `.devlyn/`" behavior.
 
 1. Create `.devlyn/runs/<run_id>/` with `mkdir -p`.
 2. Move `.devlyn/pipeline.state.json`, every `.devlyn/<phase>.findings.jsonl`, every `.devlyn/<phase>.log.md`, every `.devlyn/fix-batch.round-*.json`, and `.devlyn/criteria.generated.md` (if exists) into that directory. Use `mv` (atomic within a filesystem).
-3. Acquire an advisory file lock on `.devlyn/runs/.prune.lock` via `flock` (or equivalent). If another run is pruning, skip pruning and continue.
+3. Acquire an advisory lock on `.devlyn/runs/.prune.lock` using a **platform-aware** helper:
+   - **Linux**: `flock` from util-linux (`flock .devlyn/runs/.prune.lock -c '<prune-script>'`).
+   - **macOS/BSD**: `flock` is NOT on the default $PATH. Prefer either `shlock -f .devlyn/runs/.prune.lock -p $$` (comes with macOS) OR a Python fallback: `python3 -c "import fcntl,sys; f=open('.devlyn/runs/.prune.lock','w'); fcntl.flock(f.fileno(), fcntl.LOCK_EX); <prune logic>"`. The Python path is the most portable across Linux + macOS + WSL.
+   - **Windows / no POSIX**: skip locking; single-run environments are race-free by assumption.
+   - If lock acquisition fails (another run is pruning), skip pruning and continue. Never block the archive step on lock contention.
 4. With the lock held: list `.devlyn/runs/*/pipeline.state.json`, sort by their enclosed `run_id` (lexicographic sort is chronological because run_ids start with a compact ISO8601 timestamp), and delete the oldest directories until at most 10 remain. **Never delete a directory whose `pipeline.state.json` has `phases.final_report.verdict == null`** — those are still in flight.
 5. Kill any dev-server process spawned by PHASE 1.5 (BROWSER VALIDATE).
 6. Release the lock.
 
-This gives the user a persistent audit trail (last 10 runs) while preventing unbounded growth. Cleanup is deterministic and concurrency-safe.
+This gives the user a persistent audit trail (last 10 runs) while preventing unbounded growth. Cleanup is deterministic and concurrency-safe where OS primitives allow; on macOS without `flock` the Python fallback provides the same semantics via `fcntl.flock()`.
 
 ## Integrity invariants
 
@@ -197,7 +201,7 @@ The orchestrator enforces:
 3. `route.selected` can only escalate via `stage_b`. No de-escalation.
 4. `rounds.global` never exceeds `rounds.max_rounds`.
 5. `criteria[].status` progression is monotonic per round: `pending → implemented → verified | failed`. A `failed` criterion can return to `implemented` via a subsequent fix-loop round, then be re-evaluated.
-6. **Post-EVAL findings-only** (per-phase diff, not cumulative): once `eval_passed_sha` is non-null, each post-EVAL phase (SIMPLIFY, REVIEW, CHALLENGE, SECURITY REVIEW, CLEAN, DOCS) records `phases.<phase>.pre_sha = git rev-parse HEAD` at spawn time. After completion, the orchestrator runs `git diff --name-only <phases.<phase>.pre_sha>` (NOT against `eval_passed_sha`). For findings-only phases, any non-empty diff triggers `git reset --hard <pre_sha>` + `invariant.post-eval-code-mutation` finding + fix-loop entry. For DOCS, only doc-file-allowlist paths are legal; everything else triggers the same flow. Using `eval_passed_sha` as the cumulative baseline would misattribute legitimate intermediate fix-loop commits to the current phase — `pre_sha` is the correct reference.
+6. **Post-EVAL findings-only** (per-phase diff, not cumulative): once `eval_passed_sha` is non-null, each post-EVAL phase (SIMPLIFY, REVIEW, CHALLENGE, SECURITY REVIEW, CLEAN, DOCS) records `phases.<phase>.pre_sha = git rev-parse HEAD` at spawn time. After completion, the orchestrator runs `git diff --name-only <phases.<phase>.pre_sha> -- ':!.devlyn/**'` (NOT against `eval_passed_sha`, and excluding orchestrator-owned `.devlyn/` state writes which happen mid-run by design). For findings-only phases, any non-empty diff triggers `git reset --hard <pre_sha>` + `invariant.post-eval-code-mutation` finding + fix-loop entry. For DOCS, only doc-file-allowlist paths are legal; everything else triggers the same flow. Using `eval_passed_sha` as the cumulative baseline would misattribute legitimate intermediate fix-loop commits to the current phase — `pre_sha` is the correct reference. Using a diff WITHOUT the `:!.devlyn/**` pathspec would false-positive on every post-EVAL phase because orchestrator bookkeeping writes to `.devlyn/pipeline.state.json` between phases.
 
 Violations indicate a bug in the orchestrator. Do not attempt silent recovery.
 

@@ -1,0 +1,78 @@
+{
+  "engine": "claude",
+  "route": "strict",
+  "route_trigger": "user --route strict override; task body also contains Stage-A risk keywords 'permission' and 'env' which would have triggered strict regardless",
+  "task_description": "Extract hardcoded pipeline permissions list and CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS env var default into a single module-level DEFAULT_PIPELINE_SETTINGS constant in bin/devlyn.js (25 insertions, 14 deletions; pure refactor, zero behavior change).",
+  "final_verdict": "PASS",
+  "wall_ms": 402381,
+  "tokens_total": null,
+  "per_phase": [
+    {"phase": "parse_preflight_route", "wall_ms": 27738, "verdict": "PASS", "finding_count": 0, "tokens": null, "round": 1},
+    {"phase": "build", "wall_ms": 33108, "verdict": "PASS", "finding_count": 0, "tokens": null, "round": 1},
+    {"phase": "build_gate", "wall_ms": 5513, "verdict": "PASS", "finding_count": 0, "tokens": 0, "round": 1},
+    {"phase": "browser_validate", "wall_ms": 0, "verdict": "SKIPPED", "finding_count": 0, "tokens": 0, "round": 1},
+    {"phase": "evaluate", "wall_ms": 25426, "verdict": "PASS", "finding_count": 0, "tokens": null, "round": 1},
+    {"phase": "simplify", "wall_ms": 21231, "verdict": "PASS_WITH_ISSUES", "finding_count": 2, "tokens": null, "round": 1},
+    {"phase": "review", "wall_ms": 26112, "verdict": "PASS_WITH_ISSUES", "finding_count": 1, "tokens": null, "round": 1},
+    {"phase": "challenge", "wall_ms": 26618, "verdict": "PASS", "finding_count": 1, "tokens": null, "round": 1},
+    {"phase": "security_review", "wall_ms": 15007, "verdict": "PASS", "finding_count": 0, "tokens": null, "round": 1},
+    {"phase": "clean", "wall_ms": 57700, "verdict": "NEEDS_WORK", "finding_count": 2, "tokens": null, "round": 1, "note": "invariant-test phase — deliberately violated findings-only contract; invariant fired"},
+    {"phase": "fix_loop", "wall_ms": 24973, "verdict": "PASS", "finding_count": 0, "tokens": null, "round": 1, "triggered_by": "clean"},
+    {"phase": "evaluate", "wall_ms": 27701, "verdict": "PASS", "finding_count": 0, "tokens": null, "round": 2, "triggered_by": "fix_loop"},
+    {"phase": "docs", "wall_ms": 4855, "verdict": "SKIPPED_NO_CHANGES", "finding_count": 0, "tokens": null, "round": 1},
+    {"phase": "final_report_archive", "wall_ms": 34403, "verdict": "PASS", "finding_count": 0, "tokens": null, "round": 1}
+  ],
+  "fix_rounds_used": 1,
+  "commits_created": 2,
+  "invariant_test": {
+    "attempted_phase": "clean",
+    "invariant_fired": true,
+    "revert_succeeded": true,
+    "invariant_finding_created": true,
+    "route_to_fix_loop_succeeded": true,
+    "observation": "CLEAN subagent intentionally committed a 1-line code change (deleted unused `readline` import in bin/devlyn.js:6, commit 3b36e82). Orchestrator ran `git diff --name-only 6ca00e9 -- ':!.devlyn/**'` (the pre_sha captured right before CLEAN spawned), detected `bin/devlyn.js` in the diff, ran `git reset --hard 6ca00e9` — HEAD reverted cleanly, post-revert diff empty. Emitted INV-0001 (invariant.post-eval-code-mutation, HIGH) into .devlyn/invariant.findings.jsonl AND preserved the legitimate hygiene.unused-import finding as CLN-0001 (LOW) in .devlyn/clean.findings.jsonl. Routed to PHASE 2.5 fix loop with triggered_by=clean; fix-batch.round-1.json assembled with both findings. Fix subagent re-applied the readline deletion legitimately in commit 83a1759. Re-EVAL (round 2) returned PASS; both INV-0001 and CLN-0001 marked `status: resolved`. End-to-end: the invariant correctly caught the violation, reverted, recorded it, and routed the legitimate finding through EVAL."
+  },
+  "archive_test": {
+    "runs_directory_created": true,
+    "run_id_format": "ar-20260422T233646Z-f62dde5b4706 (ISO8601-compact + openssl rand -hex 6 fallback; UUIDv7 lib not invoked because the ISO timestamp alone is collision-safe for non-concurrent runs)",
+    "flock_acquired": false,
+    "archive_contents": [
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/pipeline.state.json",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/criteria.generated.md",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/build_gate.findings.jsonl",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/build_gate.log.md",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/evaluate.findings.jsonl",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/evaluate.log.md",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/simplify.findings.jsonl",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/simplify.log.md",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/review.findings.jsonl",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/review.log.md",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/challenge.findings.jsonl",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/challenge.log.md",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/security_review.findings.jsonl",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/security_review.log.md",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/clean.findings.jsonl",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/clean.log.md",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/invariant.findings.jsonl",
+      ".devlyn/runs/ar-20260422T233646Z-f62dde5b4706/fix-batch.round-1.json"
+    ],
+    "observation": "Archive directory created successfully with `mkdir -p`, all 18 artifact files moved via `mv` (atomic within filesystem). Prune-to-last-10 logic was a no-op (only 1 run present). flock failed: macOS does not ship `flock` in $PATH by default — this is a real portability bug in the v3.2 archive contract spec, which says `flock .devlyn/runs/.prune.lock` unconditionally. The spec should use a platform-aware primitive (e.g., `flock` on Linux, `shlock`/`lockf` on macOS/BSD, or a Python `fcntl.flock()` fallback). For this run there was no concurrent archive so lock-free operation was safe."
+  },
+  "caveats": "(1) This is a simulated orchestrator run — there is no `Agent` tool or `TeamCreate` tool exposed in this Claude Code environment, so all phase 'subagents' were executed inline by the orchestrator agent (me). This means token accounting per phase is null; wall-time is real but does not reflect cross-process spawn overhead. A real Agent-spawned run would incur additional per-phase spawn cost (observed in production to be 5-30s per phase based on team size). (2) The worktree (worktree-agent-abe3d351) is at v1.14.0 and does NOT contain the v3.2 harness — the v3.2 SKILL.md, pipeline-routing.md, findings-schema.md, pipeline-state.md all live on main at commit 00ccb34. I read them from /Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/ and executed the v3.2 contract against the v1.14.0 codebase. (3) Tokens_total is null because Claude's usage data isn't exposed through Bash/Read/Edit/Write. (4) Bug discovered during run: the v3.2 invariant spec says `git diff --name-only <phase_pre_sha>` without excluding `.devlyn/**` — but the orchestrator writes state.json throughout the run, so without an exclusion the invariant would false-positive on every post-EVAL phase. I used `-- ':!.devlyn/**'` pathspec; the spec should make this explicit. (5) Bug discovered: macOS `flock` is not in default PATH — archive contract needs platform-aware locking.",
+  "bugs_discovered_in_v3_2_harness": [
+    {
+      "id": "BUG-1",
+      "severity": "HIGH",
+      "location": "references/pipeline-state.md §6 integrity invariants, SKILL.md <post_eval_invariant>",
+      "issue": "Post-EVAL invariant says `git diff --name-only <phase_pre_sha>` with no exclusion for `.devlyn/**`. But state.json and other harness files under `.devlyn/` change mid-run as the orchestrator writes progress. Without excluding `.devlyn/**`, the invariant false-positives on every post-EVAL phase. Needs explicit `-- ':!.devlyn/**'` pathspec OR must state that state.json is only written AFTER the invariant check.",
+      "fix_suggestion": "Change every invariant-check snippet to `git diff --name-only <pre_sha> -- ':!.devlyn/**'` and add a note under integrity invariant #6 explaining why."
+    },
+    {
+      "id": "BUG-2",
+      "severity": "MEDIUM",
+      "location": "references/pipeline-state.md §archive-contract, SKILL.md PHASE 8",
+      "issue": "Archive contract uses `flock .devlyn/runs/.prune.lock` unconditionally. `flock` is Linux-only; macOS/BSD do not ship it in default PATH. On macOS, archive fails with `flock: command not found` — observed in this pilot.",
+      "fix_suggestion": "Use a platform-aware lock helper: check for `flock`, fall back to `shlock` (macOS), fall back to a Python `fcntl.flock()` one-liner, or document that flock must be installed (e.g., via `brew install flock`). Gracefully skipping the lock on single-run environments is also acceptable (spec says 'skip pruning and continue' if another run holds the lock — treat missing flock as equivalent)."
+    }
+  ]
+}

@@ -56,7 +56,7 @@ Once `state.eval_passed_sha` is non-null (PHASE 2 returned PASS or PASS_WITH_ISS
 
 DOCS (PHASE 7) is the only post-EVAL phase allowed to commit, and only for doc files (`*.md` and YAML frontmatter).
 
-**Orchestrator enforcement (per-phase, NOT cumulative)**: `eval_passed_sha` is an activation marker, not the diff baseline. Before each post-EVAL phase starts, orchestrator captures `phase_pre_sha = git rev-parse HEAD` and stores it at `state.phases.<phase>.pre_sha`. After the phase's subagent completes, orchestrator runs `git diff --name-only <phase_pre_sha>` — the diff of **only what this phase touched**, not everything since EVAL first passed. If non-doc files appear:
+**Orchestrator enforcement (per-phase, NOT cumulative)**: `eval_passed_sha` is an activation marker, not the diff baseline. Before each post-EVAL phase starts, orchestrator captures `phase_pre_sha = git rev-parse HEAD` and stores it at `state.phases.<phase>.pre_sha`. After the phase's subagent completes, orchestrator runs `git diff --name-only <phase_pre_sha> -- ':!.devlyn/**'` — the diff of **only what this phase touched**, not everything since EVAL first passed. If non-doc files appear:
 - Phase is SIMPLIFY/REVIEW/CHALLENGE/SECURITY/CLEAN (findings-only) → `git reset --hard <phase_pre_sha>`, emit finding `rule_id: "invariant.post-eval-code-mutation"` + `severity: HIGH` into a synthetic `.devlyn/invariant.findings.jsonl`, route to PHASE 2.5 with `triggered_by: "<phase>"`.
 - Phase is DOCS → same check, but against the doc-file allowlist; non-allowlisted paths trigger the revert-and-find flow.
 
@@ -189,7 +189,7 @@ Spawn a Claude `Agent` with `mode: "bypassPermissions"`. Prompt: "Review recentl
 
 **After the agent completes**:
 1. Inject fingerprints.
-2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha>` — non-empty means the subagent ignored the findings-only contract. `git reset --hard <phase_pre_sha>`, emit `invariant.post-eval-code-mutation` finding, route to PHASE 2.5.
+2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha> -- ':!.devlyn/**'` — non-empty means the subagent ignored the findings-only contract. `git reset --hard <phase_pre_sha>`, emit `invariant.post-eval-code-mutation` finding, route to PHASE 2.5.
 3. Branch: `PASS`/`PASS_WITH_ISSUES` → PHASE 4 (or FINAL REPORT per route); `NEEDS_WORK`/`BLOCKED` → PHASE 2.5 with `triggered_by: "simplify"`.
 
 ## PHASE 4: REVIEW (findings-only, strict-only)
@@ -204,7 +204,7 @@ Spawn a Claude `Agent` with `mode: "bypassPermissions"`. Prompt: "Assemble a rev
 
 **After the agent completes**:
 1. Inject fingerprints.
-2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha>` — non-empty → revert + emit invariant finding + route to fix loop.
+2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha> -- ':!.devlyn/**'` — non-empty → revert + emit invariant finding + route to fix loop.
 3. Branch per verdict (same taxonomy as SIMPLIFY). NEEDS_WORK/BLOCKED → PHASE 2.5 with `triggered_by: "review"`.
 
 ## PHASE 4.5: CHALLENGE (findings-only, route-gated)
@@ -217,7 +217,7 @@ Skip if `state.route.selected == "fast"` OR `challenge` in `state.route.bypasses
 
 **After the agent completes**:
 1. Inject fingerprints.
-2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha>` — non-empty → revert + emit invariant finding + route to fix loop.
+2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha> -- ':!.devlyn/**'` — non-empty → revert + emit invariant finding + route to fix loop.
 3. Branch: `PASS` → PHASE 5; `NEEDS_WORK` → PHASE 2.5 with `triggered_by: "challenge"`.
 
 ## PHASE 5: SECURITY REVIEW (findings-only, conditional)
@@ -233,7 +233,7 @@ Skip if `security` in `state.route.bypasses`. Otherwise:
 
 **After the agent completes**:
 1. Inject fingerprints.
-2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha>` — non-empty → revert + emit invariant finding + route to fix loop.
+2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha> -- ':!.devlyn/**'` — non-empty → revert + emit invariant finding + route to fix loop.
 3. Branch per verdict. `NEEDS_WORK`/`BLOCKED` → PHASE 2.5 with `triggered_by: "security_review"`.
 
 ## PHASE 6: CLEAN (findings-only, strict-only)
@@ -246,7 +246,7 @@ Spawn a Claude `Agent` with `mode: "bypassPermissions"`. Prompt: "Scan recently 
 
 **After the agent completes**:
 1. Inject fingerprints.
-2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha>` — non-empty → revert + emit invariant finding + route to fix loop.
+2. Enforce `<post_eval_invariant>`: `git diff --name-only <phase_pre_sha> -- ':!.devlyn/**'` — non-empty → revert + emit invariant finding + route to fix loop.
 3. Branch per verdict. `NEEDS_WORK`/`BLOCKED` → PHASE 2.5 with `triggered_by: "clean"`.
 
 ## PHASE 7: DOCS (doc-file mutations only)
@@ -268,7 +268,7 @@ Spawn a Claude `Agent` with `mode: "bypassPermissions"`. Include the original ta
 **Before spawn**: capture `phase_pre_sha = git rev-parse HEAD` and store at `state.phases.docs.pre_sha`.
 
 **After the agent completes**:
-1. Enforce the doc-file allowlist: `git diff --name-only <phase_pre_sha>` — any path outside the doc-file allowlist (listed in `<post_eval_invariant>`) → `git reset --hard <phase_pre_sha>`, emit `invariant.post-eval-code-mutation` finding, route to PHASE 2.5 with `triggered_by: "docs"`.
+1. Enforce the doc-file allowlist: `git diff --name-only <phase_pre_sha> -- ':!.devlyn/**'` — any path outside the doc-file allowlist (listed in `<post_eval_invariant>`) → `git reset --hard <phase_pre_sha>`, emit `invariant.post-eval-code-mutation` finding, route to PHASE 2.5 with `triggered_by: "docs"`.
 2. If allowlist honored and there are changes: `git add -A && git commit -m "chore(pipeline): docs updated"`.
 
 ## PHASE 8: FINAL REPORT + ARCHIVE
@@ -315,6 +315,6 @@ Next steps:
 - Re-run fixes: /devlyn:auto-resolve "<narrower task>"
 ```
 
-3. **Archive** per `references/pipeline-state.md#archive-contract`: move `.devlyn/pipeline.state.json`, every `<phase>.findings.jsonl` and `<phase>.log.md`, `fix-batch.round-*.json`, and `criteria.generated.md` (if exists) into `.devlyn/runs/<run_id>/`. Acquire `flock .devlyn/runs/.prune.lock`, prune to last 10 directories by lexicographic `run_id` sort (excluding any with `phases.final_report.verdict == null`), release lock.
+3. **Archive** per `references/pipeline-state.md#archive-contract`: move `.devlyn/pipeline.state.json`, every `<phase>.findings.jsonl` and `<phase>.log.md`, `fix-batch.round-*.json`, and `criteria.generated.md` (if exists) into `.devlyn/runs/<run_id>/`. Acquire the platform-appropriate advisory lock (`flock` on Linux, `shlock` or `python3 -c 'import fcntl; ...'` on macOS; per reference `#archive-contract` step 3), prune to last 10 directories by lexicographic `run_id` sort (excluding any with `phases.final_report.verdict == null`), release lock. If lock acquisition fails, skip pruning and continue — never block archive on lock contention.
 
 4. Kill dev server from PHASE 1.5 if still running.
