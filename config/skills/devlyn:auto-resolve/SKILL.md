@@ -55,6 +55,7 @@ Phase-level "Engine routing" notes below are short reminders only — `engine-ro
    - `--skip-browser` (false) — skip browser validation phase (auto-skipped for non-web changes)
    - `--skip-docs` (false) — skip update-docs phase
    - `--skip-build-gate` (false) — skip the deterministic build gate (Phase 1.4). Not recommended — the build gate is the primary defense against "tests pass locally, breaks in CI/Docker/production" class of bugs.
+   - `--route MODE` (auto) — selects pipeline shape per `references/pipeline-routing.md`. `auto` (default): orchestrator decides per spec/task signals (Stage A in PHASE 0.5; Stage B checkpoint after PHASE 1.4). Explicit: `fast` (minimal phase set for low-risk / low-complexity work), `standard` (default medium), `strict` (full pipeline + team + mandatory security + build-gate strict+docker). User-explicit value disables Stage B auto-escalation; user intent wins.
    - `--build-gate MODE` (auto) — controls build gate behavior. `auto`: detect project type and run appropriate build/typecheck/lint commands; if Dockerfile(s) are present, Docker builds are included automatically. `strict`: auto + treat warnings as errors. `no-docker`: auto but skip Docker builds even if Dockerfiles exist (for faster iteration). `skip`: same as --skip-build-gate.
    - `--engine MODE` (auto) — controls which model handles each pipeline phase and team role. Modes:
      - `auto` (default): each phase and team role routes to the optimal model based on benchmark data. Requires Codex MCP server. Codex handles BUILD/FIX (SWE-bench Pro lead) and several team roles; Claude handles EVALUATE, CHALLENGE, BROWSER, and orchestration — creating a GAN-like dynamic where the builder and critic are always different models.
@@ -88,7 +89,8 @@ Phase-level "Engine routing" notes below are short reminders only — `engine-ro
 Auto-resolve pipeline starting
 Task: [extracted task description]
 Engine: [auto / codex / claude]
-Phases: Build → Build Gate → [Browser] → Evaluate → [Fix loop if needed] → Simplify → [Review] → Challenge → [Security] → [Clean] → [Docs]
+Route: [fast / standard / strict / auto — Stage A decides in PHASE 0.5 if auto]
+Phases: Build → Build Gate → [Browser] → Evaluate → [Fix loop if needed] → [per-route optional phases]
 Max evaluation rounds: [N]
 ```
 
@@ -125,6 +127,23 @@ State.json was created in PHASE 0. This phase populates `source`, `criteria[]`, 
 
 Every downstream phase reads `pipeline.state.json` first and follows `source.spec_path` or `source.criteria_path` to the canonical criteria text. No intermediate copy exists.
 
+**Step 3 — Compute Stage A routing decision** (per `references/pipeline-routing.md`):
+
+Decision order (first match wins; short-circuit):
+
+1. **User override**: if `--route` is `fast`, `standard`, or `strict`, set `route.selected = <value>`, `route.user_override = true`, `route.stage_a.reasons = ["user explicit override: --route <value>"]`. Stage B (post-build checkpoint) will be skipped. Done.
+2. **Risk keyword scan**: grep the source body (spec for spec-driven; task description for generated) for any of: `auth, login, session, token, secret, password, crypto, api, env, permission, access, database, migration, payment`. Any hit → `route.selected = "strict"`, reasons list which keywords matched. Done.
+3. **Spec-driven, complexity-based**: for `source.type == "spec"`, read `spec.frontmatter.complexity`:
+   - `"high"` → `route.selected = "strict"`
+   - `"medium"` → `route.selected = "standard"`
+   - `"low"` → `route.selected = "fast"`
+   - Reasons include the complexity value, dep count, and "0 risk keywords".
+4. **Generated task, complexity deferred**: for `source.type == "generated"`, set `route.selected = "standard"` as a safe default; reasons say `"source.type=generated, Stage A defers complexity-based routing to Stage B post-BUILD"`. BUILD will write `phases.build.complexity` and Stage B consults it.
+
+Write `route.stage_a.at` (current UTC ISO-8601) and `route.stage_a.reasons` to state.json. Update the preflight announce line to include the selected route:
+
+`Spec preflight: <spec path> — complexity <value>, <N> deps done, <M> criteria, route=<fast/standard/strict> (reasons: <comma-separated>), proceeding.`
+
 ## PHASE 1: BUILD
 
 **Engine**: BUILD row of the routing table — Codex on `auto`/`codex`, Claude on `claude`. Per `<engine_routing_convention>` above. Subagents do not have access to skills, so the prompt below includes everything they need inline.
@@ -147,7 +166,7 @@ Implement code changes that satisfy every pending criterion in `pipeline.state.j
 - **If `source.type == "generated"` and `.devlyn/criteria.generated.md` does not exist**: create it once with `## Requirements` (each `- [ ]` testable in under 30 seconds, specific, scoped), `## Out of Scope`, `## Verification`. Then populate state.json `criteria[]` with `{"id": "C<N>", "ref": "criteria.generated://requirements/<N-1>", "status": "pending", "evidence": [], "failed_by_finding_ids": []}`. Also classify task complexity into `low` (single file, no API changes), `medium` (multi-file, no cross-boundary), or `high` (cross-boundary, security-sensitive, or new subsystem) and write it as `phases.build.complexity` in state.json for team-gating below.
 - **No pending criterion remains**: every entry in `criteria[]` must transition to `status: "implemented"` with an `evidence` record before you exit. There is no exception. If a criterion genuinely cannot be satisfied in this run (missing external dependency, blocking design ambiguity that requires human input), stop the build entirely: set `phases.build.verdict: "BLOCKED"` and report the obstacle in your return text so the orchestrator halts the pipeline. Never exit with a criterion still `pending`. BUILD must not mark any criterion `failed` — `failed` is Evaluate-only per the state-machine in `references/pipeline-state.md`. The only BUILD-legal transitions are `pending → implemented` (per-criterion success) or halt via `phases.build.verdict: "BLOCKED"` (entire phase halts).
 - **Tests** added or updated for changed behavior. Run the full test suite before you stop.
-- **Team** (only if source-declared `complexity != "low"` — for spec, read `source.spec_path` frontmatter; for generated, use the classification you wrote to `phases.build.complexity` above — OR any risk keyword matches the source body: `auth, login, session, token, secret, password, crypto, api, env, permission, access, database, migration, payment`): use `TeamCreate` per the task-type table below; collect findings; shut down the team before exiting. Otherwise implement directly.
+- **Team** (assemble if ANY of: `state.route.selected == "strict"` (mandatory) OR source-declared `complexity != "low"` — for spec, read `source.spec_path` frontmatter; for generated, use the classification you wrote to `phases.build.complexity` above — OR any risk keyword matches the source body: `auth, login, session, token, secret, password, crypto, api, env, permission, access, database, migration, payment`): use `TeamCreate` per the task-type table below; collect findings; shut down the team before exiting. Otherwise implement directly.
 </output_contract>
 
 <quality_bar>
@@ -197,7 +216,7 @@ Your job: detect every project type in this repo, run their build/typecheck/lint
 2. Scan the repo to detect all matching project types (a monorepo may match several)
 3. Detect the package manager (npm/pnpm/yarn/bun) per the rules in the reference file
 4. Run all gate commands. Sequential within a project type, parallel across unrelated types.
-5. If `--build-gate strict` is set, apply strict-mode flags per the reference file
+5. If `--build-gate strict` is set **OR** `pipeline.state.json.route.selected == "strict"`, apply strict-mode flags per the reference file. Strict route forces strict build gate by default; `--skip-build-gate` still bypasses (user flags always win — the bypass is logged in the final report's `Guardrails bypassed` field per `references/pipeline-routing.md`).
 6. Run Dockerfile builds if Dockerfiles are detected, UNLESS `--build-gate no-docker` is set (see reference file)
 
 **Output contract** (see `references/findings-schema.md` and `references/pipeline-state.md`):
@@ -209,9 +228,26 @@ Your job: detect every project type in this repo, run their build/typecheck/lint
 **After the agent completes**:
 1. **Inject fingerprints.** Run the reference snippet from `references/findings-schema.md` over `.devlyn/build_gate.findings.jsonl` — compute `partial_fingerprints` for each line and write back. This is deterministic orchestrator bookkeeping; do not delegate to the subagent.
 2. Read `pipeline.state.json.phases.build_gate.verdict`
-3. Branch:
+3. **Route Stage B checkpoint** (only runs when `phases.build_gate.verdict == "PASS"` and `route.user_override == false`; per `references/pipeline-routing.md`):
+
+   Gather real diff signals against `base_ref.sha`:
+   - `diff_files = git diff --name-only <base_ref.sha> | wc -l`
+   - `diff_lines = git diff --shortstat <base_ref.sha>` total changed
+   - `risk_in_diff = git diff <base_ref.sha>` greps any of the 14 risk-class keywords
+   - `api_surface = diff --name-only` matches `src/api/`, `routes/`, `handlers/`, `app/api/`
+   - `cross_boundary = diff --name-only` spans ≥3 top-level directories
+   - `tests_absent = any new file under src/ without a corresponding test file`
+
+   Apply escalation rules (any match escalates one tier, `strict` is the cap):
+   - `risk_in_diff` → force `strict`
+   - `cross_boundary` OR `diff_files > 10` OR `diff_lines > 400` → escalate one tier (`fast → standard`, `standard → strict`)
+   - `api_surface` OR `tests_absent` → escalate `fast → standard` (no effect at `standard` or `strict`)
+
+   If any rule fires, update `route.selected` to the new tier, set `route.stage_b.at` (current UTC ISO-8601), `route.stage_b.escalated_from` (prior route), and `route.stage_b.reasons` listing each triggering signal. Never de-escalate.
+
+4. Branch:
    - `PASS` → continue to PHASE 1.5
-   - `FAIL` → go to PHASE 1.4-fix (build gate fix loop)
+   - `FAIL` → go to PHASE 1.4-fix (build gate fix loop) — Stage B does not run; diff is not yet stable.
 
 ## PHASE 1.4-fix: BUILD GATE FIX LOOP
 
@@ -371,9 +407,11 @@ When a previously-failed criterion is now satisfied, update its entry in state.j
    - If invoked from PHASE 2 (eval failure) → go back to PHASE 2 to re-evaluate
    - If invoked from PHASE 1.5 (browser failure) → go back to PHASE 1.5 to re-validate, then PHASE 2 only if browser passes
 
-## PHASE 3: SIMPLIFY
+## PHASE 3: SIMPLIFY (route-gated)
 
-Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` for a quick cleanup pass.
+Skip if `pipeline.state.json.route.selected == "fast"` — the fast route skips polish phases by design. User `--skip-*` flag for simplify does not exist; route controls inclusion.
+
+Otherwise (`standard` or `strict`), spawn a subagent using the Agent tool with `mode: "bypassPermissions"` for a quick cleanup pass.
 
 Agent prompt — pass this to the Agent tool:
 
@@ -382,9 +420,9 @@ Review the recently changed files (use `git diff <pipeline.state.json.base_ref.s
 **After the agent completes**:
 1. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): simplify pass complete"` if there are changes
 
-## PHASE 4: REVIEW (skippable)
+## PHASE 4: REVIEW (route-gated + skippable)
 
-Skip if `--skip-review` was set.
+Skip if `--skip-review` was set. Additionally, skip if `pipeline.state.json.route.selected != "strict"` — team review is strict-route only; `fast` and `standard` rely on PHASE 2 EVALUATE + PHASE 4.5 CHALLENGE for quality coverage.
 
 **Engine**: REVIEW (team) — per-role routing per the team-review table in `references/engine-routing.md`. Dual roles run both models in parallel and merge findings.
 
@@ -402,7 +440,9 @@ Clean up the team after completion.
 1. If CRITICAL issues remain unfixed, log a warning in the final report
 2. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): review fixes complete"` if there are changes
 
-## PHASE 4.5: CHALLENGE
+## PHASE 4.5: CHALLENGE (route-gated)
+
+Skip if `pipeline.state.json.route.selected == "fast"` — the fast route reserves Challenge for `standard` and `strict` where the full-diff cold read adds ship-readiness value worth the token cost.
 
 Every prior phase used checklists, criteria, or structured categories. This phase is deliberately different — it's a fresh pair of eyes with no checklist, no prior context, and a skeptical mandate. The subagent hasn't seen the criteria, the eval findings, or the review results. It reads the raw diff cold and asks: "would I mass-ship this?"
 
@@ -459,15 +499,18 @@ BAD (vague, unanchored): "The error handling could be improved. Consider being m
    1. **Checkpoint**: `git add -A && git commit -m "chore(pipeline): challenge fixes complete"`
    2. Continue to PHASE 5 (do NOT re-run challenge — one pass is sufficient to avoid infinite loops)
 
-## PHASE 5: SECURITY REVIEW (conditional)
+## PHASE 5: SECURITY REVIEW (route-gated + conditional)
 
-Determine whether to run this phase:
-- If `--security-review always` → run
-- If `--security-review skip` → skip
-- If `--security-review auto` (default) → auto-detect by scanning changed files for security-sensitive patterns:
+Determine whether to run this phase (user `--security-review` flag always wins; then route; then auto-detect):
+
+- If `--security-review skip` → skip.
+- If `--security-review always` → run.
+- If `pipeline.state.json.route.selected == "strict"` → **run** by default (strict route was selected because something risky is in play; security review is the default guardrail). `--security-review skip` still bypasses — bypasses are logged in the final report's `Guardrails bypassed` field per `references/pipeline-routing.md`.
+- If `pipeline.state.json.route.selected == "fast"` → skip (fast-route assumes no risk; Stage A/B would have escalated if risk was detected).
+- Otherwise (`standard` with `--security-review auto` default): auto-detect by scanning changed files for security-sensitive patterns:
   - Run `git diff <pipeline.state.json.base_ref.sha> --name-only` and check for files matching: `*auth*`, `*login*`, `*session*`, `*token*`, `*secret*`, `*crypt*`, `*password*`, `*api*`, `*middleware*`, `*env*`, `*config*`, `*permission*`, `*role*`, `*access*`
   - Also run `git diff <pipeline.state.json.base_ref.sha>` and scan for patterns: `API_KEY`, `SECRET`, `TOKEN`, `PASSWORD`, `PRIVATE_KEY`, `Bearer`, `jwt`, `bcrypt`, `crypto`, `env.`, `process.env`
-  - If any match → run. If no matches → skip and note "Security review skipped — no security-sensitive changes detected."
+  - If any match → run. If no matches → skip and note "Security review skipped — standard route, no security-sensitive changes detected."
 
 Spawn a subagent using the Agent tool with `mode: "bypassPermissions"` for a dedicated security audit.
 
@@ -493,9 +536,9 @@ Fix any CRITICAL findings directly. For HIGH findings, fix if straightforward, o
 2. If CRITICAL issues remain unfixed, log a warning in the final report
 3. **Checkpoint**: Run `git add -A && git commit -m "chore(pipeline): security review complete"` if there are changes
 
-## PHASE 6: CLEAN (skippable)
+## PHASE 6: CLEAN (route-gated + skippable)
 
-Skip if `--skip-clean` was set.
+Skip if `--skip-clean` was set. Additionally, skip if `pipeline.state.json.route.selected != "strict"` — hygiene cleanup is strict-route only; `fast` and `standard` rely on PHASE 3 SIMPLIFY for lightweight polish.
 
 Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
 
@@ -508,7 +551,7 @@ Scan the codebase for dead code, unused dependencies, and code hygiene issues in
 
 ## PHASE 7: DOCS (skippable)
 
-Skip if `--skip-docs` was set.
+Skip if `--skip-docs` was set. Additionally, skip if `pipeline.state.json.route.selected == "fast"` — fast-route defers docs sync (user re-runs on a separate pass or moves to `standard` if docs coverage matters for this task).
 
 Spawn a subagent using the Agent tool with `mode: "bypassPermissions"`.
 
@@ -564,6 +607,10 @@ After all phases complete:
 
 **Task**: [original task description]
 **Engine**: [auto / codex / claude — if auto, note which phases used which model]
+**Route**: [fast / standard / strict] (user_override: [true/false])
+  Stage A reasons: [comma-separated from state.route.stage_a.reasons]
+  Stage B: [either "no escalation" OR "escalated from <prior> — reasons: <comma-separated>"]
+  Phases skipped by route: [list optional phases skipped because of route; e.g. "review(team), security(auto-detect), clean" for standard]
 
 **Pipeline Summary**:
 | Phase | Status | Notes |
@@ -582,6 +629,8 @@ After all phases complete:
 
 **Evaluation Rounds**: [N] of [max-rounds] used (shared budget across PHASE 1.4-fix and PHASE 2.5)
 **Final Verdict**: [last evaluation verdict, or "BUILD GATE FAILED — code does not compile" if PHASE 1.4 exhausted the round budget before PHASE 2 ran]
+**⚠ Max-rounds exhaustion**: if the fix loop (PHASE 2.5 or 1.4-fix) exited because `rounds.global >= max_rounds` with findings still open, add a prominent warning block at the TOP of this report listing every `status: "open"` finding with its `file:line` — the user is shipping code with known unresolved issues and must see them before reviewing the diff. Template: `⚠ MAX ROUNDS EXHAUSTED — N HIGH/CRITICAL findings unresolved: [list]`.
+**Guardrails bypassed**: if any of `--skip-build-gate`, `--skip-browser`, `--security-review skip` (on strict), or `--max-rounds exhausted` fired, list them here so the user sees exactly what was traded.
 
 **Commits created**:
 [git log output]
