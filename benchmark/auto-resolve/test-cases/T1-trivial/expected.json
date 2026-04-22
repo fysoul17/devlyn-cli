@@ -1,0 +1,15 @@
+{
+  "notes": "Trivial typo fix. Low complexity, no risk keywords, single-file diff. Expected route: fast. No web files — browser validate will not run.",
+  "final_route": "fast",
+  "stage_a_override": false,
+  "expected_phases": ["build", "build_gate", "evaluate", "final_report"],
+  "diff_files": ["bin/devlyn.js", "test/help.test.js"],
+  "stage_b_signals": {
+    "diff_files": 2,
+    "diff_lines": 8,
+    "risk_in_diff": null,
+    "cross_boundary": false,
+    "api_surface": false,
+    "tests_absent": false
+  }
+}

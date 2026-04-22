@@ -1,0 +1,15 @@
+{
+  "notes": "High complexity AND risk keywords (auth, session, token, database, migration). Expected route: strict via risk keyword match in Stage A. Team mandatory, security forced, build gate strict+docker.",
+  "final_route": "strict",
+  "stage_a_override": false,
+  "expected_phases": ["build", "build_gate", "evaluate", "simplify", "review", "challenge", "security_review", "clean", "docs", "final_report"],
+  "diff_files": ["src/auth/session.ts", "src/auth/middleware.ts", "src/auth/session.test.ts", "migrations/20260501_add_session_rotation.sql", "src/audit/log.ts"],
+  "stage_b_signals": {
+    "diff_files": 5,
+    "diff_lines": 240,
+    "risk_in_diff": ["auth", "session", "token", "migration"],
+    "cross_boundary": false,
+    "api_surface": false,
+    "tests_absent": false
+  }
+}
