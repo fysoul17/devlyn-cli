@@ -1,0 +1,37 @@
+{
+  "comparison_type": "engine_level_direct",
+  "methodology": "Single-phase BUILD-equivalent task run by each engine independently on identical content (a 1-line grammar fix in agents-config/evaluator.md:15). NOT a full pipeline comparison — that requires the Agent tool which is unavailable in the benchmarking environment. This measures raw engine cost for a task of the type BUILD phase routes to.",
+  "task_description": "Add two 'the' articles to a bullet in agents-config/evaluator.md line 15 so it reads 'surface the error to the user'.",
+  "date": "2026-04-23",
+  "runs": [
+    {
+      "engine": "codex",
+      "cli": "codex exec --sandbox workspace-write --skip-git-repo-check",
+      "model_default": "gpt-5-codex (codex-cli default)",
+      "wall_ms": 15770,
+      "tokens_used_reported": 15360,
+      "outcome": "PASS — correct edit, one-line change, no unintended mutations",
+      "note": "Codex CLI itself reports tokens used in stdout. wall_ms measured by shell millisecond timestamps around the exec call."
+    },
+    {
+      "engine": "claude",
+      "source": "derived from pilot-claude-fast-n1.json (BUILD phase)",
+      "model": "claude-opus-4-7 (assumed, based on env defaults)",
+      "wall_ms": 32960,
+      "tokens_used_reported": null,
+      "outcome": "PASS — correct edit on the n=1 fast-route pilot",
+      "note": "Per-phase tokens were null in that pilot (Agent tool unavailable). Agent aggregate total was 115,317 tokens for the full fast-route run (parse + build + gate + eval + orchestration)."
+    }
+  ],
+  "direct_deltas": {
+    "codex_wall_vs_claude_build_wall": "15,770 ms vs 32,960 ms — codex 2.09x faster",
+    "codex_wall_vs_claude_full_fast_run": "15,770 ms vs 77,289 ms — codex engine alone 4.90x faster than full claude pipeline, but this is not apples-to-apples since the claude full run includes parse+eval+orchestration overhead",
+    "token_delta": "not comparable — claude per-phase tokens are null. Codex 15,360 is end-to-end for the edit."
+  },
+  "caveats": "n=1. Different invocation paths (codex via CLI, claude via inline session). Environment overhead differs. Directional signal only. The fair 'full auto-resolve --engine auto vs --engine claude' measurement still requires a pipeline-level experiment with Agent access, which this environment cannot provide. Do NOT treat the 2x speedup as the general auto-vs-claude pipeline delta — BUILD and FIX phases are the ones that route to codex under --engine auto; EVAL, CHALLENGE, and others remain claude in both engine modes. Net pipeline savings are weighted by what fraction of wall-time BUILD+FIX consume, which varies by route and fix-round count.",
+  "implications": [
+    "For single-phase 'do this simple edit' tasks, codex CLI is measurably faster than claude inline edit. Rough factor 2x.",
+    "This supports the benchmark-table routing decision (BUILD/FIX to codex on --engine auto) at least for trivial tasks. Strict-route complex tasks are untested.",
+    "Token cost comparison is still open — codex reports 15k for the edit; claude inline 'tokens per edit' is not directly measurable through current instrumentation."
+  ]
+}
