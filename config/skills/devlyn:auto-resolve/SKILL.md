@@ -10,8 +10,20 @@ $ARGUMENTS
 </pipeline_config>
 
 <orchestrator_context>
-Long-horizon agentic work. Your context auto-compacts as it approaches the limit — do not stop early due to token-budget concerns. All durable state lives in `.devlyn/pipeline.state.json` (control plane: pointers, criteria, verdicts) plus `<phase>.findings.jsonl` + `<phase>.log.md` for phases that emit findings. `state.json` is the **single authoritative verdict source** — branch on `phases.<name>.verdict` directly, never parse artifact files. At PHASE 8, the run's `.devlyn/*` artifacts are **archived** to `.devlyn/runs/<run_id>/` (last 10 kept). Schemas: `references/pipeline-state.md`, `references/findings-schema.md`. Best results come from `xhigh` reasoning effort.
+Long-horizon agentic work. Your context auto-compacts as it approaches the limit — do not stop early due to token-budget concerns. All durable state lives in `.devlyn/pipeline.state.json` (control plane: pointers, criteria, verdicts, `perf` timing/token accounting) plus `<phase>.findings.jsonl` + `<phase>.log.md` for phases that emit findings. `state.json` is the **single authoritative verdict source** — branch on `phases.<name>.verdict` directly, never parse artifact files. At PHASE 8, the run's `.devlyn/*` artifacts are **archived** to `.devlyn/runs/<run_id>/` (last 10 kept). Schemas: `references/pipeline-state.md`, `references/findings-schema.md`. Best results come from `xhigh` reasoning effort.
 </orchestrator_context>
+
+<perf_instrumentation>
+Every phase is timed and token-accounted. Because production use is the benchmark, this instrumentation is not optional:
+
+1. At each phase spawn, capture `phase_started_at = <unix ms>`.
+2. Subagent completion notification returns `total_tokens` (Agent subagents) or the Codex response includes usage (Codex calls). Capture that value as `phase_tokens`.
+3. After verdict/artifacts are written to `state.phases.<name>`, append one entry to `state.perf.per_phase`: `{phase, engine, wall_ms: now - phase_started_at, tokens: phase_tokens, round, triggered_by}`.
+4. Build gate (bash) reports `tokens: 0`. Dual-mode phases record one entry per model (two entries total) so Codex vs Claude cost is separately recoverable.
+5. At PHASE 8, set `state.perf.wall_ms = now - state.started_at_unix` and `state.perf.tokens_total = sum(per_phase[].tokens)`. Archive preserves the perf block.
+
+Schema: `references/pipeline-state.md#perf`. Do NOT skip or approximate — missing perf data makes the harness's own efficiency claims unverifiable.
+</perf_instrumentation>
 
 <autonomy_contract>
 This pipeline runs hands-free. Measured by how far it gets without human intervention.

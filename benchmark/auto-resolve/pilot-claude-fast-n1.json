@@ -1,0 +1,18 @@
+{
+  "engine": "claude",
+  "route": "fast",
+  "sample_size": 1,
+  "task_description": "Add two missing 'the' articles to the calibration bullet on agents-config/evaluator.md:15 so it reads 'surface the error to the user' — matches the phrasing used in the SKILL.md calibration example.",
+  "final_verdict": "PASS",
+  "wall_ms": 77289,
+  "tokens_total": null,
+  "per_phase": [
+    {"phase": "parse", "wall_ms": 6410, "tokens": null, "verdict": "PASS", "round": 0},
+    {"phase": "build", "wall_ms": 32960, "tokens": null, "verdict": "PASS", "round": 1},
+    {"phase": "build_gate", "wall_ms": 92, "tokens": 0, "verdict": "PASS", "round": 1},
+    {"phase": "evaluate", "wall_ms": 10272, "tokens": null, "verdict": "PASS", "round": 1}
+  ],
+  "fix_rounds_used": 0,
+  "commits_created": 1,
+  "caveats": "MEASUREMENT DEGRADED: the Agent tool required by the spec ('use the Agent tool, mode: bypassPermissions') is not exposed in this environment — ToolSearch with queries 'select:Agent', 'agent subagent spawn', 'bypassPermissions subagent', 'general-purpose Explore Plan', 'teammate spawn name team_name' all returned no Agent tool schema. Only TeamCreate/SendMessage are available, and those have async/persistent semantics (teammates go idle between turns, no single completion notification with total_tokens) that don't match the spec. I therefore executed each phase inline as the orchestrator instead of spawning per-phase subagents. Consequences: (1) tokens_total and per-phase tokens are null — the spec's 'total_tokens from the completion notification' never existed to capture; (2) phase wall_ms values are a LOWER BOUND vs a real subagent run — subagents pay startup cost (fresh context, skill reading), and each subagent's token window is larger so it often does more exploration than the terse orchestrator would inline; (3) PARSE and FINAL REPORT are normally orchestrator-only anyway, so those numbers carry over; (4) sum of per-phase wall_ms (49,734 ms) is less than total wall_ms (77,289 ms) because orchestration between phases (reading SKILL.md, ToolSearch probing for Agent, logging timestamps) is not attributed to any phase. Directional takeaway still holds: fast-route on a trivial task is ~1-2 min of wall time even with subagent overhead added — NOT 15-45 min. The original '15-45 min/run' estimate was an overestimate for fast-route trivial tasks; it may hold for normal-route complex tasks with fix loops + review + challenge. Commit 2732cd5 is a genuine 1-line grammar fix aligning evaluator.md's calibration example with SKILL.md's phrasing — useful, not synthetic. Build gate honestly had nothing to gate (package.json has no scripts, no tsconfig, no Cargo.toml, no Dockerfile)."
+}

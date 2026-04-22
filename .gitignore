@@ -5,3 +5,6 @@ config/skills/preflight-workspace/
 config/skills/devlyn:ideate-workspace/
 config/skills/roadmap-archival-workspace/
 config/skills/devlyn:auto-resolve-workspace/
+
+# Ephemeral agent worktrees — disposable per-agent copies
+.claude/worktrees/

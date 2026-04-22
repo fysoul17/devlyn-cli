@@ -87,6 +87,13 @@ Created by PHASE 0 on run start. At PHASE 8, the entire `.devlyn/` run artifact 
   "rounds": {
     "global": <int>,
     "max_rounds": <int>
+  },
+  "perf": {
+    "wall_ms": <int>,
+    "tokens_total": <int>,
+    "per_phase": [
+      {"phase": "<name>", "engine": "codex" | "claude" | "bash" | "dual", "wall_ms": <int>, "tokens": <int>, "round": <int>, "triggered_by": "<phase>" | null}
+    ]
   }
 }
 ```
@@ -137,6 +144,24 @@ Key is phase name: `build`, `build_gate`, `browser_validate`, `evaluate`, `fix_l
 
 - `global` — shared round counter across all fix-loop invocations regardless of trigger. Increments once per fix-loop iteration.
 - `max_rounds` — cap from `--max-rounds` flag (default 4).
+
+### Perf
+
+Purpose: every run records wall-time and token consumption per phase so the harness has evidence for its own efficiency claims. Written into state.json throughout the run; preserved across archive. Enables retrospective benchmarking without any extra benchmark runs — production use IS the benchmark.
+
+- `wall_ms` — total wall-clock from PHASE 0 start to PHASE 8 end, in milliseconds.
+- `tokens_total` — sum of `per_phase[].tokens`.
+- `per_phase` — one entry per phase execution (a phase re-run by the fix loop produces multiple entries). Fields:
+  - `phase` — phase name matching `phases.*` keys.
+  - `engine` — which model handled this execution.
+  - `wall_ms` — phase end minus phase start.
+  - `tokens` — sum of all subagent/Codex token reports for this phase. Agent subagents return `total_tokens` in their completion notification; Codex calls report usage in their response. Build gate (bash) reports 0.
+  - `round` — matches `phases.<name>.round`.
+  - `triggered_by` — matches `phases.<name>.triggered_by`.
+
+The orchestrator writes each entry at phase completion (right after verdict+artifacts). `wall_ms` + `tokens_total` at the top level update at PHASE 8 after rolling up `per_phase`.
+
+This section is load-bearing for answering the question the user asked v3.2 to answer: does `--engine auto` actually use fewer tokens or less wall time than `--engine claude` on real tasks? The data lives next to the verdict, so any historical run under `.devlyn/runs/<run_id>/` is a queryable data point.
 
 ## Anchor syntax
 
