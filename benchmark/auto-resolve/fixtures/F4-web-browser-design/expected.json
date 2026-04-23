@@ -1,0 +1,39 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "grep -q 'id=\"whisper\"' web/index.html && echo OK",
+      "exit_code": 0,
+      "stdout_contains": ["OK"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "grep -q 'hello from bench-test-repo' web/index.html && echo OK",
+      "exit_code": 0,
+      "stdout_contains": ["OK"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "grep -qE '(italic|font-style)' web/index.html && echo OK",
+      "exit_code": 0,
+      "stdout_contains": ["OK"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "bash -c 'shopt -s nullglob; files=(tests/e2e/*.spec.*); [ ${#files[@]} -gt 0 ] && echo FOUND || { echo MISSING; exit 1; }'",
+      "exit_code": 0,
+      "stdout_contains": ["FOUND"],
+      "stdout_not_contains": ["MISSING"]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "(cdnjs|unpkg|jsdelivr|fonts\\.googleapis)",
+      "description": "external CDN reference — out-of-scope / offline brittleness",
+      "files": ["web/index.html"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["web/index.html"],
+  "forbidden_files": [],
+  "max_deps_added": 0
+}

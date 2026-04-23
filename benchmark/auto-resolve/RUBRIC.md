@@ -98,7 +98,7 @@ Every suite run appends an immutable record to `history/runs/<ts>-<label>.json`:
   "git_sha": "fdb7428...",
   "branch": "benchmark/v3.6-ab-...",
   "n_per_fixture": 1,
-  "judge_model": "gpt-5.4",
+  "judge_model": "<recorded from ~/.codex/config.toml at run time; do not hardcode>",
   "judge_effort": "xhigh",
   "fixtures": [
     {

@@ -1,0 +1,8 @@
+Add a --loud flag to the `hello` subcommand in bench-test-repo's CLI (bin/cli.js). When --loud is passed, the greeting is uppercased and ends with two exclamation marks.
+
+For example:
+- `node bin/cli.js hello --loud` → `HELLO, WORLD!!`
+- `node bin/cli.js hello --loud --name alice` → `HELLO, ALICE!!`
+- `node bin/cli.js hello` → `Hello, world!` (unchanged default)
+
+Make sure existing tests still pass and add at least one test for the --loud path. Don't touch unrelated files — only `bin/cli.js` and `tests/cli.test.js`. No new npm dependencies.

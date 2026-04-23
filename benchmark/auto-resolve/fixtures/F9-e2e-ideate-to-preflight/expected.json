@@ -1,0 +1,45 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node bin/cli.js gitstats",
+      "exit_code": 0,
+      "stdout_contains": ["Commits:", "Last commit:"],
+      "stdout_not_contains": ["Error:"]
+    },
+    {
+      "cmd": "node bin/cli.js gitstats --json",
+      "exit_code": 0,
+      "stdout_contains": ["{", "commits", "authors"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "cd /tmp && node -e 'const { spawnSync } = require(\"child_process\"); const p = process.env.BENCH_WORKDIR || process.cwd(); console.log(spawnSync(\"node\", [p + \"/bin/cli.js\", \"gitstats\"], { encoding: \"utf8\", cwd: \"/tmp\" }).status)'",
+      "exit_code": 0,
+      "stdout_contains": ["2"],
+      "stdout_not_contains": ["0"]
+    },
+    {
+      "cmd": "node bin/cli.js hello",
+      "exit_code": 0,
+      "stdout_contains": ["Hello, world!"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node --test tests/",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["fail "]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js"],
+  "forbidden_files": [],
+  "max_deps_added": 0
+}

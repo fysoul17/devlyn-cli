@@ -108,20 +108,41 @@ fi
 # that's "benchmark scaffolding" (spec path placement, prompt wrapper) is
 # committed to the work repo as a separate pre-model commit so the model's
 # diff shows only its own work.
+#
+# Per-arm prompt selection is fixture-id-aware only in one case: F9, the
+# end-to-end novice fixture. F9's variant arm explicitly chains
+# ideate → auto-resolve → preflight from the raw task.txt (as a novice would);
+# every other fixture's variant uses the spec-driven auto-resolve path.
 PROMPT_FILE="$RESULT_DIR/input.md"
 if [ "$ARM" = "variant" ]; then
-  # Save spec file at the canonical roadmap path so auto-resolve's Phase 0
-  # regex finds it.
-  mkdir -p "$WORK_DIR/docs/roadmap/phase-1"
-  cp "$SPEC" "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"
-  cat > "$PROMPT_FILE" <<EOF
+  if [ "$FIXTURE" = "F9-e2e-ideate-to-preflight" ]; then
+    # Novice flow — no pre-placed spec. The arm must generate it via ideate.
+    cat > "$PROMPT_FILE" <<EOF
+You are a first-time devlyn-cli user. You have a vague idea and want the harness to take it from unstructured ask to shipped, verified feature. Run the chain:
+
+1. Invoke \`/devlyn:ideate\` to turn the idea into docs/VISION.md, docs/ROADMAP.md, and a self-contained spec under docs/roadmap/phase-1/.
+2. Once ideate emits a spec path (something like docs/roadmap/phase-1/1.1-<slug>.md), invoke \`/devlyn:auto-resolve "Implement per spec at <that-path>"\` to run the full build → evaluate → critic → docs pipeline.
+3. Finally, invoke \`/devlyn:preflight\` to audit the implementation against the generated roadmap.
+
+Follow the skills to completion. Do not short-circuit.
+
+After the whole chain, briefly report: (a) the spec path ideate produced, (b) the auto-resolve terminal verdict, (c) whether preflight found any gaps.
+
+RAW IDEA:
+$(cat "$TASK")
+EOF
+  else
+    # Standard variant: spec is pre-placed at canonical roadmap path.
+    mkdir -p "$WORK_DIR/docs/roadmap/phase-1"
+    cp "$SPEC" "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"
+    cat > "$PROMPT_FILE" <<EOF
 Use the \`/devlyn:auto-resolve\` skill to implement the spec at \`docs/roadmap/phase-1/$FIXTURE.md\`. Run the full pipeline (BUILD → BUILD GATE → EVAL → CRITIC → DOCS → FINAL REPORT). Do not bypass phases. Let \`--engine auto\` route normally.
 
 After the pipeline finishes, report the terminal verdict and list of files changed so the benchmark runner can capture state.
 EOF
+  fi
 else
-  cp "$TASK" "$PROMPT_FILE"
-  # Wrap bare prompt with hard rules against using pipeline skills
+  # Bare — same prompt for F9 as any other fixture: task.txt with anti-skill rules.
   cat > "$PROMPT_FILE" <<EOF
 You are acting as a smart engineer implementing the following request directly. No skill pipeline.
 
@@ -233,6 +254,9 @@ verify_env = os.environ.copy()
 fake_home = os.environ.get("BENCH_FAKE_HOME", "")
 if fake_home:
     verify_env["HOME"] = fake_home
+# Expose the work-dir path so fixtures whose verification needs to reference
+# the work root can do so portably (e.g. F9's out-of-repo check).
+verify_env["BENCH_WORKDIR"] = work
 
 verify = {"commands": [], "forbidden_pattern_hits": [], "deps_added": 0,
           "max_deps_added": expected.get("max_deps_added", 0),

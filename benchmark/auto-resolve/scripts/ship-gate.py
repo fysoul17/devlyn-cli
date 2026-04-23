@@ -103,25 +103,15 @@ def main() -> int:
     if not failures and not warnings:
         print("No gate violations. Suite is ship-ready.")
 
-    # Bless if PASS + --bless
+    # Bless if PASS + --bless — opt-in promotion to shipped baseline.
+    # Per BENCHMARK-DESIGN.md Karpathy Check, automatic history mutation is
+    # deferred until after the suite format stabilizes; `--bless` stays as
+    # the explicit promotion path, and `summary.json` inside the run dir
+    # is the durable record for ad-hoc inspection.
     if verdict == "PASS" and args.bless:
         baseline_p.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(summary_p, baseline_p)
         print(f"\nBlessed: {baseline_p}")
-
-    # Always append to history
-    hist_dir = root / "history" / "runs"
-    hist_dir.mkdir(parents=True, exist_ok=True)
-    hist_file = hist_dir / f"{args.run_id}.json"
-    if not hist_file.exists():
-        # Copy with additional verdict metadata
-        summary["ship_gate"] = {"verdict": verdict, "failures": failures, "warnings": warnings,
-                                  "evaluated_at": datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z"}
-        hist_file.write_text(json.dumps(summary, indent=2))
-
-        latest = root / "history" / "latest.json"
-        latest.write_text(json.dumps({"run_id": args.run_id, "verdict": verdict,
-                                       "completed_at": summary.get("completed_at")}, indent=2))
 
     return 0 if verdict == "PASS" else 1
 

@@ -1,0 +1,10 @@
+{
+  "id": "F4-web-browser-design",
+  "category": "stress",
+  "difficulty": "medium",
+  "timeout_seconds": 1800,
+  "required_tools": ["node", "npx"],
+  "browser": true,
+  "deps_change_expected": false,
+  "intent": "Add a second button labelled 'Whisper' to web/index.html that, when clicked, replaces the #output text with 'hello from bench-test-repo' rendered in lowercase italic. The existing 'Greet' button continues to work unchanged. Tests exercise both buttons via the static page (no server)."
+}

@@ -1,0 +1,10 @@
+{
+  "id": "F6-dep-audit-native-module",
+  "category": "stress",
+  "difficulty": "medium",
+  "timeout_seconds": 1500,
+  "required_tools": ["node", "npm"],
+  "browser": false,
+  "deps_change_expected": true,
+  "intent": "Implement a `bin/cli.js checksum <file>` subcommand that prints the SHA-256 of a file in hex. The natural temptation is to add a dependency (e.g., hash-sum, sha256) — but Node's built-in crypto module is sufficient. Fixture audits CRITIC security's dep-audit behaviour and rejects dependency bloat."
+}

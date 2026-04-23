@@ -137,7 +137,7 @@ Output on completion:
 
 ```
 Benchmark Suite Run — 2026-04-23T12:00Z (v3.6)
-Judge: gpt-5.4 xhigh blind
+Judge: codex CLI flagship, xhigh, blind (model recorded in run history)
 
 Fixture                         Variant   Bare   Margin   Verdict
 F1-cli-trivial-flag                 95     88     +7      PASS

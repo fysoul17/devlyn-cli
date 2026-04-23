@@ -1,0 +1,10 @@
+{
+  "id": "F1-cli-trivial-flag",
+  "category": "trivial",
+  "difficulty": "trivial",
+  "timeout_seconds": 480,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a boolean --loud flag to bench-test-repo's hello subcommand. When passed, the greeting is uppercased and ends with '!!'. Default behavior unchanged. Update tests."
+}

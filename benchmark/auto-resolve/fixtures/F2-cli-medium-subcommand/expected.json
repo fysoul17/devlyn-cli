@@ -13,8 +13,8 @@
       "stdout_not_contains": []
     },
     {
-      "cmd": "node bin/cli.js doctor | cat | grep -c $'\\x1b\\['",
-      "exit_code": 1,
+      "cmd": "python3 -c \"import subprocess; r = subprocess.run(['node', 'bin/cli.js', 'doctor'], capture_output=True); n = r.stdout.count(b'\\x1b['); print(n); exit(0 if n == 0 else 1)\"",
+      "exit_code": 0,
       "stdout_contains": ["0"],
       "stdout_not_contains": []
     },

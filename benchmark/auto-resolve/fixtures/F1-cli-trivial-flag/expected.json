@@ -1,0 +1,45 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node bin/cli.js hello",
+      "exit_code": 0,
+      "stdout_contains": ["Hello, world!"],
+      "stdout_not_contains": ["HELLO"]
+    },
+    {
+      "cmd": "node bin/cli.js hello --loud",
+      "exit_code": 0,
+      "stdout_contains": ["HELLO, WORLD!!"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node bin/cli.js hello --loud --name alice",
+      "exit_code": 0,
+      "stdout_contains": ["HELLO, ALICE!!"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node bin/cli.js hello --name bob",
+      "exit_code": 0,
+      "stdout_contains": ["Hello, bob!"],
+      "stdout_not_contains": ["HELLO"]
+    },
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["fail"]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|'')",
+      "description": "silent catch returning fallback",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js"],
+  "forbidden_files": [],
+  "max_deps_added": 0
+}

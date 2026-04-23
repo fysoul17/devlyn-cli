@@ -1,0 +1,9 @@
+The `GET /items` endpoint in `server/index.js` currently returns `{ items: [...] }`. Paginate it: the response should be `{ items, total, page, per_page }`. Accept `?page` and `?per_page` query params. When no params are given, return everything on page 1 with `per_page` equal to the full count.
+
+Keep `GET /items/:id` unchanged (no pagination on single-item lookup). `GET /health` stays as-is.
+
+Invalid `page` or `per_page` (non-numeric, zero, negative) → respond 400 with `{ error: 'invalid_query', field: '<name>' }`. Out-of-range page (beyond the last item) returns an empty `items` array, NOT a 404.
+
+Update `tests/server.test.js` so existing behavior is still covered AND you add at least two new tests for the paging behavior.
+
+No new npm dependencies. Only touch `server/index.js` and `tests/server.test.js`.

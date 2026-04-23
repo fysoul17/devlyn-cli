@@ -1,0 +1,57 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "printf 'hello\\n' > /tmp/bench-f6-sample && node bin/cli.js checksum /tmp/bench-f6-sample",
+      "exit_code": 0,
+      "stdout_contains": ["5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node bin/cli.js checksum",
+      "exit_code": 1,
+      "stdout_contains": [],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node bin/cli.js checksum /nonexistent-path-9876 2>&1",
+      "exit_code": 2,
+      "stdout_contains": ["not found"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node bin/cli.js checksum /tmp 2>&1",
+      "exit_code": 2,
+      "stdout_contains": ["not a file"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node --test tests/checksum.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["fail "]
+    },
+    {
+      "cmd": "node bin/cli.js hello",
+      "exit_code": 0,
+      "stdout_contains": ["Hello, world!"],
+      "stdout_not_contains": []
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "\"(sha256|hash-sum|crypto-js|js-sha256)\"\\s*:",
+      "description": "added a hashing dependency instead of using built-in crypto",
+      "files": ["package.json"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "readFileSync\\s*\\(\\s*[^)]+\\)\\s*\\.toString\\(\\s*\\)",
+      "description": "slurping whole file instead of streaming hash — fails on large files",
+      "files": ["bin/cli.js"],
+      "severity": "warning"
+    }
+  ],
+  "required_files": ["bin/cli.js"],
+  "forbidden_files": [],
+  "max_deps_added": 0
+}

@@ -1,0 +1,9 @@
+Add a second button next to the existing "Greet" button in `web/index.html`, labelled "Whisper". When clicked, it should set `#output` to `hello from bench-test-repo` (lowercase, no exclamation mark) rendered in italic.
+
+The existing "Greet" button must continue to set `#output` to `Hello from bench-test-repo` as before — no italic, no change.
+
+Keep everything self-contained in the page: no CDN fonts, no new npm dependencies, no external resources. Use the same vanilla JS pattern that's already there.
+
+Write a Playwright test under `tests/e2e/` that exercises both buttons. The repo already has `playwright.config.js` and serves `web/` via `npx serve -l 5173`.
+
+Only touch `web/index.html` and the new Playwright test file.

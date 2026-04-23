@@ -1,0 +1,10 @@
+{
+  "id": "F9-e2e-ideate-to-preflight",
+  "category": "e2e",
+  "difficulty": "high",
+  "timeout_seconds": 3600,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "End-to-end novice flow: from a vague idea ('git stats CLI for the current repo') the variant must run /devlyn:ideate → /devlyn:auto-resolve → /devlyn:preflight to produce Vision/Roadmap + implemented code + preflight sign-off. The bare arm receives the same vague idea as a direct prompt. This fixture gates the novice-user contract."
+}

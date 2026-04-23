@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# judge.sh — Codex GPT-5.4 (or current flagship) blind judge for ONE fixture.
+# judge.sh — Codex (CLI's current flagship, inherited) blind judge for ONE fixture.
 #
 # Usage:
 #   judge.sh --fixture <FID> --run-id <ID>

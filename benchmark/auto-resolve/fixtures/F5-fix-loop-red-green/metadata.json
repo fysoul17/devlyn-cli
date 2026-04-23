@@ -1,0 +1,10 @@
+{
+  "id": "F5-fix-loop-red-green",
+  "category": "stress",
+  "difficulty": "medium",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Make the pre-installed failing tests for a new `count` subcommand pass. The tests require case-insensitive whole-word counting of stdin input against a provided word argument. A naive first implementation satisfies basic counts but misses case-insensitivity or whole-word boundaries — EVAL catches it and FIX LOOP drives the correct second pass."
+}

@@ -1,0 +1,10 @@
+Add a `checksum <file>` subcommand to `bin/cli.js` that prints the SHA-256 hex digest of the file. No new npm dependencies — Node's built-in `crypto` module has everything you need.
+
+- `node bin/cli.js checksum /tmp/foo` → prints `<hex-digest>` on one line, exit 0.
+- Missing argument → exit 1 with stderr error.
+- File not found → exit 2 with stderr `Error: file not found: <path>`.
+- Directory passed → exit 2 with stderr `Error: not a file: <path>`.
+
+Use a streaming hash (don't slurp the whole file into memory). Add a test under `tests/checksum.test.js` that creates a fixture file and asserts the known SHA-256.
+
+Keep existing subcommands working. Don't touch `server/` or `web/`. Don't add any npm dependency.

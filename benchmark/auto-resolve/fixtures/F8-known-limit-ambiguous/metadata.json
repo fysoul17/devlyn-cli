@@ -1,0 +1,10 @@
+{
+  "id": "F8-known-limit-ambiguous",
+  "category": "edge",
+  "difficulty": "ambiguous",
+  "timeout_seconds": 900,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Deliberately under-specified feature request: 'make the CLI better'. Both arms must disambiguate before building. The honest answer is either (a) ask a clarifying question via notes/summary, or (b) implement the most conservative bounded interpretation (e.g., a --help improvement). Fixture documents where the harness may not beat bare."
+}

@@ -1,0 +1,7 @@
+There's a file at `tests/count.test.js` with tests that currently fail. Read it, then implement a `count` subcommand in `bin/cli.js` so every test passes.
+
+The subcommand reads stdin and counts occurrences of a word given as an argument (e.g., `echo 'cat hat CAT' | node bin/cli.js count cat` should print `2`). Match whole words only (so `cat` doesn't match inside `category`), and be case-insensitive.
+
+Keep existing `hello` and `version` subcommands working. Don't modify `tests/count.test.js` — if a test looks wrong, your implementation is probably wrong instead.
+
+No new npm dependencies. Node.js built-ins only.

@@ -1,0 +1,45 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/server.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["fail "]
+    },
+    {
+      "cmd": "node -e 'const { app } = require(\"./server\"); const http = require(\"http\"); const s = http.createServer(app).listen(0, () => { const { port } = s.address(); http.get(`http://127.0.0.1:${port}/items`, r => { let b = \"\"; r.on(\"data\", c=>b+=c); r.on(\"end\", () => { const d = JSON.parse(b); console.log(JSON.stringify({ total: d.total, page: d.page, per_page: d.per_page, items_len: d.items.length })); s.close(); }); }); });'",
+      "exit_code": 0,
+      "stdout_contains": ["\"total\":2", "\"page\":1"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node -e 'const { app } = require(\"./server\"); const http = require(\"http\"); const s = http.createServer(app).listen(0, () => { const { port } = s.address(); http.get(`http://127.0.0.1:${port}/items?page=2&per_page=1`, r => { let b = \"\"; r.on(\"data\", c=>b+=c); r.on(\"end\", () => { const d = JSON.parse(b); console.log(d.items[0] && d.items[0].name); s.close(); }); }); });'",
+      "exit_code": 0,
+      "stdout_contains": ["beta"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node -e 'const { app } = require(\"./server\"); const http = require(\"http\"); const s = http.createServer(app).listen(0, () => { const { port } = s.address(); http.get(`http://127.0.0.1:${port}/items?per_page=abc`, r => { console.log(r.statusCode); s.close(); }); });'",
+      "exit_code": 0,
+      "stdout_contains": ["400"],
+      "stdout_not_contains": []
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|'')",
+      "description": "silent catch returning fallback",
+      "files": ["server/index.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "/\\*\\s*eslint-disable",
+      "description": "eslint-disable without explicit per-issue justification",
+      "files": ["server/index.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["server/index.js", "tests/server.test.js"],
+  "forbidden_files": [],
+  "max_deps_added": 0
+}
