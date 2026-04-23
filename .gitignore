@@ -19,3 +19,7 @@ config/skills/devlyn:auto-resolve-workspace/
 .claude/commit-conventions.md
 .claude/settings.json
 .claude/settings.local.json
+
+# benchmark runtime artifacts — kept per-run only, actual history goes to benchmark/auto-resolve/history/
+benchmark/auto-resolve/results/
+benchmark/auto-resolve/fixtures/test-repo/node_modules/

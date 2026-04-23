@@ -1,0 +1,10 @@
+{
+  "id": "F2-cli-medium-subcommand",
+  "category": "medium",
+  "difficulty": "medium",
+  "timeout_seconds": 1200,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a `doctor` subcommand to bin/cli.js that diagnoses the local environment: node version check, $HOME/.claude directory check, installed plugins count, installed skills count, TTY-gated ANSI color, summary line, exit code, --verbose flag, help integration. Zero new npm dependencies. No silent error catches."
+}

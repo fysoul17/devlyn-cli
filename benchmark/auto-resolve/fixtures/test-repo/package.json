@@ -1,0 +1,22 @@
+{
+  "name": "bench-test-repo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deterministic base Node project for devlyn-cli auto-resolve benchmarks. Every fixture starts from a fresh copy of this directory.",
+  "bin": {
+    "bench-cli": "bin/cli.js"
+  },
+  "scripts": {
+    "cli": "node bin/cli.js",
+    "start": "node server/index.js",
+    "test": "node --test tests/",
+    "lint:json": "node scripts/lint-json.js"
+  },
+  "dependencies": {
+    "express": "4.19.2"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>bench-test-repo</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 2rem;
+        max-width: 40rem;
+      }
+      button {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+      }
+      #output {
+        margin-top: 1rem;
+        padding: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        min-height: 2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>bench-test-repo</h1>
+    <p>Minimal page used by browser-validate benchmark fixtures.</p>
+    <button id="greet">Greet</button>
+    <div id="output" data-testid="output"></div>
+    <script>
+      document.getElementById('greet').addEventListener('click', () => {
+        const out = document.getElementById('output');
+        out.textContent = 'Hello from bench-test-repo';
+      });
+    </script>
+  </body>
+</html>

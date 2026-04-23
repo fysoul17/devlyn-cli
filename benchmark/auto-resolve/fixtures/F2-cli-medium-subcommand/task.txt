@@ -1,0 +1,14 @@
+Add a `doctor` subcommand to bench-test-repo's CLI (`bin/cli.js`) that diagnoses the local environment. When a user runs `node bin/cli.js doctor`, it should check:
+
+1. Node version is >= v18.0.0
+2. $HOME/.claude/ exists and is writable
+3. How many plugins are installed under $HOME/.claude/plugins/cache/
+4. How many skills are installed (SKILL.md files under $HOME/.claude/skills/)
+
+Each check produces a status line with a tag — `[OK]`, `[WARN]`, or `[FAIL]`. The tags should be colored (green/yellow/red) when output is a TTY, but plain text when piped. End with a summary line like `doctor: 3 ok, 1 warn, 0 fail` and exit 0 if no fails, 1 otherwise.
+
+Add a `--verbose` flag that lists the individual plugins and skill paths. Add `--help` for the subcommand. Make sure `node bin/cli.js --help` mentions `doctor`.
+
+Keep it to Node.js built-ins only (fs, path, os, process) — no new npm dependencies. Handle errors explicitly: if HOME is unset, fail cleanly with a helpful message; if a directory can't be read due to permissions (EACCES), say so with the path.
+
+Running `HOME=/nonexistent node bin/cli.js doctor` should exit 1 and mention the missing `/nonexistent/.claude`.

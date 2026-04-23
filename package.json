@@ -19,6 +19,15 @@
     "!config/skills/roadmap-archival-workspace/**",
     "agents-config",
     "optional-skills",
+    "benchmark/auto-resolve/BENCHMARK-DESIGN.md",
+    "benchmark/auto-resolve/README.md",
+    "benchmark/auto-resolve/RUBRIC.md",
+    "benchmark/auto-resolve/fixtures/SCHEMA.md",
+    "benchmark/auto-resolve/fixtures/F*/**",
+    "benchmark/auto-resolve/fixtures/test-repo/**",
+    "!benchmark/auto-resolve/fixtures/test-repo/node_modules/**",
+    "benchmark/auto-resolve/scripts/**",
+    "scripts/lint-skills.sh",
     "CLAUDE.md"
   ],
   "keywords": [

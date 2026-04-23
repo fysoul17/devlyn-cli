@@ -1,95 +1,114 @@
-# Auto-Resolve Benchmark Harness (v2.1)
+# devlyn-cli auto-resolve Benchmark Suite
 
-Reproducible methodology for measuring auto-resolve pipeline quality and efficiency across versions. Built to answer: **does v2.1 improve over v1.14.0 without regressing quality?**
+One-command A/B benchmark that gates every harness change with a ship/rollback decision.
 
-## What this harness measures
-
-### Static properties (measured at every run — cheap, always valid)
-
-- `SKILL.md` line count / estimated tokens (instruction surface)
-- Per-route phase count (theoretical work units per task)
-- Artifact file count & type (structured vs monolithic)
-- Schema conformance of emitted artifacts
-
-Script: `measure-static.py`. Runs in <1 second. No subagent calls.
-
-### Routing trace properties (measured per test case)
-
-- Stage A decision + reasons
-- Stage B decision + reasons (post-BUILD)
-- Final phase list
-- Guardrails bypassed (if any)
-
-Script: `trace-route.py`. Simulates the orchestrator's routing logic on a fixture spec. No real pipeline execution. Validates that routing logic produces the designed outcomes.
-
-### Dynamic properties (require real pipeline runs — EXPENSIVE)
-
-These require actual auto-resolve execution on real tasks. NOT RUN AUTOMATICALLY.
-
-- Wall-clock time per phase
-- Actual token consumption (Codex + Claude)
-- Fix-round convergence (rounds used vs max_rounds)
-- Final criterion verification correctness
-- Pipeline verdict
-
-To run these: follow `run-real-benchmark.md` procedure. Expect 15-45 minutes per task × version.
-
-## Test case library
-
-`test-cases/` contains:
-
-- **T1-trivial/** — CLI help-text typo. Expected route: `fast`. Zero risk, 1-3 requirements, no web files.
-- **T2-standard/** — Single API endpoint + error UI. Expected route: `standard`. Medium complexity, no risk keywords in spec, web files present (triggers browser validate).
-- **T3-high-risk/** — Auth middleware change. Expected route: `strict`. Risk keywords in spec (`auth`, `session`, `token`), high complexity.
-
-Each test case has:
-- `task.txt` — the task description the user would pass
-- `spec.md` — the ideate-format spec file (for spec-driven cases)
-- `expected.json` — the expected route, stage_a reasons, phase list, guardrail bypasses
-
-## Reproducing baseline-vs-new measurements
-
-### Static comparison
+## Quick start
 
 ```bash
-python3 benchmark/measure-static.py --baseline 4eb7b47 --head HEAD > static-results.json
+npx devlyn-cli benchmark                 # n=1 smoke, all fixtures × 2 arms, judge, report, ship-gate
+npx devlyn-cli benchmark --n 3           # higher confidence for ship decisions
+npx devlyn-cli benchmark F2              # specific fixture only
+npx devlyn-cli benchmark --dry-run       # validate suite wiring without model invocation
+npx devlyn-cli benchmark --bless         # if ship-gate PASSes, promote this run as the shipped baseline
+npx devlyn-cli benchmark --judge-only --run-id <ID>   # re-judge an existing run's artifacts
 ```
 
-Compares any two git refs. `4eb7b47` is the pre-v2.1 baseline (`feat(skills): CPO lens in ideate + handoff enforcement on auto-resolve, bump to 1.14.0`).
+Exit code 0 = PASS, 1 = FAIL.
 
-### Route trace comparison
+## What it does
+
+1. For every fixture × arm (`variant` / `bare`):
+   - Prepare a fresh temp copy of `fixtures/test-repo/`.
+   - Commit baseline + apply `setup.sh` + commit bench scaffolding.
+   - Invoke the arm via an isolated `claude -p` subprocess.
+   - Capture `diff.patch`, `transcript.txt`, `timing.json`, run `expected.json::verification_commands`.
+2. For every fixture, invoke `codex exec` as a blind judge (`A`/`B` randomized per fixture) using the 4-axis rubric in `RUBRIC.md`.
+3. Aggregate into `results/<run-id>/report.md` + `summary.json`.
+4. Apply ship-gate thresholds (`scripts/ship-gate.py`). Print verdict.
+5. Append immutable record to `history/runs/<run-id>.json`.
+
+## Directory layout
+
+```
+benchmark/auto-resolve/
+├── BENCHMARK-DESIGN.md       # full design rationale
+├── README.md                 # this file
+├── RUBRIC.md                 # 4-axis scoring + ship gates
+│
+├── fixtures/
+│   ├── SCHEMA.md             # fixture file format
+│   ├── test-repo/            # bootstrap Node project — base for all arms
+│   ├── F2-cli-medium-subcommand/
+│   └── F1,F3-F9/             # add per Stage 2-3
+│
+├── scripts/
+│   ├── run-suite.sh          # single entry — called by `npx devlyn-cli benchmark`
+│   ├── run-fixture.sh        # one fixture × one arm, self-contained
+│   ├── judge.sh              # Codex blind judge for one fixture
+│   ├── compile-report.py     # aggregates into report.md + summary.json
+│   └── ship-gate.py          # applies thresholds + writes history record
+│
+├── results/<run-id>/         # per-run artifacts (overwritten)
+└── history/
+    ├── runs/                 # append-only, one JSON per run
+    ├── latest.json           # pointer to most recent run
+    └── baselines/shipped.json   # last blessed version, used for regression floor
+```
+
+## Prerequisites
+
+- `claude` CLI on PATH (Claude Code, used to invoke each arm).
+- `codex` CLI on PATH (used by the blind judge). Install from https://platform.openai.com/docs/codex.
+- `python3`, `node`, `git`, `timeout`.
+
+## Adding a fixture
+
+Follow `fixtures/SCHEMA.md`. Six files per fixture: `metadata.json`, `spec.md`, `task.txt`, `expected.json`, `NOTES.md`, `setup.sh`. Common workflow:
+
+1. Copy an existing fixture directory as a template.
+2. Rewrite `metadata.json::intent` with the new task's plain-language intent.
+3. Write `spec.md` (auto-resolve-ready) and `task.txt` (plain prompt) both derived from the intent.
+4. Fill `expected.json` with concrete verification commands and forbidden patterns.
+5. Document purpose + failure mode in `NOTES.md`.
+6. Add `setup.sh` if the task needs the base `test-repo` modified before either arm starts.
+
+## LLM-upgrade resilience
+
+- **No model hardcoding.** Judge runs `codex exec` without `-m`, inheriting whichever flagship the CLI currently ships. Each run captures `_judge_model` for historical provenance.
+- **Margin-based gates.** Ship thresholds use margin (variant − bare), not absolute score. Both arms improve together as models improve; the harness-added value measured by margin stays meaningful.
+- **Saturation rotation.** When both arms exceed 95 on a fixture for two shipped versions, rotate it (see `RUBRIC.md::Fixture Rotation Policy`).
+
+## Ship gates (summary — see `RUBRIC.md` for full spec)
+
+Hard floors (any one fails → block):
+
+- Zero variant disqualifier (silent catch, fabricated verification, extra deps beyond `max_deps_added`, etc.).
+- `F9-e2e-ideate-to-preflight` must PASS (novice-flow contract).
+- ≥ 7 of 9 gated fixtures have margin ≥ +5.
+- No per-fixture regression worse than −5 vs last shipped baseline.
+
+Soft gates (warning, not block): suite-margin drop > 3, fixture losing its margin, critical-finding catch-rate regression vs last shipped variant.
+
+## Running the full suite (real)
+
+Full real benchmark costs roughly 2-3 minutes per arm for simple fixtures and up to 15 minutes per arm for strict-route fixtures. A full n=1 run of 9 fixtures × 2 arms can take 30 min – 2 hrs depending on routes taken.
 
 ```bash
-python3 benchmark/trace-route.py --test-case T2-standard --version head
+# Smoke run before ship decisions
+npx devlyn-cli benchmark
+
+# Ship-decision run
+npx devlyn-cli benchmark --n 3 --label v3.7 --bless
 ```
 
-Runs Stage A + Stage B logic on the test case's spec/task without actually spawning BUILD. Validates the routing decision matches `expected.json`.
+## Dry-run
 
-### Full real-pipeline benchmark (manual, expensive)
+`--dry-run` skips model invocation. It still:
 
-See `run-real-benchmark.md`. Requires:
-- Sandbox environment per run (so the codebase isn't polluted)
-- Local `codex` CLI on PATH (for `--engine auto`/`codex`); falls back to `--engine claude` when absent
-- ~7-15 hours for 30 paired runs at statistical significance
+- Prepares each fresh work dir.
+- Writes arm-specific prompts.
+- Commits the baseline.
+- Applies `setup.sh`.
+- Runs verification commands (which will mostly fail since no implementation was added).
 
-## Honest scope of current results
-
-This harness was created alongside v2.1 STEP 6. The current commit includes:
-
-- ✅ Harness scripts
-- ✅ 3 test cases with expected routing outcomes
-- ✅ Static measurements (baseline `4eb7b47` vs v2.1 HEAD)
-- ✅ Route trace simulations for all 3 test cases
-- ⏳ Dynamic measurements — **not yet run**. The harness is ready; user executes on demand.
-
-No dynamic numbers (wall-time, real tokens) are reported without actual execution. Any such numbers in prior design docs (e.g., "−50% trivial wall-time") remain labeled as **hypotheses** until real runs validate them.
-
-## How to extend
-
-Add a test case:
-1. Create `test-cases/<name>/` with `task.txt`, `spec.md` (optional), `expected.json`
-2. Run `trace-route.py --test-case <name>` to verify expectations match the routing logic
-3. Run a real pipeline execution and record actuals in `test-cases/<name>/actual.json`
-
-Update the baseline:
-- The baseline git ref (`4eb7b47`) is fixed by design. When a future v3 releases, measure against v2.1 HEAD as the new baseline.
+Use it to sanity-check new fixtures or runner changes before burning model tokens.

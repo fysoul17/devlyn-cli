@@ -699,6 +699,9 @@ function showHelp() {
   log('  npx devlyn-cli -y           Install without prompts');
   log('  npx devlyn-cli agents       Install agents for detected CLIs');
   log('  npx devlyn-cli agents all   Install agents for all supported CLIs');
+  log('  npx devlyn-cli benchmark    Run the full A/B benchmark suite vs bare');
+  log('  npx devlyn-cli benchmark --n 3 --bless   Ship-decision run + promote baseline if pass');
+  log('  npx devlyn-cli benchmark --dry-run       Validate suite setup without model invocation');
   log('  npx devlyn-cli --help       Show this help\n');
   log('Optional skills (select during install):', 'green');
   OPTIONAL_ADDONS.filter((a) => a.type === 'local').forEach((skill) => {
@@ -736,6 +739,21 @@ switch (command) {
   case 'ls':
     listContents();
     break;
+  case 'benchmark':
+  case 'bench': {
+    // Delegate to benchmark/auto-resolve/scripts/run-suite.sh with all remaining args.
+    const runSuite = path.join(__dirname, '..', 'benchmark', 'auto-resolve', 'scripts', 'run-suite.sh');
+    if (!fs.existsSync(runSuite)) {
+      log('❌ Benchmark suite runner missing — is this a clean devlyn-cli checkout?', 'yellow');
+      log(`   Expected: ${runSuite}`, 'dim');
+      process.exit(1);
+    }
+    const { spawnSync } = require('child_process');
+    const forwardedArgs = args.slice(1);
+    const res = spawnSync('bash', [runSuite, ...forwardedArgs], { stdio: 'inherit' });
+    process.exit(res.status ?? 1);
+    break;
+  }
   case 'agents': {
     showLogo();
     log('─'.repeat(44), 'dim');

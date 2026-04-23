@@ -29,6 +29,7 @@ Read the diff cold — no checklist, no prior-phase context. Find what a staff e
 - Every finding anchored to `file:line` in code you have opened, with a concrete fix. Vague ≠ finding.
 - `fix_hint` is a specific change ("change X to Y because Z"), never "consider improving".
 - Interrogate: would this survive 10x traffic? A midnight oncall page? A junior dev in 6 months? Are baked-in assumptions stated out loud (hardcoded limits, implicit ordering, missed business-logic edges)? Is error handling actually helpful or does it prevent crashes while leaving users confused? Are there simpler idiomatic approaches — not "clever" but genuinely better?
+- **Stdlib-vs-hand-rolled calibration.** Emit `design.unidiomatic-pattern` when hand-rolled helper logic REPLACES a standard-library primitive AND is measurably less faithful to required behavior, portability, or error semantics. Concrete example: permission/writability checks should prefer `fs.accessSync(path, fs.constants.W_OK)` over mode-bit inspection (mode bits miss ACLs / platform-specific cases). Do NOT flag helper count alone; require a concrete file:line risk AND a named stdlib replacement that is measurably better.
 - Do not open with praise.
 - Rule_ids: `design.non-atomic-transaction`, `design.duplicate-pattern`, `design.hidden-assumption`, `design.unidiomatic-pattern`, `design.missing-integration`, etc.
 - Severities: CRITICAL / HIGH / MEDIUM — no LOW (design is ship/no-ship).

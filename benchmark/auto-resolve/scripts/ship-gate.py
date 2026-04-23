@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""
+ship-gate.py — apply RUBRIC.md ship thresholds to a suite run's summary.json.
+
+Usage:
+    ship-gate.py --run-id <ID>                   # check gates, return 0/1 via exit code
+    ship-gate.py --run-id <ID> --bless           # if PASS, promote summary to baselines/shipped.json
+
+Exits 0 on PASS, 1 on FAIL.
+"""
+from __future__ import annotations
+import argparse, json, pathlib, sys, shutil, datetime
+
+
+def main() -> int:
+    p = argparse.ArgumentParser()
+    p.add_argument("--run-id", required=True)
+    p.add_argument("--bless", action="store_true")
+    p.add_argument("--accept-missing", action="store_true",
+                   help="skip hard-floor gates that require fixtures not yet implemented "
+                        "(F9 and the 7-of-9 count) — only for suites in bootstrap")
+    args = p.parse_args()
+
+    root = pathlib.Path(__file__).resolve().parent.parent
+    summary_p = root / "results" / args.run_id / "summary.json"
+    if not summary_p.exists():
+        print(f"no summary at {summary_p}", file=sys.stderr); return 1
+    summary = json.loads(summary_p.read_text())
+
+    baseline_p = root / "history" / "baselines" / "shipped.json"
+    baseline = None
+    if baseline_p.exists():
+        try:
+            baseline = json.loads(baseline_p.read_text())
+        except Exception:
+            baseline = None
+
+    failures: list[str] = []
+    warnings: list[str] = []
+
+    # Hard floor 1: no disqualifier in variant
+    if summary["hard_floor_violations"] > 0:
+        failures.append(f"{summary['hard_floor_violations']} variant disqualifier(s) — see report")
+
+    # Hard floor 2: F9 must pass (skipped during bootstrap via --accept-missing)
+    f9_row = next((r for r in summary["rows"] if r.get("fixture") == "F9-e2e-ideate-to-preflight"), None)
+    if f9_row is None:
+        if not args.accept_missing:
+            failures.append("F9 (E2E novice flow) missing — add fixture or run with --accept-missing")
+    else:
+        if (f9_row.get("margin") or -999) < 5:
+            failures.append("F9 (E2E novice flow) must have margin ≥ +5")
+
+    # Hard floor 3: ≥ 7 of 9 gated fixtures with margin ≥ +5
+    # (skipped during bootstrap via --accept-missing)
+    if summary["gated_fixtures"] > 0 and summary["margin_ge_5_count"] < 7:
+        if not args.accept_missing:
+            failures.append(
+                f"only {summary['margin_ge_5_count']} of {summary['gated_fixtures']} "
+                f"gated fixtures have margin ≥ +5 (need ≥ 7)"
+            )
+
+    # Hard floor 4: no per-fixture regression worse than −5 vs shipped baseline
+    if baseline:
+        prev_rows = {r["fixture"]: r for r in baseline.get("rows", [])}
+        for r in summary["rows"]:
+            fid = r.get("fixture")
+            prev = prev_rows.get(fid)
+            if prev and r.get("variant_score") is not None and prev.get("variant_score") is not None:
+                delta = r["variant_score"] - prev["variant_score"]
+                if delta < -5:
+                    failures.append(f"{fid} regressed {delta:+d} vs shipped (floor: −5)")
+
+    # Soft gate: suite average margin drop > 3
+    if baseline:
+        margin_delta = summary["margin_avg"] - baseline.get("margin_avg", 0)
+        if margin_delta < -3:
+            warnings.append(f"suite margin dropped {margin_delta:+.1f} vs shipped (soft gate: > −3)")
+
+    # Soft gate: any fixture that was > +5 before is now ≤ 0
+    if baseline:
+        prev_rows = {r["fixture"]: r for r in baseline.get("rows", [])}
+        for r in summary["rows"]:
+            fid = r.get("fixture")
+            prev = prev_rows.get(fid)
+            if prev and (prev.get("margin") or 0) > 5 and (r.get("margin") or 0) <= 0:
+                warnings.append(
+                    f"{fid} lost its margin: was {prev['margin']:+d}, now {r['margin']:+d}"
+                )
+
+    verdict = "PASS" if not failures else "FAIL"
+    print(f"\n═══ SHIP-GATE VERDICT: {verdict} ═══\n")
+    if failures:
+        print("Hard-floor failures:")
+        for f in failures:
+            print(f"  ✗ {f}")
+        print()
+    if warnings:
+        print("Soft-gate warnings:")
+        for w in warnings:
+            print(f"  ⚠ {w}")
+        print()
+    if not failures and not warnings:
+        print("No gate violations. Suite is ship-ready.")
+
+    # Bless if PASS + --bless
+    if verdict == "PASS" and args.bless:
+        baseline_p.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(summary_p, baseline_p)
+        print(f"\nBlessed: {baseline_p}")
+
+    # Always append to history
+    hist_dir = root / "history" / "runs"
+    hist_dir.mkdir(parents=True, exist_ok=True)
+    hist_file = hist_dir / f"{args.run_id}.json"
+    if not hist_file.exists():
+        # Copy with additional verdict metadata
+        summary["ship_gate"] = {"verdict": verdict, "failures": failures, "warnings": warnings,
+                                  "evaluated_at": datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z"}
+        hist_file.write_text(json.dumps(summary, indent=2))
+
+        latest = root / "history" / "latest.json"
+        latest.write_text(json.dumps({"run_id": args.run_id, "verdict": verdict,
+                                       "completed_at": summary.get("completed_at")}, indent=2))
+
+    return 0 if verdict == "PASS" else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
