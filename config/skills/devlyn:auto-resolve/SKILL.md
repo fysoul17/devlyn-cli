@@ -148,7 +148,15 @@ Single fix loop for every trigger (`build_gate` / `browser_validate` / `evaluate
 
 **Engine**: FIX LOOP row (Codex on `auto`/`codex`, Claude on `claude`). Fresh Codex call each round (no `sessionId` reuse).
 
-Spawn per `<engine_routing_convention>`. Prompt: "Read `.devlyn/fix-batch.round-<N>.json`. Fix every listed entry at the root cause. Criteria live at `pipeline.state.json:criteria[]` — fixes must still satisfy them; do not weaken criteria. Read each referenced `file:line`, understand the issue, implement the fix. No workarounds. Run tests after fixing. Failure detail: `.devlyn/build_gate.log.md` / `.devlyn/browser_validate.log.md`. Update satisfied criteria: clear `failed_by_finding_ids`, set `status: "implemented"`, add `evidence`."
+Spawn per `<engine_routing_convention>`. Prompt:
+
+> Read `.devlyn/fix-batch.round-<N>.json` and `pipeline.state.json`.
+>
+> **First, re-ground on the contract.** Open `source.spec_path` (or `source.criteria_path`) and read the sections/anchors referenced by each finding's `criterion_ref`. **Spec/criteria are higher authority than findings** — do not narrow or reinterpret required behavior to satisfy a finding. If a finding hint conflicts with explicit spec text (e.g., a glob/pattern like `**/SKILL.md`, a cardinality, a flag's documented behavior), preserve the spec semantics and fix only the implementation defect. Non-contradictory, backward-compatible enhancements that preserve required default behavior are allowed (e.g., respecting `NO_COLOR` while still defaulting to colored when unset). If a finding **truly contradicts** the spec, halt that finding's fix, log the conflict in `.devlyn/fix-batch.round-<N>.log.md`, and leave the finding `open` — the conflict surfaces in the final report rather than silently narrowing the contract.
+>
+> **Then fix every listed finding at the root cause.** If multiple findings touch the same symbol, produce **one consolidated change**. Prefer editing/replacing existing code over adding new machinery; **do not leave parallel near-duplicate helpers/functions**. When return-shape pressure appears (one finding needs a richer return value than another), broaden the existing helper's return object — don't create a second variant.
+>
+> Read each referenced `file:line`, implement the fix, run tests. No workarounds (`any`, `@ts-ignore`, silent catches, hardcoded values). Raw failure detail: `.devlyn/build_gate.log.md` / `.devlyn/browser_validate.log.md`. When a previously-failed criterion is now satisfied, clear `failed_by_finding_ids`, set `status: "implemented"`, append an `evidence` record.
 
 **After the agent completes**:
 1. Checkpoint: `git add -A && git commit -m "chore(pipeline): fix round <N> (<triggered_by>)"`.
