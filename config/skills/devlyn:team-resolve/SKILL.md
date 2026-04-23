@@ -134,24 +134,27 @@ Use the Agent Teams infrastructure:
 
 If the caller passed `--engine auto` or `--engine codex` (check the orchestrator's context or the pipeline config), read the auto-resolve skill's `references/engine-routing.md` for per-role routing under "team-resolve roles".
 
-**For roles routed to Codex**: Instead of spawning a Claude Agent teammate, call `mcp__codex-cli__codex` with:
-- `model`: `"gpt-5.4"`
-- `reasoningEffort`: `"xhigh"`
-- `sandbox`: per routing table (`"read-only"` or `"workspace-write"`)
-- `workingDirectory`: project root
-- `prompt`: the full teammate prompt below, with issue context and file paths included inline
+**For roles routed to Codex**: Instead of spawning a Claude Agent teammate, shell out:
 
-Codex roles cannot use TeamCreate/SendMessage — the Team Lead (you) relays their findings to other teammates and collects their output directly from the MCP call response.
+```bash
+codex exec \
+  -C <project root> \
+  -s <sandbox per routing table: read-only | workspace-write> \
+  -c model_reasoning_effort=xhigh \
+  "<full teammate prompt below, with issue context and file paths inlined>"
+```
+
+Omit `-m` so the CLI's current flagship is used (canonical flag set in `config/skills/_shared/codex-config.md`). Codex roles cannot use TeamCreate/SendMessage — the Team Lead (you) reads stdout of each `codex exec` invocation and relays findings to other teammates.
 
 **For roles routed to Claude**: Spawn via Task tool as normal (prompts below).
 
-**For Dual roles** (e.g., security-auditor): Run BOTH a Claude Agent teammate AND a `mcp__codex-cli__codex` call in parallel with the same prompt. Merge findings per `engine-routing.md` "How to Spawn a Dual Role" section.
+**For Dual roles** (e.g., security-auditor): Run BOTH a Claude Agent teammate AND a `codex exec` process in parallel with the same prompt. Merge findings per `engine-routing.md` "How to Spawn a Dual Role" section.
 
 If `--engine auto` or no `--engine` flag: routes each role to the optimal model based on benchmark data (see `engine-routing.md`). If `--engine claude`: all roles use Claude Agent teammates.
 
 ### Teammate Prompts
 
-When spawning each teammate via the Task tool (or passing to `mcp__codex-cli__codex` for Codex-routed roles), use these prompts:
+When spawning each teammate (via Task tool for Claude roles, or as the prompt argument to `codex exec` for Codex-routed roles), use these prompts:
 
 <root_cause_analyst_prompt>
 You are the **Root Cause Analyst** on an Agent Team resolving an issue.

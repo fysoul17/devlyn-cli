@@ -26,11 +26,14 @@ This skill catches those gaps systematically, before users do. The difference be
 </why_this_matters>
 
 <evidence_standard>
-Every finding must cite evidence: file:line for code, specific doc section for documentation, screenshot for browser issues. A finding without evidence is speculation — exclude it.
+Every finding must cite evidence. The shape depends on the finding category:
 
-The corollary: if you search thoroughly and can't find evidence that something exists, that IS evidence it's missing. "Searched for X across src/ and found no implementation" is a valid, evidence-based finding.
+- **Present-code findings** (INCOMPLETE / DIVERGENT / BROKEN / SCOPE_VIOLATION / UNDOCUMENTED / STALE_DOC): `file:line` pointing at the offending code or doc.
+- **MISSING findings** (code the spec required but no trace exists): an explicit "searched X and found no implementation" statement — this IS evidence of absence and qualifies under the standard. MISSING findings have no file:line by definition; forcing one would mean fabricating a target, which is worse than honest absence.
+- **Doc findings** (STALE_DOC on ROADMAP/VISION/README): quote the stale text + cite the doc section or line.
+- **Browser findings**: screenshot reference + URL/route.
 
-This matters because the report feeds into auto-resolve. Vague findings produce vague fixes.
+A finding without one of these forms of evidence is speculation — exclude it. This matters because the report feeds into auto-resolve; vague findings produce vague fixes.
 </evidence_standard>
 
 ## Flags
@@ -48,9 +51,7 @@ Parse from `<preflight_config>`:
 Example: `/devlyn:preflight --phase 2 --skip-browser`
 Example with engine: `/devlyn:preflight --engine auto`
 
-**Engine pre-flight** (runs unless `--engine claude` was explicitly passed):
-- The default engine is `auto`. If the user did not pass `--engine`, the engine is `auto` — NOT `claude`.
-- Call `mcp__codex-cli__ping` to verify Codex MCP availability. On failure, **silently fall back to `--engine claude`** and note `engine downgraded: codex-ping failed` in the final preflight report header. Do not abort. Matches the hands-off contract used by auto-resolve and ideate.
+**Engine pre-flight**: follow `config/skills/_shared/engine-preflight.md`. The downgrade banner surfaces in the final preflight report header.
 
 ## PHASE 0: DISCOVER & SCOPE
 
@@ -101,36 +102,11 @@ Read all in-scope planning documents and build a **commitment registry** — eve
    - Items in `backlog/` or `deferred.md`
    - Items with `status: cut` in ROADMAP.md
 
-5. **Anti-commitments ARE audited** (Out of Scope entries in each spec). These are "must NOT build" claims — if the codebase has shipped something the spec explicitly excluded, that is a WORKAROUND / scope-creep finding, not a success. The code-auditor checks each anti-commitment: "is this excluded behavior present in the code?" If yes → emit a finding with `rule_id: "scope.anti-commitment-violation"` (severity HIGH).
+5. **Anti-commitments ARE audited** (Out of Scope entries in each spec). These are "must NOT build" claims — if the codebase has shipped something the spec explicitly excluded, that is a WORKAROUND / scope-creep finding, not a success. The code-auditor checks each anti-commitment: "is this excluded behavior present in the code?" If yes → emit a finding with **category `SCOPE_VIOLATION`** and **`rule_id: "scope.anti-commitment-violation"`**, severity HIGH (or CRITICAL if it also violates a constraint). Category is the report bucket; `rule_id` is the specific rule that fired — both fields always co-occur on anti-commitment findings.
 
 6. **Separate planned items**: Items with `status: planned` in their spec frontmatter or "Planned" in ROADMAP.md are not expected to be implemented yet. Include them in a `[PLANNED]` section of the registry for visibility, but do **not** audit them as missing. Flagging planned items as MISSING creates noise and buries the real gaps in work that was supposed to be done.
 
-7. **Write to `.devlyn/commitment-registry.md`**:
-
-```markdown
-# Commitment Registry
-Generated: [timestamp]
-Scope: [phase N / all]
-Total commitments: [N]
-
-## Phase 1: [name]
-### 1.1 [item title] (spec status: [done/in-progress/planned])
-- [FEATURE] User can sign up with email and password
-- [BEHAVIOR] Failed login returns 401 with specific error message
-- [CONSTRAINT] Passwords hashed with bcrypt, min 8 characters
-- [INTEGRATION] Auth middleware applied to all /api/* routes
-- [TEST] Auth flow covered by E2E tests
-
-## Anti-Commitments (Out of Scope — audited as "must NOT exist in code")
-- [item 1.1] Must NOT include social login
-- [item 1.2] Must NOT include real-time inventory sync
-
-## Not Started (Planned — not audited for presence, but still anti-commitments inside them apply)
-### 2.1 [item title] (spec status: planned)
-- [FEATURE] WebSocket connection on page load
-- [FEATURE] Real-time task list updates
-[Planned items are tracked for visibility; code-auditor does not flag as MISSING.]
-```
+7. **Write `.devlyn/commitment-registry.md`** per the shape in `references/report-template.md#commitment-registry-shape-devlyncommitment-registrymd`. Required blocks: scoped commitments grouped by phase/item, Anti-Commitments, Not Started (planned items — tracked, not audited for presence).
 
 ## PHASE 2: AUDIT
 
@@ -138,9 +114,9 @@ Spawn all applicable auditors in parallel. Each reads `.devlyn/commitment-regist
 
 ### code-auditor (always)
 
-Engine routes per the auto-resolve skill's `references/engine-routing.md` ("Pipeline Phase Routing (preflight)" → CODE AUDIT row): Codex on `--engine auto`/`codex`, Claude on `--engine claude`. When the route is **Codex**, call `mcp__codex-cli__codex` with the auditor prompt inline (Codex cannot read `.devlyn/commitment-registry.md` directly under `read-only` sandbox, so paste the registry into the prompt). When the route is **Claude**, spawn a subagent with `mode: "bypassPermissions"`. Read the auditor prompt from `references/auditors/code-auditor.md` either way.
+Engine routes per the auto-resolve skill's `references/engine-routing.md` ("Pipeline Phase Routing (preflight)" → CODE AUDIT row): Codex on `--engine auto`/`codex`, Claude on `--engine claude`. When the route is **Codex**, shell out `codex exec -C <project root> -s read-only -c model_reasoning_effort=xhigh "<auditor prompt with commitment registry inlined>"` — the registry must be pasted into the prompt because Codex has no filesystem access under read-only. When the route is **Claude**, spawn a subagent with `mode: "bypassPermissions"`. Read the auditor prompt from `references/auditors/code-auditor.md` either way.
 
-The code-auditor classifies each commitment as IMPLEMENTED, MISSING, INCOMPLETE, DIVERGENT, or BROKEN — with file:line evidence. Also catches cross-feature integration gaps and constraint violations. Writes to `.devlyn/audit-code.md`.
+The code-auditor classifies each commitment as IMPLEMENTED, MISSING, INCOMPLETE, DIVERGENT, BROKEN, or SCOPE_VIOLATION — with evidence per `<evidence_standard>`. Also catches cross-feature integration gaps and constraint violations. Writes to `.devlyn/audit-code.md`.
 
 ### docs-auditor (unless --skip-docs)
 
@@ -165,7 +141,7 @@ Tests user-facing features in the browser against commitment registry. Writes to
 
 ## PHASE 3: SYNTHESIZE & REPORT
 
-Auditors already emit each finding with its category (`MISSING`/`INCOMPLETE`/`DIVERGENT`/`BROKEN`/`UNDOCUMENTED`/`STALE_DOC`/`scope.anti-commitment-violation`) and severity (`CRITICAL`/`HIGH`/`MEDIUM`/`LOW`). Synthesis passes them through — do NOT re-classify or re-severity-label. That would replace domain judgment with orchestrator mechanics.
+Auditors already emit each finding with its **category** (`MISSING` / `INCOMPLETE` / `DIVERGENT` / `BROKEN` / `SCOPE_VIOLATION` / `UNDOCUMENTED` / `STALE_DOC`) and severity (`CRITICAL` / `HIGH` / `MEDIUM` / `LOW`). SCOPE_VIOLATION findings additionally carry `rule_id: "scope.anti-commitment-violation"` so the triggering anti-commitment is traceable. Synthesis passes both fields through — do NOT re-classify the category or re-severity-label. That would replace domain judgment with orchestrator mechanics.
 
 1. **Read all audit files** in parallel:
    - `.devlyn/audit-code.md`
@@ -181,75 +157,7 @@ Auditors already emit each finding with its category (`MISSING`/`INCOMPLETE`/`DI
    - `PERSISTS`: finding still present
    - `NEW`: finding not in previous run
 
-5. **Generate `.devlyn/PREFLIGHT-REPORT.md`**:
-
-```markdown
-# Preflight Report
-Generated: [timestamp]
-Scope: [phase N / all]
-Previous run: [timestamp / none]
-
-## Summary
-| Category | Count |
-|----------|-------|
-| MISSING | [N] |
-| INCOMPLETE | [N] |
-| DIVERGENT | [N] |
-| BROKEN | [N] |
-| SCOPE_VIOLATION | [N] |
-| UNDOCUMENTED | [N] |
-| STALE_DOC | [N] |
-| **Total findings** | **[N]** |
-
-## Delta (vs previous run)
-- Resolved: [N]
-- Persists: [N]
-- New: [N]
-
-## Commitment Coverage
-- Active commitments (done/in-progress specs): [N]
-- Verified (IMPLEMENTED): [N] ([%])
-- Issues found: [N] ([%])
-- Planned items (excluded from audit): [N] across [M] specs
-
-## Findings
-
-### CRITICAL
-- **[MISSING]** `1.2` — Order cancellation flow
-  - **Commitment**: "User can cancel pending orders within 24 hours"
-  - **Evidence**: No cancellation endpoint in `src/api/orders/`. No cancel button in `src/components/OrderDetail.tsx`.
-  - **Impact**: Core user workflow completely absent.
-
-### HIGH
-- **[INCOMPLETE]** `1.1` — Error handling on signup
-  - **Commitment**: "Failed signup shows specific validation errors"
-  - **Evidence**: `src/api/auth/signup.ts:34` returns generic 500. No field-level validation.
-  - **Impact**: Users see "Something went wrong" instead of actionable feedback.
-
-### MEDIUM
-...
-
-### LOW
-...
-
-## Documentation Findings
-- [STALE_DOC] ROADMAP.md: Item 1.3 status "In Progress" → should be "Done"
-- [UNDOCUMENTED] WebSocket real-time updates not mentioned in README
-
-## What's Verified
-[Explicitly list areas that passed — balanced feedback prevents over-correction]
-- Auth flow: all 5 commitments verified (signup, login, logout, password reset, session management)
-- Database schema: matches all spec constraints
-
-## Not Started (Expected — Planned Items)
-[List planned items here for visibility, not as findings]
-- 2.1 Real-time Updates — status: planned, 5 commitments
-- 2.2 Team Management — status: planned, 6 commitments
-These items are acknowledged future work per the roadmap. They will be audited when their status changes to in-progress or done.
-
-## Accepted Divergences (from previous runs)
-- [list any, or "None"]
-```
+5. **Generate `.devlyn/PREFLIGHT-REPORT.md`** per the shape in `references/report-template.md`. Required sections in order: header (timestamp + scope + previous run), Summary (counts per category), Delta, Commitment Coverage, Findings (grouped CRITICAL → HIGH → MEDIUM → LOW with category prefix + evidence + impact), Documentation Findings, What's Verified, Not Started, Accepted Divergences. Every finding carries evidence per `<evidence_standard>` — shape varies by category (file:line for present-code, "searched X / not found" for MISSING, doc quote for STALE_DOC, screenshot for browser). Findings without any evidence form are excluded.
 
 6. **Present the report** to the user with a summary.
 
@@ -259,80 +167,18 @@ How this phase runs depends on the `--autofix` flag:
 
 ### Without --autofix (default — interactive)
 
-Present findings and guide the user through triage:
+Present findings and guide the user through triage. For each finding offer three actions:
+1. **Promote** — create a roadmap item spec, add a row to ROADMAP.md
+2. **Accept** — record the divergence as intentional; excluded from future runs
+3. **Skip** — leave for later
 
-```
-Preflight found [N] findings across [categories].
+Triage contract (same sequence whether user promotes one finding or twenty):
 
-For each finding, you can:
-1. **Promote** → creates a roadmap item spec, adds to ROADMAP.md
-2. **Accept** → marks as intentional divergence (won't flag on future runs)
-3. **Skip** → leave for later
-
-Which findings would you like to promote to the roadmap?
-```
-
-**When the user confirms findings to promote:**
-
-1. **Generate item specs** for each confirmed finding, following the ideate template format:
-   ```markdown
-   ---
-   id: "[phase].[next-number]"
-   title: "[Fix/Add: description]"
-   phase: [N]
-   status: planned
-   priority: [derived from finding severity]
-   complexity: [estimated from finding scope]
-   depends-on: []
-   ---
-
-   # [id] [Title]
-
-   ## Context
-   Preflight check identified this gap against the original roadmap specification.
-   [Brief context from the original commitment and what's wrong]
-
-   ## Objective
-   [What needs to be true after this is fixed]
-
-   ## Requirements
-   - [ ] [Specific fix requirement derived from the finding]
-   - [ ] [Verification step]
-
-   ## Constraints
-   - Must align with original spec at docs/roadmap/phase-N/[original-item].md
-
-   ## Out of Scope
-   - Changes beyond what the original spec requires
-   ```
-
-2. **Place specs** in the appropriate roadmap phase directory (same phase as the original item, or a new "fixes" phase if multiple phases are affected)
-
-3. **Update ROADMAP.md** with new rows for promoted findings
-
-4. **Record accepted divergences** in `.devlyn/preflight-accepted.md`:
-   ```markdown
-   # Accepted Divergences
-   # Findings marked as intentional — excluded from future preflight runs
-
-   - [item-id] [commitment]: [reason accepted]
-   ```
-
-5. **STALE_DOC findings**: Fix these directly — update ROADMAP.md statuses, item spec frontmatter, and VISION.md "What's Next" sections. These are factual corrections, not implementation decisions.
-
-6. **Suggest next steps**:
-```
-Triage complete.
-- [N] findings promoted to roadmap ([list item IDs])
-- [N] divergences accepted
-- [N] doc issues fixed directly
-
-Next steps:
-- To implement fixes: /devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-N/[id]-[name].md"
-  - For CRITICAL severity or complex DIVERGENT findings, the default `--engine auto` already routes BUILD/FIX to Codex and EVALUATE/CHALLENGE to Claude (cross-model GAN dynamic). No extra flag needed.
-- To re-run preflight after fixes: /devlyn:preflight [same flags]
-- To add new features discovered during audit: /devlyn:ideate expand
-```
+1. For each confirmed-promote finding, write an item spec in the appropriate roadmap phase directory (same phase as the original item, or a new "fixes" phase when findings cross multiple phases). Shape: `references/triage-templates.md#promoted-item-spec-written-per-confirmed-finding`. Priority derives from finding severity; complexity from scope.
+2. Append new rows to `docs/ROADMAP.md` for every promoted spec — never regenerate the table.
+3. For each accepted divergence, append to `.devlyn/preflight-accepted.md` (shape in triage-templates.md). These are filtered out in Phase 3 of every future preflight run.
+4. **STALE_DOC findings are always fixed directly** — ROADMAP status, item spec frontmatter, VISION.md "What's Next". Factual corrections, not implementation decisions.
+5. Print the triage-complete summary per the template.
 
 ### With --autofix
 

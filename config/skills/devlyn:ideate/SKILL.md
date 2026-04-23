@@ -29,10 +29,7 @@ Parse these from the user's invocation message:
   - `codex`: Codex handles FRAME/EXPLORE/CONVERGE/DOCUMENT, Claude runs CHALLENGE (role reversal — builder and critic are always different models).
   - `claude`: all phases use Claude. No Codex calls.
 
-**Engine pre-flight** (runs unless `--engine claude` was explicitly passed):
-- The default engine is `auto`. If the user did not pass `--engine`, the engine is `auto` — not `claude`.
-- Call `mcp__codex-cli__ping` to verify Codex MCP availability. On failure, **silently fall back to `--engine claude`** and note `engine downgraded: codex-ping failed` in your eventual output summary. Do not present a menu; do not abort. This matches auto-resolve's hands-off contract.
-- Read `references/challenge-rubric.md` up front.
+**Engine pre-flight**: follow `config/skills/_shared/engine-preflight.md` — the one shared ping/downgrade rule every skill uses. Then read `references/challenge-rubric.md` up front.
 
 **Consolidated flag**: `--with-codex` was rolled into the smarter `--engine auto` default. If the user passes it, inform them once and proceed with `--engine auto`: "Note: `--with-codex` was consolidated into `--engine auto` (default), which routes the CHALLENGE rubric pass to Codex automatically. No flag needed. Continuing with `--engine auto`."
 
@@ -100,95 +97,18 @@ Before starting, identify what the user needs:
 
 Announce the detected mode and confirm before proceeding.
 
-### Expand Mode Detail
+### Mode invariants (keep these regardless of which mode runs)
 
-Expand is the most common mode after initial setup — the user already has Vision + Roadmap and wants to add new capabilities. This mode requires careful integration with existing documents.
+These are the rules that make modes safe. Violating one silently corrupts the roadmap; the detailed workflow for each mode lives in `references/modes.md` — read it when entering that mode.
 
-**On entry:**
-1. Read `docs/VISION.md`, `docs/ROADMAP.md`, and existing phase `_overview.md` files to understand the established context
-2. Scan existing item specs to understand what's built and what's planned
-3. **Run the Archive Pass** (see Context Archiving below) before summarizing. Summarizing a stale roadmap to the user wastes the exchange — they'll see "Phase 1 has 4 items" when really all 4 are already Done and the phase should be collapsed.
-4. Summarize your understanding: "Here's what exists: [phases, item count, current status]. You want to add [new area]. Does this expand an existing phase or warrant a new one?"
+- **Capture, don't fix.** Quick Add looks like a trivial bug report; never drift into implementation. The `<hard_boundary>` above applies to every mode.
+- **Archive-before-summarize.** In Quick Add / Expand / Replan, run the Archive Pass *before* summarizing or choosing an ID when any phase in ROADMAP.md is entirely `Done`. Skip otherwise — on a fresh roadmap the pass is no-op bookkeeping. The Archive Pass edits ROADMAP.md only; item spec files stay at `docs/roadmap/phase-N/{id}.md` — never moved or deleted.
+- **Numbering continuity.** Never renumber existing items. New items continue from the next available ID in the chosen phase (e.g., Phase 2 with 2.1-2.4 → new item is 2.5, or open Phase 3).
+- **Don't overwrite established docs.** VISION.md is rewritten only on explicit user request. ROADMAP.md rows are appended, not regenerated. Existing item specs are never replaced without confirmation.
+- **Flag spec impact.** If a new item changes the meaning of an existing item, surface it as a question — don't silently edit the older spec.
+- **Superseded over deleted.** Decisions that became wrong get `status: superseded` + a pointer to the replacement; reasoning history is more valuable than a tidy table.
 
-**During ideation:**
-- FRAME is lighter — the vision already exists, focus on framing the NEW area only
-- EXPLORE focuses specifically on the new capability and how it integrates with existing features
-- CONVERGE must consider dependencies on existing items, not just new ones
-
-**During document generation:**
-- Don't overwrite existing VISION.md unless the user explicitly wants to update it
-- Continue numbering from existing IDs (if Phase 2 exists with 2.1-2.4, new items start at 2.5 or create Phase 3)
-- Add new rows to ROADMAP.md, don't regenerate the whole table
-- New item specs can reference existing items in their Dependencies section
-- If new items change the meaning of existing items, flag this: "Adding [X] may affect the scope of existing item [Y]. Should we update [Y]'s spec?"
-
-In Replan mode: read existing docs first, **run the Archive Pass** (see Context Archiving below) before any reprioritization — you can't sensibly reorder work that's already finished — then focus on the Converge phase to reprioritize what remains. The Archive Pass also surfaces Backlog items whose Revisit date has passed, which are natural candidates when replanning.
-
-### Quick Add Mode Detail
-
-Quick Add is for when the user has a single concrete idea, bug report, or improvement — they don't need a full ideation session, just a new entry in the roadmap. This is the most common trigger for misuse: the request looks like a simple fix, so the temptation is to implement it. Don't. Capture it.
-
-**On entry:**
-1. Read `docs/ROADMAP.md` and relevant phase `_overview.md` files
-2. **Run the Archive Pass first** (see Context Archiving below). Do this *before* you figure out where the new item goes — a stale roadmap will mislead phase selection and ID numbering. If the pass moves a phase out of the active section, the new item's natural home may change.
-3. Identify the best-fit phase for the new item (or suggest a new phase if it doesn't fit)
-4. Determine the next available item ID (e.g., if phase 2 has 2.1-2.4, the new item is 2.5)
-
-**Workflow (minimal — no full Frame/Explore/Converge):**
-1. Confirm the idea with the user: "I'll add this as [item title] in Phase [N]. That sound right?"
-2. Ask 1-2 clarifying questions if the requirement is unclear (skip if the user gave enough detail)
-3. Generate the item spec following `references/templates/item-spec.md`
-4. Add a row to `docs/ROADMAP.md`
-5. Output confirmation: the file path and a suggested auto-resolve command
-
-**Example output:**
-```
-Added: docs/roadmap/phase-2/2.5-back-to-review-button.md
-
-To implement:
-/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-2/2.5-back-to-review-button.md"
-```
-
-### Context Archiving
-
-ROADMAP.md is the tactical index. Done work should move to a collapsed `## Completed` block at the bottom, not clutter the active view. Item spec files stay on disk at `docs/roadmap/phase-N/{id}.md` — only the index row moves.
-
-#### The Archive Pass (conditional)
-
-Run this at the start of Quick Add / Expand / Replan **only when** `docs/ROADMAP.md` contains at least one phase where every row is `Done`. A quick scan tells you within seconds. Skip the pass otherwise — running it on a roadmap with no fully-done phases is no-op bookkeeping that burns the user's turn.
-
-When it runs:
-
-1. Read `docs/ROADMAP.md`.
-2. For each phase where every row is `Done`: cut the `## Phase N: …` heading and table, move it into a new or existing `## Completed` block at the bottom as a `<details>` entry (see format below). Use the latest completion date found in item spec frontmatter (`completed:`), or today's if absent. Item count is the row count.
-3. Individual `Done` rows inside an otherwise-active phase stay put — mixed phases show recent wins alongside open work.
-4. Scan the Backlog table; surface any row whose `Revisit` date has passed as a replan candidate (don't auto-promote — that's a conversation).
-5. Scan `docs/roadmap/decisions/` for `accepted` decisions whose reasoning is visibly contradicted by newly-Done work; raise them as open questions rather than silently editing.
-6. One-sentence report of what was archived, then proceed with the mode's main work. Skip the report if nothing changed.
-
-**Completed block format** (place at the bottom of ROADMAP.md, below Decisions):
-
-```markdown
-## Completed
-<details>
-<summary>Phase 1: Foundation (completed 2026-04-15, 4 items)</summary>
-
-| # | Feature | Completed |
-|---|---------|-----------|
-| 1.1 | Auth & Onboarding | 2026-02-10 |
-| 1.2 | Order Management | 2026-03-05 |
-| 1.3 | Inventory Tracking | 2026-03-28 |
-| 1.4 | Customer Directory | 2026-04-15 |
-</details>
-```
-
-If the `## Completed` section already exists and you're archiving an additional phase, append a new `<details>` block — don't rewrite existing ones.
-
-#### Outdated decisions
-
-When a decision becomes wrong because the world changed under it:
-- Don't delete it — set its `status:` to `superseded` in the decision file's frontmatter and add a one-line pointer to the replacement decision record.
-- This preserves the reasoning history for future reference, which matters more than a tidy decisions table.
+Full per-mode workflow (entry steps, conversation pattern, generation rules), the Archive Pass algorithm, and the Completed-block format are in `references/modes.md`.
 
 ## Phase 1: FRAME
 
@@ -322,7 +242,7 @@ For Quick Add with one new item, one solo pass is enough. For a full greenfield 
 
 **If `--engine auto`** (default): Codex runs the CHALLENGE rubric pass automatically as critic.
 
-Call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "read-only"`, `workingDirectory: <project root>`. The `prompt` parameter is built from the packaged plan + the inlined rubric + the appended Codex instructions. Codex has no filesystem access to this project, so everything it needs travels in the prompt.
+Run `codex exec -C <project root> -s read-only -c model_reasoning_effort=xhigh "<inlined-prompt>"`. The prompt is built from the packaged plan + the inlined rubric + the appended Codex instructions — Codex has no filesystem access under read-only, so everything it needs travels in the prompt. Omit `-m` to inherit the CLI flagship. Full flag rationale in `config/skills/_shared/codex-config.md`.
 
 **Step 1 — Package the post-solo plan.** Build the prompt per `references/codex-critic-template.md` (section order, rubric inlining, Codex-specific instructions all live there verbatim — follow the template structure, fill in the plan/findings sections).
 
@@ -377,7 +297,7 @@ For single-item additions, run one solo rubric pass on just the new item. Even t
 
 ## Engine Routing for FRAME / EXPLORE / CONVERGE / DOCUMENT
 
-**If `--engine codex`**: Phases 1-3 and Phase 4 are delegated to Codex. For each phase, call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "workspace-write"`, and the phase instructions + user context as the prompt. Use `sessionId` to maintain conversational context across phases (note: sandbox/fullAuto only apply on the first call). Claude remains the orchestrator — it reads Codex's output, manages the conversation with the user (confirmation prompts, clarifying questions), and routes findings between phases.
+**If `--engine codex`**: Phases 1-3 and Phase 4 are delegated to Codex. For each phase, run `codex exec -C <project root> --full-auto -c model_reasoning_effort=xhigh "<phase prompt + user context>"`. For multi-phase continuity, use `codex exec resume --last` on subsequent phases so the session carries prior context. Claude remains the orchestrator — it reads Codex's stdout, manages the conversation with the user (confirmation prompts, clarifying questions), and routes findings between phases.
 
 **If `--engine auto` or `--engine claude`**: All planning phases use Claude directly (current behavior). Claude's ambiguous intent handling and writing quality benchmarks favor it for planning tasks.
 
@@ -439,28 +359,15 @@ Documents created:
 
 ## Phase 5: BRIDGE
 
-<phase_goal>Connect documents to the implementation pipeline.</phase_goal>
-
-After document generation, output the implementation guide:
+After DOCUMENT, print exactly one implementation handoff line per phase-1 item so the user can paste it into auto-resolve without rebuilding the spec path from memory:
 
 ```
-## Implementation
-
-To implement each item:
-/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-1/1.1-xxx.md — read the spec file for requirements, constraints, and scope boundaries"
-
-Recommended order (respecting dependencies):
-1. 1.1 [name] — no dependencies
-2. 1.2 [name] — depends on 1.1
-3. 1.3 [name] — depends on 1.1
-...
-
-After completing each item:
-1. Update status in the item spec frontmatter (status: done)
-2. Update ROADMAP.md status column
+Implementation:
+/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-1/1.1-xxx.md"
+/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-1/1.2-yyy.md"
 ```
 
-The auto-resolve prompt explicitly tells the build agent to read the spec file — this ensures done-criteria are adopted from the spec rather than generated from scratch, preserving the ideation context through to implementation.
+Dependencies are already encoded in each spec's `Dependencies` section and in ROADMAP.md's status column — don't restate them here. The explicit `Implement per spec at <path>` wording is load-bearing: it's what tells auto-resolve to read the spec file and adopt its Requirements as done-criteria instead of generating fresh ones.
 
 ## Language
 

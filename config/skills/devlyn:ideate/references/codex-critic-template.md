@@ -1,6 +1,8 @@
 # Codex Critic Prompt Template (Phase 3.5)
 
-Used by `devlyn:ideate` when `--engine auto` or `--engine claude` (role reversal). Call `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox: "read-only"`, `workingDirectory: <project root>`. Codex has no filesystem access to this project — everything it needs travels in the prompt.
+> Invocation flag set: `config/skills/_shared/codex-config.md`.
+
+Used by `devlyn:ideate` when `--engine auto` or `--engine claude` (role reversal). Run `codex exec -C <project root> -s read-only -c model_reasoning_effort=xhigh "<packaged prompt>"`. Codex has no filesystem access under read-only — everything it needs travels in the prompt.
 
 Assemble the prompt with these sections in this exact order, filling in placeholders:
 

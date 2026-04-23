@@ -2,7 +2,9 @@
 
 Routing rules for Claude / Codex / Dual per role and phase. Only read when `--engine` is `auto` or `codex`.
 
-Codex call defaults: `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox` per role (below), `workingDirectory: <project root>`.
+> Codex invocations use the local `codex exec` CLI. Flag set + rationale live in `config/skills/_shared/codex-config.md`. No MCP, no model hardcoding — the CLI's current flagship is inherited automatically.
+
+Codex call defaults: `codex exec -C <project root> -s <per role> -c model_reasoning_effort=xhigh "<prompt>"`. Omit `-m` so the flagship is auto-selected; override only when a role needs a specialized variant (e.g., `gpt-5.3-codex` for SWE-bench-heavy pure-coding roles).
 
 ---
 
@@ -69,7 +71,7 @@ Docs auditor is always Claude (writing-quality strength for prose-drift detectio
 | quality-reviewer | Dual | read-only | Measured ~36–73% coverage gain from dual |
 | ux/ui/accessibility-* | Claude | — | Ambiguity handling + WCAG domain depth |
 
-For Codex roles: `mcp__codex-cli__codex` with `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, sandbox per table. Include full role prompt inline; Codex has no access to TeamCreate/SendMessage/TaskCreate.
+For Codex roles: shell out `codex exec -C <project root> -s <sandbox per table> -c model_reasoning_effort=xhigh "<role prompt>"`. Include the full role prompt inline; Codex has no access to TeamCreate/SendMessage/TaskCreate.
 
 For Dual roles: run both in parallel, merge findings. Same finding from both → keep more detailed wording, mark "confirmed by both". Codex-only → prefix `[codex]`. Conflicts → keep both.
 

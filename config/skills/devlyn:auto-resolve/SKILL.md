@@ -17,7 +17,7 @@ Long-horizon agentic work. Context auto-compacts — do not stop early on token-
 This pipeline runs hands-free. Measured by how far it gets without human intervention.
 
 1. **Never prompt the user mid-pipeline.** When you'd otherwise ask, pick the safe default, proceed, and log it in the final report.
-2. **Codex availability**: on `--engine auto`/`codex`, call `mcp__codex-cli__ping` at the start. On failure, silently fall back to `--engine claude` and log `engine downgraded: codex-ping failed` in the final report. Do NOT present a menu. Do NOT abort.
+2. **Codex availability**: on `--engine auto`/`codex`, follow `config/skills/_shared/engine-preflight.md` — check that the `codex` CLI is on PATH. On failure, silently fall back to `--engine claude` and log `engine downgraded: codex-unavailable` in the final report. Do NOT present a menu. Do NOT abort.
 3. **Run only the phases defined below, in order.** Doc updates belong in PHASE 4 (DOCS). Don't insert them earlier.
 4. **Delegate all file changes to spawned subagents.** Orchestrator actions: parse input, spawn phase agents, read handoff files, run `git`, branch on verdicts, emit report, archive.
 5. **Continue by default.** Stop only for: (a) unrecoverable subagent failure, (b) PHASE 1 producing zero code changes, (c) build-gate / browser fix-loop exhausting `max_rounds` (halt → FINAL REPORT). EVAL/CRITIC exhaustion proceeds with warning — never halts.
@@ -31,7 +31,7 @@ Goal-first. Verify state, source integrity, diff base, artifact contracts. Prefe
 Every phase routes to the optimal model per `references/engine-routing.md`:
 
 - Phase prompt bodies (in `references/phases/`) are engine-agnostic.
-- Phases routed to **Codex**: call `mcp__codex-cli__codex` per spawn patterns in `engine-routing.md`.
+- Phases routed to **Codex**: shell out to `codex exec` per the canonical flag set in `config/skills/_shared/codex-config.md` and the spawn patterns in `engine-routing.md`. No MCP.
 - Phases routed to **Claude**: spawn an `Agent` subagent with `mode: "bypassPermissions"`, passing the phase body verbatim.
 - **Dual** (CRITIC security sub-pass on `--engine auto`): spawn both in parallel; orchestrator merges findings.
 - `--engine claude` forces all phases to Claude. `--engine codex` forces implementation to Codex, orchestration/Chrome MCP stays Claude. `--engine auto` (default) uses the routing table.
@@ -64,7 +64,7 @@ Optional: pass `--perf` to record per-phase `{wall_ms, tokens, engine, round, tr
    - `--build-gate MODE` (auto) — `auto` / `strict` / `no-docker`.
    - `--perf` — opt in to per-phase timing/token accounting.
 
-2. **Engine pre-flight** (unless `--engine claude`): call `mcp__codex-cli__ping`. On failure, silent fallback to `--engine claude`, log `engine downgraded`. Never prompt.
+2. **Engine pre-flight**: follow `config/skills/_shared/engine-preflight.md`. The downgrade banner surfaces in the final report's Engine line.
 
 3. **Initialize `pipeline.state.json`** per `references/pipeline-state.md`:
    - `version: "1.2"`, `run_id: "ar-$(date -u +%Y%m%dT%H%M%SZ)-<12-hex>"`, `started_at`, `engine`, `base_ref.{branch, sha}`, `rounds.max_rounds`, `eval_passed_sha: null`, `route.bypasses: [...]`, empty `phases`, `criteria`, `route.selected`.
@@ -211,41 +211,7 @@ Spawn Claude `Agent` (`mode: "bypassPermissions"`). Include original task descri
 
 1. **Terminal verdict**: run `python3 scripts/terminal_verdict.py` (implements the precedence in `references/pipeline-routing.md#terminal-state-algorithm`; prints verdict, exits 0/1/2/3 for PASS/PASS_WITH_ISSUES/NEEDS_WORK/BLOCKED).
 
-2. **Render report**:
-```
-### Auto-Resolve Complete — run <run_id>
-
-Task: <original task>
-Engine: <engine> (downgraded: <reason or no>)
-Route: <selected> (user_override: <t/f>)
-  Stage A: <reasons>
-  Stage B LITE: <no escalation | escalated from X — reason>
-
-Terminal verdict: <PASS / PASS_WITH_ISSUES / NEEDS_WORK / BLOCKED>
-<banner if applicable: "⚠ BUILD GATE EXHAUSTED" / "⚠ EVAL EXHAUSTED — open findings: <list file:line>" />
-
-Pipeline summary:
-| Phase | Verdict | Notes |
-|-------|---------|-------|
-| BUILD | <v> | <engine, solo/team> |
-| BUILD GATE | <v> | <project types, commands> |
-| BROWSER | <v / skipped — no web> | <tier, flow> |
-| EVAL (round <N>) | <v> | <finding count by severity> |
-| FIX ROUNDS | <N of max> | <triggered_by history> |
-| CRITIC | <v / skipped-route / skipped-bypass> | <design: N, security: N, dep-audit: ran/skipped> |
-| DOCS | <completed / skipped> | <specs flipped, roadmap archived> |
-
-Guardrails bypassed: <state.route.bypasses or "none">
-
-Commits: <git log --oneline from state.base_ref.sha>
-
-Audit trail: .devlyn/runs/<run_id>/
-
-Next steps:
-- Review: git diff <base_ref.sha>
-- Squash: git rebase -i <base_ref.sha>
-- Re-run fixes: /devlyn:auto-resolve "<narrower task>"
-```
+2. **Render report** per the exact shape in `references/final-report-template.md` — required section order, banner rules, engine-line contract, and summary table layout all live there. Fill placeholders from `pipeline.state.json`.
 
 3. **Archive**: run `python3 scripts/archive_run.py` (implements `references/pipeline-state.md#archive-contract`; moves per-run artifacts into `.devlyn/runs/<run_id>/`, best-effort prunes to last 10 completed runs).
 
