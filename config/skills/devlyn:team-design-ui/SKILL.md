@@ -1,3 +1,8 @@
+---
+name: devlyn:team-design-ui
+description: Assemble a world-class design team to generate 5 radically distinct, portfolio-worthy UI style explorations. Like /devlyn:design-ui but powered by a full team of design specialists.
+---
+
 Assemble a world-class design team to generate 5 radically distinct, portfolio-worthy UI style explorations. Like `/devlyn:design-ui` but powered by a full team of design specialists — Creative Director, Product Designer, Visual Designer, Interaction Designer, and Accessibility Designer — who collaborate to produce 5 stunning HTML design samples that go far beyond what a single designer could achieve.
 
 This is design exploration only. After the user picks a style:

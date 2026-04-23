@@ -1,6 +1,6 @@
 # PHASE 3 — CRITIC (agent prompt body)
 
-Spawned when PHASE 3 runs. Engine: CRITIC row of `engine-routing.md` — design sub-pass always Claude; security sub-pass Dual on `--engine auto`, single on others.
+Spawned when PHASE 3 runs. Engine: CRITIC row of `engine-routing.md` — design sub-pass always Claude; security sub-pass delegated to the **native `security-review` skill** on every engine (findings-only native, no Dual cost).
 
 **Findings-only**: CRITIC does NOT write code. Orchestrator routes `NEEDS_WORK`/`BLOCKED` findings into PHASE 2.5 with `triggered_by: "critic"`. No bespoke mini-loop inside CRITIC.
 
@@ -36,35 +36,34 @@ Read the diff cold — no checklist, no prior-phase context. Find what a staff e
 **Design sub-verdict**: `PASS` only if zero design findings. Any open design finding → `NEEDS_WORK`.
 </design_quality_bar>
 
-## Sub-pass 2: SECURITY (Dual on `--engine auto`, single otherwise)
+## Sub-pass 2: SECURITY (native `security-review`)
 
 <security_goal>
-Dedicated security audit of all recent changes. NOT a general code review — focus exclusively on security concerns. File:line evidence for every finding.
+Delegate the security audit to the native Claude Code `security-review` skill. It performs an OWASP-scoped review of the pending changes on the current branch, returns findings-only (no code mutations — compatible with the post-EVAL invariant), and covers the same attack surface as the old custom pass without paying the Dual-model cost.
 </security_goal>
 
+<invocation>
+Invoke the native skill via the Skill tool: `security-review`. No arguments needed — it reads `git diff` and `git status` on the current branch.
+
+Capture its full text output to `.devlyn/security_review.log.md` verbatim. The native skill writes human-readable findings with concrete file:line references; parse those into `.devlyn/critic.findings.jsonl` entries with `phase: "critic"`, `rule_id: "security.<category>"`, and the severity the native skill assigned.
+
+Normalization rules (output contract preservation):
+- One JSONL line per native finding. Reuse `CRIT-<4digit>` ID sequence alongside design findings.
+- `rule_id`: map the native category to the prefix `security.*`. Use one of the established kebab-case suffixes when obvious (`sql-injection`, `xss`, `path-traversal`, `ssrf`, `hardcoded-credential`, `missing-input-validation`, `missing-auth-check`, `privilege-escalation`, `data-exposure`, `insecure-dependency`, `missing-csrf`, `permissive-cors`); otherwise invent one in the same kebab-case pattern and log it.
+- `severity`: keep the native classification. If the native output omits severity, infer CRITICAL for exploitable attack vectors, HIGH for direct vulnerabilities, MEDIUM for hardening gaps, LOW for informational — and record the inference in `critic.log.md`.
+- `confidence`: 0.9 for findings the native skill stated with evidence; 0.7 when inferred. Never fabricate.
+
+If the native skill invocation fails (unavailable, errored out, no output), set `phases.critic.sub_verdicts.security = "BLOCKED"` with a single finding `rule_id: "security.review-failed"`, `severity: CRITICAL`, message `"native security-review skill failed — manual security review required before ship"`. Do NOT fall back to a custom pass; surface the failure and halt CRITIC.
+
+Dependency audit is included in the native skill's output when lockfiles changed. No separate `npm audit` / `pip-audit` invocation needed.
+</invocation>
+
 <security_quality_bar>
-Check every changed file for:
-1. **Input validation**: trace every user input entry → storage/output. SQL injection, XSS, command injection, path traversal, SSRF.
-2. **Auth & authorization**: new endpoints protected? Auth checks consistent? Privilege escalation / BOLA paths?
-3. **Secrets & credentials**: grep for hardcoded API keys, tokens, passwords, private keys. Secrets from env vars. `.gitignore` covers sensitive files.
-4. **Data exposure**: error messages leaking internal details? Logs capturing sensitive data? API responses returning more than needed?
-5. **Dependencies** — **MANDATORY** when any dep manifest or lockfile changed (see `<input>` list above). Run the package manager's audit command:
-   - `npm audit --json` (Node/pnpm/yarn — all write to `npm audit`-compatible JSON)
-   - `pip-audit --format json`
-   - `cargo audit`
-   - `govulncheck ./...`
-   Report findings at CRITICAL/HIGH as blocking. Record the command run and its JSON output in `critic.log.md`.
-6. **CSRF/CORS**: new endpoints with side effects → CSRF protection. CORS not overly permissive.
-
-Rule_ids: `security.sql-injection`, `security.xss`, `security.path-traversal`, `security.ssrf`, `security.hardcoded-credential`, `security.missing-input-validation`, `security.missing-auth-check`, `security.privilege-escalation`, `security.data-exposure`, `security.insecure-dependency`, `security.missing-csrf`, `security.permissive-cors`.
-
-**Security sub-verdict** (stricter than general — same as v3.2 SECURITY):
+**Security sub-verdict** (derived from native findings):
 - `PASS` — zero findings
 - `PASS_WITH_ISSUES` — LOW only
 - `NEEDS_WORK` — HIGH or MEDIUM present (security MEDIUM is blocking by design)
-- `BLOCKED` — any CRITICAL
-
-**Dual merging** (when `--engine auto`): same finding from both models → keep more detailed wording, mark "confirmed by both". Codex-only → prefix message with `[codex]`. Conflicts → keep both. Take the MORE SEVERE severity between the two.
+- `BLOCKED` — any CRITICAL, or native skill invocation failed
 </security_quality_bar>
 
 ## Output contract

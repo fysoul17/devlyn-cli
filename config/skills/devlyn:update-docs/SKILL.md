@@ -1,4 +1,5 @@
 ---
+name: devlyn:update-docs
 description: Synchronize all project documentation with the current codebase. Cleans up obsolete content, updates stale info, and generates missing docs while preserving future plans and roadmaps.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Bash(test:*), Bash(git log:*), Bash(wc:*), Bash(mkdir:*)
 argument-hint: [focus area, or empty for full sync]

@@ -85,7 +85,7 @@ Stage B LITE writes to `state.route.stage_b.{at, escalated_from, reasons}`. No e
 | 1.5 BROWSER VALIDATE | ✓ (web) | ✓ (web) | ✓ (web) |
 | 2 EVALUATE | ✓ | ✓ | ✓ |
 | 2.5 UNIFIED FIX LOOP | ✓ (if findings) | ✓ (if findings) | ✓ (if findings) |
-| 3 CRITIC (findings-only) | — | ✓ | ✓ (Dual security sub-pass) |
+| 3 CRITIC (findings-only) | — | ✓ | ✓ (security sub-pass uses native `security-review`) |
 | 4 DOCS (doc-files only) | — | ✓ | ✓ |
 | 5 FINAL REPORT + ARCHIVE | ✓ | ✓ | ✓ |
 

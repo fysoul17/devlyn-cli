@@ -1,4 +1,5 @@
 ---
+name: devlyn:reap
 description: Safely count and kill orphaned child processes (PPID=1) left behind by Claude Code MCP plugins, Superset terminal tabs, and codex wrappers. Use this whenever the user says "too many processes", "can't open terminals", "pty/process limit", "hundreds of bun/codex/workerd piling up", "clean up orphans", "reap processes", or reports new terminals failing to spawn on macOS. Also use proactively after long Claude sessions to prevent hitting kern.maxprocperuid or kern.tty.ptmx_max limits. ONLY touches a conservative whitelist of known leaks — never guesses on unknown processes.
 allowed-tools: Read, Bash(ps:*), Bash(lsof:*), Bash(pgrep:*), Bash(awk:*), Bash(id:*), Bash(sysctl:*), Bash(bash:*)
 argument-hint: [scan | kill | kill --force | kill --include workerd | kill --only telegram-bun]

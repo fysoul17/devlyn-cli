@@ -33,7 +33,7 @@ Every phase routes to the optimal model per `references/engine-routing.md`:
 - Phase prompt bodies (in `references/phases/`) are engine-agnostic.
 - Phases routed to **Codex**: shell out to `codex exec` per the canonical flag set in `config/skills/_shared/codex-config.md` and the spawn patterns in `engine-routing.md`. No MCP.
 - Phases routed to **Claude**: spawn an `Agent` subagent with `mode: "bypassPermissions"`, passing the phase body verbatim.
-- **Dual** (CRITIC security sub-pass on `--engine auto`): spawn both in parallel; orchestrator merges findings.
+- Phases routed to **Native** (CRITIC security sub-pass): invoke the native Claude Code `security-review` skill via the Skill tool; normalize its output into `.devlyn/critic.findings.jsonl` per `phase-3-critic.md`.
 - `--engine claude` forces all phases to Claude. `--engine codex` forces implementation to Codex, orchestration/Chrome MCP stays Claude. `--engine auto` (default) uses the routing table.
 </engine_routing_convention>
 
@@ -170,7 +170,7 @@ Skip if `state.route.selected == "fast"` OR `critic` in `state.route.bypasses`.
 
 One post-EVAL critic pass with two sub-concerns:
 - **Design sub-pass** — "would a staff engineer block this PR?" (cold read, any finding → `NEEDS_WORK`). Always Claude.
-- **Security sub-pass** — OWASP-style audit with mandatory dependency audit when any dep manifest OR lockfile changed (`package.json`, `requirements.txt`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `Pipfile.lock`, `poetry.lock`, `Cargo.toml`, `Cargo.lock`, `go.mod`, `go.sum`). On `--engine auto`: **Dual** (Claude + Codex parallel, merged). On others: single model per route.
+- **Security sub-pass** — delegated to the native Claude Code `security-review` skill on every engine. Findings-only (post-EVAL invariant compatible); covers OWASP surface + dependency audit (native reads lockfiles). No Dual-model cost. Orchestrator normalizes the native output into `.devlyn/critic.findings.jsonl` per `phase-3-critic.md` Sub-pass 2. If the native skill is unavailable or fails, security sub-verdict is `BLOCKED` with `security.review-failed` — no fallback to a custom pass.
 
 Hygiene concerns (unused imports, dead code) live in EVAL's `hygiene.*` findings at LOW severity, not a separate sub-pass here.
 

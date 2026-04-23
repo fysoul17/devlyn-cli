@@ -1,4 +1,5 @@
 ---
+name: devlyn:clean
 description: Detect and remove dead code, unused dependencies, complexity hotspots, and tech debt. Keeps your codebase lean and maintainable.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Bash(test:*), Bash(git log:*), Bash(git blame:*), Bash(wc:*), Bash(npm:*), Bash(npx:*), Bash(pnpm:*), Bash(yarn:*), Bash(cargo:*), Bash(pip:*), Bash(go:*), Bash(node -e:*), Bash(python -c:*)
 argument-hint: [focus area, or empty for full scan]
@@ -283,3 +284,31 @@ Input: `/devlyn:clean deps`
 Scans only dependency hygiene. Finds `moment` (replaced by `dayjs` already in use), `lodash` (only `_.get` used — replaceable with optional chaining). Presents targeted plan.
 
 </examples>
+
+## Pipeline-Compatible Sidecar
+
+After producing the human-facing report above, ALSO write `.devlyn/clean.findings.jsonl` per the shared schema at `config/skills/devlyn:auto-resolve/references/findings-schema.md`. One JSON object per line. This makes manual runs of this skill produce artifacts compatible with the auto-resolve pipeline view (`/devlyn:auto-resolve` does not invoke this skill — the sidecar is for downstream inspection or for users who alternate manual + pipeline runs).
+
+Minimum fields per line:
+
+```json
+{
+  "id": "CLEAN-<4digit>",
+  "rule_id": "<category>.<kebab-name>",
+  "level": "note" | "warning" | "error",
+  "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+  "confidence": <0.0-1.0>,
+  "message": "<one-line human description>",
+  "file": "<repo-relative path>",
+  "line": <1-based int>,
+  "phase": "clean",
+  "criterion_ref": null,
+  "fix_hint": "<concrete action>",
+  "blocking": <bool>,
+  "status": "open" | "resolved" | "suppressed"
+}
+```
+
+- Use `status: "resolved"` for issues you fixed during this run, `open` for remaining actionable issues, `suppressed` for intentionally skipped with justification in `message`.
+- Use `criterion_ref: null` unless a spec/done-criteria anchor is explicit for this finding.
+- The sidecar is the same final finding list rendered above — do NOT re-analyze or produce a different set. One analysis, two renderings.

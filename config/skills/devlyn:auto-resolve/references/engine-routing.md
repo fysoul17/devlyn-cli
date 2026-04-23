@@ -4,7 +4,7 @@ Routing rules for Claude / Codex / Dual per role and phase. Only read when `--en
 
 > Codex invocations use the local `codex exec` CLI. Flag set + rationale live in `config/skills/_shared/codex-config.md`. No MCP, no model hardcoding — the CLI's current flagship is inherited automatically.
 
-Codex call defaults: `codex exec -C <project root> -s <per role> -c model_reasoning_effort=xhigh "<prompt>"`. Omit `-m` so the flagship is auto-selected; override only when a role needs a specialized variant (e.g., `gpt-5.3-codex` for SWE-bench-heavy pure-coding roles).
+Codex call defaults: `codex exec -C <project root> -s <per role> -c model_reasoning_effort=xhigh "<prompt>"`. Omit `-m` so the flagship is auto-selected. Only pass `-m <variant>` when a role explicitly needs a specialized model line, and name the variant generically ("SWE-bench-heavy coding variant") rather than hardcoding a version number — version strings go stale fast.
 
 ---
 
@@ -18,14 +18,14 @@ Codex call defaults: `codex exec -C <project root> -s <per role> -c model_reason
 | EVALUATE | **Claude** | Claude | Claude |
 | FIX LOOP | **Codex** | Codex | Claude |
 | CRITIC (design sub-pass) | Claude | Claude | Claude |
-| CRITIC (security sub-pass) | **Dual** | Codex | Claude |
+| CRITIC (security sub-pass) | **Native `security-review`** | Native | Native |
 | DOCS | Claude | Codex | Claude |
 
 Rationale:
 - BUILD/FIX: Codex — SWE-bench Pro advantage on hard coding.
 - EVALUATE/CRITIC design sub-pass: Claude — long-context retrieval + skeptical reasoning; different model family from builder for GAN dynamic.
 - BROWSER: Claude — Chrome MCP tools session-bound.
-- CRITIC security: Dual on `auto` — Semgrep study shows each model finds unique vulnerabilities; for security, coverage trumps cost.
+- CRITIC security: native Claude Code `security-review` skill on every engine — findings-only (post-EVAL invariant compatible), covers the same OWASP surface as the old custom pass, and drops the Dual-model token cost. Invocation + normalization rules live in `phases/phase-3-critic.md` (Sub-pass 2).
 
 ---
 

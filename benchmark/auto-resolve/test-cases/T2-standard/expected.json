@@ -2,8 +2,21 @@
   "notes": "Medium complexity, single module, web files present (triggers browser validate). No risk keywords in spec body. Expected route: standard.",
   "final_route": "standard",
   "stage_a_override": false,
-  "expected_phases": ["build", "build_gate", "browser_validate", "evaluate", "simplify", "challenge", "docs", "final_report"],
-  "diff_files": ["src/api/orders/cancel.ts", "src/api/orders/cancel.test.ts", "app/orders/[id]/page.tsx", "app/orders/[id]/CancelModal.tsx"],
+  "expected_phases": [
+    "build",
+    "build_gate",
+    "browser_validate",
+    "evaluate",
+    "critic",
+    "docs",
+    "final_report"
+  ],
+  "diff_files": [
+    "src/api/orders/cancel.ts",
+    "src/api/orders/cancel.test.ts",
+    "app/orders/[id]/page.tsx",
+    "app/orders/[id]/CancelModal.tsx"
+  ],
   "stage_b_signals": {
     "diff_files": 4,
     "diff_lines": 180,

@@ -562,3 +562,31 @@ Present the evaluation in this format:
 </output_format>
 </content>
 </invoke>
+
+## Pipeline-Compatible Sidecar
+
+After producing the human-facing report above, ALSO write `.devlyn/evaluate.findings.jsonl` per the shared schema at `config/skills/devlyn:auto-resolve/references/findings-schema.md`. One JSON object per line. This makes manual runs of this skill produce artifacts compatible with the auto-resolve pipeline view (`/devlyn:auto-resolve` does not invoke this skill — the sidecar is for downstream inspection or for users who alternate manual + pipeline runs).
+
+Minimum fields per line:
+
+```json
+{
+  "id": "EVAL-<4digit>",
+  "rule_id": "<category>.<kebab-name>",
+  "level": "note" | "warning" | "error",
+  "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+  "confidence": <0.0-1.0>,
+  "message": "<one-line human description>",
+  "file": "<repo-relative path>",
+  "line": <1-based int>,
+  "phase": "evaluate",
+  "criterion_ref": null,
+  "fix_hint": "<concrete action>",
+  "blocking": <bool>,
+  "status": "open" | "resolved" | "suppressed"
+}
+```
+
+- Use `status: "resolved"` for issues you fixed during this run, `open` for remaining actionable issues, `suppressed` for intentionally skipped with justification in `message`.
+- Use `criterion_ref: null` unless a spec/done-criteria anchor is explicit for this finding.
+- The sidecar is the same final finding list rendered above — do NOT re-analyze or produce a different set. One analysis, two renderings.

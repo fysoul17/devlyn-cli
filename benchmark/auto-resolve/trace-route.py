@@ -22,9 +22,13 @@ RISK_KEYWORDS = [
 
 PHASES_PER_ROUTE = {
     'fast':     ['build', 'build_gate', 'evaluate', 'final_report'],
-    'standard': ['build', 'build_gate', 'evaluate', 'simplify', 'challenge', 'docs', 'final_report'],
-    'strict':   ['build', 'build_gate', 'evaluate', 'simplify', 'review', 'challenge', 'security_review', 'clean', 'docs', 'final_report'],
+    'standard': ['build', 'build_gate', 'evaluate', 'critic', 'docs', 'final_report'],
+    'strict':   ['build', 'build_gate', 'evaluate', 'critic', 'docs', 'final_report'],
 }
+# v3.4+ collapsed SIMPLIFY/REVIEW/CHALLENGE/SECURITY into a single CRITIC phase
+# with design + security sub-passes. CRITIC security sub-pass is delegated to
+# the native Claude Code `security-review` skill. Route difference between
+# standard and strict is the team flag in BUILD, not the phase list.
 
 
 def load_test_case(name):

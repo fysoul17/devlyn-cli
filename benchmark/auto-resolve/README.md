@@ -69,7 +69,7 @@ Runs Stage A + Stage B logic on the test case's spec/task without actually spawn
 
 See `run-real-benchmark.md`. Requires:
 - Sandbox environment per run (so the codebase isn't polluted)
-- Codex MCP available
+- Local `codex` CLI on PATH (for `--engine auto`/`codex`); falls back to `--engine claude` when absent
 - ~7-15 hours for 30 paired runs at statistical significance
 
 ## Honest scope of current results

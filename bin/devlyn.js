@@ -155,7 +155,9 @@ const OPTIONAL_ADDONS = [
   { name: 'anthropics/skills', desc: 'Official Anthropic skill-creator with eval framework and description optimizer', type: 'external' },
   { name: 'Leonxlnx/taste-skill', desc: 'Premium frontend design skills — modern layouts, animations, and visual refinement', type: 'external' },
   // MCP servers (installed via claude mcp add)
-  { name: 'codex-cli', desc: 'Codex MCP server for cross-model evaluation via OpenAI Codex', type: 'mcp', command: 'npx -y codex-mcp-server' },
+  // Note: the Codex integration uses the local `codex` CLI binary (not MCP).
+  // Install the CLI separately per https://platform.openai.com/docs/codex — the
+  // harness auto-detects availability and downgrades to Claude-only on failure.
   { name: 'playwright', desc: 'Playwright MCP for browser testing — powers devlyn:browser-validate Tier 2', type: 'mcp', command: 'npx -y @anthropic-ai/mcp-playwright' },
 ];
 
@@ -273,6 +275,8 @@ function copyRecursive(src, dest, baseDir) {
   const stats = fs.statSync(src);
 
   if (stats.isDirectory()) {
+    // Never install dev workspaces, even when running from source repo.
+    if (UNSHIPPED_SKILL_DIRS.has(path.basename(src))) return;
     if (!fs.existsSync(dest)) {
       fs.mkdirSync(dest, { recursive: true });
     }
@@ -288,6 +292,37 @@ function copyRecursive(src, dest, baseDir) {
     fs.copyFileSync(src, dest);
     log(`  → ${path.relative(baseDir, dest)}`, 'dim');
   }
+}
+
+// Dev artifacts that live under config/skills/ but must never ship or install.
+// Mirrors the `!` exclusions in package.json files[].
+const UNSHIPPED_SKILL_DIRS = new Set([
+  'devlyn:auto-resolve-workspace',
+  'devlyn:ideate-workspace',
+  'preflight-workspace',
+  'roadmap-archival-workspace',
+]);
+
+// Clean managed skill directories before copy to prevent stale-file drift.
+// copyRecursive is a pure overlay: if a file was removed or renamed in source,
+// the installed mirror keeps the old copy. For each top-level dir under
+// config/skills/, remove its counterpart in target/skills/ before the copy so
+// each managed skill is fully replaced on every sync. User-installed skills
+// (e.g. skill-creator from optional addons) are left alone because they have
+// no counterpart in source. Dev workspaces are skipped entirely.
+function cleanManagedSkillDirs(sourceSkillsDir, targetSkillsDir) {
+  if (!fs.existsSync(sourceSkillsDir) || !fs.existsSync(targetSkillsDir)) return 0;
+  let cleaned = 0;
+  for (const entry of fs.readdirSync(sourceSkillsDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    if (UNSHIPPED_SKILL_DIRS.has(entry.name)) continue;
+    const targetPath = path.join(targetSkillsDir, entry.name);
+    if (fs.existsSync(targetPath)) {
+      fs.rmSync(targetPath, { recursive: true, force: true });
+      cleaned++;
+    }
+  }
+  return cleaned;
 }
 
 function multiSelect(items) {
@@ -514,6 +549,13 @@ async function init(skipPrompts = false) {
   // Install core config
   const targetDir = getTargetDir();
   log('\n📁 Installing core config to .claude/', 'green');
+  const refreshed = cleanManagedSkillDirs(
+    path.join(CONFIG_SOURCE, 'skills'),
+    path.join(targetDir, 'skills'),
+  );
+  if (refreshed > 0) {
+    log(`  🔄 Refreshing ${refreshed} managed skill director${refreshed === 1 ? 'y' : 'ies'}`, 'dim');
+  }
   copyRecursive(CONFIG_SOURCE, targetDir, targetDir);
 
   // Remove deprecated files from previous versions

@@ -2,7 +2,7 @@
 
 Render the report exactly in this order. Fields enclosed in `<…>` come from `pipeline.state.json`. The banner line is printed only under exhaustion (`⚠ BUILD GATE EXHAUSTED`, `⚠ BROWSER EXHAUSTED`, `⚠ EVAL EXHAUSTED — open findings: <list file:line>`, `⚠ CRITIC EXHAUSTED`).
 
-The engine line follows the shared contract (`config/skills/_shared/engine-preflight.md`) — when a downgrade happened, include the parenthetical `(downgraded from <requested> — codex-ping failed)`. Otherwise print the effective engine only.
+The engine line follows the shared contract (`config/skills/_shared/engine-preflight.md`) — when a downgrade happened, include the parenthetical `(downgraded from <requested> — codex-unavailable)`. Otherwise print the effective engine only.
 
 ```
 ### Auto-Resolve Complete — run <run_id>

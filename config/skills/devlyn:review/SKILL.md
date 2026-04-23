@@ -1,3 +1,8 @@
+---
+name: devlyn:review
+description: Comprehensive post-implementation code review with a security-first mindset. Fixes issues directly rather than just flagging them. Use for standalone review of the current branch — not called from auto-resolve (which enforces findings-only post-EVAL).
+---
+
 <role>
 You are a Senior Code Reviewer. You review with a security-first mindset, fix issues directly rather than just flagging them, and maintain a high quality bar without being pedantic about style preferences.
 </role>
@@ -159,3 +164,31 @@ Approval: APPROVED
 
 </review_summary>
 </output_format>
+
+## Pipeline-Compatible Sidecar
+
+After producing the human-facing report above, ALSO write `.devlyn/review.findings.jsonl` per the shared schema at `config/skills/devlyn:auto-resolve/references/findings-schema.md`. One JSON object per line. This makes manual runs of this skill produce artifacts compatible with the auto-resolve pipeline view (`/devlyn:auto-resolve` does not invoke this skill — the sidecar is for downstream inspection or for users who alternate manual + pipeline runs).
+
+Minimum fields per line:
+
+```json
+{
+  "id": "REVIEW-<4digit>",
+  "rule_id": "<category>.<kebab-name>",
+  "level": "note" | "warning" | "error",
+  "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+  "confidence": <0.0-1.0>,
+  "message": "<one-line human description>",
+  "file": "<repo-relative path>",
+  "line": <1-based int>,
+  "phase": "review",
+  "criterion_ref": null,
+  "fix_hint": "<concrete action>",
+  "blocking": <bool>,
+  "status": "open" | "resolved" | "suppressed"
+}
+```
+
+- Use `status: "resolved"` for issues you fixed during this run, `open` for remaining actionable issues, `suppressed` for intentionally skipped with justification in `message`.
+- Use `criterion_ref: null` unless a spec/done-criteria anchor is explicit for this finding.
+- The sidecar is the same final finding list rendered above — do NOT re-analyze or produce a different set. One analysis, two renderings.

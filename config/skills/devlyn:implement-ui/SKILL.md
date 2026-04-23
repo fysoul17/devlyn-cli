@@ -1,3 +1,8 @@
+---
+name: devlyn:implement-ui
+description: Build or improve UI by assembling a specialized Agent Team. Works for new UI from scratch or upgrading existing UI to match the design system.
+---
+
 Build or improve UI by assembling a specialized Agent Team. Each teammate brings a different design and engineering perspective — component architecture, interaction design, accessibility, and visual fidelity — to produce production-quality UI that perfectly matches the design system.
 
 Works for both:

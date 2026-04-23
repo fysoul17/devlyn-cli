@@ -1,4 +1,5 @@
 ---
+name: devlyn:design-system
 description: Extract all design values from selected style for exact reproduction
 argument-hint: <style-number> [platform] (e.g., "3", "3 flutter", "style 2 web")
 allowed-tools: Bash(ls:*), Bash(cat:*), Bash(grep:*), View, Edit, Write

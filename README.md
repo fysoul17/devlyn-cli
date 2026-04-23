@@ -103,13 +103,13 @@ Confirmed gaps become new roadmap items — feed them back into auto-resolve. Us
 
 ### Bonus — Intelligent Model Routing with `--engine`
 
-Install the Codex MCP server during setup, then:
+Install the Codex CLI (see https://platform.openai.com/docs/codex) so `codex` is on PATH, then:
 
 ```
 /devlyn:auto-resolve "fix the auth bug" --engine auto
 ```
 
-**`--engine auto`** routes each pipeline phase and team role to the optimal model (Claude Opus 4.7 or GPT-5.4) — validated through A/B testing, not just benchmarks.
+**`--engine auto`** routes each pipeline phase and team role to the optimal model — the Codex CLI's current flagship on build/fix, Claude on evaluation and critique — validated through A/B testing, not just benchmarks.
 
 > `--engine auto` (default, recommended) · `--engine codex` (force Codex for build) · `--engine claude` (Claude only)
 
@@ -274,8 +274,9 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 | Server | Description |
 |---|---|
-| `codex-cli` | Codex MCP server — enables `--engine auto/codex` intelligent model routing |
 | `playwright` | Playwright MCP — powers browser-validate Tier 2 |
+
+> `--engine auto/codex` uses the local `codex` CLI binary, not MCP. Install from https://platform.openai.com/docs/codex; the harness silently downgrades to `--engine claude` if the CLI is missing.
 
 </details>
 

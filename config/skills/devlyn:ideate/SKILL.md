@@ -25,7 +25,7 @@ Concretely:
 Parse these from the user's invocation message:
 
 - `--engine MODE` (auto) — controls which model handles each ideation phase. Modes:
-  - `auto` (default): Claude handles FRAME/EXPLORE/CONVERGE/DOCUMENT (ambiguous intent, writing quality), Codex runs the CHALLENGE rubric pass as critic (GAN dynamic). Requires Codex MCP server.
+  - `auto` (default): Claude handles FRAME/EXPLORE/CONVERGE/DOCUMENT (ambiguous intent, writing quality), Codex runs the CHALLENGE rubric pass as critic (GAN dynamic). Requires the local `codex` CLI on PATH; on failure the engine pre-flight silently downgrades to `claude` per `config/skills/_shared/engine-preflight.md`.
   - `codex`: Codex handles FRAME/EXPLORE/CONVERGE/DOCUMENT, Claude runs CHALLENGE (role reversal — builder and critic are always different models).
   - `claude`: all phases use Claude. No Codex calls.
 
@@ -305,57 +305,7 @@ For single-item additions, run one solo rubric pass on just the new item. Even t
 
 <phase_goal>Generate the three-layer document set.</phase_goal>
 
-Read the templates before generating:
-- `references/templates/vision.md` — VISION.md format
-- `references/templates/roadmap.md` — ROADMAP.md index format
-- `references/templates/item-spec.md` — Auto-resolve-ready spec format
-- `references/templates/decision.md` — Architecture decision record format
-
-### Generation Order
-1. `docs/VISION.md` — from Phase 1 framing + Phase 3 decisions
-2. `docs/roadmap/decisions/` — one file per architecture decision
-3. `docs/roadmap/phase-N/_overview.md` — phase-level context
-4. `docs/roadmap/phase-N/{id}-{name}.md` — one per roadmap item
-5. `docs/ROADMAP.md` — index linking to everything above
-
-### Item Spec Quality
-
-Each Layer 3 spec is the direct input to auto-resolve. Its quality determines implementation quality.
-
-<spec_quality_criteria>
-**Requirements section** — becomes auto-resolve's done-criteria:
-- Testable: a test can assert it OR a human can verify in under 30 seconds
-- Specific: not "handles errors well" but "returns 400 with `{error: 'missing_field', field: 'email'}`"
-- Scoped: tied to this item only, not aspirational
-
-**Context section** — 2-3 sentences maximum. Just enough for auto-resolve to understand WHY without loading the full vision.
-
-**Out of Scope** — explicitly states what this item does NOT do. This is what prevents auto-resolve from over-building, which is one of its most common failure modes.
-
-**Constraints** — technical constraints with reasoning. Auto-resolve respects constraints significantly better when it understands the motivation behind them.
-</spec_quality_criteria>
-
-If an item is too vague to write specific requirements, it needs more exploration (revisit Phase 2 for that item) or should be split into smaller items.
-
-### Handling Existing Documents
-In **Expand** and **Replan** modes:
-- Read existing documents first
-- Merge new items into the existing phase structure
-- Preserve existing items (don't overwrite or reorder without confirmation)
-- Update ROADMAP.md index to include new entries
-
-### Output Summary
-After generating all documents:
-```
-Documents created:
-- docs/VISION.md
-- docs/ROADMAP.md
-- docs/roadmap/phase-1/_overview.md
-- docs/roadmap/phase-1/1.1-xxx.md
-- docs/roadmap/phase-1/1.2-yyy.md
-- docs/roadmap/decisions/001-xxx.md
-[total: N files]
-```
+**Before writing any document, read `references/document-generation.md`.** It contains the template paths, generation order, Expand/Replan-mode merge rules, and the `<spec_quality_criteria>` that determine auto-resolve's downstream output quality — Requirements must be testable/specific/scoped, Context 2–3 sentences, Out of Scope explicit, Constraints paired with reasoning. Skipping these is the most common cause of vague specs and narrowed implementations.
 
 ## Phase 5: BRIDGE
 

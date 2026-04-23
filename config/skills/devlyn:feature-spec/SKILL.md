@@ -1,4 +1,5 @@
 ---
+name: devlyn:feature-spec
 description: Generate a Feature Spec document from product spec behavior
 allowed-tools: Bash(cp:*), Bash(mkdir:*), Bash(find:*), Bash(grep:*), Bash(cat:*), Bash(ls:*), Read, Write, Edit
 argument-hint: [feature-name]

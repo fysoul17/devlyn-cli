@@ -1,4 +1,5 @@
 ---
+name: devlyn:product-spec
 description: Generate or update a Product Spec document. Detects existing spec and applies incremental changes when appropriate.
 allowed-tools: Bash(cp:*), Bash(mkdir:*), Read, Write, Edit
 argument-hint: [product description, update request, or "interactive"]

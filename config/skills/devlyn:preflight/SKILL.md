@@ -44,7 +44,7 @@ Parse from `<preflight_config>`:
 - `--skip-browser` — skip browser validation
 - `--skip-docs` — skip documentation audit
 - `--engine MODE` (auto) — controls which model handles audit phases. Modes:
-  - `auto` (default): code-auditor uses Codex (SWE-bench Pro +11.7pp for code analysis), docs-auditor uses Claude (writing quality), browser-auditor uses Claude (Chrome MCP). Requires Codex MCP server.
+  - `auto` (default): code-auditor uses Codex (SWE-bench Pro +11.7pp for code analysis), docs-auditor uses Claude (writing quality), browser-auditor uses Claude (Chrome MCP). Requires the local `codex` CLI on PATH; on failure the engine pre-flight silently downgrades to `claude` per `config/skills/_shared/engine-preflight.md`.
   - `codex`: code-auditor uses Codex, docs-auditor and browser-auditor use Claude.
   - `claude`: all auditors use Claude subagents. No Codex calls.
 

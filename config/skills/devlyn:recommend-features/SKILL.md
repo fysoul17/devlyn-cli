@@ -1,4 +1,5 @@
 ---
+name: devlyn:recommend-features
 description: Recommend top 5 feature specs based on product spec and codebase
 allowed-tools: Bash(find:*), Bash(grep:*), Bash(wc:*), Bash(cat:*), Bash(ls:*), Bash(head:*), Bash(tail:*), Read, Glob
 argument-hint: [focus-area or "all"]

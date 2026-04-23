@@ -20,7 +20,7 @@ Option 3 is the cheapest and produces realistic data — see "Production instrum
 
 ## Prerequisites
 
-- Codex MCP server available if you want to measure `--engine auto` (the cross-model GAN dynamic). Without Codex, you can still measure `--engine claude` as a baseline.
+- Local `codex` CLI on PATH if you want to measure `--engine auto` (cross-model GAN via `codex exec`). Without the CLI the harness silently downgrades to `--engine claude`; you can also force that baseline explicitly.
 - A representative git repository — see note above about fictitious test cases.
 - Disposable worktrees via `git worktree add /tmp/bench-$(date +%s) HEAD`. Each run leaves commits and side effects; use worktrees so they don't pollute the main tree.
 

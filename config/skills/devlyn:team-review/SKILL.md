@@ -1,3 +1,8 @@
+---
+name: devlyn:team-review
+description: Multi-perspective code review by an Agent Team. Each reviewer audits changes from their domain — security, quality, testing, product, design, performance. Standalone tool; not called from auto-resolve.
+---
+
 Perform a multi-perspective code review by assembling a specialized Agent Team. Each reviewer audits the changes from their domain expertise — security, code quality, testing, product, design, and performance — ensuring nothing slips through.
 
 <review_scope>
@@ -494,3 +499,31 @@ If any issues were deferred or if the fix was complex, consider running `/devlyn
 
 </team_review_summary>
 </output_format>
+
+## Pipeline-Compatible Sidecar
+
+After producing the human-facing report above, ALSO write `.devlyn/team_review.findings.jsonl` per the shared schema at `config/skills/devlyn:auto-resolve/references/findings-schema.md`. One JSON object per line. This makes manual runs of this skill produce artifacts compatible with the auto-resolve pipeline view (`/devlyn:auto-resolve` does not invoke this skill — the sidecar is for downstream inspection or for users who alternate manual + pipeline runs).
+
+Minimum fields per line:
+
+```json
+{
+  "id": "TREVIEW-<4digit>",
+  "rule_id": "<category>.<kebab-name>",
+  "level": "note" | "warning" | "error",
+  "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+  "confidence": <0.0-1.0>,
+  "message": "<one-line human description>",
+  "file": "<repo-relative path>",
+  "line": <1-based int>,
+  "phase": "team_review",
+  "criterion_ref": null,
+  "fix_hint": "<concrete action>",
+  "blocking": <bool>,
+  "status": "open" | "resolved" | "suppressed"
+}
+```
+
+- Use `status: "resolved"` for issues you fixed during this run, `open` for remaining actionable issues, `suppressed` for intentionally skipped with justification in `message`.
+- Use `criterion_ref: null` unless a spec/done-criteria anchor is explicit for this finding.
+- The sidecar is the same final finding list rendered above — do NOT re-analyze or produce a different set. One analysis, two renderings.

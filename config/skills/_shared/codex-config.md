@@ -4,7 +4,7 @@ Single source of truth for how every skill calls Codex. **MCP is not used.** Ski
 
 ## Canonical invocations
 
-**Read-only critique / adversarial review / debate** (ideate CHALLENGE, auto-resolve CRITIC security sub-pass, preflight code-audit):
+**Read-only critique / adversarial review / debate** (ideate CHALLENGE, preflight code-audit). The auto-resolve CRITIC security sub-pass is NOT Codex — it's delegated to the native `security-review` Claude Code skill; see `devlyn:auto-resolve/references/phases/phase-3-critic.md` Sub-pass 2.
 
 ```bash
 codex exec \
