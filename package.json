@@ -13,6 +13,10 @@
     "!config/skills/preflight-workspace/**",
     "!config/skills/devlyn:ideate-workspace",
     "!config/skills/devlyn:ideate-workspace/**",
+    "!config/skills/devlyn:auto-resolve-workspace",
+    "!config/skills/devlyn:auto-resolve-workspace/**",
+    "!config/skills/roadmap-archival-workspace",
+    "!config/skills/roadmap-archival-workspace/**",
     "agents-config",
     "optional-skills",
     "CLAUDE.md"

@@ -8,3 +8,6 @@ config/skills/devlyn:auto-resolve-workspace/
 
 # Ephemeral agent worktrees — disposable per-agent copies
 .claude/worktrees/
+
+# auto-resolve harness state — run-local, archived to .devlyn/runs/
+.devlyn/
