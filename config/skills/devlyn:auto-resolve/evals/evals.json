@@ -1,0 +1,21 @@
+{
+  "skill_name": "devlyn:auto-resolve",
+  "note": "Real regression fixtures from measured A/B runs. Each eval is a task we have actually driven through the pipeline and scored blind against a bare-prompt baseline. Expand only with real runs, not synthesized prompts.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "doctor-subcommand",
+      "route": "standard",
+      "complexity": "medium",
+      "prompt": "Implement per spec at evals/task-doctor-subcommand.md",
+      "spec": "evals/task-doctor-subcommand.md",
+      "expected_output": "Single-file CLI change adding a `doctor` subcommand to bin/devlyn.js with node-version, HOME/.claude, plugins, and skills checks, TTY-gated color, exit-code semantics, help integration. Zero new npm dependencies. No silent error catches.",
+      "baseline_source": "bare prompt (no skill pipeline) — see benchmark history commit 2d9a5f0..51a8aeb",
+      "historical_scores": {
+        "v3.4":   { "skill": 57, "bare": 45, "margin": 12, "judge": "codex gpt-5.3-codex blind" },
+        "v3.4.1": { "skill": 59, "bare": 43, "margin": 16, "judge": "codex gpt-5.3-codex blind" }
+      },
+      "files": []
+    }
+  ]
+}

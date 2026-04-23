@@ -209,7 +209,7 @@ Spawn Claude `Agent` (`mode: "bypassPermissions"`). Include original task descri
 
 ## PHASE 5: FINAL REPORT + ARCHIVE
 
-1. **Terminal verdict** per `references/pipeline-routing.md#terminal-state-algorithm`.
+1. **Terminal verdict**: run `python3 scripts/terminal_verdict.py` (implements the precedence in `references/pipeline-routing.md#terminal-state-algorithm`; prints verdict, exits 0/1/2/3 for PASS/PASS_WITH_ISSUES/NEEDS_WORK/BLOCKED).
 
 2. **Render report**:
 ```
@@ -247,6 +247,6 @@ Next steps:
 - Re-run fixes: /devlyn:auto-resolve "<narrower task>"
 ```
 
-3. **Archive** per `references/pipeline-state.md#archive-contract`.
+3. **Archive**: run `python3 scripts/archive_run.py` (implements `references/pipeline-state.md#archive-contract`; moves per-run artifacts into `.devlyn/runs/<run_id>/`, best-effort prunes to last 10 completed runs).
 
 4. Kill dev server from PHASE 1.5 if still running.

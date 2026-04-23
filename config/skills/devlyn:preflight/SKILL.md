@@ -1,18 +1,14 @@
 ---
 name: devlyn:preflight
 description: >
-  Final alignment check between vision/roadmap documents and the actual codebase — the last step
-  before declaring a roadmap phase complete. Reads every commitment from VISION.md, ROADMAP.md,
-  and item specs, then audits the implementation with evidence-based analysis citing file:line
-  for every finding. Catches missing features, incomplete implementations, spec divergence, bugs,
-  and documentation drift. Also validates in the browser for web projects and checks documentation
-  alignment. Use when the user has finished implementing a roadmap and wants to verify nothing was
-  missed. Triggers on "preflight", "preflight check", "gap analysis", "gap check", "did I miss
-  anything", "check against the roadmap", "verify implementation", "alignment check", "are we done",
-  "final check before shipping", or when the user says they've finished implementing and wants
-  verification. This is different from /devlyn:evaluate (which grades a single changeset) and
-  /devlyn:review (which reviews code quality) — preflight audits the ENTIRE project against its
-  planning documents holistically.
+  Final alignment check between vision/roadmap documents and the actual codebase before declaring
+  a roadmap phase complete. Reads commitments from VISION.md, ROADMAP.md, and item specs, then
+  audits the implementation with file:line evidence. Catches missing/incomplete features, spec
+  divergence, bugs, and doc drift; validates browser behavior for web projects. Use when
+  implementation is finished and you want a holistic roadmap-vs-code verification. Triggers on
+  "preflight", "gap analysis", "did I miss anything", "check against the roadmap", "verify
+  implementation", "are we done". Differs from /devlyn:evaluate (single changeset) and
+  /devlyn:review (code quality) — preflight audits the entire project against planning docs.
 ---
 
 # Vision-to-Implementation Preflight Check
