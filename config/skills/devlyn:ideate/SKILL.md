@@ -151,23 +151,20 @@ To implement:
 
 ### Context Archiving
 
-ROADMAP.md is the tactical index. Every row that isn't Planned / In Progress / Blocked is noise — it dilutes attention, pads the file past its 150-line target, and makes future ideation sessions read stale context they'll have to mentally filter out. Done work should move; it shouldn't disappear.
+ROADMAP.md is the tactical index. Done work should move to a collapsed `## Completed` block at the bottom, not clutter the active view. Item spec files stay on disk at `docs/roadmap/phase-N/{id}.md` — only the index row moves.
 
-The goal state: the active section of ROADMAP.md only lists work that still needs doing. Everything completed lives under a collapsed `## Completed` block at the bottom. Item spec files themselves stay in place — they remain on disk at `docs/roadmap/phase-N/{id}.md` because other specs may reference them — only the index row moves.
+#### The Archive Pass (conditional)
 
-#### The Archive Pass
+Run this at the start of Quick Add / Expand / Replan **only when** `docs/ROADMAP.md` contains at least one phase where every row is `Done`. A quick scan tells you within seconds. Skip the pass otherwise — running it on a roadmap with no fully-done phases is no-op bookkeeping that burns the user's turn.
 
-Run this at the start of every Quick Add, Expand, and Replan session (each mode's "On entry" checklist tells you when). It's deterministic and cheap. Never skip it to "save time" — the time you save by skipping it is immediately spent by you and the user arguing about a roadmap that shows phantom work.
+When it runs:
 
-1. **Read `docs/ROADMAP.md`.** For each phase, look at the Status column of every row.
-2. **For each phase where every row is `Done`:** archive the whole phase.
-   - Cut the phase's `## Phase N: …` heading and table out of the active section.
-   - If no `## Completed` section exists yet at the bottom of the file, create one.
-   - Add a `<details>` block inside Completed for this phase (see format below). Use the latest completion date you can find in the item spec frontmatter (`completed:` field, or today's date if absent). Item count is the row count.
-3. **For individual `Done` rows inside an otherwise-active phase:** leave them in place. A row only moves when its whole phase is finished. (Mixed-state phases stay mixed so the user can see recent wins alongside open work.)
-4. **Scan the Backlog table.** Surface any row whose "Revisit" date has passed — mention it to the user as a replan candidate. Don't auto-promote it; that's a conversation.
-5. **Scan `docs/roadmap/decisions/`.** Flag any decision whose status is `accepted` but whose reasoning is visibly contradicted by the work that's now Done. Don't silently edit decisions; raise them as open questions.
-6. **Report what you did.** Before moving on to the mode's main work, tell the user in one short paragraph: "Archived Phase 1 (3 items). Active roadmap is now Phase 2 (2 items). Proceeding with [Quick Add / Expand / Replan]." Skip the report only if nothing changed.
+1. Read `docs/ROADMAP.md`.
+2. For each phase where every row is `Done`: cut the `## Phase N: …` heading and table, move it into a new or existing `## Completed` block at the bottom as a `<details>` entry (see format below). Use the latest completion date found in item spec frontmatter (`completed:`), or today's if absent. Item count is the row count.
+3. Individual `Done` rows inside an otherwise-active phase stay put — mixed phases show recent wins alongside open work.
+4. Scan the Backlog table; surface any row whose `Revisit` date has passed as a replan candidate (don't auto-promote — that's a conversation).
+5. Scan `docs/roadmap/decisions/` for `accepted` decisions whose reasoning is visibly contradicted by newly-Done work; raise them as open questions rather than silently editing.
+6. One-sentence report of what was archived, then proceed with the mode's main work. Skip the report if nothing changed.
 
 **Completed block format** (place at the bottom of ROADMAP.md, below Decisions):
 
@@ -464,22 +461,6 @@ After completing each item:
 ```
 
 The auto-resolve prompt explicitly tells the build agent to read the spec file — this ensures done-criteria are adopted from the spec rather than generated from scratch, preserving the ideation context through to implementation.
-
-## Quality Checklist
-
-Before finalizing, verify:
-- [ ] Every roadmap item has a linked spec file
-- [ ] Every spec has testable requirements (not vague statements)
-- [ ] Every spec has an Out of Scope section
-- [ ] Every spec's Context section is 3 sentences or fewer
-- [ ] ROADMAP.md is an index only — no inline specifications
-- [ ] No spec requires reading VISION.md to be understood (self-contained)
-- [ ] Dependencies between items are documented in both specs
-- [ ] Architecture decisions include reasoning and alternatives considered
-- [ ] CHALLENGE ran against `references/challenge-rubric.md` (solo, plus Codex critic on `--engine auto`); no item still fails any axis at CRITICAL or HIGH severity
-- [ ] User saw the post-challenge plan as the first and only confirmation prompt — no pre-challenge draft was shown first
-- [ ] Any rubric finding that conflicted with explicit user intent was surfaced as an open question, not silently applied
-- [ ] Every requirement is traceable to a confirmed fact, a verified source, or an explicitly labeled assumption — no unmarked guesses slipped into the specs
 
 ## Language
 

@@ -89,10 +89,10 @@ Emit two files plus one state update (schemas: `references/findings-schema.md`, 
 One JSON line per failing command's extracted root cause. Do NOT emit findings for PASSING commands. Each line follows the canonical findings schema:
 
 ```jsonl
-{"id":"BGATE-0001","rule_id":"build.type-error","level":"error","severity":"HIGH","confidence":0.99,"message":"Property 'config' does not exist on type 'SettingsTabsProps'","file":"dashboard/app/(dashboard)/settings/page.tsx","line":90,"partial_fingerprints":{"location_hash":"<sha1>","rule_message_hash":"<sha1>"},"phase":"build_gate","criterion_ref":null,"fix_hint":"Read dashboard/app/(dashboard)/settings/page.tsx:88-93 and dashboard/components/settings/SettingsTabs.tsx (the SettingsTabsProps type definition). Either add 'config' to SettingsTabsProps or remove the prop from the parent.","blocking":true,"status":"open"}
+{"id":"BGATE-0001","rule_id":"build.type-error","level":"error","severity":"HIGH","confidence":0.99,"message":"Property 'config' does not exist on type 'SettingsTabsProps'","file":"dashboard/app/(dashboard)/settings/page.tsx","line":90,"phase":"build_gate","criterion_ref":null,"fix_hint":"Read dashboard/app/(dashboard)/settings/page.tsx:88-93 and dashboard/components/settings/SettingsTabs.tsx (the SettingsTabsProps type definition). Either add 'config' to SettingsTabsProps or remove the prop from the parent.","blocking":true,"status":"open"}
 ```
 
-Leave `partial_fingerprints` as `{}` in each finding — the orchestrator computes and injects it after PHASE 1.4 completes. Normalization rules are too subtle for per-agent ad-hoc implementation; bookkeeping is centralized. See `findings-schema.md` for the reference snippet.
+Dedup key is `(rule_id, file, line)` per `findings-schema.md` — no fingerprint bookkeeping (removed in v3.4).
 
 Suggested `rule_id` values: `build.type-error`, `build.lint-violation`, `build.dep-missing`, `build.docker-copy-mismatch`, `build.module-not-found`, `build.compile-error`.
 

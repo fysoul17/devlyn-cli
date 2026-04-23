@@ -17,15 +17,15 @@ State.json is the only cross-phase mutable state. Spec files and `<phase>.findin
 
 ## File location
 
-`.devlyn/pipeline.state.json` during a run; moved to `.devlyn/runs/<run_id>/pipeline.state.json` at PHASE 8 (archive).
+`.devlyn/pipeline.state.json` during a run; moved to `.devlyn/runs/<run_id>/pipeline.state.json` at PHASE 5 (archive).
 
-Created by PHASE 0 on run start. At PHASE 8, the entire `.devlyn/` run artifact set is **moved** (not deleted) into `.devlyn/runs/<run_id>/`. See `## Archive contract` below.
+Created by PHASE 0 on run start. At PHASE 5, the entire `.devlyn/` run artifact set is **moved** (not deleted) into `.devlyn/runs/<run_id>/`. See `## Archive contract` below.
 
-## Canonical schema (v1.1)
+## Canonical schema (v1.2)
 
 ```json
 {
-  "version": "1.1",
+  "version": "1.2",
   "run_id": "ar-<ISO8601-compact>-<uuidv7-short>",
   "started_at": "<ISO-8601 UTC>",
   "engine": "auto" | "codex" | "claude",
@@ -88,7 +88,7 @@ Created by PHASE 0 on run start. At PHASE 8, the entire `.devlyn/` run artifact 
     "global": <int>,
     "max_rounds": <int>
   },
-  "perf": {
+  "perf": {  // OPTIONAL — present only when --perf flag is passed (v3.4 demoted from mandatory)
     "wall_ms": <int>,
     "tokens_total": <int>,
     "per_phase": [
@@ -102,12 +102,12 @@ Created by PHASE 0 on run start. At PHASE 8, the entire `.devlyn/` run artifact 
 
 ### Top-level
 
-- `version` — schema version. Bump on breaking changes. Orchestrators must check and refuse incompatible versions. **v1.1** adds: `eval_passed_sha`, `route.bypasses`, `source.criteria_sha256` as a schema field (previously only mentioned in prose), `phases.*.triggered_by`, and `PASS_WITH_ISSUES` / `NEEDS_WORK` to the verdict enum.
+- `version` — schema version. Bump on breaking changes. Orchestrators must check and refuse incompatible versions. **v1.2** (Karpathy-pure): post-EVAL phase set collapsed to `critic` + `docs`; `perf` demoted to optional (`--perf`); SIMPLIFY/REVIEW/CHALLENGE/SECURITY_REVIEW/CLEAN removed as separate phase keys. **v1.1** (prior): `eval_passed_sha`, `route.bypasses`, `source.criteria_sha256`, `phases.*.triggered_by`, `PASS_WITH_ISSUES`/`NEEDS_WORK` verdicts.
 - `run_id` — stable identifier. Format: `ar-<ISO8601-compact>-<uuidv7-short>` where ISO8601-compact is `YYYYMMDDTHHMMSSZ` and uuidv7-short is the first 12 hex chars of a UUIDv7 (time-sortable, collision-safe). Example: `ar-20260423T163044Z-018f4c2a1b9c`. Orchestrator generates via `date -u +%Y%m%dT%H%M%SZ` + uuidv7 library (or fallback: `openssl rand -hex 6` — still safe because the ISO timestamp is high-resolution enough for non-concurrent runs).
 - `started_at` — Phase 0 start, ISO-8601 UTC.
 - `engine` — user-provided `--engine` flag value, or `auto` default.
 - `base_ref` — git state captured at Phase 0. **All subsequent `git diff` commands use this SHA**, not `HEAD~1` or `main`. This eliminates diff-scope drift.
-- `eval_passed_sha` — `null` until PHASE 2 first returns `PASS` or `PASS_WITH_ISSUES`. At that moment the orchestrator records `git rev-parse HEAD` here. After this field is populated, the **post-EVAL findings-only invariant** applies: any phase other than PHASE 7 (DOCS) that writes non-doc files is reverted by the orchestrator and its attempt becomes a finding. See `invariants` section of the skill.
+- `eval_passed_sha` — `null` until PHASE 2 first returns `PASS` or `PASS_WITH_ISSUES`. At that moment the orchestrator records `git rev-parse HEAD` here. After this field is populated, the **post-EVAL findings-only invariant** applies: PHASE 3 (CRITIC) must not write any non-doc files (reverted on violation), and PHASE 4 (DOCS) may only touch doc-allowlist paths. See `invariants` section of the skill.
 
 ### Route
 
@@ -131,37 +131,32 @@ One entry per testable criterion extracted from the source. State machine: `pend
 
 ### Phases
 
-Key is phase name: `build`, `build_gate`, `browser_validate`, `evaluate`, `fix_loop`, `simplify`, `review`, `challenge`, `security_review`, `clean`, `docs`, `final_report`.
+Key is phase name (v3.4 set): `build`, `build_gate`, `browser_validate`, `evaluate`, `fix_loop`, `critic`, `docs`, `final_report`.
 
 - `verdict` — `PASS` / `PASS_WITH_ISSUES` / `NEEDS_WORK` / `FAIL` / `BLOCKED` / `null`. **Single canonical verdict source** — orchestrator branches on this, never by parsing artifact files.
-- `engine` / `model` — which model ran this phase. `bash` for build-gate. `dual` for security_review on `--engine auto`.
-- `round` — which fix-loop round this execution belongs to. Phases that run once: `1`. `build_gate`, `browser_validate`, `evaluate`, `challenge`, `security_review` increment with fix-loop iterations.
-- `triggered_by` — for phases re-run via the unified fix loop (PHASE 2.5), records the triggering phase name (`build_gate` / `browser_validate` / `evaluate` / `challenge` / `simplify` / `review` / `security_review` / `clean` / `docs`). Also written on fix-loop entries themselves. `null` for the first run. See the unified fix-loop contract in the skill.
-- `pre_sha` — captured by the orchestrator immediately before spawning this phase (`git rev-parse HEAD`). Used by the post-EVAL invariant to diff **only what this phase touched**, not everything since EVAL first passed — the latter would misattribute legitimate fix-loop commits to a later findings-only phase. `null` for phases that ran before the invariant activated or whose diff baseline is otherwise unneeded (PARSE, BUILD, BUILD GATE, BROWSER, EVAL use `base_ref.sha` instead).
-- `artifacts` — pointers to phase output files. Phases that emit structured findings write both `findings_file` and `log_file`. Phases that used to fix-in-place (Simplify/Review/Clean) are now findings-only post-EVAL and so they also get findings files. DOCS leaves both `null` (its output is git commits).
+- `engine` / `model` — which model ran this phase. `bash` for build-gate. `dual` for `critic` security sub-pass on `--engine auto`.
+- `round` — which fix-loop round this execution belongs to. Phases that run once: `1`. `build_gate`, `browser_validate`, `evaluate`, `critic` increment with fix-loop iterations.
+- `triggered_by` — for phases re-run via the unified fix loop (PHASE 2.5), records the triggering phase name (`build_gate` / `browser_validate` / `evaluate` / `critic`). Also written on fix-loop entries themselves. `null` for the first run.
+- `pre_sha` — captured by the orchestrator immediately before spawning a post-EVAL phase (`git rev-parse HEAD`). Used by the post-EVAL invariant to diff **only what this phase touched**. Applies to `critic` and `docs`. `null` for PARSE/BUILD/BUILD_GATE/BROWSER/EVAL (those use `base_ref.sha`).
+- `artifacts` — pointers to phase output files. Phases that emit structured findings write both `findings_file` and `log_file`. `critic` writes a single `.devlyn/critic.findings.jsonl` carrying both design and security rule_id prefixes. DOCS leaves both `null` (its output is git commits).
+- `sub_verdicts` (only on `critic`) — `{"design": <verdict>, "security": <verdict>}`; overall `verdict` = WORSE of the two per `references/phases/phase-3-critic.md`.
+- `dep_audit` (only on `critic`) — `{"ran": bool, "command": "<cmd>", "high": N, "critical": N}` populated when critic's security sub-pass ran `npm audit` / `pip-audit` / equivalent.
 
 ### Rounds
 
 - `global` — shared round counter across all fix-loop invocations regardless of trigger. Increments once per fix-loop iteration.
 - `max_rounds` — cap from `--max-rounds` flag (default 4).
 
-### Perf
+### Perf (opt-in via `--perf`, v3.4)
 
-Purpose: every run records wall-time and token consumption per phase so the harness has evidence for its own efficiency claims. Written into state.json throughout the run; preserved across archive. Enables retrospective benchmarking without any extra benchmark runs — production use IS the benchmark.
+When `--perf` is passed, the orchestrator records wall-time and token consumption per phase for retrospective benchmarking. When the flag is omitted (the default), the `perf` block is absent from state.json and the orchestrator skips timing/token bookkeeping — Karpathy P2 (Simplicity First) applied: no mandatory meta-measurement.
 
-- `wall_ms` — total wall-clock from PHASE 0 start to PHASE 8 end, in milliseconds.
+When enabled:
+- `wall_ms` — total wall-clock from PHASE 0 start to PHASE 5 end, in milliseconds.
 - `tokens_total` — sum of `per_phase[].tokens`.
-- `per_phase` — one entry per phase execution (a phase re-run by the fix loop produces multiple entries). Fields:
-  - `phase` — phase name matching `phases.*` keys.
-  - `engine` — which model handled this execution.
-  - `wall_ms` — phase end minus phase start.
-  - `tokens` — sum of all subagent/Codex token reports for this phase. Agent subagents return `total_tokens` in their completion notification; Codex calls report usage in their response. Build gate (bash) reports 0.
-  - `round` — matches `phases.<name>.round`.
-  - `triggered_by` — matches `phases.<name>.triggered_by`.
+- `per_phase` — one entry per phase execution. Fields: `phase`, `engine`, `wall_ms`, `tokens` (from subagent `total_tokens` or Codex usage; `bash` reports 0), `round`, `triggered_by`.
 
-The orchestrator writes each entry at phase completion (right after verdict+artifacts). `wall_ms` + `tokens_total` at the top level update at PHASE 8 after rolling up `per_phase`.
-
-This section is load-bearing for answering the question the user asked v3.2 to answer: does `--engine auto` actually use fewer tokens or less wall time than `--engine claude` on real tasks? The data lives next to the verdict, so any historical run under `.devlyn/runs/<run_id>/` is a queryable data point.
+Written at phase completion; totals roll up at PHASE 5.
 
 ## Anchor syntax
 
@@ -172,25 +167,19 @@ Format: `<scheme>://<section>[/<index>]`. `scheme` is `spec` or `criteria.genera
 - **Phase 0 (PARSE + PREFLIGHT + ROUTE)** — creates state.json with `version`, `run_id`, `started_at`, `engine`, `base_ref`, `rounds.max_rounds`, empty `phases`, and (after preflight step) populates `source`, `criteria[]` with `status: pending`, `route.selected`, `route.stage_a`, `route.bypasses`. `eval_passed_sha` remains `null`.
 - **Each phase start** — orchestrator writes `phases.<name>.started_at`, `round`, `triggered_by` (if re-run).
 - **Each phase end** — phase writes `phases.<name>.{verdict, completed_at, duration_ms, artifacts}`. Build and Evaluate additionally update `criteria[]` state. **When EVALUATE first returns PASS/PASS_WITH_ISSUES**, orchestrator sets `state.eval_passed_sha = git rev-parse HEAD` — this is the reference point for the post-EVAL invariant.
-- **Phase 1.4 completion checkpoint** — orchestrator runs Stage B routing check; writes `route.stage_b` on escalation.
-- **Phase 8 (FINAL REPORT + ARCHIVE)** — reads state.json for the report, renders the report, then archives (see below).
+- **Phase 1.4 completion checkpoint** — orchestrator runs Stage B LITE routing check; writes `route.stage_b` on escalation.
+- **Phase 5 (FINAL REPORT + ARCHIVE)** — reads state.json for the report, renders the report, then archives (see below).
 
-## Archive contract (PHASE 8)
+## Archive contract (PHASE 5)
 
-Replaces the previous "delete `.devlyn/`" behavior.
+Best-effort move-and-prune. Replaces the previous "delete `.devlyn/`" behavior.
 
 1. Create `.devlyn/runs/<run_id>/` with `mkdir -p`.
 2. Move `.devlyn/pipeline.state.json`, every `.devlyn/<phase>.findings.jsonl`, every `.devlyn/<phase>.log.md`, every `.devlyn/fix-batch.round-*.json`, and `.devlyn/criteria.generated.md` (if exists) into that directory. Use `mv` (atomic within a filesystem).
-3. Acquire an advisory lock on `.devlyn/runs/.prune.lock` using a **platform-aware** helper:
-   - **Linux**: `flock` from util-linux (`flock .devlyn/runs/.prune.lock -c '<prune-script>'`).
-   - **macOS/BSD**: `flock` is NOT on the default $PATH. Prefer either `shlock -f .devlyn/runs/.prune.lock -p $$` (comes with macOS) OR a Python fallback: `python3 -c "import fcntl,sys; f=open('.devlyn/runs/.prune.lock','w'); fcntl.flock(f.fileno(), fcntl.LOCK_EX); <prune logic>"`. The Python path is the most portable across Linux + macOS + WSL.
-   - **Windows / no POSIX**: skip locking; single-run environments are race-free by assumption.
-   - If lock acquisition fails (another run is pruning), skip pruning and continue. Never block the archive step on lock contention.
-4. With the lock held: list `.devlyn/runs/*/pipeline.state.json`, sort by their enclosed `run_id` (lexicographic sort is chronological because run_ids start with a compact ISO8601 timestamp), and delete the oldest directories until at most 10 remain. **Never delete a directory whose `pipeline.state.json` has `phases.final_report.verdict == null`** — those are still in flight.
-5. Kill any dev-server process spawned by PHASE 1.5 (BROWSER VALIDATE).
-6. Release the lock.
+3. Prune to the last 10 completed runs. List `.devlyn/runs/*/pipeline.state.json`, sort by enclosing `run_id` (lexicographic = chronological because run_ids start with a compact ISO8601 timestamp), and delete the oldest directories until at most 10 remain. **Never delete a directory whose `pipeline.state.json` has `phases.final_report.verdict == null`** — those are still in flight.
+4. Kill any dev-server process spawned by PHASE 1.5 (BROWSER VALIDATE).
 
-This gives the user a persistent audit trail (last 10 runs) while preventing unbounded growth. Cleanup is deterministic and concurrency-safe where OS primitives allow; on macOS without `flock` the Python fallback provides the same semantics via `fcntl.flock()`.
+No advisory lock (removed in v3.4). Concurrent auto-resolve runs are rare; pruning is idempotent (sorted + threshold based) so a race at worst deletes a run already about to be pruned anyway. If cross-process safety becomes a real concern, re-introduce `flock`/Python `fcntl.flock` — not before.
 
 ## Integrity invariants
 
@@ -201,7 +190,7 @@ The orchestrator enforces:
 3. `route.selected` can only escalate via `stage_b`. No de-escalation.
 4. `rounds.global` never exceeds `rounds.max_rounds`.
 5. `criteria[].status` progression is monotonic per round: `pending → implemented → verified | failed`. A `failed` criterion can return to `implemented` via a subsequent fix-loop round, then be re-evaluated.
-6. **Post-EVAL findings-only** (per-phase diff, not cumulative): once `eval_passed_sha` is non-null, each post-EVAL phase (SIMPLIFY, REVIEW, CHALLENGE, SECURITY REVIEW, CLEAN, DOCS) records `phases.<phase>.pre_sha = git rev-parse HEAD` at spawn time. After completion, the orchestrator runs `git diff --name-only <phases.<phase>.pre_sha> -- ':!.devlyn/**'` (NOT against `eval_passed_sha`, and excluding orchestrator-owned `.devlyn/` state writes which happen mid-run by design). For findings-only phases, any non-empty diff triggers `git reset --hard <pre_sha>` + `invariant.post-eval-code-mutation` finding + fix-loop entry. For DOCS, only doc-file-allowlist paths are legal; everything else triggers the same flow. Using `eval_passed_sha` as the cumulative baseline would misattribute legitimate intermediate fix-loop commits to the current phase — `pre_sha` is the correct reference. Using a diff WITHOUT the `:!.devlyn/**` pathspec would false-positive on every post-EVAL phase because orchestrator bookkeeping writes to `.devlyn/pipeline.state.json` between phases.
+6. **Post-EVAL findings-only** (per-phase diff, not cumulative): once `eval_passed_sha` is non-null, each post-EVAL phase (CRITIC, DOCS) records `phases.<phase>.pre_sha = git rev-parse HEAD` at spawn time. After completion, the orchestrator runs `git diff --name-only <phases.<phase>.pre_sha> -- ':!.devlyn/**'`. For CRITIC (findings-only), any non-empty diff triggers `git reset --hard <pre_sha>` + `invariant.post-eval-code-mutation` finding + fix-loop entry. For DOCS, only doc-file-allowlist paths are legal; everything else triggers the same flow. `pre_sha` (not cumulative `eval_passed_sha`) is the correct baseline because fix-loop commits between EVAL and CRITIC are legitimate — they were re-EVALed. The `:!.devlyn/**` pathspec excludes orchestrator bookkeeping writes.
 
 Violations indicate a bug in the orchestrator. Do not attempt silent recovery.
 
@@ -209,7 +198,7 @@ Violations indicate a bug in the orchestrator. Do not attempt silent recovery.
 
 ```json
 {
-  "version": "1.1",
+  "version": "1.2",
   "run_id": "ar-20260423T163044Z-018f4c2a1b9c",
   "started_at": "2026-04-23T16:30:44Z",
   "engine": "auto",

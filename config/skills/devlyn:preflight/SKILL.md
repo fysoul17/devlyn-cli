@@ -104,11 +104,12 @@ Read all in-scope planning documents and build a **commitment registry** — eve
 4. **Filter out** (excluded from audit entirely):
    - Items in `backlog/` or `deferred.md`
    - Items with `status: cut` in ROADMAP.md
-   - Out of Scope entries — these are anti-commitments (things promised NOT to build)
 
-5. **Separate planned items**: Items with `status: planned` in their spec frontmatter or "Planned" in ROADMAP.md are not expected to be implemented yet. Include them in a `[PLANNED]` section of the registry for visibility, but do **not** audit them or report them as findings. Flagging planned items as MISSING creates noise and buries the real gaps in work that was supposed to be done.
+5. **Anti-commitments ARE audited** (Out of Scope entries in each spec). These are "must NOT build" claims — if the codebase has shipped something the spec explicitly excluded, that is a WORKAROUND / scope-creep finding, not a success. The code-auditor checks each anti-commitment: "is this excluded behavior present in the code?" If yes → emit a finding with `rule_id: "scope.anti-commitment-violation"` (severity HIGH).
 
-6. **Write to `.devlyn/commitment-registry.md`**:
+6. **Separate planned items**: Items with `status: planned` in their spec frontmatter or "Planned" in ROADMAP.md are not expected to be implemented yet. Include them in a `[PLANNED]` section of the registry for visibility, but do **not** audit them as missing. Flagging planned items as MISSING creates noise and buries the real gaps in work that was supposed to be done.
+
+7. **Write to `.devlyn/commitment-registry.md`**:
 
 ```markdown
 # Commitment Registry
@@ -124,15 +125,15 @@ Total commitments: [N]
 - [INTEGRATION] Auth middleware applied to all /api/* routes
 - [TEST] Auth flow covered by E2E tests
 
-## Anti-Commitments (Out of Scope)
-- [item 1.1] Does NOT include social login
-- [item 1.2] Does NOT include real-time inventory sync
+## Anti-Commitments (Out of Scope — audited as "must NOT exist in code")
+- [item 1.1] Must NOT include social login
+- [item 1.2] Must NOT include real-time inventory sync
 
-## Not Started (Planned — excluded from audit)
+## Not Started (Planned — not audited for presence, but still anti-commitments inside them apply)
 ### 2.1 [item title] (spec status: planned)
 - [FEATURE] WebSocket connection on page load
 - [FEATURE] Real-time task list updates
-[These items are tracked for visibility but NOT audited or reported as findings]
+[Planned items are tracked for visibility; code-auditor does not flag as MISSING.]
 ```
 
 ## PHASE 2: AUDIT
@@ -168,36 +169,23 @@ Tests user-facing features in the browser against commitment registry. Writes to
 
 ## PHASE 3: SYNTHESIZE & REPORT
 
-After all auditors report:
+Auditors already emit each finding with its category (`MISSING`/`INCOMPLETE`/`DIVERGENT`/`BROKEN`/`UNDOCUMENTED`/`STALE_DOC`/`scope.anti-commitment-violation`) and severity (`CRITICAL`/`HIGH`/`MEDIUM`/`LOW`). Synthesis passes them through — do NOT re-classify or re-severity-label. That would replace domain judgment with orchestrator mechanics.
 
 1. **Read all audit files** in parallel:
    - `.devlyn/audit-code.md`
    - `.devlyn/audit-docs.md` (if exists)
    - `.devlyn/audit-browser.md` (if exists)
 
-2. **Deduplicate**: If multiple auditors flagged the same issue, merge into one finding at the highest severity.
+2. **Deduplicate**: if multiple auditors flagged the same issue (same category + file:line), merge into one finding at the highest severity the reporting auditor assigned. Trust the auditor's severity — do not override.
 
-3. **Filter accepted divergences**: If `.devlyn/preflight-accepted.md` exists, remove any findings that match accepted entries.
+3. **Filter accepted divergences**: if `.devlyn/preflight-accepted.md` exists, remove findings whose (category, commitment) matches an accepted entry.
 
-4. **Classify each finding** using these categories:
-
-| Category | Description | Typical source |
-|----------|-------------|----------------|
-| `MISSING` | In roadmap but not implemented | code-auditor |
-| `INCOMPLETE` | Implementation started but unfinished | code-auditor |
-| `DIVERGENT` | Implemented differently than spec says | code-auditor |
-| `BROKEN` | Implemented but has a bug | code-auditor, browser-auditor |
-| `UNDOCUMENTED` | Implemented but not in docs | docs-auditor |
-| `STALE_DOC` | Docs don't match current code | docs-auditor |
-
-5. **Assign severity**: CRITICAL (blocks shipping), HIGH (should fix), MEDIUM (fix or accept), LOW (cosmetic)
-
-6. **Compare with previous run** (if `.devlyn/PREFLIGHT-REPORT.md` existed):
+4. **Compare with previous run** (if `.devlyn/PREFLIGHT-REPORT.md` existed):
    - `RESOLVED`: finding from previous run no longer present
    - `PERSISTS`: finding still present
    - `NEW`: finding not in previous run
 
-7. **Generate `.devlyn/PREFLIGHT-REPORT.md`**:
+5. **Generate `.devlyn/PREFLIGHT-REPORT.md`**:
 
 ```markdown
 # Preflight Report
@@ -212,6 +200,7 @@ Previous run: [timestamp / none]
 | INCOMPLETE | [N] |
 | DIVERGENT | [N] |
 | BROKEN | [N] |
+| SCOPE_VIOLATION | [N] |
 | UNDOCUMENTED | [N] |
 | STALE_DOC | [N] |
 | **Total findings** | **[N]** |
@@ -266,7 +255,7 @@ These items are acknowledged future work per the roadmap. They will be audited w
 - [list any, or "None"]
 ```
 
-8. **Present the report** to the user with a summary.
+6. **Present the report** to the user with a summary.
 
 ## PHASE 4: TRIAGE & PROMOTE
 

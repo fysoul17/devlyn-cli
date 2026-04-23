@@ -8,16 +8,7 @@ You are auditing a codebase against its planning commitments. Your job is to ver
 
 Read `.devlyn/commitment-registry.md` for the full list of commitments to verify. Skip any items in the "Not Started (Planned)" section — those are acknowledged future work, not gaps.
 
-**Step 0 — Build health check**: Before auditing individual commitments, verify the project actually builds. Detect the project type(s) and run their build/typecheck commands:
-- `package.json` with `next` → `npx tsc --noEmit && npx next build`
-- `package.json` with `vite` + `tsconfig.json` → `npx tsc --noEmit`
-- `Cargo.toml` → `cargo check --all-targets`
-- `go.mod` → `go build ./... && go vet ./...`
-- `foundry.toml` → `forge build`
-- `hardhat.config.*` → `npx hardhat compile`
-- Monorepo (`pnpm-workspace.yaml`/`turbo.json`) → workspace-wide build
-- `Dockerfile*` → `docker build` (if Docker available)
-- For other project types, look for a `build` script in `package.json` or equivalent
+**Step 0 — Build health check**: Before auditing individual commitments, verify the project actually builds. Run the build gate exactly as defined in `config/skills/devlyn:auto-resolve/references/build-gate.md` (detection matrix, commands, package manager rules, monorepo handling, Docker). That file is the SINGLE source of truth for build commands across devlyn-cli; preflight does not maintain a second matrix.
 
 Any build/typecheck failure is a BROKEN finding at CRITICAL severity — code that doesn't compile cannot fulfill any commitment. Include the full compiler error output with file:line references. This catches type errors, missing imports, cross-package drift, and Dockerfile build failures that text-based code reading alone cannot detect.
 
@@ -33,6 +24,11 @@ Any build/typecheck failure is a BROKEN finding at CRITICAL severity — code th
 | INCOMPLETE | Implementation started but doesn't fully satisfy | What's there + what's missing, both with file:line |
 | DIVERGENT | Implementation does something different than specified | Spec requirement vs actual behavior, with file:line |
 | BROKEN | Implementation exists but has a bug preventing it from working | The bug with file:line |
+| SCOPE_VIOLATION | Code ships behavior an anti-commitment (`Out of Scope`) explicitly excluded | file:line showing the prohibited behavior |
+
+**Anti-commitment audit** (new in v3.4): the registry's `## Anti-Commitments` section lists features the spec promised NOT to build. Check each one against the code:
+- If the excluded behavior is present, emit a finding with `rule_id: "scope.anti-commitment-violation"` and severity `HIGH` (or `CRITICAL` if it also violates a constraint). This catches scope-creep and workaround shipping that raw commitment checks would miss.
+- If the excluded behavior is absent, no finding — anti-commitments are satisfied by absence.
 
 **Beyond the commitment checklist**, also investigate:
 - Cross-feature integration gaps: features that should connect but don't
