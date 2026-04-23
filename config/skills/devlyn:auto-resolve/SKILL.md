@@ -162,16 +162,17 @@ Spawn per `<engine_routing_convention>`. Prompt:
 1. Checkpoint: `git add -A && git commit -m "chore(pipeline): fix round <N> (<triggered_by>)"`.
 2. Increment `state.rounds.global`.
 3. Route back: `build_gate` → PHASE 1.4; `browser_validate` → PHASE 1.5; **`evaluate` / `critic` → PHASE 2 (re-EVAL)**. All post-EVAL findings flow back through EVAL.
+4. **After re-EVAL returns PASS/PASS_WITH_ISSUES with `triggered_by == "critic"`**: re-run PHASE 3 CRITIC once before proceeding to DOCS. This verifies the fix didn't introduce new design/security issues the first CRITIC would have caught. Subsequent fix-loop rounds triggered from this re-CRITIC follow the same rule (bounded by `state.rounds.max_rounds`).
 
 ## PHASE 3: CRITIC (findings-only, route-gated)
 
 Skip if `state.route.selected == "fast"` OR `critic` in `state.route.bypasses`.
 
-Replaces v3.2's SIMPLIFY + REVIEW + CHALLENGE + SECURITY as ONE post-EVAL critic pass with two sub-concerns:
+One post-EVAL critic pass with two sub-concerns:
 - **Design sub-pass** — "would a staff engineer block this PR?" (cold read, any finding → `NEEDS_WORK`). Always Claude.
 - **Security sub-pass** — OWASP-style audit with mandatory dependency audit when any dep manifest OR lockfile changed (`package.json`, `requirements.txt`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `Pipfile.lock`, `poetry.lock`, `Cargo.toml`, `Cargo.lock`, `go.mod`, `go.sum`). On `--engine auto`: **Dual** (Claude + Codex parallel, merged). On others: single model per route.
 
-Hygiene concerns (unused imports, dead code) are NOT a separate sub-pass — EVAL already emits `hygiene.*` findings at LOW severity.
+Hygiene concerns (unused imports, dead code) live in EVAL's `hygiene.*` findings at LOW severity, not a separate sub-pass here.
 
 **Before spawn**: capture `phase_pre_sha = git rev-parse HEAD` → `state.phases.critic.pre_sha`.
 
@@ -246,6 +247,6 @@ Next steps:
 - Re-run fixes: /devlyn:auto-resolve "<narrower task>"
 ```
 
-3. **Archive** per `references/pipeline-state.md#archive-contract`: move `.devlyn/pipeline.state.json`, every `<phase>.findings.jsonl` and `<phase>.log.md`, `fix-batch.round-*.json`, and `criteria.generated.md` (if exists) into `.devlyn/runs/<run_id>/`. Best-effort prune to last 10 by lex `run_id` sort (exclude any with `phases.final_report.verdict == null`). No advisory lock — concurrent runs are rare and pruning is idempotent.
+3. **Archive** per `references/pipeline-state.md#archive-contract`.
 
 4. Kill dev server from PHASE 1.5 if still running.

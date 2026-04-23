@@ -11,3 +11,11 @@ config/skills/devlyn:auto-resolve-workspace/
 
 # auto-resolve harness state — run-local, archived to .devlyn/runs/
 .devlyn/
+
+# devlyn-cli installer output — runtime install artifacts under project's own .claude/
+# (the tracked source-of-truth for skills lives in config/skills/ — these are install dumps)
+.claude/skills/
+.claude/templates/
+.claude/commit-conventions.md
+.claude/settings.json
+.claude/settings.local.json

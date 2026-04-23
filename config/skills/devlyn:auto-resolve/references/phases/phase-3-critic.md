@@ -4,8 +4,6 @@ Spawned when PHASE 3 runs. Engine: CRITIC row of `engine-routing.md` — design 
 
 **Findings-only**: CRITIC does NOT write code. Orchestrator routes `NEEDS_WORK`/`BLOCKED` findings into PHASE 2.5 with `triggered_by: "critic"`. No bespoke mini-loop inside CRITIC.
 
-Replaces v3.2's CHALLENGE + SECURITY REVIEW (and subsumes the staff-engineer concerns of REVIEW and the duplication/over-abstraction concerns of SIMPLIFY — folded into EVAL at LOW severity and CRITIC's design sub-pass respectively).
-
 ---
 
 <spec_integrity_check>
@@ -78,21 +76,6 @@ Rule_ids: `security.sql-injection`, `security.xss`, `security.path-traversal`, `
   - Any `NEEDS_WORK` → `NEEDS_WORK`
   - Any `PASS_WITH_ISSUES` → `PASS_WITH_ISSUES`
   - Both `PASS` → `PASS`
-
-## Example verdict entries in state.json
-
-```json
-"critic": {
-  "verdict": "NEEDS_WORK",
-  "sub_verdicts": {
-    "design": "PASS",
-    "security": "NEEDS_WORK"
-  },
-  "dep_audit": {"ran": true, "command": "npm audit --json", "high": 2, "critical": 0},
-  "engine": "dual",
-  "artifacts": {"findings_file": ".devlyn/critic.findings.jsonl", "log_file": ".devlyn/critic.log.md"}
-}
-```
 
 ## Principles
 

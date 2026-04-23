@@ -1,20 +1,6 @@
 # Engine Routing: Intelligent Model Selection
 
-Routing rules for Claude / Codex / Dual per role and phase. Only read when `--engine` is `auto` or `codex`. Rationale grounded in published benchmarks (April 2026).
-
----
-
-## Benchmark basis (summary)
-
-| Dimension | Claude Opus 4.6 | GPT-5.4 | Edge |
-|-----------|-----------------|---------|------|
-| Long-context retrieval (256k, MRCR v2) | 92% | ~64% | Claude +28pp |
-| Graduate reasoning (GPQA Diamond) | 87.4% | 83.9% | Claude +3.5pp |
-| Hard coding (SWE-bench Pro) | ~46% | 57.7% | Codex +11.7pp |
-| Function-level (HumanEval) | 90.4% | 93.1% | Codex +2.7pp |
-| Terminal/CLI (Terminal-Bench 2.0) | 65.4% | 75.1% | Codex +9.7pp |
-| Security (Semgrep 2025) | — | — | Tied — unique findings each |
-| Ambiguous intent | 70% dev-preferred | — | Claude |
+Routing rules for Claude / Codex / Dual per role and phase. Only read when `--engine` is `auto` or `codex`.
 
 Codex call defaults: `model: "gpt-5.4"`, `reasoningEffort: "xhigh"`, `sandbox` per role (below), `workingDirectory: <project root>`.
 

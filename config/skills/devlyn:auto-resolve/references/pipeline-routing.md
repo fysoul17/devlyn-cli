@@ -73,8 +73,6 @@ Stage A writes to `state.route.stage_a.{at, reasons}`.
 
 Stage B LITE writes to `state.route.stage_b.{at, escalated_from, reasons}`. No escalation → `stage_b.at` remains `null`.
 
-Deleted from v3.2: file-count thresholds, cross-boundary directory heuristics, tests-absent heuristic. These fired too often without proving verification value.
-
 ## Phase inclusion matrix
 
 | Phase | `fast` | `standard` | `strict` |
@@ -91,9 +89,7 @@ Deleted from v3.2: file-count thresholds, cross-boundary directory heuristics, t
 | 4 DOCS (doc-files only) | — | ✓ | ✓ |
 | 5 FINAL REPORT + ARCHIVE | ✓ | ✓ | ✓ |
 
-Legend: ✓ runs, — skipped by route. `--bypass <phase>` forces skip on any route.
-
-`fast` skips CRITIC and DOCS. Use `fast` for disposable work; do not ship from `fast` without running at least `standard` afterwards.
+Legend: ✓ runs, — skipped by route. `--bypass <phase>` forces skip on any route. `fast` skips CRITIC and DOCS.
 
 ## Terminal-state algorithm (PHASE 5)
 

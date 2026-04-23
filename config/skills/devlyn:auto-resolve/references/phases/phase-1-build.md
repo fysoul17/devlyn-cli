@@ -29,7 +29,7 @@ Implement code changes that satisfy every pending criterion in `pipeline.state.j
 - **If `source.type == "generated"` and `.devlyn/criteria.generated.md` does not exist**: create it once with `## Requirements` (each `- [ ]` testable in under 30 seconds, specific, scoped), `## Out of Scope`, `## Verification`. Populate `state.criteria[]` with `{"id": "C<N>", "ref": "criteria.generated://requirements/<N-1>", "status": "pending", "evidence": [], "failed_by_finding_ids": []}`. Classify task complexity into `low` / `medium` / `high` and write to `phases.build.complexity`. Compute `criteria_sha256 = sha256(criteria.generated.md)` and store in `state.source.criteria_sha256`.
 - **No pending criterion remains**: every `criteria[]` entry must transition to `status: "implemented"` with an `evidence` record before you exit. If a criterion genuinely cannot be satisfied (missing external dep, blocking ambiguity), set `phases.build.verdict: "BLOCKED"` and report. Never exit with a criterion still `pending`. BUILD must not mark any criterion `failed` — that's EVAL-only. Legal transitions: `pending → implemented`, or halt via `verdict: "BLOCKED"`.
 - **Tests** added or updated for changed behavior. Run the full test suite before stopping.
-- **Team** (only if orchestrator set `team: true`): use `TeamCreate` per the role table below; collect findings; shut down the team before exiting. Otherwise implement directly — the default. (v3.4 removed keyword-triggered auto-assembly; teams are opt-in.)
+- **Team** (only if orchestrator set `team: true`): use `TeamCreate` per the role table below; collect findings; shut down the team before exiting. Otherwise implement directly — the default.
 </output_contract>
 
 <quality_bar>

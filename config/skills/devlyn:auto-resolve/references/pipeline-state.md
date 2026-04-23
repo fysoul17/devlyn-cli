@@ -102,8 +102,8 @@ Created by PHASE 0 on run start. At PHASE 5, the entire `.devlyn/` run artifact 
 
 ### Top-level
 
-- `version` — schema version. Bump on breaking changes. Orchestrators must check and refuse incompatible versions. **v1.2** (Karpathy-pure): post-EVAL phase set collapsed to `critic` + `docs`; `perf` demoted to optional (`--perf`); SIMPLIFY/REVIEW/CHALLENGE/SECURITY_REVIEW/CLEAN removed as separate phase keys. **v1.1** (prior): `eval_passed_sha`, `route.bypasses`, `source.criteria_sha256`, `phases.*.triggered_by`, `PASS_WITH_ISSUES`/`NEEDS_WORK` verdicts.
-- `run_id` — stable identifier. Format: `ar-<ISO8601-compact>-<uuidv7-short>` where ISO8601-compact is `YYYYMMDDTHHMMSSZ` and uuidv7-short is the first 12 hex chars of a UUIDv7 (time-sortable, collision-safe). Example: `ar-20260423T163044Z-018f4c2a1b9c`. Orchestrator generates via `date -u +%Y%m%dT%H%M%SZ` + uuidv7 library (or fallback: `openssl rand -hex 6` — still safe because the ISO timestamp is high-resolution enough for non-concurrent runs).
+- `version` — schema version; current value `1.2`. Orchestrators must refuse incompatible versions.
+- `run_id` — unique, time-sortable run identifier in format `ar-<UTC-compact>-<12 hex>`. Example: `ar-20260423T163044Z-018f4c2a1b9c`.
 - `started_at` — Phase 0 start, ISO-8601 UTC.
 - `engine` — user-provided `--engine` flag value, or `auto` default.
 - `base_ref` — git state captured at Phase 0. **All subsequent `git diff` commands use this SHA**, not `HEAD~1` or `main`. This eliminates diff-scope drift.
@@ -179,7 +179,7 @@ Best-effort move-and-prune. Replaces the previous "delete `.devlyn/`" behavior.
 3. Prune to the last 10 completed runs. List `.devlyn/runs/*/pipeline.state.json`, sort by enclosing `run_id` (lexicographic = chronological because run_ids start with a compact ISO8601 timestamp), and delete the oldest directories until at most 10 remain. **Never delete a directory whose `pipeline.state.json` has `phases.final_report.verdict == null`** — those are still in flight.
 4. Kill any dev-server process spawned by PHASE 1.5 (BROWSER VALIDATE).
 
-No advisory lock (removed in v3.4). Concurrent auto-resolve runs are rare; pruning is idempotent (sorted + threshold based) so a race at worst deletes a run already about to be pruned anyway. If cross-process safety becomes a real concern, re-introduce `flock`/Python `fcntl.flock` — not before.
+Best-effort; no cross-process lock. Pruning is idempotent on sorted run_id list, so concurrent runs at worst delete a run already slated for pruning.
 
 ## Integrity invariants
 
@@ -193,46 +193,6 @@ The orchestrator enforces:
 6. **Post-EVAL findings-only** (per-phase diff, not cumulative): once `eval_passed_sha` is non-null, each post-EVAL phase (CRITIC, DOCS) records `phases.<phase>.pre_sha = git rev-parse HEAD` at spawn time. After completion, the orchestrator runs `git diff --name-only <phases.<phase>.pre_sha> -- ':!.devlyn/**'`. For CRITIC (findings-only), any non-empty diff triggers `git reset --hard <pre_sha>` + `invariant.post-eval-code-mutation` finding + fix-loop entry. For DOCS, only doc-file-allowlist paths are legal; everything else triggers the same flow. `pre_sha` (not cumulative `eval_passed_sha`) is the correct baseline because fix-loop commits between EVAL and CRITIC are legitimate — they were re-EVALed. The `:!.devlyn/**` pathspec excludes orchestrator bookkeeping writes.
 
 Violations indicate a bug in the orchestrator. Do not attempt silent recovery.
-
-## Example
-
-```json
-{
-  "version": "1.2",
-  "run_id": "ar-20260423T163044Z-018f4c2a1b9c",
-  "started_at": "2026-04-23T16:30:44Z",
-  "engine": "auto",
-  "base_ref": {"branch": "main", "sha": "abc1234567890abcdef1234567890abcdef123456"},
-  "eval_passed_sha": "def2345678901bcdef2345678901bcdef2345678",
-  "route": {
-    "selected": "standard",
-    "user_override": false,
-    "bypasses": [],
-    "stage_a": {
-      "at": "2026-04-23T16:30:47Z",
-      "reasons": ["spec.complexity = medium", "0 risk-signal hits", "1 internal dep verified done"]
-    },
-    "stage_b": {"at": null, "escalated_from": null, "reasons": []}
-  },
-  "source": {
-    "type": "spec",
-    "spec_path": "docs/roadmap/phase-2/2.3-order-cancel.md",
-    "spec_sha256": "f4e8a1c9b2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9",
-    "criteria_path": null,
-    "criteria_sha256": null,
-    "criteria_anchors": ["spec://requirements", "spec://out-of-scope", "spec://verification", "spec://constraints"]
-  },
-  "criteria": [
-    {"id": "C1", "ref": "spec://requirements/0", "status": "verified", "evidence": [{"file": "src/api/orders/cancel.ts", "line": 42, "note": "POST /orders/:id/cancel handler"}], "failed_by_finding_ids": []}
-  ],
-  "phases": {
-    "build": {"verdict": "PASS", "engine": "codex", "model": "gpt-5.4", "started_at": "...", "completed_at": "...", "duration_ms": 42100, "round": 1, "triggered_by": null, "artifacts": {"findings_file": null, "log_file": null}},
-    "build_gate": {"verdict": "PASS", "engine": "bash", "model": null, "round": 1, "triggered_by": null, "artifacts": {"findings_file": ".devlyn/build_gate.findings.jsonl", "log_file": ".devlyn/build_gate.log.md"}},
-    "evaluate": {"verdict": "PASS_WITH_ISSUES", "engine": "claude", "model": "claude-opus-4-7", "round": 1, "triggered_by": null, "artifacts": {"findings_file": ".devlyn/evaluate.findings.jsonl", "log_file": ".devlyn/evaluate.log.md"}}
-  },
-  "rounds": {"global": 0, "max_rounds": 4}
-}
-```
 
 ## Non-goals
 

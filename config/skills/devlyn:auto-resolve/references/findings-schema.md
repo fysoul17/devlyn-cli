@@ -68,9 +68,7 @@ Separate structured findings from prose summaries. The orchestrator and fix-loop
 
 ### Dedup primary key
 
-**Simpler than v3.2**: the primary key is `(rule_id, file, line)`. Two findings with identical `(rule_id, file, line)` are the same issue. If EVAL runs again after a fix and the finding re-appears at the same coordinates, it's still unresolved. If the line shifted by a small amount after a fix, the next EVAL will regenerate the finding anyway with the new line — cross-round drift healing happens naturally via re-evaluation rather than hash normalization bookkeeping.
-
-Deleted from v3.2: `partial_fingerprints.location_hash`, `partial_fingerprints.rule_message_hash`, `normalize_path`, `normalize_message`. The orchestrator no longer post-processes JSONL for hash injection — subagents write findings directly, and the orchestrator reads `(rule_id, file, line)` as the lookup key.
+The primary key is `(rule_id, file, line)`. Two findings with identical coordinates are the same issue. If EVAL runs again after a fix and the finding re-appears at the same spot, it's still unresolved. If the line shifted after a fix, the next EVAL regenerates the finding with the new line — cross-round drift heals naturally via re-evaluation, no hash-normalization bookkeeping.
 
 ### Pipeline linkage
 
@@ -96,14 +94,6 @@ Each phase writes a fresh `.findings.jsonl` on each execution. Fix rounds re-run
 3. For each prior open finding not matched by the new file → set `status: resolved` in the prior file.
 
 Fix-batch packet: orchestrator concatenates all phases' `.findings.jsonl`, filters `status == "open"`, drops `blocking == false` when round budget is tight, writes to `.devlyn/fix-batch.round-<N>.json`.
-
-## Example — `evaluate.findings.jsonl`
-
-```jsonl
-{"id":"EVAL-0007","rule_id":"correctness.non-atomic-state-transition","level":"error","severity":"HIGH","confidence":0.91,"message":"Order status read and write are not atomic in cancel handler","file":"src/api/orders/cancel.ts","line":42,"phase":"evaluate","criterion_ref":"spec://requirements/1","fix_hint":"Wrap read+write in db.transaction() at src/api/orders/cancel.ts:40-50; re-check order.status === 'pending' inside transaction","blocking":true,"status":"open"}
-{"id":"EVAL-0008","rule_id":"ux.missing-error-state","level":"warning","severity":"MEDIUM","confidence":0.85,"message":"Cancel button does not show error UI when API returns 409","file":"app/orders/[id]/page.tsx","line":87,"phase":"evaluate","criterion_ref":"spec://requirements/3","fix_hint":"Catch 409 at app/orders/[id]/page.tsx:85-92; show Alert with retry button","blocking":true,"status":"open"}
-{"id":"EVAL-0009","rule_id":"hygiene.unused-import","level":"note","severity":"LOW","confidence":0.99,"message":"`unused` import from 'lodash' has no references","file":"src/api/orders/cancel.ts","line":3,"phase":"evaluate","criterion_ref":null,"fix_hint":"Remove `import { unused } from 'lodash'` at src/api/orders/cancel.ts:3","blocking":false,"status":"open"}
-```
 
 ## Non-goals
 

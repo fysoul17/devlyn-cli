@@ -1,6 +1,6 @@
 # PHASE 2 — EVALUATE (agent prompt body)
 
-Spawned when PHASE 2 runs. Engine: EVALUATE row of `engine-routing.md` — always Claude. When the builder was Codex, Claude evaluating Codex's code is the GAN dynamic by default.
+Spawned when PHASE 2 runs. Engine: Claude (cross-model critic when builder was Codex).
 
 ---
 
@@ -32,7 +32,7 @@ Verdict taxonomy: `BLOCKED` (any CRITICAL) / `NEEDS_WORK` (HIGH or MEDIUM presen
 - Every finding points at a file:line you have opened and read. No real anchor = speculation; exclude it.
 - Every failed criterion maps to ≥1 finding `id`.
 - **Coverage over comfort**: report uncertain and LOW findings too; downstream filters rank them. Missing a real defect ships broken code — the asymmetry is decisive.
-- Audit each changed file for: correctness (logic errors, silent failures, null access, wrong API contracts), architecture (pattern violations, duplication, missing integration), security (if auth/secrets/user-data touched: injection, hardcoded credentials, missing validation), frontend (if UI changed: missing error/loading/empty states, React anti-patterns, server/client boundaries), test coverage (untested modules, missing edge cases), hygiene (unused imports, dead code, unused deps — these go out as `hygiene.*` at LOW severity; include them so real defects are never hidden behind hygiene noise).
+- Audit each changed file for: correctness (logic errors, silent failures, null access, wrong API contracts), architecture (pattern violations, duplication, missing integration), security (if auth/secrets/user-data touched: injection, hardcoded credentials, missing validation), frontend (if UI changed: missing error/loading/empty states, React anti-patterns, server/client boundaries), test coverage (untested modules, missing edge cases), hygiene (unused imports, dead code, unused deps — `hygiene.*` at LOW), defensive programming (recursion depth/cycle guards, boundary conditions, missing null checks — severity per blast radius: `correctness.*` when it can crash or corrupt, `hygiene.*` when cosmetic).
 - Calibration: a catch block that logs but doesn't surface the error to the user → HIGH, not MEDIUM (logging ≠ error handling). A `let` that could be `const` → LOW (linters catch it). "Error handling is generally quite good" is not a finding — count instances, name files.
 - "Pre-existing" findings still count if they relate to the criteria. Working software, not blame attribution.
 - **Out-of-Scope violations are findings**: if BUILD added behavior the source's `## Out of Scope` excludes, emit `rule_id: "scope.out-of-scope-violation"`, `severity: HIGH`, `criterion_ref: "spec://out-of-scope"` (or `"criteria.generated://out-of-scope"`), `fix_hint` naming what to remove.
