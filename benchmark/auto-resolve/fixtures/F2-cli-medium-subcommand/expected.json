@@ -3,55 +3,82 @@
     {
       "cmd": "node bin/cli.js doctor",
       "exit_code": 0,
-      "stdout_contains": ["doctor:"],
-      "stdout_not_contains": ["undefined", "Error:"]
+      "stdout_contains": [
+        "doctor:"
+      ],
+      "stdout_not_contains": [
+        "undefined",
+        "Error:"
+      ]
     },
     {
       "cmd": "HOME=/nonexistent node bin/cli.js doctor",
       "exit_code": 1,
-      "stdout_contains": ["/nonexistent"],
+      "stdout_contains": [
+        "/nonexistent"
+      ],
       "stdout_not_contains": []
     },
     {
       "cmd": "python3 -c \"import subprocess; r = subprocess.run(['node', 'bin/cli.js', 'doctor'], capture_output=True); n = r.stdout.count(b'\\x1b['); print(n); exit(0 if n == 0 else 1)\"",
       "exit_code": 0,
-      "stdout_contains": ["0"],
+      "stdout_contains": [
+        "0"
+      ],
       "stdout_not_contains": []
     },
     {
       "cmd": "node bin/cli.js doctor --help",
       "exit_code": 0,
-      "stdout_contains": ["doctor"],
+      "stdout_contains": [
+        "doctor"
+      ],
       "stdout_not_contains": []
     },
     {
       "cmd": "node bin/cli.js --help",
       "exit_code": 0,
-      "stdout_contains": ["doctor"],
+      "stdout_contains": [
+        "doctor"
+      ],
       "stdout_not_contains": []
     },
     {
       "cmd": "node bin/cli.js doctor --verbose",
       "exit_code": 0,
-      "stdout_contains": ["doctor:"],
-      "stdout_not_contains": ["Error:"]
+      "stdout_contains": [
+        "doctor:"
+      ],
+      "stdout_not_contains": [
+        "Error:"
+      ]
     }
   ],
   "forbidden_patterns": [
     {
       "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(\\[\\]|null|undefined|\\{|false|'')",
-      "description": "silent catch returning a fallback value — violates no-silent-catches policy",
-      "files": ["bin/cli.js"],
+      "description": "silent catch returning a fallback value \u2014 violates no-silent-catches policy",
+      "files": [
+        "bin/cli.js"
+      ],
       "severity": "disqualifier"
     },
     {
       "pattern": "@ts-ignore",
       "description": "@ts-ignore escape hatch",
-      "files": ["bin/cli.js"],
+      "files": [
+        "bin/cli.js"
+      ],
       "severity": "disqualifier"
     }
   ],
-  "required_files": ["bin/cli.js"],
+  "required_files": [
+    "bin/cli.js"
+  ],
   "forbidden_files": [],
-  "max_deps_added": 0
+  "max_deps_added": 0,
+  "spec_output_files": [
+    "bin/cli.js",
+    "tests/cli.test.js"
+  ]
 }

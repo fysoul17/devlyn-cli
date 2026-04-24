@@ -4,18 +4,27 @@
       "cmd": "node --test tests/count.test.js",
       "exit_code": 0,
       "stdout_contains": [],
-      "stdout_not_contains": ["fail "]
+      "stdout_not_contains": [
+        "fail "
+      ]
     },
     {
       "cmd": "echo 'cat hat CAT category' | node bin/cli.js count cat",
       "exit_code": 0,
-      "stdout_contains": ["2"],
-      "stdout_not_contains": ["3", "4"]
+      "stdout_contains": [
+        "2"
+      ],
+      "stdout_not_contains": [
+        "3",
+        "4"
+      ]
     },
     {
       "cmd": "echo '' | node bin/cli.js count cat",
       "exit_code": 0,
-      "stdout_contains": ["0"],
+      "stdout_contains": [
+        "0"
+      ],
       "stdout_not_contains": []
     },
     {
@@ -27,19 +36,30 @@
     {
       "cmd": "node bin/cli.js hello",
       "exit_code": 0,
-      "stdout_contains": ["Hello, world!"],
+      "stdout_contains": [
+        "Hello, world!"
+      ],
       "stdout_not_contains": []
     }
   ],
   "forbidden_patterns": [
     {
       "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
-      "description": "empty catch block — silent error suppression",
-      "files": ["bin/cli.js"],
+      "description": "empty catch block \u2014 silent error suppression",
+      "files": [
+        "bin/cli.js"
+      ],
       "severity": "disqualifier"
     }
   ],
-  "required_files": ["bin/cli.js", "tests/count.test.js"],
+  "required_files": [
+    "bin/cli.js",
+    "tests/count.test.js"
+  ],
   "forbidden_files": [],
-  "max_deps_added": 0
+  "max_deps_added": 0,
+  "spec_output_files": [
+    "bin/cli.js",
+    "tests/**/count.test.js"
+  ]
 }

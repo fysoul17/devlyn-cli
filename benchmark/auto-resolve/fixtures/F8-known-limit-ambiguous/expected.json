@@ -3,43 +3,61 @@
     {
       "cmd": "node bin/cli.js hello",
       "exit_code": 0,
-      "stdout_contains": ["Hello, world!"],
+      "stdout_contains": [
+        "Hello, world!"
+      ],
       "stdout_not_contains": []
     },
     {
       "cmd": "node bin/cli.js hello --name alice",
       "exit_code": 0,
-      "stdout_contains": ["Hello, alice!"],
+      "stdout_contains": [
+        "Hello, alice!"
+      ],
       "stdout_not_contains": []
     },
     {
       "cmd": "node bin/cli.js version",
       "exit_code": 0,
-      "stdout_contains": ["0.1.0"],
+      "stdout_contains": [
+        "0.1.0"
+      ],
       "stdout_not_contains": []
     },
     {
       "cmd": "node bin/cli.js --help",
       "exit_code": 0,
-      "stdout_contains": ["hello"],
+      "stdout_contains": [
+        "hello"
+      ],
       "stdout_not_contains": []
     },
     {
       "cmd": "node --test tests/cli.test.js",
       "exit_code": 0,
       "stdout_contains": [],
-      "stdout_not_contains": ["fail "]
+      "stdout_not_contains": [
+        "fail "
+      ]
     }
   ],
   "forbidden_patterns": [
     {
       "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
       "description": "empty catch block",
-      "files": ["bin/cli.js"],
+      "files": [
+        "bin/cli.js"
+      ],
       "severity": "disqualifier"
     }
   ],
-  "required_files": ["bin/cli.js"],
+  "required_files": [
+    "bin/cli.js"
+  ],
   "forbidden_files": [],
-  "max_deps_added": 0
+  "max_deps_added": 0,
+  "spec_output_files": [
+    "bin/cli.js",
+    "tests/**"
+  ]
 }
