@@ -26,6 +26,7 @@ Read the diff cold — no checklist, no prior-phase context. Find what a staff e
 </design_goal>
 
 <design_quality_bar>
+- **Stay on the diff's behavior.** Every finding must identify a bug or risk the diff introduced. Do not propose changes to adjacent untouched code even if improvement is visible there. The question is always "does this diff create a problem?" — not "what else could be better?". Evidence may come from anywhere; the subject of the finding must be the diff's effect.
 - Every finding anchored to `file:line` in code you have opened, with a concrete fix. Vague ≠ finding.
 - `fix_hint` is a specific change ("change X to Y because Z"), never "consider improving".
 - Interrogate: would this survive 10x traffic? A midnight oncall page? A junior dev in 6 months? Are baked-in assumptions stated out loud (hardcoded limits, implicit ordering, missed business-logic edges)? Is error handling actually helpful or does it prevent crashes while leaving users confused? Are there simpler idiomatic approaches — not "clever" but genuinely better?

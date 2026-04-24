@@ -56,7 +56,8 @@ Decision order (first match wins):
 4. **Complexity-based** (spec-driven only):
    - `spec.frontmatter.complexity == "high"` → `strict`
    - `spec.frontmatter.complexity == "medium"` → `standard`
-   - `spec.frontmatter.complexity == "low"` → `fast`
+   - `spec.frontmatter.complexity == "low"` or `"trivial"` → `fast`
+   - Unrecognized value → `standard` (safe default; log the received value in `stage_a.reasons`).
 5. **Generated tasks**: default to `standard`, Stage B LITE may escalate after BUILD.
 
 Stage A writes to `state.route.stage_a.{at, reasons}`.
