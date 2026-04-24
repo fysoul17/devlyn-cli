@@ -87,6 +87,20 @@ fi
    && git -c user.email=b@b -c user.name=b commit -q -m baseline) \
   || { echo "baseline git init failed"; exit 1; }
 
+# Native security-review Skill expects `refs/remotes/origin/HEAD` to identify
+# the diff surface. Fresh `git init` has no remote, which made a prior F8 run
+# spend ~56 minutes inside CRITIC recovering this manually. Configure a
+# synthetic origin pointing at the work dir itself (no network I/O) and
+# wire origin/HEAD → origin/<current-branch> so security-review resolves
+# immediately.
+(
+  cd "$WORK_DIR"
+  git remote add origin "$WORK_DIR" 2>/dev/null || true
+  BRANCH=$(git branch --show-current 2>/dev/null || echo master)
+  git update-ref "refs/remotes/origin/$BRANCH" HEAD 2>/dev/null || true
+  git symbolic-ref refs/remotes/origin/HEAD "refs/remotes/origin/$BRANCH" 2>/dev/null || true
+) >/dev/null 2>&1 || true
+
 # Fixture-specific setup (applied post-baseline so the diff shows fixture
 # framing as part of the arm's environment, not its work product). Commit
 # failures here break arm-only diff isolation, so fail loudly.
