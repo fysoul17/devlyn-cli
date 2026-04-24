@@ -41,6 +41,8 @@ a first-time user typing `/devlyn:ideate` should land at working, well-structure
 - **No silent catches.**
 - **Non-git-repo handling.** Do not assume the user is always in a repo.
 
+- **Lifecycle note.** The harness's DOCS phase flips this spec's frontmatter `status` after implementation completes — that is benchmark lifecycle bookkeeping, not a scope violation.
+
 ## Out of Scope
 
 - Parsing commit messages, tags, branches.

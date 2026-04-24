@@ -37,6 +37,8 @@ inside the CLI itself.
 - **HOME guard.** If `process.env.HOME` is undefined or empty, emit a clear FAIL line ("HOME environment variable is not set") and exit 1.
 - **EACCES handling.** If `readdirSync` fails with EACCES, emit a permission-specific message quoting the offending path. Do not silently return an empty list.
 
+- **Lifecycle note.** The harness's DOCS phase flips this spec's frontmatter `status` after implementation completes — that is benchmark lifecycle bookkeeping, not a scope violation.
+
 ## Out of Scope
 
 - Auto-repair (report only; do not offer to fix detected problems).

@@ -31,6 +31,8 @@ Implement it so every test passes.
 - **Do not modify `tests/count.test.js`.** If a test looks wrong, that's a signal to revisit the implementation, not the test.
 - **No silent catches.** Errors reading stdin must surface with a clear message (not suppressed).
 
+- **Lifecycle note.** The harness's DOCS phase flips this spec's frontmatter `status` after implementation completes — that is benchmark lifecycle bookkeeping, not a scope violation.
+
 ## Out of Scope
 
 - Handling binary stdin.
