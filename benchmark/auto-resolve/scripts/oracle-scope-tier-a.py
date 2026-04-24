@@ -124,12 +124,23 @@ def is_waived(path, waivers):
     return False
 
 
-def analyze(work_dir, scaffold_sha, waivers):
+def analyze(work_dir, scaffold_sha, waivers, fixture_id=None):
     findings = []
     entries = git_diff_status(scaffold_sha, work_dir)
 
+    # Structural exemption: every benchmark fixture has its own spec at
+    # docs/roadmap/phase-*/<fixture_id>.md, and auto-resolve's DOCS phase
+    # Job 1 legitimately flips its frontmatter status. That flip is a
+    # skill feature, not a scope violation — always exempt regardless of
+    # per-fixture waivers.
+    own_spec_globs = []
+    if fixture_id:
+        own_spec_globs.append(f"docs/roadmap/phase-*/{fixture_id}.md")
+
     for status, path in entries:
         if is_waived(path, waivers):
+            continue
+        if is_waived(path, own_spec_globs):
             continue
 
         # Lockfile deletion — only when file existed at scaffold.
@@ -183,9 +194,13 @@ def main():
     args = ap.parse_args()
 
     waivers = []
+    fixture_id = None
     if args.expected:
+        exp_path = pathlib.Path(args.expected)
+        # fixture_id = parent directory name of expected.json
+        fixture_id = exp_path.parent.name
         try:
-            expected = json.loads(pathlib.Path(args.expected).read_text())
+            expected = json.loads(exp_path.read_text())
             raw = expected.get("tier_a_waivers", [])
             if isinstance(raw, list):
                 waivers = [w for w in raw if isinstance(w, str)]
@@ -194,10 +209,11 @@ def main():
                 f"[oracle-scope-tier-a] could not read waivers from {args.expected}: {e}\n"
             )
 
-    findings = analyze(args.work, args.scaffold, waivers)
+    findings = analyze(args.work, args.scaffold, waivers, fixture_id=fixture_id)
     print(json.dumps({
         "oracle": "scope-tier-a",
         "waivers": waivers,
+        "fixture_id": fixture_id,
         "findings": findings,
     }, indent=2))
 

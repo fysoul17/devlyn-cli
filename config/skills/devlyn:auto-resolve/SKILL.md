@@ -197,9 +197,9 @@ Spawn Claude `Agent` (`mode: "bypassPermissions"`). Include original task descri
 3. Update `docs/ROADMAP.md`: find row matching spec id; change Status to `Done`.
 4. If phase now fully Done: archive to `## Completed <details>` block at bottom (format per `devlyn:ideate#context-archiving`). Item spec files stay on disk.
 
-**Job 2 — General doc sync**: update docs referencing changed APIs/features/behaviors. Use `git log --oneline -20` + `git diff <state.base_ref.sha>`. Preserve forward-looking content.
+**Job 2 — Named-doc sync (scoped)**: update only doc files whose filename appears verbatim in the spec's Requirements or Constraints text (e.g. the spec literally says "Update `CLAUDE.md` section X"). If the filename isn't written in the spec, don't touch it. General doc maintenance — README.md feature lists, CHANGELOG.md entries, package.json version bumps, API surface writeups — is `/devlyn:update-docs`'s responsibility (a standalone, manually-invoked skill). Never widen DOCS phase beyond the verbatim-named set.
 
-**Safety**: never flip a spec `done` without a non-empty non-doc diff; never flip multiple specs in one run; never touch files outside the doc-file allowlist."
+**Safety**: never flip a spec `done` without a non-empty non-doc diff; never flip multiple specs in one run; never touch files outside the doc-file allowlist; Job 2 never writes a file the spec didn't name verbatim."
 
 **Before spawn**: capture `phase_pre_sha = git rev-parse HEAD` → `state.phases.docs.pre_sha`.
 
