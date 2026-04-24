@@ -136,7 +136,7 @@ EOF
     mkdir -p "$WORK_DIR/docs/roadmap/phase-1"
     cp "$SPEC" "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"
     cat > "$PROMPT_FILE" <<EOF
-Use the \`/devlyn:auto-resolve\` skill to implement the spec at \`docs/roadmap/phase-1/$FIXTURE.md\`. Run the full pipeline (BUILD → BUILD GATE → EVAL → CRITIC → DOCS → FINAL REPORT). Do not bypass phases. Let \`--engine auto\` route normally.
+Use the \`/devlyn:auto-resolve\` skill to implement the spec at \`docs/roadmap/phase-1/$FIXTURE.md\`. Let \`--engine auto\` select the route from the spec's complexity and risk signals — do not override it.
 
 After the pipeline finishes, report the terminal verdict and list of files changed so the benchmark runner can capture state.
 EOF

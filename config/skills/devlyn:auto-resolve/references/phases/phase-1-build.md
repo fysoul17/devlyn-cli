@@ -34,7 +34,7 @@ Implement code changes that satisfy every pending criterion in `pipeline.state.j
 
 <quality_bar>
 - **Scope first, then correctness.** Decide what files to touch before deciding how to implement. If a file is not named in the criteria and not required to satisfy them, do not touch it — not even to improve it. Correctness questions (how to implement) only arise for files already in scope.
-- **Existing tests are contract.** You may extend them; you may not weaken them. Do not replace real HTTP/filesystem/subprocess calls with hand-rolled mocks. Do not skip or disable existing tests. Do not reduce assertion count on behavior still in scope.
+- **Existing tests are contract.** You may extend them; you may not weaken them. Do not replace real HTTP/filesystem/subprocess calls with hand-rolled mocks. Do not skip or disable existing tests. Do not reduce assertion count on behavior still in scope. *(Rule enforcement: EVAL reads the post-BUILD diff against criteria and will flag mock-for-real swaps as a MEDIUM finding; future edits to EVAL's criteria must keep this check intact.)*
 - Criteria and Out-of-Scope are the contract — never weaken, reword, or delete them.
 - Read only files the source implicates (Architecture Notes + Dependencies + touched patterns), not the whole codebase.
 - Bugs: failing test first, then fix. Features: follow existing patterns, then write tests. Refactors: tests pass before and after.
