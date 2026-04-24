@@ -41,5 +41,10 @@
   ],
   "required_files": ["bin/cli.js"],
   "forbidden_files": [],
-  "max_deps_added": 0
+  "max_deps_added": 0,
+  "tier_a_waivers": [
+    "docs/VISION.md",
+    "docs/ROADMAP.md",
+    "docs/roadmap/**"
+  ]
 }

@@ -239,14 +239,19 @@ ELAPSED=$((T_END - T_START))
 (cd "$WORK_DIR" \
    && git diff "$SCAFFOLD_SHA" --name-only) > "$RESULT_DIR/changed-files.txt" 2>&1 || true
 
-# Deterministic oracle: test-fidelity check (step 1 of the benchmark-extension
-# plan). Flags mock-for-real swaps and silent assertion drops in existing
-# test files. Findings-only at this stage; scoring integration is step 5.
+# Deterministic oracles (step 1+ of the benchmark-extension plan).
+# Findings-only at this stage; scoring integration is step 5.
 python3 "$BENCH_ROOT/scripts/oracle-test-fidelity.py" \
   --work "$WORK_DIR" --scaffold "$SCAFFOLD_SHA" \
   > "$RESULT_DIR/oracle-test-fidelity.json" 2>/dev/null || \
   echo '{"oracle":"test-fidelity","findings":[],"error":"oracle invocation failed"}' \
     > "$RESULT_DIR/oracle-test-fidelity.json"
+
+python3 "$BENCH_ROOT/scripts/oracle-scope-tier-a.py" \
+  --work "$WORK_DIR" --scaffold "$SCAFFOLD_SHA" --expected "$EXPECTED" \
+  > "$RESULT_DIR/oracle-scope-tier-a.json" 2>/dev/null || \
+  echo '{"oracle":"scope-tier-a","findings":[],"error":"oracle invocation failed"}' \
+    > "$RESULT_DIR/oracle-scope-tier-a.json"
 
 # Run verification commands + forbidden pattern scan + deps check. Uses
 # the operator's real HOME (same as the arm saw). Fixtures that need HOME
