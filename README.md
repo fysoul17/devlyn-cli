@@ -128,9 +128,9 @@ Works across the full pipeline:
 
 | Phase | Model | Why |
 |---|---|---|
-| Build (implementation) | **Codex GPT-5.4** | SWE-bench Pro +11.7pp for hard coding tasks |
+| Build (implementation) | **Codex GPT-5.5** | SWE-bench Pro +11.7pp for hard coding tasks |
 | Evaluate | **Claude** | Long-context (MRCR +28pp) for full-diff grading |
-| Fix Loop | **Codex GPT-5.4** | Same advantage as Build |
+| Fix Loop | **Codex GPT-5.5** | Same advantage as Build |
 | Challenge | **Claude** | Fresh skeptical review needs different model family |
 | Browser Validate | **Claude** | Chrome MCP session-bound |
 

@@ -46,7 +46,7 @@ The `--engine auto` availability-check-and-downgrade rule (auto-resolve / ideate
 
 ## Codex invocation
 
-Skills call Codex via the local `codex exec` CLI (shipped by the `openai-codex` Claude Code plugin). See `config/skills/_shared/codex-config.md` for the canonical flag set. Omit `-m <model>`; the CLI's current flagship (today `gpt-5.4`, automatically whatever ships next) is used — zero-touch on upgrades. MCP is not in the loop.
+Skills call Codex via the local `codex exec` CLI (shipped by the `openai-codex` Claude Code plugin). See `config/skills/_shared/codex-config.md` for the canonical flag set. Omit `-m <model>`; the CLI's current flagship (today `gpt-5.5`, automatically whatever ships next) is used — zero-touch on upgrades. MCP is not in the loop.
 
 ## Working Mode
 

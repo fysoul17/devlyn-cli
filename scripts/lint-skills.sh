@@ -62,10 +62,10 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 3. No stale model strings (gpt-5.0/5.1/5.2/5.3 hardcoded outside config).
+# 3. No stale model strings (gpt-5.0..5.4 hardcoded outside config).
 # ---------------------------------------------------------------------------
-section "Check 3: No hardcoded pre-5.4 model strings"
-offenders=$(grep -RInE 'gpt-5\.[0-3][^.]' \
+section "Check 3: No hardcoded pre-5.5 model strings"
+offenders=$(grep -RInE 'gpt-5\.[0-4][^.]' \
   config/skills CLAUDE.md README.md 2>/dev/null \
   | grep -v 'config/skills/_shared/codex-config.md' \
   | grep -v 'config/skills/roadmap-archival-workspace/' \
@@ -75,7 +75,7 @@ offenders=$(grep -RInE 'gpt-5\.[0-3][^.]' \
   | grep -v 'evals\.json' \
   || true)
 if [ -z "$offenders" ]; then
-  ok "no hardcoded pre-5.4 strings"
+  ok "no hardcoded pre-5.5 strings"
 else
   while IFS= read -r f; do bad "$f"; done <<< "$offenders"
 fi

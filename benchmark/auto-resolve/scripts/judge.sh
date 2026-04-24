@@ -171,7 +171,7 @@ mkdir -p "$JUDGE_CWD"
 
 JUDGE_OUT="$RES_DIR/judge-output.txt"
 set +e
-cat "$PROMPT_FILE" | (cd "$JUDGE_CWD" && codex exec -s read-only -c model_reasoning_effort=xhigh - ) > "$JUDGE_OUT" 2>&1
+cat "$PROMPT_FILE" | (cd "$JUDGE_CWD" && codex exec -s read-only --skip-git-repo-check -c model_reasoning_effort=xhigh - ) > "$JUDGE_OUT" 2>&1
 JUDGE_EXIT=$?
 set -e
 rm -rf "$JUDGE_CWD"
@@ -187,27 +187,21 @@ out = pathlib.Path(sys.argv[1]).read_text()
 target = pathlib.Path(sys.argv[2])
 a_arm, b_arm, seed, codex_ver, judge_model = sys.argv[3:8]
 
-# Find the last balanced JSON object in the output
-candidates = []
-depth = 0
-start = None
-for i, ch in enumerate(out):
-    if ch == '{':
-        if depth == 0: start = i
-        depth += 1
-    elif ch == '}':
-        depth -= 1
-        if depth == 0 and start is not None:
-            candidates.append(out[start:i+1])
-            start = None
+# Extract the last valid judgment JSON. A naive brace-counter breaks on
+# `{`/`}` that appear inside strings (e.g. JS source embedded in the arms'
+# diffs), so use json.JSONDecoder.raw_decode starting at each `{` position
+# and keep the last successful parse with the required keys.
+decoder = json.JSONDecoder()
+brace_positions = [i for i, c in enumerate(out) if c == '{']
 chosen = None
-for c in reversed(candidates):
+for pos in reversed(brace_positions):
     try:
-        parsed = json.loads(c)
-        if "a_score" in parsed and "b_score" in parsed:
-            chosen = parsed; break
-    except Exception:
+        obj, _ = decoder.raw_decode(out[pos:])
+    except json.JSONDecodeError:
         continue
+    if isinstance(obj, dict) and "a_score" in obj and "b_score" in obj:
+        chosen = obj
+        break
 if chosen is None:
     raise SystemExit(f"no valid JSON in judge output; see {sys.argv[1]}")
 

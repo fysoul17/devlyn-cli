@@ -166,6 +166,10 @@ if ! (cd "$WORK_DIR" \
   echo "bench-scaffold commit failed — arm diff isolation broken"
   exit 1
 fi
+# Capture the scaffold commit SHA so the arm-only diff can be computed even
+# when the arm makes its own commits internally (e.g. variant's auto-resolve
+# pipeline commits after each phase). Diffing against HEAD would miss those.
+SCAFFOLD_SHA=$(cd "$WORK_DIR" && git rev-parse HEAD)
 
 # Timing start
 T_START=$(date +%s)
@@ -190,22 +194,16 @@ else
   command -v claude >/dev/null 2>&1 || {
     echo "claude CLI not on PATH — cannot invoke arm"; exit 1;
   }
-  # Deterministic HOME: point at a clean temp dir so fixture verifications
-  # (e.g. F2 checks $HOME/.claude) don't inherit the operator's real state.
-  # Any ~/.claude-dependent behavior must be seeded by setup.sh explicitly.
-  FAKE_HOME="/tmp/bench-home-${RUN_ID}-${FIXTURE}-${ARM}"
-  rm -rf "$FAKE_HOME"
-  mkdir -p "$FAKE_HOME/.claude/plugins/cache" "$FAKE_HOME/.claude/skills"
-  # Symlink from the variant work dir's .claude so the spawned session still
-  # resolves devlyn:* skills without polluting the arm's diff.
-  if [ "$ARM" = "variant" ] && [ -d "$WORK_DIR/.claude/skills" ]; then
-    cp -R "$WORK_DIR/.claude/skills/." "$FAKE_HOME/.claude/skills/" 2>/dev/null || true
-  fi
+  # Arm uses real HOME so Claude auth (macOS Keychain + ~/.claude session
+  # state) works. Fixtures that need HOME isolation override it inline in
+  # their verification commands (e.g. F2 uses `HOME=/nonexistent` per command).
+  # Variant-arm skills are resolved from $WORK_DIR/.claude/skills (project
+  # scope), so bare-arm runs never see them regardless of HOME.
   set +e
   if [ -n "$TIMEOUT_CMD" ]; then
     (
       cd "$WORK_DIR"
-      HOME="$FAKE_HOME" "$TIMEOUT_CMD" "$TIMEOUT" claude \
+      "$TIMEOUT_CMD" "$TIMEOUT" claude \
         -p "$(cat "$PROMPT_FILE")" \
         --dangerously-skip-permissions \
         --effort xhigh \
@@ -215,7 +213,7 @@ else
   else
     (
       cd "$WORK_DIR"
-      HOME="$FAKE_HOME" claude \
+      claude \
         -p "$(cat "$PROMPT_FILE")" \
         --dangerously-skip-permissions \
         --effort xhigh \
@@ -230,19 +228,29 @@ fi
 T_END=$(date +%s)
 ELAPSED=$((T_END - T_START))
 
-# Capture the ARM-ONLY diff (vs the scaffolding commit, which is HEAD after
-# pre-model commits). Unstaged and untracked both count — agents may leave
-# either state.
+# Capture the ARM-ONLY diff against the scaffold commit. Variant's
+# auto-resolve pipeline commits internally after each phase, so diffing
+# against HEAD would miss committed work. Diffing against SCAFFOLD_SHA after
+# `git add -A` picks up both scaffold..HEAD committed deltas AND any
+# staged-but-not-yet-committed leftovers (unstaged or untracked).
 (cd "$WORK_DIR" \
    && git add -A 2>/dev/null \
-   && git diff --cached HEAD) > "$RESULT_DIR/diff.patch" 2>&1 || true
+   && git diff "$SCAFFOLD_SHA") > "$RESULT_DIR/diff.patch" 2>&1 || true
 (cd "$WORK_DIR" \
-   && git diff --cached HEAD --name-only) > "$RESULT_DIR/changed-files.txt" 2>&1 || true
+   && git diff "$SCAFFOLD_SHA" --name-only) > "$RESULT_DIR/changed-files.txt" 2>&1 || true
 
-# Run verification commands + forbidden pattern scan + deps check. Use the
-# same deterministic HOME the model saw so F2-style checks (HOME/.claude
-# empty but present) are stable across machines.
-export BENCH_FAKE_HOME="${FAKE_HOME:-}"
+# Deterministic oracle: test-fidelity check (step 1 of the benchmark-extension
+# plan). Flags mock-for-real swaps and silent assertion drops in existing
+# test files. Findings-only at this stage; scoring integration is step 5.
+python3 "$BENCH_ROOT/scripts/oracle-test-fidelity.py" \
+  --work "$WORK_DIR" --scaffold "$SCAFFOLD_SHA" \
+  > "$RESULT_DIR/oracle-test-fidelity.json" 2>/dev/null || \
+  echo '{"oracle":"test-fidelity","findings":[],"error":"oracle invocation failed"}' \
+    > "$RESULT_DIR/oracle-test-fidelity.json"
+
+# Run verification commands + forbidden pattern scan + deps check. Uses
+# the operator's real HOME (same as the arm saw). Fixtures that need HOME
+# isolation override it inline per verification command.
 python3 - "$EXPECTED" "$RESULT_DIR" "$WORK_DIR" <<'PY'
 import json, os, re, subprocess, sys
 
@@ -251,9 +259,6 @@ result_dir = sys.argv[2]
 work = sys.argv[3]
 
 verify_env = os.environ.copy()
-fake_home = os.environ.get("BENCH_FAKE_HOME", "")
-if fake_home:
-    verify_env["HOME"] = fake_home
 # Expose the work-dir path so fixtures whose verification needs to reference
 # the work root can do so portably (e.g. F9's out-of-repo check).
 verify_env["BENCH_WORKDIR"] = work
