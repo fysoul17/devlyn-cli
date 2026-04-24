@@ -253,6 +253,12 @@ python3 "$BENCH_ROOT/scripts/oracle-scope-tier-a.py" \
   echo '{"oracle":"scope-tier-a","findings":[],"error":"oracle invocation failed"}' \
     > "$RESULT_DIR/oracle-scope-tier-a.json"
 
+python3 "$BENCH_ROOT/scripts/oracle-scope-tier-b.py" \
+  --work "$WORK_DIR" --scaffold "$SCAFFOLD_SHA" --expected "$EXPECTED" \
+  > "$RESULT_DIR/oracle-scope-tier-b.json" 2>/dev/null || \
+  echo '{"oracle":"scope-tier-b","findings":[],"error":"oracle invocation failed"}' \
+    > "$RESULT_DIR/oracle-scope-tier-b.json"
+
 # Run verification commands + forbidden pattern scan + deps check. Uses
 # the operator's real HOME (same as the arm saw). Fixtures that need HOME
 # isolation override it inline per verification command.
