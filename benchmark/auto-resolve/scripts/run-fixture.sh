@@ -214,6 +214,16 @@ else
   # together with the parent. A flag file disambiguates timeout from natural
   # exit; on timeout we set INVOKE_EXIT=124 (GNU timeout convention) so the
   # downstream `invoke_failure` logic routes the run into BLOCKED.
+  #
+  # MCP/config isolation (iter 0004). The harness's `claude -p` subprocess
+  # must not load the operator's user-level MCP plugins (pencil, codex-cli,
+  # telegram, vercel, …). Project policy is "MCP is not in the loop"; loading
+  # user MCP inside the variant arm is uncontrolled environment leaking into
+  # the experiment, and it is the most plausible cause of the F7 0-byte-
+  # transcript hang. `--strict-mcp-config` + an empty `mcpServers` object
+  # forces a hermetic subprocess. Skills still resolve via `/skill-name`.
+  # `--debug-file` records per-arm init/runtime so the next hang has a
+  # location, not a guess.
   TIMEOUT_FLAG="$RESULT_DIR/.timed_out"
   rm -f "$TIMEOUT_FLAG"
 
@@ -224,7 +234,10 @@ else
     exec claude \
       -p "$(cat "$PROMPT_FILE")" \
       --dangerously-skip-permissions \
-      --effort xhigh
+      --effort xhigh \
+      --strict-mcp-config \
+      --mcp-config '{"mcpServers":{}}' \
+      --debug-file "$RESULT_DIR/claude-debug.log"
   ) > "$RESULT_DIR/transcript.txt" 2>&1 &
   CHILD_PID=$!
   set +m
