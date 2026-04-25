@@ -66,7 +66,7 @@ These metrics define "did this hypothesis work?". Stable across iterations.
 
 Active queue. Re-order in place when priorities change. The top item is what the next iteration tackles.
 
-1. **Codex MCP race → wall-clock timeout in benchmark harness.** F7 in v3.7-fix-f6f7 stalled pre-session-init for 55+ minutes (codex CLI startup hang, codex 5.5 attributed to MCP-server-init race against lingering codex-mcp-server processes). Fix: wrap each codex invocation in the benchmark in a `sleep + kill` watchdog with explicit BLOCKED verdict on timeout. Predicted: F7 re-run completes, recovers margin (was -12 in v3.7-final, -27 invalidated in v3.7-fix-f6f7).
+1. **Codex MCP pre-arm reap (iteration 0004).** Iteration 0003 landed a wall-clock watchdog that bounds the F7 hang at 1200s, but the F7 variant transcript was still 0 bytes — claude never got past pre-session-init. The codex MCP race itself wasn't fixed, just bounded. Fix: before each variant arm, run a conservative-whitelist reap of stale `codex-mcp-server` processes (mirroring the `devlyn:reap` skill's pattern) so the inner `codex exec` calls hit a clean MCP startup. Pre-drafted in `iterations/0004-codex-mcp-reap.md`. Predicted: F7 variant transcript becomes non-empty, completion within ~10–15 min, margin recovers per iteration 0002's intent (≥+5).
 
 2. **5-Why operationalization in `phase-1-build.md` quality_bar.** User confirmed 5-Why is widely applied, not narrow. Codex round 2 conceded CLAUDE.md placement (Karpathy #1 expansion) is correct under that usage pattern. One-paragraph edit to CLAUDE.md `Karpathy 4 → Think Before Coding`. Predicted: marginal improvement in non-trivial fixtures (F3-class) where root-cause discipline matters; no measurable change on trivial fixtures.
 

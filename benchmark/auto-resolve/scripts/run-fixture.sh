@@ -35,14 +35,6 @@ done
 BENCH_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(cd "$BENCH_ROOT/../.." && pwd)"
 
-# Portable timeout: GNU `timeout` on Linux, `gtimeout` via coreutils on macOS.
-if command -v gtimeout >/dev/null 2>&1; then
-  TIMEOUT_CMD="gtimeout"
-elif command -v timeout >/dev/null 2>&1; then
-  TIMEOUT_CMD="timeout"
-else
-  TIMEOUT_CMD=""  # no timeout available — we still run, but can't wall off runaway invocations
-fi
 FIX_DIR="$BENCH_ROOT/fixtures/$FIXTURE"
 [ -d "$FIX_DIR" ] || { echo "fixture not found: $FIX_DIR"; exit 1; }
 
@@ -213,28 +205,51 @@ else
   # their verification commands (e.g. F2 uses `HOME=/nonexistent` per command).
   # Variant-arm skills are resolved from $WORK_DIR/.claude/skills (project
   # scope), so bare-arm runs never see them regardless of HOME.
+  #
+  # Portable wall-clock watchdog. macOS lacks GNU `timeout` by default; the
+  # earlier fallback ran arms unbounded, which produced a multi-hour F7 hang
+  # when the inner `codex exec` raced against a lingering codex-mcp-server.
+  # We background the arm in its own process group (`set -m` + `exec`) so the
+  # watchdog can `kill -- -PGID` and reap codex/codex-mcp-server descendants
+  # together with the parent. A flag file disambiguates timeout from natural
+  # exit; on timeout we set INVOKE_EXIT=124 (GNU timeout convention) so the
+  # downstream `invoke_failure` logic routes the run into BLOCKED.
+  TIMEOUT_FLAG="$RESULT_DIR/.timed_out"
+  rm -f "$TIMEOUT_FLAG"
+
   set +e
-  if [ -n "$TIMEOUT_CMD" ]; then
-    (
-      cd "$WORK_DIR"
-      "$TIMEOUT_CMD" "$TIMEOUT" claude \
-        -p "$(cat "$PROMPT_FILE")" \
-        --dangerously-skip-permissions \
-        --effort xhigh \
-        2>&1
-    ) > "$RESULT_DIR/transcript.txt" 2>&1
-    INVOKE_EXIT=$?
-  else
-    (
-      cd "$WORK_DIR"
-      claude \
-        -p "$(cat "$PROMPT_FILE")" \
-        --dangerously-skip-permissions \
-        --effort xhigh \
-        2>&1
-    ) > "$RESULT_DIR/transcript.txt" 2>&1
-    INVOKE_EXIT=$?
-    echo "[run-fixture] warning: no timeout utility on PATH — arm ran without wall clock limit" >&2
+  set -m
+  (
+    cd "$WORK_DIR"
+    exec claude \
+      -p "$(cat "$PROMPT_FILE")" \
+      --dangerously-skip-permissions \
+      --effort xhigh
+  ) > "$RESULT_DIR/transcript.txt" 2>&1 &
+  CHILD_PID=$!
+  set +m
+
+  (
+    sleep "$TIMEOUT"
+    if kill -0 "$CHILD_PID" 2>/dev/null; then
+      : > "$TIMEOUT_FLAG"
+      kill -TERM -- "-$CHILD_PID" 2>/dev/null
+      sleep 5
+      kill -KILL -- "-$CHILD_PID" 2>/dev/null
+    fi
+  ) &
+  WATCHDOG_PID=$!
+
+  wait "$CHILD_PID"
+  INVOKE_EXIT=$?
+
+  kill -TERM "$WATCHDOG_PID" 2>/dev/null || true
+  wait "$WATCHDOG_PID" 2>/dev/null || true
+
+  if [ -f "$TIMEOUT_FLAG" ]; then
+    INVOKE_EXIT=124
+    rm -f "$TIMEOUT_FLAG"
+    echo "[run-fixture] arm timed out after ${TIMEOUT}s — INVOKE_EXIT=124" >&2
   fi
   set -e
 fi

@@ -8,17 +8,19 @@
 
 **Branch**: `benchmark/v3.6-ab-20260423-191315` (all iteration commits live here, not yet merged to main).
 
-**Last shipped iteration**: 0002 (F6/F7 spec annotation). DECISIONS.md is the canonical log.
+**Last shipped iteration**: 0003 (run-fixture.sh process-group watchdog — harness infra; F7-recovery prediction refuted, queued as 0004). 0002 (F6/F7 spec annotation) before that. DECISIONS.md is the canonical log.
 
 **Last full benchmark snapshot**: `baselines/v3.7-final.json` — suite margin **+10.6** (variant 92.9 / bare 82.3), ship-gate FAIL because 5/8 gated fixtures ≥ +5 (need 7/9). Per-fixture detail in iteration 0001's "Actual change" section.
 
-**Last subset benchmark**: `baselines/v3.7-fix-f6f7.json` — F6 recovered −3 → +7 (validated), F7 invalidated by codex MCP race (separate bug, queued as iteration 0003).
+**Last subset benchmarks**:
+- `baselines/v3.7-fix-f6f7.json` — F6 recovered −3 → +7 (validated), F7 invalidated by codex MCP race.
+- `benchmark/auto-resolve/results/20260425T074946Z-09c8646-iter-0003-f7/` (not promoted to baselines) — F7 variant timed out cleanly under new watchdog (1201s, empty transcript, INVOKE_EXIT=124). Confirms (a) watchdog infra works, (b) MCP race is still the dominant F7 blocker. See iteration 0003 Lessons.
 
 ---
 
 ## What is shipped vs what is queued
 
-### Shipped on this branch (all under iteration 0001 + 0002)
+### Shipped on this branch (iterations 0001, 0002, 0003)
 
 | Commit | What it changed |
 |---|---|
@@ -27,13 +29,14 @@
 | `19cdf9b` | `run-fixture.sh` — `git remote add origin … && git symbolic-ref refs/remotes/origin/HEAD …` so native security-review resolves origin/HEAD instantly (eliminated the F8 56-min stall). |
 | `f2ec62f` | `SKILL.md` DOCS Job 2 — narrowed to verbatim-named files only. `oracle-scope-tier-{a,b}.py` — auto-exempt fixture's own spec file (`docs/roadmap/phase-*/<fixture_id>.md`). |
 | `695050a` | All 8 affected fixture specs — added "Lifecycle note" bullet to Constraints declaring DOCS frontmatter status flip is benchmark lifecycle, not scope creep. |
+| (uncommitted as of 2026-04-25) | `run-fixture.sh` — process-group watchdog (`set -m` + `exec claude` + `kill -- -PGID`); deletes dead TIMEOUT_CMD detection. Pre-suite stub test verified PG reaping. Iteration 0003. |
 
 ### Queued (next hypotheses, ordered)
 
 The README.md "Next hypotheses (ordered)" section is the live queue. As of handoff:
 
-1. **Iteration 0003 — Codex MCP race timeout.** Pre-drafted in `iterations/0003-codex-mcp-timeout.md`. Fix: `sleep + kill` watchdog around each `codex exec` in `run-fixture.sh`. Prediction: F7 re-run completes, recovers margin into +5 territory.
-2. **5-Why operationalization in CLAUDE.md.** Codex round 2 conceded option (a) — expand Karpathy #1 "Think Before Coding" to incorporate why-chain procedure under user's "widely applied" usage pattern. Wording draft already in conversation history (look in transcript or recreate). One-paragraph CLAUDE.md edit.
+1. **Iteration 0004 — Codex MCP pre-arm reap.** Pre-drafted in `iterations/0004-codex-mcp-reap.md`. Fix: conservative-whitelist reap of stale `codex-mcp-server` processes before each variant arm in `run-fixture.sh`. Iteration 0003 bounded the F7 hang at 1200s but didn't fix it (variant transcript still 0 bytes); 0004 addresses the actual race condition. Prediction: F7 variant completes, transcript non-empty, margin recovers to ≥+5.
+2. **5-Why operationalization in CLAUDE.md.** Codex round 2 conceded option (a) — expand Karpathy #1 "Think Before Coding" to incorporate why-chain procedure under user's "widely applied" usage pattern. One-paragraph CLAUDE.md edit.
 3. **DOCS Job 2 wider verification.** Confirm narrowing holds when a fixture spec body uses ambiguous "update the docs" phrasing. Build the fixture (or modify F8) and re-run.
 4. **Held-out fixture set.** Don't build until overfitting signal appears (3+ fixtures improving with no intuitive mechanism).
 5. **Adversarial-ask layer.** Expand benchmark to test harness against vague/workaround-tempting asks. Long-term direction.
@@ -42,8 +45,8 @@ The README.md "Next hypotheses (ordered)" section is the live queue. As of hando
 
 ## What's open / known issues
 
-- **Codex MCP race**: F7 stall pre-session-init. Root cause = MCP-server-init race with lingering `codex-mcp-server` processes from older sessions. codex 5.5 confirmed the pattern. Fix queued as iteration 0003.
-- **Ship-gate**: still FAIL (5/8 gated fixtures ≥ +5, need 7/9). After iteration 0003 lands and F7 retries cleanly, expected to flip to PASS.
+- **Codex MCP race**: F7 stall pre-session-init. Root cause = MCP-server-init race with lingering `codex-mcp-server` processes from older sessions. codex 5.5 confirmed the pattern. Iteration 0003 bounded it (1200s watchdog); iteration 0004 will fix it (pre-arm reap).
+- **Ship-gate**: still FAIL (5/8 gated fixtures ≥ +5, need 7/9). After iteration 0004 lands and F7 retries cleanly, expected to flip to PASS.
 - **F2 −4 and F4 −6** in v3.7-final: not real regressions — F2 is judge-noise (variance ±3 per axis), F4 is variant 100/100 with bare's ceiling rising from GPT-5.5 (lifted bare 79 → 86). No action needed.
 
 ---
