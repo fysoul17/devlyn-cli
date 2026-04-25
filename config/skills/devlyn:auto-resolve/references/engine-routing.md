@@ -4,7 +4,7 @@ Routing rules for Claude / Codex / Dual per role and phase. Only read when `--en
 
 > Codex invocations use the local `codex exec` CLI. Flag set + rationale live in `config/skills/_shared/codex-config.md`. No MCP, no model hardcoding — the CLI's current flagship is inherited automatically.
 
-Codex call defaults: `codex exec -C <project root> -s <per role> -c model_reasoning_effort=xhigh "<prompt>"`. Omit `-m` so the flagship is auto-selected. Only pass `-m <variant>` when a role explicitly needs a specialized model line, and name the variant generically ("SWE-bench-heavy coding variant") rather than hardcoding a version number — version strings go stale fast.
+Codex call defaults: `codex exec -C <project root> -s <per role> --ignore-user-config --ignore-rules --ephemeral -c model_reasoning_effort=xhigh "<prompt>"`. The three isolation flags are mandatory — they keep the inner Codex subprocess hermetic from the operator's `~/.codex/config.toml` (which may declare MCP servers that race our pipeline) and from user execpolicy `.rules`. Omit `-m` so the flagship is auto-selected. Only pass `-m <variant>` when a role explicitly needs a specialized model line, and name the variant generically ("SWE-bench-heavy coding variant") rather than hardcoding a version number — version strings go stale fast.
 
 ---
 
@@ -71,7 +71,7 @@ Docs auditor is always Claude (writing-quality strength for prose-drift detectio
 | quality-reviewer | Dual | read-only | Measured ~36–73% coverage gain from dual |
 | ux/ui/accessibility-* | Claude | — | Ambiguity handling + WCAG domain depth |
 
-For Codex roles: shell out `codex exec -C <project root> -s <sandbox per table> -c model_reasoning_effort=xhigh "<role prompt>"`. Include the full role prompt inline; Codex has no access to TeamCreate/SendMessage/TaskCreate.
+For Codex roles: shell out `codex exec -C <project root> -s <sandbox per table> --ignore-user-config --ignore-rules --ephemeral -c model_reasoning_effort=xhigh "<role prompt>"`. Include the full role prompt inline; Codex has no access to TeamCreate/SendMessage/TaskCreate.
 
 For Dual roles: run both in parallel, merge findings. Same finding from both → keep more detailed wording, mark "confirmed by both". Codex-only → prefix `[codex]`. Conflicts → keep both.
 

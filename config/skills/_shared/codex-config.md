@@ -10,6 +10,9 @@ Single source of truth for how every skill calls Codex. **MCP is not used.** Ski
 codex exec \
   -C <project-root> \
   -s read-only \
+  --ignore-user-config \
+  --ignore-rules \
+  --ephemeral \
   -c model_reasoning_effort=xhigh \
   "<inlined-prompt>"
 ```
@@ -20,6 +23,9 @@ codex exec \
 codex exec \
   -C <project-root> \
   --full-auto \
+  --ignore-user-config \
+  --ignore-rules \
+  --ephemeral \
   -c model_reasoning_effort=xhigh \
   "<inlined-prompt>"
 ```
@@ -27,6 +33,9 @@ codex exec \
 Notes:
 - `-C` — project root so Codex's working directory matches.
 - `-s read-only` / `--full-auto` — sandbox policy. `--full-auto` = `-s workspace-write` with auto-approval of sandboxed commands.
+- `--ignore-user-config` — do NOT load `$CODEX_HOME/config.toml`. Auth still works via `$CODEX_HOME`. **Required** because the operator's `~/.codex/config.toml` may declare MCP servers (`[mcp_servers.*]`); loading them inside our skill-driven invocation creates an MCP-init race that has stalled benchmark runs for 10+ minutes (iter 0005). Project policy is "MCP is not in the loop"; this flag enforces it at the inner-codex layer.
+- `--ignore-rules` — do NOT load user/project execpolicy `.rules`. Skills carry their own constraints in the prompt; user-level rules are uncontrolled environment.
+- `--ephemeral` — do not persist session files to disk. The skill discards the session at end of phase anyway, and persistence creates state leaks between runs that show up as inter-run nondeterminism.
 - `-c model_reasoning_effort=xhigh` — config override for reasoning depth. Required for deep critique; skills may choose `high` or `medium` when thoroughness doesn't warrant xhigh.
 - **Omit `-m <model>`** — Codex CLI uses its configured flagship (currently `gpt-5.5`, automatically whatever ships next). This is the zero-touch mechanism. Only name `-m` when a role explicitly needs a different model (e.g., `gpt-5.3-codex` for SWE-bench-heavy coding tasks, `gpt-5.3-codex-spark` for speed).
 
@@ -48,4 +57,4 @@ The `codex exec` CLI is the primary (and only) integration. It beats alternative
 
 Skills write the invocation as a Bash command the runtime executes. Example from `devlyn:auto-resolve`:
 
-> Run `codex exec -C <state.base_ref.repo_root> --full-auto -c model_reasoning_effort=xhigh "<FIX LOOP prompt>"`. Omit `-m` so the CLI flagship is auto-selected. Capture stdout as the fix-round reply; non-zero exit → treat as subagent failure.
+> Run `codex exec -C <state.base_ref.repo_root> --full-auto --ignore-user-config --ignore-rules --ephemeral -c model_reasoning_effort=xhigh "<FIX LOOP prompt>"`. Omit `-m` so the CLI flagship is auto-selected. Capture stdout as the fix-round reply; non-zero exit → treat as subagent failure.

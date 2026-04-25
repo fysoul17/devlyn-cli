@@ -35,7 +35,7 @@
 
 The README.md "Next hypotheses (ordered)" section is the live queue. As of handoff:
 
-1. **Iteration 0004 — Variant subprocess MCP/config isolation.** Pre-drafted in `iterations/0004-mcp-isolation.md`. Replaces the orphan-reap predecessor draft after codex round 3 re-diagnosis. Fix: `--strict-mcp-config --mcp-config '{"mcpServers":{}}' --debug-file …` on both arms in `run-fixture.sh`. Project policy already says "MCP is not in the loop"; the harness was leaking the operator's user-level MCP plugins (pencil, codex-cli, telegram, vercel, …) into the variant subprocess. Hermeticizing it is the actual fix. Prediction: F7 variant transcript becomes non-empty, completes well under timeout, margin recovers to ≥+5.
+1. **Iteration 0005 — Inner `codex exec` hermeticization.** Pre-drafted in `iterations/0005-codex-inner-isolation.md`. Iter 0004 isolated the outer `claude -p` but the inner `codex exec` still loaded user codex config (which declares `[mcp_servers.pencil]`). Round 4 traced F7's actual hang to an inner `codex exec` BUILD that ran 10+ minutes producing zero bytes, plus a `tail -f` monitor on it. Fix: `--ignore-user-config --ignore-rules --ephemeral` added to every skill-issued `codex exec` (canonical in `_shared/codex-config.md`; inline in `auto-resolve/references/engine-routing.md`). Prediction: F7 variant completes within timeout, margin ≥ +5.
 2. **5-Why operationalization in CLAUDE.md.** Codex round 2 conceded option (a) — expand Karpathy #1 "Think Before Coding" to incorporate why-chain procedure under user's "widely applied" usage pattern. One-paragraph CLAUDE.md edit.
 3. **DOCS Job 2 wider verification.** Confirm narrowing holds when a fixture spec body uses ambiguous "update the docs" phrasing. Build the fixture (or modify F8) and re-run.
 4. **Held-out fixture set.** Don't build until overfitting signal appears (3+ fixtures improving with no intuitive mechanism).
@@ -45,8 +45,8 @@ The README.md "Next hypotheses (ordered)" section is the live queue. As of hando
 
 ## What's open / known issues
 
-- **F7 variant 0-byte-transcript hang**: 1200s watchdog (iteration 0003) bounds the damage but does not fix it. Codex round 3 re-diagnosed: most plausible cause is the operator-level MCP plugin set being loaded into the variant `claude -p` subprocess. Iteration 0004 (MCP isolation) is the actual fix attempt.
-- **Ship-gate**: still FAIL (5/8 gated fixtures ≥ +5, need 7/9). After iteration 0004 lands and F7 retries cleanly, expected to flip to PASS.
+- **F7 variant hang** (multi-layer): iter 0003 bounded with watchdog, iter 0004 isolated outer claude from user MCP, iter 0005 (current) extends isolation to inner `codex exec`. The "0-byte transcript" symptom was misleading — `claude -p` only flushes at end-of-session; the real diagnostic is per-arm `--debug-file` (added in iter 0004) plus `~/.claude/projects/<project>/<session>.jsonl` (Claude Code's project log) for tool-use timestamps and arguments.
+- **Ship-gate**: still FAIL (5/8 gated fixtures ≥ +5, need 7/9). After iteration 0005 lands and F7 retries cleanly, expected to flip to PASS.
 - **F2 −4 and F4 −6** in v3.7-final: not real regressions — F2 is judge-noise (variance ±3 per axis), F4 is variant 100/100 with bare's ceiling rising from GPT-5.5 (lifted bare 79 → 86). No action needed.
 
 ---

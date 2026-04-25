@@ -1,8 +1,8 @@
 # 0004 — Variant subprocess MCP/config isolation
 
-**Status**: PROPOSED
-**Started**: (not yet)
-**Decided**: (not yet)
+**Status**: SHIPPED (partial — outer isolation only; inner codex isolation follows in iter 0005)
+**Started**: 2026-04-25
+**Decided**: 2026-04-25
 
 ## Hypothesis
 
@@ -59,12 +59,41 @@ NOT in this diff (deliberately deferred):
 
 ## Actual change
 
-(filled after run)
+Two runs against F7 with the new outer-MCP isolation:
+
+| Run | Timeout | Variant elapsed | Variant transcript | Variant diff | Variant verify | Score | Margin |
+|---|---|---|---|---|---|---|---|
+| iter-0004 fastrepro | 300s | 301s (timeout) | 0 bytes | **1904 bytes** (uncommitted) | 5/6 | 98 | +2 |
+| iter-0004 f7 (real) | 1200s | 1201s (timeout) | 1 byte (newline) | **0 bytes** | 3/6 | 68 | −29 |
+
+**Both runs hit the watchdog** even though the outer Claude `claude -p` subprocess no longer loaded user MCP plugins (verified: claude-debug.log shows no user MCP activity). The hang did not move to "claude can't start" — it moved to "claude starts fine but the inner `codex exec` it spawns hangs."
+
+Codex round 4 traced the real-subset hang to **two pending LocalShellTask processes at watchdog kill time**:
+1. `bw0nyvsax` — backgrounded `codex exec --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check ...` for BUILD phase. Output file stayed at 0 bytes for the entire 10+ minutes it ran.
+2. `bqwgajc1e` — `tail -f` monitor watching task #1's empty output. Naturally also hung.
+
+The fastrepro run happened to launch `codex exec` foreground (`| tail -200`) and the watchdog killed codex while it was actively writing files, so partial work survived in the working tree (1904 bytes of uncommitted changes). The real run launched it backgrounded, and codex emitted zero bytes the whole time, so killing it produced no work product.
+
+Bare arms across both runs: stable at score 96–98, ~40s wall, no regression.
+
+`pipeline.state.json` schema drift between runs (`engine: auto` vs `engine: codex`, `phases: {…}` vs `phases: {}`) is a tell that the auto-resolve skill is *prompt-driven* — claude rewrites that file each turn, so the schema reflects whatever the model chose to write rather than a deterministic code path. Not a code bug; it's how skill orchestration works.
 
 ## Lessons
 
-(filled after run)
+1. **Outer MCP isolation is necessary but insufficient.** Adding `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` to the harness's outer `claude -p` keeps user-level MCP plugins out of Claude Code itself. But it does NOT propagate to the inner `codex exec` subprocess, which loads its own user-level config (`~/.codex/config.toml` — operator has `[mcp_servers.pencil]` declared). The MCP race shifted location, not severity.
+
+2. **The real F7 blocker is inner Codex MCP race + a backgrounded shell pattern.** Inner `codex exec` initialization stalls when racing user-level MCP servers (same root-cause class as iter 0003's misdiagnosis, but at a different process layer). Combined with claude orchestrator backgrounding the call and waiting on a `tail -f` monitor, the variant arm sits silent for 10+ minutes producing nothing.
+
+3. **The `claude -p` "0-byte transcript" symptom in iter 0003 was misleading.** It conflated three separate possibilities: (a) Claude Code itself hung (iter 0003's first guess), (b) Claude Code worked but didn't flush transcript until end-of-session, (c) Claude Code worked but its child `codex exec` hung. The iter-0004 fastrepro showed (b) holds (transcript empty, but actual work in the work tree); the iter-0004 real run showed (c) is the dominant blocker.
+
+4. **`--debug-file` + reading the project JSONL is the right diagnostic level.** The 0-byte transcript would have hidden everything. The debug-file showed API request gaps; the project JSONL identified the exact LocalShellTask command and its 10-minute zero-byte runtime. Without these we'd have iterated blind.
+
+5. **Do not trust pipeline.state.json schema for cross-run comparison.** It's hand-written by the model at runtime. Differences between runs reflect model choice, not code drift.
+
+6. **Refined hypothesis (becomes iter 0005):** add `--ignore-user-config --ignore-rules --ephemeral` to every `codex exec` invocation in the skills (canonical: `_shared/codex-config.md` + the inline mention in `auto-resolve/references/engine-routing.md`). This forces inner Codex to a hermetic state matching what outer Claude already enforces. Predicted: F7 variant completes within 600–900s, transcript flushes, margin recovers to ≥+5.
 
 ## Decision
 
-(filled after run)
+**SHIPPED (partial).** The outer-MCP isolation change is correct, low-risk, and removes a previously-uncontrolled source of variance even though it didn't fix F7 by itself. The change stays. Iteration 0005 follows immediately to address the remaining inner-codex layer, which round 4 traced as the actual F7 blocker.
+
+The `--debug-file` flag added in this iteration is what made round 4's diagnosis possible. Keeping it on as standard harness instrumentation.
