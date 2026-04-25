@@ -1,0 +1,219 @@
+{
+  "run_id": "20260424T134305Z-f2ec62f-v3.7-final",
+  "label": "v3.7-final",
+  "git_sha": "f2ec62fcae6ddd468ec1ce2a05b0dac1253c49dc",
+  "branch": "benchmark/v3.6-ab-20260423-191315",
+  "completed_at": "2026-04-24T17:28:37Z",
+  "fixtures_total": 9,
+  "fixtures_scored": 9,
+  "variant_avg": 92.9,
+  "bare_avg": 82.3,
+  "margin_avg": 10.6,
+  "hard_floor_violations": 0,
+  "margin_ge_5_count": 5,
+  "gated_fixtures": 8,
+  "known_limit_fixtures": 1,
+  "rows": [
+    {
+      "fixture": "F1-cli-trivial-flag",
+      "category": "trivial",
+      "variant_score": 97,
+      "bare_score": 88,
+      "margin": 9,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 1835,
+      "bare_wall_s": 52,
+      "variant_verify_score": 0.8,
+      "bare_verify_score": 0.8,
+      "variant_files_changed": 2,
+      "bare_files_changed": 2,
+      "critical_findings_variant": [],
+      "critical_findings_bare": [
+        "Unknown hello flags are silently accepted because `parseNameFlag` ignores unrecognized arguments and `--loud` is only checked with `includes`."
+      ]
+    },
+    {
+      "fixture": "F2-cli-medium-subcommand",
+      "category": "medium",
+      "variant_score": 94,
+      "bare_score": 82,
+      "margin": 12,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 4253,
+      "bare_wall_s": 134,
+      "variant_verify_score": 1.0,
+      "bare_verify_score": 1.0,
+      "variant_files_changed": 4,
+      "bare_files_changed": 1,
+      "critical_findings_variant": [],
+      "critical_findings_bare": [
+        "Disqualifier forbidden-pattern hit in bin/cli.js: catch block returns an object fallback.",
+        "Verbose skills listing prints absolute paths, not paths relative to $HOME/.claude/skills.",
+        "HOME unset path does not produce the normal doctor status report with a [FAIL] line and summary."
+      ]
+    },
+    {
+      "fixture": "F3-backend-contract-risk",
+      "category": "high-risk",
+      "variant_score": 99,
+      "bare_score": 96,
+      "margin": 3,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 1341,
+      "bare_wall_s": 59,
+      "variant_verify_score": 0.75,
+      "bare_verify_score": 0.75,
+      "variant_files_changed": 2,
+      "bare_files_changed": 2,
+      "critical_findings_variant": [],
+      "critical_findings_bare": []
+    },
+    {
+      "fixture": "F4-web-browser-design",
+      "category": "stress",
+      "variant_score": 100,
+      "bare_score": 86,
+      "margin": 14,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 835,
+      "bare_wall_s": 236,
+      "variant_verify_score": 1.0,
+      "bare_verify_score": 0.75,
+      "variant_files_changed": 2,
+      "bare_files_changed": 3,
+      "critical_findings_variant": [],
+      "critical_findings_bare": [
+        "web/index.html does not contain page-owned italic CSS or font-style styling, causing the required italic verification command to fail.",
+        "test-results/.last-run.json is an out-of-scope generated artifact not allowed by the minimal-diff requirement."
+      ]
+    },
+    {
+      "fixture": "F5-fix-loop-red-green",
+      "category": "stress",
+      "variant_score": 96,
+      "bare_score": 80,
+      "margin": 16,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 973,
+      "bare_wall_s": 40,
+      "variant_verify_score": 0.8,
+      "bare_verify_score": 0.8,
+      "variant_files_changed": 1,
+      "bare_files_changed": 1,
+      "critical_findings_variant": [],
+      "critical_findings_bare": [
+        "Silent catch in count stdin handling suppresses fs.readFileSync errors by replacing input with an empty string, violating the no-silent-catches requirement and required error surfacing."
+      ]
+    },
+    {
+      "fixture": "F6-dep-audit-native-module",
+      "category": "stress",
+      "variant_score": 91,
+      "bare_score": 94,
+      "margin": -3,
+      "winner": "bare",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 297,
+      "bare_wall_s": 57,
+      "variant_verify_score": 0.8333333333333334,
+      "bare_verify_score": 0.8333333333333334,
+      "variant_files_changed": 3,
+      "bare_files_changed": 2,
+      "critical_findings_variant": [
+        "Touches docs/roadmap/phase-1/F6-dep-audit-native-module.md even though the spec output files are limited to bin/cli.js and tests/**."
+      ],
+      "critical_findings_bare": []
+    },
+    {
+      "fixture": "F7-out-of-scope-trap",
+      "category": "stress",
+      "variant_score": 84,
+      "bare_score": 96,
+      "margin": -12,
+      "winner": "bare",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 860,
+      "bare_wall_s": 45,
+      "variant_verify_score": 0.8333333333333334,
+      "bare_verify_score": 0.8333333333333334,
+      "variant_files_changed": 3,
+      "bare_files_changed": 2,
+      "critical_findings_variant": [
+        "Modified docs/roadmap/phase-1/F7-out-of-scope-trap.md despite the constraint to touch only bin/cli.js and tests/cli.test.js."
+      ],
+      "critical_findings_bare": []
+    },
+    {
+      "fixture": "F8-known-limit-ambiguous",
+      "category": "edge",
+      "variant_score": 93,
+      "bare_score": 61,
+      "margin": 32,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 618,
+      "bare_wall_s": 50,
+      "variant_verify_score": 0.8,
+      "bare_verify_score": 0.8,
+      "variant_files_changed": 2,
+      "bare_files_changed": 0,
+      "critical_findings_variant": [
+        "The verification harness marks `node --test tests/cli.test.js` as failed because TAP output contains `# fail 0`, although the test process exits 0 and all tests pass."
+      ],
+      "critical_findings_bare": [
+        "No implementation change despite the requirement to improve the CLI.",
+        "No new test asserting new behavior.",
+        "No explanatory note documenting the chosen scope and non-goals."
+      ]
+    },
+    {
+      "fixture": "F9-e2e-ideate-to-preflight",
+      "category": "e2e",
+      "variant_score": 82,
+      "bare_score": 58,
+      "margin": 24,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 1309,
+      "bare_wall_s": 89,
+      "variant_verify_score": 0.4,
+      "bare_verify_score": 0.4,
+      "variant_files_changed": 7,
+      "bare_files_changed": 2,
+      "critical_findings_variant": [
+        "Outside a git repository, the command exits 1 and prints `not a git repository` instead of stderr `Error: not a git repository` and exit 2.",
+        "Human output does not meet the required ranked author line format.",
+        "JSON output does not satisfy the expected `d.commits`/authors contract."
+      ],
+      "critical_findings_bare": [
+        "Disqualifier: silent fallback catches mask git command failures by returning zero/null/empty stats.",
+        "Outside a git repository, the command exits 1 and prints `Not a git repository` instead of stderr `Error: not a git repository` and exit 2.",
+        "Human output does not meet the required ranked author line format.",
+        "JSON output does not satisfy the expected `d.commits`/authors contract."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,231 @@
+{
+  "run_id": "20260423T134208Z-2e63e1c-v3.6-ab",
+  "label": "v3.6-ab",
+  "git_sha": "2e63e1c64e57ac278f09fdcf8f04a456ee9495b8",
+  "branch": "benchmark/v3.6-ab-20260423-191315",
+  "completed_at": "2026-04-23T17:58:15Z",
+  "fixtures_total": 9,
+  "fixtures_scored": 9,
+  "variant_avg": 92.3,
+  "bare_avg": 85.0,
+  "margin_avg": 7.3,
+  "hard_floor_violations": 0,
+  "margin_ge_5_count": 5,
+  "gated_fixtures": 8,
+  "known_limit_fixtures": 1,
+  "rows": [
+    {
+      "fixture": "F1-cli-trivial-flag",
+      "category": "trivial",
+      "variant_score": 98,
+      "bare_score": 90,
+      "margin": 8,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 3648,
+      "bare_wall_s": 58,
+      "variant_verify_score": 0.8,
+      "bare_verify_score": 0.8,
+      "variant_files_changed": 2,
+      "bare_files_changed": 2,
+      "critical_findings_variant": [],
+      "critical_findings_bare": [
+        "Unknown `hello` flags are silently accepted; `node bin/cli.js hello --bogus` would print a greeting instead of exiting 1 with an informative message.",
+        "The added tests miss the error path, so the explicit unknown-flag constraint is not protected against regression."
+      ]
+    },
+    {
+      "fixture": "F2-cli-medium-subcommand",
+      "category": "medium",
+      "variant_score": 96,
+      "bare_score": 80,
+      "margin": 16,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 905,
+      "bare_wall_s": 119,
+      "variant_verify_score": 1.0,
+      "bare_verify_score": 1.0,
+      "variant_files_changed": 3,
+      "bare_files_changed": 1,
+      "critical_findings_variant": [
+        "The missing-plugins-directory branch says `no plugins cache directory` rather than using the same count-oriented summary phrasing as the normal plugins path."
+      ],
+      "critical_findings_bare": [
+        "Hard disqualifier: `bin/cli.js` contains a forbidden silent-catch/fallback pattern under the fixture's constraint rules.",
+        "Non-writable `$HOME/.claude` is treated as WARN instead of FAIL, violating the required status semantics for the writability check.",
+        "Verbose output is off spec: plugins are shown as absolute paths instead of names, and skills are shown as absolute paths instead of relative paths."
+      ]
+    },
+    {
+      "fixture": "F3-backend-contract-risk",
+      "category": "high-risk",
+      "variant_score": 87,
+      "bare_score": 97,
+      "margin": -10,
+      "winner": "bare",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 775,
+      "bare_wall_s": 51,
+      "variant_verify_score": 0.75,
+      "bare_verify_score": 0.75,
+      "variant_files_changed": 2,
+      "bare_files_changed": 2,
+      "critical_findings_variant": [
+        "The test suite stops exercising the real HTTP server path and replaces it with handcrafted `IncomingMessage`/`ServerResponse` plumbing, which is unnecessary for the spec and materially lowers test fidelity."
+      ],
+      "critical_findings_bare": []
+    },
+    {
+      "fixture": "F4-web-browser-design",
+      "category": "stress",
+      "variant_score": 99,
+      "bare_score": 79,
+      "margin": 20,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 840,
+      "bare_wall_s": 419,
+      "variant_verify_score": 1.0,
+      "bare_verify_score": 0.75,
+      "variant_files_changed": 2,
+      "bare_files_changed": 3,
+      "critical_findings_variant": [],
+      "critical_findings_bare": [
+        "Whisper styling relies on an injected `<em>` element and browser default styling instead of page-owned CSS; this misses a stated requirement and causes the `grep -qE '(italic|font-style)' web/index.html` verification to fail.",
+        "The diff includes `test-results/.last-run.json`, an unrelated generated artifact that breaks the spec's minimal-diff / out-of-scope expectations."
+      ]
+    },
+    {
+      "fixture": "F5-fix-loop-red-green",
+      "category": "stress",
+      "variant_score": 98,
+      "bare_score": 96,
+      "margin": 2,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 659,
+      "bare_wall_s": 45,
+      "variant_verify_score": 0.8,
+      "bare_verify_score": 0.8,
+      "variant_files_changed": 1,
+      "bare_files_changed": 1,
+      "critical_findings_variant": [],
+      "critical_findings_bare": [
+        "Reading stdin via `fs.readFileSync(0, 'utf8')` has no explicit error handling, so a read failure would not produce the clear CLI error message the spec/constraints call for."
+      ]
+    },
+    {
+      "fixture": "F6-dep-audit-native-module",
+      "category": "stress",
+      "variant_score": 88,
+      "bare_score": 83,
+      "margin": 5,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 1966,
+      "bare_wall_s": 65,
+      "variant_verify_score": 0.8333333333333334,
+      "bare_verify_score": 0.8333333333333334,
+      "variant_files_changed": 2,
+      "bare_files_changed": 2,
+      "critical_findings_variant": [
+        "The CliError refactor changes preexisting `hello --name` missing-value behavior, violating the requirement that existing subcommands remain unchanged.",
+        "Supplied verification marks `node --test tests/checksum.test.js` as failing due to stdout containing `fail 0`."
+      ],
+      "critical_findings_bare": [
+        "Silent catch in tests/checksum.test.js (`catch {}`) is a rubric disqualifier.",
+        "Checksum implementation does not use the requested pipe-into-hash stream pattern; it manually updates the hash from data events.",
+        "Supplied verification marks `node --test tests/checksum.test.js` as failing due to stdout containing `fail 0`."
+      ]
+    },
+    {
+      "fixture": "F7-out-of-scope-trap",
+      "category": "stress",
+      "variant_score": 99,
+      "bare_score": 97,
+      "margin": 2,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 608,
+      "bare_wall_s": 42,
+      "variant_verify_score": 0.8333333333333334,
+      "bare_verify_score": 0.8333333333333334,
+      "variant_files_changed": 2,
+      "bare_files_changed": 2,
+      "critical_findings_variant": [],
+      "critical_findings_bare": [
+        "`version --format` without a value exits nonzero but reports `Unsupported --format value: undefined`, which is a weaker error path than an explicit missing-value check."
+      ]
+    },
+    {
+      "fixture": "F8-known-limit-ambiguous",
+      "category": "edge",
+      "variant_score": 90,
+      "bare_score": 73,
+      "margin": 17,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 1285,
+      "bare_wall_s": 40,
+      "variant_verify_score": 0.8,
+      "bare_verify_score": 0.8,
+      "variant_files_changed": 3,
+      "bare_files_changed": 0,
+      "critical_findings_variant": [
+        "The provided verification bundle still reports `node --test tests/cli.test.js` as non-green, so the submission is not fully clean against the machine acceptance.",
+        "It edits `docs/roadmap/phase-1/F8-known-limit-ambiguous.md`, which is out of scope for a small CLI improvement."
+      ],
+      "critical_findings_bare": [
+        "The diff is empty, so no qualifying CLI improvement was implemented.",
+        "No new assertion was added in `tests/cli.test.js` even though the spec explicitly requires one.",
+        "There is no comment or commit-note equivalent explaining the chosen scope and what was intentionally not done."
+      ]
+    },
+    {
+      "fixture": "F9-e2e-ideate-to-preflight",
+      "category": "e2e",
+      "variant_score": 76,
+      "bare_score": 70,
+      "margin": 6,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 2550,
+      "bare_wall_s": 84,
+      "variant_verify_score": 0.6,
+      "bare_verify_score": 0.4,
+      "variant_files_changed": 6,
+      "bare_files_changed": 2,
+      "critical_findings_variant": [
+        "Outside a repo, `bin/cli.js` exits 1 with `Error: not a git repo`; the fixture requires stderr `Error: not a git repository` and exit code 2.",
+        "Human output is not in the required ranked format `<rank>. <name> <count>`; it prints a `Top authors:` header plus `Name (count)` lines.",
+        "JSON output uses `commitCount` rather than the verification contract's `commits`, so the prose verification `typeof d.commits` would fail.",
+        "The `gitExec`/helper fallback path masks real git failures by returning `0`, `null`, or `[]` as if they were valid stats."
+      ],
+      "critical_findings_bare": [
+        "Outside a repo, `bin/cli.js` exits 1 instead of 2 and prints `gitstats: not a git repository` rather than the required `Error: not a git repository`.",
+        "JSON output uses `topAuthors` and `commitCount` instead of the fixture shape (`authors` and the prose verification's `commits`).",
+        "Human output is not in the required ranked format `<rank>. <name> <count>`; it prints a `Top authors:` header plus `Name (count)` lines.",
+        "The implementation does not include `docs/VISION.md`, `docs/ROADMAP.md`, or a phase-1 spec artifact, leaving the full F9 evidence incomplete."
+      ]
+    }
+  ]
+}

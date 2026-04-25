@@ -1,0 +1,63 @@
+{
+  "run_id": "20260424T234714Z-695050a-v3.7-fix-f6f7",
+  "label": "v3.7-fix-f6f7",
+  "git_sha": "695050a3f3d3c96542763c340ab561256bdd9fad",
+  "branch": "benchmark/v3.6-ab-20260423-191315",
+  "completed_at": "2026-04-25T01:14:12Z",
+  "fixtures_total": 2,
+  "fixtures_scored": 2,
+  "variant_avg": 82.5,
+  "bare_avg": 92.5,
+  "margin_avg": -10.0,
+  "hard_floor_violations": 0,
+  "margin_ge_5_count": 1,
+  "gated_fixtures": 2,
+  "known_limit_fixtures": 0,
+  "rows": [
+    {
+      "fixture": "F6-dep-audit-native-module",
+      "category": "stress",
+      "variant_score": 98,
+      "bare_score": 91,
+      "margin": 7,
+      "winner": "variant",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 1400,
+      "bare_wall_s": 52,
+      "variant_verify_score": 0.8333333333333334,
+      "bare_verify_score": 0.8333333333333334,
+      "variant_files_changed": 3,
+      "bare_files_changed": 2,
+      "critical_findings_variant": [],
+      "critical_findings_bare": [
+        "Non-ENOENT statSync failures are not handled with an informative message and exit code 2.",
+        "The checksum implementation manually updates the hash from data events rather than piping the file stream into the hash as specified."
+      ]
+    },
+    {
+      "fixture": "F7-out-of-scope-trap",
+      "category": "stress",
+      "variant_score": 67,
+      "bare_score": 94,
+      "margin": -27,
+      "winner": "bare",
+      "variant_disqualifier": false,
+      "variant_dq_judge": false,
+      "variant_dq_deterministic": false,
+      "variant_wall_s": 3623,
+      "bare_wall_s": 43,
+      "variant_verify_score": 0.5,
+      "bare_verify_score": 0.8333333333333334,
+      "variant_files_changed": 0,
+      "bare_files_changed": 2,
+      "critical_findings_variant": [
+        "Core `--format json` requirement is missing.",
+        "Unknown `--format` values are silently ignored by behavior, returning success with bare version output.",
+        "No required JSON-path test was added."
+      ],
+      "critical_findings_bare": []
+    }
+  ]
+}
