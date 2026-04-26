@@ -30,23 +30,6 @@ Notes:
 - `-c model_reasoning_effort=xhigh` — config override for reasoning depth. Required for deep critique; skills may choose `high` or `medium` when thoroughness doesn't warrant xhigh.
 - **Omit `-m <model>`** — Codex CLI uses its configured flagship (currently `gpt-5.5`, automatically whatever ships next). This is the zero-touch mechanism. Only name `-m` when a role explicitly needs a different model (e.g., `gpt-5.3-codex` for SWE-bench-heavy coding tasks, `gpt-5.3-codex-spark` for speed).
 
-## Execution contract — foreground only
-
-Every skill-issued `codex exec` call MUST run in the foreground. This is the contract; do not break it without an iteration that justifies the change.
-
-Do NOT:
-- Append `&` (background the process).
-- Set `run_in_background: true` on Bash tool calls that wrap `codex exec`.
-- Write Codex stdout to a file and `tail -f` (or `Monitor`, or `TaskOutput`) it for completion.
-- Continue the phase before the foreground command exits.
-
-DO:
-- Run Codex as a single foreground command, stream its output to terminal, and wait for it to exit.
-- Capture stdout as the phase's reply (use `2>&1 | tail -<N>` only as an output-volume control, never as a backgrounding mechanism).
-- Treat a non-zero exit as subagent failure.
-
-**Why this contract exists.** Iter 0005's full-suite measurement showed catastrophic regressions (F2 −82, F5 −35) when the prompt-driven orchestrator non-deterministically chose to background `codex exec` and wait via a `tail -f` monitor. The backgrounded Codex emitted zero bytes for the metadata.timeout window; the watchdog killed both the Codex subprocess and its monitor; the variant arm produced no useful work. Successful runs (F4, F7, F8) used foreground patterns. The fix is not a flag — it's a behavioral contract on how the orchestrator invokes Codex.
-
 ## Availability check
 
 Before the first `codex exec` call in a run, verify the CLI is on PATH:
@@ -65,4 +48,4 @@ The `codex exec` CLI is the primary (and only) integration. It beats alternative
 
 Skills write the invocation as a Bash command the runtime executes. Example from `devlyn:auto-resolve`:
 
-> Run `codex exec -C <state.base_ref.repo_root> --full-auto -c model_reasoning_effort=xhigh "<FIX LOOP prompt>"` **in the foreground only**. Never append `&`, never background via `run_in_background`, never pair with `tail -f`/`Monitor` as the wait path. Stream stdout, wait for exit, capture as the fix-round reply; non-zero exit → treat as subagent failure. Omit `-m` so the CLI flagship is auto-selected.
+> Run `codex exec -C <state.base_ref.repo_root> --full-auto -c model_reasoning_effort=xhigh "<FIX LOOP prompt>"`. Omit `-m` so the CLI flagship is auto-selected. Capture stdout as the fix-round reply; non-zero exit → treat as subagent failure.
