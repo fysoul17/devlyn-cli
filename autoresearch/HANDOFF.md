@@ -1,107 +1,166 @@
 # HANDOFF — for the next session
 
-**Read this first** in any new conversation that wants to continue the AutoResearch loop. It's the smallest set of pointers that lets you (or a future LLM) pick up exactly where we are.
+**Read this first** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-26 (post-iter-0007 REVERT decision) left off.
 
 ---
 
-## Current state of the harness
+## Current state
 
-**Branch**: `benchmark/v3.6-ab-20260423-191315` (all iteration commits live here, not yet merged to main).
+**Branch**: `benchmark/v3.6-ab-20260423-191315`.
 
-**Last shipped iteration**: 0003 (run-fixture.sh process-group watchdog — harness infra; F7-recovery prediction refuted, queued as 0004). 0002 (F6/F7 spec annotation) before that. DECISIONS.md is the canonical log.
+**HEAD**: `1ac7594` (iter-0006 foreground-only contract). **Status: REVERT pending user authorization.** When user approves, run `git revert 1ac7594 --no-edit` and sync `.claude/skills/` to match the reverted `config/skills/`.
 
-**Last full benchmark snapshot**: `baselines/v3.7-final.json` — suite margin **+10.6** (variant 92.9 / bare 82.3), ship-gate FAIL because 5/8 gated fixtures ≥ +5 (need 7/9). Per-fixture detail in iteration 0001's "Actual change" section.
+**Reason for revert**: iter-0007 F6 isolation experiment (2 single-fixture runs, 1hr total) established **causality** that iter-0006's contract directly broke F6:
 
-**Last subset benchmarks**:
-- `baselines/v3.7-fix-f6f7.json` — F6 recovered −3 → +7 (validated), F7 invalidated by codex MCP race.
-- `benchmark/auto-resolve/results/20260425T074946Z-09c8646-iter-0003-f7/` (not promoted to baselines) — F7 variant timed out cleanly under new watchdog (1201s, empty transcript, INVOKE_EXIT=124). Confirms (a) watchdog infra works, (b) MCP race is still the dominant F7 blocker. See iteration 0003 Lessons.
+| | Run 1 (iter-0006 HEAD F6 alone) | Run 2 (d895ffa F6 alone) |
+|---|---|---|
+| variant_score | 35 | 93 |
+| diff_bytes | 0 | 5248 |
+| files_changed | 0 | 3 |
+| transcript bytes | **0 (empty)** | 2213 |
+| timed_out / exit | True / 124 (watchdog) | False / 0 (clean) |
 
----
+Same fixture, same harness, same skill chain, same fixture metadata.timeout — only difference is iter-0006's 19+2 lines of foreground-only contract. **+58 score swing when contract removed.** Not noise — qualitative collapse.
 
-## What is shipped vs what is queued
-
-### Shipped on this branch (iterations 0001, 0002, 0003)
-
-| Commit | What it changed |
-|---|---|
-| `d11d81e` | `phase-1-build.md` — scope-first ordering + tests-as-contract bullets in quality_bar. `pipeline-routing.md` — `complexity: trivial → fast` + unrecognized-value fallback. |
-| `b7e2a46` | `run-fixture.sh` variant prompt — removed forced "Run the full pipeline" phrase so `--engine auto` actually routes. Documentation note on phase-1-build.md tests-as-contract bullet (rule lands in EVAL, not BUILD). |
-| `19cdf9b` | `run-fixture.sh` — `git remote add origin … && git symbolic-ref refs/remotes/origin/HEAD …` so native security-review resolves origin/HEAD instantly (eliminated the F8 56-min stall). |
-| `f2ec62f` | `SKILL.md` DOCS Job 2 — narrowed to verbatim-named files only. `oracle-scope-tier-{a,b}.py` — auto-exempt fixture's own spec file (`docs/roadmap/phase-*/<fixture_id>.md`). |
-| `695050a` | All 8 affected fixture specs — added "Lifecycle note" bullet to Constraints declaring DOCS frontmatter status flip is benchmark lifecycle, not scope creep. |
-| (uncommitted as of 2026-04-25) | `run-fixture.sh` — process-group watchdog (`set -m` + `exec claude` + `kill -- -PGID`); deletes dead TIMEOUT_CMD detection. Pre-suite stub test verified PG reaping. Iteration 0003. |
-
-### Queued (next hypotheses, ordered)
-
-The README.md "Next hypotheses (ordered)" section is the live queue. As of handoff:
-
-1. **Iteration 0006 — Foreground-only `codex exec` execution contract.** Pre-drafted in `iterations/0006-foreground-only-codex.md`. Iter 0005 isolation flags reverted after full-suite refuted ship (suite margin +10.6 → −7.1); F2/F5 catastrophic collapses traced to orchestrator non-deterministically backgrounding `codex exec` with a `tail -f` monitor. Fix: add explicit "no `&`, no `tail -f`, no Monitor/TaskOutput, foreground-only" rule to `_shared/codex-config.md` + `auto-resolve/references/engine-routing.md`. Falsification: F2 alone (was worst collapse at −82) → F5 → full suite. Pass criteria for F2: 0 LocalShellTask kills, diff_bytes > 0, margin ≥ +5.
-2. **5-Why operationalization in CLAUDE.md.** Codex round 2 conceded option (a) — expand Karpathy #1 "Think Before Coding" to incorporate why-chain procedure under user's "widely applied" usage pattern. One-paragraph CLAUDE.md edit.
-3. **DOCS Job 2 wider verification.** Confirm narrowing holds when a fixture spec body uses ambiguous "update the docs" phrasing. Build the fixture (or modify F8) and re-run.
-4. **Held-out fixture set.** Don't build until overfitting signal appears (3+ fixtures improving with no intuitive mechanism).
-5. **Adversarial-ask layer.** Expand benchmark to test harness against vague/workaround-tempting asks. Long-term direction.
+**Mechanism (Codex Round 17)**: foreground codex monopolizes orchestrator for ~10 min Bash dispatch. After it returns, orchestrator does not recover stream control, transcript stays empty, watchdog kills. Universal "foreground-only" rule is too broad.
 
 ---
 
-## What's open / known issues
+## Decided next step — iter-0008: narrow kill-shape contract
 
-- **Ship-gate**: still FAIL — current state is iter 0004 SHIPPED + iter 0005 REVERTED. Last full suite ran on iter 0005's flags and showed margin −7.1 (vs +10.6 baseline); reverting returned the codebase to the iter 0004 state. Full suite under iter 0004's state alone has not been measured separately (we landed iter 0004 + iter 0005 in close succession). Iter 0006 is the next ship attempt; once it lands and falsifies, a clean full suite measures the post-revert + iter 0006 state.
-- **Layered diagnosis still relevant**: iter 0003 bounded hangs with a watchdog; iter 0004 isolated outer Claude from user MCP; iter 0006 will attack the orchestrator's background-codex pattern. Inner-codex flag isolation (former iter 0005) is on hold — re-add only if a future measurement separately requires it.
-- **Watchdog classification bug** (small): when watchdog fires shortly before metadata.timeout (e.g., F6 elapsed 1496s vs timeout 1500s), `result.json` ends up with `timed_out: false` + `invoke_exit: 124` + `invoke_failure: true`. Misclassification — file as a small harness fix, separate concern from the orchestrator iteration.
-- **F2 −4 and F4 −6** in v3.7-final: not real regressions — F2 is judge-noise (variance ±3 per axis), F4 is variant 100/100 with bare's ceiling rising from GPT-5.5 (lifted bare 79 → 86). No action needed.
+After REVERT, design a narrower contract that targets the EXACT failure class from iter-0005 F2 collapse — not all backgrounding.
 
----
+- ✗ "All `codex exec` must be foreground" (iter-0006 — too broad, broke F6).
+- ✓ **iter-0008 hypothesis**: ban only orphaned/unmonitored background codex. Allow background codex paired with active observation (tail -f / poll process / progress emission to keep orchestrator stream alive).
 
-## Don't lose these decisions
+Falsification gate before any full suite:
+1. F2 alone (was the original failure shape iter-0006 fixed) — must show recovery (margin ≥ +5).
+2. F6 alone (was the regression iter-0006 caused) — must NOT collapse (variant_score ≥ 85, files ≥ 1, verify ≥ 0.66, transcript > 0 bytes).
 
-These are the things a fresh session is likely to reconsider but shouldn't:
-
-1. **CLAUDE.md stays clean of conditional rules.** 5-Why in CLAUDE.md is the user's call after they corrected my framing — it's `Karpathy #1` expansion, NOT a new top-level rule. Don't put method-level rules into doctrine.
-
-2. **RUBRIC.md does not change** during a benchmarking window. Skill changes get measured against the existing rubric; comparability across iterations depends on this.
-
-3. **Don't build held-out fixtures yet.** Pre-building anti-overfitting infra before observing overfitting reduces optimization surface for no reason. The signal to act is "3+ fixtures improve together with no intuitive mechanism".
-
-4. **Don't blanket-kill `codex-mcp-server` processes.** Iteration 0003's narrow fix is a wall-clock timeout per `codex exec`. Reaping stale MCP servers is optional; if added, use the conservative whitelist pattern from `devlyn:reap`. Blanket-killing breaks other Claude Code plugins.
-
-5. **The four oracles (test-fidelity, scope-tier-a, scope-tier-b, fixture spec annotations) are not the AutoResearch loop.** They are tools the loop uses. The loop is iteration files + DECISIONS.md + benchmarks. The oracles are infrastructure that earns its place when its findings drive a future iteration's decisions.
+Only run full-suite if both pass. The two-fixture gate replaces iter-0006's four-fixture gate per Karpathy #2 (less is more — load-bearing fixtures only).
 
 ---
 
-## How to start a new iteration in a fresh session
+## How to start the next session (iter-0008)
 
 ```bash
 cd /Users/aipalm/Documents/GitHub/devlyn-cli
-git checkout benchmark/v3.6-ab-20260423-191315  # or current working branch
+git status                              # confirm branch
+git log --oneline -3                    # confirm HEAD
 
-# 1. Read the queue
-cat autoresearch/README.md  # "Next hypotheses (ordered)" section
+# 1. If iter-0006 not yet reverted (ASK USER first)
+git revert 1ac7594 --no-edit
+# After revert, sync .claude/skills/ to match config/skills/
+cp config/skills/_shared/codex-config.md .claude/skills/_shared/codex-config.md
+cp config/skills/devlyn:auto-resolve/references/engine-routing.md \
+   .claude/skills/devlyn:auto-resolve/references/engine-routing.md
+diff -rq config/skills/ .claude/skills/ 2>&1 | grep -v "Only in"  # verify clean
 
-# 2. Read the most recent iteration as a worked example
-ls autoresearch/iterations/ | tail -1 | xargs -I{} cat autoresearch/iterations/{}
+# 2. Read iter-0007 + iter-0008 candidate
+cat autoresearch/iterations/0007-f6-isolation.md
+cat autoresearch/walltime-history.md      # context
+cat memory/project_skill_guardrails_2026_04_26.md  # design constraints
 
-# 3. Read PRINCIPLES.md
-cat autoresearch/PRINCIPLES.md
-
-# 4. Read the playbook
-cat autoresearch/playbooks/iteration-loop.md
-
-# 5. Pick the top hypothesis (or override with explicit rationale)
-# 6. Create iterations/NNNN-<slug>.md from the schema in playbooks/
-# 7. Cross-check the proposed change with codex 5.5 (per memory feedback_codex_cross_check.md)
-# 8. Apply the change, run the benchmark, fill in Actual + Lessons + Decision
-# 9. Update DECISIONS.md
-# 10. Freeze baseline if shipped
+# 3. Design iter-0008 contract (apply skill guardrails G1-G5)
+# 4. Two-fixture falsification gate: F2 + F6 single-fixture before any suite
 ```
 
 ---
 
-## Memory entries that matter for this work
+## Critical gotcha — ALWAYS check before any benchmark run
+
+**Skill sync gap.** Variant arm reads from `$REPO_ROOT/.claude/skills/`, but iteration commits land in `config/skills/`. The two trees only sync via `node bin/devlyn.js -y` or surgical `cp`. **Confirmed needed after every git checkout / revert** that touches the iter-0006 contract files.
+
+```bash
+diff -rq config/skills/ .claude/skills/ 2>&1 | grep -v "Only in"
+```
+Expected: silence (UNSHIPPED_SKILL_DIRS legitimately have `Only in config/skills/...` lines per `bin/devlyn.js` exclusion list).
+
+**iter-0010 candidate (queued)**: pre-run rsync mirror at top of `run-suite.sh` for self-healing.
+
+---
+
+## Cross-judge sidecar — iter-0006-full data captured
+
+`benchmark/auto-resolve/results/20260426T034926Z-1ac7594-iter-0006-full/cross-judge-summary.json` has Opus 4.7 dual-judge data over the same sanitized prompts. Pearson(margins)=0.988, winner_agree=6/9, sign_agree=7/9. Mild self-judgment bias signal (~5.6pt — GPT-5.5 inflates variant scores relative to Opus). Permanent dual-judge in `judge.sh` queued post-iter-0008 settle (see `memory/project_dual_judge_2026_04_26.md`).
+
+---
+
+## What is shipped vs queued (post iter-0007 REVERT)
+
+### Shipped on this branch (effective post-REVERT)
+
+DECISIONS.md is canonical. iter 0001 (skill scope-first + trivial-fast routing), iter 0002 (F6/F7 spec annotation), iter 0003 (process-group watchdog), iter 0004 (outer claude -p MCP isolation), iter 0005 REVERTED, iter 0006 REVERTED (per iter-0007 verdict).
+
+Effective branch state ≈ iter-0004 effective. Post-revert, F2's iter-0005-class collapse mechanism is back on the table; iter-0008 will surgically address it without breaking F6.
+
+### Queued (next hypotheses, ordered)
+
+1. **Iter 0008 — narrow kill-shape contract** (next session, see above). Two-fixture gate (F2 + F6) before any full suite.
+2. **Iter 0009 — F9 wall-time regression** (was queued earlier, still relevant). Both iter-0006 single-fixture F9 attempts took >30 min variant. Diagnostic: bump metadata.timeout for F9 to 5400s.
+3. **Iter 0010 — sync-gap auto-mirror fix** (codex round 7 Option A). Pre-run rsync mirror at top of `run-suite.sh`.
+4. **Iter 0011 — watchdog classification bug** (codex round 6 deferral). Misclassification of `timed_out` field when watchdog fires near metadata.timeout.
+5. **Iter 0012 — permanent dual-judge in judge.sh** (this session decision, see `memory/project_dual_judge_2026_04_26.md`). Spec ready: arbitration rule, no third-tiebreaker.
+6. **Iter 0013 — F6 chronic slowness investigation** (separate from contract). F6 variant has been 5-30× slower than bare across all iters. Latent harness-quality issue.
+7. **Iter 0014 — auto-resolve stuck-execution abort criteria** (skill guardrail G5).
+8. **5-Why operationalization in CLAUDE.md** (codex round 2 Karpathy #1 expansion).
+9. **DOCS Job 2 wider verification** (long-queued).
+10. **Held-out fixture set** (don't build until 3+ fixtures improve with no intuitive mechanism).
+11. **Adversarial-ask layer** (long-term).
+
+### Deferred (user-direction, awaiting explicit user call)
+
+12. Multi-LLM orchestration modes (3 modes + extensibility) — `memory/project_orchestration_modes_2026_04_26.md`.
+13. Benchmark cross-mix arms — `memory/project_benchmark_cross_mix_2026_04_26.md`.
+
+---
+
+## Don't lose these decisions / lessons (cumulative)
+
+1. **CLAUDE.md stays clean of conditional rules.** 5-Why is Karpathy #1 expansion, not a new top-level rule.
+2. **RUBRIC.md does not change** during a benchmarking window.
+3. **Don't build held-out fixtures yet.** Trigger: 3+ fixtures improve with no intuitive mechanism.
+4. **Don't blanket-kill `codex-mcp-server` processes.** Iter 0003's narrow watchdog is the right scope.
+5. **The four oracles are tools, not the loop.** The loop is iteration files + DECISIONS.md + benchmarks.
+6. **`claude-debug.log` is metadata-only.** For "did codex run?", use `~/.codex/sessions/` + `pipeline.state.json`.
+7. **Single-fixture falsification gate is necessary but not sufficient** for full-suite ship — but **single-fixture isolation IS sufficient for causality attribution** when comparing two HEADs (iter-0007 proved this).
+8. **Don't pass `--accept-missing` to ship-gate when all 9 fixtures exist.**
+9. **Self-judgment bias** is real (~5.6pt). Permanent dual-judge queued.
+10. **Universal contract rules over-fit single failure modes.** iter-0006 banned a category to prevent a specific shape; the category is broader than the shape. Apply skill guardrails G1-G5 (`memory/project_skill_guardrails_2026_04_26.md`) before merging any contract change.
+11. **Read your own data carefully.** Codex Round 16 caught me misreading my own CSV column order. Double-check before drawing conclusions.
+12. **User directions ≠ debate prompts.** When user says "we're going X direction," ask codex for best practice + improvements, NOT "should we?". Surface codex pushback to user transparently. (`feedback_user_directions_vs_debate.md`)
+
+---
+
+## Codex collaboration log (running)
+
+- R1–R5 (iter 0005): inner-codex flag bundle work.
+- R6: expand falsification gate F2→F5→F4→F9→full
+- R7: sync-gap fix = Option A
+- R8: routing-telemetry observability (later moot)
+- R9: F4 score-94 borderline pass
+- R10: F9 #1 environmental, RERUN
+- R11: F9 #2 strict-fail by criteria
+- R12: harness-truth halt — RETRACTED in R13
+- R13: confirm retraction, run full-suite
+- R14: post-results — DEFER not REVERT, F6 isolation as iter-0007
+- R15: strategic check — fold iter-0008 wall-time into iter-0007, cut iter-0012 for now
+- R16: caught data-misread (F6 prior 0-files claim wrong; F4/F5 noise → "shared runtime/API failure")
+- R17: post-isolation — REVERT confirmed; iter-0008 = narrow kill-shape ban
+
+---
+
+## Memory entries that matter (cumulative)
 
 (stored in `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`)
 
-- `feedback_codex_cross_check.md` — when and how to cross-check with codex 5.5 (dual-model GAN pattern). Non-trivial design decisions get a round. Iteration files document the round outcome.
-- `feedback_auto_resolve_autonomy.md` — auto-resolve must be hands-free (no mid-pipeline prompts). Iterations changing skill prompts must preserve this.
-- `project_v3_*.md` series — historical context on harness redesign. v3.5 is most recent shipped before this work; v3.7 is the current iteration target.
-
-A new memory entry summarizing the AutoResearch framework itself should be written by the next session as part of onboarding (or by this session as the last act, if context permits).
+- `feedback_codex_cross_check.md` — dual-model GAN pattern.
+- `feedback_auto_resolve_autonomy.md` — hands-free contract.
+- `feedback_user_directions_vs_debate.md` — user directions are decisions, surface codex pushback.
+- `project_v3_*.md` — historical harness redesign series.
+- `project_autoresearch_framework_2026_04_25.md` — framework genesis.
+- `project_skill_sync_gap_2026_04_26.md` — sync-gap gotcha.
+- `project_orchestration_modes_2026_04_26.md` — DEFERRED, user-direction.
+- `project_benchmark_cross_mix_2026_04_26.md` — DEFERRED, user-direction.
+- `project_dual_judge_2026_04_26.md` — DECIDED, A sidecar shipped, B queued as iter-0012.
+- `project_skill_guardrails_2026_04_26.md` — **NEW** — G1-G5 design constraints from iter-0006/0007.
