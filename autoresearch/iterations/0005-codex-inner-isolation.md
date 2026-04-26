@@ -1,8 +1,8 @@
 # 0005 — Inner `codex exec` isolation (`--ignore-user-config --ignore-rules --ephemeral`)
 
-**Status**: RUNNING (subset confirms hypothesis; full-suite verification pending per playbook DEFER rule)
+**Status**: REVERTED (full-suite refutes ship eligibility)
 **Started**: 2026-04-25
-**Decided**: (pending full-suite)
+**Decided**: 2026-04-26
 
 ## Hypothesis
 
@@ -99,17 +99,46 @@ Cumulative improvement: −42 → +3 (+45 margin units across 3 iterations).
 
 6. **Diagnostic flag (`--debug-file`) earned its slot.** Round 4's diagnosis of "two LocalShellTask hung" was only possible because per-arm debug-file existed. Keeping it on is good harness hygiene at near-zero cost.
 
+## Full-suite outcome
+
+The DEFER condition triggered the full suite (run-id `20260425T125125Z-ab15f60-iter-0005-full`, ~3h). Per-fixture margin vs `baselines/v3.7-final.json`:
+
+| Fixture | v3.7-final | iter-0005-full | Δ | Wall(V/B) | Verify(V/B) | LocalShellTask kills | Transcript |
+|---|---|---|---|---|---|---|---|
+| F1 trivial | (small +) | **+9** | + | 172s/33s | 80%/80% | 0 | normal |
+| F2 medium | **+12** | **−82** | **−94** | 1201s/126s | 16%/100% | **2** | 58B "Codex is running…" |
+| F3 high-risk | (≈0) | **+3** | + | 1501s/55s | 75%/75% | (timeout) | (timeout) |
+| F4 stress | **+14** | **+1** | **−13** | 924s/188s | 100%/75% | **0** | 2090B |
+| F5 stress | **+16** | **−35** | **−51** | 1501s/41s | 40%/80% | **1** | 0B |
+| F6 stress | (≈+7) | **+3** | −4 | 1496s/65s | 83%/83% | **1** | 0B |
+| F7 stress | **−12** | **+3** | **+15** | 346s/38s | 83%/83% | **0** | 2020B |
+| F8 edge | **+32** | **+27** | −5 | 904s/39s | 80%/80% | **1** | 1571B |
+| F9 e2e | **+24** | **+7** | **−17** | 1805s/79s | 20%/40% | (natural) | (natural) |
+
+**Suite avg margin: +10.6 → −7.1.** −17.7-point regression. Ship-gate **2/8 fixtures ≥ +5** (need 7/9). FAIL.
+
+F7 is the only fixture that genuinely improved (the iteration's named target). Every other fixture regressed by ≥4 points, including F4 / F9 which had **zero** LocalShellTask kills and natural exits — so the regression is not solely the orchestrator-background pattern; the iter 0005 flags appear to materially shift codex's behavior even on clean runs.
+
+## Lessons
+
+1. **Subset positive ≠ full-suite positive.** The F7 subset cleanly confirmed the hypothesis (margin −42 → +3, transcript flushed, 0 leaks, all phases ran). Yet the full suite refuted ship eligibility outright. The playbook's DEFER rule earned its place — without the full-suite gate, this would have shipped a 17.7-point regression.
+
+2. **The "0 LocalShellTask kills" oracle is not sufficient on its own.** F4 and F9 both ran cleanly (0 kills, natural exit) and still regressed by 13 / 17 points respectively. That points at iter 0005's flags changing model behavior in subtle ways — possibly via codex losing the project trust state from `~/.codex/config.toml` (`[projects.…trust_level=trusted]` entries) which then makes codex more conservative on every operation, not just MCP-affected ones.
+
+3. **The F2/F5 collapse is dominated by a different root cause: orchestrator background-launch pattern.** F2 transcript captured this verbatim: *"Codex is running. I'll wait for completion notifications."* Then Stop fires, but the backgrounded `codex exec` + `tail -f` monitor never return. The watchdog kills both LocalShellTask processes at metadata.timeout. iter 0005 did NOT fix this — it isolated codex but didn't change the orchestrator's choice to background it.
+
+4. **My initial pattern-match ("0 kills explains everything") was too clean.** Codex round 5 caught it: F4 with 0 kills still regressed materially. I was selectively confirming. The honest read is "iter 0005 is not proven to be the direct cause of the full regression, but it is absolutely not acceptable as the new baseline."
+
+5. **Refined hypothesis (becomes iter 0006):** add an explicit "foreground-only" execution contract to `_shared/codex-config.md` and `auto-resolve/references/engine-routing.md`. Skills must run `codex exec` as a foreground command, stream output, wait for exit. No `&`, no `tail -f`, no `run_in_background`, no `Monitor`/`TaskOutput` as the wait path. This addresses the F2/F5 collapse class directly. The iter 0005 flags themselves are deferred — re-add only if a future iteration measurably needs them, separately from this fix.
+
+6. **Watchdog classification bug discovered (separate concern):** when watchdog fires shortly *before* `metadata.timeout_seconds` (e.g., F6 elapsed 1496s vs timeout 1500s), result.json marks `timed_out: false` + `invoke_exit: 124` + `invoke_failure: true`. Misleading — the run was killed by our wall-clock guard but doesn't appear so in the structured record. File as a small harness-correctness fix, separate from iter 0006.
+
 ## Decision
 
-**ACCEPT (subset).** All hypothesis-confirming signals lined up cleanly: no timeout, transcript flushed, all phases ran, all criteria verified, no LocalShellTask leaks. Margin +3 falls short of ship-gate floor (+5) but the change ships because:
+**REVERT.** The change is undone in `_shared/codex-config.md` (canonical) and `auto-resolve/references/engine-routing.md` (inline). The iteration file stays as institutional history; the diff returns to the iter 0004 SHIPPED state.
 
-- Score went 56 → 99 (variant arm went from largely-broken to top of the range).
-- Margin trajectory −42 → +3 establishes the fix worked; the ship-gate floor on F7 specifically appears to be a fixture-design limitation, not a skill problem.
-- No regressions on bare or other observable signals.
+Codex round 5 framed it precisely: *"correct sub-fix inside a failing integrated run is not a ship decision."* Even granting that the regression source is more orchestrator than the flags themselves, the playbook is unambiguous — full-suite gate is the ship gate, and a 17.7-point swing well outside any plausible noise envelope refutes ship eligibility.
 
-**Per playbook DEFER rule**, the full suite must run before this is officially "shipped" beyond the subset signal. That run is queued next; iter 0005's status flips to SHIPPED unconditionally only when the full suite confirms (a) F7 holds at +3-or-better, (b) no other fixture regresses below its baseline.
+The single legitimate win on F7 stays as evidence that inner-codex isolation matters in some form. It just needs to land alongside (or after) iter 0006's foreground-only contract, in a state that doesn't regress F2/F4/F5/F9.
 
-Follow-up iterations to consider after the full suite:
-
-- **F7 fixture-design review** (likely iter 0006+): is +3 actually the ceiling, or is there an additional verify command / scoring axis where variant should outperform? If the fixture itself caps at +3, ship-gate threshold for "stress" category may need a per-category floor.
-- **Sync remaining inline `codex exec` mentions** (ideate, preflight, team-resolve, team-review): not on F7 path, but consistency cleanup. Pure docs change, doesn't merit its own iteration unless one of those skills regresses on its own fixture.
+Follow-on: **iter 0006 — foreground-only codex execution contract** (file follows in next commit). Falsification gate before any further full suite: F2 alone, then F5, then full suite only after both recover.

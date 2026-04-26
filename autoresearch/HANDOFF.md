@@ -35,7 +35,7 @@
 
 The README.md "Next hypotheses (ordered)" section is the live queue. As of handoff:
 
-1. **Iteration 0005 — Inner `codex exec` hermeticization.** Pre-drafted in `iterations/0005-codex-inner-isolation.md`. Iter 0004 isolated the outer `claude -p` but the inner `codex exec` still loaded user codex config (which declares `[mcp_servers.pencil]`). Round 4 traced F7's actual hang to an inner `codex exec` BUILD that ran 10+ minutes producing zero bytes, plus a `tail -f` monitor on it. Fix: `--ignore-user-config --ignore-rules --ephemeral` added to every skill-issued `codex exec` (canonical in `_shared/codex-config.md`; inline in `auto-resolve/references/engine-routing.md`). Prediction: F7 variant completes within timeout, margin ≥ +5.
+1. **Iteration 0006 — Foreground-only `codex exec` execution contract.** Pre-drafted in `iterations/0006-foreground-only-codex.md`. Iter 0005 isolation flags reverted after full-suite refuted ship (suite margin +10.6 → −7.1); F2/F5 catastrophic collapses traced to orchestrator non-deterministically backgrounding `codex exec` with a `tail -f` monitor. Fix: add explicit "no `&`, no `tail -f`, no Monitor/TaskOutput, foreground-only" rule to `_shared/codex-config.md` + `auto-resolve/references/engine-routing.md`. Falsification: F2 alone (was worst collapse at −82) → F5 → full suite. Pass criteria for F2: 0 LocalShellTask kills, diff_bytes > 0, margin ≥ +5.
 2. **5-Why operationalization in CLAUDE.md.** Codex round 2 conceded option (a) — expand Karpathy #1 "Think Before Coding" to incorporate why-chain procedure under user's "widely applied" usage pattern. One-paragraph CLAUDE.md edit.
 3. **DOCS Job 2 wider verification.** Confirm narrowing holds when a fixture spec body uses ambiguous "update the docs" phrasing. Build the fixture (or modify F8) and re-run.
 4. **Held-out fixture set.** Don't build until overfitting signal appears (3+ fixtures improving with no intuitive mechanism).
@@ -45,8 +45,9 @@ The README.md "Next hypotheses (ordered)" section is the live queue. As of hando
 
 ## What's open / known issues
 
-- **F7 variant hang** (multi-layer): iter 0003 bounded with watchdog, iter 0004 isolated outer claude from user MCP, iter 0005 (current) extends isolation to inner `codex exec`. The "0-byte transcript" symptom was misleading — `claude -p` only flushes at end-of-session; the real diagnostic is per-arm `--debug-file` (added in iter 0004) plus `~/.claude/projects/<project>/<session>.jsonl` (Claude Code's project log) for tool-use timestamps and arguments.
-- **Ship-gate**: still FAIL (5/8 gated fixtures ≥ +5, need 7/9). After iteration 0005 lands and F7 retries cleanly, expected to flip to PASS.
+- **Ship-gate**: still FAIL — current state is iter 0004 SHIPPED + iter 0005 REVERTED. Last full suite ran on iter 0005's flags and showed margin −7.1 (vs +10.6 baseline); reverting returned the codebase to the iter 0004 state. Full suite under iter 0004's state alone has not been measured separately (we landed iter 0004 + iter 0005 in close succession). Iter 0006 is the next ship attempt; once it lands and falsifies, a clean full suite measures the post-revert + iter 0006 state.
+- **Layered diagnosis still relevant**: iter 0003 bounded hangs with a watchdog; iter 0004 isolated outer Claude from user MCP; iter 0006 will attack the orchestrator's background-codex pattern. Inner-codex flag isolation (former iter 0005) is on hold — re-add only if a future measurement separately requires it.
+- **Watchdog classification bug** (small): when watchdog fires shortly before metadata.timeout (e.g., F6 elapsed 1496s vs timeout 1500s), `result.json` ends up with `timed_out: false` + `invoke_exit: 124` + `invoke_failure: true`. Misclassification — file as a small harness fix, separate concern from the orchestrator iteration.
 - **F2 −4 and F4 −6** in v3.7-final: not real regressions — F2 is judge-noise (variance ±3 per axis), F4 is variant 100/100 with bare's ceiling rising from GPT-5.5 (lifted bare 79 → 86). No action needed.
 
 ---
