@@ -4,7 +4,7 @@ Routing rules for Claude / Codex / Dual per role and phase. Only read when `--en
 
 > Codex invocations use the local `codex exec` CLI. Flag set + rationale live in `config/skills/_shared/codex-config.md`. No MCP, no model hardcoding — the CLI's current flagship is inherited automatically.
 
-Codex call defaults: `codex exec -C <project root> -s <per role> -c model_reasoning_effort=xhigh "<prompt>"`. Omit `-m` so the flagship is auto-selected. Only pass `-m <variant>` when a role explicitly needs a specialized model line, and name the variant generically ("SWE-bench-heavy coding variant") rather than hardcoding a version number — version strings go stale fast.
+Codex call defaults: `codex exec -C <project root> -s <per role> -c model_reasoning_effort=xhigh "<prompt>"`. **Run this command in the foreground only.** Never background Codex (`&`, `run_in_background: true`), never pair it with `tail -f` / `Monitor` / `TaskOutput` to wait for completion, and do not continue the phase until the foreground command exits. Stream stdout to the terminal, capture it as the phase reply, treat non-zero exit as subagent failure. The full canonical contract — and the iter 0005 full-suite evidence motivating it — is in `config/skills/_shared/codex-config.md` "Execution contract" section. Omit `-m` so the flagship is auto-selected. Only pass `-m <variant>` when a role explicitly needs a specialized model line, and name the variant generically ("SWE-bench-heavy coding variant") rather than hardcoding a version number — version strings go stale fast.
 
 ---
 
