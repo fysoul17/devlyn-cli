@@ -78,24 +78,24 @@ If the caller passed `--engine auto` or `--engine codex` (check the orchestrator
 **For roles routed to Codex**: Instead of spawning a Claude Agent reviewer, shell out:
 
 ```bash
-codex exec \
+bash .claude/skills/_shared/codex-monitored.sh \
   -C <project root> \
   -s <sandbox per routing table: read-only | workspace-write> \
   -c model_reasoning_effort=xhigh \
   "<full reviewer prompt below, with changed file paths and diff inlined>"
 ```
 
-Omit `-m` so the CLI's current flagship is used (canonical flag set in `config/skills/_shared/codex-config.md`). Codex reviewers cannot use TeamCreate/SendMessage — the Review Lead (you) reads stdout of each `codex exec` invocation and relays cross-cutting findings.
+Omit `-m` so the CLI's current flagship is used (canonical flag set in `config/skills/_shared/codex-config.md`). The wrapper passes args through verbatim, closes stdin, and emits a heartbeat every 30s on stderr — without it, long reviewer calls starve the outer API byte-watchdog (iter-0008 mechanism). Codex reviewers cannot use TeamCreate/SendMessage — the Review Lead (you) reads stdout of each wrapper invocation (heartbeat lines arrive on stderr as harness annotations) and relays cross-cutting findings.
 
 **For roles routed to Claude**: Spawn via Task tool as normal (prompts below).
 
-**For Dual roles** (e.g., security-reviewer): Run BOTH a Claude Agent reviewer AND a `codex exec` process in parallel with the same prompt. Merge findings per `engine-routing.md` "How to Spawn a Dual Role" section.
+**For Dual roles** (e.g., security-reviewer): Run BOTH a Claude Agent reviewer AND a `codex-monitored.sh` wrapper process in parallel with the same prompt. Merge findings per `engine-routing.md` "How to Spawn a Dual Role" section.
 
 If `--engine auto` or no `--engine` flag: routes each reviewer role to the optimal model based on benchmark data (see `engine-routing.md`). If `--engine claude`: all roles use Claude Agent reviewers.
 
 ### Reviewer Prompts
 
-When spawning each reviewer (via Task tool for Claude roles, or as the prompt argument to `codex exec` for Codex-routed roles), use these prompts:
+When spawning each reviewer (via Task tool for Claude roles, or as the prompt argument to `bash .claude/skills/_shared/codex-monitored.sh` for Codex-routed roles), use these prompts:
 
 <security_reviewer_prompt>
 You are the **Security Reviewer** on an Agent Team performing a code review.

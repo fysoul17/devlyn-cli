@@ -126,7 +126,10 @@ else
       devlyn:auto-resolve/SKILL.md \
       devlyn:auto-resolve/references/engine-routing.md \
       devlyn:ideate/SKILL.md \
+      devlyn:ideate/references/codex-critic-template.md \
       devlyn:preflight/SKILL.md \
+      devlyn:team-resolve/SKILL.md \
+      devlyn:team-review/SKILL.md \
       _shared/codex-config.md \
       _shared/codex-monitored.sh; do
     src="config/skills/$rel"
@@ -179,6 +182,39 @@ offenders=$(grep -RInE '\|\s*\*\*Dual\*\*\s*\||Dual\s*\(Claude\s*\+\s*Codex' \
   || true)
 if [ -z "$offenders" ]; then
   ok "CRITIC security uses native (no Dual stragglers)"
+else
+  while IFS= read -r f; do bad "$f"; done <<< "$offenders"
+fi
+
+# ---------------------------------------------------------------------------
+# 10. No raw `codex exec` invocation in skill prompts (iter-0010).
+#     iter-0009 wrapper + iter-0010 production rollout require every Codex
+#     invocation in skill SKILL.md / references to use codex-monitored.sh.
+#     Raw `codex exec ...` in a prompt re-introduces the iter-0008 byte-watchdog
+#     starvation: orchestrator pattern-primes from the doc and emits the raw
+#     shape, which can collapse into `... | tail -200` and starve the outer API
+#     stream. Descriptive phrases like "passes args through to `codex exec`
+#     verbatim" are allowed — only invocation-shaped uses are forbidden.
+#
+#     Pattern catches three invocation shapes:
+#       - single-line:  `codex exec -C ...`           → `codex exec -`
+#       - resume form:  `codex exec resume --last`    → `codex exec resume `
+#       - multi-line:   `codex exec \` + indented args → `codex exec \` at EOL
+#     Excludes: _shared/codex-config.md (canonical doc may discuss the rule
+#     itself), workspace/, archive snapshots.
+# ---------------------------------------------------------------------------
+section "Check 10: No raw codex exec invocation in skill prompts"
+offenders=$(grep -RInE 'codex exec (-|resume[[:space:]]|\\$)' \
+  config/skills 2>/dev/null \
+  | grep -v 'config/skills/_shared/codex-config.md' \
+  | grep -v 'config/skills/_shared/codex-monitored.sh' \
+  | grep -v 'roadmap-archival-workspace/' \
+  | grep -v 'devlyn:auto-resolve-workspace/' \
+  | grep -v 'devlyn:ideate-workspace/' \
+  | grep -v 'preflight-workspace/' \
+  || true)
+if [ -z "$offenders" ]; then
+  ok "no raw codex exec invocations in skill prompts (wrapper-form everywhere)"
 else
   while IFS= read -r f; do bad "$f"; done <<< "$offenders"
 fi

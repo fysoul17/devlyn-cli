@@ -242,7 +242,7 @@ For Quick Add with one new item, one solo pass is enough. For a full greenfield 
 
 **If `--engine auto`** (default): Codex runs the CHALLENGE rubric pass automatically as critic.
 
-Run `codex exec -C <project root> -s read-only -c model_reasoning_effort=xhigh "<inlined-prompt>"`. The prompt is built from the packaged plan + the inlined rubric + the appended Codex instructions — Codex has no filesystem access under read-only, so everything it needs travels in the prompt. Omit `-m` to inherit the CLI flagship. Full flag rationale in `config/skills/_shared/codex-config.md`.
+Run `bash .claude/skills/_shared/codex-monitored.sh -C <project root> -s read-only -c model_reasoning_effort=xhigh "<inlined-prompt>"`. The wrapper closes stdin and emits a heartbeat every 30s on stderr so long Codex critique calls don't starve the outer API byte-watchdog (iter-0008 mechanism); full rationale in `_shared/codex-config.md`. The prompt is built from the packaged plan + the inlined rubric + the appended Codex instructions — Codex has no filesystem access under read-only, so everything it needs travels in the prompt. Omit `-m` to inherit the CLI flagship.
 
 **Step 1 — Package the post-solo plan.** Build the prompt per `references/codex-critic-template.md` (section order, rubric inlining, Codex-specific instructions all live there verbatim — follow the template structure, fill in the plan/findings sections).
 
@@ -297,7 +297,7 @@ For single-item additions, run one solo rubric pass on just the new item. Even t
 
 ## Engine Routing for FRAME / EXPLORE / CONVERGE / DOCUMENT
 
-**If `--engine codex`**: Phases 1-3 and Phase 4 are delegated to Codex. For each phase, run `codex exec -C <project root> --full-auto -c model_reasoning_effort=xhigh "<phase prompt + user context>"`. For multi-phase continuity, use `codex exec resume --last` on subsequent phases so the session carries prior context. Claude remains the orchestrator — it reads Codex's stdout, manages the conversation with the user (confirmation prompts, clarifying questions), and routes findings between phases.
+**If `--engine codex`**: Phases 1-3 and Phase 4 are delegated to Codex. For each phase, run `bash .claude/skills/_shared/codex-monitored.sh -C <project root> --full-auto -c model_reasoning_effort=xhigh "<phase prompt + user context>"`. The wrapper passes args through verbatim — flag semantics are unchanged; rationale in `_shared/codex-config.md`. For multi-phase continuity, use `bash .claude/skills/_shared/codex-monitored.sh resume --last` on subsequent phases so the session carries prior context. Claude remains the orchestrator — it reads Codex's stdout (heartbeat lines arrive on stderr as harness annotations, not Codex output), manages the conversation with the user (confirmation prompts, clarifying questions), and routes findings between phases.
 
 **If `--engine auto` or `--engine claude`**: All planning phases use Claude directly (current behavior). Claude's ambiguous intent handling and writing quality benchmarks favor it for planning tasks.
 

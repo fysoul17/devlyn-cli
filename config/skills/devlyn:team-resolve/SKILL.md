@@ -137,24 +137,24 @@ If the caller passed `--engine auto` or `--engine codex` (check the orchestrator
 **For roles routed to Codex**: Instead of spawning a Claude Agent teammate, shell out:
 
 ```bash
-codex exec \
+bash .claude/skills/_shared/codex-monitored.sh \
   -C <project root> \
   -s <sandbox per routing table: read-only | workspace-write> \
   -c model_reasoning_effort=xhigh \
   "<full teammate prompt below, with issue context and file paths inlined>"
 ```
 
-Omit `-m` so the CLI's current flagship is used (canonical flag set in `config/skills/_shared/codex-config.md`). Codex roles cannot use TeamCreate/SendMessage — the Team Lead (you) reads stdout of each `codex exec` invocation and relays findings to other teammates.
+Omit `-m` so the CLI's current flagship is used (canonical flag set in `config/skills/_shared/codex-config.md`). The wrapper passes args through verbatim, closes stdin, and emits a heartbeat every 30s on stderr — without it, long teammate calls starve the outer API byte-watchdog (iter-0008 mechanism). Codex roles cannot use TeamCreate/SendMessage — the Team Lead (you) reads stdout of each wrapper invocation (heartbeat lines arrive on stderr as harness annotations) and relays findings to other teammates.
 
 **For roles routed to Claude**: Spawn via Task tool as normal (prompts below).
 
-**For Dual roles** (e.g., security-auditor): Run BOTH a Claude Agent teammate AND a `codex exec` process in parallel with the same prompt. Merge findings per `engine-routing.md` "How to Spawn a Dual Role" section.
+**For Dual roles** (e.g., security-auditor): Run BOTH a Claude Agent teammate AND a `codex-monitored.sh` wrapper process in parallel with the same prompt. Merge findings per `engine-routing.md` "How to Spawn a Dual Role" section.
 
 If `--engine auto` or no `--engine` flag: routes each role to the optimal model based on benchmark data (see `engine-routing.md`). If `--engine claude`: all roles use Claude Agent teammates.
 
 ### Teammate Prompts
 
-When spawning each teammate (via Task tool for Claude roles, or as the prompt argument to `codex exec` for Codex-routed roles), use these prompts:
+When spawning each teammate (via Task tool for Claude roles, or as the prompt argument to `bash .claude/skills/_shared/codex-monitored.sh` for Codex-routed roles), use these prompts:
 
 <root_cause_analyst_prompt>
 You are the **Root Cause Analyst** on an Agent Team resolving an issue.

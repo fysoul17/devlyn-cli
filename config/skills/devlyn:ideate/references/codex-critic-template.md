@@ -2,7 +2,7 @@
 
 > Invocation flag set: `config/skills/_shared/codex-config.md`.
 
-Used by `devlyn:ideate` when `--engine auto` or `--engine claude` (role reversal). Run `codex exec -C <project root> -s read-only -c model_reasoning_effort=xhigh "<packaged prompt>"`. Codex has no filesystem access under read-only — everything it needs travels in the prompt.
+Used by `devlyn:ideate` when `--engine auto` or `--engine claude` (role reversal). Run `bash .claude/skills/_shared/codex-monitored.sh -C <project root> -s read-only -c model_reasoning_effort=xhigh "<packaged prompt>"` — the wrapper closes stdin and heartbeats every 30s on stderr; rationale in `_shared/codex-config.md`. Codex has no filesystem access under read-only — everything it needs travels in the prompt.
 
 Assemble the prompt with these sections in this exact order, filling in placeholders:
 
