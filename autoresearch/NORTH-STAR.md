@@ -75,8 +75,14 @@ A change ships only if it can answer all of these with concrete numbers:
 ### Model-agnostic axis
 11. **De-prioritized** per user direction (2026-04-27). The harness is profile-neutral in vocabulary (phase names + role names: `BUILD`, `EVAL`, `CRITIC`, `JUDGE`; `solo` / `pair_critic` / `pair_consensus`) but does not yet build runtime engine-swap infrastructure. Cross-model fixtures (e.g. Qwen / Gemini / Gemma variant arms) remain a deferred memo. They become relevant only after L1 / L2 contracts are met for the current Claude+Codex pairing.
 
-### Honest claim boundary (Codex R3 hard pushback)
+### Honest claim boundary (Codex R3 + R4 hard pushback)
 12. The **contract** in this file requires single-LLM (Opus alone, GPT-5.5 alone) to be first-class. The **measurable product promise** today is Claude-only on the L1 arm — there is no non-Claude orchestrator path yet, so an "L1-codex" arm cannot honestly be measured. Iter-0019 ships `L1-claude` smoke first; `L1-codex` defers until a non-Claude orchestrator exists. The contract stays first-class for both groups; the *measured claim* must not exceed the data.
+
+13. **L2-vs-L1 compression risk** (Codex R4 hard pushback after iter-0016 partial readout). The current evidence is L2 vs L0, not L2 vs L1. iter-0016 gave suite avg margin +11.6 (L2 over L0). If L1 lands at, hypothetically, +9 over L0, then L2's effective lift over L1 is only +2.6 — below the +5 floor for L2 vs L1 in operational test #6 above.
+
+iter-0019 ships an `L1-claude` **smoke** arm on F1+F2+F4+F9 (4 fixtures × 3 arms) — that is enough to read whether L1 is on or above L0 across diverse categories, but not enough for a release-decision claim against the full 9-fixture gate. **Partial L1 data interpretation is allowed** (e.g. "L1-claude beats L0 on F2 by +X / F4 by +Y / etc., directionally consistent with L1 contract"); **release-readiness language is forbidden** until iter-0020 lands a full 9-fixture L0/L1/L2 paid run and shows L2 actually beats L1 by ≥+5 on pair-eligible fixtures with L1 itself meeting all L0-vs-L1 release gates.
+
+Phrase numbers as "L2 beats L0 in partial readout; L1 directionally observed in iter-0019 smoke; L2-vs-L1 unknown for release decision" until iter-0020's 9-fixture run lands.
 
 ---
 

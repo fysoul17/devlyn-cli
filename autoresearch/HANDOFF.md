@@ -2,60 +2,75 @@
 
 **Outer goal lives in [`NORTH-STAR.md`](NORTH-STAR.md). Read that file FIRST — it is the project contract. This HANDOFF is the operating-context layer on top of it.**
 
-**Read this second** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-27 (post-iter-0017 SHIP decision, mid-iter-0016 readout, post-North-Star-refinement) left off.
+**Read this second** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-27 (post-iter-0018 SHIP, post-iter-0016 5-fixture final readout, post-North-Star-refinement) left off.
 
 ---
 
 ## Current state
 
-**Branch**: `benchmark/v3.6-ab-20260423-191315`. 11 commits ahead of origin (10 iter commits + 1 HANDOFF rewrite + this iter-0017 commit).
+**Branch**: `benchmark/v3.6-ab-20260423-191315`. 14 commits ahead of origin after iter-0018 commit (10 iter commits + HANDOFF rewrite + iter-0017 + North Star lock + 5+1-principles surface fix + iter-0018).
 
-**HEAD (committed)**: iter-0017 ← `775f761` HANDOFF rewrite ← `20f6f07` iter-0014 ← `435680c` iter-0013 ← `47fb504` iter-0012 ← `5c790bc` iter-0011 ← `df623ce` iter-0010 ← `af3a4de` iter-0009 HANDOFF ← `e9233bd` iter-0009. Working tree clean except untracked `.claude/` install dir.
+**HEAD (committed)**: iter-0018 ← `5d9ba0d` 5+1-principles surface ← `3bc6f45` North Star lock ← `27d1636` iter-0017 ← `775f761` HANDOFF rewrite ← `20f6f07` iter-0014 ← `435680c` iter-0013 ← earlier chain. Working tree clean except untracked `.claude/` install dir.
 
-iter-0007 verdict realized. iter-0008 REJECTED. **iter-0009 → iter-0014 + iter-0017 all SHIPPED**. Effective branch state = iter-0017: F1 healthy on 900s budget with full per-phase state observability + archive script path fixed + skill-sync gap auto-healed by `run-suite.sh`. F2/F4/F5/F6/F9 not yet re-verified under iter-0014/0017.
+iter-0007 verdict realized. iter-0008 REJECTED. **iter-0009 → iter-0014 + iter-0017 + iter-0018 all SHIPPED**. iter-0016 5-fixture suite **completed** 2026-04-27T13:58Z (RUN_ID `20260427T121636Z-27d1636-iter-0016-verify`); judge fired and produced canonical scores; iter-0018 locked the readout into docs.
 
-**iter-0016 in flight at the time of this HANDOFF rewrite** (RUN_ID `20260427T121636Z-27d1636-iter-0016-verify`). Background bash PID 12825, log `/tmp/iter-0016-logs/suite.log`. Partial readout below — F9 still running, judge has not fired yet.
+**Next iteration QUEUE** (post-iter-0018, rewritten 2026-04-27 after Codex GPT-5.5 R1+R2+R3+R4+R5 review):
 
-**Next iteration QUEUE** (rewritten 2026-04-27 after Codex GPT-5.5 R1 + R2 + R3 review of North Star — R3 re-ordered iter-0019 vs 0020 for attribution clarity):
-
-1. **iter-0018 — Measurement integrity + report-shape lock**: finish iter-0016, compile canonical 9-fixture report. Inspect F2 variant `terminal_verdict=-` chain, F2 bare `disqualifier=true` source, F2 inter-phase 678s gap. **Add `wall_ratio_*` comparison fields to `summary.json`** (R3 Q3) — `wall_ratio_variant_over_bare` today, generalizes to `L1_over_L0` / `L2_over_L1` later. Diagnostic only — no gate behavior, no prompt retune.
-2. **iter-0019 — `L1-claude` smoke arm + comparison schema** (re-ordered ahead of pair policy per Codex R3). Add `solo_claude` arm to run-suite (BUILD via Claude only — no Codex BUILD, no Codex CRITIC audit). Smoke fixtures F1 + F2 + F4 + F9 to bound cost. **`L1-codex` is deferred** because Claude is currently the auto-resolve orchestrator — there is no non-Claude orchestrator path yet, so an honest L1-codex arm cannot exist today (Codex R3 Q2 hard pushback). Generalize `summary.json` comparison rows to `L1_over_L0`. No pair policy changes yet.
-3. **iter-0020 — Pair-vs-solo policy formalization + tool-vs-deliberation attribution**. Per-phase decision-mode mapping per `NORTH-STAR.md`. Adds wall-time abort + `coverage.json` checklist-coverage artifact (every checklist ID with `pass/fail/na` + evidence path + touched-file scope, per Codex R3 Q4). **Critical instrumentation**: separate measurement of tool/phase lift (browser_validate, build_gate, security-review native firings) vs model-deliberation lift (second-model EVAL/CRITIC/JUDGE producing different conclusions). Codex R3 Q5: F4 lift may be tool-attributed not pair-attributed; iter-0020 must empirically distinguish.
-4. **iter-0021 — Dual-judge permanent (`pair_consensus` for JUDGE phase)**. Resolves "GPT-only judge is a strategic liability" (Codex R1). Lands after iter-0020 because iter-0020 establishes pair vocabulary first.
-5. **iter-0022 — Cost retune** (only if iter-0020 short-circuits + iter-0019 data show wall ratio still over budget after pair gates active). Otherwise close as "not needed."
-6. Old queue items (iter-0015 shim defer, iter-0018 stream-json, iter-0021 F9 timeout, iter-0022 N=1 ship-gate floor, iter-0023 F6 slowness, iter-0024 stuck-execution abort) renumber/recycle as the queue rotates.
+1. **iter-0019 — `L1-claude` smoke arm + comparison schema** (next up). Add `solo_claude` arm to run-suite (BUILD via Claude only — no Codex BUILD, no Codex CRITIC audit). Smoke fixtures **F1 + F2 + F4 + F9** to bound cost (4 fixtures × 3 arms = 12 runs at ~$20-30). Also fold in: F2 `metadata.timeout` 1200→1500s (or 1800s — match F5/F6) per iter-0018 F2 diagnosis, BUILD prompt scope-tightening for F5 surgical-scope failure (no opportunistic frontmatter edits beyond DOCS-phase lifecycle status flip), BUILD/EVAL prompt literal-spec-match guardrail for F9 spec-compliance failure. Generalize `summary.json` comparison rows to `L1_over_L0`. **`L1-codex` deferred** — Claude is currently the auto-resolve orchestrator, no non-Claude orchestrator path exists yet. No pair-policy changes in this iter (kept separate per Codex R3 attribution-clarity rule).
+2. **iter-0020 — Pair-vs-solo policy formalization + tool-vs-deliberation attribution**. Per-phase decision-mode mapping per `NORTH-STAR.md`. Adds wall-time abort + `coverage.json` checklist-coverage artifact (every checklist ID with `pass/fail/na` + evidence path + touched-file scope, per Codex R3 Q4). **Critical instrumentation**: separate measurement of tool/phase lift (browser_validate, build_gate, security-review native firings) vs model-deliberation lift (second-model EVAL/CRITIC/JUDGE producing different conclusions). F4 may be tool-attributed not pair-attributed; F5/F9 excluded from this iter's attribution data per iter-0018 verdicts. After iter-0020 lands, run a full 9-fixture L0/L1/L2 suite to obtain canonical L2-vs-L1 numbers (this is where the 9-fixture run lives, not iter-0019).
+3. **iter-0021 — Dual-judge permanent (`pair_consensus` for JUDGE phase)**. Resolves "GPT-only judge is a strategic liability" (Codex R1). Lands after iter-0020 because iter-0020 establishes pair vocabulary first.
+4. **iter-0022 — Cost retune** (only if iter-0020 short-circuits + iter-0019 data show wall ratio still over budget after pair gates active). Otherwise close as "not needed."
+5. Old queue items (iter-0015 shim defer, stream-json, F9 timeout adjustment, N=1 ship-gate floor, F6 chronic slowness, stuck-execution abort) renumber/recycle as the queue rotates.
 
 **Codex R3 explicit warning**: do NOT bundle judge-mechanics changes + L1 arm + pair policy in the same iter — attribution becomes muddy. Sequence above keeps measurement and behavior changes separate.
 
-**Cost estimate iter-0016 → 0021**: ~4-5 hours wall + 3 paid suite runs (~$30-60 total) before release-decision data lands for L1, and one more paid run for L2 + dual-judge.
+**Cost estimate iter-0019 → 0021**: ~4-5 hours wall + 2-3 paid runs (~$30-60 total). iter-0019 paid (4-fixture × 3-arm smoke, ~$20-30); iter-0020 includes a full 9-fixture L0/L1/L2 paid run (~$30-50); iter-0021 reuses iter-0020's data for a re-judge sidecar (no new paid arm runs).
 
 **Cost estimate iter-0016 → 0021**: ~3-4 hours wall + 2-3 paid suite runs ($30-60 total) before release-decision data lands.
 
 ---
 
-## iter-0016 partial readout (in flight, F9 running)
+## iter-0016 final readout (5-fixture partial — F1/F3/F7/F8 deferred to iter-0019)
 
-RUN_ID `20260427T121636Z-27d1636-iter-0016-verify`. Background PID 12825. Log `/tmp/iter-0016-logs/suite.log`. Results dir `benchmark/auto-resolve/results/20260427T121636Z-27d1636-iter-0016-verify/`.
+RUN_ID `20260427T121636Z-27d1636-iter-0016-verify`. Completed 2026-04-27T13:58Z. Results dir `benchmark/auto-resolve/results/20260427T121636Z-27d1636-iter-0016-verify/`. Suite ran 5 of 9 fixtures (F2/F4/F5/F6/F9) per scope decision; F1/F3/F7/F8 deferred to iter-0019's L0+L1+L2 9-fixture run.
 
-| Fixture | variant | bare | wall ratio |
-|---|---|---|---|
-| F2 | el=1201s vs=1.0 fc=2 **TIMED_OUT** (CRITIC killed by 1200s watchdog) | el=156s vs=1.0 fc=1 **DISQUALIFIER** | 7.7× |
-| F4 | el=1012s vs=1.0 fc=3 | el=177s vs=0.75 fc=3 | 5.7× |
-| F5 | el=770s vs=0.8 fc=2 | el=45s vs=0.8 fc=1 | **17×** at verify-tie |
-| F6 | el=876s vs=0.83 fc=2 | el=82s vs=0.83 fc=2 | **10×** at verify-tie |
-| F9 | running | (queued) | — |
+### Headline numbers
 
-**Empirical snapshot before judge fires** (judge will produce 4-axis Spec/Constraint/Scope/Quality scores; verify_score is behavioral only):
+| Fixture | V score | B score | Margin | V wall | B wall | Wall ratio | Notes |
+|---|---|---|---|---|---|---|---|
+| F2 | 95 | 78 | **+17** | 1201s **TO** | 156s | 7.7× | Bare DQ silent-catch. Variant CRITIC killed at watchdog but quality high. |
+| F4 | 99 | 78 | **+21** | 1012s | 177s | 5.7× | Bare missed italic CSS, added out-of-scope test-results file. browser=true. |
+| F5 | 95 | 96 | **−1** | 770s | 45s | **17×** | Both spec=25/constraint=25/quality=21. Variant lost on scope=24 vs bare=25 (variant added `completed=` field to roadmap frontmatter). |
+| F6 | 97 | 87 | +10 | 876s | 82s | 10.7× | Bare rethrows non-ENOENT, breaks createReadStream constraint. |
+| F9 | 83 | 72 | +11 | 1393s | 87s | 16.0× | **Both arms verify=0.4, spec=16/13** — wrong `Error:` prefix, wrong exit 2, wrong JSON top-level shape, unranked authors. Bare DQ silent-catch. |
 
-- iter-0014 state-writes-per-phase protocol confirmed working: F2 variant `phases.{build, build_gate, evaluate, critic}` all populated even though arm timed out — pre-iter-0014 only `evaluate` would have been written. Causality attribution to CRITIC phase was possible because of this.
-- iter-0012 `WATCHDOG_FIRED` sentinel confirmed: F2 variant `result.json.timed_out=true`, `invoke_exit=124`.
-- iter-0017 auto-mirror confirmed: `[suite] mirrored 26 committed skill(s)` printed at suite startup.
-- F4 variant has `phases.{browser_validate, build, build_gate, evaluate}` — browser_validate phase visible because F4 has `metadata.browser=true`. Not exercised in F1-only iter-0014 falsification.
-- **L2 (variant) is on the wrong side of the efficiency contract** for F5/F6: verify-tie at 10–17× wall, which is the canary `NORTH-STAR.md` calls out as "pair without short-circuit recreates this waste pattern."
-- F2 variant produced working code (`verify_score=1.0, files_changed=2`) but never reached terminal verdict because CRITIC was killed mid-phase. F2 metadata.timeout=1200s is too tight for full iter-0014 4-phase pipeline.
-- F2 variant 678s of inter-phase gap unaccounted by per-phase `duration_ms` — phase 1.4/1.5 routing time not yet measured by the state-write protocol. Candidate iter-0019 sub-task or queued separately.
+**Suite avg variant 93.8 / bare 82.2 / margin +11.6** (above the +8 NORTH-STAR preferred). 0 hard-floor violations. **SHIP-GATE FAIL** — only 4/5 fixtures ≥ +5 against absolute 7/9 floor (5-fixture run cannot pass a 7-of-9 absolute gate).
 
-**iter-0016 verdict will be written in iter-0018**, after the suite finishes and the judge runs the 4-axis scoring. Until then this readout is partial.
+### Honest claim boundary (Codex R3 + R4 lock language)
+
+- **L2 vs L0 (5-fixture partial)**: PASS on quality margin (+11.6 > +8 preferred), 0 hard-floor violations. FAIL on volume rule (5 fixtures only).
+- **L2 vs L1**: **UNKNOWN**. L1 arm does not exist yet. iter-0019 must land before any L2-vs-L1 claim.
+- **Release readiness**: NOT IMPLIED by these numbers. L2-vs-L1 compression risk (Codex R4): if L1 lands at, say, +9 vs L0, L2's effective lift over L1 is only +2.6 — below the +5 floor for L2 vs L1 in NORTH-STAR.md operational test #6. We do not know yet which side of that floor we are on.
+- **Cross-vendor**: not measured. Per NORTH-STAR.md operational test #11, model-agnostic axis is de-prioritized.
+
+### Per-fixture diagnoses (Codex R4 verdicts)
+
+- **F2** — variant +17 despite watchdog timeout. CRITIC killed mid-phase (state writes confirmed: build/build_gate/evaluate populated, critic phase started but verdict=-/duration=0). F2 timeout=1200s too tight for full 4-phase pipeline + inter-phase gaps. Bump to 1500-1800s candidate for iter-0019 fixture metadata.
+- **F4** — variant +21, the largest L2 lift. **Plausibly tool-attached** (browser_validate + native security-review on browser=true) per Codex R3, not pair-deliberation-attached. iter-0020 must instrument tool-vs-deliberation attribution before claiming pair lift here.
+- **F5** — variant −1 on scope. Codex R4 verdict: "**root cause is surgical-change failure, not pairing is inherently waste**. The waste signal is real (17× wall for no quality gain), but the actionable fix is BUILD policy: stricter scope boundary, no opportunistic metadata edits, audit must explicitly reject unrelated file/frontmatter/status changes." → iter-0019 BUILD prompt fold-in.
+- **F6** — variant +10, bare hits two CRITICAL findings (non-ENOENT rethrow, createReadStream constraint violation). Genuine pair lift on constraint discipline.
+- **F9** — both arms verify=0.4 spec=16/13. Same output contract failure across L0 and L2: missing `Error:` prefix, wrong exit 2, wrong JSON shape, unranked authors. Codex R4 verdict: "measurement/report integrity adjacent because both arms failed the same output contract. **Do not use F9 for pair-policy conclusions until fixed.**" → iter-0018 spec/pipeline diagnosis required.
+
+### What iter-0014/0017 protocol confirmed (positive)
+
+- iter-0014 state-writes-per-phase: F2 variant `phases.{build, build_gate, evaluate, critic}` populated even on watchdog kill. Pre-iter-0014 would have shown only `evaluate`. Causality attribution to CRITIC was possible because of this.
+- iter-0012 `WATCHDOG_FIRED` sentinel: F2 variant `result.json.timed_out=true`, `invoke_exit=124`.
+- iter-0017 auto-mirror: `[suite] mirrored 26 committed skill(s)` at suite startup.
+- F4 variant `phases.{browser_validate, build, build_gate, evaluate}` — browser_validate phase visible (not exercised in F1-only iter-0014 falsification gate).
+
+### Open observability gap
+
+F2 variant: 678s of inter-phase time unaccounted by per-phase `duration_ms` (sum of `build+build_gate+evaluate+critic` durations = 523s; arm wall = 1201s). Phase 1.4/1.5 routing not measured by current state-write protocol. iter-0019 or iter-0020 BUILD/EVAL prompt fold-in may close this; defer if not load-bearing.
 
 ## North Star refinement (2026-04-27, post-iter-0017)
 
@@ -178,6 +193,8 @@ iter-0014 specifically modified: `SKILL.md`, `phase-1-build.md`, `phase-2-evalua
 - iter 0013 SHIPPED — F1 metadata.timeout 480→900s after Codex-corrected reframe and 465s clean discriminator.
 - **iter 0014 SHIPPED** — state-writes-per-phase observability + archive script path. D4-lite design (universal block + per-phase reminders + prompt-body strengthening) per Codex R0; archive bug found via Codex grepping `archive_run.py`.
 - **iter 0017 SHIPPED** — `run-suite.sh` auto-mirror `config/skills/ → .claude/skills/`. Codex GPT-5.5 R0 picked M2 (inline shell mirror) over M1 (`bin/devlyn.js -y`, too broad — touches CLAUDE.md, .gitignore, project + global settings, agent packs) and M3 (rsync, macOS variance). Per-skill staging dir + atomic `mv` for Ctrl-C safety. Falsified locally with marker injection + drift simulation + user-skill-preservation test; lint 10/10; zero model spend.
+- **iter 0016 (5-fixture suite)** — F2/F4/F5/F6/F9 ran post iter-0014/0017; suite avg variant 93.8 / bare 82.2 / margin +11.6 / wall ratio 11.4×. SHIP-GATE FAIL (volume rule: 4/5 ≥ +5 against absolute 7/9 floor). 0 hard-floor violations. F2 +17 (variant TO at 1200s but quality high), F4 +21 (largest L2 lift, plausibly tool-attached), F5 −1 (variant added `completed=` to roadmap frontmatter — surgical-scope failure not pair waste), F6 +10 (genuine constraint lift), F9 +11 but both arms verify=0.4 spec=16/13 (pipeline-level spec-compliance failure, not pair vs solo). Final readout in `iter-0016` results + `iterations/0018-measurement-integrity.md`.
+- **iter 0018 SHIPPED** — Measurement integrity + report-shape lock. Added `wall_ratio_variant_over_bare` per-row + `wall_ratio_variant_over_bare_avg` aggregate to `summary.json` and report.md. Locked iter-0016 final readout into HANDOFF.md + NORTH-STAR.md operational test #13 (L2-vs-L1 compression risk, "release not implied" honest-claim language). Classified F5 as surgical-scope failure (iter-0019 BUILD prompt fold-in) and F9 as pipeline spec-compliance failure (iter-0019/0020 BUILD/EVAL prompt fold-in). CLAUDE.md gained Codex companion pair-review section distinguishing iteration-loop pair from auto-resolve pair (same vocabulary, different thresholds). Diagnostic-only — zero paid runs, lint 10/10.
 
 ### Queued (next hypotheses, ordered, post iter-0017)
 
@@ -266,6 +283,11 @@ iter-0014 specifically modified: `SKILL.md`, `phase-1-build.md`, `phase-2-evalua
 - iter-0012 R0: 5-line `timed_out` fix verdict. Caught (1) invariant misstatement (`elapsed=TIMEOUT-1` was already correct under `>=`); (2) `set -u` init-order trap requiring `WATCHDOG_FIRED=0` before `if DRY_RUN`; (3) don't couple to `INVOKE_EXIT==124`; (4) no new schema field; (5) leave SIGTERM grace alone; (6) `kill -0` race deferred.
 - iter-0013 R0: F1 starvation reframe. Caught (1) my "0.6s away from natural exit" was over-asserted (SessionEnd hooks can be SIGTERM cleanup); (2) F1 didn't complete fast route; (3) one Bash dispatch took 268.5s. Recommendation: 900s discriminator first. Outcome A confirmed.
 - iter-0014 R0: state-writes-per-phase + archive fix. Verdict: D4-lite (universal block + per-phase salience + prompt-body fixes). Pushback on knock-on bug claim — Codex read `archive_run.py` and showed moves are unconditional; verdict gates pruning only. Real cause: separate path bug. F1 verified post-fix.
+- iter-0017 R0: auto-mirror config/skills → .claude/skills. Verdict: M2 inline shell (over M1 `bin/devlyn.js -y` too broad, M3 rsync too fragile). Per-skill staging + atomic mv for Ctrl-C safety. UNSHIPPED list inline + comment pointer.
+- North Star R1 (84s, 41k tokens): release-gate numbers locked (suite avg ≥ +8 / ≥ +5, F9 ≥ +5, 7/9, zero DQ/CRITICAL/HIGH/timeouts). Per-phase decision-mode taxonomy (`solo` / `pair_critic` / `pair_consensus`). Iteration-loop pair vs auto-resolve pair = same vocabulary, different thresholds.
+- North Star R2 (16k tokens): EVAL=gated solo not unconditional pair (would recreate F5/F6 waste). Profile-neutral abstraction = text-only, no runtime engine-swap dispatcher (overengineering since model-agnostic ≠ North Star).
+- North Star R3 (97k tokens): re-ordered iter-0019 (L1-claude arm) ahead of iter-0020 (pair policy). L1-codex deferred (no non-Claude orchestrator path exists yet). F4 lift plausibly tool-attached (browser_validate) not pair-attached — pair > solo unproven. L2 release gate split from L1 (L1 must pass first; L2 vs L1 needs +5 on pair-eligible fixtures only).
+- iter-0018 R0 (19k tokens, 27s): start iter-0018 on 5-fixture data; defer F1/F3/F7/F8 to iter-0019 paid run. F5 root cause = surgical-scope failure (BUILD added `completed=` to roadmap frontmatter beyond strict scope) not pair-deliberation waste. F9 = measurement-integrity adjacent (both arms failed same output contract — pipeline BUILD/EVAL prompt issue, not pair vs solo). L2-vs-L1 compression risk locked into NORTH-STAR.md test #13.
 
 ---
 

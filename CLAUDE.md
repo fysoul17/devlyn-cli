@@ -65,6 +65,33 @@ The `--engine auto` availability-check-and-downgrade rule (auto-resolve / ideate
 
 Skills call Codex via the local `codex exec` CLI (shipped by the `openai-codex` Claude Code plugin). See `config/skills/_shared/codex-config.md` for the canonical flag set. Omit `-m <model>`; the CLI's current flagship (today `gpt-5.5`, automatically whatever ships next) is used — zero-touch on upgrades. MCP is not in the loop.
 
+### Codex companion pair-review (autoresearch loop, NOT runtime skills)
+
+Two distinct surfaces use the local `codex exec` CLI for different audiences:
+
+**Skills (run-time, user-task)**: when a Skill spawns Codex as part of executing a user's task (e.g. `/devlyn:auto-resolve` calling Codex BUILD), follow the wrapper-form contract in `config/skills/_shared/engine-routing.md` and `_shared/codex-config.md`. Decision-mode taxonomy (`solo` / `pair_critic` / `pair_consensus`) lives in `autoresearch/NORTH-STAR.md` and lands as policy in iter-0020. Until then, skill-level pair patterns (CRITIC = Codex critiques Claude, etc.) are the legacy shape.
+
+**Autoresearch loop (change-time, harness developer)**: when *we* (the developer or the iteration loop) consult Codex for cross-model review of a harness change — design verdicts, hypothesis pre-checks, PR-style audits — use the companion wrapper:
+
+```bash
+bash config/skills/_shared/codex-monitored.sh \
+  -C /Users/aipalm/Documents/GitHub/devlyn-cli \
+  -s read-only \
+  -c model_reasoning_effort=xhigh \
+  "<your prompt>"
+```
+
+Pattern (per `feedback_codex_cross_check.md` + `feedback_user_directions_vs_debate.md`):
+
+1. **Reason independently first.** Form your own verdict with concrete evidence (file paths, line numbers, raw data, expected vs actual). Never delegate the decision.
+2. **Send Codex rich evidence**, not "what should I do?" prompts. Include your draft conclusion and ask for falsification — Codex acts as a GAN critic.
+3. **Surface Codex pushback transparently.** When Codex disagrees, present both views to the user; do not silently adopt either side. The user's direction is the final arbiter.
+4. **Never pipe the wrapper output** (`| tail`, `| head`, `| grep` without `--line-buffered`). The wrapper refuses pipe-stdout per iter-0009 to prevent byte-watchdog starvation. Read the persisted output file the wrapper writes when output is large.
+
+This is "iteration-loop pair," distinct from "auto-resolve pair" — same vocabulary (`solo` / `pair_critic` / `pair_consensus`), different thresholds. Iteration-loop pair is human-supervised meta-work; the cost is amortized over harness improvements that affect every future run, so pair freely on non-trivial changes. Auto-resolve pair is hands-free user-task execution; every pair call is paid by the user on every run, so it must be aggressively gated (iter-0020).
+
+Where the cumulative companion-pair history lives: `autoresearch/HANDOFF.md` "Codex collaboration log (running)" — append-only, one line per round.
+
 ## Working Mode
 
 - **Checkpoint with TaskCreate / TaskUpdate.** Long investigations or multi-phase work: create tasks at start, mark completed as each one closes — don't batch.

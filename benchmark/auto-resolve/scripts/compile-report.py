@@ -84,6 +84,17 @@ def main() -> int:
             "variant_dq_deterministic": variant_dq_deterministic,
             "variant_wall_s": var_res.get("elapsed_seconds"),
             "bare_wall_s": bare_res.get("elapsed_seconds"),
+            # iter-0018 — wall-time efficiency comparison field. Per NORTH-STAR.md
+            # operational test #2 / #7, each composition layer must beat
+            # previous-layer-best-of-N where N is the wall-time ratio. Today only
+            # variant (L2) and bare (L0) arms exist; future-generalizes to
+            # `L1_over_L0` and `L2_over_L1` once iter-0019 lands the L1 arm.
+            # null when either wall is missing or bare wall is 0 (avoid div-by-0).
+            "wall_ratio_variant_over_bare": (
+                round(var_res["elapsed_seconds"] / bare_res["elapsed_seconds"], 2)
+                if (var_res.get("elapsed_seconds") and bare_res.get("elapsed_seconds"))
+                else None
+            ),
             "variant_verify_score": var_res.get("verify_score"),
             "bare_verify_score": bare_res.get("verify_score"),
             "variant_files_changed": var_res.get("files_changed"),
@@ -104,6 +115,12 @@ def main() -> int:
     margin_avg = variant_avg - bare_avg
     disqualifier_count = sum(1 for r in scored if r.get("variant_disqualifier"))
     margin_ge_5 = sum(1 for r in gated_rows if (r.get("margin") or 0) >= 5)
+    # iter-0018 — suite-level wall-time efficiency aggregate. Mean over
+    # fixtures with both walls present; informs NORTH-STAR.md test #2 / #7
+    # without itself being a gate (gating waits for iter-0019/0020 data).
+    ratios = [r["wall_ratio_variant_over_bare"] for r in scored
+              if r.get("wall_ratio_variant_over_bare") is not None]
+    wall_ratio_avg = round(sum(ratios) / len(ratios), 2) if ratios else None
 
     summary = {
         "run_id": args.run_id,
@@ -120,6 +137,7 @@ def main() -> int:
         "margin_ge_5_count": margin_ge_5,
         "gated_fixtures": len(gated_rows),
         "known_limit_fixtures": len(excluded_known_limit),
+        "wall_ratio_variant_over_bare_avg": wall_ratio_avg,
         "rows": rows,
     }
     (res_root / "summary.json").write_text(json.dumps(summary, indent=2))
@@ -133,21 +151,22 @@ def main() -> int:
         f"Branch: `{summary['branch']}`",
         f"Git SHA: `{summary['git_sha'][:12]}`",
         "",
-        "| Fixture | Category | Variant | Bare | Margin | Winner | Verify (V/B) | Wall (V/B) |",
-        "|---------|----------|---------|------|--------|--------|--------------|------------|",
+        "| Fixture | Category | Variant | Bare | Margin | Winner | Verify (V/B) | Wall (V/B) | Wall ratio |",
+        "|---------|----------|---------|------|--------|--------|--------------|------------|------------|",
     ]
     for r in rows:
         if r.get("variant_score") is None:
-            lines.append(f"| {r['fixture']} | — | — | — | — | NO_JUDGE | — | — |")
+            lines.append(f"| {r['fixture']} | — | — | — | — | NO_JUDGE | — | — | — |")
             continue
         vverif = f"{int((r['variant_verify_score'] or 0)*100)}%"
         bverif = f"{int((r['bare_verify_score'] or 0)*100)}%"
         vwall = f"{r['variant_wall_s']}s" if r['variant_wall_s'] else "?"
         bwall = f"{r['bare_wall_s']}s" if r['bare_wall_s'] else "?"
+        wratio = f"{r['wall_ratio_variant_over_bare']:.1f}x" if r.get("wall_ratio_variant_over_bare") else "—"
         dq = " ⚠DQ" if r.get("variant_disqualifier") else ""
         lines.append(
             f"| {r['fixture']} | {r['category']} | {r['variant_score']}{dq} | {r['bare_score']} | "
-            f"{r['margin']:+d} | {r['winner']} | {vverif}/{bverif} | {vwall}/{bwall} |"
+            f"{r['margin']:+d} | {r['winner']} | {vverif}/{bverif} | {vwall}/{bwall} | {wratio} |"
         )
     lines += [
         "",
@@ -156,6 +175,8 @@ def main() -> int:
         f"**Suite average margin:**        {summary['margin_avg']:+.1f}   (ship floor: +5)",
         f"**Hard-floor violations:**       {summary['hard_floor_violations']}",
         f"**Fixtures with margin ≥ +5:**   {summary['margin_ge_5_count']} / {summary['gated_fixtures']} (gate: ≥ 7 of 9)",
+        f"**Wall-time ratio variant/bare (mean):** "
+        f"{summary['wall_ratio_variant_over_bare_avg']}x" if summary.get("wall_ratio_variant_over_bare_avg") else "**Wall-time ratio:** n/a",
     ]
     # Critical findings digest
     cf_rows = [r for r in rows if r.get("critical_findings_variant") or r.get("critical_findings_bare")]
