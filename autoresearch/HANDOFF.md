@@ -6,11 +6,13 @@
 
 ## Current state
 
-**Branch**: `benchmark/v3.6-ab-20260423-191315`. 2 commits ahead of origin (iter-0009 build NOT YET committed — pending commit on this iter's SHIP verdict).
+**Branch**: `benchmark/v3.6-ab-20260423-191315`. 3 commits ahead of origin.
 
-**HEAD (committed)**: `1ff7534` (`Revert "autoresearch(iter-0006): foreground-only codex execution contract"`). **Working tree** carries iter-0009 changes (wrapper + PATH shim + canonical doc edits + harness extension + lint extension); the iter-0009 commit is the next thing to land.
+**HEAD (committed)**: `e9233bd` (`autoresearch(iter-0009): wrapper + PATH shim — defeat iter-0008 starvation`). Working tree clean except untracked `.claude/` install dir.
 
-iter-0007 verdict realized. iter-0008 (prompt-level narrow kill-shape contract) ATTEMPTED 2026-04-27 and REJECTED — F6 catastrophic reproduced iter-0006. iter-0009 (executable enforcement: wrapper + PATH shim, NOT hook per codex Round 1) ATTEMPTED 2026-04-27 and **SHIPPED** — F2 BUILD ran 399.9s through wrapper without watchdog kill, F6 collapse +60-point recovery, F1 informationally neutral.
+iter-0007 verdict realized. iter-0008 REJECTED 2026-04-27 (prompt-level contract empirically dead). **iter-0009 SHIPPED 2026-04-27** — F2 BUILD ran 399.9s through wrapper without watchdog kill, F6 collapse +60-point recovery, F1 informationally neutral.
+
+**Next iteration: iter-0010 (production rollout — extend wrapper to all standalone skills + ship shim to user installs).** Detail below in "Decided next step".
 
 **Reason for revert**: iter-0007 F6 isolation experiment (2 single-fixture runs, 1hr total) established **causality** that iter-0006's contract directly broke F6:
 
@@ -28,9 +30,9 @@ Same fixture, same harness, same skill chain, same fixture metadata.timeout — 
 
 ---
 
-## Decided next step — iter-0010 (production rollout) + commit iter-0009
+## iter-0009 result snapshot (committed e9233bd)
 
-**iter-0009 SHIPPED 2026-04-27** with full data in `iterations/0009-wrapper-and-hook.md`. Headline metrics:
+Full data in `iterations/0009-wrapper-and-hook.md`. Headline metrics:
 
 | Fixture | iter-0008 | iter-0009 | Note |
 |---|---|---|---|
@@ -54,45 +56,73 @@ Codex Round 2 caught the load-bearing wrapper bug: **shim alone doesn't defeat `
 
 ---
 
-## Decided next step — commit + iter-0010
+## Decided next step — iter-0010 (production rollout of wrapper to standalone skills)
+
+**Why this matters now**: iter-0009 fixed `/devlyn:auto-resolve` (the canonical + `auto-resolve/SKILL.md` + `engine-routing.md` were edited; orchestrator emits the wrapper-form directly when running auto-resolve). But the user wants to run `/devlyn:ideate → /devlyn:auto-resolve → /devlyn:preflight` as a chain. The middle step is safe; the bookends still emit raw `codex exec` from inline examples and are vulnerable to the iter-0006/0008 catastrophic shape on long Codex calls.
+
+**Surfaces still on raw `codex exec` (5 inline sites + repo-local shim distribution gap):**
+
+```bash
+grep -RIn "codex exec" config/skills/devlyn:ideate/ config/skills/devlyn:preflight/ \
+                       config/skills/devlyn:team-resolve/ config/skills/devlyn:team-review/
+# expected hits:
+#   devlyn:ideate/SKILL.md:245       (CHALLENGE phase, --engine auto/claude role-reversal)
+#   devlyn:ideate/SKILL.md:300       (--engine codex full pipeline)
+#   devlyn:ideate/references/codex-critic-template.md
+#   devlyn:preflight/SKILL.md:117    (CODE AUDIT phase)
+#   devlyn:team-resolve/SKILL.md:140-157   (Codex roles + Dual roles)
+#   devlyn:team-review/SKILL.md:81-98      (Codex reviewers + Dual reviewers)
+```
+
+### iter-0010 design (Karpathy-surgical)
+
+1. **Rewrite each inline `codex exec ...` example to wrapper form.** One sentence per file, just like `auto-resolve/SKILL.md:34`:
+   `bash .claude/skills/_shared/codex-monitored.sh -C <root> -s <sandbox> -c model_reasoning_effort=xhigh "<prompt>"`
+   The wrapper passes args through to `codex exec` so flag semantics are unchanged. Add a short note: "Wrapper closes stdin and emits a heartbeat every 30s on stderr; rationale lives in `_shared/codex-config.md`."
+2. **Extend `package.json` `files` array to ship `scripts/codex-shim/**`.** Currently `package.json` ships `bin`, `config`, `optional-skills`, `benchmark/...`, `scripts/lint-skills.sh`, `CLAUDE.md` — explicitly NOT all of `scripts/`. Add `scripts/codex-shim/**` so `npx devlyn-cli` installs the shim alongside skills.
+3. **Decide installer wiring for shim PATH.** Two options:
+   - **A. Document only**: README + `bin/devlyn.js` post-install message tells the user to add a `.devlyn-bin/codex` symlink to a project-scoped PATH dir. Manual step but zero magic.
+   - **B. Per-run staging in skills**: have each skill's BUILD/CHALLENGE phase stage the shim into a tmp PATH dir before invoking codex (mirrors what `run-fixture.sh:101` does for the variant arm).
+   Codex cross-check should rank these before committing — A is simpler but requires user trust; B is more robust but expands skill surface area.
+4. **Lint mirror parity extended further** to cover the 5 newly-edited skill files (so they don't drift after install).
+5. **Falsification gate**: smaller than iter-0009's because the mechanism is already proven. Run F4 alone (codex-routed BUILD) under iter-0010 — if BUILD picks codex, must show wrapper invocation visible in claude-debug.log. Plus a real ideate-only smoke run on a tiny fixture-like spec to confirm CHALLENGE phase emits wrapper-form.
+
+### Risks codex flagged in iter-0009 R2 to revisit for iter-0010
+
+- **Standalone skill orchestrator may not READ the canonical** the same way auto-resolve does. iter-0009 worked because canonical + auto-resolve/SKILL.md were both edited. For ideate/preflight/team-*, the inline call sites are closer to the orchestrator's action than canonical — rewriting those is the load-bearing edit, not the canonical-by-reference.
+- **Shim distribution to user installs** changes the user's local PATH. If we go option B (per-run staging), no global PATH change. If A, careful with PATH ordering instructions.
+
+### How to start iter-0010
 
 ```bash
 cd /Users/aipalm/Documents/GitHub/devlyn-cli
+git status                              # confirm clean
+git log --oneline -5                    # confirm HEAD = e9233bd
+diff -rq config/skills/ .claude/skills/ 2>&1 | grep -v "Only in"  # silence
 
-# 1. Commit iter-0009 (per autoresearch convention — SHIPPED iters get a commit)
-git add config/skills/_shared/codex-monitored.sh \
-        scripts/codex-shim/codex \
-        config/skills/_shared/codex-config.md \
-        config/skills/devlyn:auto-resolve/references/engine-routing.md \
-        config/skills/devlyn:auto-resolve/SKILL.md \
-        benchmark/auto-resolve/scripts/run-fixture.sh \
-        scripts/lint-skills.sh \
-        autoresearch/iterations/0008-narrow-kill-shape-contract.md \
-        autoresearch/iterations/0009-wrapper-and-hook.md \
-        autoresearch/HANDOFF.md
-# also stage .claude/skills/* mirror parity if installer didn't run
-git commit -m "autoresearch(iter-0009): wrapper + PATH shim — defeat iter-0008 starvation"
+# 1. Read iter-0009 ship doc + lessons
+cat autoresearch/iterations/0009-wrapper-and-hook.md
+cat memory/project_iter0009_shipped_2026_04_27.md  # NEW — write this on session start (template below)
 
-# 2. iter-0010 — production rollout (codex Round 2 finding #3 deferred)
-#    a. ideate/SKILL.md:245 + :300 — wrapper invocation
-#    b. ideate/codex-critic-template.md — wrapper invocation
-#    c. preflight/SKILL.md:117 — wrapper invocation
-#    d. team-resolve/SKILL.md, team-review/SKILL.md inline sites — wrapper invocation
-#    e. package.json files array — ship `scripts/codex-shim/**`
-#    f. Document the user-install installer flow that puts shim on PATH globally for /devlyn:* runs
-#
-# 3. iter-0011 — `timed_out` derivation fix (codex Round 2 finding #2)
-#    `result.json` derives timed_out from `elapsed >= timeout` (line 477) instead of
-#    the watchdog flag (line 301). At-boundary natural exits misclassified.
-#
-# 4. iter-0012 — F1 non-codex starvation
-#    F1 reproducibly hits 480s cap with empty transcript. Auto-resolve pipeline
-#    doesn't naturally exit cleanly after Stop on trivial fixtures. NOT iter-0009's
-#    mechanism — separate diagnostic iter needed.
-#
-# 5. iter-0013 — silent-catch fixture spec
-#    F2 spec language doesn't preempt `catch { return fallback }` in BUILD prompts.
-#    Both arms produced the pattern. Tighten spec.
+# 2. Codex Round 1 cross-check (simple — design fit)
+cat <<'PROMPT' > /tmp/codex-iter0010-r1.txt
+[Brief context: iter-0009 SHIPPED. Now extending wrapper to ideate/preflight/team-*.
+ Five inline call sites. Decide installer wiring for shim PATH (option A vs B).
+ What do I have wrong? Q: rank A vs B for shim distribution; Q: which inline edits
+ are most load-bearing for the chain ideate→auto-resolve→preflight; Q: what's the
+ single largest hidden risk?]
+PROMPT
+PROMPT="$(cat /tmp/codex-iter0010-r1.txt)" \
+  bash .claude/skills/_shared/codex-monitored.sh \
+    -C /Users/aipalm/Documents/GitHub/devlyn-cli \
+    -s read-only -c model_reasoning_effort=xhigh \
+    "$PROMPT" > /tmp/codex-iter0010-r1.out 2>&1 &
+# Monitor with 30s heartbeat per iter-0009 G1; wrapper handles its own heartbeat,
+# but spawn a poll loop on the bytes anyway so the outer claude-p stream stays fed.
+
+# 3. Apply 5 inline rewrites + package.json files array + lint extension.
+# 4. Falsification gate: F4 (or any codex-BUILD fixture) + ideate smoke run.
+# 5. Commit on SHIP (per autoresearch convention).
 ```
 
 ---
@@ -106,7 +136,7 @@ diff -rq config/skills/ .claude/skills/ 2>&1 | grep -v "Only in"
 ```
 Expected: silence (UNSHIPPED_SKILL_DIRS legitimately have `Only in config/skills/...` lines per `bin/devlyn.js` exclusion list).
 
-**iter-0010 candidate (queued)**: pre-run rsync mirror at top of `run-suite.sh` for self-healing.
+**iter-0015 candidate (queued)**: pre-run rsync mirror at top of `run-suite.sh` for self-healing.
 
 ---
 
