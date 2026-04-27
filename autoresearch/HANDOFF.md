@@ -22,6 +22,33 @@ iter-0007 verdict realized. iter-0008 REJECTED. **iter-0009 → iter-0014 + iter
 4. **iter-0022 — Cost retune** (only if iter-0020 short-circuits + iter-0019 data show wall ratio still over budget after pair gates active). Otherwise close as "not needed."
 5. Old queue items (iter-0015 shim defer, stream-json, F9 timeout adjustment, N=1 ship-gate floor, F6 chronic slowness, stuck-execution abort) renumber/recycle as the queue rotates.
 
+### High-priority queued: CLAUDE.md install-time identity + minimization audit (post iter-0019)
+
+User direction 2026-04-28. Two coupled concerns surfaced after the iter-0019 design pass:
+
+**(1) Install-time identity gap (load-bearing for benchmark validity).** `bin/devlyn.js` installs `CLAUDE.md` to the user's project root via `fs.copyFileSync(claudeMdSrc, claudeMdDest)` where `claudeMdSrc = path.join(__dirname, '..', 'CLAUDE.md')` (lines 387-391, post-iter-0017 audit). The benchmark variant arm uses `$REPO_ROOT/CLAUDE.md` (per `run-fixture.sh:71`). For variant scores to predict end-user experience, the **shipped package's CLAUDE.md must be byte-identical to the repo CLAUDE.md** — otherwise we measure something different from what the user runs. Verification work:
+- Confirm `package.json` `files[]` list explicitly includes `CLAUDE.md` (npm pack inclusion).
+- Run `npx devlyn-cli` in a temp dir, diff installed vs `$REPO_ROOT/CLAUDE.md`. Must be silent.
+- Add lint Check 11 enforcing this identity before any ship.
+- If a CLAUDE.md edit happens between commits and a release, the package SHA must update.
+
+**(2) Minimization opportunity (universal rules vs skill-specific rules).** Current CLAUDE.md ≈ 138 lines covering: outer goal, 5+1 principles, Quick Start (auto-resolve / ideate / preflight), Karpathy 4, Error Handling Philosophy, Codex invocation, Codex companion pair-review, Working Mode, Skill Boundary Policy, Native Claude Code Skills, Bare-Case Guardrail, No-Workaround Bar, Communication Style, Commit Conventions, Design System. Several sections are autoresearch-loop concerns (NOT runtime guidance for end users): "Codex companion pair-review" (iteration-loop only — not all users do meta-review), "Bare-Case Guardrail" + "Skill Boundary Policy" (auto-resolve internals), "Working Mode" / "Native Claude Code Skills" (skill-call mechanics).
+
+End users hit different surfaces:
+- **modal: auto-resolve** (run, walk away). Doesn't need to know about iteration-loop pair patterns.
+- **secondary: ideate, preflight**. Same — skill internals not load-bearing.
+- **occasional: /resolve, /review, /clean, plain prompting, single-task**. CLAUDE.md is the global background — pollution here drags every short interaction.
+
+User direction (verbatim, Korean): keep universal applicable rules ("no overengineering, no workaround, no guesswork, worldclass production-ready, best practice, layer-cost-justified") in CLAUDE.md; lazy-load skill-specific rules; CLAUDE.md must NOT pollute non-auto-resolve workflows. Even small CLAUDE.md changes shift benchmark numbers — A/B falsification gate required before ship.
+
+**Plan**: queued as a separate iter (probably iter-0020 or 0020.5 depending on iter-0019 verdict timing). Codex GPT-5.5 deep cross-check expected on the prune decision. Output:
+- New `autoresearch/iterations/00NN-claude-md-minimization.md` with full diff plan + benchmark gate.
+- Possibly a new `PRINCIPLES.md` principle if a "context-pollution" rule emerges.
+- Lint Check 11 (install-time identity).
+- A/B benchmark gate: re-run iter-0019 smoke (5 fixtures × 3 arms) under pruned CLAUDE.md and compare margins. Ship only if no fixture regresses by ≥5.
+
+Do NOT bundle with iter-0020 pair-policy work — Codex R3 attribution-clarity rule. Either before or after, never combined.
+
 **Codex R3 explicit warning**: do NOT bundle judge-mechanics changes + L1 arm + pair policy in the same iter — attribution becomes muddy. Sequence above keeps measurement and behavior changes separate.
 
 **Cost estimate iter-0019 → 0021**: ~4-5 hours wall + 2-3 paid runs (~$30-60 total). iter-0019 paid (4-fixture × 3-arm smoke, ~$20-30); iter-0020 includes a full 9-fixture L0/L1/L2 paid run (~$30-50); iter-0021 reuses iter-0020's data for a re-judge sidecar (no new paid arm runs).
