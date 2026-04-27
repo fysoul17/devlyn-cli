@@ -39,6 +39,19 @@
 
 set -uo pipefail
 
+# iter-0019 — solo_claude (L1) arm enforcement. When this env is set, the shim
+# refuses every codex invocation (exec or otherwise) with a non-zero exit and
+# a clear error to stderr. Defends against any code path in the orchestrator
+# that bypasses --engine claude and tries to call codex anyway. iter-0008
+# proved prompt-only engine constraints cannot be trusted; the shim is the
+# enforcement layer. The L1 arm in run-fixture.sh exports CODEX_BLOCKED=1 and
+# stages this shim so PATH resolution finds it before any real codex binary.
+if [ -n "${CODEX_BLOCKED:-}" ]; then
+  printf '[codex-shim] CODEX_BLOCKED=%s — refusing codex invocation (solo_claude / L1 arm enforcement). args: %s\n' \
+    "${CODEX_BLOCKED}" "$*" >&2
+  exit 126
+fi
+
 # Self-locate so we can strip ourselves from PATH before delegating.
 SHIM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd -P)" || SHIM_DIR=""
 

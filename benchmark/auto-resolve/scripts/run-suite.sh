@@ -145,7 +145,7 @@ fi
 if [ $JUDGE_ONLY -eq 0 ]; then
   for fid in "${FIXTURES[@]}"; do
     [ -d "$BENCH_ROOT/fixtures/$fid" ] || { echo "[suite] skip $fid (missing)"; continue; }
-    for arm in variant bare; do
+    for arm in variant solo_claude bare; do
       echo "[suite] ► $fid / $arm"
       extra=""
       [ $DRY_RUN -eq 1 ] && extra="--dry-run"

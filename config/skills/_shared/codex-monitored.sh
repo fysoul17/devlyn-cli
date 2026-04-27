@@ -50,6 +50,18 @@
 
 set -uo pipefail
 
+# iter-0019 — solo_claude (L1) arm enforcement (defense in depth alongside
+# scripts/codex-shim/codex). If this env is set, the wrapper refuses to invoke
+# codex at all, regardless of how it was reached. Two enforcement points
+# protect against the case where one is bypassed: the shim catches PATH-based
+# resolution, and this wrapper catches direct-path invocations of
+# codex-monitored.sh that don't go through the shim.
+if [ -n "${CODEX_BLOCKED:-}" ]; then
+  printf '[codex-monitored] CODEX_BLOCKED=%s — refusing codex invocation (solo_claude / L1 arm enforcement). args: %s\n' \
+    "${CODEX_BLOCKED}" "$*" >&2
+  exit 126
+fi
+
 HEARTBEAT_SEC="${CODEX_MONITORED_HEARTBEAT:-30}"
 CODEX_BIN="${CODEX_BIN:-codex}"
 START=$(date +%s)

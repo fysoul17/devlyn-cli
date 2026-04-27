@@ -31,39 +31,69 @@ done
 BENCH_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FIX_DIR="$BENCH_ROOT/fixtures/$FIXTURE"
 RES_DIR="$BENCH_ROOT/results/$RUN_ID/$FIXTURE"
-VARIANT_DIR="$RES_DIR/variant"
-BARE_DIR="$RES_DIR/bare"
 
-for f in \
-  "$VARIANT_DIR/diff.patch" "$VARIANT_DIR/verify.json" \
-  "$BARE_DIR/diff.patch" "$BARE_DIR/verify.json" \
-  "$FIX_DIR/spec.md" "$FIX_DIR/expected.json" \
-  "$BENCH_ROOT/RUBRIC.md"
-do
+# iter-0019: 3 arms — variant (L2), solo_claude (L1), bare (L0). The judge
+# scores all three in a single pass with the same prompt + same model so
+# margin derivations (L2-vs-L0, L1-vs-L0, L2-vs-L1) are calibrated against
+# each other and not against separate judge calls. ARMS_PRESENT enumerates
+# whichever subset actually has artifacts (so a missing arm doesn't abort
+# the whole judge step). Two-arm judge mode is preserved for runs that pre-
+# date iter-0019.
+ARMS_PRESENT=()
+for arm in variant solo_claude bare; do
+  if [ -f "$RES_DIR/$arm/diff.patch" ] && [ -f "$RES_DIR/$arm/verify.json" ]; then
+    ARMS_PRESENT+=("$arm")
+  fi
+done
+if [ ${#ARMS_PRESENT[@]} -lt 2 ]; then
+  echo "judge needs at least 2 arms with diff.patch + verify.json; have: ${ARMS_PRESENT[*]:-(none)}"
+  exit 1
+fi
+for f in "$FIX_DIR/spec.md" "$FIX_DIR/expected.json" "$BENCH_ROOT/RUBRIC.md"; do
   [ -f "$f" ] || { echo "missing required input: $f"; exit 1; }
 done
 
-# Blind A/B mapping — random but recorded
+# Blind randomization: shuffle ARMS_PRESENT into ABC order. Seed recorded
+# in judge.json so runs are reproducible if rejudged.
 SEED=$RANDOM
-if (( SEED % 2 == 0 )); then
-  A_ARM="variant"; B_ARM="bare"
-else
-  A_ARM="bare"; B_ARM="variant"
-fi
+mapfile -t SLOTS < <(python3 - "$SEED" "${ARMS_PRESENT[@]}" <<'PY'
+import sys, random
+seed = int(sys.argv[1]); arms = sys.argv[2:]
+random.seed(seed)
+random.shuffle(arms)
+print("\n".join(arms))
+PY
+)
+A_ARM="${SLOTS[0]:-}"
+B_ARM="${SLOTS[1]:-}"
+C_ARM="${SLOTS[2]:-}"
 
 PROMPT_FILE="$RES_DIR/judge-prompt.txt"
 A_DIFF="$RES_DIR/$A_ARM/diff.patch"
-B_DIFF="$RES_DIR/$B_ARM/diff.patch"
 A_VERIFY="$RES_DIR/$A_ARM/verify.json"
+B_DIFF="$RES_DIR/$B_ARM/diff.patch"
 B_VERIFY="$RES_DIR/$B_ARM/verify.json"
+if [ -n "$C_ARM" ]; then
+  C_DIFF="$RES_DIR/$C_ARM/diff.patch"
+  C_VERIFY="$RES_DIR/$C_ARM/verify.json"
+else
+  C_DIFF=""
+  C_VERIFY=""
+fi
 
 # Sanitize diffs so stylistic tells that correlate with variant (e.g.
 # pipeline-commit markers, .devlyn/ archive lines) don't leak to the judge.
 # Judge sees only file-content changes; the transcript, arm label, NOTES.md,
 # and all process artifacts stay out of the prompt.
-python3 - "$PROMPT_FILE" "$FIX_DIR/spec.md" "$FIX_DIR/expected.json" "$BENCH_ROOT/RUBRIC.md" "$A_DIFF" "$B_DIFF" "$A_VERIFY" "$B_VERIFY" <<'PY'
+python3 - "$PROMPT_FILE" "$FIX_DIR/spec.md" "$FIX_DIR/expected.json" "$BENCH_ROOT/RUBRIC.md" "$A_DIFF" "$B_DIFF" "$A_VERIFY" "$B_VERIFY" "$C_DIFF" "$C_VERIFY" <<'PY'
 import sys, pathlib, re, json
-out, spec_p, exp_p, rubric_p, a_diff, b_diff, a_ver, b_ver = map(pathlib.Path, sys.argv[1:])
+args = sys.argv[1:]
+out_p, spec_p, exp_p, rubric_p = map(pathlib.Path, args[:4])
+a_diff, b_diff, a_ver, b_ver = map(pathlib.Path, args[4:8])
+c_diff_arg, c_ver_arg = args[8], args[9]
+c_diff = pathlib.Path(c_diff_arg) if c_diff_arg else None
+c_ver = pathlib.Path(c_ver_arg) if c_ver_arg else None
+out = out_p
 spec = spec_p.read_text()
 expected = exp_p.read_text()
 rubric = rubric_p.read_text()
@@ -103,22 +133,53 @@ a_diff_text = sanitize(a_diff.read_text())
 b_diff_text = sanitize(b_diff.read_text())
 a_ver_text = sanitize_verify(a_ver)
 b_ver_text = sanitize_verify(b_ver)
+have_c = c_diff is not None
+if have_c:
+    c_diff_text = sanitize(c_diff.read_text())
+    c_ver_text = sanitize_verify(c_ver)
 
-prompt = f"""You are a blind code-review judge. Two engineers implemented the same spec. You do NOT know which implementation came from which process — grade them only on the merits of the code and its behavior.
+n_arms = 3 if have_c else 2
+arms_phrase = "Three engineers" if have_c else "Two engineers"
+slot_keys = ["a_score", "b_score", "c_score"][:n_arms]
+slot_breakdowns = ["a_breakdown", "b_breakdown", "c_breakdown"][:n_arms]
+slot_letters = ["A", "B", "C"][:n_arms]
 
-Apply the 4-axis rubric from RUBRIC.md below. Each axis is 0-25, total 100.
+# Build the JSON-format hint dynamically so the judge sees the right shape
+# for either 2 or 3 arms. Same scoring rules; same rubric.
+score_lines = ",\n  ".join(f'"{k}": <int 0-100>' for k in slot_keys)
+breakdown_lines = ",\n  ".join(
+    f'"{b}": {{"spec": 0-25, "constraint": 0-25, "scope": 0-25, "quality": 0-25, "notes": "<3-5 bullets>"}}'
+    for b in slot_breakdowns
+)
+findings_keys = ", ".join(f'"{l}": ["..."]' for l in slot_letters)
+dq_keys = ", ".join(f'"{l}": bool' for l in slot_letters)
+dq_reasons = ", ".join(f'"{l}_reason": "..."' for l in slot_letters)
+winner_choices = " | ".join(f'"{l}"' for l in slot_letters) + ' | "tie"'
+
+# Per-arm sections of the prompt
+def section(label: str, diff_text: str, verify_text: str) -> str:
+    return (
+        f"=== IMPLEMENTATION {label} ===\nDiff:\n"
+        f"```diff\n{diff_text}\n```\n"
+        f"Verification results:\n```json\n{verify_text}\n```\n"
+    )
+
+impl_sections = section("A", a_diff_text, a_ver_text) + "\n" + section("B", b_diff_text, b_ver_text)
+if have_c:
+    impl_sections += "\n" + section("C", c_diff_text, c_ver_text)
+
+prompt = f"""You are a blind code-review judge. {arms_phrase} implemented the same spec. You do NOT know which implementation came from which process — grade them only on the merits of the code and its behavior.
+
+Apply the 4-axis rubric from RUBRIC.md below. Each axis is 0-25, total 100. Score every implementation independently — do not let one arm's score anchor another's. The judge's job is to apply the rubric absolutely; relative ordering falls out from the absolute scores.
 
 Return STRICT JSON only — no prose outside the JSON. Format:
 
 {{
-  "a_score": <int 0-100>,
-  "b_score": <int 0-100>,
-  "winner": "A" | "B" | "tie",
-  "margin": <int, a_score - b_score>,
-  "a_breakdown": {{"spec": 0-25, "constraint": 0-25, "scope": 0-25, "quality": 0-25, "notes": "<3-5 bullets>"}},
-  "b_breakdown": {{"spec": 0-25, "constraint": 0-25, "scope": 0-25, "quality": 0-25, "notes": "<3-5 bullets>"}},
-  "critical_findings": {{"A": ["..."], "B": ["..."]}},
-  "disqualifiers": {{"A": bool, "B": bool, "A_reason": "...", "B_reason": "..."}},
+  {score_lines},
+  "winner": {winner_choices},
+  {breakdown_lines},
+  "critical_findings": {{{findings_keys}}},
+  "disqualifiers": {{{dq_keys}, {dq_reasons}}},
   "overall_reasoning": "<5-8 sentences>"
 }}
 
@@ -131,26 +192,7 @@ Return STRICT JSON only — no prose outside the JSON. Format:
 === EXPECTED (machine-readable acceptance) ===
 {expected}
 
-=== IMPLEMENTATION A ===
-Diff:
-```diff
-{a_diff_text}
-```
-Verification results:
-```json
-{a_ver_text}
-```
-
-=== IMPLEMENTATION B ===
-Diff:
-```diff
-{b_diff_text}
-```
-Verification results:
-```json
-{b_ver_text}
-```
-
+{impl_sections}
 Return the JSON and nothing else.
 """
 out.write_text(prompt)
@@ -181,11 +223,11 @@ if [ $JUDGE_EXIT -ne 0 ]; then
 fi
 
 # Extract JSON (codex wraps with banners; pick the last {...} block)
-python3 - "$JUDGE_OUT" "$RES_DIR/judge.json" "$A_ARM" "$B_ARM" "$SEED" "$CODEX_CLI_VER" "$JUDGE_MODEL" <<'PY'
+python3 - "$JUDGE_OUT" "$RES_DIR/judge.json" "$A_ARM" "$B_ARM" "$C_ARM" "$SEED" "$CODEX_CLI_VER" "$JUDGE_MODEL" <<'PY'
 import sys, re, json, pathlib
 out = pathlib.Path(sys.argv[1]).read_text()
 target = pathlib.Path(sys.argv[2])
-a_arm, b_arm, seed, codex_ver, judge_model = sys.argv[3:8]
+a_arm, b_arm, c_arm, seed, codex_ver, judge_model = sys.argv[3:9]
 
 # Extract the last valid judgment JSON. A naive brace-counter breaks on
 # `{`/`}` that appear inside strings (e.g. JS source embedded in the arms'
@@ -205,25 +247,70 @@ for pos in reversed(brace_positions):
 if chosen is None:
     raise SystemExit(f"no valid JSON in judge output; see {sys.argv[1]}")
 
-# Decode blind labels
-mapping = {a_arm: "A", b_arm: "B"}
-chosen["_blind_mapping"] = {"A": a_arm, "B": b_arm, "seed": int(seed)}
+# Decode blind labels — record full mapping so summary code can iterate
+mapping = {"A": a_arm, "B": b_arm}
+if c_arm:
+    mapping["C"] = c_arm
+chosen["_blind_mapping"] = {**mapping, "seed": int(seed)}
 chosen["_judge_cli"] = codex_ver.strip()
 chosen["_judge_model"] = judge_model.strip()
 
-# Convenience: translate winner A/B to variant/bare
-w = chosen.get("winner")
-if w == "A":
-    chosen["winner_arm"] = a_arm
-elif w == "B":
-    chosen["winner_arm"] = b_arm
-else:
-    chosen["winner_arm"] = "tie"
+# scores_by_arm: arm-name → score, computed from the blind A/B/C scores.
+# This is the canonical 3-arm-aware shape the report consumer reads. The
+# legacy variant_score / bare_score / margin fields below are derived from
+# scores_by_arm for backward compatibility with pre-iter-0019 callers.
+scores_by_arm = {}
+slot_keys = ["a_score", "b_score", "c_score"]
+slot_letters = ["A", "B", "C"]
+for letter, key in zip(slot_letters, slot_keys):
+    arm = mapping.get(letter)
+    if arm is not None and key in chosen:
+        scores_by_arm[arm] = chosen[key]
+chosen["scores_by_arm"] = scores_by_arm
 
-chosen["variant_score"] = chosen["a_score"] if a_arm == "variant" else chosen["b_score"]
-chosen["bare_score"]    = chosen["a_score"] if a_arm == "bare"    else chosen["b_score"]
-chosen["margin"] = chosen["variant_score"] - chosen["bare_score"]
+# Per-letter critical_findings / disqualifiers also rotated to per-arm.
+findings_letters = chosen.get("critical_findings", {}) or {}
+findings_by_arm = {mapping[l]: findings_letters.get(l, []) for l in slot_letters if l in mapping}
+chosen["findings_by_arm"] = findings_by_arm
+
+dq_letters = chosen.get("disqualifiers", {}) or {}
+dq_by_arm = {}
+for l in slot_letters:
+    if l not in mapping:
+        continue
+    arm = mapping[l]
+    dq_by_arm[arm] = {
+        "disqualifier": bool(dq_letters.get(l, False)),
+        "reason": str(dq_letters.get(f"{l}_reason", "") or ""),
+    }
+chosen["disqualifiers_by_arm"] = dq_by_arm
+
+# Pairwise margins (positive = first arm beat second).
+def margin(left: str, right: str):
+    if left in scores_by_arm and right in scores_by_arm:
+        return scores_by_arm[left] - scores_by_arm[right]
+    return None
+
+chosen["margins"] = {
+    "variant_over_bare":   margin("variant", "bare"),
+    "solo_over_bare":      margin("solo_claude", "bare"),
+    "variant_over_solo":   margin("variant", "solo_claude"),
+}
+
+# Translate winner letter to arm
+w = chosen.get("winner")
+chosen["winner_arm"] = mapping.get(w, "tie") if w in mapping else "tie"
+
+# Legacy 2-arm fields preserved so older summary code still parses. When
+# solo_claude is present, variant/bare margin is derived from scores_by_arm.
+chosen["variant_score"] = scores_by_arm.get("variant")
+chosen["bare_score"]    = scores_by_arm.get("bare")
+if chosen.get("variant_score") is not None and chosen.get("bare_score") is not None:
+    chosen["margin"] = chosen["variant_score"] - chosen["bare_score"]
 
 target.write_text(json.dumps(chosen, indent=2))
-print(f"[judge] variant={chosen['variant_score']} bare={chosen['bare_score']} margin={chosen['margin']}")
+parts = [f"{arm}={s}" for arm, s in scores_by_arm.items()]
+mline = chosen.get("margins") or {}
+mparts = [f"{k}={v:+d}" for k, v in mline.items() if v is not None]
+print(f"[judge] " + " ".join(parts) + ("  | " + " ".join(mparts) if mparts else ""))
 PY

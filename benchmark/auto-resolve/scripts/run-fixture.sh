@@ -30,7 +30,11 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ -n "$FIXTURE" ] && [ -n "$ARM" ] && [ -n "$RUN_ID" ] || usage
-[ "$ARM" = "variant" ] || [ "$ARM" = "bare" ] || { echo "arm must be variant|bare"; exit 1; }
+# iter-0019: 3 arms — variant (L2: Claude orchestrator + Codex BUILD pair),
+# solo_claude (L1: Claude orchestrator, codex blocked by shim+wrapper enforcement),
+# bare (L0: direct claude -p, no skill, no codex).
+[ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] || [ "$ARM" = "bare" ] || \
+  { echo "arm must be variant|solo_claude|bare"; exit 1; }
 
 BENCH_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(cd "$BENCH_ROOT/../.." && pwd)"
@@ -60,25 +64,28 @@ WORK_DIR="/tmp/bench-${RUN_ID}-${FIXTURE}-${ARM}"
 rm -rf "$WORK_DIR"
 cp -R "$BENCH_ROOT/fixtures/test-repo" "$WORK_DIR"
 
-# Variant gets devlyn skills + project CLAUDE.md pre-baseline
-if [ "$ARM" = "variant" ]; then
+# Variant + solo_claude both get devlyn skills + project CLAUDE.md pre-baseline.
+# Bare arm gets nothing (no skill, no shim, no env).
+#
+# iter-0019: solo_claude (L1) shares the variant-arm staging because the L1
+# arm is the same orchestrator on the same skills — the only difference is
+# that codex is blocked. We stage the shim for both arms; for variant the
+# shim transparently routes `codex exec` through codex-monitored.sh (iter-
+# 0009 starvation fix), for solo_claude the shim refuses every codex
+# invocation under CODEX_BLOCKED=1 (defense in depth: shim catches PATH-
+# resolution, wrapper catches direct-path invocations).
+if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; then
   mkdir -p "$WORK_DIR/.claude"
   if [ -d "$REPO_ROOT/.claude/skills" ]; then
     cp -R "$REPO_ROOT/.claude/skills" "$WORK_DIR/.claude/skills"
   else
-    echo "warning: $REPO_ROOT/.claude/skills missing — variant may lack project skills" >&2
+    echo "warning: $REPO_ROOT/.claude/skills missing — $ARM may lack project skills" >&2
   fi
   if [ -f "$REPO_ROOT/CLAUDE.md" ]; then
     cp "$REPO_ROOT/CLAUDE.md" "$WORK_DIR/CLAUDE.md"
   fi
-  # iter-0009: stage the codex PATH shim. This is the runtime binding layer
-  # that prevents iter-0006/0008-class stream-starvation collapses. The shim
-  # transparently routes any `codex exec ...` invocation (including
-  # `bash -lc 'codex exec...'`, scripted, or indirect calls) to
-  # codex-monitored.sh, which closes stdin (codex 0.124.0 prompt-arg+stdin
-  # hang fix), streams stdout fully (no `tail` buffering), and emits a
-  # heartbeat every 30s so the outer claude -p byte-watchdog stays fed.
-  # Bare arm gets nothing — bare doesn't invoke codex.
+  # Stage the codex PATH shim. Required for both variant (route to monitored
+  # wrapper) and solo_claude (CODEX_BLOCKED enforcement at PATH layer).
   if command -v codex >/dev/null 2>&1; then
     CODEX_REAL_BIN="$(command -v codex)"
     SHIM_SRC="$REPO_ROOT/scripts/codex-shim/codex"
@@ -90,48 +97,47 @@ if [ "$ARM" = "variant" ]; then
     mkdir -p "$WORK_DIR/.devlyn-bin"
     cp "$SHIM_SRC" "$WORK_DIR/.devlyn-bin/codex"
     chmod +x "$WORK_DIR/.devlyn-bin/codex"
-    # The wrapper lives inside the staged skills tree so skill prompts that
-    # reference `.claude/skills/_shared/codex-monitored.sh` resolve correctly
-    # from $WORK_DIR. The shim itself is path-independent.
     CODEX_MONITORED_PATH="$WORK_DIR/.claude/skills/_shared/codex-monitored.sh"
     [ -r "$CODEX_MONITORED_PATH" ] || {
       echo "fatal: codex-monitored.sh not present in staged skills at $CODEX_MONITORED_PATH" >&2
       exit 1
     }
     export CODEX_REAL_BIN CODEX_MONITORED_PATH
-    # Claude Code dispatches each Bash tool call via `zsh -c source
-    # <shell-snapshot> && export <claude-injected-env> && eval "<cmd>"`. The
-    # shell snapshot contains a HARDCODED `export PATH=...` that overrides
-    # whatever PATH this script sets before invoking claude. Claude's
-    # `settings.json env.*` map IS injected after the snapshot, so writing
-    # PATH there is the only reliable way to put `$WORK_DIR/.devlyn-bin`
-    # ahead of the snapshot's PATH inside Bash dispatches.
-    # CODEX_REAL_BIN / CODEX_MONITORED_PATH are also written here so the
-    # shim and wrapper see them in EVERY Bash dispatch (parent-process env
-    # alone would not survive the snapshot reset).
     SNAPSHOT_PATH=$(grep -m1 '^export PATH=' \
       "$HOME/.claude/shell-snapshots/snapshot-zsh-"*.sh 2>/dev/null \
       | head -1 | sed 's/^[^=]*=//' | tr -d '"' || true)
     [ -n "$SNAPSHOT_PATH" ] || SNAPSHOT_PATH="$PATH"
     INJECTED_PATH="$WORK_DIR/.devlyn-bin:$SNAPSHOT_PATH"
+    # iter-0019: arm-specific env. variant gets the codex routing pair;
+    # solo_claude gets CODEX_BLOCKED=1 (shim + wrapper both refuse).
+    # CODEX_REAL_BIN / CODEX_MONITORED_PATH are still written for solo_claude
+    # so that if any code path bypasses BLOCKED check (defense fail), the
+    # shim still has the metadata to fail loudly rather than crashing
+    # silently — but the BLOCKED check fires first and exits 126.
+    if [ "$ARM" = "solo_claude" ]; then
+      ARM_CODEX_BLOCKED=1
+    else
+      ARM_CODEX_BLOCKED=0
+    fi
     python3 - "$WORK_DIR/.claude/settings.json" \
-      "$INJECTED_PATH" "$CODEX_REAL_BIN" "$CODEX_MONITORED_PATH" <<'PY'
+      "$INJECTED_PATH" "$CODEX_REAL_BIN" "$CODEX_MONITORED_PATH" "$ARM_CODEX_BLOCKED" <<'PY'
 import json, sys
-out_path, path_val, real_bin, monitored = sys.argv[1:5]
-data = {
-    "env": {
-        "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-        "PATH": path_val,
-        "CODEX_REAL_BIN": real_bin,
-        "CODEX_MONITORED_PATH": monitored,
-    }
+out_path, path_val, real_bin, monitored, codex_blocked = sys.argv[1:6]
+env = {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "PATH": path_val,
+    "CODEX_REAL_BIN": real_bin,
+    "CODEX_MONITORED_PATH": monitored,
 }
+if codex_blocked == "1":
+    env["CODEX_BLOCKED"] = "1"
+data = {"env": env}
 with open(out_path, "w") as f:
     json.dump(data, f, indent=2)
     f.write("\n")
 PY
   else
-    echo "warning: codex not on PATH — variant arm cannot exercise iter-0009 wrapper" >&2
+    echo "warning: codex not on PATH — $ARM cannot exercise iter-0009 wrapper / iter-0019 BLOCKED enforcement" >&2
     CODEX_REAL_BIN=""
     CODEX_MONITORED_PATH=""
   fi
@@ -184,15 +190,28 @@ fi
 # ideate → auto-resolve → preflight from the raw task.txt (as a novice would);
 # every other fixture's variant uses the spec-driven auto-resolve path.
 PROMPT_FILE="$RESULT_DIR/input.md"
-if [ "$ARM" = "variant" ]; then
+# iter-0019: variant uses --engine auto (codex BUILD + claude critique pair);
+# solo_claude uses --engine claude explicitly so the orchestrator routes every
+# phase to Claude and never tries to invoke codex. The CODEX_BLOCKED shim
+# enforces this at the binary layer if the orchestrator misroutes.
+if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; then
+  if [ "$ARM" = "solo_claude" ]; then
+    ENGINE_CLAUSE="--engine claude"
+    ENGINE_PROMPT_HINT="Run with \`--engine claude\` for every phase. Codex must not be invoked — the harness has blocked it at the binary layer for this run."
+  else
+    ENGINE_CLAUSE=""
+    ENGINE_PROMPT_HINT="Let \`--engine auto\` select the route from the spec's complexity and risk signals — do not override it."
+  fi
   if [ "$FIXTURE" = "F9-e2e-ideate-to-preflight" ]; then
     # Novice flow — no pre-placed spec. The arm must generate it via ideate.
     cat > "$PROMPT_FILE" <<EOF
 You are a first-time devlyn-cli user. You have a vague idea and want the harness to take it from unstructured ask to shipped, verified feature. Run the chain:
 
-1. Invoke \`/devlyn:ideate\` to turn the idea into docs/VISION.md, docs/ROADMAP.md, and a self-contained spec under docs/roadmap/phase-1/.
-2. Once ideate emits a spec path (something like docs/roadmap/phase-1/1.1-<slug>.md), invoke \`/devlyn:auto-resolve "Implement per spec at <that-path>"\` to run the full build → evaluate → critic → docs pipeline.
-3. Finally, invoke \`/devlyn:preflight\` to audit the implementation against the generated roadmap.
+1. Invoke \`/devlyn:ideate ${ENGINE_CLAUSE}\` to turn the idea into docs/VISION.md, docs/ROADMAP.md, and a self-contained spec under docs/roadmap/phase-1/.
+2. Once ideate emits a spec path (something like docs/roadmap/phase-1/1.1-<slug>.md), invoke \`/devlyn:auto-resolve ${ENGINE_CLAUSE} "Implement per spec at <that-path>"\` to run the full build → evaluate → critic → docs pipeline.
+3. Finally, invoke \`/devlyn:preflight ${ENGINE_CLAUSE}\` to audit the implementation against the generated roadmap.
+
+${ENGINE_PROMPT_HINT}
 
 Follow the skills to completion. Do not short-circuit.
 
@@ -202,11 +221,11 @@ RAW IDEA:
 $(cat "$TASK")
 EOF
   else
-    # Standard variant: spec is pre-placed at canonical roadmap path.
+    # Standard variant / solo_claude: spec is pre-placed at canonical roadmap path.
     mkdir -p "$WORK_DIR/docs/roadmap/phase-1"
     cp "$SPEC" "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"
     cat > "$PROMPT_FILE" <<EOF
-Use the \`/devlyn:auto-resolve\` skill to implement the spec at \`docs/roadmap/phase-1/$FIXTURE.md\`. Let \`--engine auto\` select the route from the spec's complexity and risk signals — do not override it.
+Use the \`/devlyn:auto-resolve ${ENGINE_CLAUSE}\` skill to implement the spec at \`docs/roadmap/phase-1/$FIXTURE.md\`. ${ENGINE_PROMPT_HINT}
 
 After the pipeline finishes, report the terminal verdict and list of files changed so the benchmark runner can capture state.
 EOF
@@ -303,11 +322,13 @@ else
   set -m
   (
     cd "$WORK_DIR"
-    # iter-0009: prepend codex shim PATH for the variant arm only. See the
-    # shim-staging block above for rationale. CODEX_REAL_BIN /
-    # CODEX_MONITORED_PATH were exported there.
-    if [ "$ARM" = "variant" ] && [ -x "$WORK_DIR/.devlyn-bin/codex" ]; then
+    # iter-0009 + iter-0019: prepend codex shim PATH for any arm that staged
+    # one (variant routes through codex-monitored.sh; solo_claude refuses on
+    # CODEX_BLOCKED=1). Bare arm has no shim.
+    if { [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; } \
+       && [ -x "$WORK_DIR/.devlyn-bin/codex" ]; then
       export PATH="$WORK_DIR/.devlyn-bin:$PATH"
+      [ "$ARM" = "solo_claude" ] && export CODEX_BLOCKED=1
     fi
     exec claude \
       -p "$(cat "$PROMPT_FILE")" \
