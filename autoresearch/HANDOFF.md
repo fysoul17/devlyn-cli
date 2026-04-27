@@ -27,60 +27,59 @@ If a future session finds this block missing or summarized, that is a violation 
 
 ## ⚠️ COLD-START CRITICAL CONTEXT (read FIRST in a new session)
 
-If you are resuming after a context-window clear, the most fragile state right now is:
+**iter-0019 paid 5-fixture × 3-arm suite COMPLETED 2026-04-28T04:06Z** (RUN_ID `20260427T155638Z-c08130f-iter-0019-smoke`). Verdict committed in `b5f0f97`. Three follow-up patches landed: iter-0019.4 (`5e035d1` judge.sh mapfile fix), iter-0019.5 (`2269787` CODEX_REAL_BIN env-leak), iter-0019.6 (`3a6db4f` F9 mechanical output-contract enforcement). The verdict bind to option (a) is satisfied by iter-0019.6.
 
-### iter-0019 paid benchmark suite is RUNNING in the background
+### NEXT CONCRETE ACTION — iter-0019.6 acceptance gate (F9-only paid run)
 
-A long-lived `nohup bash run-suite.sh` is detached and writing artifacts:
-
-```
-SUITE PID:   93465  (was alive at 07:18 elapsed when this HANDOFF was written 2026-04-28)
-LOG:         /tmp/iter-0019-logs/suite.log
-PID FILE:    /tmp/iter-0019-logs/pid.txt        (contains "SUITE_PID=93465")
-RUN_ID:      20260427T155638Z-c08130f-iter-0019-smoke
-RESULTS DIR: benchmark/auto-resolve/results/20260427T155638Z-c08130f-iter-0019-smoke/
-FIXTURES:    F1-cli-trivial-flag F2-cli-medium-subcommand F4-web-browser-design \
-             F6-dep-audit-native-module F9-e2e-ideate-to-preflight
-ARMS:        variant + solo_claude + bare  (5 × 3 = 15 fixture-arm runs)
-EXPECTED WALL: ~2-3h end-to-end
-COMMIT AT START: c08130f (iter-0019 part 1)
-```
-
-**Resume verification commands** (run these FIRST in a new session before editing anything):
+Re-run iter-0019 paid suite limited to **F9 only** (all 3 arms) under the iter-0019.6 patch. Acceptance: `F9/variant.verify_score ≥ 0.6` AND no `correctness.spec-literal-mismatch` CRITICAL findings persist past round-2 fix-loop AND F9/variant `disqualifier=false` from spec failures (silent-catch DQ separate, out of scope). Cost ~$5-10, wall ~30-45min.
 
 ```bash
-# 1. Confirm suite still alive (or completed cleanly)
-ps -p $(grep SUITE_PID /tmp/iter-0019-logs/pid.txt | cut -d= -f2) -o pid,etime,command
+# 0. Confirm clean baseline state (no in-flight suite)
+ps aux | grep run-suite.sh | grep -v grep   # expect empty
+git status --short                          # expect: only ?? .claude/
 
-# 2. Look at progress
-grep -E '\[suite\] (►|✗|judge|mirrored)' /tmp/iter-0019-logs/suite.log
+# 1. Sanity: lint passes 10/10 + new spec-verify-check.py executable + mirror parity
+bash scripts/lint-skills.sh
+diff -q config/skills/devlyn:auto-resolve/scripts/spec-verify-check.py \
+        .claude/skills/devlyn:auto-resolve/scripts/spec-verify-check.py
+[ -x config/skills/devlyn:auto-resolve/scripts/spec-verify-check.py ] && echo "exec OK"
 
-# 3. Per-fixture verdicts so far
-ls benchmark/auto-resolve/results/20260427T155638Z-c08130f-iter-0019-smoke/
+# 2. Launch F9-only background suite (variant + solo_claude + bare)
+mkdir -p /tmp/iter-0019-6-logs
+nohup bash benchmark/auto-resolve/scripts/run-suite.sh \
+      --label iter-0019-6-acceptance F9-e2e-ideate-to-preflight \
+      > /tmp/iter-0019-6-logs/suite.log 2>&1 &
+echo "SUITE_PID=$!" > /tmp/iter-0019-6-logs/pid.txt
 
-# 4. Final report (only present when suite + judge finish)
-cat benchmark/auto-resolve/results/20260427T155638Z-c08130f-iter-0019-smoke/report.md 2>/dev/null
+# 3. Compute new RUN_ID (suite logs it on first line)
+sleep 5
+grep -E 'Run-id:' /tmp/iter-0019-6-logs/suite.log
+
+# 4. Monitor via /loop wakeups (same pattern as iter-0019)
 ```
 
-### Do NOT do these things while the suite is running
+**Suite ETA**: ~30-45min total. F9 metadata.timeout=3600s; iter-0019 wall was variant 1278s + solo_claude 1744s + bare 82s = 3104s ≈ 52 min. With iter-0019.6's BUILD_GATE adding fix-loop rounds, expect upper bound 60min if multiple round-2 fixes are needed.
 
-- ❌ Edit anything under `config/skills/` (auto-mirrors at suite start; later fixtures would see your change → variant-arm data corrupted)
-- ❌ Edit `CLAUDE.md` (variant arm reads `$REPO_ROOT/CLAUDE.md` — see iter-0017 sync mechanism)
-- ❌ Edit `benchmark/auto-resolve/scripts/*` (next fixture invocation reads them)
-- ❌ Edit `benchmark/auto-resolve/fixtures/*/{spec.md,expected.json,metadata.json,setup.sh,task.txt}`
+**Acceptance interpretation when suite completes**:
+1. F9/variant `verify_score ≥ 0.6` → iter-0019.6 PASSES, mechanical enforcement working. Update DECISIONS.md `0019.6 | SHIPPED-VERIFIED`. Unblock iter-0020.
+2. F9/variant `verify_score < 0.6` AND `spec-verify-findings.jsonl` shows CRITICAL findings each round → fix-loop didn't converge; orchestrator can't fix the contract gap from CRITICAL findings alone. Likely follow-up: enrich findings with concrete diff snippets, OR move enforcement to a different phase (POST-BUILD instead of BUILD_GATE). File as iter-0019.7.
+3. F9/variant `verify_score < 0.6` AND no spec-verify findings → spec-verify-check.py didn't fire (mirror gap, env gap, or BUILD_GATE didn't invoke). Diagnose by inspecting `.devlyn/spec-verify.results.json` in F9/variant work_dir post-archive.
+
+### Do NOT do these things during the F9 acceptance suite
+
+- ❌ Edit anything under `config/skills/` (auto-mirrors at suite start; later round fix-loops would see drift)
+- ❌ Edit `CLAUDE.md` (variant arm reads `$REPO_ROOT/CLAUDE.md`)
+- ❌ Edit `benchmark/auto-resolve/scripts/*` or `benchmark/auto-resolve/fixtures/F9-*`
 - ❌ Run `node bin/devlyn.js -y` (rewrites `.claude/skills/`)
-- ❌ Kill PID 93465 unless you're certain it's stuck (then use the inter-phase observability gap notes below to diagnose)
-- ✅ OK: edit `autoresearch/*.md` docs, write iteration files, prepare next-iter design
+- ✅ OK: edit `autoresearch/*.md` docs, write iteration files, prepare iter-0020 design
 
-### When the suite completes (signals)
+### When the F9 acceptance suite completes (signals)
 
-- `report.md` and `summary.json` appear in `benchmark/auto-resolve/results/<RUN_ID>/`
-- `ps -p 93465` returns nothing
+- `report.md` and `summary.json` appear in `benchmark/auto-resolve/results/<NEW_RUN_ID>/`
 - Log tail shows `═══ SHIP-GATE VERDICT: PASS|FAIL ═══`
+- F9/variant/result.json `verify_score` field is the headline number
 
-Then continue with **iter-0019 verdict + iter file + commit** (sub-task #17). Do NOT bundle the next iter's prompt edits into the same commit.
-
-### If the suite died unexpectedly
+### If the suite dies unexpectedly
 
 - Check log tail for stack trace / `set -e` exit
 - iter-0014 state-writes are durable: each fixture's `pipeline.state.json` exists in `/private/tmp/bench-<RUN_ID>-<fixture>-<arm>/.devlyn/pipeline.state.json` showing which phase died
@@ -91,14 +90,24 @@ Then continue with **iter-0019 verdict + iter file + commit** (sub-task #17). Do
 
 ## Current state
 
-**Branch**: `benchmark/v3.6-ab-20260423-191315`. 19 commits ahead of origin after iter-0019.4 + iter-0019 part 2 + CLAUDE.md audit proposal commits.
+**Branch**: `benchmark/v3.6-ab-20260423-191315`. 21 commits ahead of origin after iter-0019.4 / .5 / .6 + iter-0019 part 2 + CLAUDE.md audit proposal commits.
 
-**iter-0019 SUITE COMPLETE 2026-04-28T04:06Z** (RUN_ID `20260427T155638Z-c08130f-iter-0019-smoke`). All 15 arm runs + 5 judge re-runs (after iter-0019.4 mapfile fix) successful. Suite avg V=91.8 / L1=90.8 / L0=81.2. **L1 PASSES NORTH-STAR test #1** (L1-L0=+9.6 ≥ +8 preferred). **L2 FAILS NORTH-STAR test #6** (L2-L1=+1.0 < +5 floor) — pair-mode compression risk realized. 2 variant hard-floor DQs (F2, F9 silent-catch) → release-readiness NOT IMPLIED. F4 L1=100 beats L2=99 (Codex R3 tool-attribution hypothesis CONFIRMED). F9 L1=81 beats L2=74 by 7 points. solo_claude enforcement clean on all 5 fixtures (Bypass A surface open but never exercised). iter-0018.5 F9 prompt fold-in DEAD (verify=0.4 across all arms). **Bind: option (a) F9 mechanical enforcement = iter-0019.6 (next).**
+**iter-0019 SUITE COMPLETE 2026-04-28T04:06Z** (RUN_ID `20260427T155638Z-c08130f-iter-0019-smoke`). All 15 arm runs + 5 judge re-runs (after iter-0019.4 mapfile fix) successful. Suite avg V=91.8 / L1=90.8 / L0=81.2. **L1 PASSES NORTH-STAR test #1** (L1-L0=+9.6 ≥ +8 preferred). **L2 FAILS NORTH-STAR test #6** (L2-L1=+1.0 < +5 floor) — pair-mode compression risk realized. 2 variant hard-floor DQs (F2, F9 silent-catch) → release-readiness NOT IMPLIED. F4 L1=100 beats L2=99 (Codex R3 tool-attribution hypothesis CONFIRMED). F9 L1=81 beats L2=74 by 7 points. solo_claude enforcement clean on all 5 fixtures (Bypass A surface open but never exercised). iter-0018.5 F9 prompt fold-in DEAD (verify=0.4 across all arms).
+
+**iter-0019 follow-up patches LANDED 2026-04-28**:
+- iter-0019.4 (`5e035d1`): judge.sh mapfile → Bash 3.2 portable while-read (mapfile is Bash 4+; macOS /bin/bash 3.2 silently failed all 5 judge invocations in the iter-0019 paid run). Re-judged all 5 fixtures post-fix to extract scores.
+- iter-0019.5 (`2269787`): close CODEX_REAL_BIN env-var leak into solo_claude — bypass surface CLOSED. Codex R1 caught (during iter-0019 mid-suite); surface was open all suite long but never exercised, hardening preemptively for iter-0020's 9-fixture run.
+- iter-0019.6 (`3a6db4f`): F9 mechanical output-contract enforcement — verdict bind option (a). Adds `.devlyn/spec-verify.json` staging + `scripts/spec-verify-check.py` BUILD_GATE invocation that mirrors post-run verifier semantics, emits canonical CRITICAL `correctness.spec-literal-mismatch` findings on exit/contains/not-contains mismatch. Routes through existing PHASE 2.5 fix-loop. Prompt-only iter-0018.5 fold-in was empirically dead — this is the iter-0008 lesson at second mechanism scope.
+
+**NEXT (queued, not yet run)**: F9-only paid acceptance suite under iter-0019.6 patch (~$5-10, ~30-45min). See "NEXT CONCRETE ACTION" block at top of this file. iter-0020 (cost-aware pair policy + 9-fixture L0/L1/L2 paid run) is unblocked once F9 acceptance passes.
 
 **HEAD chain** (newest first):
 ```
-<iter-0019 part 2 commit>  autoresearch(iter-0019 part 2): verdict + iter file + pre-flight 0 + real-project trial gate
-<iter-0019.4 commit>       autoresearch(iter-0019.4): judge.sh mapfile -> bash 3.2 portable while-read
+3a6db4f  autoresearch(iter-0019.6): F9 mechanical output-contract enforcement
+2269787  autoresearch(iter-0019.5): omit CODEX_REAL_BIN from solo_claude env
+b5f0f97  autoresearch(iter-0019 part 2): verdict + pre-flight 0 + real-project trial gate
+5e035d1  autoresearch(iter-0019.4): judge.sh mapfile -> bash 3.2 portable
+34e6341  autoresearch(handoff): cold-start-resilient HANDOFF rewrite for context-clear continuity
 d6faef1  autoresearch: queue CLAUDE.md install-time identity + minimization audit
 c08130f  autoresearch(iter-0019 part 1): solo_claude L1 arm + 3-arm schema + CODEX_BLOCKED enforcement
 60b27b2  autoresearch(iter-0018.5): BUILD/EVAL prompt fold-ins for F5 / F9 failure modes
@@ -117,7 +126,7 @@ iter-0007 verdict realized. iter-0008 REJECTED. **iter-0009 → iter-0014 + iter
 
 **Next iteration QUEUE** (post-iter-0018.5 + iter-0019 part 1, rewritten 2026-04-28):
 
-0. **iter-0019 part 2 — verdict + iter file + commit** (✅ **SHIPPED 2026-04-28**, this commit). Bind: follow-up action **(a) F9 mechanical enforcement**. See `autoresearch/iterations/0019-l1-claude-arm.md` for full data + principles check. **PRECOMMIT (Codex R2, 2026-04-28, kept for historical reference)**: this run's verdict was allowed to lead to exactly ONE of three follow-up actions, no fourth option. Pick before reading the data. Track which one this verdict commits to in the iter file under "What this iter unlocks":
+0. **iter-0019 part 2 — verdict + iter file** (✅ **SHIPPED 2026-04-28**, commit `b5f0f97`). Bind: follow-up action **(a) F9 mechanical enforcement** = iter-0019.6 (also SHIPPED, see below). See `autoresearch/iterations/0019-l1-claude-arm.md` for full data + principles check. **PRECOMMIT (Codex R2, 2026-04-28, kept for historical reference)**: this run's verdict was allowed to lead to exactly ONE of three follow-up actions, no fourth option. Pick before reading the data. Track which one this verdict commits to in the iter file under "What this iter unlocks":
    - (a) **Mechanically enforce F9 output contract** — if F9 variant verify_score < 0.6 OR judge spec axis < 22 (i.e. iter-0018.5 prompt fold-in did not hold), the next iter is harness-side enforcement (e.g. EVAL bash gate that diffs actual output bytes against spec literal, fails CRITICAL on mismatch — not prompt-only). User-visible failure removal.
    - (b) **Implement cost-aware pair policy in iter-0020** — if L1 vs L0 + L2 vs L1 attribution is clean enough to make a router decision (per-fixture margins + wall ratios), iter-0020 lands the per-phase decision-mode taxonomy with **deterministic short-circuit + wall budget abort**, not as design discussion. Routing policy change.
    - (c) **Disable or narrow L2 where it fails L1 cost-adjusted** — if any fixture shows variant_over_solo < +5 with wall_ratio_variant_over_solo > 2.0, the next iter is to *remove* the pair phase for that fixture class, not to optimize it. User-visible cost reduction.
@@ -134,9 +143,9 @@ iter-0007 verdict realized. iter-0008 REJECTED. **iter-0009 → iter-0014 + iter
    - Update HANDOFF.md "Current state" + cumulative lessons.
    - Commit. Do NOT bundle prompt edits or the iter-0019.5 / iter-0020 work.
 
-0.5. **iter-0019.5 — close `CODEX_REAL_BIN` env-var leak into solo_claude** (NEW, 2026-04-28). Status: NEXT to ship; bypass surface was OPEN through iter-0019 paid run but never exercised (data confirmed clean). Hardening for future 9-fixture L0/L1/L2 run. Codex R0 (pre-data falsification on iter-0019 enforcement) caught: `run-fixture.sh:126-131` unconditionally writes `CODEX_REAL_BIN=<absolute-path-to-real-codex>` into `.claude/settings.json` env, including for ARM=solo_claude. Orchestrator can call `Bash("$CODEX_REAL_BIN exec ...")` and bypass BOTH shim (PATH lookup not used) AND wrapper (codex-monitored.sh not invoked). The codex node binary itself does NOT honor CODEX_BLOCKED, so this is a real bypass class. **Fix**: when ARM=solo_claude, omit `CODEX_REAL_BIN` from the env dict (or set to empty/poison). Shim's BLOCKED check fires before needing CODEX_REAL_BIN, so removing it doesn't break shim; if CODEX_BLOCKED is somehow unset later, shim now fails closed instead of delegating. Lands AFTER iter-0019 part 2 verdict commits, BEFORE iter-0020. Separate commit. Falsification: re-run a single solo_claude fixture and confirm `CODEX_REAL_BIN` absent from settings.json env block; lint passes. The current 5-fixture suite's verdict pass uses post-hoc artifact detection (Codex Q2 greps) to determine if bypass A actually fired — if it did, iter-0019 numbers are documented as suspect and re-run is needed.
+0.5. **iter-0019.5 — close `CODEX_REAL_BIN` env-var leak into solo_claude** (✅ **SHIPPED 2026-04-28**, commit `2269787`). Bypass surface was OPEN through iter-0019 paid run but never exercised (data confirmed clean across all 5 solo_claude runs). Hardening landed preemptively for iter-0020's 9-fixture L0/L1/L2 run. Codex R0/R1 (pre-data falsification on iter-0019 enforcement) caught: `run-fixture.sh:126-131` unconditionally writes `CODEX_REAL_BIN=<absolute-path-to-real-codex>` into `.claude/settings.json` env, including for ARM=solo_claude. Orchestrator can call `Bash("$CODEX_REAL_BIN exec ...")` and bypass BOTH shim (PATH lookup not used) AND wrapper (codex-monitored.sh not invoked). The codex node binary itself does NOT honor CODEX_BLOCKED, so this is a real bypass class. **Fix**: when ARM=solo_claude, omit `CODEX_REAL_BIN` from the env dict (or set to empty/poison). Shim's BLOCKED check fires before needing CODEX_REAL_BIN, so removing it doesn't break shim; if CODEX_BLOCKED is somehow unset later, shim now fails closed instead of delegating. Lands AFTER iter-0019 part 2 verdict commits, BEFORE iter-0020. Separate commit. Falsification: re-run a single solo_claude fixture and confirm `CODEX_REAL_BIN` absent from settings.json env block; lint passes. The current 5-fixture suite's verdict pass uses post-hoc artifact detection (Codex Q2 greps) to determine if bypass A actually fired — if it did, iter-0019 numbers are documented as suspect and re-run is needed.
 
-0.6. **iter-0019.6 — F9 mechanical output-contract enforcement** (NEW, 2026-04-28, BOUND from iter-0019 verdict). Pre-flight 0 ✅: removes a real user-visible bug (F9-shape spec produces broken JSON across all engines). iter-0019 data: F9/variant verify=0.4 + DQ=true (silent-catch + JSON shape + exit code + error prefix); F9/solo_claude verify=0.4 (no DQ but same spec failures); F9/bare verify=0.4 + DQ=true. **iter-0018.5 prompt fold-in EMPIRICALLY DEAD.** Same lesson as iter-0008. **Fix**: harness-side bash gate at end of EVAL (or new POST-BUILD phase) that executes the spec's `verification_commands` literally and asserts byte-level equality on critical fields (commits/authors JSON shape, `Error:` prefix, exit code 2). Fails CRITICAL on any mismatch. NOT prompt-only. Lands AFTER iter-0019.5 (env-leak fix), BEFORE iter-0020 (pair-policy needs F9 to be passable to make routing decisions on it). Falsification: re-run F9/solo_claude under iter-0019.6 patch, expect verify_score ≥ 0.6 (need 3/5 commands passing) AND no DQ from spec failures. F9 is the smallest possible scope for this fix; if mechanical enforcement works there, generalize the pattern in iter-0020 / iter-0021.
+0.6. **iter-0019.6 — F9 mechanical output-contract enforcement** (✅ **SHIPPED 2026-04-28**, commit `3a6db4f`, BOUND from iter-0019 verdict option (a)). Design B (Codex R5 verdict adopted in full): normalized `.devlyn/spec-verify.json` staged by `run-fixture.sh` (verification_commands only — no tier_a_waivers / forbidden_patterns / scope oracles); `config/skills/devlyn:auto-resolve/scripts/spec-verify-check.py` invoked by BUILD_GATE Agent every round, mirrors post-run verifier semantics (combined stdout+stderr, 60s per-cmd timeout); emits canonical schema `correctness.spec-literal-mismatch` CRITICAL findings concatenated onto `build_gate.findings.jsonl`; routes through existing PHASE 2.5 fix-loop. Out of scope: forbidden_patterns silent-catch (separate enforcement), mutating verification commands (read-only-only). Unit-falsified: 3 staged commands (1 pass / 1 missing-contains / 1 exit-code-mismatch) produced exactly 2 CRITICAL findings + correct results.json evidence. **Acceptance gate (NOT YET RUN)**: re-run iter-0019 paid suite limited to F9 only (~$5-10, ~30-45min) and confirm F9/variant verify_score ≥ 0.6 + no spec-failure DQ. See "NEXT CONCRETE ACTION" block at top of this HANDOFF.
 
 1. **iter-0020 — Pair-vs-solo policy formalization + tool-vs-deliberation attribution**. Per-phase decision-mode mapping per `NORTH-STAR.md`. Adds wall-time abort + `coverage.json` checklist-coverage artifact (every checklist ID with `pass/fail/na` + evidence path + touched-file scope, per Codex R3 Q4). **Critical instrumentation**: separate measurement of tool/phase lift (browser_validate, build_gate, security-review native firings) vs model-deliberation lift (second-model EVAL/CRITIC/JUDGE producing different conclusions). F4 may be tool-attributed not pair-attributed (per Codex R3 Q5 hypothesis); F5/F9 in iter-0016 were excluded as evidence per iter-0018 verdicts but iter-0019's data may rehabilitate them. After iter-0020 lands, run a **full 9-fixture L0/L1/L2 suite** to obtain canonical L2-vs-L1 numbers (this is where the 9-fixture run lives, not iter-0019). Do NOT bundle CLAUDE.md audit work (see High-priority queued).
 
@@ -562,6 +571,8 @@ These are the load-bearing conclusions a fresh session must inherit. Each links 
 - North Star R2 (16k tokens): EVAL=gated solo not unconditional pair (would recreate F5/F6 waste). Profile-neutral abstraction = text-only, no runtime engine-swap dispatcher (overengineering since model-agnostic ≠ North Star).
 - North Star R3 (97k tokens): re-ordered iter-0019 (L1-claude arm) ahead of iter-0020 (pair policy). L1-codex deferred (no non-Claude orchestrator path exists yet). F4 lift plausibly tool-attached (browser_validate) not pair-attached — pair > solo unproven. L2 release gate split from L1 (L1 must pass first; L2 vs L1 needs +5 on pair-eligible fixtures only).
 - iter-0018 R0 (19k tokens, 27s): start iter-0018 on 5-fixture data; defer F1/F3/F7/F8 to iter-0019 paid run. F5 root cause = surgical-scope failure (BUILD added `completed=` to roadmap frontmatter beyond strict scope) not pair-deliberation waste. F9 = measurement-integrity adjacent (both arms failed same output contract — pipeline BUILD/EVAL prompt issue, not pair vs solo). L2-vs-L1 compression risk locked into NORTH-STAR.md test #13.
+- iter-0019 R5 (2026-04-28, post-verdict, ~76k tokens, 186s, xhigh): **iter-0019.6 design pair-review**. Adopted in full: (1) stage normalized `.devlyn/spec-verify.json` containing only verification_commands — keeps tier_a_waivers / scope oracles / deps caps out of BUILD_GATE by construction; (2) BENCH_WORKDIR is NOT currently inherited by orchestrator — must add `export BENCH_WORKDIR="$WORK_DIR"` in claude -p dispatch subshell or F9 cmd #3 is environment-flaky; (3) drafted custom finding fields (evidence_path, touched_files, rule_type) DROPPED — use canonical schema from references/findings-schema.md (id, rule_id, level, severity, confidence, message, file, line, phase, criterion_ref, fix_hint, blocking, status); (4) helper script NON-OPTIONAL — prose-only repeats iter-0018.5 failure mode; Python (not bash) for JSON parsing safety; (5) mirror post-run verifier exactly: combined stdout+stderr, 60s timeout per command; (6) F9 DQ-clean claim is OUT OF SCOPE for iter-0019.6 since forbidden_patterns silent-catch enforcement is a separate path; (7) skill mirror parity must include the new helper script. Q4 verdict: iter-0019.6 does NOT violate iter-0020 R3 acceptance — this is correctness/contract enforcement, iter-0020 is policy. Pattern lesson: every layered defense's "diagnostic visibility" justification needs to be inverted to "fail-closed" justification — comments at `run-fixture.sh:113-116` (CODEX_REAL_BIN justified as diagnostic but actually bypass weapon) and prose-only enforcement layers (iter-0018.5 quality_bar bullets) are the same anti-pattern at different scopes.
+- iter-0019 R4 (2026-04-28, post-suite, 43s, xhigh): **iter-0019.4 mapfile fix design**. Confirmed while-read replacement is correct; recommend `|| [ -n "$line" ]` guard for exact `mapfile -t` parity (harmless, preserves behavior on final unterminated line). Q2 (Bash version sentinel) and Q3 (run-suite.sh shebang change) deferred — out of scope for the regression fix. Pattern lesson: macOS /bin/bash 3.2 compatibility is a hard constraint for any harness script invoked via `bash <script>` — Bash 4+ builtins (mapfile, ${var,,}, &>, etc.) silently fail.
 - iter-0019 R3 (2026-04-28, mid-suite, ~16k tokens, 26s, xhigh): **queue pre-flight 0 audit**. Confirmed all four cuts: (1) iter-0021 dual-judge → reframe as conditional (fires only if iter-0020 lands within ±6pt of routing-decision threshold); permanent dual-judge would be measurement polish; (2) CLAUDE.md minimization → gate on measurable A/B degradation; pollution claim is plausible but unproven and pre-flight 0 forbids assertion-only starts; (3) iter-0020 acceptance language tightened — must produce per-fixture-class routing table + at least one routing decision differing from current behavior + deterministic short-circuit/abort enforced in code + coverage.json + recorded rollback condition; aggregate score movement alone is non-acceptance evidence; (4) iter-0019.5 stays separate iter/commit (distinct failure mode from L1 arm enforcement, future-bisect-friendly attribution). Cost/wall iters pass pre-flight 0 by definition (direct user harm). **Lesson**: "harness self-knowledge" iters (dual-judge, measurement-of-measurement) are legitimate ONLY when bad measurement can plausibly cause a wrong user-facing decision; otherwise they violate pre-flight 0.
 - iter-0019 R2 (2026-04-28, mid-suite, ~17k tokens, 37s, xhigh): **NORTH-STAR alignment audit** — user asked the load-bearing question "is this score-chasing or principle-aligned?". Codex pushed back on three fronts: (1) iter-0019 is North-Star-aligned **only if it becomes the last attribution run before a cost/reliability decision** — if the next iter is "more measurement," the loop has gone 산으로 and L1 was just score instrumentation; (2) heuristic for future iters: **"Every iter must either remove a real user failure or make the next go/no-go decision impossible to fake"** — landed as PRINCIPLES.md pre-flight 0; (3) termination criterion incomplete without a **real-project trial gate** — landed as NORTH-STAR.md operational test #14. Immediate constraint: iter-0019 verdict can only lead to one of three follow-up actions — fix F9 contract mechanically, implement cost-aware pair policy, or disable/narrow L2 where it fails L1 cost-adjusted. **No new measurement-only iter** until correctness/cost guardrails move. Locked into HANDOFF queue item #0 as a precommit Codex R2 (2026-04-28) precommit clause.
 - iter-0019 R1 (2026-04-28, mid-suite, ~112k tokens, 142s, xhigh): **pre-data falsification on solo_claude enforcement**. Caught a real bypass class I missed: `run-fixture.sh:126-131` writes `CODEX_REAL_BIN=<absolute-path>` into the settings.json env block unconditionally, **including for ARM=solo_claude**. Orchestrator can do `Bash("$CODEX_REAL_BIN exec ...")` and reach real codex — both shim (PATH lookup not used) and wrapper (codex-monitored.sh not invoked) are bypassed. The codex node binary itself does NOT honor CODEX_BLOCKED. Author comment at run-fixture.sh:113-116 acknowledges the leak but kept it for diagnostic visibility — Codex correctly inverts: stop exporting `CODEX_REAL_BIN` for solo_claude (shim BLOCKED check fires before needing it; if BLOCKED later unset, shim fails closed instead of silently delegating). **Verdict-pass detection**: post-hoc greps over `claude-debug.log` + `~/.codex/sessions/.../session_meta.cwd` matching solo_claude paths is a reliable independent signal. Filed as iter-0019.5 (post iter-0019 part 2 verdict, separate commit). Verdict-greps script staged at `/tmp/iter0019-verdict-greps.sh`. **Pattern lesson**: every variable the harness exports into a worker subshell is a potential bypass surface — diagnostic-visibility comments should not justify exporting the bypass weapon itself.
