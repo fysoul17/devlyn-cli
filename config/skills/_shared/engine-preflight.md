@@ -28,4 +28,4 @@ If no downgrade happened, omit the parenthetical. That single line is the contra
 
 ## Canonical Codex invocation
 
-See `config/skills/_shared/codex-config.md` for the exact `codex exec` flag set skills should use after the availability check passes.
+See `config/skills/_shared/codex-config.md` for the canonical wrapper invocation and flag set skills should use after the availability check passes.

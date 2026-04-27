@@ -196,15 +196,22 @@ fi
 #     stream. Descriptive phrases like "passes args through to `codex exec`
 #     verbatim" are allowed — only invocation-shaped uses are forbidden.
 #
-#     Pattern catches three invocation shapes:
-#       - single-line:  `codex exec -C ...`           → `codex exec -`
-#       - resume form:  `codex exec resume --last`    → `codex exec resume `
-#       - multi-line:   `codex exec \` + indented args → `codex exec \` at EOL
+#     Pattern: `codex exec[[:space:]]+\S` — catches any invocation shape
+#     (whitespace then a non-space character after `exec`). Passes backtick-
+#     closed descriptive prose like `` `codex exec` `` because the closing
+#     backtick is non-whitespace adjacent to `exec`, not whitespace.
+#     Concrete shapes caught:
+#       - single-line flag:    `codex exec -C ...`
+#       - resume form:         `codex exec resume --last`
+#       - multi-line cont.:    `codex exec \` (space + `\` at EOL)
+#       - quoted prompt:       `codex exec "prompt"`           ← iter-0011
+#       - variable expansion:  `codex exec $PROMPT`            ← iter-0011
+#       - literal token:       `codex exec prompt`             ← iter-0011
 #     Excludes: _shared/codex-config.md (canonical doc may discuss the rule
 #     itself), workspace/, archive snapshots.
 # ---------------------------------------------------------------------------
 section "Check 10: No raw codex exec invocation in skill prompts"
-offenders=$(grep -RInE 'codex exec (-|resume[[:space:]]|\\$)' \
+offenders=$(grep -RInE 'codex exec[[:space:]]+[^[:space:]]' \
   config/skills 2>/dev/null \
   | grep -v 'config/skills/_shared/codex-config.md' \
   | grep -v 'config/skills/_shared/codex-monitored.sh' \

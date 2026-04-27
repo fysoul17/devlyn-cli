@@ -2,9 +2,9 @@
 
 Routing rules for Claude / Codex / Dual per role and phase. Only read when `--engine` is `auto` or `codex`.
 
-> Codex invocations use the local `codex exec` CLI. Flag set + rationale live in `config/skills/_shared/codex-config.md`. No MCP, no model hardcoding — the CLI's current flagship is inherited automatically.
+> Codex invocations shell out via the wrapper at `_shared/codex-monitored.sh`. Flag set + rationale live in `config/skills/_shared/codex-config.md`. No MCP, no model hardcoding — the CLI's current flagship is inherited automatically.
 
-Codex call defaults: `bash .claude/skills/_shared/codex-monitored.sh -C <project root> -s <per role> -c model_reasoning_effort=xhigh "<prompt>"`. The wrapper passes args through to `codex exec` and emits a heartbeat every 30s so the outer `claude -p` byte-watchdog stays fed during long reasoning. Omit `-m` so the flagship is auto-selected. Only pass `-m <variant>` when a role explicitly needs a specialized model line, and name the variant generically ("SWE-bench-heavy coding variant") rather than hardcoding a version number — version strings go stale fast.
+Codex call defaults: `bash .claude/skills/_shared/codex-monitored.sh -C <project root> -s <per role> -c model_reasoning_effort=xhigh "<prompt>"`. The wrapper passes args through verbatim to the underlying CLI and emits a heartbeat every 30s so the outer `claude -p` byte-watchdog stays fed during long reasoning. Omit `-m` so the flagship is auto-selected. Only pass `-m <variant>` when a role explicitly needs a specialized model line, and name the variant generically ("SWE-bench-heavy coding variant") rather than hardcoding a version number — version strings go stale fast.
 
 ---
 

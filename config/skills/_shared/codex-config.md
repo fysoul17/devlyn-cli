@@ -1,10 +1,10 @@
 # Shared — Codex Invocation
 
-Single source of truth for how every skill calls Codex. **MCP is not used.** Skills shell out to the local `codex exec` CLI (shipped by the `openai-codex` Claude Code plugin).
+Single source of truth for how every skill calls Codex. **MCP is not used.** Skills shell out via the wrapper at `_shared/codex-monitored.sh`, which fronts the local Codex CLI (shipped by the `openai-codex` Claude Code plugin).
 
 ## Canonical invocations
 
-All long-running Codex calls go through `codex-monitored.sh` — a thin wrapper that closes stdin (codex 0.124.0 hangs when both stdin is open and a prompt arg is given), streams Codex stdout fully (no `tail -n` truncation), and prints a `[codex-monitored] heartbeat` line every 30s so the outer `claude -p` byte-watchdog stays fed during long reasoning gaps. The wrapper passes its arguments verbatim to `codex exec`, so the canonical flag set is unchanged from a raw `codex exec` call — only the launcher differs.
+All long-running Codex calls go through `codex-monitored.sh` — a thin wrapper that closes stdin (codex 0.124.0 hangs when both stdin is open and a prompt arg is given), streams Codex stdout fully (no `tail -n` truncation), and prints a `[codex-monitored] heartbeat` line every 30s so the outer `claude -p` byte-watchdog stays fed during long reasoning gaps. The wrapper passes its arguments through verbatim to the underlying CLI, so the canonical flag set is unchanged from a raw call — only the launcher differs.
 
 **Read-only critique / adversarial review / debate** (ideate CHALLENGE, preflight code-audit). The auto-resolve CRITIC security sub-pass is NOT Codex — it's delegated to the native `security-review` Claude Code skill; see `devlyn:auto-resolve/references/phases/phase-3-critic.md` Sub-pass 2.
 
@@ -35,7 +35,7 @@ Notes:
 
 ## Availability check
 
-Before the first `codex exec` call in a run, verify the CLI is on PATH:
+Before the first Codex call in a run, verify the CLI is on PATH:
 
 ```bash
 command -v codex >/dev/null 2>&1
@@ -45,7 +45,7 @@ If the check fails, the skill follows the `_shared/engine-preflight.md` downgrad
 
 ## Why CLI over other paths
 
-The `codex exec` CLI is the primary (and only) integration. It beats alternatives on three dimensions: the model is inherited from the CLI's own default so no skill edits are needed when OpenAI ships a new flagship; flags compose on the command line and the skill docs stay grep-friendly; the invocation has one failure mode (the binary is on PATH or it isn't), which the shared availability check covers cleanly.
+The local Codex CLI (fronted by `codex-monitored.sh`) is the primary (and only) integration. It beats alternatives on three dimensions: the model is inherited from the CLI's own default so no skill edits are needed when OpenAI ships a new flagship; flags compose on the command line and the skill docs stay grep-friendly; the invocation has one failure mode (the binary is on PATH or it isn't), which the shared availability check covers cleanly.
 
 ## Invocation from inside a skill prompt
 
