@@ -257,6 +257,11 @@ EOF
 # Exit code is captured so infrastructure failures don't silently look like
 # a weak diff. See invoke_exit in result.json.
 INVOKE_EXIT=0
+# iter-0012: WATCHDOG_FIRED is the truth source for `timed_out` in result.json.
+# Set to 1 only when the watchdog flag file existed at post-wait check
+# (lines 332-336). Initialized here so the `set -u` `export` below at the
+# Python aggregator works in both branches (dry-run never sets it).
+WATCHDOG_FIRED=0
 if [ $DRY_RUN -eq 1 ]; then
   echo "[run-fixture] DRY RUN — prepared $WORK_DIR, skipping model invocation" \
     > "$RESULT_DIR/transcript.txt"
@@ -277,7 +282,10 @@ else
   # watchdog can `kill -- -PGID` and reap codex/codex-mcp-server descendants
   # together with the parent. A flag file disambiguates timeout from natural
   # exit; on timeout we set INVOKE_EXIT=124 (GNU timeout convention) so the
-  # downstream `invoke_failure` logic routes the run into BLOCKED.
+  # downstream `invoke_failure` logic routes the run into BLOCKED. iter-0012:
+  # the same flag also flips WATCHDOG_FIRED=1, which is exported and consumed
+  # by the Python aggregator below to derive result.json.timed_out — so a
+  # natural exit at or past the budget is no longer mislabeled as timeout.
   #
   # MCP/config isolation (iter 0004). The harness's `claude -p` subprocess
   # must not load the operator's user-level MCP plugins (pencil, codex-cli,
@@ -331,6 +339,7 @@ else
 
   if [ -f "$TIMEOUT_FLAG" ]; then
     INVOKE_EXIT=124
+    WATCHDOG_FIRED=1
     rm -f "$TIMEOUT_FLAG"
     echo "[run-fixture] arm timed out after ${TIMEOUT}s — INVOKE_EXIT=124" >&2
   fi
@@ -495,7 +504,7 @@ json.dump(verify, open(os.path.join(result_dir, "verify.json"), "w"), indent=2)
 PY
 
 # Timing + aggregate
-export INVOKE_EXIT
+export INVOKE_EXIT WATCHDOG_FIRED
 python3 - "$RESULT_DIR" "$FIXTURE" "$ARM" "$RUN_ID" "$T_END" "$ELAPSED" "$TIMEOUT" <<'PY'
 import json, os, sys
 result_dir, fixture, arm, run_id = sys.argv[1:5]
@@ -505,7 +514,11 @@ timing = json.load(open(os.path.join(result_dir, "timing.json")))
 timing["end_epoch"] = t_end
 timing["elapsed_seconds"] = elapsed
 timing["timeout_seconds"] = timeout
-timing["timed_out"] = elapsed >= timeout
+# iter-0012: derive from watchdog signal, not elapsed wall time. Natural
+# exits at-or-past the budget (budget == elapsed, or up to ~5s past due to
+# SIGTERM grace) are no longer mislabeled as timeouts. Source of truth is
+# WATCHDOG_FIRED, set in run-fixture.sh when TIMEOUT_FLAG existed post-wait.
+timing["timed_out"] = os.environ.get("WATCHDOG_FIRED", "0") == "1"
 json.dump(timing, open(os.path.join(result_dir, "timing.json"), "w"), indent=2)
 
 verify = json.load(open(os.path.join(result_dir, "verify.json")))

@@ -1,18 +1,18 @@
 # HANDOFF — for the next session
 
-**Read this first** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-27 (post-iter-0011 SHIP decision) left off.
+**Read this first** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-27 (post-iter-0012 SHIP decision) left off.
 
 ---
 
 ## Current state
 
-**Branch**: `benchmark/v3.6-ab-20260423-191315`. 6 commits ahead of origin once iter-0011 is committed.
+**Branch**: `benchmark/v3.6-ab-20260423-191315`. 7 commits ahead of origin once iter-0012 is committed.
 
-**HEAD (committed)**: `e9233bd` iter-0009 → `af3a4de` iter-0009 HANDOFF → `df623ce` iter-0010 → **`<iter-0011 commit pending>`**. Working tree clean except untracked `.claude/` install dir.
+**HEAD (committed)**: `e9233bd` iter-0009 → `af3a4de` iter-0009 HANDOFF → `df623ce` iter-0010 → `5c790bc` iter-0011 → **`<iter-0012 commit pending>`**. Working tree clean except untracked `.claude/` install dir.
 
-iter-0007 verdict realized. iter-0008 REJECTED 2026-04-27. iter-0009 SHIPPED 2026-04-27. iter-0010 SHIPPED 2026-04-27. **iter-0011 SHIPPED 2026-04-27** — Check 10 evasion-shape close (`codex exec[[:space:]]+\S` catches quoted-prompt / `$VAR` / literal-token forms) plus priming-token scrub in `engine-routing.md` / `_shared/codex-config.md` / `_shared/engine-preflight.md`. Falsification canary: 6/6 evasion shapes caught, 0/2 false-positives on descriptive prose, wrapper canary unchanged from iter-0009.
+iter-0007 verdict realized. iter-0008 REJECTED. iter-0009/0010/0011 SHIPPED. **iter-0012 SHIPPED 2026-04-27** — `result.json.timed_out` derivation in `benchmark/auto-resolve/scripts/run-fixture.sh` now sources from `WATCHDOG_FIRED` Bash sentinel (set iff TIMEOUT_FLAG existed post-wait), not `elapsed >= timeout`. Natural exits at-or-past budget are no longer mislabeled as timeouts. Falsification: bash -n clean, dry-run F1 smoke (`set -u` survives, timed_out=false correct), Codex pre-edit R0 verdict + 5-point checklist applied.
 
-**Next iteration: iter-0012 `timed_out` derivation fix, or iter-0013 F1 non-codex starvation diagnostic. Shim distribution still deferred (now iter-0014 candidate). Pick by current pain.**
+**Next iteration: iter-0013 F1 non-codex starvation diagnostic (concrete current pain), or iter-0014 shim distribution (still deferred). Pick by current pain.**
 
 ---
 
@@ -40,13 +40,9 @@ Falsification gate: lint clean (all 10 checks ✓), wrapper canary clean (pipe-s
 
 ## Decided next step — pick one of:
 
-### Option B: iter-0012 — `timed_out` derivation fix (smaller, surgical)
-
-`result.json` derives `timed_out` from `elapsed >= timeout` (`run-fixture.sh:477`) instead of the watchdog flag at `:301`. At-boundary natural exits get misclassified. Codex Round 2 (iter-0008) finding #2.
-
 ### Option C: iter-0013 — F1 non-codex starvation diagnostic
 
-F1 reproducibly hits 480s cap with empty transcript even when no codex involvement (variant uses pure Claude tools). Auto-resolve pipeline doesn't naturally exit cleanly after Stop on trivial fixtures. Diagnostic iter — instrument and observe rather than fix. iter-0011 R0 confirmed independence from B (F1 variant: `invoke_exit=124 elapsed=481 transcript=0` is a real timeout, not a misclassification).
+F1 reproducibly hits 480s cap with empty transcript even when no codex involvement (variant uses pure Claude tools). Auto-resolve pipeline doesn't naturally exit cleanly after Stop on trivial fixtures. Diagnostic iter — instrument and observe rather than fix. With iter-0012's corrected `timed_out` derivation, F1 result.json now distinguishes "watchdog killed" from "elapsed crossed budget" — clean signal for diagnosis.
 
 ### Option A: iter-0014 — shim distribution to user installs (deferred)
 
@@ -59,7 +55,7 @@ If revived: design constraints (from iter-0010 R1 + iter-0011 R0 with Codex):
 
 ### Recommendation
 
-**Option B first** — surgical (~30 min), corrects benchmark data integrity drift. Then **Option C** with cleaner labels. Option A defer.
+**Option C next** — concrete current pain (F1 still hits cap with empty transcript). iter-0012 already gave clean labels. **Option A** stays deferred.
 
 ---
 
@@ -86,17 +82,14 @@ Expected: silence (UNSHIPPED_SKILL_DIRS legitimately have `Only in config/skills
 
 ### Shipped on this branch
 
-DECISIONS.md is canonical. iter 0001 (skill scope-first + trivial-fast routing), iter 0002 (F6/F7 spec annotation), iter 0003 (process-group watchdog), iter 0004 (outer claude -p MCP isolation), iter 0005 REVERTED, iter 0006 REVERTED (per iter-0007 verdict), iter 0007 (F6 isolation experiment, conclusive), iter 0008 REJECTED (prompt-level contract empirically dead), iter-0009 SHIPPED (wrapper + PATH shim — F2 BUILD ran 399.9s through wrapper without watchdog kill, F6 +60-point recovery from iter-0008 collapse), iter-0010 SHIPPED (production rollout of wrapper-form to ideate / preflight / team-resolve / team-review; lint Check 10 added as static gate; shim shipping deferred per Codex Round 1 ship-blocker), **iter-0011 SHIPPED** (Codex-collaborated Option D: Check 10 evasion-shape close — pattern broadened to invocation-class — plus priming-token scrub in shared docs; falsification canary 6/6).
+DECISIONS.md is canonical. iter 0001 (skill scope-first + trivial-fast routing), iter 0002 (F6/F7 spec annotation), iter 0003 (process-group watchdog), iter 0004 (outer claude -p MCP isolation), iter 0005 REVERTED, iter 0006 REVERTED (per iter-0007 verdict), iter 0007 (F6 isolation experiment, conclusive), iter 0008 REJECTED (prompt-level contract empirically dead), iter-0009 SHIPPED (wrapper + PATH shim — F2 BUILD ran 399.9s through wrapper without watchdog kill, F6 +60-point recovery from iter-0008 collapse), iter-0010 SHIPPED (production rollout of wrapper-form to ideate / preflight / team-resolve / team-review; lint Check 10 added as static gate; shim shipping deferred per Codex Round 1 ship-blocker), iter-0011 SHIPPED (Codex-collaborated Option D: Check 10 evasion-shape close — pattern broadened to invocation-class — plus priming-token scrub in shared docs; falsification canary 6/6), **iter-0012 SHIPPED** (`run-fixture.sh` `timed_out` derivation now sources WATCHDOG_FIRED Bash sentinel instead of `elapsed >= timeout`; clean signal for natural exits at-or-past budget; Codex pre-edit R0 caught `set -u` init order + invariant misstatement).
 
-Effective branch state = iter-0011. F1 still hits a separate non-codex starvation (iter-0013 candidate, was iter-0012); F2 + F6 healthy; F4/F5/F9 status unchanged from baseline (full-suite re-run not yet performed under iter-0009 / iter-0010 / iter-0011).
+Effective branch state = iter-0012. F1 still hits a separate non-codex starvation (iter-0013 candidate); F2 + F6 healthy; F4/F5/F9 status unchanged from baseline (full-suite re-run not yet performed under iter-0009 / iter-0010 / iter-0011 / iter-0012).
 
-### Queued (next hypotheses, ordered, post iter-0011)
+### Queued (next hypotheses, ordered, post iter-0012)
 
-Numbers shifted +1 from prior queue: iter-0011 was claimed by lint-tighten + priming-scrub (Codex Option D, Karpathy-cheap hardening). All subsequent reservations bump.
-
-1. **iter-0012 — `timed_out` derivation fix**. `result.json` derives `timed_out` from `elapsed >= timeout` (`run-fixture.sh:477`) instead of the watchdog flag at `:301`. At-boundary natural exits misclassified.
-2. **iter-0013 — F1 non-codex starvation**. F1 reproducibly hits 480s cap with empty transcript even when no codex involvement.
-3. **iter-0014 — shim distribution to user installs** (deferred from iter-0010 per Codex Round 1 ship-blocker; remained deferred at iter-0011 R0 per Karpathy #2). Design fail-open shim + `devlyn doctor activate` (NOT npm post-install) + idempotent settings.json merge. Revisit when production regression observed.
+1. **iter-0013 — F1 non-codex starvation diagnostic**. F1 reproducibly hits 480s cap with empty transcript even when no codex involvement. Auto-resolve doesn't naturally exit cleanly after Stop on trivial fixtures.
+2. **iter-0014 — shim distribution to user installs** (deferred from iter-0010 per Codex R1 ship-blocker; remained deferred at iter-0011/0012 per Karpathy #2). Design fail-open shim + `devlyn doctor activate` (NOT npm post-install) + idempotent settings.json merge. Revisit when production regression observed.
 4. **iter-0015 — silent-catch fixture spec**. F2 spec language allows BUILD output with `catch { return fallback }`; tighten F2 (and similar) spec language.
 5. **iter-0016 — F9 wall-time regression**. Both iter-0006 single-fixture F9 attempts took >30 min. Bump F9 metadata.timeout to 5400s.
 6. **iter-0017 — sync-gap auto-mirror fix** (codex round 7 Option A). Pre-run rsync mirror at top of `run-suite.sh`.
@@ -159,6 +152,7 @@ Numbers shifted +1 from prior queue: iter-0011 was claimed by lint-tighten + pri
 - **iter-0010 R1**: shim-shipping ship-blocker (hard-fails 127 without env wiring). 2 phrase-priming sites missed (team-resolve:147, team-review:88). Heartbeat doc bug at canonical:54 (said stdout, wrapper writes stderr). Verdict drove scope cut: drop shim shipping from iter-0010, defer.
 - **iter-0010 R2**: lint Check 10 multi-line blind spot caught before commit (pattern missed `codex exec \` continuation). 3 residual descriptive `codex exec` mentions in prompt bodies should be rephrased to remove priming token. Wrapper `resume --last` shape verified correct (line 114 produces valid `codex exec resume --last`).
 - **iter-0011 R0**: I proposed B → C → defer A (Karpathy #2 — A is speculative defense). Codex concurred but flagged a real risk class — runtime emission drift (`codex exec "<prompt>"` quoted-prompt evasion shape that current Check 10 misses). Proposed Option D = cheap hardening (broaden Check 10 + scrub residual priming tokens). Confirmed B and C are independent (F1 timeout is real, not misclassification). Adopted D as iter-0011; B = iter-0012, C = iter-0013, A = iter-0014 still deferred.
+- **iter-0012 R0**: pre-edit read-only review of 5-line `timed_out` derivation fix. Codex verdict: surgical change is right. Five precise corrections/cautions: (1) invariant (ii) misstatement — `elapsed=TIMEOUT-1` was already correct under `>=`; the genuine mislabels are `elapsed == TIMEOUT` exactly + clean exits >TIMEOUT where watchdog didn't fire. (2) **`set -u` caution** — initialize `WATCHDOG_FIRED=0` BEFORE `if DRY_RUN` branch or `export INVOKE_EXIT WATCHDOG_FIRED` tears down dry-run paths. (3) Don't derive timeout from `INVOKE_EXIT==124` (124 is a legal natural exit code). (4) Don't add `watchdog_killed` schema field (duplicates corrected `timed_out`). (5) Don't touch SIGTERM grace (existing behavior; no longer leaks into `timed_out` after fix). (6) Race on `kill -0` is real but narrow — defer to a future Python timeout wrapper.
 
 ---
 
@@ -178,4 +172,5 @@ Numbers shifted +1 from prior queue: iter-0011 was claimed by lint-tighten + pri
 - `project_skill_guardrails_2026_04_26.md` — G1-G5 design constraints from iter-0006/0007.
 - `project_iter0009_shipped_2026_04_27.md` — wrapper + PATH shim ship details.
 - `project_iter0010_shipped_2026_04_27.md` — production rollout + shim shipping deferred.
-- `project_iter0011_shipped_2026_04_27.md` — **NEW** — Codex Option D: Check 10 evasion-shape close + priming-scrub.
+- `project_iter0011_shipped_2026_04_27.md` — Codex Option D: Check 10 evasion-shape close + priming-scrub.
+- `project_iter0012_shipped_2026_04_27.md` — **NEW** — `timed_out` derivation switched to WATCHDOG_FIRED sentinel.
