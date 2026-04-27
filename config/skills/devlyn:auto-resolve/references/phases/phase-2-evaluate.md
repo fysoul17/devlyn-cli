@@ -36,6 +36,13 @@ Verdict taxonomy: `BLOCKED` (any CRITICAL) / `NEEDS_WORK` (HIGH or MEDIUM presen
 - Calibration: a catch block that logs but doesn't surface the error to the user → HIGH, not MEDIUM (logging ≠ error handling). A `let` that could be `const` → LOW (linters catch it). "Error handling is generally quite good" is not a finding — count instances, name files.
 - "Pre-existing" findings still count if they relate to the criteria. Working software, not blame attribution.
 - **Out-of-Scope violations are findings**: if BUILD added behavior the source's `## Out of Scope` excludes, emit `rule_id: "scope.out-of-scope-violation"`, `severity: HIGH`, `criterion_ref: "spec://out-of-scope"` (or `"criteria.generated://out-of-scope"`), `fix_hint` naming what to remove.
+- **Spec-frontmatter edits by BUILD are scope violations**: the only legitimate frontmatter change is the DOCS phase status flip. If BUILD added fields (`completed`, `date`, etc.), reordered YAML keys, reformatted, or introduced metadata, emit `rule_id: "scope.frontmatter-edit"`, `severity: HIGH`, `criterion_ref: "spec://out-of-scope"`, `fix_hint` naming the offending keys. *(iter-0018.5: F5 in iter-0016 lost a scope point because BUILD added `completed=` to roadmap frontmatter — this rule makes the violation explicit.)*
+- **Verification-command literal-match is mandatory**: for every command in the source's Verification section (or `expected.json.verification_commands` for benchmark fixtures), execute the command against the post-BUILD code and compare output literally. For each mismatch, emit a finding:
+  - exit code differs from spec → `rule_id: "correctness.exit-code-mismatch"`, `severity: HIGH`, `fix_hint` naming expected vs actual exit.
+  - stdout/stderr missing a required substring → `rule_id: "correctness.spec-string-mismatch"`, `severity: HIGH`, `fix_hint` quoting the missing literal text (e.g. `Error: not a git repository`).
+  - JSON top-level shape differs (renamed keys, nested where flat expected) → `rule_id: "correctness.json-shape-mismatch"`, `severity: HIGH`, `fix_hint` listing required top-level keys.
+  - Output format ordering differs (e.g. ranked-author lines as plain rows, no rank prefix) → `rule_id: "correctness.format-mismatch"`, `severity: MEDIUM` if minor / HIGH if blocks the verification grep.
+  Paraphrased error messages, "close" exit codes, and restructured JSON are not acceptable — the spec is the contract. *(iter-0018.5: F9 in iter-0016 had both arms produce wrong error prefix, exit 1 vs 2, wrong JSON shape — EVAL did not flag because the literal-match check did not exist.)*
 </quality_bar>
 
 <principle>
