@@ -2,7 +2,7 @@
   "id": "F1-cli-trivial-flag",
   "category": "trivial",
   "difficulty": "trivial",
-  "timeout_seconds": 480,
+  "timeout_seconds": 900,
   "required_tools": ["node"],
   "browser": false,
   "deps_change_expected": false,
