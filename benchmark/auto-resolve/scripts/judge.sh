@@ -56,7 +56,15 @@ done
 # Blind randomization: shuffle ARMS_PRESENT into ABC order. Seed recorded
 # in judge.json so runs are reproducible if rejudged.
 SEED=$RANDOM
-mapfile -t SLOTS < <(python3 - "$SEED" "${ARMS_PRESENT[@]}" <<'PY'
+# iter-0019.4: Bash 3.2 compatible (macOS /bin/bash). `mapfile` is Bash 4+
+# only; replaced with while-read loop. The `|| [ -n "$line" ]` guard
+# preserves exact `mapfile -t` behavior on a final unterminated line (Python
+# print() emits trailing \n so this guard is belt-and-suspenders here, but
+# matches mapfile semantics for future producers).
+SLOTS=()
+while IFS= read -r line || [ -n "$line" ]; do
+  SLOTS+=("$line")
+done < <(python3 - "$SEED" "${ARMS_PRESENT[@]}" <<'PY'
 import sys, random
 seed = int(sys.argv[1]); arms = sys.argv[2:]
 random.seed(seed)
