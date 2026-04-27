@@ -1,22 +1,46 @@
 # HANDOFF — for the next session
 
-**Read this first** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-27 (post-iter-0014 SHIP decision) left off.
+**Read this first** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-27 (post-iter-0017 SHIP decision) left off.
 
 ---
 
 ## Current state
 
-**Branch**: `benchmark/v3.6-ab-20260423-191315`. 9 commits ahead of origin.
+**Branch**: `benchmark/v3.6-ab-20260423-191315`. 11 commits ahead of origin (10 iter commits + 1 HANDOFF rewrite + this iter-0017 commit).
 
-**HEAD (committed)**: `20f6f07` iter-0014 ← `435680c` iter-0013 ← `47fb504` iter-0012 ← `5c790bc` iter-0011 ← `df623ce` iter-0010 ← `af3a4de` iter-0009 HANDOFF ← `e9233bd` iter-0009. Working tree clean except untracked `.claude/` install dir.
+**HEAD (committed)**: iter-0017 ← `775f761` HANDOFF rewrite ← `20f6f07` iter-0014 ← `435680c` iter-0013 ← `47fb504` iter-0012 ← `5c790bc` iter-0011 ← `df623ce` iter-0010 ← `af3a4de` iter-0009 HANDOFF ← `e9233bd` iter-0009. Working tree clean except untracked `.claude/` install dir.
 
-iter-0007 verdict realized. iter-0008 REJECTED. **iter-0009 → iter-0014 all SHIPPED**. Effective branch state = iter-0014: F1 healthy on 900s budget with full per-phase state observability + archive script path fixed; F2/F4/F5/F6/F9 not yet re-verified under iter-0014.
+iter-0007 verdict realized. iter-0008 REJECTED. **iter-0009 → iter-0014 + iter-0017 all SHIPPED**. Effective branch state = iter-0017: F1 healthy on 900s budget with full per-phase state observability + archive script path fixed + skill-sync gap auto-healed by `run-suite.sh`. F2/F4/F5/F6/F9 not yet re-verified under iter-0014/0017.
 
-**Next iteration: pick from queued list below. No urgent pain remains. Recommended: full-suite verification under iter-0014 to confirm F2/F4/F6/F9 carry over (~1 hour wall, ~$10-20 spend).**
+**Next iteration: iter-0016 (full-suite verification under iter-0014/0017). Now safer to run because iter-0017 closed the manual-sync risk. Cost: ~1 hour wall, ~$10-20 spend.**
 
 ---
 
-## What was just shipped (iter-0014)
+## What was just shipped (iter-0017)
+
+Full data in `iterations/0017-run-suite-auto-mirror.md`.
+
+Single-file diff, +33 lines, in `benchmark/auto-resolve/scripts/run-suite.sh`.
+Adds an auto-mirror block right after the run banner that replicates
+`bin/devlyn.js`'s `cleanManagedSkillDirs` + `copyRecursive` semantics for the
+skills tree only — no `CLAUDE.md` copy, no `.gitignore` mutation, no
+`settings.json` writes, no agent-pack install. Per-skill staging dir +
+atomic `mv` keeps Ctrl-C from leaving a managed skill missing. UNSHIPPED list
+inline (4 entries; comment points at `bin/devlyn.js:299`). Skipped only in
+`--judge-only`; runs in `--dry-run` so suite-setup verification covers the
+mirror path.
+
+Falsified locally: marker injection + drift simulation + dry-run produced
+`[suite] mirrored 26 committed skill(s)` stamp; marker propagated; drift
+removed; user-installed skills preserved (verified with synthetic
+`.claude/skills/fake-user-skill/`); UNSHIPPED workspace dirs absent in
+`.claude/skills/`. Lint 10/10. Zero model spend.
+
+Codex GPT-5.5 R0 (84s, 41k tokens) verdict: M2 (inline shell) over M1
+(`bin/devlyn.js -y` — too broad) and M3 (rsync — macOS variance). All R0
+recommendations adopted verbatim.
+
+## What was shipped before that (iter-0014)
 
 Full data in `iterations/0014-state-writes-per-phase.md`.
 
@@ -53,19 +77,19 @@ If user prefers not to spend on a suite run: pick from the queue below by curren
 
 ---
 
-## Critical gotcha — ALWAYS check before any benchmark run
+## Critical gotcha — sync gap (now self-healing)
 
-**Skill sync gap.** Variant arm reads from `$REPO_ROOT/.claude/skills/`, but iteration commits land in `config/skills/`. The two trees only sync via `node bin/devlyn.js -y` or surgical `cp`. Confirmed needed after every git checkout / revert that touches the SKILL.md or phase prompts.
+**As of iter-0017, `run-suite.sh` auto-mirrors `config/skills/` → `.claude/skills/`** at the top of every invocation (skipped only in `--judge-only`). Manual mirror via `node bin/devlyn.js -y` is no longer required before benchmarks.
+
+**Still useful before a commit / lint pass**:
 
 ```bash
 diff -rq config/skills/ .claude/skills/ 2>&1 | grep -v "Only in"
 ```
 
-Expected: silence (UNSHIPPED_SKILL_DIRS legitimately have `Only in config/skills/...` lines per `bin/devlyn.js` exclusion list).
+Expected: silence (UNSHIPPED_SKILL_DIRS legitimately have `Only in config/skills/...` lines per `bin/devlyn.js:299` exclusion list). If non-empty, either run `bash benchmark/auto-resolve/scripts/run-suite.sh --dry-run F1` (cheapest sync) or `node bin/devlyn.js -y` (full installer).
 
-iter-0014 specifically modified: `SKILL.md`, `phase-1-build.md`, `phase-2-evaluate.md`, `phase-3-critic.md`. Those four are mirror-parity-checked by lint Check 6. Sync them before any benchmark run.
-
-**Auto-mirror at top of `run-suite.sh` is queued as iter-0017** (was a long-standing iter-0007 candidate; renumbered post iter-0014).
+iter-0014 specifically modified: `SKILL.md`, `phase-1-build.md`, `phase-2-evaluate.md`, `phase-3-critic.md`. Those four are mirror-parity-checked by lint Check 6. Lint enforces the equivalence at commit time even though run-suite handles it at run time.
 
 ---
 
@@ -95,13 +119,13 @@ iter-0014 specifically modified: `SKILL.md`, `phase-1-build.md`, `phase-2-evalua
 - iter 0012 SHIPPED — `run-fixture.sh` `timed_out` derivation switched to WATCHDOG_FIRED Bash sentinel (vs `elapsed >= timeout`).
 - iter 0013 SHIPPED — F1 metadata.timeout 480→900s after Codex-corrected reframe and 465s clean discriminator.
 - **iter 0014 SHIPPED** — state-writes-per-phase observability + archive script path. D4-lite design (universal block + per-phase reminders + prompt-body strengthening) per Codex R0; archive bug found via Codex grepping `archive_run.py`.
+- **iter 0017 SHIPPED** — `run-suite.sh` auto-mirror `config/skills/ → .claude/skills/`. Codex GPT-5.5 R0 picked M2 (inline shell mirror) over M1 (`bin/devlyn.js -y`, too broad — touches CLAUDE.md, .gitignore, project + global settings, agent packs) and M3 (rsync, macOS variance). Per-skill staging dir + atomic `mv` for Ctrl-C safety. Falsified locally with marker injection + drift simulation + user-skill-preservation test; lint 10/10; zero model spend.
 
-### Queued (next hypotheses, ordered, post iter-0014)
+### Queued (next hypotheses, ordered, post iter-0017)
 
 1. **iter-0015 — shim distribution to user installs** (long-deferred per Karpathy #2). Design fail-open shim + `devlyn doctor activate` (NOT npm post-install) + idempotent settings.json merge. Revisit when production regression observed.
-2. **iter-0016 — full-suite verification under iter-0014**. Run F2/F4/F5/F6/F9 and confirm state-write protocol + archive fix carry over. May surface CRITIC/DOCS phase observability gaps on `standard` route.
-3. **iter-0017 — sync-gap auto-mirror fix** (codex round 7 Option A). Pre-run rsync mirror at top of `run-suite.sh` for self-healing.
-4. **iter-0018 — `claude -p --output-format stream-json`** for variant arm. Would make transcript flush incrementally and survive SIGTERM partial output. Optional; not pressing once F1 budget is right.
+2. **iter-0016 — full-suite verification under iter-0014/0017**. Run F2/F4/F5/F6/F9 and confirm state-write protocol + archive fix carry over. May surface CRITIC/DOCS phase observability gaps on `standard` route. Now safer post iter-0017 (auto-mirror closes one of the two stale-skill failure modes).
+3. **iter-0018 — `claude -p --output-format stream-json`** for variant arm. Would make transcript flush incrementally and survive SIGTERM partial output. Optional; not pressing once F1 budget is right.
 5. **iter-0019 — permanent dual-judge in judge.sh** (`memory/project_dual_judge_2026_04_26.md`).
 6. **iter-0020 — silent-catch fixture spec**. F2 spec language allows BUILD output with `catch { return fallback }`; tighten.
 7. **iter-0021 — F9 wall-time regression**. Both iter-0006 single-fixture F9 attempts took >30 min. Bump F9 metadata.timeout to 5400s.

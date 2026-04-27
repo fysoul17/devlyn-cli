@@ -88,6 +88,38 @@ echo "n:         $N"
 [ $JUDGE_ONLY -eq 1 ] && echo "Mode:      JUDGE ONLY (re-judging existing artifacts)"
 echo ""
 
+# ---- Mirror committed skills into .claude/skills (iter-0017) --------------
+# The variant arm reads $REPO_ROOT/.claude/skills/, but iteration commits land
+# in config/skills/. Without this step every checkout/revert that touches
+# SKILL.md or phase prompts requires a manual `node bin/devlyn.js -y` or
+# surgical cp; forgetting it silently runs the suite against stale skills.
+# Replicates the clean-then-copy semantics of bin/devlyn.js
+# (cleanManagedSkillDirs ~L313 + copyRecursive ~L274). Per-skill staging dir
+# + atomic mv keeps a Ctrl-C window from leaving a managed skill missing.
+# UNSHIPPED list mirrors bin/devlyn.js:299-304 — keep them in sync.
+# Skipped only in --judge-only (no model invocations); runs in --dry-run.
+if [ $JUDGE_ONLY -eq 0 ]; then
+  SRC_SKILLS="$REPO_ROOT/config/skills"
+  DST_SKILLS="$REPO_ROOT/.claude/skills"
+  mkdir -p "$DST_SKILLS"
+  mirrored=0
+  for src_dir in "$SRC_SKILLS"/*/; do
+    [ -d "$src_dir" ] || continue
+    name=$(basename "$src_dir")
+    case "$name" in
+      devlyn:auto-resolve-workspace|devlyn:ideate-workspace|preflight-workspace|roadmap-archival-workspace)
+        continue ;;
+    esac
+    staging="$DST_SKILLS/.${name}.staging"
+    rm -rf "$staging"
+    cp -R "$src_dir" "$staging"
+    rm -rf "$DST_SKILLS/$name"
+    mv "$staging" "$DST_SKILLS/$name"
+    mirrored=$((mirrored + 1))
+  done
+  echo "[suite] mirrored $mirrored committed skill(s): config/skills/ -> .claude/skills/"
+fi
+
 # Prereq checks
 if [ $DRY_RUN -eq 0 ] && [ $JUDGE_ONLY -eq 0 ]; then
   command -v claude >/dev/null 2>&1 || { echo "claude CLI missing; install Claude Code first"; exit 1; }
