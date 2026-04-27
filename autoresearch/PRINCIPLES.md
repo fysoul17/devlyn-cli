@@ -8,6 +8,26 @@ These five principles serve the **outer goal** in [`NORTH-STAR.md`](NORTH-STAR.m
 
 ---
 
+## 0. Pre-flight: not score-chasing (run BEFORE checking 1-6)
+
+> **Every iter must either remove a real user failure or make the next go/no-go decision impossible to fake.**
+
+If the result of this iter cannot change shipping behavior, routing policy, or a user-visible failure, **it is score-chasing** — even if it would raise benchmark margins. Stop. Re-scope to a real-pain target.
+
+This test runs FIRST because principles 1-6 measure *how well* an iter is executed; pre-flight 0 measures *whether the iter should exist at all*. An iter that passes 1-6 perfectly but fails 0 is "산으로 가는" work — clean, principled, and pointed at the wrong mountain.
+
+**Operational test (per iteration):**
+
+- The iteration file's "Why this iter exists" section names: (a) the user-visible failure being closed, OR (b) the specific go/no-go decision this iter unlocks for the *next* iter. If it names neither, reject.
+- "Measurement infrastructure" iters are allowed only as the *last* attribution run before a cost/policy/correctness decision. If a measurement iter is followed by another measurement iter, the second one violates pre-flight 0 unless it's closing a measurement bug the first one surfaced.
+- Aggregate margin movement is not user-visible. The user-visible signals are: (i) a previously-failing fixture now passes, (ii) a routing decision changes, (iii) a real-project trial regression / improvement, (iv) wall-time per fixture drops materially.
+
+**Source**: Codex GPT-5.5 R2 (2026-04-28) on iter-0019 alignment audit. The user's standing directive (HANDOFF "STANDING USER DIRECTIVE" block) explicitly forbids score-only work; this pre-flight is its operational anchor.
+
+**Failure mode this catches:** Iter chains where each step is principled but the chain as a whole drifts away from user pain. Symptoms: many iters in a row touch only `benchmark/` and `autoresearch/`; no fixture verify_score moves; no skill prompt that the end user actually exercises gets edited; HANDOFF queue item count grows faster than queue item completion.
+
+---
+
 ## 1. No overengineering
 
 > **Surface assumptions; touch only what the goal requires.**
@@ -110,10 +130,12 @@ Distinct from #4: code can be production-ready (no critical bugs) yet hand-roll 
 
 ## How an iteration cites these
 
-In every iteration file under `iterations/`, the "Principles check" section enumerates each of #1-#6 and writes one of:
+In every iteration file under `iterations/`, the "Principles check" section enumerates **pre-flight 0 + #1-#6** and writes one of:
 
 - ✅ Passes — concrete evidence (numbers, finding counts, wall-time ratios).
 - ⚠️ Borderline — explanation + judgment call.
 - ❌ Fails — explicit revert reason.
 
-Iterations with any ❌ are rejected. Iterations with ⚠️ go to user review before ship.
+Iterations with any ❌ — including pre-flight 0 — are rejected. Iterations with ⚠️ go to user review before ship.
+
+Pre-flight 0 must be cited FIRST and answered with a single sentence: "this iter exists because it [removes user failure X / unblocks go-no-go decision Y for iter Z]." If you cannot write that sentence, do not start the iter.

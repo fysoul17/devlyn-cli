@@ -84,6 +84,14 @@ iter-0019 ships an `L1-claude` **smoke** arm on F1+F2+F4+F9 (4 fixtures × 3 arm
 
 Phrase numbers as "L2 beats L0 in partial readout; L1 directionally observed in iter-0019 smoke; L2-vs-L1 unknown for release decision" until iter-0020's 9-fixture run lands.
 
+### Real-project trial gate (Codex R2, 2026-04-28)
+
+14. **Final stop condition** — even if all of #1-#13 pass on the 9-fixture suite, the loop does NOT terminate until **one fresh real-project trial passes without manual context engineering**. Definition: a developer who has not tuned the harness picks a real (not fixture) feature/bug from a real (not test) codebase, runs `/devlyn:auto-resolve "<spec>"` end-to-end, and the output ships without human prompt-engineering rescue. Pass = (a) no human edits to skill prompts mid-run, (b) no manual phase re-runs, (c) the produced code passes the project's existing test suite + the developer's spec acceptance check, (d) wall-time within budget for the layer the user paid for.
+
+This gate exists because benchmark fixtures are calibrated targets — passing them confirms the harness behaves *as designed against known cases*, not that it serves the actual user goal ("hands-free pipeline that delivers engineer-quality software for users who do not know context engineering"). Without #14, the loop can hit perfect 1-13 and ship a benchmark-tuned harness that fails real users on day one.
+
+**Operational protocol**: real-project trial is run after the 9-fixture L0/L1/L2 paid suite passes, and it is a single attempt — re-running with prompt tweaks counts as a fail. If the trial fails, the failure mode joins the fixture set as a 10th fixture (or extends an existing one), the loop reopens, and a new 9-fixture-plus-trial pass is required.
+
 ---
 
 ## The pair-vs-solo policy (iter-0020 target — re-numbered after Codex R3)
