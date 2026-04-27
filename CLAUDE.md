@@ -2,7 +2,18 @@
 
 ## Outer goal — read first if you do not already know it
 
-The harness composes frontier LLMs into a hands-free pipeline that delivers engineer-quality software for users who do not know context engineering. Two first-class user groups: single-LLM (Opus alone, GPT-5.5 alone) and multi-LLM (Claude + Codex). Three composition layers: **L0** bare LLM, **L1** solo harness on a single LLM, **L2** pair harness with `solo` / `pair_critic` / `pair_consensus` modes per phase. Each layer must beat the previous on **both quality and wall-time efficiency** — concretely, each layer must beat `previous-layer-best-of-N` where N is the wall-time ratio.
+**This block is for the harness developer / autoresearch loop, not for run-time skills.** Skills (`/devlyn:auto-resolve`, `/devlyn:ideate`, `/devlyn:preflight`, etc.) are the *product* this contract is meant to evolve into world-class software — they should not themselves cite the contract.
+
+**Goal**: the harness composes frontier LLMs into a hands-free pipeline that delivers engineer-quality software for users who do not know context engineering. Two first-class user groups: single-LLM (Opus alone, GPT-5.5 alone) and multi-LLM (Claude + Codex). Three composition layers: **L0** bare LLM, **L1** solo harness on a single LLM, **L2** pair harness with `solo` / `pair_critic` / `pair_consensus` modes per phase. Each layer must beat the previous on **both quality and wall-time efficiency** — concretely, each layer must beat `previous-layer-best-of-N` where N is the wall-time ratio.
+
+**Five principles** every iteration is checked against (canonical in [`autoresearch/PRINCIPLES.md`](autoresearch/PRINCIPLES.md), summarized so a fresh session has them in working memory without opening another file):
+
+1. **No overengineering** — smallest change that closes the hypothesis; new abstractions require an observed failure mode they prevent.
+2. **No guesswork** — falsifiable hypothesis BEFORE the experiment, predicted metric/direction filled in BEFORE the run, raw data filled in AFTER (no retroactive prediction edits).
+3. **No workaround** — root-cause fixes via 3+ step why-chain. No `any`, no `@ts-ignore`, no silent catches, no hardcoded fallbacks. Configuration-level skips in skill iters are also rejects.
+4. **Worldclass production-ready** — zero CRITICAL, zero HIGH `design.*` / `security.*` findings on the variant arm; aggregate margin can never excuse a fixture-level ship-blocker.
+5. **Best practice** — idiomatic for the language/framework; zero MEDIUM `design.unidiomatic-pattern` findings (no hand-rolled helpers replacing standard primitives).
+6. **Layer-cost-justified** — each composition layer beats `previous-layer-best-of-N` on both quality and wall-time efficiency; pair-mode phases must declare a deterministic short-circuit rule and a wall-time budget abort.
 
 Full contract: [`autoresearch/NORTH-STAR.md`](autoresearch/NORTH-STAR.md). Per-iteration doctrine: [`autoresearch/PRINCIPLES.md`](autoresearch/PRINCIPLES.md). Branch-state + in-flight work: [`autoresearch/HANDOFF.md`](autoresearch/HANDOFF.md).
 

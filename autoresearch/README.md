@@ -65,19 +65,17 @@ These metrics define "did this hypothesis work?". Stable across iterations.
 
 ## Next hypotheses (ordered)
 
-Active queue. Re-order in place when priorities change. The top item is what the next iteration tackles.
+**Authoritative copy of the queue lives in [`HANDOFF.md`](HANDOFF.md) "Next iteration QUEUE" — that file is rewritten every iter and the README mirror has historically drifted. When this section disagrees with HANDOFF.md, HANDOFF.md wins.** Snapshot below is the post-iter-0017 + post-North-Star-refinement queue (2026-04-27, after Codex GPT-5.5 R1 + R2 + R3):
 
-1. **Foreground-only `codex exec` execution contract (iteration 0006).** Iter 0005's inner-codex isolation flags fixed F7 in subset (margin −42 → +3) but the full suite refuted ship: F2 / F5 catastrophically regressed because the prompt-driven orchestrator non-deterministically backgrounds `codex exec` (with a `tail -f` monitor) and then waits forever. Iter 0005 was reverted; iter 0006 attacks the orchestration pattern itself by adding a "foreground-only" execution contract to `_shared/codex-config.md` + `auto-resolve/references/engine-routing.md`: never `&`, never `tail -f`, never Monitor/TaskOutput as the wait path. Falsification path: F2 alone first (was the worst collapse at −82), then F5, then full suite. Pre-drafted in `iterations/0006-foreground-only-codex.md`.
+1. **iter-0018 — Measurement integrity + report-shape lock.** Finish iter-0016, compile canonical 9-fixture report, inspect F2 timeout / disqualifier patterns. Add `wall_ratio_*` comparison fields to `summary.json`. Diagnostic only — no gate behavior, no prompt retune.
+2. **iter-0019 — `L1-claude` smoke arm + comparison schema.** Add `solo_claude` arm to run-suite (Claude alone, no Codex BUILD or CRITIC audit). Smoke fixtures F1+F2+F4+F9. `L1-codex` deferred — Claude is the auto-resolve orchestrator today, no honest L1-codex arm exists yet.
+3. **iter-0020 — Pair-vs-solo policy + tool-vs-deliberation attribution.** Per-phase `solo` / `pair_critic` / `pair_consensus` mapping per [`NORTH-STAR.md`](NORTH-STAR.md). Adds wall-time abort + `coverage.json` checklist artifact + critical instrumentation: separate measurement of tool/phase lift (browser_validate, build_gate, security-review native) from model-deliberation lift (second-model EVAL/CRITIC/JUDGE producing different conclusions).
+4. **iter-0021 — Dual-judge permanent (`pair_consensus` for JUDGE phase).** Resolves "GPT-only judge is a strategic liability" (Codex R1).
+5. **iter-0022 — Cost retune** (only if iter-0020 short-circuits + iter-0019 data show wall ratio still over budget). Otherwise close as "not needed."
+6. **Held-out fixture set** (long-deferred). Trigger: 3+ fixtures improve with no intuitive mechanism — overfitting signature.
+7. **Adversarial-ask layer** (long-term). Currently only F8 tests adversarial spec text; non-engineer-user goal needs more.
 
-2. **5-Why operationalization in `phase-1-build.md` quality_bar.** User confirmed 5-Why is widely applied, not narrow. Codex round 2 conceded CLAUDE.md placement (Karpathy #1 expansion) is correct under that usage pattern. One-paragraph edit to CLAUDE.md `Karpathy 4 → Think Before Coding`. Predicted: marginal improvement in non-trivial fixtures (F3-class) where root-cause discipline matters; no measurable change on trivial fixtures.
-
-3. **DOCS phase Job 2 wider verification.** v3.7-final + v3.7-fix-f6f7 confirmed the `verbatim-named files only` narrowing eliminated F6 README scope creep. Verify on a fresh full run with a deliberately ambiguous "update the docs" instruction in a fixture's spec body to confirm the rule holds when the spec text gives the model interpretive room.
-
-4. **Held-out fixture set.** Hold off until a hypothesis improves 3+ fixtures with no intuitive mechanism — that's the overfitting signal. Then add 2-3 fresh fixtures as held-out and re-evaluate. Don't pre-build infrastructure for an unobserved problem.
-
-5. **Adversarial-ask layer.** Currently the benchmark only measures the harness against well-formed specs. The non-engineer-user goal is partly an adversarial-ask story: spec text that asks for a workaround, vague intent, off-topic constraints. F8 is the only fixture currently testing this. Expand later.
-
-(When item 1 ships and the benchmark re-runs cleanly across all 9 fixtures, this list rotates.)
+Codex R3 explicit warning: do NOT bundle judge-mechanics + L1 arm + pair policy in the same iter — attribution becomes muddy. The 0018 → 0019 → 0020 → 0021 sequence above keeps measurement and behavior changes separate.
 
 ---
 
