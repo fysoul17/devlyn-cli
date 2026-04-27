@@ -197,6 +197,27 @@ if [ -f "$SETUP" ] && [ -s "$SETUP" ]; then
   fi
 fi
 
+# iter-0019.6: stage normalized .devlyn/spec-verify.json containing ONLY
+# verification_commands from expected.json (no tier_a_waivers, no
+# forbidden_patterns, no scope oracles — those have separate enforcement
+# layers). BUILD_GATE's spec-verify-check.py reads this generic path so
+# the orchestrator stays benchmark-agnostic; future /devlyn:ideate could
+# generate the same shape from a spec.md "## Verification" section for
+# real-user runs (Codex R5, 2026-04-28). This stages all 3 arms — bare's
+# .devlyn/ is created lazily by spec-verify-check.py if absent.
+if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; then
+  python3 - "$EXPECTED" "$WORK_DIR/.devlyn/spec-verify.json" <<'PY'
+import json, os, sys
+expected = json.load(open(sys.argv[1]))
+out_path = sys.argv[2]
+normalized = {"verification_commands": expected.get("verification_commands", [])}
+os.makedirs(os.path.dirname(out_path), exist_ok=True)
+with open(out_path, "w") as f:
+    json.dump(normalized, f, indent=2)
+    f.write("\n")
+PY
+fi
+
 # Build arm-specific prompt + place arm-specific environment files. Anything
 # that's "benchmark scaffolding" (spec path placement, prompt wrapper) is
 # committed to the work repo as a separate pre-model commit so the model's
@@ -347,6 +368,12 @@ else
       export PATH="$WORK_DIR/.devlyn-bin:$PATH"
       [ "$ARM" = "solo_claude" ] && export CODEX_BLOCKED=1
     fi
+    # iter-0019.6: BUILD_GATE's spec-verify-check.py uses BENCH_WORKDIR for
+    # commands that escape the work-dir (e.g. F9's outside-repo check via
+    # `cd /tmp && node $BENCH_WORKDIR/bin/cli.js gitstats`). Mirror exactly
+    # what the post-run verifier (run-fixture.sh:431-434) sets so the gate
+    # sees the same environment shape.
+    export BENCH_WORKDIR="$WORK_DIR"
     exec claude \
       -p "$(cat "$PROMPT_FILE")" \
       --dangerously-skip-permissions \

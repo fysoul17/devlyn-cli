@@ -125,6 +125,8 @@ else
   for rel in \
       devlyn:auto-resolve/SKILL.md \
       devlyn:auto-resolve/references/engine-routing.md \
+      devlyn:auto-resolve/references/build-gate.md \
+      devlyn:auto-resolve/scripts/spec-verify-check.py \
       devlyn:ideate/SKILL.md \
       devlyn:ideate/references/codex-critic-template.md \
       devlyn:preflight/SKILL.md \
