@@ -110,10 +110,20 @@ if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; then
     INJECTED_PATH="$WORK_DIR/.devlyn-bin:$SNAPSHOT_PATH"
     # iter-0019: arm-specific env. variant gets the codex routing pair;
     # solo_claude gets CODEX_BLOCKED=1 (shim + wrapper both refuse).
-    # CODEX_REAL_BIN / CODEX_MONITORED_PATH are still written for solo_claude
-    # so that if any code path bypasses BLOCKED check (defense fail), the
-    # shim still has the metadata to fail loudly rather than crashing
-    # silently — but the BLOCKED check fires first and exits 126.
+    # iter-0019.5 (Codex R1, 2026-04-28): when ARM=solo_claude, OMIT
+    # CODEX_REAL_BIN + CODEX_MONITORED_PATH from the env block. Reason: the
+    # absolute path to the real codex binary in CODEX_REAL_BIN is itself
+    # the bypass weapon — the orchestrator could `Bash("$CODEX_REAL_BIN
+    # exec ...")` and reach real codex, defeating both shim (PATH lookup
+    # bypassed) and wrapper (codex-monitored.sh not invoked). With the
+    # var absent: shim's BLOCKED check fires before it needs CODEX_REAL_BIN
+    # so removing it doesn't break the shim path; if CODEX_BLOCKED is
+    # somehow unset later, the shim now FAILS CLOSED (no real binary to
+    # delegate to) rather than silently delegating. The earlier "diagnostic
+    # visibility" justification was inverted — it handed the orchestrator
+    # the bypass weapon. Across iter-0019 paid 5-fixture run the bypass
+    # was OPEN but never exercised; this closes the surface preemptively
+    # before iter-0020's 9-fixture L0/L1/L2 run.
     if [ "$ARM" = "solo_claude" ]; then
       ARM_CODEX_BLOCKED=1
     else
@@ -126,11 +136,18 @@ out_path, path_val, real_bin, monitored, codex_blocked = sys.argv[1:6]
 env = {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "PATH": path_val,
-    "CODEX_REAL_BIN": real_bin,
-    "CODEX_MONITORED_PATH": monitored,
 }
 if codex_blocked == "1":
+    # iter-0019.5: solo_claude (L1 arm) — codex blocked at binary layer.
+    # Do NOT export CODEX_REAL_BIN / CODEX_MONITORED_PATH to the
+    # orchestrator subshell; those vars become bypass weapons under any
+    # CODEX_BLOCKED enforcement gap.
     env["CODEX_BLOCKED"] = "1"
+else:
+    # variant arm (L2) — codex routes through wrapper as part of pair-mode
+    # BUILD; both vars are required by the shim/wrapper handshake.
+    env["CODEX_REAL_BIN"] = real_bin
+    env["CODEX_MONITORED_PATH"] = monitored
 data = {"env": env}
 with open(out_path, "w") as f:
     json.dump(data, f, indent=2)
