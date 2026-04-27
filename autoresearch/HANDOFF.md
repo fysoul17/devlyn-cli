@@ -1,6 +1,8 @@
 # HANDOFF — for the next session
 
-**Read this first** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-27 (post-iter-0017 SHIP decision) left off.
+**Outer goal lives in [`NORTH-STAR.md`](NORTH-STAR.md). Read that file FIRST — it is the project contract. This HANDOFF is the operating-context layer on top of it.**
+
+**Read this second** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-27 (post-iter-0017 SHIP decision, mid-iter-0016 readout, post-North-Star-refinement) left off.
 
 ---
 
@@ -12,9 +14,65 @@
 
 iter-0007 verdict realized. iter-0008 REJECTED. **iter-0009 → iter-0014 + iter-0017 all SHIPPED**. Effective branch state = iter-0017: F1 healthy on 900s budget with full per-phase state observability + archive script path fixed + skill-sync gap auto-healed by `run-suite.sh`. F2/F4/F5/F6/F9 not yet re-verified under iter-0014/0017.
 
-**Next iteration: iter-0016 (full-suite verification under iter-0014/0017). Now safer to run because iter-0017 closed the manual-sync risk. Cost: ~1 hour wall, ~$10-20 spend.**
+**iter-0016 in flight at the time of this HANDOFF rewrite** (RUN_ID `20260427T121636Z-27d1636-iter-0016-verify`). Background bash PID 12825, log `/tmp/iter-0016-logs/suite.log`. Partial readout below — F9 still running, judge has not fired yet.
+
+**Next iteration QUEUE** (rewritten 2026-04-27 after Codex GPT-5.5 R1 + R2 + R3 review of North Star — R3 re-ordered iter-0019 vs 0020 for attribution clarity):
+
+1. **iter-0018 — Measurement integrity + report-shape lock**: finish iter-0016, compile canonical 9-fixture report. Inspect F2 variant `terminal_verdict=-` chain, F2 bare `disqualifier=true` source, F2 inter-phase 678s gap. **Add `wall_ratio_*` comparison fields to `summary.json`** (R3 Q3) — `wall_ratio_variant_over_bare` today, generalizes to `L1_over_L0` / `L2_over_L1` later. Diagnostic only — no gate behavior, no prompt retune.
+2. **iter-0019 — `L1-claude` smoke arm + comparison schema** (re-ordered ahead of pair policy per Codex R3). Add `solo_claude` arm to run-suite (BUILD via Claude only — no Codex BUILD, no Codex CRITIC audit). Smoke fixtures F1 + F2 + F4 + F9 to bound cost. **`L1-codex` is deferred** because Claude is currently the auto-resolve orchestrator — there is no non-Claude orchestrator path yet, so an honest L1-codex arm cannot exist today (Codex R3 Q2 hard pushback). Generalize `summary.json` comparison rows to `L1_over_L0`. No pair policy changes yet.
+3. **iter-0020 — Pair-vs-solo policy formalization + tool-vs-deliberation attribution**. Per-phase decision-mode mapping per `NORTH-STAR.md`. Adds wall-time abort + `coverage.json` checklist-coverage artifact (every checklist ID with `pass/fail/na` + evidence path + touched-file scope, per Codex R3 Q4). **Critical instrumentation**: separate measurement of tool/phase lift (browser_validate, build_gate, security-review native firings) vs model-deliberation lift (second-model EVAL/CRITIC/JUDGE producing different conclusions). Codex R3 Q5: F4 lift may be tool-attributed not pair-attributed; iter-0020 must empirically distinguish.
+4. **iter-0021 — Dual-judge permanent (`pair_consensus` for JUDGE phase)**. Resolves "GPT-only judge is a strategic liability" (Codex R1). Lands after iter-0020 because iter-0020 establishes pair vocabulary first.
+5. **iter-0022 — Cost retune** (only if iter-0020 short-circuits + iter-0019 data show wall ratio still over budget after pair gates active). Otherwise close as "not needed."
+6. Old queue items (iter-0015 shim defer, iter-0018 stream-json, iter-0021 F9 timeout, iter-0022 N=1 ship-gate floor, iter-0023 F6 slowness, iter-0024 stuck-execution abort) renumber/recycle as the queue rotates.
+
+**Codex R3 explicit warning**: do NOT bundle judge-mechanics changes + L1 arm + pair policy in the same iter — attribution becomes muddy. Sequence above keeps measurement and behavior changes separate.
+
+**Cost estimate iter-0016 → 0021**: ~4-5 hours wall + 3 paid suite runs (~$30-60 total) before release-decision data lands for L1, and one more paid run for L2 + dual-judge.
+
+**Cost estimate iter-0016 → 0021**: ~3-4 hours wall + 2-3 paid suite runs ($30-60 total) before release-decision data lands.
 
 ---
+
+## iter-0016 partial readout (in flight, F9 running)
+
+RUN_ID `20260427T121636Z-27d1636-iter-0016-verify`. Background PID 12825. Log `/tmp/iter-0016-logs/suite.log`. Results dir `benchmark/auto-resolve/results/20260427T121636Z-27d1636-iter-0016-verify/`.
+
+| Fixture | variant | bare | wall ratio |
+|---|---|---|---|
+| F2 | el=1201s vs=1.0 fc=2 **TIMED_OUT** (CRITIC killed by 1200s watchdog) | el=156s vs=1.0 fc=1 **DISQUALIFIER** | 7.7× |
+| F4 | el=1012s vs=1.0 fc=3 | el=177s vs=0.75 fc=3 | 5.7× |
+| F5 | el=770s vs=0.8 fc=2 | el=45s vs=0.8 fc=1 | **17×** at verify-tie |
+| F6 | el=876s vs=0.83 fc=2 | el=82s vs=0.83 fc=2 | **10×** at verify-tie |
+| F9 | running | (queued) | — |
+
+**Empirical snapshot before judge fires** (judge will produce 4-axis Spec/Constraint/Scope/Quality scores; verify_score is behavioral only):
+
+- iter-0014 state-writes-per-phase protocol confirmed working: F2 variant `phases.{build, build_gate, evaluate, critic}` all populated even though arm timed out — pre-iter-0014 only `evaluate` would have been written. Causality attribution to CRITIC phase was possible because of this.
+- iter-0012 `WATCHDOG_FIRED` sentinel confirmed: F2 variant `result.json.timed_out=true`, `invoke_exit=124`.
+- iter-0017 auto-mirror confirmed: `[suite] mirrored 26 committed skill(s)` printed at suite startup.
+- F4 variant has `phases.{browser_validate, build, build_gate, evaluate}` — browser_validate phase visible because F4 has `metadata.browser=true`. Not exercised in F1-only iter-0014 falsification.
+- **L2 (variant) is on the wrong side of the efficiency contract** for F5/F6: verify-tie at 10–17× wall, which is the canary `NORTH-STAR.md` calls out as "pair without short-circuit recreates this waste pattern."
+- F2 variant produced working code (`verify_score=1.0, files_changed=2`) but never reached terminal verdict because CRITIC was killed mid-phase. F2 metadata.timeout=1200s is too tight for full iter-0014 4-phase pipeline.
+- F2 variant 678s of inter-phase gap unaccounted by per-phase `duration_ms` — phase 1.4/1.5 routing time not yet measured by the state-write protocol. Candidate iter-0019 sub-task or queued separately.
+
+**iter-0016 verdict will be written in iter-0018**, after the suite finishes and the judge runs the 4-axis scoring. Until then this readout is partial.
+
+## North Star refinement (2026-04-27, post-iter-0017)
+
+User clarified the project goal in two passes during this session:
+
+1. **3-layer performance contract**: L0 bare → L1 solo harness → L2 pair harness. Single-LLM users (Opus alone, GPT-5.5 alone) are first-class — they get L1, which must beat L0. Multi-LLM users get L2, which must beat L1. **De-prioritized**: cross-vendor "model-agnostic" axis (Qwen / Gemini / Gemma); not the North Star.
+2. **Efficiency is first-class at every layer**: each layer must beat `previous-layer-best-of-N` where N is the wall-time ratio. "Pair is slower but more thoughtful" is rejected — if L2 takes 17× the wall-time of L0 at verify-tie, the user could have run bare-best-of-17 and likely gotten a better result.
+
+Codex GPT-5.5 R1 + R2 review concurred with the L0 / L1 / L2 framing and contributed:
+
+- Release gate numbers (suite avg margin ≥ +8 preferred / ≥ +5 floor; F9 ≥ +5; 7/9 fixtures ≥ +5; zero variant DQ/CRITICAL/HIGH/timeouts).
+- Per-phase decision-mode taxonomy (`solo` / `pair_critic` / `pair_consensus`) and the table now in `NORTH-STAR.md`.
+- Pushback on EVAL = unconditional pair (would recreate F5/F6 waste): made it **gated solo → escalate to pair_critic only on signals**.
+- Pushback on full profile-neutral runtime abstraction (`engine-roles.json` + dispatcher): **overengineering** since model-agnostic is no longer the North Star. Keep policy in text only; provider names stay inline in SKILL.md PHASE blocks.
+- Iteration-loop pair vs auto-resolve pair: **same vocabulary, different thresholds** (iter-loop tolerates more pair because cost is amortized over harness improvements; auto-resolve must be aggressively gated because every pair call is paid by the user on every run).
+
+`PRINCIPLES.md` gained a sixth principle, "Layer-cost-justified," that operationalizes the efficiency contract. Iteration files now must enumerate principles 1–6.
 
 ## What was just shipped (iter-0017)
 
@@ -146,12 +204,14 @@ iter-0014 specifically modified: `SKILL.md`, `phase-1-build.md`, `phase-2-evalua
 
 ## How to resume cleanly in a new session
 
-1. **Read `autoresearch/HANDOFF.md` first** (this file).
-2. `cd /Users/aipalm/Documents/GitHub/devlyn-cli && git status && git log --oneline -8` — confirm branch state matches the HEAD chain above.
-3. `diff -rq config/skills/ .claude/skills/ 2>&1 | grep -v "Only in"` — must be silent before any benchmark run.
-4. `bash scripts/lint-skills.sh` — must pass all 10 checks before any commit.
-5. **All Codex collaboration goes through the local CLI**, never MCP. User direction (memory: `feedback_codex_cross_check.md`). Pattern: `bash config/skills/_shared/codex-monitored.sh -C /Users/aipalm/Documents/GitHub/devlyn-cli -s read-only -c model_reasoning_effort=xhigh "<prompt>"`.
-6. Reason independently first; consult Codex with rich evidence; never delegate the decision.
+1. **Read `autoresearch/NORTH-STAR.md` first.** Outer goal + L0/L1/L2 contracts + per-phase decision-mode taxonomy. Ground truth.
+2. **Read `autoresearch/HANDOFF.md` second** (this file). Operating context layered on top of the goal.
+3. `cd /Users/aipalm/Documents/GitHub/devlyn-cli && git status && git log --oneline -8` — confirm branch state matches the HEAD chain above.
+4. `diff -rq config/skills/ .claude/skills/ 2>&1 | grep -v "Only in"` — must be silent before any benchmark run (note: as of iter-0017 `run-suite.sh` self-heals at the start of every invocation, so this check is now belt-and-suspenders, not load-bearing).
+5. `bash scripts/lint-skills.sh` — must pass all 10 checks before any commit.
+6. **All Codex collaboration goes through the local CLI**, never MCP. User direction (memory: `feedback_codex_cross_check.md`). Pattern: `bash config/skills/_shared/codex-monitored.sh -C /Users/aipalm/Documents/GitHub/devlyn-cli -s read-only -c model_reasoning_effort=xhigh "<prompt>"`. Never pipe the wrapper output (`| tail`, `| head`, `| grep` without `--line-buffered`) — pipe-stdout is refused per iter-0009.
+7. Reason independently first; consult Codex with rich evidence; never delegate the decision (`feedback_user_directions_vs_debate.md`).
+8. **If iter-0016 background suite is still running** (PID 12825 alive, log `/tmp/iter-0016-logs/suite.log` growing): do NOT interrupt. iter-0018 is the diagnostic-only follow-up that consumes its results.
 
 ---
 

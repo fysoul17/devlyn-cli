@@ -4,6 +4,8 @@ Every iteration must be checked against these five before it ships. Each princip
 
 These principles live HERE (referenced from iteration files) rather than in CLAUDE.md because they are the contract for *evolving* the harness, not for *executing* it. CLAUDE.md is the doctrine the harness reads at run time; this file is the doctrine the iteration loop reads at change time. Different cadence, different audience.
 
+These five principles serve the **outer goal** in [`NORTH-STAR.md`](NORTH-STAR.md). Read NORTH-STAR.md first if you are picking this up cold — it tells you what "passes" actually means in terms of the L0 / L1 / L2 layer contracts.
+
 ---
 
 ## 1. No overengineering
@@ -89,11 +91,28 @@ Distinct from #4: code can be production-ready (no critical bugs) yet hand-roll 
 
 ---
 
+## 6. Layer-cost-justified
+
+> **Each composition layer (L1 over L0, L2 over L1) must justify its added cost on BOTH quality and efficiency.**
+
+`NORTH-STAR.md` defines three composition layers: L0 (bare), L1 (solo harness), L2 (pair harness). The contract is: L1 beats `bare-best-of-N`, L2 beats `L1-best-of-M`, where N and M are the respective wall-time ratios. "Slower but more thoughtful" is not free — at every layer, the alternative "just run the cheaper layer N more times" must be empirically worse.
+
+**Operational test (per iteration):**
+
+- An iteration that increases L2 wall-time without a measurable per-fixture quality lift on previously-tied fixtures is rejected, even if aggregate margin holds.
+- An iteration that introduces or extends a pair-mode phase must specify the **short-circuit rule** (deterministic gates, not vibe confidence) and a **wall-time budget abort** for the phase. Pair budget overruns must fall back to solo, surfaced explicitly in the final report — not silently.
+- An iteration that touches `auto-resolve` must declare the affected phases' decision modes (`solo` / `pair_critic` / `pair_consensus`) and confirm the change preserves the per-phase mapping in `NORTH-STAR.md`.
+- An iteration on iteration-loop tooling (R0 reviews, ship-gate scripts) is exempt from auto-resolve pair gates but still subject to the layer-cost-justified check at its own scope: the meta-pair must be cheaper than running the cheaper alternative more times.
+
+**Failure mode this catches:** "Pair always-on" creeping in because pair *feels* careful. iter-0016 partial readout (F5 17× wall at verify-tie, F6 10× wall at verify-tie) is the canary — pair without short-circuit recreates that waste pattern at every phase that gets pair-promoted without gates.
+
+---
+
 ## How an iteration cites these
 
-In every iteration file under `iterations/`, the "Principles check" section enumerates each of #1-#5 and writes one of:
+In every iteration file under `iterations/`, the "Principles check" section enumerates each of #1-#6 and writes one of:
 
-- ✅ Passes — concrete evidence (numbers, finding counts).
+- ✅ Passes — concrete evidence (numbers, finding counts, wall-time ratios).
 - ⚠️ Borderline — explanation + judgment call.
 - ❌ Fails — explicit revert reason.
 

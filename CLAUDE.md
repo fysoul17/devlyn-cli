@@ -1,5 +1,11 @@
 # Project Instructions
 
+## Outer goal — read first if you do not already know it
+
+The harness composes frontier LLMs into a hands-free pipeline that delivers engineer-quality software for users who do not know context engineering. Two first-class user groups: single-LLM (Opus alone, GPT-5.5 alone) and multi-LLM (Claude + Codex). Three composition layers: **L0** bare LLM, **L1** solo harness on a single LLM, **L2** pair harness with `solo` / `pair_critic` / `pair_consensus` modes per phase. Each layer must beat the previous on **both quality and wall-time efficiency** — concretely, each layer must beat `previous-layer-best-of-N` where N is the wall-time ratio.
+
+Full contract: [`autoresearch/NORTH-STAR.md`](autoresearch/NORTH-STAR.md). Per-iteration doctrine: [`autoresearch/PRINCIPLES.md`](autoresearch/PRINCIPLES.md). Branch-state + in-flight work: [`autoresearch/HANDOFF.md`](autoresearch/HANDOFF.md).
+
 ## Quick Start
 
 Three commands cover most work. All default to `--engine auto` — the Codex CLI's flagship model builds, Claude critiques (cross-model GAN dynamic). No model versions are hardcoded; the CLI's current flagship is inherited automatically.

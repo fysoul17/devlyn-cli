@@ -5,6 +5,8 @@ arms are scored and how ship gates evaluate a run. Do not change the rubric
 during a benchmarking window — changing it invalidates comparability with
 prior `history/runs/`.
 
+**Outer goal lives in [`autoresearch/NORTH-STAR.md`](../../autoresearch/NORTH-STAR.md).** The release-decision layer (L0 / L1 / L2 contracts, wall-time efficiency, pair-cost justification) sits on top of the per-arm scoring rules below. When NORTH-STAR.md adds a release-gate number that this file did not have, the new number applies — open a doc-fix iter to mirror it here.
+
 ## Scoring — 4 axes, 25 points each, 100 total
 
 The blind judge scores both arms on identical axes without knowing which is

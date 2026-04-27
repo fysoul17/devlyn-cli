@@ -8,12 +8,13 @@ This folder is the operating manual and the trail of crumbs. It is not a framewo
 
 ## What we're optimizing for
 
-**Performance = the harness reliably extracts engineer-quality software from the LLM regardless of who is asking or what they are asking.** Concrete bar:
+**See [`NORTH-STAR.md`](NORTH-STAR.md).** That file is canonical and is the first thing a new session should read. The summary kept here is a pointer — when it drifts from `NORTH-STAR.md`, the latter wins.
 
-- Someone with no software engineering background hands the harness an unstructured ask. The output reads as if a senior engineer worked on it: scope-disciplined, no silent catches, idiomatic, tests preserved, error states visible.
-- The user does not need to know context engineering. The harness handles it.
+**One-sentence summary**: the harness composes frontier LLMs into a hands-free pipeline that delivers engineer-quality software for users who do not know context engineering, with each composition layer (L0 bare → L1 solo harness → L2 pair harness) justifying its additional cost over the layer below on **both quality and efficiency**.
 
-The benchmark suite (`benchmark/auto-resolve/`) is the measurement instrument. Suite margin (variant − bare) is the primary signal; the four rubric axes (Spec / Constraint / Scope / Quality), oracle findings, and wall time are secondary.
+**Two first-class user groups**: single-LLM users (Opus alone or GPT-5.5 alone) get L1; multi-LLM users get L2. Both must beat their respective baselines on quality AND wall-time efficiency (concretely: each layer must beat `previous-layer-best-of-N` where N is the wall-time ratio).
+
+The benchmark suite (`benchmark/auto-resolve/`) is the measurement instrument. Suite margin (variant − bare) is the headline; wall-time ratio + per-fixture quality lift + judge-axis deltas (Spec / Constraint / Scope / Quality), oracle findings, and disqualifier counts together form the release-decision signal documented in `NORTH-STAR.md`.
 
 ---
 

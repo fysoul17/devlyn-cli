@@ -1,9 +1,13 @@
 # Benchmark Suite Design — v1
 
+**Outer goal**: see [`autoresearch/NORTH-STAR.md`](../../autoresearch/NORTH-STAR.md) — the harness composes frontier LLMs into a hands-free pipeline that delivers engineer-quality software for users who do not know context engineering, with each composition layer (L0 bare → L1 solo harness → L2 pair harness) justifying its added cost on quality AND wall-time efficiency. This benchmark is the measurement instrument for that contract.
+
 **Purpose.** Replace ad-hoc A/B benchmarking with a permanent, comprehensive,
 one-command suite that gates every future harness change with a ship/rollback
 decision. Any prompt edit, phase reorder, new native skill, or model upgrade
 can be validated by running the suite and reading the numbers.
+
+**Arm structure (current vs planned).** Today the suite runs `variant` (L2: Claude + Codex pair) vs `bare` (L0). The L1 (solo harness on a single LLM) arm is queued for iter-0020 — until then the benchmark cannot directly verify the L1 contract, only the L0 ↔ L2 delta. Single-LLM users (Opus alone, GPT-5.5 alone) are first-class per the North Star, so this gap is a release-blocker for them, not a future enhancement.
 
 **Non-goals.** Publishable-research statistical rigor. Not a regression test
 library for the product code — those live elsewhere. Not a substitute for
