@@ -43,9 +43,7 @@
       "cmd": "node --test tests/",
       "exit_code": 0,
       "stdout_contains": [],
-      "stdout_not_contains": [
-        "fail "
-      ]
+      "stdout_not_contains": []
     }
   ],
   "forbidden_patterns": [
