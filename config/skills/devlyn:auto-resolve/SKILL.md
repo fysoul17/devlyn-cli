@@ -31,7 +31,7 @@ Goal-first. Verify state, source integrity, diff base, artifact contracts. Prefe
 Every phase routes to the optimal model per `references/engine-routing.md`:
 
 - Phase prompt bodies (in `references/phases/`) are engine-agnostic.
-- Phases routed to **Codex**: shell out to `codex exec` per the canonical flag set in `config/skills/_shared/codex-config.md` and the spawn patterns in `engine-routing.md`. No MCP.
+- Phases routed to **Codex**: shell out to `bash .claude/skills/_shared/codex-monitored.sh` (which wraps `codex exec`) per the canonical flag set in `config/skills/_shared/codex-config.md` and the spawn patterns in `engine-routing.md`. The wrapper closes stdin and emits a heartbeat so long reasoning calls don't starve the outer API stream. No MCP.
 - Phases routed to **Claude**: spawn an `Agent` subagent with `mode: "bypassPermissions"`, passing the phase body verbatim.
 - Phases routed to **Native** (CRITIC security sub-pass): invoke the native Claude Code `security-review` skill via the Skill tool; normalize its output into `.devlyn/critic.findings.jsonl` per `phase-3-critic.md`.
 - `--engine claude` forces all phases to Claude. `--engine codex` forces implementation to Codex, orchestration/Chrome MCP stays Claude. `--engine auto` (default) uses the routing table.

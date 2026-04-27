@@ -71,6 +71,70 @@ if [ "$ARM" = "variant" ]; then
   if [ -f "$REPO_ROOT/CLAUDE.md" ]; then
     cp "$REPO_ROOT/CLAUDE.md" "$WORK_DIR/CLAUDE.md"
   fi
+  # iter-0009: stage the codex PATH shim. This is the runtime binding layer
+  # that prevents iter-0006/0008-class stream-starvation collapses. The shim
+  # transparently routes any `codex exec ...` invocation (including
+  # `bash -lc 'codex exec...'`, scripted, or indirect calls) to
+  # codex-monitored.sh, which closes stdin (codex 0.124.0 prompt-arg+stdin
+  # hang fix), streams stdout fully (no `tail` buffering), and emits a
+  # heartbeat every 30s so the outer claude -p byte-watchdog stays fed.
+  # Bare arm gets nothing — bare doesn't invoke codex.
+  if command -v codex >/dev/null 2>&1; then
+    CODEX_REAL_BIN="$(command -v codex)"
+    SHIM_SRC="$REPO_ROOT/scripts/codex-shim/codex"
+    WRAPPER_SRC="$REPO_ROOT/config/skills/_shared/codex-monitored.sh"
+    if [ ! -x "$SHIM_SRC" ] || [ ! -r "$WRAPPER_SRC" ]; then
+      echo "fatal: iter-0009 shim/wrapper missing at $SHIM_SRC / $WRAPPER_SRC" >&2
+      exit 1
+    fi
+    mkdir -p "$WORK_DIR/.devlyn-bin"
+    cp "$SHIM_SRC" "$WORK_DIR/.devlyn-bin/codex"
+    chmod +x "$WORK_DIR/.devlyn-bin/codex"
+    # The wrapper lives inside the staged skills tree so skill prompts that
+    # reference `.claude/skills/_shared/codex-monitored.sh` resolve correctly
+    # from $WORK_DIR. The shim itself is path-independent.
+    CODEX_MONITORED_PATH="$WORK_DIR/.claude/skills/_shared/codex-monitored.sh"
+    [ -r "$CODEX_MONITORED_PATH" ] || {
+      echo "fatal: codex-monitored.sh not present in staged skills at $CODEX_MONITORED_PATH" >&2
+      exit 1
+    }
+    export CODEX_REAL_BIN CODEX_MONITORED_PATH
+    # Claude Code dispatches each Bash tool call via `zsh -c source
+    # <shell-snapshot> && export <claude-injected-env> && eval "<cmd>"`. The
+    # shell snapshot contains a HARDCODED `export PATH=...` that overrides
+    # whatever PATH this script sets before invoking claude. Claude's
+    # `settings.json env.*` map IS injected after the snapshot, so writing
+    # PATH there is the only reliable way to put `$WORK_DIR/.devlyn-bin`
+    # ahead of the snapshot's PATH inside Bash dispatches.
+    # CODEX_REAL_BIN / CODEX_MONITORED_PATH are also written here so the
+    # shim and wrapper see them in EVERY Bash dispatch (parent-process env
+    # alone would not survive the snapshot reset).
+    SNAPSHOT_PATH=$(grep -m1 '^export PATH=' \
+      "$HOME/.claude/shell-snapshots/snapshot-zsh-"*.sh 2>/dev/null \
+      | head -1 | sed 's/^[^=]*=//' | tr -d '"' || true)
+    [ -n "$SNAPSHOT_PATH" ] || SNAPSHOT_PATH="$PATH"
+    INJECTED_PATH="$WORK_DIR/.devlyn-bin:$SNAPSHOT_PATH"
+    python3 - "$WORK_DIR/.claude/settings.json" \
+      "$INJECTED_PATH" "$CODEX_REAL_BIN" "$CODEX_MONITORED_PATH" <<'PY'
+import json, sys
+out_path, path_val, real_bin, monitored = sys.argv[1:5]
+data = {
+    "env": {
+        "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+        "PATH": path_val,
+        "CODEX_REAL_BIN": real_bin,
+        "CODEX_MONITORED_PATH": monitored,
+    }
+}
+with open(out_path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+PY
+  else
+    echo "warning: codex not on PATH — variant arm cannot exercise iter-0009 wrapper" >&2
+    CODEX_REAL_BIN=""
+    CODEX_MONITORED_PATH=""
+  fi
 fi
 
 (cd "$WORK_DIR" \
@@ -231,6 +295,12 @@ else
   set -m
   (
     cd "$WORK_DIR"
+    # iter-0009: prepend codex shim PATH for the variant arm only. See the
+    # shim-staging block above for rationale. CODEX_REAL_BIN /
+    # CODEX_MONITORED_PATH were exported there.
+    if [ "$ARM" = "variant" ] && [ -x "$WORK_DIR/.devlyn-bin/codex" ]; then
+      export PATH="$WORK_DIR/.devlyn-bin:$PATH"
+    fi
     exec claude \
       -p "$(cat "$PROMPT_FILE")" \
       --dangerously-skip-permissions \

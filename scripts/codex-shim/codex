@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# scripts/codex-shim/codex — PATH shim for `codex`.
+#
+# Place the directory containing this file FIRST on PATH for the variant arm.
+# When the orchestrator (or anything in its subtree) invokes `codex exec ...`,
+# this shim transparently routes to `codex-monitored.sh`. Other codex
+# subcommands (`codex --version`, `codex login`, `codex resume`, etc.) pass
+# straight through to the real binary.
+#
+# WHY (iter-0009):
+#   • iter-0008 proved prompt-level instructions cannot constrain orchestrator
+#     codex invocation shape — the orchestrator picked an explicitly-forbidden
+#     shape from its own pattern prior despite reading the contract.
+#   • A PATH shim binds at a layer the orchestrator can't bypass: even
+#     `bash -lc 'codex exec ...'`, scripted invocations, and indirect calls
+#     (`c=codex; "$c" exec ...`) inherit PATH and resolve to this shim. A
+#     PreToolUse:Bash hook misses these (cf. codex Round 1 critique).
+#   • PATH manipulation has no interaction with `--dangerously-skip-permissions`
+#     unlike Claude Code hooks (whose behavior under that flag is unverified).
+#
+# REQUIRED ENV:
+#   CODEX_REAL_BIN        — absolute path to the codex binary (or its outer
+#                            wrapper, e.g. Superset). Captured BEFORE this
+#                            shim was prepended to PATH so we have a stable
+#                            path even though `command -v codex` would now
+#                            resolve to ourselves.
+#   CODEX_MONITORED_PATH  — absolute path to codex-monitored.sh.
+#
+# Both env vars are set by `benchmark/auto-resolve/scripts/run-fixture.sh` for
+# the variant arm. Outside the benchmark this shim is not on PATH.
+#
+# PATH SANITIZATION (subtle, load-bearing):
+#   Some real-codex setups are themselves wrapper scripts that re-discover the
+#   binary by scanning PATH (e.g. Superset's ~/.superset/bin/codex calls
+#   `find_real_binary` which iterates $PATH). If our shim dir is still on PATH
+#   when we delegate, that wrapper finds OUR shim and loops back to us. Before
+#   exec, we strip our own directory out of PATH so any downstream PATH walk
+#   resolves cleanly to the actual codex binary.
+
+set -uo pipefail
+
+# Self-locate so we can strip ourselves from PATH before delegating.
+SHIM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd -P)" || SHIM_DIR=""
+
+clean_path() {
+  local IFS=':' new="" d
+  for d in $PATH; do
+    [ -z "$d" ] && continue
+    if [ -n "$SHIM_DIR" ]; then
+      local d_resolved
+      d_resolved="$(cd "$d" 2>/dev/null && pwd -P)" || d_resolved="$d"
+      [ "$d_resolved" = "$SHIM_DIR" ] && continue
+    fi
+    [ -z "$new" ] && new="$d" || new="$new:$d"
+  done
+  printf '%s' "$new"
+}
+
+if [ -z "${CODEX_REAL_BIN:-}" ] || [ ! -x "$CODEX_REAL_BIN" ]; then
+  printf '[codex-shim] error: CODEX_REAL_BIN unset or not executable: %s\n' \
+    "${CODEX_REAL_BIN:-<unset>}" >&2
+  exit 127
+fi
+
+CLEAN_PATH="$(clean_path)"
+
+if [ "${1:-}" = "exec" ]; then
+  if [ -z "${CODEX_MONITORED_PATH:-}" ] || [ ! -r "$CODEX_MONITORED_PATH" ]; then
+    printf '[codex-shim] error: CODEX_MONITORED_PATH unset or not readable: %s\n' \
+      "${CODEX_MONITORED_PATH:-<unset>}" >&2
+    exit 127
+  fi
+  shift
+  # Wrapper expects: bash codex-monitored.sh <args after `codex exec`>.
+  # CODEX_BIN tells the wrapper which binary to invoke. CLEAN_PATH ensures any
+  # outer wrapper's PATH-based discovery cannot loop back to this shim.
+  PATH="$CLEAN_PATH" CODEX_BIN="$CODEX_REAL_BIN" \
+    exec bash "$CODEX_MONITORED_PATH" "$@"
+fi
+
+# All other subcommands pass through.
+PATH="$CLEAN_PATH" exec "$CODEX_REAL_BIN" "$@"

@@ -122,7 +122,13 @@ if [ ! -d .claude/skills ]; then
   ok "no .claude/skills (fresh checkout) — skipping parity check"
 else
   drift=0
-  for rel in devlyn:auto-resolve/SKILL.md devlyn:ideate/SKILL.md devlyn:preflight/SKILL.md; do
+  for rel in \
+      devlyn:auto-resolve/SKILL.md \
+      devlyn:auto-resolve/references/engine-routing.md \
+      devlyn:ideate/SKILL.md \
+      devlyn:preflight/SKILL.md \
+      _shared/codex-config.md \
+      _shared/codex-monitored.sh; do
     src="config/skills/$rel"
     dst=".claude/skills/$rel"
     if [ ! -f "$src" ] || [ ! -f "$dst" ]; then
@@ -141,6 +147,14 @@ else
       drift=1
     fi
   done
+  # iter-0009: codex-monitored.sh must be executable in the installed mirror
+  # (skills tree gets cp -R'd into $WORK_DIR for the variant arm; bash will
+  # refuse to run a non-executable wrapper).
+  if [ -f ".claude/skills/_shared/codex-monitored.sh" ] \
+     && [ ! -x ".claude/skills/_shared/codex-monitored.sh" ]; then
+    bad "_shared/codex-monitored.sh — not executable in installed mirror"
+    drift=1
+  fi
   if [ $drift -eq 0 ]; then
     ok "critical path parity clean"
   fi

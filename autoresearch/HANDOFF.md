@@ -1,14 +1,16 @@
 # HANDOFF — for the next session
 
-**Read this first** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-26 (post-iter-0007 REVERT decision) left off.
+**Read this first** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-27 (post-iter-0009 SHIP decision) left off.
 
 ---
 
 ## Current state
 
-**Branch**: `benchmark/v3.6-ab-20260423-191315`.
+**Branch**: `benchmark/v3.6-ab-20260423-191315`. 2 commits ahead of origin (iter-0009 build NOT YET committed — pending commit on this iter's SHIP verdict).
 
-**HEAD**: `1ac7594` (iter-0006 foreground-only contract). **Status: REVERT pending user authorization.** When user approves, run `git revert 1ac7594 --no-edit` and sync `.claude/skills/` to match the reverted `config/skills/`.
+**HEAD (committed)**: `1ff7534` (`Revert "autoresearch(iter-0006): foreground-only codex execution contract"`). **Working tree** carries iter-0009 changes (wrapper + PATH shim + canonical doc edits + harness extension + lint extension); the iter-0009 commit is the next thing to land.
+
+iter-0007 verdict realized. iter-0008 (prompt-level narrow kill-shape contract) ATTEMPTED 2026-04-27 and REJECTED — F6 catastrophic reproduced iter-0006. iter-0009 (executable enforcement: wrapper + PATH shim, NOT hook per codex Round 1) ATTEMPTED 2026-04-27 and **SHIPPED** — F2 BUILD ran 399.9s through wrapper without watchdog kill, F6 collapse +60-point recovery, F1 informationally neutral.
 
 **Reason for revert**: iter-0007 F6 isolation experiment (2 single-fixture runs, 1hr total) established **causality** that iter-0006's contract directly broke F6:
 
@@ -26,43 +28,71 @@ Same fixture, same harness, same skill chain, same fixture metadata.timeout — 
 
 ---
 
-## Decided next step — iter-0008: narrow kill-shape contract
+## Decided next step — iter-0010 (production rollout) + commit iter-0009
 
-After REVERT, design a narrower contract that targets the EXACT failure class from iter-0005 F2 collapse — not all backgrounding.
+**iter-0009 SHIPPED 2026-04-27** with full data in `iterations/0009-wrapper-and-hook.md`. Headline metrics:
 
-- ✗ "All `codex exec` must be foreground" (iter-0006 — too broad, broke F6).
-- ✓ **iter-0008 hypothesis**: ban only orphaned/unmonitored background codex. Allow background codex paired with active observation (tail -f / poll process / progress emission to keep orchestrator stream alive).
+| Fixture | iter-0008 | iter-0009 | Note |
+|---|---|---|---|
+| F1 | variant 97/+7/timed_out=true | variant 98/+9/timed_out=true | iter-0009 doesn't fix the F1 separate non-codex starvation; queued as iter-0012 |
+| F6 | variant 35/-59/0 files/1500s wall | **variant 95/+5/2 files/290s clean** | catastrophic-collapse FIXED; +60 swing on identical fixture |
+| F2 | (not run) | **variant 93/+8/3 files/1126s clean** | wrapper EXERCISED — 399.9s BUILD bash dispatch via `bash codex-monitored.sh ...`; byte-watchdog defeated; full pipeline completed |
 
-Falsification gate before any full suite:
-1. F2 alone (was the original failure shape iter-0006 fixed) — must show recovery (margin ≥ +5).
-2. F6 alone (was the regression iter-0006 caused) — must NOT collapse (variant_score ≥ 85, files ≥ 1, verify ≥ 0.66, transcript > 0 bytes).
+**Key empirical finding**: prompt-level instruction is dead (iter-0008), and **a hook is too easy to evade** (Codex Round 1 caught — `bash -lc`, scripts, indirection, plus `--dangerously-skip-permissions` interaction unverified). The right binding is a **PATH shim** that catches every `codex` resolution at the shell layer. The wrapper does the shape enforcement (`< /dev/null` stdin, full stdout streaming, heartbeat-on-stderr every 30s, signal forwarding, exit-code preservation, refusal of piped stdout via `[ -p /dev/stdout ]`).
 
-Only run full-suite if both pass. The two-fixture gate replaces iter-0006's four-fixture gate per Karpathy #2 (less is more — load-bearing fixtures only).
+Codex Round 2 caught the load-bearing wrapper bug: **shim alone doesn't defeat `| tail -200`** because tail still buffers. Wrapper now refuses pipe-stdout with exit 64 + clear message.
+
+**Shipped components (post-Round-1 + Round-2):**
+
+1. `config/skills/_shared/codex-monitored.sh` (NEW). Wrapper. Refuses pipe-stdout, streams full stdout (no `tail -n`), heartbeat sidecar @ 30s on stderr, signal traps forwarding TERM/INT to codex child + sidecar, exact exit-code preservation. ~90 lines.
+2. `scripts/codex-shim/codex` (NEW). PATH shim with self-stripping (handles wrapper-of-wrapper chains like Superset's `~/.superset/bin/codex`). ~80 lines.
+3. `_shared/codex-config.md` (EDIT). Canonical invocations now `bash .claude/skills/_shared/codex-monitored.sh ...`. Raw `codex exec` documented as forbidden in skill prompts.
+4. `engine-routing.md` lines 7 + 74 (EDIT). Wrapper-form Codex call defaults.
+5. `auto-resolve/SKILL.md` line 34 (EDIT). Wrapper convention.
+6. `benchmark/auto-resolve/scripts/run-fixture.sh` (EDIT, ~30 lines). For variant arm: stage shim PATH in `$WORK_DIR/.devlyn-bin`, write `$WORK_DIR/.claude/settings.json` with `env.PATH` override (since `zsh -c source <snapshot>` overrides parent PATH — discovered mid-build), set `CODEX_REAL_BIN` + `CODEX_MONITORED_PATH`.
+7. `scripts/lint-skills.sh` (EDIT). Mirror parity Check 6 extended to include `_shared/codex-config.md`, `_shared/codex-monitored.sh`, `engine-routing.md`. New executable-bit check on the wrapper.
 
 ---
 
-## How to start the next session (iter-0008)
+## Decided next step — commit + iter-0010
 
 ```bash
 cd /Users/aipalm/Documents/GitHub/devlyn-cli
-git status                              # confirm branch
-git log --oneline -3                    # confirm HEAD
 
-# 1. If iter-0006 not yet reverted (ASK USER first)
-git revert 1ac7594 --no-edit
-# After revert, sync .claude/skills/ to match config/skills/
-cp config/skills/_shared/codex-config.md .claude/skills/_shared/codex-config.md
-cp config/skills/devlyn:auto-resolve/references/engine-routing.md \
-   .claude/skills/devlyn:auto-resolve/references/engine-routing.md
-diff -rq config/skills/ .claude/skills/ 2>&1 | grep -v "Only in"  # verify clean
+# 1. Commit iter-0009 (per autoresearch convention — SHIPPED iters get a commit)
+git add config/skills/_shared/codex-monitored.sh \
+        scripts/codex-shim/codex \
+        config/skills/_shared/codex-config.md \
+        config/skills/devlyn:auto-resolve/references/engine-routing.md \
+        config/skills/devlyn:auto-resolve/SKILL.md \
+        benchmark/auto-resolve/scripts/run-fixture.sh \
+        scripts/lint-skills.sh \
+        autoresearch/iterations/0008-narrow-kill-shape-contract.md \
+        autoresearch/iterations/0009-wrapper-and-hook.md \
+        autoresearch/HANDOFF.md
+# also stage .claude/skills/* mirror parity if installer didn't run
+git commit -m "autoresearch(iter-0009): wrapper + PATH shim — defeat iter-0008 starvation"
 
-# 2. Read iter-0007 + iter-0008 candidate
-cat autoresearch/iterations/0007-f6-isolation.md
-cat autoresearch/walltime-history.md      # context
-cat memory/project_skill_guardrails_2026_04_26.md  # design constraints
-
-# 3. Design iter-0008 contract (apply skill guardrails G1-G5)
-# 4. Two-fixture falsification gate: F2 + F6 single-fixture before any suite
+# 2. iter-0010 — production rollout (codex Round 2 finding #3 deferred)
+#    a. ideate/SKILL.md:245 + :300 — wrapper invocation
+#    b. ideate/codex-critic-template.md — wrapper invocation
+#    c. preflight/SKILL.md:117 — wrapper invocation
+#    d. team-resolve/SKILL.md, team-review/SKILL.md inline sites — wrapper invocation
+#    e. package.json files array — ship `scripts/codex-shim/**`
+#    f. Document the user-install installer flow that puts shim on PATH globally for /devlyn:* runs
+#
+# 3. iter-0011 — `timed_out` derivation fix (codex Round 2 finding #2)
+#    `result.json` derives timed_out from `elapsed >= timeout` (line 477) instead of
+#    the watchdog flag (line 301). At-boundary natural exits misclassified.
+#
+# 4. iter-0012 — F1 non-codex starvation
+#    F1 reproducibly hits 480s cap with empty transcript. Auto-resolve pipeline
+#    doesn't naturally exit cleanly after Stop on trivial fixtures. NOT iter-0009's
+#    mechanism — separate diagnostic iter needed.
+#
+# 5. iter-0013 — silent-catch fixture spec
+#    F2 spec language doesn't preempt `catch { return fallback }` in BUILD prompts.
+#    Both arms produced the pattern. Tighten spec.
 ```
 
 ---
@@ -86,32 +116,35 @@ Expected: silence (UNSHIPPED_SKILL_DIRS legitimately have `Only in config/skills
 
 ---
 
-## What is shipped vs queued (post iter-0007 REVERT)
+## What is shipped vs queued (post iter-0009 SHIP)
 
-### Shipped on this branch (effective post-REVERT)
+### Shipped on this branch
 
-DECISIONS.md is canonical. iter 0001 (skill scope-first + trivial-fast routing), iter 0002 (F6/F7 spec annotation), iter 0003 (process-group watchdog), iter 0004 (outer claude -p MCP isolation), iter 0005 REVERTED, iter 0006 REVERTED (per iter-0007 verdict).
+DECISIONS.md is canonical. iter 0001 (skill scope-first + trivial-fast routing), iter 0002 (F6/F7 spec annotation), iter 0003 (process-group watchdog), iter 0004 (outer claude -p MCP isolation), iter 0005 REVERTED, iter 0006 REVERTED (per iter-0007 verdict), iter 0007 (F6 isolation experiment, conclusive), iter 0008 REJECTED (prompt-level contract empirically dead), **iter-0009 SHIPPED** (wrapper + PATH shim — F2 BUILD ran 399.9s through wrapper without watchdog kill, F6 +60-point recovery from iter-0008 collapse).
 
-Effective branch state ≈ iter-0004 effective. Post-revert, F2's iter-0005-class collapse mechanism is back on the table; iter-0008 will surgically address it without breaking F6.
+Effective branch state = iter-0009. F1 still hits a separate non-codex starvation (iter-0012 candidate); F2 + F6 healthy; F4/F5/F9 status unchanged from baseline (full-suite re-run not yet performed under iter-0009).
 
-### Queued (next hypotheses, ordered)
+### Queued (next hypotheses, ordered, post iter-0009)
 
-1. **Iter 0008 — narrow kill-shape contract** (next session, see above). Two-fixture gate (F2 + F6) before any full suite.
-2. **Iter 0009 — F9 wall-time regression** (was queued earlier, still relevant). Both iter-0006 single-fixture F9 attempts took >30 min variant. Diagnostic: bump metadata.timeout for F9 to 5400s.
-3. **Iter 0010 — sync-gap auto-mirror fix** (codex round 7 Option A). Pre-run rsync mirror at top of `run-suite.sh`.
-4. **Iter 0011 — watchdog classification bug** (codex round 6 deferral). Misclassification of `timed_out` field when watchdog fires near metadata.timeout.
-5. **Iter 0012 — permanent dual-judge in judge.sh** (this session decision, see `memory/project_dual_judge_2026_04_26.md`). Spec ready: arbitration rule, no third-tiebreaker.
-6. **Iter 0013 — F6 chronic slowness investigation** (separate from contract). F6 variant has been 5-30× slower than bare across all iters. Latent harness-quality issue.
-7. **Iter 0014 — auto-resolve stuck-execution abort criteria** (skill guardrail G5).
-8. **5-Why operationalization in CLAUDE.md** (codex round 2 Karpathy #1 expansion).
-9. **DOCS Job 2 wider verification** (long-queued).
-10. **Held-out fixture set** (don't build until 3+ fixtures improve with no intuitive mechanism).
-11. **Adversarial-ask layer** (long-term).
+1. **iter-0010 — production rollout of wrapper + shim**. Update inline `codex exec` mentions in `ideate/SKILL.md`, `ideate/codex-critic-template.md`, `preflight/SKILL.md`, `team-resolve/SKILL.md`, `team-review/SKILL.md` to use the wrapper. Ship `scripts/codex-shim/codex` to user installs (extend `package.json` `files` array, document the user-installer flow that puts shim on PATH for `/devlyn:*` runs). Codex Round 2 finding #3.
+2. **iter-0011 — `timed_out` derivation fix**. `result.json` derives `timed_out` from `elapsed >= timeout` (`run-fixture.sh:477`) instead of the watchdog flag at `:301`. At-boundary natural exits misclassified. Codex Round 2 finding #2.
+3. **iter-0012 — F1 non-codex starvation**. F1 reproducibly hits 480s cap with empty transcript even when no codex involvement (variant uses pure Claude tools). Auto-resolve pipeline doesn't naturally exit cleanly after Stop on trivial fixtures. Diagnostic iter needed.
+4. **iter-0013 — silent-catch fixture spec**. F2 spec language allows BUILD output with `catch { return fallback }`; both arms produced this pattern, hitting the no-silent-catches disqualifier. Tighten F2 (and similar) spec language to preempt the pattern.
+5. **iter-0014 — F9 wall-time regression** (was iter-0009 in old queue). Both iter-0006 single-fixture F9 attempts took >30 min. Diagnostic: bump F9 metadata.timeout to 5400s.
+6. **iter-0015 — sync-gap auto-mirror fix** (codex round 7 Option A). Pre-run rsync mirror at top of `run-suite.sh` for self-healing of `config/skills/` ← `.claude/skills/` drift.
+7. **iter-0016 — single-fixture ship-gate hard-floor bug**. Ship-gate currently passes catastrophic regression on N=1 because 7/9 floor not applied at N=1.
+8. **iter-0017 — permanent dual-judge in judge.sh** (`memory/project_dual_judge_2026_04_26.md`). Spec ready: arbitration rule, no third-tiebreaker.
+9. **iter-0018 — F6 chronic slowness investigation**. F6 variant has been 5–30× slower than bare across all iters. Latent harness-quality issue.
+10. **iter-0019 — auto-resolve stuck-execution abort criteria** (skill guardrail G5).
+11. **5-Why operationalization in CLAUDE.md** (codex round 2 Karpathy #1 expansion).
+12. **DOCS Job 2 wider verification** (long-queued).
+13. **Held-out fixture set** (don't build until 3+ fixtures improve with no intuitive mechanism).
+14. **Adversarial-ask layer** (long-term).
 
 ### Deferred (user-direction, awaiting explicit user call)
 
-12. Multi-LLM orchestration modes (3 modes + extensibility) — `memory/project_orchestration_modes_2026_04_26.md`.
-13. Benchmark cross-mix arms — `memory/project_benchmark_cross_mix_2026_04_26.md`.
+- Multi-LLM orchestration modes (3 modes + extensibility) — `memory/project_orchestration_modes_2026_04_26.md`.
+- Benchmark cross-mix arms — `memory/project_benchmark_cross_mix_2026_04_26.md`.
 
 ---
 
@@ -129,6 +162,9 @@ Effective branch state ≈ iter-0004 effective. Post-revert, F2's iter-0005-clas
 10. **Universal contract rules over-fit single failure modes.** iter-0006 banned a category to prevent a specific shape; the category is broader than the shape. Apply skill guardrails G1-G5 (`memory/project_skill_guardrails_2026_04_26.md`) before merging any contract change.
 11. **Read your own data carefully.** Codex Round 16 caught me misreading my own CSV column order. Double-check before drawing conclusions.
 12. **User directions ≠ debate prompts.** When user says "we're going X direction," ask codex for best practice + improvements, NOT "should we?". Surface codex pushback to user transparently. (`feedback_user_directions_vs_debate.md`)
+13. **`zsh -c source <snapshot>` overrides parent PATH.** Project-scope `$WORK_DIR/.claude/settings.json` env override is the only reliable way to inject PATH into Bash dispatches inside `claude -p`. Discovered during iter-0009 build. Document for any future PATH-dependent harness work.
+14. **`[ -p /dev/stdout ]` is the portable POSIX test for "stdout is a pipe."** macOS `stat -f "%HT" /dev/fd/1` returned spurious "Fifo File" for redirected files inside bash scripts; `[ -p ... ]` is correct. Used in iter-0009 wrapper to refuse pipe-stdout invocations.
+15. **Cross-model GAN earned its keep at iter-0009.** Round 1 caught hook fragility (swap to PATH shim). Round 2 caught wrapper pipe-stdout starvation BEFORE benchmark (would have produced false PASS on negative canary). Continue dual-model practice.
 
 ---
 
@@ -147,6 +183,8 @@ Effective branch state ≈ iter-0004 effective. Post-revert, F2's iter-0005-clas
 - R15: strategic check — fold iter-0008 wall-time into iter-0007, cut iter-0012 for now
 - R16: caught data-misread (F6 prior 0-files claim wrong; F4/F5 noise → "shared runtime/API failure")
 - R17: post-isolation — REVERT confirmed; iter-0008 = narrow kill-shape ban
+- **iter-0009 R1**: hook → PATH shim swap (hook bypasses: `bash -lc`, scripts, indirection, `--dangerously-skip-permissions` interaction unverified). Wrapper streams full stdout (no `tail -200`). Cut team-* / ideate / preflight inline rewrites.
+- **iter-0009 R2**: `| tail -200` defeats wrapper streaming → wrapper must refuse pipe-stdout via `[ -p /dev/stdout ]`. Heartbeat/metadata to stderr (cleaner stdout = codex output). Mirror parity for `engine-routing.md`. F2 expectation: regression check, not direct wrapper proof — caveat applied.
 
 ---
 
