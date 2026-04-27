@@ -30,6 +30,7 @@ Implement code changes that satisfy every pending criterion in `pipeline.state.j
 - **No pending criterion remains**: every `criteria[]` entry must transition to `status: "implemented"` with an `evidence` record before you exit. If a criterion genuinely cannot be satisfied (missing external dep, blocking ambiguity), set `phases.build.verdict: "BLOCKED"` and report. Never exit with a criterion still `pending`. BUILD must not mark any criterion `failed` — that's EVAL-only. Legal transitions: `pending → implemented`, or halt via `verdict: "BLOCKED"`.
 - **Tests** added or updated for changed behavior. Run the full test suite before stopping.
 - **Team** (only if orchestrator set `team: true`): use `TeamCreate` per the role table below; collect findings; shut down the team before exiting. Otherwise implement directly — the default.
+- **state.json phases.build** — final write before exit: `verdict` (`PASS` on success path, `BLOCKED` on the failure path above), `engine` (`claude` or `codex`), `model`, `started_at` (matches the orchestrator's pre-spawn timestamp if already present — do not overwrite), `completed_at` (ISO-8601 UTC now), `duration_ms` (`completed_at - started_at` in ms), `round`, `artifacts.{log_file: ".devlyn/build.log.md" if you wrote one}`. The orchestrator validates these are populated and fills any gaps; do not rely on that — write them yourself.
 </output_contract>
 
 <quality_bar>

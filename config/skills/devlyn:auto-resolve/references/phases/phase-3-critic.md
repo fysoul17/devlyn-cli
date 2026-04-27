@@ -72,7 +72,7 @@ Dependency audit is included in the native skill's output when lockfiles changed
 
 - **`.devlyn/critic.findings.jsonl`** — one JSONL file containing BOTH sub-passes' findings. Every line carries `phase: "critic"`. Rule_id prefix (`design.*` vs `security.*`) distinguishes sub-pass. ID prefix: `CRIT-<4digit>` (single sequence shared by both sub-passes for simplicity).
 - **`.devlyn/critic.log.md`** — single prose summary: two sections ("Design" + "Security"). Each section: verdict + top 3 concerns framed actionably. Security section records the dep-audit command and its result.
-- **state.json phases.critic** — record both sub-verdicts AND the combined verdict. Combined verdict = WORSE of the two:
+- **state.json phases.critic** — final write before exit: `sub_verdicts.{design, security}`, combined `verdict` (rule below), `engine`, `model`, `started_at` (matches the orchestrator's pre-spawn timestamp if already present — do not overwrite), `completed_at` (ISO-8601 UTC now), `duration_ms` (`completed_at - started_at` in ms), `round`, `pre_sha` (preserved from orchestrator's pre-spawn capture), `artifacts.{findings_file: ".devlyn/critic.findings.jsonl", log_file: ".devlyn/critic.log.md"}`. The orchestrator validates these are populated and fills any gaps; do not rely on that — write them yourself. Combined verdict = WORSE of the two:
   - Any `BLOCKED` → `BLOCKED`
   - Any `NEEDS_WORK` → `NEEDS_WORK`
   - Any `PASS_WITH_ISSUES` → `PASS_WITH_ISSUES`

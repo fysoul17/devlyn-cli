@@ -53,6 +53,15 @@ Doc-file allowlist (DOCS): `*.md`, `.mdx`, files under `docs/`, `README*`, `CHAN
 Optional: pass `--perf` to record per-phase `{wall_ms, tokens, engine, round, triggered_by}` into `state.perf.per_phase` and totals at PHASE 5. Off by default. Harness efficiency claims can be measured when needed; mandatory meta-measurement was retired in v3.4.
 </perf_opt_in>
 
+<state_write_protocol>
+**Every phase, every round** — orchestrator owns this. Per `references/pipeline-state.md` Write Protocol.
+
+- **Before each phase spawn**: write `state.phases.<name>.{started_at: <ISO-8601 UTC now>, round: state.rounds.global, triggered_by: <"build_gate"|"evaluate"|"critic"|"browser_validate"|null>}`. The phase agent inherits an entry already in the JSON.
+- **After each agent returns**: validate `state.phases.<name>.{verdict, completed_at, duration_ms, artifacts}` are populated. If any are missing or null, write them yourself before branching: `verdict` from the agent's reported result; `completed_at = <ISO-8601 UTC now>`; `duration_ms = (completed_at - started_at) in ms`; `artifacts = {findings_file: ".devlyn/<name>.findings.jsonl" if exists, log_file: ".devlyn/<name>.log.md" if exists}`. **Validate before any branching decision** — branching on a null verdict is undefined behavior.
+- **Phases this applies to**: `build`, `build_gate`, `browser_validate`, `evaluate`, `critic`, `docs`, `final_report`. (PHASE 0 PARSE creates state.json itself; no separate `phases.parse` entry.)
+- **Why this exists**: prompt-body output contracts alone proved insufficient empirically — `build_gate.md` already explicitly listed the four end-fields and the orchestrator still skipped the write on a clean F1 run (iter-0014 evidence). Orchestrator-side validation closes the gap. Side benefit: `phases.final_report.verdict` populated correctly is what guards archive pruning from deleting in-flight runs.
+</state_write_protocol>
+
 ## PHASE 0: PARSE + PREFLIGHT + ROUTE
 
 1. **Parse flags** from `<pipeline_config>`:
@@ -91,6 +100,8 @@ Engine: <engine>, Route: <selected> (<stage_a_reasons>), Bypasses: <bypasses|non
 
 **Team assembly rule** (simplified from v3.2): BUILD spawns as **team** ONLY when `--team` flag passed OR `state.route.selected == "strict"`. Otherwise solo. Keyword-match auto-trigger removed — Claude/Codex base SWE capability is the default.
 
+**State write** (per `<state_write_protocol>`): write `phases.build.started_at` before spawn; after agent returns, validate `phases.build.{verdict, completed_at, duration_ms, artifacts}` populated and write any missing fields before branching.
+
 **After the agent completes**:
 1. Verify `criteria[]` has ≥1 entry with `status != "pending"`. If not, re-spawn with reminder.
 2. `git diff --stat` — if no changes, halt with failure.
@@ -101,6 +112,8 @@ Engine: <engine>, Route: <selected> (<stage_a_reasons>), Bypasses: <bypasses|non
 Skip if `build-gate` in `state.route.bypasses`. Deterministic — same commands CI/Docker/production run.
 
 Spawn Claude `Agent` (`mode: "bypassPermissions"`): "Read `references/build-gate.md` (detection matrix, commands, package manager, monorepo, strict, Docker) and `references/findings-schema.md`. Run all matched gates. Apply strict flags if `--build-gate strict` OR `state.route.selected == "strict"`. Run Docker unless `--build-gate no-docker`. Emit `.devlyn/build_gate.findings.jsonl` + `.devlyn/build_gate.log.md`; update `state.phases.build_gate`."
+
+**State write** (per `<state_write_protocol>`): write `phases.build_gate.started_at` before spawn; after agent returns, validate `phases.build_gate.{verdict, completed_at, duration_ms, artifacts}` populated and write any missing fields before branching.
 
 **After the agent completes**:
 1. Read `state.phases.build_gate.verdict`.
@@ -113,6 +126,8 @@ Skip if `browser` in `state.route.bypasses`. Skip if `git diff --name-only <stat
 
 Spawn Claude `Agent` (`mode: "bypassPermissions"`): "Read `.claude/skills/devlyn:browser-validate/SKILL.md` (tiered Chrome MCP → Playwright → curl) and `references/findings-schema.md`. Start dev server, test the implemented feature end-to-end against `pipeline.state.json:criteria[]`, leave server running (`--keep-server`). Emit `.devlyn/browser_validate.findings.jsonl` + `.devlyn/browser_validate.log.md`; update `state.phases.browser_validate`."
 
+**State write** (per `<state_write_protocol>`): write `phases.browser_validate.started_at` before spawn; after agent returns, validate `phases.browser_validate.{verdict, completed_at, duration_ms, artifacts}` populated and write any missing fields before branching.
+
 **After the agent completes**:
 1. **Sanity check**: if verdict is `PASS`/`PASS_WITH_ISSUES` but log shows zero screenshots AND zero navigations, treat as unverified — re-run at `--tier 2`/`3`. Code-level verdict is not browser validation.
 2. Branch: `PASS`/`PASS_WITH_ISSUES`/`PARTIALLY_VERIFIED` → PHASE 2; `NEEDS_WORK`/`BLOCKED` → PHASE 2.5 with `triggered_by: "browser_validate"`.
@@ -120,6 +135,8 @@ Spawn Claude `Agent` (`mode: "bypassPermissions"`): "Read `.claude/skills/devlyn
 ## PHASE 2: EVALUATE
 
 **Engine**: EVAL row — always Claude. Prompt body: **`references/phases/phase-2-evaluate.md`**.
+
+**State write** (per `<state_write_protocol>`): write `phases.evaluate.started_at` before spawn; after agent returns, validate `phases.evaluate.{verdict, completed_at, duration_ms, artifacts}` populated and write any missing fields before branching. (`evaluate` is the most-likely populated phase already; still validate.)
 
 **After the agent completes**:
 1. Read `state.phases.evaluate.verdict`.
@@ -176,6 +193,8 @@ Hygiene concerns (unused imports, dead code) live in EVAL's `hygiene.*` findings
 
 **Before spawn**: capture `phase_pre_sha = git rev-parse HEAD` → `state.phases.critic.pre_sha`.
 
+**State write** (per `<state_write_protocol>`): write `phases.critic.started_at` before spawn (alongside `pre_sha` capture); after agent returns, validate `phases.critic.{verdict, completed_at, duration_ms, artifacts}` populated and write any missing fields before branching. CRITIC's verdict is the WORSE of `sub_verdicts.{design, security}`, both of which the agent writes.
+
 **Spawn**: per `<engine_routing_convention>`. Prompt body: **`references/phases/phase-3-critic.md`**.
 
 **After the agent completes**:
@@ -203,16 +222,20 @@ Spawn Claude `Agent` (`mode: "bypassPermissions"`). Include original task descri
 
 **Before spawn**: capture `phase_pre_sha = git rev-parse HEAD` → `state.phases.docs.pre_sha`.
 
+**State write** (per `<state_write_protocol>`): write `phases.docs.started_at` before spawn (alongside `pre_sha` capture); after agent returns, validate `phases.docs.{verdict, completed_at, duration_ms, artifacts}` populated and write any missing fields before branching.
+
 **After the agent completes**:
 1. Enforce allowlist: `git diff --name-only <phase_pre_sha> -- ':!.devlyn/**'` — any non-allowlisted path → revert + emit `invariant.post-eval-code-mutation` + route to PHASE 2.5 with `triggered_by: "docs"`.
 2. If allowlist honored and diff non-empty: `git add -A && git commit -m "chore(pipeline): docs updated"`.
 
 ## PHASE 5: FINAL REPORT + ARCHIVE
 
-1. **Terminal verdict**: run `python3 scripts/terminal_verdict.py` (implements the precedence in `references/pipeline-routing.md#terminal-state-algorithm`; prints verdict, exits 0/1/2/3 for PASS/PASS_WITH_ISSUES/NEEDS_WORK/BLOCKED).
+**State write** (per `<state_write_protocol>`): write `phases.final_report.started_at` at the very top of this phase. Steps 1-2 below populate `verdict` (from terminal_verdict.py) and the rendered report; **before step 3 (Archive)**, write `phases.final_report.{verdict, completed_at, duration_ms}`. The archive script's prune logic at `pipeline-state.md:179` skips runs whose `phases.final_report.verdict == null`, treating them as "in flight" indefinitely; populating it correctly is what unblocks pruning.
+
+1. **Terminal verdict**: run `python3 .claude/skills/devlyn:auto-resolve/scripts/terminal_verdict.py` (implements the precedence in `references/pipeline-routing.md#terminal-state-algorithm`; prints verdict, exits 0/1/2/3 for PASS/PASS_WITH_ISSUES/NEEDS_WORK/BLOCKED).
 
 2. **Render report** per the exact shape in `references/final-report-template.md` — required section order, banner rules, engine-line contract, and summary table layout all live there. Fill placeholders from `pipeline.state.json`.
 
-3. **Archive**: run `python3 scripts/archive_run.py` (implements `references/pipeline-state.md#archive-contract`; moves per-run artifacts into `.devlyn/runs/<run_id>/`, best-effort prunes to last 10 completed runs).
+3. **Archive**: run `python3 .claude/skills/devlyn:auto-resolve/scripts/archive_run.py` (implements `references/pipeline-state.md#archive-contract`; moves per-run artifacts into `.devlyn/runs/<run_id>/`, best-effort prunes to last 10 completed runs). The script reads `phases.final_report.verdict` for prune-safety, so the state write above must complete first.
 
 4. Kill dev server from PHASE 1.5 if still running.

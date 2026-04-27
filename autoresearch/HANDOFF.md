@@ -1,18 +1,18 @@
 # HANDOFF — for the next session
 
-**Read this first** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-27 (post-iter-0013 SHIP decision) left off.
+**Read this first** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-27 (post-iter-0014 SHIP decision) left off.
 
 ---
 
 ## Current state
 
-**Branch**: `benchmark/v3.6-ab-20260423-191315`. 8 commits ahead of origin once iter-0013 is committed.
+**Branch**: `benchmark/v3.6-ab-20260423-191315`. 9 commits ahead of origin once iter-0014 is committed.
 
-**HEAD (committed)**: `e9233bd` iter-0009 → `af3a4de` iter-0009 HANDOFF → `df623ce` iter-0010 → `5c790bc` iter-0011 → `47fb504` iter-0012 → **`<iter-0013 commit pending>`**. Working tree clean except untracked `.claude/` install dir.
+**HEAD (committed)**: `e9233bd` iter-0009 → `af3a4de` iter-0009 HANDOFF → `df623ce` iter-0010 → `5c790bc` iter-0011 → `47fb504` iter-0012 → `435680c` iter-0013 → **`<iter-0014 commit pending>`**. Working tree clean except untracked `.claude/` install dir.
 
-iter-0007 verdict realized. iter-0008 REJECTED. iter-0009/0010/0011/0012 SHIPPED. **iter-0013 SHIPPED 2026-04-27** — F1 timeout diagnostic. HANDOFF's prior framing ("doesn't exit cleanly after Stop") was empirically wrong. Reframe with Codex CLI cross-check: F1 variant pipeline (PARSE+BUILD+BUILD GATE+EVAL on `fast` route) has irreducible overhead near the 480s budget; BUILD's Codex call alone takes 143-268s with high variance. Discriminator run with `timeout_seconds=900` PASSED cleanly: elapsed=465, transcript=2304 bytes, evaluate.* artifacts present, verdict=PASS_WITH_ISSUES. Single fixture metadata edit; no mechanism change. State-writes-per-phase observability drift filed as next candidate.
+iter-0007 verdict realized. iter-0008 REJECTED. iter-0009 through iter-0013 SHIPPED. **iter-0014 SHIPPED 2026-04-27** — state-writes-per-phase observability + archive script path fix. Codex iter-0014 R0 caught two things: D4-lite design (universal block + per-phase reminders + targeted prompt-body fixes — defense in depth) and a separate archive script path bug (`python3 scripts/archive_run.py` fails from work_dir; lives at `.claude/skills/devlyn:auto-resolve/scripts/archive_run.py`). Empirical F1 verification: state.phases populated for `build, build_gate, evaluate, final_report` with started_at/completed_at/duration_ms; archive moved artifacts to `.devlyn/runs/ar-...`. Same `verify_score=0.8`, elapsed=610s under 900s budget.
 
-**Next iteration: iter-NEXT — state-writes-per-phase observability fix (low risk, contract-aligning), or iter-0014 shim distribution (still deferred). Pick by current pain.**
+**Next iteration: iter-0015 candidate — shim distribution (still deferred per Karpathy #2 unless production regression observed), or queue items below. Pick by current pain.**
 
 ---
 
@@ -40,11 +40,7 @@ Falsification gate: lint clean (all 10 checks ✓), wrapper canary clean (pipe-s
 
 ## Decided next step — pick one of:
 
-### Option E: state-writes-per-phase observability fix (NEW, queued from iter-0013)
-
-`config/skills/devlyn:auto-resolve/references/pipeline-state.md:168` requires per-phase `started_at` and per-phase `verdict/completed_at/duration_ms` writes. Empirical: F1 variant runs do 1-2 writes total (bulk-coarse, not per-phase). Doesn't break verdicts but obscures phase-progress diagnosis (cost iter-0013 a Codex round to refute "process was 0.6s from natural exit"). Fix: tighten orchestrator state-write directive in pipeline-state.md or SKILL.md, OR add a hook that taps `pipeline.state.json` writes for telemetry. Low risk; lint-clean check.
-
-### Option A: iter-0014 — shim distribution to user installs (deferred)
+### Option A: iter-0015 — shim distribution to user installs (deferred)
 
 Still deferred per Karpathy #2 (Simplicity First — speculative defense for unobserved-in-prod regression). iter-0011 closed the most likely leak vector (Check 10 evasion-shape gap) at far lower cost. Revisit when production regression observed OR a stronger leak signal arrives.
 
@@ -55,7 +51,7 @@ If revived: design constraints (from iter-0010 R1 + iter-0011 R0 with Codex):
 
 ### Recommendation
 
-**Option E next** — closes a concrete observability gap iter-0013 surfaced (state-writes-per-phase contract drift); low risk, no benchmark gate needed if it's a prompt edit. **Option A** stays deferred.
+No urgent pain remains. **Option A** stays deferred. Likely next move: full-suite re-run under iter-0014 to confirm F2/F4/F6/F9 all benefit from the new state-write protocol + archive fix; then revisit queue.
 
 ---
 
@@ -82,14 +78,14 @@ Expected: silence (UNSHIPPED_SKILL_DIRS legitimately have `Only in config/skills
 
 ### Shipped on this branch
 
-DECISIONS.md is canonical. iter 0001 (skill scope-first + trivial-fast routing), iter 0002 (F6/F7 spec annotation), iter 0003 (process-group watchdog), iter 0004 (outer claude -p MCP isolation), iter 0005 REVERTED, iter 0006 REVERTED (per iter-0007 verdict), iter 0007 (F6 isolation experiment, conclusive), iter 0008 REJECTED (prompt-level contract empirically dead), iter-0009 SHIPPED (wrapper + PATH shim — F2 BUILD ran 399.9s through wrapper without watchdog kill, F6 +60-point recovery from iter-0008 collapse), iter-0010 SHIPPED (production rollout of wrapper-form to ideate / preflight / team-resolve / team-review; lint Check 10 added as static gate; shim shipping deferred per Codex Round 1 ship-blocker), iter-0011 SHIPPED (Codex-collaborated Option D: Check 10 evasion-shape close — pattern broadened to invocation-class — plus priming-token scrub in shared docs; falsification canary 6/6), iter-0012 SHIPPED (`run-fixture.sh` `timed_out` derivation now sources WATCHDOG_FIRED Bash sentinel instead of `elapsed >= timeout`; clean signal for natural exits at-or-past budget; Codex pre-edit R0 caught `set -u` init order + invariant misstatement), **iter-0013 SHIPPED** (F1 timeout discriminator: 480→900s metadata bump confirmed by single 465s-clean run; HANDOFF's "doesn't exit cleanly" framing was empirically wrong; pipeline overhead + Codex BUILD variance explain the 10x bare/variant gap; state-writes-per-phase observability drift filed).
+DECISIONS.md is canonical. iter 0001 (skill scope-first + trivial-fast routing), iter 0002 (F6/F7 spec annotation), iter 0003 (process-group watchdog), iter 0004 (outer claude -p MCP isolation), iter 0005 REVERTED, iter 0006 REVERTED (per iter-0007 verdict), iter 0007 (F6 isolation experiment, conclusive), iter 0008 REJECTED (prompt-level contract empirically dead), iter-0009 SHIPPED (wrapper + PATH shim — F2 BUILD ran 399.9s through wrapper without watchdog kill, F6 +60-point recovery from iter-0008 collapse), iter-0010 SHIPPED (production rollout of wrapper-form to ideate / preflight / team-resolve / team-review; lint Check 10 added as static gate; shim shipping deferred per Codex Round 1 ship-blocker), iter-0011 SHIPPED (Codex-collaborated Option D: Check 10 evasion-shape close — pattern broadened to invocation-class — plus priming-token scrub in shared docs; falsification canary 6/6), iter-0012 SHIPPED (`run-fixture.sh` `timed_out` derivation now sources WATCHDOG_FIRED Bash sentinel instead of `elapsed >= timeout`; clean signal for natural exits at-or-past budget; Codex pre-edit R0 caught `set -u` init order + invariant misstatement), iter-0013 SHIPPED (F1 timeout discriminator: 480→900s metadata bump confirmed by single 465s-clean run; HANDOFF's "doesn't exit cleanly" framing was empirically wrong; pipeline overhead + Codex BUILD variance explain the 10x bare/variant gap; state-writes-per-phase observability drift filed), **iter-0014 SHIPPED** (state-writes-per-phase observability + archive script path. Codex iter-0014 R0: D4-lite design (universal block + per-phase reminders + targeted prompt-body fixes) + caught separate archive script path bug (`scripts/archive_run.py` fails from work_dir; lives at `.claude/skills/devlyn:auto-resolve/scripts/`). Empirical F1 verification: phases.{build, build_gate, evaluate, final_report} all populated with started_at/completed_at/duration_ms; archive ran).
 
-Effective branch state = iter-0013. F1 healthy on 900s budget; F2 + F6 healthy; F4/F5/F9 status unchanged from baseline (full-suite re-run not yet performed under iter-0009 through iter-0013).
+Effective branch state = iter-0014. F1 healthy on 900s budget with full state observability + archive; F2/F4/F6/F9 not yet re-verified under iter-0014.
 
-### Queued (next hypotheses, ordered, post iter-0013)
+### Queued (next hypotheses, ordered, post iter-0014)
 
-1. **iter-NEXT — state-writes-per-phase observability fix** (NEW, surfaced from iter-0013). Auto-resolve orchestrator does 1-2 bulk writes to `pipeline.state.json` instead of the per-phase contract at `pipeline-state.md:168`. Doesn't break verdicts but obscures phase progress.
-2. **iter-0014 — shim distribution to user installs** (deferred from iter-0010 per Codex R1 ship-blocker; remained deferred at iter-0011/0012 per Karpathy #2). Design fail-open shim + `devlyn doctor activate` (NOT npm post-install) + idempotent settings.json merge. Revisit when production regression observed.
+1. **iter-0015 — shim distribution to user installs** (deferred from iter-0010 per Codex R1 ship-blocker; remained deferred at iter-0011/0012/0013/0014 per Karpathy #2). Design fail-open shim + `devlyn doctor activate` (NOT npm post-install) + idempotent settings.json merge. Revisit when production regression observed.
+2. **iter-NEXT — full-suite verification under iter-0014**. Run F2/F4/F6/F9 to confirm state-write protocol + archive fix carry over. May surface follow-up observability gaps for non-fast routes (CRITIC, DOCS phases).
 3. **iter-NEXT+1 — `claude -p --output-format stream-json`** for variant arm. Would make transcript flush incrementally and survive SIGTERM partial output. Optional; not pressing once F1 budget is right.
 4. **iter-0015 — silent-catch fixture spec**. F2 spec language allows BUILD output with `catch { return fallback }`; tighten F2 (and similar) spec language.
 5. **iter-0016 — F9 wall-time regression**. Both iter-0006 single-fixture F9 attempts took >30 min. Bump F9 metadata.timeout to 5400s.
@@ -155,6 +151,7 @@ Effective branch state = iter-0013. F1 healthy on 900s budget; F2 + F6 healthy; 
 - **iter-0011 R0**: I proposed B → C → defer A (Karpathy #2 — A is speculative defense). Codex concurred but flagged a real risk class — runtime emission drift (`codex exec "<prompt>"` quoted-prompt evasion shape that current Check 10 misses). Proposed Option D = cheap hardening (broaden Check 10 + scrub residual priming tokens). Confirmed B and C are independent (F1 timeout is real, not misclassification). Adopted D as iter-0011; B = iter-0012, C = iter-0013, A = iter-0014 still deferred.
 - **iter-0012 R0**: pre-edit read-only review of 5-line `timed_out` derivation fix. Codex verdict: surgical change is right. Five precise corrections/cautions: (1) invariant (ii) misstatement — `elapsed=TIMEOUT-1` was already correct under `>=`; the genuine mislabels are `elapsed == TIMEOUT` exactly + clean exits >TIMEOUT where watchdog didn't fire. (2) **`set -u` caution** — initialize `WATCHDOG_FIRED=0` BEFORE `if DRY_RUN` branch or `export INVOKE_EXIT WATCHDOG_FIRED` tears down dry-run paths. (3) Don't derive timeout from `INVOKE_EXIT==124` (124 is a legal natural exit code). (4) Don't add `watchdog_killed` schema field (duplicates corrected `timed_out`). (5) Don't touch SIGTERM grace (existing behavior; no longer leaks into `timed_out` after fix). (6) Race on `kill -0` is real but narrow — defer to a future Python timeout wrapper.
 - **iter-0013 R0**: pre-discriminator design review. I proposed a reframe of HANDOFF's "doesn't exit cleanly after Stop" framing based on debug-log evidence. Codex pushed back on three things: (1) my "0.6s away from natural exit" claim was over-asserted — SessionEnd hooks completing at status 0 can be SIGTERM cleanup, not natural completion. (2) F1 didn't actually complete the fast route — `evaluate.*` artifacts missing, ran cut off mid-EVAL. (3) The 268.5s Bash dispatch (Codex's own grep of debug log) is the dominant time sink — not a uniform PARSE+BUILD+BUILD-GATE distribution. Codex recommendation: skip pure "close as benchmark config" and run the 900s discriminator first. Outcome A (clean PASS, elapsed=465, transcript=2304 bytes, evaluate.* present, verdict=PASS_WITH_ISSUES) confirmed the reframe but with Codex's corrections folded in.
+- **iter-0014 R0**: pre-edit design review of state-writes-per-phase fix. I presented 4 options (D1=universal block alone, D2=per-prompt edits alone, D3=both, D4=per-phase SKILL.md additions). Codex verdict: (1) D1 alone insufficient (top-level guidance gets glossed over at action sites). (2) D2 alone also insufficient (`build-gate.md` already had explicit prompt-body output contract and orchestrator still skipped the write empirically). (3) Use **D4-lite**: universal block + per-phase salience reminders + targeted prompt-body fixes. (4) **Pushback on knock-on bug claim**: I'd connected missing-archive symptom to missing-final_report.verdict; Codex read `archive_run.py` and refuted — the script moves artifacts unconditionally; verdict only gates pruning. Real cause was simpler: SKILL.md's `python3 scripts/archive_run.py` path doesn't resolve in work_dir. (5) True dry-run not available (orchestrator is prompt-driven); single canary run on F1 with assertions on phase-keys + archive directory. Outcome verified all 4 phases populated + archive ran.
 
 ---
 
@@ -176,4 +173,5 @@ Effective branch state = iter-0013. F1 healthy on 900s budget; F2 + F6 healthy; 
 - `project_iter0010_shipped_2026_04_27.md` — production rollout + shim shipping deferred.
 - `project_iter0011_shipped_2026_04_27.md` — Codex Option D: Check 10 evasion-shape close + priming-scrub.
 - `project_iter0012_shipped_2026_04_27.md` — `timed_out` derivation switched to WATCHDOG_FIRED sentinel.
-- `project_iter0013_shipped_2026_04_27.md` — **NEW** — F1 timeout discriminator: 480→900s; HANDOFF reframe corrected; state-write drift filed.
+- `project_iter0013_shipped_2026_04_27.md` — F1 timeout discriminator: 480→900s; HANDOFF reframe corrected; state-write drift filed.
+- `project_iter0014_shipped_2026_04_27.md` — **NEW** — state-writes-per-phase + archive script path. D4-lite via Codex R0; empirical F1 verification.
