@@ -2,9 +2,11 @@
 
 Generate one file per roadmap item at `docs/roadmap/phase-N/{id}-{name}.md`. This is the most critical template — each spec becomes the direct input to `/devlyn:auto-resolve`.
 
+The outer fence below is **four** backticks so the inner ` ```json ` block in `## Verification` renders correctly. When you write the actual spec file, the file content starts at the `---` frontmatter line and uses three-backtick fences internally — do not include the outer four-backtick wrapper in the emitted spec.
+
 ---
 
-```markdown
+````markdown
 ---
 id: "[phase.item]"
 title: "[Feature Name]"
@@ -55,10 +57,28 @@ depends-on: []
 - **External**: [APIs, services, credentials, third-party setup needed]
 
 ## Verification
-<!-- How to confirm this works. Overlaps with Requirements but focuses on observable user-facing behavior. -->
-- [ ] [Observable verification step]
+<!-- Prose narrative — observable user-facing behavior, for human reviewers. -->
+- [ ] [Observable verification step in prose]
 - [ ] ...
+
+<!-- Machine contract: auto-resolve runs each entry below in BUILD_GATE.
+     Substrings are matched in combined stdout+stderr; 60s per command.
+     One entry per observable Requirement; omit entirely if all Requirements
+     are pure-design. -->
+
+```json
+{
+  "verification_commands": [
+    {
+      "cmd": "[real command — replace this placeholder]",
+      "exit_code": 0,
+      "stdout_contains": ["[required substring]"],
+      "stdout_not_contains": ["[forbidden substring]"]
+    }
+  ]
+}
 ```
+````
 
 ## Quality Criteria
 

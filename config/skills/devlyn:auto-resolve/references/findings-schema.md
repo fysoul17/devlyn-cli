@@ -36,7 +36,9 @@ Separate structured findings from prose summaries. The orchestrator and fix-loop
 
 - `id` — stable within a single run. Format: `<PHASE>-<4digit>` zero-padded. Examples: `EVAL-0007`, `BUILD-0001`, `CRIT-0003`, `BGATE-0004`.
 - `rule_id` — stable across runs. Format: `<category>.<kebab-case-name>`. Use existing rule_ids before inventing new ones — keeps dedup working. Common categories:
-  - `correctness.*` — logic errors, silent failures, null access, wrong API contracts
+  - `correctness.*` — logic errors, silent failures, null access, wrong API contracts. BUILD_GATE spec-verify mechanical gate (iter-0019.6 + iter-0019.8) emits two specific rule_ids:
+    - `correctness.spec-literal-mismatch` — a verification command's actual exit code, stdout-contains, or stdout-not-contains diverged from the spec contract.
+    - `correctness.spec-verify-malformed` — the spec/criteria source's `## Verification` ` ```json ` carrier was missing for a generated source, or invalid JSON, or shape-invalid (empty `verification_commands` list, bool `exit_code`, whitespace-only `cmd`, etc.).
   - `design.*` — staff-engineer ship/no-ship concerns (non-atomic transactions, hidden assumptions, unidiomatic patterns)
   - `security.*` — OWASP-anchored (sql-injection, xss, hardcoded-credential, missing-input-validation, missing-auth-check, insecure-dependency, permissive-cors, missing-csrf, privilege-escalation, data-exposure, path-traversal, ssrf)
   - `ux.*` — missing error/loading/empty states

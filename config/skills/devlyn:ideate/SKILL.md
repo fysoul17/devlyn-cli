@@ -307,6 +307,16 @@ For single-item additions, run one solo rubric pass on just the new item. Even t
 
 **Before writing any document, read `references/document-generation.md`.** It contains the template paths, generation order, Expand/Replan-mode merge rules, and the `<spec_quality_criteria>` that determine auto-resolve's downstream output quality — Requirements must be testable/specific/scoped, Context 2–3 sentences, Out of Scope explicit, Constraints paired with reasoning. Skipping these is the most common cause of vague specs and narrowed implementations.
 
+**Post-write validation** (iter-0019.8 — applies to greenfield, Expand, Replan, Quick Add): immediately after writing each item spec at `docs/roadmap/phase-N/<id>-<name>.md`, validate the canonical verification carrier:
+
+```
+python3 .claude/skills/devlyn:auto-resolve/scripts/spec-verify-check.py --check docs/roadmap/phase-N/<id>-<name>.md
+```
+
+Exit 0 → proceed. Exit 2 → re-prompt yourself to fix the `## Verification` ` ```json ` block (the script's stderr line names the exact shape error: invalid JSON, empty `verification_commands` array, non-string `cmd`, bool `exit_code`, etc.). Re-write the spec, re-run the check, repeat until exit 0. This catches LLM hallucination at authoring time instead of letting auto-resolve hit the malformed contract at BUILD_GATE round 0.
+
+**Carrier-block requirement for newly generated specs**: if any Requirement in the spec describes an observable runtime check (CLI command, test command, HTTP request, exit code, output substring, JSON shape), the `## Verification` ` ```json ` block **must** be present and contain at least one `verification_commands` entry that exercises that behavior. A new ideate-generated spec that has observable Requirements but omits the block silently degrades the auto-resolve gate to handwritten-spec backward-compat mode — that is the original real-user trap iter-0019.8 closes. The `--check` mode passes on absence (so pre-carrier handwritten specs being copied/refactored continue to validate), but a newly generated item-spec for a feature with runnable behavior must ship the block. Pure-design Requirements (e.g. "follow existing pattern X", "match the visual style of Y") may be the entire Requirements section — in that case the block is legitimately absent.
+
 ## Phase 5: BRIDGE
 
 After DOCUMENT, print exactly one implementation handoff line per phase-1 item so the user can paste it into auto-resolve without rebuilding the spec path from memory:

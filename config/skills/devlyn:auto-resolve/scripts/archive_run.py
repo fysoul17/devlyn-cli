@@ -26,6 +26,15 @@ PER_RUN_PATTERNS = (
     "*.log.md",
     "fix-batch.round-*.json",
     "criteria.generated.md",
+    # iter-0019.8: spec-verify carrier artifacts get archived alongside
+    # other per-run state. Killed mid-run cleanup is enforced separately
+    # by spec-verify-check.py main() — when source markdown has no json
+    # block AND BENCH_WORKDIR is unset (real-user mode), the script drops
+    # any pre-existing .devlyn/spec-verify.json so a stale orphan from a
+    # killed prior run cannot poison this run's gate.
+    "spec-verify.json",
+    "spec-verify.results.json",
+    "spec-verify-findings.jsonl",
 )
 
 
