@@ -24,7 +24,7 @@ This pipeline runs hands-free. Measured by how far it gets without human interve
 </autonomy_contract>
 
 <harness_principles>
-Goal-first. Verify state, source integrity, diff base, artifact contracts. Prefer deletion or reuse over new machinery. Change only files the task requires. Each phase optimizes for its declared success criteria, not a checklist. Fix root causes only — no `any`, `@ts-ignore`, silent catches, hardcoded values. Label hypotheses explicitly; back claims with file:line evidence.
+Sub-agent contract for every phase: read `_shared/runtime-principles.md` (Subtractive-first / Goal-locked / No-workaround / Evidence). Phases routed to Codex receive the contract excerpt inlined in their prompt body (Codex has no filesystem under read-only). Phase-specific operating constraints (state-write protocol, post-EVAL invariant, engine routing) are below; the runtime contract is non-negotiable across all of them.
 </harness_principles>
 
 <engine_routing_convention>
@@ -173,7 +173,7 @@ Spawn per `<engine_routing_convention>`. Prompt:
 >
 > **Then fix every listed finding at the root cause.** If multiple findings touch the same symbol, produce **one consolidated change**. Prefer editing/replacing existing code over adding new machinery; **do not leave parallel near-duplicate helpers/functions**. When return-shape pressure appears (one finding needs a richer return value than another), broaden the existing helper's return object — don't create a second variant.
 >
-> Read each referenced `file:line`, implement the fix, run tests. No workarounds (`any`, `@ts-ignore`, silent catches, hardcoded values). Raw failure detail: `.devlyn/build_gate.log.md` / `.devlyn/browser_validate.log.md`. When a previously-failed criterion is now satisfied, clear `failed_by_finding_ids`, set `status: "implemented"`, append an `evidence` record.
+> Read each referenced `file:line`, implement the fix, run tests. **Runtime principles bind every fix** (read `_shared/runtime-principles.md`; if you are routed to Codex, this contract: Subtractive-first — prefer deletion / consolidated change over new machinery; Goal-locked — fix only the listed findings, do not silently expand scope to adjacent code; No-workaround — no `any`, `@ts-ignore`, silent catches, hardcoded values, helper scripts that bypass root cause; Evidence — every fix anchored at file:line). Raw failure detail: `.devlyn/build_gate.log.md` / `.devlyn/browser_validate.log.md`. When a previously-failed criterion is now satisfied, clear `failed_by_finding_ids`, set `status: "implemented"`, append an `evidence` record.
 
 **After the agent completes**:
 1. Checkpoint: `git add -A && git commit -m "chore(pipeline): fix round <N> (<triggered_by>)"`.
@@ -218,7 +218,9 @@ Spawn Claude `Agent` (`mode: "bypassPermissions"`). Include original task descri
 
 **Job 2 — Named-doc sync (scoped)**: update only doc files whose filename appears verbatim in the spec's Requirements or Constraints text (e.g. the spec literally says "Update `CLAUDE.md` section X"). If the filename isn't written in the spec, don't touch it. General doc maintenance — README.md feature lists, CHANGELOG.md entries, package.json version bumps, API surface writeups — is `/devlyn:update-docs`'s responsibility (a standalone, manually-invoked skill). Never widen DOCS phase beyond the verbatim-named set.
 
-**Safety**: never flip a spec `done` without a non-empty non-doc diff; never flip multiple specs in one run; never touch files outside the doc-file allowlist; Job 2 never writes a file the spec didn't name verbatim."
+**Safety**: never flip a spec `done` without a non-empty non-doc diff; never flip multiple specs in one run; never touch files outside the doc-file allowlist; Job 2 never writes a file the spec didn't name verbatim.
+
+**Runtime principles bind doc edits too** (read `_shared/runtime-principles.md`; Codex routings get this contract: Goal-locked — never widen DOCS beyond Job 1 + Job 2 verbatim-named scope, even if you notice unrelated stale docs; Subtractive-first — prefer trimming stale sentences over adding new ones; Evidence — every doc edit must be tied to a non-empty non-doc diff or a verbatim-named spec mention)."
 
 **Before spawn**: capture `phase_pre_sha = git rev-parse HEAD` → `state.phases.docs.pre_sha`.
 

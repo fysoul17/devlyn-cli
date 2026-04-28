@@ -83,3 +83,12 @@ Dependency audit is included in the native skill's output when lockfiles changed
 - Cold eyes catch what structured reviews miss. For design: "would I ship this with my name on it?" is the only question.
 - For security: OWASP-anchored findings, file:line evidence. Speculative security concerns without a concrete attack vector are noise.
 - Do NOT write code changes. Do NOT commit. Orchestrator handles routing.
+
+<runtime_principles>
+Read `_shared/runtime-principles.md` if your engine has filesystem access; the four contract sections (Subtractive-first / Goal-locked / No-workaround / Evidence) bind CRITIC's design findings. Codex routings receive this excerpt directly. CRITIC emits canonical `rule_id`s per `findings-schema.md`; principle attribution lives in the `message` and `fix_hint` prose, NOT as a separate tag. Patterns to catch:
+
+- Hand-rolled helper REPLACES standard-library primitive AND is measurably less faithful ⇒ `rule_id: "design.unidiomatic-pattern"`, `severity: MEDIUM`. Reference principle "hand-rolled-stdlib" in `message`.
+- Parallel near-duplicate helpers/functions with no spec justification ⇒ `rule_id: "design.duplicate-pattern"`, `severity: MEDIUM`. Reference principle "unjustified duplicate machinery" in `message`.
+- Diff added speculative robustness (defensive checks for unobserved cases, layered fallbacks) ⇒ `rule_id: "design.hidden-assumption"`, `severity: HIGH`. Reference principle "subtractive-first violation" in `message`.
+- Findings without file:line ⇒ exclude (Evidence rule shapes which findings reach the report).
+</runtime_principles>

@@ -31,47 +31,33 @@ If a future session finds this block missing or summarized, that is a violation 
 
 Pre-launch Codex pair-review caught fixture-contract bug (iter-0019.6.1, commit `da3eef5`): F9 cmd #5 `stdout_not_contains: ["fail "]` was unsatisfiable due to Node's `# fail 0` summary line. Saved $5-10 on a known-broken contract.
 
-### NEXT CONCRETE ACTION — Step [A] SKILL audit (in progress 2026-04-28)
+### NEXT CONCRETE ACTION — iter-0019.8 (real-user contract carrier)
 
-**User halt + reframe 2026-04-28** (Korean verbatim, do NOT paraphrase):
-> "지금 우리 북극성과 원리 원칙에 맞는거야? skill 개선하는게 맞는거냐고."
-> "auto-resolve가 됐든, ideate가 되었든 ... 북극성을 제대로 바로 세워서 이를 통해서 harness를 하게 하는게 목적인걸로 알고 있는데 (아니라면 얘기해줘), 우리 skill도 이런게 반영이 되어있나? 이용자가 그런거 잘 모르는 사람이더라도?"
-> "preflight 는 그 북극성의 의대대로 클린하게 잘 구현되었는가를 체크하는게 본질이지. codex와의 compenion 으로서 pair 로서 티키타카 하면서 최선의 결과를 검증. 그리고 우리의 원칙대로 잘 되었는가 등"
+**iter-0019.A (SKILL audit) SHIPPED 2026-04-28**: lint 11/11 + new Check 12 PASS. Sub-agent prompts now consume `_shared/runtime-principles.md` (CLAUDE.md mirror via per-section markers). preflight has new PHASE 3.5 ROUND 2 CRITIQUE (5 deterministic triggers, 240s wall-budget). preflight code-auditor emits `principle.*` rule_ids per overlay table; browser-auditor narrow scope (silent-fallback + goal-locked-drift, screenshot AND route); docs-auditor no principle emission. ideate untouched (planning-layer). 7 Codex review rounds, all findings adopted.
 
-**Codex R-halt verdict (101k tokens, xhigh, 159s)**: previously-staged iter-0019.7 (silent-catch BUILD_GATE helper) BEFORE iter-0019.8 = **score-chasing per pre-flight 0**. Real-user runs hit silent no-op without `.devlyn/forbidden-patterns.json` staging — would only move benchmark numbers. **Reorder accepted.**
-
-**New sequence**:
+**Sequence going forward**:
 ```
-[A] SKILL audit (CURRENT) — does auto-resolve / ideate / preflight enforce North Star + goal-lock + drift prevention + subtractive-first + Codex pair tickitaka on sub-agents even when end-user doesn't know context engineering?
-[B] iter-0019.8 — auto-resolve PHASE 0 emits .devlyn/spec-verify.json from spec ## Verification (real-user contract carrier)
-[C] iter-0019.7-revisited — measurement-driven decision after [B] data shows whether silent-catch persists on real-user paths
-[D] iter-0020 — pair policy + coverage.json + 9-fixture L0/L1/L2 paid run (~$30-50, ~3-5h wall)
-[E] real-project trial → production
+[B] iter-0019.8 (NEXT) — /devlyn:auto-resolve PHASE 0 emits `.devlyn/spec-verify.json` from spec "## Verification" section AND ideate spec template generates it. Real-user contract carrier — gives end users the iter-0019.6 mechanical gate without manual staging.
+[C] iter-0019.7-revisited — measurement-driven decision after [B] data shows whether silent-catch persists on real-user paths. If silent-catch DQs persist post-0019.8, ship a `forbidden-pattern-check.py` BUILD_GATE helper. If not, close as "no measurable user harm; skip."
+[D] iter-0020 — pair policy + coverage.json + 9-fixture L0/L1/L2 paid run (~$30-50, ~3-5h wall). Now benefits from iter-0019.A's RND2 + principle overlay during its preflight verification.
+[E] real-project trial → production (NORTH-STAR test #14)
 ```
 
-**[A] audit — preflight emphasized**. Per user framing: preflight 본질 = "북극성 의도대로 깔끔하게 구현되었는가" + Codex pair 티키타카 + 5+1 + Karpathy 4 + Subtractive-first + Goal-locked 준수 evidence-based 검증.
+### Do NOT
 
-**Audit Q1-Q5** (preflight 강조):
-- Q1: skill이 사용자 stated goal 너머 작업하는 걸 막는 메커니즘?
-- Q2: skill이 silent하게 scope 확장하는 걸 막는 메커니즘?
-- Q3: subtractive-first 또는 simplicity 압박이 skill prompt에 박혀 있나?
-- Q4: end-user가 모르더라도 skill이 자율적으로 강제하나?
-- Q5 (preflight): 북극성 의도 vs 구현 cross-check + Codex pair 티키타카 + 원칙 evidence file:line 명시?
-
-**Audit cost**: paid 없음, ~30-60min wall. 결과: gap 발견 시 메우는 iter 먼저, 충분하면 [B]로 진행.
-
-### Do NOT (during audit + [B] iter-0019.8 design)
-
-- ❌ Ship iter-0019.7 as-was (Codex confirmed score-chasing before [B])
-- ❌ Run iter-0020 9-fixture paid suite (blocked by [A][B][C])
-- ❌ Bundle audit findings with implementation iters (attribution rule)
-- ✅ OK: read SKILL.md + references; Codex pair tickitaka on each Q; produce evidence-based audit report; reorder iter queue per audit findings
+- ❌ Run iter-0020 9-fixture paid suite (blocked by [B][C])
+- ❌ Edit `_shared/runtime-principles.md` content without mirroring CLAUDE.md `:section=NAME:` blocks (lint Check 12 will fail)
+- ❌ Edit CLAUDE.md `:section=NAME:` blocks without re-running mirror + re-confirming Check 12
+- ❌ Bundle iter-0019.8 with iter-0020 (attribution rule)
+- ✅ OK: design iter-0019.8 in `autoresearch/iterations/0019-8-real-user-contract.md`; map auto-resolve PHASE 0 spec parsing to `.devlyn/spec-verify.json` shape; pair-review with Codex before code lands
 
 ---
 
 ## Current state
 
-**Branch**: `benchmark/v3.6-ab-20260423-191315`. 25 commits ahead of origin after iter-0019.4 / .5 / .6 / .6.1 / .6-acceptance + iter-0019 part 2 + CLAUDE.md audit proposal + CLAUDE.md subtractive-first/goal-locked + handoff rotate commits.
+**Branch**: `benchmark/v3.6-ab-20260423-191315`. 27 commits ahead of origin after iter-0019.4 / .5 / .6 / .6.1 / .6-acceptance / .A + iter-0019 part 2 + CLAUDE.md audit proposal + CLAUDE.md subtractive-first/goal-locked + handoff rotate commits.
+
+**iter-0019.A SHIPPED 2026-04-28**: SKILL audit + runtime-principles propagation + preflight Round 2. Code-only iter, no paid suite. lint 11/11 + new Check 12 PASS (CLAUDE.md ↔ `_shared/runtime-principles.md` per-section excerpt parity: markers + topology + content). Auto-resolve `<harness_principles>` + phase-1/2/3 + fix-loop + DOCS now consume runtime-principles. Preflight has new PHASE 3.5 ROUND 2 CRITIQUE (5 deterministic triggers, 240s wall-budget abort, single round runtime). preflight emits `principle.*` rule_ids per code-auditor overlay table; browser-auditor narrow scope. ideate untouched. 7 Codex review rounds, all findings adopted (~640k tokens read).
 
 **iter-0019.6 ACCEPTANCE GATE PASSED 2026-04-28T01:01Z** (RUN_ID `20260427T235114Z-da3eef5-iter-0019-6-acceptance`, paid ~$5-10, wall ~70min). F9/variant.verify_score=1.0 (5/5), disqualifier=false, score=88 (vs iter-0019's 74, +14 lift). Mechanism trace: BUILD round 0 PASS (557s) → BUILD_GATE round 1 fired 2 CRITICAL `correctness.spec-literal-mismatch` (`topAuthors` vs `authors`, exit 1 vs 2 — exact iter-0018.5 failure mode) → fix_loop_round_1 PASS (399s, triggered_by=build_gate) → BUILD_GATE round 1 re-run PASS (5s) → EVALUATE PASS_WITH_ISSUES (3 LOW only). Convergence in 1 fix-loop round. **iter-0019.6 status: SHIPPED-VERIFIED** (DECISIONS.md line `0019.6 | SHIPPED-VERIFIED`). Codex R-verdict: ship-as-PASS (138k tokens, 256s, xhigh) with namespace correction adopted (residual judge findings on ranked format + exact stderr are non-DQ, queued for iter-0020+ gate-vocabulary enrichment).
 
@@ -90,7 +76,8 @@ Asymmetry note: variant arm copied pre-edit CLAUDE.md at startup (commit `660871
 
 **HEAD chain** (newest first):
 ```
-<pending>  autoresearch(iter-0019.6 acceptance): SHIPPED-VERIFIED + iter-0020 unblock
+<pending>  autoresearch(iter-0019.A): SKILL audit — runtime-principles propagation + preflight Round 2 + principle overlay
+e6de5ef  autoresearch(iter-0019.6 acceptance): SHIPPED-VERIFIED + iter-0020 unblock
 660871c  CLAUDE.md: subtractive-first + goal-locked execution rules
 2e247ca  autoresearch(handoff): log iter-0019.6.1 + acceptance suite in-flight
 da3eef5  autoresearch(iter-0019.6.1): drop F9 cmd#5 unsatisfiable stdout_not_contains
@@ -563,6 +550,7 @@ These are the load-bearing conclusions a fresh session must inherit. Each links 
 - North Star R2 (16k tokens): EVAL=gated solo not unconditional pair (would recreate F5/F6 waste). Profile-neutral abstraction = text-only, no runtime engine-swap dispatcher (overengineering since model-agnostic ≠ North Star).
 - North Star R3 (97k tokens): re-ordered iter-0019 (L1-claude arm) ahead of iter-0020 (pair policy). L1-codex deferred (no non-Claude orchestrator path exists yet). F4 lift plausibly tool-attached (browser_validate) not pair-attached — pair > solo unproven. L2 release gate split from L1 (L1 must pass first; L2 vs L1 needs +5 on pair-eligible fixtures only).
 - iter-0018 R0 (19k tokens, 27s): start iter-0018 on 5-fixture data; defer F1/F3/F7/F8 to iter-0019 paid run. F5 root cause = surgical-scope failure (BUILD added `completed=` to roadmap frontmatter beyond strict scope) not pair-deliberation waste. F9 = measurement-integrity adjacent (both arms failed same output contract — pipeline BUILD/EVAL prompt issue, not pair vs solo). L2-vs-L1 compression risk locked into NORTH-STAR.md test #13.
+- iter-0019.A R-audit (2026-04-28, 7 rounds, ~640k tokens read total, xhigh): **SKILL audit + iter-0019.A patch**. Audit Round 1 (132k tokens, ~150s) scoped 3 gaps — Gap A (preflight Codex pair was single-shot, refined to preflight-only since ideate one-shot CHALLENGE is deliberate per cost discipline NORTH-STAR:122-123); Gap B (principle-evidence not surfaced — refined to rule_id overlay over canonical categories, NOT broad PRINCIPLE_VIOLATION bucket); Gap C (CLAUDE.md rules not propagating to SKILL prompts — confirmed via partial analogues in auto-resolve weaker than CLAUDE.md hard rules). Round 2 (81k tokens, ~200s) converged patch shape — RND2 5 triggers + Synthesis diagnostics shape; rule_id overlay 6-row table (subtractive-first-violation conditional on `base_ref_sha`; score-chasing/layer-cost-justified excluded as autoresearch-only); shared `runtime-principles.md` + lint Check 12 (separate from Check 6). Step 1-5 reviews (~430k tokens, 7 sub-rounds) caught: redundant intro lines, false consumption claims, hardcoded-values wording weakening, config-knob threshold drop, fix-loop+DOCS Codex hot path miss (HIGH×2), `DIVERGENT` auto-resolve-foreign category (HIGH), fake `tags` field schema mismatch (MEDIUM×2), section ordering contradiction in PHASE 3.5 placement, user presentation timing pre-R2, dedup key fallback for findings without rule_id, R2 engine = actual (not requested) Round 1 engine, BLOCKED + RETRACTED Phase 4 interaction, report-template forward-references, browser-auditor "or"→"and" evidence, Coverage always-present, Check 12 byte-compare via diff (command-substitution strips trailing newlines), marker topology + canonical order + contract-block containment, `runtime-principles.md` "verbatim"→"compact derived excerpt" wording. ALL findings adopted. **Pattern lessons**: (1) one-shot Codex critic is deliberate at planning-layer (ideate CHALLENGE) but wrong at verification-gate (preflight) — same vocabulary, different thresholds; (2) every cross-layer rule needs both shared-source-of-truth AND drift-detector lint; (3) schema discipline at design time prevents fake-field findings; (4) lint can subtractively net-positive when each added line closes a specific known failure mode (Check 12 hardening: 3 categories of drift caught only by markers + topology + diff-over-temp-files combined).
 - iter-0019.6 R-verdict (2026-04-28, post-acceptance, 138k tokens, 256s, xhigh): **F9 acceptance verdict pair-review** — verdict **ship-as-PASS** with one wording correction adopted (namespace the "0 CRITICAL findings post-EVAL" claim to `correctness.spec-literal-mismatch` scope; the JUDGE still emits 2 critical findings on F9/variant — ranked format + exact stderr — non-DQ, out of iter-0019.6 scope, queued for iter-0020+ gate-vocabulary enrichment). Codex Q answers all confirm draft: (Q1) 1-fixture sufficient because HANDOFF explicitly scoped F9 acceptance, NOT sufficient for NORTH-STAR release readiness which is iter-0020's 9-fixture run; (Q2) judge findings don't invalidate but record explicitly; (Q3) solo_claude DQ is judge-side silent-catch behavior not codex leakage (settings.json shows no `CODEX_REAL_BIN`, iter-0019.5 fix held); (Q4) L1-L0=+3 is 1-fixture smoke read, not L1 release gate; (Q5) iter-0020 unblock confirmed, has its own hard acceptance; (Q6) main fragility is claim-boundary not mechanism — helper has no hard-coded command count, but **real-user runs without `.devlyn/spec-verify.json` staging are deliberate silent no-op** so do NOT claim real-user coverage yet (iter-0020 OR iter-0019.8 must address /devlyn:ideate generating the JSON from spec "## Verification" sections). **Pattern lesson**: post-acceptance pair-review pays for itself even on clean PASS — Codex caught the namespace blur that would have over-claimed coverage in DECISIONS.md. ship-as-PASS adopted, namespace correction applied.
 - iter-0019.6 R-launch (2026-04-28, pre-launch acceptance, 137k tokens, 314s, xhigh): **F9 acceptance suite launch-time pair-review** — verdict **HOLD-and-fix-then-launch**. Caught a real fixture-contract bug that would have invalidated the paid run: F9 expected.json verification_commands[4] (`node --test tests/`) declared `stdout_not_contains: ["fail "]`, but Node's test runner always emits `# fail 0` in its passing summary. Pre iter-0019.6 the false negative was just a verify-score nuisance (3 arms iter-0019 verify.json data: variant/solo/bare all hit `pass:false reason:"unexpected_text"` with `# fail 0` in stdout tail). Post iter-0019.6 the same fixture line becomes a `correctness.spec-literal-mismatch` CRITICAL the orchestrator literally cannot fix — Node's output is fixed. Acceptance gate would have burned $5-10 testing fix-loop convergence on an unsatisfiable command, not the actual mechanism. Cheapest unblock: drop the `stdout_not_contains` entry; `exit_code: 0` already enforces zero failing tests via the runner's own exit semantics. Filed and shipped as iter-0019.6.1 (`da3eef5`) before launch. **Pattern lesson**: when promoting prompt-only contract enforcement to mechanical-bash-gate enforcement, audit fixture commands for **runner-output self-references** (`# pass`, `# fail 0`, `1..N`, `not ok`, `ok`) that overlap with `stdout_not_contains` literals — these become unsatisfiable post-promotion. Same anti-pattern as iter-0019.5's CODEX_REAL_BIN export ("diagnostic visibility justifies bypass weapon export"): "weak-signal verify-score noise" can become "fatal CRITICAL block" simply by tightening the enforcement layer beneath the contract.
 - iter-0019 R5 (2026-04-28, post-verdict, ~76k tokens, 186s, xhigh): **iter-0019.6 design pair-review**. Adopted in full: (1) stage normalized `.devlyn/spec-verify.json` containing only verification_commands — keeps tier_a_waivers / scope oracles / deps caps out of BUILD_GATE by construction; (2) BENCH_WORKDIR is NOT currently inherited by orchestrator — must add `export BENCH_WORKDIR="$WORK_DIR"` in claude -p dispatch subshell or F9 cmd #3 is environment-flaky; (3) drafted custom finding fields (evidence_path, touched_files, rule_type) DROPPED — use canonical schema from references/findings-schema.md (id, rule_id, level, severity, confidence, message, file, line, phase, criterion_ref, fix_hint, blocking, status); (4) helper script NON-OPTIONAL — prose-only repeats iter-0018.5 failure mode; Python (not bash) for JSON parsing safety; (5) mirror post-run verifier exactly: combined stdout+stderr, 60s timeout per command; (6) F9 DQ-clean claim is OUT OF SCOPE for iter-0019.6 since forbidden_patterns silent-catch enforcement is a separate path; (7) skill mirror parity must include the new helper script. Q4 verdict: iter-0019.6 does NOT violate iter-0020 R3 acceptance — this is correctness/contract enforcement, iter-0020 is policy. Pattern lesson: every layered defense's "diagnostic visibility" justification needs to be inverted to "fail-closed" justification — comments at `run-fixture.sh:113-116` (CODEX_REAL_BIN justified as diagnostic but actually bypass weapon) and prose-only enforcement layers (iter-0018.5 quality_bar bullets) are the same anti-pattern at different scopes.

@@ -126,14 +126,21 @@ else
       devlyn:auto-resolve/SKILL.md \
       devlyn:auto-resolve/references/engine-routing.md \
       devlyn:auto-resolve/references/build-gate.md \
+      devlyn:auto-resolve/references/phases/phase-1-build.md \
+      devlyn:auto-resolve/references/phases/phase-2-evaluate.md \
+      devlyn:auto-resolve/references/phases/phase-3-critic.md \
       devlyn:auto-resolve/scripts/spec-verify-check.py \
       devlyn:ideate/SKILL.md \
       devlyn:ideate/references/codex-critic-template.md \
       devlyn:preflight/SKILL.md \
+      devlyn:preflight/references/report-template.md \
+      devlyn:preflight/references/auditors/code-auditor.md \
+      devlyn:preflight/references/auditors/browser-auditor.md \
       devlyn:team-resolve/SKILL.md \
       devlyn:team-review/SKILL.md \
       _shared/codex-config.md \
-      _shared/codex-monitored.sh; do
+      _shared/codex-monitored.sh \
+      _shared/runtime-principles.md; do
     src="config/skills/$rel"
     dst=".claude/skills/$rel"
     if [ ! -f "$src" ] || [ ! -f "$dst" ]; then
@@ -266,6 +273,100 @@ for skill in evaluate review clean team-review; do
 done
 if [ $missing -eq 0 ]; then
   ok "all 4 findings-producing standalones emit JSONL sidecar"
+fi
+
+# ---------------------------------------------------------------------------
+# 12. CLAUDE.md ↔ _shared/runtime-principles.md per-section excerpt parity (iter-0019.A).
+# Sub-agent prompts inline the runtime contract from runtime-principles.md; that file
+# must mirror the corresponding CLAUDE.md sections. Drift in one source-of-truth without
+# the other produces silent behavioral divergence between session-level and sub-agent
+# enforcement. Per-section markers `<!-- runtime-principles:section=NAME:begin/end -->`
+# wrap each of the 4 sections (subtractive-first, goal-locked, no-workaround, evidence)
+# in BOTH files. Check 12 extracts each named block from both files and diffs.
+# ---------------------------------------------------------------------------
+section "Check 12: CLAUDE.md ↔ runtime-principles.md per-section excerpt parity"
+rp_src="config/skills/_shared/runtime-principles.md"
+claude_src="CLAUDE.md"
+rp_drift=0
+expected_sections="subtractive-first goal-locked no-workaround evidence"
+
+if [ ! -f "$rp_src" ]; then
+  bad "$rp_src — missing"
+  rp_drift=1
+elif [ ! -f "$claude_src" ]; then
+  bad "$claude_src — missing"
+  rp_drift=1
+else
+  # Topology: each marker appears exactly once per file.
+  for name in $expected_sections; do
+    for kind in begin end; do
+      marker="<!-- runtime-principles:section=${name}:${kind} -->"
+      for f in "$rp_src" "$claude_src"; do
+        count=$(grep -Fxc "$marker" "$f" 2>/dev/null || echo 0)
+        if [ "$count" -ne 1 ]; then
+          bad "${f}: marker '${marker}' appears ${count} times (expected 1)"
+          rp_drift=1
+        fi
+      done
+    done
+  done
+
+  # Topology: in runtime-principles.md, all 4 sections must sit INSIDE the
+  # outer `:contract:` block AND appear in the canonical order. CLAUDE.md
+  # placement is free (sections may live in any order, anywhere in the file).
+  contract_begin_line=$(grep -Fxn '<!-- runtime-principles:contract:begin -->' "$rp_src" | head -1 | cut -d: -f1)
+  contract_end_line=$(grep -Fxn '<!-- runtime-principles:contract:end -->' "$rp_src" | head -1 | cut -d: -f1)
+  if [ -z "$contract_begin_line" ] || [ -z "$contract_end_line" ]; then
+    bad "${rp_src}: outer ':contract:begin/end' markers missing"
+    rp_drift=1
+  else
+    prev_line=0
+    for name in $expected_sections; do
+      sec_begin_line=$(grep -Fxn "<!-- runtime-principles:section=${name}:begin -->" "$rp_src" | head -1 | cut -d: -f1)
+      sec_end_line=$(grep -Fxn "<!-- runtime-principles:section=${name}:end -->" "$rp_src" | head -1 | cut -d: -f1)
+      if [ -n "$sec_begin_line" ] && [ -n "$sec_end_line" ]; then
+        if [ "$sec_begin_line" -le "$contract_begin_line" ] || [ "$sec_end_line" -ge "$contract_end_line" ]; then
+          bad "${rp_src}: section '${name}' is outside the ':contract:' block"
+          rp_drift=1
+        fi
+        if [ "$sec_begin_line" -lt "$prev_line" ]; then
+          bad "${rp_src}: section '${name}' is out of canonical order (expected: ${expected_sections})"
+          rp_drift=1
+        fi
+        prev_line=$sec_end_line
+      fi
+    done
+  fi
+
+  # Content: byte-compare each section block via diff over temp files.
+  # awk-into-tmpfile preserves trailing newlines (command substitution strips them).
+  tmp_rp=$(mktemp)
+  tmp_claude=$(mktemp)
+  for name in $expected_sections; do
+    begin="<!-- runtime-principles:section=${name}:begin -->"
+    end="<!-- runtime-principles:section=${name}:end -->"
+    awk -v b="$begin" -v e="$end" '$0==b{f=1;next}$0==e{f=0}f' "$rp_src" > "$tmp_rp"
+    awk -v b="$begin" -v e="$end" '$0==b{f=1;next}$0==e{f=0}f' "$claude_src" > "$tmp_claude"
+    if [ ! -s "$tmp_rp" ]; then
+      bad "${name}: empty/missing block in $rp_src"
+      rp_drift=1
+      continue
+    fi
+    if [ ! -s "$tmp_claude" ]; then
+      bad "${name}: empty/missing block in $claude_src"
+      rp_drift=1
+      continue
+    fi
+    if ! diff -q "$tmp_rp" "$tmp_claude" >/dev/null 2>&1; then
+      bad "${name}: CLAUDE.md and runtime-principles.md content differ"
+      rp_drift=1
+    fi
+  done
+  rm -f "$tmp_rp" "$tmp_claude"
+
+  if [ $rp_drift -eq 0 ]; then
+    ok "all 4 contract sections in parity (subtractive-first / goal-locked / no-workaround / evidence) — markers, topology, content"
+  fi
 fi
 
 # ---------------------------------------------------------------------------

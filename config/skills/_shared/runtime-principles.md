@@ -1,55 +1,11 @@
-# Project Instructions
+# Runtime principles — sub-agent contract
 
-## Outer goal — read first if you do not already know it
+The runtime contract every sub-agent (BUILD / EVAL / CRITIC / DOCS / preflight auditors / fix-loop) must satisfy. Source of truth for sub-agent behavior on user tasks. NOT for autoresearch-loop / harness-developer concerns (see `autoresearch/PRINCIPLES.md`).
 
-**This block is for the harness developer / autoresearch loop, not for run-time skills.** Skills (`/devlyn:auto-resolve`, `/devlyn:ideate`, `/devlyn:preflight`, etc.) are the *product* this contract is meant to evolve into world-class software — they should not themselves cite the contract.
+The four sections below mirror the corresponding CLAUDE.md sections (Subtractive-first editing, Goal-locked execution, No-workaround discipline, Evidence over claim). Each section is wrapped in `<!-- runtime-principles:section=NAME:begin -->` / `:end -->` markers in BOTH this file and CLAUDE.md; lint Check 12 (added in iter-0019.A Step 5) extracts each named block from both files and diffs to detect drift.
 
-**Goal**: the harness composes frontier LLMs into a hands-free pipeline that delivers engineer-quality software for users who do not know context engineering. Two first-class user groups: single-LLM (Opus alone, GPT-5.5 alone) and multi-LLM (Claude + Codex). Three composition layers: **L0** bare LLM, **L1** solo harness on a single LLM, **L2** pair harness with `solo` / `pair_critic` / `pair_consensus` modes per phase. Each layer must beat the previous on **both quality and wall-time efficiency** — concretely, each layer must beat `previous-layer-best-of-N` where N is the wall-time ratio.
-
-**Five principles** every iteration is checked against (canonical in [`autoresearch/PRINCIPLES.md`](autoresearch/PRINCIPLES.md), summarized so a fresh session has them in working memory without opening another file):
-
-1. **No overengineering** — smallest change that closes the hypothesis; new abstractions require an observed failure mode they prevent. **Subtractive-first**: before adding a line, file, abstraction, or flag, ask "what can I delete instead?" Net-deletions and net-additions are NOT equally good defaults — when both close the hypothesis, deletion wins. A change that only adds is suspect until justified.
-2. **No guesswork** — falsifiable hypothesis BEFORE the experiment, predicted metric/direction filled in BEFORE the run, raw data filled in AFTER (no retroactive prediction edits).
-3. **No workaround** — root-cause fixes via 3+ step why-chain. No `any`, no `@ts-ignore`, no silent catches, no hardcoded fallbacks. Configuration-level skips in skill iters are also rejects.
-4. **Worldclass production-ready** — zero CRITICAL, zero HIGH `design.*` / `security.*` findings on the variant arm; aggregate margin can never excuse a fixture-level ship-blocker.
-5. **Best practice** — idiomatic for the language/framework; zero MEDIUM `design.unidiomatic-pattern` findings (no hand-rolled helpers replacing standard primitives).
-6. **Layer-cost-justified** — each composition layer beats `previous-layer-best-of-N` on both quality and wall-time efficiency; pair-mode phases must declare a deterministic short-circuit rule and a wall-time budget abort.
-
-Full contract: [`autoresearch/NORTH-STAR.md`](autoresearch/NORTH-STAR.md). Per-iteration doctrine: [`autoresearch/PRINCIPLES.md`](autoresearch/PRINCIPLES.md). Branch-state + in-flight work: [`autoresearch/HANDOFF.md`](autoresearch/HANDOFF.md).
-
-## Quick Start
-
-Three commands cover most work. All default to `--engine auto` — the Codex CLI's flagship model builds, Claude critiques (cross-model GAN dynamic). No model versions are hardcoded; the CLI's current flagship is inherited automatically.
-
-1. `/devlyn:ideate` — unstructured idea → VISION/ROADMAP/item specs
-2. `/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-N/X-name.md"` — hands-free build → evaluate → ship
-3. `/devlyn:preflight` — verify the implementation matches the roadmap
-
-Each skill's `SKILL.md` is the source of truth for its flags and workflow — don't duplicate them here.
-
-### When to use which
-
-| Situation | Command |
-|-----------|---------|
-| New project or shifting direction | `/devlyn:ideate` (greenfield) |
-| Existing roadmap, new feature/bug idea | `/devlyn:ideate` (quick add) |
-| One spec ready to implement | `/devlyn:auto-resolve "Implement per spec at …"` |
-| Roadmap complete, need verification | `/devlyn:preflight` |
-| Focused debugging (no pipeline) | `/devlyn:resolve` |
-| Manual post-change review | `/devlyn:review` or `/devlyn:team-review` |
-
-## Harness Principles (Karpathy 4)
-
-Every skill in this repo is an instance of these four. Apply them to the edit in front of you before adding anything new.
-
-1. **Think Before Coding** — surface hidden assumptions. If a step looks obvious, name the assumption it rests on; if the assumption is wrong, the step is wrong.
-2. **Simplicity First** — delete before you add (full operational rule below).
-3. **Surgical Changes** — touch only what the goal requires (full operational rule below in "Goal-locked execution").
-4. **Goal-Driven Execution** — hand the subagent a goal and an acceptance check, not a procedure. If you're writing step-by-step instructions, ask whether the verification loop can catch the failure instead.
-
-The current harness is already the product of many surgical passes. The next change should be equally targeted.
-
-### Subtractive-first editing — perfection = nothing left to remove
+<!-- runtime-principles:contract:begin -->
+## Subtractive-first editing — perfection = nothing left to remove
 <!-- runtime-principles:section=subtractive-first:begin -->
 
 > "Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away." — Saint-Exupéry. **This is the operating definition of "done" in this repo.** A change is finished when no further line, branch, flag, or doc paragraph can be removed without breaking a learned failure mode. Not before.
@@ -85,7 +41,7 @@ If you skip question 1 or 2, you are violating this rule even if the resulting c
 **Never grow surface area silently.** Every accretion-shaped change must be visible: in the commit message, in the iteration file, or in a flagged review. Silent growth is the failure mode this rule exists to prevent.
 <!-- runtime-principles:section=subtractive-first:end -->
 
-### Goal-locked execution — stay on the North Star, do not wander
+## Goal-locked execution — stay on the North Star, do not wander
 <!-- runtime-principles:section=goal-locked:begin -->
 
 Even with a North Star defined, work drifts off-course ("산으로 간다" / "삼천포로 빠진다" — going up the wrong mountain instead of forward). The harness must **actively block** this drift at run time, not merely discourage it. The default is ruler-straight execution toward the user's stated goal; any deviation requires explicit justification, not the inverse.
@@ -116,15 +72,7 @@ This rule exists because LLMs (including you) are trained to be helpful, compreh
 **Stopping rule.** A task is done when the user's stated goal is closed AND no off-path work was added. If you find yourself hesitating because "I should also do Z" — Z is drift. Note it for follow-up, do not execute.
 <!-- runtime-principles:section=goal-locked:end -->
 
-## Error Handling Philosophy
-
-**No silent fallbacks.** Handle errors explicitly and show the user what happened.
-
-- **Default**: when something fails, display a clear error state — message, retry option, or actionable guidance. Do NOT silently fall back to default/placeholder data.
-- **Fallbacks are the exception.** Only use them when it's a widely accepted best practice (CSS fallback fonts, CDN failover, image placeholders). Otherwise handle the error explicitly.
-- **Pattern**: `try { doThing() } catch (error) { showErrorUI(error) }` — NOT `try { doThing() } catch { return fallbackValue }`.
-
-### No-workaround discipline (runtime salience)
+## No-workaround discipline
 <!-- runtime-principles:section=no-workaround:begin -->
 
 No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scripts that bypass the root cause. Fix root causes; handle errors with user-visible state per the rule above.
@@ -134,7 +82,7 @@ No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scr
 - Codex CLI availability downgrade (`--engine auto`) — the one documented silent fallback in this repo. Banner `engine downgraded: codex-unavailable` always prints; verdict identical to `--engine claude`. Any other silent fallback in skills code is a bug — file it against the skill that introduced it.
 <!-- runtime-principles:section=no-workaround:end -->
 
-### Evidence over claim
+## Evidence over claim
 <!-- runtime-principles:section=evidence:begin -->
 
 Every finding cites concrete evidence. Vague claims are speculation; exclude them.
@@ -146,69 +94,17 @@ Every finding cites concrete evidence. Vague claims are speculation; exclude the
 
 A finding without one of these forms is excluded. Vague findings produce vague fixes.
 <!-- runtime-principles:section=evidence:end -->
+<!-- runtime-principles:contract:end -->
 
-## Codex invocation
+<!-- runtime-principles:consumption:begin -->
+## Consumption (as of iter-0019.A)
 
-Skills call Codex via the local `codex exec` CLI (shipped by the `openai-codex` Claude Code plugin). See `config/skills/_shared/codex-config.md` for the canonical flag set. Omit `-m <model>`; the CLI's current flagship (today `gpt-5.5`, automatically whatever ships next) is used — zero-touch on upgrades. MCP is not in the loop.
+**Consumers**:
+- `auto-resolve/SKILL.md` `<harness_principles>` block points here as the contract source. Phase prompt bodies (`phase-1-build.md`, `phase-2-evaluate.md`, `phase-3-critic.md`) inline a compact operational excerpt derived from the contract — phase-specific rule_id mappings + the four section names — not the full text.
+- `preflight/SKILL.md` PHASE 3 (Synthesize) and PHASE 3.5 (RND2) reference this file. Auditor prompts (`code-auditor.md`, `browser-auditor.md`) emit `principle.*` rule_ids derived from the rules above.
 
-### Codex companion pair-review (autoresearch loop, NOT runtime skills)
+**Codex routing**: skills that route to Codex (auto-resolve fix-loop on `--engine auto`/`codex`, preflight code-auditor on `--engine auto`/`codex`) MUST inline the contract excerpt directly into the Codex prompt — Codex has no filesystem access under `read-only` sandbox.
 
-Two distinct surfaces use the local `codex exec` CLI for different audiences:
-
-**Skills (run-time, user-task)**: when a Skill spawns Codex as part of executing a user's task (e.g. `/devlyn:auto-resolve` calling Codex BUILD), follow the wrapper-form contract in `config/skills/_shared/engine-routing.md` and `_shared/codex-config.md`. Decision-mode taxonomy (`solo` / `pair_critic` / `pair_consensus`) lives in `autoresearch/NORTH-STAR.md` and lands as policy in iter-0020. Until then, skill-level pair patterns (CRITIC = Codex critiques Claude, etc.) are the legacy shape.
-
-**Autoresearch loop (change-time, harness developer)**: when *we* (the developer or the iteration loop) consult Codex for cross-model review of a harness change — design verdicts, hypothesis pre-checks, PR-style audits — use the companion wrapper:
-
-```bash
-bash config/skills/_shared/codex-monitored.sh \
-  -C /Users/aipalm/Documents/GitHub/devlyn-cli \
-  -s read-only \
-  -c model_reasoning_effort=xhigh \
-  "<your prompt>"
-```
-
-Pattern (per `feedback_codex_cross_check.md` + `feedback_user_directions_vs_debate.md`):
-
-1. **Reason independently first.** Form your own verdict with concrete evidence (file paths, line numbers, raw data, expected vs actual). Never delegate the decision.
-2. **Send Codex rich evidence**, not "what should I do?" prompts. Include your draft conclusion and ask for falsification — Codex acts as a GAN critic.
-3. **Surface Codex pushback transparently.** When Codex disagrees, present both views to the user; do not silently adopt either side. The user's direction is the final arbiter.
-4. **Never pipe the wrapper output** (`| tail`, `| head`, `| grep` without `--line-buffered`). The wrapper refuses pipe-stdout per iter-0009 to prevent byte-watchdog starvation. Read the persisted output file the wrapper writes when output is large.
-
-This is "iteration-loop pair," distinct from "auto-resolve pair" — same vocabulary (`solo` / `pair_critic` / `pair_consensus`), different thresholds. Iteration-loop pair is human-supervised meta-work; the cost is amortized over harness improvements that affect every future run, so pair freely on non-trivial changes. Auto-resolve pair is hands-free user-task execution; every pair call is paid by the user on every run, so it must be aggressively gated (iter-0020).
-
-Where the cumulative companion-pair history lives: `autoresearch/HANDOFF.md` "Codex collaboration log (running)" — append-only, one line per round.
-
-## Working Mode
-
-- **Checkpoint with TaskCreate / TaskUpdate.** Long investigations or multi-phase work: create tasks at start, mark completed as each one closes — don't batch.
-- **Don't stop early on token-budget concerns.** Context auto-compacts; the model resumes after compaction. Run the work to a real stopping point.
-- **Persist across context windows via disk.** auto-resolve writes `.devlyn/runs/<run_id>/` (`pipeline.state.json`, `<phase>.findings.jsonl`, `<phase>.log.md`); preflight writes `.devlyn/PREFLIGHT-REPORT.md`; for ad-hoc long work use `HANDOFF.md` and resume with `@HANDOFF.md continue`.
-- **Fan out with `/devlyn:team-resolve` or parallel `Agent` subagents only for explicit complex scope** — a single perspective is the default on the auto-resolve hot path.
-
-## Skill Boundary Policy
-
-auto-resolve's phases are **inline by default**. The standalone skills `/devlyn:evaluate`, `/devlyn:review`, `/devlyn:team-review`, `/devlyn:team-resolve`, `/devlyn:clean`, `/devlyn:update-docs` are **manual tools** — auto-resolve does not invoke them. The four findings-producing standalones (`evaluate`, `review`, `clean`, `team-review`) emit a `.devlyn/<skill>.findings.jsonl` sidecar matching the shared schema at `config/skills/devlyn:auto-resolve/references/findings-schema.md`, so a manual run produces artifacts compatible with the pipeline view. The two action-producing standalones (`team-resolve`, `update-docs`) write code or docs directly and have no findings schema to share. The invocation boundary is clean in both cases.
-
-auto-resolve delegates to another skill **only** when one of these is true:
-
-1. The delegate has exclusive capability — native `security-review`, Chrome MCP via `/devlyn:browser-validate`, team assembly via `--team`.
-2. The work is off the bare path **and** explicitly complex (`--team` flag or `state.route.selected == "strict"`).
-3. The user invoked a standalone directly — `/devlyn:auto-resolve` does not call it for them.
-
-This boundary is deliberate. The earlier attempt to absorb every standalone into the pipeline diverged contracts (interactive prompts, markdown vs JSONL output, code-mutating reviewers), and the token math on delegation inflated the bare-case run. Changing this rule requires an A/B proof that bare-case wall-time and tokens do not regress.
-
-## Bare-Case Guardrail
-
-The modal run — single spec, solo build, no browser, standard route, PASS on first EVAL, clean CRITIC, no fix loops — is the primary performance target. No new hot-path phase, no sub-skill delegation, and no instrumentation may land without an A/B proof that this case's wall-time and tokens do not regress. Complex cases may cost more; the bare case may not.
-
-## Communication Style
-
-Lead with **objective data** (popularity, benchmarks, community adoption) before opinions — especially when the user asks "what's popular" or "what do others use."
-
-## Commit Conventions
-
-Follow `.claude/commit-conventions.md`.
-
-## Design System
-
-When doing UI/UX work, follow `docs/design-system.md` if it exists.
+**Non-consumers**:
+- `ideate/SKILL.md` does NOT consume this file. Ideate is planning-layer; its CHALLENGE rubric (`references/challenge-rubric.md`) covers analogous concerns at planning scope, with deliberate one-shot Codex critic discipline.
+<!-- runtime-principles:consumption:end -->

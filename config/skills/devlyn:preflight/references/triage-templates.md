@@ -43,8 +43,10 @@ Preflight check identified this gap against the original roadmap specification.
 # Accepted Divergences
 # Findings marked as intentional — excluded from future preflight runs
 
-- [item-id] [commitment]: [reason accepted]
+- [item-id|none] [commitment|rule_id+locator]: [reason accepted]
 ```
+
+For commitment-bound findings, use `[item-id] [commitment]`. For commitment-less findings (e.g. `PRINCIPLE_VIOLATION` fallback bucket: unjustified duplicate machinery, hand-rolled stdlib), use `[none] [rule_id]+[normalized_evidence_locator]` — e.g. `[none] [principle.unjustified-duplicate-machinery]+[src/utils/format-date.ts:12]`. The dedup logic in PHASE 3 step 3 matches accepted entries by `(rule_id, locator)` when no commitment id is present.
 
 ## STALE_DOC handling
 

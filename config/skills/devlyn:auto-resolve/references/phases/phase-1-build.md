@@ -41,12 +41,20 @@ Implement code changes that satisfy every pending criterion in `pipeline.state.j
 - **Verification commands are literal.** Before declaring PASS, re-read the source's Verification section (or `expected.json.verification_commands` for benchmark fixtures). Run every command exactly as listed and compare output to the spec character-for-character: every `stdout_contains` substring must appear verbatim in stdout, every `exit_code` must match exactly (exit 2 means exit 2, not 1), every `Error:` prefix must be the literal string the spec quotes, every JSON top-level key listed must be present at the top level (not nested or renamed). Paraphrasing the error message, choosing a "close" exit code, or restructuring the JSON shape is a verification failure — record it as such and fix BEFORE returning PASS. *(iter-0018.5: F9 in iter-0016 had both arms produce wrong `Error:` prefix, wrong exit code, wrong JSON top-level shape — clear spec, BUILD declared PASS without literal verification.)*
 - Read only files the source implicates (Architecture Notes + Dependencies + touched patterns), not the whole codebase.
 - Bugs: failing test first, then fix. Features: follow existing patterns, then write tests. Refactors: tests pass before and after.
-- Fix root causes only — no `any`, `@ts-ignore`, silent `catch`, or hardcoded values.
 </quality_bar>
 
 <principle>
 The source is the contract. Your output is evidence that the contract now runs in code.
 </principle>
+
+<runtime_principles>
+Read `_shared/runtime-principles.md` if your engine has filesystem access; the four contract sections (Subtractive-first / Goal-locked / No-workaround / Evidence) bind your behavior here. Codex routings receive this excerpt directly because they cannot read the file:
+
+- **Subtractive-first**: before adding code, ask "what can I delete instead?" — net-negative diffs default; pure-addition needs a cited prior failure mode OR an explicit user/spec requirement. Reject "for future flexibility / just in case / to be safe / for completeness."
+- **Goal-locked**: refuse the five drift patterns — unrequested work, tangential cleanup, speculative robustness, mid-flight re-scoping, curiosity detours. Single test before any deviation: "did the user ask for this OR does the stated goal strictly require it?" If both no, surface as a note (commit message / final report) and stay on path. Hands-free pipelines: never prompt the user; log the question and continue on the requested goal.
+- **No-workaround**: no `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scripts that bypass root cause. Only documented exception: Codex CLI availability downgrade.
+- **Evidence**: every claim cites file:line you have opened. Vague claims are speculation; exclude them.
+</runtime_principles>
 
 <team_role_selection>
 When `team: true`, select teammates by task type (per-role engine routing per `references/engine-routing.md`):

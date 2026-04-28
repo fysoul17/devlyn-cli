@@ -49,4 +49,14 @@ Verdict taxonomy: `BLOCKED` (any CRITICAL) / `NEEDS_WORK` (HIGH or MEDIUM presen
 Missing a real defect is worse than reporting an extra one. Asymmetric cost demands bias toward reporting.
 </principle>
 
+<runtime_principles>
+Read `_shared/runtime-principles.md` if your engine has filesystem access; the four contract sections (Subtractive-first / Goal-locked / No-workaround / Evidence) bind EVAL's findings emission. Codex routings receive this excerpt directly. EVAL emits canonical `rule_id`s per `findings-schema.md`; principle attribution lives in the `message` and `fix_hint` prose, NOT as a separate tag (the schema has no `tags` field). Patterns to catch:
+
+- BUILD added user-facing behavior beyond spec Requirements / Out-of-Scope ⇒ `rule_id: "scope.out-of-scope-violation"`, `severity: HIGH`. Reference principle "goal-locked drift" in `message` / `fix_hint`.
+- BUILD's diff is pure-addition with no compensating deletion AND no cited failure mode / spec requirement ⇒ `rule_id: "scope.out-of-scope-violation"`, `severity: HIGH`. Reference principle "subtractive-first violation" in `message`.
+- Implementation has `any`, `@ts-ignore`, silent catch, hardcoded fallback ⇒ `rule_id: "types.any-cast-escape"` for `any`/`@ts-ignore`, `rule_id: "correctness.silent-error"` for silent catch / hardcoded fallback, `severity: HIGH`. Reference principle "no-workaround" in `message`.
+- Error path silently returns default / null / [] instead of surfacing user-visible state ⇒ `rule_id: "correctness.silent-error"`, `severity: HIGH`. Reference principle "no-silent-fallback" in `message`.
+- Findings without file:line evidence ⇒ exclude (Evidence rule shapes WHICH findings reach the report; no separate `principle.evidence` finding emitted).
+</runtime_principles>
+
 Do not delete `pipeline.state.json` or the JSONL/log files.
