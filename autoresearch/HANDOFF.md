@@ -27,35 +27,93 @@ If a future session finds this block missing or summarized, that is a violation 
 
 ## ⚠️ COLD-START CRITICAL CONTEXT (read FIRST in a new session)
 
-**iter-0019.6 ACCEPTANCE GATE PASSED 2026-04-28T01:01Z** (RUN_ID `20260427T235114Z-da3eef5-iter-0019-6-acceptance`). F9/variant.verify_score=1.0 (5/5), disqualifier=false, score=88 (vs iter-0019's 74, +14 lift). BUILD_GATE round-1 fired 2 CRITICAL `correctness.spec-literal-mismatch`; fix_loop_round_1 converged in 1 round; BUILD_GATE round-2 PASS 5/5; EVAL closed 3 LOW only (no CRITICAL). **iter-0019.6 status: SHIPPED-VERIFIED** (commit pending — see "Current state" block). Codex GPT-5.5 R-verdict: ship-as-PASS (138k tokens, xhigh, 256s) with namespace correction on residual judge findings. **iter-0020 (cost-aware pair policy + 9-fixture L0/L1/L2 paid run) is now UNBLOCKED.**
+**Last shipped**: `50f26b9` iter-0019.A (SKILL audit + runtime-principles propagation + preflight Round 2). Working tree clean except `?? .claude/` (gitignored install dir).
 
-Pre-launch Codex pair-review caught fixture-contract bug (iter-0019.6.1, commit `da3eef5`): F9 cmd #5 `stdout_not_contains: ["fail "]` was unsatisfiable due to Node's `# fail 0` summary line. Saved $5-10 on a known-broken contract.
+**Three iter SHIPPED 2026-04-28 since last cold-start**:
+- iter-0019.6 acceptance — F9/variant.verify_score=1.0 (mechanical output-contract gate works) — `e6de5ef`
+- iter-0019.6.1 — F9 cmd #5 unsatisfiable contract bug fix — `da3eef5`
+- iter-0019.A — runtime-principles.md + preflight PHASE 3.5 ROUND 2 + lint Check 12 — `50f26b9`
 
-### NEXT CONCRETE ACTION — iter-0019.8 (real-user contract carrier)
+### NEXT CONCRETE ACTION — iter-0019.8: real-user contract carrier
 
-**iter-0019.A (SKILL audit) SHIPPED 2026-04-28**: lint 11/11 + new Check 12 PASS. Sub-agent prompts now consume `_shared/runtime-principles.md` (CLAUDE.md mirror via per-section markers). preflight has new PHASE 3.5 ROUND 2 CRITIQUE (5 deterministic triggers, 240s wall-budget). preflight code-auditor emits `principle.*` rule_ids per overlay table; browser-auditor narrow scope (silent-fallback + goal-locked-drift, screenshot AND route); docs-auditor no principle emission. ideate untouched (planning-layer). 7 Codex review rounds, all findings adopted.
+**Goal**: give real `/devlyn:auto-resolve` users the iter-0019.6 mechanical output-contract gate. Currently `spec-verify-check.py` is a deliberate silent no-op when `.devlyn/spec-verify.json` is absent (Codex R-verdict Q6 caught this — benchmark fixtures get the JSON via `run-fixture.sh:208-219`, real users do not). Without iter-0019.8, all iter-0019.6 work is benchmark-only (NORTH-STAR test #14 trap).
 
-**Sequence going forward**:
-```
-[B] iter-0019.8 (NEXT) — /devlyn:auto-resolve PHASE 0 emits `.devlyn/spec-verify.json` from spec "## Verification" section AND ideate spec template generates it. Real-user contract carrier — gives end users the iter-0019.6 mechanical gate without manual staging.
-[C] iter-0019.7-revisited — measurement-driven decision after [B] data shows whether silent-catch persists on real-user paths. If silent-catch DQs persist post-0019.8, ship a `forbidden-pattern-check.py` BUILD_GATE helper. If not, close as "no measurable user harm; skip."
-[D] iter-0020 — pair policy + coverage.json + 9-fixture L0/L1/L2 paid run (~$30-50, ~3-5h wall). Now benefits from iter-0019.A's RND2 + principle overlay during its preflight verification.
-[E] real-project trial → production (NORTH-STAR test #14)
-```
+**Scope** (single iter, sub-agent prompt edits + ideate template — code-only, no paid suite):
+1. `auto-resolve/SKILL.md` PHASE 0 PARSE: when `source.type == "spec"` and the spec contains a `## Verification` section, parse the section and write `.devlyn/spec-verify.json` BEFORE PHASE 1 BUILD spawns. When `source.type == "generated"`, BUILD writes the section to `.devlyn/criteria.generated.md` and PHASE 0 (round 2 onward) reads it the same way.
+2. `auto-resolve/references/phases/phase-0-parse.md` (or wherever PARSE prompt body lives) — add the JSON-emission contract: parse `## Verification` markdown bullets matching shape `cmd: ... → exit_code: N, stdout_contains: [...], stdout_not_contains: [...]` and emit canonical JSON shape matching `benchmark/auto-resolve/fixtures/F*/expected.json` `verification_commands` array.
+3. `ideate/references/templates/item-spec.md` — add `## Verification` section template with 1-3 example bullets so ideate-generated specs ship with verifiable contracts.
+4. `auto-resolve/references/findings-schema.md` — confirm `correctness.spec-literal-mismatch` is documented as the canonical rule_id (already added in iter-0019.6 — verify only, don't duplicate).
+5. Falsification: dry-run on a small synthetic spec (`docs/roadmap/phase-1/test-iter-0019-8.md`) with `## Verification` section → confirm `.devlyn/spec-verify.json` materializes correctly + BUILD_GATE picks it up + spec-verify-check.py fires. Cost ~$0 (Claude-only synthetic). NO paid 9-fixture suite.
+
+**Step-by-step sequence (mirror iter-0019.A discipline)**:
+
+1. **Design draft + Codex pair-review Round 1** — propose PHASE 0 contract + ideate template diff; ask Codex for falsification on edge cases (multi-cmd specs, missing `## Verification`, ideate-generated criteria path).
+2. **Adopt findings** + draft skill prompt edits.
+3. **Codex pair-review Round 2** on actual diff before commit.
+4. **Mirror** via `node bin/devlyn.js -y`.
+5. **Lint** — confirm Check 6 + Check 12 still PASS post-edit.
+6. **Synthetic dry-run** falsification.
+7. **Iter file** + DECISIONS append + HANDOFF rotate + memory + atomic commit.
 
 ### Do NOT
 
-- ❌ Run iter-0020 9-fixture paid suite (blocked by [B][C])
-- ❌ Edit `_shared/runtime-principles.md` content without mirroring CLAUDE.md `:section=NAME:` blocks (lint Check 12 will fail)
-- ❌ Edit CLAUDE.md `:section=NAME:` blocks without re-running mirror + re-confirming Check 12
-- ❌ Bundle iter-0019.8 with iter-0020 (attribution rule)
-- ✅ OK: design iter-0019.8 in `autoresearch/iterations/0019-8-real-user-contract.md`; map auto-resolve PHASE 0 spec parsing to `.devlyn/spec-verify.json` shape; pair-review with Codex before code lands
+- ❌ Run iter-0020 9-fixture paid suite (blocked by iter-0019.8 + iter-0019.7 measurement decision)
+- ❌ Edit `_shared/runtime-principles.md` content without mirroring CLAUDE.md `:section=NAME:` blocks — **lint Check 12 will fail**. CLAUDE.md is the source of truth; runtime-principles is the mirror.
+- ❌ Edit CLAUDE.md `runtime-principles:section=NAME:` blocks without re-syncing runtime-principles.md AND re-running `node bin/devlyn.js -y`
+- ❌ Bundle iter-0019.8 with iter-0020 or iter-0019.7 (Codex R3 attribution-clarity rule)
+- ❌ Re-introduce iter-0019.7 silent-catch BUILD_GATE helper before iter-0019.8 ships — Codex R-halt confirmed that ordering is score-chasing. Order is **0019.8 → measure → 0019.7 only if data demands**.
+- ✅ OK: design iter-0019.8 in `autoresearch/iterations/0019-8-real-user-contract.md`; pair-review with Codex before code lands
+
+### How to verify state on resume (cold-start sanity check, ~30s)
+
+Paste these in order; expected output noted:
+
+```bash
+# 1. Branch + commit chain
+git log --oneline -8
+# Expected top: 50f26b9 autoresearch(iter-0019.A): SKILL audit ...
+
+# 2. Working tree clean
+git status --short
+# Expected: only `?? .claude/`
+
+# 3. Lint full pass
+bash scripts/lint-skills.sh
+# Expected: all 11 checks (1-10 + 12) PASS, "All checks passed."
+
+# 4. Mirror parity
+diff -q config/skills/_shared/runtime-principles.md .claude/skills/_shared/runtime-principles.md
+# Expected: silent (no diff)
+
+# 5. Confirm next iter file does not exist yet
+ls autoresearch/iterations/0019-8-*.md 2>/dev/null
+# Expected: empty (next session creates it)
+
+# 6. Confirm runtime-principles markers + parity
+grep -c 'runtime-principles:section=' CLAUDE.md
+# Expected: 8 (4 sections × 2 markers)
+grep -c 'runtime-principles:section=' config/skills/_shared/runtime-principles.md
+# Expected: 8
+```
+
+If any of these unexpectedly fails, the branch state has drifted — investigate before starting iter-0019.8 work.
+
+### Read-order on cold start
+
+1. `autoresearch/NORTH-STAR.md` — what we are optimizing (3-layer L0/L1/L2 contract, 14 operational tests, real-project trial gate test #14).
+2. **This file** — operating context.
+3. `autoresearch/PRINCIPLES.md` — pre-flight 0 + 6 principles.
+4. `CLAUDE.md` — session-level runtime contract (Subtractive-first, Goal-locked, No-workaround, Evidence — these 4 sections are mirrored in `_shared/runtime-principles.md` for sub-agents).
+5. `autoresearch/DECISIONS.md` — append-only ship/revert log.
+6. `autoresearch/iterations/0019-A-skill-audit-runtime-principles.md` — most recent iter, full data + Codex 7-round trail + lessons.
+7. `config/skills/_shared/runtime-principles.md` — runtime contract sub-agents consume.
+8. `config/skills/devlyn:preflight/SKILL.md` PHASE 3 + 3.5 — newest preflight mechanism.
 
 ---
 
 ## Current state
 
-**Branch**: `benchmark/v3.6-ab-20260423-191315`. 27 commits ahead of origin after iter-0019.4 / .5 / .6 / .6.1 / .6-acceptance / .A + iter-0019 part 2 + CLAUDE.md audit proposal + CLAUDE.md subtractive-first/goal-locked + handoff rotate commits.
+**Branch**: `benchmark/v3.6-ab-20260423-191315`. 28 commits ahead of origin after iter-0019.4 / .5 / .6 / .6.1 / .6-acceptance / .A + iter-0019 part 2 + CLAUDE.md audit proposal + CLAUDE.md subtractive-first/goal-locked + handoff pivot/rotate commits.
 
 **iter-0019.A SHIPPED 2026-04-28**: SKILL audit + runtime-principles propagation + preflight Round 2. Code-only iter, no paid suite. lint 11/11 + new Check 12 PASS (CLAUDE.md ↔ `_shared/runtime-principles.md` per-section excerpt parity: markers + topology + content). Auto-resolve `<harness_principles>` + phase-1/2/3 + fix-loop + DOCS now consume runtime-principles. Preflight has new PHASE 3.5 ROUND 2 CRITIQUE (5 deterministic triggers, 240s wall-budget abort, single round runtime). preflight emits `principle.*` rule_ids per code-auditor overlay table; browser-auditor narrow scope. ideate untouched. 7 Codex review rounds, all findings adopted (~640k tokens read).
 
@@ -72,11 +130,12 @@ Asymmetry note: variant arm copied pre-edit CLAUDE.md at startup (commit `660871
 - iter-0019.5 (`2269787`): close CODEX_REAL_BIN env-var leak into solo_claude — bypass surface CLOSED. Codex R1 caught (during iter-0019 mid-suite); surface was open all suite long but never exercised, hardening preemptively for iter-0020's 9-fixture run.
 - iter-0019.6 (`3a6db4f`): F9 mechanical output-contract enforcement — verdict bind option (a). Adds `.devlyn/spec-verify.json` staging + `scripts/spec-verify-check.py` BUILD_GATE invocation that mirrors post-run verifier semantics, emits canonical CRITICAL `correctness.spec-literal-mismatch` findings on exit/contains/not-contains mismatch. Routes through existing PHASE 2.5 fix-loop. Prompt-only iter-0018.5 fold-in was empirically dead — this is the iter-0008 lesson at second mechanism scope.
 
-**NEXT (queued, not yet run)**: F9-only paid acceptance suite under iter-0019.6 patch (~$5-10, ~30-45min). See "NEXT CONCRETE ACTION" block at top of this file. iter-0020 (cost-aware pair policy + 9-fixture L0/L1/L2 paid run) is unblocked once F9 acceptance passes.
+**NEXT (queued, not yet run)**: iter-0019.8 (real-user contract carrier — auto-resolve PHASE 0 emits `.devlyn/spec-verify.json` from spec `## Verification` + ideate template generates the section). See "NEXT CONCRETE ACTION" block at top. Code-only iter, ~no paid spend. Then iter-0019.7 measurement-driven decision, then iter-0020 (9-fixture L0/L1/L2 paid run).
 
 **HEAD chain** (newest first):
 ```
-<pending>  autoresearch(iter-0019.A): SKILL audit — runtime-principles propagation + preflight Round 2 + principle overlay
+50f26b9  autoresearch(iter-0019.A): SKILL audit — runtime-principles propagation + preflight Round 2 + principle overlay
+45addc1  autoresearch(handoff): pivot to [A] SKILL audit; iter-0019.7 deferred per Codex R-halt
 e6de5ef  autoresearch(iter-0019.6 acceptance): SHIPPED-VERIFIED + iter-0020 unblock
 660871c  CLAUDE.md: subtractive-first + goal-locked execution rules
 2e247ca  autoresearch(handoff): log iter-0019.6.1 + acceptance suite in-flight
