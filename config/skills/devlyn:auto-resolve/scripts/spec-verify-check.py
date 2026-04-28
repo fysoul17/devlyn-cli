@@ -1,20 +1,33 @@
 #!/usr/bin/env python3
-"""Spec literal verification gate (iter-0019.6 + iter-0019.8 carrier).
+"""Spec literal verification gate (iter-0019.6 + iter-0019.8 + iter-0019.9
+carrier).
 
 Default mode (BUILD_GATE invocation, no args):
 - Resolves the contract carrier in this priority order (iter-0019.8 + Codex
-  R2): (1) source markdown — extract `## Verification` ```json``` block from
-  `pipeline.state.json:source.{spec_path | criteria_path}` and ALWAYS
-  overwrite `.devlyn/spec-verify.json` with it (a pre-existing file from a
-  killed prior run is stale; never trust it on real-user runs). (2) If no
-  json block in source AND source.type=="generated": emit CRITICAL
-  `correctness.spec-verify-malformed` so the fix-loop reruns BUILD. (3) If
-  no json block in source AND source.type=="spec": benchmark mode
-  (BENCH_WORKDIR set) trusts a pre-staged file (run-fixture.sh staged from
-  expected.json) — shape-validated defensively. Real-user mode
-  (BENCH_WORKDIR unset) silent no-op + drops any stale pre-staged file
-  (preserves iter-0019.6 backward compat for handwritten specs without the
-  carrier).
+  R2 + iter-0019.9 Codex R-phaseA fix):
+  (1) **Benchmark mode trust** (iter-0019.9 fix for the F9 regression): when
+      `BENCH_WORKDIR` is set AND `.devlyn/spec-verify.json` already exists
+      at script start, trust it as the run-fixture.sh-staged contract from
+      `expected.json` and skip source-extract entirely. Without this guard,
+      an ideate-generated spec's `## Verification` ```json``` block (e.g.
+      F9 e2e novice flow generates `commitCount`/`topAuthors` while
+      benchmark truth is `commits`/`authors`) silently overwrote the
+      authoritative benchmark contract. For benchmarks, expected.json is
+      canonical.
+  (2) Otherwise, source markdown extract — read `pipeline.state.json:
+      source.{spec_path | criteria_path}` and extract a `## Verification`
+      ```json``` block. If present, overwrite `.devlyn/spec-verify.json`.
+      This is the real-user carrier path; a pre-existing file from a
+      killed prior run is stale and must not be trusted in real-user mode.
+  (3) If no json block in source AND source.type=="generated": emit
+      CRITICAL `correctness.spec-verify-malformed` so the fix-loop reruns
+      BUILD.
+  (4) If no json block in source AND source.type=="spec": benchmark mode
+      with a pre-staged file would have hit branch (1). Without the
+      pre-staged file, benchmark falls through to no-op (rare — fixture
+      mis-config). Real-user mode silent no-op + drops any stale
+      pre-staged file (preserves iter-0019.6 backward compat for
+      handwritten specs without the carrier).
 - For each verification_commands entry, runs the command in the work-dir,
   captures combined stdout+stderr, and asserts exit_code matches +
   stdout_contains all required literals + stdout_not_contains none of the
@@ -236,25 +249,33 @@ def main() -> int:
     devlyn_dir = work / ".devlyn"
     spec_path = devlyn_dir / "spec-verify.json"
 
-    # iter-0019.8 (Codex R2): determine the contract carrier source for THIS
-    # run. Order:
-    #   1. Source markdown extract — if it has a json block, that is the
-    #      authoritative contract. Always overwrite spec-verify.json (a
-    #      pre-existing file from a killed prior run is stale and must
-    #      not be trusted on real-user runs).
-    #   2. If source has no json block AND source.type=="generated":
-    #      CRITICAL spec-verify-malformed — generated criteria must ship
-    #      a verifiable contract per phase-1-build.md <output_contract>.
-    #   3. If source has no json block AND source.type=="spec":
-    #      a. Benchmark mode (BENCH_WORKDIR set) and a pre-staged
-    #         spec-verify.json exists: trust it (run-fixture.sh staged it
-    #         from expected.json). Apply shape validation defensively.
-    #      b. Real-user mode (BENCH_WORKDIR unset): silent no-op
-    #         (preserves iter-0019.6 backward compat for handwritten
-    #         specs without the carrier). Stale file from a killed prior
-    #         run is ignored.
+    # iter-0019.8 + iter-0019.9 (Codex R-phaseA): determine the contract
+    # carrier source for THIS run. Order:
+    #   1. Benchmark mode (BENCH_WORKDIR set) AND a pre-staged
+    #      .devlyn/spec-verify.json exists at script start: TRUST it (this is
+    #      the run-fixture.sh contract staged from expected.json). Skip
+    #      source-extract entirely. iter-0019.9 closes the F9 regression where
+    #      source-extract from an ideate-generated spec overwrote the
+    #      benchmark contract — for benchmarks, expected.json is canonical.
+    #   2. Otherwise, attempt source-extract from
+    #      `pipeline.state.json:source.{spec_path | criteria_path}`. If it has
+    #      a json block, overwrite .devlyn/spec-verify.json with it. This is
+    #      the real-user carrier path; in real-user mode a pre-existing file
+    #      is stale (from a killed prior run) and must NOT be trusted.
+    #   3. If source has no json block AND source.type=="generated":
+    #      CRITICAL spec-verify-malformed — generated criteria must ship a
+    #      verifiable contract per phase-1-build.md <output_contract>.
+    #   4. If source has no json block AND source.type=="spec":
+    #      - Real-user mode: silent no-op (preserves iter-0019.6 backward
+    #        compat for handwritten specs without the carrier). Drop any
+    #        stale pre-staged file.
+    #      - Benchmark mode: fall through to the pre-staged-trust branch
+    #        (covers pre-iter-0019.9 fixtures whose spec.md has prose-only
+    #        Verification — run-fixture.sh staged the contract regardless).
+    pre_staged = spec_path.is_file()  # captured BEFORE any potential write
+    trust_bench_staged = bench_mode and pre_staged
     src_type, source_md = read_source(work, devlyn_dir)
-    if source_md is not None:
+    if source_md is not None and not trust_bench_staged:
         staged, error = stage_from_source(source_md, devlyn_dir)
         if error is not None:
             print(f"[spec-verify] carrier malformed: {error}", file=sys.stderr)
@@ -278,7 +299,18 @@ def main() -> int:
                 if spec_path.exists():
                     spec_path.unlink()
                 return 0
-            # Benchmark mode falls through to the pre-staged-trust branch.
+            # Benchmark mode with no source block AND no pre-staged file
+            # (rare — fixture mis-config) falls through to the no-pre-staged
+            # silent no-op branch below.
+
+    # iter-0019.9 (Codex R2 caveat): close the real-user no-source-md
+    # stale-orphan gap. If pipeline.state.json is absent or has no source,
+    # but a stale .devlyn/spec-verify.json exists in real-user mode, drop
+    # it — the only legitimate path that reaches here with a pre-staged
+    # file is benchmark mode (run-fixture.sh staged it).
+    if source_md is None and not bench_mode and spec_path.exists():
+        spec_path.unlink()
+        return 0
 
     if not spec_path.exists():
         # No source markdown carrier AND no pre-staged file. Silent no-op
