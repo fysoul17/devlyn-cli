@@ -27,68 +27,105 @@ If a future session finds this block missing or summarized, that is a violation 
 
 ## ⚠️ COLD-START CRITICAL CONTEXT (read FIRST in a new session)
 
-**Last shipped**: iter-0020 implementation (e2e → Claude BUILD route override + Playwright hygiene prompt + code-enforced selector + coverage.json + suite aggregator). Working tree clean except `?? .claude/` (gitignored install dir). **iter-0020 ships only after a paid 9-fixture × 3-arm verification suite (~$30-50) — awaiting user cost approval.**
+**Last shipped**: iter-0020 9-fixture × 3-arm paid verification suite COMPLETED 2026-04-29T03:31 KST + Codex R-verdict received → **DEFER ship until F9 variant re-run** (Anthropic API 429 rate-limit aborted F9 mid-suite). Harness coverage-copy fix shipped (commit `52a4db5`) as prerequisite for any future aggregation. Working tree clean except `?? .claude/`.
 
-**Iter SHIPPED 2026-04-28 since last cold-start**:
-- iter-0019.6 acceptance — F9/variant.verify_score=1.0 — `e6de5ef`
-- iter-0019.6.1 — F9 cmd #5 unsatisfiable contract bug fix — `da3eef5`
-- iter-0019.A — runtime-principles.md + preflight PHASE 3.5 ROUND 2 + lint Check 12 — `50f26b9`
-- iter-0019.8 — real-user contract carrier — `1821879`
-- iter-0020 prep — pair_policy_failure_count verdict script — `7d5af00`
-- **iter-0019.9 — bench-mode pre-staged trust** — `0f9e077` (fixed F9 false signal in Phase A data)
-- **iter-0020 implementation** — THIS commit (Phase B code; awaits paid 9-fixture run)
+**Iter SHIPPED 2026-04-28 → 2026-04-29**:
+- iter-0019.6 acceptance — `e6de5ef`
+- iter-0019.6.1 — `da3eef5`
+- iter-0019.A — `50f26b9`
+- iter-0019.8 — `1821879`
+- iter-0020 prep — `7d5af00`
+- iter-0019.9 — `0f9e077`
+- iter-0020 implementation — `91994db`
+- **iter-0020 9-fixture suite** — RUN_ID `20260428T131713Z-91994db-iter-0020-9fixture-verify` (~$30-50, 5h17m wall, ship-gate FAIL — see "9-fixture verdict data" block below)
+- **iter-0020 harness fix** — `52a4db5` (run-fixture.sh copies coverage.json to RESULT_DIR; closes acceptance-aggregator gap)
 
-### NEXT CONCRETE ACTION — iter-0020 paid 9-fixture × 3-arm verification suite
+### NEXT CONCRETE ACTION — F9 variant-only re-run (~$5-10, ~30-60min) → SHIPPED-VERIFIED narrow
 
-**Goal**: paid 9-fixture × 3-arm verification suite to verify iter-0020's e2e routing change exercises correctly + produce the canonical L0/L1/L2 release-readiness measurement deferred since iter-0019.
+**Goal**: F9 variant-only re-run (~$5-10, ~30-60min wall) to clear hard-acceptance #4 (e2e route exercised ≥1×). After PASS, iter-0020 ships **SHIPPED-VERIFIED narrow** (e2e routing + F4 Playwright bullet); F2/F3/F8 broader signals queue for separate iters.
 
-**Cost**: ~$30-50, ~3-4h wall.
-
-**Implementation already SHIPPED in this commit** (Phase B):
-- New `select_phase_engine.py` invoked from PHASE 1 BUILD (code-enforced override; not prompt).
-- New `coverage_report.py` emits per-fixture coverage.json per Codex Q5 schema.
-- New `iter-0020-aggregate-coverage.py` suite-level aggregator (Codex R2 Q6).
-- `engine-routing.md` per-fixture-class table: `e2e → BUILD=Claude` (one routing decision differing).
-- `phase-1-build.md` `<quality_bar>` Playwright/output-hygiene bullet (F4 fix).
-- `archive_run.py` PER_RUN_PATTERNS includes coverage.json.
-- `pipeline-state.md` canonical schema + Source/Route docs updated.
-
-**Hard acceptance (Codex R3, locked)**: ALL FIVE satisfied by implementation:
-1. Per-fixture-class routing table — `engine-routing.md` § "Per-fixture-class BUILD overrides".
-2. Routing decision differing — e2e → Claude (was Codex).
-3. Code-enforced short-circuit — `select_phase_engine.py` invoked before BUILD spawn.
-4. coverage.json proving exercise — `coverage_report.py` per-fixture + `iter-0020-aggregate-coverage.py` suite-aggregator (exit 0 iff every changed route fired ≥1×).
-5. Recorded rollback condition — `engine-routing.md` table footer: revert if e2e regresses ≥3 axes vs iter-0019.9 baseline (F9 L1=92/verify=1.0/dq=false).
+**Why DEFER, not ROLLBACK**: F1-F8 mechanism worked correctly (selector fired only on e2e match, coverage emitted, F4+F5 hygiene held); F9 hit Anthropic API 429 rate-limit at the end of 5h17m suite (claude-debug.log:192-195) so the e2e routing override never had a chance to execute. Re-running F9 variant alone clears the route-coverage proof requirement.
 
 **Step-by-step (push-button after user approval)**:
 
-1. **Launch paid 9-fixture × 3-arm suite**:
+1. **Launch F9 variant-only re-run**:
    ```
-   bash benchmark/auto-resolve/scripts/run-suite.sh --label iter-0020-9fixture-verify
+   bash benchmark/auto-resolve/scripts/run-suite.sh F9-e2e-ideate-to-preflight --label iter-0020-F9-verify
    ```
-   Auto-mirrors per iter-0017. ETA ~3-4h. Background-run via `run_in_background: true`.
+   (Suite still runs all 3 arms by default — variant is the load-bearing one for hard-acceptance #4 per Codex Q1; the other 2 arms cost ~$3 extra and complete the e2e per-class data.)
 
-2. **After completion** — read summary.json + run aggregator:
+2. **Aggregator**:
    ```
    python3 autoresearch/scripts/iter-0020-aggregate-coverage.py benchmark/auto-resolve/results/<RUN_ID>/
    ```
-   - aggregator exit 0 = e2e route exercised ≥1×, no router bugs → hard acceptance #4 cleared.
-   - aggregator exit 1 = ROUTER BUG (rollback evidence; revert before any future ship).
+   With harness fix `52a4db5` in place, F9/variant's coverage.json should auto-copy to RESULT_DIR. Expected: `applicable_fired=1` for `auto-resolve.BUILD.fixture_class:e2e` → aggregator exit 0 → hard-acceptance #4 cleared.
 
-3. **Verdict** — read per-fixture margins:
-   - F9 L2-L1 ≥ -3 (no material regression vs L1; ideally L2 ≈ L1) → e2e routing pays for itself.
-   - F4 still no test-results/.last-run.json in diff (Playwright bullet works).
-   - F1-F8 (non-e2e) — no regression vs iter-0019 baseline.
+3. **iter-0020 SHIPPED-VERIFIED narrow** commit: iter file final verdict + DECISIONS row update + HANDOFF rotate + memory.
 
-4. **Codex R-verdict** on the suite data with file:line evidence (per `feedback_codex_cross_check.md`).
+4. **Then queued separately**:
+   - iter-0021 (or 0020.5) — F2/F3 medium/high-risk pair-mode root-cause analysis (Codex BUILD significantly worse than Claude BUILD on these classes).
+   - iter-0022 — F8 edge-class wall-waste short-circuit policy.
+   - iter-0019.7 — fix-loop enrichment (post iter-0020 ship; measurement-driven).
+   - NORTH-STAR test #14 — real-project trial gate (final stop condition).
 
-5. **Rollback** any failing route if data demands.
+**iter-0019.7 status**: still deferred. Per Codex R3 attribution discipline.
 
-6. iter-0020 ship verdict (SHIPPED-VERIFIED or PARTIAL) → DECISIONS append + HANDOFF rotate + memory.
+---
 
-7. **Then iter-0021 / iter-0019.7 / NORTH-STAR test #14 real-project trial** based on data.
+## 9-fixture verdict data (suite RUN_ID `20260428T131713Z-91994db-iter-0020-9fixture-verify`)
 
-**iter-0019.7 status**: deferred. Measurement-driven decision after iter-0020 9-fixture data. If silent-catch persists on real-user paths even with iter-0020 routing, iter-0019.7 fires; otherwise closes as "data demonstrated no enrichment needed" per Codex R3 attribution discipline.
+Completed 2026-04-29T03:31 KST. Total wall 5h17m. ~$30-50 paid. Ship-gate FAIL.
+
+### Per-fixture summary
+
+| Fixture | category | L2 | L1 | L0 | L2-L1 | L1-L0 | L2 wall | L1 wall | L0 wall | L2/L1 wall | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| F1 trivial-flag | trivial | 98 | 99 | 93 | -1 | +6 | 901s | 853s | 52s | 1.06× | OK (no premium) |
+| F2 cli-subcommand | medium | **83** | 94 | 85 | **-11** | +9 | 1145s | 1152s | 94s | 0.99× | NEW: Codex BUILD signif. worse |
+| F3 backend-contract | high-risk | **78** | 94 | 95 | **-16** | -1 | 1501s | 1222s | 82s | 1.23× | NEW: Codex worse, L0 even beats L1 |
+| F4 web-browser | stress(browser) | 96 | 95 | 84 | +1 | +11 | 1184s | 1176s | 1801s | 1.01× | ✓ Playwright bullet HELD (no test-results/.last-run.json in diff) |
+| F5 fix-loop-red-green | stress | 92 | 96 | 92 | -4 | +4 | 829s | 1110s | 42s | 0.75× | L2 faster but lower-quality |
+| F6 dep-audit | stress | 97 | 99 | 90 | -2 | +9 | 1501s | 1500s | 68s | 1.0× | close |
+| F7 out-of-scope-trap | stress | 100 | 99 | 97 | +1 | +2 | 1201s | 910s | 32s | 1.32× | OK (pair lift small) |
+| F8 known-limit | edge | 80 | 80 | 80 | 0 | 0 | 45s | **3s** | 3s | **15.0×** | Pair waste — zero quality, 15× wall |
+| F9 e2e-novice-flow | e2e | 53 | 53 | 53 | 0 | 0 | 2s | 6s | 2s | 0.33× | **API 429 rate-limit — never executed** |
+| **Avg** | | **86.3** | **89.9** | **85.4** | **-3.6** | **+4.4** | | | | **2.5×** | |
+
+### Headline reads
+
+- **L1-L0 = +4.4** — single-LLM users below NORTH-STAR floor +5. **L1 release-readiness FAIL.**
+- **L2-L1 = -3.6** — pair-mode underperforming solo on average. **L2 release-readiness FAIL** (floor +5).
+- **margin ≥ +5 count = 3 of 8 gated fixtures** (F9 excluded due to rate-limit) — ship-gate floor is ≥7 of 9. **FAIL.**
+- **1 hard-floor violation** (per summary.json `hard_floor_violations: 1`).
+
+### What worked (iter-0020 mechanism verified)
+
+- **iter-0020 selector + coverage_report.py + state schema**: F1/solo_claude archived state shows `fixture_class: trivial`, `fixture_id: F1-cli-trivial-flag`, `route.engine_overrides: {}` (correct: no override for non-e2e), `coverage.json: not_applicable=1, all_applicable_routes_exercised: true`. Mechanism FIRED CORRECTLY in production for non-e2e fixtures (F1-F7 + F9, when reached).
+- **F4 Playwright bullet HELD**: F4/variant `verify=1.00, disqualifier=false`, `changed-files.txt`: only `docs/roadmap/phase-1/F4-web-browser-design.md`, `tests/e2e/whisper.spec.js`, `web/index.html` — **no `test-results/.last-run.json`** in diff. iter-0020 prompt edit closed Phase A regression.
+- **F5 frontmatter ban HELD**: F5/variant only `bin/cli.js` changed; zero `+completed:` / `+date:` lines in diff. iter-0018.5's frontmatter rule survived iter-0020's other prompt changes.
+- **iter-0019.6/.8/.9 spec-verify gate**: F2/F3/F5 all verify=1.0 (mechanical contract correctly enforced for both arms). The carrier mechanism works.
+
+### What broke / was inconclusive
+
+- **F9 e2e (the only fixture that would exercise iter-0020's e2e routing override)**: Anthropic API 429 rate-limit hit at ~18:24Z after ~5h sustained API usage. All 3 arms `result.json: invoke_failure=true, files_changed=0, diff_bytes=0, elapsed_seconds=2`. claude-debug.log:192-195 confirms `rate_limit_error`. iter-0020's mechanism never had an e2e-class fixture to fire on → aggregator: `NEVER FIRED auto-resolve.BUILD.fixture_class:e2e`. **Hard-acceptance #4 NOT YET satisfied** (until F9 re-run lands).
+- **F2 medium / F3 high-risk pair-mode underperformance** (NEW signal): Codex BUILD scores 83/78 vs Claude BUILD 94/94. F3 is especially striking — L0 (95) actually beats L1 (94) by +1, suggesting the spec is unusually tight and even pair adds noise. iter-0020 narrow scope did NOT address this — Codex Q2 verdict: "expanding to medium/high-risk now would be score-chasing"; queue separate iter for root-cause analysis.
+- **F8 edge wall-waste**: L2 = L1 = L0 = 80 (all tied), L2/L1 wall ratio = 15.0×. Pair-mode adds zero quality, 15× wall on this edge fixture. Codex Q3 verdict: "queue F8 separately. It is a cost/waste signal, not evidence for the e2e rule."
+- **F2 score swing vs iter-0019 5-fixture smoke**: was +5 in iter-0019, now -11. Run-to-run variance on Codex BUILD is large (16-point delta same fixture).
+
+### Codex R-verdict on suite outcome (92k tokens, 169s, xhigh)
+
+Verdict: **DEFER now, not rollback**. Path to ship: harness coverage-copy fix (DONE — `52a4db5`) + F9 variant-only rerun + aggregator PASS → SHIPPED-VERIFIED narrow.
+
+- Q1: F9 **variant-only re-run** sufficient (hard-acceptance #4 = route coverage, not 3-arm score data).
+- Q2: Ship narrow as-is. F2/F3 are real failures but separate iter scope (expanding now = score-chasing).
+- Q3: F8 wall-waste queue separately.
+- Q4: F4 Playwright + F5 frontmatter both HELD.
+- Q5: Harness coverage-copy fix is acceptance infrastructure, not scope expansion. Shipped at commit `52a4db5`.
+- Q6: iter-0020 ships **SHIPPED-VERIFIED narrow** = e2e BUILD=Claude + F4 Playwright hygiene. Doesn't ship: medium/high-risk routing or edge short-circuit. Rolls back: nothing.
+
+### Bench harness gap (closed by `52a4db5`)
+
+Discovered post-suite: `run-fixture.sh`'s `rm -rf "$WORK_DIR"` happens at NEXT arm START not end, so coverage.json files inside `.devlyn/runs/<auto-resolve-run-id>/` were retained — but only for the LAST arm per (fixture, arm). Bench results dir did NOT include coverage.json by default. Aggregator at `autoresearch/scripts/iter-0020-aggregate-coverage.py:42-47` walks `results/<RUN_ID>/<fixture>/<arm>/` and found nothing. Manual workaround: copy from workdirs (worked, but fragile). Permanent fix: `52a4db5` adds `cp` step in `run-fixture.sh` after diff capture so future suites surface coverage.json automatically.
 
 ### Do NOT
 
@@ -155,9 +192,11 @@ If any of these unexpectedly fails, the branch state has drifted — investigate
 
 ## Current state
 
-**Branch**: `benchmark/v3.6-ab-20260423-191315`. 32+ commits ahead of origin after iter-0019.4 / .5 / .6 / .6.1 / .6-acceptance / .A / .8 / .9 / iter-0020-prep / iter-0020-impl + handoff pivot/rotate commits.
+**Branch**: `benchmark/v3.6-ab-20260423-191315`. 34+ commits ahead of origin (iter-0019 chain + iter-0020 impl + harness coverage-copy fix + 9-fixture suite results).
 
-**iter-0020 implementation SHIPPED 2026-04-28** (THIS commit; awaits paid 9-fixture verification): cost-aware pair policy narrow per Codex Phase B Option C verdict. Per-fixture-class BUILD override `category=e2e → Claude` (one routing decision differing from current Codex BUILD default for `--engine auto`). Code-enforced via NEW `scripts/select_phase_engine.py` invoked from PHASE 1 BUILD before spawn (hard-fails on missing state per Codex R2 #1, writes `state.route.engine_overrides.<phase>` on fire). NEW `scripts/coverage_report.py` emits per-fixture `.devlyn/coverage.json` per Codex Q5 schema (applicable_fired/applicable_missed/not_applicable buckets). NEW `autoresearch/scripts/iter-0020-aggregate-coverage.py` suite-level aggregator (Codex R2 Q6) — exit 0 iff every changed route fired ≥1× across suite. Bench harness exports BENCH_FIXTURE_CATEGORY+BENCH_FIXTURE; PHASE 0 step 4 populates `state.source.{fixture_class,fixture_id}` (gated on BENCH_WORKDIR co-set). engine-routing.md gains "Per-fixture-class BUILD overrides" section with table + rollback condition. archive_run.py PER_RUN_PATTERNS adds coverage.json. phase-1-build.md `<quality_bar>` adds narrow Playwright bullet (F4 fix). pipeline-state.md canonical schema + Source/Route docs updated. Codex pair: R0 (43k, 85s, Option D adopted) + R-phaseA (68k, 201s, F9 false-signal diagnosed) + Phase B scope (150k, 191s, Option C narrow) + R1 (53k, 103s, "Not sufficient" — adopted code-enforced selector + aggregator) + R2 (55k, 112s, "substantively yes with 4 small fixes" — all adopted). All 5 hard acceptance criteria satisfied. lint 11/11 PASS. Falsification: 5 selector + 3 coverage + 2 aggregator unit tests all 1:1 (no model spend). **Awaits paid 9-fixture × 3-arm suite (~$30-50, ~3-4h wall) for ship verdict.**
+**iter-0020 status**: implementation SHIPPED at `91994db` (cost-aware pair policy: e2e → BUILD=Claude + Playwright hygiene + selector + coverage + aggregator). 9-fixture × 3-arm verification suite COMPLETED 2026-04-29T03:31 KST (~$30-50, 5h17m wall, ship-gate FAIL — see "9-fixture verdict data" block above for full per-fixture). Codex R-verdict (92k tokens, 169s, xhigh): **DEFER ship until F9 variant re-run** (Anthropic 429 rate-limit aborted F9 mid-suite). Harness coverage-copy fix shipped at `52a4db5`. **Awaits F9 variant re-run (~$5-10, ~30-60min wall) → SHIPPED-VERIFIED narrow.**
+
+**iter-0020 implementation** (commit `91994db`): cost-aware pair policy narrow per Codex Phase B Option C verdict. Per-fixture-class BUILD override `category=e2e → Claude` (one routing decision differing from current Codex BUILD default for `--engine auto`). Code-enforced via NEW `scripts/select_phase_engine.py` invoked from PHASE 1 BUILD before spawn (hard-fails on missing state per Codex R2 #1, writes `state.route.engine_overrides.<phase>` on fire). NEW `scripts/coverage_report.py` emits per-fixture `.devlyn/coverage.json` per Codex Q5 schema (applicable_fired/applicable_missed/not_applicable buckets). NEW `autoresearch/scripts/iter-0020-aggregate-coverage.py` suite-level aggregator (Codex R2 Q6) — exit 0 iff every changed route fired ≥1× across suite. Bench harness exports BENCH_FIXTURE_CATEGORY+BENCH_FIXTURE; PHASE 0 step 4 populates `state.source.{fixture_class,fixture_id}` (gated on BENCH_WORKDIR co-set). engine-routing.md gains "Per-fixture-class BUILD overrides" section with table + rollback condition. archive_run.py PER_RUN_PATTERNS adds coverage.json. phase-1-build.md `<quality_bar>` adds narrow Playwright bullet (F4 fix). pipeline-state.md canonical schema + Source/Route docs updated. Codex pair: R0 (43k, 85s, Option D adopted) + R-phaseA (68k, 201s, F9 false-signal diagnosed) + Phase B scope (150k, 191s, Option C narrow) + R1 (53k, 103s, "Not sufficient" — adopted code-enforced selector + aggregator) + R2 (55k, 112s, "substantively yes with 4 small fixes" — all adopted). All 5 hard acceptance criteria satisfied. lint 11/11 PASS. Falsification: 5 selector + 3 coverage + 2 aggregator unit tests all 1:1 (no model spend). **Awaits paid 9-fixture × 3-arm suite (~$30-50, ~3-4h wall) for ship verdict.**
 
 **iter-0019.9 SHIPPED 2026-04-28** (`0f9e077`): Bench-mode pre-staged trust patch. iter-0019.8's spec-verify-check.py:main() unconditionally overwrote benchmark-staged spec-verify.json from source-extract; F9 e2e novice flow ran ideate's drifted contract instead of benchmark truth. Patch: `pre_staged = spec_path.is_file()` BEFORE any potential write + `trust_bench_staged = bench_mode and pre_staged` guard. Real-user mode unchanged. F9 re-run on 0f9e077 (RUN_ID `20260428T112748Z-0f9e077-iter-0019-9-F9-reverify`, ~$15) confirmed: F9 carrier now uses BENCHMARK contract; F9 verify_score 0.60 → 1.00 for both pair arms; L1 jumped 81→92 (was equally polluted); L2-L1=-21 (real pair-routing failure on e2e class).
 
