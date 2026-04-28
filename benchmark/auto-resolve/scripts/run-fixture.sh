@@ -434,6 +434,18 @@ ELAPSED=$((T_END - T_START))
 (cd "$WORK_DIR" \
    && git diff "$SCAFFOLD_SHA" --name-only) > "$RESULT_DIR/changed-files.txt" 2>&1 || true
 
+# iter-0020: copy coverage.json from auto-resolve's archived run dir to
+# $RESULT_DIR so the suite-level aggregator
+# `autoresearch/scripts/iter-0020-aggregate-coverage.py` finds it. Without
+# this, run-fixture.sh's per-arm rm -rf cycle would lose coverage.json
+# before aggregation runs (workdirs survive only until the NEXT arm
+# starts; archive_run.py moves coverage.json into
+# $WORK_DIR/.devlyn/runs/<auto-resolve-run-id>/, but that whole dir is
+# benchmark-internal and not surfaced to results/. Aggregator wants files
+# under results/<RUN_ID>/<fixture>/<arm>/ for hard-acceptance #4.
+COV_SRC="$(ls -1 "$WORK_DIR/.devlyn/runs"/*/coverage.json 2>/dev/null | head -1)"
+[ -n "$COV_SRC" ] && [ -f "$COV_SRC" ] && cp "$COV_SRC" "$RESULT_DIR/coverage.json" 2>/dev/null || true
+
 # Deterministic oracles (step 1+ of the benchmark-extension plan).
 # Findings-only at this stage; scoring integration is step 5.
 python3 "$BENCH_ROOT/scripts/oracle-test-fidelity.py" \
