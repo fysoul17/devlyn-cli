@@ -31,28 +31,41 @@ If a future session finds this block missing or summarized, that is a violation 
 
 Pre-launch Codex pair-review caught fixture-contract bug (iter-0019.6.1, commit `da3eef5`): F9 cmd #5 `stdout_not_contains: ["fail "]` was unsatisfiable due to Node's `# fail 0` summary line. Saved $5-10 on a known-broken contract.
 
-### NEXT CONCRETE ACTION — iter-0020 design + 9-fixture L0/L1/L2 paid run
+### NEXT CONCRETE ACTION — Step [A] SKILL audit (in progress 2026-04-28)
 
-**iter-0020 scope** (per HANDOFF queue item #1 + Codex R3 hard acceptance): cost-aware pair policy formalization + tool-vs-deliberation attribution. Per-phase decision-mode mapping per `NORTH-STAR.md`. **Hard acceptance** — iter-0020 ships only if it produces ALL FIVE: (1) per-fixture-class phase routing table, (2) at least one routing decision differing from current behavior, (3) deterministic short-circuit/abort enforced in code (not prompt-only), (4) `coverage.json` artifact proving every changed route was exercised, (5) recorded rollback condition. **Aggregate score movement alone is NOT acceptance evidence.**
+**User halt + reframe 2026-04-28** (Korean verbatim, do NOT paraphrase):
+> "지금 우리 북극성과 원리 원칙에 맞는거야? skill 개선하는게 맞는거냐고."
+> "auto-resolve가 됐든, ideate가 되었든 ... 북극성을 제대로 바로 세워서 이를 통해서 harness를 하게 하는게 목적인걸로 알고 있는데 (아니라면 얘기해줘), 우리 skill도 이런게 반영이 되어있나? 이용자가 그런거 잘 모르는 사람이더라도?"
+> "preflight 는 그 북극성의 의대대로 클린하게 잘 구현되었는가를 체크하는게 본질이지. codex와의 compenion 으로서 pair 로서 티키타카 하면서 최선의 결과를 검증. 그리고 우리의 원칙대로 잘 되었는가 등"
 
-**Pre-design iter-0020 work** (cheap, before paid run):
-1. Read iter-0019 + iter-0019.6 acceptance per-fixture data — F4 confirmed tool-attached (L1=100 BEATS L2=99), F6 confirmed pair lift (+5 genuine constraint discipline), F9 mechanical-fixed in iter-0019.6 — so the iter-0020 pair-policy table starts with these facts.
-2. Draft per-phase decision-mode taxonomy (`solo` / `pair_critic` / `pair_consensus`) for BUILD / BUILD_GATE / EVAL / CRITIC / DOCS phases per fixture class.
-3. Identify the deterministic short-circuit + wall-budget abort rules. Mechanism candidates: same canonical findings shape that worked in iter-0019.6 (CRITICAL severity + fix_hint + criterion_ref), routed differently per phase.
-4. Coverage.json schema design — every checklist ID with `pass/fail/na` + evidence path + touched-file scope.
+**Codex R-halt verdict (101k tokens, xhigh, 159s)**: previously-staged iter-0019.7 (silent-catch BUILD_GATE helper) BEFORE iter-0019.8 = **score-chasing per pre-flight 0**. Real-user runs hit silent no-op without `.devlyn/forbidden-patterns.json` staging — would only move benchmark numbers. **Reorder accepted.**
 
-**iter-0020 paid run constraint**: 9-fixture × 3-arm = 27 arm runs, ~$30-50, ~3-5h wall. Do not bundle with CLAUDE.md minimization audit (HANDOFF "High-priority queued") — Codex R3 attribution-clarity rule.
+**New sequence**:
+```
+[A] SKILL audit (CURRENT) — does auto-resolve / ideate / preflight enforce North Star + goal-lock + drift prevention + subtractive-first + Codex pair tickitaka on sub-agents even when end-user doesn't know context engineering?
+[B] iter-0019.8 — auto-resolve PHASE 0 emits .devlyn/spec-verify.json from spec ## Verification (real-user contract carrier)
+[C] iter-0019.7-revisited — measurement-driven decision after [B] data shows whether silent-catch persists on real-user paths
+[D] iter-0020 — pair policy + coverage.json + 9-fixture L0/L1/L2 paid run (~$30-50, ~3-5h wall)
+[E] real-project trial → production
+```
 
-### Adjacent dependency to surface before iter-0020 paid run
+**[A] audit — preflight emphasized**. Per user framing: preflight 본질 = "북극성 의도대로 깔끔하게 구현되었는가" + Codex pair 티키타카 + 5+1 + Karpathy 4 + Subtractive-first + Goal-locked 준수 evidence-based 검증.
 
-**Real-user contract-generation gap** (Codex R-verdict Q6): `spec-verify-check.py` is a deliberate silent no-op when `.devlyn/spec-verify.json` is absent. Benchmark fixtures get this for free via `run-fixture.sh:208-219`. **Real /devlyn:ideate users do not** — until ideate generates the JSON from a spec's "## Verification" section. iter-0020 OR a new iter-0019.8 must address. Decision call before iter-0020 paid run starts: bundle the real-user contract generation into iter-0020 design, OR ship it as iter-0019.8 first.
+**Audit Q1-Q5** (preflight 강조):
+- Q1: skill이 사용자 stated goal 너머 작업하는 걸 막는 메커니즘?
+- Q2: skill이 silent하게 scope 확장하는 걸 막는 메커니즘?
+- Q3: subtractive-first 또는 simplicity 압박이 skill prompt에 박혀 있나?
+- Q4: end-user가 모르더라도 skill이 자율적으로 강제하나?
+- Q5 (preflight): 북극성 의도 vs 구현 cross-check + Codex pair 티키타카 + 원칙 evidence file:line 명시?
 
-### Do NOT do these things until iter-0020 design lands
+**Audit cost**: paid 없음, ~30-60min wall. 결과: gap 발견 시 메우는 iter 먼저, 충분하면 [B]로 진행.
 
-- ❌ Run a 9-fixture paid suite without iter-0020's decision-mode taxonomy locked (no aggregate-only iters per pre-flight 0)
-- ❌ Bundle iter-0020 with CLAUDE.md minimization (Codex R3 attribution rule)
-- ❌ Touch the iter-0019.6 mechanical gate (`spec-verify-check.py`, `run-fixture.sh:208-219`, BUILD_GATE invocation in `SKILL.md:114`) without explicit re-verification
-- ✅ OK: design iter-0020 in `autoresearch/iterations/0020-pair-policy.md`, draft routing table, prototype short-circuit rules in shared docs (no paid runs)
+### Do NOT (during audit + [B] iter-0019.8 design)
+
+- ❌ Ship iter-0019.7 as-was (Codex confirmed score-chasing before [B])
+- ❌ Run iter-0020 9-fixture paid suite (blocked by [A][B][C])
+- ❌ Bundle audit findings with implementation iters (attribution rule)
+- ✅ OK: read SKILL.md + references; Codex pair tickitaka on each Q; produce evidence-based audit report; reorder iter queue per audit findings
 
 ---
 
@@ -66,7 +79,7 @@ Side data (NOT acceptance, context for iter-0020): F9/L1=73⚠DQ silent-catch (N
 
 Asymmetry note: variant arm copied pre-edit CLAUDE.md at startup (commit `660871c` subtractive-first/goal-locked landed mid-suite); load-bearing iter-0019.6 metric (F9/variant.verify_score) is uncontaminated.
 
-**iter-0019 SUITE COMPLETE 2026-04-28T04:06Z** (RUN_ID `20260427T155638Z-c08130f-iter-0019-smoke`). All 15 arm runs + 5 judge re-runs (after iter-0019.4 mapfile fix) successful. Suite avg V=91.8 / L1=90.8 / L0=81.2. **L1 PASSES NORTH-STAR test #1** (L1-L0=+9.6 ≥ +8 preferred). **L2 FAILS NORTH-STAR test #6** (L2-L1=+1.0 < +5 floor) — pair-mode compression risk realized. 2 variant hard-floor DQs (F2, F9 silent-catch) → release-readiness NOT IMPLIED. F4 L1=100 beats L2=99 (Codex R3 tool-attribution hypothesis CONFIRMED). F9 L1=81 beats L2=74 by 7 points. solo_claude enforcement clean on all 5 fixtures (Bypass A surface open but never exercised). iter-0018.5 F9 prompt fold-in DEAD (verify=0.4 across all arms).
+**iter-0019 SUITE COMPLETE 2026-04-28T04:06Z** (RUN_ID `20260427T155638Z-c08130f-iter-0019-smoke`). All 15 arm runs + 5 judge re-runs (after iter-0019.4 mapfile fix) successful. Suite avg V=91.8 / L1=90.8 / L0=81.2. **L1 partial / directional only** (L1-L0=+9.6 across 5-fixture smoke; full 9-fixture run is iter-0020 scope; release-readiness language forbidden until then per NORTH-STAR.md:83). **L2 FAILS NORTH-STAR test #6** (L2-L1=+1.0 < +5 floor) — pair-mode compression risk realized. 2 variant hard-floor DQs (F2, F9 silent-catch) → release-readiness NOT IMPLIED. F4 L1=100 beats L2=99 (Codex R3 tool-attribution hypothesis CONFIRMED). F9 L1=81 beats L2=74 by 7 points. solo_claude enforcement clean on all 5 fixtures (Bypass A surface open but never exercised). iter-0018.5 F9 prompt fold-in DEAD (verify=0.4 across all arms).
 
 **iter-0019 follow-up patches LANDED 2026-04-28**:
 - iter-0019.4 (`5e035d1`): judge.sh mapfile → Bash 3.2 portable while-read (mapfile is Bash 4+; macOS /bin/bash 3.2 silently failed all 5 judge invocations in the iter-0019 paid run). Re-judged all 5 fixtures post-fix to extract scores.
