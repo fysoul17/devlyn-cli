@@ -89,10 +89,10 @@ diff -q config/skills/_shared/runtime-principles.md .claude/skills/_shared/runti
 ls autoresearch/iterations/0019-8-*.md 2>/dev/null
 # Expected: empty (next session creates it)
 
-# 6. Confirm runtime-principles markers + parity
-grep -c 'runtime-principles:section=' CLAUDE.md
+# 6. Confirm runtime-principles markers (anchored to line-start, not prose mentions)
+grep -cE '^<!-- runtime-principles:section=' CLAUDE.md
 # Expected: 8 (4 sections × 2 markers)
-grep -c 'runtime-principles:section=' config/skills/_shared/runtime-principles.md
+grep -cE '^<!-- runtime-principles:section=' config/skills/_shared/runtime-principles.md
 # Expected: 8
 ```
 
