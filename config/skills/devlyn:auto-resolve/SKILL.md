@@ -86,6 +86,8 @@ Optional: pass `--perf` to record per-phase `{wall_ms, tokens, engine, round, tr
 
    No spec path found → `source.type: "generated"`, `source.criteria_path: ".devlyn/criteria.generated.md"` (PHASE 1 creates it), `criteria_anchors: ["criteria.generated://requirements", "criteria.generated://out-of-scope", "criteria.generated://verification"]`, `criteria: []`.
 
+   **iter-0020**: ALSO populate `state.source.fixture_class` from the `BENCH_FIXTURE_CATEGORY` env var AND `state.source.fixture_id` from `BENCH_FIXTURE`, in both cases ONLY when `BENCH_WORKDIR` is also set (benchmark-scoped). When the bench envs are unset, write both fields as `null`. Stable schema; `select_phase_engine.py` keys off `fixture_class`, `coverage_report.py` keys off `fixture_id`.
+
 5. **Compute Stage A route** per `references/pipeline-routing.md#stage-a`. Write to `state.route.{selected, user_override, stage_a}`.
 
 6. **Announce** (single line):
@@ -96,7 +98,7 @@ Engine: <engine>, Route: <selected> (<stage_a_reasons>), Bypasses: <bypasses|non
 
 ## PHASE 1: BUILD
 
-**Engine**: BUILD row. Spawn per `<engine_routing_convention>`. Prompt body: **`references/phases/phase-1-build.md`** (verbatim) + task description.
+**Engine** (iter-0020 — code-enforced override, not prompt-only): before the spawn, run `python3 .claude/skills/devlyn:auto-resolve/scripts/select_phase_engine.py --phase build --engine <pipeline_config.engine>`. The script reads `state.source.fixture_class`, applies the `references/engine-routing.md` BUILD row, applies per-fixture-class overrides (currently `e2e → claude`), writes `state.route.engine_overrides.build` if an override fires, and prints the resolved engine name. Use that engine for the spawn (NOT the static table). On any other phase, the static `references/engine-routing.md` table still applies — only BUILD has an iter-0020 override. Prompt body: **`references/phases/phase-1-build.md`** (verbatim) + task description. Spawn per `<engine_routing_convention>` with the engine returned by the selector.
 
 **Team assembly rule** (simplified from v3.2): BUILD spawns as **team** ONLY when `--team` flag passed OR `state.route.selected == "strict"`. Otherwise solo. Keyword-match auto-trigger removed — Claude/Codex base SWE capability is the default.
 
@@ -238,6 +240,8 @@ Spawn Claude `Agent` (`mode: "bypassPermissions"`). Include original task descri
 
 2. **Render report** per the exact shape in `references/final-report-template.md` — required section order, banner rules, engine-line contract, and summary table layout all live there. Fill placeholders from `pipeline.state.json`.
 
-3. **Archive**: run `python3 .claude/skills/devlyn:auto-resolve/scripts/archive_run.py` (implements `references/pipeline-state.md#archive-contract`; moves per-run artifacts into `.devlyn/runs/<run_id>/`, best-effort prunes to last 10 completed runs). The script reads `phases.final_report.verdict` for prune-safety, so the state write above must complete first.
+3. **Coverage report** (iter-0020): run `python3 .claude/skills/devlyn:auto-resolve/scripts/coverage_report.py`. Emits `.devlyn/coverage.json` per the schema in that script's docstring — proof artifact for hard-acceptance #4. Per-fixture invariant: every applicable iter-0020+ changed route must have fired. Failures (`applicable_missed` non-empty) indicate a router bug. Suite-level aggregation across all fixtures' coverage.json files proves "every changed route was exercised by at least one fixture."
 
-4. Kill dev server from PHASE 1.5 if still running.
+4. **Archive**: run `python3 .claude/skills/devlyn:auto-resolve/scripts/archive_run.py` (implements `references/pipeline-state.md#archive-contract`; moves per-run artifacts into `.devlyn/runs/<run_id>/`, best-effort prunes to last 10 completed runs). The script reads `phases.final_report.verdict` for prune-safety, so the state write above must complete first.
+
+5. Kill dev server from PHASE 1.5 if still running.

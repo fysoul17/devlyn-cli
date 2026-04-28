@@ -374,6 +374,15 @@ else
     # what the post-run verifier (run-fixture.sh:431-434) sets so the gate
     # sees the same environment shape.
     export BENCH_WORKDIR="$WORK_DIR"
+    # iter-0020: pass fixture metadata.category to auto-resolve so PHASE 0
+    # can populate state.source.fixture_class. Reads metadata.json once
+    # (already loaded as $META). Empty / missing → unset (real-user
+    # default). Auto-resolve PHASE 0 only honors this when BENCH_WORKDIR
+    # is also set, so this stays benchmark-scoped. Used by
+    # scripts/select_phase_engine.py for the e2e → BUILD=Claude override.
+    BFC="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("category") or "")' "$META" 2>/dev/null || true)"
+    [ -n "$BFC" ] && export BENCH_FIXTURE_CATEGORY="$BFC"
+    [ -n "${FIXTURE:-}" ] && export BENCH_FIXTURE="$FIXTURE"
     exec claude \
       -p "$(cat "$PROMPT_FILE")" \
       --dangerously-skip-permissions \

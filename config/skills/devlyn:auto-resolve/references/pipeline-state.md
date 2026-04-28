@@ -46,6 +46,16 @@ Created by PHASE 0 on run start. At PHASE 5, the entire `.devlyn/` run artifact 
       "at": "<ISO-8601 UTC>" | null,
       "escalated_from": "fast" | "standard" | null,
       "reasons": ["<string>", "..."]
+    },
+    "engine_overrides": {  // iter-0020: per-phase BUILD/etc engine overrides written by select_phase_engine.py
+      "<phase_name>": {
+        "at": "<ISO-8601 UTC>",
+        "phase": "<phase_name>",
+        "from": "codex" | "claude" | "bash",
+        "to": "codex" | "claude" | "bash",
+        "reason": "<string>",
+        "source": "iter-NNNN"
+      }
     }
   },
   "source": {
@@ -54,7 +64,9 @@ Created by PHASE 0 on run start. At PHASE 5, the entire `.devlyn/` run artifact 
     "spec_sha256": "<hex>" | null,
     "criteria_path": "<string path>" | null,
     "criteria_sha256": "<hex>" | null,
-    "criteria_anchors": ["spec://requirements", "..."]
+    "criteria_anchors": ["spec://requirements", "..."],
+    "fixture_class": "trivial" | "medium" | "stress" | "e2e" | null,  // iter-0020: from BENCH_FIXTURE_CATEGORY env (benchmark-scoped); null on real-user runs
+    "fixture_id": "<string>" | null  // iter-0020: from BENCH_FIXTURE env (benchmark-scoped); null on real-user runs
   },
   "criteria": [
     {
@@ -124,6 +136,16 @@ Created by PHASE 0 on run start. At PHASE 5, the entire `.devlyn/` run artifact 
 - `spec_path` + `spec_sha256` — canonical spec pointer + integrity hash for spec runs. Each phase re-computes and compares before reading. Mismatch → phase writes `verdict: "BLOCKED"` with reason `spec_sha256 mismatch`.
 - `criteria_path` + `criteria_sha256` — same pair for generated runs. `criteria_sha256` is populated by PHASE 1 BUILD after it creates `criteria.generated.md`. Subsequent phases verify it the same way.
 - `criteria_anchors` — enumerated anchors downstream phases may reference.
+- `fixture_class` (iter-0020, optional, string|null) — populated from `BENCH_FIXTURE_CATEGORY` env at PHASE 0 step 4 ONLY when `BENCH_WORKDIR` is also set (benchmark-scoped). Real-user runs leave it `null`. Read by `scripts/select_phase_engine.py` to apply per-fixture-class BUILD overrides per `references/engine-routing.md` § "Per-fixture-class BUILD overrides". Values come from `benchmark/auto-resolve/fixtures/F*/metadata.json:category` (e.g. `trivial` / `medium` / `stress` / `e2e`).
+- `fixture_id` (iter-0020, optional) — populated from `BENCH_FIXTURE` env when set; identifies the benchmark fixture for `coverage.json` evidence. `null` for real-user runs.
+
+### Route
+
+- `selected` — chosen Stage A route (`fast` / `standard` / `strict`).
+- `user_override` — `true` if `--route` flag was passed explicitly; suppresses Stage B LITE escalation.
+- `stage_a` / `stage_b` — decision logs.
+- `bypasses` — list of `--bypass` arg values.
+- `engine_overrides` (iter-0020, optional) — per-phase override map. Written by `scripts/select_phase_engine.py` when a fixture-class override fires. Shape: `{<phase>: {at: ts, phase, from: <default-engine>, to: <override-engine>, reason, source: "iter-NNNN"}}`. Read by `scripts/coverage_report.py` to produce the proof artifact for hard-acceptance #4.
 
 ### Criteria
 

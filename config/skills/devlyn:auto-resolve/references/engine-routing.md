@@ -27,6 +27,18 @@ Rationale:
 - BROWSER: Claude — Chrome MCP tools session-bound.
 - CRITIC security: native Claude Code `security-review` skill on every engine — findings-only (post-EVAL invariant compatible), covers the same OWASP surface as the old custom pass, and drops the Dual-model token cost. Invocation + normalization rules live in `phases/phase-3-critic.md` (Sub-pass 2).
 
+### Per-fixture-class BUILD overrides (iter-0020)
+
+The `--engine auto` BUILD default is Codex. Per-fixture-class overrides apply when `state.source.fixture_class` (populated from `BENCH_FIXTURE_CATEGORY` env at PHASE 0) matches an entry. The override fires ONLY when user `--engine == "auto"` — explicit `--engine claude` / `--engine codex` always wins.
+
+| `fixture_class` | BUILD override | Rationale |
+|---|---|---|
+| `e2e` | **Claude** | iter-0020: F9 evidence — Codex BUILD on novice-flow regresses L2-L1 = -21 with material wall premium AND introduces silent-catch DQ ([memory:`project_iter0019_8_shipped_2026_04_28.md`](../../../../autoresearch/iterations/0020-pair-policy-narrow.md), F9-rerun RUN_ID `20260428T112748Z-0f9e077-iter-0019-9-F9-reverify`). Pair-mode Codex BUILD is not layer-cost-justified for this class; routing to Claude BUILD is the narrow defense. Other fixture classes keep Codex BUILD on `auto`. |
+
+The override is selected in code by `scripts/select_phase_engine.py` (invoked from PHASE 1 BUILD before spawn). It writes `state.route.engine_overrides.build` when fired so `coverage_report.py` can prove the route was exercised.
+
+Rollback condition: revert this entry if the iter-0020 9-fixture suite (or any subsequent paid run) shows the e2e fixture-class regressing by ≥ 3 axes vs the iter-0019.9 baseline (F9 L1=92 / verify=1.0 / dq=false).
+
 ---
 
 ## Pipeline Phase Routing (ideate)
