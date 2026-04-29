@@ -3,7 +3,7 @@ iter: "0026"
 title: "`completed:` removal — F2 scope-axis mechanism falsification probe"
 status: shipped-mechanism (conclusion-deferred to iter-0027)
 type: targeted-mechanism-probe (single-fixture re-run, mechanism confirmed; net L1 conclusion deferred to paired variance)
-shipped_commit: pending
+shipped_commit: 60c8a38
 date: 2026-04-29
 mission: 1
 ---
