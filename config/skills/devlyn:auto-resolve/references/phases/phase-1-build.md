@@ -13,6 +13,11 @@ Before reading anything else:
 - If the hash field is absent (first phase to populate the file), skip this check this one time only.
 </spec_integrity_check>
 
+<plan_invariants>
+If `pipeline.state.json:plan.mode == "pair"`, additionally read `accepted_invariants[]` from `state.plan.path` (the pre-validated `pair-plan.json`). Every entry's `operational_check` is a binding constraint on the code you write — treat them with the same authority as `spec://constraints`. The pair-plan was lint-validated at PHASE 0 step 4.5, so `accepted_invariants[]` is canonically grounded; no need to re-verify it here. EVAL/CRITIC will independently audit your output against the same invariants.
+If `state.plan.mode == "legacy_none"` (the default for string-form `Implement per spec at <path>` invocations), this section is a no-op.
+</plan_invariants>
+
 <goal>
 Implement code changes that satisfy every pending criterion in `pipeline.state.json:criteria[]` without violating anything declared Out of Scope or Constraints. Make the source's intent run in the code.
 </goal>

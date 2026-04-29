@@ -1,0 +1,22 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/synthetic.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["fail "]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|'')",
+      "description": "silent catch returning fallback",
+      "files": ["synthetic.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["synthetic.js"],
+  "forbidden_files": [],
+  "max_deps_added": 0,
+  "spec_output_files": ["synthetic.js", "tests/synthetic.test.js"]
+}

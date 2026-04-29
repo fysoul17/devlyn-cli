@@ -56,6 +56,12 @@ Created by PHASE 0 on run start. At PHASE 5, the entire `.devlyn/` run artifact 
     "criteria_sha256": "<hex>" | null,
     "criteria_anchors": ["spec://requirements", "..."]
   },
+  "plan": {
+    "mode": "legacy_none" | "pair",
+    "path": "<string path to pair-plan.json>" | null,
+    "registry_path": "<string path to canonical_id_registry.json>" | null,
+    "lint_at": "<ISO-8601 UTC>" | null
+  },
   "criteria": [
     {
       "id": "C1",
@@ -131,6 +137,15 @@ Created by PHASE 0 on run start. At PHASE 5, the entire `.devlyn/` run artifact 
 - `user_override` — `true` if `--route` flag was passed explicitly; suppresses Stage B LITE escalation.
 - `stage_a` / `stage_b` — decision logs.
 - `bypasses` — list of `--bypass` arg values.
+
+### Plan (iter-0022)
+
+- `mode` — `legacy_none` (default; the legacy `Implement per spec at <path>` string-form invocation) or `pair` (set when `--plan-path` is passed, or when `<pipeline_config>` is a JSON payload `{spec_path, plan_path}`).
+- `path` — when `mode == "pair"`, the validated path to the pre-staged `pair-plan.json`. Lint runs at PHASE 0 step 4.5 before BUILD; lint failure (exit != 0 OR `unresolved.length > 0` OR plan unreadable) is terminal `BLOCKED:plan-invalid` with no fallback to `legacy_none`. Schema source: `config/skills/_shared/pair-plan-schema.md`.
+- `registry_path` — copied from the plan's `source.canonical_id_registry_path` after lint passes; phase prompts (BUILD/EVAL/CRITIC) use this to enumerate `required_invariants[]` when binding plan invariants to their respective passes.
+- `lint_at` — UTC timestamp when lint passed.
+
+When `mode == "pair"`, BUILD/EVAL/CRITIC additionally read `accepted_invariants[]` from `state.plan.path` and treat each entry's `operational_check` as a binding constraint per phase (see `phases/phase-1-build.md`, `phases/phase-2-evaluate.md`, `phases/phase-3-critic.md`). Metric collection (per-arm scores, `--perf` artifacts) MUST tag `plan_mode = state.plan.mode` so PLAN-pair statistics are not aggregated with `legacy_none` runs (iter-0023 measurement integrity).
 
 ### Criteria
 

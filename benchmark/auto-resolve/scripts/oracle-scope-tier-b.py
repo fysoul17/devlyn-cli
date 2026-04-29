@@ -34,6 +34,22 @@ import re
 import subprocess
 import sys
 
+ORACLE_NAME = "scope-tier-b"
+
+# iter-0022: stable category enumeration. tier-b-reachable is `info` severity
+# (positive signal: touched file is reachable from spec_output_files via
+# static imports) and is intentionally OMITTED from the registry — it is
+# context, not an invariant violation. Only scope-unmatched is registered.
+CATEGORIES = [
+    {
+        "id": "scope-tier-b:scope-unmatched",
+        "severity": "warn",
+        "applies_when": "fixture has expected.json:spec_output_files (the BFS seed set is non-empty)",
+        "operational_check": "every variant-touched file MUST be either inside spec_output_files (Tier C) OR reachable from a Tier C seed via static JS/TS imports OR matched by expected.json:tier_a_waivers",
+        "evidence_source_files": ["oracle-scope-tier-b.py"],
+    },
+]
+
 TRACE_METHOD = "regex"
 
 # Static-import patterns. Order matters only for readability; duplicates
@@ -196,11 +212,23 @@ def analyze(work_dir_str: str, scaffold_sha: str, tier_c_globs, waivers,
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--work", required=True)
-    ap.add_argument("--scaffold", required=True)
-    ap.add_argument("--expected", required=True,
+    ap.add_argument("--work")
+    ap.add_argument("--scaffold")
+    ap.add_argument("--expected",
                     help="Path to fixture expected.json")
+    ap.add_argument(
+        "--list-categories",
+        action="store_true",
+        help="Emit the stable oracle CATEGORIES enum as JSON and exit (iter-0022).",
+    )
     args = ap.parse_args()
+
+    if args.list_categories:
+        print(json.dumps({"oracle": ORACLE_NAME, "categories": CATEGORIES}, indent=2, sort_keys=True))
+        return
+
+    if not args.work or not args.scaffold or not args.expected:
+        ap.error("--work, --scaffold, and --expected are required unless --list-categories is set")
 
     try:
         expected = json.loads(pathlib.Path(args.expected).read_text())

@@ -27,6 +27,32 @@ import pathlib
 import subprocess
 import sys
 
+ORACLE_NAME = "scope-tier-a"
+
+# iter-0022: stable category enumeration. See header comment in
+# oracle-test-fidelity.py for the edit-discipline rules. tier-a-violation is
+# ONE umbrella category covering the 5 path-glob groups (planning-doc,
+# ci-config, node-modules, test-results-or-coverage, env-secrets) plus the 2
+# basename rules (.log suffix, .env/secrets. prefix); splitting into 7 sub-
+# categories was rejected during iter-0022 R0 because the oracle emits a
+# single finding-row per touched path regardless.
+CATEGORIES = [
+    {
+        "id": "scope-tier-a:lockfile-deletion",
+        "severity": "hard",
+        "applies_when": "scaffold contains a lockfile (package-lock.json / yarn.lock / pnpm-lock.yaml / bun.lock / bun.lockb)",
+        "operational_check": "variant arm MUST NOT delete a scaffold-present lockfile",
+        "evidence_source_files": ["oracle-scope-tier-a.py"],
+    },
+    {
+        "id": "scope-tier-a:tier-a-violation",
+        "severity": "hard",
+        "applies_when": "any fixture (the protected paths exist conceptually for every JS/TS repo)",
+        "operational_check": "variant arm MUST NOT add or modify paths matching: docs/roadmap/** | docs/VISION.md | docs/ROADMAP.md | .github/** | node_modules/** | **/node_modules/** | test-results/** | coverage/** | .nyc_output/** | basename suffix .log | basename prefix .env or secrets.",
+        "evidence_source_files": ["oracle-scope-tier-a.py"],
+    },
+]
+
 # Path globs — fnmatch-style, left-anchored. `**` is treated as `*` by
 # fnmatch (no special recursive semantics), so `docs/roadmap/**` matches
 # `docs/roadmap/anything/nested/here` because `*` matches `/` in fnmatch.
@@ -184,14 +210,26 @@ def analyze(work_dir, scaffold_sha, waivers, fixture_id=None):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--work", required=True)
-    ap.add_argument("--scaffold", required=True)
+    ap.add_argument("--work")
+    ap.add_argument("--scaffold")
     ap.add_argument(
         "--expected",
         help="Path to fixture expected.json (for tier_a_waivers)",
         default=None,
     )
+    ap.add_argument(
+        "--list-categories",
+        action="store_true",
+        help="Emit the stable oracle CATEGORIES enum as JSON and exit (iter-0022).",
+    )
     args = ap.parse_args()
+
+    if args.list_categories:
+        print(json.dumps({"oracle": ORACLE_NAME, "categories": CATEGORIES}, indent=2, sort_keys=True))
+        return
+
+    if not args.work or not args.scaffold:
+        ap.error("--work and --scaffold are required unless --list-categories is set")
 
     waivers = []
     fixture_id = None

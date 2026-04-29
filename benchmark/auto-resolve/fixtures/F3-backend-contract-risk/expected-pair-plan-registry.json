@@ -1,0 +1,162 @@
+{
+  "fixture_id": "F3-backend-contract-risk",
+  "generated_at": "2026-04-29T09:57:53Z",
+  "generated_from": {
+    "expected_path": "benchmark/auto-resolve/fixtures/F3-backend-contract-risk/expected.json",
+    "expected_sha256": "c0925ee948179fbc1c76836d98fba0c14c7eba56f462f2922903951923cb22e6",
+    "metadata_path": "benchmark/auto-resolve/fixtures/F3-backend-contract-risk/metadata.json",
+    "metadata_sha256": "c54530db26dbb04ce50b698fed2608206eae6f9a5dc2f666f127695e15d3fa30",
+    "oracle_script_shas": {
+      "scope-tier-a": "baaf21ed4a67f35d2a8af825e72869ef9737b5dfe08d65dd1a11c26fafe297ae",
+      "scope-tier-b": "9349d00a5c7456a4df9142923334e7004407d53f2443f2e210945bb771971e25",
+      "test-fidelity": "401184da51ae500cecfc75a6c5819b0d28acb63a397f788fb628c2913562f903"
+    }
+  },
+  "required_invariants": [
+    {
+      "authority": "expected.json/forbidden_patterns",
+      "id": "forbidden_pattern__eslint_disable_without_explicit_per_issue_justification__server_index_js",
+      "operational_check": "variant arm output MUST NOT contain regex pattern '/\\\\*\\\\s*eslint-disable' in files ['server/index.js']; rationale: eslint-disable without explicit per-issue justification",
+      "severity": "disqualifier",
+      "source_field": "expected.json/forbidden_patterns/1",
+      "source_ref": "expected.json:forbidden_patterns[1]"
+    },
+    {
+      "authority": "expected.json/forbidden_patterns",
+      "id": "forbidden_pattern__silent_catch_returning_fallback__server_index_js",
+      "operational_check": "variant arm output MUST NOT contain regex pattern \"catch\\\\s*\\\\([^)]*\\\\)\\\\s*\\\\{[^}]*return\\\\s+(null|undefined|'')\" in files ['server/index.js']; rationale: silent catch returning fallback",
+      "severity": "disqualifier",
+      "source_field": "expected.json/forbidden_patterns/0",
+      "source_ref": "expected.json:forbidden_patterns[0]"
+    },
+    {
+      "authority": "expected.json/max_deps_added",
+      "id": "max_deps_added__0",
+      "operational_check": "variant arm MUST NOT add more than 0 new npm dependencies (count delta of package.json:dependencies + devDependencies)",
+      "severity": "hard",
+      "source_field": "expected.json/max_deps_added",
+      "source_ref": "expected.json:max_deps_added"
+    },
+    {
+      "authority": "expected.json/required_files",
+      "id": "required_file__server_index_js",
+      "operational_check": "variant arm output MUST contain file 'server/index.js' (created or preserved)",
+      "severity": "hard",
+      "source_field": "expected.json/required_files",
+      "source_ref": "expected.json:required_files[server/index.js]"
+    },
+    {
+      "authority": "expected.json/required_files",
+      "id": "required_file__tests_server_test_js",
+      "operational_check": "variant arm output MUST contain file 'tests/server.test.js' (created or preserved)",
+      "severity": "hard",
+      "source_field": "expected.json/required_files",
+      "source_ref": "expected.json:required_files[tests/server.test.js]"
+    },
+    {
+      "authority": "metadata/oracle-allowlist",
+      "id": "scope-tier-a:lockfile-deletion",
+      "operational_check": "variant arm MUST NOT delete a scaffold-present lockfile",
+      "severity": "hard",
+      "source_field": "oracle/scope-tier-a/scope-tier-a:lockfile-deletion",
+      "source_ref": "oracle-scope-tier-a.py"
+    },
+    {
+      "authority": "metadata/oracle-allowlist",
+      "id": "scope-tier-a:tier-a-violation",
+      "operational_check": "variant arm MUST NOT add or modify paths matching: docs/roadmap/** | docs/VISION.md | docs/ROADMAP.md | .github/** | node_modules/** | **/node_modules/** | test-results/** | coverage/** | .nyc_output/** | basename suffix .log | basename prefix .env or secrets.",
+      "severity": "hard",
+      "source_field": "oracle/scope-tier-a/scope-tier-a:tier-a-violation",
+      "source_ref": "oracle-scope-tier-a.py"
+    },
+    {
+      "authority": "metadata/oracle-allowlist",
+      "id": "scope-tier-b:scope-unmatched",
+      "operational_check": "every variant-touched file MUST be either inside spec_output_files (Tier C) OR reachable from a Tier C seed via static JS/TS imports OR matched by expected.json:tier_a_waivers",
+      "severity": "warn",
+      "source_field": "oracle/scope-tier-b/scope-tier-b:scope-unmatched",
+      "source_ref": "oracle-scope-tier-b.py"
+    },
+    {
+      "authority": "expected.json/spec_output_files",
+      "id": "spec_output_file__server_index_js",
+      "operational_check": "variant-touched files MUST be inside (or reachable via static imports from) the spec_output_files set; 'server/index.js' is one Tier C seed",
+      "severity": "warn",
+      "source_field": "expected.json/spec_output_files",
+      "source_ref": "expected.json:spec_output_files[server/index.js]"
+    },
+    {
+      "authority": "expected.json/spec_output_files",
+      "id": "spec_output_file__tests_server_test_js",
+      "operational_check": "variant-touched files MUST be inside (or reachable via static imports from) the spec_output_files set; 'tests/server.test.js' is one Tier C seed",
+      "severity": "warn",
+      "source_field": "expected.json/spec_output_files",
+      "source_ref": "expected.json:spec_output_files[tests/server.test.js]"
+    },
+    {
+      "authority": "metadata/oracle-allowlist",
+      "id": "test-fidelity:assertion-regression",
+      "operational_check": "effective assertion count MUST NOT drop and skipped-test count MUST NOT rise; vacuous expect.assertions(0) is treated as a real regression",
+      "severity": "warn",
+      "source_field": "oracle/test-fidelity/test-fidelity:assertion-regression",
+      "source_ref": "oracle-test-fidelity.py"
+    },
+    {
+      "authority": "metadata/oracle-allowlist",
+      "id": "test-fidelity:mock-swap",
+      "operational_check": "post-arm test file MUST NOT swap REAL_PATTERNS hits for MOCK_PATTERNS hits (jest/vi/sinon, nock/msw, app.handle/inject/callback, hand-rolled IncomingMessage/ServerResponse, etc.); a drop in real_calls combined with a rise in mock_calls is a mock-swap flag",
+      "severity": "flag",
+      "source_field": "oracle/test-fidelity/test-fidelity:mock-swap",
+      "source_ref": "oracle-test-fidelity.py"
+    },
+    {
+      "authority": "metadata/oracle-allowlist",
+      "id": "test-fidelity:test-file-deleted",
+      "operational_check": "no scaffold-present test file may be deleted by the variant arm; deletion of an existing tests/*.test.* / *.spec.* / *.e2e.* file is a flag-severity finding",
+      "severity": "flag",
+      "source_field": "oracle/test-fidelity/test-fidelity:test-file-deleted",
+      "source_ref": "oracle-test-fidelity.py"
+    },
+    {
+      "authority": "metadata/oracle-allowlist",
+      "id": "test-fidelity:test-file-renamed",
+      "operational_check": "rename of a scaffold-present test file is warn-severity (content fidelity not verified across renames in step 1)",
+      "severity": "warn",
+      "source_field": "oracle/test-fidelity/test-fidelity:test-file-renamed",
+      "source_ref": "oracle-test-fidelity.py"
+    },
+    {
+      "authority": "expected.json/verification_commands",
+      "id": "verification__6001efe2",
+      "operational_check": "running `node -e 'const { app } = require(\"./server\"); const http = require(\"http\"); const s = http.createServer(app).listen(0, () => { const { port } = s.address(); http.get(`http://127.0.0.1:${port}/items?per_page=abc`, r => { console.log(r.statusCode); s.close(); }); });'` in the post-arm work dir MUST exit with code 0; stdout MUST contain all of ['400']; stdout MUST NOT contain any of []",
+      "severity": "hard",
+      "source_field": "expected.json/verification_commands/3",
+      "source_ref": "expected.json:verification_commands[3]"
+    },
+    {
+      "authority": "expected.json/verification_commands",
+      "id": "verification__6517d995",
+      "operational_check": "running `node -e 'const { app } = require(\"./server\"); const http = require(\"http\"); const s = http.createServer(app).listen(0, () => { const { port } = s.address(); http.get(`http://127.0.0.1:${port}/items`, r => { let b = \"\"; r.on(\"data\", c=>b+=c); r.on(\"end\", () => { const d = JSON.parse(b); console.log(JSON.stringify({ total: d.total, page: d.page, per_page: d.per_page, items_len: d.items.length })); s.close(); }); }); });'` in the post-arm work dir MUST exit with code 0; stdout MUST contain all of ['\"total\":2', '\"page\":1']; stdout MUST NOT contain any of []",
+      "severity": "hard",
+      "source_field": "expected.json/verification_commands/1",
+      "source_ref": "expected.json:verification_commands[1]"
+    },
+    {
+      "authority": "expected.json/verification_commands",
+      "id": "verification__73df5e81",
+      "operational_check": "running `node -e 'const { app } = require(\"./server\"); const http = require(\"http\"); const s = http.createServer(app).listen(0, () => { const { port } = s.address(); http.get(`http://127.0.0.1:${port}/items?page=2&per_page=1`, r => { let b = \"\"; r.on(\"data\", c=>b+=c); r.on(\"end\", () => { const d = JSON.parse(b); console.log(d.items[0] && d.items[0].name); s.close(); }); }); });'` in the post-arm work dir MUST exit with code 0; stdout MUST contain all of ['beta']; stdout MUST NOT contain any of []",
+      "severity": "hard",
+      "source_field": "expected.json/verification_commands/2",
+      "source_ref": "expected.json:verification_commands[2]"
+    },
+    {
+      "authority": "expected.json/verification_commands",
+      "id": "verification__7c5f3637",
+      "operational_check": "running `node --test tests/server.test.js` in the post-arm work dir MUST exit with code 0; stdout MUST contain all of []; stdout MUST NOT contain any of ['fail ']",
+      "severity": "hard",
+      "source_field": "expected.json/verification_commands/0",
+      "source_ref": "expected.json:verification_commands[0]"
+    }
+  ],
+  "schema_version": "1"
+}

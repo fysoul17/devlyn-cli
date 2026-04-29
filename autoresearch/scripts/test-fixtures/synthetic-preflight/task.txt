@@ -1,0 +1,1 @@
+Implement greet(name) per spec at autoresearch/scripts/test-fixtures/synthetic-preflight/spec.md.

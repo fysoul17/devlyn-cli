@@ -10,6 +10,11 @@ Spawned when PHASE 3 runs. Engine: CRITIC row of `engine-routing.md` — design 
 Before reading anything: verify source hash per `references/phases/phase-1-build.md#spec_integrity_check`.
 </spec_integrity_check>
 
+<plan_invariants>
+If `pipeline.state.json:plan.mode == "pair"`, enumerate every `accepted_invariants[].id` from `state.plan.path` and confirm each is either upheld in the post-EVAL diff (cite file:line) or surface a finding. CRITIC's role here is independent audit: the pair-plan invariants reflect what the planning models agreed must hold, and CRITIC cross-checks BUILD's constrained-judgment output against that contract without relying on EVAL's pass to imply coverage. Findings carry `criterion_ref = accepted_invariants[].id`; severity is assigned by CRITIC's existing severity policy in `references/findings-schema.md` (the registry's per-invariant severity is human-review metadata, NOT a direct override of CRITIC's `CRITICAL|HIGH|MEDIUM|LOW` severity taxonomy).
+If `state.plan.mode == "legacy_none"`, this section is a no-op.
+</plan_invariants>
+
 <goal>
 One post-EVAL critic pass with two parallel sub-concerns. Produce a single `.devlyn/critic.findings.jsonl` tagged by rule_id prefix, plus a single `.devlyn/critic.log.md`.
 </goal>

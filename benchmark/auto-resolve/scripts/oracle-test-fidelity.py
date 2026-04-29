@@ -22,6 +22,44 @@ import re
 import subprocess
 import sys
 
+ORACLE_NAME = "test-fidelity"
+
+# iter-0022: stable category enumeration for the pair-plan registry. The id
+# strings are pinned — pair-plan.json invariants reference them verbatim.
+# Edits here must update every fixture's metadata.json:pair_plan_oracle_categories
+# allowlist that names the changed/removed id, and bump pair-plan-schema.md
+# schema_version if a category is renamed.
+CATEGORIES = [
+    {
+        "id": "test-fidelity:test-file-deleted",
+        "severity": "flag",
+        "applies_when": "any test file present at scaffold (default for js/ts fixtures with tests/)",
+        "operational_check": "no scaffold-present test file may be deleted by the variant arm; deletion of an existing tests/*.test.* / *.spec.* / *.e2e.* file is a flag-severity finding",
+        "evidence_source_files": ["oracle-test-fidelity.py"],
+    },
+    {
+        "id": "test-fidelity:test-file-renamed",
+        "severity": "warn",
+        "applies_when": "any test file present at scaffold",
+        "operational_check": "rename of a scaffold-present test file is warn-severity (content fidelity not verified across renames in step 1)",
+        "evidence_source_files": ["oracle-test-fidelity.py"],
+    },
+    {
+        "id": "test-fidelity:mock-swap",
+        "severity": "flag",
+        "applies_when": "fixture's scaffold-present test files contain real-network/filesystem/process patterns (REAL_PATTERNS — listen/createServer/fetch/http.request/supertest/readFile*/writeFile*/spawn/exec)",
+        "operational_check": "post-arm test file MUST NOT swap REAL_PATTERNS hits for MOCK_PATTERNS hits (jest/vi/sinon, nock/msw, app.handle/inject/callback, hand-rolled IncomingMessage/ServerResponse, etc.); a drop in real_calls combined with a rise in mock_calls is a mock-swap flag",
+        "evidence_source_files": ["oracle-test-fidelity.py"],
+    },
+    {
+        "id": "test-fidelity:assertion-regression",
+        "severity": "warn",
+        "applies_when": "any test file present at scaffold",
+        "operational_check": "effective assertion count MUST NOT drop and skipped-test count MUST NOT rise; vacuous expect.assertions(0) is treated as a real regression",
+        "evidence_source_files": ["oracle-test-fidelity.py"],
+    },
+]
+
 TEST_FILE_GLOBS = ["*.test.*", "*.spec.*", "*.e2e.*"]
 TEST_DIR_PARTS = {"tests", "test", "__tests__", "spec"}
 
@@ -251,14 +289,26 @@ def analyze(work_dir: str, scaffold_sha: str):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--work", required=True, help="Arm work directory")
-    ap.add_argument("--scaffold", required=True, help="Scaffold commit SHA")
+    ap.add_argument("--work", help="Arm work directory")
+    ap.add_argument("--scaffold", help="Scaffold commit SHA")
     ap.add_argument(
         "--lang",
         default="js-ts",
         help="Language profile (only js-ts implemented in step 1)",
     )
+    ap.add_argument(
+        "--list-categories",
+        action="store_true",
+        help="Emit the stable oracle CATEGORIES enum as JSON and exit (iter-0022, used by pair-plan-idgen.py).",
+    )
     args = ap.parse_args()
+
+    if args.list_categories:
+        print(json.dumps({"oracle": ORACLE_NAME, "categories": CATEGORIES}, indent=2, sort_keys=True))
+        return
+
+    if not args.work or not args.scaffold:
+        ap.error("--work and --scaffold are required unless --list-categories is set")
 
     if args.lang != "js-ts":
         sys.stderr.write(

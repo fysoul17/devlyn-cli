@@ -72,11 +72,13 @@ Optional: pass `--perf` to record per-phase `{wall_ms, tokens, engine, round, tr
    - `--bypass <phase>[,<phase>...]` — skip specific phases. Valid: `build-gate`, `browser`, `critic`, `docs`. Deprecated aliases (`--skip-*`, `--security-review skip`, `--bypass simplify|review|clean|security|challenge`) map to `--bypass critic` where applicable; log `deprecated flag — use --bypass <phase>` once.
    - `--build-gate MODE` (auto) — `auto` / `strict` / `no-docker`.
    - `--perf` — opt in to per-phase timing/token accounting.
+   - `--plan-path <path>` (iter-0022) — opt into PLAN-pair mode. Pre-validated `pair-plan.json` produced upstream (e.g. by `autoresearch/scripts/pair-plan-preflight.sh`). Setting this flag — or invoking `<pipeline_config>` as a JSON payload `{ "spec_path": "...", "plan_path": "..." }` — sets `state.plan.mode = "pair"`. Absence keeps the legacy string-form invocation contract (`state.plan.mode = "legacy_none"`).
 
 2. **Engine pre-flight**: follow `config/skills/_shared/engine-preflight.md`. The downgrade banner surfaces in the final report's Engine line.
 
 3. **Initialize `pipeline.state.json`** per `references/pipeline-state.md`:
    - `version: "1.2"`, `run_id: "ar-$(date -u +%Y%m%dT%H%M%SZ)-<12-hex>"`, `started_at`, `engine`, `base_ref.{branch, sha}`, `rounds.max_rounds`, `eval_passed_sha: null`, `route.bypasses: [...]`, empty `phases`, `criteria`, `route.selected`.
+   - `plan: { mode, path, registry_path, lint_at }` — `mode = "pair"` when `--plan-path` (or JSON payload) was provided in step 1, else `mode = "legacy_none"`. `path` is the validated plan path or `null`. `registry_path` and `lint_at` populate after step 4.5 if pair mode.
 
 4. **Spec preflight** (if `<pipeline_config>` contains `docs/roadmap/phase-\d+/[^\s"'`)]+\.md`):
    - Read the spec. Missing → `BLOCKED`.
@@ -85,6 +87,12 @@ Optional: pass `--perf` to record per-phase `{wall_ms, tokens, engine, round, tr
    - Populate `state.criteria[]`: one per `- [ ]` in `## Requirements`, `status: pending`.
 
    No spec path found → `source.type: "generated"`, `source.criteria_path: ".devlyn/criteria.generated.md"` (PHASE 1 creates it), `criteria_anchors: ["criteria.generated://requirements", "criteria.generated://out-of-scope", "criteria.generated://verification"]`, `criteria: []`.
+
+4.5. **Plan validate** (only when `state.plan.mode == "pair"`):
+   - Run `python3 benchmark/auto-resolve/scripts/pair-plan-lint.py --plan <state.plan.path>`. The lint reads its registry from the plan's `source.canonical_id_registry_path`.
+   - Lint exit != 0 OR plan unreadable OR `unresolved.length > 0` → terminal verdict `BLOCKED:plan-invalid`. NO fallback to `legacy_none`. Final-report Engine line surfaces the failing error code.
+   - Lint exit == 0 → set `state.plan.registry_path = source.canonical_id_registry_path`, `state.plan.lint_at = <UTC now>`. Phase 1/2/3 prompts read `accepted_invariants[]` from `state.plan.path` and treat each `operational_check` as binding (see per-phase references).
+   - Metric tags: any `--perf` / per-arm score artifact MUST stamp `plan_mode = state.plan.mode` so iter-0023 aggregation never mixes `pair` runs with `legacy_none` runs.
 
 5. **Compute Stage A route** per `references/pipeline-routing.md#stage-a`. Write to `state.route.{selected, user_override, stage_a}`.
 

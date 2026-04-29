@@ -1,0 +1,223 @@
+{
+  "accepted_invariants": [
+    {
+      "authority": "expected.json/forbidden_patterns",
+      "id": "forbidden_pattern__silent_catch_returning_a_fallback_value_violates_no_silent_c__bin_cli_js",
+      "operational_check": "variant arm output MUST NOT contain regex pattern \"catch\\\\s*\\\\([^)]*\\\\)\\\\s*\\\\{[^}]*return\\\\s+(\\\\[\\\\]|null|undefined|\\\\{|false|'')\" in files ['bin/cli.js']; rationale: silent catch returning a fallback value — violates no-silent-catches policy",
+      "paraphrase": "variant arm output MUST NOT contain regex pattern \"catch\\\\s*\\\\([^)]*\\\\)\\\\s*\\\\{[^}]*return\\\\s+(\\\\[\\\\]|null|undefined|\\\\{|",
+      "source_refs": [
+        "expected.json:forbidden_patterns[0]"
+      ]
+    },
+    {
+      "authority": "expected.json/forbidden_patterns",
+      "id": "forbidden_pattern__ts_ignore_escape_hatch__bin_cli_js",
+      "operational_check": "variant arm output MUST NOT contain regex pattern '@ts-ignore' in files ['bin/cli.js']; rationale: @ts-ignore escape hatch",
+      "paraphrase": "variant arm output MUST NOT contain regex pattern '@ts-ignore' in files ['bin/cli.js']; rationale: @ts-ignore escape hat",
+      "source_refs": [
+        "expected.json:forbidden_patterns[1]"
+      ]
+    },
+    {
+      "authority": "expected.json/max_deps_added",
+      "id": "max_deps_added__0",
+      "operational_check": "variant arm MUST NOT add more than 0 new npm dependencies (count delta of package.json:dependencies + devDependencies)",
+      "paraphrase": "variant arm MUST NOT add more than 0 new npm dependencies (count delta of package.json:dependencies + devDependencies)",
+      "source_refs": [
+        "expected.json:max_deps_added"
+      ]
+    },
+    {
+      "authority": "expected.json/required_files",
+      "id": "required_file__bin_cli_js",
+      "operational_check": "variant arm output MUST contain file 'bin/cli.js' (created or preserved)",
+      "paraphrase": "variant arm output MUST contain file 'bin/cli.js' (created or preserved)",
+      "source_refs": [
+        "expected.json:required_files[bin/cli.js]"
+      ]
+    },
+    {
+      "authority": "metadata/oracle-allowlist",
+      "id": "scope-tier-a:lockfile-deletion",
+      "operational_check": "variant arm MUST NOT delete a scaffold-present lockfile",
+      "paraphrase": "variant arm MUST NOT delete a scaffold-present lockfile",
+      "source_refs": [
+        "oracle-scope-tier-a.py"
+      ]
+    },
+    {
+      "authority": "metadata/oracle-allowlist",
+      "id": "scope-tier-a:tier-a-violation",
+      "operational_check": "variant arm MUST NOT add or modify paths matching: docs/roadmap/** | docs/VISION.md | docs/ROADMAP.md | .github/** | node_modules/** | **/node_modules/** | test-results/** | coverage/** | .nyc_output/** | basename suffix .log | basename prefix .env or secrets.",
+      "paraphrase": "variant arm MUST NOT add or modify paths matching: docs/roadmap/** | docs/VISION.md | docs/ROADMAP.md | .github/** | nod",
+      "source_refs": [
+        "oracle-scope-tier-a.py"
+      ]
+    },
+    {
+      "authority": "metadata/oracle-allowlist",
+      "id": "scope-tier-b:scope-unmatched",
+      "operational_check": "every variant-touched file MUST be either inside spec_output_files (Tier C) OR reachable from a Tier C seed via static JS/TS imports OR matched by expected.json:tier_a_waivers",
+      "paraphrase": "every variant-touched file MUST be either inside spec_output_files (Tier C) OR reachable from a Tier C seed via static J",
+      "source_refs": [
+        "oracle-scope-tier-b.py"
+      ]
+    },
+    {
+      "authority": "expected.json/spec_output_files",
+      "id": "spec_output_file__bin_cli_js",
+      "operational_check": "variant-touched files MUST be inside (or reachable via static imports from) the spec_output_files set; 'bin/cli.js' is one Tier C seed",
+      "paraphrase": "variant-touched files MUST be inside (or reachable via static imports from) the spec_output_files set; 'bin/cli.js' is o",
+      "source_refs": [
+        "expected.json:spec_output_files[bin/cli.js]"
+      ]
+    },
+    {
+      "authority": "expected.json/spec_output_files",
+      "id": "spec_output_file__tests_cli_test_js",
+      "operational_check": "variant-touched files MUST be inside (or reachable via static imports from) the spec_output_files set; 'tests/cli.test.js' is one Tier C seed",
+      "paraphrase": "variant-touched files MUST be inside (or reachable via static imports from) the spec_output_files set; 'tests/cli.test.j",
+      "source_refs": [
+        "expected.json:spec_output_files[tests/cli.test.js]"
+      ]
+    },
+    {
+      "authority": "metadata/oracle-allowlist",
+      "id": "test-fidelity:assertion-regression",
+      "operational_check": "effective assertion count MUST NOT drop and skipped-test count MUST NOT rise; vacuous expect.assertions(0) is treated as a real regression",
+      "paraphrase": "effective assertion count MUST NOT drop and skipped-test count MUST NOT rise; vacuous expect.assertions(0) is treated as",
+      "source_refs": [
+        "oracle-test-fidelity.py"
+      ]
+    },
+    {
+      "authority": "metadata/oracle-allowlist",
+      "id": "test-fidelity:mock-swap",
+      "operational_check": "post-arm test file MUST NOT swap REAL_PATTERNS hits for MOCK_PATTERNS hits (jest/vi/sinon, nock/msw, app.handle/inject/callback, hand-rolled IncomingMessage/ServerResponse, etc.); a drop in real_calls combined with a rise in mock_calls is a mock-swap flag",
+      "paraphrase": "post-arm test file MUST NOT swap REAL_PATTERNS hits for MOCK_PATTERNS hits (jest/vi/sinon, nock/msw, app.handle/inject/c",
+      "source_refs": [
+        "oracle-test-fidelity.py"
+      ]
+    },
+    {
+      "authority": "metadata/oracle-allowlist",
+      "id": "test-fidelity:test-file-deleted",
+      "operational_check": "no scaffold-present test file may be deleted by the variant arm; deletion of an existing tests/*.test.* / *.spec.* / *.e2e.* file is a flag-severity finding",
+      "paraphrase": "no scaffold-present test file may be deleted by the variant arm; deletion of an existing tests/*.test.* / *.spec.* / *.e",
+      "source_refs": [
+        "oracle-test-fidelity.py"
+      ]
+    },
+    {
+      "authority": "metadata/oracle-allowlist",
+      "id": "test-fidelity:test-file-renamed",
+      "operational_check": "rename of a scaffold-present test file is warn-severity (content fidelity not verified across renames in step 1)",
+      "paraphrase": "rename of a scaffold-present test file is warn-severity (content fidelity not verified across renames in step 1)",
+      "source_refs": [
+        "oracle-test-fidelity.py"
+      ]
+    },
+    {
+      "authority": "expected.json/verification_commands",
+      "id": "verification__3f35982a",
+      "operational_check": "running `node bin/cli.js doctor` in the post-arm work dir MUST exit with code 0; stdout MUST contain all of ['doctor:']; stdout MUST NOT contain any of ['undefined', 'Error:']",
+      "paraphrase": "running `node bin/cli.js doctor` in the post-arm work dir MUST exit with code 0; stdout MUST contain all of ['doctor:'];",
+      "source_refs": [
+        "expected.json:verification_commands[0]"
+      ]
+    },
+    {
+      "authority": "expected.json/verification_commands",
+      "id": "verification__460fce04",
+      "operational_check": "running `HOME=/nonexistent node bin/cli.js doctor` in the post-arm work dir MUST exit with code 1; stdout MUST contain all of ['/nonexistent']; stdout MUST NOT contain any of []",
+      "paraphrase": "running `HOME=/nonexistent node bin/cli.js doctor` in the post-arm work dir MUST exit with code 1; stdout MUST contain a",
+      "source_refs": [
+        "expected.json:verification_commands[1]"
+      ]
+    },
+    {
+      "authority": "expected.json/verification_commands",
+      "id": "verification__973e287e",
+      "operational_check": "running `python3 -c \"import subprocess; r = subprocess.run(['node', 'bin/cli.js', 'doctor'], capture_output=True); n = r.stdout.count(b'\\x1b['); print(n); exit(0 if n == 0 else 1)\"` in the post-arm work dir MUST exit with code 0; stdout MUST contain all of ['0']; stdout MUST NOT contain any of []",
+      "paraphrase": "running `python3 -c \"import subprocess; r = subprocess.run(['node', 'bin/cli.js', 'doctor'], capture_output=True); n = r",
+      "source_refs": [
+        "expected.json:verification_commands[2]"
+      ]
+    },
+    {
+      "authority": "expected.json/verification_commands",
+      "id": "verification__d6253a97",
+      "operational_check": "running `node bin/cli.js doctor --help` in the post-arm work dir MUST exit with code 0; stdout MUST contain all of ['doctor']; stdout MUST NOT contain any of []",
+      "paraphrase": "running `node bin/cli.js doctor --help` in the post-arm work dir MUST exit with code 0; stdout MUST contain all of ['doc",
+      "source_refs": [
+        "expected.json:verification_commands[3]"
+      ]
+    },
+    {
+      "authority": "expected.json/verification_commands",
+      "id": "verification__e0f149e4",
+      "operational_check": "running `node bin/cli.js --help` in the post-arm work dir MUST exit with code 0; stdout MUST contain all of ['doctor']; stdout MUST NOT contain any of []",
+      "paraphrase": "running `node bin/cli.js --help` in the post-arm work dir MUST exit with code 0; stdout MUST contain all of ['doctor']; ",
+      "source_refs": [
+        "expected.json:verification_commands[4]"
+      ]
+    },
+    {
+      "authority": "expected.json/verification_commands",
+      "id": "verification__fdbcd321",
+      "operational_check": "running `node bin/cli.js doctor --verbose` in the post-arm work dir MUST exit with code 0; stdout MUST contain all of ['doctor:']; stdout MUST NOT contain any of ['Error:']",
+      "paraphrase": "running `node bin/cli.js doctor --verbose` in the post-arm work dir MUST exit with code 0; stdout MUST contain all of ['",
+      "source_refs": [
+        "expected.json:verification_commands[5]"
+      ]
+    }
+  ],
+  "authority_order": [
+    "spec.md",
+    "expected.json/rubric",
+    "phase prompt",
+    "model preference"
+  ],
+  "escalated_to_user": [],
+  "fixture_id": "F2-cli-medium-subcommand",
+  "model_stamps": {
+    "claude": {
+      "blocked_ids": [],
+      "model": "claude-opus-4-7",
+      "signed_plan_sha256": "7329b8955a94ac680a7a58d09bfc53ce4de17609495b4bf4658cf2d3a43dacd5",
+      "status": "sign",
+      "timestamp": "2026-04-29T18:30:00Z"
+    },
+    "codex": {
+      "blocked_ids": [],
+      "model": "gpt-5.5",
+      "signed_plan_sha256": "7329b8955a94ac680a7a58d09bfc53ce4de17609495b4bf4658cf2d3a43dacd5",
+      "status": "sign",
+      "timestamp": "2026-04-29T18:31:00Z"
+    }
+  },
+  "plan_status": "final",
+  "planning_mode": "pair",
+  "rejected_alternatives": [],
+  "rounds": [
+    {
+      "claude_draft_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "codex_draft_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "merged_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "note": "sample-pass synthetic round (test fixture)",
+      "round": 1
+    }
+  ],
+  "schema_version": "1",
+  "source": {
+    "canonical_id_registry_path": "benchmark/auto-resolve/fixtures/F2-cli-medium-subcommand/expected-pair-plan-registry.json",
+    "canonical_id_registry_sha256": "98ac16e4536ea3ef2e51d3c728982c014211c193a742cea74f1331e4fbba76be",
+    "expected_path": "benchmark/auto-resolve/fixtures/F2-cli-medium-subcommand/expected.json",
+    "expected_sha256": "ddef8feba49f20b6957e37840bc6a03e78e554776e380d81ad6390944c72fcab",
+    "rubric_path": "benchmark/auto-resolve/RUBRIC.md",
+    "rubric_sha256": "5b5b709a0b57f7e6f4fbc072af91e1edbc8d7910ae16b9b7be7170616aeaa9af",
+    "spec_path": "benchmark/auto-resolve/fixtures/F2-cli-medium-subcommand/spec.md",
+    "spec_sha256": "9b0949c2afd4a522de2bdbbf267d93907fd908bf0f1d0dc5e111ee30ba875bb7"
+  },
+  "unresolved": []
+}

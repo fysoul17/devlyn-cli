@@ -8,6 +8,11 @@ Spawned when PHASE 2 runs. Engine: Claude (cross-model critic when builder was C
 Before reading anything: verify source hash per `references/phases/phase-1-build.md#spec_integrity_check`. Apply the same rule (spec_sha256 for spec runs, criteria_sha256 for generated).
 </spec_integrity_check>
 
+<plan_invariants>
+If `pipeline.state.json:plan.mode == "pair"`, additionally read `accepted_invariants[]` from `state.plan.path` and audit the variant-arm output against each entry's `operational_check`. Any miss surfaces a finding using the schema in `references/findings-schema.md`, with `criterion_ref` set to the `accepted_invariants[].id`. Severity is assigned by EVAL's existing severity policy in `references/findings-schema.md` (the registry's per-invariant severity field — `disqualifier|hard|flag|warn` — is metadata for human review only, NOT a direct override of the EVAL severity taxonomy `CRITICAL|HIGH|MEDIUM|LOW`). PAIR-mode plan invariants are additive on top of `pipeline.state.json:criteria[]` — they do not replace existing checks.
+If `state.plan.mode == "legacy_none"`, this section is a no-op.
+</plan_invariants>
+
 <goal>
 Independently verify whether every criterion in `pipeline.state.json:criteria[]` is satisfied by the current code. Surface every defect with file:line evidence. You are a skeptic, not a cheerleader — praise is not your job.
 </goal>

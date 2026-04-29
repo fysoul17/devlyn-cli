@@ -126,6 +126,7 @@ else
       devlyn:auto-resolve/SKILL.md \
       devlyn:auto-resolve/references/engine-routing.md \
       devlyn:auto-resolve/references/build-gate.md \
+      devlyn:auto-resolve/references/pipeline-state.md \
       devlyn:auto-resolve/references/phases/phase-1-build.md \
       devlyn:auto-resolve/references/phases/phase-2-evaluate.md \
       devlyn:auto-resolve/references/phases/phase-3-critic.md \
@@ -140,6 +141,7 @@ else
       devlyn:team-review/SKILL.md \
       _shared/codex-config.md \
       _shared/codex-monitored.sh \
+      _shared/pair-plan-schema.md \
       _shared/runtime-principles.md; do
     src="config/skills/$rel"
     dst=".claude/skills/$rel"
@@ -367,6 +369,36 @@ else
   if [ $rp_drift -eq 0 ]; then
     ok "all 4 contract sections in parity (subtractive-first / goal-locked / no-workaround / evidence) — markers, topology, content"
   fi
+fi
+
+# ---------------------------------------------------------------------------
+# 13. pair-plan idgen output is deterministic across consecutive runs (iter-0022).
+#     Same input → byte-identical canonical_id_registry.json. Catches accidental
+#     dict-order, float-printing, or timestamp-leak regressions in idgen.
+#     Runs twice on F2 with --generated-at pinned and compares sha256.
+# ---------------------------------------------------------------------------
+section "Check 13: pair-plan-idgen.py output deterministic across runs (F2)"
+idgen="benchmark/auto-resolve/scripts/pair-plan-idgen.py"
+fixture="benchmark/auto-resolve/fixtures/F2-cli-medium-subcommand"
+if [ ! -x "$idgen" ] && [ ! -f "$idgen" ]; then
+  bad "Check 13 prerequisite missing: $idgen"
+elif [ ! -d "$fixture" ]; then
+  bad "Check 13 prerequisite missing: $fixture"
+else
+  tmp1=$(mktemp); tmp2=$(mktemp)
+  if python3 "$idgen" --fixture "$fixture" --generated-at 2026-04-29T18:30:00Z --output "$tmp1" >/dev/null 2>&1 \
+     && python3 "$idgen" --fixture "$fixture" --generated-at 2026-04-29T18:30:00Z --output "$tmp2" >/dev/null 2>&1; then
+    sha1=$(shasum -a 256 "$tmp1" | awk '{print $1}')
+    sha2=$(shasum -a 256 "$tmp2" | awk '{print $1}')
+    if [ "$sha1" = "$sha2" ]; then
+      ok "F2 registry sha256 stable across two idgen runs ($sha1)"
+    else
+      bad "F2 registry sha256 drift: run1=$sha1 run2=$sha2"
+    fi
+  else
+    bad "idgen invocation failed; cannot verify determinism"
+  fi
+  rm -f "$tmp1" "$tmp2"
 fi
 
 # ---------------------------------------------------------------------------

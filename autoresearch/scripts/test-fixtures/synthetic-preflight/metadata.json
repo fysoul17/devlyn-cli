@@ -1,0 +1,11 @@
+{
+  "id": "synthetic-preflight",
+  "category": "synthetic",
+  "difficulty": "trivial",
+  "timeout_seconds": 60,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Smoke fixture for pair-plan-preflight.sh --dry-run; exercises idgen + lint + verdict.json without calling real provider/model subprocesses.",
+  "pair_plan_oracle_categories": []
+}
