@@ -27,7 +27,7 @@ If a future session finds this block missing or summarized, that is a violation 
 
 ## ⚠️ COLD-START CRITICAL CONTEXT (read FIRST in a new session)
 
-**Last shipped**: iter-0020 9-fixture × 3-arm paid verification suite COMPLETED 2026-04-29T03:31 KST + Codex R-verdict received → **DEFER ship until F9 variant re-run** (Anthropic API 429 rate-limit aborted F9 mid-suite). Harness coverage-copy fix shipped (commit `52a4db5`) as prerequisite for any future aggregation. Working tree clean except `?? .claude/`.
+**Last shipped**: iter-0020 ran its full validation chain (Phase A 5-fixture preflight + 9-fixture × 3-arm paid suite + F9 variant re-run + harness coverage-copy fix). Codex GPT-5.5 deep North-Star consultation (2026-04-29, 78k tokens, 156s, xhigh) verdict: **iter-0020 should NOT ship as L2 product policy. Architecture pivot required.** Working tree clean except `?? .claude/`.
 
 **Iter SHIPPED 2026-04-28 → 2026-04-29**:
 - iter-0019.6 acceptance — `e6de5ef`
@@ -37,38 +37,149 @@ If a future session finds this block missing or summarized, that is a violation 
 - iter-0020 prep — `7d5af00`
 - iter-0019.9 — `0f9e077`
 - iter-0020 implementation — `91994db`
-- **iter-0020 9-fixture suite** — RUN_ID `20260428T131713Z-91994db-iter-0020-9fixture-verify` (~$30-50, 5h17m wall, ship-gate FAIL — see "9-fixture verdict data" block below)
-- **iter-0020 harness fix** — `52a4db5` (run-fixture.sh copies coverage.json to RESULT_DIR; closes acceptance-aggregator gap)
+- iter-0020 harness fix — `52a4db5`
+- HANDOFF rotation — `b23eb3e`
 
-### NEXT CONCRETE ACTION — F9 variant-only re-run (~$5-10, ~30-60min) → SHIPPED-VERIFIED narrow
+**Two production bugs found in iter-0020 implementation** (both load-bearing for any future ship):
+1. **PHASE 0 prose-only `BENCH_FIXTURE_CATEGORY` env-population is silently bypassed** by the orchestrator in F9's complex novice-flow context. F9 variant re-run on iter-0020 implementation showed `source.fixture_class: None`, `phases.build.engine: codex` — the e2e routing override never fired, EVEN THOUGH the fix was supposedly in place. F1/solo_claude (simple invocation) populated correctly; F9 (multi-skill ideate→auto-resolve→preflight chain) did not. Codex R1 had warned about prose-only contracts in this exact class; the env-population step was the one that slipped through R1+R2 review.
+2. **F9 fixture timeout 3600s is insufficient** under iter-0019.9's spec-verify gate fix-loop discipline (3601s timed_out=True even on successful fix-loop convergence).
 
-**Goal**: F9 variant-only re-run (~$5-10, ~30-60min wall) to clear hard-acceptance #4 (e2e route exercised ≥1×). After PASS, iter-0020 ships **SHIPPED-VERIFIED narrow** (e2e routing + F4 Playwright bullet); F2/F3/F8 broader signals queue for separate iters.
+**Codex R-North-Star (2026-04-29) — full verdict**:
 
-**Why DEFER, not ROLLBACK**: F1-F8 mechanism worked correctly (selector fired only on e2e match, coverage emitted, F4+F5 hygiene held); F9 hit Anthropic API 429 rate-limit at the end of 5h17m suite (claude-debug.log:192-195) so the e2e routing override never had a chance to execute. Re-running F9 variant alone clears the route-coverage proof requirement.
+> "3-layer North Star is still right. The current L2 architecture is wrong. Codex BUILD + Claude review is falsified for this fixture set. Loses to Claude solo on F2/F3/F5/F6, only +1 wins on F4/F7. Model diversity does not compensate for starting from a weaker builder."
 
-**Step-by-step (push-button after user approval)**:
+Q-by-Q:
+- Q2 ship: **NOT ship as L2 policy.** Close iter-0020 as "failed product-policy experiment, useful evidence retained." Keep only independently justified pieces (F4 Playwright hygiene). Rollback the e2e override.
+- Q3 NORTH-STAR test #6: keep the test unchanged. Pair-eligible set is not empty (F2/F3/F5/F8/F7 candidates) but pair-shippable set IS empty under current architecture.
+- Q4 next iter: (1) **Product stance NOW**: L1 Claude solo = canonical surface; L2 = disabled / research-only. (2) Research experiment: Claude BUILD + Codex CRITIC inverted-pair smoke on F2/F3/F8. (3) Acceptance: L2-inverted must not regress L1 by >1pt + must improve at least one L1 weakness materially + must abort cheaply on F8. Option (a)+(c) combined.
+- Q6 user-facing: do NOT sell L2 today. "Claude solo harness is currently the best measured default, but still below the release floor. Pair mode is experimental and currently disabled because it costs more and regresses quality on the benchmark suite."
+- Q7 real-project trial: run NOW with L1 only as a diagnostic (NOT NORTH-STAR test #14 final stop, since 9-fixture gates haven't passed).
 
-1. **Launch F9 variant-only re-run**:
+This pivot is **principle-aligned**:
+- Pre-flight 0 (PRINCIPLES.md:14-23): iter-0020 produced data that makes the next go/no-go decision impossible to fake (Codex BUILD on this fixture set is falsified). Closing iter-0020 + designing iter-0021 inverted-pair is exactly the "next decision" pre-flight 0 demands.
+- Subtractive-first (P1): rolling back e2e routing surface is net-deletion vs adding more routing rules.
+- No-workaround (P3): routing-around-Codex BUILD on every class is whack-a-mole. Removing Codex from default L2 BUILD is the contract-level fix.
+- Layer-cost-justified (P6): a paid product surface that loses on 5/8 fixtures while costing 3× cannot ship.
+
+### NEXT CONCRETE ACTION — three sequenced phases (1-shot start-to-finish from this HANDOFF)
+
+A clean-context session can execute Phase 1 → 2 → 3 in order. Each phase has Codex 5.5 tickitaka checkpoints, principle-gate self-checks, and `/skill-creator:skill-creator` invocation hints where it helps. Phase 1 is zero-cost docs + small code rollback. Phases 2 and 3 require user cost approval before launching paid runs.
+
+**Phase 1 — iter-0020 close-out as failed product-policy experiment** (~$0, ~2-3h dev wall)
+
+Goal: rollback the e2e routing surface; retain mechanism wins; document the architecture pivot. After Phase 1 ships, the L2 product surface is disabled in code AND docs.
+
+Steps:
+
+1.1. **Codex pre-rollback consult (R0)** — send Codex 5.5 the rollback diff plan BEFORE editing files. Use `bash config/skills/_shared/codex-monitored.sh -C /Users/aipalm/Documents/GitHub/devlyn-cli -s read-only -c model_reasoning_effort=xhigh "<plan>"`. Ask: "Per your North-Star verdict, here is my rollback plan — falsify it." Plan items:
+   - Remove `e2e → claude` row from `references/engine-routing.md` "Per-fixture-class BUILD overrides" table (or replace whole table with "(currently empty — iter-0020 e2e override withdrawn 2026-04-29 per Codex North-Star verdict; see iter file)")
+   - In `scripts/select_phase_engine.py`: empty `FIXTURE_CLASS_OVERRIDES` map (keep script as research infrastructure, no-op behavior)
+   - In `SKILL.md` PHASE 0 step 4: remove the `BENCH_FIXTURE_CATEGORY` / `fixture_class` population prose (it never worked reliably; the field is now defunct)
+   - In `SKILL.md` PHASE 1 BUILD: remove the `select_phase_engine.py` invocation; revert to "Spawn per `<engine_routing_convention>`. Prompt body: …"
+   - In `SKILL.md` PHASE 5: KEEP the `coverage_report.py` invocation (research artifact for iter-0021)
+   - In `references/pipeline-state.md`: mark `state.source.fixture_class` and `state.route.engine_overrides` as **research-only** fields with explicit "currently always null" note
+   - In `references/phases/phase-1-build.md`: KEEP the Playwright/output-hygiene `<quality_bar>` bullet (independently justified by F4)
+   - In `benchmark/auto-resolve/scripts/run-fixture.sh`: KEEP `BENCH_FIXTURE_CATEGORY` + `BENCH_FIXTURE` exports (research infrastructure)
+   - In `archive_run.py`: KEEP coverage.json archive pattern (research)
+
+1.2. **Adopt Codex R0 findings; apply edits**. Mirror via `node bin/devlyn.js -y`. Lint via `bash scripts/lint-skills.sh` — must stay 11/11 PASS.
+
+1.3. **Codex R1 review on the actual rollback diff**. Verify completeness (no stale references to fixture_class routing logic anywhere); subtractive-first audit; no orphan test scaffolding.
+
+1.4. **Update product-facing positioning** (subtractive-first edits only):
+   - `README.md` (top of repo): one paragraph stating "Claude solo (`--engine claude`) is the canonical user-facing default. The auto pair mode (`--engine auto`) is experimental and currently below quality floor — see `autoresearch/iterations/0020-pair-policy-narrow.md` for the data."
+   - `CLAUDE.md`: update "Quick Start" section to remove `--engine auto` recommendation; add a one-line note about L2 being research-only.
+   - `config/skills/devlyn:auto-resolve/SKILL.md` `description` frontmatter: NO change (skill description stays neutral about engine; user supplies `--engine claude` explicitly per CLAUDE.md guidance).
+
+1.5. **/skill-creator:skill-creator invocation point** — use the skill-creator agent to:
+   - Run `/skill-creator:skill-creator` and ask it to **audit the auto-resolve SKILL.md description after rollback** for: (a) does it still trigger correctly on plain "auto-resolve" / "fix this" / "build this" requests; (b) is the experimental nature of `--engine auto` clear enough to NOT mislead users; (c) measure trigger accuracy via skill-creator's eval infrastructure.
+   - The skill-creator's eval framework is what catches "skill description regression" that's hard to spot manually.
+
+1.6. **Write iter file** `autoresearch/iterations/0020-pair-policy-narrow.md` final verdict block (append, do not overwrite the existing iter file): record the full Codex R-North-Star verdict + rollback decision + which artifacts retained/dropped. Append `0020 | FAILED-EXPERIMENT-REVERTED-POLICY` line to `autoresearch/DECISIONS.md`. Update `autoresearch/HANDOFF.md` cold-start to reflect Phase 1 SHIPPED.
+
+1.7. **Codex R2 ship-readiness review** on the full Phase 1 commit set. Verdict gates the commit. Atomic commit per usual convention.
+
+Phase 1 expected end state: working tree clean; lint 11/11 PASS; README/CLAUDE.md/SKILL.md positioning updated; auto-resolve `--engine auto` defaults still work but produce identical behavior to `--engine claude` (no e2e override); coverage_report.py + select_phase_engine.py kept as no-op infrastructure for iter-0021 research; iter-0020 closed in DECISIONS as "failed-experiment-reverted-policy".
+
+**Phase 2 — iter-0021 inverted-pair research smoke** (~$15-25, ~2-3h paid wall, gated on user approval)
+
+Goal: test whether pair value lives at CRITIC (not BUILD) — Claude BUILD + Codex CRITIC on F2 / F3 / F8 (the three fixtures with strongest L1 underperformance signal). Falsify or confirm whether inverted-pair earns its cost.
+
+Pre-registered acceptance (Codex North-Star Q4):
+- L2-inverted must not regress L1 by more than 1 point on any of {F2, F3, F8}.
+- L2-inverted must improve at least ONE of {F2, F3, F8} L1 weakness materially (defined as: that fixture's variant_over_solo ≥ +5 OR a CRITICAL L1 finding eliminated by Codex CRITIC).
+- L2-inverted must abort cheaply on F8 (wall_ratio ≤ 2× of L1 — sub-second short-circuit when CRITIC has no findings).
+
+Steps:
+
+2.1. **Codex R0 design consult**: send the full inverted-pair design — ENGINE map (BUILD=Claude, CRITIC=Codex via codex-monitored.sh; EVAL/JUDGE unchanged); how the bench harness arm config gets the new shape; how `coverage_report.py` extends to log "inverted pair fired" events; F8 short-circuit code path. Ask Codex to falsify on edge cases (Codex's CRITIC currently runs as native security-review skill — replacing/extending that with inverted-pair Codex needs careful design).
+
+2.2. **Adopt findings**; implement. The inverted-pair design lives in:
+   - `references/engine-routing.md` — new "Inverted-pair experiment" section (gated by `--engine inverted-pair` flag; no auto routing)
+   - `scripts/select_phase_engine.py` — extend `FIXTURE_CLASS_OVERRIDES` with inverted entries activated only by `--engine inverted-pair`
+   - New benchmark arm: `inverted_pair` added to `run-suite.sh` arm loop (or parallel `--arm inverted_pair` flag for run-fixture.sh). Codex R0 may push back on adding a 4th arm vs reusing variant arm with a flag.
+
+2.3. **Codex R1 review on actual diff**. Subtractive audit + edge cases.
+
+2.4. **Mirror + lint**. Synthetic dry-run on a fake state to verify selector fires only with `--engine inverted-pair` flag.
+
+2.5. **Surface cost decision to user** before launching paid 3-fixture × 1-arm smoke (~$15-25, ~2-3h wall). Per CLAUDE.md "Executing actions with care."
+
+2.6. **After approval — launch**:
    ```
-   bash benchmark/auto-resolve/scripts/run-suite.sh F9-e2e-ideate-to-preflight --label iter-0020-F9-verify
+   bash benchmark/auto-resolve/scripts/run-fixture.sh --fixture F2-cli-medium-subcommand --arm inverted_pair --run-id <RUN_ID>
+   bash benchmark/auto-resolve/scripts/run-fixture.sh --fixture F3-backend-contract-risk --arm inverted_pair --run-id <RUN_ID>
+   bash benchmark/auto-resolve/scripts/run-fixture.sh --fixture F8-known-limit-ambiguous --arm inverted_pair --run-id <RUN_ID>
    ```
-   (Suite still runs all 3 arms by default — variant is the load-bearing one for hard-acceptance #4 per Codex Q1; the other 2 arms cost ~$3 extra and complete the e2e per-class data.)
+   Then judge via `judge.sh` (or direct LLM eval) comparing inverted-pair scores to L1 baseline scores from iter-0020 9-fixture run.
 
-2. **Aggregator**:
-   ```
-   python3 autoresearch/scripts/iter-0020-aggregate-coverage.py benchmark/auto-resolve/results/<RUN_ID>/
-   ```
-   With harness fix `52a4db5` in place, F9/variant's coverage.json should auto-copy to RESULT_DIR. Expected: `applicable_fired=1` for `auto-resolve.BUILD.fixture_class:e2e` → aggregator exit 0 → hard-acceptance #4 cleared.
+2.7. **Verdict**:
+   - All 3 acceptance gates PASS → ship inverted-pair as the new L2 product surface; redo positioning.
+   - 1+ gate FAIL → close iter-0021 as "inverted-pair also doesn't earn its cost on this fixture set; L2 product surface remains disabled; recommend NORTH-STAR axis #11 (model-agnostic) deferral becomes permanent for now."
+   - Codex R-verdict on data; commit + iter file + DECISIONS append + HANDOFF rotate.
 
-3. **iter-0020 SHIPPED-VERIFIED narrow** commit: iter file final verdict + DECISIONS row update + HANDOFF rotate + memory.
+2.8. **/skill-creator:skill-creator invocation point** — if iter-0021 ships, use skill-creator to run regression-eval on the new auto-resolve SKILL.md description to verify the trigger rate / accuracy hasn't dropped under the new dual-engine wording.
 
-4. **Then queued separately**:
-   - iter-0021 (or 0020.5) — F2/F3 medium/high-risk pair-mode root-cause analysis (Codex BUILD significantly worse than Claude BUILD on these classes).
-   - iter-0022 — F8 edge-class wall-waste short-circuit policy.
-   - iter-0019.7 — fix-loop enrichment (post iter-0020 ship; measurement-driven).
-   - NORTH-STAR test #14 — real-project trial gate (final stop condition).
+**Phase 3 — NORTH-STAR test #14 real-project trial as DIAGNOSTIC** (parallel; user-driven, not autonomous)
 
-**iter-0019.7 status**: still deferred. Per Codex R3 attribution discipline.
+Per Codex North-Star Q7: run a fresh real-project trial with **L1 only** (`--engine claude`) NOW as a diagnostic, NOT as the final stop condition. Goal: validate whether the current most-defensible product surface (L1) survives a real (non-fixture) feature/bug request from a developer who has not tuned the harness.
+
+This phase is **the user runs it**, not the autonomous loop. The user invokes:
+```
+/devlyn:auto-resolve --engine claude "<real spec or task description>"
+```
+on a real project (not bench fixture). HANDOFF should record the trial: spec used, terminal verdict, wall time, any prompt-engineering rescue needed (= fail). Per NORTH-STAR test #14 protocol, prompt-engineering rescue = fail.
+
+Outcomes:
+- L1 trial PASS → defensible product direction: ship L1 as canonical; L2 paused; iter-0021 inverted-pair stays research; CLAUDE.md README positioning is honest.
+- L1 trial FAIL → the failure mode joins the fixture set as F10 (or extends F9); a measurement-driven iter-0022 fires to address that specific user pain.
+
+### Codex 5.5 tickitaka checkpoints — full count for the pivot
+
+Phase 1: R0 (rollback plan), R1 (rollback diff), R2 (ship-readiness)
+Phase 2: R0 (inverted-pair design), R1 (diff), R-verdict (data)
+Phase 3: R-trial (post-trial verdict on whether L1 surface holds under real load)
+
+Total ~6-8 Codex pair-review rounds. Each must be standalone (rich evidence, falsification ask, surface pushback transparently). Per `feedback_codex_cross_check.md` memory.
+
+### Principle gates (each phase must pass before commit)
+
+For every phase commit, the iter file MUST enumerate:
+- Pre-flight 0 (does this remove a real user failure OR make next decision impossible to fake?)
+- Subtractive-first (P1): is this net-negative or do you have a cited prior-failure justification for the addition?
+- No-guesswork (P2): is the hypothesis falsifiable BEFORE the experiment? Is the metric pre-registered?
+- No-workaround (P3): no `any`/silent-catch/hardcoded; root-cause fix.
+- Worldclass production-ready (P4): no CRITICAL/HIGH design.* findings.
+- Best practice (P5): idiomatic; zero MEDIUM unidiomatic-pattern findings.
+- Layer-cost-justified (P6): each layer beats `previous-layer-best-of-N` on quality AND wall.
+
+### Do NOT
+
+- ❌ Restart iter-0020 e2e routing — failed-experiment-reverted-policy is final per Codex North-Star verdict.
+- ❌ Expand routing to medium/high-risk classes (F2/F3 signals) without inverted-pair data first.
+- ❌ Run paid suite on iter-0021 without explicit user cost approval AND Codex R0+R1 design pair-review.
+- ❌ Edit `_shared/runtime-principles.md` content without mirroring CLAUDE.md `:section=NAME:` blocks (lint Check 12 will fail).
+- ❌ Treat F9 timeout 3600s as the bug to fix in this pivot — it's a fixture-config concern, separate iter (iter-0023 candidate).
 
 ---
 
@@ -127,24 +238,15 @@ Verdict: **DEFER now, not rollback**. Path to ship: harness coverage-copy fix (D
 
 Discovered post-suite: `run-fixture.sh`'s `rm -rf "$WORK_DIR"` happens at NEXT arm START not end, so coverage.json files inside `.devlyn/runs/<auto-resolve-run-id>/` were retained — but only for the LAST arm per (fixture, arm). Bench results dir did NOT include coverage.json by default. Aggregator at `autoresearch/scripts/iter-0020-aggregate-coverage.py:42-47` walks `results/<RUN_ID>/<fixture>/<arm>/` and found nothing. Manual workaround: copy from workdirs (worked, but fragile). Permanent fix: `52a4db5` adds `cp` step in `run-fixture.sh` after diff capture so future suites surface coverage.json automatically.
 
-### Do NOT
-
-- ❌ Run iter-0020 9-fixture paid suite **without explicit user cost approval** — $30-50 spend warrants confirmation per CLAUDE.md "Executing actions with care."
-- ❌ Ship iter-0020 if `iter-0020-aggregate-coverage.py` exits 1 (router bug or never-fired) — that fails hard acceptance #4 and rollback fires.
-- ❌ Edit `_shared/runtime-principles.md` content without mirroring CLAUDE.md `:section=NAME:` blocks — **lint Check 12 will fail**.
-- ❌ Edit CLAUDE.md `runtime-principles:section=NAME:` blocks without re-syncing runtime-principles.md AND re-running `node bin/devlyn.js -y`.
-- ❌ Re-introduce iter-0019.7 fix-loop enrichment work before iter-0020 9-fixture data lands.
-- ❌ Bundle iter-0020 ship-verdict with CLAUDE.md minimization or any other iter (Codex R3 attribution-clarity rule).
-- ✅ OK: design iter-0021 dual-judge / NORTH-STAR test #14 real-project trial in parallel; just don't bundle.
-
 ### How to verify state on resume (cold-start sanity check, ~30s)
 
 Paste these in order; expected output noted:
 
 ```bash
 # 1. Branch + commit chain
-git log --oneline -8
-# Expected top: <SHA> autoresearch(iter-0020): cost-aware pair policy ...
+git log --oneline -10
+# PRE-Phase-1 (current state): top is `<SHA> autoresearch(handoff): rotate cold-start to iter-0020 9-fixture verdict + DEFER ...`
+# POST-Phase-1: top is `<SHA> autoresearch(iter-0020 close): rollback e2e override per Codex North-Star verdict`
 
 # 2. Working tree clean
 git status --short
@@ -160,10 +262,11 @@ diff -q config/skills/devlyn:auto-resolve/scripts/coverage_report.py .claude/ski
 diff -q config/skills/_shared/runtime-principles.md .claude/skills/_shared/runtime-principles.md
 # Expected: silent (no diff)
 
-# 5. iter-0020 selector + coverage sanity-check (in 5s)
+# 5. e2e override status:
 mkdir -p /tmp/it20chk/.devlyn && echo '{"run_id":"chk","source":{"type":"spec","fixture_class":"e2e"}}' > /tmp/it20chk/.devlyn/pipeline.state.json
 BENCH_WORKDIR=/tmp/it20chk python3 .claude/skills/devlyn:auto-resolve/scripts/select_phase_engine.py --phase build --engine auto
-# Expected stdout: claude (e2e override fires)
+# PRE-Phase-1 expected stdout: `claude` (override wired but defunct in real PHASE 0 flow)
+# POST-Phase-1 expected stdout: `codex` (FIXTURE_CLASS_OVERRIDES emptied — no override fires regardless of fixture_class value)
 rm -rf /tmp/it20chk
 
 # 6. Confirm runtime-principles markers (anchored to line-start)
@@ -171,32 +274,44 @@ grep -cE '^<!-- runtime-principles:section=' CLAUDE.md
 # Expected: 8
 grep -cE '^<!-- runtime-principles:section=' config/skills/_shared/runtime-principles.md
 # Expected: 8
+
+# 7. /skill-creator availability for Phase 1.5 + 2.8
+ls /Users/aipalm/.claude/skills/ | grep -i skill-creator
+# Expected: skill-creator present (installed via `npx skills add anthropics/skills` per memory `Skill-Creator Integration (2026-03-07)`).
+# If absent: `npx skills add anthropics/skills` to install before Phase 1.5.
 ```
 
 If any of these unexpectedly fails, the branch state has drifted — investigate before starting iter-0020 work.
 
 ### Read-order on cold start
 
-1. `autoresearch/NORTH-STAR.md` — what we are optimizing (3-layer L0/L1/L2 contract, 14 operational tests, real-project trial gate test #14).
-2. **This file** — operating context.
-3. `autoresearch/PRINCIPLES.md` — pre-flight 0 + 6 principles.
+1. `autoresearch/NORTH-STAR.md` — what we are optimizing (3-layer L0/L1/L2 contract, 14 operational tests, real-project trial gate test #14). Critical: layer-cost-justified principle.
+2. **This file** — operating context. The "STANDING USER DIRECTIVE" + "COLD-START CRITICAL CONTEXT" + "NEXT CONCRETE ACTION" three blocks above are the load-bearing pivot plan.
+3. `autoresearch/PRINCIPLES.md` — pre-flight 0 + 6 principles. Each phase's commit MUST enumerate.
 4. `CLAUDE.md` — session-level runtime contract (Subtractive-first, Goal-locked, No-workaround, Evidence — these 4 sections are mirrored in `_shared/runtime-principles.md` for sub-agents).
-5. `autoresearch/DECISIONS.md` — append-only ship/revert log.
-6. `autoresearch/iterations/0019-8-real-user-contract-carrier.md` — most recent iter, full data + Codex 2-round trail + 12 unit + 3 E2E falsification matrix.
-7. `autoresearch/iterations/0019-A-skill-audit-runtime-principles.md` — preceding iter (SKILL audit, runtime-principles propagation, preflight Round 2).
-8. `config/skills/_shared/runtime-principles.md` — runtime contract sub-agents consume.
-9. `config/skills/devlyn:auto-resolve/scripts/spec-verify-check.py` — iter-0019.6 + iter-0019.8 mechanical gate (default mode = BUILD_GATE; `--check` mode = ideate post-write hook).
-10. `config/skills/devlyn:preflight/SKILL.md` PHASE 3 + 3.5 — preflight mechanism.
+5. `autoresearch/DECISIONS.md` — append-only ship/revert log. Latest entries: `0019.9 | SHIPPED`, `0020 | SHIPPED-IMPL` (then `0020 | FAILED-EXPERIMENT-REVERTED-POLICY` after Phase 1).
+6. **`autoresearch/iterations/0020-pair-policy-narrow.md`** — read THIS iter file FIRST: full design + pair-review trail + 9-fixture data + Codex North-Star verdict (post-Phase-1 will have the close-out block appended).
+7. `autoresearch/iterations/0019-9-bench-mode-pre-staged-trust.md` — F9 false-signal fix; reasoning that informed iter-0020 design.
+8. `autoresearch/iterations/0019-8-real-user-contract-carrier.md` — spec-verify carrier mechanism (iter-0019.6 + iter-0019.8 + iter-0019.9 — these all SHIP and stay; the carrier is the most valuable harness piece).
+9. `autoresearch/iterations/0019-A-skill-audit-runtime-principles.md` — runtime-principles propagation (still load-bearing for sub-agent contract).
+10. `config/skills/_shared/runtime-principles.md` — runtime contract sub-agents consume (mirror of CLAUDE.md sections).
+11. `config/skills/devlyn:auto-resolve/scripts/spec-verify-check.py` — iter-0019.6 + iter-0019.8 + iter-0019.9 mechanical gate (the most-shipped piece).
+12. `config/skills/devlyn:preflight/SKILL.md` PHASE 3 + 3.5 — preflight mechanism.
+13. **For Phase 1 rollback work**: `config/skills/devlyn:auto-resolve/scripts/select_phase_engine.py`, `config/skills/devlyn:auto-resolve/SKILL.md` PHASE 0 step 4, `config/skills/devlyn:auto-resolve/references/engine-routing.md`.
+14. **For Phase 2 design work**: `config/skills/devlyn:auto-resolve/references/phases/phase-3-critic.md` (CRITIC's current design — inverted-pair reuses this surface).
+15. `feedback_codex_cross_check.md` (memory) — pair-review pattern that EVERY phase relies on.
 
 ---
 
 ## Current state
 
-**Branch**: `benchmark/v3.6-ab-20260423-191315`. 34+ commits ahead of origin (iter-0019 chain + iter-0020 impl + harness coverage-copy fix + 9-fixture suite results).
+**Branch**: `benchmark/v3.6-ab-20260423-191315`. 35+ commits ahead of origin (iter-0019 chain + iter-0020 impl + harness coverage-copy fix + 9-fixture suite results + F9 variant re-run + this HANDOFF rewrite).
 
-**iter-0020 status**: implementation SHIPPED at `91994db` (cost-aware pair policy: e2e → BUILD=Claude + Playwright hygiene + selector + coverage + aggregator). 9-fixture × 3-arm verification suite COMPLETED 2026-04-29T03:31 KST (~$30-50, 5h17m wall, ship-gate FAIL — see "9-fixture verdict data" block above for full per-fixture). Codex R-verdict (92k tokens, 169s, xhigh): **DEFER ship until F9 variant re-run** (Anthropic 429 rate-limit aborted F9 mid-suite). Harness coverage-copy fix shipped at `52a4db5`. **Awaits F9 variant re-run (~$5-10, ~30-60min wall) → SHIPPED-VERIFIED narrow.**
+**iter-0020 status (post-Codex-North-Star verdict 2026-04-29)**: **PIVOT** — close as failed product-policy experiment, retain mechanism wins, plan iter-0021 inverted-pair research smoke + L1 real-project trial in parallel. Phase 1 is the close-out (rollback e2e routing surface + retain F4 Playwright bullet + retain carrier mechanism iter-0019.6/.8/.9 + retain coverage_report.py + select_phase_engine.py as research infrastructure no-op). Phase 2 is iter-0021 inverted-pair (Claude BUILD + Codex CRITIC) on F2/F3/F8 with pre-registered acceptance gates. Phase 3 is L1 real-project trial as diagnostic (NOT NORTH-STAR test #14 final stop).
 
-**iter-0020 implementation** (commit `91994db`): cost-aware pair policy narrow per Codex Phase B Option C verdict. Per-fixture-class BUILD override `category=e2e → Claude` (one routing decision differing from current Codex BUILD default for `--engine auto`). Code-enforced via NEW `scripts/select_phase_engine.py` invoked from PHASE 1 BUILD before spawn (hard-fails on missing state per Codex R2 #1, writes `state.route.engine_overrides.<phase>` on fire). NEW `scripts/coverage_report.py` emits per-fixture `.devlyn/coverage.json` per Codex Q5 schema (applicable_fired/applicable_missed/not_applicable buckets). NEW `autoresearch/scripts/iter-0020-aggregate-coverage.py` suite-level aggregator (Codex R2 Q6) — exit 0 iff every changed route fired ≥1× across suite. Bench harness exports BENCH_FIXTURE_CATEGORY+BENCH_FIXTURE; PHASE 0 step 4 populates `state.source.{fixture_class,fixture_id}` (gated on BENCH_WORKDIR co-set). engine-routing.md gains "Per-fixture-class BUILD overrides" section with table + rollback condition. archive_run.py PER_RUN_PATTERNS adds coverage.json. phase-1-build.md `<quality_bar>` adds narrow Playwright bullet (F4 fix). pipeline-state.md canonical schema + Source/Route docs updated. Codex pair: R0 (43k, 85s, Option D adopted) + R-phaseA (68k, 201s, F9 false-signal diagnosed) + Phase B scope (150k, 191s, Option C narrow) + R1 (53k, 103s, "Not sufficient" — adopted code-enforced selector + aggregator) + R2 (55k, 112s, "substantively yes with 4 small fixes" — all adopted). All 5 hard acceptance criteria satisfied. lint 11/11 PASS. Falsification: 5 selector + 3 coverage + 2 aggregator unit tests all 1:1 (no model spend). **Awaits paid 9-fixture × 3-arm suite (~$30-50, ~3-4h wall) for ship verdict.**
+**Codex North-Star verdict citation** (RUN_ID-equivalent: deep consultation 2026-04-29, 78k tokens, 156s, xhigh): "3-layer North Star is still right. The current L2 architecture is wrong. Codex BUILD + Claude review is falsified for this fixture set." Path to ship: Phase 1 close-out → Phase 2 inverted-pair experiment with PASS/FAIL on pre-registered gates → if PASS, ship inverted-pair as new L2 product surface; if FAIL, L2 product surface stays disabled, L1 is canonical, NORTH-STAR axis #11 deferral becomes permanent for now.
+
+**iter-0020 implementation** (commit `91994db`, **soon-to-be partially reverted in Phase 1**): cost-aware pair policy narrow per Codex Phase B Option C verdict. Per-fixture-class BUILD override `category=e2e → Claude` (one routing decision differing from current Codex BUILD default for `--engine auto`). Code-enforced via NEW `scripts/select_phase_engine.py` invoked from PHASE 1 BUILD before spawn (hard-fails on missing state per Codex R2 #1, writes `state.route.engine_overrides.<phase>` on fire). NEW `scripts/coverage_report.py` emits per-fixture `.devlyn/coverage.json` per Codex Q5 schema (applicable_fired/applicable_missed/not_applicable buckets). NEW `autoresearch/scripts/iter-0020-aggregate-coverage.py` suite-level aggregator (Codex R2 Q6) — exit 0 iff every changed route fired ≥1× across suite. Bench harness exports BENCH_FIXTURE_CATEGORY+BENCH_FIXTURE; PHASE 0 step 4 populates `state.source.{fixture_class,fixture_id}` (gated on BENCH_WORKDIR co-set). engine-routing.md gains "Per-fixture-class BUILD overrides" section with table + rollback condition. archive_run.py PER_RUN_PATTERNS adds coverage.json. phase-1-build.md `<quality_bar>` adds narrow Playwright bullet (F4 fix). pipeline-state.md canonical schema + Source/Route docs updated. Codex pair: R0 (43k, 85s, Option D adopted) + R-phaseA (68k, 201s, F9 false-signal diagnosed) + Phase B scope (150k, 191s, Option C narrow) + R1 (53k, 103s, "Not sufficient" — adopted code-enforced selector + aggregator) + R2 (55k, 112s, "substantively yes with 4 small fixes" — all adopted). All 5 hard acceptance criteria satisfied. lint 11/11 PASS. Falsification: 5 selector + 3 coverage + 2 aggregator unit tests all 1:1 (no model spend). **Awaits paid 9-fixture × 3-arm suite (~$30-50, ~3-4h wall) for ship verdict.**
 
 **iter-0019.9 SHIPPED 2026-04-28** (`0f9e077`): Bench-mode pre-staged trust patch. iter-0019.8's spec-verify-check.py:main() unconditionally overwrote benchmark-staged spec-verify.json from source-extract; F9 e2e novice flow ran ideate's drifted contract instead of benchmark truth. Patch: `pre_staged = spec_path.is_file()` BEFORE any potential write + `trust_bench_staged = bench_mode and pre_staged` guard. Real-user mode unchanged. F9 re-run on 0f9e077 (RUN_ID `20260428T112748Z-0f9e077-iter-0019-9-F9-reverify`, ~$15) confirmed: F9 carrier now uses BENCHMARK contract; F9 verify_score 0.60 → 1.00 for both pair arms; L1 jumped 81→92 (was equally polluted); L2-L1=-21 (real pair-routing failure on e2e class).
 
