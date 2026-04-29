@@ -3,7 +3,7 @@ iter: "0024"
 title: "Bare-Case Guardrail correction + task-aware hygiene severity"
 status: shipped
 type: contract-correction (no model invocations; rewrites a documented harness rule per user direction + Codex review)
-shipped_commit: pending
+shipped_commit: 349818f
 date: 2026-04-29
 mission: 1
 ---
