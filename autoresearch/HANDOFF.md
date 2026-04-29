@@ -20,15 +20,31 @@ Everything below this fold supports those three.
 
 ## 🧠 What we now know empirically (TL;DR for the next session)
 
-- **L1 (single-engine Claude solo harness) per-fixture variance is large**, but the mean is healthy. F2 N=4 effective (excluding 1 invalid measurement where both arms produced 0 files): L1 mean **94.5** / stdev **2.89**, L1-L0 mean **+13.25** / stdev **3.50**.
-- **The user's "+5 신뢰성" pushback was correct in spirit AND structure**:
-  - Single-shot suite-avg (+4.4 in iter-0020) was a *blend* of clean (~+13 lift) and silent-catch-DQ (~+8 lift) regimes — not a stable per-fixture estimate.
-  - Cross-judge (Opus sidecar in iter-0025) confirmed +4.44 vs +4.67 within 0.22 — but that's *judge agreement on the blend*, not stable per-fixture data.
-  - **DQ classification rate, not score margin, is the real Mission 1 gate signal.**
-- **`completed:` removal mechanism confirmed N=5 wide** — F2 scope axis stdev = 0.00, all 25/25. iter-0021 mechanism story holds.
-- **L1 has a structural silent-catch DQ rate ~40-50% on F2.** Two distinct silent-catch forms detected: `catch-return fallback` (n2) and `catch returning an object` (n4). Same prompt, same engine, same git baseline.
+### The real signal: L1 already beats bare on categorical reliability
 
-This reframes iter-0021/0023/0025's "L1 sits below +5 floor" framing. Honest framing: **L1 produces clean BUILD with strong margin in clean runs, AND silent-catch DQ in ~40% of runs. The blend averages below +5 but neither regime is.**
+User correction 2026-04-30 reframed the entire game. **Score margin is a proxy; the real question is "does the harness produce better code than bare?"** Re-read iter-0026/0027 raw DQ data with that lens:
+
+| arm | F2 silent-catch DQ rate (6 runs) | Same, n5 invalid excluded (5 runs) |
+|---|---|---|
+| **bare (raw Claude, no harness)** | 5 / 6 (83%) | 5 / 5 (**100%**) |
+| **L1 (our solo harness)** | 3 / 6 (50%) | 3 / 5 (**60%**) |
+| L2 (Claude + Codex pair) | 2 / 6 (33%) | 2 / 5 (40%) |
+
+**Bare produces silent-catch nearly every time** on F2 (a fixture whose spec explicitly forbids silent catches). The harness already cuts that failure rate by ~40 percentage points. **Our system is empirically better than bare on the only signal that actually matters** (real categorical correctness on a real spec constraint), even though the cumulative judge score margin (+4.4 suite-avg) hides it.
+
+### What the score-margin journey was actually tracking
+- Single-shot suite-avg L1-L0 = +4.4 (iter-0020, iter-0025 cross-judge confirmed +4.44 vs +4.67).
+- F2 N=4 effective (clean + DQ blend): L1 mean **94.5** / stdev **2.89**, L1-L0 mean **+13.25** / stdev **3.50**.
+- Per-fixture variance ±3-15 (DQ-dependent) dominates the +5 floor signal — the floor logic was reading proxy noise.
+- `completed:` removal mechanism confirmed N=5 wide (F2 scope stdev 0.00) — minor lift, not the load-bearing fix.
+
+### The honest framing the next session must adopt
+**"+5 floor" is a proxy of a proxy.** The real Mission 1 gate is: *does the harness reliably produce better code than bare on real tasks?* iter-0027 already shows yes on F2 categorical reliability (L1 60% DQ vs bare 100%). What's missing isn't more decimal places on suite-avg — it's:
+1. **Cross-fixture confirmation**: does L1-vs-bare DQ rate gap hold on F3/F6/F7/F9? (iter-0029)
+2. **Real-project trial**: NORTH-STAR ops test #14 — pick a real codebase, real task, run `/devlyn:auto-resolve` end-to-end, have a human compare to bare. (iter-0030 or later, but this is the binding terminal gate.)
+3. **Drive L1 silent-catch rate down further** (60% → ~0%) so the bare-vs-L1 gap isn't just "less broken" but "actually clean". (iter-0028)
+
+iter-0028's design stays useful (silent-catch detection in BUILD) but its acceptance gate must reframe: **"L1 DQ rate < bare DQ rate by ≥30 percentage points, AND L1 absolute DQ rate ≤ 1/3"** — categorical-vs-bare, not absolute floor.
 
 ---
 
@@ -206,15 +222,17 @@ Re-route CRITIC's design sub-pass to fire BEFORE EVAL (currently after, in PHASE
 
 **Recommendation (will be Codex R0 input, NOT committed yet)**: Candidate B — mechanical check is principle-#3 root-cause (forbidden patterns are mechanically detectable; relying on LLM self-check for them is a workaround). Same architectural pattern as iter-0019.6.
 
-### iter-0028 acceptance gate (pre-registered before R0)
+### iter-0028 acceptance gate (pre-registered before R0; reframed per user 2026-04-30 "categorical-vs-bare > absolute floor")
 
 After whichever candidate ships:
-- **F2 N=3 paired re-run** at iter-0028 commit. Acceptance: **L1 DQ rate 0/3** (or at most 1/3 if pattern pre-existing in test-repo scaffold).
-- L1-L0 mean lift on F2 stays ≥ +10 (clean-run regime preserved).
+- **F2 N=3 paired re-run** at iter-0028 commit. Acceptance:
+  - **L1 silent-catch DQ rate ≤ 1/3** (absolute; targets bringing 60% down to ≤33%).
+  - **L1 DQ rate < bare DQ rate by ≥ 30 percentage points** (categorical-vs-bare; the real signal per user direction).
+- L1-L0 mean lift on F2 stays ≥ +10 (clean-run regime preserved). Suite-avg "+5 floor" is reporting only, not decisive.
 - Lint Check 13 still PASSES post-mirror.
 - No regression on iter-0020 baseline F1/F4/F6/F7 single-fixture spot-check.
 
-If acceptance passes → iter-0029 = F3 N=3 + F9 N=3 cross-fixture variance.
+If acceptance passes → iter-0029 = F3 N=3 + F9 N=3 cross-fixture variance (test bare-vs-L1 gap on more spec types).
 If acceptance fails → iter-0028 close-out with revert; pivot to Candidate C (pre-EVAL CRITIC) in iter-0029.
 
 ### iter-0028 hard NO list
@@ -228,11 +246,12 @@ If acceptance fails → iter-0028 close-out with revert; pivot to Candidate C (p
 
 ---
 
-## 🚧 iter-0029+ deferred queue
+## 🚧 iter-0029+ deferred queue (reordered per user 2026-04-30 reframing)
 
-- **iter-0029**: F3 N=3 + F9 N=3 paired variance (cross-fixture generalization). BLOCKED until iter-0028 acceptance passes.
-- **iter-0030 (candidate)**: ship-gate.py language change (Codex iter-0027 R-final Q3) — single-shot = smoke evidence; ship-readiness requires N≥3 paired floor enforcement. Small doc + script change.
-- **iter-0031+ (candidate)**: real-project trial (NORTH-STAR ops test #14) once Mission 1 gate clears empirically.
+- **iter-0029**: F3 N=3 + F9 N=3 paired variance — measure **bare-vs-L1 DQ rate gap on more spec types**, not just absolute floor. BLOCKED until iter-0028 acceptance passes.
+- **iter-0030 (priority shift up — was 0031)**: **NORTH-STAR ops test #14 — real-project trial**. Pick a real (non-fixture) codebase, real feature/bug, run `/devlyn:auto-resolve` end-to-end, have a human read both bare and L1 outputs and rate which is ship-worthier. THIS is the binding Mission 1 terminal gate per user 2026-04-30 directive ("실제로 bare보다 더 나은 코드"). Fixture suite is calibrated proxy; real-project trial is ground truth.
+- **iter-0031 (candidate)**: ship-gate.py language change (Codex iter-0027 R-final Q3) — reframe gate from "+5 absolute floor" to "L1 DQ rate < bare DQ rate by ≥30pp AND L1-L0 mean lift ≥ +5 on clean runs". Small doc + script change. Can land in parallel with iter-0029 since it's pure documentation/gate-text.
+- **iter-0032+ (candidate)**: drive L1 silent-catch rate to <10% (post iter-0028 measurement-driven prompt/CRITIC iteration).
 
 ---
 
