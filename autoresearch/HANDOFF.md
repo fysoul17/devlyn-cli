@@ -2,9 +2,9 @@
 
 **Outer goal lives in [`NORTH-STAR.md`](NORTH-STAR.md). Read that file FIRST — it is the project contract. This HANDOFF is the operating-context layer on top of it.**
 
-**Read this second** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-29 (post iter-0020 Phase 1 close-out, commit `cb3765d`) left off.
+**Read this second** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-29 (post iter-0021 calibration ship) left off.
 
-## 🔁 RESUME-HERE quick pointer (2026-04-29 → MISSION 1: single-task on `main`)
+## 🔁 RESUME-HERE quick pointer (2026-04-29 → MISSION 1: single-task on `main`, iter-0022 R0 next)
 
 ### One thing to remember
 
@@ -21,10 +21,11 @@ iter-0020 closed because the L2 pair shape (Codex BUILD + Claude review) failed 
 
 ### Branch state + Mission 1 status
 
-- **Branch tip**: `cb3765d` (HANDOFF SHA-rotation) on top of `948e4bd` (Phase 1 close-out). Working tree clean.
+- **Branch tip**: `2a32c91` (MISSIONS.md introduction) + iter-0021 calibration commit (TBD). Working tree may have uncommitted iter-0021 doc changes when this HANDOFF was last updated.
 - **iter-0020 = CLOSED** (FAILED-EXPERIMENT-REVERTED-POLICY). Do NOT restart e2e BUILD=Claude routing. Do NOT resurrect the deleted scripts.
+- **iter-0021 = SHIPPED** (calibration overlay; doc-only). Per-axis L1-L0: spec=+7 cons=+18 scope=**-4** qual=+19. **L1's only negative axis = Scope**, concentrated on F2+F4 (-2 each) from harness DOCS phase adding `completed: 2026-04-28` field beyond the lifecycle note's `status:` carve-out. Note-scope-narrow mechanism confirmed via judge's own reasoning (judge.json F2 b_breakdown.notes: "though the lifecycle note makes status flipping acceptable").
 - **Auto-resolve default**: `--engine claude` (SKILL.md:70). ideate / preflight / team-* keep `--engine auto` (no measured failure). Per-skill defaults in `_shared/engine-preflight.md`.
-- **Mission 1 gates currently failing**: L1-L0 = +4.4 (below floor +5). L2 disabled pending iter-0021 inverted-pair research. Real-project trial not yet run.
+- **Mission 1 gates currently failing**: L1-L0 = +4.4 (below floor +5). L2 disabled pending pair-mode research. Real-project trial not yet run. Closing -4 scope alone = +0.44 → +4.84 (still below floor).
 
 ### Mission 1 ship gates (every gate must hold before Mission 2)
 
@@ -38,13 +39,13 @@ iter-0020 closed because the L2 pair shape (Codex BUILD + Claude review) failed 
 
 1. Re-read STANDING USER DIRECTIVE (block below, verbatim Korean).
 2. Skim [`MISSIONS.md`](MISSIONS.md) — confirm Mission 1 still active, refresh hard-NO list.
-3. Run cold-start sanity check (~30s; commands at line ~225).
-4. Pick the next single-task lever — options (single-task only, no parallel work):
-   - **(a) iter-0021 inverted-pair single-task smoke** (Claude BUILD + Codex CRITIC on F2/F3/F8) — research candidate for L2; **PASS does NOT make L2 a product surface** until L1 passes its own gates.
-   - **(b) L1 real-project trial** (NORTH-STAR test #14) — single `--engine claude` run on a real task. Documents whether L1 categorically beats bare on real work. Cheaper than (a); answers a more foundational question (L1-vs-L0 still failing at +4.4 < +5 floor).
-   - **(c) Targeted L1 lift** — pick a fixture where L1 ties or loses vs L0 (per the iter-0020 9-fixture data) and design a categorical-reliability fix (mechanical gate in the same shape as iter-0019.6/.8/.9 spec-verify, when the failure mode justifies it).
-   
-   Codex's verdict (2026-04-29 ultimate-goal consult, Q3): **(b) before (a)**. L1-vs-L0 is more foundational than L2-vs-L1, and (a)'s research candidate framing already presumes (b)'s data exists.
+3. Run cold-start sanity check (~30s; commands further down this file).
+4. **iter-0022 R0 (next iter)** — pre-decision was made by iter-0021 readout + Codex R-final² guidance:
+   - **R0 picks ONE target**: Scope axis (F2+F4 -2 each, mechanism note-scope-narrow confirmed) vs F3 quality (-1 fixture delta, L0 beats L1 head-to-head, mechanism: narrow `String(req.query.page)` array-coercion bug per Codex earlier consult).
+   - **If Scope wins → R1 single diagnostic**: omit `completed:` field from harness DOCS phase output (subtractive change, matches spec lifecycle note's exact carve-out scope = `status:` only). Re-run F2 single fixture; if scope returns to 25/25, mechanism confirmed and fix lands. If not, reconsider mechanism set.
+   - **If F3 quality wins → R1 design**: harness BUILD prompt patch on backend-contract class (query-param type-coercion strictness). Diagnostic less obvious; would likely need a smoke before commit.
+   - **DO NOT pre-commit R1 fix shape until R0 picks target.** Codex R-final² caught my pre-decision drift on this exact axis.
+5. **L1 real-project trial (NORTH-STAR test #14)** remains user-driven; runs whenever the user provides a real (non-fixture) spec. Independent of iter-0022.
 
 ### First Codex pair-review checkpoint of next session
 
