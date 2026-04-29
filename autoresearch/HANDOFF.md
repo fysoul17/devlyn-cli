@@ -6,13 +6,59 @@
 
 ## 🔁 RESUME-HERE quick pointer (2026-04-29, post Phase 1 commit `cb3765d`)
 
+### Why this skill exists (do NOT lose this — every iter must serve it)
+
+The harness (`/devlyn:ideate` → `/devlyn:auto-resolve` → `/devlyn:preflight`, or any subset) exists to deliver **engineer-quality software, hands-free, for users who do not know context engineering**. Every iter must move the answer to one question forward:
+
+> Compared to **L0** (a bare end-user prompting Claude or Codex directly with no harness), does our harness — used either as **L1** (Claude solo OR Codex solo through the harness) or **L2** (Claude + Codex tickitaka pair) — deliver **more accurate, more effective, and reasonably-fast** results, end-to-end, on real-style work?
+
+If an iter doesn't move that answer toward "yes, measurably," it's 산으로 가는 work. Re-scope or drop it.
+
+The 3-layer comparison (canonical in [`NORTH-STAR.md`](NORTH-STAR.md)):
+- **L0 bare** = end-user types a prompt at Claude or Codex directly. No harness. Single-shot or ad-hoc multi-turn.
+- **L1 solo harness** = same end-user runs the harness with one engine — `/devlyn:auto-resolve --engine claude` OR `/devlyn:auto-resolve --engine codex`. The harness adds spec parsing, BUILD/EVAL/CRITIC/DOCS phasing, build-gate, fix-loop, etc. Same model that L0 had access to.
+- **L2 pair harness** = harness runs both models in tickitaka — Claude and Codex collaborating per-phase (BUILD/CRITIC routing, GAN-critic dynamic). Claude pair Codex.
+
+For each layer, three axes are measured:
+1. **Accuracy** — does the output match what a senior engineer would have produced (judge rubric: spec / constraint / scope / quality)?
+2. **Effectiveness** — does it remove a real user failure (verify_score, CRITICAL findings, disqualifier) instead of cosmetic margin lift?
+3. **Reasonable wall-time** — slower than bare is fine; *unreasonably* slower is not. The harness must out-earn its own latency: each layer beats `previous-layer-best-of-N` where N is the wall-time ratio.
+
+iter-0020 closed because the L2 pair shape (Codex BUILD + Claude review) failed axis 1 — it was *less* accurate than L1 Claude solo on F2/F3/F5/F6 while costing more wall. The contract says you cannot ship a layer that loses to the layer below it, no matter how clever the architecture is.
+
+### Branch state + iter status
+
 - **Branch tip**: `cb3765d` (HANDOFF SHA-rotation) on top of `948e4bd` (Phase 1 close-out). Working tree clean.
 - **iter-0020 = CLOSED** (FAILED-EXPERIMENT-REVERTED-POLICY). Do NOT restart e2e BUILD=Claude routing. Do NOT resurrect the deleted scripts (`select_phase_engine.py`, `coverage_report.py`, `iter-0020-aggregate-coverage.py`, `iter-0020-failure-count.py`).
 - **Auto-resolve default is now `--engine claude`** (SKILL.md:70). ideate / preflight / team-* keep `--engine auto` (no measured failure). Per-skill defaults canonicalised in `_shared/engine-preflight.md`.
-- **Open iter** = iter-0021 inverted-pair (Claude BUILD + Codex CRITIC on F2/F3/F8). Design from scratch + 3-fixture smoke. **Gating bar = bare-vs-harness only**: harness must beat L0 (bare) on accuracy/effectiveness AND complete in reasonable wall-time. Cost/budget is not a gate.
-- **First action on resume**: re-read STANDING USER DIRECTIVE (block below, verbatim Korean) → run cold-start sanity check (~30s) → ask user to authorize Phase 2 cost OR start Phase 3 (L1 real-project trial diagnostic, user-driven not autonomous).
-- **First Codex pair-review checkpoint of next session**: Phase 2 step 2.1 (R0 inverted-pair design consult). Send the design from scratch — do NOT extend deleted scripts.
-- **DO NOT** spawn paid runs without user approval. **DO NOT** edit ideate/preflight/team-* `--engine auto` defaults (out of scope; surface a separate iter if benchmark evidence emerges).
+- **Open iter = iter-0021 inverted-pair** (Claude BUILD + Codex CRITIC on F2/F3/F8). Hypothesis: pair value lives at CRITIC, not BUILD. Design from scratch + 3-fixture smoke.
+
+### Ship gate (skill purpose, not budget)
+
+iter-0021 (and every future iter) ships only if the data shows the harness is moving toward "yes, measurably" on the 3-layer comparison above:
+
+- **L1 vs L0**: does the solo harness (single engine) beat the same engine bare on accuracy AND effectiveness, within reasonable wall-time? If not, the harness's *core value* is unproven and pair work is premature.
+- **L2 vs L1**: does the pair harness beat the better of (Claude-solo-harness, Codex-solo-harness) on accuracy AND effectiveness, within reasonable wall-time? If not, pair is just expensive solo.
+- **Reasonable wall-time** = each layer beats `previous-layer-best-of-N` (per NORTH-STAR ops test #2 / #6). Not "fast" — *defensible*.
+
+Cost / dollar budget is **not** a gate. The gate is: are end-users genuinely better off using our skill than typing the same task at bare Claude/Codex?
+
+### First actions on resume
+
+1. Re-read STANDING USER DIRECTIVE (block below, verbatim Korean).
+2. Run cold-start sanity check (~30s; commands at line ~225).
+3. Decide which axis to push next: **(a)** iter-0021 inverted-pair design + smoke (Phase 2; L2-vs-L1 question), or **(b)** L1 real-project trial as diagnostic (Phase 3; L1-vs-L0 question on real, non-fixture work). If both layers' data is thin, (b) is cheaper to start with.
+
+### First Codex pair-review checkpoint of next session
+
+Phase 2 step 2.1 (R0 inverted-pair design consult). Send the design from scratch — do NOT extend deleted scripts.
+
+### DO-NOT list
+
+- ❌ **DO NOT** restart iter-0020 e2e BUILD=Claude routing — the verdict is final.
+- ❌ **DO NOT** edit ideate / preflight / team-* `--engine auto` defaults without benchmark evidence specific to those skills (avoid scope creep).
+- ❌ **DO NOT** chase aggregate margin lift if the per-fixture story is flat or worse — that's score-chasing per the standing directive.
+- ❌ **DO NOT** ship a layer that loses on accuracy or effectiveness even if wall-time looks good.
 
 ---
 
