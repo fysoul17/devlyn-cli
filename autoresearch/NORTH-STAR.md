@@ -2,18 +2,41 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Last refined: 2026-04-27 (post-iter-0016 partial readout, after user clarification of the 3-layer performance contract and pair-efficiency invariant).
+Last refined: 2026-04-29 (added "ultimate goal" section: building an autonomous agent organisation, parallel multi-task execution, hands-free 끝까지-completion).
 
 ---
 
-## The goal in one sentence
+## The ultimate goal (why this skill exists)
 
-**The harness composes frontier LLMs into a hands-free pipeline that delivers engineer-quality software for users who do not know context engineering, with each layer of composition justifying its own additional cost over the layer below.**
+**devlyn-cli is not a benchmark exercise. It is the foundation for an autonomous AI Agent organisation — the kind that lets a single human plant an idea and walk away while 5-10+ tasks run in parallel to completion, then composes into a pyx-style self-operating system.**
+
+The user's working contract, in their own framing:
+- "Plant an idea or goal as a prompt; agents take it end-to-end without me touching engineering."
+- "Run 5-10+ tasks in parallel — at minimum."
+- "Eventually compose into a single AI Agent organisation that operates autonomously, pyx-style."
+
+For that to be real, the harness has to be **overwhelmingly better than bare prompting**. Marginally better is a research curiosity. The gap has to be wide enough that spawning 5-10 parallel runs is *trivially obvious value* over a single human prompting Claude or Codex once.
+
+**This is what every iter ultimately serves**. The 3-layer performance contract below (L0 / L1 / L2) is the *measurement frame* that lets us tell whether a given iter moves us toward this ultimate goal. The contract is in service of the goal, not the other way around.
+
+### Mission sequencing — see [`MISSIONS.md`](MISSIONS.md)
+
+Day-to-day work is gated by the **active mission** in `MISSIONS.md`, not by every axis listed below. The sequence is hard:
+
+- **Mission 1 (active 2026-04-29 →)**: single-task skill excellence on `main`. One user, one task, one working tree. Make the harness *extremely* better than bare prompting before any parallel work begins.
+- **Mission 2 (deferred)**: parallel-fleet readiness — `git worktree`-per-task substrate, resource leases, N≥5 simultaneous runs. Already designed (Codex 2026-04-29 deep consult); preserved for consumption when Mission 1 unblocks.
+- **Mission 3 (deferred, long-horizon)**: autonomous AI Agent organisation — inter-agent coordination, self-replanning, failure containment, audit accountability. The destination, not immediate work.
+
+Operational test #15 below (parallel-fleet) and the run-isolation architecture details belong to Mission 2; they are recorded for completeness but do **not** bind Mission 1 iters. The 5 hard NOs in `MISSIONS.md` Mission 1 list (no worktree work, no parallel smoke, no resource leases, no run-scoped state migration, no queue instrumentation) are absolute during Mission 1.
+
+## The goal in one sentence (mid-level, in service of the ultimate)
+
+**The harness composes frontier LLMs (and eventually local models like Qwen / Gemma) into a hands-free pipeline that delivers engineer-quality software for users who do not know context engineering, with each layer of composition justifying its own additional cost over the layer below — and the full pair-mode (or future multi-agent) experience must be _overwhelmingly_ better than bare prompting, not marginally.**
 
 Two user groups, both first-class:
 
 1. **Single-LLM users** (Opus alone, GPT-5.5 alone, Qwen alone, etc.) — they get the harness solo. The harness must beat their bare LLM **on quality and on efficiency**.
-2. **Multi-LLM users** (Claude + Codex installed, or future Claude + Gemini, etc.) — the harness uses pair patterns where they are worth the cost. The pair must beat the same harness running solo on the strongest of the user's available models, **also on quality and on efficiency**.
+2. **Multi-LLM users** (Claude + Codex installed today, future + Qwen / Gemma / Gemini local-or-frontier) — the harness uses pair / multi-agent patterns where they are worth the cost. The pair (and any future multi-agent shape) must beat the same harness running solo on the strongest available model, **also on quality and on efficiency** — and on the parallel-task axis: 5-10 simultaneous runs without per-run quality collapse.
 
 ---
 
@@ -89,6 +112,20 @@ Phrase numbers as "L2 beats L0 in partial readout; L1 directionally observed in 
 14. **Final stop condition** — even if all of #1-#13 pass on the 9-fixture suite, the loop does NOT terminate until **one fresh real-project trial passes without manual context engineering**. Definition: a developer who has not tuned the harness picks a real (not fixture) feature/bug from a real (not test) codebase, runs `/devlyn:auto-resolve "<spec>"` end-to-end, and the output ships without human prompt-engineering rescue. Pass = (a) no human edits to skill prompts mid-run, (b) no manual phase re-runs, (c) the produced code passes the project's existing test suite + the developer's spec acceptance check, (d) wall-time within budget for the layer the user paid for.
 
 This gate exists because benchmark fixtures are calibrated targets — passing them confirms the harness behaves *as designed against known cases*, not that it serves the actual user goal ("hands-free pipeline that delivers engineer-quality software for users who do not know context engineering"). Without #14, the loop can hit perfect 1-13 and ship a benchmark-tuned harness that fails real users on day one.
+
+### Parallel-fleet gate (Mission 2 axis — DEFERRED until Mission 1 unblocks)
+
+15. **Mission 2 stop condition: parallel-fleet trial.** The user's stated working contract is to plant ideas as prompts and run **5-10+ tasks in parallel hands-free** — eventually composing into a pyx-style autonomous AI Agent organisation. Tests #1-#14 measure single-task quality; this test measures whether the harness survives the multi-task workload that the ultimate goal demands.
+
+Pass = the user runs N ≥ 5 simultaneous `/devlyn:auto-resolve` (or full `ideate → auto-resolve → preflight` chain) invocations on independent specs (not fixtures), walks away, and on return finds:
+   - All N completed without human rescue (no prompt edits, no phase re-runs).
+   - Per-task quality matches the single-task baseline (no observable degradation from parallelism: scheduler contention, codex-monitored heartbeat starvation, MCP race, claude `-p` watchdog kills, file-system collisions, etc. must all be absent).
+   - Aggregate wall-time is *materially* shorter than a serialised baseline of the same N tasks.
+   - Zero data crosstalk: no spec/state/log file leaks between concurrent runs.
+
+Why this is the Mission 2 gate (not Mission 1): #15 is meaningless if Mission 1 hasn't already delivered overwhelm-level single-task value. An N=5 fleet of marginally-better-than-bare agents collapses to zero ROI — the user is better off prompting bare 5 times. Mission 1 must ship *first* so the multiplier has something worth multiplying.
+
+**During Mission 1, #15 binds nothing.** A Mission 1 iter is NOT rejected for failing to advance #15. The 5 hard NOs in `MISSIONS.md` Mission 1 list explicitly forbid Mission 2 substrate work during Mission 1. The full Mission 2 design (worktree substrate, resource leases, FIFO mutex/pool, no-N-cap with queue metrics, cleanup protocol) lives in `MISSIONS.md` Mission 2 section.
 
 **Operational protocol**: real-project trial is run after the 9-fixture L0/L1/L2 paid suite passes, and it is a single attempt — re-running with prompt tweaks counts as a fail. If the trial fails, the failure mode joins the fixture set as a 10th fixture (or extends an existing one), the loop reopens, and a new 9-fixture-plus-trial pass is required.
 

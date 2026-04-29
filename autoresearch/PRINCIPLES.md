@@ -128,9 +128,28 @@ Distinct from #4: code can be production-ready (no critical bugs) yet hand-roll 
 
 ---
 
+## 7. Mission-bound
+
+> **Every iter must serve the active mission. No work on deferred-mission surfaces during the active mission.**
+
+`MISSIONS.md` declares which mission is active. As of 2026-04-29 it is Mission 1 (single-task skill excellence on `main`). Each mission has hard NO list — surfaces explicitly out of scope until predecessor missions unblock.
+
+**Operational test (per iteration):**
+
+- The iter file's "Why this iter exists" section names the active mission and which mission gate it advances. If the iter cannot be tied to an active-mission gate, reject — even if the work is small, useful, or "would be nice."
+- An iter that touches a deferred-mission surface (e.g. Mission 2 worktree substrate during Mission 1) is rejected unconditionally. Surface the idea as a Mission 2/3 note in `MISSIONS.md`; do not implement.
+- An iter that improves the active mission's gates but introduces a deferred-mission dependency (e.g. an active-mission fix that requires the resource-lease helper from Mission 2) is rejected. Re-scope the fix to live within the active mission's substrate.
+- "While I'm here" cross-mission additions are scope creep per Goal-locked execution (CLAUDE.md). Always.
+
+**Failure mode this catches:** Architecture sprawl. The L2 architecture work in iter-0020 is the canonical anti-pattern: single-task quality wasn't yet at floor (L1-L0 = +4.4 vs +5 floor) and the loop attempted L2 product policy anyway. An L2 surface ship over an unproven L1 surface is exactly the cross-mission jump this principle blocks.
+
+The 6 prior principles are about *how* an iter is built. #7 is about *whether the iter belongs in the current sprint at all*.
+
+---
+
 ## How an iteration cites these
 
-In every iteration file under `iterations/`, the "Principles check" section enumerates **pre-flight 0 + #1-#6** and writes one of:
+In every iteration file under `iterations/`, the "Principles check" section enumerates **pre-flight 0 + #1-#7** and writes one of:
 
 - ✅ Passes — concrete evidence (numbers, finding counts, wall-time ratios).
 - ⚠️ Borderline — explanation + judgment call.
@@ -138,4 +157,8 @@ In every iteration file under `iterations/`, the "Principles check" section enum
 
 Iterations with any ❌ — including pre-flight 0 — are rejected. Iterations with ⚠️ go to user review before ship.
 
-Pre-flight 0 must be cited FIRST and answered with a single sentence: "this iter exists because it [removes user failure X / unblocks go-no-go decision Y for iter Z]." If you cannot write that sentence, do not start the iter.
+Pre-flight 0 must be cited FIRST and answered with a single sentence: "this iter exists because it [removes user failure X / unblocks go-no-go decision Y for iter Z]."
+
+#7 (Mission-bound) is cited SECOND with a single sentence: "this iter serves Mission [N] gate [G] because [it improves L0/L1 single-task accuracy on category X / it documents the harness-vs-bare asymmetry on category Y / etc.]." If you cannot write that sentence, do not start the iter.
+
+Both #0 and #7 must hold before any of #1-#6 even apply.
