@@ -220,7 +220,7 @@ Spawn Claude `Agent` (`mode: "bypassPermissions"`). Include original task descri
 
 **Job 1 — Roadmap sync**: if task matched `docs/roadmap/phase-\d+/[^\s\"']+\.md` and `git diff <state.base_ref.sha> --stat` touches non-doc files:
 1. Read the spec. If `status: done` already, skip to Job 2.
-2. Set `status: done` + `completed: <today>` in frontmatter. Do not touch body.
+2. Set `status: done` in frontmatter. Do not add `completed:` or any other field beyond what the spec lifecycle note licenses (iter-0026: judge debits scope on un-licensed metadata additions). Do not touch body.
 3. Update `docs/ROADMAP.md`: find row matching spec id; change Status to `Done`.
 4. If phase now fully Done: archive to `## Completed <details>` block at bottom (format per `devlyn:ideate#context-archiving`). Item spec files stay on disk.
 

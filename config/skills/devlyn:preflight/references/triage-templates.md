@@ -52,7 +52,7 @@ For commitment-bound findings, use `[item-id] [commitment]`. For commitment-less
 
 STALE_DOC findings are factual corrections, not implementation decisions. Fix them directly:
 - Update ROADMAP.md status columns
-- Update item spec frontmatter (`status:`, `completed:`)
+- Update item spec frontmatter (`status:` only — do not add `completed:` or other un-licensed fields per iter-0026; spec lifecycle notes typically license `status` flip only)
 - Update VISION.md "What's Next" sections when the current next-up is outdated
 
 ## Triage completion message
