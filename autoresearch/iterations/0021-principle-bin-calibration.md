@@ -3,7 +3,7 @@ iter: "0021"
 title: "Principle-bin calibration overlay on iter-0020 9-fixture data"
 status: shipped
 type: calibration (no new arms, no new ship gates, no new fixtures)
-shipped_commit: TBD
+shipped_commit: 9a9947f
 date: 2026-04-29
 mission: 1
 ---
