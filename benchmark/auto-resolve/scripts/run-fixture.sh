@@ -205,15 +205,25 @@ fi
 # generate the same shape from a spec.md "## Verification" section for
 # real-user runs (Codex R5, 2026-04-28). This stages all 3 arms — bare's
 # .devlyn/ is created lazily by spec-verify-check.py if absent.
+#
+# iter-0028: stage .devlyn/forbidden-patterns.json with the same
+# benchmark-agnostic contract for BUILD_GATE's forbidden-pattern-check.py.
+# Source-of-truth = expected.json:forbidden_patterns (the same list the
+# post-run scanner already enforces below at line ~515). Staging — not
+# direct expected.json reads from the script — keeps the skill scripts
+# benchmark-agnostic per Codex iter-0028 R0.
 if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; then
-  python3 - "$EXPECTED" "$WORK_DIR/.devlyn/spec-verify.json" <<'PY'
+  python3 - "$EXPECTED" "$WORK_DIR/.devlyn/spec-verify.json" "$WORK_DIR/.devlyn/forbidden-patterns.json" <<'PY'
 import json, os, sys
 expected = json.load(open(sys.argv[1]))
-out_path = sys.argv[2]
-normalized = {"verification_commands": expected.get("verification_commands", [])}
-os.makedirs(os.path.dirname(out_path), exist_ok=True)
-with open(out_path, "w") as f:
-    json.dump(normalized, f, indent=2)
+spec_out = sys.argv[2]
+fp_out = sys.argv[3]
+os.makedirs(os.path.dirname(spec_out), exist_ok=True)
+with open(spec_out, "w") as f:
+    json.dump({"verification_commands": expected.get("verification_commands", [])}, f, indent=2)
+    f.write("\n")
+with open(fp_out, "w") as f:
+    json.dump({"forbidden_patterns": expected.get("forbidden_patterns", [])}, f, indent=2)
     f.write("\n")
 PY
 fi
@@ -376,6 +386,12 @@ else
     # what the post-run verifier (run-fixture.sh:431-434) sets so the gate
     # sees the same environment shape.
     export BENCH_WORKDIR="$WORK_DIR"
+    # iter-0028 R1 D1: forbidden-pattern-check.py needs the pre-arm baseline
+    # to compute the arm-only diff. Variant arm's auto-resolve commits after
+    # PHASE 1 (SKILL.md:113-117), so by BUILD_GATE time `git diff HEAD` is
+    # empty and silently disables the scanner. Pin to SCAFFOLD_SHA — the
+    # same baseline run-fixture.sh:429-436 uses for the post-run scanner.
+    export DEVLYN_DIFF_BASE_SHA="$SCAFFOLD_SHA"
     exec claude \
       -p "$(cat "$PROMPT_FILE")" \
       --dangerously-skip-permissions \

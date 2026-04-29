@@ -131,6 +131,8 @@ else
       devlyn:auto-resolve/references/phases/phase-2-evaluate.md \
       devlyn:auto-resolve/references/phases/phase-3-critic.md \
       devlyn:auto-resolve/scripts/spec-verify-check.py \
+      devlyn:auto-resolve/scripts/forbidden-pattern-check.py \
+      devlyn:auto-resolve/scripts/build-gate-verifiers.sh \
       devlyn:ideate/SKILL.md \
       devlyn:ideate/references/codex-critic-template.md \
       devlyn:preflight/SKILL.md \
@@ -167,6 +169,14 @@ else
   if [ -f ".claude/skills/_shared/codex-monitored.sh" ] \
      && [ ! -x ".claude/skills/_shared/codex-monitored.sh" ]; then
     bad "_shared/codex-monitored.sh — not executable in installed mirror"
+    drift=1
+  fi
+  # iter-0028 R1: build-gate-verifiers.sh likewise — invoked by the
+  # BUILD_GATE Agent via `bash .../build-gate-verifiers.sh`, fails silently
+  # to exit-127 if the bit is missing.
+  if [ -f ".claude/skills/devlyn:auto-resolve/scripts/build-gate-verifiers.sh" ] \
+     && [ ! -x ".claude/skills/devlyn:auto-resolve/scripts/build-gate-verifiers.sh" ]; then
+    bad "devlyn:auto-resolve/scripts/build-gate-verifiers.sh — not executable in installed mirror"
     drift=1
   fi
   if [ $drift -eq 0 ]; then

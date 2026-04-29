@@ -129,9 +129,23 @@ Set `phases.build_gate`:
 
 The orchestrator branches on `phases.build_gate.verdict` — it does NOT re-read the findings or log file for routing decisions.
 
-## Spec literal check (iter-0019.6)
+## Auxiliary verifiers (iter-0019.6 + iter-0028)
 
-In addition to the language-specific gates above, the BUILD_GATE Agent always invokes the spec-literal verifier:
+In addition to the language-specific gates above, the BUILD_GATE Agent always invokes the verifier wrapper. The wrapper runs two checkers and merges their findings into `build_gate.findings.jsonl`:
+
+```bash
+bash .claude/skills/devlyn:auto-resolve/scripts/build-gate-verifiers.sh
+```
+
+**Wrapper contract** (iter-0028 R1 D3 fix — replaces the previous Agent-mediated "always run X then concatenate Y" prose, which was load-bearing for fix-loop visibility but unenforced):
+
+- Always runs both checkers — no short-circuit on first failure.
+- Appends each checker's per-round findings file (`spec-verify-findings.jsonl`, `forbidden-pattern-findings.jsonl`) onto `build_gate.findings.jsonl` if non-empty.
+- Exit 0 = both passed; exit 1 = ≥ 1 CRITICAL finding (verdict FAIL); exit 2 = invocation error (also FAIL).
+
+The two checkers it wraps:
+
+### Spec literal check (iter-0019.6)
 
 ```bash
 python3 .claude/skills/devlyn:auto-resolve/scripts/spec-verify-check.py
@@ -153,8 +167,25 @@ On mismatch (per command):
 - One CRITICAL finding written to `.devlyn/spec-verify-findings.jsonl` with `rule_id = "correctness.spec-literal-mismatch"`, `criterion_ref = "spec-verify://verification_commands/<index>"`, `blocking = true`, `status = "open"`. Schema matches `references/findings-schema.md`.
 - Full per-command evidence (expected vs actual exit, stdout tail, reason) written to `.devlyn/spec-verify.results.json`.
 
-**Merge step**: after running spec-verify-check.py, append `.devlyn/spec-verify-findings.jsonl` onto `.devlyn/build_gate.findings.jsonl` so the existing fix-loop picks the findings up unchanged. The verdict logic is unchanged — any CRITICAL finding in build_gate.findings.jsonl forces verdict=FAIL → PHASE 2.5.
+**Merge step**: handled by `build-gate-verifiers.sh` (iter-0028 R1 D3) — the wrapper appends `.devlyn/spec-verify-findings.jsonl` onto `.devlyn/build_gate.findings.jsonl` automatically. The verdict logic is unchanged — any CRITICAL finding in build_gate.findings.jsonl forces verdict=FAIL → PHASE 2.5.
 
 **Why this exists** (iter-0019 lesson): F9's prompt-only "literal-verification rule" in `phase-2-evaluate.md` `<quality_bar>` (added in iter-0018.5) was empirically dead — verify=0.4 on F9 across all engines in the iter-0019 paid run. Same shape as iter-0008 prompt-only engine constraint dead-end. Mechanical bash-gate enforcement at BUILD_GATE forces the contract to be machine-checked before BUILD declares completion.
 
-**Out of scope for iter-0019.6**: forbidden_patterns silent-catch enforcement (still post-run-only), tier_a_waivers, deps caps, scope-tier oracles. Each has its own enforcement layer.
+### Forbidden-pattern check (iter-0028)
+
+```bash
+python3 .claude/skills/devlyn:auto-resolve/scripts/forbidden-pattern-check.py
+```
+
+Reads `.devlyn/forbidden-patterns.json` (carrier shape: `{"forbidden_patterns": [{"pattern": <regex>, "files": [<allowlist>]?, "severity": "disqualifier"|"warning", "description": <str>?}]}`) and scans the unified diff (`git diff $DEVLYN_DIFF_BASE_SHA`, fallback to `HEAD`) for matches inside any allowlisted files. For each `disqualifier`-severity match, one CRITICAL finding (`rule_id="correctness.silent-catch-introduced"` when the pattern's `description` mentions silent/empty/swallow catch; `correctness.forbidden-pattern-introduced` otherwise) is written to `.devlyn/forbidden-pattern-findings.jsonl`. `warning`-severity matches are recorded in `.devlyn/forbidden-pattern.results.json` but DO NOT emit blocking findings — they remain post-run advisory only (preserves F6-style warning-severity contracts).
+
+**Diff baseline** (iter-0028 R1 D1 fix): the script honors `DEVLYN_DIFF_BASE_SHA` first and falls back to `HEAD` only when unset. `git diff HEAD` was the original implementation but is empty by BUILD_GATE time — auto-resolve PHASE 1 commits with `git add -A && git commit -m "...build complete"` (`SKILL.md:113-117`) before BUILD_GATE runs, so HEAD already includes BUILD's changes. Benchmark exports `DEVLYN_DIFF_BASE_SHA="$SCAFFOLD_SHA"` (`run-fixture.sh:388-394`); real-user runs that want the gate must set it before invoking.
+
+**Carrier source**:
+
+1. **Benchmark mode** (`BENCH_WORKDIR` set): pre-staged by `benchmark/auto-resolve/scripts/run-fixture.sh` directly from `expected.json:forbidden_patterns` alongside `.devlyn/spec-verify.json`. Same staging contract — keeps the skill script benchmark-agnostic.
+2. **Real-user mode**: no carrier file — silent no-op. A real-user default policy file is deferred (iter-0028 R0 falsification F2: "real-user default policy is overreach for this iter; no acceptance measurement"). Future iter may add it with semantic drift parity + false-positive acceptance gates.
+
+**Why this exists** (iter-0027 → iter-0028 lesson): F2 N=5 paired variance showed L1 silent-catch DQ rate 2/5 (40%) at the same git baseline, same engine, same prompt — the runtime principle prose at `references/phases/phase-1-build.md:61-67` ("no silent catch / `@ts-ignore` / hardcoded workaround") is empirically not preventing the violation. Same prompt-only-dead-end pattern as iter-0008 (engine constraint) and iter-0019.6 (spec-literal verification). Mechanical BUILD_GATE enforcement makes the violation visible to BUILD via the fix-loop instead of only to the post-run judge.
+
+**Out of scope for iter-0019.6**: tier_a_waivers, deps caps, scope-tier oracles. Each has its own enforcement layer.
