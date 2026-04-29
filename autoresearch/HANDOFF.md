@@ -2,7 +2,17 @@
 
 **Outer goal lives in [`NORTH-STAR.md`](NORTH-STAR.md). Read that file FIRST — it is the project contract. This HANDOFF is the operating-context layer on top of it.**
 
-**Read this second** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-28 (post iter-0018.5 SHIP, mid iter-0019 paid 5-fixture × 3-arm smoke run) left off.
+**Read this second** in any new conversation continuing the AutoResearch loop. Smallest set of pointers that lets you pick up where 2026-04-29 (post iter-0020 Phase 1 close-out, commit `cb3765d`) left off.
+
+## 🔁 RESUME-HERE quick pointer (2026-04-29, post Phase 1 commit `cb3765d`)
+
+- **Branch tip**: `cb3765d` (HANDOFF SHA-rotation) on top of `948e4bd` (Phase 1 close-out). Working tree clean.
+- **iter-0020 = CLOSED** (FAILED-EXPERIMENT-REVERTED-POLICY). Do NOT restart e2e BUILD=Claude routing. Do NOT resurrect the deleted scripts (`select_phase_engine.py`, `coverage_report.py`, `iter-0020-aggregate-coverage.py`, `iter-0020-failure-count.py`).
+- **Auto-resolve default is now `--engine claude`** (SKILL.md:70). ideate / preflight / team-* keep `--engine auto` (no measured failure). Per-skill defaults canonicalised in `_shared/engine-preflight.md`.
+- **Open iter** = iter-0021 inverted-pair (Claude BUILD + Codex CRITIC on F2/F3/F8). Code-only design + paid 3-fixture smoke ~$15-25. Gated on **explicit user cost approval**.
+- **First action on resume**: re-read STANDING USER DIRECTIVE (block below, verbatim Korean) → run cold-start sanity check (~30s) → ask user to authorize Phase 2 cost OR start Phase 3 (L1 real-project trial diagnostic, user-driven not autonomous).
+- **First Codex pair-review checkpoint of next session**: Phase 2 step 2.1 (R0 inverted-pair design consult). Send the design from scratch — do NOT extend deleted scripts.
+- **DO NOT** spawn paid runs without user approval. **DO NOT** edit ideate/preflight/team-* `--engine auto` defaults (out of scope; surface a separate iter if benchmark evidence emerges).
 
 ---
 
