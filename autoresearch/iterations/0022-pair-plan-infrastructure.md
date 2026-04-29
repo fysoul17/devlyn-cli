@@ -3,7 +3,7 @@ iter: "0022"
 title: "PLAN-pair infrastructure — schema + idgen + lint + preflight + auto-resolve input contract"
 status: shipped
 type: infrastructure (no real provider/model invocations; iter-0023 will be the measurement pilot)
-shipped_commit: pending
+shipped_commit: 8fcc509
 date: 2026-04-29
 mission: 1
 ---
