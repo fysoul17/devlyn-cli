@@ -27,7 +27,7 @@ If a future session finds this block missing or summarized, that is a violation 
 
 ## ⚠️ COLD-START CRITICAL CONTEXT (read FIRST in a new session)
 
-**Last shipped**: iter-0020 closed as **FAILED-EXPERIMENT-REVERTED-POLICY** (commit TBD post-R2). 9-fixture × 3-arm paid suite returned ship-gate FAIL (L1-L0=+4.4 below floor +5; L2-L1=-3.6; only 3/8 gated fixtures cleared the +5 margin floor). Codex BUILD on this fixture set falsified — loses to Claude solo on F2/F3/F5/F6, only +1 wins on F4/F7. Phase 1 close-out rolled back e2e BUILD=Claude routing surface; auto-resolve runtime default flipped `--engine auto` → `--engine claude`. ideate / preflight / team-* defaults UNCHANGED (no measured pair-mode failure on those skills — Codex R1 Option β scope decision).
+**Last shipped**: iter-0020 closed as **FAILED-EXPERIMENT-REVERTED-POLICY** (commit `948e4bd`, 2026-04-29). 9-fixture × 3-arm paid suite returned ship-gate FAIL (L1-L0=+4.4 below floor +5; L2-L1=-3.6; only 3/8 gated fixtures cleared the +5 margin floor). Codex BUILD on this fixture set falsified — loses to Claude solo on F2/F3/F5/F6, only +1 wins on F4/F7. Phase 1 close-out rolled back e2e BUILD=Claude routing surface; auto-resolve runtime default flipped `--engine auto` → `--engine claude`. ideate / preflight / team-* defaults UNCHANGED (no measured pair-mode failure on those skills — Codex R1 Option β scope decision).
 
 **Iter SHIPPED 2026-04-28 → 2026-04-29**:
 - iter-0019.6 acceptance — `e6de5ef`
@@ -40,7 +40,7 @@ If a future session finds this block missing or summarized, that is a violation 
 - iter-0020 harness fix — `52a4db5`
 - HANDOFF rotation — `b23eb3e`
 - HANDOFF Phase-1-pivot rewrite — `65f099f`
-- **iter-0020 close-out (Phase 1)** — `<TBD>` (Phase 1 commit, awaits Codex R2 ship-readiness)
+- **iter-0020 close-out (Phase 1)** — `948e4bd` (Phase 1 commit, Codex R0 → R1 → R2-1 → R2-2 → R2-3 → R2-final pair-review trail PASS)
 
 **Two production bugs from iter-0020 implementation** are now obsolete (the iter is closed; the surfaces are deleted):
 1. ~~PHASE 0 prose-only `BENCH_FIXTURE_CATEGORY` env-population~~ — surface deleted (no more `state.source.fixture_class` field).
@@ -65,19 +65,17 @@ This pivot is **principle-aligned**:
 
 ### NEXT CONCRETE ACTION — Phase 2 (iter-0021 inverted-pair) + Phase 3 (L1 real-project trial)
 
-Phase 1 (iter-0020 close-out) **SHIPPED** at commit `<TBD post-R2>`. Cold-start sanity check below confirms the post-Phase-1 state. Phase 2 and Phase 3 are next.
+Phase 1 (iter-0020 close-out) **SHIPPED** at commit `948e4bd` (2026-04-29). Cold-start sanity check below confirms the post-Phase-1 state. Phase 2 and Phase 3 are next.
 
 **Phase 1 actual outcome** (for the next session's reference):
 - 17 files, +199/-813 (net -614 lines). 4 scripts deleted (`select_phase_engine.py`, `coverage_report.py`, `iter-0020-aggregate-coverage.py`, `iter-0020-failure-count.py` = 626 LOC).
 - auto-resolve runtime default flipped `--engine MODE (auto)` → `--engine MODE (claude)` at SKILL.md:70.
 - `_shared/engine-preflight.md` rewritten as skill-default-aware (per Codex R1 Option β): pre-flight fires only when resolved engine is `auto`/`codex`. Per-skill defaults documented: auto-resolve=claude; ideate/preflight/team-*=auto.
 - ideate / preflight / team-resolve / team-review SKILL.md UNCHANGED — pair-mode never measured for those skills, scope creep avoided.
-- Codex pair-review: R0 (161k/214s) + R1 (116k/262s) + R2 (TBD) all xhigh. R0 found 7 findings, R1 found 3 more, all adopted.
+- Codex pair-review: R0 (161k/214s, 7 findings) + R1 (116k/262s, 3 findings) + R2-1 (127k/235s, 6 findings) + R2-2 (117k/264s, 4 findings) + R2-3 (122k/248s, 3 findings) + R2-final (32k/108s, trail-wording polish) all xhigh, all findings adopted, ship-readiness PASS.
 - Lint 11/11 PASS post-mirror.
 - KEPT: F4 Playwright `<quality_bar>` bullet, iter-0019.6/.8/.9 spec-verify carrier mechanism.
 - See `autoresearch/iterations/0020-pair-policy-narrow.md` "CLOSE-OUT (Phase 1, 2026-04-29)" block for full detail.
-
-**Phase 2 — iter-0021 inverted-pair research smoke** (~$15-25, ~2-3h paid wall, gated on user approval)
 
 **Phase 2 — iter-0021 inverted-pair research smoke** (~$15-25, ~2-3h paid wall, gated on user approval)
 
