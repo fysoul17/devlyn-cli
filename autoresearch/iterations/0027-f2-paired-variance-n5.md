@@ -3,7 +3,7 @@ iter: "0027"
 title: "F2 paired variance N=5 — characterize BUILD-side variance + DQ rate"
 status: data (variance characterized; full prescription deferred to next-iter pivot)
 type: measurement-trust (5 paired single-fixture re-runs at b06fffd; mechanism + categorical reliability data)
-shipped_commit: pending
+shipped_commit: 4feae35
 date: 2026-04-30
 mission: 1
 ---
