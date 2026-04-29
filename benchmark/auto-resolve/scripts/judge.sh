@@ -263,6 +263,36 @@ chosen["_blind_mapping"] = {**mapping, "seed": int(seed)}
 chosen["_judge_cli"] = codex_ver.strip()
 chosen["_judge_model"] = judge_model.strip()
 
+# iter-0023 — axis breakdown validation. Rubric axes are 0-25 (RUBRIC.md
+# "Scoring — 4 axes, 25 points each"). Past runs (iter-0020 F9) recorded
+# `quality: -1` because judge LLM occasionally emits sentinel/negative
+# values; ship-gate then averaged invalid cells. Detect, clamp to [0, 25],
+# and record the invalid cells under `_axis_validation` so downstream
+# consumers can refuse to trust that fixture's margin.
+AXIS_KEYS = ("spec", "constraint", "scope", "quality")
+BREAKDOWN_KEYS = ("a_breakdown", "b_breakdown", "c_breakdown")
+axis_invalid_cells = []
+for bk in BREAKDOWN_KEYS:
+    if bk not in chosen or not isinstance(chosen[bk], dict):
+        continue
+    for axis in AXIS_KEYS:
+        if axis not in chosen[bk]:
+            continue
+        v = chosen[bk][axis]
+        if not isinstance(v, (int, float)) or v < 0 or v > 25:
+            axis_invalid_cells.append({"breakdown": bk, "axis": axis, "value": v})
+            chosen[bk][axis] = max(0, min(25, int(v) if isinstance(v, (int, float)) else 0))
+chosen["_axis_validation"] = {
+    "out_of_range_count": len(axis_invalid_cells),
+    "out_of_range_cells": axis_invalid_cells,
+    "axis_range": [0, 25],
+}
+if axis_invalid_cells:
+    sys.stderr.write(
+        f"[judge.sh] WARNING: {len(axis_invalid_cells)} axis cell(s) out of [0,25] "
+        f"clamped: {axis_invalid_cells}\n"
+    )
+
 # scores_by_arm: arm-name → score, computed from the blind A/B/C scores.
 # This is the canonical 3-arm-aware shape the report consumer reads. The
 # legacy variant_score / bare_score / margin fields below are derived from
