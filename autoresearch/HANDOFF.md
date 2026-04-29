@@ -1,40 +1,68 @@
 # HANDOFF — for the next session
 
-**Read [`NORTH-STAR.md`](NORTH-STAR.md) first** (project goal). **This file second** (operating context). **[`PRINCIPLES.md`](PRINCIPLES.md) before any iter file edit** (pre-flight 0 + P1-P7). **[`MISSIONS.md`](MISSIONS.md)** confirms which mission is active.
+**Read [`NORTH-STAR.md`](NORTH-STAR.md) first** (project goal). **This file second** (operating context). **[`PRINCIPLES.md`](PRINCIPLES.md) before any iter file edit** (pre-flight 0 + #1-#7). **[`MISSIONS.md`](MISSIONS.md)** confirms which mission is active.
 
-Last refined 2026-04-29 (post iter-0021 calibration ship + iter-0022 design close-out via 3-round Codex dialogue).
+Last refined 2026-04-30 (post iter-0022 → iter-0027 batch ship; user pivot from "+5 floor reliability" → "categorical-reliability silent-catch in BUILD" surfaced empirically).
 
 ---
 
 ## 🚦 START-HERE — three things only
 
-1. **iter-0022 has not started.** No iter-0022 code is shipped on disk. The shape was designed in iter-0021 close-out + R1-R3 Codex dialogue (2026-04-29 evening). A fresh session implements iter-0022 from scratch after the cold-start sanity check below.
-2. **iter-0022 = build five infrastructure deliverables, real provider/model invocations = 0.** Schema doc + idgen script + lint script + preflight script + auto-resolve input contract change. Detail in "iter-0022 execution plan" below. Each deliverable has explicit acceptance gates.
-3. **iter-0023 is BLOCKED until every iter-0022 acceptance gate passes.** iter-0023 is the measurement pilot — Arm A (control: solo PLAN + Codex BUILD) vs Arm B (test: pair PLAN + Codex BUILD) on F2 + F3 — that tests whether PLAN-pair architecture causally rescues Codex BUILD on iter-0020-class failures. It does not start as the "next obvious thing" after iter-0022 lands — it starts only after the explicit checklist in the iter-0023 stub clears.
+1. **iter-0028 has not started.** Code state ends at iter-0027 (commit `4feae35`, baked at `f4a7e29`). The next session opens iter-0028 from scratch after the cold-start sanity check below.
+
+2. **iter-0028 = silent-catch detection in BUILD before EVAL.** F2 N=5 paired variance (iter-0027) showed L1 silent-catch DQ rate **2/5 (40%)** structurally — same engine, same prompt, same git baseline produced silent-catch (`catch-return fallback` / `catch returning an object`) in 2 out of 5 fresh runs. Mean L1-L0 = +13.25 when clean (well above +5 floor) — the failure mode is NOT margin, it's the recurring silent-catch DQ. Fix the prompt/CRITIC to detect silent-catch in BUILD output BEFORE EVAL gates it. Three candidate approaches in "iter-0028 execution plan" below — Codex R0 picks one.
+
+3. **Cross-fixture variance (F3 N=3, F9 N=3) BLOCKED until iter-0028 ships.** Codex iter-0027 R-final pivot rule: ≥2/5 DQ on F2 → stop broad fixture expansion → run iter-0028 categorical reliability first. After iter-0028 ships AND F2 N=3 re-run shows 0/3 DQ, then F3 N=3 + F9 N=3 follow as iter-0029.
 
 Everything below this fold supports those three.
 
 ---
 
-## ⛔ Hard operating rule, learned in iter-0021
+## 🧠 What we now know empirically (TL;DR for the next session)
 
-**Pair-review is part of the work, not commentary on it.** Codex R-final on the iter-0021 draft caught a load-bearing fabrication: the draft claimed "F2 and F4 specs do NOT carry the lifecycle note." Codex pulled the actual files (`judge-prompt.txt:225/:219`) and proved the note IS present — the draft cited evidence I had not opened. Without that catch, iter-0022 design would have started from a false mechanism story and shipped a wrong-target fix.
+- **L1 (single-engine Claude solo harness) per-fixture variance is large**, but the mean is healthy. F2 N=4 effective (excluding 1 invalid measurement where both arms produced 0 files): L1 mean **94.5** / stdev **2.89**, L1-L0 mean **+13.25** / stdev **3.50**.
+- **The user's "+5 신뢰성" pushback was correct in spirit AND structure**:
+  - Single-shot suite-avg (+4.4 in iter-0020) was a *blend* of clean (~+13 lift) and silent-catch-DQ (~+8 lift) regimes — not a stable per-fixture estimate.
+  - Cross-judge (Opus sidecar in iter-0025) confirmed +4.44 vs +4.67 within 0.22 — but that's *judge agreement on the blend*, not stable per-fixture data.
+  - **DQ classification rate, not score margin, is the real Mission 1 gate signal.**
+- **`completed:` removal mechanism confirmed N=5 wide** — F2 scope axis stdev = 0.00, all 25/25. iter-0021 mechanism story holds.
+- **L1 has a structural silent-catch DQ rate ~40-50% on F2.** Two distinct silent-catch forms detected: `catch-return fallback` (n2) and `catch returning an object` (n4). Same prompt, same engine, same git baseline.
 
-**Apply to iter-0022**: no claim about fixture state, schema coverage, lint behavior, registry content, paired-arm wall-time, or measurement-pilot readiness may be made without **direct file verification** at the time of the claim. "Codex agreed" is not enough. Pair every non-trivial claim with `cat`/`grep`/`Read` evidence at the moment of writing.
+This reframes iter-0021/0023/0025's "L1 sits below +5 floor" framing. Honest framing: **L1 produces clean BUILD with strong margin in clean runs, AND silent-catch DQ in ~40% of runs. The blend averages below +5 but neither regime is.**
+
+---
+
+## ⛔ Hard operating rules
+
+### Rule 1 — Pair-review IS the work (iter-0021 lesson, repeatedly validated through iter-0027)
+
+Every non-trivial claim must be Codex-verified at the time of writing. Don't trust paraphrases; open the cited file:line. iter-0026 R-final caught me framing the variance result too softly ("attributed to BUILD variance") when the honest framing was "consistent with BUILD variance but not yet attributed." iter-0027 R-final caught the over-read of N=3 mean +12.7 as a clean lift. Pattern: **R-final BEFORE commit when results surprise you.**
+
+### Rule 2 — Cost framing is BANNED
+
+User memory `feedback_no_cost_talk.md` (HARD rule, reinforced 2026-04-29 late evening). Never use "paid run", "model invocation cost", "GO before paid step", "spendy", "$X-Y", or any cost-coded equivalent. User is on subscription. Effectiveness × accuracy × reasonable wall-time are the axes; cost is not. CLAUDE.md "Executing actions with care" must NOT be translated into "warn before more expensive operations" for this user.
+
+### Rule 3 — Verify before claim
+
+Every cited file:line opened at citation time. iter-0021 R-final fabrication-rescue lesson generalizes to every iter since.
+
+### Rule 4 — Explain simply (Korean, decision-maker view)
+
+User repeatedly pushed back on jargon-loaded explanations. Per `feedback_explain_simply.md`: lead with conclusion + options + recommendation; drop internal labels (iter numbers OK, but P1-P7 / α-ε / Q1-Q5 / B-1 etc. NOT in user-facing summaries). Plain Korean. If using a technical term (e.g. silent-catch, DQ, L1), define it in one sentence inline before using.
 
 ---
 
 ## 🧭 STANDING USER DIRECTIVES
 
-Block 1 is **strictly user-verbatim** (the 2026-04-28 directive logged on every HANDOFF.md commit since). Block 2 contains **binding operational excerpts** from each rapid-fire 2026-04-29 directive — they are NOT verbatim, since the originals had connecting words ("ㄱ.", "그리고", "오케이"), interleaved framing, and minor typos that have been edited out for compactness. The full original messages survive in the live conversation transcript; any reconstruction with disputed semantics should consult that transcript directly, not these excerpts. Block 3 is **Codex GPT-5.5's framing that the user adjudicated as canonical** — NOT user-authored, but binding because the user said "1번" to it.
+Block 1 is **strictly user-verbatim** (the 2026-04-28 directive logged on every HANDOFF.md commit). Blocks 2-4 contain **binding operational excerpts** from each rapid-fire 2026-04-29 / 2026-04-30 directive. Originals had connecting words and minor typos that have been edited out for compactness; the live conversation transcript is authoritative if anything is disputed.
 
-Never re-summarize Block 1. If context auto-compacts, FIRST action on resume is re-load this whole section. If a future session finds Block 1 missing or summarized, restore from git history.
+Never re-summarize Block 1. If context auto-compacts, FIRST action on resume is re-load this whole section.
 
 ### Block 1 (2026-04-28 — North Star + 5/6 principles + Codex pair + 산으로 + docs continuous)
 
 > 한가지만 더. 지금 하고있는 것들이 북극성의 목표를 향해서 no xxxx, worldclass xxx 5대 원칙들을 바탕으로 계속 개선을 해나가고 있는게 맞지? 그냥 오로지 점수를 위해서 하는게 아니고 말이야? 확실하게 해주고 항상 codex cli gpt 5.5 와 함께 compenion 으로서 pair 로 논의하고 최선의 결과에 도달할 수 있도록 끝까지 연구하고 개선해줘. 산으로만 가지마. 이제는 됐다 싶을때까지 계속 돌아. 하면서 계속 docs는 업데이트 해주고, 50% 이상 context가 차면 compact 하고 handoff 를 통해서 지금 내가 얘기한것 토씨하나 틀리지 않고 그대로 각인하고 계속 진화시켜나가.
 
-### Block 2 (2026-04-29 evening — six rapid-fire directives that bind iter-0022)
+### Block 2 (2026-04-29 evening — six rapid-fire directives)
 
 > 우리 subscription 으로 하는거니까 무료니 얼마 드니 그런거 하지마 앞으로 메모리에 박아.
 
@@ -52,71 +80,93 @@ Never re-summarize Block 1. If context auto-compacts, FIRST action on resume is 
 
 ### Block 3 (2026-04-29 architecture compromise, user-adjudicated)
 
-User picked option 1 of "BUILD pure execution vs BUILD constrained judgment" trade-off after Codex Round 2 surfaced empirical evidence (F2 spec.md:36 has explicit "no silent catch" yet variant violated; F3 phase-1-build.md:44 has explicit "do not replace real HTTP with mocks" yet variant mock-swapped). Codex framing is canonical (NOT user-verbatim):
+User picked option 1 of "BUILD pure execution vs BUILD constrained judgment" trade-off. Codex framing is canonical (NOT user-verbatim):
 
 > PLAN은 non-negotiable invariants + acceptance contract을 만든다. BUILD는 그 안에서 *constrained design judgment*를 수행한다. EVAL/CRITIC은 BUILD의 judgment를 대체하지 않는 독립 품질 레이어다.
 
 PLAN remains the heaviest phase per Block 2, but BUILD is not pure execution — it has constrained judgment latitude that EVAL/CRITIC must independently audit.
 
-### Memory directives (loaded automatically — cite, do not duplicate)
+### Block 4 (2026-04-29 late evening through 2026-04-30 — engineer-quality + bare-case correction + cost-framing HARD rule + variance pushback + plain explanation)
 
-Memory files at `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`. The following are execution-critical for iter-0022:
+> 기존 bare case가 틀린거라면 그걸 수정해야해. 북극성을 보자고. 유저가 하나부터 끝까지 다 하는게 목적이 아니야. 유저는 계획하고 실행하면 나머지는 처음부터 끝까지 완벽하게 클린업과 문서화, 기술부채 제거 등을 완벽하게 다 해야해. 소프트웨어 엔지니어링을 생각해보자고.
 
-- `feedback_no_cost_talk.md` — never frame work in $/cost terms; user is on subscription. Optimize effectiveness × accuracy × reasonable wall-time.
-- `feedback_l2_pair_collaboration.md` — L2 = pair 협업, not 분업. All L2 phase designs must be 티키타카 / interactive.
-- `feedback_pair_vs_solo_empirical.md` — pair fires at phase P only where measurement shows material lift over solo. Do NOT pre-bake all-phases-pair into mode map.
-- `feedback_codex_collaboration_not_consult.md` — Codex is partner not advisor. Multi-round dialogue until convergence; not single-shot Q&A.
-- `feedback_explain_simply.md` — every user-facing surface = plain language + concise + decision-maker-framed. Conclusion + options + recommendation + what to choose, in that order. Drop internal labels (α/β/D1-D7/P1-P6) from user-facing text.
-- `feedback_codex_cross_check.md` — reason independently first; send Codex rich evidence + falsification ask; surface pushback transparently; user adjudicates.
+→ Adopted in iter-0024 (CLAUDE.md `Bare-Case Guardrail` rewritten: engineer-quality is North-Star promise; broad cleanup stays in standalones; cost discipline = bare-best-of-N, NOT zero-regression-on-bare). EVAL hygiene severity made task-aware (MEDIUM blocking when introduced by this diff; LOW pre-existing).
 
-**Conflict rule**: if HANDOFF and a memory file disagree, stop before editing and ask the user. Do NOT silently choose one.
+> 비용이고 뭐고 그냥 신경쓰지말라고 몇번얘기해.
+
+→ Memory rule `feedback_no_cost_talk.md` upgraded to HARD rule. Includes disguised cost framing: "model invocation step", "GO before paid step", "this step makes calls" all banned. Subscription means no spendy/non-spendy distinction at the decision layer.
+
+> 점수가 신뢰가 있나? +5 라는게 의미가 정말 있나? 4.5나 5.2나 크게 차이가 없을수도 있을것 같은데?
+
+→ User was correct. iter-0023 fixed measurement bugs; iter-0025 cross-judged with Opus 4.7; iter-0027 N=5 paired variance confirmed per-fixture variance ±3-15 dominates the +5 floor signal; **DQ rate (not margin) is the real Mission 1 quality gate**.
+
+> 미션1이 팀으로 가는거고 이건 미래에 하는거고, 일단은 혼자서 단일로 하는 케이스도 충분히 만들어져야 한다고 했잖아. 그건 왜 뛰어넘지?
+
+→ Single-task L1 must clear Mission 1 gate before ANY team / multi-agent work. iter-0026 → iter-0027 → iter-0028 chain is squarely on this path. Team / multi-agent stays as Mission 2/3 destination per Codex δ/ε/β verdict (NOT immediate work).
+
+> 좀 쉽게 설명해줄래?? / 무슨얘기인지 쉽게 설명하고 / 아니 좀 쉽게 설명하라니까
+
+→ Plain-Korean explanation rule = HARD. Define every technical term inline. Lead with one-line conclusion. No jargon walls. iter-0028's user-facing summaries must follow.
+
+### Memory directives (auto-loaded; cite, do not duplicate)
+
+Memory files at `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`. Critical for next session:
+
+- `feedback_no_cost_talk.md` — HARD rule: never use cost framing, including disguised forms.
+- `feedback_l2_pair_collaboration.md` — L2 = pair 협업 (not 분업).
+- `feedback_pair_vs_solo_empirical.md` — pair fires per-phase ONLY where measurement shows lift over solo.
+- `feedback_codex_collaboration_not_consult.md` — Codex is partner not advisor; multi-round dialogue.
+- `feedback_explain_simply.md` — every user-facing surface = plain Korean + concise + decision-maker-framed.
+- `feedback_codex_cross_check.md` — reason independently first; send Codex evidence + falsification ask.
+
+**Conflict rule**: if HANDOFF and a memory file disagree, stop before editing and ask the user.
 
 ---
 
 ## 📍 Branch + project state (verify before editing)
 
 - **Branch**: `benchmark/v3.6-ab-20260423-191315`
-- **Branch tip at this HANDOFF write**: `042492a` (this HANDOFF rotation commit) on top of `c79d45c` (iter-0021 SHA-rotation) on top of `9a9947f` (iter-0021 calibration ship).
-- **Mission 1 active** ([`MISSIONS.md`](MISSIONS.md)). Hard NOs binding. L1-L0 = +4.4 (below +5 floor).
-- **iter-0020** = FAILED-EXPERIMENT-REVERTED-POLICY (commit `948e4bd`). e2e BUILD=Claude routing deleted. Auto-resolve runtime default = `--engine claude`. ideate/preflight/team-* defaults unchanged.
-- **iter-0021** = SHIPPED (calibration overlay only, no code change). L1's only-negative axis is Scope (-4 across F2+F4 from harness DOCS adding `completed:` field beyond lifecycle note's `status:` carve-out). Note-scope-narrow mechanism confirmed via judge `b_breakdown.notes`.
+- **Recent ship trail**: `f4a7e29` (iter-0027 SHA bake) → `4feae35` (iter-0027 ship) → `b06fffd` (iter-0026 SHA bake) → `60c8a38` (iter-0026 ship) → `b5a2a60` (iter-0025 SHA bake) → `6f0e693` (iter-0025 ship) → `fd58abf` (iter-0024 SHA bake) → `349818f` (iter-0024 ship) → `109ca7d` (iter-0023 SHA bake) → `356f056` (iter-0023 ship) → `5f9020e` (iter-0022 SHA bake) → `8fcc509` (iter-0022 ship).
+- **Mission 1 active** ([`MISSIONS.md`](MISSIONS.md)). Hard NOs binding.
+- **iter-0020** = FAILED-EXPERIMENT-REVERTED-POLICY (commit `948e4bd`). e2e BUILD=Claude routing deleted. Auto-resolve runtime default = `--engine claude`.
+- **iter-0021** = SHIPPED (calibration overlay). Per-axis L1-L0 readout: spec +7 / cons +18 / scope -4 / qual +19 (single-shot, suite avg +4.4).
+- **iter-0022** = SHIPPED. PLAN-pair infrastructure (5 deliverables: schema doc + idgen + lint + preflight + auto-resolve `--plan-path`). Real provider/model invocations: 0.
+- **iter-0023** = SHIPPED. Measurement trust: judge.sh axis [0,25] clamp + ship-gate.py L1 (`solo_over_bare`) enforcement.
+- **iter-0024** = SHIPPED. Bare-Case Guardrail correction. EVAL hygiene severity task-aware.
+- **iter-0025** = SHIPPED. Opus 4.7 sidecar cross-judge: GPT vs Opus suite avg L1-L0 +4.44 vs +4.67. Quality magnitude single-judge artifact (`-4` disagreement).
+- **iter-0026** = SHIPPED-MECHANISM. F2 single-shot after `completed:` removal: scope 23→25 ✓; L1 total 94→81 (tail event).
+- **iter-0027** = DATA. F2 N=5 paired variance: L1 mean 94.5 / stdev 2.89 (n=4 effective); L1 DQ rate 2/5 (40%). Codex pivot threshold reached → iter-0028 categorical-reliability work.
 
-Cold-start sanity check (run before any edit; ~30s):
+### Cold-start sanity check (run before any edit; ~30s)
 
 ```bash
-# 1. Branch tip in expected range (top entries on this branch should include c79d45c iter-0021 SHA-rotation
-#    or a later iter-0022 commit; if a different iter-0022 commit exists, treat as in-flight and inspect).
+# 1. Branch tip in expected range (top entry on this branch should be the
+#    iter-0027 SHA bake `f4a7e29` or an iter-0028 commit added by the next session).
 git log --oneline -10
 
-# 2. Working tree clean (`.claude/scheduled_tasks.lock` is gitignored runtime artifact and may appear).
+# 2. Working tree clean (`.claude/scheduled_tasks.lock` is gitignored runtime).
 git status --short
 
-# 3. Lint full pass.
+# 3. Lint full pass (Check 13 = idgen determinism, added in iter-0022).
 bash scripts/lint-skills.sh
 # Expected: "All checks passed."
 
-# 4. Mirror parity (critical-path doc unchanged between source and installed).
+# 4. Mirror parity (critical-path docs unchanged between source and installed).
 diff -q config/skills/_shared/runtime-principles.md .claude/skills/_shared/runtime-principles.md
+diff -q config/skills/_shared/pair-plan-schema.md   .claude/skills/_shared/pair-plan-schema.md
 # Expected: silent.
 
-# 5. iter-0021 calibration iter file exists.
-ls autoresearch/iterations/0021-principle-bin-calibration.md
+# 5. iter-0027 file exists (most recent shipped iter file).
+ls autoresearch/iterations/0027-f2-paired-variance-n5.md
 # Expected: file present.
 
-# 6. iter-0022 deliverables NOT yet on disk (start-from-scratch confirmation).
-#    `test ! -e` exits 0 only when the path does NOT exist; chained &&-list passes
-#    iff all four are absent. NEVER use `ls ... 2>/dev/null` here — stderr swallow
-#    silently turns a partially-shipped iter-0022 into "looks fine."
-test ! -e config/skills/_shared/pair-plan-schema.md && \
-test ! -e benchmark/auto-resolve/scripts/pair-plan-idgen.py && \
-test ! -e benchmark/auto-resolve/scripts/pair-plan-lint.py && \
-test ! -e autoresearch/scripts/pair-plan-preflight.sh && \
-echo "iter-0022 not started — proceed"
-# Expected: prints "iter-0022 not started — proceed". If exit non-zero or no
-# output, at least one deliverable already exists; inspect commit history (git
-# log --oneline | grep 0022) before adding.
+# 6. iter-0028 deliverables NOT on disk yet (start-from-scratch confirmation).
+test ! -e config/skills/devlyn:auto-resolve/scripts/forbidden-pattern-check.py && \
+echo "iter-0028 not started — proceed"
+# Expected: prints "iter-0028 not started — proceed". (Filename is candidate
+# B; if Codex R0 picks A or C the file may have a different name.)
 
-# 7. Auto-resolve runtime default still `--engine claude` (iter-0020 closeout state).
+# 7. Auto-resolve runtime default still `--engine claude`.
 grep -E '^[[:space:]]+- `--engine MODE`' config/skills/devlyn:auto-resolve/SKILL.md
 # Expected: line includes `(claude)` not `(auto)`.
 ```
@@ -125,254 +175,68 @@ If any unexpected output, do NOT proceed. Surface to user.
 
 ---
 
-## 🛠️ iter-0022 execution plan — 5 deliverables, real provider/model invocations = 0
+## 🛠️ iter-0028 execution plan — silent-catch detection in BUILD before EVAL
 
-### Why this iter exists (PRINCIPLES.md pre-flight 0 + #7)
+### Why this iter exists (PRINCIPLES.md pre-flight 0 + Codex iter-0027 R-final pivot)
 
-iter-0021 calibration showed L1's only-negative axis is Scope (-4 across F2+F4) AND Mission 1 binding gate L1-L0=+4.4 < +5 floor. The user-adjudicated direction (post 3-round Codex dialogue 2026-04-29) is to test PLAN-pair architecture as the L2 redesign, NOT to chase the +0.4 scope delta directly. iter-0022 builds the infrastructure that lets iter-0023 measure causally whether pair PLAN rescues Codex BUILD on the iter-0020 failure set.
+iter-0027 N=5 measured L1 silent-catch DQ rate **2/5 (40%)** on F2 alone — at the same git baseline `b06fffd`, same engine (Claude solo), same prompt. Different runs hit different silent-catch sites:
+- n2: `Forbidden disqualifier-severity catch-return fallback` (the `catch (e) { return null }` pattern)
+- n4: `Forbidden-pattern hit for catch returning an object` (the `catch (e) { return {} }` variant)
 
-This iter is **the LAST attribution-infrastructure iter** before behavior change (iter-0023 = measurement pilot with real provider/model invocations, iter-0024+ = harness change based on iter-0023 outcome). PRINCIPLES.md:22 holds.
+This is NOT noise. It's a structural BUILD failure mode that the current pipeline catches only at EVAL after BUILD has already shipped DQ-grade code. iter-0024 introduced task-aware MEDIUM hygiene severity. iter-0028 extends the principle: **silent-catch / forbidden-pattern detection moves into BUILD-phase verification, not just post-hoc EVAL gating**.
+
+**Decision this iter unlocks**: whether structural silent-catch DQ rate drops to 0/3 (or close) when BUILD is required to self-check for forbidden-pattern matches before declaring its phase complete. If yes → expand cross-fixture (F3 N=3 + F9 N=3) and Mission 1 gate decision becomes unambiguous. If no → silent-catch is a model-level failure mode that needs different surface.
 
 ### Mission 1 service
 
-Serves Mission 1 gate 1 (L1 vs L0 quality) indirectly: iter-0023 produces evidence on whether PLAN-pair architecture lifts L2 categorically; if YES, L2 product surface re-opens with empirical justification; if NO, L2 stays disabled per iter-0020 closeout and Mission 1 must close on L1-only path. Either outcome is mission-bound. Mission 1 hard NO list (worktree, parallel, resource-lease, run-scoped state, queue metrics) untouched.
+Serves Mission 1 gate 1 (L1 vs L0 quality) directly. The user's "단일 먼저, 그 다음 팀" sequencing is honored: this is single-task work. Mission 1 hard NOs untouched.
 
-### The 5 deliverables (with explicit acceptance gates)
+### Three deliverable candidates (Codex R0 picks one)
 
-**Deliverable 1 — `pair-plan.json` schema spec**
+The next session's first iter-0028 R0 task is to pick between these. Listing them so the next session has the candidate set without re-deriving:
 
-Location: `config/skills/_shared/pair-plan-schema.md`. Mirror to `.claude/skills/_shared/pair-plan-schema.md` per existing critical-path lint rule (Check 6). Add to lint allow-list.
+**Candidate A — BUILD prompt self-check**
+Add a final sanity-check step to `references/phases/phase-1-build.md`: before declaring BUILD complete, BUILD agent must `grep -nE '<forbidden_pattern_regex>' <changed_files>` and either fix any hits or surface them in the build summary. Cheapest implementation; relies on prompt compliance (LLM following instructions). Risk: same model that produces silent-catch may also miss its own self-check.
 
-Required top-level fields (inline executable contract — implementing session must build these exactly). Fence is `jsonc` because the example carries explanatory `// comment` annotations; the real `pair-plan.json` files written by tools MUST be strict JSON with no comments.
+**Candidate B — Mechanical BUILD-GATE forbidden-pattern check (recommended)**
+Extend `spec-verify-check.py` (or add `forbidden-pattern-check.py`) to scan changed files for `expected.json:forbidden_patterns` regex matches and emit CRITICAL `correctness.silent-catch-introduced` finding when any match. Integrate into BUILD_GATE phase (which already wires the fix-loop). Mechanical, deterministic, model-agnostic. Highest reliability. ~50-100 LOC script. Pattern matches iter-0019.6 (`spec-verify-check.py`) which mechanized verification commands successfully.
 
-```jsonc
-{
-  "schema_version": "1",
-  "plan_status": "final | blocked | draft",
-  "planning_mode": "solo | pair",
-  "source": {
-    "spec_path": "...",
-    "spec_sha256": "...",
-    "expected_path": "...",        // optional, present when expected.json exists
-    "expected_sha256": "...",      // optional, paired with expected_path
-    "oracle_contract_sha256": "...", // present when oracle metadata is the registry source
-    "rubric_sha256": "..."         // RUBRIC.md sha256 at plan time
-  },
-  "authority_order": [
-    "spec.md", "expected.json/rubric", "phase prompt", "model preference"
-  ],
-  "canonical_id_registry_sha256": "...",
-  "rounds": [
-    {
-      "round": 1,
-      "claude_draft_sha256": "...",
-      "codex_draft_sha256": "...",
-      "merged_sha256": "...",
-      "note": "..."
-    }
-    // up to 3 rounds
-  ],
-  "accepted_invariants": [
-    {
-      "id": "no_silent_catch_return_fallback",   // canonical ID — strict echo from registry
-      "paraphrase": "...",                       // human-readable; informational only
-      "source_refs": ["spec.md:36", "expected.forbidden_patterns/0"],
-      "operational_check": "BUILD output must not contain `catch[^{]*\\{[^}]*return [^}]*\\}`",
-      "authority": "expected.json/forbidden_patterns"
-    }
-  ],
-  "rejected_alternatives": [
-    {
-      "id": "alt_silent_catch_with_log",
-      "rationale": "Authority order says expected.json/forbidden_patterns dominates; logging does not change visible-error contract.",
-      "conflicts_with_ids": ["no_silent_catch_return_fallback"],
-      "claude_stamp": "rejected",
-      "codex_stamp": "rejected"
-    }
-  ],
-  "unresolved": [],                              // MUST be empty in final plans
-  "escalated_to_user": [],                       // populated only during draft/blocked; final must have user_resolution per item if non-empty
-  "model_stamps": {
-    "claude": {
-      "status": "sign | block",
-      "blocked_ids": [],
-      "signed_plan_sha256": "...",               // sha256 of THIS file pre-stamp
-      "model": "claude-opus-4-7",
-      "timestamp": "2026-04-29T..."
-    },
-    "codex": {
-      "status": "sign | block",
-      "blocked_ids": [],
-      "signed_plan_sha256": "...",
-      "model": "gpt-5.5",
-      "timestamp": "..."
-    }
-  }
-}
-```
+**Candidate C — Pre-EVAL CRITIC pass**
+Re-route CRITIC's design sub-pass to fire BEFORE EVAL (currently after, in PHASE 3). Requires re-thinking post-EVAL invariant (CRITIC currently is findings-only post-EVAL). Most architectural; highest risk of disturbing other invariants.
 
-Hard rules in the spec doc:
-- `unresolved.length > 0` → `plan_status` MUST be `blocked` or `draft`. Final accepted plan MUST have `unresolved == []`.
-- `accepted_invariants[].id` MUST be drawn from the canonical registry (no paraphrase, no synonyms, no new IDs at plan-time). Paraphrase is informational only.
-- `model_stamps.{claude,codex}.signed_plan_sha256` MUST equal the sha256 of the **canonical pre-stamp content**, defined precisely as: load the JSON object, set `model_stamps` to the empty object `{}`, serialize using `json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)` (Python stdlib semantics; `allow_nan=False` raises on `NaN`/`Infinity`), encode UTF-8, then `sha256` those bytes. Both stamps sign the SAME canonical pre-stamp form, so both `signed_plan_sha256` values MUST be byte-identical. No trailing newline, no key reordering, no whitespace variation. Reject duplicate keys in the JSON object (Python `json.loads` accepts duplicates by default — use `object_pairs_hook=lambda pairs: dict(pairs) if len(pairs) == len({k for k,_ in pairs}) else (_ for _ in ()).throw(ValueError("duplicate key"))` or equivalent guard). Avoid floats in the schema unless explicitly required by a future field; integers and strings serialize byte-stably across implementations, floats do not. No Unicode normalization is applied — the input bytes are sha256'd as-is, so all writers must agree on input form (NFC recommended for any user-supplied strings).
-- Both `model_stamps.claude.status` AND `model_stamps.codex.status` MUST equal `sign` for `plan_status: final`.
-- `authority_order` MUST be the exact 4-string array above (snapshot at iter-0022 ship time; future iters can amend with explicit version bump).
+**Recommendation (will be Codex R0 input, NOT committed yet)**: Candidate B — mechanical check is principle-#3 root-cause (forbidden patterns are mechanically detectable; relying on LLM self-check for them is a workaround). Same architectural pattern as iter-0019.6.
 
-Acceptance: doc exists at the path; lint Check 6 (mirror parity) passes; the schema is self-contained enough that a fresh session can implement deliverables 2-3 without re-reading R1-R3 Codex dialogue.
+### iter-0028 acceptance gate (pre-registered before R0)
 
-**Deliverable 2 — `pair-plan-idgen.py`**
+After whichever candidate ships:
+- **F2 N=3 paired re-run** at iter-0028 commit. Acceptance: **L1 DQ rate 0/3** (or at most 1/3 if pattern pre-existing in test-repo scaffold).
+- L1-L0 mean lift on F2 stays ≥ +10 (clean-run regime preserved).
+- Lint Check 13 still PASSES post-mirror.
+- No regression on iter-0020 baseline F1/F4/F6/F7 single-fixture spot-check.
 
-Location: `benchmark/auto-resolve/scripts/pair-plan-idgen.py`.
+If acceptance passes → iter-0029 = F3 N=3 + F9 N=3 cross-fixture variance.
+If acceptance fails → iter-0028 close-out with revert; pivot to Candidate C (pre-EVAL CRITIC) in iter-0029.
 
-**Critical clarification (Codex R-final catch)**: fixture roots (`benchmark/auto-resolve/fixtures/F2-cli-medium-subcommand/`, `.../F3-backend-contract-risk/`) currently contain only `expected.json` + `metadata.json` + `setup.sh` + `spec.md` + `task.txt` + `NOTES.md` — there are NO `oracle-*.json` files at fixture root. Oracle category definitions live in the **checked-in oracle scripts** at `benchmark/auto-resolve/scripts/oracle-test-fidelity.py` / `oracle-scope-tier-a.py` / `oracle-scope-tier-b.py`. Their JSON outputs (`oracle-*.json`) only exist in archived per-arm result dirs (`benchmark/auto-resolve/results/.../<fixture>/<arm>/oracle-*.json`) — using those would contaminate the blind preflight with iter-0020 evidence. **Idgen MUST invoke checked-in oracle scripts with the `--list-categories` flag** (which iter-0022 adds to the oracle scripts as part of this deliverable). Reading the script source files directly is also acceptable as a fallback. Reading any path under `benchmark/auto-resolve/results/` is FORBIDDEN.
+### iter-0028 hard NO list
 
-Reads a fixture's `expected.json` + introspects checked-in oracle scripts; emits `canonical_id_registry.json` with `required_invariants[]`, each entry `{id, source_field, source_ref, operational_check}`. Behavior:
-
-- For each `expected.json.forbidden_patterns[i]`: emit ID. If item has explicit `id` field, use it; otherwise generate slug deterministically (e.g. `forbidden_pattern_silent_catch_return_fallback`).
-- For each `expected.json.verification_commands[i]`: emit ID covering exit + stdout-contains + stdout-not-contains assertions.
-- `required_files`, `forbidden_files`, `max_deps_added`, `spec_output_files`: each becomes a registry entry.
-- **Oracle category enumeration**: idgen invokes each oracle script with a `--list-categories` flag (which iter-0022 must add to the oracle scripts as part of this deliverable, returning JSON like `{"categories": [{"id": "real_http_server_helper", "applies_when": "fixture has tests/ that touch HTTP server"}, ...]}`). Idgen filters categories to those that apply to the current fixture (gate via `applies_when` predicate or per-fixture allowlist in `metadata.json`). Each applicable category becomes a registry entry. **Do not read archived `oracle-*.json` result artifacts under any circumstance** — that path leaks iter-0020 outcome data into the registry source-of-truth.
-- Output JSON sorted deterministically (key order, list order); same input ⇒ same SHA256.
-- Allow `expected.json` items to carry optional `id` field for stable canonical naming. Slug fallback for items without explicit `id`.
-
-Acceptance:
-- Run against `benchmark/auto-resolve/fixtures/F2-cli-medium-subcommand/` → registry contains explicit ID for the silent-catch-return-fallback forbidden pattern (origin: `expected.json.forbidden_patterns[0]`).
-- Run against `benchmark/auto-resolve/fixtures/F3-backend-contract-risk/` → registry contains explicit ID for `real_http_server_helper`-class invariant (origin: oracle-test-fidelity script's `--list-categories` output, predicate-matched against F3's spec/expected).
-- Idgen never opens any path under `benchmark/auto-resolve/results/`. Acceptance test (mandatory): instrument idgen's open/read calls (e.g. via `unittest.mock.patch('builtins.open')` wrapper, or by trapping `os.open` syscalls) so that any path containing `/results/` raises an explicit assertion. Run idgen against F2 + F3 with the trap installed; both must succeed. The symlink-fake-into-fixture-root test is INSUFFICIENT because it only proves "fixture-root oracle-*.json is ignored," not "results/ tree is never read."
-- Same input, two consecutive runs → identical SHA256 of output (deterministic).
-- F2 and F3 generated registry snapshots committed under `benchmark/auto-resolve/fixtures/<F>/expected-pair-plan-registry.json` so iter-0023 can diff against the snapshot.
-
-**Deliverable 3 — `pair-plan-lint.py`**
-
-Location: `benchmark/auto-resolve/scripts/pair-plan-lint.py`.
-
-Reads a `pair-plan.json` and the corresponding `canonical_id_registry.json` (from deliverable 2). Verifies:
-
-- Every `accepted_invariants[].id` exists in the registry exactly (string match, no paraphrase).
-- Every registry entry marked `required: true` (or by default if no flag) appears in `accepted_invariants[]` OR `rejected_alternatives[].conflicts_with_ids[]` OR `escalated_to_user[]` (must be accounted for somewhere).
-- `unresolved == []` for `plan_status: final`.
-- `model_stamps.claude.signed_plan_sha256 == model_stamps.codex.signed_plan_sha256` AND equals the canonical pre-stamp sha256 of the file.
-- Both stamps `status: sign` for `plan_status: final`.
-- `authority_order` is the canonical 4-string snapshot (no drift).
-- Source SHA256s in `source.{spec_sha256, expected_sha256, oracle_contract_sha256, rubric_sha256}` match actual file SHA256 at lint time (catches stale plans against changed sources).
-
-Exit codes: 0 = pass, 1 = fail. Output: machine-readable JSON verdict on stdout (`{ok: bool, errors: [...]}`) + human summary on stderr.
-
-Acceptance:
-- Lint a fixture-passing sample plan (committed under `benchmark/auto-resolve/fixtures/F2-cli-medium-subcommand/pair-plan.sample-pass.json`) → exit 0 + `ok: true`.
-- Lint a fixture-failing sample plan (missing `no_silent_catch_return_fallback` ID, committed under `benchmark/auto-resolve/fixtures/F2-cli-medium-subcommand/pair-plan.sample-fail.json`) → exit 1 + `ok: false` + error `missing_required_id`.
-- Lint a sample with `unresolved: [...]` → exit 1.
-- Lint a sample with mismatched stamps → exit 1.
-
-**Deliverable 4 — `pair-plan-preflight.sh`**
-
-Location: `autoresearch/scripts/pair-plan-preflight.sh`.
-
-Orchestrates the no-code negative-screen preflight per Codex R3 D4. For each requested fixture:
-
-1. Stage blind input bundle: original `spec.md` + `expected.json` + `metadata.json` + `task.txt` + the registry generated by deliverable 2 (`canonical_id_registry.json`, derived from idgen running over expected.json + oracle scripts' `--list-categories`). DO NOT stage any `oracle-*.json` file from anywhere — fixture roots don't have them, and archived ones at `benchmark/auto-resolve/results/.../<fixture>/<arm>/oracle-*.json` are FORBIDDEN per the oracle-source clarification above. Hide archived diffs/judge/labels. Blind fixture name (random ID).
-2. Generate `canonical_id_registry.json` via deliverable 2 → snapshot to output dir.
-3. Run `solo-plan` (one model, one pass — Claude OR Codex via `claude -p` / `codex-monitored.sh` subprocess) to produce `solo-plan.json`. Apply lint.
-4. Run `pair-plan` simulation: independent Claude draft + independent Codex draft → merge/challenge round (max 3 rounds per Codex R3 stopping rule) → final `pair-plan.json`. Apply lint.
-5. Compare: does pair plan capture canonical IDs that solo plan missed?
-6. Write `verdict.json` (machine-readable): `{run_id, fixture_id, blind_alias, canonical_ids_total, solo_caught_count, pair_caught_count, pair_minus_solo_lift, verdict: "advance | abort", reason: "..."}`.
-
-Output dir: `benchmark/auto-resolve/results/<run_id>/<blind_fixture>/plan-preflight/{input.bundle/, canonical-ids.json, solo-plan.json, drafts/claude.json, drafts/codex.json, merged/pair-plan.json, lint.json, verdict.json}`.
-
-Subprocess hygiene: `claude -p` and `codex-monitored.sh` invocations with explicit context (only the staged blind bundle + registry; no archived state). `codex-monitored.sh` per `_shared/codex-monitored.sh` rules (no piping output).
-
-Acceptance:
-- Script runs end-to-end against a synthetic test bundle (committed under `autoresearch/scripts/test-fixtures/synthetic-preflight/`) without invoking real provider/model subprocesses (use `--dry-run` mode that swaps `claude -p` / `codex-monitored.sh` with deterministic stub responses).
-- Verdict structure validates against an inline JSON schema in the script.
-- Output dir layout exactly matches the spec above.
-
-**Deliverable 5 — `/devlyn:auto-resolve` input contract change**
-
-Location: `config/skills/devlyn:auto-resolve/SKILL.md` (PHASE 0 step 1) + supporting references where invocation contract is documented.
-
-Behavior:
-
-- Legacy invocation `/devlyn:auto-resolve "Implement per spec at <path>"` continues to work unchanged (`plan_mode=legacy_none`). PHASE 0 records `state.plan.mode = "legacy_none"`.
-- New invocation accepts JSON-style payload `{spec_path: "...", plan_path: "..."}` OR named flag `--plan-path <path>`. Sets `state.plan.mode = "pair"`.
-- When `plan_mode == "pair"`:
-  - Run `pair-plan-lint.py` on `plan_path` BEFORE PHASE 1 BUILD. Failure → terminal verdict `BLOCKED:plan-invalid` (no fallback to legacy_none).
-  - `state.plan.path` records the validated path. BUILD/EVAL/CRITIC reference accepted_invariants from the plan.
-  - Metric collection (per-arm scores, fix-loop counts, etc.) is tagged `plan_mode=pair`.
-- When `plan_mode == "legacy_none"`: pipeline runs as today; no plan validation; metrics tagged `plan_mode=legacy_none`. PLAN-pair statistics MUST NOT be aggregated for legacy_none runs (iter-0023 measurement integrity).
-
-Acceptance:
-- Existing 9-fixture suite runs cleanly under legacy_none (regression test: no ship-gate behavior change for runs without `plan_path`).
-- A run with malformed `plan_path` (lint fail) terminates with `BLOCKED:plan-invalid` before BUILD.
-- A run with `plan_path` pointing to a `unresolved.length > 0` plan terminates with `BLOCKED:plan-invalid`.
-- `pipeline.state.json:plan.mode` is one of `legacy_none | pair` and matches invocation form.
-- README / SKILL.md examples show both invocation forms.
-
-### iter-0022 ship gate (every item must pass)
-
-- All 5 deliverables exist at their canonical paths.
-- Lint Check 6 (mirror parity) covers `pair-plan-schema.md` mirror.
-- New lint check (Check 13 candidate) verifies idgen output deterministic across two runs (sha256 stable). Add to `scripts/lint-skills.sh`.
-- `pair-plan-lint.py` ships with both pass and fail sample fixtures.
-- `pair-plan-preflight.sh --dry-run` exits 0 against the synthetic test bundle.
-- 9-fixture suite legacy-mode run (single `--engine claude` arm, dry-run) confirms no regression in legacy invocation path.
-- F2 + F3 canonical ID registries committed as snapshots; iter-0023 can diff against them.
-- iter-0022 file at `autoresearch/iterations/0022-pair-plan-infrastructure.md` cites pre-flight 0 + P1-P7 with concrete evidence.
-- Codex pair-review trail ≥ 2 rounds (R0 design, R1 diff). All findings adopted or surfaced as user-adjudicated divergence.
-- DECISIONS.md appended with `0022 | SHIPPED | ...` line.
-
-### iter-0022 hard NO list
-
-- ❌ NO real provider/model auto-resolve invocations during iter-0022. All work is local code + local lint + dry-run subprocess stubs. iter-0022's contract is "infrastructure only; the measurement pilot lives in iter-0023."
-- ❌ NO change to RUBRIC.md or judge-prompt logic. Scoring is frozen.
-- ❌ NO new fixtures. F2/F3 are existing; registry snapshots are derivative artifacts.
-- ❌ NO restart of iter-0020 e2e routing. Deleted scripts stay deleted.
-- ❌ NO change to ideate / preflight / team-* defaults.
-- ❌ NO touching Mission 2 surfaces (worktree, parallel, leases). Mission 1 hard NOs binding.
+- ❌ NO change to `judge-prompt.txt` or judge rubric (RUBRIC.md:3 freeze still binding).
+- ❌ NO new fixture.
+- ❌ NO multi-agent coordination beyond pipeline.state.json.
+- ❌ NO ideate/preflight/team-* default change.
+- ❌ NO Mission 2 surface touch (worktree, parallel, lease, queue).
+- ❌ NO "while I'm here" cleanup of unrelated code paths.
 
 ---
 
-## 🚧 iter-0023 stub — measurement pilot (real provider/model invocations). BLOCKED until checklist passes
+## 🚧 iter-0029+ deferred queue
 
-iter-0023 measures whether pair PLAN materially improves Codex BUILD over solo PLAN on F2 + F3.
-
-### Checklist before iter-0023 R0 starts (verify each path / behavior)
-
-- [ ] `config/skills/_shared/pair-plan-schema.md` exists; mirror at `.claude/skills/_shared/pair-plan-schema.md` byte-identical.
-- [ ] `benchmark/auto-resolve/scripts/pair-plan-idgen.py` exists; running it on F2 produces a registry containing the silent-catch-class invariant; running on F3 produces one containing the real-HTTP-server invariant; two consecutive runs same SHA256.
-- [ ] `benchmark/auto-resolve/scripts/pair-plan-lint.py` exists; passes the sample-pass plan; fails the sample-fail plan with `missing_required_id`.
-- [ ] `autoresearch/scripts/pair-plan-preflight.sh --dry-run` produces a verdict.json whose schema validates inline.
-- [ ] `/devlyn:auto-resolve` accepts `--plan-path` and BLOCKS on lint-fail/unresolved>0/missing.
-- [ ] 9-fixture legacy-mode dry-run passes lint without behavior change.
-- [ ] iter-0022 SHIPPED in DECISIONS.md.
-
-If any item fails, iter-0023 does not start. Surface the failing item to user.
-
-### iter-0023 design (pre-registered, do not edit during execution)
-
-- **Negative-screen step (no measurement-pilot invocations yet)**: run `pair-plan-preflight.sh` against F2 + F3 in real (not dry-run) mode. Pair PLAN must capture every must-hit canonical ID for F2 (no_silent_catch_return_fallback, EACCES_specific_handling, ...) AND for F3 (preserve_real_http_server_helper, no_mock_swap, scoped_file_set, ...). If pair plan misses any must-hit ID OR `unresolved > 0` after 3 rounds OR either model `block` stamp → preflight FAIL.
-- **Preflight FAIL action**: label outcome `plan_omission`. iter-0023 closes with verdict "PLAN-pair candidate failed cheap negative screen on this fixture set; not falsified globally; pivot next iter to CRITIC-first measurement." iter-0024+ candidate = inverted CRITIC pair.
-- **Preflight PASS action**: proceed to measurement pilot.
-- **Measurement pilot design**:
-  - Arm A (control): solo PLAN + Codex BUILD + solo CRITIC + solo EVAL on F2 + F3. Measures iter-0020 baseline (Codex-as-builder).
-  - Arm B (test): pair PLAN (output of preflight) + Codex BUILD + solo CRITIC + solo EVAL on F2 + F3. Measures whether pair-PLAN rescues Codex BUILD.
-  - Same git baseline, same Codex BUILD invocation, same downstream phases. Only PLAN differs.
-- **Pre-registered acceptance** (no retroactive edits):
-  - Arm B beats Arm A by ≥ +5 on judge-axis-sum on at least one of {F2, F3}, AND no fixture regresses by > -3.
-  - Arm B has 0 forbidden_pattern DQ on F2 (the iter-0020 silent-catch failure must not recur).
-  - Arm B has 0 mock-swap oracle hits on F3 (the iter-0020 test-fidelity failure must not recur).
-- **Outcome attribution labels** (pre-registered): `plan_omission` (preflight FAIL), `plan_capture_no_lift` (preflight PASS but Arm B ≤ Arm A — pair PLAN wrote IDs but Codex BUILD violated anyway → confirms BUILD has constrained-judgment latitude), `plan_capture_with_lift` (preflight PASS + Arm B > Arm A — PLAN-pair architecture validated for next-iter L2 ship discussion).
-- **Wall ratio guard**: Arm B / Arm A wall ratio recorded. Per NORTH-STAR ops test #7, if `Arm-B-best-of-M` does not beat `Arm-A-best-of-M` where M = wall ratio, efficiency contract fails even on quality lift. Document but do not gate iter-0023 verdict on this — surface as separate ship-decision input.
-
-### iter-0023 hard NO list
-
-- ❌ NO start before iter-0022 checklist clears.
-- ❌ NO retroactive edits to acceptance criteria after data lands.
-- ❌ NO bundling iter-0024 (verdict-driven harness change) into iter-0023.
-- ❌ NO changing RUBRIC.md mid-window.
+- **iter-0029**: F3 N=3 + F9 N=3 paired variance (cross-fixture generalization). BLOCKED until iter-0028 acceptance passes.
+- **iter-0030 (candidate)**: ship-gate.py language change (Codex iter-0027 R-final Q3) — single-shot = smoke evidence; ship-readiness requires N≥3 paired floor enforcement. Small doc + script change.
+- **iter-0031+ (candidate)**: real-project trial (NORTH-STAR ops test #14) once Mission 1 gate clears empirically.
 
 ---
 
-## 📋 Mission 1 hard NO list (binding for iter-0022 + iter-0023)
+## 📋 Mission 1 hard NO list (binding for iter-0028+)
 
 - ❌ No worktree-per-task substrate (Mission 2).
 - ❌ No parallel-fleet smoke / N≥2 simultaneous runs.
@@ -390,29 +254,39 @@ If any item fails, iter-0023 does not start. Surface the failing item to user.
 ## 📚 Read-order on cold start
 
 1. [`NORTH-STAR.md`](NORTH-STAR.md) — project goal (L0/L1/L2 contract, 14 ops tests, real-project trial gate).
-2. **This file** — operating context. `START-HERE` block + `STANDING USER DIRECTIVES` + `iter-0022 execution plan` are load-bearing for the next session's entire run.
-3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + P1-P7. Cite each in iter-0022's iter file.
+2. **This file** — operating context. `START-HERE` block + `STANDING USER DIRECTIVES` + `iter-0028 execution plan` are load-bearing for the next session.
+3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7. Cite each in iter-0028's iter file.
 4. [`MISSIONS.md`](MISSIONS.md) — confirms Mission 1 active, hard NOs binding.
-5. [`CLAUDE.md`](../CLAUDE.md) — runtime contract (Subtractive-first, Goal-locked, No-workaround, Evidence — mirrored to `_shared/runtime-principles.md`).
-6. `autoresearch/DECISIONS.md` — append-only ship/revert log. Latest entries: `0020 | FAILED-EXPERIMENT-REVERTED-POLICY` + `0021 | SHIPPED`.
-7. [`autoresearch/iterations/0021-principle-bin-calibration.md`](iterations/0021-principle-bin-calibration.md) — most recent iter file. Read for the per-axis L1-L0 readout AND for the explicit P2 ⚠️ rescue-note about the fabrication caught at R-final. iter-0022 inherits the discipline.
-8. `config/skills/_shared/runtime-principles.md` — runtime contract sub-agents consume.
-9. Memory directives (auto-loaded; cited above; do not duplicate without conflict-rule check).
+5. [`CLAUDE.md`](../CLAUDE.md) — runtime contract. `Bare-Case Guardrail` was rewritten in iter-0024 (engineer-quality is North-Star promise; cost discipline = bare-best-of-N).
+6. `autoresearch/DECISIONS.md` — append-only ship/revert log. Latest entries: 0022 → 0027.
+7. [`autoresearch/iterations/0027-f2-paired-variance-n5.md`](iterations/0027-f2-paired-variance-n5.md) — most recent iter file. The DQ rate 2/5 finding is the load-bearing input for iter-0028.
+8. [`autoresearch/iterations/0026-completed-removal-scope-axis-probe.md`](iterations/0026-completed-removal-scope-axis-probe.md) — single-shot tail event that surfaced the variance question.
+9. [`autoresearch/iterations/0025-opus-sidecar-cross-judge.md`](iterations/0025-opus-sidecar-cross-judge.md) — cross-judge data (Quality axis magnitude single-judge artifact; suite avg robust).
+10. `config/skills/_shared/runtime-principles.md` — runtime contract sub-agents consume.
+11. Memory directives (auto-loaded; cited above).
 
 ---
 
-## 🤝 Codex pair-review pattern for iter-0022 (mandatory)
+## 🤝 Codex pair-review pattern for iter-0028 (mandatory)
 
-Per `feedback_codex_collaboration_not_consult.md` + `feedback_codex_cross_check.md`:
+Per `feedback_codex_collaboration_not_consult.md`:
 
-- **Multi-round, not one-shot.** Plan for 2-3+ rounds: R0 = design draft, R1 = diff review, R-final = pre-commit lock. Sometimes more.
-- **Position-stating, not verdict-asking.** I state position with evidence; Codex pushes back; I respond; iterate to convergence.
-- **Convergence is the stop.** Not "Codex agreed." Stop when neither has new substantive critique.
-- **Per-round prompt shape**: rich evidence + falsification ask + my response to prior round. Use `bash config/skills/_shared/codex-monitored.sh -C /Users/aipalm/Documents/GitHub/devlyn-cli -s read-only -c model_reasoning_effort=xhigh "<prompt>"`. Never pipe wrapper output.
-- **Verify before claim.** Per the iter-0021 lesson at the top of this file: every cited file:line must be opened at the time of citation, not assumed from memory.
+- **Multi-round, not one-shot.** Plan for R0 (design / candidate selection) + R1 (diff review) + R-final (post-test interpretation, especially when results surprise you).
+- **Position-stating, not verdict-asking.** State position with evidence; Codex pushes back; iterate.
+- **Convergence is the stop.** Not "Codex agreed."
+- **Per-round prompt shape**: rich evidence + falsification ask + my response to prior round. Use:
+  ```bash
+  bash config/skills/_shared/codex-monitored.sh \
+    -C /Users/aipalm/Documents/GitHub/devlyn-cli \
+    -s read-only \
+    -c model_reasoning_effort=xhigh \
+    "<prompt>"
+  ```
+  Never pipe wrapper output (`| tail`, `| grep` etc); wrapper refuses pipe-stdout.
+- **Verify before claim.** Every cited file:line opened at citation time.
 
 ---
 
 ## ⏭️ End of HANDOFF
 
-Current iter focus: **iter-0022 (build the 5 deliverables, real provider/model invocations = 0)**. iter-0023 BLOCKED until checklist clears. Mission 1 active. North Star intact.
+Current iter focus: **iter-0028 (silent-catch detection in BUILD before EVAL)**. iter-0029 (F3 + F9 cross-fixture variance) BLOCKED until iter-0028 acceptance clears. Mission 1 active. Single-task L1 quality is the binding gate; team / multi-agent work stays deferred until single-task gates clear.
