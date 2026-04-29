@@ -3,7 +3,7 @@ iter: "0028"
 title: "BUILD-time silent-catch / forbidden-pattern detection — mechanical gate before EVAL"
 status: implemented + R1 D1/D2/D3 fixes shipped (F2 N=5 paired acceptance pending)
 type: mechanism (closes BUILD silent-catch DQ via fix-loop visibility, mirrors iter-0019.6 spec-verify pattern)
-shipped_commit: TBD (will be baked in after acceptance)
+shipped_commit: 547d95a
 date: 2026-04-30
 mission: 1
 ---
