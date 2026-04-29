@@ -76,7 +76,7 @@ Memory files at `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/me
 ## 📍 Branch + project state (verify before editing)
 
 - **Branch**: `benchmark/v3.6-ab-20260423-191315`
-- **Branch tip at this HANDOFF write**: `c79d45c` (iter-0021 SHA-rotation) on top of `9a9947f` (iter-0021 calibration ship).
+- **Branch tip at this HANDOFF write**: `042492a` (this HANDOFF rotation commit) on top of `c79d45c` (iter-0021 SHA-rotation) on top of `9a9947f` (iter-0021 calibration ship).
 - **Mission 1 active** ([`MISSIONS.md`](MISSIONS.md)). Hard NOs binding. L1-L0 = +4.4 (below +5 floor).
 - **iter-0020** = FAILED-EXPERIMENT-REVERTED-POLICY (commit `948e4bd`). e2e BUILD=Claude routing deleted. Auto-resolve runtime default = `--engine claude`. ideate/preflight/team-* defaults unchanged.
 - **iter-0021** = SHIPPED (calibration overlay only, no code change). L1's only-negative axis is Scope (-4 across F2+F4 from harness DOCS adding `completed:` field beyond lifecycle note's `status:` carve-out). Note-scope-narrow mechanism confirmed via judge `b_breakdown.notes`.
