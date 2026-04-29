@@ -9,7 +9,7 @@
 - **Branch tip**: `cb3765d` (HANDOFF SHA-rotation) on top of `948e4bd` (Phase 1 close-out). Working tree clean.
 - **iter-0020 = CLOSED** (FAILED-EXPERIMENT-REVERTED-POLICY). Do NOT restart e2e BUILD=Claude routing. Do NOT resurrect the deleted scripts (`select_phase_engine.py`, `coverage_report.py`, `iter-0020-aggregate-coverage.py`, `iter-0020-failure-count.py`).
 - **Auto-resolve default is now `--engine claude`** (SKILL.md:70). ideate / preflight / team-* keep `--engine auto` (no measured failure). Per-skill defaults canonicalised in `_shared/engine-preflight.md`.
-- **Open iter** = iter-0021 inverted-pair (Claude BUILD + Codex CRITIC on F2/F3/F8). Code-only design + paid 3-fixture smoke ~$15-25. Gated on **explicit user cost approval**.
+- **Open iter** = iter-0021 inverted-pair (Claude BUILD + Codex CRITIC on F2/F3/F8). Code-only design + paid 3-fixture smoke. Gated on **explicit user approval** before any paid run.
 - **First action on resume**: re-read STANDING USER DIRECTIVE (block below, verbatim Korean) → run cold-start sanity check (~30s) → ask user to authorize Phase 2 cost OR start Phase 3 (L1 real-project trial diagnostic, user-driven not autonomous).
 - **First Codex pair-review checkpoint of next session**: Phase 2 step 2.1 (R0 inverted-pair design consult). Send the design from scratch — do NOT extend deleted scripts.
 - **DO NOT** spawn paid runs without user approval. **DO NOT** edit ideate/preflight/team-* `--engine auto` defaults (out of scope; surface a separate iter if benchmark evidence emerges).
@@ -87,7 +87,7 @@ Phase 1 (iter-0020 close-out) **SHIPPED** at commit `948e4bd` (2026-04-29). Cold
 - KEPT: F4 Playwright `<quality_bar>` bullet, iter-0019.6/.8/.9 spec-verify carrier mechanism.
 - See `autoresearch/iterations/0020-pair-policy-narrow.md` "CLOSE-OUT (Phase 1, 2026-04-29)" block for full detail.
 
-**Phase 2 — iter-0021 inverted-pair research smoke** (~$15-25, ~2-3h paid wall, gated on user approval)
+**Phase 2 — iter-0021 inverted-pair research smoke** (paid 3-fixture × 1-arm; explicit user approval required before launch)
 
 Goal: test whether pair value lives at CRITIC (not BUILD) — Claude BUILD + Codex CRITIC on F2 / F3 / F8 (the three fixtures with strongest L1 underperformance signal). Falsify or confirm whether inverted-pair earns its cost.
 
@@ -109,7 +109,7 @@ Steps:
 
 2.4. **Mirror + lint**. Synthetic dry-run on a fake state to verify selector fires only with `--engine inverted-pair` flag.
 
-2.5. **Surface cost decision to user** before launching paid 3-fixture × 1-arm smoke (~$15-25, ~2-3h wall). Per CLAUDE.md "Executing actions with care."
+2.5. **Surface decision to user** before launching the paid 3-fixture × 1-arm smoke. Per CLAUDE.md "Executing actions with care" — get explicit approval before spending any paid budget. Do not launch on assumed authorization.
 
 2.6. **After approval — launch**:
    ```
@@ -329,7 +329,7 @@ Asymmetry note: variant arm copied pre-edit CLAUDE.md at startup (commit `660871
 - iter-0019.5 (`2269787`): close CODEX_REAL_BIN env-var leak into solo_claude — bypass surface CLOSED. Codex R1 caught (during iter-0019 mid-suite); surface was open all suite long but never exercised, hardening preemptively for iter-0020's 9-fixture run.
 - iter-0019.6 (`3a6db4f`): F9 mechanical output-contract enforcement — verdict bind option (a). Adds `.devlyn/spec-verify.json` staging + `scripts/spec-verify-check.py` BUILD_GATE invocation that mirrors post-run verifier semantics, emits canonical CRITICAL `correctness.spec-literal-mismatch` findings on exit/contains/not-contains mismatch. Routes through existing PHASE 2.5 fix-loop. Prompt-only iter-0018.5 fold-in was empirically dead — this is the iter-0008 lesson at second mechanism scope.
 
-**NEXT (post-Phase-1 close-out)**: see "NEXT CONCRETE ACTION" block at top — Phase 2 (iter-0021 inverted-pair: Claude BUILD + Codex CRITIC on F2/F3/F8, ~$15-25, gated on user approval) and Phase 3 (NORTH-STAR test #14 L1 real-project trial as diagnostic, user-driven).
+**NEXT (post-Phase-1 close-out)**: see "NEXT CONCRETE ACTION" block at top — Phase 2 (iter-0021 inverted-pair: Claude BUILD + Codex CRITIC on F2/F3/F8, gated on explicit user approval) and Phase 3 (NORTH-STAR test #14 L1 real-project trial as diagnostic, user-driven).
 
 **HEAD chain** (newest first):
 ```
