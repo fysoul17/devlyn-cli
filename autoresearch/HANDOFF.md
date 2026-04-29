@@ -214,8 +214,10 @@ The next session's first iter-0028 R0 task is to pick between these. Listing the
 **Candidate A — BUILD prompt self-check**
 Add a final sanity-check step to `references/phases/phase-1-build.md`: before declaring BUILD complete, BUILD agent must `grep -nE '<forbidden_pattern_regex>' <changed_files>` and either fix any hits or surface them in the build summary. Cheapest implementation; relies on prompt compliance (LLM following instructions). Risk: same model that produces silent-catch may also miss its own self-check.
 
-**Candidate B — Mechanical BUILD-GATE forbidden-pattern check (recommended)**
-Extend `spec-verify-check.py` (or add `forbidden-pattern-check.py`) to scan changed files for `expected.json:forbidden_patterns` regex matches and emit CRITICAL `correctness.silent-catch-introduced` finding when any match. Integrate into BUILD_GATE phase (which already wires the fix-loop). Mechanical, deterministic, model-agnostic. Highest reliability. ~50-100 LOC script. Pattern matches iter-0019.6 (`spec-verify-check.py`) which mechanized verification commands successfully.
+**Candidate B — Mechanical BUILD-GATE forbidden-pattern check (recommended; refined per Codex 2026-04-30 deep R0)**
+Extend `spec-verify-check.py` (or add `forbidden-pattern-check.py`) to scan changed files for forbidden-pattern regex matches and emit CRITICAL `correctness.silent-catch-introduced` finding when any match. Integrate into BUILD_GATE phase (which already wires the fix-loop). Mechanical, deterministic, model-agnostic. Highest reliability. ~50-100 LOC script. Pattern matches iter-0019.6 (`spec-verify-check.py`) which mechanized verification commands successfully.
+
+**Critical Codex tweak**: must NOT be benchmark-only. The runtime BUILD contract at `phase-1-build.md:61` already says "no silent catch / `any` / `@ts-ignore` / hardcoded workaround" for ALL users; today `build-gate.md:160` explicitly puts forbidden-pattern enforcement out of scope for the mechanical gate. iter-0028 closes that in a product-shaped way: forbidden-pattern source = `expected.json:forbidden_patterns` when in benchmark mode (`BENCH_WORKDIR` set) ELSE a real-user default policy file (e.g. `_shared/forbidden-patterns.default.json` covering silent-catch / `any` / `@ts-ignore` / hardcoded workaround patterns drawn from `phase-1-build.md` quality bar). Real-user invocations get the same protection benchmark fixtures get.
 
 **Candidate C — Pre-EVAL CRITIC pass**
 Re-route CRITIC's design sub-pass to fire BEFORE EVAL (currently after, in PHASE 3). Requires re-thinking post-EVAL invariant (CRITIC currently is findings-only post-EVAL). Most architectural; highest risk of disturbing other invariants.
@@ -246,12 +248,23 @@ If acceptance fails → iter-0028 close-out with revert; pivot to Candidate C (p
 
 ---
 
-## 🚧 iter-0029+ deferred queue (reordered per user 2026-04-30 reframing)
+## 🚧 iter-0029+ deferred queue (re-sequenced per Codex 2026-04-30 R0 deep verdict)
 
-- **iter-0029**: F3 N=3 + F9 N=3 paired variance — measure **bare-vs-L1 DQ rate gap on more spec types**, not just absolute floor. BLOCKED until iter-0028 acceptance passes.
-- **iter-0030 (priority shift up — was 0031)**: **NORTH-STAR ops test #14 — real-project trial**. Pick a real (non-fixture) codebase, real feature/bug, run `/devlyn:auto-resolve` end-to-end, have a human read both bare and L1 outputs and rate which is ship-worthier. THIS is the binding Mission 1 terminal gate per user 2026-04-30 directive ("실제로 bare보다 더 나은 코드"). Fixture suite is calibrated proxy; real-project trial is ground truth.
-- **iter-0031 (candidate)**: ship-gate.py language change (Codex iter-0027 R-final Q3) — reframe gate from "+5 absolute floor" to "L1 DQ rate < bare DQ rate by ≥30pp AND L1-L0 mean lift ≥ +5 on clean runs". Small doc + script change. Can land in parallel with iter-0029 since it's pure documentation/gate-text.
-- **iter-0032+ (candidate)**: drive L1 silent-catch rate to <10% (post iter-0028 measurement-driven prompt/CRITIC iteration).
+User 2026-04-30 second pushback: real-project trial too expensive + not bare-comparable; instead **generate small-but-tricky tasks inside the benchmark and run bare-vs-L1 categorical reliability on them**. Codex deep R0 verdict: do it as a **frozen shadow suite alongside the golden F1-F9** (option (c)), hybrid generation (LLM proposes → Codex/human curates → frozen fixtures). Sequencing locked:
+
+- **iter-0029 = shadow-suite v0**. 6 tasks (1 per failure-class — spec-compliance / multi-file scope leak / build-gate runtime / security CRITICAL / silent-catch / scope leak). Hybrid generation: first batch is **F1-F9 mutations** (reuse proven scaffolds + traps; mutate trap location, JSON shape, EACCES condition). Each task gets `spec.md` + `task.txt` + `expected.json` + `setup.sh` + reference-solvability check. **Location**: NEW `benchmark/auto-resolve/shadow-fixtures/` directory (NOT `fixtures/F*` — auto-discovered there feeds ship-gate, would muddy gating per Codex `run-suite.sh:57` + `compile-report.py:170` + `ship-gate.py:87` warnings). Need `--suite shadow` flag or separate runner. Smoke gate: 6 tasks pass schema + reference-solvability dry-run before any L0/L1 measurement.
+- **iter-0030 = shadow suite v1**. Expand to 18 tasks (3 per class) for directional readout. v0 → v1 transition iterative; LLM proposes new tasks, Codex/human curates.
+- **iter-0031 = shadow suite decision-grade**. 30 tasks (5 per class). At this point apply **Codex 8-condition trust rule**: frozen task set + ≥30 paired valid + invalid <10% + L1 DQ rate ≥30pp lower than bare + L1 absolute DQ ≤1/3 + no category worse by >+1 task + GPT-Opus categorical direction agreement + clean-run L1-L0 ≥0. If shadow and F1-F9 disagree, **F1-F9 still controls release**; shadow can redirect work but cannot bless Mission 1 by itself.
+- **iter-0032 (candidate)**: F3 N=3 + F9 N=3 paired variance on the golden suite (cross-fixture generalization of iter-0027's F2 finding).
+- **iter-0033 (candidate)**: ship-gate.py language change — reframe gate from "+5 absolute floor" to "L1 DQ rate < bare DQ rate by ≥30pp AND L1-L0 mean lift ≥ +5 on clean runs". Small doc + script change.
+- **iter-0034+ (candidate)**: NORTH-STAR ops test #14 real-project trial (terminal gate; only after shadow + golden + variance all clear).
+
+### Shadow-suite cadence (Codex verdict)
+
+**Subset rotation**, not one-task streaming, not constant full sweeps:
+- 6 shadow tasks per measurement iter (one per category, frozen rotation order).
+- Full 30-task sweep ONLY when making a release-readiness claim.
+- Keeps signal broad without turning every iter into measurement-only work (PRINCIPLES.md pre-flight 0 warning honored).
 
 ---
 
