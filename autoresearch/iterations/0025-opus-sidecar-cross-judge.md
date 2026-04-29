@@ -3,7 +3,7 @@ iter: "0025"
 title: "Opus 4.7 sidecar — cross-judge probe of iter-0020 9-fixture L1-L0 readout"
 status: shipped
 type: measurement-trust (no new BUILD; re-judges existing run with second judge)
-shipped_commit: pending
+shipped_commit: 6f0e693
 date: 2026-04-29
 mission: 1
 ---
