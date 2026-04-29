@@ -79,7 +79,7 @@ No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scr
 
 **Permitted exceptions** (explicitly carved out):
 - CSS fallback fonts, CDN failover, image placeholders — widely-accepted best practices.
-- Codex CLI availability downgrade (`--engine auto`) — the one documented silent fallback in this repo. Banner `engine downgraded: codex-unavailable` always prints; verdict identical to `--engine claude`. Any other silent fallback in skills code is a bug — file it against the skill that introduced it.
+- Codex CLI availability downgrade — the one documented silent fallback in this repo. Fires when the resolved engine is `auto` or `codex` (either via skill default or explicit `--engine` flag) and the Codex CLI is absent. Banner `engine downgraded: codex-unavailable` always prints; verdict identical to `--engine claude`. Any other silent fallback in skills code is a bug — file it against the skill that introduced it.
 <!-- runtime-principles:section=no-workaround:end -->
 
 ## Evidence over claim

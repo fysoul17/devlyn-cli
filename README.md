@@ -79,7 +79,6 @@ Build → Build Gate → Browser Test → Evaluate → Fix Loop → Simplify →
 
 Skip phases you don't need: `--skip-browser`, `--skip-review`, `--skip-clean`, `--skip-docs`, `--skip-build-gate`, `--max-rounds 6`
 Customize the build gate: `--build-gate strict` (warnings = errors), `--build-gate no-docker` (skip Docker builds for speed)
-Use dual-model routing: `--engine auto` (Codex builds, Claude evaluates — see below)
 
 ### Step 3 — Verify with `/devlyn:preflight`
 
@@ -101,50 +100,17 @@ Reads every commitment from your vision, roadmap, and item specs, then audits th
 
 Confirmed gaps become new roadmap items — feed them back into auto-resolve. Use `--autofix` to do this automatically, or `--phase 2` to check only one phase.
 
-### Bonus — Intelligent Model Routing with `--engine`
+### Engine selection — Claude solo by default
 
-Install the Codex CLI (see https://platform.openai.com/docs/codex) so `codex` is on PATH, then:
+`--engine claude` (default) is the canonical user-facing surface. The pipeline runs entirely on Claude — every phase and team role.
 
-```
-/devlyn:auto-resolve "fix the auth bug" --engine auto
-```
-
-**`--engine auto`** routes each pipeline phase and team role to the optimal model — the Codex CLI's current flagship on build/fix, Claude on evaluation and critique — validated through A/B testing, not just benchmarks.
-
-> `--engine auto` (default, recommended) · `--engine codex` (force Codex for build) · `--engine claude` (Claude only)
-
-Works across the full pipeline:
+`--engine auto` opts into the experimental dual-engine path (Codex builds, Claude evaluates, GAN dynamic). It is currently below the quality floor on the 9-fixture benchmark suite — pair-mode regressed L2 vs L1 by an average of 3.6 points, and 3 of 8 gated fixtures cleared the +5 margin floor (release-readiness FAIL). See [`autoresearch/iterations/0020-pair-policy-narrow.md`](autoresearch/iterations/0020-pair-policy-narrow.md) for the data. Install the Codex CLI (https://platform.openai.com/docs/codex) and pass the flag explicitly to opt in:
 
 ```
-/devlyn:auto-resolve "implement feature" --engine auto
-/devlyn:ideate "plan new project" --engine auto
-/devlyn:preflight --engine auto
+/devlyn:auto-resolve "fix the auth bug" --engine auto   # experimental, research-only
 ```
 
-<details>
-<summary><strong>How routing works</strong> — A/B tested on 6 roles, 11 integration tests</summary>
-
-**Pipeline phases** — builder and critic are always different models (GAN dynamic):
-
-| Phase | Model | Why |
-|---|---|---|
-| Build (implementation) | **Codex GPT-5.5** | SWE-bench Pro +11.7pp for hard coding tasks |
-| Evaluate | **Claude** | Long-context (MRCR +28pp) for full-diff grading |
-| Fix Loop | **Codex GPT-5.5** | Same advantage as Build |
-| Challenge | **Claude** | Fresh skeptical review needs different model family |
-| Browser Validate | **Claude** | Chrome MCP session-bound |
-
-**Team roles** — each of 21 roles routes to the best model:
-
-| Engine | Roles | Examples |
-|---|---|---|
-| Claude (11) | Analysis, design, architecture | root-cause-analyst, architecture-reviewer, ux-designer, product-analyst |
-| Codex (4) | Code generation, performance | implementation-planner, test-engineer, performance-engineer |
-| Dual (6) | Both models find unique issues | security-auditor, quality-reviewer, api-designer |
-
-**Key finding**: Benchmark predictions were only 33% accurate. 4 of 6 A/B-tested roles needed routing changes after real testing — proving that benchmarks alone are insufficient for optimal routing.
-
-</details>
+If Codex is absent when `--engine auto` is requested, the harness silently downgrades to `--engine claude` and emits a banner in the final report.
 
 <details>
 <summary><strong>What's new in 1.14.0</strong> — CPO lens + handoff enforcement</summary>
@@ -169,7 +135,7 @@ Works across the full pipeline:
 Core pipeline skills (`ideate`, `auto-resolve`, `preflight`) rewritten against Anthropic's Opus 4.7 prompting guidance, validated by multi-round comprehension and quality-grading subagents.
 
 - **4.7 prompt patterns** — `<investigate_before_answering>` on evaluator and challenge, `<coverage_over_filtering>` with per-finding confidence, 3 few-shot examples in the Challenge phase, `<orchestrator_context>` (auto-compaction + xhigh effort), `<use_parallel_tool_calls>` in ideate EXPLORE and preflight Phase 0.
-- **`--with-codex` consolidated into `--engine auto`** — auto now covers BUILD/FIX + team roles + ideate CHALLENGE critic (broader than `--with-codex both` ever was). Legacy flag still accepted with a graceful handoff.
+- **`--with-codex` consolidated into `--engine auto`** — auto covers BUILD/FIX + team roles + ideate CHALLENGE critic. Legacy flag still accepted with a graceful handoff. *(Note: post iter-0020 close-out, `--engine auto` is experimental research-only; default is `--engine claude`.)*
 - **Bug fixes** — PHASE 1.5 BLOCKED browser failures re-route correctly via PHASE 2.5; PHASE 1.4-fix and PHASE 2.5 share one global round counter; preflight PHASE 1 numbering fixed; build-gate-exhausted now produces a graceful final report.
 - **CLAUDE.md refresh** (shipped to `npx` installers) — Quick Start pointing to ideate → auto-resolve → preflight, Context Window Management updated for Opus 4.7 auto-compaction, terminology refresh (TodoWrite → task tools, Task agents → Agent subagents).
 

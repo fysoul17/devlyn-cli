@@ -34,7 +34,7 @@ Every phase routes to the optimal model per `references/engine-routing.md`:
 - Phases routed to **Codex**: shell out to `bash .claude/skills/_shared/codex-monitored.sh` (which wraps `codex exec`) per the canonical flag set in `config/skills/_shared/codex-config.md` and the spawn patterns in `engine-routing.md`. The wrapper closes stdin and emits a heartbeat so long reasoning calls don't starve the outer API stream. No MCP.
 - Phases routed to **Claude**: spawn an `Agent` subagent with `mode: "bypassPermissions"`, passing the phase body verbatim.
 - Phases routed to **Native** (CRITIC security sub-pass): invoke the native Claude Code `security-review` skill via the Skill tool; normalize its output into `.devlyn/critic.findings.jsonl` per `phase-3-critic.md`.
-- `--engine claude` forces all phases to Claude. `--engine codex` forces implementation to Codex, orchestration/Chrome MCP stays Claude. `--engine auto` (default) uses the routing table.
+- `--engine claude` (auto-resolve default) forces all phases to Claude. `--engine codex` forces implementation to Codex, orchestration/Chrome MCP stays Claude. `--engine auto` opts into the experimental dual-engine routing table (currently below quality floor — see `autoresearch/iterations/0020-pair-policy-narrow.md`).
 </engine_routing_convention>
 
 <post_eval_invariant>
@@ -67,7 +67,7 @@ Optional: pass `--perf` to record per-phase `{wall_ms, tokens, engine, round, tr
 1. **Parse flags** from `<pipeline_config>`:
    - `--max-rounds N` (4)
    - `--route MODE` (auto) — per `references/pipeline-routing.md`
-   - `--engine MODE` (auto) — per `references/engine-routing.md`
+   - `--engine MODE` (claude) — per `references/engine-routing.md`. Default is Claude solo (`--engine claude`); `--engine auto` opts into the experimental dual-engine routing currently below the quality floor (see `autoresearch/iterations/0020-pair-policy-narrow.md`).
    - `--team` — force team-assembled BUILD even on non-strict routes (default: solo).
    - `--bypass <phase>[,<phase>...]` — skip specific phases. Valid: `build-gate`, `browser`, `critic`, `docs`. Deprecated aliases (`--skip-*`, `--security-review skip`, `--bypass simplify|review|clean|security|challenge`) map to `--bypass critic` where applicable; log `deprecated flag — use --bypass <phase>` once.
    - `--build-gate MODE` (auto) — `auto` / `strict` / `no-docker`.
@@ -86,8 +86,6 @@ Optional: pass `--perf` to record per-phase `{wall_ms, tokens, engine, round, tr
 
    No spec path found → `source.type: "generated"`, `source.criteria_path: ".devlyn/criteria.generated.md"` (PHASE 1 creates it), `criteria_anchors: ["criteria.generated://requirements", "criteria.generated://out-of-scope", "criteria.generated://verification"]`, `criteria: []`.
 
-   **iter-0020**: ALSO populate `state.source.fixture_class` from the `BENCH_FIXTURE_CATEGORY` env var AND `state.source.fixture_id` from `BENCH_FIXTURE`, in both cases ONLY when `BENCH_WORKDIR` is also set (benchmark-scoped). When the bench envs are unset, write both fields as `null`. Stable schema; `select_phase_engine.py` keys off `fixture_class`, `coverage_report.py` keys off `fixture_id`.
-
 5. **Compute Stage A route** per `references/pipeline-routing.md#stage-a`. Write to `state.route.{selected, user_override, stage_a}`.
 
 6. **Announce** (single line):
@@ -98,7 +96,7 @@ Engine: <engine>, Route: <selected> (<stage_a_reasons>), Bypasses: <bypasses|non
 
 ## PHASE 1: BUILD
 
-**Engine** (iter-0020 — code-enforced override, not prompt-only): before the spawn, run `python3 .claude/skills/devlyn:auto-resolve/scripts/select_phase_engine.py --phase build --engine <pipeline_config.engine>`. The script reads `state.source.fixture_class`, applies the `references/engine-routing.md` BUILD row, applies per-fixture-class overrides (currently `e2e → claude`), writes `state.route.engine_overrides.build` if an override fires, and prints the resolved engine name. Use that engine for the spawn (NOT the static table). On any other phase, the static `references/engine-routing.md` table still applies — only BUILD has an iter-0020 override. Prompt body: **`references/phases/phase-1-build.md`** (verbatim) + task description. Spawn per `<engine_routing_convention>` with the engine returned by the selector.
+**Engine**: BUILD row from `references/engine-routing.md` (Codex on `auto`/`codex`, Claude on `claude`). Prompt body: **`references/phases/phase-1-build.md`** (verbatim) + task description. Spawn per `<engine_routing_convention>`.
 
 **Team assembly rule** (simplified from v3.2): BUILD spawns as **team** ONLY when `--team` flag passed OR `state.route.selected == "strict"`. Otherwise solo. Keyword-match auto-trigger removed — Claude/Codex base SWE capability is the default.
 
@@ -239,8 +237,6 @@ Spawn Claude `Agent` (`mode: "bypassPermissions"`). Include original task descri
 1. **Terminal verdict**: run `python3 .claude/skills/devlyn:auto-resolve/scripts/terminal_verdict.py` (implements the precedence in `references/pipeline-routing.md#terminal-state-algorithm`; prints verdict, exits 0/1/2/3 for PASS/PASS_WITH_ISSUES/NEEDS_WORK/BLOCKED).
 
 2. **Render report** per the exact shape in `references/final-report-template.md` — required section order, banner rules, engine-line contract, and summary table layout all live there. Fill placeholders from `pipeline.state.json`.
-
-3. **Coverage report** (iter-0020): run `python3 .claude/skills/devlyn:auto-resolve/scripts/coverage_report.py`. Emits `.devlyn/coverage.json` per the schema in that script's docstring — proof artifact for hard-acceptance #4. Per-fixture invariant: every applicable iter-0020+ changed route must have fired. Failures (`applicable_missed` non-empty) indicate a router bug. Suite-level aggregation across all fixtures' coverage.json files proves "every changed route was exercised by at least one fixture."
 
 4. **Archive**: run `python3 .claude/skills/devlyn:auto-resolve/scripts/archive_run.py` (implements `references/pipeline-state.md#archive-contract`; moves per-run artifacts into `.devlyn/runs/<run_id>/`, best-effort prunes to last 10 completed runs). The script reads `phases.final_report.verdict` for prune-safety, so the state write above must complete first.
 

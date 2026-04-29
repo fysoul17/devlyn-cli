@@ -1,6 +1,6 @@
 # iter-0020 — Cost-aware pair policy (narrow): e2e → BUILD=Claude + Playwright hygiene
 
-**Status**: Phase A SHIPPED + verdict (`pair_policy_failure_count = 2`); iter-0019.9 fix shipped to clear F9 false signal; **Phase B implementation IN-COMMIT, awaiting paid 9-fixture × 3-arm verification suite (~$30-50, ~3-4h wall)**
+**Status**: **CLOSED 2026-04-29 as FAILED-EXPERIMENT-REVERTED-POLICY** per Codex GPT-5.5 deep North-Star verdict after the 9-fixture × 3-arm paid suite returned ship-gate FAIL (L1-L0 = +4.4 below floor +5; L2-L1 = -3.6). Phase A + Phase B implementation history below is preserved as historical record; the **CLOSE-OUT (Phase 1, 2026-04-29)** block at the bottom of this file documents the rollback decision, the diff (17 files, +199/-813, net -614), and the iter-0021 inverted-pair experiment that replaces it.
 
 ## Why this iter exists (NORTH-STAR ops test #6 + Codex R3 hard acceptance)
 
@@ -110,3 +110,109 @@ Revert E1-E11 (or specifically the e2e routing entry) if a future paid suite OR 
 - iter-0019.7 measurement-driven decision (post 9-fixture data).
 - iter-0021 dual-judge conditional fire (per HANDOFF queue: only if iter-0020 verdict lands within ±6pt of routing threshold).
 - NORTH-STAR test #14 (real-project trial gate) becomes the final stop condition.
+
+---
+
+## CLOSE-OUT (Phase 1, 2026-04-29) — FAILED-EXPERIMENT-REVERTED-POLICY
+
+**Verdict source**: Codex GPT-5.5 deep North-Star consultation (78k tokens, 156s, xhigh) on 2026-04-29 after the 9-fixture × 3-arm paid suite (RUN_ID `20260428T131713Z-91994db-iter-0020-9fixture-verify`, ~$30-50, 5h17m wall) returned ship-gate FAIL.
+
+### Codex North-Star verdict (verbatim)
+
+> "3-layer North Star is still right. The current L2 architecture is wrong. Codex BUILD + Claude review is falsified for this fixture set. Loses to Claude solo on F2/F3/F5/F6, only +1 wins on F4/F7."
+
+**Q-by-Q**:
+- Q2 ship: NOT ship as L2 policy. Close iter-0020 as "failed product-policy experiment, useful evidence retained." Keep only independently justified pieces (F4 Playwright hygiene). Rollback the e2e override.
+- Q4 next: (1) Product stance NOW: L1 Claude solo = canonical surface; L2 = disabled / research-only. (2) Research experiment: iter-0021 Claude BUILD + Codex CRITIC inverted-pair smoke on F2/F3/F8. (3) Acceptance: L2-inverted must not regress L1 by >1pt + must improve at least one L1 weakness materially + must abort cheaply on F8.
+- Q6 user-facing: do NOT sell L2 today.
+
+### 9-fixture data (per-fixture)
+
+| Fixture | category | L2 | L1 | L0 | L2-L1 | L1-L0 | L2/L1 wall |
+|---|---|---|---|---|---|---|---|
+| F1 trivial-flag | trivial | 98 | 99 | 93 | -1 | +6 | 1.06× |
+| F2 cli-subcommand | medium | **83** | 94 | 85 | **-11** | +9 | 0.99× |
+| F3 backend-contract | high-risk | **78** | 94 | 95 | **-16** | -1 | 1.23× |
+| F4 web-browser | stress(browser) | 96 | 95 | 84 | +1 | +11 | 1.01× |
+| F5 fix-loop-red-green | stress | 92 | 96 | 92 | -4 | +4 | 0.75× |
+| F6 dep-audit | stress | 97 | 99 | 90 | -2 | +9 | 1.0× |
+| F7 out-of-scope-trap | stress | 100 | 99 | 97 | +1 | +2 | 1.32× |
+| F8 known-limit | edge | 80 | 80 | 80 | 0 | 0 | 15.0× |
+| F9 e2e-novice-flow | e2e | 53 | 53 | 53 | 0 | 0 | 0.33× (API 429 — not run) |
+| **Avg** | | **86.3** | **89.9** | **85.4** | **-3.6** | **+4.4** | **2.5×** |
+
+L1-L0 = +4.4 — below NORTH-STAR floor +5 → **L1 release-readiness FAIL**.
+L2-L1 = -3.6 — pair-mode regresses solo on average → **L2 release-readiness FAIL**.
+
+### Phase 1 rollback diff
+
+17 files, 199 inserts / 813 deletes (net -614 lines). Subtractive-first applied per Codex R0 Q1 alternative ("delete now" instead of "keep dormant with sunset clause" — keeping dormant scaffolding for hypothetical iter-0021 reuse violated P1 since iter-0021 inverted-pair routes CRITIC, not BUILD). The 199 inserts are dominated by required record-keeping: this CLOSE-OUT block, the `DECISIONS.md` line, the `HANDOFF.md` rotation, and the post-R2 fix-up patches; net behavior change is small.
+
+**Deleted (4 scripts, 626 LOC total)**:
+- `config/skills/devlyn:auto-resolve/scripts/select_phase_engine.py` (158 LOC) — code-enforced per-phase BUILD selector
+- `config/skills/devlyn:auto-resolve/scripts/coverage_report.py` (183 LOC) — `.devlyn/coverage.json` proof artifact
+- `autoresearch/scripts/iter-0020-aggregate-coverage.py` (120 LOC) — suite-level aggregator
+- `autoresearch/scripts/iter-0020-failure-count.py` (165 LOC) — Phase A `pair_policy_failure_count` verdict script
+
+**Skill prompt edits** (auto-resolve only — Codex R1 Option β scope):
+- `SKILL.md:37` — `<engine_routing_convention>` final line clarified: `--engine claude` is auto-resolve default; `--engine auto` opts into experimental dual-engine routing.
+- `SKILL.md:70` — `--engine MODE (auto)` → `--engine MODE (claude)`. Runtime default flipped.
+- `SKILL.md:89` — iter-0020 `state.source.fixture_class`/`fixture_id` population paragraph deleted (PHASE 0 no longer asks orchestrator to populate fields).
+- `SKILL.md:101` — iter-0020 selector invocation deleted (PHASE 1 BUILD reverts to static engine-routing table).
+- `SKILL.md:243` — coverage_report.py invocation deleted from PHASE 5.
+- `references/engine-routing.md` — "Per-fixture-class BUILD overrides (iter-0020)" section deleted entirely (option B per Codex R0 F4). "Override behavior" §82 default-claim corrected to per-skill default note.
+- `references/pipeline-state.md` — `state.source.fixture_class`, `fixture_id`, `state.route.engine_overrides` schema entries + prose deleted.
+
+**Shared / preflight** (Codex R1 Option β: skill-default-aware semantics, not global flip):
+- `_shared/engine-preflight.md` — rule rewritten: skill resolves engine from its own SKILL.md default + user flag; pre-flight fires only when resolved engine is `auto`/`codex`. Per-skill defaults now documented inline (auto-resolve `claude`; ideate / preflight / team-* `auto`).
+- `_shared/runtime-principles.md` + `CLAUDE.md` — silent-fallback exception updated to engine-resolved-by-skill semantics; banner text identical.
+
+**Bench harness**:
+- `benchmark/auto-resolve/scripts/run-fixture.sh` — variant arm `ENGINE_CLAUSE` flipped from `""` (relied on default) to `"--engine auto"` (explicit-flag pattern survives default flip per Codex R0 F3). BENCH_FIXTURE_CATEGORY + BENCH_FIXTURE exports deleted (no consumer). coverage.json copy block deleted.
+- `config/skills/devlyn:auto-resolve/scripts/archive_run.py` — `coverage.json` removed from PER_RUN_PATTERNS.
+
+**Product positioning** (auto-resolve-scoped per Codex R1):
+- `CLAUDE.md:22` — Quick Start rewritten to scope the default flip explicitly: auto-resolve defaults to `--engine claude` (its experimental dual-engine mode is disabled per the 9-fixture verdict); ideate / preflight keep `--engine auto` as their default (no measured pair-mode failure on those skills).
+- `README.md` — "Bonus — Intelligent Model Routing" section + table deleted; replaced with "Engine selection — Claude solo by default" with quality-floor data citation. Skip-phases line lost the `--engine auto` recommendation.
+
+### Things KEPT (independently justified)
+
+- `phase-1-build.md` `<quality_bar>` Playwright/output-hygiene bullet (F4 evidence — applies to all `--engine auto` BUILD calls regardless of routing).
+- `spec-verify-check.py` + `.devlyn/spec-verify.json` carrier mechanism (iter-0019.6/.8/.9) — orthogonal to routing; NORTH-STAR test #14 carrier dimension closure.
+- archive_run.py `spec-verify*` patterns.
+- `devlyn:ideate` / `devlyn:preflight` / `devlyn:team-resolve` / `devlyn:team-review` SKILL.md `--engine auto` defaults — UNCHANGED. The 9-fixture verdict measured auto-resolve's L2 BUILD-pair architecture only; ideate's CHALLENGE-critic and preflight's AUDIT routing have not been benchmarked. Applying the rollback to skills with no measured failure = scope creep (산으로 가는 work). Per-skill defaults documented in shared engine-preflight.md.
+
+### Codex pair-review trail (Phase 1)
+
+- **R0 pre-rollback** (161k tokens, 214s, xhigh): "Do not apply as drafted — under-corrects in 3 load-bearing places." 7 findings adopted, including delete-vs-dormant decision (chose delete per Q1 alternative).
+- **R1 diff review** (116k tokens, 262s, xhigh): "Not sufficient yet. I found real misses." 3 findings adopted: (1) default flip incomplete across 8 sites — adopted Option β (scope to auto-resolve, rewrite shared engine-preflight.md as skill-default-aware) over Option α (flip uniformly); (2) `engine-routing.md:82` "Override behavior" §default claim corrected; (3) `.claude/scheduled_tasks.lock` flagged not for commit (gitignored).
+- **R2-1 ship-readiness** (127k tokens, 235s, xhigh): "Not ship-as-drafted yet — 6 commit-blocking findings." All 6 adopted: (a) `.claude/*.lock` added to `.gitignore` (so `git add -A` can't stage `scheduled_tasks.lock`); (b) HANDOFF cold-start sanity check #4 trimmed to runtime-principles.md only (the two iter-0020 script `diff -q`'s referenced deleted files); (c) HANDOFF Phase 2 plan rewritten — instructs designing FRESH inverted-pair scaffolding from scratch, NOT extending deleted `coverage_report.py`/`select_phase_engine.py`; (d) diff stat in 4 places corrected; (e) `pipeline-state.md:108` "engine: ... or `auto` default" corrected to skill-default wording; (f) R2/TBD markers cleaned up.
+- **R2-2 ship-readiness re-review** (117k tokens, 264s, xhigh): "Not ship-as-drafted yet — 4 commit-blocking doc drift issues." All 4 adopted: (a) CLAUDE.md:22 + iter-0020:175 over-scoped default flip — rewrote to scope auto-resolve only (Option β), explicit retain ideate/preflight at auto; (b) HANDOFF:230 sanity check #2 expected output corrected (post-Phase-1 commit = clean status, lock file gitignored); (c) HANDOFF:251 sanity check #5b grep relaxed to allow leading whitespace (`^[[:space:]]+- ` vs anchored `^- `); (d) iter-0020:149 prose mention of "187 inserts" updated to match corrected count.
+- **R2-3 ship-readiness re-review** (122k tokens, 248s, xhigh): "Not ship-as-drafted yet — 3 remaining doc drift issues." All 3 adopted: this Status header / R2-trail line, HANDOFF Current-state pre-Phase-1 framing prune, and DECISIONS line R2-final wording.
+- **R2-final** (32k tokens, 108s, xhigh): "fix that wording and commit; I would not run R2-N+1 for this" — single minor R2-3 trail-wording correction adopted (this bullet itself reflects the fix); ship-readiness PASS.
+
+### Phase 1.5 — skill-creator audit decision
+
+SKIPPED with documented rationale: auto-resolve `SKILL.md` description frontmatter was deliberately NOT touched in this rollback (per HANDOFF Phase 1.4 rule — skill description stays neutral about engine, user supplies `--engine claude` explicitly per CLAUDE.md guidance). Trigger-rate regression risk is therefore not material — skill-creator eval would consume tokens for a defensive check on unchanged surface. Re-run skill-creator eval if and when iter-0021 introduces new SKILL.md description wording.
+
+### Principles 1-6 self-check (close-out)
+
+| # | Principle | Status |
+|---|---|---|
+| 0 | Pre-flight: removes user failure / forces decision | ✓ Closes iter-0020 as failed-experiment; deletes a paid product surface that loses on 5/8 fixtures while costing 3× |
+| 1 | No overengineering / subtractive-first | ✓ 199 inserts / 813 deletes = ratio ~4.1:1 net-deletion. Behavior-change inserts ≈ 25 lines (default-flip wording, explicit-flag for variant, skill-default-aware preflight rewrite, post-R2 fix-up patches); the remainder is required record-keeping (this CLOSE-OUT block, DECISIONS line, HANDOFF rotation). |
+| 2 | No guesswork | ✓ Verdict driven by 9-fixture paid data + Codex North-Star synthesis; no retroactive prediction |
+| 3 | No workaround | ✓ Codex R1 Option β: per-skill defaults documented in shared engine-preflight.md; runtime default flipped at the skill layer (auto-resolve only). No docs-only hedge. |
+| 4 | Worldclass production-ready | ✓ Lint 11/11 PASS post-R1; no CRITICAL/HIGH design.* findings introduced |
+| 5 | Best practice | ✓ No MEDIUM unidiomatic-pattern adds; pure subtraction for the deleted scripts |
+| 6 | Layer-cost-justified | ✓ Direct apply: rolling back a layer that failed its own L2-vs-L1 contract. ideate / preflight / team-* defaults retained because they have no measured layer-cost failure. |
+
+### What this close-out unlocks
+
+- **iter-0021** — inverted-pair research smoke (Claude BUILD + Codex CRITIC) on F2/F3/F8. Pre-registered acceptance gates per Codex Q4. Awaits user cost approval (~$15-25, ~2-3h wall).
+- **NORTH-STAR test #14 (L1 real-project trial)** — runnable as diagnostic now (per Codex Q7), NOT as final stop condition since 9-fixture release gates haven't passed.
+- **L1 product stance** — `--engine claude` is the canonical user-facing surface for auto-resolve. Documented as "currently the best measured default but still below release floor" — honest claim boundary preserved.
+
+### Rollback rollback condition (when to revisit)
+
+If iter-0021 inverted-pair (Claude BUILD + Codex CRITIC) ships PASS on its pre-registered gates, the L2 product surface re-enters scope under inverted shape — but with new selectors / new schema, NOT by restoring the iter-0020 e2e BUILD override (which is permanently rejected by the 9-fixture data above).

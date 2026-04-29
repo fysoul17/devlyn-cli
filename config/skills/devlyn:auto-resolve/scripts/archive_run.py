@@ -35,9 +35,6 @@ PER_RUN_PATTERNS = (
     "spec-verify.json",
     "spec-verify.results.json",
     "spec-verify-findings.jsonl",
-    # iter-0020: coverage.json proves every changed route was exercised
-    # (hard-acceptance #4). Suite-level aggregation reads archived files.
-    "coverage.json",
 )
 
 

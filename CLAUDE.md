@@ -19,7 +19,7 @@ Full contract: [`autoresearch/NORTH-STAR.md`](autoresearch/NORTH-STAR.md). Per-i
 
 ## Quick Start
 
-Three commands cover most work. All default to `--engine auto` — the Codex CLI's flagship model builds, Claude critiques (cross-model GAN dynamic). No model versions are hardcoded; the CLI's current flagship is inherited automatically.
+Three commands cover most work. **`/devlyn:auto-resolve` defaults to `--engine claude`** post iter-0020 close-out — its experimental dual-engine `--engine auto` mode is currently disabled by default because it costs more and regresses quality on the 9-fixture benchmark suite (see [`autoresearch/iterations/0020-pair-policy-narrow.md`](autoresearch/iterations/0020-pair-policy-narrow.md)); pass `--engine auto` explicitly to opt into the research path. **`/devlyn:ideate` and `/devlyn:preflight` keep `--engine auto` as their default** — they have no measured pair-mode failure and use the cross-model GAN-critic dynamic deliberately.
 
 1. `/devlyn:ideate` — unstructured idea → VISION/ROADMAP/item specs
 2. `/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-N/X-name.md"` — hands-free build → evaluate → ship
@@ -131,7 +131,7 @@ No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scr
 
 **Permitted exceptions** (explicitly carved out):
 - CSS fallback fonts, CDN failover, image placeholders — widely-accepted best practices.
-- Codex CLI availability downgrade (`--engine auto`) — the one documented silent fallback in this repo. Banner `engine downgraded: codex-unavailable` always prints; verdict identical to `--engine claude`. Any other silent fallback in skills code is a bug — file it against the skill that introduced it.
+- Codex CLI availability downgrade — the one documented silent fallback in this repo. Fires when the resolved engine is `auto` or `codex` (either via skill default or explicit `--engine` flag) and the Codex CLI is absent. Banner `engine downgraded: codex-unavailable` always prints; verdict identical to `--engine claude`. Any other silent fallback in skills code is a bug — file it against the skill that introduced it.
 <!-- runtime-principles:section=no-workaround:end -->
 
 ### Evidence over claim

@@ -228,17 +228,19 @@ fi
 # ideate → auto-resolve → preflight from the raw task.txt (as a novice would);
 # every other fixture's variant uses the spec-driven auto-resolve path.
 PROMPT_FILE="$RESULT_DIR/input.md"
-# iter-0019: variant uses --engine auto (codex BUILD + claude critique pair);
-# solo_claude uses --engine claude explicitly so the orchestrator routes every
-# phase to Claude and never tries to invoke codex. The CODEX_BLOCKED shim
-# enforces this at the binary layer if the orchestrator misroutes.
+# Variant uses --engine auto (experimental dual-engine: codex BUILD + claude
+# critique pair); solo_claude uses --engine claude explicitly so the orchestrator
+# routes every phase to Claude and never tries to invoke codex. The CODEX_BLOCKED
+# shim enforces this at the binary layer if the orchestrator misroutes. Both
+# arms pass the engine flag explicitly so they survive future runtime-default
+# changes (post iter-0020 close-out: default flipped to claude).
 if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; then
   if [ "$ARM" = "solo_claude" ]; then
     ENGINE_CLAUSE="--engine claude"
     ENGINE_PROMPT_HINT="Run with \`--engine claude\` for every phase. Codex must not be invoked — the harness has blocked it at the binary layer for this run."
   else
-    ENGINE_CLAUSE=""
-    ENGINE_PROMPT_HINT="Let \`--engine auto\` select the route from the spec's complexity and risk signals — do not override it."
+    ENGINE_CLAUSE="--engine auto"
+    ENGINE_PROMPT_HINT="Run with \`--engine auto\` so the experimental dual-engine routing fires (Codex BUILD/FIX, Claude EVAL/CRITIC) — do not override it."
   fi
   if [ "$FIXTURE" = "F9-e2e-ideate-to-preflight" ]; then
     # Novice flow — no pre-placed spec. The arm must generate it via ideate.
@@ -374,15 +376,6 @@ else
     # what the post-run verifier (run-fixture.sh:431-434) sets so the gate
     # sees the same environment shape.
     export BENCH_WORKDIR="$WORK_DIR"
-    # iter-0020: pass fixture metadata.category to auto-resolve so PHASE 0
-    # can populate state.source.fixture_class. Reads metadata.json once
-    # (already loaded as $META). Empty / missing → unset (real-user
-    # default). Auto-resolve PHASE 0 only honors this when BENCH_WORKDIR
-    # is also set, so this stays benchmark-scoped. Used by
-    # scripts/select_phase_engine.py for the e2e → BUILD=Claude override.
-    BFC="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("category") or "")' "$META" 2>/dev/null || true)"
-    [ -n "$BFC" ] && export BENCH_FIXTURE_CATEGORY="$BFC"
-    [ -n "${FIXTURE:-}" ] && export BENCH_FIXTURE="$FIXTURE"
     exec claude \
       -p "$(cat "$PROMPT_FILE")" \
       --dangerously-skip-permissions \
@@ -433,18 +426,6 @@ ELAPSED=$((T_END - T_START))
    && git diff "$SCAFFOLD_SHA") > "$RESULT_DIR/diff.patch" 2>&1 || true
 (cd "$WORK_DIR" \
    && git diff "$SCAFFOLD_SHA" --name-only) > "$RESULT_DIR/changed-files.txt" 2>&1 || true
-
-# iter-0020: copy coverage.json from auto-resolve's archived run dir to
-# $RESULT_DIR so the suite-level aggregator
-# `autoresearch/scripts/iter-0020-aggregate-coverage.py` finds it. Without
-# this, run-fixture.sh's per-arm rm -rf cycle would lose coverage.json
-# before aggregation runs (workdirs survive only until the NEXT arm
-# starts; archive_run.py moves coverage.json into
-# $WORK_DIR/.devlyn/runs/<auto-resolve-run-id>/, but that whole dir is
-# benchmark-internal and not surfaced to results/. Aggregator wants files
-# under results/<RUN_ID>/<fixture>/<arm>/ for hard-acceptance #4.
-COV_SRC="$(ls -1 "$WORK_DIR/.devlyn/runs"/*/coverage.json 2>/dev/null | head -1)"
-[ -n "$COV_SRC" ] && [ -f "$COV_SRC" ] && cp "$COV_SRC" "$RESULT_DIR/coverage.json" 2>/dev/null || true
 
 # Deterministic oracles (step 1+ of the benchmark-extension plan).
 # Findings-only at this stage; scoring integration is step 5.
