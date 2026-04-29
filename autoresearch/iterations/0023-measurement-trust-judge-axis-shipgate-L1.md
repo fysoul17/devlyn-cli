@@ -3,7 +3,7 @@ iter: "0023"
 title: "Measurement trust — judge axis validation + ship-gate L1 enforcement"
 status: shipped
 type: measurement-infrastructure (no real provider/model invocations; closes 2 measurement bugs caught by Codex post iter-0022)
-shipped_commit: pending
+shipped_commit: 356f056
 date: 2026-04-29
 mission: 1
 ---
