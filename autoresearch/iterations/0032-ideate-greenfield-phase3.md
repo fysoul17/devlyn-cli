@@ -1,9 +1,9 @@
 ---
 iter: "0032"
 title: "Redesign Phase 3 — greenfield `/devlyn:ideate` SKILL.md"
-status: ACTIVE
+status: SHIPPED 2026-04-30 (commit 6a8d798)
 type: greenfield-interface — replaces current /devlyn:ideate (Vision/Roadmap-heavy) with locked single-spec extraction shape
-shipped_commit: TBD
+shipped_commit: 6a8d798
 date: 2026-04-30
 mission: 1
 ---
