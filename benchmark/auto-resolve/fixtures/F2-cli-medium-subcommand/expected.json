@@ -56,8 +56,8 @@
   ],
   "forbidden_patterns": [
     {
-      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(\\[\\]|null|undefined|\\{|false|'')",
-      "description": "silent catch returning a fallback value \u2014 violates no-silent-catches policy",
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(?:\\[\\]|null|undefined|false|''|\\{\\s*\\})",
+      "description": "silent catch returning a fallback value (null / undefined / [] / false / '' / empty {}) \u2014 violates no-silent-catches policy. Structured error returns like `return { level: 'fail', message }` are NOT silent (they surface a user-visible failure object) and must not match.",
       "files": [
         "bin/cli.js"
       ],

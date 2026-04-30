@@ -25,7 +25,22 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEVLYN_DIR=".devlyn"
+DEVLYN_SOURCE_DIR=".devlyn-source"
 mkdir -p "$DEVLYN_DIR"
+
+# iter-0028 R-final follow-up: restore staged carriers if PHASE 0 PARSE
+# (or any prior phase) wiped `.devlyn/`. run-fixture.sh stages the same
+# files to `.devlyn-source/` as a stable backup. Re-stage idempotently —
+# never overwrite a fresher carrier. Matches spec-verify-check.py's self-
+# stage spirit but for forbidden-patterns.json which is benchmark-coupled
+# and intentionally NOT self-staging.
+if [ -d "$DEVLYN_SOURCE_DIR" ]; then
+  for f in spec-verify.json forbidden-patterns.json; do
+    if [ -f "$DEVLYN_SOURCE_DIR/$f" ] && [ ! -f "$DEVLYN_DIR/$f" ]; then
+      cp "$DEVLYN_SOURCE_DIR/$f" "$DEVLYN_DIR/$f"
+    fi
+  done
+fi
 
 GATE_FINDINGS="$DEVLYN_DIR/build_gate.findings.jsonl"
 # Ensure the file exists for safe append even if the Agent has not written

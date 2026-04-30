@@ -165,11 +165,27 @@ def main() -> int:
     findings_path = devlyn_dir / "forbidden-pattern-findings.jsonl"
 
     if not carrier_path.exists():
-        # Real-user mode default OR bench fixture without forbidden_patterns
-        # — silent no-op. Drop any stale findings file from a prior round
-        # so the BUILD_GATE merge step does not pick up dead findings.
+        # Drop any stale findings file from a prior round so the BUILD_GATE
+        # merge step does not pick up dead findings.
         if findings_path.exists():
             findings_path.unlink()
+        if bench_mode:
+            # iter-0028 R-final follow-up: in bench mode the carrier is
+            # staged by run-fixture.sh:216 from expected.json:forbidden_patterns.
+            # If it is missing here, something between staging and BUILD_GATE
+            # ate it (PHASE 0 PARSE wiping `.devlyn/` is the suspected root
+            # cause; spec-verify-check.py self-stages and survives, this
+            # script does not). Failing loud (exit 2) prevents the iter-0028
+            # n4/n5 silent-no-op pattern from recurring.
+            print(
+                f"[forbidden-pattern] error: BENCH_WORKDIR set but carrier "
+                f"missing at {carrier_path}. Bench fixture must stage "
+                f"forbidden-patterns.json before BUILD_GATE.",
+                file=sys.stderr,
+            )
+            return 2
+        # Real-user mode default OR bench fixture without forbidden_patterns
+        # — silent no-op (no carrier was ever staged for this run).
         return 0
 
     try:

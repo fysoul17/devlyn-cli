@@ -141,3 +141,99 @@ R1 acceptance smoke (Codex checklist 3+4) all 3 tests pass at this iter's commit
 3. Committed-silent-catch smoke: post-BUILD-commit scenario, `DEVLYN_DIFF_BASE_SHA=baseline` → wrapper exit 1, `correctness.silent-catch-introduced` finding merged into `build_gate.findings.jsonl` alongside Agent's own gate findings.
 
 Convergence reached at R1. Acceptance run (F2 N=5 paired) is next; R-final pair-review fires on the result interpretation.
+
+## R-final (post F2 N=5 acceptance) — measurement-artifact discovery
+
+Acceptance loop ran sequentially at commit `4f100bd`. Raw per-arm DQ (post-run scanner judgment, with `disqualifier` from `verify.json` propagated through `summary.json`):
+
+| run | bare DQ | bare score | L1 DQ | L1 score | L2 DQ | L2 score | L2 timed_out |
+|-----|---------|-----------|-------|----------|-------|----------|--------------|
+| n1  | True    | 78        | False | 93       | False | 96       | False |
+| n2  | True    | 77        | False | 93       | False | 99       | True |
+| n3  | True    | 79        | False | 96       | False | 92       | True |
+| n4  | True    | (skipped) | True  | 95       | MISSING | MISSING | MISSING |
+| n5  | True    | 85        | True  | 91       | False | 97       | False |
+
+L1 DQ rate **2/5 (40%)** → fails the +5-floor acceptance gate (`L1 DQ ≤ 1/5`). L1-vs-bare gap **60pp** → passes the categorical-vs-bare reframe (≥30pp). Initial reading: ambiguous outcome.
+
+### Discovery (the load-bearing finding of R-final)
+
+The F2 fixture forbidden-pattern regex was over-matching legitimate structured-error returns. The pattern at `expected.json:59` was:
+
+```
+catch\s*\([^)]*\)\s*\{[^}]*return\s+(\[\]|null|undefined|\{|false|'')
+```
+
+The `\{` branch matches **any** `return {` followed by anything, because `[^}]*` greedily traverses newlines. Running the actual scanner logic on every diff in iter-0027 N=5 (15 arm-runs) and iter-0028 N=5 (14 arm-runs, n4 variant missing) — total **29 arm-runs** — using a NARROW regex that flags only true silent values (`return\s+(null|undefined|''|false|\[\])`) gave **0 matches in all 29 runs**. Every "silent-catch DQ" we tracked across two iters was the broad regex flagging code of this shape:
+
+```js
+} catch (err) {
+  if (err.code === 'ENOENT') {
+    return {
+      level: 'fail',
+      message: `~/.claude not found: ${claudeDir}`,
+    };
+  }
+  if (err.code === 'EACCES') {
+    return { ... };
+  }
+  throw err;
+}
+```
+
+This is **not** a silent catch. F2 spec.md:36 explicitly defines silent catch as `catch { return fallbackValue }` and demands errors be "visible to the user with actionable messages" — exactly what `return { level: 'fail', message }` provides. Other fixtures (F1, F3, F7) use a narrower regex (`null|undefined|''` only, no `\{` branch) and don't show this artifact; F4, F5, F6, F8, F9 don't use return-shape regex at all. F2 alone was the artifact source.
+
+### Codex R-final pair-review (`/tmp/iter0028-rfinal-stdout.txt`)
+
+Codex independently (R-final prompt did NOT include the 29/29 narrow=0 sweep — that was discovered after Codex was invoked) confirmed:
+
+1. **R1**: Regex over-matches; `return { level: 'fail', message }` is structured error reporting, not silent fallback. Cited F2 spec.md:36, expected.json:59-63, n5 diff.patch:97.
+2. **R2**: BUILD-time scanner did NOT effectively fire on the L1 DQ runs. Direct evidence from `/private/tmp/bench-...n4-...solo_claude/.devlyn/build_gate.log.md` line 27: `Carrier file '.devlyn/forbidden-patterns.json' not present — silent no-op`. n5 was worse: the staged skill mirror was pre-iter-0028, so `build-gate-verifiers.sh` never ran; only spec-verify-check.py ran (n5 archived `build_gate.log.md` confirms). The acceptance run never validly exercised iter-0028's mechanism.
+3. **R3**: L2 0/4 DQ rate = generation-style avoidance of `catch { return { ... } }` shape under Codex BUILD pair, not proven scanner help. n=4 too small.
+4. **R4**: Verdict **HOLD — partial restore + F2 regex fix + carrier-resilience fix + rerun**. Don't ship as-is, don't reject; fix the oracle and rerun under a valid measurement.
+
+### Carrier-loss root cause (identified post-R-final)
+
+Side-by-side `.devlyn/` content between variant n4 (mechanism worked) and solo_claude n4 (mechanism silent no-op):
+
+- variant n4: `forbidden-patterns.json` 502 bytes timestamped 10:30 (original staging). Preserved through pipeline.
+- solo_claude n4: `forbidden-patterns.json` ABSENT. `spec-verify.json` timestamped **10:55**, not 10:30 — meaning spec-verify-check.py self-staged (per its `## Verification`-block self-stage path) AFTER something wiped the original 10:30 staging. PHASE 0 PARSE in the L1 path is the suspected wiper.
+
+spec-verify-check.py self-stages from `pipeline.state.json:source.spec_path` and survives the wipe. forbidden-pattern-check.py is **benchmark-agnostic by design** (does not read `expected.json` directly — Codex iter-0028 R0 verdict) and cannot self-recover. variant arm avoided this because (most likely) PHASE 0 PARSE in the Codex-pair path doesn't wipe `.devlyn/` the same way; needs a follow-up trace to confirm.
+
+### Fixes shipped in this commit (R-final follow-up)
+
+1. **F2 regex narrowed** (`fixtures/F2-cli-medium-subcommand/expected.json:59`):
+   ```
+   catch\s*\([^)]*\)\s*\{[^}]*return\s+(?:\[\]|null|undefined|false|''|\{\s*\})
+   ```
+   Replaces `\{` branch with `\{\s*\}` (empty object only). Switched to non-capturing group; description updated to call out structured returns explicitly. Smoke-tested: 8/8 positive cases (true silent catches) match, 5/5 negative cases (legitimate structured errors) don't match. Re-ran scanner on all iter-0028 N=5 diffs: every prior `YES` becomes `no`, every prior `no` stays `no`. Zero acceptance-run DQs would have fired under the corrected regex.
+
+2. **Carrier resilience** — backup-and-restore against PHASE 0 wipe:
+   - `run-fixture.sh:215`: stages `spec-verify.json` + `forbidden-patterns.json` to **both** `.devlyn/` (current path) AND `.devlyn-source/` (stable backup outside `.devlyn/`).
+   - `build-gate-verifiers.sh:30-37`: at start, restores carriers from `.devlyn-source/` if missing in `.devlyn/`. Idempotent — never overwrites a fresher carrier.
+
+3. **Loud-fail in bench mode** — `forbidden-pattern-check.py:167`: if `BENCH_WORKDIR` set AND carrier missing, exit 2 with explicit error. Real-user mode (no `BENCH_WORKDIR`) keeps silent no-op. Smoke-tested: bench mode exits 2, real-user mode exits 0.
+
+### Why HOLD then partial restore (not full revert)
+
+The 29/29 narrow=0 sweep argues iter-0028 mechanism is solving a non-problem (no LLM-generated silent catches occurred in any of our measurements). Subtractive-first principle would say: revert iter-0028.
+
+But Codex R-final's R2 evidence shows **the mechanism never effectively ran** in the failing acceptance runs (carrier missing in n4, pre-wrapper mirror in n5). Reverting based on a measurement that didn't measure the thing is principle-#2 violation (no guesswork). The honest path: fix the oracle + carrier, rerun under valid measurement, then decide ship vs revert based on real signal.
+
+### Acceptance reframed for F2 N=3 (this iter's true ship gate)
+
+Pre-registered before A4 run starts:
+
+- **Mechanism validity**: every L1/L2 BUILD_GATE invocation must include `bash .claude/skills/devlyn:auto-resolve/scripts/build-gate-verifiers.sh` per its log AND `forbidden-pattern-check.py` must execute with carrier present (visible in `build_gate.log.md`).
+- **DQ rate**: bare DQ rate ≥ 2/3 OR L1 DQ rate ≤ 0/3 (categorical-vs-bare gap preserved). Specifically:
+  - If bare drops to 0/3 too (likely outcome given the regex fix), conclude no real silent-catch problem exists; iter-0028 mechanism is not load-bearing for F2 → revert iter-0028 + keep regex fix in a follow-up commit.
+  - If bare stays ≥ 2/3 with L1 < bare by ≥ 30pp, conclude iter-0028 mechanism prevents real silent-catches → keep iter-0028.
+- **Clean-run F2 L1-bare margin** ≥ +5 (reporting only — not decisive after the +5 floor reframe).
+- **Lint full pass** post-mirror.
+
+If the run shows zero DQs across all 9 arm-runs (`bare 0/3, L1 0/3, L2 0/3`) the conclusion is the strongest possible "iter-0028 prevents nothing on F2" evidence, and revert is justified. But that's a measurement, not a guess.
+
+### Codex R-final-2 trigger condition
+
+Will fire after F2 N=3 completes, with the new evidence (the 29/29 sweep + carrier-resilience fix + actual N=3 results) in the prompt. Convergence target: clear ship-or-revert verdict on iter-0028 mechanism load-bearing-ness.

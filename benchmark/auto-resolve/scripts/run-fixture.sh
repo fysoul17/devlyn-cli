@@ -213,18 +213,27 @@ fi
 # direct expected.json reads from the script — keeps the skill scripts
 # benchmark-agnostic per Codex iter-0028 R0.
 if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; then
-  python3 - "$EXPECTED" "$WORK_DIR/.devlyn/spec-verify.json" "$WORK_DIR/.devlyn/forbidden-patterns.json" <<'PY'
+  # iter-0028 R-final follow-up: also stage to `.devlyn-source/` (stable
+  # backup outside `.devlyn/`). PHASE 0 PARSE in the L1 path empirically
+  # wipes `.devlyn/` (n4 solo_claude evidence: spec-verify.json timestamp
+  # 10:55 = post-PARSE, not 10:30 staging time), and only spec-verify-
+  # check.py self-stages from spec.md to recover. forbidden-pattern-check.py
+  # is benchmark-agnostic by design (does not read expected.json directly),
+  # so it cannot self-recover. The wrapper restores from `.devlyn-source/`
+  # before invoking checkers.
+  python3 - "$EXPECTED" "$WORK_DIR" <<'PY'
 import json, os, sys
 expected = json.load(open(sys.argv[1]))
-spec_out = sys.argv[2]
-fp_out = sys.argv[3]
-os.makedirs(os.path.dirname(spec_out), exist_ok=True)
-with open(spec_out, "w") as f:
-    json.dump({"verification_commands": expected.get("verification_commands", [])}, f, indent=2)
-    f.write("\n")
-with open(fp_out, "w") as f:
-    json.dump({"forbidden_patterns": expected.get("forbidden_patterns", [])}, f, indent=2)
-    f.write("\n")
+work = sys.argv[2]
+spec_payload = {"verification_commands": expected.get("verification_commands", [])}
+fp_payload = {"forbidden_patterns": expected.get("forbidden_patterns", [])}
+for sub in (".devlyn", ".devlyn-source"):
+    d = os.path.join(work, sub)
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, "spec-verify.json"), "w") as f:
+        json.dump(spec_payload, f, indent=2); f.write("\n")
+    with open(os.path.join(d, "forbidden-patterns.json"), "w") as f:
+        json.dump(fp_payload, f, indent=2); f.write("\n")
 PY
 fi
 
