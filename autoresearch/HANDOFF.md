@@ -19,10 +19,12 @@ Last refined 2026-04-30 (post 2-skill redesign Phases 1-3 SHIPPED — `/devlyn:i
 
 4. **shadow-suite v0 phase A only.** iter-0030 phase A (commit `a240558`) shipped infra + S1 task + `--suite shadow` flag + `lint-shadow-fixtures.sh`. Phase B (S2-S6, 5 more tasks × 6 files = 30 files) deferred.
 
-5. **Active iter focus options** (next session picks):
-   - **iter-0033 = Quality A/B** (recommended): new `/devlyn:resolve` vs old `/devlyn:auto-resolve` on F1-F9 + S1. This is the cutover gate for Phase 4. Without this measurement, Phase 4 is unjustified.
-   - **iter-0030 phase B** (S2-S6 shadow tasks).
-   - **iter-0034 = Phase 4 cutover** (only if A/B confirms new pair wins).
+5. **Active iter focus** (in flight, 2026-04-30 — Codex R0+R0.5 collab complete):
+   - **iter-0033a = F9 fixture redesign for 2-skill contract** — sequenced FIRST per Codex R0.5 §F. F9 measures NEW vs L0 only (OLD ideate retired in iter-0032; OLD F9 baseline unobtainable at HEAD). 4 smokes + 4 benchmark gates. See [`iterations/0033a-f9-fixture-2skill-redesign.md`](iterations/0033a-f9-fixture-2skill-redesign.md).
+   - **iter-0033 (C1) = NEW L1 vs OLD L1 on F1-F8** — runs after iter-0033a. Original (F1-F9 + S1, L1+L2) was REJECTED at Codex R0 (494s, 6 blockers); rescoped per user. 9 gates including clean-tree mechanical sentinel + expanded artifact contract. See [`iterations/0033-quality-ab-new-resolve-vs-old-auto-resolve.md`](iterations/0033-quality-ab-new-resolve-vs-old-auto-resolve.md).
+   - **iter-0033c = NEW L2 vs NEW L1** — runs after iter-0033 (C1). Codex R0.5 §G + user adjudication 2026-04-30: Phase 4 must not ship without measuring L2 on NEW surface (else NORTH-STAR L2 first-class contract degrades). 8 gates + tool-lift vs deliberation-lift attribution per NORTH-STAR test #11. See [`iterations/0033c-l2-new-vs-new-l1.md`](iterations/0033c-l2-new-vs-new-l1.md).
+   - **iter-0034 = Phase 4 cutover** — gated on **all three** above PASS.
+   - **iter-0030 phase B** (S2-S6 shadow tasks) — independent, unblocked.
 
 Everything below this fold supports those five.
 
@@ -215,13 +217,17 @@ If any unexpected output, do NOT proceed. Surface to user.
 
 ---
 
-## 🚧 iter-0033+ queue (locked sequence)
+## 🚧 iter-0033+ queue (locked sequence per Codex R0.5 §F + user 2026-04-30)
 
-- **iter-0033 = Quality A/B (recommended next)**. Run `/devlyn:resolve` (new) and `/devlyn:auto-resolve` (old) on F1-F9 + shadow S1 with bare baseline. Acceptance: new pair beats or matches old on suite-avg L1-L0 margin AND categorical reliability (DQ rate). This is the gate for Phase 4 cutover.
-- **iter-0030 phase B (deferred but unblocked)**. S2-S6 shadow tasks (5 fixtures × 6 files). Independent of Phase 4 sequencing — can run in parallel with iter-0033 if a separate session takes it.
-- **iter-0034 = Phase 4 cutover** (gated by iter-0033). New `/devlyn:resolve` becomes the default; old `/devlyn:auto-resolve` deprecated → one cycle redirect → delete. Same for the 14 other old skills slated for removal.
+Order is fixed: iter-0033a → iter-0033 (C1) → iter-0033c → iter-0034. Each step's PASS is precondition for the next.
+
+- **iter-0033a = F9 fixture redesign** (FIRST). Closes the fixture-vs-skill gap left by Phases 1-3 (skill bodies shipped without fixture resync). 4 smokes (ideate / resolve / full-chain / path-shape regression) + 4 benchmark gates including out-of-band variant artifact check + ship-gate.py:47 rename. F9 measures NEW vs L0 only (no OLD F9 — OLD ideate retired in iter-0032).
+- **iter-0033 (C1) = NEW L1 vs OLD L1 on F1-F8**. Runs after iter-0033a passes. 9 gates: suite-avg ≥ −1.0 over F1-F7 (F8 reporting only), per-fixture ≥ −5 on F1-F7, DQ rate, layered wall-time (F1-F7 ≤ 1.15× suite), CRITICAL/HIGH zero on previously-clean, watchdog zero, clean-tree mechanical sentinel, expanded artifact contract (prompt fingerprint, axis_validation, state.mode == "spec", spec_sha256 match, all-phase non-null verdicts, etc.).
+- **iter-0033c = NEW L2 vs NEW L1**. Runs after iter-0033 (C1) passes. 8 gates: L2 mode wiring smoke, no-regression vs L1 (≥ −3), lift on pair-eligible fixtures (50%/+5 or 75%/+3), efficiency (per-fixture L2/L1 ≤ 2.0× / ≤ 3.0× when (L2−L1) > +5), short-circuit discipline, hard-floor zero, tool-lift vs deliberation-lift attribution per NORTH-STAR test #11.
+- **iter-0034 = Phase 4 cutover** (gated by all three above PASS). New `/devlyn:resolve` becomes the default; old `/devlyn:auto-resolve` deprecated → one cycle redirect → delete. Same for the 14 other old skills slated for removal.
 - **iter-0035 = Phase 5 optional plugin separation**. Move `/design-system`, `/team-design-ui`, `/devlyn:reap` to `optional-skills/`. README update.
-- **iter-0036+ candidates**: F3 N=3 + F9 N=3 paired variance on golden suite; ship-gate.py reframe (+5 floor → categorical reliability gate); NORTH-STAR ops test #15 real-project trial (Mission 1 terminal gate).
+- **iter-0030 phase B (deferred but unblocked)**. S2-S6 shadow tasks (5 fixtures × 6 files). Independent of Phase 4 sequencing.
+- **iter-0036+ candidates**: F3 N=3 + F9 N=3 paired variance on golden suite; ship-gate.py reframe (+5 floor → categorical reliability gate); NORTH-STAR ops test #15 real-project trial (Mission 1 terminal gate); L2 design-space update if iter-0033c attribution shows tool-lift dominance.
 
 ---
 
@@ -286,4 +292,4 @@ Per `feedback_codex_collaboration_not_consult.md`:
 
 ## ⏭️ End of HANDOFF
 
-Current status: 2-skill redesign Phases 1-3 SHIPPED on `main`. Active focus: **iter-0033 Quality A/B** (new pair vs old) is the gate for Phase 4 cutover. Mission 1 active. Single-task L1 quality is the binding gate; multi-LLM evolution direction binds `/devlyn:resolve` (Claude+Codex today, pi-agent tomorrow) — under no-xxx / worldclass principles.
+Current status: 2-skill redesign Phases 1-3 SHIPPED **skill bodies** on `main`; **fixture resync NOT done** (F9 still encodes 3-skill chain). Phase 4 cutover gated on a 3-iter sequence: **iter-0033a** (F9 fixture redesign + NEW vs L0) → **iter-0033 (C1)** (F1-F8 NEW L1 vs OLD L1) → **iter-0033c** (NEW L2 vs NEW L1). All three sequenced and pre-registered with Codex R0+R0.5 collab. Mission 1 active. Single-task L1 quality is the binding gate; multi-LLM evolution direction binds `/devlyn:resolve` (Claude+Codex today, pi-agent tomorrow) — under no-xxx / worldclass principles.
