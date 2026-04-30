@@ -132,7 +132,22 @@ else
       devlyn:auto-resolve/references/phases/phase-3-critic.md \
       _shared/spec-verify-check.py \
       devlyn:ideate/SKILL.md \
-      devlyn:ideate/references/codex-critic-template.md \
+      devlyn:ideate/references/spec-template.md \
+      devlyn:ideate/references/elicitation.md \
+      devlyn:ideate/references/project-mode.md \
+      devlyn:ideate/references/from-spec-mode.md \
+      devlyn:resolve/SKILL.md \
+      devlyn:resolve/references/state-schema.md \
+      devlyn:resolve/references/free-form-mode.md \
+      devlyn:resolve/references/phases/plan.md \
+      devlyn:resolve/references/phases/implement.md \
+      devlyn:resolve/references/phases/build-gate.md \
+      devlyn:resolve/references/phases/cleanup.md \
+      devlyn:resolve/references/phases/verify.md \
+      _shared/expected.schema.json \
+      _shared/adapters/README.md \
+      _shared/adapters/opus-4-7.md \
+      _shared/adapters/gpt-5-5.md \
       devlyn:preflight/SKILL.md \
       devlyn:preflight/references/report-template.md \
       devlyn:preflight/references/auditors/code-auditor.md \
