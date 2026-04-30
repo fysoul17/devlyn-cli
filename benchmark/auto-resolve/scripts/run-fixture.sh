@@ -267,18 +267,26 @@ if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; then
     ENGINE_PROMPT_HINT="Run with \`--engine auto\` so the experimental dual-engine routing fires (Codex BUILD/FIX, Claude EVAL/CRITIC) — do not override it."
   fi
   if [ "$FIXTURE" = "F9-e2e-ideate-to-resolve" ]; then
-    # F9 NEW chain (iter-0033a): /devlyn:ideate (greenfield) → /devlyn:resolve
+    # F9 NEW chain (iter-0033a): /devlyn:ideate --quick → /devlyn:resolve
     # --spec <emitted-path>. No pre-placed spec; the variant arm generates it
     # via ideate. No preflight (folded into resolve's VERIFY phase).
+    #
+    # --quick is mandatory in autonomous (claude -p) mode: default ideate
+    # invokes interactive Q&A which has no human to answer in a benchmark
+    # subprocess — the agent asks questions and stops. --quick uses
+    # single-turn assume-and-confirm: AI synthesizes the spec from the goal
+    # plus an explicit assumptions block, so the chain proceeds end-to-end
+    # without user input. Smoke 3 (iter-0033a, 2026-04-30) caught this:
+    # default-mode F9 produced empty diffs after 54s of Q&A waiting.
     cat > "$PROMPT_FILE" <<EOF
 You are a first-time devlyn-cli user. You have a vague idea and want the 2-skill harness to take it from unstructured ask to shipped, verified feature. Run the chain:
 
-1. Invoke \`/devlyn:ideate ${ENGINE_CLAUSE}\` to turn the idea into a verifiable spec. The skill will ask focused questions; answer briefly so it can finish. It announces \`spec ready — /devlyn:resolve --spec <emitted-path>\` when done. The emitted spec lives at \`docs/specs/<id>-<slug>/spec.md\` with a sibling \`spec.expected.json\`.
-2. Take the emitted spec path and invoke \`/devlyn:resolve --spec <that-path> ${ENGINE_CLAUSE}\` to run PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (VERIFY is the fresh-subagent final phase — there is no separate preflight skill in the 2-skill design).
+1. Invoke \`/devlyn:ideate --quick ${ENGINE_CLAUSE}\` to turn the idea into a verifiable spec. \`--quick\` is mandatory: this is an autonomous run with no human to answer interactive questions, so ideate must synthesize the spec single-turn from the goal text and emit assumptions explicitly. The skill announces \`spec ready — /devlyn:resolve --spec <emitted-path>\` when done. The emitted spec lives at \`docs/specs/<id>-<slug>/spec.md\` with a sibling \`spec.expected.json\`.
+2. Take the emitted spec path verbatim from the announce line and invoke \`/devlyn:resolve --spec <that-path> ${ENGINE_CLAUSE}\` to run PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (VERIFY is the fresh-subagent final phase — there is no separate preflight skill in the 2-skill design).
 
 ${ENGINE_PROMPT_HINT}
 
-Follow the skills to completion. Do not short-circuit. Do not invoke \`/devlyn:auto-resolve\` or \`/devlyn:preflight\` — they are not part of the 2-skill chain.
+Follow the skills to completion. Do not short-circuit. Do not invoke \`/devlyn:auto-resolve\` or \`/devlyn:preflight\` — they are not part of the 2-skill chain. Do not stop after ideate; the chain only counts as complete after \`/devlyn:resolve\` returns a terminal verdict.
 
 After the whole chain, briefly report: (a) the spec path ideate produced, (b) the resolve terminal verdict, (c) whether VERIFY surfaced any findings.
 
