@@ -254,6 +254,41 @@ Note: redesign and shadow-suite **interleave** rather than running serial — ke
 
 ---
 
+## 📖 Open question — extracting each model's max capability per official guides
+
+**Binding references** (must be re-read at the start of any iter that touches prompt content or adapters):
+
+- Anthropic Opus 4.7 prompt-engineering best practices: <https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices>
+- OpenAI GPT-5.5 prompt guidance: <https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.5>
+
+These are the contracts for the per-model adapter files (`_shared/adapters/opus-4-7.md` and `_shared/adapters/gpt-5-5.md`) that ship in redesign Phase 1 (iter-0029).
+
+### Key divergences already surfaced (from 2026-04-30 R0 collab)
+
+| Dimension | Opus 4.7 doc | GPT-5.5 doc |
+|---|---|---|
+| Verbosity | Calibrates to task complexity automatically. Reduce only when product needs it. | Use `text.verbosity` parameter; outcome-first, decision rules over absolute imperatives. |
+| Imperatives | "Where you might have said 'CRITICAL: You MUST...', use normal prompting." Drop NEVER/MUST density. | ALWAYS/NEVER reserved for true safety invariants; judgment calls = decision rules. |
+| Self-check | Official pattern: "Ask Claude to self-check. 'Before you finish, verify your answer against [test criteria]'." | Explicit: "validation as concrete commands/tools, not self-belief." Mechanical > prompt self-check. |
+| Tool use default | Less tool-eager; raise effort to escalate | Define retrieval budgets; one broad search first |
+| Code review specific | "be conservative / no nitpick" → model suppresses real findings. Recommended: "report every finding, downstream filters rank." | (no equivalent direct guidance) |
+| Process specification | XML structure helps; literal interpretation respected | "Avoid carrying over every instruction from older stack — over-specifies process. Outcome-first wins." |
+
+### Open questions for deep discussion (next iter that actually edits prompt content)
+
+1. **Per-engine prompts vs single-prompt + adapter delta**: do we ship two full prompts (`phase-X.claude.md` vs `phase-X.codex.md`) for max alignment with each guide, OR one canonical prompt + small per-engine delta files (`adapters/opus-4-7.md` overrides specific lines)? Trade-off: full per-engine = best alignment but 2× maintenance; adapter-delta = single canonical body + small overrides, lower maintenance, slight alignment loss per model.
+2. **Convergence point for both guides**: outcome-first + decision rules + mechanical gates is the common ground. Is the canonical prompt body the common-ground form, with adapters supplying model-specific elaboration (XML for Opus, GPT-5.5 stop-rules format for Codex)?
+3. **CRITIC self-filter audit**: current CRITIC language ("what a staff engineer would block" + "no LOW") matches Opus 4.7's review-harness self-filtering warning verbatim. Is this a separate fix in redesign Phase 2 (when `/devlyn:resolve`'s VERIFY-JUDGE phase is written), or a pre-Phase 2 spot fix?
+4. **iter-history annotations in prompts**: `phase-1-build.md` and others contain `*(iter-0020: F4 evidence...)*` style inline annotations. These are LLM input noise per both guides. Phase 1 cleanup or Phase 2 rewrite?
+5. **Adapter file shape**: what does `_shared/adapters/opus-4-7.md` look like as a file? A delta against canonical body? A full prompt? An override-table format? Decide before iter-0029 ships.
+6. **Schema vs prompt as load-bearing decoupler**: per Codex R1, schema is the load-bearing piece — prompt patterns are adapter material. Does this mean schema lockdown (with versioning) is the iter-0029 priority, with adapter files coming later? Or do they ship together?
+
+### Standing rule
+
+Any iter that touches prompt content OR adds a new adapter file MUST cite both official guides as part of its acceptance criteria. "I think this is better" is not a justification; "the official guide section X.Y says Z, my change applies Z" is. This is the same evidence-over-claim rule that bound iter-0027/0028's measurement work.
+
+---
+
 ## 🤝 Codex pair-review pattern for iter-0028 (mandatory)
 
 Per `feedback_codex_collaboration_not_consult.md`:
