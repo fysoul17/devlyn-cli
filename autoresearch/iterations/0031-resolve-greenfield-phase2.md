@@ -1,9 +1,9 @@
 ---
 iter: "0031"
 title: "Redesign Phase 2 — greenfield `/devlyn:resolve` SKILL.md"
-status: ACTIVE
+status: SHIPPED 2026-04-30 (commit 4d0e04a)
 type: greenfield-interface — replaces current /devlyn:resolve (focused-debug) with the locked 2-skill pipeline shape
-shipped_commit: TBD
+shipped_commit: 4d0e04a
 date: 2026-04-30
 mission: 1
 ---
