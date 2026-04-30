@@ -1,9 +1,9 @@
 ---
 iter: "0029"
 title: "Redesign Phase 1 — kernel extraction + adapter contract (B-prime per Codex 2026-04-30)"
-status: ACTIVE
+status: SHIPPED 2026-04-30 (commit 7ecc0e6)
 type: structural — interface relocation, no behavior change
-shipped_commit: TBD
+shipped_commit: 7ecc0e6
 date: 2026-04-30
 mission: 1
 ---
