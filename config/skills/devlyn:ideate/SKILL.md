@@ -310,7 +310,7 @@ For single-item additions, run one solo rubric pass on just the new item. Even t
 **Post-write validation** (iter-0019.8 — applies to greenfield, Expand, Replan, Quick Add): immediately after writing each item spec at `docs/roadmap/phase-N/<id>-<name>.md`, validate the canonical verification carrier:
 
 ```
-python3 .claude/skills/devlyn:auto-resolve/scripts/spec-verify-check.py --check docs/roadmap/phase-N/<id>-<name>.md
+python3 .claude/skills/_shared/spec-verify-check.py --check docs/roadmap/phase-N/<id>-<name>.md
 ```
 
 Exit 0 → proceed. Exit 2 → re-prompt yourself to fix the `## Verification` ` ```json ` block (the script's stderr line names the exact shape error: invalid JSON, empty `verification_commands` array, non-string `cmd`, bool `exit_code`, etc.). Re-write the spec, re-run the check, repeat until exit 0. This catches LLM hallucination at authoring time instead of letting auto-resolve hit the malformed contract at BUILD_GATE round 0.

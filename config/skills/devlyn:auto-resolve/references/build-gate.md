@@ -134,7 +134,7 @@ The orchestrator branches on `phases.build_gate.verdict` — it does NOT re-read
 In addition to the language-specific gates above, the BUILD_GATE Agent always invokes the spec-literal verifier:
 
 ```bash
-python3 .claude/skills/devlyn:auto-resolve/scripts/spec-verify-check.py
+python3 .claude/skills/_shared/spec-verify-check.py
 ```
 
 The script reads `.devlyn/spec-verify.json`. **Three staging paths** (iter-0019.8 + iter-0019.9):

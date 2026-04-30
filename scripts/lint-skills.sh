@@ -130,7 +130,7 @@ else
       devlyn:auto-resolve/references/phases/phase-1-build.md \
       devlyn:auto-resolve/references/phases/phase-2-evaluate.md \
       devlyn:auto-resolve/references/phases/phase-3-critic.md \
-      devlyn:auto-resolve/scripts/spec-verify-check.py \
+      _shared/spec-verify-check.py \
       devlyn:ideate/SKILL.md \
       devlyn:ideate/references/codex-critic-template.md \
       devlyn:preflight/SKILL.md \
