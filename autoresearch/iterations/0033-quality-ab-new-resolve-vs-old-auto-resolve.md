@@ -113,6 +113,7 @@ Per Codex R0.5 §C — both NEW arms (solo_claude, variant) must produce these. 
 - `summary.git_sha` identical for `iter-0033-old` and `iter-0033-new` runs.
 - Clean-tree sentinel: `git status --porcelain` empty at suite start, captured to `summary.clean_tree: true`.
 - Fixture list exactly `F1 F2 F3 F4 F5 F6 F7 F8`; no F9 in either run.
+- **Per-fixture `NEW L1 vs L0` margin** (Codex R0 iter-0033c §4 dependency): `summary.json` rows for the NEW pass MUST include the per-fixture margin between `solo_claude` and `bare`. iter-0033c freezes its pair-eligible "L1 ≤ L0" subset from this column. Without it, iter-0033c Gate 3 cannot be evaluated.
 
 **Per-arm prompt fingerprint** (in `result.json` or transcript scan):
 - OLD arm prompt contains `auto-resolve`. NEW arm prompt contains `resolve --spec`. NEW arm prompt does NOT contain `auto-resolve` or `preflight`.
