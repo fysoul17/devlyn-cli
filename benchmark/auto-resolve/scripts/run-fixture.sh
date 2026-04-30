@@ -205,35 +205,16 @@ fi
 # generate the same shape from a spec.md "## Verification" section for
 # real-user runs (Codex R5, 2026-04-28). This stages all 3 arms — bare's
 # .devlyn/ is created lazily by spec-verify-check.py if absent.
-#
-# iter-0028: stage .devlyn/forbidden-patterns.json with the same
-# benchmark-agnostic contract for BUILD_GATE's forbidden-pattern-check.py.
-# Source-of-truth = expected.json:forbidden_patterns (the same list the
-# post-run scanner already enforces below at line ~515). Staging — not
-# direct expected.json reads from the script — keeps the skill scripts
-# benchmark-agnostic per Codex iter-0028 R0.
 if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; then
-  # iter-0028 R-final follow-up: also stage to `.devlyn-source/` (stable
-  # backup outside `.devlyn/`). PHASE 0 PARSE in the L1 path empirically
-  # wipes `.devlyn/` (n4 solo_claude evidence: spec-verify.json timestamp
-  # 10:55 = post-PARSE, not 10:30 staging time), and only spec-verify-
-  # check.py self-stages from spec.md to recover. forbidden-pattern-check.py
-  # is benchmark-agnostic by design (does not read expected.json directly),
-  # so it cannot self-recover. The wrapper restores from `.devlyn-source/`
-  # before invoking checkers.
-  python3 - "$EXPECTED" "$WORK_DIR" <<'PY'
+  python3 - "$EXPECTED" "$WORK_DIR/.devlyn/spec-verify.json" <<'PY'
 import json, os, sys
 expected = json.load(open(sys.argv[1]))
-work = sys.argv[2]
-spec_payload = {"verification_commands": expected.get("verification_commands", [])}
-fp_payload = {"forbidden_patterns": expected.get("forbidden_patterns", [])}
-for sub in (".devlyn", ".devlyn-source"):
-    d = os.path.join(work, sub)
-    os.makedirs(d, exist_ok=True)
-    with open(os.path.join(d, "spec-verify.json"), "w") as f:
-        json.dump(spec_payload, f, indent=2); f.write("\n")
-    with open(os.path.join(d, "forbidden-patterns.json"), "w") as f:
-        json.dump(fp_payload, f, indent=2); f.write("\n")
+out_path = sys.argv[2]
+normalized = {"verification_commands": expected.get("verification_commands", [])}
+os.makedirs(os.path.dirname(out_path), exist_ok=True)
+with open(out_path, "w") as f:
+    json.dump(normalized, f, indent=2)
+    f.write("\n")
 PY
 fi
 
@@ -395,12 +376,6 @@ else
     # what the post-run verifier (run-fixture.sh:431-434) sets so the gate
     # sees the same environment shape.
     export BENCH_WORKDIR="$WORK_DIR"
-    # iter-0028 R1 D1: forbidden-pattern-check.py needs the pre-arm baseline
-    # to compute the arm-only diff. Variant arm's auto-resolve commits after
-    # PHASE 1 (SKILL.md:113-117), so by BUILD_GATE time `git diff HEAD` is
-    # empty and silently disables the scanner. Pin to SCAFFOLD_SHA — the
-    # same baseline run-fixture.sh:429-436 uses for the post-run scanner.
-    export DEVLYN_DIFF_BASE_SHA="$SCAFFOLD_SHA"
     exec claude \
       -p "$(cat "$PROMPT_FILE")" \
       --dangerously-skip-permissions \

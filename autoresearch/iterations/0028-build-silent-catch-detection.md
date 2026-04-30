@@ -237,3 +237,72 @@ If the run shows zero DQs across all 9 arm-runs (`bare 0/3, L1 0/3, L2 0/3`) the
 ### Codex R-final-2 trigger condition
 
 Will fire after F2 N=3 completes, with the new evidence (the 29/29 sweep + carrier-resilience fix + actual N=3 results) in the prompt. Convergence target: clear ship-or-revert verdict on iter-0028 mechanism load-bearing-ness.
+
+## R-final-2 (post-rerun convergence) — 2026-04-30
+
+### Fresh F2 N=3 acceptance @ commit `e60092c` (regex narrow + carrier resilience + loud-fail)
+
+| run | bare DQ | bare score | L1 DQ | L1 score | L2 DQ | L2 score | L1-bare | L2-bare |
+|-----|---------|-----------|-------|----------|-------|----------|---------|---------|
+| n1  | False   | 86        | False | 91       | False | 92       | +5      | +6      |
+| n2  | False   | 82        | False | 90       | False | 97       | +8      | +15     |
+| n3  | False*  | 76        | False | 96       | False | 99       | +20     | +23     |
+| **mean** |     | **81.3**  |       | **92.3** |       | **96.0** | **+11.0** | **+14.7** |
+
+(* n3 bare deterministic dq=False but **judge dq_judge=True** for semantic silent-catch — see falsification R1 below.)
+
+`disqualifier` column = deterministic post-run scanner verdict. The narrow regex caught zero false positives across all 9 arm-runs (vs 7+ broad-regex artifacts in iter-0028 N=5).
+
+**Cumulative narrow-regex sweep across iter-0027 N=5 + iter-0028 N=5 + iter-0028 R-final N=3 = 38 arm-runs total. Narrow regex matches = 0/38. `@ts-ignore` matches = 0/38.**
+
+### Codex R-final-2 (`/tmp/iter0028-rfinal2-stdout.txt`)
+
+Verdict: **Partial revert. Revert the iter-0028 forbidden-pattern BUILD_GATE mechanism. Keep F2 regex narrow.**
+
+Critical pushback on my "silent-catch is a non-problem" claim:
+
+> Fresh n3 has a **judge semantic DQ** on bare. Judge reason: "The recursive skill walker catches readdirSync errors and returns without surfacing non-EACCES failures." Verified at `bare/diff.patch:126`:
+> ```js
+> } catch (e) {
+>   if (e.code === 'EACCES' && !permError) { permError = { path: dir }; }
+>   return;
+> }
+> ```
+> The deterministic regex did not catch this (returns plain `return;`, not `return null/{}/...`). Judge caught it semantically.
+
+So the corrected framing is: **the configured deterministic regex is not load-bearing on F2** (because the silent-catches that DO occur are semantic, not the literal-fallback shape the regex looks for). The regex-based mechanism iter-0028 ships fundamentally cannot detect semantic silent-catches — that requires a judge or LLM-pass evaluator, which the post-EVAL judge already provides.
+
+Falsification answers (Codex):
+- **R1**: 0/38 narrow hits insufficient to declare silent-catch a non-problem; sufficient to say the configured regex rarely fires. Real silent-catches DO happen but in shapes the regex misses.
+- **R2**: My real-user cost estimate was too low. Wrapper invocation in SKILL.md prompt + always-runs-both-checkers in build-gate-verifiers.sh = runtime + prompt + maintenance + failure-surface cost. Subtractive-first defaults to revert when no load-bearing hit observed AND known scope holes.
+- **R3**: 0 `@ts-ignore` hits across all 38 F2 diffs (verified). Mechanism not secretly load-bearing on the second pattern either.
+- **R4**: HANDOFF should say "iter-0028 closed as measurement correction, regex narrowed; mechanism reverted as not proven load-bearing; iter-0029 = shadow-suite v0".
+
+### Convergence — what ships at this commit (e60092c → revert commit)
+
+**KEEP** (real bug fix, retained):
+- `benchmark/auto-resolve/fixtures/F2-cli-medium-subcommand/expected.json` — narrowed regex `(?:\[\]|null|undefined|false|''|\{\s*\})`. Still distinguishes literal silent-fallbacks from structured error returns. Smoke-tested 8/8 positive + 5/5 negative.
+
+**REVERT** (mechanism not load-bearing, demoted):
+- `config/skills/devlyn:auto-resolve/scripts/forbidden-pattern-check.py` — deleted.
+- `config/skills/devlyn:auto-resolve/scripts/build-gate-verifiers.sh` — deleted.
+- `config/skills/devlyn:auto-resolve/SKILL.md` — wrapper invocation reverted to direct `spec-verify-check.py` call (same as pre-iter-0028).
+- `config/skills/devlyn:auto-resolve/references/build-gate.md` — Auxiliary Verifiers section reverted to spec-verify-only.
+- `benchmark/auto-resolve/scripts/run-fixture.sh` — `forbidden-patterns.json` staging removed; `.devlyn-source/` backup removed (spec-verify-check.py self-stages already, the resilience layer was load-bearing only for the now-removed forbidden-pattern carrier).
+- `scripts/lint-skills.sh` — Check 6 mirror-parity entries for forbidden-pattern-check.py + build-gate-verifiers.sh removed; executable-bit check for build-gate-verifiers.sh removed.
+
+Net diff at the revert commit: **466 deletions, 12 insertions.** Subtractive-first honored.
+
+### What this iteration empirically established (lessons for the next session)
+
+1. **Fixture regex correctness is itself a measurement axis.** The F2 broad-regex `\{` branch contaminated iter-0027's `L1 60% silent-catch DQ` reading, which drove iter-0028 design. Future iters should validate fixture oracle shape before treating its output as a quality signal — open the regex, compute matches on a known-good diff, confirm it discriminates intended vs unintended.
+
+2. **Deterministic regex gates and semantic LLM-judge verdicts are different layers.** The judge catches what the regex can't (semantic silent-catch shape `return;` after dropping non-EACCES). For iter-0029+ work that needs to surface failure modes mid-build, a semantic check must be built; a regex check covers a narrow slice and can have known holes.
+
+3. **Subtractive-first applies to mechanisms-that-don't-fire.** A mechanism that doesn't catch real failures within the measurement window is debt regardless of LOC count. iter-0028 mechanism = 281+91+~50 LOC + Agent prompt cost + carrier protocol + lint footprint, all for unobserved-failure-mode protection.
+
+4. **Carrier loss under PHASE 0 is real but decoupled from this iter.** spec-verify-check.py self-stages and survives. The deeper "PHASE 0 PARSE wipes L1 .devlyn/ but not L2 .devlyn/" trace is a follow-up filing, not a blocker for iter-0028 close-out (the carrier-resilience layer added in e60092c is reverted along with the forbidden-pattern mechanism since the only file that needed it is removed).
+
+### Status: iter-0028 CLOSED — measurement correction shipped, mechanism reverted.
+
+Next session: iter-0029 = shadow-suite v0 per HANDOFF L251-260. Cross-fixture variance (F3/F9) sequenced after, not as the immediate next move.

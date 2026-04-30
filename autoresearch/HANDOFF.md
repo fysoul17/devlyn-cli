@@ -2,17 +2,17 @@
 
 **Read [`NORTH-STAR.md`](NORTH-STAR.md) first** (project goal). **This file second** (operating context). **[`PRINCIPLES.md`](PRINCIPLES.md) before any iter file edit** (pre-flight 0 + #1-#7). **[`MISSIONS.md`](MISSIONS.md)** confirms which mission is active.
 
-Last refined 2026-04-30 (post iter-0022 → iter-0027 batch ship; user pivot from "+5 floor reliability" → "categorical-reliability silent-catch in BUILD" surfaced empirically).
+Last refined 2026-04-30 (post iter-0028 R-final-2 convergence — mechanism reverted as not load-bearing; F2 regex narrow-fix shipped; iter-0029 shadow-suite v0 next).
 
 ---
 
 ## 🚦 START-HERE — three things only
 
-1. **iter-0028 has not started.** Code state ends at iter-0027 (commit `4feae35`, baked at `f4a7e29`). The next session opens iter-0028 from scratch after the cold-start sanity check below.
+1. **iter-0028 CLOSED as measurement correction, NOT mechanism ship.** F2 fixture's broad regex (`return\s+(...|\{|...)`) was over-matching legitimate structured-error returns like `return { level: 'fail', message }`. iter-0027's "L1 60% silent-catch DQ" reading was 100% fixture artifact — across iter-0027 + iter-0028 + iter-0028-rfinal = **38 F2 arm-runs total, narrow-regex hits = 0/38, `@ts-ignore` hits = 0/38**. Fix shipped: F2 regex narrowed to `(?:\[\]|null|undefined|false|''|\{\s*\})`. With the fix, F2 N=3 paired = **0 DQ across all 9 arm-runs, L1+11.0 / L2+14.7 over bare clean-mean**. The forbidden-pattern BUILD_GATE mechanism (forbidden-pattern-check.py + build-gate-verifiers.sh wrapper + carrier staging) was reverted — Codex R-final-2 verdict + my subtractive-first read agreed: regex-based deterministic gate fundamentally cannot catch the semantic silent-catch shape that DOES occur (n3 bare `catch (e) { if (...) {...} return; }` non-EACCES drop), and the post-EVAL judge already catches those.
 
-2. **iter-0028 = silent-catch detection in BUILD before EVAL.** F2 N=5 paired variance (iter-0027) showed L1 silent-catch DQ rate **2/5 (40%)** structurally — same engine, same prompt, same git baseline produced silent-catch (`catch-return fallback` / `catch returning an object`) in 2 out of 5 fresh runs. Mean L1-L0 = +13.25 when clean (well above +5 floor) — the failure mode is NOT margin, it's the recurring silent-catch DQ. Fix the prompt/CRITIC to detect silent-catch in BUILD output BEFORE EVAL gates it. Three candidate approaches in "iter-0028 execution plan" below — Codex R0 picks one.
+2. **iter-0029 = shadow-suite v0 per HANDOFF L251-260.** 6 tasks, 1 per failure-class, hybrid generation (LLM proposes → human/Codex curates → frozen). `benchmark/auto-resolve/shadow-fixtures/` directory + `--suite shadow` flag. Smoke gate: schema + reference-solvability dry-run before any L0/L1 measurement. F3 N=3 + F9 N=3 cross-fixture variance is iter-0032 candidate, NOT immediate.
 
-3. **Cross-fixture variance (F3 N=3, F9 N=3) BLOCKED until iter-0028 ships.** Codex iter-0027 R-final pivot rule: ≥2/5 DQ on F2 → stop broad fixture expansion → run iter-0028 categorical reliability first. After iter-0028 ships AND F2 N=3 re-run shows 0/3 DQ, then F3 N=3 + F9 N=3 follow as iter-0029.
+3. **F2 fixture is now trustworthy as a measurement instrument.** Future iters can use F2 single-shot or F2 N=3 readings without the broad-regex artifact contaminating margin reads. The remaining n3-bare semantic silent-catch (judge-only DQ) is a real signal about what semantic mid-build checks could detect — but it's NOT iter-0028 work. If a future iter wants semantic mid-build detection, it must be LLM-pass / judge-class, not deterministic regex.
 
 Everything below this fold supports those three.
 
@@ -142,7 +142,7 @@ Memory files at `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/me
 ## 📍 Branch + project state (verify before editing)
 
 - **Branch**: `benchmark/v3.6-ab-20260423-191315`
-- **Recent ship trail**: `f4a7e29` (iter-0027 SHA bake) → `4feae35` (iter-0027 ship) → `b06fffd` (iter-0026 SHA bake) → `60c8a38` (iter-0026 ship) → `b5a2a60` (iter-0025 SHA bake) → `6f0e693` (iter-0025 ship) → `fd58abf` (iter-0024 SHA bake) → `349818f` (iter-0024 ship) → `109ca7d` (iter-0023 SHA bake) → `356f056` (iter-0023 ship) → `5f9020e` (iter-0022 SHA bake) → `8fcc509` (iter-0022 ship).
+- **Recent ship trail**: (this commit) iter-0028 R-final-2 revert → `e60092c` (iter-0028 R-final regex+resilience+loud-fail) → `4f100bd` (iter-0028 SHA bake) → `547d95a` (iter-0028 mechanism — REVERTED at this commit) → `f4a7e29` (iter-0027 SHA bake) → `4feae35` (iter-0027 ship) → `b06fffd` (iter-0026 SHA bake) → `60c8a38` (iter-0026 ship) → `b5a2a60` (iter-0025 SHA bake) → `6f0e693` (iter-0025 ship) → earlier iters back to `8fcc509` (iter-0022 ship).
 - **Mission 1 active** ([`MISSIONS.md`](MISSIONS.md)). Hard NOs binding.
 - **iter-0020** = FAILED-EXPERIMENT-REVERTED-POLICY (commit `948e4bd`). e2e BUILD=Claude routing deleted. Auto-resolve runtime default = `--engine claude`.
 - **iter-0021** = SHIPPED (calibration overlay). Per-axis L1-L0 readout: spec +7 / cons +18 / scope -4 / qual +19 (single-shot, suite avg +4.4).
@@ -151,7 +151,8 @@ Memory files at `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/me
 - **iter-0024** = SHIPPED. Bare-Case Guardrail correction. EVAL hygiene severity task-aware.
 - **iter-0025** = SHIPPED. Opus 4.7 sidecar cross-judge: GPT vs Opus suite avg L1-L0 +4.44 vs +4.67. Quality magnitude single-judge artifact (`-4` disagreement).
 - **iter-0026** = SHIPPED-MECHANISM. F2 single-shot after `completed:` removal: scope 23→25 ✓; L1 total 94→81 (tail event).
-- **iter-0027** = DATA. F2 N=5 paired variance: L1 mean 94.5 / stdev 2.89 (n=4 effective); L1 DQ rate 2/5 (40%). Codex pivot threshold reached → iter-0028 categorical-reliability work.
+- **iter-0027** = DATA. F2 N=5 paired variance: L1 mean 94.5 / stdev 2.89 (n=4 effective); L1 DQ rate 2/5 (40%). Codex pivot threshold reached → iter-0028 categorical-reliability work. **Note (post iter-0028 R-final)**: iter-0027's "L1 60% silent-catch DQ" was 100% F2 fixture broad-regex artifact, NOT real silent-catches. The categorical-reliability framing remains valid as a Mission 1 axis, but the iter-0027 specific signal was noise.
+- **iter-0028** = CLOSED-MEASUREMENT-CORRECTION (mechanism reverted). F2 fixture broad regex narrowed (real bug fix, kept). 38-arm-run cumulative narrow=0 + @ts-ignore=0 evidence + Codex R-final-2 convergence → forbidden-pattern BUILD_GATE mechanism reverted as not load-bearing. F2 N=3 acceptance (post-fix): all 9 arm-runs dq=False, L1+11.0 / L2+14.7 over bare clean-mean. Net iter close-out diff: -454 lines (subtractive-first honored).
 
 ### Cold-start sanity check (run before any edit; ~30s)
 
@@ -176,11 +177,13 @@ diff -q config/skills/_shared/pair-plan-schema.md   .claude/skills/_shared/pair-
 ls autoresearch/iterations/0027-f2-paired-variance-n5.md
 # Expected: file present.
 
-# 6. iter-0028 deliverables NOT on disk yet (start-from-scratch confirmation).
+# 6. iter-0028 was reverted post R-final-2 — mechanism scripts MUST NOT exist
+# (their presence would mean someone partially restored without consulting the
+# convergence record).
 test ! -e config/skills/devlyn:auto-resolve/scripts/forbidden-pattern-check.py && \
-echo "iter-0028 not started — proceed"
-# Expected: prints "iter-0028 not started — proceed". (Filename is candidate
-# B; if Codex R0 picks A or C the file may have a different name.)
+test ! -e config/skills/devlyn:auto-resolve/scripts/build-gate-verifiers.sh && \
+echo "iter-0028 mechanism reverted — proceed to iter-0029"
+# Expected: prints "iter-0028 mechanism reverted — proceed to iter-0029".
 
 # 7. Auto-resolve runtime default still `--engine claude`.
 grep -E '^[[:space:]]+- `--engine MODE`' config/skills/devlyn:auto-resolve/SKILL.md
@@ -188,63 +191,6 @@ grep -E '^[[:space:]]+- `--engine MODE`' config/skills/devlyn:auto-resolve/SKILL
 ```
 
 If any unexpected output, do NOT proceed. Surface to user.
-
----
-
-## 🛠️ iter-0028 execution plan — silent-catch detection in BUILD before EVAL
-
-### Why this iter exists (PRINCIPLES.md pre-flight 0 + Codex iter-0027 R-final pivot)
-
-iter-0027 N=5 measured L1 silent-catch DQ rate **2/5 (40%)** on F2 alone — at the same git baseline `b06fffd`, same engine (Claude solo), same prompt. Different runs hit different silent-catch sites:
-- n2: `Forbidden disqualifier-severity catch-return fallback` (the `catch (e) { return null }` pattern)
-- n4: `Forbidden-pattern hit for catch returning an object` (the `catch (e) { return {} }` variant)
-
-This is NOT noise. It's a structural BUILD failure mode that the current pipeline catches only at EVAL after BUILD has already shipped DQ-grade code. iter-0024 introduced task-aware MEDIUM hygiene severity. iter-0028 extends the principle: **silent-catch / forbidden-pattern detection moves into BUILD-phase verification, not just post-hoc EVAL gating**.
-
-**Decision this iter unlocks**: whether structural silent-catch DQ rate drops to 0/3 (or close) when BUILD is required to self-check for forbidden-pattern matches before declaring its phase complete. If yes → expand cross-fixture (F3 N=3 + F9 N=3) and Mission 1 gate decision becomes unambiguous. If no → silent-catch is a model-level failure mode that needs different surface.
-
-### Mission 1 service
-
-Serves Mission 1 gate 1 (L1 vs L0 quality) directly. The user's "단일 먼저, 그 다음 팀" sequencing is honored: this is single-task work. Mission 1 hard NOs untouched.
-
-### Three deliverable candidates (Codex R0 picks one)
-
-The next session's first iter-0028 R0 task is to pick between these. Listing them so the next session has the candidate set without re-deriving:
-
-**Candidate A — BUILD prompt self-check**
-Add a final sanity-check step to `references/phases/phase-1-build.md`: before declaring BUILD complete, BUILD agent must `grep -nE '<forbidden_pattern_regex>' <changed_files>` and either fix any hits or surface them in the build summary. Cheapest implementation; relies on prompt compliance (LLM following instructions). Risk: same model that produces silent-catch may also miss its own self-check.
-
-**Candidate B — Mechanical BUILD-GATE forbidden-pattern check (recommended; refined per Codex 2026-04-30 deep R0)**
-Extend `spec-verify-check.py` (or add `forbidden-pattern-check.py`) to scan changed files for forbidden-pattern regex matches and emit CRITICAL `correctness.silent-catch-introduced` finding when any match. Integrate into BUILD_GATE phase (which already wires the fix-loop). Mechanical, deterministic, model-agnostic. Highest reliability. ~50-100 LOC script. Pattern matches iter-0019.6 (`spec-verify-check.py`) which mechanized verification commands successfully.
-
-**Critical Codex tweak**: must NOT be benchmark-only. The runtime BUILD contract at `phase-1-build.md:61` already says "no silent catch / `any` / `@ts-ignore` / hardcoded workaround" for ALL users; today `build-gate.md:160` explicitly puts forbidden-pattern enforcement out of scope for the mechanical gate. iter-0028 closes that in a product-shaped way: forbidden-pattern source = `expected.json:forbidden_patterns` when in benchmark mode (`BENCH_WORKDIR` set) ELSE a real-user default policy file (e.g. `_shared/forbidden-patterns.default.json` covering silent-catch / `any` / `@ts-ignore` / hardcoded workaround patterns drawn from `phase-1-build.md` quality bar). Real-user invocations get the same protection benchmark fixtures get.
-
-**Candidate C — Pre-EVAL CRITIC pass**
-Re-route CRITIC's design sub-pass to fire BEFORE EVAL (currently after, in PHASE 3). Requires re-thinking post-EVAL invariant (CRITIC currently is findings-only post-EVAL). Most architectural; highest risk of disturbing other invariants.
-
-**Recommendation (will be Codex R0 input, NOT committed yet)**: Candidate B — mechanical check is principle-#3 root-cause (forbidden patterns are mechanically detectable; relying on LLM self-check for them is a workaround). Same architectural pattern as iter-0019.6.
-
-### iter-0028 acceptance gate (pre-registered before R0; reframed per user 2026-04-30 "categorical-vs-bare > absolute floor")
-
-After whichever candidate ships:
-- **F2 N=3 paired re-run** at iter-0028 commit. Acceptance:
-  - **L1 silent-catch DQ rate ≤ 1/3** (absolute; targets bringing 60% down to ≤33%).
-  - **L1 DQ rate < bare DQ rate by ≥ 30 percentage points** (categorical-vs-bare; the real signal per user direction).
-- L1-L0 mean lift on F2 stays ≥ +10 (clean-run regime preserved). Suite-avg "+5 floor" is reporting only, not decisive.
-- Lint Check 13 still PASSES post-mirror.
-- No regression on iter-0020 baseline F1/F4/F6/F7 single-fixture spot-check.
-
-If acceptance passes → iter-0029 = F3 N=3 + F9 N=3 cross-fixture variance (test bare-vs-L1 gap on more spec types).
-If acceptance fails → iter-0028 close-out with revert; pivot to Candidate C (pre-EVAL CRITIC) in iter-0029.
-
-### iter-0028 hard NO list
-
-- ❌ NO change to `judge-prompt.txt` or judge rubric (RUBRIC.md:3 freeze still binding).
-- ❌ NO new fixture.
-- ❌ NO multi-agent coordination beyond pipeline.state.json.
-- ❌ NO ideate/preflight/team-* default change.
-- ❌ NO Mission 2 surface touch (worktree, parallel, lease, queue).
-- ❌ NO "while I'm here" cleanup of unrelated code paths.
 
 ---
 
