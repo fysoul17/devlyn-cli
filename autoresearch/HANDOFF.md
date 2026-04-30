@@ -1,80 +1,114 @@
 # HANDOFF — for the next session
 
-**Read [`NORTH-STAR.md`](NORTH-STAR.md) first** (project goal). **This file second** (operating context). **[`PRINCIPLES.md`](PRINCIPLES.md) before any iter file edit** (pre-flight 0 + #1-#7). **[`MISSIONS.md`](MISSIONS.md)** confirms which mission is active.
+**Read [`NORTH-STAR.md`](NORTH-STAR.md) first** (project goal + locked 2-skill product surface). **This file second** (operating context). **[`PRINCIPLES.md`](PRINCIPLES.md) before any iter file edit.** **[`MISSIONS.md`](MISSIONS.md)** confirms Mission 1 active.
 
-Last refined 2026-04-30 (post iter-0028 R-final-2 convergence + 2-skill redesign locked + multi-LLM evolution direction binding).
-
----
-
-## 🚦 START-HERE — four things now
-
-1. **2-skill redesign LOCKED 2026-04-30.** 16 user-facing skills compress to **`/devlyn:ideate` + `/devlyn:resolve` + internal kernel + `/devlyn:reap` (optional)**. Codex R0+R1 deep collab. Full record: NORTH-STAR.md "Product surface" section + memory `project_2_skill_harness_redesign_2026_04_30.md`. Migration = hybrid (kernel first → new skills → deprecate old).
-
-2. **iter-0028 CLOSED as measurement correction, NOT mechanism ship.** F2 broad regex was over-matching `return { level, message }`. 38/38 narrow=0 cumulative. F2 N=3 post-fix: 0 DQ × 9 arm-runs, L1+11.0 / L2+14.7. Mechanism reverted (Codex R-final-2 + subtractive-first). F2 fixture now trustworthy.
-
-3. **Multi-LLM evolution direction binding for `/devlyn:resolve`.** Claude+Codex today; pi-agent abstraction tomorrow for Qwen/Gemini/Gemma swap-in. Pair-mode is empirically gated (currently VERIFY/JUDGE only per iter-0020) NOT architecturally frozen — schema + adapter files are the load-bearing decouplers. **No-xxx / worldclass principles bind the multi-LLM coordination layer just as they bind product code.** See NORTH-STAR.md + memory file for full clause.
-
-4. **Active iter focus**: redesign Phase 1 (kernel extraction) is now iter-0029. Shadow-suite v0 re-sequences to **iter-0030** (was the prior iter-0029 plan). Phase 1 is oracle-independent + reversible + parallel-safe.
-
-Everything below this fold supports those four.
+Last refined 2026-04-30 (post 2-skill redesign Phases 1-3 SHIPPED — `/devlyn:ideate` + `/devlyn:resolve` + kernel + adapters all live on `main`. Phases 4-5 pending. shadow-suite v0 phase A only.)
 
 ---
 
-## 🧠 What we now know empirically (TL;DR for the next session)
+## 🚦 START-HERE — five things active right now
 
-### The real signal: L1 already beats bare on categorical reliability
+1. **Branch is `main`.** The `benchmark/v3.6-ab-20260423-191315` branch was fast-forward merged into main (90 commits) and deleted both locally and on GitHub. Safety tag `pre-merge-2026-04-30` at commit `1129db6` if rollback ever needed. HEAD: `1024a7f` (iter-0032 SHA bake).
 
-User correction 2026-04-30 reframed the entire game. **Score margin is a proxy; the real question is "does the harness produce better code than bare?"** Re-read iter-0026/0027 raw DQ data with that lens:
+2. **2-skill redesign Phases 1-3 SHIPPED.**
+   - **Phase 1** (iter-0029, commit `7ecc0e6`): kernel + adapter contract. `_shared/expected.schema.json`, `_shared/spec-verify-check.py` (moved from auto-resolve), `_shared/adapters/{README, opus-4-7, gpt-5-5}.md`.
+   - **Phase 2** (iter-0031, commit `4d0e04a`): greenfield `/devlyn:resolve`. SKILL.md (175 lines) + 5 phase prompts + 2 references. PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (fresh subagent, findings-only). 3 modes: free-form / `--spec` / `--verify-only`.
+   - **Phase 3** (iter-0032, commit `6a8d798`): greenfield `/devlyn:ideate`. SKILL.md (137 lines) + 4 references. 4 modes: default / `--quick` / `--from-spec` / `--project`. `spec.kind` escape hatch.
 
-| arm | F2 silent-catch DQ rate (6 runs) | Same, n5 invalid excluded (5 runs) |
-|---|---|---|
-| **bare (raw Claude, no harness)** | 5 / 6 (83%) | 5 / 5 (**100%**) |
-| **L1 (our solo harness)** | 3 / 6 (50%) | 3 / 5 (**60%**) |
-| L2 (Claude + Codex pair) | 2 / 6 (33%) | 2 / 5 (40%) |
+3. **Phases 4-5 pending.** Phase 4 (cutover + deprecation of old `/devlyn:auto-resolve` + 14 other old skills) is gated by a Quality A/B that has not run yet. Phase 5 (move `/design-system`, `/team-design-ui`, `/devlyn:reap` to `optional-skills/`) follows Phase 4.
 
-**Bare produces silent-catch nearly every time** on F2 (a fixture whose spec explicitly forbids silent catches). The harness already cuts that failure rate by ~40 percentage points. **Our system is empirically better than bare on the only signal that actually matters** (real categorical correctness on a real spec constraint), even though the cumulative judge score margin (+4.4 suite-avg) hides it.
+4. **shadow-suite v0 phase A only.** iter-0030 phase A (commit `a240558`) shipped infra + S1 task + `--suite shadow` flag + `lint-shadow-fixtures.sh`. Phase B (S2-S6, 5 more tasks × 6 files = 30 files) deferred.
 
-### What the score-margin journey was actually tracking
-- Single-shot suite-avg L1-L0 = +4.4 (iter-0020, iter-0025 cross-judge confirmed +4.44 vs +4.67).
-- F2 N=4 effective (clean + DQ blend): L1 mean **94.5** / stdev **2.89**, L1-L0 mean **+13.25** / stdev **3.50**.
-- Per-fixture variance ±3-15 (DQ-dependent) dominates the +5 floor signal — the floor logic was reading proxy noise.
-- `completed:` removal mechanism confirmed N=5 wide (F2 scope stdev 0.00) — minor lift, not the load-bearing fix.
+5. **Active iter focus options** (next session picks):
+   - **iter-0033 = Quality A/B** (recommended): new `/devlyn:resolve` vs old `/devlyn:auto-resolve` on F1-F9 + S1. This is the cutover gate for Phase 4. Without this measurement, Phase 4 is unjustified.
+   - **iter-0030 phase B** (S2-S6 shadow tasks).
+   - **iter-0034 = Phase 4 cutover** (only if A/B confirms new pair wins).
 
-### The honest framing the next session must adopt
-**"+5 floor" is a proxy of a proxy.** The real Mission 1 gate is: *does the harness reliably produce better code than bare on real tasks?* iter-0027 already shows yes on F2 categorical reliability (L1 60% DQ vs bare 100%). What's missing isn't more decimal places on suite-avg — it's:
-1. **Cross-fixture confirmation**: does L1-vs-bare DQ rate gap hold on F3/F6/F7/F9? (iter-0029)
-2. **Real-project trial**: NORTH-STAR ops test #14 — pick a real codebase, real task, run `/devlyn:auto-resolve` end-to-end, have a human compare to bare. (iter-0030 or later, but this is the binding terminal gate.)
-3. **Drive L1 silent-catch rate down further** (60% → ~0%) so the bare-vs-L1 gap isn't just "less broken" but "actually clean". (iter-0028)
+Everything below this fold supports those five.
 
-iter-0028's design stays useful (silent-catch detection in BUILD) but its acceptance gate must reframe: **"L1 DQ rate < bare DQ rate by ≥30 percentage points, AND L1 absolute DQ rate ≤ 1/3"** — categorical-vs-bare, not absolute floor.
+---
+
+## 🧹 Outstanding housekeeping (NOT in active iter scope)
+
+### Worktree triage (deferred per user 2026-04-30)
+
+4 worktrees at `.claude/worktrees/agent-*` — Claude Code Agent transient artifacts. Three are dirty; force-removing them = data loss.
+
+| worktree | HEAD | dirty? | recommended |
+|---|---|---|---|
+| agent-a244e4e9 | `5f80aac` (NOT in main, "docs updated") | clean | safe to remove |
+| agent-a67b4d4d | `1c663f7` (in main, "v1.15.0") | `bin/devlyn.js` +200 lines (doctor subcommand WIP) | save patch first |
+| agent-a86d4c87 | `2732cd5` (NOT in main, "phase 1 build complete") | untracked: EVAL-FINDINGS.md, done-criteria.md, benchmark/ | archive first |
+| agent-abe3d351 | `83a1759` (NOT in main, "fix round 1 clean") | staged + deleted + modified | save patch first |
+
+User decision deferred to a future session. NOT in any current iter.
+
+### Old skills that will deprecate in Phase 4
+
+Currently present on `main` but slated for removal once Quality A/B confirms new pair wins:
+
+`/devlyn:auto-resolve` `/devlyn:resolve` (the old focused-debug; replaced this iter — but old SKILL.md content gone, file replaced) `/devlyn:implement-ui` `/devlyn:design-ui` `/devlyn:team-design-ui` `/devlyn:design-system` `/devlyn:clean` `/devlyn:update-docs` `/devlyn:preflight` `/devlyn:evaluate` `/devlyn:review` `/devlyn:team-review` `/devlyn:team-resolve` `/devlyn:browser-validate` (→ kernel runner) `/devlyn:product-spec` `/devlyn:feature-spec` `/devlyn:recommend-features` `/devlyn:discover-product`.
+
+`/devlyn:reap` and `/design-system` + `/team-design-ui` move to `optional-skills/` in Phase 5 (creative or maintenance, non-hot-path).
 
 ---
 
 ## ⛔ Hard operating rules
 
-### Rule 1 — Pair-review IS the work (iter-0021 lesson, repeatedly validated through iter-0027)
+### Rule 1 — Pair-review IS the work
 
-Every non-trivial claim must be Codex-verified at the time of writing. Don't trust paraphrases; open the cited file:line. iter-0026 R-final caught me framing the variance result too softly ("attributed to BUILD variance") when the honest framing was "consistent with BUILD variance but not yet attributed." iter-0027 R-final caught the over-read of N=3 mean +12.7 as a clean lift. Pattern: **R-final BEFORE commit when results surprise you.**
+Every non-trivial claim must be Codex-verified at the time of writing. Don't trust paraphrases; open the cited file:line. R-final BEFORE commit when results surprise you. Recent rounds caught (a) stale-HANDOFF fabrication risk, (b) wrong unit-of-minimization in 3-skill model, (c) F2 oracle-artifact-vs-real-defect.
 
 ### Rule 2 — Cost framing is BANNED
 
-User memory `feedback_no_cost_talk.md` (HARD rule, reinforced 2026-04-29 late evening). Never use "paid run", "model invocation cost", "GO before paid step", "spendy", "$X-Y", or any cost-coded equivalent. User is on subscription. Effectiveness × accuracy × reasonable wall-time are the axes; cost is not. CLAUDE.md "Executing actions with care" must NOT be translated into "warn before more expensive operations" for this user.
+Memory `feedback_no_cost_talk.md` (HARD). Never use "paid run", "model invocation cost", "spendy", "$X-Y", or any cost-coded equivalent. Effectiveness × accuracy × reasonable wall-time are the axes.
 
 ### Rule 3 — Verify before claim
 
-Every cited file:line opened at citation time. iter-0021 R-final fabrication-rescue lesson generalizes to every iter since.
+Every cited file:line opened at citation time. iter-0028 R-final-2 generalization: stale HANDOFF references caused fabrication risk in iter-0028 R0 — verify, don't paraphrase from prior context.
 
 ### Rule 4 — Explain simply (Korean, decision-maker view)
 
-User repeatedly pushed back on jargon-loaded explanations. Per `feedback_explain_simply.md`: lead with conclusion + options + recommendation; drop internal labels (iter numbers OK, but P1-P7 / α-ε / Q1-Q5 / B-1 etc. NOT in user-facing summaries). Plain Korean. If using a technical term (e.g. silent-catch, DQ, L1), define it in one sentence inline before using.
+Plain Korean. Lead with conclusion + options + recommendation. Drop internal labels (iter numbers OK in artifacts; P1-P7 / α-ε / etc. NOT in user-facing summaries). Define technical terms inline.
+
+### Rule 5 — Greenfield interface, NOT mechanisms
+
+Codex R1 (session `019dde5c`) closing line. The 2-skill redesign deletes skill surface area while preserving `build-gate.py` mechanisms, `spec-verify-check.py`, state discipline, one-spec-at-a-time pattern. Any redesign edit must justify why a learned mechanism is being changed (not just relocated).
+
+---
+
+## 🧠 What we now know empirically (TL;DR)
+
+### Mission 1 single-task signal (post iter-0028 N=3 valid run)
+
+| arm | F2 score (N=3 mean) | F2 DQ rate | wall ratio over bare |
+|---|---|---|---|
+| bare (raw Claude) | 81.3 | 0/3 | 1.0× |
+| L1 (solo harness) | 92.3 | 0/3 | ~6× |
+| L2 (Claude + Codex pair) | 96.0 | 0/3 | ~10× |
+
+L1 - bare = +11.0; L2 - bare = +14.7. After F2 regex narrow-fix (iter-0028 R-final): both L1 and L2 = 0 DQ on F2 (categorical reliability passes).
+
+### What the iter-0027/0028 cycle taught
+
+- F2 silent-catch DQ "60%" was an oracle artifact (broad regex over-matched legitimate `return { level, message }` structured errors). 38/38 narrow-regex sweep = 0 real silent catches.
+- The mechanism (B-minus, 281 LOC + carrier resilience 76 LOC) was solving a non-problem. Reverted; only the regex fix kept.
+- Lesson hard-coded into NORTH-STAR test #10: **measurement validity ≥ mechanism cleverness**.
+
+### Multi-LLM evolution direction (binding for `/devlyn:resolve`)
+
+Per NORTH-STAR.md and memory `project_2_skill_harness_redesign_2026_04_30.md`:
+- Today: Claude (Opus 4.x) + Codex (GPT-5.5).
+- Tomorrow: pi-agent abstraction enables Qwen / Gemini / Gemma / future frontier swap-in.
+- Pair-mode location: VERIFY/JUDGE only per current iter-0020 evidence (empirically gated, not architecturally frozen).
+- Schema (`_shared/expected.schema.json`) + adapters (`_shared/adapters/<model>.md`) are load-bearing decouplers.
+- All multi-LLM additions bind no-overengineering / no-guesswork / no-workaround / worldclass / best-practice principles.
 
 ---
 
 ## 🧭 STANDING USER DIRECTIVES
 
-Block 1 is **strictly user-verbatim** (the 2026-04-28 directive logged on every HANDOFF.md commit). Blocks 2-4 contain **binding operational excerpts** from each rapid-fire 2026-04-29 / 2026-04-30 directive. Originals had connecting words and minor typos that have been edited out for compactness; the live conversation transcript is authoritative if anything is disputed.
-
-Never re-summarize Block 1. If context auto-compacts, FIRST action on resume is re-load this whole section.
+Block 1 is **strictly user-verbatim**. Never re-summarize Block 1.
 
 ### Block 1 (2026-04-28 — North Star + 5/6 principles + Codex pair + 산으로 + docs continuous)
 
@@ -96,45 +130,50 @@ Never re-summarize Block 1. If context auto-compacts, FIRST action on resume is 
 
 > 앞으로 이런거 설명할때 반드시 쉽게 설명해. 쉽고 간결하게. 결정하는 사람 입장에서.
 
-### Block 3 (2026-04-29 architecture compromise, user-adjudicated)
+### Block 3 (2026-04-29 architecture compromise)
 
-User picked option 1 of "BUILD pure execution vs BUILD constrained judgment" trade-off. Codex framing is canonical (NOT user-verbatim):
+PLAN은 non-negotiable invariants + acceptance contract을 만든다. BUILD는 그 안에서 *constrained design judgment*를 수행한다. EVAL/CRITIC은 BUILD의 judgment를 대체하지 않는 독립 품질 레이어다. (Codex framing, user-adjudicated.)
 
-> PLAN은 non-negotiable invariants + acceptance contract을 만든다. BUILD는 그 안에서 *constrained design judgment*를 수행한다. EVAL/CRITIC은 BUILD의 judgment를 대체하지 않는 독립 품질 레이어다.
-
-PLAN remains the heaviest phase per Block 2, but BUILD is not pure execution — it has constrained judgment latitude that EVAL/CRITIC must independently audit.
-
-### Block 4 (2026-04-29 late evening through 2026-04-30 — engineer-quality + bare-case correction + cost-framing HARD rule + variance pushback + plain explanation)
+### Block 4 (2026-04-29 → 2026-04-30 — engineer-quality + cost-ban + variance + plain Korean)
 
 > 기존 bare case가 틀린거라면 그걸 수정해야해. 북극성을 보자고. 유저가 하나부터 끝까지 다 하는게 목적이 아니야. 유저는 계획하고 실행하면 나머지는 처음부터 끝까지 완벽하게 클린업과 문서화, 기술부채 제거 등을 완벽하게 다 해야해. 소프트웨어 엔지니어링을 생각해보자고.
 
-→ Adopted in iter-0024 (CLAUDE.md `Bare-Case Guardrail` rewritten: engineer-quality is North-Star promise; broad cleanup stays in standalones; cost discipline = bare-best-of-N, NOT zero-regression-on-bare). EVAL hygiene severity made task-aware (MEDIUM blocking when introduced by this diff; LOW pre-existing).
-
 > 비용이고 뭐고 그냥 신경쓰지말라고 몇번얘기해.
-
-→ Memory rule `feedback_no_cost_talk.md` upgraded to HARD rule. Includes disguised cost framing: "model invocation step", "GO before paid step", "this step makes calls" all banned. Subscription means no spendy/non-spendy distinction at the decision layer.
 
 > 점수가 신뢰가 있나? +5 라는게 의미가 정말 있나? 4.5나 5.2나 크게 차이가 없을수도 있을것 같은데?
 
-→ User was correct. iter-0023 fixed measurement bugs; iter-0025 cross-judged with Opus 4.7; iter-0027 N=5 paired variance confirmed per-fixture variance ±3-15 dominates the +5 floor signal; **DQ rate (not margin) is the real Mission 1 quality gate**.
-
 > 미션1이 팀으로 가는거고 이건 미래에 하는거고, 일단은 혼자서 단일로 하는 케이스도 충분히 만들어져야 한다고 했잖아. 그건 왜 뛰어넘지?
-
-→ Single-task L1 must clear Mission 1 gate before ANY team / multi-agent work. iter-0026 → iter-0027 → iter-0028 chain is squarely on this path. Team / multi-agent stays as Mission 2/3 destination per Codex δ/ε/β verdict (NOT immediate work).
 
 > 좀 쉽게 설명해줄래?? / 무슨얘기인지 쉽게 설명하고 / 아니 좀 쉽게 설명하라니까
 
-→ Plain-Korean explanation rule = HARD. Define every technical term inline. Lead with one-line conclusion. No jargon walls. iter-0028's user-facing summaries must follow.
+### Block 5 (2026-04-30 — 2-skill redesign + multi-LLM evolution)
+
+> 유저 입장에서는 사실 ideate 와 build 두개만 있으면 되지 않나? build 안에 마지막에 verify 가 들어가면 되지 않아?
+
+→ Locked 2-skill design. VERIFY = fresh-subagent final phase of `/devlyn:resolve`.
+
+> build 가 적합하지 않을수도 있는게, 반드시 ideate이 존재하는게 아니라, 기존에 이미 있던 내용에 대해서 수정/개선 요구, 혹은 디버그 요구 등이 있을수도 있어. 그래서 더 적당한 이름이 필요.
+
+→ Renamed `/build` → `/devlyn:resolve`. Free-form goal mode for non-spec-first invocations.
+
+> resolve 스킬은 우리가 지금까지 계속 진화시키고 있던, 여러 LLM 들을 섞어서 논의하는 (claude+codex 부터) 방향도 해야하고, 이후에는 pi agent 를 통해서 여러 다른 LLM도 사용할 수 있다. 특히 우리의 no xxxx, worldclass xxx의 원칙을 반드시 지켜야 한다.
+
+→ Multi-LLM evolution direction binding. Pair-mode in VERIFY/JUDGE today (empirically gated); pi-agent future swap-in via adapter system. no-xxx / worldclass principles bind multi-LLM coordination layer.
+
+> 근데 ideate가 없어도 단독으로도 동작해야하잖아?
+
+→ Confirmed: `/devlyn:resolve` standalone-capable via free-form mode + `--spec` mode (handwritten specs from any source). `/devlyn:ideate` is OPTIONAL.
 
 ### Memory directives (auto-loaded; cite, do not duplicate)
 
-Memory files at `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`. Critical for next session:
+Critical for next session at `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`:
 
-- `feedback_no_cost_talk.md` — HARD rule: never use cost framing, including disguised forms.
+- `project_2_skill_harness_redesign_2026_04_30.md` — full redesign decision record + multi-LLM evolution clause.
+- `feedback_no_cost_talk.md` — HARD rule: no cost framing.
 - `feedback_l2_pair_collaboration.md` — L2 = pair 협업 (not 분업).
-- `feedback_pair_vs_solo_empirical.md` — pair fires per-phase ONLY where measurement shows lift over solo.
-- `feedback_codex_collaboration_not_consult.md` — Codex is partner not advisor; multi-round dialogue.
-- `feedback_explain_simply.md` — every user-facing surface = plain Korean + concise + decision-maker-framed.
+- `feedback_pair_vs_solo_empirical.md` — pair fires per-phase ONLY where measurement shows lift.
+- `feedback_codex_collaboration_not_consult.md` — Codex is partner; multi-round dialogue.
+- `feedback_explain_simply.md` — plain Korean + concise + decision-maker-framed.
 - `feedback_codex_cross_check.md` — reason independently first; send Codex evidence + falsification ask.
 
 **Conflict rule**: if HANDOFF and a memory file disagree, stop before editing and ask the user.
@@ -143,157 +182,93 @@ Memory files at `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/me
 
 ## 📍 Branch + project state (verify before editing)
 
-- **Branch**: `benchmark/v3.6-ab-20260423-191315`
-- **Recent ship trail**: (this commit) iter-0028 R-final-2 revert → `e60092c` (iter-0028 R-final regex+resilience+loud-fail) → `4f100bd` (iter-0028 SHA bake) → `547d95a` (iter-0028 mechanism — REVERTED at this commit) → `f4a7e29` (iter-0027 SHA bake) → `4feae35` (iter-0027 ship) → `b06fffd` (iter-0026 SHA bake) → `60c8a38` (iter-0026 ship) → `b5a2a60` (iter-0025 SHA bake) → `6f0e693` (iter-0025 ship) → earlier iters back to `8fcc509` (iter-0022 ship).
+- **Branch**: `main` (origin/main).
+- **HEAD**: `1024a7f` (iter-0032 SHA bake).
+- **Recent ship trail**: `1024a7f` (iter-0032 bake) → `6a8d798` (iter-0032 ship) → `6409951` (iter-0031 bake) → `4d0e04a` (iter-0031 ship) → `a240558` (iter-0030 phase-A) → `6e8923f` (iter-0029 bake) → `7ecc0e6` (iter-0029 ship) → `1129db6` (handoff: prompt-eng pinned) → `cb15930` (handoff: 2-skill redesign locked) → `0e83c23` (iter-0028 closed).
 - **Mission 1 active** ([`MISSIONS.md`](MISSIONS.md)). Hard NOs binding.
-- **iter-0020** = FAILED-EXPERIMENT-REVERTED-POLICY (commit `948e4bd`). e2e BUILD=Claude routing deleted. Auto-resolve runtime default = `--engine claude`.
-- **iter-0021** = SHIPPED (calibration overlay). Per-axis L1-L0 readout: spec +7 / cons +18 / scope -4 / qual +19 (single-shot, suite avg +4.4).
-- **iter-0022** = SHIPPED. PLAN-pair infrastructure (5 deliverables: schema doc + idgen + lint + preflight + auto-resolve `--plan-path`). Real provider/model invocations: 0.
-- **iter-0023** = SHIPPED. Measurement trust: judge.sh axis [0,25] clamp + ship-gate.py L1 (`solo_over_bare`) enforcement.
-- **iter-0024** = SHIPPED. Bare-Case Guardrail correction. EVAL hygiene severity task-aware.
-- **iter-0025** = SHIPPED. Opus 4.7 sidecar cross-judge: GPT vs Opus suite avg L1-L0 +4.44 vs +4.67. Quality magnitude single-judge artifact (`-4` disagreement).
-- **iter-0026** = SHIPPED-MECHANISM. F2 single-shot after `completed:` removal: scope 23→25 ✓; L1 total 94→81 (tail event).
-- **iter-0027** = DATA. F2 N=5 paired variance: L1 mean 94.5 / stdev 2.89 (n=4 effective); L1 DQ rate 2/5 (40%). Codex pivot threshold reached → iter-0028 categorical-reliability work. **Note (post iter-0028 R-final)**: iter-0027's "L1 60% silent-catch DQ" was 100% F2 fixture broad-regex artifact, NOT real silent-catches. The categorical-reliability framing remains valid as a Mission 1 axis, but the iter-0027 specific signal was noise.
-- **iter-0028** = CLOSED-MEASUREMENT-CORRECTION (mechanism reverted). F2 fixture broad regex narrowed (real bug fix, kept). 38-arm-run cumulative narrow=0 + @ts-ignore=0 evidence + Codex R-final-2 convergence → forbidden-pattern BUILD_GATE mechanism reverted as not load-bearing. F2 N=3 acceptance (post-fix): all 9 arm-runs dq=False, L1+11.0 / L2+14.7 over bare clean-mean. Net iter close-out diff: -454 lines (subtractive-first honored).
+- **Safety tag**: `pre-merge-2026-04-30` at `1129db6`.
 
 ### Cold-start sanity check (run before any edit; ~30s)
 
 ```bash
-# 1. Branch tip in expected range (top entry on this branch should be the
-#    iter-0027 SHA bake `f4a7e29` or an iter-0028 commit added by the next session).
-git log --oneline -10
+# 1. On main, no detached HEAD.
+git status
 
-# 2. Working tree clean (`.claude/scheduled_tasks.lock` is gitignored runtime).
-git status --short
+# 2. Lint passes.
+bash scripts/lint-skills.sh   # expect "All checks passed."
 
-# 3. Lint full pass (Check 13 = idgen determinism, added in iter-0022).
-bash scripts/lint-skills.sh
-# Expected: "All checks passed."
+# 3. Mirror parity for new skills.
+diff -q config/skills/devlyn:resolve/SKILL.md .claude/skills/devlyn:resolve/SKILL.md
+diff -q config/skills/devlyn:ideate/SKILL.md .claude/skills/devlyn:ideate/SKILL.md
 
-# 4. Mirror parity (critical-path docs unchanged between source and installed).
-diff -q config/skills/_shared/runtime-principles.md .claude/skills/_shared/runtime-principles.md
-diff -q config/skills/_shared/pair-plan-schema.md   .claude/skills/_shared/pair-plan-schema.md
-# Expected: silent.
+# 4. Most recent iter file present.
+ls autoresearch/iterations/0032-ideate-greenfield-phase3.md
 
-# 5. iter-0027 file exists (most recent shipped iter file).
-ls autoresearch/iterations/0027-f2-paired-variance-n5.md
-# Expected: file present.
+# 5. Old auto-resolve still in place (Phase 4 will deprecate; not yet).
+test -f config/skills/devlyn:auto-resolve/SKILL.md && echo "old auto-resolve present (expected pre-Phase-4)"
 
-# 6. iter-0028 was reverted post R-final-2 — mechanism scripts MUST NOT exist
-# (their presence would mean someone partially restored without consulting the
-# convergence record).
-test ! -e config/skills/devlyn:auto-resolve/scripts/forbidden-pattern-check.py && \
-test ! -e config/skills/devlyn:auto-resolve/scripts/build-gate-verifiers.sh && \
-echo "iter-0028 mechanism reverted — proceed to iter-0029"
-# Expected: prints "iter-0028 mechanism reverted — proceed to iter-0029".
-
-# 7. Auto-resolve runtime default still `--engine claude`.
-grep -E '^[[:space:]]+- `--engine MODE`' config/skills/devlyn:auto-resolve/SKILL.md
-# Expected: line includes `(claude)` not `(auto)`.
+# 6. Shadow suite present.
+test -d benchmark/auto-resolve/shadow-fixtures/S1-cli-lang-flag && echo "shadow S1 present"
 ```
 
 If any unexpected output, do NOT proceed. Surface to user.
 
 ---
 
-## 🚧 iter-0029+ queue (re-sequenced 2026-04-30 — redesign supersedes prior shadow-suite plan)
+## 🚧 iter-0033+ queue (locked sequence)
 
-The prior plan had iter-0029 = shadow-suite v0. The 2-skill redesign supersedes that slot — kernel extraction must land before the new skills A/B against current. Shadow-suite re-sequences down by one.
-
-- **iter-0029 = redesign Phase 1 (kernel extraction)**. Targets: `expected.schema.json` (NEW), `complexity-classifier.py` (NEW), `_shared/adapters/<model>.md` (NEW small files), `browser-runner.sh` (extract from `/devlyn:browser-validate`), consolidate `spec-verify-check.py` / `forbidden-pattern-check.py` / `scope-check.py` under `_shared/`. Acceptance: lint passes, no benchmark regression on bare-case smoke, no behavior change to existing skills. Hard NO: NO new SKILL.md (Phase 2 work), NO new mechanism (only relocation + small NEW kernel files).
-- **iter-0030 = shadow-suite v0** (was prior iter-0029). 6 tasks (1 per failure-class), hybrid generation (LLM proposes → Codex/human curates → frozen). `benchmark/auto-resolve/shadow-fixtures/` dir + `--suite shadow` flag. Smoke gate: schema + reference-solvability dry-run before any L0/L1 measurement.
-- **iter-0031 = redesign Phase 2 (new `/devlyn:resolve`)**. Greenfield SKILL.md per locked phase shape (PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY-fresh-subagent). A/B against current `/devlyn:auto-resolve` on 9-fixture suite + shadow-suite. No deprecation yet.
-- **iter-0032 = redesign Phase 3 (new `/devlyn:ideate`)**. Greenfield SKILL.md focused on spec extraction. `--from-spec` + `spec.kind` escape hatch. A/B.
-- **iter-0033 = shadow suite v1** (3 tasks per class, 18 total).
-- **iter-0034 = redesign Phase 4 (cutover + deprecation)**. Once new pair beats or ties current on benchmark + shadow, new names take prod slots. Old skills marked deprecated → one cycle redirect → delete.
-- **iter-0035 = shadow suite decision-grade** (30 tasks). Apply Codex 8-condition trust rule.
-- **iter-0036 = redesign Phase 5 (optional plugin separation)**. Move `/design-system`, `/team-design-ui`, `/devlyn:reap` to `optional-skills/`.
-- **iter-0037 (candidate)**: F3 N=3 + F9 N=3 paired variance on golden suite.
-- **iter-0038 (candidate)**: ship-gate.py reframe ("+5 floor" → categorical-reliability gate).
-- **iter-0039+ (candidate)**: NORTH-STAR ops test #15 real-project trial (Mission 1 terminal gate).
-
-Note: redesign and shadow-suite **interleave** rather than running serial — kernel extraction (29) is oracle-independent, so it doesn't block shadow-suite measurement work. Sequencing keeps each iter's acceptance gate clean.
-
-### Shadow-suite cadence (Codex verdict)
-
-**Subset rotation**, not one-task streaming, not constant full sweeps:
-- 6 shadow tasks per measurement iter (one per category, frozen rotation order).
-- Full 30-task sweep ONLY when making a release-readiness claim.
-- Keeps signal broad without turning every iter into measurement-only work (PRINCIPLES.md pre-flight 0 warning honored).
+- **iter-0033 = Quality A/B (recommended next)**. Run `/devlyn:resolve` (new) and `/devlyn:auto-resolve` (old) on F1-F9 + shadow S1 with bare baseline. Acceptance: new pair beats or matches old on suite-avg L1-L0 margin AND categorical reliability (DQ rate). This is the gate for Phase 4 cutover.
+- **iter-0030 phase B (deferred but unblocked)**. S2-S6 shadow tasks (5 fixtures × 6 files). Independent of Phase 4 sequencing — can run in parallel with iter-0033 if a separate session takes it.
+- **iter-0034 = Phase 4 cutover** (gated by iter-0033). New `/devlyn:resolve` becomes the default; old `/devlyn:auto-resolve` deprecated → one cycle redirect → delete. Same for the 14 other old skills slated for removal.
+- **iter-0035 = Phase 5 optional plugin separation**. Move `/design-system`, `/team-design-ui`, `/devlyn:reap` to `optional-skills/`. README update.
+- **iter-0036+ candidates**: F3 N=3 + F9 N=3 paired variance on golden suite; ship-gate.py reframe (+5 floor → categorical reliability gate); NORTH-STAR ops test #15 real-project trial (Mission 1 terminal gate).
 
 ---
 
-## 📋 Mission 1 hard NO list (binding for iter-0028+)
+## 📖 Open question — extracting each model's max capability per official guides
+
+**Binding references** (re-read at the start of any iter that touches prompt content or adapters):
+
+- Anthropic Opus 4.7 prompt-engineering best practices: <https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices>
+- OpenAI GPT-5.5 prompt guidance: <https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.5>
+
+iter-0029 shipped initial adapter files at `_shared/adapters/{opus-4-7, gpt-5-5}.md` — small per-engine deltas reflecting each guide's distinct guidance (Opus 4.7: literal interpretation, self-check pattern, less imperatives; GPT-5.5: outcome-first, decision rules over absolutes, validation tools over self-belief). These adapters are prepended to canonical phase prompts at runtime.
+
+Ongoing question (deferred to iter-0036 or later): does measured A/B show the adapter system materially changes per-engine performance vs canonical-only? If yes, expand adapter content. If no, simplify.
+
+**Standing rule**: any iter that touches an adapter file or canonical phase prompt MUST cite both official guides as part of acceptance. "I think this is better" is not a justification; "guide section X.Y says Z" is.
+
+---
+
+## 📋 Mission 1 hard NO list
 
 - ❌ No worktree-per-task substrate (Mission 2).
 - ❌ No parallel-fleet smoke / N≥2 simultaneous runs.
 - ❌ No resource-lease helper / SQLite leases / port pools / queue metrics.
-- ❌ No run-scoped state migration (`.devlyn/pipeline.state.json` stays at worktree root).
-- ❌ No multi-agent coordination beyond what `pipeline.state.json` already provides.
-- ❌ No cross-vendor / qwen / gemma infrastructure.
+- ❌ No cross-vendor / qwen / gemma infrastructure (until adapter shipped + measured).
 - ❌ No restart of iter-0020 e2e routing.
-- ❌ No edit to ideate / preflight / team-* `--engine auto` defaults without skill-specific benchmark evidence.
-- ❌ No aggregate-margin chasing.
 - ❌ No "while I'm here" cross-mission additions.
 
 ---
 
 ## 📚 Read-order on cold start
 
-1. [`NORTH-STAR.md`](NORTH-STAR.md) — project goal (L0/L1/L2 contract, 14 ops tests, real-project trial gate).
-2. **This file** — operating context. `START-HERE` block + `STANDING USER DIRECTIVES` + `iter-0028 execution plan` are load-bearing for the next session.
-3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7. Cite each in iter-0028's iter file.
-4. [`MISSIONS.md`](MISSIONS.md) — confirms Mission 1 active, hard NOs binding.
-5. [`CLAUDE.md`](../CLAUDE.md) — runtime contract. `Bare-Case Guardrail` was rewritten in iter-0024 (engineer-quality is North-Star promise; cost discipline = bare-best-of-N).
-6. `autoresearch/DECISIONS.md` — append-only ship/revert log. Latest entries: 0022 → 0027.
-7. [`autoresearch/iterations/0027-f2-paired-variance-n5.md`](iterations/0027-f2-paired-variance-n5.md) — most recent iter file. The DQ rate 2/5 finding is the load-bearing input for iter-0028.
-8. [`autoresearch/iterations/0026-completed-removal-scope-axis-probe.md`](iterations/0026-completed-removal-scope-axis-probe.md) — single-shot tail event that surfaced the variance question.
-9. [`autoresearch/iterations/0025-opus-sidecar-cross-judge.md`](iterations/0025-opus-sidecar-cross-judge.md) — cross-judge data (Quality axis magnitude single-judge artifact; suite avg robust).
-10. `config/skills/_shared/runtime-principles.md` — runtime contract sub-agents consume.
-11. Memory directives (auto-loaded; cited above).
+1. [`NORTH-STAR.md`](NORTH-STAR.md) — project goal + locked product surface (2-skill redesign).
+2. **This file** — operating context. `START-HERE` + standing user directives + iter-0033 queue are load-bearing.
+3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7.
+4. [`MISSIONS.md`](MISSIONS.md) — confirms Mission 1 active.
+5. Memory: `project_2_skill_harness_redesign_2026_04_30.md` — full redesign + multi-LLM clause.
+6. [`CLAUDE.md`](../CLAUDE.md) — runtime contract.
+7. `autoresearch/DECISIONS.md` — append-only ship/revert log.
+8. Most recent iter files: `0032-ideate-greenfield-phase3.md`, `0031-resolve-greenfield-phase2.md`, `0029-kernel-and-adapter-contract.md`.
 
 ---
 
-## 📖 Open question — extracting each model's max capability per official guides
-
-**Binding references** (must be re-read at the start of any iter that touches prompt content or adapters):
-
-- Anthropic Opus 4.7 prompt-engineering best practices: <https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices>
-- OpenAI GPT-5.5 prompt guidance: <https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.5>
-
-These are the contracts for the per-model adapter files (`_shared/adapters/opus-4-7.md` and `_shared/adapters/gpt-5-5.md`) that ship in redesign Phase 1 (iter-0029).
-
-### Key divergences already surfaced (from 2026-04-30 R0 collab)
-
-| Dimension | Opus 4.7 doc | GPT-5.5 doc |
-|---|---|---|
-| Verbosity | Calibrates to task complexity automatically. Reduce only when product needs it. | Use `text.verbosity` parameter; outcome-first, decision rules over absolute imperatives. |
-| Imperatives | "Where you might have said 'CRITICAL: You MUST...', use normal prompting." Drop NEVER/MUST density. | ALWAYS/NEVER reserved for true safety invariants; judgment calls = decision rules. |
-| Self-check | Official pattern: "Ask Claude to self-check. 'Before you finish, verify your answer against [test criteria]'." | Explicit: "validation as concrete commands/tools, not self-belief." Mechanical > prompt self-check. |
-| Tool use default | Less tool-eager; raise effort to escalate | Define retrieval budgets; one broad search first |
-| Code review specific | "be conservative / no nitpick" → model suppresses real findings. Recommended: "report every finding, downstream filters rank." | (no equivalent direct guidance) |
-| Process specification | XML structure helps; literal interpretation respected | "Avoid carrying over every instruction from older stack — over-specifies process. Outcome-first wins." |
-
-### Open questions for deep discussion (next iter that actually edits prompt content)
-
-1. **Per-engine prompts vs single-prompt + adapter delta**: do we ship two full prompts (`phase-X.claude.md` vs `phase-X.codex.md`) for max alignment with each guide, OR one canonical prompt + small per-engine delta files (`adapters/opus-4-7.md` overrides specific lines)? Trade-off: full per-engine = best alignment but 2× maintenance; adapter-delta = single canonical body + small overrides, lower maintenance, slight alignment loss per model.
-2. **Convergence point for both guides**: outcome-first + decision rules + mechanical gates is the common ground. Is the canonical prompt body the common-ground form, with adapters supplying model-specific elaboration (XML for Opus, GPT-5.5 stop-rules format for Codex)?
-3. **CRITIC self-filter audit**: current CRITIC language ("what a staff engineer would block" + "no LOW") matches Opus 4.7's review-harness self-filtering warning verbatim. Is this a separate fix in redesign Phase 2 (when `/devlyn:resolve`'s VERIFY-JUDGE phase is written), or a pre-Phase 2 spot fix?
-4. **iter-history annotations in prompts**: `phase-1-build.md` and others contain `*(iter-0020: F4 evidence...)*` style inline annotations. These are LLM input noise per both guides. Phase 1 cleanup or Phase 2 rewrite?
-5. **Adapter file shape**: what does `_shared/adapters/opus-4-7.md` look like as a file? A delta against canonical body? A full prompt? An override-table format? Decide before iter-0029 ships.
-6. **Schema vs prompt as load-bearing decoupler**: per Codex R1, schema is the load-bearing piece — prompt patterns are adapter material. Does this mean schema lockdown (with versioning) is the iter-0029 priority, with adapter files coming later? Or do they ship together?
-
-### Standing rule
-
-Any iter that touches prompt content OR adds a new adapter file MUST cite both official guides as part of its acceptance criteria. "I think this is better" is not a justification; "the official guide section X.Y says Z, my change applies Z" is. This is the same evidence-over-claim rule that bound iter-0027/0028's measurement work.
-
----
-
-## 🤝 Codex pair-review pattern for iter-0028 (mandatory)
+## 🤝 Codex pair-review pattern (mandatory for non-trivial work)
 
 Per `feedback_codex_collaboration_not_consult.md`:
 
-- **Multi-round, not one-shot.** Plan for R0 (design / candidate selection) + R1 (diff review) + R-final (post-test interpretation, especially when results surprise you).
+- **Multi-round, not one-shot.** R0 (design) + R1 (diff review) + R-final (post-test interpretation when surprised).
 - **Position-stating, not verdict-asking.** State position with evidence; Codex pushes back; iterate.
 - **Convergence is the stop.** Not "Codex agreed."
 - **Per-round prompt shape**: rich evidence + falsification ask + my response to prior round. Use:
@@ -311,4 +286,4 @@ Per `feedback_codex_collaboration_not_consult.md`:
 
 ## ⏭️ End of HANDOFF
 
-Current iter focus: **iter-0029 (redesign Phase 1 — kernel extraction)**. iter-0028 closed (measurement correction shipped, mechanism reverted). Shadow-suite v0 re-sequenced to iter-0030. Mission 1 active. Single-task L1 quality is the binding gate; multi-LLM evolution direction binding for `/devlyn:resolve` (Claude+Codex today, pi-agent for swap-in tomorrow) — under no-xxx / worldclass principles.
+Current status: 2-skill redesign Phases 1-3 SHIPPED on `main`. Active focus: **iter-0033 Quality A/B** (new pair vs old) is the gate for Phase 4 cutover. Mission 1 active. Single-task L1 quality is the binding gate; multi-LLM evolution direction binds `/devlyn:resolve` (Claude+Codex today, pi-agent tomorrow) — under no-xxx / worldclass principles.
