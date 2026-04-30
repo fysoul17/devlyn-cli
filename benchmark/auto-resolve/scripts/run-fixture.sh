@@ -39,8 +39,11 @@ done
 BENCH_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(cd "$BENCH_ROOT/../.." && pwd)"
 
-FIX_DIR="$BENCH_ROOT/fixtures/$FIXTURE"
-[ -d "$FIX_DIR" ] || { echo "fixture not found: $FIX_DIR"; exit 1; }
+FIX_DIR=""
+for candidate in "$BENCH_ROOT/fixtures/$FIXTURE" "$BENCH_ROOT/shadow-fixtures/$FIXTURE"; do
+  if [ -d "$candidate" ]; then FIX_DIR="$candidate"; break; fi
+done
+[ -n "$FIX_DIR" ] || { echo "fixture not found in fixtures/ or shadow-fixtures/: $FIXTURE"; exit 1; }
 
 META="$FIX_DIR/metadata.json"
 EXPECTED="$FIX_DIR/expected.json"

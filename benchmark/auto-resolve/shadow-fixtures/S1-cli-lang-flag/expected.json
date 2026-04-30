@@ -1,0 +1,63 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node bin/cli.js hello",
+      "exit_code": 0,
+      "stdout_contains": ["Hello, world!"],
+      "stdout_not_contains": ["error", "Error", "undefined"]
+    },
+    {
+      "cmd": "node bin/cli.js hello --lang en",
+      "exit_code": 0,
+      "stdout_contains": ["Hello, world!"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node bin/cli.js hello --lang ko",
+      "exit_code": 0,
+      "stdout_contains": ["안녕, world!"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node bin/cli.js hello --lang ja",
+      "exit_code": 0,
+      "stdout_contains": ["こんにちは, world!"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node bin/cli.js hello --lang es",
+      "exit_code": 0,
+      "stdout_contains": ["Hola, world!"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node bin/cli.js hello --lang fr 2>&1; true",
+      "exit_code": 0,
+      "stdout_contains": ["fr"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node bin/cli.js hello --lang ko --name alice",
+      "exit_code": 0,
+      "stdout_contains": ["안녕, alice!"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["fail "]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(?:\\[\\]|null|undefined|false|''|\\{\\s*\\})",
+      "description": "silent catch returning a fallback value — violates no-silent-catches policy. Structured error returns like `return { error, code }` are NOT silent and must not match.",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js"],
+  "forbidden_files": [],
+  "max_deps_added": 0
+}

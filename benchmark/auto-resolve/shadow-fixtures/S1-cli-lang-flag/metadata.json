@@ -1,0 +1,10 @@
+{
+  "id": "S1-cli-lang-flag",
+  "category": "trivial",
+  "difficulty": "trivial",
+  "timeout_seconds": 600,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a --lang flag to the hello subcommand that switches greeting between en, ko, ja, es; reject unknown languages with exit 1."
+}

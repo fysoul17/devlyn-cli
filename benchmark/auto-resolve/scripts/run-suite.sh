@@ -27,6 +27,7 @@ JUDGE_ONLY=0
 RUN_ID_ARG=""
 BLESS=0
 ACCEPT_MISSING=0
+SUITE="golden"
 FIXTURES=()
 
 while [ $# -gt 0 ]; do
@@ -38,13 +39,21 @@ while [ $# -gt 0 ]; do
     --run-id)         RUN_ID_ARG="$2"; shift 2;;
     --bless)          BLESS=1; shift;;
     --accept-missing) ACCEPT_MISSING=1; shift;;
+    --suite)          SUITE="$2"; shift 2;;
     -h|--help)
       head -22 "$0" | sed -n '3,22p'; exit 0;;
-    F[0-9]*)          FIXTURES+=("$1"); shift;;
+    [FS][0-9]*)       FIXTURES+=("$1"); shift;;
     *)
       echo "unknown arg: $1" >&2; exit 1;;
   esac
 done
+
+# Suite → fixtures directory + discovery prefix.
+case "$SUITE" in
+  golden)  FIXTURES_DIR="$BENCH_ROOT/fixtures";        FIXTURES_GLOB="F*";;
+  shadow)  FIXTURES_DIR="$BENCH_ROOT/shadow-fixtures"; FIXTURES_GLOB="S*";;
+  *)       echo "error: --suite must be 'golden' or 'shadow' (got '$SUITE')" >&2; exit 1;;
+esac
 
 # n must be 1 while iteration semantics aren't wired through judge/report.
 # Remove this block when compile-report.py gains multi-iter aggregation.
@@ -56,13 +65,13 @@ fi
 
 # Auto-discover fixtures if none specified
 if [ ${#FIXTURES[@]} -eq 0 ]; then
-  for d in "$BENCH_ROOT"/fixtures/F*/; do
+  for d in "$FIXTURES_DIR"/$FIXTURES_GLOB/; do
     [ -d "$d" ] && FIXTURES+=("$(basename "$d")")
   done
 fi
 
 if [ ${#FIXTURES[@]} -eq 0 ]; then
-  echo "no fixtures found in $BENCH_ROOT/fixtures/ — build F1..F9 first" >&2
+  echo "no fixtures found in $FIXTURES_DIR/ — build the suite first" >&2
   exit 1
 fi
 
@@ -82,6 +91,7 @@ echo ""
 echo "═══ Benchmark Suite Run ═══"
 echo "Run-id:    $RUN_ID"
 echo "Label:     ${LABEL:-(unlabeled)}"
+echo "Suite:     $SUITE ($FIXTURES_DIR)"
 echo "Fixtures:  ${FIXTURES[*]}"
 echo "n:         $N"
 [ $DRY_RUN -eq 1 ] && echo "Mode:      DRY RUN (no model invocations)"
@@ -144,7 +154,7 @@ fi
 # ---- Run arms ---------------------------------------------------------------
 if [ $JUDGE_ONLY -eq 0 ]; then
   for fid in "${FIXTURES[@]}"; do
-    [ -d "$BENCH_ROOT/fixtures/$fid" ] || { echo "[suite] skip $fid (missing)"; continue; }
+    [ -d "$FIXTURES_DIR/$fid" ] || { echo "[suite] skip $fid (missing)"; continue; }
     for arm in variant solo_claude bare; do
       echo "[suite] ► $fid / $arm"
       extra=""
