@@ -2,19 +2,21 @@
 
 **Read [`NORTH-STAR.md`](NORTH-STAR.md) first** (project goal). **This file second** (operating context). **[`PRINCIPLES.md`](PRINCIPLES.md) before any iter file edit** (pre-flight 0 + #1-#7). **[`MISSIONS.md`](MISSIONS.md)** confirms which mission is active.
 
-Last refined 2026-04-30 (post iter-0028 R-final-2 convergence — mechanism reverted as not load-bearing; F2 regex narrow-fix shipped; iter-0029 shadow-suite v0 next).
+Last refined 2026-04-30 (post iter-0028 R-final-2 convergence + 2-skill redesign locked + multi-LLM evolution direction binding).
 
 ---
 
-## 🚦 START-HERE — three things only
+## 🚦 START-HERE — four things now
 
-1. **iter-0028 CLOSED as measurement correction, NOT mechanism ship.** F2 fixture's broad regex (`return\s+(...|\{|...)`) was over-matching legitimate structured-error returns like `return { level: 'fail', message }`. iter-0027's "L1 60% silent-catch DQ" reading was 100% fixture artifact — across iter-0027 + iter-0028 + iter-0028-rfinal = **38 F2 arm-runs total, narrow-regex hits = 0/38, `@ts-ignore` hits = 0/38**. Fix shipped: F2 regex narrowed to `(?:\[\]|null|undefined|false|''|\{\s*\})`. With the fix, F2 N=3 paired = **0 DQ across all 9 arm-runs, L1+11.0 / L2+14.7 over bare clean-mean**. The forbidden-pattern BUILD_GATE mechanism (forbidden-pattern-check.py + build-gate-verifiers.sh wrapper + carrier staging) was reverted — Codex R-final-2 verdict + my subtractive-first read agreed: regex-based deterministic gate fundamentally cannot catch the semantic silent-catch shape that DOES occur (n3 bare `catch (e) { if (...) {...} return; }` non-EACCES drop), and the post-EVAL judge already catches those.
+1. **2-skill redesign LOCKED 2026-04-30.** 16 user-facing skills compress to **`/devlyn:ideate` + `/devlyn:resolve` + internal kernel + `/devlyn:reap` (optional)**. Codex R0+R1 deep collab. Full record: NORTH-STAR.md "Product surface" section + memory `project_2_skill_harness_redesign_2026_04_30.md`. Migration = hybrid (kernel first → new skills → deprecate old).
 
-2. **iter-0029 = shadow-suite v0 per HANDOFF L251-260.** 6 tasks, 1 per failure-class, hybrid generation (LLM proposes → human/Codex curates → frozen). `benchmark/auto-resolve/shadow-fixtures/` directory + `--suite shadow` flag. Smoke gate: schema + reference-solvability dry-run before any L0/L1 measurement. F3 N=3 + F9 N=3 cross-fixture variance is iter-0032 candidate, NOT immediate.
+2. **iter-0028 CLOSED as measurement correction, NOT mechanism ship.** F2 broad regex was over-matching `return { level, message }`. 38/38 narrow=0 cumulative. F2 N=3 post-fix: 0 DQ × 9 arm-runs, L1+11.0 / L2+14.7. Mechanism reverted (Codex R-final-2 + subtractive-first). F2 fixture now trustworthy.
 
-3. **F2 fixture is now trustworthy as a measurement instrument.** Future iters can use F2 single-shot or F2 N=3 readings without the broad-regex artifact contaminating margin reads. The remaining n3-bare semantic silent-catch (judge-only DQ) is a real signal about what semantic mid-build checks could detect — but it's NOT iter-0028 work. If a future iter wants semantic mid-build detection, it must be LLM-pass / judge-class, not deterministic regex.
+3. **Multi-LLM evolution direction binding for `/devlyn:resolve`.** Claude+Codex today; pi-agent abstraction tomorrow for Qwen/Gemini/Gemma swap-in. Pair-mode is empirically gated (currently VERIFY/JUDGE only per iter-0020) NOT architecturally frozen — schema + adapter files are the load-bearing decouplers. **No-xxx / worldclass principles bind the multi-LLM coordination layer just as they bind product code.** See NORTH-STAR.md + memory file for full clause.
 
-Everything below this fold supports those three.
+4. **Active iter focus**: redesign Phase 1 (kernel extraction) is now iter-0029. Shadow-suite v0 re-sequences to **iter-0030** (was the prior iter-0029 plan). Phase 1 is oracle-independent + reversible + parallel-safe.
+
+Everything below this fold supports those four.
 
 ---
 
@@ -194,16 +196,23 @@ If any unexpected output, do NOT proceed. Surface to user.
 
 ---
 
-## 🚧 iter-0029+ deferred queue (re-sequenced per Codex 2026-04-30 R0 deep verdict)
+## 🚧 iter-0029+ queue (re-sequenced 2026-04-30 — redesign supersedes prior shadow-suite plan)
 
-User 2026-04-30 second pushback: real-project trial too expensive + not bare-comparable; instead **generate small-but-tricky tasks inside the benchmark and run bare-vs-L1 categorical reliability on them**. Codex deep R0 verdict: do it as a **frozen shadow suite alongside the golden F1-F9** (option (c)), hybrid generation (LLM proposes → Codex/human curates → frozen fixtures). Sequencing locked:
+The prior plan had iter-0029 = shadow-suite v0. The 2-skill redesign supersedes that slot — kernel extraction must land before the new skills A/B against current. Shadow-suite re-sequences down by one.
 
-- **iter-0029 = shadow-suite v0**. 6 tasks (1 per failure-class — spec-compliance / multi-file scope leak / build-gate runtime / security CRITICAL / silent-catch / scope leak). Hybrid generation: first batch is **F1-F9 mutations** (reuse proven scaffolds + traps; mutate trap location, JSON shape, EACCES condition). Each task gets `spec.md` + `task.txt` + `expected.json` + `setup.sh` + reference-solvability check. **Location**: NEW `benchmark/auto-resolve/shadow-fixtures/` directory (NOT `fixtures/F*` — auto-discovered there feeds ship-gate, would muddy gating per Codex `run-suite.sh:57` + `compile-report.py:170` + `ship-gate.py:87` warnings). Need `--suite shadow` flag or separate runner. Smoke gate: 6 tasks pass schema + reference-solvability dry-run before any L0/L1 measurement.
-- **iter-0030 = shadow suite v1**. Expand to 18 tasks (3 per class) for directional readout. v0 → v1 transition iterative; LLM proposes new tasks, Codex/human curates.
-- **iter-0031 = shadow suite decision-grade**. 30 tasks (5 per class). At this point apply **Codex 8-condition trust rule**: frozen task set + ≥30 paired valid + invalid <10% + L1 DQ rate ≥30pp lower than bare + L1 absolute DQ ≤1/3 + no category worse by >+1 task + GPT-Opus categorical direction agreement + clean-run L1-L0 ≥0. If shadow and F1-F9 disagree, **F1-F9 still controls release**; shadow can redirect work but cannot bless Mission 1 by itself.
-- **iter-0032 (candidate)**: F3 N=3 + F9 N=3 paired variance on the golden suite (cross-fixture generalization of iter-0027's F2 finding).
-- **iter-0033 (candidate)**: ship-gate.py language change — reframe gate from "+5 absolute floor" to "L1 DQ rate < bare DQ rate by ≥30pp AND L1-L0 mean lift ≥ +5 on clean runs". Small doc + script change.
-- **iter-0034+ (candidate)**: NORTH-STAR ops test #14 real-project trial (terminal gate; only after shadow + golden + variance all clear).
+- **iter-0029 = redesign Phase 1 (kernel extraction)**. Targets: `expected.schema.json` (NEW), `complexity-classifier.py` (NEW), `_shared/adapters/<model>.md` (NEW small files), `browser-runner.sh` (extract from `/devlyn:browser-validate`), consolidate `spec-verify-check.py` / `forbidden-pattern-check.py` / `scope-check.py` under `_shared/`. Acceptance: lint passes, no benchmark regression on bare-case smoke, no behavior change to existing skills. Hard NO: NO new SKILL.md (Phase 2 work), NO new mechanism (only relocation + small NEW kernel files).
+- **iter-0030 = shadow-suite v0** (was prior iter-0029). 6 tasks (1 per failure-class), hybrid generation (LLM proposes → Codex/human curates → frozen). `benchmark/auto-resolve/shadow-fixtures/` dir + `--suite shadow` flag. Smoke gate: schema + reference-solvability dry-run before any L0/L1 measurement.
+- **iter-0031 = redesign Phase 2 (new `/devlyn:resolve`)**. Greenfield SKILL.md per locked phase shape (PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY-fresh-subagent). A/B against current `/devlyn:auto-resolve` on 9-fixture suite + shadow-suite. No deprecation yet.
+- **iter-0032 = redesign Phase 3 (new `/devlyn:ideate`)**. Greenfield SKILL.md focused on spec extraction. `--from-spec` + `spec.kind` escape hatch. A/B.
+- **iter-0033 = shadow suite v1** (3 tasks per class, 18 total).
+- **iter-0034 = redesign Phase 4 (cutover + deprecation)**. Once new pair beats or ties current on benchmark + shadow, new names take prod slots. Old skills marked deprecated → one cycle redirect → delete.
+- **iter-0035 = shadow suite decision-grade** (30 tasks). Apply Codex 8-condition trust rule.
+- **iter-0036 = redesign Phase 5 (optional plugin separation)**. Move `/design-system`, `/team-design-ui`, `/devlyn:reap` to `optional-skills/`.
+- **iter-0037 (candidate)**: F3 N=3 + F9 N=3 paired variance on golden suite.
+- **iter-0038 (candidate)**: ship-gate.py reframe ("+5 floor" → categorical-reliability gate).
+- **iter-0039+ (candidate)**: NORTH-STAR ops test #15 real-project trial (Mission 1 terminal gate).
+
+Note: redesign and shadow-suite **interleave** rather than running serial — kernel extraction (29) is oracle-independent, so it doesn't block shadow-suite measurement work. Sequencing keeps each iter's acceptance gate clean.
 
 ### Shadow-suite cadence (Codex verdict)
 
@@ -267,4 +276,4 @@ Per `feedback_codex_collaboration_not_consult.md`:
 
 ## ⏭️ End of HANDOFF
 
-Current iter focus: **iter-0028 (silent-catch detection in BUILD before EVAL)**. iter-0029 (F3 + F9 cross-fixture variance) BLOCKED until iter-0028 acceptance clears. Mission 1 active. Single-task L1 quality is the binding gate; team / multi-agent work stays deferred until single-task gates clear.
+Current iter focus: **iter-0029 (redesign Phase 1 — kernel extraction)**. iter-0028 closed (measurement correction shipped, mechanism reverted). Shadow-suite v0 re-sequenced to iter-0030. Mission 1 active. Single-task L1 quality is the binding gate; multi-LLM evolution direction binding for `/devlyn:resolve` (Claude+Codex today, pi-agent for swap-in tomorrow) — under no-xxx / worldclass principles.
