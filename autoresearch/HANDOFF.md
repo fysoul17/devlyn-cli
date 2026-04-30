@@ -19,12 +19,13 @@ Last refined 2026-04-30 (post 2-skill redesign Phases 1-3 SHIPPED — `/devlyn:i
 
 4. **shadow-suite v0 phase A only.** iter-0030 phase A (commit `a240558`) shipped infra + S1 task + `--suite shadow` flag + `lint-shadow-fixtures.sh`. Phase B (S2-S6, 5 more tasks × 6 files = 30 files) deferred.
 
-5. **Active iter focus** (in flight, 2026-04-30 — Codex R0+R0.5 collab complete):
-   - **iter-0033a = F9 fixture redesign for 2-skill contract** — sequenced FIRST per Codex R0.5 §F. F9 measures NEW vs L0 only (OLD ideate retired in iter-0032; OLD F9 baseline unobtainable at HEAD). 4 smokes + 4 benchmark gates. See [`iterations/0033a-f9-fixture-2skill-redesign.md`](iterations/0033a-f9-fixture-2skill-redesign.md).
-   - **iter-0033 (C1) = NEW L1 vs OLD L1 on F1-F8** — runs after iter-0033a. Original (F1-F9 + S1, L1+L2) was REJECTED at Codex R0 (494s, 6 blockers); rescoped per user. 9 gates including clean-tree mechanical sentinel + expanded artifact contract. See [`iterations/0033-quality-ab-new-resolve-vs-old-auto-resolve.md`](iterations/0033-quality-ab-new-resolve-vs-old-auto-resolve.md).
+5. **Active iter focus** (2026-05-01 — Codex R0+R0.5+R0.6 pre-registration complete; iter-0033a SHIPPED):
+   - **iter-0033a SHIPPED 2026-04-30** ✅ — F9 fixture redesigned for 2-skill contract. Smoke 1 PASS (ideate path-shape) + Smoke 2 PASS (resolve consuming spec.expected.json) + Smoke 3 retry PASS (F9 NEW vs L0 margin **+15**, L1 91 / L0 76, bare DQ silent-catch). Smoke 3 first attempt caught a real fail mode: default ideate runs Q&A which has no human in `claude -p` mode → fix: F9 NEW prompt mandates `--quick`. Discovered (deferred to separate fix iter): NEW resolve archive step skipped — artifacts left in `.devlyn/` instead of `.devlyn/runs/<id>/`. Commits: `0b317a4` (fixture + harness) + `4e3d89a` (--quick fix) + check-f9-artifacts.py refinement pending bake commit.
+   - **iter-0033 (C1) = NEW L1 vs OLD L1 on F1-F8** — runs next. Original (F1-F9 + S1, L1+L2) was REJECTED at Codex R0 (494s, 6 blockers); rescoped per user. 9 gates including clean-tree mechanical sentinel + expanded artifact contract. See [`iterations/0033-quality-ab-new-resolve-vs-old-auto-resolve.md`](iterations/0033-quality-ab-new-resolve-vs-old-auto-resolve.md).
    - **iter-0033c = NEW L2 vs NEW L1** — runs after iter-0033 (C1). Codex R0.5 §G + user adjudication 2026-04-30: Phase 4 must not ship without measuring L2 on NEW surface (else NORTH-STAR L2 first-class contract degrades). 8 gates + tool-lift vs deliberation-lift attribution per NORTH-STAR test #11. See [`iterations/0033c-l2-new-vs-new-l1.md`](iterations/0033c-l2-new-vs-new-l1.md).
-   - **iter-0034 = Phase 4 cutover** — gated on **all three** above PASS.
+   - **iter-0034 = Phase 4 cutover** — gated on iter-0033 (C1) + iter-0033c PASS (iter-0033a already PASS).
    - **iter-0030 phase B** (S2-S6 shadow tasks) — independent, unblocked.
+   - **(NEW deferred fix iter)** NEW resolve archive step — `phases.final_report` doesn't move `.devlyn/*` into `.devlyn/runs/<run_id>/`. Discovered during iter-0033a Smoke 3. No measurement impact (artifacts complete in `.devlyn/`); cleanup work for Phase 4.
 
 Everything below this fold supports those five.
 
@@ -292,4 +293,4 @@ Per `feedback_codex_collaboration_not_consult.md`:
 
 ## ⏭️ End of HANDOFF
 
-Current status: 2-skill redesign Phases 1-3 SHIPPED **skill bodies** on `main`; **fixture resync NOT done** (F9 still encodes 3-skill chain). Phase 4 cutover gated on a 3-iter sequence: **iter-0033a** (F9 fixture redesign + NEW vs L0) → **iter-0033 (C1)** (F1-F8 NEW L1 vs OLD L1) → **iter-0033c** (NEW L2 vs NEW L1). All three sequenced and pre-registered with Codex R0+R0.5 collab. Mission 1 active. Single-task L1 quality is the binding gate; multi-LLM evolution direction binds `/devlyn:resolve` (Claude+Codex today, pi-agent tomorrow) — under no-xxx / worldclass principles.
+Current status: 2-skill redesign Phases 1-3 SHIPPED **skill bodies** + **iter-0033a SHIPPED 2026-04-30** (F9 fixture redesigned, NEW L1 vs L0 +15 margin). Phase 4 cutover gated on remaining 2 iters: **iter-0033 (C1)** (F1-F8 NEW L1 vs OLD L1) → **iter-0033c** (NEW L2 vs NEW L1). Both pre-registered with Codex R0+R0.5+R0.6 collab. Mission 1 active. Single-task L1 quality is the binding gate; multi-LLM evolution direction binds `/devlyn:resolve` (Claude+Codex today, pi-agent tomorrow) — under no-xxx / worldclass principles.

@@ -32,8 +32,9 @@ EXEMPT_ARMS = {"bare"}
 SPEC_DIR_GLOB = "docs/specs/*/spec.md"
 SPEC_EXPECTED_GLOB = "docs/specs/*/spec.expected.json"
 
-# Transcript fingerprint regexes.
-RE_RESOLVE_INVOCATION = re.compile(r"/devlyn:resolve\s+--spec\s+\S+", re.MULTILINE)
+# Transcript fingerprint regexes (negative checks only — `claude -p`
+# transcript captures only the agent's final reply, not intermediate
+# tool calls; positive resolve invocation evidence lives in state).
 RE_AUTO_RESOLVE = re.compile(r"/devlyn:auto-resolve\b")
 RE_PREFLIGHT = re.compile(r"/devlyn:preflight\b")
 
@@ -134,7 +135,83 @@ def main() -> int:
         if bad_shapes:
             report["pass"] = False
 
-    # Transcript fingerprint checks.
+    # Resolve invocation evidence — primary source is pipeline.state.json,
+    # NOT transcript.txt. `claude -p` only emits the agent's final reply to
+    # stdout; intermediate Skill / Agent / Bash tool calls do not appear in
+    # transcript.txt. Therefore "regex /devlyn:resolve --spec in transcript"
+    # is the wrong source. The authoritative evidence resolve actually ran
+    # in --spec mode is `state.mode == "spec"` plus `state.source.type ==
+    # "spec"` plus a populated `state.source.spec_path` pointing under
+    # `docs/specs/`. Per state-schema.md this is single-source-of-truth.
+    # Look for the archive first (preferred), then fall back to the live
+    # in-flight location. NEW resolve currently lands artifacts directly in
+    # `.devlyn/` and may skip the move-to-runs/ archive step (TODO: separate
+    # iter to fix archive); both locations carry the same authoritative
+    # state shape.
+    archived_paths = list(work_dir.glob(".devlyn/runs/*/pipeline.state.json"))
+    live_path = work_dir / ".devlyn" / "pipeline.state.json"
+    state_paths = archived_paths if archived_paths else (
+        [live_path] if live_path.is_file() else []
+    )
+    if not state_paths:
+        report["checks"].append({
+            "name": "pipeline.state.json-present",
+            "pass": False,
+            "reason": "neither .devlyn/runs/*/pipeline.state.json nor .devlyn/pipeline.state.json found in work_dir",
+        })
+        report["pass"] = False
+    else:
+        # Read the most recent run.
+        state_path = sorted(state_paths)[-1]
+        try:
+            state = json.loads(state_path.read_text())
+        except Exception as exc:
+            report["checks"].append({
+                "name": "pipeline.state.json-parses",
+                "pass": False,
+                "reason": f"{exc.__class__.__name__}: {exc}",
+            })
+            report["pass"] = False
+            state = None
+
+        if state is not None:
+            archived = "/runs/" in str(state_path)
+            report["checks"].append({
+                "name": "pipeline.state.json-present",
+                "pass": True,
+                "path": str(state_path.relative_to(work_dir)),
+                "archived_to_runs_dir": archived,
+            })
+            if not archived:
+                # Not a fail — note for harness developer that NEW resolve
+                # is skipping the archive step in this run.
+                report["checks"].append({
+                    "name": "archive-step-completed",
+                    "pass": True,
+                    "warning": "NEW resolve left artifacts in .devlyn/ instead of .devlyn/runs/<id>/ — archive step skipped (separate iter for harness fix)",
+                })
+            mode = state.get("mode")
+            src_type = (state.get("source") or {}).get("type")
+            spec_path = (state.get("source") or {}).get("spec_path") or ""
+            spec_under_specs = spec_path.startswith("docs/specs/") and spec_path.endswith("spec.md")
+            mode_ok = mode == "spec"
+            src_ok = src_type == "spec"
+            report["checks"].append({
+                "name": "state.mode-and-source-spec",
+                "pass": mode_ok and src_ok and spec_under_specs,
+                "mode": mode,
+                "source.type": src_type,
+                "source.spec_path": spec_path,
+            })
+            if not (mode_ok and src_ok and spec_under_specs):
+                report["pass"] = False
+
+    # Transcript fingerprint — negative checks only. transcript.txt records
+    # the agent's final reply; if the agent (or any subagent) had invoked
+    # /devlyn:auto-resolve or /devlyn:preflight, the prompt-following gate
+    # should still surface the name in the summary. Positive resolve
+    # evidence lives in state above; here we just rule out the deprecated
+    # 3-skill chain names.
     transcript_path = result_dir / "transcript.txt"
     if not transcript_path.is_file():
         report["checks"].append({
@@ -147,15 +224,6 @@ def main() -> int:
         return 1
 
     transcript = transcript_path.read_text(errors="replace")
-
-    resolve_hits = RE_RESOLVE_INVOCATION.findall(transcript)
-    report["checks"].append({
-        "name": "transcript-contains-resolve-spec-invocation",
-        "pass": len(resolve_hits) >= 1,
-        "count": len(resolve_hits),
-    })
-    if len(resolve_hits) < 1:
-        report["pass"] = False
 
     auto_resolve_hits = RE_AUTO_RESOLVE.findall(transcript)
     report["checks"].append({
