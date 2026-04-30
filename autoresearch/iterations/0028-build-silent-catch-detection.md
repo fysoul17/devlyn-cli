@@ -1,9 +1,9 @@
 ---
 iter: "0028"
-title: "BUILD-time silent-catch / forbidden-pattern detection — mechanical gate before EVAL"
-status: implemented + R1 D1/D2/D3 fixes shipped (F2 N=5 paired acceptance pending)
-type: mechanism (closes BUILD silent-catch DQ via fix-loop visibility, mirrors iter-0019.6 spec-verify pattern)
-shipped_commit: 547d95a
+title: "BUILD-time silent-catch / forbidden-pattern detection — CLOSED as measurement correction; mechanism reverted"
+status: CLOSED 2026-04-30 — F2 regex narrow-fix shipped; mechanism reverted per Codex R-final-2 + 38/38 narrow=0 evidence
+type: measurement-correction (originally proposed as mechanism; mechanism proven not load-bearing during R-final pair-review)
+shipped_commit: 9d40c0d  # close-out commit; F2 regex fix kept, forbidden-pattern mechanism reverted
 date: 2026-04-30
 mission: 1
 ---
