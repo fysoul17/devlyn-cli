@@ -56,7 +56,7 @@ benchmark/auto-resolve/
 │   ├── F6-dep-audit-native-module/
 │   ├── F7-out-of-scope-trap/
 │   ├── F8-known-limit-ambiguous/
-│   └── F9-e2e-ideate-to-preflight/
+│   └── F9-e2e-ideate-to-resolve/
 │
 ├── scripts/
 │   ├── run-suite.sh          # single entry — runs all fixtures × 2 arms + judge + report
@@ -117,7 +117,7 @@ Category coverage matrix (rows = concerns, columns = fixtures):
 | F6-dep-audit-native-module | | | | ✓ (CRITIC security dep audit) | | |
 | F7-out-of-scope-trap | | | | ✓ (scope discipline) | | |
 | F8-known-limit-ambiguous | | | | | ✓ (documents where pipeline may lose) | |
-| F9-e2e-ideate-to-preflight | | | | | | ✓ (novice full-flow) |
+| F9-e2e-ideate-to-resolve | | | | | | ✓ (novice full-flow) |
 
 **F9 is load-bearing** for the "novice user types `/devlyn:ideate`" promise.
 Input is a vague idea; pipeline arm runs ideate → auto-resolve on every
@@ -152,7 +152,7 @@ F5-fix-loop-red-green               91     65    +26      PASS
 F6-dep-audit-native-module          88     70    +18      PASS
 F7-out-of-scope-trap                94     73    +21      PASS
 F8-known-limit-ambiguous            78     79     -1      EXPECTED (known-limit)
-F9-e2e-ideate-to-preflight          90     68    +22      PASS
+F9-e2e-ideate-to-resolve          90     68    +22      PASS
 ---------------------------------------------------------
 Suite average variant score: 89.3
 Suite average bare score:    75.0

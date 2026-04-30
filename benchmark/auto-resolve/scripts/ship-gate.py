@@ -44,7 +44,10 @@ def main() -> int:
 
     # Hard floor 2: F9 must pass (skipped during bootstrap via --accept-missing)
     # Variant arm legacy gate kept for L2 baseline comparability.
-    f9_row = next((r for r in summary["rows"] if r.get("fixture") == "F9-e2e-ideate-to-preflight"), None)
+    # iter-0033a (2026-04-30): renamed F9 dir from -to-preflight to -to-resolve to
+    # match the shipped 2-skill contract (no preflight). The OLD pre-rename id
+    # is preserved in fixtures/retired/ for replay.
+    f9_row = next((r for r in summary["rows"] if r.get("fixture") == "F9-e2e-ideate-to-resolve"), None)
     if f9_row is None:
         if not args.accept_missing:
             failures.append("F9 (E2E novice flow) missing — add fixture or run with --accept-missing")

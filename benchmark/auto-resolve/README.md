@@ -83,7 +83,7 @@ Follow `fixtures/SCHEMA.md`. Six files per fixture: `metadata.json`, `spec.md`, 
 Hard floors (any one fails → block):
 
 - Zero variant disqualifier (silent catch, fabricated verification, extra deps beyond `max_deps_added`, etc.).
-- `F9-e2e-ideate-to-preflight` must PASS (novice-flow contract).
+- `F9-e2e-ideate-to-resolve` must PASS (novice-flow contract).
 - ≥ 7 of 9 gated fixtures have margin ≥ +5.
 - No per-fixture regression worse than −5 vs last shipped baseline.
 

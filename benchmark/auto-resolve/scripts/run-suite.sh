@@ -5,13 +5,14 @@
 # gate. Called by `npx devlyn-cli benchmark` as well as directly.
 #
 # Usage:
-#   run-suite.sh                           # all fixtures, n=1 smoke
-#   run-suite.sh --n 3                     # 3 runs per fixture for ship decisions
-#   run-suite.sh F2 F5                     # specific fixtures only
-#   run-suite.sh --dry-run                 # skip model invocations, validate setup
-#   run-suite.sh --judge-only --run-id X   # re-judge an existing run
-#   run-suite.sh --label v3.6              # tag this run
-#   run-suite.sh --bless                   # if ship-gate PASS, promote to baselines/shipped.json
+#   run-suite.sh                            # all fixtures, n=1 smoke
+#   run-suite.sh --n 3                      # 3 runs per fixture for ship decisions
+#   run-suite.sh F2 F5                      # specific fixtures only
+#   run-suite.sh --dry-run                  # skip model invocations, validate setup
+#   run-suite.sh --judge-only --run-id X    # re-judge an existing run
+#   run-suite.sh --label v3.6               # tag this run
+#   run-suite.sh --bless                    # if ship-gate PASS, promote to baselines/shipped.json
+#   run-suite.sh --resolve-skill new        # invoke /devlyn:resolve --spec (default: old = /devlyn:auto-resolve)
 #
 # Exits 0 on PASS, 1 on FAIL.
 
@@ -28,6 +29,7 @@ RUN_ID_ARG=""
 BLESS=0
 ACCEPT_MISSING=0
 SUITE="golden"
+RESOLVE_SKILL="old"
 FIXTURES=()
 
 while [ $# -gt 0 ]; do
@@ -40,6 +42,7 @@ while [ $# -gt 0 ]; do
     --bless)          BLESS=1; shift;;
     --accept-missing) ACCEPT_MISSING=1; shift;;
     --suite)          SUITE="$2"; shift 2;;
+    --resolve-skill)  RESOLVE_SKILL="$2"; shift 2;;
     -h|--help)
       head -22 "$0" | sed -n '3,22p'; exit 0;;
     [FS][0-9]*)       FIXTURES+=("$1"); shift;;
@@ -47,6 +50,12 @@ while [ $# -gt 0 ]; do
       echo "unknown arg: $1" >&2; exit 1;;
   esac
 done
+
+# iter-0033 (C1) / iter-0033a: --resolve-skill picks NEW or OLD orchestrator.
+# Default `old` keeps pre-iter-0033 invocations identical. Validation here
+# mirrors run-fixture.sh.
+[ "$RESOLVE_SKILL" = "new" ] || [ "$RESOLVE_SKILL" = "old" ] || \
+  { echo "--resolve-skill must be 'new' or 'old' (got '$RESOLVE_SKILL')" >&2; exit 1; }
 
 # Suite → fixtures directory + discovery prefix.
 case "$SUITE" in
@@ -89,13 +98,14 @@ mkdir -p "$RES_DIR"
 
 echo ""
 echo "═══ Benchmark Suite Run ═══"
-echo "Run-id:    $RUN_ID"
-echo "Label:     ${LABEL:-(unlabeled)}"
-echo "Suite:     $SUITE ($FIXTURES_DIR)"
-echo "Fixtures:  ${FIXTURES[*]}"
-echo "n:         $N"
-[ $DRY_RUN -eq 1 ] && echo "Mode:      DRY RUN (no model invocations)"
-[ $JUDGE_ONLY -eq 1 ] && echo "Mode:      JUDGE ONLY (re-judging existing artifacts)"
+echo "Run-id:        $RUN_ID"
+echo "Label:         ${LABEL:-(unlabeled)}"
+echo "Suite:         $SUITE ($FIXTURES_DIR)"
+echo "Fixtures:      ${FIXTURES[*]}"
+echo "n:             $N"
+echo "Resolve skill: $RESOLVE_SKILL"
+[ $DRY_RUN -eq 1 ] && echo "Mode:          DRY RUN (no model invocations)"
+[ $JUDGE_ONLY -eq 1 ] && echo "Mode:          JUDGE ONLY (re-judging existing artifacts)"
 echo ""
 
 # ---- Mirror committed skills into .claude/skills (iter-0017) --------------
@@ -156,11 +166,12 @@ if [ $JUDGE_ONLY -eq 0 ]; then
   for fid in "${FIXTURES[@]}"; do
     [ -d "$FIXTURES_DIR/$fid" ] || { echo "[suite] skip $fid (missing)"; continue; }
     for arm in variant solo_claude bare; do
-      echo "[suite] ► $fid / $arm"
+      echo "[suite] ► $fid / $arm (resolve-skill=$RESOLVE_SKILL)"
       extra=""
       [ $DRY_RUN -eq 1 ] && extra="--dry-run"
       bash "$BENCH_ROOT/scripts/run-fixture.sh" \
-        --fixture "$fid" --arm "$arm" --run-id "$RUN_ID" $extra \
+        --fixture "$fid" --arm "$arm" --run-id "$RUN_ID" \
+        --resolve-skill "$RESOLVE_SKILL" $extra \
         || echo "[suite] ✗ $fid / $arm (arm failure tolerated; artifacts still captured)"
     done
   done

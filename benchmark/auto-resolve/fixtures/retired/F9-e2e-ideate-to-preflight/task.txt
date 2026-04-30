@@ -1,0 +1,5 @@
+I want a CLI subcommand that shows basic stats about the current git repo — commit count, last commit date, top 3 authors. Call it `gitstats`.
+
+Should work inside this repo when I run `node bin/cli.js gitstats`, and fail cleanly if I'm not in a git repo. A `--json` flag for machine-readable output would be useful too.
+
+Keep the existing `hello` and `version` subcommands working. Add a test. No new npm dependencies.

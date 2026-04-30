@@ -15,17 +15,19 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 --fixture <FID> --arm <variant|bare> --run-id <ID> [--dry-run]"
+  echo "usage: $0 --fixture <FID> --arm <variant|solo_claude|bare> --run-id <ID> [--resolve-skill <new|old>] [--dry-run]"
   exit 1
 }
 
 FIXTURE=""; ARM=""; RUN_ID=""; DRY_RUN=0
+RESOLVE_SKILL="old"
 while [ $# -gt 0 ]; do
   case "$1" in
-    --fixture)  FIXTURE="$2"; shift 2;;
-    --arm)      ARM="$2";     shift 2;;
-    --run-id)   RUN_ID="$2";  shift 2;;
-    --dry-run)  DRY_RUN=1;    shift;;
+    --fixture)        FIXTURE="$2"; shift 2;;
+    --arm)            ARM="$2";     shift 2;;
+    --run-id)         RUN_ID="$2";  shift 2;;
+    --resolve-skill)  RESOLVE_SKILL="$2"; shift 2;;
+    --dry-run)        DRY_RUN=1;    shift;;
     *) usage;;
   esac
 done
@@ -35,6 +37,24 @@ done
 # bare (L0: direct claude -p, no skill, no codex).
 [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] || [ "$ARM" = "bare" ] || \
   { echo "arm must be variant|solo_claude|bare"; exit 1; }
+# iter-0033a / iter-0033 (C1): --resolve-skill picks the orchestrator skill
+# the variant/solo_claude prompts invoke. `old` = /devlyn:auto-resolve (the
+# OLD orchestrator, still on disk pre-Phase-4); `new` = /devlyn:resolve --spec
+# (the greenfield 2-skill orchestrator from iter-0031). Default `old` keeps
+# all pre-iter-0033 invocations behaviorally identical. The flag is removed
+# in iter-0034 once OLD is deleted.
+[ "$RESOLVE_SKILL" = "new" ] || [ "$RESOLVE_SKILL" = "old" ] || \
+  { echo "--resolve-skill must be 'new' or 'old' (got '$RESOLVE_SKILL')"; exit 1; }
+# F9 OLD-arm refusal (Codex R0.5 §E + iter-0033a): at HEAD, OLD /devlyn:ideate
+# was replaced in iter-0032; only NEW ideate exists. Calling --resolve-skill
+# old on F9 would invoke NEW ideate against OLD auto-resolve = broken hybrid.
+# F9 measures NEW vs L0 only.
+if [ "$FIXTURE" = "F9-e2e-ideate-to-resolve" ] && [ "$RESOLVE_SKILL" = "old" ] \
+   && { [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; }; then
+  echo "F9 OLD baseline is unobtainable post-iter-0032 (OLD /devlyn:ideate retired)." >&2
+  echo "Use --resolve-skill new for F9; F9 measures NEW vs L0 only per iter-0033a." >&2
+  exit 1
+fi
 
 BENCH_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(cd "$BENCH_ROOT/../.." && pwd)"
@@ -226,10 +246,11 @@ fi
 # committed to the work repo as a separate pre-model commit so the model's
 # diff shows only its own work.
 #
-# Per-arm prompt selection is fixture-id-aware only in one case: F9, the
-# end-to-end novice fixture. F9's variant arm explicitly chains
-# ideate → auto-resolve → preflight from the raw task.txt (as a novice would);
-# every other fixture's variant uses the spec-driven auto-resolve path.
+# Per-arm prompt selection is:
+#   1. Fixture-id-aware for F9 (end-to-end novice fixture, no pre-placed spec).
+#   2. Resolve-skill-aware (iter-0033 C1 / iter-0033a): `old` → /devlyn:auto-resolve,
+#      `new` → /devlyn:resolve --spec. Default `old` keeps pre-iter-0033 invocations
+#      identical. F9 with --resolve-skill old is refused at arg-parse time.
 PROMPT_FILE="$RESULT_DIR/input.md"
 # Variant uses --engine auto (experimental dual-engine: codex BUILD + claude
 # critique pair); solo_claude uses --engine claude explicitly so the orchestrator
@@ -245,26 +266,42 @@ if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; then
     ENGINE_CLAUSE="--engine auto"
     ENGINE_PROMPT_HINT="Run with \`--engine auto\` so the experimental dual-engine routing fires (Codex BUILD/FIX, Claude EVAL/CRITIC) — do not override it."
   fi
-  if [ "$FIXTURE" = "F9-e2e-ideate-to-preflight" ]; then
-    # Novice flow — no pre-placed spec. The arm must generate it via ideate.
+  if [ "$FIXTURE" = "F9-e2e-ideate-to-resolve" ]; then
+    # F9 NEW chain (iter-0033a): /devlyn:ideate (greenfield) → /devlyn:resolve
+    # --spec <emitted-path>. No pre-placed spec; the variant arm generates it
+    # via ideate. No preflight (folded into resolve's VERIFY phase).
     cat > "$PROMPT_FILE" <<EOF
-You are a first-time devlyn-cli user. You have a vague idea and want the harness to take it from unstructured ask to shipped, verified feature. Run the chain:
+You are a first-time devlyn-cli user. You have a vague idea and want the 2-skill harness to take it from unstructured ask to shipped, verified feature. Run the chain:
 
-1. Invoke \`/devlyn:ideate ${ENGINE_CLAUSE}\` to turn the idea into docs/VISION.md, docs/ROADMAP.md, and a self-contained spec under docs/roadmap/phase-1/.
-2. Once ideate emits a spec path (something like docs/roadmap/phase-1/1.1-<slug>.md), invoke \`/devlyn:auto-resolve ${ENGINE_CLAUSE} "Implement per spec at <that-path>"\` to run the full build → evaluate → critic → docs pipeline.
-3. Finally, invoke \`/devlyn:preflight ${ENGINE_CLAUSE}\` to audit the implementation against the generated roadmap.
+1. Invoke \`/devlyn:ideate ${ENGINE_CLAUSE}\` to turn the idea into a verifiable spec. The skill will ask focused questions; answer briefly so it can finish. It announces \`spec ready — /devlyn:resolve --spec <emitted-path>\` when done. The emitted spec lives at \`docs/specs/<id>-<slug>/spec.md\` with a sibling \`spec.expected.json\`.
+2. Take the emitted spec path and invoke \`/devlyn:resolve --spec <that-path> ${ENGINE_CLAUSE}\` to run PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (VERIFY is the fresh-subagent final phase — there is no separate preflight skill in the 2-skill design).
 
 ${ENGINE_PROMPT_HINT}
 
-Follow the skills to completion. Do not short-circuit.
+Follow the skills to completion. Do not short-circuit. Do not invoke \`/devlyn:auto-resolve\` or \`/devlyn:preflight\` — they are not part of the 2-skill chain.
 
-After the whole chain, briefly report: (a) the spec path ideate produced, (b) the auto-resolve terminal verdict, (c) whether preflight found any gaps.
+After the whole chain, briefly report: (a) the spec path ideate produced, (b) the resolve terminal verdict, (c) whether VERIFY surfaced any findings.
 
 RAW IDEA:
 $(cat "$TASK")
 EOF
+  elif [ "$RESOLVE_SKILL" = "new" ]; then
+    # NEW resolve-skill standard path: spec pre-placed at the canonical roadmap
+    # path the harness has used since iter-0019; the prompt routes through
+    # /devlyn:resolve --spec instead of /devlyn:auto-resolve. Same staged path
+    # for OLD and NEW so other fixtures stay byte-identical apart from the
+    # skill name.
+    mkdir -p "$WORK_DIR/docs/roadmap/phase-1"
+    cp "$SPEC" "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"
+    cat > "$PROMPT_FILE" <<EOF
+Use the \`/devlyn:resolve --spec docs/roadmap/phase-1/$FIXTURE.md ${ENGINE_CLAUSE}\` skill to implement the spec. ${ENGINE_PROMPT_HINT}
+
+Do NOT invoke \`/devlyn:auto-resolve\`, \`/devlyn:preflight\`, or any other deprecated 3-skill orchestrator. The 2-skill design folds verification into resolve's VERIFY phase.
+
+After the pipeline finishes, report the terminal verdict and list of files changed so the benchmark runner can capture state.
+EOF
   else
-    # Standard variant / solo_claude: spec is pre-placed at canonical roadmap path.
+    # OLD resolve-skill (default) — pre-iter-0033 path: /devlyn:auto-resolve.
     mkdir -p "$WORK_DIR/docs/roadmap/phase-1"
     cp "$SPEC" "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"
     cat > "$PROMPT_FILE" <<EOF

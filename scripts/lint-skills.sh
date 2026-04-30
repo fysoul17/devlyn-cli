@@ -417,6 +417,45 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# 14. F9 fixture id matches the shipped 2-skill contract (iter-0033a, 2026-04-30).
+#     `/devlyn:preflight` was folded into `/devlyn:resolve`'s VERIFY phase; the
+#     legacy F9 dir name (`F9-e2e-ideate-to-preflight`) is misleading once
+#     preflight is gone. The retired copy lives under `fixtures/retired/` for
+#     replay; the live fixture must be `F9-e2e-ideate-to-resolve`. Any other
+#     non-retired reference to the old id is a stale rename.
+# ---------------------------------------------------------------------------
+section "Check 14: F9 fixture id matches 2-skill contract"
+f9_drift=0
+if [ ! -d "benchmark/auto-resolve/fixtures/F9-e2e-ideate-to-resolve" ]; then
+  bad "live F9 fixture missing at benchmark/auto-resolve/fixtures/F9-e2e-ideate-to-resolve"
+  f9_drift=1
+fi
+# Stale references outside fixtures/retired/ are bugs. Examine line content
+# (not just filename) so files that legitimately mention the retired *path*
+# (e.g. fixtures/F9-e2e-ideate-to-resolve/NOTES.md explaining where the OLD
+# version lives) pass while genuine stale references fail. Excluded scopes:
+# benchmark/auto-resolve/results/ (historical run artifacts, frozen) and
+# scripts/lint-skills.sh itself (carries the pattern in this check).
+stale=$(grep -RIn 'F9-e2e-ideate-to-preflight' \
+  config/skills \
+  benchmark \
+  scripts \
+  CLAUDE.md \
+  README.md 2>/dev/null \
+  | grep -v '^benchmark/auto-resolve/fixtures/retired/F9-e2e-ideate-to-preflight/' \
+  | grep -v '^benchmark/auto-resolve/results/' \
+  | grep -v '^scripts/lint-skills\.sh:' \
+  | grep -v 'fixtures/retired/F9-e2e-ideate-to-preflight' \
+  || true)
+if [ -n "$stale" ]; then
+  while IFS= read -r f; do bad "stale F9-e2e-ideate-to-preflight reference: $f"; done <<< "$stale"
+  f9_drift=1
+fi
+if [ $f9_drift -eq 0 ]; then
+  ok "F9 fixture id is canonical (F9-e2e-ideate-to-resolve); no stale refs outside retired/"
+fi
+
+# ---------------------------------------------------------------------------
 # Summary.
 # ---------------------------------------------------------------------------
 echo
