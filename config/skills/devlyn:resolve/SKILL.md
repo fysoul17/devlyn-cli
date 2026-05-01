@@ -166,7 +166,7 @@ State write: `phases.final_report.started_at` at the top of this phase.
 
 3. State write: `phases.final_report.{verdict, completed_at, duration_ms}` BEFORE archive runs (archive prune logic skips runs whose `final_report.verdict` is null).
 
-4. **Archive** — move `.devlyn/*` into `.devlyn/runs/<run_id>/` (last 10 kept). Best-effort; archive failure does not change the run's verdict.
+4. **Archive** — invoke the deterministic script: `python3 .claude/skills/_shared/archive_run.py`. The script reads `run_id` from `.devlyn/pipeline.state.json`, moves per-run artifacts (state.json + `*.findings.jsonl` + `*.log.md` + `fix-batch.round-*.json` + `criteria.generated.md` + `spec-verify*.json` + `spec-verify-findings.jsonl`) into `.devlyn/runs/<run_id>/`, then best-effort prunes to last 10 completed runs. Archive must run; running this step as deterministic-script-not-prose ensures the move actually happens (iter-0033a Smoke 3 caught a case where the agent claimed archive ran without moving the files).
 
 5. Kill any dev server PHASE 3 left running.
 
