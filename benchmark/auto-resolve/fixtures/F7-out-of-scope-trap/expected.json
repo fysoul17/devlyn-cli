@@ -39,7 +39,7 @@
       "exit_code": 0,
       "stdout_contains": [],
       "stdout_not_contains": [
-        "fail "
+        "not ok "
       ]
     },
     {
