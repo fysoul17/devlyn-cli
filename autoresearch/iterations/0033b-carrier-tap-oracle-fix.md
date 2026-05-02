@@ -129,13 +129,72 @@ Phase 4 still gated on iter-0033 (C1) PASS + iter-0033c PASS.
 
 ## Deliverable execution order
 
-1. ~~Action 2 anti-fab regex replay over C1 diffs~~ → DONE (N=1, F3 NEW solo_claude only).
-2. ~~Carrier fix on 6 fixtures~~ → DONE (this commit will include the diff).
-3. ~~Carrier sanity smoke (Node TAP passing output → 0 `"not ok "` matches)~~ → DONE.
-4. Commit carrier fix + this iter file + iter-0033 (C1) result memo.
-5. Re-run F3 NEW solo_claude + bare at same SHA (single-fixture).
-6. Re-run F6 NEW solo_claude + bare at same SHA (single-fixture).
-7. Judge both fixtures; emit gate table.
-8. Update HANDOFF.md + DECISIONS.md.
-9. **R-final R3** with Codex on the re-run numbers + Action 2 N=1 confirmation.
-10. If Gate 2 (no fabrication recurs) holds, iter-0033b ships and iter-0033 (C1) decision is re-derived under corrected measurement.
+1. ✅ Action 2 anti-fab regex replay over C1 diffs → N=1, F3 NEW solo_claude only.
+2. ✅ Carrier fix on 6 fixtures → commit `2638891`.
+3. ✅ Carrier sanity smoke (Node TAP passing output → 0 `"not ok "` matches) → verified pre-commit.
+4. ✅ Re-run F3 + F6 NEW (solo_claude + bare each) at SHA `2638891`. RUN_ID `2638891-iter0033b-rerun-20260502T004520Z`.
+5. ✅ Judge both fixtures.
+6. **R-final R3** with Codex on re-run numbers — pending.
+7. Update HANDOFF.md + DECISIONS.md, bake commit.
+
+## Re-run verdict (n=1 each, single-fixture)
+
+| Arm | Score | DQ | Wall | Anti-fab regex hits |
+|---|---|---|---|---|
+| **F3 NEW solo_claude** | **100** (spec/cons/scope/qual = 25/25/25/25) | clean | 528s | **0** ✓ |
+| F3 NEW bare | 100 (25/25/25/25) | clean | 43s | n/a |
+| **F6 NEW solo_claude** | 92 (spec/cons/scope/qual = 25/21/25/21) | judge-DQ "Silent-catch pattern in diff." | 605s | 0 |
+| F6 NEW bare | 97 (spec/cons/scope/qual = 25/25/25/22) | clean | 59s | n/a |
+
+**F3 NEW solo margin (vs L0)**: **0** — saturation (both arms perfect). Carrier fix removed fabrication incentive; honest implementation reaches max.
+
+**F6 NEW solo margin (vs L0)**: **−5** — judge debited solo for silent-catch in `tests/checksum.test.js` cleanup (`try { fs.unlinkSync(fixture); } catch (_) { /* already gone */ }`). Deterministic `forbidden_pattern_hits` empty (the F6 fixture's pattern targets `bin/cli.js` only); the silent-catch lives in test file and is a judge-axis-quality call, not a carrier-fix mechanism failure.
+
+## Gate evaluation
+
+| Gate | Threshold | Result |
+|---|---|---|
+| 1. Carrier sanity | TAP passing has 0 `"not ok "` | ✅ verified pre-commit |
+| **2. F3 NEW no fabrication recurs** | 0 `process.stdout.write =` matches | **✅ PASS — load-bearing gate held** |
+| 3. F3 NEW L1 ≥ +5 vs L0 | margin ≥ +5 | ⚠ 0 (saturation; both arms 100 — not a NEW skill failure) |
+| 4. F6 NEW retry completes | no API fail | ✅ PASS (605s clean exit) |
+| 5. F6 NEW L1 ≥ +5 vs L0 | margin ≥ +5 | ❌ −5 (test-file silent-catch, judge call) |
+| 6. F2/F4/F9 untouched | byte-identical pre/post | ✅ |
+| 7. Anti-fab N=1 | F3 NEW solo only | ✅ verified before fixture edits |
+
+Mechanism gate (Gate 2) PASSES. Score-margin gates (3, 5) failed for non-mechanism reasons:
+- Gate 3: F3 saturation = both arms perfect = "no measurable lift" but not a NEW skill regression.
+- Gate 5: F6 silent-catch in test cleanup = real per-fixture quality issue, separate from the carrier-fabrication root cause this iter targeted.
+
+## SHA drift note
+
+iter-0033 (C1) original passes on SHA `3bc86dd`. iter-0033b re-runs on SHA `2638891` (my carrier fix). Between them: `159ece6` (user-added AGENTS.md / bin/devlyn.js / package.json — Codex CLI guidance file, doesn't touch `config/skills/` or benchmark scripts; vouched zero benchmark-behavior impact since `run-suite.sh` mirrors `config/skills/` → `.claude/skills/` only). For Phase 4 cutover decision (iter-0034), this drift is documented but NOT a same-SHA invariant violation for the iter-0033 (C1) measurement (the OLD/NEW comparison is at the same SHA `3bc86dd`; iter-0033b is a separate measurement-validity correction).
+
+## iter-0033 (C1) re-evaluation under corrected F3+F6
+
+Substituting iter-0033b's clean F3+F6 numbers into iter-0033 (C1) NEW pass:
+
+| F | NEW L1 (corrected) | OLD L1 | NEW − OLD |
+|---|---|---|---|
+| F1 | 99 | 99 | 0 |
+| F2 | 98 | 84 | **+14** |
+| F3 | **100** (was 62 DQ) | 97 | **+3** |
+| F4 | 100 | 100 | 0 |
+| F5 | 95 | 94 | +1 |
+| F6 | **92 (DQ)** (was 48 invalid) | 98 | **−6** |
+| F7 | 98 | 99 | −1 |
+
+**Suite-avg NEW L1−L0 (F1-F7)**: +5.71 (≥ +5 floor PASS).
+**iter-0033 (C1) Gate 1 (NEW vs OLD delta)**: +1.14 (≥ −1.0 PASS).
+**Gate 2 per-fixture ≥ −5**: F6 −6 marginal FAIL (1 fixture, 1 axis below floor).
+**Gate 3 DQ rate**: NEW=1 (F6 test-file silent-catch), OLD=0 → FAIL but different DQ class.
+
+## Phase 4 cutover decision (R-final R3 input)
+
+Three open paths (Codex pair-collab to converge):
+
+1. **iter-0033 (C1) re-derived as PASS** under corrected measurement; F6 −6 acknowledged as marginal noise per iter-0027 doctrine (single-shot variance ±3-15 on DQ-prone fixtures); proceed to iter-0033c.
+2. **F6 N=2-3 paired variance** (iter-0033b'). Settles whether F6 NEW silent-catch is variance or stable failure mode before iter-0033c.
+3. **iter-0033 (C1) declared FAIL** on the strict gates; open NEW skill prompt-tuning iter for test-file silent-catch.
+
+R-final R3 will probe Codex on which path is principled (no-overengineering, no-workaround, worldclass).
