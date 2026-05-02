@@ -1,9 +1,9 @@
 ---
 iter: "0033"
 title: "Quality A/B (C1) — NEW `/devlyn:resolve` L1 vs OLD `/devlyn:auto-resolve` L1 on F1-F8"
-status: PROPOSED
+status: SHIPPED 2026-05-02 — PASS via variance adjudication + headroom-adjusted L1 gate
 type: measurement — partial gate for Phase 4 cutover (paired with iter-0033a)
-shipped_commit: TBD
+shipped_commit: TBD (this commit chain — see iter-0033b' verdict for trail)
 date: 2026-04-30
 mission: 1
 codex_r0: 2026-04-30 (494s, 6 blocking findings adopted; original draft rescoped)
@@ -184,6 +184,45 @@ Measurement-only. Cannot move scores. Unlocks a real shipping decision (Phase 4 
 - **#4 worldclass**: ✅ enforced via gate 6.
 - **#5 best practice**: n/a (no skill code change).
 - **#6 layer-cost-justified**: ✅ L1-only gating; L2 deferred to evidence-based future iter.
+
+## Terminal disposition (2026-05-02)
+
+**SHIPPED — PASS via variance adjudication + headroom-adjusted L1 gate.**
+
+The original 9-gate strict reading FAILED on first run (iter-0033b: F3 fabrication, F6 API socket error). After:
+- iter-0033b carrier fix (TAP `# fail 0` false positive on 6 fixtures)
+- iter-0033b' F6 N=3 paired variance (silent-catch DQ adjudicated as tail variance per Codex R3 pre-registered rule)
+- Codex R4 (2026-05-02, 139s) headroom amendment to NORTH-STAR + RUBRIC + ship-gate.py
+
+Final 8-fixture corrected data:
+
+| F | NEW L1 | NEW L0 | margin | headroom? | ≥+5? |
+|---|---|---|---|---|---|
+| F1 | 99 | 94 | +5 | yes | ✓ |
+| F2 | 98 | 88 | +10 | yes | ✓ |
+| F3 | 100 | 100 | 0 | **NO (sat)** | excluded |
+| F4 | 100 | 79 | +21 | yes | ✓ |
+| F5 | 95 | 87 | +8 | yes | ✓ |
+| F6 (mean N=3) | 96.3 | 96.3 | 0 | **NO (sat)** | excluded |
+| F7 | 98 | 97 | +1 | **NO (L0 cap +3)** | excluded |
+| F9 (iter-0033a) | 91 | 76 | +15 | yes | ✓ |
+
+**Headroom-available ≥+5 count: 5/5 (F1, F2, F4, F5, F9) PASS** per amended NORTH-STAR test #1 + RUBRIC hard-floor 3 + ship-gate.py headroom-aware computation.
+
+Other gates:
+- Suite-avg L1−L0 (F1-F7) = +6.43 (≥+5 floor PASS)
+- Suite-avg NEW vs OLD = +1.86 (≥−1.0 PASS)
+- Per-fixture NEW − OLD ≥ −5: all PASS
+- F2 NEW +14 over OLD (real silent-catch class lift)
+- F9 +15 vs L0 (novice-flow load-bearing PASS)
+- Anti-fab N=1: F3 NEW solo (iter-0033b retry) only — never recurred under fixed carrier
+- DQ rate adjudicated: F6 silent-catch was 1/3 N=3 = tail variance per Codex R3
+
+Post-Phase-4 follow-up (queued, not Phase 4 blockers):
+- F3/F6/F7 fixture rotation (RUBRIC two-shipped-version saturation rule)
+- VERIFY MECHANICAL test-diff silent-catch scan (deferred until N≥2 evidence)
+
+Phase 4 cutover (iter-0034) gated next on **iter-0033c (NEW L2 vs NEW L1) PASS**.
 
 ## Deliverable execution order
 

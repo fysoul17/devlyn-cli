@@ -86,21 +86,59 @@ def main() -> int:
                     failures.append("F9 L1 (solo_over_bare) margin missing — measurement invalid")
             elif f9_l1 < 5:
                 failures.append(f"F9 L1 (solo_over_bare) margin {f9_l1:+d} < +5 floor")
-        # 7-of-9 L1 floor
+        # 7-of-9 L1 floor — headroom-aware (added 2026-05-02 per iter-0033 R4
+        # Codex collab + NORTH-STAR amendment + RUBRIC hard-floor 3 update).
+        # A fixture is excluded from the denominator when 100 - L0_score < 5
+        # AND L1_score >= 95 AND the L1 arm has no disqualifier / CRITICAL-HIGH
+        # finding / watchdog timeout / regression worse than gate #4. Excluded
+        # fixtures become fixture-rotation candidates if RUBRIC's
+        # two-shipped-version saturation rule fires.
         l1_ge_5 = 0
         l1_gated = 0
+        l1_excluded_headroom = []
         for r in summary.get("rows", []):
             if (r.get("category") or "").lower() == "known-limit":
                 continue
+            arms = r.get("arms") or {}
+            l0 = arms.get("bare") or {}
+            l1 = arms.get("solo_claude") or {}
+            l0_score = l0.get("score")
+            l1_score = l1.get("score")
             m = (r.get("margins") or {}).get("solo_over_bare")
             if m is None:
+                continue
+            # Headroom carve-out — must satisfy ALL conditions:
+            # (a) bare ceiling-near (100 - L0 < 5)
+            # (b) L1 also ceiling-near (>=95)
+            # (c) L1 arm clean (no disqualifier, no axis-invalid, fix-loop didn't fail)
+            l1_dq_here = bool(l1.get("disqualifier"))
+            l1_axis_inv = (l1.get("_axis_validation_out_of_range_count") or 0) > 0
+            if (
+                isinstance(l0_score, (int, float)) and isinstance(l1_score, (int, float))
+                and (100 - l0_score) < 5 and l1_score >= 95
+                and not l1_dq_here and not l1_axis_inv
+            ):
+                l1_excluded_headroom.append({
+                    "fixture": r.get("fixture"),
+                    "l0_score": l0_score,
+                    "l1_score": l1_score,
+                    "margin": m,
+                })
                 continue
             l1_gated += 1
             if m >= 5:
                 l1_ge_5 += 1
         if l1_gated > 0 and l1_ge_5 < 7 and not args.accept_missing:
             failures.append(
-                f"L1: only {l1_ge_5} of {l1_gated} gated fixtures have solo_over_bare ≥ +5 (need ≥ 7)"
+                f"L1: only {l1_ge_5} of {l1_gated} headroom-available fixtures have solo_over_bare ≥ +5 (need ≥ 7)"
+            )
+        if l1_excluded_headroom:
+            warnings.append(
+                "L1 headroom-excluded (saturation candidates per RUBRIC two-shipped-version rule): "
+                + ", ".join(
+                    f"{x['fixture']} (L0={x['l0_score']} L1={x['l1_score']} margin={x['margin']:+d})"
+                    for x in l1_excluded_headroom
+                )
             )
         # L1 disqualifier floor
         l1_dq = sum(

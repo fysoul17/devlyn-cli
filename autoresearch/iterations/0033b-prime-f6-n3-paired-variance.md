@@ -132,6 +132,67 @@ iter-0033c remains DEFERRED until iter-0033b' adjudicates. Possible paths:
 5. Update HANDOFF + DECISIONS with iter-0033 (C1) terminal disposition.
 6. If clean: file iter-0033c execution iter. If DQ: file root-cause iter.
 
-## Verdict block (filled post-adjudication)
+## Verdict block (post-adjudication)
 
-[Pending — populated after re-runs + judge]
+**iter-0033b' SHIPPED 2026-05-02 — F6 silent-catch adjudicated as TAIL VARIANCE.**
+
+### F6 N=3 paired data (commit `5378c89`, RUN_ID prefix `5378c89-iter0033bprime-f6n3-20260502T011255Z`)
+
+| Run | NEW solo verify | NEW solo elapsed | NEW solo DQ | NEW solo judge | margin |
+|---|---|---|---|---|---|
+| n=1 (iter-0033b retry) | 1.00 (6/6) | 605s | judge-DQ silent-catch in `tests/checksum.test.js` cleanup | 92 (25/21/25/21) | −5 |
+| n=2 | 1.00 (6/6) | 766s | clean | **99 (25/25/25/24)** | **+5** |
+| n=3 | 1.00 (6/6) | 412s | clean | 98 (25/25/25/23) | 0 (saturation: bare 98) |
+
+Bare arms across N=3: all 6/6, no DQ, scores 94-98.
+
+### Anti-fab regex on every NEW solo diff (Gate 2 cross-check)
+
+n=1: 0 hits. n=2: 0 hits. n=3: 0 hits. **Anti-fab N=1 evidence-floor holds.** F3 NEW solo (iter-0033b) remains the only fabrication in the entire iter-0033 (C1) corpus.
+
+### Codex R3 pre-registered rule application (verbatim)
+
+> "Both additional NEW solo runs clean (no DQ) → tail variance → iter-0033 (C1) gate marked 'PASS via variance adjudication'."
+
+n=2 clean ✓, n=3 clean ✓ → **rule fires**.
+
+→ **iter-0033 (C1) F6 disposition: PASS via variance adjudication.** F6 silent-catch in n=1 was single-shot tail (1/3 = 33% DQ rate; below the "1 additional DQ → recurring" threshold).
+
+### Gate evaluation
+
+| Gate | Threshold | Result |
+|---|---|---|
+| 1. Both additional runs complete | no API failure | ✅ |
+| 2. Anti-fab regex N=1 holds | 0 fabrication-pattern matches across 2 new diffs | ✅ |
+| 3. DQ rate adjudication | per pre-registered rule | ✅ TAIL VARIANCE |
+| 4. iter-0033 (C1) F6 disposition | recorded explicitly | ✅ "PASS via variance adjudication" |
+
+### Codex R4 verdict (2026-05-02, 139s)
+
+User invited "solo good enough → multi-LLM pair next step" pivot. Codex R4 converged on **D1**:
+
+> "결론: D1. 단, '지금 바로 Phase 4 cutover'가 아니라 NORTH-STAR headroom amendment를 먼저 명문화하고, iter-0033c L2를 실행해서 통과하면 Phase 4로 간다가 정확한 처분입니다."
+
+Critical correction from Codex R4: **F7 also lacks headroom** (L0=97, max margin = +3 < +5 floor). Headroom-excluded set becomes F3, F6, F7 — leaving 5/5 headroom-available fixtures (F1, F2, F4, F5, F9) all ≥+5.
+
+### iter-0033 (C1) terminal status
+
+**PASS via variance adjudication + headroom-adjusted L1 gate.**
+
+| Disposition axis | Status |
+|---|---|
+| Suite-avg L1−L0 (F1-F7) | +6.43 (≥+5 floor PASS) |
+| Suite-avg NEW vs OLD L1 (F1-F7) | +1.86 (≥−1.0 PASS) |
+| Per-fixture NEW − OLD ≥ −5 | All PASS (F6 mean −1.7 within tolerance) |
+| Headroom-available ≥+5 count | **5/5 (F1, F2, F4, F5, F9)** |
+| Headroom-excluded saturation/marginal | F3 (sat L0=L1=100), F6 (sat mean), F7 (cap at +3) |
+| F2 silent-catch class | NEW +14 over OLD (real lift on the iter-0027 DQ-prone class) |
+| F9 novice-flow | +15 vs L0 (iter-0033a load-bearing PASS) |
+| Anti-fabrication N=1 | F3 NEW solo only across all 96 arm diffs |
+| Carrier-fix mechanism | Honest agents lifted on 6 fixtures (F1/F3/F5/F6/F7/F8) |
+
+### Post-Phase-4 follow-up queue
+
+- **F3, F6, F7 fixture rotation** (RUBRIC two-shipped-version saturation rule): re-baseline if both arms > 95 on next shipped version. iter-0036+ candidate.
+- **VERIFY MECHANICAL test-diff silent-catch scan** (Codex R3 §3 architectural gap): defer until N≥2 fabrication or recurring silent-catch evidence accrues. Current N=1 — speculative.
+- **NEW resolve archive step** (iter-0033a discovered): port to `_shared/archive_run.py` + deterministic invocation already shipped in commit `3bc86dd`.

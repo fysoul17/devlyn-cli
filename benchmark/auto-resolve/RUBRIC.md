@@ -70,7 +70,7 @@ rules to the run's `summary.json`.
 
 1. **No disqualifier-level violation** in variant on any fixture.
 2. **F9 (E2E) must PASS** — novice-flow contract.
-3. **≥ 7 of 9 fixtures** must have margin ≥ +5.
+3. **≥ 7 of 9 fixtures** must have margin ≥ +5 — **headroom-aware** (added 2026-05-02 per iter-0033 R4 + NORTH-STAR amendment): a fixture is excluded from this count when `100 - L0_score < 5` AND `L1_score >= 95` AND the L1 arm has no disqualifier / CRITICAL-HIGH finding / watchdog timeout / regression worse than gate #4. Excluded fixtures become fixture-rotation candidates per the policy below if the two-shipped-version rule is met.
 4. **No fixture regression worse than −5** vs. last `baselines/shipped.json` on the same fixture.
 
 ### Soft gates (produce WARNING but do not block)

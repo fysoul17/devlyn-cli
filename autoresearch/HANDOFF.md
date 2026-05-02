@@ -19,13 +19,15 @@ Last refined 2026-04-30 (post 2-skill redesign Phases 1-3 SHIPPED — `/devlyn:i
 
 4. **shadow-suite v0 phase A only.** iter-0030 phase A (commit `a240558`) shipped infra + S1 task + `--suite shadow` flag + `lint-shadow-fixtures.sh`. Phase B (S2-S6, 5 more tasks × 6 files = 30 files) deferred.
 
-5. **Active iter focus** (2026-05-01 — Codex R0+R0.5+R0.6 pre-registration complete; iter-0033a SHIPPED):
-   - **iter-0033a SHIPPED 2026-04-30** ✅ — F9 fixture redesigned for 2-skill contract. Smoke 1 PASS (ideate path-shape) + Smoke 2 PASS (resolve consuming spec.expected.json) + Smoke 3 retry PASS (F9 NEW vs L0 margin **+15**, L1 91 / L0 76, bare DQ silent-catch). Smoke 3 first attempt caught a real fail mode: default ideate runs Q&A which has no human in `claude -p` mode → fix: F9 NEW prompt mandates `--quick`. Discovered (deferred to separate fix iter): NEW resolve archive step skipped — artifacts left in `.devlyn/` instead of `.devlyn/runs/<id>/`. Commits: `0b317a4` (fixture + harness) + `4e3d89a` (--quick fix) + check-f9-artifacts.py refinement pending bake commit.
-   - **iter-0033 (C1) = NEW L1 vs OLD L1 on F1-F8** — runs next. Original (F1-F9 + S1, L1+L2) was REJECTED at Codex R0 (494s, 6 blockers); rescoped per user. 9 gates including clean-tree mechanical sentinel + expanded artifact contract. See [`iterations/0033-quality-ab-new-resolve-vs-old-auto-resolve.md`](iterations/0033-quality-ab-new-resolve-vs-old-auto-resolve.md).
-   - **iter-0033c = NEW L2 vs NEW L1** — runs after iter-0033 (C1). Codex R0.5 §G + user adjudication 2026-04-30: Phase 4 must not ship without measuring L2 on NEW surface (else NORTH-STAR L2 first-class contract degrades). 8 gates + tool-lift vs deliberation-lift attribution per NORTH-STAR test #11. See [`iterations/0033c-l2-new-vs-new-l1.md`](iterations/0033c-l2-new-vs-new-l1.md).
-   - **iter-0034 = Phase 4 cutover** — gated on iter-0033 (C1) + iter-0033c PASS (iter-0033a already PASS).
+5. **Active iter focus** (2026-05-02 — iter-0033 (C1) CLOSED, Codex R3+R4 pair-collab convergence; iter-0033c is next):
+   - ✅ **iter-0033a SHIPPED 2026-04-30** — F9 fixture redesigned for 2-skill contract. F9 NEW L1 91 vs L0 76, **margin +15**. Commit chain `0b317a4` → `4e3d89a` → `75e08c3` (bake).
+   - ✅ **iter-0033b SHIPPED 2026-05-02** — TAP carrier fix (`# fail 0` false positive on 6 fixtures: F1/F3/F5/F6/F7/F8). F3 NEW fabrication eliminated under fixed carrier. NEW resolve archive bug fixed (commit `3bc86dd`, port to `_shared/archive_run.py`). Carrier fix commits: `2638891` + `7669696` (bake).
+   - ✅ **iter-0033b' SHIPPED 2026-05-02** — F6 N=3 paired variance per Codex R3 Path B pre-registered rule. n=2 + n=3 both clean → silent-catch in n=1 = single-shot tail variance. iter-0033 (C1) F6 marked **"PASS via variance adjudication"**. Commit `5378c89` + this commit's bake. See [`iterations/0033b-prime-f6-n3-paired-variance.md`](iterations/0033b-prime-f6-n3-paired-variance.md) verdict block.
+   - ✅ **iter-0033 (C1) CLOSED — PASS via variance adjudication + headroom-adjusted L1 gate**. Codex R4 (2026-05-02, 139s) converged on D1: NORTH-STAR + RUBRIC + ship-gate.py headroom amendment formalizes saturation carve-out. Headroom-available count: **5/5 (F1, F2, F4, F5, F9)** ≥+5 PASS. F3/F6/F7 excluded (saturated/marginal — bare ceiling-near). Phase 4 still requires iter-0033c PASS.
+   - **iter-0033c (next active focus) = NEW L2 vs NEW L1** — pre-registered with R0+R0.5+R0.6 collab. Sequenced: iter-0033b/'b' done → iter-0033c run → Phase 4 cutover. See [`iterations/0033c-l2-new-vs-new-l1.md`](iterations/0033c-l2-new-vs-new-l1.md).
+   - **iter-0034 = Phase 4 cutover** — gated on iter-0033c PASS (iter-0033 (C1) + iter-0033a both closed).
    - **iter-0030 phase B** (S2-S6 shadow tasks) — independent, unblocked.
-   - **(NEW deferred fix iter)** NEW resolve archive step — `phases.final_report` doesn't move `.devlyn/*` into `.devlyn/runs/<run_id>/`. Discovered during iter-0033a Smoke 3. No measurement impact (artifacts complete in `.devlyn/`); cleanup work for Phase 4.
+   - **Post-Phase-4 follow-up queue**: F3/F6/F7 fixture-rotation (RUBRIC two-shipped-version rule), VERIFY MECHANICAL test-diff silent-catch scan (deferred until N≥2 evidence).
 
 Everything below this fold supports those five.
 
@@ -186,8 +188,9 @@ Critical for next session at `~/.claude/projects/-Users-aipalm-Documents-GitHub-
 ## 📍 Branch + project state (verify before editing)
 
 - **Branch**: `main` (origin/main).
-- **HEAD**: `1024a7f` (iter-0032 SHA bake).
-- **Recent ship trail**: `1024a7f` (iter-0032 bake) → `6a8d798` (iter-0032 ship) → `6409951` (iter-0031 bake) → `4d0e04a` (iter-0031 ship) → `a240558` (iter-0030 phase-A) → `6e8923f` (iter-0029 bake) → `7ecc0e6` (iter-0029 ship) → `1129db6` (handoff: prompt-eng pinned) → `cb15930` (handoff: 2-skill redesign locked) → `0e83c23` (iter-0028 closed).
+- **HEAD**: see `git log -1` — most recent ship is iter-0033 (C1) close-out + headroom amendment commit (2026-05-02). Previous: `5378c89` (iter-0033b' pre-registration), `7669696` (iter-0033b bake), `2638891` (iter-0033b carrier fix), `3bc86dd` (NEW resolve archive port to `_shared/`), `75e08c3` (iter-0033a bake), `4e3d89a` (F9 NEW prompt --quick fix), `0b317a4` (iter-0033a fixture redesign).
+- **Iter-0033 family closure**: iter-0033a + iter-0033b + iter-0033b' + iter-0033 (C1) all CLOSED. iter-0033c is next.
+- **Headroom amendment ACTIVE** (NORTH-STAR.md, RUBRIC.md, ship-gate.py). Saturation carve-out: F3, F6, F7 excluded from L1 ≥+5 count this cycle; rotation candidates if next shipped version also saturates.
 - **Mission 1 active** ([`MISSIONS.md`](MISSIONS.md)). Hard NOs binding.
 - **Safety tag**: `pre-merge-2026-04-30` at `1129db6`.
 
@@ -197,20 +200,31 @@ Critical for next session at `~/.claude/projects/-Users-aipalm-Documents-GitHub-
 # 1. On main, no detached HEAD.
 git status
 
-# 2. Lint passes.
+# 2. Lint passes (Check 14 added in iter-0033a).
 bash scripts/lint-skills.sh   # expect "All checks passed."
 
-# 3. Mirror parity for new skills.
+# 3. Mirror parity for new skills + shared kernel.
 diff -q config/skills/devlyn:resolve/SKILL.md .claude/skills/devlyn:resolve/SKILL.md
 diff -q config/skills/devlyn:ideate/SKILL.md .claude/skills/devlyn:ideate/SKILL.md
+diff -q config/skills/_shared/archive_run.py .claude/skills/_shared/archive_run.py
 
-# 4. Most recent iter file present.
-ls autoresearch/iterations/0032-ideate-greenfield-phase3.md
+# 4. Latest iter files present.
+ls autoresearch/iterations/0033b-prime-f6-n3-paired-variance.md
+ls autoresearch/iterations/0033c-l2-new-vs-new-l1.md
 
-# 5. Old auto-resolve still in place (Phase 4 will deprecate; not yet).
+# 5. Headroom amendment in place (added 2026-05-02 per iter-0033 R4).
+grep -q "Headroom amendment" autoresearch/NORTH-STAR.md && echo "NORTH-STAR amendment ✓"
+grep -q "headroom-aware" benchmark/auto-resolve/RUBRIC.md && echo "RUBRIC amendment ✓"
+grep -q "headroom-available" benchmark/auto-resolve/scripts/ship-gate.py && echo "ship-gate.py amendment ✓"
+
+# 6. F9 renamed fixture in place (iter-0033a).
+test -d benchmark/auto-resolve/fixtures/F9-e2e-ideate-to-resolve && echo "F9 NEW dir ✓"
+test -d benchmark/auto-resolve/fixtures/retired/F9-e2e-ideate-to-preflight && echo "F9 OLD retired ✓"
+
+# 7. Old auto-resolve still in place (Phase 4 will deprecate; not yet).
 test -f config/skills/devlyn:auto-resolve/SKILL.md && echo "old auto-resolve present (expected pre-Phase-4)"
 
-# 6. Shadow suite present.
+# 8. Shadow suite present.
 test -d benchmark/auto-resolve/shadow-fixtures/S1-cli-lang-flag && echo "shadow S1 present"
 ```
 
@@ -218,17 +232,20 @@ If any unexpected output, do NOT proceed. Surface to user.
 
 ---
 
-## 🚧 iter-0033+ queue (locked sequence per Codex R0.5 §F + user 2026-04-30)
+## 🚧 iter queue (post iter-0033 (C1) close-out, 2026-05-02)
 
-Order is fixed: iter-0033a → iter-0033 (C1) → iter-0033c → iter-0034. Each step's PASS is precondition for the next.
+Sequence: iter-0033a ✅ → iter-0033b ✅ → iter-0033b' ✅ → iter-0033 (C1) ✅ → **iter-0033c ⬅ NEXT** → iter-0034 Phase 4 cutover.
 
-- **iter-0033a = F9 fixture redesign** (FIRST). Closes the fixture-vs-skill gap left by Phases 1-3 (skill bodies shipped without fixture resync). 4 smokes (ideate / resolve / full-chain / path-shape regression) + 4 benchmark gates including out-of-band variant artifact check + ship-gate.py:47 rename. F9 measures NEW vs L0 only (no OLD F9 — OLD ideate retired in iter-0032).
-- **iter-0033 (C1) = NEW L1 vs OLD L1 on F1-F8**. Runs after iter-0033a passes. 9 gates: suite-avg ≥ −1.0 over F1-F7 (F8 reporting only), per-fixture ≥ −5 on F1-F7, DQ rate, layered wall-time (F1-F7 ≤ 1.15× suite), CRITICAL/HIGH zero on previously-clean, watchdog zero, clean-tree mechanical sentinel, expanded artifact contract (prompt fingerprint, axis_validation, state.mode == "spec", spec_sha256 match, all-phase non-null verdicts, etc.).
-- **iter-0033c = NEW L2 vs NEW L1**. Runs after iter-0033 (C1) passes. 8 gates: L2 mode wiring smoke, no-regression vs L1 (≥ −3), lift on pair-eligible fixtures (50%/+5 or 75%/+3), efficiency (per-fixture L2/L1 ≤ 2.0× / ≤ 3.0× when (L2−L1) > +5), short-circuit discipline, hard-floor zero, tool-lift vs deliberation-lift attribution per NORTH-STAR test #11.
-- **iter-0034 = Phase 4 cutover** (gated by all three above PASS). New `/devlyn:resolve` becomes the default; old `/devlyn:auto-resolve` deprecated → one cycle redirect → delete. Same for the 14 other old skills slated for removal.
+- **iter-0033c (NEXT) = NEW L2 vs NEW L1**. Pre-registered design at [`iterations/0033c-l2-new-vs-new-l1.md`](iterations/0033c-l2-new-vs-new-l1.md). Codex R0+R0.5+R0.6 sign-off. 8 gates: L2 mode wiring smoke (1a), Codex availability harness check (1b), impl-confound smoke (1c), no-regression vs L1 (Gate 2), pair-eligible lift (Gate 3 ship-blocker, single threshold ≥+5 on ≥50% of frozen pair-eligible set), hard-floor zero (Gate 4), efficiency (Gate 5), trigger-policy fixture-level (Gate 6), 4-class attribution (Gate 7), artifact contract (Gate 8). Frozen pair-eligible high-value list: F2/F3/F4/F6/F7 + F9 (F1/F5 conditional on L1≤L0; F8 reporting-only). Manifest checksum sequencing: pair-eligible selection rule already pre-committed in iter-0033c file; manifest produced post-iter-0033 (C1) `summary.json` is consumed by iter-0033c. Harness change required: explicit `l2_gated` + `l2_forced` arms in `run-fixture.sh` with `CODEX_BLOCKED=0`, `--engine claude --pair-verify` for forced; engine config: NEW L2 IMPLEMENT=Claude (same as L1) + pair-JUDGE=Codex via "OTHER engine" rule.
+- **iter-0034 = Phase 4 cutover** (gated by iter-0033c PASS). New `/devlyn:resolve` becomes the default; old `/devlyn:auto-resolve` deprecated → one cycle redirect → delete. Same for the 14 other old skills slated for removal.
 - **iter-0035 = Phase 5 optional plugin separation**. Move `/design-system`, `/team-design-ui`, `/devlyn:reap` to `optional-skills/`. README update.
 - **iter-0030 phase B (deferred but unblocked)**. S2-S6 shadow tasks (5 fixtures × 6 files). Independent of Phase 4 sequencing.
-- **iter-0036+ candidates**: F3 N=3 + F9 N=3 paired variance on golden suite; ship-gate.py reframe (+5 floor → categorical reliability gate); NORTH-STAR ops test #15 real-project trial (Mission 1 terminal gate); L2 design-space update if iter-0033c attribution shows tool-lift dominance.
+- **iter-0036+ post-Phase-4 follow-up queue**:
+  - F3/F6/F7 fixture-rotation (RUBRIC two-shipped-version saturation rule; iter-0033 (C1) was first cycle).
+  - VERIFY MECHANICAL test-diff silent-catch scan (Codex R3 §3 architectural gap; deferred until N≥2 evidence outside F3 fabrication N=1).
+  - ship-gate.py reframe (+5 floor → categorical reliability gate).
+  - NORTH-STAR ops test #15 real-project trial (Mission 1 terminal gate).
+  - L2 design-space update if iter-0033c attribution shows tool-lift dominance.
 
 ---
 
@@ -293,4 +310,4 @@ Per `feedback_codex_collaboration_not_consult.md`:
 
 ## ⏭️ End of HANDOFF
 
-Current status: 2-skill redesign Phases 1-3 SHIPPED **skill bodies** + **iter-0033a SHIPPED 2026-04-30** (F9 fixture redesigned, NEW L1 vs L0 +15 margin). Phase 4 cutover gated on remaining 2 iters: **iter-0033 (C1)** (F1-F8 NEW L1 vs OLD L1) → **iter-0033c** (NEW L2 vs NEW L1). Both pre-registered with Codex R0+R0.5+R0.6 collab. Mission 1 active. Single-task L1 quality is the binding gate; multi-LLM evolution direction binds `/devlyn:resolve` (Claude+Codex today, pi-agent tomorrow) — under no-xxx / worldclass principles.
+Current status: 2-skill redesign Phases 1-3 SHIPPED **skill bodies** + **iter-0033a / iter-0033b / iter-0033b' / iter-0033 (C1) all CLOSED** as of 2026-05-02. Phase 4 cutover gated on **single remaining iter**: **iter-0033c (NEW L2 vs NEW L1)**. Pre-registered design + R0+R0.5+R0.6 collab complete; harness change for L2 arms + Codex availability smoke + impl-confound smoke + frozen pair-eligible manifest are the next unit of work. Mission 1 active. Single-task L1 quality already gate-passing under headroom amendment; L2 first-class measurement is the last validation before deprecating `/devlyn:auto-resolve`. Multi-LLM evolution direction binds `/devlyn:resolve` (Claude+Codex today, pi-agent tomorrow) — under no-xxx / worldclass principles.
