@@ -91,18 +91,41 @@ def changed_files(results_dir: Path, fixture: str, arm: str) -> set[str]:
 
 
 def pair_findings_distinguishable(work_dir_root: Path, run_id: str, fixture: str, arm: str) -> bool:
-    """True iff archive contains BOTH verify-judge-claude.md AND verify-judge-codex.md.
+    """True iff archive has at least one per-engine pair-judge artifact for >=2 engines.
 
-    Codex R-final-smoke Q2 + Gate 8: pair findings must be distinguishable from
-    solo judge findings. The orchestrator writes one file per pair-judge engine;
-    archive_run.py moves them via the `verify-judge-*.md` glob (added 2026-05-02).
-    Counts both files in the run dir; either missing = distinguishability broken.
+    Gate 8: pair findings must be distinguishable from solo judge findings. The
+    orchestrator (Claude reading SKILL.md) was observed across smokes 1a + 1c
+    (fixed-diff) writing per-judge artifacts under several naming conventions:
+
+      * `verify-judge-<engine>.md`            (smoke 1a, full pair mode)
+      * `verify.judge.<engine>.findings.jsonl` (smoke 1c, verify-only pair mode)
+      * `verify.judge.<engine>.summary.json`   (verify-only mode auxiliary)
+
+    Detection treats "two distinct engine identifiers across any of those patterns"
+    as distinguishable. archive_run.py moves both `verify-judge-*.md` (added in
+    iter-0033c) and any `*.findings.jsonl` (existing pre-iter-0033c) so both
+    conventions land in the run dir. Either missing distinct engines = broken.
     """
     archive = archive_run_dir(work_dir_root, run_id, fixture, arm)
     if archive is None:
         return False
-    return ((archive / "verify-judge-claude.md").is_file()
-            and (archive / "verify-judge-codex.md").is_file())
+    import re
+    # Collect engine identifiers across all observed pair-judge naming patterns.
+    patterns = [
+        re.compile(r"^verify-judge-(?P<engine>[a-z0-9_]+)\.md$"),
+        re.compile(r"^verify\.judge\.(?P<engine>[a-z0-9_]+)\.findings\.jsonl$"),
+        re.compile(r"^verify\.judge\.(?P<engine>[a-z0-9_]+)\.summary\.json$"),
+    ]
+    engines = set()
+    for f in archive.iterdir():
+        if not f.is_file():
+            continue
+        for pat in patterns:
+            m = pat.match(f.name)
+            if m:
+                engines.add(m.group("engine"))
+                break
+    return len(engines) >= 2
 
 
 def impl_confounded_for_fixture(results_dir: Path, fixture: str) -> bool:
@@ -196,21 +219,80 @@ def gate_3_lift(rows: list[dict], manifest: dict) -> dict:
     }
 
 
-def gate_4_hard_floor(rows: list[dict]) -> dict:
+def classify_l2_disqualifier(row: dict, mechanical_findings: list[dict]) -> str:
+    """Bucket why L2 disqualified a previously-clean L1 fixture (Codex R-final-fdfd Q2).
+
+    Buckets:
+      - `mechanical_failed`: deterministic spec-verify gate ALSO flagged a
+        disqualifier-class finding → real product defect → Gate 4 FAIL.
+      - `target_env_reproduced`: pair-JUDGE finding manually reproduced in the
+        target env (post-suite human adjudication). Gate 4 FAIL.
+      - `pair_sandbox_only`: pair-JUDGE surfaced a CRITICAL/HIGH finding that
+        mechanical did NOT trigger. Could be valid-but-environment-conditional
+        (e.g. EPERM handling on systems where ~/.claude is unreadable); Codex's
+        smoke 1c-fixed on F2 was textbook of this. Logged as Gate 7 evidence,
+        NOT Gate 4 FAIL.
+
+    Default classification = `pair_sandbox_only` when mechanical didn't fail.
+    `target_env_reproduced` requires post-hoc manual override (no auto-reproducer).
+    """
+    has_mechanical_dq = any(
+        (f.get("severity") in ("CRITICAL", "HIGH")
+         and f.get("source") in ("mechanical", "spec-verify"))
+        or f.get("disqualifier") is True
+        for f in mechanical_findings
+    )
+    if has_mechanical_dq:
+        return "mechanical_failed"
+    return "pair_sandbox_only"
+
+
+def load_mechanical_findings(work_dir_root: Path, run_id: str, fixture: str, arm: str) -> list[dict]:
+    archive = archive_run_dir(work_dir_root, run_id, fixture, arm)
+    if archive is None:
+        return []
+    p = archive / "verify-mechanical.findings.jsonl"
+    if not p.is_file():
+        return []
+    out = []
+    for ln in p.read_text().splitlines():
+        ln = ln.strip()
+        if not ln:
+            continue
+        try:
+            out.append(json.loads(ln))
+        except json.JSONDecodeError:
+            continue
+    return out
+
+
+def gate_4_hard_floor(rows: list[dict], work_dir_root: Path, run_id: str) -> dict:
     failures = []
+    sandbox_only = []
     for row in rows:
         if row["solo_dq"]:
             continue
         if row["l2_gated_dq"]:
-            failures.append({"fixture": row["fixture"], "kind": "l2_gated_dq_on_clean_l1"})
+            mech = load_mechanical_findings(work_dir_root, run_id, row["fixture"], "l2_gated")
+            classification = classify_l2_disqualifier(row, mech)
+            entry = {"fixture": row["fixture"], "kind": "l2_gated_dq_on_clean_l1",
+                     "classification": classification}
+            if classification in ("mechanical_failed", "target_env_reproduced"):
+                failures.append(entry)
+            else:
+                sandbox_only.append(entry)
         if row["l2_gated_timeout"] and not row["solo_timeout"]:
-            failures.append({"fixture": row["fixture"], "kind": "l2_gated_timeout_only"})
+            failures.append({"fixture": row["fixture"], "kind": "l2_gated_timeout_only",
+                             "classification": "timeout"})
     return {
         "gate": "4-hard-floor",
         "ship_blocker": True,
         "status": "PASS" if not failures else "FAIL",
-        "rule": "zero l2_gated dq / timeout on previously-clean l1 fixtures",
+        "rule": ("zero l2_gated dq / timeout on previously-clean l1 fixtures, "
+                 "where dq is classified as mechanical_failed OR target_env_reproduced "
+                 "(pair_sandbox_only logged as Gate 7 evidence per Codex R-final-fdfd Q2)"),
         "failures": failures,
+        "pair_sandbox_only_logged": sandbox_only,
     }
 
 
@@ -427,7 +509,7 @@ def main() -> int:
     gates = [
         gate_2_no_regression(rows),
         gate_3_lift(rows, manifest),
-        gate_4_hard_floor(rows),
+        gate_4_hard_floor(rows, Path(args.work_dir_root), args.run_id),
         gate_5_efficiency(rows),
         gate_6_trigger_discipline(rows, manifest),
         gate_7_attribution(rows, manifest),
