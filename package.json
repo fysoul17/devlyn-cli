@@ -28,7 +28,8 @@
     "!benchmark/auto-resolve/fixtures/test-repo/node_modules/**",
     "benchmark/auto-resolve/scripts/**",
     "scripts/lint-skills.sh",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "AGENTS.md"
   ],
   "keywords": [
     "claude",

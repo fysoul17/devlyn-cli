@@ -17,6 +17,7 @@ const CLI_TARGETS = {
   codex: {
     name: 'Codex CLI (OpenAI)',
     instructionsFile: 'AGENTS.md',
+    baseInstructionsFile: 'AGENTS.md',
     configDir: null, // Codex uses AGENTS.md at project root
     detect: () => fs.existsSync(path.join(process.cwd(), 'AGENTS.md')) || fs.existsSync(path.join(process.cwd(), '.codex')),
   },
@@ -345,8 +346,8 @@ function multiSelect(items) {
         const checkbox = selected.has(i) ? `${COLORS.green}◉${COLORS.reset}` : `${COLORS.dim}○${COLORS.reset}`;
         const pointer = i === cursor ? `${COLORS.cyan}❯${COLORS.reset}` : ' ';
         const name = i === cursor ? `${COLORS.cyan}${item.name}${COLORS.reset}` : item.name;
-        const tagLabel = item.type === 'mcp' ? 'mcp' : item.type === 'local' ? 'skill' : 'pack';
-        const tagColor = item.type === 'mcp' ? COLORS.green : item.type === 'local' ? COLORS.magenta : COLORS.cyan;
+        const tagLabel = item.type === 'mcp' ? 'mcp' : item.type === 'local' ? 'skill' : item.type === 'cli' ? 'cli' : 'pack';
+        const tagColor = item.type === 'mcp' ? COLORS.green : item.type === 'local' ? COLORS.magenta : item.type === 'cli' ? COLORS.blue : COLORS.cyan;
         const tag = `${tagColor}${tagLabel}${COLORS.reset}`;
         console.log(`${pointer} ${checkbox} ${name} ${COLORS.dim}[${tag}${COLORS.dim}]${COLORS.reset}`);
         console.log(`    ${COLORS.dim}${item.desc}${COLORS.reset}`);
@@ -517,6 +518,11 @@ function installAgentsForCLI(cliKey) {
         const sepIdx = existing.lastIndexOf('---', markerIdx);
         existing = existing.slice(0, sepIdx > 0 ? sepIdx : markerIdx).trimEnd();
       }
+    } else if (cli.baseInstructionsFile) {
+      const baseInstructionsSrc = path.join(__dirname, '..', cli.baseInstructionsFile);
+      if (fs.existsSync(baseInstructionsSrc)) {
+        existing = fs.readFileSync(baseInstructionsSrc, 'utf8').trimEnd();
+      }
     }
 
     fs.writeFileSync(destFile, existing + separator + agentContent + '\n');
@@ -564,7 +570,8 @@ async function init(skipPrompts = false) {
     log(`\n🧹 Cleaned up ${removed} deprecated file${removed > 1 ? 's' : ''}`, 'yellow');
   }
 
-  // Copy CLAUDE.md to project root
+  // Copy Claude project instructions to project root. Other CLI instruction
+  // files are installed only when explicitly selected below or via `agents`.
   const claudeMdSrc = path.join(__dirname, '..', 'CLAUDE.md');
   const claudeMdDest = path.join(process.cwd(), 'CLAUDE.md');
   if (fs.existsSync(claudeMdSrc)) {
@@ -651,24 +658,37 @@ async function init(skipPrompts = false) {
     log('  → ~/.claude/settings.json (disabled adaptive thinking, enabled 1h prompt caching)', 'dim');
   }
 
-  // Install agents for other detected CLIs
-  const detected = detectOtherCLIs();
-  if (detected.length > 0) {
-    log(`\n🔍 Detected other AI CLIs: ${detected.map((k) => CLI_TARGETS[k].name).join(', ')}`, 'blue');
-    const agentsInstalled = installAgentsForAllDetected();
-    if (agentsInstalled > 0) {
-      log(`  ✅ Agent instructions installed for ${agentsInstalled} CLI${agentsInstalled > 1 ? 's' : ''}`, 'green');
-    }
-  }
-
   log('\n✅ Core config installed!', 'green');
 
   // Skip prompts if -y flag or non-interactive
   if (skipPrompts || !process.stdin.isTTY) {
     log('\n💡 Add optional addons later: run `npx devlyn-cli` without -y', 'dim');
+    log('   Add Codex instructions later: run `npx devlyn-cli agents codex`', 'dim');
     log(`\n${COLORS.dim}   Enjoying devlyn? Star it on GitHub — it helps others find it:${COLORS.reset}`);
     log(`   ${COLORS.purple}→ https://github.com/fysoul17/devlyn-cli${COLORS.reset}\n`);
     return;
+  }
+
+  // Ask which non-Claude CLIs should receive instruction files.
+  log('\n🤖 Optional AI CLI instructions:\n', 'blue');
+  const cliOptions = Object.entries(CLI_TARGETS).map(([key, cli]) => ({
+    key,
+    name: cli.name,
+    desc: cli.configDir
+      ? `Install agents into ${cli.configDir}/`
+      : `Install ${cli.instructionsFile}`,
+    type: 'cli',
+  }));
+  const selectedClis = await multiSelect(cliOptions);
+  if (selectedClis.length > 0) {
+    let agentsInstalled = 0;
+    for (const selectedCli of selectedClis) {
+      if (installAgentsForCLI(selectedCli.key)) agentsInstalled++;
+    }
+    log(`  ✅ Agent instructions installed for ${agentsInstalled} CLI${agentsInstalled !== 1 ? 's' : ''}`, 'green');
+  } else {
+    log('💡 No additional CLI instructions selected', 'dim');
+    log('   Run `npx devlyn-cli agents codex` later to install Codex AGENTS.md', 'dim');
   }
 
   // Ask about optional addons (local skills + external packs)
