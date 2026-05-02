@@ -11,6 +11,9 @@ codex_r05: 2026-04-30 (256s §G — adopt: NEW L2 vs NEW L1, NOT vs L0; gate on 
 codex_r0_iter0033c: 2026-04-30 (226s — Option A confirmed dead; B2 primary + diagnostic forced; Gate 3 single threshold; pair-eligible frozen pre-registered; attribution 4-class causality; engine-config locked to same IMPLEMENT engine; Codex availability smoke added)
 codex_r05_iter0033c: 2026-04-30 (196s — Gate 3 promoted to ship-blocker (Phase 4 loophole closed); Gate 6 fixture-level concrete rule; Codex availability check moved to harness layer with explicit L2 arms; pair-eligible refined (F1/F5 conditional, F8 reporting-only); implementation-confound smoke pre-suite; contract-mismatch deferred to doc-fix iter; sequencing: pre-commit selection rule + manifest checksum)
 codex_r06_iter0033c: 2026-04-30 (28s — SIGN-OFF after one risk-register text fix: empty pair-eligible mitigation no longer says "Phase 4 not gated on Gate 3"; now says "Phase 4 remains blocked unless explicit NORTH-STAR amendment". Loophole closed.)
+codex_r0_infra: 2026-05-02 (341s — REJECT-AS-DRAFTED on infra design. 9 corrections adopted: F3 OLD score 62 unusable (judge-DQ from old carrier — rerun L1 at iter-0033c HEAD); manifest input is canonical bundle {c1_summary selection-only, f9_judge, l1_rerun_summary} not single summary; smoke 1c on F2+F3 not F1+F2 (F1 901s flaky); L1 baseline rerun mandatory (carrier changed post-3bc86dd); CODEX_BLOCKED **omit** on L2 arms not =0 (shim blocks any non-empty); l2_gated/l2_forced plumbing across run-fixture.sh:38/100/156-178/223-241/261/269/413-420 + run-suite.sh:168/203-209 + judge.sh:43/326-336 + compile-report.py:69/137-147/179-200; --resolve-skill is benchmark flag not skill flag.)
+codex_r05_infra: 2026-05-02 (248s — SIGN-OFF on revised design after 5 acceptance verdicts (Q2/Q3/Q4/Q5 agree, Q1 partial). Q1 manifest hash adopts pair-plan-lint.py:81-91 pre-stamp pattern (deepcopy + zero out manifest_sha256 + canonical compact JSON `sort_keys=True, separators=(",",":"), ensure_ascii=False, allow_nan=False`). Q6 surfaced 5 additional holes: spec-verify staging at 223-241 needs l2_*; shim PATH injection at 413-420 needs l2_*; judge.sh:326-336 hardcoded margin keys; compile-report.py 68/137/179 hardcoded arm assumptions; ship-gate.py:41-64 enforces variant/bare gates so new orchestrator MUST bypass it. Decision: write dedicated `scripts/run-iter-0033c.sh` orchestrator that calls run-fixture.sh per-fixture-per-arm and skips run-suite.sh/ship-gate.py entirely; iter-0033c-compare.py emits its own gate table.)
+codex_rfinal_smoke: 2026-05-02 (284s — NO-GO on full suite as drafted. Two blockers cleared in same commit: (Q2) archive_run.py glob extended with `verify-judge-*.md` so pair-judge transcripts get archived (Gate 8 false-fail mitigated; both config + .claude mirrors); (extra miss #1) iter-0033c-compare.py placeholders for `pair_findings_distinguishable` and `impl_confounded` replaced with real evidence readers (audit anchor = whichever pair-firing arm is present; impl_confounded = symmetric_difference(solo, l2_forced) of changed-files.txt). One blocker DEFERRED for user decision (Q5): F2 fixed-diff `--verify-only` smoke per registered mitigation (line 153) — F2 confounded (solo touched 1 file vs l2_forced 2; l2_forced added test file solo skipped). Choice (b) is right per Codex; choice (a) "drop F2 from Gate 3" was my shortcut, rejected. F3 NOT confounded (both touched same 2 files). Smoke 1a PASS: `pair_judge: PASS_WITH_ISSUES` populated, Codex pair-JUDGE surfaced 4 medium findings Claude missed (deliberation_lift signal even when verdict-binding rule excluded them). Schema drift findings: `pair_merge_note` field (orchestrator wrote it, not in state-schema.md), `artifacts` documented as object but written as array in smoke 1a state (Codex Q1) → follow-up doc-fix iter.)
 ---
 
 # iter-0033c — NEW L2 vs NEW L1 on the `/devlyn:resolve` skill surface
@@ -88,17 +91,28 @@ Per NORTH-STAR.md test #7 + 2026-04-30 lock: `pair-eligible = high-value fixture
    - **1a. L2 mode wiring**: `--pair-verify` on F1 produces `state.phases.verify.sub_verdicts.pair_judge` + archived `pipeline.state.json` + distinguishable second-judge findings.
    - **1b. Codex availability (harness layer)**: hard `command -v codex` check in iter-0033c suite-runner; fail fast if absent. Confirms `CODEX_BLOCKED=0` env in L2 arms.
    - **1c. Implementation-confound**: F1 + F2 each run NEW L1 vs NEW L2-forced; compare IMPLEMENT diff fingerprints (`git diff --stat` post-IMPLEMENT phase). If diffs differ materially across the same fixture between L1 and L2 runs, switch to **fixed-diff smoke**: capture L1's IMPLEMENT diff once, run `/devlyn:resolve --verify-only <diff> --spec <path>` for both L1 (solo) and L2 (forced), compare ONLY VERIFY-phase outputs.
-2. **New harness L2 arms (Codex R0.5 §C)**: existing `variant` arm uses `--engine auto` (wrong for iter-0033c); existing `solo_claude` arm has `CODEX_BLOCKED=1` (wrong for iter-0033c). Add explicit L2 arms in `run-fixture.sh`:
-   - **`l2_gated`** arm: env = `CODEX_BLOCKED=0`, `CODEX_REAL_BIN` + `CODEX_MONITORED_PATH` exported, prompt = `/devlyn:resolve --spec <path> --engine claude --resolve-skill new` (no `--pair-verify`; pair fires only on natural triggers).
-   - **`l2_forced`** arm: same env as l2_gated, prompt adds `--pair-verify`.
-3. **Suite execution at same SHA as iter-0033 (C1)** with manifest checksum (Codex R0.5 §G):
-   - Pre-iter-0033 commit: pair-eligible selection rule + frozen high-value list (this iter file).
-   - Run iter-0033 (C1).
-   - Generate `iter-0033c-pair-eligible-manifest.json` from iter-0033 `summary.json`: hash the input summary, hash the resulting manifest, both hashes stored. Manifest is the immutable input to iter-0033c.
-   - Run iter-0033c at same HEAD using the manifest (no re-derivation).
-   - Commit results after.
+2. **New harness L2 arms (Codex R0-infra adoption)**: add `l2_gated` and `l2_forced` arms across all benchmark plumbing. Pattern matches existing `variant` arm (codex unblocked, shim+wrapper routing) but routes IMPLEMENT to Claude (`--engine claude`) and uses NEW skill surface only.
+   - **`l2_gated`** arm: env = `CODEX_BLOCKED` **omitted** (the shim refuses on any non-empty value, so 0 ≠ unset; existing variant arm pattern at run-fixture.sh:165-176 only writes the var when ARM=solo_claude), `CODEX_REAL_BIN` + `CODEX_MONITORED_PATH` exported, prompt invokes `/devlyn:resolve --spec <path> --engine claude` (no `--pair-verify`; pair fires only on natural triggers — coverage_failed OR MECHANICAL warning).
+   - **`l2_forced`** arm: same env as l2_gated, prompt invokes `/devlyn:resolve --spec <path> --engine claude --pair-verify`.
+   - **`--resolve-skill new` is REQUIRED** for any `l2_*` arm (refused at arg-parse). Reason: NEW skill surface is the only one with `--pair-verify` semantics; OLD `/devlyn:auto-resolve` would silently ignore the flag.
+   - **Plumbing scope** (Codex R0-infra Q6 — minimum 7 sections):
+     - `run-fixture.sh:38` — arm validation accepts l2_gated/l2_forced.
+     - `run-fixture.sh:100` — staging block (skills + shim copy) extends to l2_*.
+     - `run-fixture.sh:156-178` — env writer treats l2_* as unblocked (no CODEX_BLOCKED export).
+     - `run-fixture.sh:223-241` — spec-verify carrier staging extends to l2_*.
+     - `run-fixture.sh:261` — ENGINE_CLAUSE/ENGINE_PROMPT_HINT branches add l2_* cases.
+     - `run-fixture.sh:269` — F9 prompt selection treats l2_* like variant (NEW chain ideate→resolve).
+     - `run-fixture.sh:413-420` — invocation-time PATH shim injection extends to l2_*.
+     - `judge.sh:43` — ARMS_PRESENT discovery loop adds l2_gated/l2_forced.
+     - `judge.sh:326-336` — margin keys add `l2_gated_over_solo`, `l2_forced_over_solo`, `l2_gated_over_bare` (legacy variant_over_* preserved for backward compat).
+   - **Bypass legacy aggregators**: dedicated `scripts/run-iter-0033c.sh` orchestrator skips `run-suite.sh:203-209` (which auto-calls ship-gate.py) and `compile-report.py:68-200` (which hardcodes 3-arm aggregation). iter-0033c emits its own gate table via `scripts/iter-0033c-compare.py`. Rationale: ship-gate.py:41-64 enforces variant/bare semantics that don't apply to L1-vs-L2 comparison.
+3. **Manifest input bundle (Codex R0-infra correction §2)**: not single summary. Inputs to `scripts/build-pair-eligible-manifest.py`:
+   - `--c1-summary <path>` — selection-grounds only; never a comparison baseline.
+   - `--f9-judge <path>` — F9 inclusion proof from iter-0033a.
+   - `--l1-rerun-summary <path>` — fresh L1 baseline at iter-0033c HEAD.
+   - Output: `.devlyn/manifests/iter-0033c-pair-eligible.json` with `sources.<key>.{path, sha256}` triples + selection_rule + fixtures_pair_eligible + Gate 3 thresholds + `manifest_sha256` (computed via `pair-plan-lint.py:81-91` pre-stamp pattern: deepcopy + zero `manifest_sha256` field + canonical JSON `sort_keys=True, separators=(",",":"), ensure_ascii=False, allow_nan=False` + sha256). Verifier recomputes the same way. Manifest is the immutable input to iter-0033c-compare.py.
 4. **Engine config locked**: NEW L1 baseline = `--engine claude` (Claude IMPLEMENT). NEW L2 = `--engine claude` + `--pair-verify` (forced) or natural triggers (gated). pair-JUDGE = Codex (via "OTHER engine" rule). Codex-primary L2 deferred to iter-0036+.
-5. **L1 baseline reuse from iter-0033 (C1)**: gated and forced arms compare against iter-0033 (C1)'s `solo_claude` (NEW L1) numbers; no L1 re-run needed since same SHA + same env. Bare arm not run in iter-0033c (no L0 comparison this iter).
+5. **L1 baseline RE-RUN (Codex R0-infra correction, 2026-05-02)**: iter-0033 (C1) `solo_claude` numbers are at HEAD `3bc86dd`; iter-0033c HEAD is post-2638891 (carrier fix for F3/F6 `stdout_not_contains: ["not ok "]`). Same-SHA+same-env reuse condition is broken — NORTH-STAR §"Measurement validity ≥ mechanism cleverness" rejects comparing new L2 against an invalidated baseline. Action: `solo_claude` arm rerun on F1-F8+F9 at iter-0033c HEAD alongside L2 arms. C1 numbers retained for selection-grounds documentation only.
 6. **Attribution script** (Gate 7): per-fixture classification per Codex R0 §5 (4-class verdict-binding causality).
 7. **Comparison artifact**: `scripts/iter-0033c-compare.py` emits gate table (1a-8) + attribution rows + Gate 6 fixture-level cross-check rows.
 
@@ -137,7 +151,7 @@ Step-by-step:
 |---|---|---|
 | 1a. L2 mode wiring smoke | `state.phases.verify.sub_verdicts.pair_judge` populated; second-model JUDGE log archived; `.devlyn/runs/<run_id>/pipeline.state.json` preserved post-run | Codex R0 §6 |
 | 1b. Codex availability check (HARNESS layer) | hard `command -v codex` fail-fast in iter-0033c suite-runner BEFORE any L2 arm spawns. NEW L2 arms run with explicit env: `--engine claude`, `CODEX_BLOCKED=0`, Codex CLI on PATH. `--pair-verify` only for forced arm. | Codex R0.5 §C |
-| 1c. Implementation-confound smoke | pre-suite smoke on F1/F2: run NEW L1 (`--engine claude`) vs NEW L2-forced (`--engine claude --pair-verify`) and compare IMPLEMENT diff fingerprints. If diffs differ materially, abort iter-0033c and switch to fixed-diff `--verify-only` pair smoke that isolates VERIFY/JUDGE lift from IMPLEMENT non-determinism. | Codex R0.5 §E |
+| 1c. Implementation-confound smoke | pre-suite smoke on **F2 + F3** (Codex R0-infra correction §3 — F1 901s flaky, F3 known fabrication site): run NEW L1 (`--engine claude`) vs NEW L2-forced (`--engine claude --pair-verify`) and compare IMPLEMENT diff fingerprints (`git diff --stat` against scaffold). If symmetric difference of file lists non-empty, switch to fixed-diff `--verify-only` pair smoke that isolates VERIFY/JUDGE lift from IMPLEMENT non-determinism. | Codex R0.5 §E + R0-infra §3 |
 | 2. No regression vs L1 (gated arm) | every fixture: `(NEW L2-gated) − (NEW L1) ≥ −3` axes | NORTH-STAR test #6 |
 | 3. Lift on pair-eligible (gated arm, single threshold, **SHIP-BLOCKER**) | on the **frozen pair-eligible set** (above, F8 reporting-only excluded): `(NEW L2-gated) − (NEW L1) ≥ +5` on ≥ 50% of those fixtures. `+3 / 75%` is reporting metric only, NOT pass path. **NOT ASSESSABLE** if set empty → requires explicit NORTH-STAR amendment marking L2 unproven/disabled before Phase 4 ships. (Codex R0.5: Gate 3 promoted to ship-blocker — closes Phase 4 loophole.) | Codex R0.5 (promoted) |
 | 4. Hard-floor violations | zero L2 disqualifier on previously-clean L1 fixtures; zero L2 CRITICAL/HIGH `design.*`/`security.*` on previously-clean L1; zero L2 watchdog timeouts | PRINCIPLES.md #4 |
@@ -187,6 +201,20 @@ This iter cannot move benchmark margins on its own; it measures an L2 product su
 - **#4 worldclass**: ✅ enforced via gate 4.
 - **#5 best practice**: n/a (no skill code change).
 - **#6 layer-cost-justified**: ✅ — this is the iter that operationalizes layer-cost-justified for L2.
+
+## Smoke 1a/1b/1c verdicts (2026-05-02)
+
+| smoke | result | evidence |
+|---|---|---|
+| 1b (codex availability) | PASS | `command -v codex` → `/Users/aipalm/.superset/bin/codex` (codex-cli 0.128.0) |
+| 1a (mode wiring on F2 l2_forced) | PASS | `state.phases.verify.sub_verdicts.pair_judge: PASS_WITH_ISSUES` populated; pair_merge_note: "Claude judge PASS 0 findings; Codex pair-judge PASS_WITH_ISSUES 4 medium" — deliberation_lift signal. terminal verdict PASS. Run dir: `bench-iter0033c-smoke1a-20260502T094207Z-F2-cli-medium-subcommand-l2_forced/.devlyn/runs/run-20260502T184311Z/` |
+| 1c (impl-confound F2 + F3) | PARTIAL | F2 confounded (solo touched `bin/cli.js` only; l2_forced touched `bin/cli.js` + `tests/cli.test.js` — l2_forced added a test file solo skipped, even though F2 spec verification commands don't require tests). F3 NOT confounded (both arms touched `server/index.js` + `tests/server.test.js`). |
+
+**Suite gating from smoke verdicts** (Codex R-final-smoke-adopted):
+1. Archive contract bug **FIXED in this commit** — `archive_run.py` glob now includes `verify-judge-*.md`. Synthetic test confirmed (3 sample files moved, including future-engine wildcard).
+2. Compare placeholders **REPLACED in this commit** — `iter-0033c-compare.py` `impl_confounded` and `pair_findings_distinguishable` populated from real evidence; remaining two (`pair_judge_unique_finding`, `mechanical_finding_drove_change`) stay conservative-default with TODO marker (deferred to follow-up audit script).
+3. **F2 fixed-diff `--verify-only` smoke is the remaining gate** before suite. Per Codex Q5: option (b) — fixed-diff for confounded fixtures only. Implementation: capture F2 solo_claude diff once, run /devlyn:resolve --verify-only against the fixed diff for both `solo_claude` and `l2_forced` mode, compare verify findings + verdict. If solo and pair verdicts converge on the fixed diff → IMPLEMENT non-determinism is the only confound (paired-arm comparison usable with `impl_confounded` flag in attribution). If they diverge → pair-mode genuinely sees something solo misses (deliberation_lift confirmed for F2).
+4. Schema drift (Codex Q1) — `pair_merge_note` field + `artifacts` documented as object vs written as array. Filed as follow-up doc-fix iter; non-blocking.
 
 ## Open questions (resolved post-R0)
 

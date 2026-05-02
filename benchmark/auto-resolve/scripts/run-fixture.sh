@@ -15,7 +15,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 --fixture <FID> --arm <variant|solo_claude|bare> --run-id <ID> [--resolve-skill <new|old>] [--dry-run]"
+  echo "usage: $0 --fixture <FID> --arm <variant|solo_claude|bare|l2_gated|l2_forced> --run-id <ID> [--resolve-skill <new|old>] [--dry-run]"
   exit 1
 }
 
@@ -32,11 +32,21 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ -n "$FIXTURE" ] && [ -n "$ARM" ] && [ -n "$RUN_ID" ] || usage
-# iter-0019: 3 arms — variant (L2: Claude orchestrator + Codex BUILD pair),
+# iter-0019: original 3 arms — variant (L2-old: Claude orchestrator + Codex BUILD pair via --engine auto),
 # solo_claude (L1: Claude orchestrator, codex blocked by shim+wrapper enforcement),
 # bare (L0: direct claude -p, no skill, no codex).
-[ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] || [ "$ARM" = "bare" ] || \
-  { echo "arm must be variant|solo_claude|bare"; exit 1; }
+# iter-0033c (Codex R0-infra adoption, 2026-05-02): two new arms for NEW L2 measurement on /devlyn:resolve —
+# l2_gated (--engine claude, no --pair-verify; pair fires only on natural triggers),
+# l2_forced (--engine claude --pair-verify; diagnostic). Both require --resolve-skill new.
+[ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] || [ "$ARM" = "bare" ] \
+  || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_forced" ] || \
+  { echo "arm must be variant|solo_claude|bare|l2_gated|l2_forced"; exit 1; }
+# iter-0033c (Codex R0-infra Q2): l2_* arms require NEW skill surface (only NEW
+# `/devlyn:resolve` honors --pair-verify; OLD `/devlyn:auto-resolve` would silently
+# ignore the flag and produce mis-attributed L2 numbers).
+if { [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_forced" ]; } && [ "$RESOLVE_SKILL" != "new" ]; then
+  echo "l2_* arms require --resolve-skill new (got '$RESOLVE_SKILL')"; exit 1
+fi
 # iter-0033a / iter-0033 (C1): --resolve-skill picks the orchestrator skill
 # the variant/solo_claude prompts invoke. `old` = /devlyn:auto-resolve (the
 # OLD orchestrator, still on disk pre-Phase-4); `new` = /devlyn:resolve --spec
@@ -87,17 +97,21 @@ WORK_DIR="/tmp/bench-${RUN_ID}-${FIXTURE}-${ARM}"
 rm -rf "$WORK_DIR"
 cp -R "$BENCH_ROOT/fixtures/test-repo" "$WORK_DIR"
 
-# Variant + solo_claude both get devlyn skills + project CLAUDE.md pre-baseline.
-# Bare arm gets nothing (no skill, no shim, no env).
+# All skill-driven arms (variant / solo_claude / l2_gated / l2_forced) get
+# devlyn skills + project CLAUDE.md pre-baseline + codex shim + monitored
+# wrapper. Bare gets nothing (no skill, no shim, no env).
 #
-# iter-0019: solo_claude (L1) shares the variant-arm staging because the L1
-# arm is the same orchestrator on the same skills — the only difference is
-# that codex is blocked. We stage the shim for both arms; for variant the
-# shim transparently routes `codex exec` through codex-monitored.sh (iter-
-# 0009 starvation fix), for solo_claude the shim refuses every codex
-# invocation under CODEX_BLOCKED=1 (defense in depth: shim catches PATH-
-# resolution, wrapper catches direct-path invocations).
-if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; then
+# iter-0019: solo_claude (L1) shares variant-arm staging because the L1 arm
+# runs the same orchestrator on the same skills — only difference is codex
+# is blocked. Shim catches PATH resolution; wrapper catches direct-path
+# invocations.
+# iter-0033c (Codex R0-infra Q6): l2_gated/l2_forced share variant staging
+# (codex unblocked, shim+wrapper routing). Difference vs variant is the
+# ENGINE_CLAUSE branch below — l2_* run --engine claude (Claude IMPLEMENT)
+# while variant uses --engine auto (Codex IMPLEMENT). Pair-mode in
+# /devlyn:resolve VERIFY phase pulls Codex via the OTHER-engine rule.
+if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
+   || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_forced" ]; then
   mkdir -p "$WORK_DIR/.claude"
   if [ -d "$REPO_ROOT/.claude/skills" ]; then
     cp -R "$REPO_ROOT/.claude/skills" "$WORK_DIR/.claude/skills"
@@ -147,6 +161,10 @@ if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; then
     # the bypass weapon. Across iter-0019 paid 5-fixture run the bypass
     # was OPEN but never exercised; this closes the surface preemptively
     # before iter-0020's 9-fixture L0/L1/L2 run.
+    # iter-0033c (Codex R0-infra Q5): l2_gated/l2_forced are codex-UNBLOCKED
+    # (codex must be reachable for VERIFY pair-JUDGE). They take the variant
+    # path: ARM_CODEX_BLOCKED=0 → python writer omits CODEX_BLOCKED from env
+    # entirely (the shim refuses on any non-empty value, so 0 ≠ unset).
     if [ "$ARM" = "solo_claude" ]; then
       ARM_CODEX_BLOCKED=1
     else
@@ -228,7 +246,8 @@ fi
 # generate the same shape from a spec.md "## Verification" section for
 # real-user runs (Codex R5, 2026-04-28). This stages all 3 arms — bare's
 # .devlyn/ is created lazily by spec-verify-check.py if absent.
-if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; then
+if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
+   || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_forced" ]; then
   python3 - "$EXPECTED" "$WORK_DIR/.devlyn/spec-verify.json" <<'PY'
 import json, os, sys
 expected = json.load(open(sys.argv[1]))
@@ -258,14 +277,32 @@ PROMPT_FILE="$RESULT_DIR/input.md"
 # shim enforces this at the binary layer if the orchestrator misroutes. Both
 # arms pass the engine flag explicitly so they survive future runtime-default
 # changes (post iter-0020 close-out: default flipped to claude).
-if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; then
-  if [ "$ARM" = "solo_claude" ]; then
-    ENGINE_CLAUSE="--engine claude"
-    ENGINE_PROMPT_HINT="Run with \`--engine claude\` for every phase. Codex must not be invoked — the harness has blocked it at the binary layer for this run."
-  else
-    ENGINE_CLAUSE="--engine auto"
-    ENGINE_PROMPT_HINT="Run with \`--engine auto\` so the experimental dual-engine routing fires (Codex BUILD/FIX, Claude EVAL/CRITIC) — do not override it."
-  fi
+if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
+   || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_forced" ]; then
+  case "$ARM" in
+    solo_claude)
+      ENGINE_CLAUSE="--engine claude"
+      ENGINE_PROMPT_HINT="Run with \`--engine claude\` for every phase. Codex must not be invoked — the harness has blocked it at the binary layer for this run."
+      ;;
+    variant)
+      ENGINE_CLAUSE="--engine auto"
+      ENGINE_PROMPT_HINT="Run with \`--engine auto\` so the experimental dual-engine routing fires (Codex BUILD/FIX, Claude EVAL/CRITIC) — do not override it."
+      ;;
+    l2_gated)
+      # iter-0033c: NEW L2 with natural pair-mode triggers. Claude does
+      # IMPLEMENT; pair-JUDGE in VERIFY fires only on coverage_failed OR
+      # MECHANICAL warning per /devlyn:resolve PHASE 5. Codex remains
+      # available as the OTHER-engine pair-JUDGE candidate.
+      ENGINE_CLAUSE="--engine claude"
+      ENGINE_PROMPT_HINT="Run with \`--engine claude\` and let the orchestrator's pair-mode (VERIFY) trigger naturally per its policy. Codex is available as the OTHER-engine pair-JUDGE — the harness has not blocked it. Do NOT pass \`--pair-verify\`; this arm measures gated triggering."
+      ;;
+    l2_forced)
+      # iter-0033c: NEW L2 forced — pair-JUDGE always fires. Diagnostic arm
+      # for Gate 6 fixture-level cross-check + Gate 7 attribution causality.
+      ENGINE_CLAUSE="--engine claude --pair-verify"
+      ENGINE_PROMPT_HINT="Run with \`--engine claude --pair-verify\` so VERIFY pair-mode fires unconditionally. Codex is the OTHER-engine pair-JUDGE."
+      ;;
+  esac
   if [ "$FIXTURE" = "F9-e2e-ideate-to-resolve" ]; then
     # F9 NEW chain (iter-0033a): /devlyn:ideate --quick → /devlyn:resolve
     # --spec <emitted-path>. No pre-placed spec; the variant arm generates it
@@ -411,9 +448,13 @@ else
   (
     cd "$WORK_DIR"
     # iter-0009 + iter-0019: prepend codex shim PATH for any arm that staged
-    # one (variant routes through codex-monitored.sh; solo_claude refuses on
-    # CODEX_BLOCKED=1). Bare arm has no shim.
-    if { [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; } \
+    # one. variant routes through codex-monitored.sh; solo_claude refuses on
+    # CODEX_BLOCKED=1; bare has no shim.
+    # iter-0033c (Codex R0-infra Q6): l2_gated/l2_forced ALSO need the shim
+    # PATH — they route Claude IMPLEMENT but Codex pair-JUDGE in VERIFY hits
+    # `codex exec` through the wrapper for starvation safety.
+    if { [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
+         || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_forced" ]; } \
        && [ -x "$WORK_DIR/.devlyn-bin/codex" ]; then
       export PATH="$WORK_DIR/.devlyn-bin:$PATH"
       [ "$ARM" = "solo_claude" ] && export CODEX_BLOCKED=1

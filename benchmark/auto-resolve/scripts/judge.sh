@@ -40,7 +40,12 @@ RES_DIR="$BENCH_ROOT/results/$RUN_ID/$FIXTURE"
 # the whole judge step). Two-arm judge mode is preserved for runs that pre-
 # date iter-0019.
 ARMS_PRESENT=()
-for arm in variant solo_claude bare; do
+# iter-0033c: l2_gated/l2_forced added for NEW L2 vs NEW L1 measurement.
+# Slot count is still A/B/C max 3 — pair-eligible iter-0033c fixtures supply
+# {solo_claude, l2_gated, l2_forced}; non-pair-eligible fixtures supply
+# {solo_claude, l2_gated}. The blind-shuffle slot mapping below already
+# tolerates arbitrary ARMS_PRESENT counts ≥2.
+for arm in variant solo_claude bare l2_gated l2_forced; do
   if [ -f "$RES_DIR/$arm/diff.patch" ] && [ -f "$RES_DIR/$arm/verify.json" ]; then
     ARMS_PRESENT+=("$arm")
   fi

@@ -44,6 +44,14 @@ PER_RUN_PATTERNS = (
     "plan.md",
     "final-report.md",
     "cumulative.patch",
+    # iter-0033c (Codex R-final-smoke Q2): pair-mode VERIFY emits per-judge
+    # deliberation transcripts (verify-judge-claude.md / verify-judge-codex.md
+    # — and any future-engine analogue via wildcard). Smoke 1a (F2 l2_forced)
+    # surfaced the gap: the orchestrator wrote them and listed them as
+    # artifacts, but archive_run.py left them in .devlyn/. Gate 8
+    # ("pair_judge findings archive distinguishable") would false-fail on
+    # every paired fixture without this glob.
+    "verify-judge-*.md",
 )
 
 
