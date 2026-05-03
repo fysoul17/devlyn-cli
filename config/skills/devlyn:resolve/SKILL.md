@@ -77,7 +77,7 @@ Once `state.implement_passed_sha` is non-null (PHASE 2 returned and produced a d
 
 Skip in verify-only mode. The heaviest phase by design — spec/criteria define non-negotiable invariants; plan formalizes how the implementation hits them.
 
-Engine: Claude (PLAN pair-mode is iter-0020-falsified — single-model planning is the empirical default). Prompt body: `references/phases/plan.md`.
+Engine: Claude (PLAN-pair is **unmeasured at HEAD** — iter-0033d is the first L1-vs-L2 measurement; iter-0020 falsified Codex-BUILD/IMPLEMENT, NOT PLAN-pair). Prompt body: `references/phases/plan.md`.
 
 Subagent output (writes `.devlyn/plan.md`): file list to touch, risk list (out-of-scope expansions, ambiguous spec sections), acceptance restatement (what `## Verification` actually requires verbatim).
 

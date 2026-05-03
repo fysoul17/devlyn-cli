@@ -56,10 +56,10 @@ Optional plugins (creative capabilities, non-hot-path): `/design-system`, `/team
 
 ### Multi-LLM evolution direction (binding for `/devlyn:resolve`)
 
-`/devlyn:resolve` is **the surface where multi-LLM mixing keeps evolving**. Today: Claude (Opus 4.x) + GPT-5.5 (Codex CLI) — pair-mode confined to VERIFY/JUDGE per current iter-0020 evidence. Tomorrow: a **pi-agent** abstraction that lets `/resolve` swap in additional LLMs (Qwen, Gemini, Gemma, future frontier models) wherever empirical evidence shows lift.
+`/devlyn:resolve` and `/devlyn:ideate` are **the surfaces where multi-LLM mixing keeps evolving**. Today: Claude (Opus 4.x) + GPT-5.5 (Codex CLI). Tomorrow: a **pi-agent** abstraction that lets the skills swap in additional LLMs (Qwen, Gemini, Gemma, future frontier models) wherever empirical evidence shows lift.
 
 **Architectural commitments**:
-- The 2-skill design must NOT freeze pair-mode at "VERIFY/JUDGE only forever." Current location is the empirically-justified *current point* on an evolving curve. As shadow-suite + cross-fixture data accumulates, additional phase pair-modes may activate (BUILD pair, EVAL pair) only when evidence warrants.
+- Pair-mode is **measurement-gated, not architecturally defaulted**. The Pair-mode policy section below names the candidate phases, the deterministic-vs-judgment distinction, and the gate every shipped pair surface must clear.
 - The schema decoupler (`expected.schema.json`) + per-model adapters (`_shared/adapters/<model>.md`) are the load-bearing invariants that let new LLMs slot in without touching skill bodies.
 - The pi-agent surface is the future hook for swappable LLM backends. NOT designed yet (Mission 2/3 territory). Today's commitment: don't bake assumptions that prevent it.
 
@@ -107,7 +107,7 @@ Two user groups, both first-class:
 |---|---|---|---|
 | **L0 — bare** | Single LLM, no harness, single direct invocation | Baseline | Baseline |
 | **L1 — solo harness** | Single LLM + this harness, no pair patterns active | **Materially better than L0** on the four judge axes (Spec / Constraint / Scope / Quality) | **Wall-time and token cost not worse than running L0 enough times to match L1's quality.** Concretely: L1 must beat `bare-best-of-N` baseline (L0 invoked N times, best/median taken), where N is the wall-time ratio. |
-| **L2 — pair harness** | 2+ LLMs (Claude + Codex today; profile-neutral so future swaps are possible). Pair-mode lives in VERIFY's JUDGE phase only — BUILD pair was empirically falsified in iter-0020. | **Materially better than L1** on quality axes — by lifting fixtures L1 ties or loses on, not by re-confirming fixtures L1 already wins | **Pair budget must out-earn `L1-best-of-M`**, where M is the wall-time ratio of L2 to L1. If pair takes 3× the wall-time, the quality gain must beat the gain from running L1 three times. |
+| **L2 — pair harness** | 2+ LLMs (Claude + Codex today; profile-neutral so future swaps are possible). Pair-mode is opt-in per phase — no shipped pair default at HEAD; iter-0033c VERIFY/JUDGE attempt closed no-ship; iter-0033d PLAN-pair pending. iter-0020 falsified Codex-BUILD/IMPLEMENT, NOT pair-mode generally. | **Materially better than L1** on quality axes — by lifting fixtures L1 ties or loses on, not by re-confirming fixtures L1 already wins | **Pair budget must out-earn `L1-best-of-M`**, where M is the wall-time ratio of L2 to L1. If pair takes 3× the wall-time, the quality gain must beat the gain from running L1 three times. |
 
 The efficiency contract applies equally to L1 and L2. **"Slower but more thoughtful" is not free** — at every layer, the alternative "just run the cheaper layer N more times" must be empirically worse.
 
@@ -175,27 +175,30 @@ Why this is the Mission 2 gate (not Mission 1): #16 is meaningless if Mission 1 
 
 ---
 
-## Pair-vs-solo policy (locked 2026-04-30)
+## Pair-mode policy (round-3 redesign, 2026-05-03)
 
-After iter-0020 falsified BUILD pair-mode, this redesign confines pair-mode to **VERIFY's JUDGE phase only**. Inside VERIFY:
+Pair-mode is gated by per-phase measurement evidence, not by architectural default. Pair candidates are LLM-judgment phases where upstream mistakes propagate: ideate spec audit, ideate PROJECT coherence audit, resolve PLAN audit, resolve VERIFY/JUDGE, and CLEANUP residual audit as a VERIFY finding axis. Pure-script phases (`archive_run.py`) and LLM-orchestrated mechanical gates (`BUILD_GATE`, `VERIFY-MECHANICAL`) are deterministic gates: command output is truth, and their findings may trigger adjacent model-judgment audits but are not pair-judgment phases themselves. A phase ships pair-mode only after pre-registered L1-vs-L2 evidence shows quality lift on pair-eligible cases, no unacceptable wall-time regression, no hard-floor regression, and no phase-contamination leak. As of HEAD, no `/devlyn:resolve` phase has a ship-validated pair default: the shipped default remains solo; iter-0033c VERIFY/JUDGE L2 is closed as no-ship; iter-0033d PLAN-pair is the next Phase 4 cutover gate; ideate PROJECT is the first queued ideate pair candidate and remains unmeasured until iter-0033e+.
 
-| Sub-phase | Default mode | Pair-escalation rule (when L2 active) | Short-circuit rule |
-|---|---|---|---|
-| MECHANICAL | solo deterministic | never | n/a |
-| JUDGE | gated solo | escalate to pair when first-model coverage_failed=true OR design.* / constraint.* findings present OR spec ambiguity flag set | skip second model when first model met checklist coverage AND zero design.*/constraint.* AND no ambiguity flag |
+### Why this replaces the prior "VERIFY/JUDGE only" table
 
-PLAN, IMPLEMENT, BUILD_GATE, CLEANUP all run solo. No pair, no second-model audit.
+iter-0020 falsified **Codex-BUILD/IMPLEMENT** routing, NOT pair-mode generally. The "PLAN pair-mode is iter-0020-falsified" framing in `/devlyn:resolve` SKILL.md was overreach — PLAN-pair was iter-0022 infra-only, never measured with real models. The prior table also mislabeled CLEANUP / ideate ELICIT/QUICK/PROJECT as "solo wins"; honest label is "unmeasured".
 
-**"Checklist coverage met"**: the first model explicitly evaluated (a) required constraints from the spec, (b) the touched-file scope, and (c) known failure classes for the phase. Vibe confidence is not allowed to short-circuit pair.
+iter-0033c L2 product run (full 9-fixture suite, 2026-05-02) showed full-pipeline `--pair-verify` regressed scores (l2_gated mean Δ −2.0 vs solo, Gates 2/3/8 FAIL). Codex pair-collab R-final-suite diagnosed root cause as **pair-awareness leakage from PHASE 0 parse-time to IMPLEMENT subagent prompt** — orchestrator's awareness of pair changed how IMPLEMENT reasoned about completeness/defensiveness. Fix: structural firewall (pair runs upstream, IMPLEMENT consumes only the resulting clean contract artifact, no pair metadata).
 
----
+### Convergence record (round-3 Codex pair-collab)
 
-## Iteration-loop pair vs auto-resolve pair
+- **Round 1** (2026-05-02): R0+R0.5+R-final converged on "pair on VERIFY/JUDGE only, frozen-diff post-audit; iter-0033d = 6-fixture verify-only mini-suite". User REJECTED — pair belongs upstream where errors compound, not just downstream audit.
+- **Round 2** (2026-05-03): R0+R0.5+R-final converged on "pair-PLAN default with structural firewall; IMPLEMENT consumes only contract; pair-VERIFY = internal fault containment". User REJECTED — verdicts on cleanup/verify-judge/ideate were burden-reversal ("no evidence pair needed" ≠ "evidence solo wins").
+- **Round 3** (2026-05-03): R0+R0.5 converged on "measurement-gated; honest unmeasured labels; PLAN-pair first iter to validate; PROJECT-pair second; deterministic 3-way split (pure-script / LLM-orchestrated mechanical-gate / rules-based selection)." Codex 정직: "유저 반박이 맞습니다."
+
+Round-3 is the locked policy.
+
+### Iteration-loop pair vs product pair
 
 Per Codex R2 (2026-04-27): **same vocabulary, different thresholds**.
 
 - **Iteration-loop pair** (R0 reviews, cross-model deliberation on harness changes): human-supervised; pair freely when stakes are above "single-line text edit". Cost amortized over every future run.
-- **Auto-resolve pair** (the L2 product surface, now confined to VERIFY's JUDGE): hands-free; pair only with the gates above. Aggressive short-circuit by default.
+- **Product pair** (L2 surface in `/devlyn:resolve` and `/devlyn:ideate`): currently **none shipped**. iter-0033d will validate or reject PLAN-pair; iter-0033e+ will validate or reject PROJECT-pair.
 
 Both reuse `solo` / `pair_critic` / `pair_consensus` as the policy vocabulary.
 
@@ -204,7 +207,8 @@ Both reuse `solo` / `pair_critic` / `pair_consensus` as the policy vocabulary.
 ## What this North Star displaces / supersedes
 
 - The 16-skill landscape pre-2026-04-30. Replaced by `/devlyn:ideate` + `/devlyn:resolve` + kernel.
-- Per-phase pair-mode tables that included BUILD/EVAL/CRITIC pair as separate decisions: superseded by the single VERIFY-JUDGE pair-mode rule.
+- Per-phase pair-mode tables that included BUILD/EVAL/CRITIC pair as separate decisions: superseded by the round-3 measurement-gated policy above.
+- The "pair-mode confined to VERIFY/JUDGE only" policy (locked 2026-04-30, lines 180-189 prior): superseded by round-3 measurement-gated policy. iter-0033c full suite invalidated the current trigger design; iter-0033d PLAN-pair is the next measurement.
 - `autoresearch/PRINCIPLES.md` 5 principles + Layer-cost-justified: **unchanged**. Still per-iteration doctrine.
 - Deferred memos (multi-LLM orchestration modes, benchmark cross-mix arms, model-agnostic): remain deferred, but model-agnostic upgrades to first-class via the new schema + adapter mechanism in the redesign.
 

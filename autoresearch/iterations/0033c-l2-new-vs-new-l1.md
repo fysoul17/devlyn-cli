@@ -1,9 +1,12 @@
 ---
 iter: "0033c"
 title: "NEW L2 vs NEW L1 — pair-mode lift on `/devlyn:resolve` VERIFY/JUDGE"
-status: PROPOSED
-type: measurement — third gate for Phase 4 cutover
-shipped_commit: TBD
+status: CLOSED
+verdict: FAIL — no ship
+type: measurement — third gate for Phase 4 cutover (superseded by iter-0033d)
+shipped_commit: ee27148
+closed_commit: TBD
+closed_date: 2026-05-03
 date: 2026-04-30
 mission: 1
 gates: iter-0034-Phase-4-cutover (paired with iter-0033a + iter-0033 C1)
@@ -242,3 +245,55 @@ This iter cannot move benchmark margins on its own; it measures an L2 product su
 11. **R-final** with Codex on raw numbers + attribution split.
 12. Update HANDOFF.md + DECISIONS.md.
 13. Combined with iter-0033a + iter-0033 (C1), file iter-0034 Phase 4 cutover.
+
+---
+
+## Closure verdict (2026-05-03, post-suite + Codex round-3 pair-collab)
+
+**Verdict: FAIL — no ship of full-pipeline `--pair-verify` L2 surface.** Direction confirmed: pair-mode VALUE exists (smoke 1c-fixed-diff), but trigger design is wrong AND PHASE-0-parse-time pair-awareness leaks into IMPLEMENT, regressing scores.
+
+### Suite results (run-id `ee27148-iter0033c-main-20260502T112011Z`)
+
+Per `gates.md` (post score-extraction fix in commit `5397863`):
+
+| fixture | solo (L1) | l2_gated | Δ | l2_forced | l2g pair? | l2f pair? |
+|---|---|---|---|---|---|---|
+| F1 | 96 | 98 | +2 | — | ✗ | ✗ |
+| F2 | 98 | 90 | -8 | 93 | ✗ | ✓ |
+| F3 | 98 | 96 | -2 | 90 | ✗ | ✓ |
+| F4 | 100 | 99 | -1 | 98 | ✗ | ✓ |
+| F5 | 94 | 98 | +4 | — | ✗ | ✗ |
+| F6 | 96 | 93 | -3 | 95 | ✗ | ✓ |
+| F7 | 99 | 97 | -2 | 100 | ✗ | ✓ |
+| F8 | 98 | 94 | -4 | — | ✗ | ✗ |
+| F9 | 93 | 89 | -4 | 83 | ✗ | ✓ |
+
+**Aggregate**: l2_gated mean Δ = −2.0. Pair-eligible {F2,F3,F4,F6,F7,F9} mean Δ = −3.7. Lifts ≥+5 = **0/6**.
+
+**Gates**: Gate 4 PASS (3-bucket classification, zero DQ). Gate 5/6 PASS. Gate 2 FAIL (F2 −8, F8 −4, F9 −4). Gate 3 FAIL (0/6 lifts). Gate 8 FAIL (artifact distinguishability — `verify-pair-judge.findings.jsonl` and `verify.findings.<engine>.jsonl` naming variants not all archived in run dir per Codex R-final-suite Q2).
+
+### Codex pair-collab convergence (R0 + R0.5 + R-final round-3)
+
+R0 round-3 (293s, 7608 lines) honestly accepted "round-2 verdicts were burden-reversal — solo ceiling claim was unmeasured". R0.5 round-3 (230s, 3884 lines) locked the new measurement-gated NORTH-STAR paragraph (committed in commit accompanying this closure).
+
+Closure is NOT "pair impossible". Closure is: current VERIFY/JUDGE trigger design does not earn Phase 4 cutover; preserve evidence; close 0033c; move to iter-0033d (PLAN-pair, the first measurement of upstream pair-audit).
+
+### Why this closure still allows iter-0033d to ship pair
+
+Smoke 1c-fixed-diff confirmed pair-JUDGE deliberation_lift exists when IMPLEMENT-leak is structurally impossible (verify-only mode, frozen diff). The full-suite regression traced to **upstream pair-awareness leakage** at orchestrator parse time (Codex R-final-suite Q2, citing `run-fixture.sh:291` and `input.md:1`). iter-0033d's PLAN-pair architecture has structural firewall (IMPLEMENT consumes only `.devlyn/plan.md`, never sees pair metadata) — different attack surface from iter-0033c.
+
+### Phase 4 cutover state
+
+iter-0033c was the third Phase 4 cutover gate (alongside iter-0033a + iter-0033 C1). iter-0033c FAIL means **Phase 4 is BLOCKED on iter-0033d outcome**:
+- iter-0033d PASS → Phase 4 ships with PLAN-pair as first product pair surface; OLD `/devlyn:auto-resolve` deletion proceeds.
+- iter-0033d FAIL → Phase 4 ships solo-only; NORTH-STAR records L2 as "research-only, no shipped pair surface yet".
+
+### Deferred to iter-0033d implementation
+
+- `--pair-verify` flag REMOVED from `/devlyn:resolve` (full-pipeline pair is structurally rejected now).
+- `--engine` flag REMOVED (PLAN-pair uses both engines; IMPLEMENT engine = Claude default with downgrade banner if unavailable).
+- `l2_gated` / `l2_forced` arms in `run-fixture.sh` DELETED (replaced by `solo_plan` / `pair_plan` arms with structural firewall).
+- 3-layer firewall mechanism (artifact separation + state schema separation + pre-IMPLEMENT validator).
+- `state.plan.contract_path` + `state.rounds.pair_plan` schema additions.
+
+iter-0033c artifacts remain on disk under `benchmark/auto-resolve/results/ee27148-iter0033c-main-20260502T112011Z/` for evidence reference.
