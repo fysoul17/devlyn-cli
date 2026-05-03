@@ -5,22 +5,24 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — project goal + 3-layer composition contract + pair-mode policy (round-3 redesign 2026-05-03)
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active, hard NO list
-5. The active-iter file (currently `iterations/0033d-pair-plan-measurement.md`)
+5. The active-iter file (currently `iterations/0033f-pair-plan-impl.md` — STUB; design baseline at `iterations/0033d-pair-plan-measurement.md` § "CLOSURE")
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (most recent entries first to read)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction.
 
-Last refined 2026-05-03 (post round-3 pair-redesign convergence; iter-0033c CLOSED FAIL; iter-0033d PRE-REGISTERED as new Phase 4 cutover gate).
+Last refined 2026-05-03 (post iter-0033d CLOSED-DESIGN — Codex R0+R0.5+R0.6 + principles-decision pair convergence on option B (defer-as-design-iter); 18+ structural leak surfaces enumerated as design baseline; iter-0033f-pair-plan-impl PRE-REGISTERED-STUB as new Phase 4 cutover gate).
 
 ---
 
 ## 🚦 START-HERE — three things active right now
 
-1. **Active iter: `iter-0033d` PLAN-pair measurement** ([iterations/0033d-pair-plan-measurement.md](iterations/0033d-pair-plan-measurement.md)). Pre-registered, not yet implemented. This is the **sole remaining Phase 4 cutover gate**. iter-0033c CLOSED FAIL (full-pipeline `--pair-verify` regressed −2.0 mean Δ; root cause = upstream pair-awareness leakage to IMPLEMENT). iter-0033d is the structural-firewall redesign that runs pair in PLAN only and ships clean contract artifact to IMPLEMENT.
+1. **Active iter: `iter-0033f` PLAN-pair implementation** ([iterations/0033f-pair-plan-impl.md](iterations/0033f-pair-plan-impl.md)) — PRE-REGISTERED-STUB only. Full pre-registration is the FIRST job of the next session that picks up implementation. The design baseline is locked at [iter-0033d closure §A-G](iterations/0033d-pair-plan-measurement.md) (18 structural leak surfaces enumerated across Codex R0+R0.5+R0.6, ~17 min Codex wall total). iter-0033f MUST close all 18 OR explicitly accept residuals with documented inference impact. Wall floor ~19h.
 
-2. **Pair-mode policy is round-3 measurement-gated** (NORTH-STAR.md "Pair-mode policy" section). No shipped pair surface at HEAD; solo is current default; pair ships ONLY after pre-registered L1-vs-L2 evidence per phase. Candidate phases: ideate spec audit, ideate PROJECT coherence audit, resolve PLAN audit, resolve VERIFY/JUDGE, CLEANUP residual audit (as VERIFY axis). Deterministic gates (`BUILD_GATE`, `VERIFY-MECHANICAL`, `archive_run.py`) are NOT pair candidates — they are command-output truth.
+2. **iter-0033d CLOSED-DESIGN / NO IMPLEMENT (2026-05-03).** Original PLAN-pair measurement iter closed as design-iter after 3 Codex rounds (AGREE rate 12.5% → 37.5% → 12.5%, non-monotonic = NOT converging). Claude+Codex independent verdict on principles-decision pair = option B (defer-as-design-iter). PRINCIPLES #2 forbids in-place re-pre-registration; iter-0033b → iter-0033b' precedent followed (close original, open fresh impl iter).
 
-3. **Phase 4 cutover blocked on iter-0033d outcome.** iter-0033a/iter-0033 C1/iter-0033c all closed (first two PASS, last FAIL). iter-0033d ALL ship-blockers PASS → Phase 4 ships PLAN-pair as first product L2 surface; ANY ship-blocker FAIL → Phase 4 ships solo-only + NORTH-STAR records L2 as research-only.
+3. **Pair-mode policy is round-3 measurement-gated** (NORTH-STAR.md "Pair-mode policy" section). No shipped pair surface at HEAD; solo is current default; pair ships ONLY after pre-registered L1-vs-L2 evidence per phase. Candidate phases: ideate spec audit, ideate PROJECT coherence audit, resolve PLAN audit, resolve VERIFY/JUDGE, CLEANUP residual audit (as VERIFY axis). Deterministic gates (`BUILD_GATE`, `VERIFY-MECHANICAL`, `archive_run.py`) are NOT pair candidates — they are command-output truth.
+
+**Phase 4 cutover blocked on iter-0033f outcome** (was iter-0033d before closure). iter-0033a/iter-0033 C1/iter-0033c all closed (first two PASS, last FAIL); iter-0033d closed-design. iter-0033f ALL ship-blockers PASS → Phase 4 ships PLAN-pair as first product L2 surface; ANY ship-blocker FAIL → Phase 4 ships solo-only + NORTH-STAR records L2 as research-only.
 
 Everything below this fold supports those three.
 
@@ -205,9 +207,12 @@ diff -q config/skills/_shared/archive_run.py .claude/skills/_shared/archive_run.
 # 4. Latest active iter file present.
 ls autoresearch/iterations/0033d-pair-plan-measurement.md
 ls autoresearch/iterations/0033e-project-coherence-stub.md
+ls autoresearch/iterations/0033f-pair-plan-impl.md
 
-# 5. iter-0033c CLOSED status.
+# 5. iter-0033c CLOSED status + iter-0033d CLOSED-DESIGN status.
 grep -q "^status: CLOSED" autoresearch/iterations/0033c-l2-new-vs-new-l1.md && echo "0033c CLOSED ✓"
+grep -q "^status: CLOSED-DESIGN" autoresearch/iterations/0033d-pair-plan-measurement.md && echo "0033d CLOSED-DESIGN ✓"
+grep -q "^status: PRE-REGISTERED-STUB" autoresearch/iterations/0033f-pair-plan-impl.md && echo "0033f PRE-REGISTERED-STUB ✓"
 
 # 6. NORTH-STAR pair-mode policy is round-3.
 grep -q "round-3 redesign" autoresearch/NORTH-STAR.md && echo "NORTH-STAR round-3 ✓"
@@ -223,40 +228,42 @@ If any unexpected output, do NOT proceed. Surface to user.
 
 ---
 
-## 🚧 iter queue (post round-3 redesign 2026-05-03)
+## 🚧 iter queue (post iter-0033d closure 2026-05-03)
 
-Sequence: iter-0033a ✅ → iter-0033b ✅ → iter-0033b' ✅ → iter-0033 (C1) ✅ → iter-0033c ✅ CLOSED FAIL → **iter-0033d ⬅ NEXT** (PRE-REGISTERED) → iter-0034 Phase 4 cutover (gated on iter-0033d) → iter-0033e (QUEUED-STUB, gated on iter-0033d outcome + defect-class oracle).
+Sequence: iter-0033a ✅ → iter-0033b ✅ → iter-0033b' ✅ → iter-0033 (C1) ✅ → iter-0033c ✅ CLOSED FAIL → iter-0033d ✅ CLOSED-DESIGN (Codex 3-round + principles-decision pair → option B) → **iter-0033f ⬅ NEXT** (PRE-REGISTERED-STUB) → iter-0034 Phase 4 cutover (gated on iter-0033f) → iter-0033e (QUEUED-STUB, gated on iter-0033f outcome + defect-class oracle).
 
-### iter-0033d (NEXT — PLAN-pair measurement)
+### iter-0033f (NEXT — PLAN-pair implementation; STUB)
 
-- **Spec**: [iterations/0033d-pair-plan-measurement.md](iterations/0033d-pair-plan-measurement.md). Pre-registered with Codex round-3 R0+R0.5+R-final round-2 + round-3 R0 R0.5 sign-off.
-- **Hypothesis**: PLAN-pair (Claude proposer + Codex critic, ≤3 rounds, structural firewall) produces `.devlyn/plan.md` that improves IMPLEMENT outcomes vs solo-PLAN, with NO pair metadata leaking to IMPLEMENT.
-- **Suite**: 6 high-value fixtures {F2, F3, F4, F6, F7, F9}. Same HEAD, same env, same IMPLEMENT engine. Only PLAN differs.
-- **Gates**: 8 (1a-d smokes + Gate 2/3/4/5/6/7/8). Ship-blockers: 1a/1b/1c/1d/2/3/4/8.
-- **Pass**: zero regression worse than −3 + ≥3/6 material wins (+5 lift OR categorical rescue) + zero new HIGH/CRITICAL + aggregate wall ≤1.5× solo + per-fixture wall ≤2.0× (rescue exception) + firewall artifact contract.
-- **Wall**: ~6hr serial.
-- **Deliverable execution order** (per iter-0033d §"Deliverable execution order"):
-  1. Codex R0 on firewall mechanism + lint Check 15 + run-iter-0033d.sh design.
-  2. Implementation: SKILL.md edits + state-schema additions + lint Check 15 + run-fixture.sh `solo_plan`/`pair_plan` arms (DELETE l2_gated/l2_forced) + judge.sh + run-iter-0033d.sh + iter-0033d-compare.py.
-  3. Mirror sync + lint PASS.
-  4. Smokes 1a-d (~1 min total).
-  5. R-smoke if any smoke fails.
-  6. Suite (~6 hr).
-  7. R-final on raw numbers.
-  8. Update HANDOFF.md + DECISIONS.md + iter-0033d closure verdict.
-  9. iter-0034 Phase 4 cutover (gated on iter-0033d ALL ship-blockers PASS).
+- **Spec**: [iterations/0033f-pair-plan-impl.md](iterations/0033f-pair-plan-impl.md) — STUB only. Full pre-registration (hypothesis, gates, predictions, wall budget) is the FIRST job of the next session. Cannot reuse iter-0033d hypothesis verbatim — threat model is materially different post-leak-enumeration (PRINCIPLES.md #2).
+- **Design baseline (load-bearing)**: [iterations/0033d-pair-plan-measurement.md § "CLOSURE — design-iter, no implementation, hand-off to iter-0033f"](iterations/0033d-pair-plan-measurement.md). All 18 leak surfaces in §A are ship-blockers for iter-0033f.
+- **Suite (carry-forward, frozen)**: 6 high-value fixtures {F2, F3, F4, F6, F7, F9}. Arms: `solo_plan` + `pair_plan`. Same HEAD, same env (anon WORK_DIR + RESULT_DIR), same IMPLEMENT engine.
+- **Gates**: 8-gate structure carries forward (1a-d smokes + 2/3/4 + 5/6/7 + 8); thresholds restate; Gate 8 expands per closure §A items 12-14 (artifact persistence, archive lifecycle, IMPLEMENT prompt scan).
+- **Wall floor**: ~19h (~10-12h impl + 0.5h smokes + 0.25h mirror+lint + 6h suite + 1h R-final/closure + 0.25h commit).
+- **Sequencing** (per closure §D step 5):
+  1. Pre-registration (hypothesis + gates + predictions + wall — drafted at start of next session, BEFORE any code).
+  2. Codex R0 on the implementation plan (against iter-0033d closure as design baseline).
+  3. SKILL.md cleanse (PHASE bodies free of pair-mode mention).
+  4. Standalone `scripts/validate-plan.py` (deterministic schema + reserved-token script).
+  5. Expanded Check 15 in `scripts/lint-skills.sh` (full scan list per closure §A item 11).
+  6. `archive_run.py` updates (explicit moves per closure §A items 13-14) + IMPLEMENT-prompt-persistence (§A item 12).
+  7. `run-fixture.sh` anon-WORK_DIR refactor (§A items 3-7).
+  8. `judge.sh` + `iter-0033f-compare.py` anon-aware (resolve via out-of-tree anon-map.json written post-child-exit).
+  9. `run-iter-0033f.sh` orchestrator + smokes 1a-d (mktemp per closure §A item 17). R-smoke if any smoke fails.
+  10. Suite (~6h serial). R-final on raw numbers.
+  11. Update HANDOFF.md + DECISIONS.md + iter-0033f closure verdict.
+  12. iter-0034 Phase 4 cutover (gated on iter-0033f ALL ship-blockers PASS).
 
-### iter-0034 Phase 4 cutover (gated on iter-0033d)
+### iter-0034 Phase 4 cutover (gated on iter-0033f)
 
-Deletes `/devlyn:auto-resolve` + 14 other old skills. Result depends on iter-0033d:
-- iter-0033d ALL ship-blockers PASS → ships PLAN-pair as first product L2 surface.
-- iter-0033d any ship-blocker FAIL → ships solo-PLAN only; NORTH-STAR records L2 as research-only.
+Deletes `/devlyn:auto-resolve` + 14 other old skills. Result depends on iter-0033f:
+- iter-0033f ALL ship-blockers PASS → ships PLAN-pair as first product L2 surface.
+- iter-0033f any ship-blocker FAIL → ships solo-PLAN only; NORTH-STAR records L2 as research-only.
 
 ### iter-0033e (QUEUED-STUB, not pre-registered)
 
 - **Spec**: [iterations/0033e-project-coherence-stub.md](iterations/0033e-project-coherence-stub.md).
 - **Candidate**: ideate PROJECT coherence audit (cross-spec defect detection in `plan.md + N child specs`).
-- **Blocked on**: (1) defect-class oracle definition with scriptable detectors; (2) iter-0033d outcome (validates pair mechanism); (3) ≥3 real PROJECT corpus runs for oracle calibration.
+- **Blocked on**: (1) defect-class oracle definition with scriptable detectors; (2) iter-0033f outcome (validates pair mechanism — was iter-0033d before closure); (3) ≥3 real PROJECT corpus runs for oracle calibration.
 
 ### Post-Phase-4 follow-up queue
 
@@ -317,13 +324,15 @@ iter-0029 shipped initial adapter files at `_shared/adapters/{opus-4-7, gpt-5-5}
 
 ## ⏭️ End of HANDOFF
 
-Current status: iter-0033 family fully closed (iter-0033a/C1/b/b' PASS; iter-0033c FAIL). iter-0033d PRE-REGISTERED and is the **sole remaining Phase 4 cutover gate**. Round-3 pair-redesign convergence shipped: pair-mode is measurement-gated per phase, no shipped pair surface at HEAD, candidate phases identified, deterministic 3-way split defined.
+Current status: iter-0033 family fully closed (iter-0033a/C1/b/b' PASS; iter-0033c CLOSED FAIL; iter-0033d CLOSED-DESIGN). iter-0033f-pair-plan-impl PRE-REGISTERED-STUB and is the **sole remaining Phase 4 cutover gate**. Pair-mode policy stays measurement-gated per phase; no shipped pair surface at HEAD; iter-0033d closure §A enumerates 18 structural leak surfaces as the locked design baseline iter-0033f must close.
 
 **Next session can pick up by**:
-1. Reading this file → NORTH-STAR.md → PRINCIPLES.md → MISSIONS.md → `iterations/0033d-pair-plan-measurement.md` → recent DECISIONS.md entries.
+1. Reading this file → NORTH-STAR.md → PRINCIPLES.md → MISSIONS.md → **`iterations/0033d-pair-plan-measurement.md` § "CLOSURE — design-iter, no implementation, hand-off to iter-0033f"** (load-bearing — 18 leak surfaces enumerated) → `iterations/0033f-pair-plan-impl.md` → recent DECISIONS.md entries.
 2. Running cold-start sanity check (~30s).
-3. Starting iter-0033d execution per its §"Deliverable execution order" — beginning with Codex R0 collab on firewall mechanism design.
+3. **First job**: draft full pre-registration for iter-0033f (hypothesis + gates + predictions + wall budget) BEFORE any code. Cannot reuse iter-0033d hypothesis verbatim. Cite closure §A items 1-18 in the new gates as ship-blockers.
+4. Then Codex R0 on the implementation plan (against iter-0033d closure as design baseline).
+5. Then sequence per HANDOFF "iter-0033f Sequencing" steps 3-12.
 
-The session can run end-to-end without stopping: implementation is scoped, smokes are cheap, suite is one orchestrator invocation, Codex R-final and HANDOFF/DECISIONS update are post-suite serial steps. Estimated total: ~7-10hr including Codex collab rounds.
+**Wall floor**: ~19h (~10-12h impl + 6h suite + smokes/lint/closure/commit). The session needs to plan for context-window bridging via state files — the 6h suite is best run via `run_in_background` Bash with HANDOFF state continuity.
 
 Multi-LLM evolution direction (Block 5) binds `/devlyn:resolve` (Claude + Codex today, pi-agent tomorrow) under no-xxx / worldclass / measurement-gated principles.
