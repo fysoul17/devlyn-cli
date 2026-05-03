@@ -5,24 +5,24 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — project goal + 3-layer composition contract + pair-mode policy (round-3 redesign 2026-05-03)
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active, hard NO list
-5. The active-iter file (currently `iterations/0033g-pair-plan-impl-pmo.md` — PRE-REGISTERED; design baselines at `iterations/0033d-pair-plan-measurement.md` § "CLOSURE" + `iterations/0033f-pair-plan-impl.md` § "CLOSURE")
+5. The active-iter file (currently `iterations/0034-phase-4-cutover.md` — PRE-REGISTERED-STUB; design baselines at iter-0033 (C1) PASS evidence + `iterations/0033g-pair-plan-impl-pmo.md` § "CLOSURE" big-picture pivot)
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (most recent entries first to read)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction.
 
-Last refined 2026-05-03 (post iter-0033f CLOSED-DESIGN — Codex R0 + R0.5 found items 19-24 (RESULT_DIR sidecar + WORK_DIR/.. stash + transcript + debug-log + process-group + /tmp-derivable); Claude+Codex independent principles-decision AGREE option 2; iter-0033f closed + iter-0033g-pair-plan-impl-pmo PRE-REGISTERED with parent-memory-only architecture from line one as new Phase 4 cutover gate; ANTI-ASYMPTOTIC HARD STOP binding on iter-0033g R0).
+Last refined 2026-05-03 (post iter-0033g CLOSED-DESIGN — anti-asymptotic hard stop fired exactly as pre-registered; Codex big-picture review found ZERO empirical evidence of subagent introspection in 6mo benchmark logs; Claude+Codex independent verdict converged on option VI: Phase 4 cutover solo + L2 PLAN-pair research-only; iter-0033g closed + iter-0034 Phase 4 cutover PRE-REGISTERED-STUB as next active iter). **Direction**: 솔로도 그대로 잘 동작하고 페어는 더욱 더 잘 동작하게 — L1 stays solid + L2 ships per-phase where empirically lifts.
 
 ---
 
 ## 🚦 START-HERE — three things active right now
 
-1. **Active iter: `iter-0033g` PLAN-pair implementation, parent-memory-only (PMO) architecture** ([iterations/0033g-pair-plan-impl-pmo.md](iterations/0033g-pair-plan-impl-pmo.md)) — PRE-REGISTERED. Two design baselines load-bearing: [iter-0033d closure §A items 1-18](iterations/0033d-pair-plan-measurement.md) + [iter-0033f closure §A' items 19-24](iterations/0033f-pair-plan-impl.md). Architecture: pair-mode artifacts in PARENT bash variables ONLY during child execution; disk write only after process-group quiescence into a path child cannot derive (`SECRET_RUNTIME_DIR=$(mktemp -d /tmp/iter0033g-runtime.XXXXXX)`, parent-only). **ANTI-ASYMPTOTIC HARD STOP binding**: if Codex R0 finds NEW STRUCTURAL CLASS (item 25+), close iter-0033g as design-iter immediately + escalate to user. NO R0.5 in-place revision. Wall floor ~22h, hard-cap 28h mechanically enforced.
+1. **Active iter: `iter-0034` Phase 4 cutover** ([iterations/0034-phase-4-cutover.md](iterations/0034-phase-4-cutover.md)) — PRE-REGISTERED-STUB. Cleanup + product-surface ship: solo PLAN as default (already true at HEAD; mostly deletion work), delete 14+ legacy skills, label L2 PLAN-pair research-only with explicit unblock conditions. Suite re-run pre/post to prove L1 numbers unchanged. **NOT** Mission 1 terminal gate — that's iter-0035 real-project trial (NORTH-STAR test #15). Wall floor ~6-8h. Full pre-reg drafted by next session per PRINCIPLES #2.
 
-2. **iter-0033f CLOSED-DESIGN / NO IMPLEMENT (2026-05-03).** PLAN-pair impl iter (anon-paths + sidecar-relocation architecture) closed as design-iter after Codex R0 (item 19 RESULT_DIR sidecar leak) + R0.5 (item 19 fix incomplete + item 20 WORK_DIR/.. stash leak). Pattern: each Codex round finds ≥1 new structural class — same iter-0033d asymptotic pattern user forbade. Claude+Codex independent principles-decision AGREE option 2 (close + open iter-0033g with PMO from line one). User adjudication 2026-05-03: option A on R0; option 2 on R0.5+. Closure preserves §A' items 19-24 + Codex Q2 sub-class additions as design baseline for iter-0033g.
+2. **iter-0033g CLOSED-DESIGN / NO IMPLEMENT (2026-05-03).** PLAN-pair PMO implementation iter closed as design-iter via anti-asymptotic hard stop firing exactly as pre-registered. Codex R0 found items 25-28 (parent-process argv inspection, /dev/fd/1 derivation, /tmp glob enumeration, detached descendants outside checked PGID). Big-picture review (Codex independent, ~7min, 259k tokens) revealed killer finding: ZERO empirical evidence of subagent introspection in ~6 months of benchmark logs. Claude+Codex independent convergence on option VI: ship Phase 4 cutover with solo + label L2 PLAN-pair research-only. User adjudicated option VI 2026-05-03. Lessons captured in `feedback_explain_simply.md` + `project_iter0033g_asymptotic_firewall_lesson_2026_05_03.md`.
 
-3. **Pair-mode policy is round-3 measurement-gated** (NORTH-STAR.md "Pair-mode policy" section). No shipped pair surface at HEAD; solo is current default; pair ships ONLY after pre-registered L1-vs-L2 evidence per phase. Candidate phases: ideate spec audit, ideate PROJECT coherence audit, resolve PLAN audit, resolve VERIFY/JUDGE, CLEANUP residual audit (as VERIFY axis). Deterministic gates (`BUILD_GATE`, `VERIFY-MECHANICAL`, `archive_run.py`) are NOT pair candidates — they are command-output truth.
+3. **Forward direction: L1 stays solid + L2 ships per-phase where empirically lifts.** User-confirmed 2026-05-03: "솔로도 그대로 잘 동작하고 페어는 더욱 더 잘 동작하게". L2 candidate priority (post Phase 4 cutover, by measurement difficulty + empirical grounding): (1) **VERIFY-pair frozen-diff** (verify-only mode — iter-0033c-fdfd already showed `deliberation_lift`, no leak surface), (2) **PROJECT-pair (ideate)** — iter-0033e queued, needs defect-class oracle, (3) **PLAN-pair** — research-only until container infra justified by other product needs OR empirical introspection observed, (4) **multi-LLM via pi-agent** (Block 5) — Mission 2/3 territory.
 
-**Phase 4 cutover blocked on iter-0033g outcome** (was iter-0033f before closure, iter-0033d before that). iter-0033a/iter-0033 C1/iter-0033c all closed (first two PASS, last FAIL); iter-0033d/iter-0033f closed-design. iter-0033g ALL ship-blockers PASS → Phase 4 ships PLAN-pair as first product L2 surface; ANY ship-blocker FAIL → Phase 4 ships solo-only + NORTH-STAR records L2 as research-only.
+**Phase 4 cutover unblocked.** iter-0033 (C1) PASS evidence (5/5 headroom fixtures, suite-avg L1−L0 +6.43) is sufficient for cutover. iter-0033d/iter-0033f/iter-0033g closed-design (PLAN-pair measurement deferred). iter-0033c closed FAIL (VERIFY-pair full-pipeline). Mission 1 terminal gate is iter-0035 real-project trial (NORTH-STAR test #15), NOT Phase 4 cutover.
 
 Everything below this fold supports those three.
 
@@ -204,17 +204,19 @@ diff -q config/skills/devlyn:resolve/SKILL.md .claude/skills/devlyn:resolve/SKIL
 diff -q config/skills/devlyn:ideate/SKILL.md .claude/skills/devlyn:ideate/SKILL.md
 diff -q config/skills/_shared/archive_run.py .claude/skills/_shared/archive_run.py
 
-# 4. Latest active iter file present.
+# 4. Latest active iter file present + closed-iters preserved as design archive.
 ls autoresearch/iterations/0033d-pair-plan-measurement.md
 ls autoresearch/iterations/0033e-project-coherence-stub.md
 ls autoresearch/iterations/0033f-pair-plan-impl.md
 ls autoresearch/iterations/0033g-pair-plan-impl-pmo.md
+ls autoresearch/iterations/0034-phase-4-cutover.md
 
-# 5. iter-0033c CLOSED + iter-0033d/iter-0033f CLOSED-DESIGN + iter-0033g PRE-REGISTERED.
+# 5. iter-0033c CLOSED + iter-0033d/iter-0033f/iter-0033g CLOSED-DESIGN + iter-0034 STUB.
 grep -q "^status: CLOSED" autoresearch/iterations/0033c-l2-new-vs-new-l1.md && echo "0033c CLOSED ✓"
 grep -q "^status: CLOSED-DESIGN" autoresearch/iterations/0033d-pair-plan-measurement.md && echo "0033d CLOSED-DESIGN ✓"
 grep -q "^status: CLOSED-DESIGN" autoresearch/iterations/0033f-pair-plan-impl.md && echo "0033f CLOSED-DESIGN ✓"
-grep -q "^status: PRE-REGISTERED" autoresearch/iterations/0033g-pair-plan-impl-pmo.md && echo "0033g PRE-REGISTERED ✓"
+grep -q "^status: CLOSED-DESIGN" autoresearch/iterations/0033g-pair-plan-impl-pmo.md && echo "0033g CLOSED-DESIGN ✓"
+grep -q "^status: PRE-REGISTERED-STUB" autoresearch/iterations/0034-phase-4-cutover.md && echo "0034 STUB ✓"
 
 # 6. NORTH-STAR pair-mode policy is round-3.
 grep -q "round-3 redesign" autoresearch/NORTH-STAR.md && echo "NORTH-STAR round-3 ✓"
@@ -230,47 +232,57 @@ If any unexpected output, do NOT proceed. Surface to user.
 
 ---
 
-## 🚧 iter queue (post iter-0033f closure 2026-05-03)
+## 🚧 iter queue (post iter-0033g closure 2026-05-03 + big-picture pivot to option VI)
 
-Sequence: iter-0033a ✅ → iter-0033b ✅ → iter-0033b' ✅ → iter-0033 (C1) ✅ → iter-0033c ✅ CLOSED FAIL → iter-0033d ✅ CLOSED-DESIGN (Codex 3-round + principles-decision pair → option B) → iter-0033f ✅ CLOSED-DESIGN (Codex R0+R0.5 → items 19-24 + principles-pair → option 2) → **iter-0033g ⬅ NEXT** (PRE-REGISTERED, parent-memory-only architecture) → iter-0034 Phase 4 cutover (gated on iter-0033g) → iter-0033e (QUEUED-STUB, gated on iter-0033g outcome + defect-class oracle).
+Sequence: iter-0033a ✅ → iter-0033b ✅ → iter-0033b' ✅ → iter-0033 (C1) ✅ PASS (5/5 headroom fixtures, suite-avg L1−L0 +6.43) → iter-0033c ✅ CLOSED FAIL (VERIFY-pair full-pipeline) → iter-0033d ✅ CLOSED-DESIGN (3-layer firewall insufficient) → iter-0033f ✅ CLOSED-DESIGN (anon paths + sidecar relocation insufficient) → iter-0033g ✅ CLOSED-DESIGN (PMO insufficient — anti-asymptotic hard stop fired exactly as pre-registered; Codex grep found 0 empirical introspection) → **iter-0034 ⬅ NEXT** (PRE-REGISTERED-STUB Phase 4 cutover) → iter-0035 real-project trial (Mission 1 terminal gate per NORTH-STAR test #15) → iter-0036+ L2 candidates by measurement priority.
 
-### iter-0033g (NEXT — PLAN-pair implementation, parent-memory-only)
+### iter-0034 (NEXT — Phase 4 cutover STUB)
 
-- **Spec**: [iterations/0033g-pair-plan-impl-pmo.md](iterations/0033g-pair-plan-impl-pmo.md) — PRE-REGISTERED. Full hypothesis + 8-gate structure (1a-e smokes + 2/3/4 + 5/6/7 + 8a-q) + predictions + wall budget all in place.
-- **Design baselines (load-bearing, BOTH)**:
-  - [iterations/0033d-pair-plan-measurement.md § "CLOSURE"](iterations/0033d-pair-plan-measurement.md) — §A items 1-18.
-  - [iterations/0033f-pair-plan-impl.md § "CLOSURE"](iterations/0033f-pair-plan-impl.md) — §A' items 19-24 + Codex Q2 sub-classes.
-- **Architecture**: parent-memory-only (PMO). Pair-mode artifacts in PARENT bash variables ONLY during child execution; disk write only after process-group quiescence (`pkill -0 -- -PGID` empty after 2s settle); disk path = `SECRET_RUNTIME_DIR=$(mktemp -d /tmp/iter0033g-runtime.XXXXXX)` (parent-only, NEVER passed to child env/argv). Closes items 19-24 as a CATEGORY.
-- **Suite (carry-forward, frozen)**: 6 high-value fixtures {F2, F3, F4, F6, F7, F9}. Arms: `solo_plan` + `pair_plan`. Same HEAD, PMO env, same IMPLEMENT engine.
-- **Gates**: 8-gate structure (1a-e smokes + 2/3/4 + 5/6/7 + 8); Gate 8 expanded to (a)-(q) covering all 24 surfaces.
-- **Wall floor**: ~22h (~12-14h impl + 0.75h smokes + 0.5h mirror+lint + 6h suite + 2h R-final/closure/commit). Hard-cap 28h **mechanically enforced** (`run-iter-0033g.sh` start-timestamp + per-arm abort).
-- **ANTI-ASYMPTOTIC HARD STOP (binding)**: if Codex R0 finds NEW STRUCTURAL CLASS (item 25+), close iter-0033g as design-iter immediately + escalate to user. NO R0.5 in-place revision. Option 2 was chosen specifically to break the asymptotic pattern; admitting one "small" revision restarts it.
-- **Sequencing**:
-  1. Codex R0 on iter-0033g pre-reg (against iter-0033d §A + iter-0033f §A' as combined design baseline). Verdict: CONVERGED → step 2; revisions-only → user adjudication BEFORE any revise; NEW CLASS → close + open iter-0033h.
-  2. SKILL.md cleanse (PHASE bodies free of pair-mode mention).
-  3. Standalone `scripts/validate-plan.py` (deterministic schema + reserved-token + Gate 6 canonical hash + finding-id derivation; `--in-memory` CLI mode).
-  4. Expanded Check 15 in `scripts/lint-skills.sh` (full scan list + PMO addendum: lint `run-fixture.sh` for `> "$RESULT_DIR/"` redirects).
-  5. `archive_run.py` PMO contract: reads from `SECRET_RUNTIME_DIR` env to merge into `runs/<run_id>/`; SIGINT/SIGTERM trap for archive-on-resume.
-  6. Orchestrator: holds IMPLEMENT prompt in PARENT memory; writes audit copy to `${SECRET_RUNTIME_DIR}/implement.prompt.txt` AFTER Agent return.
-  7. `run-fixture.sh --pmo` mode: full PMO state machine (parent-memory + secret-runtime-dir + process-group quiescence + post-quiescence merge).
-  8. `judge.sh` + `iter-0033g-compare.py` anon-aware; PMO-addendum (read transcript from post-merge location).
-  9. `run-iter-0033g.sh` orchestrator + smokes 1a-e (in mktemp + REAL run-fixture.sh path). R-smoke if any smoke fails (mechanism-fix only — anti-asymptotic hard stop on NEW class).
-  10. Mirror sync (`bin/devlyn.js -y`) + lint BEFORE smokes; AGAIN after R-smoke fix BEFORE suite.
-  11. Suite (~6h serial). R-final on raw numbers.
-  12. Update HANDOFF.md + DECISIONS.md + iter-0033g closure verdict.
-  13. iter-0034 Phase 4 cutover (gated on iter-0033g ALL ship-blockers PASS).
+- **Spec**: [iterations/0034-phase-4-cutover.md](iterations/0034-phase-4-cutover.md) — PRE-REGISTERED-STUB. Full hypothesis + gates + wall budget drafted by next session per PRINCIPLES #2.
+- **Design baseline 1**: iter-0033 (C1) PASS evidence (solo PLAN empirically world-class — 5/5 headroom-available fixtures, suite-avg L1−L0 +6.43).
+- **Design baseline 2**: [iterations/0033g-pair-plan-impl-pmo.md § "CLOSURE"](iterations/0033g-pair-plan-impl-pmo.md) — big-picture pivot rationale; full 28-item leak surface enumeration preserved as archive (re-applicable when container infra ships).
+- **Scope**: cleanup + product-surface ship. Solo PLAN is already shipped default at HEAD; iter-0034 is mostly DELETION work + doc updates + L2 PLAN-pair research-only label.
+- **Suggested gates** (next session refines):
+  - Gate 1: solo PLAN behavior unchanged pre/post Phase 4 (smoke F1+F2+F9, scores byte-equal or within ±2)
+  - Gate 2: legacy skill deletion complete (lint/grep verifies no references)
+  - Gate 3: doc surface updated (SKILL.md PHASE 1 line 80 replaced; NORTH-STAR Phase 4 done; HANDOFF Mission 1 progress)
+  - Gate 4: optional-skills/ migration (`/devlyn:reap`, `/devlyn:design-system`, `/devlyn:team-design-ui`)
+  - Gate 5: post-cutover bench suite re-run shows L1 numbers within variance band of pre-cutover
+- **Wall floor**: ~6-8h (deletion + doc updates + suite re-run + closure).
+- **Sequencing** (per iter-0033g closure §D + iter-0034 STUB):
+  1. Pre-registration drafted (full hypothesis + gates + predictions + wall — first job of next session).
+  2. Codex R0 on pre-reg vs iter-0033 (C1) PASS evidence + iter-0033g closure as design baseline. Verdict expected CONVERGED.
+  3. Doc updates first (lowest risk): SKILL.md research-only label, NORTH-STAR Phase 4 done, HANDOFF Mission 1 progress, README, CLAUDE.md.
+  4. Skill deletion: remove from `config/skills/` AND `.claude/skills/` mirror; update `bin/devlyn.js` references.
+  5. optional-skills/ migration.
+  6. Mirror sync + lint.
+  7. Smoke runs F1+F2+F9 (Gate 1).
+  8. Bench suite re-run (Gate 5) at same SHA.
+  9. R-final + closure verdict.
+  10. Commit. iter-0035 real-project trial unblocked.
 
-### iter-0034 Phase 4 cutover (gated on iter-0033g)
+### iter-0035 (TBD post-cutover — real-project trial, Mission 1 terminal gate)
 
-Deletes `/devlyn:auto-resolve` + 14 other old skills. Result depends on iter-0033g:
-- iter-0033g ALL ship-blockers PASS → ships PLAN-pair as first product L2 surface.
-- iter-0033g any ship-blocker FAIL → ships solo-PLAN only; NORTH-STAR records L2 as research-only.
+- **NORTH-STAR test #15**: developer who has not tuned the harness picks a real (not fixture) feature/bug from a real (not test) codebase, runs `/devlyn:resolve "<spec or goal>"` end-to-end, and the output ships without human prompt-engineering rescue.
+- **Pass criteria**: (a) no human edits to skill prompts mid-run, (b) no manual phase re-runs, (c) the produced code passes the project's existing test suite + the developer's spec acceptance check, (d) wall-time within budget for the layer the user paid for.
+- **Blocked on**: iter-0034 Phase 4 cutover SHIP.
+- **NOT pre-registered yet** — will be when iter-0034 ships.
+
+### iter-0036+ — L2 candidate priority (by measurement difficulty + empirical grounding)
+
+Per iter-0033g closure §H + user direction "L1 stays solid + L2 ships per-phase where empirically lifts":
+
+1. **VERIFY-pair frozen-diff (verify-only mode)** — iter-0033c-fdfd already showed `deliberation_lift` (F2 EACCES finding solo missed, pair caught). Frozen diff = no leak surface. Cleanest measurement target. Highest priority L2 candidate.
+2. **PROJECT-pair (ideate)** — iter-0033e queued; needs defect-class oracle first; if oracle is built, no leak surface (PROJECT outputs are read-only spec corpus).
+3. **PLAN-pair** — research-only. Re-enters scope when (a) container/sandbox infrastructure justified by other product needs, OR (b) empirical probe demonstrates subagent introspection in production.
+4. **Multi-LLM via pi-agent** (Block 5) — Mission 2/3 territory; preserved as future direction; NORTH-STAR's `expected.schema.json` + `_shared/adapters/<model>.md` already hold the contract.
 
 ### iter-0033e (QUEUED-STUB, not pre-registered)
 
 - **Spec**: [iterations/0033e-project-coherence-stub.md](iterations/0033e-project-coherence-stub.md).
 - **Candidate**: ideate PROJECT coherence audit (cross-spec defect detection in `plan.md + N child specs`).
-- **Blocked on**: (1) defect-class oracle definition with scriptable detectors; (2) iter-0033g outcome (validates pair mechanism — was iter-0033f before closure, iter-0033d before that); (3) ≥3 real PROJECT corpus runs for oracle calibration.
+- **Blocked on**: (1) defect-class oracle definition with scriptable detectors; (2) iter-0034 Phase 4 cutover SHIP; (3) ≥3 real PROJECT corpus runs for oracle calibration.
+- **Promotion path**: when blocked-on items resolve, promote to L2 candidate #2 above.
 
 ### Post-Phase-4 follow-up queue
 
@@ -331,14 +343,22 @@ iter-0029 shipped initial adapter files at `_shared/adapters/{opus-4-7, gpt-5-5}
 
 ## ⏭️ End of HANDOFF
 
-Current status: iter-0033 family expanded (iter-0033a/C1/b/b' PASS; iter-0033c CLOSED FAIL; iter-0033d/iter-0033f CLOSED-DESIGN). iter-0033g-pair-plan-impl-pmo PRE-REGISTERED with parent-memory-only architecture and is the **sole remaining Phase 4 cutover gate**. Pair-mode policy stays measurement-gated per phase; no shipped pair surface at HEAD; iter-0033d §A items 1-18 + iter-0033f §A' items 19-24 are the combined locked design baseline iter-0033g must close.
+Current status: iter-0033 family fully closed (iter-0033a/C1/b/b' PASS; iter-0033c CLOSED FAIL; iter-0033d/iter-0033f/iter-0033g CLOSED-DESIGN). **Big-picture pivot 2026-05-03**: 3 design-iters chasing PLAN-pair leak firewall hit asymptotic pattern; Codex grep across 6mo benchmark logs found ZERO empirical evidence of subagent introspection; Claude+Codex independent verdict converged on option VI: ship Phase 4 cutover with solo + label L2 PLAN-pair research-only. iter-0034 Phase 4 cutover PRE-REGISTERED-STUB and is **next active iter** — Phase 4 cutover unblocked because iter-0033 (C1) PASS evidence is sufficient. Mission 1 terminal gate is iter-0035 real-project trial (NORTH-STAR test #15), NOT Phase 4 cutover.
+
+**Direction (user-confirmed 2026-05-03)**: 솔로도 그대로 잘 동작하고 페어는 더욱 더 잘 동작하게 — L1 stays solid + L2 ships per-phase where empirically lifts. L2 candidate priority: VERIFY-pair frozen-diff > PROJECT-pair > PLAN-pair (research-only) > multi-LLM via pi-agent (Mission 2/3).
 
 **Next session can pick up by**:
-1. Reading this file → NORTH-STAR.md → PRINCIPLES.md → MISSIONS.md → **`iterations/0033d-pair-plan-measurement.md` § "CLOSURE"** (§A items 1-18) + **`iterations/0033f-pair-plan-impl.md` § "CLOSURE"** (§A' items 19-24 + Codex Q2 sub-classes) → `iterations/0033g-pair-plan-impl-pmo.md` → recent DECISIONS.md entries.
+1. Reading this file → NORTH-STAR.md → PRINCIPLES.md → MISSIONS.md → CLAUDE.md → **memory file `project_iter0033g_asymptotic_firewall_lesson_2026_05_03.md`** (load-bearing — captures the meta-lesson) → **`iterations/0033g-pair-plan-impl-pmo.md` § "CLOSURE"** (big-picture pivot rationale + 28-item leak archive + L2 candidate priority) → `iterations/0034-phase-4-cutover.md` (active STUB) → recent DECISIONS.md entries.
 2. Running cold-start sanity check (~30s).
-3. **First job**: Codex R0 on iter-0033g pre-reg (against iter-0033d §A + iter-0033f §A' as combined design baseline). **ANTI-ASYMPTOTIC HARD STOP binding**: if R0 finds NEW STRUCTURAL CLASS, close iter-0033g + open iter-0033h; do NOT in-place revise.
-4. If R0 CONVERGED → sequence per HANDOFF "iter-0033g Sequencing" steps 2-13.
+3. **First job**: draft full pre-registration for iter-0034 (hypothesis + gates + predictions + wall budget) BEFORE any code. Suggested gates already in iter-0034 STUB §"Hand-off contract".
+4. Then Codex R0 on the pre-reg (against iter-0033 (C1) PASS evidence + iter-0033g closure as design baseline). Expected verdict: CONVERGED (no adversarial threat model — Phase 4 cutover is cleanup work, not new firewall).
+5. Then sequence per iter-0034 STUB "Sequencing" steps 3-10.
 
-**Wall floor**: ~22h (~12-14h impl + 6h suite + smokes/lint/closure/commit). Hard-cap 28h **mechanically enforced**. The session needs to plan for context-window bridging via state files — the 6h suite is best run via `run_in_background` Bash with HANDOFF state continuity.
+**Wall floor**: ~6-8h (deletion + doc updates + suite re-run + closure). No long-running suite under adversarial threat model — clean cleanup iter.
+
+**Forbidden under this branch** (per iter-0033g closure §G + memory lesson):
+- Do NOT open iter-0033h with another firewall architecture attempt. If user later wants to revisit PLAN-pair, the unblock conditions are documented in iter-0034 STUB §"L2 PLAN-pair research-only label".
+- Do NOT delete iter-0033c-compare.py / build-pair-eligible-manifest.py / iter-0033f-* assets — they preserve closed-iter replay; CLAUDE.md goal-lock forbids tangential cleanup.
+- Do NOT degrade L1 solo behavior in Phase 4 cutover — Gate 1 + Gate 5 catch this; user direction is "솔로 그대로 + 페어 더 좋게".
 
 Multi-LLM evolution direction (Block 5) binds `/devlyn:resolve` (Claude + Codex today, pi-agent tomorrow) under no-xxx / worldclass / measurement-gated principles.

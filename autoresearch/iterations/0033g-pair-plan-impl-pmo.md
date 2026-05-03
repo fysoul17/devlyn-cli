@@ -1,17 +1,24 @@
 ---
 iter: "0033g"
-title: "PLAN-pair vs solo-PLAN — implementation iter (parent-memory-only architecture from line one; consumes iter-0033d §A items 1-18 + iter-0033f §A' items 19-24 as locked design baseline)"
-status: PRE-REGISTERED
-type: implementation — Phase 4 cutover gate (replaces iter-0033f after iter-0033f CLOSED-DESIGN)
-shipped_commit: TBD
+title: "PLAN-pair PMO architecture — CLOSED-DESIGN per anti-asymptotic hard stop + big-picture pivot to Phase 4 cutover"
+status: CLOSED-DESIGN / NO IMPLEMENT
+type: design — meta-strategic pivot iter; anti-asymptotic hard stop fired exactly as pre-registered; Claude+Codex independent big-picture review converged on option VI (ship Phase 4 cutover with L1 solo + label L2 PLAN-pair research-only until threat model empirically validated OR container infra justified)
+shipped_commit: TBD (this closure commit)
 date: 2026-05-03
 mission: 1
-gates: iter-0034-Phase-4-cutover (sole gate; iter-0033d + iter-0033f closed as design-iters)
+gates: iter-0034-Phase-4-cutover (no longer gated on PLAN-pair measurement; L1 solo evidence sufficient per iter-0033 (C1) PASS 5/5 headroom fixtures + suite-avg L1−L0 +6.43)
 design_baseline:
-  - iterations/0033d-pair-plan-measurement.md §"CLOSURE — design-iter" §A items 1-18
-  - iterations/0033f-pair-plan-impl.md §"CLOSURE" §A' items 19-24 + sub-classes
+  - iterations/0033d-pair-plan-measurement.md §"CLOSURE" §A items 1-18 (preserved as design archive)
+  - iterations/0033f-pair-plan-impl.md §"CLOSURE" §A' items 19-24 (preserved as design archive)
+  - iter-0033g §"CLOSURE" §A'' items 25-28 (this closure — added below)
 parent_design_iters: iter-0033d (Codex R0+R0.5+R0.6 → option B) + iter-0033f (Codex R0+R0.5 + Claude/Codex principles-pair → option 2)
-anti_asymptotic_hard_stop: if Codex R0 on this iter surfaces NEW STRUCTURAL CLASS (item 25+), close iter-0033g as design-iter immediately + escalate to user. NO R0.5 attempt under in-place revision.
+codex_r0_iter0033g: 2026-05-03 (470s, 130k tokens — NEW STRUCTURAL CLASS verdict; items 25-28: parent-process argv inspection, /dev/fd/1 derivation, /tmp/iter0033g-runtime.* enumeration, detached descendants outside checked PGID; transcript /tmp/codex-iter0033g-r0/response.log)
+codex_bigpicture_review: 2026-05-03 (~7 min, 259k tokens — independent verdict BIG-PICTURE RECOMMENDATION VI; KILLER FINDING: codex grep across 6mo benchmark logs found ZERO actual subagent introspection (only 1 blocked operational `pgrep -af codex`); threat model empirically theoretical not observed; transcript /tmp/codex-bigpicture-2026-05-03/response.log)
+user_adjudication: 2026-05-03 — option VI (close iter-0033g + Phase 4 cutover solo + PLAN-pair research-only) confirmed; "솔로도 그대로 잘 동작하고 페어는 더욱 더 잘 동작하게 하는 방향" — L1 stays solid + L2 ships per-phase where empirically lifts
+anti_asymptotic_hard_stop_fired: YES — pre-reg said "if R0 finds NEW STRUCTURAL CLASS (item 25+), close iter-0033g as design-iter immediately + escalate to user. NO R0.5 in-place revision." R0 found items 25-28; user adjudicated option VI (broader pivot than just iter-0033h). The hard stop worked exactly as designed — broke the asymptotic pattern.
+revisions:
+  - 2026-05-03 PRE-REGISTERED — PMO architecture from line one
+  - 2026-05-03 CLOSED-DESIGN — closure section appended; status changed; broader hand-off to Phase 4 cutover (NOT iter-0033h)
 ---
 
 # iter-0033g — PLAN-pair implementation, parent-memory-only architecture
@@ -252,9 +259,101 @@ This iter measures whether multi-LLM pair-mode in PLAN improves IMPLEMENT outcom
 
 ## Pointers
 
-- **Design baseline 1 (load-bearing)**: `iterations/0033d-pair-plan-measurement.md` § "CLOSURE — design-iter, no implementation, hand-off to iter-0033f", especially §A items 1-18.
-- **Design baseline 2 (load-bearing)**: `iterations/0033f-pair-plan-impl.md` § "CLOSURE — design-iter, no implementation, hand-off to iter-0033g (2026-05-03)", especially §A' items 19-24.
-- **Codex round transcripts (iter-0033d)** — distillation in iter-0033d §A is canonical: `/tmp/codex-iter0033d-r0/`.
-- **Codex round transcripts (iter-0033f)** — distillation in iter-0033f closure §A' is canonical: `/tmp/codex-iter0033f-r0/`, `/tmp/codex-iter0033f-r0.5/`, `/tmp/codex-iter0033f-principles/`.
-- **Codex transcripts for this iter**: `/tmp/codex-iter0033g-{r0,r-smoke,r-final}/{prompt.md,response.log}`.
+- **Design baseline 1**: `iterations/0033d-pair-plan-measurement.md` § "CLOSURE", especially §A items 1-18.
+- **Design baseline 2**: `iterations/0033f-pair-plan-impl.md` § "CLOSURE", especially §A' items 19-24.
+- **Design baseline 3 (this file)**: §"CLOSURE" §A'' items 25-28 below.
+- **Codex round transcripts**: `/tmp/codex-iter0033d-r0/`, `/tmp/codex-iter0033f-r0/`, `/tmp/codex-iter0033f-r0.5/`, `/tmp/codex-iter0033f-principles/`, `/tmp/codex-iter0033g-r0/`, `/tmp/codex-bigpicture-2026-05-03/`.
 - **Sibling stub** (PROJECT-coherence pair, separate measurement): `iterations/0033e-project-coherence-stub.md`.
+- **Successor iter**: `iterations/0034-phase-4-cutover.md` (PRE-REGISTERED-STUB — Phase 4 cutover ships solo PLAN as default, deletes 14+ legacy skills, labels L2 PLAN-pair research-only).
+- **Memory file (lessons)**: `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/project_iter0033g_asymptotic_firewall_lesson_2026_05_03.md`.
+
+---
+
+## CLOSURE — design-iter, anti-asymptotic hard stop fired exactly as pre-registered (2026-05-03)
+
+iter-0033g was pre-registered as the implementation iter for PLAN-pair via parent-memory-only (PMO) architecture, replacing iter-0033f's anon-paths + sidecar-relocation design (which CLOSED-DESIGN after R0.5 found items 19-20). A binding **anti-asymptotic hard stop** was written into the pre-reg: "if R0 finds NEW STRUCTURAL CLASS (item 25+), close iter-0033g as design-iter immediately + escalate to user. NO R0.5 in-place revision attempt."
+
+Codex R0 (470s, 130k tokens) returned NEW STRUCTURAL CLASS verdict with items 25-28 (parent-process argv inspection, `/dev/fd/1` derivation, `/tmp/iter0033g-runtime.*` enumeration, detached descendants outside checked PGID). The hard stop fired.
+
+User asked Claude+Codex to do a big-picture strategic review (not just iter-0033h decision). Codex independent big-picture verdict (~7 min, 259k tokens) returned BIG-PICTURE RECOMMENDATION VI: ship Phase 4 cutover with solo PLAN default + label L2 PLAN-pair research-only + defer container infra until empirical threat justifies it. Claude independent analysis converged. User adjudicated option VI: "솔로도 그대로 잘 동작하고 페어는 더욱 더 잘 동작하게 하는 방향" (L1 stays solid + L2 ships per-phase where empirically lifts).
+
+### A''. Leak surfaces enumerated (R0 cumulative — items 25-28)
+
+**25. Parent-process argv inspection.** Child can `ps aux | grep run-fixture.sh` and read parent's `--arm`, `--run-id`, `--fixture` flags directly. Closing requires masking parent argv (e.g. setting `argv[0]` to a generic name, hiding env). Citation: `/tmp/codex-iter0033g-r0/response.log:5547` + `benchmark/auto-resolve/scripts/run-fixture.sh:24-28` (argv parsing).
+
+**26. `/dev/fd/1` readlink reveals SECRET_RUNTIME_DIR.** Child can `readlink /proc/self/fd/1` (or `/dev/fd/1` on macOS) to get its own stdout target path. PMO redirected stdout to `${SECRET_RUNTIME_DIR}/transcript.${anon}.txt`, so readlink reveals SECRET_RUNTIME_DIR mid-execution. Closing requires either (a) keeping stdout in a path child cannot derive even via fd-introspection, OR (b) accepting child can know its own stdout target (which it does in any case). Citation: `/tmp/codex-iter0033g-r0/response.log:5537` + iter-0033g pre-reg §0 item 5.
+
+**27. `/tmp/iter0033g-runtime.*` glob enumeration.** PMO chose a fixed prefix `/tmp/iter0033g-runtime.XXXXXX` for the secret runtime dir. Child can `ls /tmp/iter0033g-runtime.*` and find ALL secret runtime dirs (own arm + sibling arm if running concurrently). Closing requires either (a) random prefix not derivable from any constant, OR (b) serial-only execution + immediate cleanup. Citation: `/tmp/codex-iter0033g-r0/response.log:5549`.
+
+**28. Detached descendants outside the checked process group.** PMO uses `pkill -0 -- -PGID` after 2s settle to verify quiescence. But descendants that detach (`setsid`, double-fork) are outside that PGID and persist post-merge. Closing requires either (a) tracking ALL descendants via process namespace / cgroup (Linux only), OR (b) accepting some risk of detached watchers. Citation: `/tmp/codex-iter0033g-r0/response.log:5541-5543`.
+
+### B. Convergence record
+
+| iter / round | wall | tokens | verdict | new classes |
+|---|---|---|---|---|
+| iter-0033d R0+R0.5+R0.6 | ~17 min | ~13k+ | NOT CONVERGING (non-monotonic AGREE 12.5%→37.5%→12.5%) | items 1-18 (cumulative 6+5+7) |
+| iter-0033f R0 | 414s | 184k | NEW STRUCTURAL CLASS | item 19 |
+| iter-0033f R0.5 | 214s | 104k | NEW STRUCTURAL CLASS | item 19 incomplete + item 20 |
+| iter-0033g R0 | 470s | 130k | NEW STRUCTURAL CLASS | items 25-28 |
+| big-picture review | ~7 min | 259k | RECOMMENDATION VI | n/a — strategic verdict |
+
+Pattern across 5+ Codex rounds (~25 min Codex wall total): each pass produces ≥1 new structural class. The threat model "any disk/process/fd reachable to child" is unbounded for filesystem-only isolation. Container isolation is the only category-level closure — but unjustified per Q2 below.
+
+### C. KILLER FINDING — threat model empirically not observed
+
+Codex big-picture review searched ALL benchmark logs (transcripts, debug logs, judge logs across ~6 months) for evidence of subagents actually doing introspection (`readlink /dev/fd/1`, `ps aux`, `pgrep`, `ls /tmp`, `find /tmp`, `BENCH_WORKDIR`, stash/sidecar names, pair-plan names). Found: ZERO. Only one match — a blocked operational `pgrep -af codex` status check in a debug log (not arm-detection behavior). Citation: `/tmp/codex-bigpicture-2026-05-03/response.log:13010` + `benchmark/auto-resolve/results/20260429T141802Z-b06fffd-iter-0027-f2-n2/F2-cli-medium-subcommand/variant/claude-debug.log:1342`.
+
+iter-0033c's diagnosis ("L2 mean Δ −2.0 from `--pair-verify` parse-time leak") was inference from downstream divergence (file-list divergence between solo and l2_gated arms), NOT direct observation of subagent introspection. The leak hypothesis is plausible but unverified.
+
+**Implication**: 24+ leak surfaces are structurally real but empirically theoretical. Building container infra to close them is overengineering relative to the actual product surface (which doesn't have container isolation between phases).
+
+### D. Hand-off contract for iter-0034 Phase 4 cutover (NOT iter-0033h)
+
+The big-picture pivot replaces "iter-0033h another firewall attempt" with "iter-0034 Phase 4 cutover solo + research-only L2 label". iter-0034 MUST:
+
+1. Ship `/devlyn:resolve` solo PLAN as default (already true at HEAD; iter-0034 mostly deletion work).
+2. Delete `/devlyn:auto-resolve` + 14+ legacy skills (per HANDOFF Outstanding housekeeping).
+3. Update doc surfaces: README.md, CLAUDE.md, `/devlyn:resolve` SKILL.md (remove "PLAN-pair unmeasured at HEAD" framing — replace with "L2 PLAN-pair research-only until container infra OR threat empirically validated"), NORTH-STAR (Phase 4 done), HANDOFF (Mission 1 progress).
+4. Label L2 PLAN-pair as research-only with explicit unblock conditions: (a) container/sandbox infra justified by other product needs, OR (b) empirical probe demonstrates subagent introspection in production.
+5. Suite re-run: pre/post Phase 4 cutover should produce identical L1 numbers (solo PLAN behavior unchanged).
+6. Real-project trial as Mission 1 terminal gate — Phase 4 ship is necessary but NOT sufficient; the real-project trial is the true gate.
+
+### E. What we keep from iter-0033g (preserved learning)
+
+- **PMO architecture as a research direction**: parent-memory-only is valid for L2 surfaces where leak risk is empirically observed. Re-applicable when needed.
+- **Anti-asymptotic hard-stop pattern**: pre-registering a binding "if R0 finds new class, close immediately" rule worked. Should be standard for any iter dealing with adversarial threat models. Codify in PRINCIPLES if pattern recurs.
+- **Codex grep methodology**: searching past benchmark logs for evidence of theorized behavior (Codex Q2 in big-picture review) is a powerful epistemic check. Should precede any "build infra to close threat" decision.
+- **§A items 1-18 + §A' items 19-24 + §A'' items 25-28**: the full 28-item leak enumeration is preserved as design archive. If we ever build container isolation, this list is the spec for what it must close.
+
+### F. What we drop from iter-0033g
+
+- The PMO implementation scope (validate-plan.py `--in-memory`, archive_run.py PMO contract, run-fixture.sh `--pmo` mode, run-iter-0033g.sh, iter-0033g-compare.py). All un-coded; just text in pre-reg.
+- The iter-0033h speculative "next firewall attempt" path. Big-picture pivot makes this obsolete.
+
+### G. Why this is principles-aligned closure (Claude + Codex independent convergence on option VI)
+
+- **#1 No overengineering / Subtractive-first**: option VI deletes 14+ legacy skills (Phase 4 cutover) AND deletes the L2 measurement infra investment (PMO scope abandoned). Most subtractive of all options considered.
+- **#2 No guesswork / "in-place re-pre-registration forbidden"**: anti-asymptotic hard stop fired as pre-registered. Big-picture review escalated meta-decision to user adjudication, not in-place revise of iter-0033g.
+- **#3 No workaround**: research-only label is honest acknowledgment of measurement boundary. Not a workaround.
+- **#4 Worldclass production-ready**: solo PLAN is empirically world-class (iter-0033 (C1) PASS 5/5 headroom fixtures, suite-avg L1−L0 +6.43). Shipping that as default is principled. L2 PLAN-pair is unmeasured — shipping it would be opposite of principle #4.
+- **#5 Best practice**: iter-decomposition (3 design-iters → strategic pivot iter) is the proven pattern for adversarial threat-model problems with unclear empirical grounding. The grep-past-logs methodology before building infra is itself best practice.
+- **#6 Layer-cost-justified**: option VI honors layer-cost. Container infra (~30h) for unobserved threat = unjustified. Solo Phase 4 cutover = layer-cost-zero (mostly deletion). Future L2 surfaces (VERIFY-pair frozen-diff, PROJECT-pair, multi-LLM via pi-agent) ship per-phase where measurement justifies them.
+- **#7 Mission-bound**: Mission 1 single-task scope preserved. Phase 4 cutover stays Mission 1 work. Real-project trial is Mission 1 terminal gate.
+- **User direction Block 5 (multi-LLM evolution)**: preserved as future direction; pi-agent adapter is Mission 2/3 territory per NORTH-STAR + MISSIONS hard NO list. Block 5 doesn't require shipping multi-LLM today; it requires not baking single-LLM assumptions. NORTH-STAR's `expected.schema.json` + `_shared/adapters/<model>.md` already hold this contract.
+- **User direction Block 6 (페어가 PLAN에서 가장 중요)**: preserved as L2 candidate priority. Block 6 said PLAN is the most important PHASE for pair-mode IF pair-mode ships; it does NOT override layer-cost (Block 5 explicitly: "pair 비교 없이 결정 X"). Honest reading: PLAN-pair is the highest-priority L2 candidate IF measurement infra justifies itself. Currently solo PLAN's empirical floor is +6.43 above L0; lifting that requires either (a) a different L2 surface where measurement is cheaper, OR (b) container infra justified by other needs. Both paths preserve Block 6's intent.
+
+### H. Forward L2 candidate priority (post-Phase-4)
+
+After Phase 4 cutover ships, the next L2 measurement work should follow this priority order (by measurement difficulty + empirical grounding):
+
+1. **VERIFY-pair frozen-diff (verify-only mode)** — iter-0033c-fdfd already showed `deliberation_lift` (F2 EACCES finding solo missed, pair caught). Frozen diff = no leak surface. Cleanest measurement target. iter-0036+ candidate.
+2. **PROJECT-pair (ideate)** — iter-0033e queued; needs defect-class oracle first; if oracle is built, no leak surface (PROJECT outputs are read-only spec corpus).
+3. **PLAN-pair** — current research-only. Re-enters scope when (a) container infra justified by other product needs, OR (b) empirical probe shows subagent introspection in production.
+4. **Multi-LLM evolution via pi-agent** (Block 5) — Mission 2/3 territory; preserved direction, not implementation target during Mission 1.
+
+### I. Pointers
+
+- Codex R0 dialog: `/tmp/codex-iter0033g-r0/{prompt.md, response.log}`.
+- Codex big-picture dialog: `/tmp/codex-bigpicture-2026-05-03/{prompt.md, response.log}`.
+- Memory lesson file: `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/project_iter0033g_asymptotic_firewall_lesson_2026_05_03.md`.
+- Next iter file: `iterations/0034-phase-4-cutover.md`.
