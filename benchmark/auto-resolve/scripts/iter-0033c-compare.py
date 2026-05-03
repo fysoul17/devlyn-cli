@@ -154,24 +154,32 @@ def find_results_dir_fixtures(results_dir: Path) -> list[str]:
 
 
 def get_score(judge: dict, arm: str) -> int | None:
-    """judge.json keeps scores under blind A/B/C with mapping back to arm names."""
+    """Score for a given arm. Prefer judge.json's `scores_by_arm` (already
+    arm-keyed); fall back to blind A/B/C lookup with case-correct `<letter>_score`
+    field (judge.sh writes a_score/b_score lowercase, not A_score)."""
     if not judge:
         return None
+    sba = judge.get("scores_by_arm") or {}
+    if arm in sba:
+        return sba[arm]
     mapping = judge.get("_blind_mapping") or {}
-    inv = {v: k for k, v in mapping.items()}
-    letter = inv.get(arm)
+    letter = next((k for k, v in mapping.items() if v == arm), None)
     if not letter:
         return None
-    return judge.get(f"{letter}_score")
+    return judge.get(f"{letter.lower()}_score")
 
 
 def get_disqualifier(judge: dict, arm: str) -> bool:
+    """DQ flag for a given arm. Prefer `disqualifiers_by_arm` written by judge.sh
+    line 314-323; fall back to blind A/B/C with case-correct letter."""
     if not judge:
         return False
+    dba = judge.get("disqualifiers_by_arm") or {}
+    if arm in dba:
+        return bool(dba[arm].get("disqualifier", False))
     dqs = judge.get("disqualifiers") or {}
     mapping = judge.get("_blind_mapping") or {}
-    inv = {v: k for k, v in mapping.items()}
-    letter = inv.get(arm)
+    letter = next((k for k, v in mapping.items() if v == arm), None)
     if not letter:
         return False
     return bool(dqs.get(letter, False))
