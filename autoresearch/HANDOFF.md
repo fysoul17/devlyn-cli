@@ -199,30 +199,24 @@ git status
 # 2. Lint passes.
 bash scripts/lint-skills.sh   # expect "All checks passed."
 
-# 3. Mirror parity for skills + shared kernel.
+# 3. Mirror parity for the 2-skill product surface + shared kernel.
 diff -q config/skills/devlyn:resolve/SKILL.md .claude/skills/devlyn:resolve/SKILL.md
 diff -q config/skills/devlyn:ideate/SKILL.md .claude/skills/devlyn:ideate/SKILL.md
-diff -q config/skills/_shared/archive_run.py .claude/skills/_shared/archive_run.py
+diff -q config/skills/_shared/runtime-principles.md .claude/skills/_shared/runtime-principles.md
 
-# 4. Latest active iter file present + closed-iters preserved as design archive.
-ls autoresearch/iterations/0033d-pair-plan-measurement.md
-ls autoresearch/iterations/0033e-project-coherence-stub.md
-ls autoresearch/iterations/0033f-pair-plan-impl.md
-ls autoresearch/iterations/0033g-pair-plan-impl-pmo.md
-ls autoresearch/iterations/0034-phase-4-cutover.md
+# 4. Active iter file present.
+ls autoresearch/iterations/0035-real-project-trial.md
 
-# 5. iter-0033c CLOSED + iter-0033d/iter-0033f/iter-0033g CLOSED-DESIGN + iter-0034 STUB.
-grep -q "^status: CLOSED" autoresearch/iterations/0033c-l2-new-vs-new-l1.md && echo "0033c CLOSED ✓"
-grep -q "^status: CLOSED-DESIGN" autoresearch/iterations/0033d-pair-plan-measurement.md && echo "0033d CLOSED-DESIGN ✓"
-grep -q "^status: CLOSED-DESIGN" autoresearch/iterations/0033f-pair-plan-impl.md && echo "0033f CLOSED-DESIGN ✓"
-grep -q "^status: CLOSED-DESIGN" autoresearch/iterations/0033g-pair-plan-impl-pmo.md && echo "0033g CLOSED-DESIGN ✓"
-grep -q "^status: PRE-REGISTERED-STUB" autoresearch/iterations/0034-phase-4-cutover.md && echo "0034 STUB ✓"
+# 5. iter-0034 SHIPPED + iter-0035 STUB on disk.
+grep -q "^status: CLOSED-PASS / SHIPPED" autoresearch/iterations/0034-phase-4-cutover.md && echo "0034 SHIPPED ✓"
+grep -q "^status: STUB" autoresearch/iterations/0035-real-project-trial.md && echo "0035 STUB ✓"
 
-# 6. NORTH-STAR pair-mode policy is round-3.
-grep -q "round-3 redesign" autoresearch/NORTH-STAR.md && echo "NORTH-STAR round-3 ✓"
+# 6. CLAUDE.md / AGENTS.md carry the canonical principles block (7 + 3).
+grep -q "## Core principles" CLAUDE.md && echo "CLAUDE principles ✓"
+grep -q "## Core principles" AGENTS.md && echo "AGENTS principles ✓"
 
-# 7. SKILL.md PLAN-pair framing fixed (no overreach).
-grep -q "PLAN-pair is \*\*unmeasured at HEAD\*\*" config/skills/devlyn:resolve/SKILL.md && echo "SKILL.md round-3 ✓"
+# 7. PRINCIPLES.md self-contradiction fixed (line 72 flexible why-chain).
+grep -q "until it reaches the violated invariant" autoresearch/PRINCIPLES.md && echo "PRINCIPLES flexible-why ✓"
 
 # 8. Codex CLI available.
 command -v codex && codex --version 2>&1 | head -1
@@ -232,166 +226,39 @@ If any unexpected output, do NOT proceed. Surface to user.
 
 ---
 
-## 🚧 iter queue (post iter-0033g closure 2026-05-03 + big-picture pivot to option VI)
+## 🚧 iter queue (post iter-0034 SHIPPED 2026-05-04)
 
-Sequence: iter-0033a ✅ → iter-0033b ✅ → iter-0033b' ✅ → iter-0033 (C1) ✅ PASS (5/5 headroom fixtures, suite-avg L1−L0 +6.43) → iter-0033c ✅ CLOSED FAIL (VERIFY-pair full-pipeline) → iter-0033d ✅ CLOSED-DESIGN (3-layer firewall insufficient) → iter-0033f ✅ CLOSED-DESIGN (anon paths + sidecar relocation insufficient) → iter-0033g ✅ CLOSED-DESIGN (PMO insufficient — anti-asymptotic hard stop fired exactly as pre-registered; Codex grep found 0 empirical introspection) → **iter-0034 ⬅ NEXT** (PRE-REGISTERED-STUB Phase 4 cutover) → iter-0035 real-project trial (Mission 1 terminal gate per NORTH-STAR test #15) → iter-0036+ L2 candidates by measurement priority.
+Sequence: iter-0033a/b/b'/C1 PASS → iter-0033c CLOSED FAIL (VERIFY-pair full-pipeline) → iter-0033d/f/g CLOSED-DESIGN (PLAN-pair firewall asymptotic; Codex grep found 0 empirical introspection) → **iter-0034 ✅ SHIPPED** (Phase 4 cutover + canonical principles refocus, commit `edc6425`) → **iter-0035 ⬅ NEXT** (real-project trial — Mission 1 terminal gate per NORTH-STAR test #15) → iter-0036+ L2 candidates by measurement priority.
 
-### iter-0034 (NEXT — Phase 4 cutover STUB)
+Historical iter detail lives in `autoresearch/iterations/*` + `autoresearch/DECISIONS.md`. Below is only what binds the next session.
 
-- **Spec**: [iterations/0034-phase-4-cutover.md](iterations/0034-phase-4-cutover.md) — PRE-REGISTERED-STUB. Full pre-reg drafted by next session per PRINCIPLES #2.
-- **Design baseline 1**: iter-0033 (C1) PASS evidence (solo PLAN empirically world-class — 5/5 headroom-available fixtures, suite-avg L1−L0 +6.43).
-- **Design baseline 2**: [iterations/0033g-pair-plan-impl-pmo.md § "CLOSURE"](iterations/0033g-pair-plan-impl-pmo.md) — big-picture pivot rationale; full 28-item leak surface enumeration preserved as archive (re-applicable when container infra ships).
-- **Scope**: cleanup + product-surface ship. Solo PLAN is already shipped default at HEAD; iter-0034 is mostly DELETION work + doc updates + L2 PLAN-pair research-only label.
-- **Suggested gates** (next session refines):
-  - Gate 1: solo PLAN behavior unchanged pre/post Phase 4 (smoke F1+F2+F9, scores byte-equal or within ±2)
-  - Gate 2: legacy skill deletion complete (lint/grep verifies no references)
-  - Gate 3: doc surface updated (SKILL.md PHASE 1 line 80 replaced; NORTH-STAR Phase 4 done; HANDOFF Mission 1 progress)
-  - Gate 4: optional-skills/ migration (`/devlyn:reap`, `/devlyn:design-system`, `/devlyn:team-design-ui`)
-  - Gate 5: post-cutover bench suite re-run shows L1 numbers within variance band of pre-cutover
+### iter-0035 (NEXT — real-project trial, Mission 1 terminal gate)
 
-#### ▶ Execution sequence (run end-to-end without blocking)
+- **Spec**: [iterations/0035-real-project-trial.md](iterations/0035-real-project-trial.md) — STUB. Pre-registration deferred to the session that runs the trial (cannot pre-register without project + task + developer choice).
+- **Definition** (NORTH-STAR test #15, verbatim): a developer who has not tuned the harness picks a real (not fixture) feature/bug from a real (not test) codebase, runs `/devlyn:resolve "<spec or goal>"` end-to-end, and the output ships without human prompt-engineering rescue.
+- **Pass criteria**: (a) no human edits to skill prompts mid-run, (b) no manual phase re-runs, (c) produced code passes the project's existing test suite + the developer's spec acceptance check, (d) wall-time within budget for the layer the user paid for.
+- **Why this is the terminal gate**: 9-fixture suite confirms the harness behaves as designed against known cases (necessary). #15 confirms the harness serves real users on day one (sufficient). Without #15, Mission 1 could ship a benchmark-tuned harness that fails real users.
 
-The next session executes this sequence start-to-finish — measurement-included. No mid-sequence pauses for user input unless an anti-asymptotic / forbidden / new-class condition triggers (see "Question handling" below).
+#### Hand-off contract — what the session running the trial MUST do
 
-**0. Cold-start sanity check (mandatory before any edit)**
-   - Read in order: `HANDOFF.md` (this file) → `NORTH-STAR.md` → `PRINCIPLES.md` → `MISSIONS.md` → `CLAUDE.md` → memory file `project_iter0033g_asymptotic_firewall_lesson_2026_05_03.md` (load-bearing — meta-lesson + 6 reusable principles) → `iterations/0033g-pair-plan-impl-pmo.md § "CLOSURE"` (big-picture pivot + L2 candidate priority) → `iterations/0034-phase-4-cutover.md` (active STUB) → recent `DECISIONS.md` entries.
-   - Run cold-start sanity check 8 commands (above) — all must PASS. Surface any unexpected output to user before proceeding.
+1. **Read first**: this HANDOFF (cold-start sanity check) → `NORTH-STAR.md` (test #15 wording) → `MISSIONS.md` (Mission 1 unblock criteria) → `iterations/0035-real-project-trial.md` STUB → recent `DECISIONS.md` entries (iter-0034 SHIPPED context).
+2. **Pick the project** with the user — not the devlyn-cli repo, not a benchmark fixture. Candidates: a small open-source project the developer hasn't contributed to, a fresh side-project with a real bug/feature in flight, a non-trivial library the developer maintains.
+3. **Pick the task** with the user — real bug or feature, with an acceptance check the developer would normally accept (existing test suite passes + their own check).
+4. **Pre-register** in `iterations/0035-real-project-trial.md`: NEW hypothesis, the four NORTH-STAR #15 sub-criteria as gates (a–d), predicted directions filled BEFORE the run, risk register including (a) BUILD_GATE framework auto-detection misses, (b) test-suite running cost, (c) Codex/Claude availability mid-run.
+5. **Run hands-free** — `/devlyn:resolve "<spec or goal>"`. Single invocation, no prompt-engineering rescue. If the run halts, that is data — do NOT re-prompt or edit skill prompts mid-run.
+6. **Codex pair-collab** — R0 on pre-reg before the run; R-final on raw results after. Same wrapper contract as the iter-0034 sessions (see "Codex pair-collab protocol" section above).
+7. **Decision tree on outcome**:
+   - **PASS**: Mission 1 closes. Mission 2 (parallel-fleet substrate) opens — see MISSIONS.md "Mission 1 unblocks Mission 2 only when".
+   - **FAIL**: classify which gate broke + which phase produced it (PLAN / IMPLEMENT / BUILD_GATE / CLEANUP / VERIFY) and queue the corrective iter (iter-0036+). DO NOT silently re-run.
+8. **Closure** — iter file frontmatter `STUB` → `CLOSED-PASS` or `CLOSED-FAIL` with the failure-mode classification. HANDOFF rotates. DECISIONS appends.
 
-**1. iter-0034 full pre-registration draft**
-   - Following `iterations/0034-phase-4-cutover.md` STUB §"Hand-off contract". Cannot recycle iter-0033 (C1) hypothesis verbatim — this is cleanup + ship iter, different threat model from measurement iters.
-   - Pre-register: NEW hypothesis (cleanup + ship form), 5 gates finalized (Gate 1-5 per STUB), filled predictions BEFORE run, wall budget breakdown, risk register, principles check (#0-#7).
-   - Status frontmatter: `PRE-REGISTERED-STUB` → `PRE-REGISTERED`.
+#### Definition of "done" for the trial session
 
-**2. Codex R0 on pre-reg (mandatory pair-collab — see "Codex pair contract" below)**
-   - Position: pre-reg + iter-0033 (C1) PASS evidence + iter-0033g closure as combined design baseline.
-   - Falsification ask: any deletion that breaks 2-skill design dependency? any doc update that mislabels L2 status? gate threshold under-specified? sequencing risk?
-   - Expected verdict: **CONVERGED** (no adversarial threat model — cleanup iter).
-   - **NOT CONVERGED — revisions only**: pair-collab another round (R0.5 acceptable here — NOT an adversarial threat-model iter, so in-place revision is principles-aligned per PRINCIPLES #2 case-by-case).
-   - **NEW STRUCTURAL CLASS** (very unlikely for cleanup iter): immediately surface to user. Cleanup iter finding new class would mean pre-reg scope itself is wrong.
-
-**3. Documentation updates first (lowest risk, easy revert)**
-   - `config/skills/devlyn:resolve/SKILL.md` PHASE 1 line 80: replace "PLAN-pair is **unmeasured at HEAD** — iter-0033d is the first L1-vs-L2 measurement; iter-0020 falsified Codex-BUILD/IMPLEMENT, NOT PLAN-pair" with the L2 PLAN-pair research-only label per `iterations/0034-phase-4-cutover.md` §"L2 PLAN-pair research-only label". Cite explicit unblock conditions A (container infra justified by other product needs) and B (empirical introspection probe).
-   - `autoresearch/NORTH-STAR.md`: Phase 4 marked done; pair-mode policy section reflects "L2 PLAN-pair research-only" + L2 candidate priority list.
-   - `autoresearch/HANDOFF.md`: Mission 1 progress reflects Phase 4 SHIPPED; iter-0035 real-project trial moves to active position.
-   - `autoresearch/MISSIONS.md`: Mission 1 status reflects cutover.
-   - `README.md`: 2-skill design (`/devlyn:resolve` + `/devlyn:ideate`); legacy skill mentions removed.
-   - `CLAUDE.md`: 2-skill quick-start; legacy skill table removed.
-   - Mirror sync (`bin/devlyn.js -y`) + lint (`bash scripts/lint-skills.sh`) — both must PASS.
-
-**4. Skill deletion**
-   - Delete from `config/skills/` AND `.claude/skills/` mirror per deletion list in `iterations/0034-phase-4-cutover.md` §"Deletion list". Use `git rm -r` for atomicity.
-   - Update `bin/devlyn.js` to remove references to deleted skills.
-   - Move `/devlyn:reap`, `/devlyn:design-system`, `/devlyn:team-design-ui` to `optional-skills/` (Phase 5 planned migration; do NOT delete).
-   - Mirror sync + lint again — both must PASS.
-
-**5. Gate 1 smoke (solo behavior unchanged)**
-   - F1, F2, F9 single-fixture runs at post-cleanup HEAD.
-   - Compare scores vs iter-0033 (C1) baseline (run-id `3bc86dd`+iter-0033b carrier fix, see DECISIONS 0033 (C1) entry).
-   - PASS criterion: per-axis ±2 (variance band per iter-0027 N=5 evidence).
-   - **FAIL** → identify regression source (which doc edit / which deletion?), revert smallest unit, re-smoke. Pair with Codex on root cause if not obvious.
-
-**6. Gate 5 suite re-run (background, full bench)**
-   - Use `run_in_background: true` Bash. Suite is long; do NOT block on it.
-   - 9-fixture bench (F1-F9) serial at post-cleanup HEAD.
-   - While suite runs in background: draft iter-0034 closure section structure, draft iter-0035 STUB skeleton, prep R-final prompt for Codex.
-   - Use HANDOFF state continuity for context-window bridging — write progress notes to disk every major milestone.
-
-**7. Compare + R-final (Codex pair-collab on raw numbers)**
-   - `iter-0033c-compare.py` (or new `iter-0034-compare.py` if needed) on pre/post baselines.
-   - Per-fixture variance band check (±2 axes).
-   - Codex R-final: position with raw numbers + falsification ask "any regression hidden by aggregation? any L2 label inaccurate post-cutover?".
-   - **ALL Gate 1-5 PASS** → proceed to closure.
-   - **ANY Gate FAIL** → identify regression source, revert smallest unit, re-smoke. Surface to user only if revert+re-smoke loop fails 2x (anti-asymptotic at smaller scale).
-
-**8. iter-0034 closure**
-   - frontmatter status → `CLOSED-PASS / SHIPPED`.
-   - CLOSURE section: 5 gate results with raw numbers, principles check (#0-#7), what shipped, what's preserved as archive, hand-off to iter-0035.
-   - Update `HANDOFF.md`: iter-0034 SHIPPED, iter-0035 NEXT, Mission 1 progress, START-HERE refresh.
-   - Update `DECISIONS.md`: append iter-0034 SHIPPED entry.
-
-**9. iter-0035 STUB draft + commit**
-   - NEW `iterations/0035-real-project-trial.md` STUB per NORTH-STAR test #15. Hand-off contract: what user input is needed (project choice, feature/bug spec, success criteria), what next session does, what's blocked.
-   - Lint pass.
-   - Commit per repo conventions. iter-0035 real-project trial unblocked.
-
-#### 🤝 Codex pair contract (mandatory for steps 2, 7 — recommended for any non-trivial edit)
-
-Per `feedback_codex_collaboration_not_consult.md` + `feedback_codex_cross_check.md` (memory):
-
-- **Codex CLI GPT-5.5 is your collaboration partner, not consultant.** Multi-round dialogue until convergence; not single-shot Q&A.
-- **Reason independently first.** Form your own verdict with concrete evidence (file paths, line numbers, expected vs observed) BEFORE asking Codex.
-- **Send rich evidence + falsification ask.** Not "what should I do?" — instead "I conclude X because file:line evidence; falsify if you disagree".
-- **Wrapper invocation** (per CLAUDE.md):
-  ```bash
-  bash config/skills/_shared/codex-monitored.sh \
-    -C /Users/aipalm/Documents/GitHub/devlyn-cli \
-    -s read-only \
-    -c model_reasoning_effort=xhigh \
-    "<position + evidence + falsification ask>"
-  ```
-  Output to file: `... > /tmp/codex-iter0034-<round>/response.log 2>&1`. NEVER pipe wrapper output (`| tail`, `| grep`); wrapper refuses (iter-0009 contract).
-- **Codex reads codebase directly.** Use `-s read-only` so Codex can `Read`/`Grep`/`Glob` independently — don't pre-package context.
-- **Verify before claim.** Every cited file:line opened at citation time on YOUR side too — Codex's citations may be stale.
-- **Convergence is the stop, not "Codex agreed".** If Codex pushes back, surface both views to user; user is final arbiter.
-- **Required Codex rounds for iter-0034**: R0 (step 2), R-final (step 7). Add R-smoke if Gate 1 fails or Gate 5 produces unexpected pattern.
-
-#### ⛔ Hard constraints (binding throughout iter-0034)
-
-**Principles (PRINCIPLES.md #0-#7) — verify EVERY step against these. NO EXCEPTIONS.**
-
-The 7 principles are not optional. The user-verbatim directive (Block 1, Block 4, repeated multiple times):
-> "지금 하고있는 것들이 북극성의 목표를 향해서 no xxxx, worldclass xxx 5대 원칙들을 바탕으로 계속 개선을 해나가고 있는게 맞지? 그냥 오로지 점수를 위해서 하는게 아니고 말이야?"
-
-Every step asks:
-1. **#1 No overengineering / Subtractive-first** — am I deleting more than adding? Pure-addition needs cited prior failure mode OR explicit user spec. Defaults to deletion.
-2. **#2 No guesswork** — falsifiable hypothesis pre-registered BEFORE run; predicted directions filled BEFORE run; raw data filled AFTER (no retroactive prediction edits).
-3. **#3 No workaround** — root-cause fixes; no `any`, no `@ts-ignore`, no silent catch, no hardcoded fallbacks. Codex CLI downgrade is the ONLY documented exception.
-4. **#4 Worldclass production-ready** — zero CRITICAL, zero HIGH `design.*`/`security.*` findings on shipped surfaces.
-5. **#5 Best practice** — idiomatic for language/framework; no hand-rolled helpers replacing standard primitives.
-6. **#6 Layer-cost-justified** — every change beats previous-layer-best-of-N on quality AND wall-time. iter-0034 is L1 surface ship; layer-cost evaluated on cleanup-vs-leave (cleanup wins by deletion).
-7. **#7 Mission-bound** — Mission 1 single-task scope; Mission 1 hard NO list (no parallel-fleet, no resource-lease helper, no cross-vendor infra).
-
-**Pre-flight #0**: every iter must close a real user-visible failure OR ship a real product surface. iter-0034 closes both (cleanup + 2-skill ship surface).
-
-**User direction Block 5 (multi-LLM evolution)**: preserved as future direction; pi-agent adapter is Mission 2/3 territory; do NOT bake single-LLM assumptions in iter-0034 doc updates. NORTH-STAR's `expected.schema.json` + `_shared/adapters/<model>.md` already hold the contract.
-
-**User direction Block 6 (페어가 PLAN에서 가장 중요)**: preserved as L2 candidate priority. Block 6 says PLAN is the most important PHASE for pair-mode IF pair-mode ships. iter-0034 ships solo + L2 PLAN-pair research-only; this honors Block 6 by NOT pretending to ship unproven L2 (which would be opposite of "최고의 결과").
-
-**User direction (2026-05-03)**: "솔로도 그대로 잘 동작하고 페어는 더욱 더 잘 동작하게" — L1 stays solid + L2 ships per-phase where empirically lifts. Gate 1 + Gate 5 mechanically enforce "솔로 그대로". L2 candidate priority list in iter-0033g closure §H + iter-0034 STUB §"L2 PLAN-pair research-only label" enforces "페어 더 좋게 (per-phase, measurement-gated)".
-
-**Anti-asymptotic guard (iter-0033d/f/g lesson)**: cleanup iter is NOT expected to find adversarial new structural classes. If R0 / R-smoke / R-final returns NEW STRUCTURAL CLASS (very unlikely on cleanup), that signals pre-reg scope itself is wrong — surface to user immediately, do NOT in-place revise.
-
-#### 💬 Question handling (no-blocking discipline)
-
-If you encounter a non-trivial question mid-execution:
-
-1. **Try to answer with code + memory + Codex pair first.** Most questions have file:line evidence answers. Read the code, search memory, ask Codex with rich evidence.
-2. **If genuinely ambiguous**: pair with Codex multi-round to converge on best-practice answer. Per `feedback_codex_collaboration_not_consult.md` — multi-round dialogue is the contract.
-3. **If still ambiguous after pair-collab**: surface to user with (a) the question, (b) the options Codex+Claude considered, (c) the recommended option with rationale, (d) what's blocked. Don't surface the question alone — surface a position the user can confirm/redirect.
-4. **Never surface trivial questions.** "Should I use git rm or rm -r?" — answer yourself (use git rm for tracked files). User adjudication is for genuinely ambiguous strategic decisions, not implementation details.
-5. **Hands-free pipeline rule applies** (CLAUDE.md): inside automated execution, log assumptions explicitly in iter file / commit message rather than blocking for confirmation. User reviews after iter completes.
-
-#### 📋 Definition of "done" for this session
-
-iter-0034 is done when:
-- All 5 gates PASS with raw evidence cited.
-- iter-0034 closure committed.
-- iter-0035 STUB committed with hand-off contract for real-project trial.
-- HANDOFF refreshed: iter-0035 is new active iter; iter-0034 SHIPPED.
-- DECISIONS appended.
-- Memory updated only if NEW lesson surfaced (not for routine cleanup completion).
-- L1 solo behavior verified unchanged (Gate 1 + Gate 5 raw numbers).
-- 2-skill design surface clean (Gate 2 + 3 + 4 verified).
-- All actions trace back to a principle (#0-#7) + cite file:line evidence.
-
-If session is interrupted before "done": leave HANDOFF reflecting actual state with explicit "in progress at step N" marker. Do NOT leave half-finished implementations without a state file the next session can resume from.
-
-### iter-0035 (TBD post-cutover — real-project trial, Mission 1 terminal gate)
-
-- **NORTH-STAR test #15**: developer who has not tuned the harness picks a real (not fixture) feature/bug from a real (not test) codebase, runs `/devlyn:resolve "<spec or goal>"` end-to-end, and the output ships without human prompt-engineering rescue.
-- **Pass criteria**: (a) no human edits to skill prompts mid-run, (b) no manual phase re-runs, (c) the produced code passes the project's existing test suite + the developer's spec acceptance check, (d) wall-time within budget for the layer the user paid for.
-- **Blocked on**: iter-0034 Phase 4 cutover SHIP.
-- **NOT pre-registered yet** — will be when iter-0034 ships.
+- All 4 gates have raw evidence cited (project name, task description, test command output, wall-time, git diff).
+- iter-0035 closure committed.
+- HANDOFF refreshed; DECISIONS appended.
+- If PASS: Mission 1 closes; HANDOFF reflects Mission 2 opening with MISSIONS Mission 2 substrate iter as new active iter.
+- If FAIL: corrective iter queued with concrete failure-mode classification.
 
 ### iter-0036+ — L2 candidate priority (by measurement difficulty + empirical grounding)
 
@@ -435,11 +302,9 @@ Per iter-0033g closure §H + user direction "L1 stays solid + L2 ships per-phase
 
 User decision deferred to a future session. NOT in any current iter.
 
-### Old skills that will deprecate in Phase 4 (gated on iter-0033d)
+### Phase 4 cutover deletions (SHIPPED iter-0034 commit `edc6425`, archived for reference)
 
-`/devlyn:auto-resolve`, `/devlyn:resolve` (old focused-debug; replaced), `/devlyn:implement-ui`, `/devlyn:design-ui`, `/devlyn:team-design-ui`, `/devlyn:design-system`, `/devlyn:clean`, `/devlyn:update-docs`, `/devlyn:preflight`, `/devlyn:evaluate`, `/devlyn:review`, `/devlyn:team-review`, `/devlyn:team-resolve`, `/devlyn:browser-validate` (→ kernel runner), `/devlyn:product-spec`, `/devlyn:feature-spec`, `/devlyn:recommend-features`, `/devlyn:discover-product`.
-
-`/devlyn:reap` and `/design-system` + `/team-design-ui` move to `optional-skills/` in Phase 5.
+15 user skills deleted: `/devlyn:auto-resolve`, `/devlyn:browser-validate`, `/devlyn:clean`, `/devlyn:design-ui`, `/devlyn:discover-product`, `/devlyn:evaluate`, `/devlyn:feature-spec`, `/devlyn:implement-ui`, `/devlyn:preflight`, `/devlyn:product-spec`, `/devlyn:recommend-features`, `/devlyn:review`, `/devlyn:team-resolve`, `/devlyn:team-review`, `/devlyn:update-docs`. Plus `workflow-routing` standards skill deleted (Subtractive). 3 moved to `optional-skills/`: `/devlyn:reap`, `/devlyn:design-system`, `/devlyn:team-design-ui`. `bin/devlyn.js DEPRECATED_DIRS` extended with 18 colon-name entries so `npx devlyn-cli` upgrades force-remove stale legacy skills from downstream installs.
 
 ---
 
@@ -468,18 +333,21 @@ iter-0029 shipped initial adapter files at `_shared/adapters/{opus-4-7, gpt-5-5}
 
 ## ⏭️ End of HANDOFF
 
-Current status: iter-0033 family fully closed (iter-0033a/C1/b/b' PASS; iter-0033c CLOSED FAIL; iter-0033d/iter-0033f/iter-0033g CLOSED-DESIGN). **Big-picture pivot 2026-05-03**: 3 design-iters chasing PLAN-pair leak firewall hit asymptotic pattern; Codex grep across 6mo benchmark logs found ZERO empirical evidence of subagent introspection; Claude+Codex independent verdict converged on option VI: ship Phase 4 cutover with solo + label L2 PLAN-pair research-only. iter-0034 Phase 4 cutover PRE-REGISTERED-STUB and is **next active iter** — Phase 4 cutover unblocked because iter-0033 (C1) PASS evidence is sufficient. Mission 1 terminal gate is iter-0035 real-project trial (NORTH-STAR test #15), NOT Phase 4 cutover.
+Current status: **iter-0034 SHIPPED 2026-05-04** (commit `edc6425`). Phase 4 cutover (15 skill deletions + 3 moves + workflow-routing deletion + bin/devlyn.js + lint + bench harness + _shared/ stale-ref cleanup) + canonical principles refocus per user 2026-05-04 directive (CLAUDE.md/AGENTS.md restructured around 7 principles + flexible 5-why + first-principles + Saint-Exupéry as PRIMARY content) + Gate 5 R5 revert (SKILL.md PHASE 1 line 80 wording reverted to HEAD after first run F9 silent-catch DQ; re-smoke confirmed line-80 was causal). Lint 14/14 PASS post-restructure.
 
-**Direction (user-confirmed 2026-05-03)**: 솔로도 그대로 잘 동작하고 페어는 더욱 더 잘 동작하게 — L1 stays solid + L2 ships per-phase where empirically lifts. L2 candidate priority: VERIFY-pair frozen-diff > PROJECT-pair > PLAN-pair (research-only) > multi-LLM via pi-agent (Mission 2/3).
+iter-0035 real-project trial is the **next active iter** — Mission 1 terminal gate per NORTH-STAR test #15. STUB at `iterations/0035-real-project-trial.md`. Pre-registration deferred to the session that runs the trial (cannot pre-register without project + task + developer choice).
 
-**Next session entry point**: see "▶ Execution sequence (run end-to-end without blocking)" subsection inside iter-0034 entry above. Self-contained; covers cold-start → pre-reg → Codex R0 → impl → smokes → suite (background) → R-final → closure → iter-0035 STUB → commit. No mid-sequence pauses unless an anti-asymptotic / forbidden / new-class condition triggers. Codex CLI GPT-5.5 pair-collab is mandatory for steps 2 (R0) and 7 (R-final).
+**Direction (user-confirmed 2026-05-03)**: 솔로도 그대로 잘 동작하고 페어는 더욱 더 잘 동작하게 — L1 stays solid + L2 ships per-phase where empirically lifts. L2 candidate priority post-cutover: VERIFY-pair frozen-diff > PROJECT-pair > PLAN-pair (research-only) > multi-LLM via pi-agent (Mission 2/3).
+
+**Next session entry point**: see "iter-0035 (NEXT — real-project trial, Mission 1 terminal gate)" section above. Self-contained 8-step hand-off contract: read order, project/task selection with user, pre-registration, Codex pair-collab, hands-free run, decision tree, closure, HANDOFF rotation.
 
 **Forbidden under this branch** (per iter-0033g closure §G + memory lesson `project_iter0033g_asymptotic_firewall_lesson_2026_05_03.md`):
-- Do NOT open iter-0033h with another firewall architecture attempt. If user later wants to revisit PLAN-pair, the unblock conditions are documented in iter-0034 STUB §"L2 PLAN-pair research-only label" + iter-0033g closure §H.
+- Do NOT open iter-0033h with another firewall architecture attempt. If user later wants to revisit PLAN-pair, the unblock conditions are documented in `config/skills/devlyn:resolve/SKILL.md` PHASE 1 + `iterations/0033g-pair-plan-impl-pmo.md` § "CLOSURE" §H.
 - Do NOT delete iter-0033c-compare.py / build-pair-eligible-manifest.py / iter-0033f-* / iter-0033g-* assets — they preserve closed-iter replay + design archive; CLAUDE.md goal-lock forbids tangential cleanup.
-- Do NOT degrade L1 solo behavior in Phase 4 cutover — Gate 1 + Gate 5 catch this; user direction is "솔로 그대로 + 페어 더 좋게".
+- Do NOT degrade L1 solo behavior in any future iter — iter-0034 R5 path applies (revert smallest unit, re-smoke; 2x fail = surface to user).
 - Do NOT skip Codex pair-collab steps. Reasoning independently first + Codex multi-round dialogue is the contract per memory `feedback_codex_collaboration_not_consult.md`.
 - Do NOT surface trivial questions to user mid-pipeline. Pair with Codex first; surface only genuinely strategic ambiguity with options + recommendation. Hands-free pipeline rule (CLAUDE.md).
-- Do NOT bypass any of PRINCIPLES.md #0-#7. Every action traces back to a principle. The user reminder (Block 1, repeated): "no xxxx 원칙들 잊지말고".
+- Do NOT bypass any of CLAUDE.md `## Core principles` (the 7 + 3). The user reminder (repeated multiple times): "no xxxx 원칙들 잊지말고".
+- Do NOT pre-register iter-0035 without user-supplied project + task + developer — it is by definition a real-project trial requiring real input.
 
 Multi-LLM evolution direction (Block 5) binds `/devlyn:resolve` (Claude + Codex today, pi-agent tomorrow) under no-xxx / worldclass / measurement-gated principles.
