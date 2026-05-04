@@ -1,16 +1,23 @@
 ---
 iter: "0035-prelim"
 title: "Preliminary real-task simulation — pair-verified hands-free /devlyn:resolve on greenfield tower-defense"
-status: PRE-REGISTERED-PRELIM
+status: CLOSED-PRELIM-PASS
 type: preliminary measurement; does NOT close Mission 1; does NOT open Mission 2
 shipped_commit: TBD
+trial_run_id: rs-20260504T141338Z-9405ec534724
+trial_wall_time_seconds: 1086 (wrapper) / 957 (harness internal)
+trial_invocation: "claude -p --permission-mode bypassPermissions \"/devlyn:resolve --spec trial-spec.md\" (CWD=/tmp/td-iter0035-prelim)"
+gate_a_hands_free: PASS — skill-git-status.{pre,post}.txt 0 bytes; skill-hash.diff 0 lines
+gate_b_single_invocation: PASS — rounds.global=0; all 6 phases triggered_by=null; one invocation in trial.meta.log
+gate_c_code_quality: PASS — independent re-runs of 4 verification commands all exit 0; Codex 8-row checklist all PASS
+gate_d_wall_time: PASS — 1086s ≪ 7200s budget
 date: 2026-05-04
 mission: 1
 gates: precondition pre-flight for full iter-0035; PASS → unblock full #15 trial; FAIL → corrective iter-0036+ then retry
 parent_design_iters: iter-0034 SHIPPED 2026-05-04 (Phase 4 cutover, commit edc6425); iter-0035 STUB (deferred per HANDOFF "Forbidden under this branch" — needs user-supplied developer)
 codex_r0: 2026-05-04 (124s, 38k tokens, support-draft) — verdict: pair-verify does NOT substitute for #15's untuned-developer + existing-codebase axes; this prelim is honest scoping not overengineering. Full evidence at /tmp/codex-iter0035-r0/response.log. 6 file:line citations adopted; recommended frontmatter shape applied.
 codex_r0_5: 2026-05-04 (370s, 175k tokens, support-with-revisions) — 7 revisions adopted: (1) deviation count 2→3 incl. shipment acceptance, (2) Gate (a) hash-snapshot installed skills, (3) Gate (b) `pipeline.state.json` not `state.json` + `rounds.global==0`, (4) `--spec trial-spec.md` invocation (free-form would halt on `large`), (5) verification_commands JSON in spec, (6) R3 mitigation rewrite (no `_shared/build-gate.py` at HEAD), (7) decision precedence OPERATOR→BUDGET→QUALITY. Full evidence at /tmp/codex-iter0035-r0_5/response.log.
-codex_r_final: TBD (post-run raw-numbers interpretation)
+codex_r_final: 2026-05-04 (264s, 83k tokens, PASS-confirmed) — all 8 spec features PASS by file:line evidence; all 4 gates independently PASS; surprise PASS classification (predicted FAIL was honest, R-0.5 revisions made spec constrained enough). Codex explicitly: this remains greenfield/operator-run evidence, NOT full #15. Mission 1 stays OPEN; full iter-0035 must preserve missing axes. Full verdict at /tmp/codex-iter0035-r-final/verdict.md.
 ---
 
 # iter-0035-prelim — Pair-verified hands-free trial on greenfield tower-defense
@@ -268,3 +275,76 @@ In NO outcome does this prelim close Mission 1 or open Mission 2. That is the pa
 - Do NOT skip Codex R-0.5 or R-final.
 - Do NOT pre-register full iter-0035 from this prelim's PASS — full #15 still needs user-supplied (project + task + developer).
 - Do NOT touch any file outside `/tmp/td-iter0035-prelim/` and this iter file during the trial. Any drift = scope-creep per CLAUDE.md Goal-locked execution.
+
+---
+
+## CLOSURE — CLOSED-PRELIM-PASS 2026-05-04
+
+### Predictions vs actual (PRINCIPLES.md #2 — no retroactive edits to predictions; raw outcomes recorded after the run)
+
+| Gate | Predicted | Actual | Surprise? |
+|---|---|---|---|
+| (a) Hands-free | PASS (high) | PASS | No |
+| (b) Single invocation | PASS (high) | PASS | No |
+| (c) Code quality | **FAIL (medium-high)** with 4 specific failure-mode hypotheses | PASS | **YES — surprise PASS** |
+| (d) Wall-time | PASS but tight | PASS — 1086s ≪ 7200s budget | No (more comfortable than predicted) |
+
+**Surprise classification (Codex R-final, binding)**: predicted FAIL was honest; actual PASS is the surprise. All 4 failure-mode hypotheses were wrong:
+- (i) "BUILD_GATE doesn't run Playwright" — wrong; spec's `verification_commands` JSON block triggered Playwright via `spec-verify-check.py` cleanly.
+- (ii) "Vitest setup vs Phaser canvas-mock friction" — wrong; harness kept tests on Phaser-free `state.ts`/`config.ts` modules per spec's structure constraint.
+- (iii) "Playwright smoke selector mismatch" — wrong; IMPLEMENT exposed `#start-wave` selector in `index.html`.
+- (iv) "IMPLEMENT skips a numbered feature" — wrong; all 8 features implemented with file:line evidence (see Codex 8-row checklist).
+
+**Lesson**: R-0.5's 7 revisions sharpened the spec just enough that the harness could execute cleanly on a greenfield greenfield-from-zero invocation in one pass. The Gate (c) FAIL prediction was honest pessimism based on "9-fixture suite is targeted-edit only, never tested on greenfield"; the data shows the harness's mechanisms (PLAN structural constraints, IMPLEMENT scaffolding, BUILD_GATE spec-verify routing, VERIFY findings-only) generalize to greenfield-from-zero **when the spec is written with the same discipline** (explicit stack, numbered features, programmatic acceptance, non-goals).
+
+This is **NOT** a "harness is universally world-class" claim — it is "for a well-constrained greenfield spec ≤ this complexity, hands-free PASS is achievable in a single invocation". The full iter-0035 axes (untuned external developer + existing real codebase + developer shipment acceptance) remain **un-tested**.
+
+### Per-phase raw outcomes (from `pipeline.state.json`)
+
+| Phase | Verdict | Duration | Findings |
+|---|---|---|---|
+| plan | PASS | 140s | 0 |
+| implement | PASS | 299s | 0 |
+| build_gate | PASS | 35s | 0 |
+| cleanup | PASS | 20s | 0 |
+| verify | PASS | 189s | 2 INFO (non-blocking) |
+| final_report | PASS | — | — |
+
+VERIFY findings (both INFO, non-blocking, subtractive observations):
+- `quality.tower-mutation-in-render-loop` at `src/scene/MainScene.ts:240`
+- `quality.dead-state-field` at `src/state.ts:19`
+
+Both are subtractive-first observations (`Tower.lastFiredAt` mutated in render loop while other state uses immutable updates; field never read in `state.ts`). Optional follow-up cleanup, no spec violation.
+
+### Codex R-final non-blocking observation
+
+`GRUNT.speed` defined at `src/config.ts:58` but scene movement hardcodes `60` at `src/scene/MainScene.ts:195`. Current behavior satisfies the fixed-speed rule; the test suite would not catch future drift between config and runtime movement. Optional follow-up cleanup, no spec violation, no gate impact.
+
+### Mission status (binding)
+
+- **iter-0035-prelim**: `CLOSED-PRELIM-PASS`. PASS does NOT close Mission 1 and does NOT open Mission 2 — pre-registered binding upheld.
+- **Full iter-0035** (NORTH-STAR test #15, terminal Mission 1 gate): unblocked from "is the harness obviously broken?" pre-flight risk. Still requires user-supplied **(real existing codebase + real bug/feature + external untuned developer + developer shipment acceptance)**. The 4 axes the prelim deviated on (executor, real-project, real-task selection, shipment acceptance) MUST be preserved for full #15.
+- **Mission 1**: stays **OPEN**.
+- **Mission 2**: stays **CLOSED** (gated on full iter-0035 PASS).
+
+### Trial artifacts (preserved at `/tmp/td-iter0035-prelim/`)
+
+- `trial-spec.md` — verbatim spec consumed.
+- `package.json`, `tsconfig.json`, `vite.config.ts`, `vitest.config.ts`, `playwright.config.ts`, `index.html` — toolchain.
+- `src/state.ts`, `src/config.ts`, `src/main.ts`, `src/scene/MainScene.ts` — game.
+- `tests/feature{1..8}-*.test.ts` — Vitest unit tests (one per feature).
+- `e2e/smoke.spec.ts` — Playwright smoke.
+- `.devlyn/runs/rs-20260504T141338Z-9405ec534724/` — 12 archived files (state, plan, build_gate log/findings, cleanup findings, verify mechanical/judge findings, verify log, spec-verify outputs, final-report.md).
+- `cumulative.diff` (98KB) — full trial diff.
+- `trial.meta.log`, `trial.stdout.log`, `trial.stderr.log`, `start.epoch`, `end.epoch` — trial instrumentation.
+- `skill-git-status.{pre,post}.txt`, `skill-hashes.{pre,post}.txt`, `skill-hash.diff` — Gate (a) evidence (all 0 bytes).
+
+### Codex evidence
+
+- R0 (trial design): `/tmp/codex-iter0035-r0/response.log` — support-draft (Alt-2).
+- R-0.5 (pre-reg verification): `/tmp/codex-iter0035-r0_5/response.log` — support-with-revisions, 7 revisions adopted.
+- R-final (post-run): `/tmp/codex-iter0035-r-final/response.log` + `/tmp/codex-iter0035-r-final/verdict.md` — PASS-confirmed.
+
+### Next iter (queued, not pre-registered)
+
+**Full iter-0035** — Mission 1 terminal gate per NORTH-STAR test #15. Still requires user-supplied (real existing codebase + real task + external untuned developer). HANDOFF "Forbidden under this branch" clause still binds. Per Codex R-final: "I would not weaken full iter-0035." The pre-flight risk (harness obviously broken on greenfield) is now retired by this prelim; remaining risk is the un-tested axes.
