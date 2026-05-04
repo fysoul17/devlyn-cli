@@ -1,20 +1,25 @@
 ---
 iter: "0035"
 title: "Real-project trial — Mission 1 terminal gate (NORTH-STAR test #15)"
-status: STUB
+status: DEFERRED-USER-FEEDBACK
 type: real-project measurement; Mission 1 terminal gate
 shipped_commit: TBD
 date: 2026-05-04
 mission: 1
 gates: Mission 1 unblock → Mission 2 (parallel-fleet substrate)
-parent_design_iters: iter-0034 SHIPPED 2026-05-04 (Phase 4 cutover — 2-skill product surface clean, solo PLAN empirically world-class per iter-0033 (C1) + Gate 5 re-replication)
+parent_design_iters: iter-0034 SHIPPED 2026-05-04 (Phase 4 cutover); iter-0035-prelim CLOSED-PRELIM-PASS 2026-05-04 (greenfield surprise PASS, pre-flight risk retired)
+deferred_rationale: User 2026-05-04 wrap-up directive — Mission 1 formal close will accumulate organically via personal-project usage rather than a single discrete trial. This file is preserved as the design document for the formal trial protocol if/when the user later wants to run one. The 4 missing #15 axes (external developer + existing real codebase + real bug/feature task + developer shipment acceptance) MUST still be preserved for any formal trial — Codex R-final 2026-05-04 binding: "I would not weaken full iter-0035."
 ---
 
 # iter-0035 — Real-project trial (Mission 1 terminal gate)
 
-## STATUS: STUB — pre-registration deferred to the session that runs the trial
+## STATUS: DEFERRED-USER-FEEDBACK — formal trial held; organic usage path active
 
-This file is a placeholder pre-registration. The session that picks up the trial MUST draft full hypothesis, gates, predictions, and risk register BEFORE running anything. Pre-registration is non-negotiable per PRINCIPLES.md #2.
+User 2026-05-04 directive: rather than running a discrete real-project trial in this loop, validation accumulates organically via the user's daily usage of `/devlyn:resolve` on personal projects. Specific failure modes from real usage become corrective-iter triggers in their own right; Mission 1 formal close happens when the user explicitly accepts accumulated usage as #15 evidence (or runs the formal trial described below).
+
+This file is preserved as the **design document** for the formal trial protocol — its hand-off contract, gate definitions, and risk register remain authoritative if the user later wants a discrete trial. **Do NOT delete this file** even if Mission 1 closes via the organic path; the formal-trial design has reuse value for future iter-0035-class measurements (different harness versions, different L2 candidates).
+
+This file is a placeholder pre-registration. The session that picks up a discrete trial MUST draft full hypothesis, gates, predictions, and risk register BEFORE running anything. Pre-registration is non-negotiable per PRINCIPLES.md #2.
 
 ## Why this iter exists (PRINCIPLES.md pre-flight 0)
 
