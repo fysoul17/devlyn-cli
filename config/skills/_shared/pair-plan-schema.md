@@ -1,20 +1,21 @@
-# Shared — `pair-plan.json` schema (iter-0022)
+# Shared — `pair-plan.json` schema (iter-0022 archive)
 
-Single source of truth for `pair-plan.json` and its companion `canonical_id_registry.json`. Read this once before editing `pair-plan-idgen.py`, `pair-plan-lint.py`, `pair-plan-preflight.sh`, or any auto-resolve PHASE that consumes `state.plan`. The schema is self-contained: a fresh session can implement the surrounding tools from this file alone, without re-reading the iter-0022 Codex dialogue.
+> **Archive header (iter-0034 Phase 4 cutover, 2026-05-04)** — this schema was iter-0022 infrastructure for the now-deleted `/devlyn:auto-resolve` PHASE 0 plan-pair contract. The `/devlyn:resolve` PHASE 1 PLAN at HEAD runs solo (per iter-0033 (C1) PASS evidence + iter-0033g § "CLOSURE"). The schema is preserved here as a design archive: the unblock conditions for re-instating PLAN-pair (per `iterations/0034-phase-4-cutover.md` § "L2 PLAN-pair research-only label") are A — container/sandbox isolation justified by another product need, OR B — production telemetry captures positive evidence of subagent introspection that a PLAN-pair measurement would need to isolate. When either condition fires, this schema (and the associated lint / idgen / preflight tooling under `benchmark/auto-resolve/scripts/`) is the starting point.
 
-## Audience
+Single source of truth for `pair-plan.json` and its companion `canonical_id_registry.json` when the architecture re-enters scope. Read this once before editing `pair-plan-idgen.py`, `pair-plan-lint.py`, `pair-plan-preflight.sh`, or any future plan-pair PHASE that consumes `state.plan`.
+
+## Audience (when re-instated)
 
 - `benchmark/auto-resolve/scripts/pair-plan-idgen.py` — produces `canonical_id_registry.json` from `expected.json` + checked-in oracle scripts.
 - `benchmark/auto-resolve/scripts/pair-plan-lint.py` — validates a `pair-plan.json` against its registry.
-- `autoresearch/scripts/pair-plan-preflight.sh` — orchestrates solo + pair plan generation against blind-aliased fixtures (dry-run in iter-0022; real provider/model invocations land in iter-0023).
-- `config/skills/devlyn:auto-resolve/SKILL.md` PHASE 0 — accepts `--plan-path` / JSON payload, sets `state.plan.{mode, path}`, runs lint before BUILD.
-- `config/skills/devlyn:auto-resolve/references/phases/phase-{1-build,2-evaluate,3-critic}.md` — read `accepted_invariants[]` from `state.plan.path` when `state.plan.mode == "pair"` and treat each `operational_check` as binding.
+- `autoresearch/scripts/pair-plan-preflight.sh` — orchestrates solo + pair plan generation against blind-aliased fixtures.
+- A future `/devlyn:resolve` PHASE 1 plan-pair branch (currently solo; gated on unblock A or B above): would accept `--plan-path` / JSON payload, set `state.plan.{mode, path}`, and run lint before IMPLEMENT, mirroring the deleted `devlyn:auto-resolve` PHASE 0 contract.
 
 ## File locations and naming (canonical)
 
 - Registry per fixture: `benchmark/auto-resolve/fixtures/<F>/expected-pair-plan-registry.json` (committed snapshot for diff-against-baseline; iter-0023 verifies the live idgen output equals this snapshot).
 - Plan produced by preflight: `benchmark/auto-resolve/results/<run_id>/<blind_fixture>/plan-preflight/merged/pair-plan.json`.
-- Plan supplied to `/devlyn:auto-resolve` by an external caller: any path the user chooses, passed via `--plan-path <path>`.
+- Plan supplied to a re-instated plan-pair branch by an external caller: any path the user chooses, passed via `--plan-path <path>` (the contract surface is preserved as iter-0022 design archive).
 - The registry filename is `canonical_id_registry.json` for **runtime artifacts** — both inside the bundle dir and in the preflight output root. (HANDOFF.md:280 mentions `canonical-ids.json` for the preflight output dir; that name is deprecated — D4 emits `canonical_id_registry.json` to align with the rest of the toolchain.)
 - The **committed fixture snapshot** is named `expected-pair-plan-registry.json` (one per fixture, under `benchmark/auto-resolve/fixtures/<F>/`) — distinct file name to make snapshots greppable separately from runtime artifacts. iter-0023 verifies the live idgen output equals the committed snapshot for the same fixture.
 

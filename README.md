@@ -31,86 +31,67 @@ That's it. The interactive installer handles everything. Claude Code config is i
 
 ---
 
-## How It Works — Three Steps, Full Cycle
+## How It Works — Two Skills, Full Cycle
 
-devlyn-cli turns Claude Code into an autonomous development pipeline. The core loop is simple:
+devlyn-cli turns Claude Code into a hands-free development pipeline. The product surface is two skills:
 
 ```
-ideate  →  auto-resolve  →  preflight  →  fix gaps  →  ship
+ideate (optional)  →  resolve  →  ship
 ```
 
-### Step 1 — Plan with `/devlyn:ideate`
+### Step 1 (optional) — Plan with `/devlyn:ideate`
 
-Turn a raw idea into structured, implementation-ready specs.
+Turn a raw idea into a verifiable spec — single-feature, multi-feature, or "normalize this external doc".
 
 ```
 /devlyn:ideate "I want to build a habit tracking app with AI nudges"
 ```
 
-This produces three documents through interactive brainstorming:
+Default mode produces a `docs/specs/<id>-<slug>/spec.md` plus `spec.expected.json` (mechanical verification block) that `/devlyn:resolve --spec` consumes directly. Modes:
 
-| Document | What It Contains |
+| Mode | When to use |
 |---|---|
-| `docs/VISION.md` | North star, principles, anti-goals |
-| `docs/ROADMAP.md` | Phased roadmap with links to each spec |
-| `docs/roadmap/phase-N/*.md` | Self-contained spec per feature — ready for auto-resolve |
+| `default` | One feature, AI drives focused Q&A |
+| `--quick` | One-line goal → assume-and-confirm spec, single-turn (autonomous-pipeline-safe) |
+| `--from-spec <path>` | You already wrote a spec; ideate normalizes + lints it |
+| `--project` | Multi-feature project: emits `plan.md` index + N child specs |
 
-Need to add features later? Run ideate again — it expands the existing roadmap.
+Skip ideate entirely if you have a spec or just want to describe the work — `/devlyn:resolve` accepts free-form goals too.
 
-### Step 2 — Build with `/devlyn:auto-resolve`
+### Step 2 — Resolve with `/devlyn:resolve`
 
-Point it at a spec (or just describe what you want) and walk away.
-
-```
-/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-1/1.1-user-auth.md"
-```
-
-It runs a **10-phase pipeline** autonomously:
+Hands-free pipeline for any coding task — bug fix, feature, refactor, debug, modify, PR review. Pass a spec, a free-form goal, or a diff to verify.
 
 ```
-Build → Build Gate → Browser Test → Evaluate → Fix Loop → Simplify → Review → Security → Clean → Docs
+/devlyn:resolve "fix the login bug"                                # free-form
+/devlyn:resolve --spec docs/specs/2026-05-04-auth/spec.md          # spec mode
+/devlyn:resolve --verify-only <diff-or-PR-ref> --spec <path>       # verify-only
 ```
 
-- Each phase runs as a separate agent with fresh context
-- Git checkpoints at every phase for safe rollback
-- **Build Gate** runs your project's real compilers, typecheckers, and linters — catches type errors, cross-package drift, and Docker build failures that tests alone miss. Auto-detects project type (Next.js, Rust, Go, Solidity, Expo, Swift, and more) and Dockerfiles.
-- Browser validation tests your feature end-to-end (clicks, forms, verification)
-- Evaluation grades against done-criteria — if it fails, auto-fix and re-evaluate
-
-Skip phases you don't need: `--skip-browser`, `--skip-review`, `--skip-clean`, `--skip-docs`, `--skip-build-gate`, `--max-rounds 6`
-Customize the build gate: `--build-gate strict` (warnings = errors), `--build-gate no-docker` (skip Docker builds for speed)
-
-### Step 3 — Verify with `/devlyn:preflight`
-
-After implementing all roadmap items, run a final alignment check:
+Internal phases run sequentially with file-based handoff via `.devlyn/pipeline.state.json`:
 
 ```
-/devlyn:preflight
+PLAN  →  IMPLEMENT  →  BUILD_GATE  →  CLEANUP  →  VERIFY (fresh subagent, findings-only)
 ```
 
-Reads every commitment from your vision, roadmap, and item specs, then audits the codebase evidence-based. Catches what you missed:
+- **PLAN** is the heaviest phase by design — formalizes invariants from the spec/goal and the file list to touch.
+- **BUILD_GATE** runs your project's real compilers, typecheckers, linters, and `python3 .claude/skills/_shared/spec-verify-check.py` (verification commands literal-match). Auto-detects Next.js, Rust, Go, Solidity, Expo, Swift, and Dockerfiles. Browser flows route through Chrome MCP → Playwright → curl tier.
+- **VERIFY** runs in a fresh subagent context with no code-mutation tools — findings only, structurally independent.
+- Git checkpoints at every phase for safe rollback. Fix-loop budget shared across BUILD_GATE and VERIFY (`--max-rounds N`, default 4).
 
-| Category | What It Finds |
-|---|---|
-| `MISSING` | In roadmap but not implemented |
-| `INCOMPLETE` | Started but unfinished |
-| `DIVERGENT` | Implemented differently than spec |
-| `BROKEN` | Has a bug preventing it from working |
-| `STALE_DOC` | Docs don't match current code |
-
-Confirmed gaps become new roadmap items — feed them back into auto-resolve. Use `--autofix` to do this automatically, or `--phase 2` to check only one phase.
+Common flags: `--engine claude|codex|auto` (default `claude`), `--bypass build-gate,cleanup`, `--pair-verify` (force pair-mode JUDGE in VERIFY), `--perf` (per-phase timing).
 
 ### Engine selection — Claude solo by default
 
-`--engine claude` (default) is the canonical user-facing surface. The pipeline runs entirely on Claude — every phase and team role.
+`--engine claude` (default) is the canonical surface. Every phase routes to Claude.
 
-`--engine auto` opts into the experimental dual-engine path (Codex builds, Claude evaluates, GAN dynamic). It is currently below the quality floor on the 9-fixture benchmark suite — pair-mode regressed L2 vs L1 by an average of 3.6 points, and 3 of 8 gated fixtures cleared the +5 margin floor (release-readiness FAIL). See [`autoresearch/iterations/0020-pair-policy-narrow.md`](autoresearch/iterations/0020-pair-policy-narrow.md) for the data. Install the Codex CLI (https://platform.openai.com/docs/codex) and pass the flag explicitly to opt in:
+`--engine codex` routes IMPLEMENT to Codex; `--engine auto` opts into the experimental dual-engine routing where applicable. Both are research-only at HEAD: iter-0020 closed Codex BUILD/IMPLEMENT below the quality floor on the 9-fixture suite (L2 vs L1 = −3.6, 3/8 gated fixtures cleared the +5 margin floor — release-readiness FAIL); iter-0033g + iter-0034 closed PLAN-pair as research-only with explicit unblock conditions (container/sandbox infra OR production telemetry capturing positive evidence of subagent introspection). Install the Codex CLI (https://platform.openai.com/docs/codex) and pass the flag explicitly to opt in:
 
 ```
-/devlyn:auto-resolve "fix the auth bug" --engine auto   # experimental, research-only
+/devlyn:resolve "fix the auth bug" --engine auto   # experimental, research-only
 ```
 
-If Codex is absent when `--engine auto` is requested, the harness silently downgrades to `--engine claude` and emits a banner in the final report.
+If Codex is absent when `--engine auto` or `--engine codex` is requested, the harness silently downgrades to `--engine claude` and emits a banner in the final report.
 
 <details>
 <summary><strong>What's new in 1.14.0</strong> — CPO lens + handoff enforcement</summary>
@@ -143,47 +124,16 @@ Core pipeline skills (`ideate`, `auto-resolve`, `preflight`) rewritten against A
 
 ---
 
-## Manual Commands
+## Optional Power-User Skills
 
-When you want step-by-step control instead of the full pipeline.
-
-### Debugging & Resolution
+Two creative skills have moved to `optional-skills/` — install them via the interactive installer when you need them.
 
 | Command | Use When |
 |---|---|
-| `/devlyn:resolve` | Simple bugs (1-2 files) |
-| `/devlyn:team-resolve` | Complex issues — spawns root-cause analyst, test engineer, security auditor |
-| `/devlyn:browser-validate` | Test a web feature in a real browser (Chrome MCP → Playwright → curl fallback) |
+| `/devlyn:design-system` | Extract exact design tokens (colors, type scale, spacing) from a chosen UI style |
+| `/devlyn:team-design-ui` | Multi-perspective design team generates 5 distinct UI style explorations |
 
-### Code Review & Quality
-
-| Command | Use When |
-|---|---|
-| `/devlyn:review` | Solo review — security, quality, best practices checklist |
-| `/devlyn:team-review` | Multi-reviewer team — security, testing, performance, product perspectives |
-| `/devlyn:evaluate` | Grade work against done-criteria with calibrated skepticism |
-| `/devlyn:clean` | Remove dead code, unused deps, complexity hotspots |
-
-### UI Design Pipeline
-
-| Step | Command | What It Does |
-|---|---|---|
-| 1 | `/devlyn:design-ui` | Generate 5 distinct style explorations |
-| 2 | `/devlyn:design-system` | Extract design tokens from chosen style |
-| 3 | `/devlyn:implement-ui` | Team builds it — component architect, UX, accessibility, responsive, visual QA |
-
-> Use `/devlyn:team-design-ui` for step 1 with a full creative team.
-
-### Planning & Docs
-
-| Command | What It Does |
-|---|---|
-| `/devlyn:preflight` | Verify codebase matches vision/roadmap — gap analysis with evidence |
-| `/devlyn:product-spec` | Generate or update product specs |
-| `/devlyn:feature-spec` | Turn product spec → implementable feature spec |
-| `/devlyn:discover-product` | Scan codebase → auto-generate product docs |
-| `/devlyn:recommend-features` | Prioritize top 5 features to build next |
-| `/devlyn:update-docs` | Sync all docs with current codebase |
+> Earlier versions of devlyn-cli shipped 16+ skills (auto-resolve / preflight / evaluate / review / team-review / clean / update-docs / browser-validate / product-spec / feature-spec / recommend-features / discover-product / design-ui / implement-ui). These were consolidated into `/devlyn:resolve` (which folds verification, review, and cleanup into its phases) plus `/devlyn:ideate` (which absorbs the planning surfaces) in the iter-0034 Phase 4 cutover (2026-05-04). Upgrades automatically remove the legacy skill directories from `~/.claude/skills/`.
 
 ---
 
@@ -197,7 +147,6 @@ These activate automatically — no commands needed. They shape how Claude think
 | `code-review-standards` | Reviews — severity framework, approval criteria |
 | `ui-implementation-standards` | UI work — design fidelity, accessibility, responsiveness |
 | `code-health-standards` | Maintenance — dead code prevention, complexity thresholds |
-| `workflow-routing` | Any task — guides you to the right command |
 
 ---
 
@@ -219,6 +168,9 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 | `dokkit` | Document template filling for DOCX/HWPX |
 | `devlyn:pencil-pull` | Pull Pencil designs into code |
 | `devlyn:pencil-push` | Push codebase UI to Pencil canvas |
+| `devlyn:reap` | Safely reap orphaned MCP / codex / Superset child processes |
+| `devlyn:design-system` | Extract design tokens from a chosen UI style for exact reproduction |
+| `devlyn:team-design-ui` | 5 distinct UI style explorations from a full design team |
 
 </details>
 
@@ -240,7 +192,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 | Server | Description |
 |---|---|
-| `playwright` | Playwright MCP — powers browser-validate Tier 2 |
+| `playwright` | Playwright MCP — powers `/devlyn:resolve` BUILD_GATE browser tier (Chrome MCP → Playwright → curl fallback) |
 
 > `--engine auto/codex` uses the local `codex` CLI binary, not MCP. Install from https://platform.openai.com/docs/codex; the harness silently downgrades to `--engine claude` if the CLI is missing.
 
@@ -257,9 +209,8 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 ## Contributing
 
-- **Add a command** — `.md` file in `config/commands/`
 - **Add a skill** — directory in `config/skills/` with `SKILL.md`
-- **Add optional skill** — add to `optional-skills/` and `OPTIONAL_ADDONS`
+- **Add optional skill** — add to `optional-skills/` and `OPTIONAL_ADDONS` in [`bin/devlyn.js`](bin/devlyn.js)
 - **Suggest a pack** — PR to the pack list
 
 ## Star History

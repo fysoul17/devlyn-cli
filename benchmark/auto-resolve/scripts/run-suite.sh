@@ -12,7 +12,7 @@
 #   run-suite.sh --judge-only --run-id X    # re-judge an existing run
 #   run-suite.sh --label v3.6               # tag this run
 #   run-suite.sh --bless                    # if ship-gate PASS, promote to baselines/shipped.json
-#   run-suite.sh --resolve-skill new        # invoke /devlyn:resolve --spec (default: old = /devlyn:auto-resolve)
+#   run-suite.sh --resolve-skill new        # invoke /devlyn:resolve --spec (the only supported value post iter-0034 cutover; flag kept as accepted no-op for historical runners)
 #
 # Exits 0 on PASS, 1 on FAIL.
 
@@ -29,7 +29,7 @@ RUN_ID_ARG=""
 BLESS=0
 ACCEPT_MISSING=0
 SUITE="golden"
-RESOLVE_SKILL="old"
+RESOLVE_SKILL="new"
 FIXTURES=()
 
 while [ $# -gt 0 ]; do
@@ -51,11 +51,16 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-# iter-0033 (C1) / iter-0033a: --resolve-skill picks NEW or OLD orchestrator.
-# Default `old` keeps pre-iter-0033 invocations identical. Validation here
-# mirrors run-fixture.sh.
-[ "$RESOLVE_SKILL" = "new" ] || [ "$RESOLVE_SKILL" = "old" ] || \
-  { echo "--resolve-skill must be 'new' or 'old' (got '$RESOLVE_SKILL')" >&2; exit 1; }
+# iter-0034 Phase 4 cutover (2026-05-03): OLD `/devlyn:auto-resolve` deleted.
+# Only `new` (= /devlyn:resolve --spec) is supported. The flag is retained as
+# an accepted no-op so historical runners (e.g. run-iter-0033c.sh) keep working
+# without edit. `old` is hard-errored with a pointer at the cutover commit.
+if [ "$RESOLVE_SKILL" = "old" ]; then
+  echo "--resolve-skill old is no longer supported: /devlyn:auto-resolve was deleted in the iter-0034 Phase 4 cutover. Use --resolve-skill new (default) or omit the flag." >&2
+  exit 1
+fi
+[ "$RESOLVE_SKILL" = "new" ] || \
+  { echo "--resolve-skill must be 'new' (got '$RESOLVE_SKILL')" >&2; exit 1; }
 
 # Suite → fixtures directory + discovery prefix.
 case "$SUITE" in

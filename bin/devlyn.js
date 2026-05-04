@@ -69,8 +69,15 @@ const DEPRECATED_FILES = [
   'commands/devlyn.pencil-push.md', // migrated to skills/devlyn:pencil-push
 ];
 
-// Skill directories renamed from devlyn-* to devlyn:* in v0.7.x
+// Skill directories renamed from devlyn-* to devlyn:* in v0.7.x, plus
+// iter-0034 Phase 4 cutover (2026-05-03): 15 user skills deleted and 3 moved
+// to optional-skills/. Listed here so post-cutover `npx devlyn-cli` upgrades
+// force-remove stale legacy skill dirs from downstream `~/.claude/skills/`
+// even though the source dirs no longer exist (cleanManagedSkillDirs only
+// removes target dirs that still exist in source — without this list,
+// deleted-from-source skills persist in user installs forever).
 const DEPRECATED_DIRS = [
+  // v0.7.x rename: devlyn-* → devlyn:*
   'skills/devlyn-clean',
   'skills/devlyn-design-system',
   'skills/devlyn-design-ui',
@@ -88,6 +95,28 @@ const DEPRECATED_DIRS = [
   'skills/devlyn-update-docs',
   'skills/devlyn-pencil-pull',
   'skills/devlyn-pencil-push',
+  // iter-0034 Phase 4 cutover: deleted user skills
+  'skills/devlyn:auto-resolve',
+  'skills/devlyn:browser-validate',
+  'skills/devlyn:clean',
+  'skills/devlyn:design-ui',
+  'skills/devlyn:discover-product',
+  'skills/devlyn:evaluate',
+  'skills/devlyn:feature-spec',
+  'skills/devlyn:implement-ui',
+  'skills/devlyn:preflight',
+  'skills/devlyn:product-spec',
+  'skills/devlyn:recommend-features',
+  'skills/devlyn:review',
+  'skills/devlyn:team-resolve',
+  'skills/devlyn:team-review',
+  'skills/devlyn:update-docs',
+  // iter-0034 Phase 4 cutover: moved to optional-skills/. Force-removed on
+  // upgrade so users only have them if they opt in via the interactive
+  // installer (matches the pencil-pull / pencil-push pattern).
+  'skills/devlyn:reap',
+  'skills/devlyn:design-system',
+  'skills/devlyn:team-design-ui',
 ];
 
 function getTargetDir() {
@@ -149,6 +178,9 @@ const OPTIONAL_ADDONS = [
   { name: 'dokkit', desc: 'Document template filling for DOCX/HWPX — ingest, fill, review, export', type: 'local' },
   { name: 'devlyn:pencil-pull', desc: 'Pull Pencil designs into code with exact visual fidelity', type: 'local' },
   { name: 'devlyn:pencil-push', desc: 'Push codebase UI to Pencil canvas for design sync', type: 'local' },
+  { name: 'devlyn:reap', desc: 'Safely reap orphaned MCP / codex / Superset child processes left behind by long Claude sessions', type: 'local' },
+  { name: 'devlyn:design-system', desc: 'Extract design tokens from a chosen UI style for exact reproduction (creative power-user)', type: 'local' },
+  { name: 'devlyn:team-design-ui', desc: '5 distinct UI style explorations from a full design team (creative power-user)', type: 'local' },
   // External skill packs (installed via npx skills add)
   { name: 'vercel-labs/agent-skills', desc: 'React, Next.js, React Native best practices', type: 'external' },
   { name: 'supabase/agent-skills', desc: 'Supabase integration patterns', type: 'external' },
@@ -159,7 +191,7 @@ const OPTIONAL_ADDONS = [
   // Note: the Codex integration uses the local `codex` CLI binary (not MCP).
   // Install the CLI separately per https://platform.openai.com/docs/codex — the
   // harness auto-detects availability and downgrades to Claude-only on failure.
-  { name: 'playwright', desc: 'Playwright MCP for browser testing — powers devlyn:browser-validate Tier 2', type: 'mcp', command: 'npx -y @anthropic-ai/mcp-playwright' },
+  { name: 'playwright', desc: 'Playwright MCP for browser testing — powers /devlyn:resolve BUILD_GATE browser tier', type: 'mcp', command: 'npx -y @anthropic-ai/mcp-playwright' },
 ];
 
 function log(msg, color = 'reset') {
@@ -265,7 +297,7 @@ function cleanupDeprecated(targetDir) {
     const fullPath = path.join(targetDir, relPath);
     if (fs.existsSync(fullPath)) {
       fs.rmSync(fullPath, { recursive: true });
-      log(`  ✕ ${relPath}/ (renamed)`, 'dim');
+      log(`  ✕ ${relPath}/ (removed)`, 'dim');
       removed++;
     }
   }

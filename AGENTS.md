@@ -1,43 +1,36 @@
 # Codex Project Instructions
 
-This file is the Codex counterpart to `CLAUDE.md`. `devlyn-cli` installs agent-facing project instructions and Claude Code skills into user projects, so these instructions must work both for this harness repository and for downstream projects that receive the file through the installer.
+devlyn-cli installs `/devlyn:ideate` (optional) and `/devlyn:resolve` (required) into Claude Code, plus the contract below. Codex CLI reads this file when invoked inside a project that has it. The principles are non-negotiable on every change.
 
-## Product Purpose
+## Core principles
 
-`devlyn-cli` is a context-engineering and harness-engineering toolkit. It installs structured prompts, Claude Code skills, agent configuration, and optional add-ons that turn normal development work into repeatable pipelines:
+Seven rules govern every change. Cite them by name when a decision touches one.
+
+1. **No workaround** — fix the root cause, never the symptom. No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded fallback that hides a broken contract.
+2. **No overengineering** — smallest change that closes the goal. New abstractions require an observed failure mode they prevent. Subtractive-first: ask "what can I delete instead?" before writing anything new.
+3. **No guesswork** — verify with the actual files, logs, diffs, and run output before forming conclusions. State the falsifiable prediction BEFORE the experiment; record raw results AFTER.
+4. **Worldclass** — code that survives review at a non-trivial codebase. Zero CRITICAL, zero HIGH security/design findings on the shippable path.
+5. **Best practice** — idiomatic for the language and framework. Use standard primitives; do not hand-roll what the library already provides.
+6. **Optimized** — efficient on the resource that matters (wall-time, tokens, attention, cognitive load on the next reader). "Slower but more thoughtful" is not free.
+7. **Production ready** — error states are explicit and visible; behavior under failure is what the user expects, not silent corruption.
+
+Three discipline rules govern HOW the principles are applied:
+
+- **Root cause via flexible why-chain.** Keep asking "why?" until you find the violated invariant. **If the answer surfaces in 2 questions, stop.** If it takes 5 or 7, keep going. Strict counts are wrong; until-found is right.
+- **First-principles thinking.** Challenge the requirement before optimizing the answer. Most "we have to do X" assumptions are habit, not necessity. Reduce to irreducible truths and rebuild from there.
+- **Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away.** — Saint-Exupéry. The operating definition of "done." A change is finished when no further line, branch, flag, or doc paragraph can be removed without breaking a learned failure mode.
+
+## Quick Start
 
 ```text
-ideate -> auto-resolve -> preflight -> fix gaps -> ship
+ideate (optional)  ->  resolve  ->  ship
 ```
 
-Primary commands:
+- `/devlyn:ideate` (optional) — unstructured idea → `docs/specs/<id>/spec.md` + `spec.expected.json`. Modes: default Q&A, `--quick` (autonomous-pipeline-safe), `--from-spec <path>`, `--project` (multi-feature).
+- `/devlyn:resolve` — hands-free pipeline for any coding task. Free-form goal, `--spec <path>`, or `--verify-only <ref> --spec <path>`. Phases run inline: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (fresh-subagent, findings-only).
+- Three creative power-user skills (`/devlyn:reap`, `/devlyn:design-system`, `/devlyn:team-design-ui`) live in `optional-skills/` and install only when the user opts in.
 
-- `/devlyn:ideate` turns an idea into `docs/VISION.md`, `docs/ROADMAP.md`, and implementation-ready item specs.
-- `/devlyn:auto-resolve` runs the autonomous build/evaluate/fix/review/docs pipeline.
-- `/devlyn:preflight` audits the codebase against the vision, roadmap, and specs.
-- Manual tools include `/devlyn:resolve`, `/devlyn:review`, `/devlyn:team-review`, `/devlyn:clean`, `/devlyn:update-docs`, and UI design/implementation skills.
-
-Each skill's `SKILL.md` is the source of truth for its flags and workflow. Do not duplicate detailed skill contracts here.
-
-## Scope Split
-
-There are two audiences. Keep them separate.
-
-- **Runtime skills / downstream user projects**: follow the runtime contract in `config/skills/_shared/runtime-principles.md` when available. Skills should not cite this harness-development contract to users.
-- **Harness development / autoresearch loop**: evolve `devlyn-cli` itself according to `autoresearch/NORTH-STAR.md`, `autoresearch/PRINCIPLES.md`, and `autoresearch/HANDOFF.md`.
-
-When working inside this repository, read `autoresearch/HANDOFF.md` before non-trivial changes. It records branch state, in-flight work, current experimental evidence, and rejected paths.
-
-## Non-Negotiable Principles
-
-Every meaningful change is checked against these principles:
-
-1. **No overengineering**: make the smallest change that closes the hypothesis. Prefer deletion before addition. New abstractions require an observed failure mode they prevent.
-2. **No guesswork**: inspect the actual files, logs, diffs, and docs before forming conclusions. Make falsifiable predictions before experiments and record raw results after.
-3. **No workaround**: fix root causes. No `any`, no `@ts-ignore`, no silent catches, no hardcoded fallbacks, and no helper scripts that bypass the real issue.
-4. **Worldclass production-ready**: zero CRITICAL and zero HIGH design/security findings on the shippable path. Fixture-level blockers cannot be averaged away.
-5. **Best practice**: use idiomatic language/framework primitives. Do not hand-roll helpers that replace standard library or framework behavior without evidence.
-6. **Layer-cost-justified**: every extra model, agent, phase, or composition layer must beat the simpler baseline on both quality and wall-time efficiency.
+Each skill's `SKILL.md` is the source of truth for flags and workflow. Do not duplicate.
 
 ## Subtractive-First Editing
 
@@ -49,11 +42,11 @@ Before writing any change, answer in this order:
 
 Hard rules:
 
-- A pure-addition diff needs a citation: an explicit user/spec requirement or an observed failure mode.
-- Refactor-only changes should reduce line count unless a real failure requires the new shape.
+- A pure-addition diff needs a citation: an explicit user/spec requirement OR an observed failure mode.
+- Refactor-only changes should reduce line count unless a cited failure requires the new shape.
 - Do not add flags, branches, or options for hypothetical users.
 - Do not add defensive wrappers when an upstream contract can be corrected instead.
-- Doc growth has the same cost as code growth. Delete stale or superseded prose before adding new prose.
+- Doc growth has the same cost as code growth. Delete the now-stale sentence before adding new prose.
 - A change is not done until you have attempted one more deletion and confirmed it would break something.
 
 ## Goal-Locked Execution
@@ -62,77 +55,46 @@ Default mode is execution toward the user's stated goal. Do not drift.
 
 Refuse these patterns:
 
-- Unrequested work: "while here, also fix..."
+- Unrequested work ("while here, also fix...").
 - Tangential cleanup in files the task does not require.
 - Speculative robustness for cases not observed in production, tests, findings, or the spec.
 - Mid-flight re-scoping without user approval.
 - Curiosity exploration that is not on the critical path.
 
-The drift test: **Did the user ask for this, or does the stated goal strictly require it?** If not, surface it as a follow-up note instead of editing it.
+Drift test: **did the user ask for this, OR does the stated goal strictly require it?** If both no, surface it as a follow-up note and continue on the original path.
 
-In interactive sessions, ask a concise clarification when scope expansion is real. In hands-free pipelines, do not pause for prompts; stay on scope and log the assumption/follow-up in the final artifact.
+In interactive sessions, ask a concise clarification when scope expansion is real. In hands-free pipelines, stay on scope and log the assumption in the final artifact.
 
 ## Error Handling
 
 No silent fallbacks.
 
 - Show clear errors, retry paths, or actionable guidance.
-- Fallbacks are allowed only when they are widely accepted and harmless, such as CSS fallback fonts, CDN failover, or image placeholders.
+- Fallbacks allowed only when widely accepted and harmless (CSS fallback fonts, CDN failover, image placeholders).
 - Silent `catch` blocks are bugs.
 - Logging is not user-visible error handling.
-- The documented Codex CLI availability downgrade is the one known exception in this harness: it must emit the `engine downgraded: codex-unavailable` banner and behave exactly like explicit Claude routing.
+- The Codex CLI availability downgrade is the one documented exception: emit `engine downgraded: codex-unavailable` and behave exactly like explicit Claude routing.
 
 ## Evidence Over Claim
 
-Every finding must cite concrete evidence.
+Every finding cites concrete evidence:
 
-- Code finding: `file:line` you opened.
+- Code: `file:line` you opened.
 - Missing implementation: state exactly what you searched and found absent.
-- Doc finding: cite the stale text and section/line.
-- Browser finding: include route/URL and screenshot or equivalent observed evidence.
-- Benchmark or experiment claim: cite run id, fixture id, metric, and raw result path.
+- Doc: cite the stale text + section/line.
+- Browser: route/URL + screenshot or observed evidence.
+- Benchmark: run id, fixture id, metric, raw result path.
 
-Exclude vague claims. Vague findings create vague fixes.
+Exclude vague claims. They produce vague fixes.
 
-## Codex / Multi-Model Use
-
-Do not delegate decisions to another model. Reason independently first, then use cross-model review as falsification.
-
-When this repository asks for Codex companion review, use the monitored wrapper documented in `config/skills/_shared/codex-config.md` and `CLAUDE.md`. Send rich evidence and a draft conclusion; ask for disproof, not permission.
-
-Keep runtime cost separate from harness-development cost:
-
-- Harness development can use pair review more freely because improvements amortize across future runs.
-- Runtime user-task pipelines must aggressively gate pair calls because every extra phase costs the user time and tokens.
-
-## Working In This Repository
+## Working In a devlyn-cli Project
 
 - Check `git status --short` before editing.
 - Never revert user changes unless explicitly asked.
 - Use `rg` / `rg --files` for search.
-- Use `apply_patch` for manual edits.
 - Keep changes scoped to the task.
-- Run `bash scripts/lint-skills.sh` after changes to skills, runtime principles, installer logic, README/CLAUDE/AGENTS guidance, or critical harness docs.
-- For CLI code changes, run the narrow Node/script validation that exercises the touched path.
-- Follow `config/commit-conventions.md` for commits.
-
-Important files:
-
-- `bin/devlyn.js`: installer and CLI entrypoint.
-- `config/skills/`: installed Claude Code skills.
-- `config/skills/_shared/runtime-principles.md`: runtime sub-agent contract.
-- `agents-config/`: instructions installed for other AI CLIs.
-- `autoresearch/`: harness experiments, decisions, handoffs, and North Star.
-- `benchmark/auto-resolve/`: benchmark fixtures and A/B evaluation harness.
-
-## Installed Project Guidance
-
-When this file is installed into another project:
-
-- Treat that project's own `AGENTS.md`, `CLAUDE.md`, `docs/VISION.md`, `docs/ROADMAP.md`, and `docs/roadmap/**` as local source of truth when present.
-- Prefer `/devlyn:ideate -> /devlyn:auto-resolve -> /devlyn:preflight` for substantial product work.
-- For small direct fixes, inspect the code, make the minimal scoped change, and run relevant validation.
-- Preserve the same principles: no workaround, no guesswork, no overengineering, worldclass production-ready, best practice, evidence over claim.
+- For installer or skill edits inside the devlyn-cli source repo, run `bash scripts/lint-skills.sh`.
+- Treat the project's own `docs/VISION.md`, `docs/ROADMAP.md`, `docs/roadmap/**`, and any local `AGENTS.md` / `CLAUDE.md` overrides as authoritative when present.
 
 ## Communication
 
@@ -140,4 +102,3 @@ When this file is installed into another project:
 - Be concise and specific.
 - State blockers plainly.
 - Separate completed work, verification, and remaining risks.
-

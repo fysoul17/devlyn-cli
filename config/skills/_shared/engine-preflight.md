@@ -1,6 +1,6 @@
 # Shared — `--engine` Pre-flight
 
-Used by `devlyn:auto-resolve`, `devlyn:ideate`, `devlyn:preflight`. One shared availability rule so every skill routes identically.
+Used by `/devlyn:resolve` and `/devlyn:ideate`. One shared availability rule so every skill routes identically.
 
 ## Rule
 
@@ -14,7 +14,7 @@ When the resolved engine is `auto` or `codex`, on entry (before spawning any pha
 
 Never prompt the user. Never abort the run on missing CLI.
 
-Per-skill defaults: `devlyn:auto-resolve` defaults to `claude` (post iter-0020 close-out — pair-mode below quality floor); `devlyn:ideate`, `devlyn:preflight`, `devlyn:team-resolve`, and `devlyn:team-review` default to `auto`. Each skill's SKILL.md flag block is the source of truth for that skill's default.
+Per-skill defaults: `/devlyn:resolve` defaults to `claude` (post iter-0020 close-out — Codex BUILD/IMPLEMENT below quality floor; iter-0033g + iter-0034 close-out — PLAN-pair research-only until container/sandbox infra justifies a measurement); `/devlyn:ideate` defaults to `auto` for the CHALLENGE phase's cross-model GAN-critic dynamic. Each skill's SKILL.md flag block is the source of truth for that skill's default.
 
 ## Why this is the one permitted silent fallback
 

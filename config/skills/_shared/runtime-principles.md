@@ -1,6 +1,6 @@
 # Runtime principles — sub-agent contract
 
-The runtime contract every sub-agent (BUILD / EVAL / CRITIC / DOCS / preflight auditors / fix-loop) must satisfy. Source of truth for sub-agent behavior on user tasks. NOT for autoresearch-loop / harness-developer concerns (see `autoresearch/PRINCIPLES.md`).
+The runtime contract every sub-agent inside `/devlyn:resolve` (PLAN / IMPLEMENT / BUILD_GATE / CLEANUP / VERIFY) and `/devlyn:ideate` (FRAME / EXPLORE / SPEC / CHALLENGE) must satisfy. Source of truth for sub-agent behavior on user tasks. NOT for autoresearch-loop / harness-developer concerns (see `autoresearch/PRINCIPLES.md`).
 
 The four sections below mirror the corresponding CLAUDE.md sections (Subtractive-first editing, Goal-locked execution, No-workaround discipline, Evidence over claim). Each section is wrapped in `<!-- runtime-principles:section=NAME:begin -->` / `:end -->` markers in BOTH this file and CLAUDE.md; lint Check 12 (added in iter-0019.A Step 5) extracts each named block from both files and diffs to detect drift.
 
@@ -58,7 +58,7 @@ This rule exists because LLMs (including you) are trained to be helpful, compreh
 
 **The single drift test before any deviation from the stated goal:** *"Did the user ask for this, OR does the user's stated goal strictly require it?"* If the answer to both is no, do not do it. Surface it as a note (commit message, end-of-turn summary, finding) and continue on the original path.
 
-**Creative-mode is the narrow exception, not the default.** Creative-mode applies only when (a) the user explicitly invoked an ideation/exploration surface (`/devlyn:ideate`, `/devlyn:design-ui`, "let's brainstorm", "explore options for"), OR (b) the goal is genuinely under-specified and a clarifying question is impossible (extremely rare — usually you should ask). For everything else — bug fixes, feature work, refactors, doc updates, pipeline runs, code review, debugging — execution-mode is the default and drift is a defect, not a feature.
+**Creative-mode is the narrow exception, not the default.** Creative-mode applies only when (a) the user explicitly invoked an ideation/exploration surface (`/devlyn:ideate`, optional `/devlyn:design-system`, "let's brainstorm", "explore options for"), OR (b) the goal is genuinely under-specified and a clarifying question is impossible (extremely rare — usually you should ask). For everything else — bug fixes, feature work, refactors, doc updates, pipeline runs, code review, debugging — execution-mode is the default and drift is a defect, not a feature.
 
 **Anti-rationalization clause** — explicitly guarding against LLM hedging:
 
@@ -67,7 +67,7 @@ This rule exists because LLMs (including you) are trained to be helpful, compreh
 - "It would be incomplete without this" is **not** a justification. The user defines completeness, not your sense of it.
 - "I'm being thorough" is **not** a justification. Thoroughness on the requested goal is required; thoroughness extending past the goal is drift.
 
-**When in doubt, ask — outside hands-free pipelines.** In interactive sessions a short clarification ("the requested fix touches the X code path; I notice Y also looks broken — should I fix it in this change or surface it as a follow-up?") is always cheaper than a wrong-scope diff. Asking is not a weakness; silently expanding scope is. **Inside hands-free pipelines** (`/devlyn:auto-resolve`, scheduled remote agents, autonomous skill runs) the contract forbids mid-pipeline prompts — there asking is unsafe because there is no user to answer. The substitute is: stay strictly on the requested goal, do not expand scope, and log the question/assumption explicitly in the final report (or `.devlyn/runs/<run_id>/` artifacts) so the user can adjudicate after the run completes. Choosing scope creep over logging-and-staying-on-path is always wrong.
+**When in doubt, ask — outside hands-free pipelines.** In interactive sessions a short clarification ("the requested fix touches the X code path; I notice Y also looks broken — should I fix it in this change or surface it as a follow-up?") is always cheaper than a wrong-scope diff. Asking is not a weakness; silently expanding scope is. **Inside hands-free pipelines** (`/devlyn:resolve`, scheduled remote agents, autonomous skill runs) the contract forbids mid-pipeline prompts — there asking is unsafe because there is no user to answer. The substitute is: stay strictly on the requested goal, do not expand scope, and log the question/assumption explicitly in the final report (or `.devlyn/runs/<run_id>/` artifacts) so the user can adjudicate after the run completes. Choosing scope creep over logging-and-staying-on-path is always wrong.
 
 **Stopping rule.** A task is done when the user's stated goal is closed AND no off-path work was added. If you find yourself hesitating because "I should also do Z" — Z is drift. Note it for follow-up, do not execute.
 <!-- runtime-principles:section=goal-locked:end -->

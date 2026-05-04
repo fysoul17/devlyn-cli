@@ -122,14 +122,10 @@ if [ ! -d .claude/skills ]; then
   ok "no .claude/skills (fresh checkout) — skipping parity check"
 else
   drift=0
+  # iter-0034 Phase 4 cutover (2026-05-03): legacy skill paths dropped.
+  # Surface is the 2-skill product (`/devlyn:resolve` + `/devlyn:ideate`)
+  # plus the `_shared/` kernel.
   for rel in \
-      devlyn:auto-resolve/SKILL.md \
-      devlyn:auto-resolve/references/engine-routing.md \
-      devlyn:auto-resolve/references/build-gate.md \
-      devlyn:auto-resolve/references/pipeline-state.md \
-      devlyn:auto-resolve/references/phases/phase-1-build.md \
-      devlyn:auto-resolve/references/phases/phase-2-evaluate.md \
-      devlyn:auto-resolve/references/phases/phase-3-critic.md \
       _shared/spec-verify-check.py \
       devlyn:ideate/SKILL.md \
       devlyn:ideate/references/spec-template.md \
@@ -148,12 +144,6 @@ else
       _shared/adapters/README.md \
       _shared/adapters/opus-4-7.md \
       _shared/adapters/gpt-5-5.md \
-      devlyn:preflight/SKILL.md \
-      devlyn:preflight/references/report-template.md \
-      devlyn:preflight/references/auditors/code-auditor.md \
-      devlyn:preflight/references/auditors/browser-auditor.md \
-      devlyn:team-resolve/SKILL.md \
-      devlyn:team-review/SKILL.md \
       _shared/codex-config.md \
       _shared/codex-monitored.sh \
       _shared/pair-plan-schema.md \
@@ -165,14 +155,6 @@ else
     fi
     if ! diff -q "$src" "$dst" >/dev/null 2>&1; then
       bad "$rel — source and installed differ"
-      drift=1
-    fi
-  done
-  # Scripts and evals must be present in installed auto-resolve
-  for rel in scripts/terminal_verdict.py scripts/archive_run.py evals/evals.json; do
-    if [ -f "config/skills/devlyn:auto-resolve/$rel" ] \
-       && [ ! -f ".claude/skills/devlyn:auto-resolve/$rel" ]; then
-      bad "installed mirror missing: devlyn:auto-resolve/$rel"
       drift=1
     fi
   done
@@ -270,28 +252,9 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 7. Findings-producing standalones declare pipeline-compatible sidecar.
-# Ensures CLAUDE.md's "share the .devlyn/*.findings.jsonl schema" claim stays true.
-# ---------------------------------------------------------------------------
-section "Check 7: Findings-producing standalones declare JSONL sidecar"
-missing=0
-for skill in evaluate review clean team-review; do
-  f="config/skills/devlyn:$skill/SKILL.md"
-  [ -f "$f" ] || { bad "$f — SKILL.md missing"; missing=1; continue; }
-  if ! grep -q 'Pipeline-Compatible Sidecar' "$f"; then
-    bad "$f — missing 'Pipeline-Compatible Sidecar' section"
-    missing=1
-    continue
-  fi
-  if ! grep -q "\.devlyn/${skill//-/_}\.findings\.jsonl" "$f"; then
-    bad "$f — sidecar section missing '.devlyn/${skill//-/_}.findings.jsonl' path"
-    missing=1
-  fi
-done
-if [ $missing -eq 0 ]; then
-  ok "all 4 findings-producing standalones emit JSONL sidecar"
-fi
-
+# (Check 7 retired iter-0034 Phase 4 cutover: the 4 findings-producing
+# standalones — evaluate / review / clean / team-review — were deleted; the
+# JSONL sidecar contract no longer has a surface to enforce.)
 # ---------------------------------------------------------------------------
 # 12. CLAUDE.md ↔ _shared/runtime-principles.md per-section excerpt parity (iter-0019.A).
 # Sub-agent prompts inline the runtime contract from runtime-principles.md; that file

@@ -1,6 +1,6 @@
-# Five Principles — operational, not aspirational
+# Iteration Principles — operational, not aspirational
 
-Every iteration must be checked against these five before it ships. Each principle has a concrete operational test — not a vibe, not a slogan. If a principle has no operational test in this file, it is decoration and gets cut on the next pass.
+Every iteration must be checked against pre-flight 0 plus principles #1-#7 before it ships. Each principle has a concrete operational test — not a vibe, not a slogan. If a principle has no operational test in this file, it is decoration and gets cut on the next pass.
 
 These principles live HERE (referenced from iteration files) rather than in CLAUDE.md because they are the contract for *evolving* the harness, not for *executing* it. CLAUDE.md is the doctrine the harness reads at run time; this file is the doctrine the iteration loop reads at change time. Different cadence, different audience.
 
@@ -69,7 +69,7 @@ When a bug is non-trivial — recurring, cross-module, or a workaround is being 
 
 **Operational test (per iteration):**
 
-- For any iteration triggered by a bug or regression: the iteration file documents at least three "why?" steps in the Mechanism section.
+- For any iteration triggered by a bug or regression: the iteration file documents the why-chain until it reaches the violated invariant. **Stop when the invariant surfaces — do not force a fixed count.** Two why-steps that land on a real invariant are sufficient; seven that still haven't reached one mean keep going.
 - The fix lands at the deepest level the why-chain reached, not at the symptom level.
 - An LLM-side workaround (silent catch, `any`, `@ts-ignore`, hardcoded fallback) appearing in the diff is a hard reject — even if the benchmark margin would improve with it.
 - A configuration workaround in the benchmark harness (e.g. "skip phase X for fixture Y") is also a hard reject for skill-level iterations. It is acceptable only as a benchmark-infrastructure fix that the iteration explicitly scopes itself to.

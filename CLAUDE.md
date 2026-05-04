@@ -1,29 +1,33 @@
 # Project Instructions
 
-## Outer goal — read first if you do not already know it
+devlyn-cli installs `/devlyn:ideate` (optional) and `/devlyn:resolve` (required) into Claude Code, plus the contract below. These principles are non-negotiable on every change — yours and any sub-agent's.
 
-**This block is for the harness developer / autoresearch loop, not for run-time skills.** Skills (`/devlyn:auto-resolve`, `/devlyn:ideate`, `/devlyn:preflight`, etc.) are the *product* this contract is meant to evolve into world-class software — they should not themselves cite the contract.
+## Core principles
 
-**Goal**: the harness composes frontier LLMs into a hands-free pipeline that delivers engineer-quality software for users who do not know context engineering. Two first-class user groups: single-LLM (Opus alone, GPT-5.5 alone) and multi-LLM (Claude + Codex). Three composition layers: **L0** bare LLM, **L1** solo harness on a single LLM, **L2** pair harness with `solo` / `pair_critic` / `pair_consensus` modes per phase. Each layer must beat the previous on **both quality and wall-time efficiency** — concretely, each layer must beat `previous-layer-best-of-N` where N is the wall-time ratio.
+Seven rules govern every change. Cite them by name when a decision touches one.
 
-**Five principles** every iteration is checked against (canonical in [`autoresearch/PRINCIPLES.md`](autoresearch/PRINCIPLES.md), summarized so a fresh session has them in working memory without opening another file):
+1. **No workaround** — fix the root cause, never the symptom. No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded fallback that hides a broken contract. Configuration-level skips that bypass the real issue are also rejects.
+2. **No overengineering** — smallest change that closes the goal. New abstractions require an observed failure mode they prevent. Subtractive-first: ask "what can I delete instead?" before writing anything new.
+3. **No guesswork** — verify with the actual files, logs, diffs, and run output before forming conclusions. State the falsifiable prediction BEFORE the experiment; record raw results AFTER. Retroactive prediction edits are dishonest.
+4. **Worldclass** — code that survives review at a non-trivial codebase. Zero CRITICAL, zero HIGH security/design findings on the shippable path.
+5. **Best practice** — idiomatic for the language and framework. Use standard primitives; do not hand-roll what the library already provides.
+6. **Optimized** — efficient on the resource that matters (wall-time, tokens, attention, cognitive load on the next reader). "Slower but more thoughtful" is not free. Each layer of composition or process must beat the simpler baseline.
+7. **Production ready** — error states are explicit and visible; behavior under failure is what the user expects, not silent corruption.
 
-1. **No overengineering** — smallest change that closes the hypothesis; new abstractions require an observed failure mode they prevent. **Subtractive-first**: before adding a line, file, abstraction, or flag, ask "what can I delete instead?" Net-deletions and net-additions are NOT equally good defaults — when both close the hypothesis, deletion wins. A change that only adds is suspect until justified.
-2. **No guesswork** — falsifiable hypothesis BEFORE the experiment, predicted metric/direction filled in BEFORE the run, raw data filled in AFTER (no retroactive prediction edits).
-3. **No workaround** — root-cause fixes via 3+ step why-chain. No `any`, no `@ts-ignore`, no silent catches, no hardcoded fallbacks. Configuration-level skips in skill iters are also rejects.
-4. **Worldclass production-ready** — zero CRITICAL, zero HIGH `design.*` / `security.*` findings on the variant arm; aggregate margin can never excuse a fixture-level ship-blocker.
-5. **Best practice** — idiomatic for the language/framework; zero MEDIUM `design.unidiomatic-pattern` findings (no hand-rolled helpers replacing standard primitives).
-6. **Layer-cost-justified** — each composition layer beats `previous-layer-best-of-N` on both quality and wall-time efficiency; pair-mode phases must declare a deterministic short-circuit rule and a wall-time budget abort.
+Three discipline rules govern HOW the principles are applied:
 
-Full contract: [`autoresearch/NORTH-STAR.md`](autoresearch/NORTH-STAR.md). Per-iteration doctrine: [`autoresearch/PRINCIPLES.md`](autoresearch/PRINCIPLES.md). Branch-state + in-flight work: [`autoresearch/HANDOFF.md`](autoresearch/HANDOFF.md).
+- **Root cause via flexible why-chain.** Keep asking "why?" until you find the violated invariant. **If the answer surfaces in 2 questions, stop.** If it takes 5 or 7, keep going. Strict counts are wrong; until-found is right.
+- **First-principles thinking.** Challenge the requirement before optimizing the answer. Most "we have to do X" assumptions are habit, not necessity. Reduce the problem to its irreducible truths and rebuild from there.
+- **Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away.** — Saint-Exupéry. This is the operating definition of "done." A change is finished when no further line, branch, flag, or doc paragraph can be removed without breaking a learned failure mode. Not before.
+
+The runtime sub-agent contract below (Subtractive-first / Goal-locked / No-workaround discipline / Evidence over claim) expands these principles into concrete operational tests. Sub-agents in `/devlyn:resolve` and `/devlyn:ideate` enforce them at every phase.
 
 ## Quick Start
 
-Three commands cover most work. **`/devlyn:auto-resolve` defaults to `--engine claude`** post iter-0020 close-out — its experimental dual-engine `--engine auto` mode is currently disabled by default because it costs more and regresses quality on the 9-fixture benchmark suite (see [`autoresearch/iterations/0020-pair-policy-narrow.md`](autoresearch/iterations/0020-pair-policy-narrow.md)); pass `--engine auto` explicitly to opt into the research path. **`/devlyn:ideate` and `/devlyn:preflight` keep `--engine auto` as their default** — they have no measured pair-mode failure and use the cross-model GAN-critic dynamic deliberately.
+Two skills cover the full cycle post iter-0034 Phase 4 cutover (2026-05-04). `/devlyn:ideate` is OPTIONAL; `/devlyn:resolve` is REQUIRED. **Both default to `--engine claude`** — pair / multi-engine routing is research-only at HEAD per the iter-0020 + iter-0033g + iter-0034 close-outs (see [`autoresearch/iterations/0020-pair-policy-narrow.md`](autoresearch/iterations/0020-pair-policy-narrow.md) + [`autoresearch/iterations/0034-phase-4-cutover.md`](autoresearch/iterations/0034-phase-4-cutover.md)). Pass `--engine auto` or `--engine codex` explicitly to opt into the research path; the harness silently downgrades to `claude` and emits a banner if the Codex CLI is missing.
 
-1. `/devlyn:ideate` — unstructured idea → VISION/ROADMAP/item specs
-2. `/devlyn:auto-resolve "Implement per spec at docs/roadmap/phase-N/X-name.md"` — hands-free build → evaluate → ship
-3. `/devlyn:preflight` — verify the implementation matches the roadmap
+1. `/devlyn:ideate` (optional) — unstructured idea → `docs/specs/<id>/spec.md` + `spec.expected.json`. Modes: default Q&A, `--quick` (autonomous-pipeline-safe), `--from-spec <path>`, `--project`.
+2. `/devlyn:resolve` — hands-free pipeline for any coding task. Free-form goal, `--spec <path>`, or `--verify-only <diff> --spec <path>`. Phases: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (fresh subagent, findings-only).
 
 Each skill's `SKILL.md` is the source of truth for its flags and workflow — don't duplicate them here.
 
@@ -31,23 +35,11 @@ Each skill's `SKILL.md` is the source of truth for its flags and workflow — do
 
 | Situation | Command |
 |-----------|---------|
-| New project or shifting direction | `/devlyn:ideate` (greenfield) |
-| Existing roadmap, new feature/bug idea | `/devlyn:ideate` (quick add) |
-| One spec ready to implement | `/devlyn:auto-resolve "Implement per spec at …"` |
-| Roadmap complete, need verification | `/devlyn:preflight` |
-| Focused debugging (no pipeline) | `/devlyn:resolve` |
-| Manual post-change review | `/devlyn:review` or `/devlyn:team-review` |
-
-## Harness Principles (Karpathy 4)
-
-Every skill in this repo is an instance of these four. Apply them to the edit in front of you before adding anything new.
-
-1. **Think Before Coding** — surface hidden assumptions. If a step looks obvious, name the assumption it rests on; if the assumption is wrong, the step is wrong.
-2. **Simplicity First** — delete before you add (full operational rule below).
-3. **Surgical Changes** — touch only what the goal requires (full operational rule below in "Goal-locked execution").
-4. **Goal-Driven Execution** — hand the subagent a goal and an acceptance check, not a procedure. If you're writing step-by-step instructions, ask whether the verification loop can catch the failure instead.
-
-The current harness is already the product of many surgical passes. The next change should be equally targeted.
+| New project / multi-feature plan / external spec to normalize | `/devlyn:ideate` (`--project`, default, or `--from-spec`) |
+| One-line goal you want turned into a spec autonomously | `/devlyn:ideate --quick` |
+| Spec already in hand | `/devlyn:resolve --spec <path>` |
+| Free-form fix / feature / refactor / debug / PR review | `/devlyn:resolve "<describe the work>"` |
+| Verify a diff or PR against a spec | `/devlyn:resolve --verify-only <ref> --spec <path>` |
 
 ### Subtractive-first editing — perfection = nothing left to remove
 <!-- runtime-principles:section=subtractive-first:begin -->
@@ -102,7 +94,7 @@ This rule exists because LLMs (including you) are trained to be helpful, compreh
 
 **The single drift test before any deviation from the stated goal:** *"Did the user ask for this, OR does the user's stated goal strictly require it?"* If the answer to both is no, do not do it. Surface it as a note (commit message, end-of-turn summary, finding) and continue on the original path.
 
-**Creative-mode is the narrow exception, not the default.** Creative-mode applies only when (a) the user explicitly invoked an ideation/exploration surface (`/devlyn:ideate`, `/devlyn:design-ui`, "let's brainstorm", "explore options for"), OR (b) the goal is genuinely under-specified and a clarifying question is impossible (extremely rare — usually you should ask). For everything else — bug fixes, feature work, refactors, doc updates, pipeline runs, code review, debugging — execution-mode is the default and drift is a defect, not a feature.
+**Creative-mode is the narrow exception, not the default.** Creative-mode applies only when (a) the user explicitly invoked an ideation/exploration surface (`/devlyn:ideate`, optional `/devlyn:design-system`, "let's brainstorm", "explore options for"), OR (b) the goal is genuinely under-specified and a clarifying question is impossible (extremely rare — usually you should ask). For everything else — bug fixes, feature work, refactors, doc updates, pipeline runs, code review, debugging — execution-mode is the default and drift is a defect, not a feature.
 
 **Anti-rationalization clause** — explicitly guarding against LLM hedging:
 
@@ -111,7 +103,7 @@ This rule exists because LLMs (including you) are trained to be helpful, compreh
 - "It would be incomplete without this" is **not** a justification. The user defines completeness, not your sense of it.
 - "I'm being thorough" is **not** a justification. Thoroughness on the requested goal is required; thoroughness extending past the goal is drift.
 
-**When in doubt, ask — outside hands-free pipelines.** In interactive sessions a short clarification ("the requested fix touches the X code path; I notice Y also looks broken — should I fix it in this change or surface it as a follow-up?") is always cheaper than a wrong-scope diff. Asking is not a weakness; silently expanding scope is. **Inside hands-free pipelines** (`/devlyn:auto-resolve`, scheduled remote agents, autonomous skill runs) the contract forbids mid-pipeline prompts — there asking is unsafe because there is no user to answer. The substitute is: stay strictly on the requested goal, do not expand scope, and log the question/assumption explicitly in the final report (or `.devlyn/runs/<run_id>/` artifacts) so the user can adjudicate after the run completes. Choosing scope creep over logging-and-staying-on-path is always wrong.
+**When in doubt, ask — outside hands-free pipelines.** In interactive sessions a short clarification ("the requested fix touches the X code path; I notice Y also looks broken — should I fix it in this change or surface it as a follow-up?") is always cheaper than a wrong-scope diff. Asking is not a weakness; silently expanding scope is. **Inside hands-free pipelines** (`/devlyn:resolve`, scheduled remote agents, autonomous skill runs) the contract forbids mid-pipeline prompts — there asking is unsafe because there is no user to answer. The substitute is: stay strictly on the requested goal, do not expand scope, and log the question/assumption explicitly in the final report (or `.devlyn/runs/<run_id>/` artifacts) so the user can adjudicate after the run completes. Choosing scope creep over logging-and-staying-on-path is always wrong.
 
 **Stopping rule.** A task is done when the user's stated goal is closed AND no off-path work was added. If you find yourself hesitating because "I should also do Z" — Z is drift. Note it for follow-up, do not execute.
 <!-- runtime-principles:section=goal-locked:end -->
@@ -149,57 +141,20 @@ A finding without one of these forms is excluded. Vague findings produce vague f
 
 ## Codex invocation
 
-Skills call Codex via the local `codex exec` CLI (shipped by the `openai-codex` Claude Code plugin). See `config/skills/_shared/codex-config.md` for the canonical flag set. Omit `-m <model>`; the CLI's current flagship (today `gpt-5.5`, automatically whatever ships next) is used — zero-touch on upgrades. MCP is not in the loop.
-
-### Codex companion pair-review (autoresearch loop, NOT runtime skills)
-
-Two distinct surfaces use the local `codex exec` CLI for different audiences:
-
-**Skills (run-time, user-task)**: when a Skill spawns Codex as part of executing a user's task (e.g. `/devlyn:auto-resolve` calling Codex BUILD), follow the wrapper-form contract in `config/skills/_shared/engine-routing.md` and `_shared/codex-config.md`. Decision-mode taxonomy (`solo` / `pair_critic` / `pair_consensus`) lives in `autoresearch/NORTH-STAR.md` and lands as policy in iter-0020. Until then, skill-level pair patterns (CRITIC = Codex critiques Claude, etc.) are the legacy shape.
-
-**Autoresearch loop (change-time, harness developer)**: when *we* (the developer or the iteration loop) consult Codex for cross-model review of a harness change — design verdicts, hypothesis pre-checks, PR-style audits — use the companion wrapper:
-
-```bash
-bash config/skills/_shared/codex-monitored.sh \
-  -C /Users/aipalm/Documents/GitHub/devlyn-cli \
-  -s read-only \
-  -c model_reasoning_effort=xhigh \
-  "<your prompt>"
-```
-
-Pattern (per `feedback_codex_cross_check.md` + `feedback_user_directions_vs_debate.md`):
-
-1. **Reason independently first.** Form your own verdict with concrete evidence (file paths, line numbers, raw data, expected vs actual). Never delegate the decision.
-2. **Send Codex rich evidence**, not "what should I do?" prompts. Include your draft conclusion and ask for falsification — Codex acts as a GAN critic.
-3. **Surface Codex pushback transparently.** When Codex disagrees, present both views to the user; do not silently adopt either side. The user's direction is the final arbiter.
-4. **Never pipe the wrapper output** (`| tail`, `| head`, `| grep` without `--line-buffered`). The wrapper refuses pipe-stdout per iter-0009 to prevent byte-watchdog starvation. Read the persisted output file the wrapper writes when output is large.
-
-This is "iteration-loop pair," distinct from "auto-resolve pair" — same vocabulary (`solo` / `pair_critic` / `pair_consensus`), different thresholds. Iteration-loop pair is human-supervised meta-work; the cost is amortized over harness improvements that affect every future run, so pair freely on non-trivial changes. Auto-resolve pair is hands-free user-task execution; every pair call is paid by the user on every run, so it must be aggressively gated (iter-0020).
-
-Where the cumulative companion-pair history lives: `autoresearch/HANDOFF.md` "Codex collaboration log (running)" — append-only, one line per round.
+When `/devlyn:resolve` or `/devlyn:ideate` route a phase to Codex (`--engine codex` or `--engine auto`), the wrapper-form contract lives in `config/skills/_shared/codex-config.md` (or `.claude/skills/_shared/codex-config.md` once installed). Omit `-m <model>` — the CLI's current flagship is used automatically. MCP is not in the loop. If the Codex CLI is absent the harness silently downgrades to Claude and prints `engine downgraded: codex-unavailable` in the final report.
 
 ## Working Mode
 
 - **Checkpoint with TaskCreate / TaskUpdate.** Long investigations or multi-phase work: create tasks at start, mark completed as each one closes — don't batch.
 - **Don't stop early on token-budget concerns.** Context auto-compacts; the model resumes after compaction. Run the work to a real stopping point.
-- **Persist across context windows via disk.** auto-resolve writes `.devlyn/runs/<run_id>/` (`pipeline.state.json`, `<phase>.findings.jsonl`, `<phase>.log.md`); preflight writes `.devlyn/PREFLIGHT-REPORT.md`; for ad-hoc long work use `HANDOFF.md` and resume with `@HANDOFF.md continue`.
-- **Fan out with `/devlyn:team-resolve` or parallel `Agent` subagents only for explicit complex scope** — a single perspective is the default on the auto-resolve hot path.
+- **Persist across context windows via disk.** `/devlyn:resolve` writes `.devlyn/pipeline.state.json` plus per-phase log/findings under `.devlyn/runs/<run_id>/`; for ad-hoc long work use `HANDOFF.md` and resume with `@HANDOFF.md continue`.
+- **Fan out with parallel `Agent` subagents only for explicit complex scope** — a single perspective is the default on the resolve hot path.
 
 ## Skill Boundary Policy
 
-auto-resolve's phases are **inline by default**. The standalone skills `/devlyn:evaluate`, `/devlyn:review`, `/devlyn:team-review`, `/devlyn:team-resolve`, `/devlyn:clean`, `/devlyn:update-docs` are **manual tools** — auto-resolve does not invoke them. The four findings-producing standalones (`evaluate`, `review`, `clean`, `team-review`) emit a `.devlyn/<skill>.findings.jsonl` sidecar matching the shared schema at `config/skills/devlyn:auto-resolve/references/findings-schema.md`, so a manual run produces artifacts compatible with the pipeline view. The two action-producing standalones (`team-resolve`, `update-docs`) write code or docs directly and have no findings schema to share. The invocation boundary is clean in both cases.
+Post iter-0034 Phase 4 cutover (2026-05-04) the runtime product surface is two skills — `/devlyn:resolve` and `/devlyn:ideate`. `/devlyn:resolve` runs PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY inline; verification, cleanup, and security review (delegated to the native `security-review` Claude Code skill from BUILD_GATE) all live inside the pipeline. There are no standalone `/devlyn:review`, `/devlyn:evaluate`, `/devlyn:team-resolve`, etc. surfaces to delegate to — those skills were folded into resolve's phases or removed in iter-0034. Three creative power-user skills (`/devlyn:reap`, `/devlyn:design-system`, `/devlyn:team-design-ui`) live in `optional-skills/` and are user-invoked only; resolve never delegates to them.
 
-auto-resolve delegates to another skill **only** when one of these is true:
-
-1. The delegate has exclusive capability — native `security-review`, Chrome MCP via `/devlyn:browser-validate`, team assembly via `--team`.
-2. The work is off the bare path **and** explicitly complex (`--team` flag or `state.route.selected == "strict"`).
-3. The user invoked a standalone directly — `/devlyn:auto-resolve` does not call it for them.
-
-This boundary is deliberate. The earlier attempt to absorb every standalone into the pipeline diverged contracts (interactive prompts, markdown vs JSONL output, code-mutating reviewers), and the token math on delegation inflated the bare-case run. Changing this rule requires an A/B proof that bare-case wall-time and tokens do not regress.
-
-## Bare-Case Guardrail
-
-The modal run — single spec, solo build, no browser, standard route, PASS on first EVAL, clean CRITIC, no fix loops — is the primary performance target. No new hot-path phase, no sub-skill delegation, and no instrumentation may land without an A/B proof that this case's wall-time and tokens do not regress. Complex cases may cost more; the bare case may not.
+Browser validation routes through `_shared/browser-runner.sh` (Chrome MCP → Playwright → curl tier) directly from BUILD_GATE — there is no separate `/devlyn:browser-validate` skill at HEAD.
 
 ## Communication Style
 

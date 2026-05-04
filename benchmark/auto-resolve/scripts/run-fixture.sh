@@ -15,12 +15,12 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 --fixture <FID> --arm <variant|solo_claude|bare|l2_gated|l2_forced> --run-id <ID> [--resolve-skill <new|old>] [--dry-run]"
+  echo "usage: $0 --fixture <FID> --arm <variant|solo_claude|bare|l2_gated|l2_forced> --run-id <ID> [--resolve-skill new] [--dry-run]"
   exit 1
 }
 
 FIXTURE=""; ARM=""; RUN_ID=""; DRY_RUN=0
-RESOLVE_SKILL="old"
+RESOLVE_SKILL="new"
 while [ $# -gt 0 ]; do
   case "$1" in
     --fixture)        FIXTURE="$2"; shift 2;;
@@ -47,24 +47,17 @@ done
 if { [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_forced" ]; } && [ "$RESOLVE_SKILL" != "new" ]; then
   echo "l2_* arms require --resolve-skill new (got '$RESOLVE_SKILL')"; exit 1
 fi
-# iter-0033a / iter-0033 (C1): --resolve-skill picks the orchestrator skill
-# the variant/solo_claude prompts invoke. `old` = /devlyn:auto-resolve (the
-# OLD orchestrator, still on disk pre-Phase-4); `new` = /devlyn:resolve --spec
-# (the greenfield 2-skill orchestrator from iter-0031). Default `old` keeps
-# all pre-iter-0033 invocations behaviorally identical. The flag is removed
-# in iter-0034 once OLD is deleted.
-[ "$RESOLVE_SKILL" = "new" ] || [ "$RESOLVE_SKILL" = "old" ] || \
-  { echo "--resolve-skill must be 'new' or 'old' (got '$RESOLVE_SKILL')"; exit 1; }
-# F9 OLD-arm refusal (Codex R0.5 §E + iter-0033a): at HEAD, OLD /devlyn:ideate
-# was replaced in iter-0032; only NEW ideate exists. Calling --resolve-skill
-# old on F9 would invoke NEW ideate against OLD auto-resolve = broken hybrid.
-# F9 measures NEW vs L0 only.
-if [ "$FIXTURE" = "F9-e2e-ideate-to-resolve" ] && [ "$RESOLVE_SKILL" = "old" ] \
-   && { [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ]; }; then
-  echo "F9 OLD baseline is unobtainable post-iter-0032 (OLD /devlyn:ideate retired)." >&2
-  echo "Use --resolve-skill new for F9; F9 measures NEW vs L0 only per iter-0033a." >&2
+# iter-0034 Phase 4 cutover (2026-05-03): OLD `/devlyn:auto-resolve` was
+# deleted. Only `new` (= /devlyn:resolve --spec) is supported. The flag stays
+# an accepted no-op so historical runners (run-iter-0033c.sh:137) keep working
+# unchanged. `old` is hard-errored — silently downgrading to `new` would
+# produce mis-attributed results in any pre-cutover replay attempt.
+if [ "$RESOLVE_SKILL" = "old" ]; then
+  echo "--resolve-skill old is no longer supported: /devlyn:auto-resolve was deleted in the iter-0034 Phase 4 cutover. Use --resolve-skill new (default) or omit the flag." >&2
   exit 1
 fi
+[ "$RESOLVE_SKILL" = "new" ] || \
+  { echo "--resolve-skill must be 'new' (got '$RESOLVE_SKILL')"; exit 1; }
 
 BENCH_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(cd "$BENCH_ROOT/../.." && pwd)"
@@ -267,9 +260,8 @@ fi
 #
 # Per-arm prompt selection is:
 #   1. Fixture-id-aware for F9 (end-to-end novice fixture, no pre-placed spec).
-#   2. Resolve-skill-aware (iter-0033 C1 / iter-0033a): `old` → /devlyn:auto-resolve,
-#      `new` → /devlyn:resolve --spec. Default `old` keeps pre-iter-0033 invocations
-#      identical. F9 with --resolve-skill old is refused at arg-parse time.
+#   2. Spec-mode `/devlyn:resolve --spec <path>` for the rest (post iter-0034
+#      Phase 4 cutover the OLD `/devlyn:auto-resolve` route was deleted).
 PROMPT_FILE="$RESULT_DIR/input.md"
 # Variant uses --engine auto (experimental dual-engine: codex BUILD + claude
 # critique pair); solo_claude uses --engine claude explicitly so the orchestrator
@@ -330,27 +322,17 @@ After the whole chain, briefly report: (a) the spec path ideate produced, (b) th
 RAW IDEA:
 $(cat "$TASK")
 EOF
-  elif [ "$RESOLVE_SKILL" = "new" ]; then
-    # NEW resolve-skill standard path: spec pre-placed at the canonical roadmap
-    # path the harness has used since iter-0019; the prompt routes through
-    # /devlyn:resolve --spec instead of /devlyn:auto-resolve. Same staged path
-    # for OLD and NEW so other fixtures stay byte-identical apart from the
-    # skill name.
+  else
+    # Spec-mode /devlyn:resolve: spec pre-placed at the canonical roadmap path
+    # the harness has used since iter-0019. Pre-Phase-4 this branch shared
+    # staging with the OLD /devlyn:auto-resolve route; iter-0034 deleted the
+    # OLD branch and this is now the only non-F9 path.
     mkdir -p "$WORK_DIR/docs/roadmap/phase-1"
     cp "$SPEC" "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"
     cat > "$PROMPT_FILE" <<EOF
 Use the \`/devlyn:resolve --spec docs/roadmap/phase-1/$FIXTURE.md ${ENGINE_CLAUSE}\` skill to implement the spec. ${ENGINE_PROMPT_HINT}
 
-Do NOT invoke \`/devlyn:auto-resolve\`, \`/devlyn:preflight\`, or any other deprecated 3-skill orchestrator. The 2-skill design folds verification into resolve's VERIFY phase.
-
-After the pipeline finishes, report the terminal verdict and list of files changed so the benchmark runner can capture state.
-EOF
-  else
-    # OLD resolve-skill (default) — pre-iter-0033 path: /devlyn:auto-resolve.
-    mkdir -p "$WORK_DIR/docs/roadmap/phase-1"
-    cp "$SPEC" "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"
-    cat > "$PROMPT_FILE" <<EOF
-Use the \`/devlyn:auto-resolve ${ENGINE_CLAUSE}\` skill to implement the spec at \`docs/roadmap/phase-1/$FIXTURE.md\`. ${ENGINE_PROMPT_HINT}
+The 2-skill design folds verification into resolve's VERIFY phase — there is no separate \`/devlyn:preflight\`, \`/devlyn:auto-resolve\`, or other 3-skill orchestrator at HEAD.
 
 After the pipeline finishes, report the terminal verdict and list of files changed so the benchmark runner can capture state.
 EOF
