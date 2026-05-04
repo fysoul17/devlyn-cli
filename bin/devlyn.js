@@ -19,6 +19,10 @@ const CLI_TARGETS = {
     instructionsFile: 'AGENTS.md',
     baseInstructionsFile: 'AGENTS.md',
     configDir: null, // Codex uses AGENTS.md at project root
+    // Codex auto-loads skills from ~/.codex/skills/ (user-global). Same
+    // SKILL.md format as Claude Code; descriptions must stay ≤1024 chars.
+    skillsDir: path.join(os.homedir(), '.codex', 'skills'),
+    skillsToInstall: ['devlyn:resolve', 'devlyn:ideate', '_shared'],
     detect: () => fs.existsSync(path.join(process.cwd(), 'AGENTS.md')) || fs.existsSync(path.join(process.cwd(), '.codex')),
   },
   gemini: {
@@ -509,6 +513,37 @@ function detectOtherCLIs() {
   return detected;
 }
 
+// Install /devlyn:resolve + /devlyn:ideate + _shared skills into a CLI's
+// global skills directory (e.g. ~/.codex/skills/). Returns count of skills
+// copied. Skipped silently for CLIs without a skillsDir (e.g. cursor, copilot
+// at the time of writing — they don't have an analogous skill-loader).
+function installSkillsForCLI(cliKey) {
+  const cli = CLI_TARGETS[cliKey];
+  if (!cli || !cli.skillsDir || !cli.skillsToInstall) return 0;
+
+  const sourceSkillsDir = path.join(CONFIG_SOURCE, 'skills');
+  if (!fs.existsSync(sourceSkillsDir)) return 0;
+  if (!fs.existsSync(cli.skillsDir)) {
+    fs.mkdirSync(cli.skillsDir, { recursive: true });
+  }
+
+  let copied = 0;
+  for (const skillName of cli.skillsToInstall) {
+    const src = path.join(sourceSkillsDir, skillName);
+    const dest = path.join(cli.skillsDir, skillName);
+    if (!fs.existsSync(src)) continue;
+    // Full replace per cleanManagedSkillDirs semantics: stale files in the
+    // installed mirror would otherwise persist forever.
+    if (fs.existsSync(dest)) {
+      fs.rmSync(dest, { recursive: true, force: true });
+    }
+    copyRecursive(src, dest, cli.skillsDir);
+    copied++;
+    log(`  → ${cli.skillsDir.replace(os.homedir(), '~')}/${skillName}`, 'dim');
+  }
+  return copied;
+}
+
 function installAgentsForCLI(cliKey) {
   const cli = CLI_TARGETS[cliKey];
   if (!cli) return false;
@@ -559,6 +594,14 @@ function installAgentsForCLI(cliKey) {
 
     fs.writeFileSync(destFile, existing + separator + agentContent + '\n');
     log(`  → ${cli.instructionsFile} (agent instructions appended)`, 'dim');
+  }
+
+  // If this CLI also supports a global skill-loader (currently Codex), install
+  // /devlyn:resolve + /devlyn:ideate + _shared so the same slash commands work
+  // there. Skipped for CLIs without a skillsDir entry.
+  const skillsCopied = installSkillsForCLI(cliKey);
+  if (skillsCopied > 0) {
+    log(`  → ${skillsCopied} skill${skillsCopied > 1 ? 's' : ''} installed (devlyn:resolve / devlyn:ideate / _shared)`, 'dim');
   }
 
   return true;
@@ -695,7 +738,7 @@ async function init(skipPrompts = false) {
   // Skip prompts if -y flag or non-interactive
   if (skipPrompts || !process.stdin.isTTY) {
     log('\n💡 Add optional addons later: run `npx devlyn-cli` without -y', 'dim');
-    log('   Add Codex instructions later: run `npx devlyn-cli agents codex`', 'dim');
+    log('   Add Codex instructions + skills later: run `npx devlyn-cli agents codex`', 'dim');
     log(`\n${COLORS.dim}   Enjoying devlyn? Star it on GitHub — it helps others find it:${COLORS.reset}`);
     log(`   ${COLORS.purple}→ https://github.com/fysoul17/devlyn-cli${COLORS.reset}\n`);
     return;
@@ -703,14 +746,17 @@ async function init(skipPrompts = false) {
 
   // Ask which non-Claude CLIs should receive instruction files.
   log('\n🤖 Optional AI CLI instructions:\n', 'blue');
-  const cliOptions = Object.entries(CLI_TARGETS).map(([key, cli]) => ({
-    key,
-    name: cli.name,
-    desc: cli.configDir
-      ? `Install agents into ${cli.configDir}/`
-      : `Install ${cli.instructionsFile}`,
-    type: 'cli',
-  }));
+  const cliOptions = Object.entries(CLI_TARGETS).map(([key, cli]) => {
+    let desc;
+    if (cli.configDir) {
+      desc = `Install agents into ${cli.configDir}/`;
+    } else if (cli.skillsDir) {
+      desc = `Install ${cli.instructionsFile} + /devlyn:resolve + /devlyn:ideate skills (~/.codex/skills/)`;
+    } else {
+      desc = `Install ${cli.instructionsFile}`;
+    }
+    return { key, name: cli.name, desc, type: 'cli' };
+  });
   const selectedClis = await multiSelect(cliOptions);
   if (selectedClis.length > 0) {
     let agentsInstalled = 0;
@@ -720,7 +766,7 @@ async function init(skipPrompts = false) {
     log(`  ✅ Agent instructions installed for ${agentsInstalled} CLI${agentsInstalled !== 1 ? 's' : ''}`, 'green');
   } else {
     log('💡 No additional CLI instructions selected', 'dim');
-    log('   Run `npx devlyn-cli agents codex` later to install Codex AGENTS.md', 'dim');
+    log('   Run `npx devlyn-cli agents codex` later to install Codex AGENTS.md + /devlyn skills', 'dim');
   }
 
   // Ask about optional addons (local skills + external packs)

@@ -1,6 +1,6 @@
 ---
 name: devlyn:ideate
-description: Extract a verifiable spec from a user's idea by driving the conversation with focused questions. Output is a single-feature `spec.md` + `spec.expected.json` that `/devlyn:resolve --spec` consumes directly. Use when the user has an idea but not a spec, or wants AI to elicit the missing engineering context. Modes: default (single spec, AI drives Q&A), `--quick` (assume-and-confirm from one-line goal), `--from-spec <path>` (normalize external spec), `--project` (plan.md index + N specs). Optional in the pipeline — `/devlyn:resolve` works standalone via free-form mode for users who skip ideate.
+description: Extract a verifiable spec from a user's idea by driving the conversation with focused questions. Output is a single-feature `spec.md` + `spec.expected.json` that `/devlyn:resolve --spec` consumes directly. Use when the user has an idea but not a spec, or wants AI to elicit the missing engineering context. Modes — default (single spec, AI drives Q&A), `--quick` (assume-and-confirm from one-line goal), `--from-spec <path>` (normalize external spec), `--project` (plan.md index + N specs). Optional in the pipeline — `/devlyn:resolve` works standalone via free-form mode for users who skip ideate.
 ---
 
 Spec-elicitation surface for users who have ideas but not engineering specifications. AI drives the conversation with focused questions until a structurally-valid, verifiable spec exists. Output consumed directly by `/devlyn:resolve --spec`.
