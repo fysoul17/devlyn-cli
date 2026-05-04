@@ -92,7 +92,7 @@ Exclude vague claims. They produce vague fixes.
 - Check `git status --short` before editing.
 - Never revert user changes unless explicitly asked.
 - Use `rg` / `rg --files` for search.
-- Keep changes scoped to the task.
+- Keep changes scoped to the task; stop when the core request is answered or the change is verified.
 - For installer or skill edits inside the devlyn-cli source repo, run `bash scripts/lint-skills.sh`.
 - Treat the project's own `docs/VISION.md`, `docs/ROADMAP.md`, `docs/roadmap/**`, and any local `AGENTS.md` / `CLAUDE.md` overrides as authoritative when present.
 

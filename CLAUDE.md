@@ -148,7 +148,7 @@ When `/devlyn:resolve` or `/devlyn:ideate` route a phase to Codex (`--engine cod
 - **Checkpoint with TaskCreate / TaskUpdate.** Long investigations or multi-phase work: create tasks at start, mark completed as each one closes — don't batch.
 - **Don't stop early on token-budget concerns.** Context auto-compacts; the model resumes after compaction. Run the work to a real stopping point.
 - **Persist across context windows via disk.** `/devlyn:resolve` writes `.devlyn/pipeline.state.json` plus per-phase log/findings under `.devlyn/runs/<run_id>/`; for ad-hoc long work use `HANDOFF.md` and resume with `@HANDOFF.md continue`.
-- **Fan out with parallel `Agent` subagents only for explicit complex scope** — a single perspective is the default on the resolve hot path.
+- **Parallelize independent tool calls; reserve `Agent` subagents for independent fan-out or isolated-context verification** — a single perspective is the default on the resolve hot path.
 
 ## Skill Boundary Policy
 
