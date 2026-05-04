@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — project goal + 3-layer composition contract + pair-mode policy (round-3 redesign 2026-05-03)
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active, hard NO list
-5. The active-iter file (currently `iterations/0034-phase-4-cutover.md` — PRE-REGISTERED-STUB; design baselines at iter-0033 (C1) PASS evidence + `iterations/0033g-pair-plan-impl-pmo.md` § "CLOSURE" big-picture pivot)
+5. The active-iter file (currently `iterations/0035-real-project-trial.md` — STUB; pre-registration deferred to the session that runs the trial; design baseline at `iterations/0034-phase-4-cutover.md` § "CLOSURE — SHIPPED 2026-05-04")
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (most recent entries first to read)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction.
