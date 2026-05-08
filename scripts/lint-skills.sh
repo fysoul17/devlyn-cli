@@ -203,6 +203,16 @@ else
   bad "spec-verify-check.py risk-probe self-test failed"
 fi
 
+section "Check 6e: All-or-nothing probes prove mutable rollback"
+probe_doc="config/skills/devlyn:resolve/references/phases/probe-derive.md"
+if grep -Fq "pre-rejected by a whole-order availability shortcut" "$probe_doc" \
+   && grep -Fq "must allocate a scarce" "$probe_doc" \
+   && grep -Fq "must request the same scarce first-line SKU" "$probe_doc"; then
+  ok "all-or-nothing probe contract preserves mutable rollback evidence"
+else
+  bad "$probe_doc — missing mutable rollback probe contract"
+fi
+
 # ---------------------------------------------------------------------------
 # 8. CRITIC security sub-pass must be native, not Dual.
 # Catches the specific drift where a section updates but a cross-reference doesn't.
