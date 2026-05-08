@@ -1,0 +1,10 @@
+{
+  "id": "F23-cli-fulfillment-wave",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli fulfill-wave command that allocates prioritized orders across warehouses and inventory lots using all-or-nothing order rollback, FEFO lot choice, distance tie-breaks, and single-warehouse line constraints."
+}

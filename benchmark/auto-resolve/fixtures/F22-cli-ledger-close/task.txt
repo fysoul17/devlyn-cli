@@ -1,0 +1,7 @@
+Add a `ledger-close` command to `bench-cli` so users can run `bench-cli ledger-close --input <path>` with a JSON file containing account opening balances and transaction events. It should apply chronological idempotent ledger rules, reject conflicting duplicate transaction ids, and print exact closing balances and audit counts.
+
+The input has `accounts` with `id`, `currency`, and `opening_cents`, and `transactions` with `id`, `account`, `currency`, `kind`, `amount_cents`, and `occurred_at`. Validate the full input before applying balances. Exact duplicate transactions should be applied only once and counted in `duplicates_ignored`; duplicate ids with any conflicting field should make the whole input invalid. Apply accepted unique transactions by `occurred_at` ascending, then id ascending. Debits subtract, credits add, and negative closing balances are allowed.
+
+On success, stdout must be exactly parseable JSON and stderr must be empty. The output has `accounts`, `applied_count`, and `duplicates_ignored`; accounts are sorted by id and each row has `id`, `currency`, and `closing_cents`. Invalid input or file-read failures should exit `2`, print exactly one JSON error object to stderr, and print nothing to stdout. Conflicting duplicate transaction ids must use the exact stderr JSON shape `{ "error": "conflicting_duplicate", "id": string }`.
+
+Update `tests/cli.test.js` so existing tests still pass and add at least two ledger tests: one success case and one invalid-input case. No new npm dependencies. Only touch `bin/cli.js` and `tests/cli.test.js`.

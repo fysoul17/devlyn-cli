@@ -1,0 +1,66 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/exact-success.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "A cart with duplicate SKUs combines quantities before stock validation and before line promotions.",
+        "A cart with both `buy_x_get_y_free` and `per_unit_discount_cents` line promotions applies those promotions before the order coupon.",
+        "Tax is computed from taxable item totals after line promotions and before the order coupon.",
+        "Shipping uses the subtotal after line discounts and coupon discount to decide whether the free-shipping threshold is met."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/stock-error.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Combined quantity over stock uses exact error shape `{ \"error\": \"invalid_stock\", \"sku\": string, \"available\": number, \"requested\": number }`.",
+        "The stock error object includes `sku`, `available`, and `requested`."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/catalog-source.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Catalog, stock, tax codes, line promotions, coupons, tax rates, shipping, and free-shipping threshold come from `data/catalog.json`. Do not hardcode these values in the command implementation.",
+        "Changing `data/catalog.json` prices or rates changes command output without code changes."
+      ]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\})",
+      "description": "silent catch returning fallback in cart path",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "/\\*\\s*eslint-disable",
+      "description": "eslint-disable without scoped justification",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js", "data/catalog.json"],
+  "forbidden_files": [],
+  "max_deps_added": 0,
+  "spec_output_files": ["bin/cli.js", "tests/cli.test.js"]
+}

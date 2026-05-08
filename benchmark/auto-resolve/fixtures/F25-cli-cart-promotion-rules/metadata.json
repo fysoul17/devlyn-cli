@@ -1,0 +1,10 @@
+{
+  "id": "F25-cli-cart-promotion-rules",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli cart command that reads a cart JSON file, prices it from data/catalog.json, combines duplicate SKU quantities, applies line promotions before an order coupon, and prints one exact JSON total with cents-based discounts, tax, shipping, and item rows."
+}

@@ -23,6 +23,12 @@ Does every Verification command behave as the spec states?
 - **7-12** — Major requirements missed.
 - **0-6** — Does not address the core task.
 
+Mechanical cap: after the blind judge returns, `judge.sh` caps total score at
+`floor(100 * verify_score)` and caps the Spec Compliance axis at
+`floor(25 * verify_score)`. This makes the machine-readable acceptance
+contract binding when a judge grades prose generously despite failed required
+verification commands.
+
 ### Axis 2 — Constraint Respect (0-25)
 
 Zero new npm deps (unless spec allows), no silent catches (`try { } catch { return fallback }`), no `any`/`@ts-ignore`, explicit HOME/env guards where required, EACCES-specific handling, no hardcoded values that should be configurable.

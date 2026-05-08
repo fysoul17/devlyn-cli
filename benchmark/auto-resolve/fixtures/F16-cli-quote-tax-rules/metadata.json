@@ -1,0 +1,10 @@
+{
+  "id": "F16-cli-quote-tax-rules",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli quote command that reads an order JSON file, prices it from data/pricing.json, validates duplicate SKU quantities before quoting, and prints one exact JSON quote with cents-based discount, tax, shipping, and total fields."
+}

@@ -35,6 +35,12 @@
             "description": "None of these substrings may appear in (stdout + stderr) for pass.",
             "items": { "type": "string", "minLength": 1 },
             "default": []
+          },
+          "contract_refs": {
+            "type": "array",
+            "description": "For hidden BENCH_FIXTURE_DIR commands, exact substrings from spec.md that this oracle verifies. Hidden oracles may test only visible spec clauses.",
+            "items": { "type": "string", "minLength": 1 },
+            "default": []
           }
         }
       }
@@ -80,6 +86,18 @@
     "forbidden_files": {
       "type": "array",
       "description": "Files that must NOT appear in the arm's diff (e.g. tooling artifacts the spec didn't request).",
+      "items": { "type": "string", "minLength": 1 },
+      "default": []
+    },
+    "tier_a_waivers": {
+      "type": "array",
+      "description": "Optional fnmatch globs exempted from Tier A scope-oracle path checks when the spec explicitly authorizes those files.",
+      "items": { "type": "string", "minLength": 1 },
+      "default": []
+    },
+    "spec_output_files": {
+      "type": "array",
+      "description": "Files or globs that define the spec-authorized output surface for scope oracles. Touched files outside this set must be reachable from it via static imports or separately waived.",
       "items": { "type": "string", "minLength": 1 },
       "default": []
     },

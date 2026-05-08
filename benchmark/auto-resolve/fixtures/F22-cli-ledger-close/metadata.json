@@ -1,0 +1,10 @@
+{
+  "id": "F22-cli-ledger-close",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli ledger-close command that reads account opening balances and transaction events, applies chronological idempotent ledger rules, rejects conflicting duplicate transaction ids, and prints exact closing balances and audit counts."
+}

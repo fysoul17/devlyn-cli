@@ -6,7 +6,7 @@ Single source of truth for how every skill calls Codex. **MCP is not used.** Ski
 
 All long-running Codex calls go through `codex-monitored.sh` — a thin wrapper that closes stdin (codex 0.124.0 hangs when both stdin is open and a prompt arg is given), streams Codex stdout fully (no `tail -n` truncation), and prints a `[codex-monitored] heartbeat` line every 30s so the outer `claude -p` byte-watchdog stays fed during long reasoning gaps. The wrapper passes its arguments through verbatim to the underlying CLI, so the canonical flag set is unchanged from a raw call — only the launcher differs.
 
-**Read-only critique / adversarial review / debate** (ideate CHALLENGE phase, `/devlyn:resolve` VERIFY pair-mode when triggered). Security review is delegated to the native `security-review` Claude Code skill, invoked from `/devlyn:resolve` BUILD_GATE rather than from Codex.
+**Read-only critique / adversarial review / debate** (ideate CHALLENGE phase, `/devlyn:resolve` VERIFY pair-mode when triggered). Security review is delegated to the native `security-review` Claude Code skill, invoked from `/devlyn:resolve` BUILD_GATE rather than from Codex. Read-only critique returns findings on stdout; the orchestrator writes any files.
 
 ```bash
 bash .claude/skills/_shared/codex-monitored.sh \
@@ -51,4 +51,4 @@ The local Codex CLI (fronted by `codex-monitored.sh`) is the primary (and only) 
 
 Skills write the invocation as a Bash command the runtime executes. Example shape from `/devlyn:resolve` PHASE 2 IMPLEMENT when routed to Codex:
 
-> Run `bash .claude/skills/_shared/codex-monitored.sh -C <state.base_ref.repo_root> --full-auto -c model_reasoning_effort=xhigh "<IMPLEMENT prompt>"`. Omit `-m` so the CLI flagship is auto-selected. Capture stdout as the IMPLEMENT reply; non-zero exit → treat as subagent failure. The wrapper emits `[codex-monitored]` heartbeat and lifecycle lines on **stderr** — stdout stays clean for Codex output, so the orchestrator can parse the reply without filtering. Heartbeat-on-stderr keeps the orchestrator's combined-output stream non-silent (defeats the iter-0008 byte-watchdog kill) without polluting the codex-reply view of stdout.
+> Run `bash .claude/skills/_shared/codex-monitored.sh -C <state.base_ref.repo_root> --full-auto -c model_reasoning_effort=xhigh "<IMPLEMENT prompt>"`. Omit `-m` so the CLI flagship is auto-selected. Capture stdout as the IMPLEMENT reply; non-zero exit → treat as subagent failure. The wrapper emits `[codex-monitored]` heartbeat and lifecycle lines on **stderr** — stdout stays clean for Codex output, so the orchestrator can parse the reply without filtering. Heartbeat-on-stderr keeps the orchestrator's combined-output stream non-silent (defeats the iter-0008 byte-watchdog kill) without polluting the codex-reply view of stdout. Do not pipe the wrapper; direct capture or file redirection preserves streaming and avoids the pipe-refusal exit.

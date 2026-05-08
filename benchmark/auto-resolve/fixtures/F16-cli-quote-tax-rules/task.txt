@@ -1,0 +1,7 @@
+Add a `quote` command to `bench-cli` so users can run `bench-cli quote --input <path>` with an order JSON file. The command should load prices, stock, coupons, tax rates, shipping, and taxable-code rules from `data/pricing.json`, then print one JSON quote with integer-cent fields for subtotal, discount, tax, shipping, total, and line items.
+
+Duplicate SKUs in the order must be combined before stock validation and before totals are calculated. Invalid JSON, missing/invalid items, unknown SKU, too much combined quantity for stock, unknown coupon, or unknown state should exit `2`, print exactly one JSON error object to stderr, and print nothing to stdout.
+
+On success, stdout must be exactly parseable JSON and stderr must be empty. Use integer cents only: no formatted currency strings and no floating-money fields. The coupon discount is rounded with `Math.round(subtotal_cents * coupon.percent / 100)`. Tax is rounded with `Math.round(taxable_subtotal_cents * state_rate)`, based on taxable line totals before the coupon. Shipping is free only when `subtotal_cents - discount_cents` reaches the configured free-shipping minimum.
+
+Update `tests/cli.test.js` so existing tests still pass and add at least two quote tests: one success case and one validation failure. No new npm dependencies. Only touch `bin/cli.js` and `tests/cli.test.js`; `data/pricing.json` is seeded for you.

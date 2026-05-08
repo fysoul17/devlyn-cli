@@ -1,0 +1,10 @@
+{
+  "id": "F11-batch-import-all-or-nothing",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add POST /items/import that accepts a batch of items in one request. Each item must have a non-empty name and a positive integer qty. If any item in the batch fails the check, respond 400 and leave the existing list exactly as it was — partial batches are not accepted."
+}

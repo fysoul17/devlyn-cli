@@ -1,0 +1,7 @@
+Add a `fulfill-wave` command to `bench-cli` so users can run `bench-cli fulfill-wave --input <path>` with a JSON file containing warehouses, inventory lots, and prioritized orders. It should allocate orders across warehouses and lots using all-or-nothing order rollback, FEFO lot choice, distance tie-breaks, and single-warehouse line constraints.
+
+Process orders by priority descending, then submitted_at ascending, then id ascending. Warehouse choice is distance ascending, then warehouse id ascending. Lot choice inside a warehouse is FEFO: expires ascending, then lot id ascending. Normal lines may split across warehouses and lots, but a line with `single_warehouse: true` must be fully allocated from one warehouse, though it may use multiple lots inside that warehouse. If any line in an order cannot be fully allocated, reject that order and roll back every tentative allocation for that order.
+
+On success, stdout must be exactly parseable JSON and stderr must be empty. The output has `accepted`, `rejected`, and `remaining`. Invalid input or file-read failures should exit `2`, print exactly one JSON error object to stderr, and print nothing to stdout.
+
+Update `tests/cli.test.js` so existing tests still pass and add at least two fulfill-wave tests: one accepted allocation and one rejected all-or-nothing order. No new npm dependencies. Only touch `bin/cli.js` and `tests/cli.test.js`.

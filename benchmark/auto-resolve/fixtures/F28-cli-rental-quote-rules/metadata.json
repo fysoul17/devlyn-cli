@@ -1,0 +1,10 @@
+{
+  "id": "F28-cli-rental-quote-rules",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli rental-quote command that prices equipment rentals from data/rental-rules.json using rental-day, weekend surcharge, discount, protection, deposit, and combined stock-validation rules."
+}

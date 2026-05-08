@@ -1,0 +1,10 @@
+{
+  "id": "F26-cli-payout-ledger-rules",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli payout command that reads ledger events from a JSON file, applies idempotent event handling and payout rules from data/payout-rules.json, and prints exact merchant payout totals with processing fees, dispute fees, reserves, and payouts in integer cents."
+}

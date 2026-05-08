@@ -1,0 +1,10 @@
+{
+  "id": "F15-frozen-diff-race-review",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Review the existing /items API in server/index.js for correctness issues a load test would surface. Fix what you find and add tests covering the fix. The current implementation has been deployed for a few weeks; existing tests pass."
+}

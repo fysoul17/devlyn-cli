@@ -1,0 +1,9 @@
+Add `POST /items` to `server/index.js` so users can append a new item with `{ name, qty }`. The full list should be persisted to `data/items.json` so state survives restarts — the existing read endpoints (`GET /items`, `GET /items/:id`) should also use the same persisted file going forward.
+
+Every saved item must have a unique numeric id. If two or more POSTs arrive close together, the resulting list must contain every successful one with distinct ids — no duplicates, nothing lost.
+
+Invalid body (missing `name`, missing `qty`, `qty` not a positive number) → respond `400` with `{ error: 'invalid_body', field: '<name>' }`, and the persisted store must be unchanged after the 400.
+
+Update `tests/server.test.js` so existing tests still pass AND add at least two new tests covering POST behavior. One of them must fire several POSTs close together and verify the final list contains every item with distinct ids.
+
+No new npm dependencies. Only touch `server/index.js`, `tests/server.test.js`, and `data/items.json` (which is seeded for you).

@@ -1,0 +1,7 @@
+Add a bench-cli payout command that reads ledger events from a JSON file, applies idempotent event handling and payout rules from data/payout-rules.json, and prints exact merchant payout totals with processing fees, dispute fees, reserves, and payouts in integer cents.
+
+The command should be `bench-cli payout --input <path>`. Input JSON has an events array. Events have id, merchant_id, type, and amount_cents. Use the payout rules JSON for processing fee percent, fixed fee, dispute fee, reserve percent, and minimum payout threshold. Do not hardcode those values.
+
+Identical duplicate event IDs are idempotent and should be applied only once. The same event ID with different content is a conflicting duplicate and must fail before printing totals. Successful output must be one JSON object with top-level totals and merchant rows in first-seen merchant order. Validation errors must exit 2, write one JSON error object to stderr, and write no stdout.
+
+Update `tests/cli.test.js` so existing tests still pass and at least two new tests cover the payout command, including one successful payout and one validation failure. Do not add dependencies or touch the server/web files.

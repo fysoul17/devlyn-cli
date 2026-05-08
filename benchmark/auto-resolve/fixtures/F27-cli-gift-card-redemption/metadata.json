@@ -1,0 +1,10 @@
+{
+  "id": "F27-cli-gift-card-redemption",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli gift-card command that reads cart lines and gift-card redemption requests, prices products from data/gift-cards.json, combines duplicate SKUs and duplicate card redemptions before validation, and prints exact remaining balances and amount due in integer cents."
+}

@@ -41,11 +41,13 @@ RES_DIR="$BENCH_ROOT/results/$RUN_ID/$FIXTURE"
 # date iter-0019.
 ARMS_PRESENT=()
 # iter-0033c: l2_gated/l2_forced added for NEW L2 vs NEW L1 measurement.
+# iter-0037: l2_risk_probes adds bounded visible-verification probes before
+# IMPLEMENT; judge treats it as another blind arm when artifacts exist.
 # Slot count is still A/B/C max 3 — pair-eligible iter-0033c fixtures supply
 # {solo_claude, l2_gated, l2_forced}; non-pair-eligible fixtures supply
 # {solo_claude, l2_gated}. The blind-shuffle slot mapping below already
 # tolerates arbitrary ARMS_PRESENT counts ≥2.
-for arm in variant solo_claude bare l2_gated l2_forced; do
+for arm in variant solo_claude bare l2_gated l2_risk_probes l2_forced; do
   if [ -f "$RES_DIR/$arm/diff.patch" ] && [ -f "$RES_DIR/$arm/verify.json" ]; then
     ARMS_PRESENT+=("$arm")
   fi
@@ -216,8 +218,34 @@ PY
 # traceable. Run from a clean temp CWD so the judge can't peek at project
 # files that would leak arm identity.
 command -v codex >/dev/null 2>&1 || { echo "codex CLI not on PATH; cannot judge"; exit 1; }
-CODEX_CLI_VER=$(codex --version 2>/dev/null || echo "codex-cli unknown")
-JUDGE_MODEL=$(grep -E '^model\s*=' "${HOME}/.codex/config.toml" 2>/dev/null | head -1 | sed -E 's/.*=\s*"?([^"]+)"?.*/\1/')
+CODEX_CLI_VER=$(python3 - <<'PY'
+import subprocess
+
+try:
+    proc = subprocess.run(
+        ["codex", "--version"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=5,
+    )
+    out = (proc.stdout or proc.stderr).strip()
+    if proc.returncode == 0 and out:
+        print(out)
+    else:
+        print(f"codex-cli unknown (version-exit-{proc.returncode})")
+except subprocess.TimeoutExpired:
+    print("codex-cli unknown (version-timeout)")
+except FileNotFoundError:
+    print("codex-cli missing")
+except Exception as exc:
+    print(f"codex-cli unknown ({type(exc).__name__})")
+PY
+)
+JUDGE_MODEL=$({ grep -E '^model[[:space:]]*=' "${HOME}/.codex/config.toml" 2>/dev/null || true; } \
+  | head -1 \
+  | sed -E 's/.*=[[:space:]]*"?([^"]*)"?[[:space:]]*$/\1/' \
+  | xargs)
 [ -z "$JUDGE_MODEL" ] && JUDGE_MODEL="(unknown — codex config.toml not readable)"
 
 JUDGE_CWD="/tmp/judge-$RUN_ID-$FIXTURE"
@@ -237,6 +265,7 @@ fi
 
 # Extract JSON (codex wraps with banners; pick the last {...} block)
 python3 - "$JUDGE_OUT" "$RES_DIR/judge.json" "$A_ARM" "$B_ARM" "$C_ARM" "$SEED" "$CODEX_CLI_VER" "$JUDGE_MODEL" <<'PY'
+import math
 import sys, re, json, pathlib
 out = pathlib.Path(sys.argv[1]).read_text()
 target = pathlib.Path(sys.argv[2])
@@ -297,6 +326,56 @@ if axis_invalid_cells:
         f"[judge.sh] WARNING: {len(axis_invalid_cells)} axis cell(s) out of [0,25] "
         f"clamped: {axis_invalid_cells}\n"
     )
+
+# Verification is the machine-readable acceptance contract. RUBRIC.md puts
+# verification behavior under Spec Compliance, but LLM judges can still grade
+# generous prose around failed commands. Cap score mechanically so an arm that
+# fails required verification cannot receive a ceiling score.
+def arm_verify_score(arm: str):
+    path = target.parent / arm / "verify.json"
+    if not path.is_file():
+        return None
+    data = json.loads(path.read_text())
+    value = data.get("verify_score")
+    return float(value) if isinstance(value, (int, float)) else None
+
+verify_caps = []
+for letter, score_key, breakdown_key in (
+    ("A", "a_score", "a_breakdown"),
+    ("B", "b_score", "b_breakdown"),
+    ("C", "c_score", "c_breakdown"),
+):
+    arm = mapping.get(letter)
+    if not arm:
+        continue
+    verify_score = arm_verify_score(arm)
+    if verify_score is None:
+        continue
+    verify_score = max(0.0, min(1.0, verify_score))
+    score_cap = math.floor(100 * verify_score)
+    spec_cap = math.floor(25 * verify_score)
+    raw_score = chosen.get(score_key)
+    raw_spec = (chosen.get(breakdown_key) or {}).get("spec")
+    row = {
+        "letter": letter,
+        "arm": arm,
+        "verify_score": verify_score,
+        "score_cap": score_cap,
+        "spec_cap": spec_cap,
+        "raw_score": raw_score,
+        "raw_spec": raw_spec,
+        "score_capped": False,
+        "spec_capped": False,
+    }
+    if isinstance(raw_score, (int, float)) and raw_score > score_cap:
+        chosen[score_key] = score_cap
+        row["score_capped"] = True
+    breakdown = chosen.get(breakdown_key)
+    if isinstance(breakdown, dict) and isinstance(raw_spec, (int, float)) and raw_spec > spec_cap:
+        breakdown["spec"] = spec_cap
+        row["spec_capped"] = True
+    verify_caps.append(row)
+chosen["_verify_score_caps"] = verify_caps
 
 # scores_by_arm: arm-name → score, computed from the blind A/B/C scores.
 # This is the canonical 3-arm-aware shape the report consumer reads. The

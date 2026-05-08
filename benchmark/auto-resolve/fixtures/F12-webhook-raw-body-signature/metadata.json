@@ -1,0 +1,10 @@
+{
+  "id": "F12-webhook-raw-body-signature",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add POST /webhook that verifies an HMAC-SHA256 signature in the X-Signature header against the request body, accepts each event id at most once, and rejects tampered or replayed events. The provider computes the signature over the exact bytes of the body it sends; the server must verify against the same bytes."
+}

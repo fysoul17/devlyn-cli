@@ -73,7 +73,8 @@ Machine-readable acceptance criteria used by both `run-fixture.sh` verification 
       "cmd": "node bin/cli.js doctor",
       "exit_code": 0,
       "stdout_contains": ["doctor: "],
-      "stdout_not_contains": ["undefined"]
+      "stdout_not_contains": ["undefined"],
+      "contract_refs": []
     }
   ],
   "forbidden_patterns": [
@@ -86,14 +87,25 @@ Machine-readable acceptance criteria used by both `run-fixture.sh` verification 
   ],
   "required_files": ["bin/cli.js"],
   "forbidden_files": [],
+  "tier_a_waivers": [],
+  "spec_output_files": ["bin/cli.js"],
   "max_deps_added": 0
 }
 ```
 
 - **verification_commands** — runner executes each. Each command's pass/fail contributes to the arm's `verify_score`.
+  Commands run with `BENCH_WORKDIR` (fresh arm work tree) and
+  `BENCH_FIXTURE_DIR` (the fixture directory outside the arm work tree) in
+  the environment. Put discriminator/oracle scripts under the fixture
+  directory when the arm should not read the verifier source.
+  Any command that references `BENCH_FIXTURE_DIR` is a hidden oracle and must
+  include `contract_refs`: exact substrings from `spec.md` proving the oracle
+  tests a visible contract rather than inventing a narrower one.
 - **forbidden_patterns** — regexes scanned across `diff.patch`. Match at `severity: "disqualifier"` is a hard-floor fail. Match at `severity: "warning"` goes into the judge's critical-findings report.
 - **required_files** — must exist after the arm runs.
 - **forbidden_files** — must NOT appear in the arm's diff.
+- **tier_a_waivers** — optional globs for files the spec explicitly authorizes even though Tier A scope oracle would normally flag them.
+- **spec_output_files** — files or globs that define the authorized output surface for Tier B scope tracing.
 - **max_deps_added** — count of new entries under `dependencies`/`devDependencies` in `package.json`. Exceeds → hard-floor fail.
 
 ## NOTES.md

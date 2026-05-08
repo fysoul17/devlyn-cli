@@ -28,13 +28,14 @@ Single authoritative verdict source for `/devlyn:resolve`. The orchestrator bran
   ],
   "phases": {
     "plan": null,
+    "probe_derive": null,
     "implement": null,
     "build_gate": null,
     "cleanup": null,
     "verify": null,
     "final_report": null
   },
-  "verify": { "coverage_failed": false }
+  "verify": { "coverage_failed": false, "pair_trigger": null }
 }
 ```
 
@@ -45,14 +46,16 @@ Single authoritative verdict source for `/devlyn:resolve`. The orchestrator bran
 - **complexity** — `null | "trivial" | "medium" | "large"`. Free-form mode populates this; spec/verify-only mode leaves it null.
 - **engine** — `"claude" | "codex" | "auto"` initially; rewritten by engine-preflight if a downgrade fired.
 - **rounds.global** — incremented every fix-loop pass (BUILD_GATE → fix-loop OR VERIFY → fix-loop).
+- **phases.probe_derive** — optional PHASE 1.5 entry when `--risk-probes` is enabled. Artifacts include `.devlyn/risk-probes.jsonl`. Probe failures later surface through BUILD_GATE/VERIFY as `correctness.risk-probe-failed`.
 - **bypasses** — array of phase names from `--bypass`. Valid: `"build-gate" | "cleanup"`. PLAN, IMPLEMENT, VERIFY are non-bypassable (orchestrator rejects at parse time).
 - **implement_passed_sha** — captured at end of PHASE 2; null until then. Activates the post-implement invariant for CLEANUP and VERIFY.
 - **criteria** — generated from spec's `## Requirements` checklist (one per `- [ ]`). `status: pending → implemented` is the legal transition. `failed_by_finding_ids` populates when VERIFY surfaces a finding tied to a criterion.
-- **verify.coverage_failed** — set by VERIFY's JUDGE sub-phase when a spec axis could not be exercised against the diff. Triggers pair-mode escalation when set.
+- **verify.coverage_failed** — set by VERIFY's JUDGE sub-phase when a spec axis could not be exercised against the diff. Triggers pair-mode escalation when set. Pair-mode also triggers for `complexity: high` specs or `state.complexity` of `"high"`/`"large"` when MECHANICAL has no HIGH/CRITICAL blockers.
+- **verify.pair_trigger** — VERIFY's trigger decision: `{ "eligible": boolean, "reasons": string[], "skipped_reason": string|null }`. If eligible with any reason, `pair_judge` must be non-null.
 
 ## Per-phase shape
 
-Each entry under `phases.<name>` (for `plan`, `implement`, `build_gate`, `cleanup`, `verify`, `final_report`):
+Each entry under `phases.<name>` (for `plan`, `probe_derive`, `implement`, `build_gate`, `cleanup`, `verify`, `final_report`):
 
 ```json
 {
@@ -73,7 +76,10 @@ Each entry under `phases.<name>` (for `plan`, `implement`, `build_gate`, `cleanu
 - `verdict` — `"PASS" | "PASS_WITH_ISSUES" | "FAIL" | "NEEDS_WORK" | "BLOCKED"`. PHASE 6 (FINAL_REPORT) writes its own verdict per the terminal-verdict precedence.
 - `triggered_by` — null on first run; one of `"build_gate" | "verify"` when the phase is a fix-loop respawn.
 - `pre_sha` — captured by orchestrator before CLEANUP and (if needed) other allowlist-enforced phases. Used to validate the post-spawn diff.
-- `sub_verdicts` — only populated for VERIFY: `{ "mechanical": "PASS|FAIL", "judge": "PASS|...", "pair_judge": "PASS|..." | null }`.
+- `sub_verdicts` — only populated for VERIFY: `{ "mechanical": "PASS|FAIL", "judge": "PASS|...", "pair_judge": "PASS|..." | null }`. Values are normalized by `verify-merge-findings.py`; model prose verdicts cannot upgrade or downgrade the deterministic findings-derived verdict.
+- `merged` — only populated for VERIFY after `verify-merge-findings.py --write-state`: `{ "verdict": "...", "findings_file": ".devlyn/verify-merged.findings.jsonl", "summary_file": ".devlyn/verify-merge.summary.json" }`.
+- `pair_trigger` — only populated for VERIFY; same shape as top-level `verify.pair_trigger` when the phase stores it locally.
+- `correctness.risk-probe-failed` — emitted by `spec-verify-check.py --include-risk-probes` when an executable probe derived from the visible `## Verification` section fails.
 
 ## Write protocol
 

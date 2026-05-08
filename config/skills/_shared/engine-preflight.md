@@ -14,7 +14,7 @@ When the resolved engine is `auto` or `codex`, on entry (before spawning any pha
 
 Never prompt the user. Never abort the run on missing CLI.
 
-Per-skill defaults: `/devlyn:resolve` defaults to `claude` (post iter-0020 close-out — Codex BUILD/IMPLEMENT below quality floor; iter-0033g + iter-0034 close-out — PLAN-pair research-only until container/sandbox infra justifies a measurement); `/devlyn:ideate` defaults to `auto` for the CHALLENGE phase's cross-model GAN-critic dynamic. Each skill's SKILL.md flag block is the source of truth for that skill's default.
+Per-skill defaults: `/devlyn:resolve` defaults to `claude` for PLAN/IMPLEMENT (post iter-0020 close-out — Codex BUILD/IMPLEMENT below quality floor; iter-0033g + iter-0034 close-out — PLAN-pair research-only until container/sandbox infra justifies a measurement). `/devlyn:resolve` VERIFY is the exception: gated pair-JUDGE may invoke the OTHER engine when its SKILL.md trigger policy fires. `/devlyn:ideate` defaults to `auto` for the CHALLENGE phase's cross-model GAN-critic dynamic. Each skill's SKILL.md flag block is the source of truth for that skill's default.
 
 ## Why this is the one permitted silent fallback
 

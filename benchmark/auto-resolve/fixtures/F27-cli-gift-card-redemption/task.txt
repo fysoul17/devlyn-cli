@@ -1,0 +1,9 @@
+Add a `gift-card` command to `bench-cli` so users can run `bench-cli gift-card --input <path>` with a JSON file shaped as `{ "order_id": string, "lines": [{ "sku": string, "qty": number }], "redeems": [{ "card_id": string, "amount_cents": number }] }`.
+
+Read product prices, card balances, and active flags from `data/gift-cards.json`. Do not hardcode those values. Combine duplicate SKUs before computing line totals, and combine duplicate `card_id` redemption requests before validating balances or computing remaining balances.
+
+On success, write one JSON object to stdout and no stderr with keys `order_id`, `subtotal_cents`, `gift_card_applied_cents`, `amount_due_cents`, `items`, and `redemptions`. Item rows have `sku`, `qty`, `line_cents`. Redemption rows have `card_id`, `applied_cents`, `remaining_balance_cents`. Preserve first-seen order for combined SKU rows and combined card rows.
+
+Validation happens before any result is printed. Invalid JSON, missing `lines`, missing `redeems`, unknown SKU, unknown card, inactive card, non-positive or non-integer `qty`, non-positive or non-integer `amount_cents`, missing `order_id`, combined card redemption over balance, or total redemption over subtotal exits `2` and writes exactly one JSON error object to stderr. Combined card redemption over balance must use exact shape `{ "error": "insufficient_balance", "card_id": string, "available_cents": number, "requested_cents": number }`. Total redemption over subtotal must use exact shape `{ "error": "redemption_exceeds_subtotal", "subtotal_cents": number, "requested_cents": number }`.
+
+Update `tests/cli.test.js` so existing tests still pass and at least two new tests cover `gift-card`: one successful redemption and one validation failure.

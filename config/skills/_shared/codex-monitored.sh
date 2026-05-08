@@ -41,7 +41,10 @@
 #
 # ENV OVERRIDES:
 #   CODEX_MONITORED_HEARTBEAT      — heartbeat interval seconds (default 30).
-#   CODEX_BIN                      — real codex binary path. Default: `codex`.
+#   CODEX_MONITORED_TIMEOUT_SEC    — optional hard timeout. When >0, kill the
+#                                     codex process group and exit 124.
+#   CODEX_BIN                      — real codex binary path. Default:
+#                                     CODEX_REAL_BIN when set, else `codex`.
 #                                     Set this when the shim has put us first
 #                                     on PATH.
 #   CODEX_MONITORED_ALLOW_PIPED    — set non-empty to skip the pipe-stdout
@@ -63,8 +66,10 @@ if [ -n "${CODEX_BLOCKED:-}" ]; then
 fi
 
 HEARTBEAT_SEC="${CODEX_MONITORED_HEARTBEAT:-30}"
-CODEX_BIN="${CODEX_BIN:-codex}"
+TIMEOUT_SEC="${CODEX_MONITORED_TIMEOUT_SEC:-0}"
+CODEX_BIN="${CODEX_BIN:-${CODEX_REAL_BIN:-codex}}"
 START=$(date +%s)
+TIMEOUT_FLAG=""
 
 # --- Pipe-stdout refusal (iter-0009 R2 finding #1) -------------------------
 # `[ -p /dev/stdout ]` is the POSIX test for "is fd 1 a FIFO/pipe". Verified
@@ -106,35 +111,95 @@ heartbeat_loop() {
   done
 }
 
+timeout_loop() {
+  local pid="$1"
+  local seconds="$2"
+  local flag="$3"
+  [ "$seconds" -gt 0 ] || return 0
+  sleep "$seconds"
+  if kill -0 "$pid" 2>/dev/null; then
+    : > "$flag"
+    printf '[codex-monitored] timeout: elapsed=%ds limit=%ds\n' \
+      "$(( $(date +%s) - START ))" "$seconds" >&2
+    kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+    sleep 5
+    kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
+  fi
+}
+
+terminate_process_group() {
+  local pgid="$1"
+  local reason="$2"
+  if ! kill -0 -- "-$pgid" 2>/dev/null; then
+    return 0
+  fi
+  printf '[codex-monitored] reap: reason=%s pgid=%s\n' "$reason" "$pgid" >&2
+  kill -TERM -- "-$pgid" 2>/dev/null || true
+  local i
+  for i in 1 2 3 4 5; do
+    sleep 1
+    if ! kill -0 -- "-$pgid" 2>/dev/null; then
+      return 0
+    fi
+  done
+  kill -KILL -- "-$pgid" 2>/dev/null || true
+}
+
 forward_signal() {
   local sig="$1"
   if [ -n "${CODEX_PID:-}" ] && kill -0 "$CODEX_PID" 2>/dev/null; then
-    kill -"$sig" "$CODEX_PID" 2>/dev/null || true
+    kill -"$sig" -- "-$CODEX_PID" 2>/dev/null || kill -"$sig" "$CODEX_PID" 2>/dev/null || true
   fi
   if [ -n "${HB_PID:-}" ] && kill -0 "$HB_PID" 2>/dev/null; then
     kill -TERM "$HB_PID" 2>/dev/null || true
   fi
+  if [ -n "${WATCHDOG_PID:-}" ] && kill -0 "$WATCHDOG_PID" 2>/dev/null; then
+    kill -TERM "$WATCHDOG_PID" 2>/dev/null || true
+  fi
 }
 
-trap 'forward_signal TERM' TERM
-trap 'forward_signal INT' INT
+cleanup() {
+  forward_signal TERM
+  [ -z "$TIMEOUT_FLAG" ] || rm -f "$TIMEOUT_FLAG"
+}
 
-printf '[codex-monitored] start: ts=%s heartbeat=%ds bin=%s\n' \
-  "$(date -u +%FT%TZ)" "$HEARTBEAT_SEC" "$CODEX_BIN" >&2
+trap 'forward_signal TERM; exit 143' TERM
+trap 'forward_signal INT; exit 130' INT
+trap cleanup EXIT
+
+printf '[codex-monitored] start: ts=%s heartbeat=%ds timeout=%ss bin=%s\n' \
+  "$(date -u +%FT%TZ)" "$HEARTBEAT_SEC" "$TIMEOUT_SEC" "$CODEX_BIN" >&2
 
 # Launch codex with stdin closed; output streams directly to OUR stdout/stderr.
+set -m
 "$CODEX_BIN" exec "$@" < /dev/null &
 CODEX_PID=$!
+set +m
 printf '[codex-monitored] codex pid=%d\n' "$CODEX_PID" >&2
 
 heartbeat_loop "$CODEX_PID" &
 HB_PID=$!
 
+if [ "$TIMEOUT_SEC" -gt 0 ]; then
+  TIMEOUT_FLAG=$(mktemp "${TMPDIR:-/tmp}/codex-monitored-timeout.XXXXXX")
+  rm -f "$TIMEOUT_FLAG"
+  timeout_loop "$CODEX_PID" "$TIMEOUT_SEC" "$TIMEOUT_FLAG" &
+  WATCHDOG_PID=$!
+fi
+
 wait "$CODEX_PID"
 EXIT=$?
+terminate_process_group "$CODEX_PID" "post-exit-descendants"
 
 kill -TERM "$HB_PID" 2>/dev/null || true
 wait "$HB_PID" 2>/dev/null || true
+if [ -n "${WATCHDOG_PID:-}" ]; then
+  kill -TERM "$WATCHDOG_PID" 2>/dev/null || true
+  wait "$WATCHDOG_PID" 2>/dev/null || true
+fi
+if [ -n "$TIMEOUT_FLAG" ] && [ -f "$TIMEOUT_FLAG" ]; then
+  EXIT=124
+fi
 
 printf '[codex-monitored] codex exited: code=%d elapsed=%ds\n' \
   "$EXIT" $(( $(date +%s) - START )) >&2

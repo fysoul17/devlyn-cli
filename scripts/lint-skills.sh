@@ -35,6 +35,7 @@ offenders=$(grep -RIln 'mcp__codex-cli__' \
   | grep -v 'config/skills/devlyn:auto-resolve-workspace/' \
   | grep -v 'config/skills/devlyn:ideate-workspace/' \
   | grep -v 'config/skills/preflight-workspace/' \
+  | grep -v 'benchmark/auto-resolve/external/' \
   | grep -v 'benchmark/auto-resolve/PILOT-RESULTS' \
   || true)
 if [ -z "$offenders" ]; then
@@ -53,6 +54,7 @@ offenders=$(grep -RIln 'Requires Codex MCP\|Codex MCP server\|Codex MCP availabl
   | grep -v 'config/skills/devlyn:auto-resolve-workspace/' \
   | grep -v 'config/skills/devlyn:ideate-workspace/' \
   | grep -v 'config/skills/preflight-workspace/' \
+  | grep -v 'benchmark/auto-resolve/external/' \
   | grep -v 'benchmark/auto-resolve/PILOT-RESULTS' \
   || true)
 if [ -z "$offenders" ]; then
@@ -127,6 +129,8 @@ else
   # plus the `_shared/` kernel.
   for rel in \
       _shared/spec-verify-check.py \
+      _shared/collect-codex-findings.py \
+      _shared/verify-merge-findings.py \
       devlyn:ideate/SKILL.md \
       devlyn:ideate/references/spec-template.md \
       devlyn:ideate/references/elicitation.md \
@@ -136,6 +140,7 @@ else
       devlyn:resolve/references/state-schema.md \
       devlyn:resolve/references/free-form-mode.md \
       devlyn:resolve/references/phases/plan.md \
+      devlyn:resolve/references/phases/probe-derive.md \
       devlyn:resolve/references/phases/implement.md \
       devlyn:resolve/references/phases/build-gate.md \
       devlyn:resolve/references/phases/cleanup.md \
@@ -169,6 +174,33 @@ else
   if [ $drift -eq 0 ]; then
     ok "critical path parity clean"
   fi
+fi
+
+# ---------------------------------------------------------------------------
+# 6b. VERIFY merge verdict binding self-test.
+#     F23 full-pipeline prompt-fix rerun exposed a real failure where Codex
+#     pair-JUDGE emitted HIGH findings but state kept pair_judge as
+#     PASS_WITH_ISSUES. Routing severity must be deterministic, not prose.
+# ---------------------------------------------------------------------------
+section "Check 6b: VERIFY merge makes pair HIGH verdict-binding"
+if python3 config/skills/_shared/verify-merge-findings.py --self-test >/dev/null 2>&1; then
+  ok "verify-merge-findings.py self-test passed"
+else
+  bad "verify-merge-findings.py self-test failed"
+fi
+
+section "Check 6c: Codex stdout collection writes canonical pair findings"
+if python3 config/skills/_shared/collect-codex-findings.py --self-test >/dev/null 2>&1; then
+  ok "collect-codex-findings.py self-test passed"
+else
+  bad "collect-codex-findings.py self-test failed"
+fi
+
+section "Check 6d: Spec verification executes hidden-blind risk probes"
+if python3 config/skills/_shared/spec-verify-check.py --self-test >/dev/null 2>&1; then
+  ok "spec-verify-check.py risk-probe self-test passed"
+else
+  bad "spec-verify-check.py risk-probe self-test failed"
 fi
 
 # ---------------------------------------------------------------------------

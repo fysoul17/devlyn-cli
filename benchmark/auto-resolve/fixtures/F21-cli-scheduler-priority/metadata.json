@@ -1,0 +1,10 @@
+{
+  "id": "F21-cli-scheduler-priority",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli schedule command that assigns appointment requests to resource availability windows using priority, submitted order, blocked intervals, and earliest-fit placement while producing exact JSON accept/reject results."
+}

@@ -15,8 +15,25 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 --fixture <FID> --arm <variant|solo_claude|bare|l2_gated|l2_forced> --run-id <ID> [--resolve-skill new] [--dry-run]"
+  echo "usage: $0 --fixture <FID> --arm <variant|solo_claude|bare|l2_gated|l2_risk_probes|l2_forced> --run-id <ID> [--resolve-skill new] [--dry-run]"
   exit 1
+}
+
+kill_worktree_processes() {
+  local work_dir="$1"
+  local signal="$2"
+  local physical_work_dir current_pgid
+  physical_work_dir="$(cd "$work_dir" 2>/dev/null && pwd -P || printf '%s' "$work_dir")"
+  current_pgid="$(ps -o pgid= -p "$$" | tr -d ' ')"
+  ps -axo pid=,pgid=,command= \
+    | awk -v p1="$work_dir" -v p2="$physical_work_dir" -v self="$$" -v current_pgid="$current_pgid" '
+        $1 != self && $2 != current_pgid && (index($0, p1) || index($0, p2)) { print $2 }
+      ' \
+    | sort -u \
+    | while IFS= read -r pgid; do
+        [ -n "$pgid" ] || continue
+        kill "-$signal" -- "-$pgid" 2>/dev/null || true
+      done
 }
 
 FIXTURE=""; ARM=""; RUN_ID=""; DRY_RUN=0
@@ -35,17 +52,22 @@ done
 # iter-0019: original 3 arms — variant (L2-old: Claude orchestrator + Codex BUILD pair via --engine auto),
 # solo_claude (L1: Claude orchestrator, codex blocked by shim+wrapper enforcement),
 # bare (L0: direct claude -p, no skill, no codex).
-# iter-0033c (Codex R0-infra adoption, 2026-05-02): two new arms for NEW L2 measurement on /devlyn:resolve —
+# iter-0033c (Codex R0-infra adoption, 2026-05-02): two L2 diagnostic arms for /devlyn:resolve —
 # l2_gated (--engine claude, no --pair-verify; pair fires only on natural triggers),
-# l2_forced (--engine claude --pair-verify; diagnostic). Both require --resolve-skill new.
+# l2_risk_probes (--engine claude --risk-probes; pair converts visible Verification bullets to executable probes before IMPLEMENT),
+# l2_forced (--engine claude --pair-verify; retired because it leaks pair-awareness before IMPLEMENT).
 [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] || [ "$ARM" = "bare" ] \
-  || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_forced" ] || \
-  { echo "arm must be variant|solo_claude|bare|l2_gated|l2_forced"; exit 1; }
+  || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_risk_probes" ] || [ "$ARM" = "l2_forced" ] || \
+  { echo "arm must be variant|solo_claude|bare|l2_gated|l2_risk_probes|l2_forced"; exit 1; }
 # iter-0033c (Codex R0-infra Q2): l2_* arms require NEW skill surface (only NEW
 # `/devlyn:resolve` honors --pair-verify; OLD `/devlyn:auto-resolve` would silently
 # ignore the flag and produce mis-attributed L2 numbers).
-if { [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_forced" ]; } && [ "$RESOLVE_SKILL" != "new" ]; then
+if { [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_risk_probes" ] || [ "$ARM" = "l2_forced" ]; } && [ "$RESOLVE_SKILL" != "new" ]; then
   echo "l2_* arms require --resolve-skill new (got '$RESOLVE_SKILL')"; exit 1
+fi
+if [ "$ARM" = "l2_forced" ]; then
+  echo "l2_forced is retired: it puts --pair-verify in the initial prompt, so IMPLEMENT can become pair-aware before the diff is frozen. Use scripts/run-frozen-verify-pair.sh for leak-free VERIFY-pair measurement." >&2
+  exit 1
 fi
 # iter-0034 Phase 4 cutover (2026-05-03): OLD `/devlyn:auto-resolve` was
 # deleted. Only `new` (= /devlyn:resolve --spec) is supported. The flag stays
@@ -78,6 +100,13 @@ for f in "$META" "$EXPECTED" "$SPEC" "$TASK"; do
 done
 
 TIMEOUT=$(python3 -c "import json; print(json.load(open('$META'))['timeout_seconds'])")
+if [ "$ARM" = "l2_risk_probes" ]; then
+  # This arm adds a bounded Codex probe-derive phase before IMPLEMENT and a
+  # bounded Codex pair-JUDGE during VERIFY. The full-pipeline gate still
+  # enforces wall-time efficiency by pair/solo ratio; this budget prevents a
+  # false timeout before the mandatory second judge can emit its contract line.
+  TIMEOUT=$((TIMEOUT + 600))
+fi
 
 RESULT_DIR="$BENCH_ROOT/results/$RUN_ID/$FIXTURE/$ARM"
 mkdir -p "$RESULT_DIR"
@@ -104,7 +133,7 @@ cp -R "$BENCH_ROOT/fixtures/test-repo" "$WORK_DIR"
 # while variant uses --engine auto (Codex IMPLEMENT). Pair-mode in
 # /devlyn:resolve VERIFY phase pulls Codex via the OTHER-engine rule.
 if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
-   || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_forced" ]; then
+   || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_risk_probes" ] || [ "$ARM" = "l2_forced" ]; then
   mkdir -p "$WORK_DIR/.claude"
   if [ -d "$REPO_ROOT/.claude/skills" ]; then
     cp -R "$REPO_ROOT/.claude/skills" "$WORK_DIR/.claude/skills"
@@ -164,11 +193,13 @@ if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
       ARM_CODEX_BLOCKED=0
     fi
     python3 - "$WORK_DIR/.claude/settings.json" \
-      "$INJECTED_PATH" "$CODEX_REAL_BIN" "$CODEX_MONITORED_PATH" "$ARM_CODEX_BLOCKED" <<'PY'
+      "$INJECTED_PATH" "$CODEX_REAL_BIN" "$CODEX_MONITORED_PATH" "$ARM_CODEX_BLOCKED" "$ARM" <<'PY'
 import json, sys
-out_path, path_val, real_bin, monitored, codex_blocked = sys.argv[1:6]
+out_path, path_val, real_bin, monitored, codex_blocked, arm = sys.argv[1:7]
 env = {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "DISABLE_AUTOUPDATER": "1",
     "PATH": path_val,
 }
 if codex_blocked == "1":
@@ -182,6 +213,10 @@ else:
     # BUILD; both vars are required by the shim/wrapper handshake.
     env["CODEX_REAL_BIN"] = real_bin
     env["CODEX_MONITORED_PATH"] = monitored
+    if arm == "l2_risk_probes":
+        # Risk-probe derivation is a bounded contract-conversion step. A long
+        # Codex run is a harness failure, not useful extra quality signal.
+        env["CODEX_MONITORED_TIMEOUT_SEC"] = "300"
 data = {"env": env}
 with open(out_path, "w") as f:
     json.dump(data, f, indent=2)
@@ -231,22 +266,25 @@ if [ -f "$SETUP" ] && [ -s "$SETUP" ]; then
   fi
 fi
 
-# iter-0019.6: stage normalized .devlyn/spec-verify.json containing ONLY
-# verification_commands from expected.json (no tier_a_waivers, no
-# forbidden_patterns, no scope oracles — those have separate enforcement
-# layers). BUILD_GATE's spec-verify-check.py reads this generic path so
-# the orchestrator stays benchmark-agnostic; future /devlyn:ideate could
-# generate the same shape from a spec.md "## Verification" section for
-# real-user runs (Codex R5, 2026-04-28). This stages all 3 arms — bare's
-# .devlyn/ is created lazily by spec-verify-check.py if absent.
+# iter-0019.6: stage normalized .devlyn/spec-verify.json for BUILD_GATE.
+# Only commands safe to reveal before IMPLEMENT may be staged here. Commands
+# that reference BENCH_FIXTURE_DIR are hidden post-run oracles; staging their
+# path leaks verifier names into the arm and lets agents search for answer-key
+# files. Those commands still run in the post-run verifier below.
 if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
-   || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_forced" ]; then
+   || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_risk_probes" ] || [ "$ARM" = "l2_forced" ]; then
   python3 - "$EXPECTED" "$WORK_DIR/.devlyn/spec-verify.json" <<'PY'
 import json, os, sys
 expected = json.load(open(sys.argv[1]))
 out_path = sys.argv[2]
-normalized = {"verification_commands": expected.get("verification_commands", [])}
+visible_commands = [
+    cmd for cmd in expected.get("verification_commands", [])
+    if "BENCH_FIXTURE_DIR" not in str(cmd.get("cmd", ""))
+]
+normalized = {"verification_commands": visible_commands}
 os.makedirs(os.path.dirname(out_path), exist_ok=True)
+if not visible_commands:
+    raise SystemExit(0)
 with open(out_path, "w") as f:
     json.dump(normalized, f, indent=2)
     f.write("\n")
@@ -270,7 +308,7 @@ PROMPT_FILE="$RESULT_DIR/input.md"
 # arms pass the engine flag explicitly so they survive future runtime-default
 # changes (post iter-0020 close-out: default flipped to claude).
 if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
-   || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_forced" ]; then
+   || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_risk_probes" ] || [ "$ARM" = "l2_forced" ]; then
   case "$ARM" in
     solo_claude)
       ENGINE_CLAUSE="--engine claude"
@@ -281,12 +319,21 @@ if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
       ENGINE_PROMPT_HINT="Run with \`--engine auto\` so the experimental dual-engine routing fires (Codex BUILD/FIX, Claude EVAL/CRITIC) — do not override it."
       ;;
     l2_gated)
-      # iter-0033c: NEW L2 with natural pair-mode triggers. Claude does
-      # IMPLEMENT; pair-JUDGE in VERIFY fires only on coverage_failed OR
-      # MECHANICAL warning per /devlyn:resolve PHASE 5. Codex remains
-      # available as the OTHER-engine pair-JUDGE candidate.
+      # NEW L2 with natural pair-mode triggers. Claude does IMPLEMENT;
+      # pair-JUDGE in VERIFY fires per /devlyn:resolve PHASE 5 policy
+      # (high complexity, coverage_failed, or warning-level mechanical
+      # findings; never after HIGH/CRITICAL mechanical blockers). Codex
+      # remains available as the OTHER-engine pair-JUDGE candidate.
       ENGINE_CLAUSE="--engine claude"
       ENGINE_PROMPT_HINT="Run with \`--engine claude\` and let the orchestrator's pair-mode (VERIFY) trigger naturally per its policy. Codex is available as the OTHER-engine pair-JUDGE — the harness has not blocked it. Do NOT pass \`--pair-verify\`; this arm measures gated triggering."
+      ;;
+    l2_risk_probes)
+      # NEW L2 probe-derive arm. Claude plans/implements; Codex is used before
+      # IMPLEMENT only to derive bounded executable probes from visible
+      # Verification bullets. BUILD_GATE and VERIFY execute those probes
+      # mechanically via spec-verify-check.py.
+      ENGINE_CLAUSE="--engine claude --risk-probes"
+      ENGINE_PROMPT_HINT="Run with \`--engine claude --risk-probes\`. Codex is available as the OTHER-engine probe derivation and pair-JUDGE engine. The probe phase may only derive executable checks from visible \`## Verification\` text; it must not read hidden fixture/verifier paths."
       ;;
     l2_forced)
       # iter-0033c: NEW L2 forced — pair-JUDGE always fires. Diagnostic arm
@@ -414,12 +461,17 @@ else
   # natural exit at or past the budget is no longer mislabeled as timeout.
   #
   # MCP/config isolation (iter 0004). The harness's `claude -p` subprocess
-  # must not load the operator's user-level MCP plugins (pencil, codex-cli,
-  # telegram, vercel, …). Project policy is "MCP is not in the loop"; loading
-  # user MCP inside the variant arm is uncontrolled environment leaking into
-  # the experiment, and it is the most plausible cause of the F7 0-byte-
-  # transcript hang. `--strict-mcp-config` + an empty `mcpServers` object
-  # forces a hermetic subprocess. Skills still resolve via `/skill-name`.
+  # must not load the operator's user-level MCP/plugins/settings (pencil,
+  # codex-cli, telegram, vercel, ...). Project policy is "MCP/plugins are not in
+  # the loop"; loading user config inside the arm is uncontrolled environment
+  # leaking into the experiment. `--setting-sources project,local` keeps user
+  # plugin enablement out of the run but Claude Code still reads the installed
+  # plugin registry for autoupdate. Official Claude Code settings document
+  # `DISABLE_AUTOUPDATER=1` / `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` as the
+  # supported way to disable that background traffic, while preserving OAuth
+  # auth from the real HOME. `--strict-mcp-config` + an empty `mcpServers` object
+  # forces a hermetic MCP set. Skills still resolve via the project
+  # `.claude/skills` staged into the worktree.
   # `--debug-file` records per-arm init/runtime so the next hang has a
   # location, not a guess.
   TIMEOUT_FLAG="$RESULT_DIR/.timed_out"
@@ -436,7 +488,7 @@ else
     # PATH — they route Claude IMPLEMENT but Codex pair-JUDGE in VERIFY hits
     # `codex exec` through the wrapper for starvation safety.
     if { [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
-         || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_forced" ]; } \
+         || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_risk_probes" ] || [ "$ARM" = "l2_forced" ]; } \
        && [ -x "$WORK_DIR/.devlyn-bin/codex" ]; then
       export PATH="$WORK_DIR/.devlyn-bin:$PATH"
       [ "$ARM" = "solo_claude" ] && export CODEX_BLOCKED=1
@@ -447,10 +499,19 @@ else
     # what the post-run verifier (run-fixture.sh:431-434) sets so the gate
     # sees the same environment shape.
     export BENCH_WORKDIR="$WORK_DIR"
+    # Python helper scripts run inside the benchmark worktree. Do not let them
+    # rewrite tracked __pycache__ artifacts and pollute the arm-only diff.
+    export PYTHONDONTWRITEBYTECODE=1
+    # Official Claude Code setting: disable background plugin/autoupdate traffic
+    # before process startup. Project settings env is not early enough for all
+    # startup paths.
+    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+    export DISABLE_AUTOUPDATER=1
     exec claude \
       -p "$(cat "$PROMPT_FILE")" \
       --dangerously-skip-permissions \
       --effort xhigh \
+      --setting-sources project,local \
       --strict-mcp-config \
       --mcp-config '{"mcpServers":{}}' \
       --debug-file "$RESULT_DIR/claude-debug.log"
@@ -459,13 +520,21 @@ else
   set +m
 
   (
-    sleep "$TIMEOUT"
-    if kill -0 "$CHILD_PID" 2>/dev/null; then
-      : > "$TIMEOUT_FLAG"
-      kill -TERM -- "-$CHILD_PID" 2>/dev/null
-      sleep 5
-      kill -KILL -- "-$CHILD_PID" 2>/dev/null
-    fi
+    deadline=$((T_START + TIMEOUT))
+    while kill -0 "$CHILD_PID" 2>/dev/null; do
+      now=$(date +%s)
+      if [ "$now" -ge "$deadline" ]; then
+        : > "$TIMEOUT_FLAG"
+        kill -TERM -- "-$CHILD_PID" 2>/dev/null
+        kill_worktree_processes "$WORK_DIR" TERM
+        sleep 5
+        kill -KILL -- "-$CHILD_PID" 2>/dev/null
+        kill_worktree_processes "$WORK_DIR" KILL
+        exit 0
+      fi
+      remaining=$((deadline - now))
+      [ "$remaining" -gt 30 ] && sleep 30 || sleep "$remaining"
+    done
   ) &
   WATCHDOG_PID=$!
 
@@ -479,13 +548,41 @@ else
     INVOKE_EXIT=124
     WATCHDOG_FIRED=1
     rm -f "$TIMEOUT_FLAG"
+    kill_worktree_processes "$WORK_DIR" TERM
+    sleep 1
+    kill_worktree_processes "$WORK_DIR" KILL
     echo "[run-fixture] arm timed out after ${TIMEOUT}s — INVOKE_EXIT=124" >&2
+  else
+    # A clean `claude -p` exit can still leave OTHER-engine pair-JUDGE
+    # descendants alive; reap any process group rooted in this arm worktree.
+    kill_worktree_processes "$WORK_DIR" TERM
+    sleep 1
+    kill_worktree_processes "$WORK_DIR" KILL
   fi
   set -e
 fi
 
 T_END=$(date +%s)
 ELAPSED=$((T_END - T_START))
+
+# Restore tracked Python bytecode to the scaffold commit and remove only
+# untracked bytecode. Helper invocations must not count as model work, but
+# deleting tracked scaffold files would also pollute changed-files.txt.
+(cd "$WORK_DIR" \
+  && git restore --source "$SCAFFOLD_SHA" -- .claude/skills/_shared/__pycache__ 2>/dev/null || true)
+cleanup_roots=()
+[ -d "$WORK_DIR/.claude" ] && cleanup_roots+=("$WORK_DIR/.claude")
+[ -d "$WORK_DIR/.devlyn" ] && cleanup_roots+=("$WORK_DIR/.devlyn")
+if [ ${#cleanup_roots[@]} -gt 0 ]; then
+  find "${cleanup_roots[@]}" -type f \( -name '*.pyc' -o -name '*.pyo' \) -print0 \
+    | while IFS= read -r -d '' py_file; do
+        rel="${py_file#$WORK_DIR/}"
+        if ! (cd "$WORK_DIR" && git ls-files --error-unmatch "$rel" >/dev/null 2>&1); then
+          rm -f "$py_file"
+        fi
+      done
+  find "${cleanup_roots[@]}" -type d -name __pycache__ -empty -delete || true
+fi
 
 # Capture the ARM-ONLY diff against the scaffold commit. Variant's
 # auto-resolve pipeline commits internally after each phase, so diffing
@@ -518,6 +615,41 @@ python3 "$BENCH_ROOT/scripts/oracle-scope-tier-b.py" \
   echo '{"oracle":"scope-tier-b","findings":[],"error":"oracle invocation failed"}' \
     > "$RESULT_DIR/oracle-scope-tier-b.json"
 
+if { [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
+     || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_risk_probes" ]; } \
+   && [ -f "$WORK_DIR/.devlyn/pipeline.state.json" ] \
+   && [ -f "$WORK_DIR/.claude/skills/_shared/verify-merge-findings.py" ]; then
+  if [ -f "$WORK_DIR/.devlyn/codex-judge.stdout" ] \
+     && [ -f "$WORK_DIR/.claude/skills/_shared/collect-codex-findings.py" ]; then
+    if ! python3 "$WORK_DIR/.claude/skills/_shared/collect-codex-findings.py" \
+        --devlyn-dir "$WORK_DIR/.devlyn" \
+        > "$RESULT_DIR/collect-codex-findings.log" 2>&1; then
+      echo "[run-fixture] Codex pair findings collection failed; see $RESULT_DIR/collect-codex-findings.log" >&2
+    fi
+  fi
+  if ! python3 "$WORK_DIR/.claude/skills/_shared/verify-merge-findings.py" \
+      --devlyn-dir "$WORK_DIR/.devlyn" --write-state \
+      > "$RESULT_DIR/verify-merge-normalize.log" 2>&1; then
+    echo "[run-fixture] verify merge normalization failed; see $RESULT_DIR/verify-merge-normalize.log" >&2
+  fi
+fi
+
+if { [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
+     || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_risk_probes" ]; } && [ -d "$WORK_DIR/.devlyn" ]; then
+  run_dir=$(find "$WORK_DIR/.devlyn/runs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort | tail -1 || true)
+  if [ -n "$run_dir" ]; then
+    rm -rf "$RESULT_DIR/run-archive"
+    cp -R "$run_dir" "$RESULT_DIR/run-archive"
+    [ -f "$RESULT_DIR/run-archive/pipeline.state.json" ] \
+      || [ ! -f "$WORK_DIR/.devlyn/pipeline.state.json" ] \
+      || cp "$WORK_DIR/.devlyn/pipeline.state.json" "$RESULT_DIR/run-archive/pipeline.state.json"
+  else
+    rm -rf "$RESULT_DIR/run-archive"
+    mkdir -p "$RESULT_DIR/run-archive"
+    find "$WORK_DIR/.devlyn" -maxdepth 1 -type f -exec cp {} "$RESULT_DIR/run-archive/" \;
+  fi
+fi
+
 # Run verification commands + forbidden pattern scan + deps check. Uses
 # the operator's real HOME (same as the arm saw). Fixtures that need HOME
 # isolation override it inline per verification command.
@@ -532,6 +664,9 @@ verify_env = os.environ.copy()
 # Expose the work-dir path so fixtures whose verification needs to reference
 # the work root can do so portably (e.g. F9's out-of-repo check).
 verify_env["BENCH_WORKDIR"] = work
+# Hidden benchmark verifiers live in the fixture directory, outside the arm's
+# work tree. This keeps oracle code from becoming implementation context.
+verify_env["BENCH_FIXTURE_DIR"] = os.path.dirname(os.path.abspath(sys.argv[1]))
 
 verify = {"commands": [], "forbidden_pattern_hits": [], "deps_added": 0,
           "max_deps_added": expected.get("max_deps_added", 0),
@@ -669,6 +804,58 @@ try:
 except Exception:
     changed = []
 
+state = {}
+state_path = os.path.join(result_dir, "run-archive", "pipeline.state.json")
+if os.path.isfile(state_path):
+    with open(state_path) as f:
+        state = json.load(f)
+verify_phase = (state.get("phases") or {}).get("verify") or {}
+sub_verdicts = verify_phase.get("sub_verdicts")
+pair_trigger = verify_phase.get("pair_trigger") or ((state.get("verify") or {}).get("pair_trigger"))
+pair_mode = bool(
+    isinstance(sub_verdicts, dict)
+    and (sub_verdicts.get("judge_codex") is not None or sub_verdicts.get("pair_judge") is not None)
+) or bool(verify_phase.get("pair_mode"))
+
+invoke_exit = int(os.environ.get("INVOKE_EXIT", "0"))
+plugin_contamination = False
+plugin_contamination_reason = None
+debug_path = os.path.join(result_dir, "claude-debug.log")
+try:
+    with open(debug_path, errors="replace") as f:
+        debug_text = f.read()
+except OSError:
+    debug_text = ""
+if (
+    "Plugin autoupdate: checking installed plugins" in debug_text
+    or "Caching plugin from source:" in debug_text
+    or "Cloned repository from " in debug_text
+    or "Successfully cached plugin " in debug_text
+    or "Found 8 plugins (8 enabled" in debug_text
+):
+    if "Plugin autoupdate: skipped (auto-updater disabled)" not in debug_text:
+        plugin_contamination = True
+        plugin_contamination_reason = "plugin_contamination"
+
+invoke_failure = (
+    (invoke_exit not in (0,) and not timing["timed_out"])
+    or plugin_contamination
+)
+invoke_failure_reason = None
+if plugin_contamination:
+    invoke_failure_reason = plugin_contamination_reason
+elif invoke_failure:
+    transcript_path = os.path.join(result_dir, "transcript.txt")
+    haystack = ""
+    for path in (transcript_path, debug_path):
+        try:
+            with open(path, errors="replace") as f:
+                haystack += "\n" + f.read()
+        except OSError:
+            pass
+    if "You've hit your limit" in haystack or "rate_limit_error" in haystack:
+        invoke_failure_reason = "provider_limit"
+
 result = {
     "fixture": fixture,
     "arm": arm,
@@ -681,8 +868,15 @@ result = {
     "files_changed": len(changed),
     "elapsed_seconds": elapsed,
     "timed_out": timing["timed_out"],
-    "invoke_exit": int(os.environ.get("INVOKE_EXIT", "0")),
-    "invoke_failure": int(os.environ.get("INVOKE_EXIT", "0")) not in (0,) and not timing["timed_out"],
+    "environment_contamination": plugin_contamination,
+    "environment_contamination_reason": plugin_contamination_reason,
+    "invoke_exit": invoke_exit,
+    "invoke_failure": invoke_failure,
+    "invoke_failure_reason": invoke_failure_reason,
+    "terminal_verdict": ((state.get("phases") or {}).get("final_report") or {}).get("verdict"),
+    "verify_verdict": verify_phase.get("verdict"),
+    "pair_trigger": pair_trigger,
+    "pair_mode": pair_mode,
 }
 json.dump(result, open(os.path.join(result_dir, "result.json"), "w"), indent=2)
 print(json.dumps(result, indent=2))

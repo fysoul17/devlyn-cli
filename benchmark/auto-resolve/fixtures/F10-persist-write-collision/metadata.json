@@ -1,0 +1,10 @@
+{
+  "id": "F10-persist-write-collision",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add POST /items that appends a new entry and persists the full list to data/items.json. The list and its ids must remain consistent when multiple POSTs arrive close together — every saved item ends up with a unique numeric id and none are lost."
+}

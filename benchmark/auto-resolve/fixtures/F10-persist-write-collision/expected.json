@@ -1,0 +1,60 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/server.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/parallel.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "After multiple POSTs (single or many at once), `GET /items` reflects every successful POST exactly once",
+        "Several POSTs sent close together produce a list with every item, each with a distinct id"
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/invalid.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Invalid body (missing `name`, missing `qty`, `qty` not a positive number) → respond `400` with `{ error: 'invalid_body', field: '<name>' }`",
+        "An invalid POST returns `400` and the persisted file is byte-identical to its pre-request contents."
+      ]
+    },
+    {
+      "cmd": "node -e 'const fs=require(\"fs\"); const d=JSON.parse(fs.readFileSync(\"data/items.json\",\"utf8\")); console.log(Array.isArray(d.items));'",
+      "exit_code": 0,
+      "stdout_contains": ["true"],
+      "stdout_not_contains": ["false", "undefined"]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\})",
+      "description": "silent catch returning fallback in write path",
+      "files": ["server/index.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["server/index.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "/\\*\\s*eslint-disable",
+      "description": "eslint-disable without scoped justification",
+      "files": ["server/index.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["server/index.js", "tests/server.test.js", "data/items.json"],
+  "forbidden_files": [],
+  "max_deps_added": 0,
+  "spec_output_files": ["server/index.js", "tests/server.test.js"]
+}

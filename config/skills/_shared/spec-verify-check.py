@@ -66,6 +66,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -73,6 +74,42 @@ VERIFICATION_SECTION_RE = re.compile(
     r'(?ms)^##[ \t]+Verification\b[^\n]*\n(.*?)(?=^##[ \t]+|\Z)'
 )
 JSON_FENCE_RE = re.compile(r'(?ms)^```json[ \t]*\n(.*?)\n```[ \t]*$')
+FORBIDDEN_RISK_PROBE_CMD_RE = re.compile(
+    r'BENCH_FIXTURE_DIR|benchmark/auto-resolve/fixtures|/verifiers/|verifiers/'
+)
+RISK_PROBE_TAGS = {
+    "ordering_inversion",
+    "boundary_overlap",
+    "prior_consumption",
+    "rollback_state",
+    "positive_remaining",
+    "stdout_stderr_contract",
+    "error_contract",
+    "shape_contract",
+}
+RISK_PROBE_REQUIRED_EVIDENCE = {
+    "ordering_inversion": {
+        "input_order_would_choose_wrong_winner",
+        "asserts_processing_order_result",
+    },
+    "boundary_overlap": {
+        "starts_at_blocked_start",
+        "ends_at_blocked_end",
+        "one_minute_overlap",
+    },
+    "prior_consumption": {
+        "same_resource_consumed_first",
+        "later_entity_fails_or_reroutes",
+    },
+    "rollback_state": {
+        "failed_entity_tentative_state_absent",
+        "later_entity_uses_released_state",
+    },
+    "positive_remaining": {
+        "asserts_full_remaining_state",
+        "zero_quantity_rows_absent",
+    },
+}
 
 
 def extract_verification_block(text: str) -> str | None:
@@ -87,6 +124,11 @@ def extract_verification_block(text: str) -> str | None:
         return None
     fence = JSON_FENCE_RE.search(section.group(1))
     return fence.group(1) if fence else None
+
+
+def extract_verification_text(text: str) -> str:
+    section = VERIFICATION_SECTION_RE.search(text)
+    return section.group(1) if section else ""
 
 
 def validate_shape(data) -> str | None:
@@ -122,6 +164,117 @@ def validate_shape(data) -> str | None:
             if not isinstance(v, list) or not all(isinstance(s, str) for s in v):
                 return f"verification_commands[{i}].{k} must be a list of strings"
     return None
+
+
+def validate_risk_probe(probe: object, index: int, verification_text: str) -> str | None:
+    if not isinstance(probe, dict):
+        return f"risk-probes[{index}] must be a JSON object"
+    probe_id = probe.get("id")
+    if not isinstance(probe_id, str) or not probe_id.strip():
+        return f"risk-probes[{index}].id must be a non-empty string"
+    derived_from = probe.get("derived_from")
+    if not isinstance(derived_from, str) or not derived_from.strip():
+        return f"risk-probes[{index}].derived_from must be a non-empty string"
+    if derived_from not in verification_text:
+        return (
+            f"risk-probes[{index}].derived_from must be an exact substring "
+            "of the source ## Verification section"
+        )
+    shape_err = validate_shape({"verification_commands": [probe]})
+    if shape_err:
+        return f"risk-probes[{index}]: {shape_err}"
+    cmd = probe.get("cmd", "")
+    if FORBIDDEN_RISK_PROBE_CMD_RE.search(cmd):
+        return (
+            f"risk-probes[{index}].cmd references hidden fixture/verifier paths; "
+            "risk probes must derive from visible spec text only"
+        )
+    if len(cmd) > 4000:
+        return f"risk-probes[{index}].cmd exceeds 4000 characters"
+    tags = probe.get("tags")
+    if not isinstance(tags, list) or not tags or not all(isinstance(t, str) for t in tags):
+        return f"risk-probes[{index}].tags must be a non-empty list of strings"
+    unknown_tags = sorted(set(tags) - RISK_PROBE_TAGS)
+    if unknown_tags:
+        return f"risk-probes[{index}].tags contains unknown tag(s): {', '.join(unknown_tags)}"
+    evidence = probe.get("tag_evidence")
+    if not isinstance(evidence, dict):
+        return f"risk-probes[{index}].tag_evidence must be an object"
+    for tag in tags:
+        required_evidence = RISK_PROBE_REQUIRED_EVIDENCE.get(tag)
+        if not required_evidence:
+            continue
+        actual = evidence.get(tag)
+        if not isinstance(actual, list) or not all(isinstance(item, str) for item in actual):
+            return f"risk-probes[{index}].tag_evidence.{tag} must be a list of strings"
+        missing_evidence = sorted(required_evidence - set(actual))
+        if missing_evidence:
+            return (
+                f"risk-probes[{index}].tag_evidence.{tag} missing required "
+                f"item(s): {', '.join(missing_evidence)}"
+            )
+    return None
+
+
+def required_risk_probe_tags(verification_text: str) -> set[str]:
+    text = verification_text.lower()
+    required: set[str] = set()
+    if re.search(r'priority|higher-priority|ordered by|ordering|appears first|input order', text):
+        required.add("ordering_inversion")
+    if re.search(r'blocked|overlap|forbidden|window', text):
+        required.add("boundary_overlap")
+    if re.search(r'rolls? back|reduce[s]? stock|available to later|later orders|remaining|stock', text):
+        required.add("prior_consumption")
+    if "remaining" in text:
+        required.add("positive_remaining")
+    if re.search(r'stderr|stdout|exit `?2`?|json error', text):
+        required.add("stdout_stderr_contract")
+    return required
+
+
+def load_risk_probes(
+    devlyn_dir: Path,
+    source_md: Path | None,
+    *,
+    require_present: bool = False,
+) -> tuple[list[dict], str | None]:
+    probes_path = devlyn_dir / "risk-probes.jsonl"
+    if not probes_path.is_file():
+        if require_present:
+            return ([], "risk-probes.jsonl is required when --risk-probes is enabled")
+        return ([], None)
+    if source_md is None or not source_md.is_file():
+        return ([], "risk-probes.jsonl exists but source markdown is unavailable")
+
+    verification_text = extract_verification_text(source_md.read_text())
+    if not verification_text:
+        return ([], "risk-probes.jsonl exists but source has no ## Verification section")
+
+    probes: list[dict] = []
+    for index, line in enumerate(probes_path.read_text().splitlines()):
+        if not line.strip():
+            continue
+        try:
+            probe = json.loads(line)
+        except json.JSONDecodeError as e:
+            return ([], f"risk-probes[{index}] invalid JSON: {e}")
+        err = validate_risk_probe(probe, index, verification_text)
+        if err:
+            return ([], err)
+        normalized = dict(probe)
+        normalized["_risk_probe"] = True
+        normalized["_risk_probe_index"] = index
+        probes.append(normalized)
+        if len(probes) > 3:
+            return ([], "risk-probes.jsonl has more than 3 probes")
+    if require_present and not probes:
+        return ([], "risk-probes.jsonl must contain at least one probe")
+    if require_present:
+        present_tags = {tag for probe in probes for tag in probe.get("tags", [])}
+        missing_tags = sorted(required_risk_probe_tags(verification_text) - present_tags)
+        if missing_tags:
+            return ([], f"risk-probes.jsonl missing required probe tag(s): {', '.join(missing_tags)}")
+    return (probes, None)
 
 
 def read_source(work: Path, devlyn_dir: Path) -> tuple[str | None, Path | None]:
@@ -237,7 +390,96 @@ def run_check_mode(md_path: Path) -> int:
     return 0
 
 
+def run_self_test() -> int:
+    script_path = str(Path(__file__).resolve())
+    with tempfile.TemporaryDirectory() as td:
+        work = Path(td)
+        devlyn = work / ".devlyn"
+        devlyn.mkdir()
+        spec_md = work / "spec.md"
+        spec_md.write_text("# Spec\n\n## Verification\n\n- probe must pass visible marker.\n")
+        (devlyn / "pipeline.state.json").write_text(json.dumps({
+            "source": {"type": "spec", "spec_path": str(spec_md)}
+        }))
+        (devlyn / "spec-verify.json").write_text(json.dumps({
+            "verification_commands": [
+                {"cmd": "printf ok", "exit_code": 0, "stdout_contains": ["ok"]}
+            ]
+        }) + "\n")
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps({
+            "id": "P1",
+            "derived_from": "probe must pass visible marker.",
+            "cmd": "printf probe-ok",
+            "exit_code": 0,
+            "stdout_contains": ["probe-ok"],
+            "stdout_not_contains": [],
+            "tags": ["shape_contract"],
+            "tag_evidence": {},
+        }) + "\n")
+        env = os.environ.copy()
+        env["BENCH_WORKDIR"] = str(work)
+        good = subprocess.run(
+            [sys.executable, script_path, "--include-risk-probes"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if good.returncode != 0:
+            print(good.stderr, file=sys.stderr)
+            return 1
+
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps({
+            "id": "P2",
+            "derived_from": "probe must pass visible marker.",
+            "cmd": "node $BENCH_FIXTURE_DIR/verifiers/hidden.js",
+            "exit_code": 0,
+        }) + "\n")
+        bad = subprocess.run(
+            [sys.executable, script_path, "--validate-risk-probes"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if bad.returncode == 0:
+            print("hidden verifier path was accepted", file=sys.stderr)
+            return 1
+
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps({
+            "id": "P3",
+            "derived_from": "probe must pass visible marker.",
+            "cmd": "printf weak-boundary",
+            "exit_code": 0,
+            "tags": ["boundary_overlap"],
+            "tag_evidence": {"boundary_overlap": ["one_minute_overlap"]},
+        }) + "\n")
+        weak = subprocess.run(
+            [sys.executable, script_path, "--validate-risk-probes"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if weak.returncode == 0:
+            print("incomplete boundary_overlap evidence was accepted", file=sys.stderr)
+            return 1
+    return 0
+
+
 def main() -> int:
+    include_risk_probes = False
+    validate_risk_probes_only = False
+    if "--include-risk-probes" in sys.argv[1:]:
+        include_risk_probes = True
+        sys.argv = [arg for arg in sys.argv if arg != "--include-risk-probes"]
+    if "--validate-risk-probes" in sys.argv[1:]:
+        validate_risk_probes_only = True
+        sys.argv = [arg for arg in sys.argv if arg != "--validate-risk-probes"]
+
+    if len(sys.argv) == 2 and sys.argv[1] == "--self-test":
+        return run_self_test()
+
     if len(sys.argv) >= 2 and sys.argv[1] == "--check":
         if len(sys.argv) != 3:
             print("usage: spec-verify-check.py --check <markdown-path>", file=sys.stderr)
@@ -275,6 +517,16 @@ def main() -> int:
     pre_staged = spec_path.is_file()  # captured BEFORE any potential write
     trust_bench_staged = bench_mode and pre_staged
     src_type, source_md = read_source(work, devlyn_dir)
+    if validate_risk_probes_only:
+        _risk_probes, risk_error = load_risk_probes(
+            devlyn_dir, source_md, require_present=True
+        )
+        if risk_error:
+            print(f"[spec-verify] risk probes malformed: {risk_error}", file=sys.stderr)
+            write_malformed_finding(devlyn_dir, risk_error, devlyn_dir / "risk-probes.jsonl")
+            return 1
+        print("[spec-verify] risk probes valid", file=sys.stderr)
+        return 0
     if source_md is not None and not trust_bench_staged:
         staged, error = stage_from_source(source_md, devlyn_dir)
         if error is not None:
@@ -334,7 +586,14 @@ def main() -> int:
         print(f"[spec-verify] error: {spec_path}: {shape_err}", file=sys.stderr)
         write_malformed_finding(devlyn_dir, f"{spec_path}: {shape_err}", None)
         return 1
-    commands = spec["verification_commands"]
+    commands = list(spec["verification_commands"])
+    if include_risk_probes:
+        risk_probes, risk_error = load_risk_probes(devlyn_dir, source_md)
+        if risk_error:
+            print(f"[spec-verify] risk probes malformed: {risk_error}", file=sys.stderr)
+            write_malformed_finding(devlyn_dir, risk_error, devlyn_dir / "risk-probes.jsonl")
+            return 1
+        commands.extend(risk_probes)
 
     devlyn_dir.mkdir(parents=True, exist_ok=True)
     results_path = devlyn_dir / "spec-verify.results.json"
@@ -354,6 +613,7 @@ def main() -> int:
                             "reason": "missing_cmd"})
             continue
 
+        is_risk_probe = bool(vc.get("_risk_probe"))
         expected_exit = vc.get("exit_code", 0)
         stdout_contains = vc.get("stdout_contains", []) or []
         stdout_not_contains = vc.get("stdout_not_contains", []) or []
@@ -423,17 +683,41 @@ def main() -> int:
                     f"contains={stdout_contains}, not_contains={stdout_not_contains})."
                 )
 
+                rule_id = (
+                    "correctness.risk-probe-failed"
+                    if is_risk_probe
+                    else "correctness.spec-literal-mismatch"
+                )
+                criterion_ref = (
+                    f"risk-probe:{vc.get('id')}"
+                    if is_risk_probe
+                    else f"spec-verify://verification_commands/{idx}"
+                )
+                file_ref = (
+                    ".devlyn/risk-probes.jsonl"
+                    if is_risk_probe
+                    else ".devlyn/spec-verify.json"
+                )
+                if is_risk_probe:
+                    fix_hint = (
+                        f"Risk probe `{vc.get('id')}` derived from "
+                        f"{vc.get('derived_from')!r} failed. See "
+                        ".devlyn/spec-verify.results.json for captured output "
+                        "and update the implementation to satisfy the visible "
+                        "verification bullet."
+                    )
+
                 findings.append({
                     "id": f"BGATE-{finding_seq:04d}",
-                    "rule_id": "correctness.spec-literal-mismatch",
+                    "rule_id": rule_id,
                     "level": "error",
                     "severity": "CRITICAL",
                     "confidence": 1.0,
                     "message": msg,
-                    "file": ".devlyn/spec-verify.json",
+                    "file": file_ref,
                     "line": 1,
                     "phase": "build_gate",
-                    "criterion_ref": f"spec-verify://verification_commands/{idx}",
+                    "criterion_ref": criterion_ref,
                     "fix_hint": fix_hint,
                     "blocking": True,
                     "status": "open",
@@ -443,19 +727,28 @@ def main() -> int:
         except subprocess.TimeoutExpired:
             results.append({"index": idx, "cmd": cmd, "pass": False,
                             "reason": "timeout"})
+            rule_id = (
+                "correctness.risk-probe-failed"
+                if vc.get("_risk_probe")
+                else "correctness.spec-literal-mismatch"
+            )
             findings.append({
                 "id": f"BGATE-{finding_seq:04d}",
-                "rule_id": "correctness.spec-literal-mismatch",
+                "rule_id": rule_id,
                 "level": "error",
                 "severity": "CRITICAL",
                 "confidence": 1.0,
                 "message": (
                     f"Verification command #{idx + 1} timed out after 60s."
                 ),
-                "file": ".devlyn/spec-verify.json",
+                "file": ".devlyn/risk-probes.jsonl" if vc.get("_risk_probe") else ".devlyn/spec-verify.json",
                 "line": 1,
                 "phase": "build_gate",
-                "criterion_ref": f"spec-verify://verification_commands/{idx}",
+                "criterion_ref": (
+                    f"risk-probe:{vc.get('id')}"
+                    if vc.get("_risk_probe")
+                    else f"spec-verify://verification_commands/{idx}"
+                ),
                 "fix_hint": (
                     f"Command `{cmd}` exceeded 60s. Reduce work or fix a "
                     f"hang in the implementation."
@@ -467,9 +760,14 @@ def main() -> int:
         except Exception as e:  # noqa: BLE001 — surface any harness error explicitly
             results.append({"index": idx, "cmd": cmd, "pass": False,
                             "reason": f"error:{e.__class__.__name__}:{e}"})
+            rule_id = (
+                "correctness.risk-probe-failed"
+                if vc.get("_risk_probe")
+                else "correctness.spec-literal-mismatch"
+            )
             findings.append({
                 "id": f"BGATE-{finding_seq:04d}",
-                "rule_id": "correctness.spec-literal-mismatch",
+                "rule_id": rule_id,
                 "level": "error",
                 "severity": "CRITICAL",
                 "confidence": 1.0,
@@ -477,10 +775,14 @@ def main() -> int:
                     f"Verification command #{idx + 1} raised "
                     f"{e.__class__.__name__}: {e}."
                 ),
-                "file": ".devlyn/spec-verify.json",
+                "file": ".devlyn/risk-probes.jsonl" if vc.get("_risk_probe") else ".devlyn/spec-verify.json",
                 "line": 1,
                 "phase": "build_gate",
-                "criterion_ref": f"spec-verify://verification_commands/{idx}",
+                "criterion_ref": (
+                    f"risk-probe:{vc.get('id')}"
+                    if vc.get("_risk_probe")
+                    else f"spec-verify://verification_commands/{idx}"
+                ),
                 "fix_hint": (
                     f"Command `{cmd}` could not be executed. Check the work-dir "
                     f"state and any environment setup the command requires."

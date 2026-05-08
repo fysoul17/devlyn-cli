@@ -4,8 +4,9 @@
 # Place the directory containing this file FIRST on PATH for the variant arm.
 # When the orchestrator (or anything in its subtree) invokes `codex exec ...`,
 # this shim transparently routes to `codex-monitored.sh`. Other codex
-# subcommands (`codex --version`, `codex login`, `codex resume`, etc.) pass
-# straight through to the real binary.
+# subcommands pass straight through to the real binary, except version probes.
+# Some outer codex wrappers hang on `--version`; the shim bounds that metadata
+# probe so an agent availability check cannot stall the whole pair run.
 #
 # WHY (iter-0009):
 #   • iter-0008 proved prompt-level instructions cannot constrain orchestrator
@@ -89,6 +90,16 @@ if [ "${1:-}" = "exec" ]; then
   # outer wrapper's PATH-based discovery cannot loop back to this shim.
   PATH="$CLEAN_PATH" CODEX_BIN="$CODEX_REAL_BIN" \
     exec bash "$CODEX_MONITORED_PATH" "$@"
+fi
+
+# Metadata probes must never be able to hang a benchmark arm. They are not the
+# Codex execution path; `codex exec` above remains the real monitored route.
+# Do not delegate `--version` to outer wrappers: Superset-style wrappers can
+# spawn background watchers before reaching the real CLI, and a timeout on the
+# parent process can leave those descendants orphaned.
+if [ "${1:-}" = "--version" ] || [ "${1:-}" = "version" ]; then
+  printf 'codex-cli unknown (version-probe-skipped)\n'
+  exit 0
 fi
 
 # All other subcommands pass through.

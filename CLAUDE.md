@@ -24,7 +24,7 @@ The runtime sub-agent contract below (Subtractive-first / Goal-locked / No-worka
 
 ## Quick Start
 
-Two skills cover the full cycle post iter-0034 Phase 4 cutover (2026-05-04). `/devlyn:ideate` is OPTIONAL; `/devlyn:resolve` is REQUIRED. **Both default to `--engine claude`** — pair / multi-engine routing is research-only at HEAD per the iter-0020 + iter-0033g + iter-0034 close-outs (see [`autoresearch/iterations/0020-pair-policy-narrow.md`](autoresearch/iterations/0020-pair-policy-narrow.md) + [`autoresearch/iterations/0034-phase-4-cutover.md`](autoresearch/iterations/0034-phase-4-cutover.md)). Pass `--engine auto` or `--engine codex` explicitly to opt into the research path; the harness silently downgrades to `claude` and emits a banner if the Codex CLI is missing.
+Two skills cover the full cycle post iter-0034 Phase 4 cutover (2026-05-04). `/devlyn:ideate` is OPTIONAL; `/devlyn:resolve` is REQUIRED. **Both default to `--engine claude`** for PLAN/IMPLEMENT. Codex BUILD/IMPLEMENT and PLAN-pair remain research-only, but `/devlyn:resolve` VERIFY has a gated pair-JUDGE product path when its `SKILL.md` trigger policy fires. Pass `--engine auto` or `--engine codex` explicitly to opt into the broader research path; the harness silently downgrades to `claude` and emits a banner if the Codex CLI is missing.
 
 1. `/devlyn:ideate` (optional) — unstructured idea → `docs/specs/<id>/spec.md` + `spec.expected.json`. Modes: default Q&A, `--quick` (autonomous-pipeline-safe), `--from-spec <path>`, `--project`.
 2. `/devlyn:resolve` — hands-free pipeline for any coding task. Free-form goal, `--spec <path>`, or `--verify-only <diff> --spec <path>`. Phases: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (fresh subagent, findings-only).

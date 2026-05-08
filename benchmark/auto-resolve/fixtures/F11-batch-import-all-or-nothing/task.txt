@@ -1,0 +1,9 @@
+Add `POST /items/import` to `server/index.js`. The endpoint takes a JSON body `{ items: [...] }` where each item has a `name` (non-empty string after trim) and a `qty` (positive integer).
+
+A batch is accepted as a whole or not at all. If the batch is fully valid, append every item to the list and return 201 with `{ inserted: <count> }`. If any item fails validation, return 400 with `{ error: 'invalid_batch', index, field }` and leave the stored list exactly as it was before the request.
+
+Empty body, missing `items`, or `items` not an array → 400 with `{ error: 'invalid_body' }`. Again, the existing list must be untouched.
+
+Update `tests/server.test.js` so existing tests still pass AND add at least two new tests. One must send a batch with one bad item in the middle and verify the prior list is unchanged after the failed call.
+
+No new npm dependencies. Only touch `server/index.js` and `tests/server.test.js`.

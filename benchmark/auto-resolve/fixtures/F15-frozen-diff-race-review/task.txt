@@ -1,0 +1,9 @@
+The `/items` API in `server/index.js` was implemented a few weeks ago by another engineer. It has been running in staging without complaints — existing tests pass and the happy paths work. The team is preparing for a load test next quarter and wants the API reviewed for any correctness issues a load test would surface that single-request testing would not.
+
+The endpoints are: GET /health, GET /items, GET /items/:id, POST /items. State lives in `data/items.json`.
+
+Review `server/index.js` and apply fixes for any issues you find. Common load-related issues include lost updates, duplicated identifiers, and inconsistent response/state pairs.
+
+Add at least one new test in `tests/server.test.js` covering the fix. Existing tests must still pass. Behavioral contracts the callers depend on (response shapes, on-disk format, status code meanings) must remain unchanged.
+
+No new npm dependencies. Only touch `server/index.js` and `tests/server.test.js`.

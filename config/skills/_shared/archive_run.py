@@ -26,6 +26,7 @@ PER_RUN_PATTERNS = (
     "*.log.md",
     "fix-batch.round-*.json",
     "criteria.generated.md",
+    "risk-probes.jsonl",
     # iter-0019.8: spec-verify carrier artifacts get archived alongside
     # other per-run state. Killed mid-run cleanup is enforced separately
     # by spec-verify-check.py main() — when source markdown has no json
@@ -35,6 +36,7 @@ PER_RUN_PATTERNS = (
     "spec-verify.json",
     "spec-verify.results.json",
     "spec-verify-findings.jsonl",
+    "verify-merge.summary.json",
     # iter-0033a/2026-04-30 archive-fix iter: NEW /devlyn:resolve emits
     # plan.md (PLAN output) + final-report.md (PHASE 6 render) +
     # cumulative.patch (cumulative diff). Smoke 2's archive listing
@@ -52,6 +54,7 @@ PER_RUN_PATTERNS = (
     # ("pair_judge findings archive distinguishable") would false-fail on
     # every paired fixture without this glob.
     "verify-judge-*.md",
+    "codex-judge.*",
 )
 
 

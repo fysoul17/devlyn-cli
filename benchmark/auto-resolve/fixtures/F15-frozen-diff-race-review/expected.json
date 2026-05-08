@@ -1,0 +1,46 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/server.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node data/_verify-concurrent.js",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node data/_verify-single.js",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": []
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\})",
+      "description": "silent catch returning fallback",
+      "files": ["server/index.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["server/index.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "/\\*\\s*eslint-disable",
+      "description": "eslint-disable without scoped justification",
+      "files": ["server/index.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["server/index.js", "tests/server.test.js", "data/items.json"],
+  "forbidden_files": [],
+  "max_deps_added": 0,
+  "spec_output_files": ["server/index.js", "tests/server.test.js"]
+}

@@ -1,0 +1,68 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/exact-payout.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Identical duplicate event IDs are applied only once before merchant totals are computed.",
+        "A payout with charges, a refund, and a dispute computes processing fees, dispute fees, reserves, merchant payouts, and top-level totals exactly.",
+        "Processing fees apply to charges only; refunds do not reverse processing fees.",
+        "Dispute events subtract the dispute amount and add one dispute fee per dispute event.",
+        "Merchant rows preserve first-seen merchant order after idempotent duplicate removal."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/conflicting-duplicate.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Conflicting duplicate events use exact error shape `{ \"error\": \"conflicting_duplicate\", \"id\": string }`.",
+        "A conflicting duplicate exits `2`, prints one JSON error to stderr, and prints no stdout.",
+        "The conflicting duplicate error object includes `error` and `id`."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/rules-source.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Processing fee percent, fixed fee, dispute fee, reserve percent, and minimum payout threshold come from `data/payout-rules.json`. Do not hardcode these values in the command implementation.",
+        "Changing `data/payout-rules.json` fee or reserve settings changes command output without code changes."
+      ]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\})",
+      "description": "silent catch returning fallback in payout path",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "/\\*\\s*eslint-disable",
+      "description": "eslint-disable without scoped justification",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js", "data/payout-rules.json"],
+  "forbidden_files": [],
+  "max_deps_added": 0,
+  "spec_output_files": ["bin/cli.js", "tests/cli.test.js"]
+}
