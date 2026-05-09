@@ -34,7 +34,6 @@ and the stored list is left exactly as it was before the request.
 - **No silent catches.**
 - **No partial updates.** A batch with N items must produce either N inserts or 0 inserts.
 - **No breaking change** to existing `GET /items` and `GET /items/:id`.
-- **Lifecycle note.** The harness's DOCS phase flips this spec's frontmatter `status` after implementation completes — that is benchmark lifecycle bookkeeping, not a scope violation.
 
 ## Out of Scope
 

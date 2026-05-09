@@ -24,20 +24,21 @@ bad()     { printf '  %s✗%s %s\n' "$red"   "$reset" "$1"; fail=1; }
 section "Check 1: No mcp__codex-cli__ outside _shared / archive"
 # Legal places: config/skills/_shared/codex-config.md (explicitly says "MCP is not used"),
 # archival snapshots, and tests.
-offenders=$(grep -RIln 'mcp__codex-cli__' \
+offenders=$(git grep -Il -- 'mcp__codex-cli__' -- \
   config/skills \
   benchmark \
   README.md \
   CLAUDE.md \
-  bin/ 2>/dev/null \
-  | grep -v 'config/skills/_shared/codex-config.md' \
-  | grep -v 'config/skills/roadmap-archival-workspace/' \
-  | grep -v 'config/skills/devlyn:auto-resolve-workspace/' \
-  | grep -v 'config/skills/devlyn:ideate-workspace/' \
-  | grep -v 'config/skills/preflight-workspace/' \
-  | grep -v 'benchmark/auto-resolve/external/' \
-  | grep -v 'benchmark/auto-resolve/PILOT-RESULTS' \
-  || true)
+  bin/ \
+  ':!config/skills/_shared/codex-config.md' \
+  ':!config/skills/roadmap-archival-workspace/**' \
+  ':!config/skills/devlyn:auto-resolve-workspace/**' \
+  ':!config/skills/devlyn:ideate-workspace/**' \
+  ':!config/skills/preflight-workspace/**' \
+  ':!benchmark/auto-resolve/external/**' \
+  ':!benchmark/auto-resolve/results/**' \
+  ':!benchmark/auto-resolve/PILOT-RESULTS*' \
+  2>/dev/null || true)
 if [ -z "$offenders" ]; then
   ok "no MCP references in managed files"
 else
@@ -48,15 +49,20 @@ fi
 # 2. No "Requires Codex MCP" prose.
 # ---------------------------------------------------------------------------
 section "Check 2: No 'Requires Codex MCP' prose"
-offenders=$(grep -RIln 'Requires Codex MCP\|Codex MCP server\|Codex MCP available\|Codex MCP disconnected' \
-  config/skills benchmark README.md CLAUDE.md bin/ 2>/dev/null \
-  | grep -v 'config/skills/roadmap-archival-workspace/' \
-  | grep -v 'config/skills/devlyn:auto-resolve-workspace/' \
-  | grep -v 'config/skills/devlyn:ideate-workspace/' \
-  | grep -v 'config/skills/preflight-workspace/' \
-  | grep -v 'benchmark/auto-resolve/external/' \
-  | grep -v 'benchmark/auto-resolve/PILOT-RESULTS' \
-  || true)
+offenders=$(git grep -Il -- 'Requires Codex MCP\|Codex MCP server\|Codex MCP available\|Codex MCP disconnected' -- \
+  config/skills \
+  benchmark \
+  README.md \
+  CLAUDE.md \
+  bin/ \
+  ':!config/skills/roadmap-archival-workspace/**' \
+  ':!config/skills/devlyn:auto-resolve-workspace/**' \
+  ':!config/skills/devlyn:ideate-workspace/**' \
+  ':!config/skills/preflight-workspace/**' \
+  ':!benchmark/auto-resolve/external/**' \
+  ':!benchmark/auto-resolve/results/**' \
+  ':!benchmark/auto-resolve/PILOT-RESULTS*' \
+  2>/dev/null || true)
 if [ -z "$offenders" ]; then
   ok "no Codex MCP prose"
 else
@@ -441,14 +447,15 @@ fi
 # version lives) pass while genuine stale references fail. Excluded scopes:
 # benchmark/auto-resolve/results/ (historical run artifacts, frozen) and
 # scripts/lint-skills.sh itself (carries the pattern in this check).
-stale=$(grep -RIn 'F9-e2e-ideate-to-preflight' \
+stale=$(git grep -In -- 'F9-e2e-ideate-to-preflight' -- \
   config/skills \
   benchmark \
   scripts \
   CLAUDE.md \
-  README.md 2>/dev/null \
+  README.md \
+  ':!benchmark/auto-resolve/results/**' \
+  2>/dev/null \
   | grep -v '^benchmark/auto-resolve/fixtures/retired/F9-e2e-ideate-to-preflight/' \
-  | grep -v '^benchmark/auto-resolve/results/' \
   | grep -v '^scripts/lint-skills\.sh:' \
   | grep -v 'fixtures/retired/F9-e2e-ideate-to-preflight' \
   || true)

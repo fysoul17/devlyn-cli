@@ -35,7 +35,6 @@ multiple POSTs arrive close together — no duplicate ids, no lost writes.
 - **No silent catches.** Any `try/catch` in the write path must surface failure as `500` with a clear body, not return a fake success.
 - **No hardcoded ids.** Existing baseline ids (1, 2) remain valid; new ids must not collide with any past or present id.
 - **No breaking change** to `GET /items` shape or `GET /items/:id` semantics.
-- **Lifecycle note.** The harness's DOCS phase flips this spec's frontmatter `status` after implementation completes — that is benchmark lifecycle bookkeeping, not a scope violation.
 
 ## Out of Scope
 

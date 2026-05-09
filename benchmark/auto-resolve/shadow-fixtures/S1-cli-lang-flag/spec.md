@@ -28,8 +28,6 @@ depends-on: []
 - **No silent catches.** Unknown `--lang` values must surface a user-visible error including the offending code; do NOT silently fall back to English.
 - **Touch only `bin/cli.js` and `tests/cli.test.js`.** Do NOT modify any other subcommand's handler.
 
-- **Lifecycle note.** The harness's DOCS phase flips this spec's frontmatter `status` after implementation completes — that is benchmark lifecycle bookkeeping, not a scope violation.
-
 ## Out of Scope
 
 - Adding more languages beyond `en`, `ko`, `ja`, `es`.

@@ -42,9 +42,6 @@ inside `/devlyn:resolve` (no separate preflight skill in the 2-skill design).
 - **No silent catches.**
 - **Non-git-repo handling.** Do not assume the user is always in a repo.
 
-- **Lifecycle note.** The harness's CLEANUP/VERIFY phases may flip this
-  spec's frontmatter `status` after implementation completes — that is
-  benchmark lifecycle bookkeeping, not a scope violation.
 
 ## Out of Scope
 

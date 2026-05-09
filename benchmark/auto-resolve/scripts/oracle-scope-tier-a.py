@@ -154,19 +154,8 @@ def analyze(work_dir, scaffold_sha, waivers, fixture_id=None):
     findings = []
     entries = git_diff_status(scaffold_sha, work_dir)
 
-    # Structural exemption: every benchmark fixture has its own spec at
-    # docs/roadmap/phase-*/<fixture_id>.md, and auto-resolve's DOCS phase
-    # Job 1 legitimately flips its frontmatter status. That flip is a
-    # skill feature, not a scope violation — always exempt regardless of
-    # per-fixture waivers.
-    own_spec_globs = []
-    if fixture_id:
-        own_spec_globs.append(f"docs/roadmap/phase-*/{fixture_id}.md")
-
     for status, path in entries:
         if is_waived(path, waivers):
-            continue
-        if is_waived(path, own_spec_globs):
             continue
 
         # Lockfile deletion — only when file existed at scaffold.

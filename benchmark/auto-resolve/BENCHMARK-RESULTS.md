@@ -52,6 +52,36 @@ The following require REAL auto-resolve pipeline executions on real tasks. Hypot
 
 `run-real-benchmark.md` documents the procedure. 30 paired runs across the 3 tiers = ~7.5–15 hours execution time and is out of scope for this commit.
 
+## 3.1 Full-pipeline pair evidence (measured 2026-05-09)
+
+Run set: `20260509-f16-f25-combined-cartprobe-v2`
+
+Gate:
+
+```bash
+python3 benchmark/auto-resolve/scripts/full-pipeline-pair-gate.py \
+  --run-id 20260509-f16-f25-combined-cartprobe-v2 \
+  --pair-arm l2_risk_probes \
+  --min-fixtures 2 \
+  --min-pair-margin 5 \
+  --max-pair-solo-wall-ratio 3
+```
+
+Result: **PASS**. Both fixtures satisfy the headroom precondition, pair mode
+actually fired, the pair arm was clean, and the blind judge scored pair above
+solo by more than the +5 margin floor.
+
+| Fixture | Bare | Solo | Pair (`l2_risk_probes`) | Margin | Pair mode | Wall ratio |
+|---------|-----:|-----:|------------------------:|-------:|-----------|-----------:|
+| F16-cli-quote-tax-rules | 50 | 75 | 96 | +21 | true | 1.28x |
+| F25-cli-cart-promotion-rules | 25 | 75 | 99 | +24 | true | 1.65x |
+
+Average pair/solo wall ratio: **1.46x**.
+
+Supporting focused run: `20260509-f25-cartprobe-v2` closed the previous F25
+gap. The `l2_risk_probes` arm passed 4/4 fixture verification commands, produced
+a two-file diff, and scored 99 vs solo 75.
+
 ## 4. Conclusions (evidence-based only)
 
 **Confirmed**:
@@ -60,11 +90,14 @@ The following require REAL auto-resolve pipeline executions on real tasks. Hypot
 3. Goal-driven prompt adoption: 10 additional `<goal>/<output_contract>/<quality_bar>/<principle>` blocks across BUILD/EVALUATE/CHALLENGE.
 4. Routing logic produces the designed outcomes for 3 representative test cases covering all 3 routes.
 5. Monotonicity invariant holds: `fast ⊆ standard ⊆ strict`.
+6. Full-pipeline pair evidence now clears the two-fixture gate for F16 + F25:
+   `l2_risk_probes` beats `solo_claude` by +21 and +24 points with pair mode
+   true and average pair/solo wall ratio 1.46x.
 
 **Still hypothetical** (pending real-run validation):
 - Wall-time reduction for `fast` route on trivial tasks.
 - Token consumption reduction from fix-batch packet.
-- Overall pipeline throughput change.
+- Overall pipeline throughput change beyond the measured F16/F25 pair gate.
 
 ## 5. Reproducing
 
@@ -78,4 +111,12 @@ python3 benchmark/auto-resolve/trace-route.py --all
 
 # Single test case
 python3 benchmark/auto-resolve/trace-route.py --test-case T3-high-risk
+
+# Full-pipeline pair gate evidence
+python3 benchmark/auto-resolve/scripts/full-pipeline-pair-gate.py \
+  --run-id 20260509-f16-f25-combined-cartprobe-v2 \
+  --pair-arm l2_risk_probes \
+  --min-fixtures 2 \
+  --min-pair-margin 5 \
+  --max-pair-solo-wall-ratio 3
 ```

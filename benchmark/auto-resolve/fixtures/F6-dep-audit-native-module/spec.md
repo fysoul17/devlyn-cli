@@ -30,7 +30,6 @@ already provides everything needed; no external dependency is warranted.
 - **Stream-friendly.** Large files should not be read fully into memory. Use a hash stream (`crypto.createHash('sha256')` + pipe from `fs.createReadStream`).
 - **No silent catches.** File I/O errors must surface with an informative message and the appropriate exit code.
 
-- **Lifecycle note.** The harness's DOCS phase flips this spec's frontmatter `status` after implementation completes — that is benchmark lifecycle bookkeeping, not a scope violation.
 
 ## Out of Scope
 

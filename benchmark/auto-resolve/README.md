@@ -109,7 +109,8 @@ bash benchmark/auto-resolve/scripts/test-headroom-gate.sh
 ```
 
 After a full-pipeline pair run has the calibrated arms (`bare`,
-`solo_claude`, `l2_gated`) plus a blind `judge.json`, gate it separately:
+`solo_claude`, `l2_gated` or `l2_risk_probes`) plus a blind `judge.json`, gate
+it separately:
 
 ```bash
 bash benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
@@ -143,10 +144,12 @@ python3 benchmark/auto-resolve/scripts/full-pipeline-pair-gate.py \
 ```
 
 This is the full-pipeline claim gate: each counted fixture must satisfy the
-headroom precondition (`bare <= 60`, `solo_claude <= 80`), the `l2_gated` arm
+headroom precondition (`bare <= 60`, `solo_claude <= 80`), the selected pair arm
 must be clean, `pair_mode` must be true in the captured resolve state, and the
-blind judge must score `l2_gated` at least `--min-pair-margin` above
-`solo_claude`. When changing this gate, run:
+blind judge must score the pair arm at least `--min-pair-margin` above
+`solo_claude`. `l2_risk_probes` is the current measured pair arm for the
+F16/F25 gate: `20260509-f16-f25-combined-cartprobe-v2` passed with margins +21
+and +24, average pair/solo wall ratio 1.46x. When changing this gate, run:
 
 ```bash
 bash benchmark/auto-resolve/scripts/test-full-pipeline-pair-gate.sh

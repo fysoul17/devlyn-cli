@@ -595,8 +595,7 @@ fi
 (cd "$WORK_DIR" \
    && git diff "$SCAFFOLD_SHA" --name-only) > "$RESULT_DIR/changed-files.txt" 2>&1 || true
 
-# Deterministic oracles (step 1+ of the benchmark-extension plan).
-# Findings-only at this stage; scoring integration is step 5.
+# Deterministic oracles. Hard/flag findings are merged into verify.json below.
 python3 "$BENCH_ROOT/scripts/oracle-test-fidelity.py" \
   --work "$WORK_DIR" --scaffold "$SCAFFOLD_SHA" \
   > "$RESULT_DIR/oracle-test-fidelity.json" 2>/dev/null || \
@@ -670,7 +669,8 @@ verify_env["BENCH_FIXTURE_DIR"] = os.path.dirname(os.path.abspath(sys.argv[1]))
 
 verify = {"commands": [], "forbidden_pattern_hits": [], "deps_added": 0,
           "max_deps_added": expected.get("max_deps_added", 0),
-          "missing_required_files": [], "forbidden_files_present": []}
+          "missing_required_files": [], "forbidden_files_present": [],
+          "oracle_findings": [], "oracle_disqualifier": False}
 
 for vc in expected.get("verification_commands", []):
     try:
@@ -766,11 +766,29 @@ verify["commands_passed"] = passed
 verify["commands_total"] = total
 verify["verify_score"] = (passed / total) if total else 1.0
 
+for oracle_file in (
+    "oracle-scope-tier-a.json",
+    "oracle-scope-tier-b.json",
+    "oracle-test-fidelity.json",
+):
+    try:
+        data = json.load(open(os.path.join(result_dir, oracle_file)))
+    except Exception:
+        continue
+    oracle_name = data.get("oracle") or oracle_file.removesuffix(".json")
+    for finding in data.get("findings", []) or []:
+        item = dict(finding)
+        item["oracle"] = oracle_name
+        verify["oracle_findings"].append(item)
+        if item.get("severity") in ("disqualifier", "hard", "flag"):
+            verify["oracle_disqualifier"] = True
+
 verify["disqualifier"] = (
     any(h["severity"] == "disqualifier" for h in verify["forbidden_pattern_hits"])
     or verify["deps_added"] > verify["max_deps_added"]
     or bool(verify["missing_required_files"])
     or bool(verify["forbidden_files_present"])
+    or verify["oracle_disqualifier"]
 )
 
 json.dump(verify, open(os.path.join(result_dir, "verify.json"), "w"), indent=2)
@@ -861,6 +879,8 @@ result = {
     "arm": arm,
     "run_id": run_id,
     "disqualifier": verify.get("disqualifier", False),
+    "oracle_disqualifier": verify.get("oracle_disqualifier", False),
+    "oracle_findings_count": len(verify.get("oracle_findings", [])),
     "verify_score": verify.get("verify_score", 0.0),
     "commands_passed": verify.get("commands_passed", 0),
     "commands_total": verify.get("commands_total", 0),

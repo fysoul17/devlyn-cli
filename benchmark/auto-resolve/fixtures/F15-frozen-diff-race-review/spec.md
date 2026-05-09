@@ -35,7 +35,6 @@ The implementation persists state to `data/items.json` and exposes:
 - **No new npm dependencies.** Fix using Express + Node built-ins only.
 - **No silent catches.** Errors surface with explicit status + body, not by returning a fake-success.
 - **Touch only `server/index.js` and `tests/server.test.js`.** Do not modify `data/items.json` shape, `tests/cli.test.js`, or anything outside the server.
-- **Lifecycle note.** The harness's DOCS phase flips this spec's frontmatter `status` after implementation completes — that is benchmark lifecycle bookkeeping, not a scope violation.
 
 ## Out of Scope
 

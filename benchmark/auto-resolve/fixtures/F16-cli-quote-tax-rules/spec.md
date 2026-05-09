@@ -40,7 +40,6 @@ the output must be machine-readable.
 - **No floating-money output.** All public amounts are integer cents.
 - **No silent catches.** If parsing or file reading fails, emit a visible JSON error to stderr and exit `2`.
 - **No extra stdout/stderr text** on the success path; downstream tooling parses stdout as JSON.
-- **Lifecycle note.** The harness's DOCS phase flips this spec's frontmatter `status` after implementation completes — that is benchmark lifecycle bookkeeping, not a scope violation.
 
 ## Out of Scope
 

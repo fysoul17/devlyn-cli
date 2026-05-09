@@ -82,7 +82,8 @@ observable success, not by internal reasoning.
 
 Each probe must run entirely from the worktree with standard shell/Node/Python
 tools already present in the repo. Use inline temp-file scripts when needed.
-Leave no tracked files behind.
+Leave no tracked files behind. Probe commands must not call external network
+APIs or write to external memory/telemetry services.
 </task>
 
 <output>
@@ -94,13 +95,20 @@ Write `.devlyn/risk-probes.jsonl`. Each line is one JSON object:
 
 Rules:
 - `derived_from` must be an exact substring of the visible `## Verification`
-  section.
+  bullet that the command directly exercises. For `error_contract`, use the
+  invalid-input/stderr/JSON-error/exit-2 bullet, not a generic test-runner
+  bullet.
 - `tags` is required. Use only these shape tags:
   `ordering_inversion`, `boundary_overlap`, `prior_consumption`,
   `rollback_state`, `positive_remaining`, `stdout_stderr_contract`,
   `error_contract`, `shape_contract`.
-- `tag_evidence` is required. For these tags, include every listed evidence
-  marker and make the command actually exercise it:
+- `tag_evidence` is required and must be a JSON object keyed by tag, never a
+  top-level array. For these tags, include every listed evidence marker in the
+  tag's array and make the command actually exercise it:
+- Do not emit a shape tag unless the visible `## Verification` text names that
+  kind of risk and the command exercises it. In particular, `boundary_overlap`
+  is only for visible blocked-interval/window/overlap boundary semantics; do not
+  use it for inventory, warehouse, or generic resource constraints.
   - `ordering_inversion`: `input_order_would_choose_wrong_winner`,
     `asserts_processing_order_result`.
   - `boundary_overlap`: `starts_at_blocked_start`, `ends_at_blocked_end`,
@@ -114,7 +122,18 @@ Rules:
   Tags not listed here may use an empty evidence list or be omitted from
   `tag_evidence`.
 - `cmd` must not reference `BENCH_FIXTURE_DIR`, `verifiers/`, benchmark fixture
-  paths, hidden oracle files, or files outside the worktree.
+  paths, hidden oracle files, external URLs, or files outside the worktree.
+  Localhost URLs are allowed only when the visible verification command needs a
+  local server.
+- Match the spec's visible input and output key names literally; do not invent
+  aliases such as `stock` for `lots`, `order_id` for `id`, or `warehouse_id`
+  for `warehouse`.
+- For cart/pricing specs whose visible verification covers duplicate combining,
+  multiple line-promotion types, tax, coupon, and shipping, the compound success
+  probe must include interleaved duplicate SKUs plus taxable and non-taxable
+  items, then assert the full output object and item rows. Use `shape_contract`
+  for this probe unless the command also proves the required
+  `ordering_inversion` evidence markers.
 - Empty output is invalid when this phase is enabled. If no bounded executable
   probe can be derived, write one JSONL object whose command exits nonzero and
   whose `derived_from` names the blocking verification bullet; BUILD_GATE will

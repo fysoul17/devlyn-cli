@@ -37,7 +37,6 @@ no trailing newline).
 - **No silent catches.** Errors in the verification path surface as `500` with a clear body.
 - **Use `crypto.timingSafeEqual` for the signature comparison.** A non-constant-time `===` between hex strings leaks information about the true MAC byte-by-byte.
 - **No breaking change** to existing `/items`, `/items/:id`, `/health`.
-- **Lifecycle note.** The harness's DOCS phase flips this spec's frontmatter `status` after implementation completes — that is benchmark lifecycle bookkeeping, not a scope violation.
 
 ## Out of Scope
 

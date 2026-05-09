@@ -37,7 +37,6 @@ so existing assertions continue to pass alongside new paging assertions.
 - **No breaking change to `/items/:id`.** The per-item route must keep its current contract (the fixture explicitly does NOT paginate single-item lookups).
 - **Backward-compat note**: clients that previously read `response.items` MUST still get the array at the same key inside the new envelope.
 
-- **Lifecycle note.** The harness's DOCS phase flips this spec's frontmatter `status` after implementation completes — that is benchmark lifecycle bookkeeping, not a scope violation.
 
 ## Out of Scope
 

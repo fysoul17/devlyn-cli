@@ -31,7 +31,6 @@ and italicized — using only the page's own CSS/JS.
 - **No inline JS frameworks.** Stick to the vanilla pattern already in `index.html`.
 - **Accessibility.** Both buttons must have accessible names equal to their visible labels; `#whisper` adds `aria-label="whisper"` only if its visible text differs (it doesn't, so leave it off).
 
-- **Lifecycle note.** The harness's DOCS phase flips this spec's frontmatter `status` after implementation completes — that is benchmark lifecycle bookkeeping, not a scope violation.
 
 ## Out of Scope
 

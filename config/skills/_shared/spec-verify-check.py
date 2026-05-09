@@ -77,6 +77,14 @@ JSON_FENCE_RE = re.compile(r'(?ms)^```json[ \t]*\n(.*?)\n```[ \t]*$')
 FORBIDDEN_RISK_PROBE_CMD_RE = re.compile(
     r'BENCH_FIXTURE_DIR|benchmark/auto-resolve/fixtures|/verifiers/|verifiers/'
 )
+EXTERNAL_URL_RE = re.compile(r"https?://([^/\s\"']+)", re.IGNORECASE)
+LOCAL_URL_HOSTS = {
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    '[::1]',
+    '::1',
+}
 RISK_PROBE_TAGS = {
     "ordering_inversion",
     "boundary_overlap",
@@ -129,6 +137,15 @@ def extract_verification_block(text: str) -> str | None:
 def extract_verification_text(text: str) -> str:
     section = VERIFICATION_SECTION_RE.search(text)
     return section.group(1) if section else ""
+
+
+def external_url_hosts(text: str) -> list[str]:
+    hosts: list[str] = []
+    for match in EXTERNAL_URL_RE.finditer(text or ''):
+        host = match.group(1).split('@')[-1].split(':')[0].lower()
+        if host not in LOCAL_URL_HOSTS and host not in hosts:
+            hosts.append(host)
+    return hosts
 
 
 def validate_shape(data) -> str | None:
@@ -189,6 +206,12 @@ def validate_risk_probe(probe: object, index: int, verification_text: str) -> st
             f"risk-probes[{index}].cmd references hidden fixture/verifier paths; "
             "risk probes must derive from visible spec text only"
         )
+    external_hosts = external_url_hosts(cmd)
+    if external_hosts:
+        return (
+            f"risk-probes[{index}].cmd references external URL(s): "
+            f"{', '.join(external_hosts)}; use only worktree-local or localhost resources"
+        )
     if len(cmd) > 4000:
         return f"risk-probes[{index}].cmd exceeds 4000 characters"
     tags = probe.get("tags")
@@ -197,6 +220,15 @@ def validate_risk_probe(probe: object, index: int, verification_text: str) -> st
     unknown_tags = sorted(set(tags) - RISK_PROBE_TAGS)
     if unknown_tags:
         return f"risk-probes[{index}].tags contains unknown tag(s): {', '.join(unknown_tags)}"
+    if "error_contract" in tags and not re.search(
+        r'invalid|stderr|json[ -]?error|error object|exit[ `]*2',
+        derived_from,
+        re.IGNORECASE,
+    ):
+        return (
+            f"risk-probes[{index}].derived_from for error_contract must name "
+            "an invalid-input, stderr, JSON-error, or exit-2 verification bullet"
+        )
     evidence = probe.get("tag_evidence")
     if not isinstance(evidence, dict):
         return f"risk-probes[{index}].tag_evidence must be an object"
@@ -448,6 +480,25 @@ def run_self_test() -> int:
 
         (devlyn / "risk-probes.jsonl").write_text(json.dumps({
             "id": "P3",
+            "derived_from": "probe must pass visible marker.",
+            "cmd": "printf bad-error-derived-from",
+            "exit_code": 0,
+            "tags": ["error_contract"],
+            "tag_evidence": {"error_contract": []},
+        }) + "\n")
+        bad_error_ref = subprocess.run(
+            [sys.executable, script_path, "--validate-risk-probes"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if bad_error_ref.returncode == 0:
+            print("error_contract with unrelated derived_from was accepted", file=sys.stderr)
+            return 1
+
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps({
+            "id": "P4",
             "derived_from": "probe must pass visible marker.",
             "cmd": "printf weak-boundary",
             "exit_code": 0,

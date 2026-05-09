@@ -44,7 +44,6 @@ once, and duplicate ids must not silently corrupt balances.
 - **No mutation of the input file.**
 - **No extra stdout/stderr text** on the success path; downstream tooling parses stdout as JSON.
 - **Touch only `bin/cli.js` and `tests/cli.test.js`.**
-- **Lifecycle note.** The harness's DOCS phase flips this spec's frontmatter `status` after implementation completes — that is benchmark lifecycle bookkeeping, not a scope violation.
 
 ## Out of Scope
 

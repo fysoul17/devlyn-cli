@@ -173,21 +173,11 @@ def analyze(work_dir_str: str, scaffold_sha: str, tier_c_globs, waivers,
 
     reachable = bfs_trace(seeds, work_dir)
 
-    # Structural exemption: the fixture's own spec file at
-    # docs/roadmap/phase-*/<fixture_id>.md is always authorized — DOCS
-    # phase Job 1 flips its frontmatter status by design. Kept in sync
-    # with oracle-scope-tier-a.py.
-    own_spec_globs = []
-    if fixture_id:
-        own_spec_globs.append(f"docs/roadmap/phase-*/{fixture_id}.md")
-
     findings = []
     for path in sorted(touched):
         if match_any(path, tier_c_globs):
             continue
         if match_any(path, waivers):
-            continue
-        if match_any(path, own_spec_globs):
             continue
         if path in reachable:
             depth, via = reachable[path]
