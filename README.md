@@ -79,11 +79,11 @@ PLAN  →  IMPLEMENT  →  BUILD_GATE  →  CLEANUP  →  VERIFY (fresh subagent
 - **VERIFY** runs in a fresh subagent context with no code-mutation tools — findings only, structurally independent.
 - Git checkpoints at every phase for safe rollback. Fix-loop budget shared across BUILD_GATE and VERIFY (`--max-rounds N`, default 4).
 
-Common flags: `--engine claude|codex|auto` (default `claude`), `--bypass build-gate,cleanup`, `--pair-verify` (force pair-mode JUDGE in VERIFY), `--perf` (per-phase timing).
+Common flags: `--engine claude|codex|auto` (default `claude`), `--bypass build-gate,cleanup`, `--pair-verify` (force pair-mode JUDGE in VERIFY), `--no-pair` (intentional solo VERIFY), `--risk-probes` / `--no-risk-probes`, `--perf` (per-phase timing).
 
-### Engine selection — Claude solo by default
+### Engine selection — Claude implementation, conditional pair VERIFY
 
-`--engine claude` (default) is the canonical surface. Every phase routes to Claude.
+`--engine claude` (default) is the canonical implementation surface for PLAN, IMPLEMENT, BUILD_GATE, and CLEANUP. VERIFY/JUDGE conditionally runs pair mode for verify-only runs, high-risk specs, risk probes, mechanical warnings, coverage gaps, or explicit `--pair-verify`.
 
 `--engine codex` routes IMPLEMENT to Codex; `--engine auto` opts into the experimental dual-engine routing where applicable. Both are research-only at HEAD: iter-0020 closed Codex BUILD/IMPLEMENT below the quality floor on the 9-fixture suite (L2 vs L1 = −3.6, 3/8 gated fixtures cleared the +5 margin floor — release-readiness FAIL); iter-0033g + iter-0034 closed PLAN-pair as research-only with explicit unblock conditions (container/sandbox infra OR production telemetry capturing positive evidence of subagent introspection). Install the Codex CLI (https://platform.openai.com/docs/codex) and pass the flag explicitly to opt in:
 
@@ -91,7 +91,7 @@ Common flags: `--engine claude|codex|auto` (default `claude`), `--bypass build-g
 /devlyn:resolve "fix the auth bug" --engine auto   # experimental, research-only
 ```
 
-If Codex is absent when `--engine auto` or `--engine codex` is requested, the harness silently downgrades to `--engine claude` and emits a banner in the final report.
+If Codex or Claude is absent when explicitly selected or conditionally required, the harness stops with `BLOCKED:codex-unavailable` or `BLOCKED:claude-unavailable` and prints setup guidance. Use `--no-pair` only when intentionally accepting solo VERIFY; use `--no-risk-probes` only when intentionally disabling automatic high-risk probes.
 
 <details>
 <summary><strong>What's new in 1.14.0</strong> — CPO lens + handoff enforcement</summary>
@@ -194,7 +194,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 |---|---|
 | `playwright` | Playwright MCP — powers `/devlyn:resolve` BUILD_GATE browser tier (Chrome MCP → Playwright → curl fallback) |
 
-> `--engine auto/codex` uses the local `codex` CLI binary, not MCP. Install from https://platform.openai.com/docs/codex; the harness silently downgrades to `--engine claude` if the CLI is missing.
+> `--engine auto/codex` and conditional VERIFY pair mode use the local `codex` CLI binary, not MCP. Install from https://platform.openai.com/docs/codex, run the current Codex auth/login flow, verify `codex --version`, then rerun.
 
 </details>
 

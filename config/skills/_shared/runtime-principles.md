@@ -79,7 +79,7 @@ No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scr
 
 **Permitted exceptions** (explicitly carved out):
 - CSS fallback fonts, CDN failover, image placeholders — widely-accepted best practices.
-- Codex CLI availability downgrade — the one documented silent fallback in this repo. Fires when the resolved engine is `auto` or `codex` (either via skill default or explicit `--engine` flag) and the Codex CLI is absent. Banner `engine downgraded: codex-unavailable` always prints; verdict identical to `--engine claude`. Any other silent fallback in skills code is a bug — file it against the skill that introduced it.
+- No engine-availability fallback is permitted for `/devlyn:resolve` pair/risk-probe routes. If Codex or Claude is required and unavailable, the run stops with `BLOCKED:codex-unavailable` or `BLOCKED:claude-unavailable` plus setup guidance. `--no-pair` / `--no-risk-probes` are explicit user opt-outs, not fallbacks.
 <!-- runtime-principles:section=no-workaround:end -->
 
 ## Evidence over claim

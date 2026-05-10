@@ -1,6 +1,6 @@
 ---
 name: devlyn:resolve
-description: Hands-free pipeline for any coding task — bug fix, feature, refactor, debug, modify, PR review. Free-form goal or formal spec input. Plan → Implement → Build-gate → Cleanup → Verify (fresh subagent, findings-only). Mechanical-first verification; pair-mode is gated in Verify. Use when the user says "resolve this", "fix this", "implement this", "refactor this", "debug this", "review this PR", or wants hands-off completion.
+description: Hands-free pipeline for any coding task — bug fix, feature, refactor, debug, modify, PR review. Free-form goal or formal spec input. Plan → Implement → Build-gate → Cleanup → Verify (fresh subagent, findings-only). Mechanical-first verification; pair-mode is conditional-default in Verify. Use when the user says "resolve this", "fix this", "implement this", "refactor this", "debug this", "review this PR", or wants hands-off completion.
 ---
 
 Orchestrator for the 2-skill harness pipeline. One subagent per phase; file-based handoff via `.devlyn/pipeline.state.json`. VERIFY spawns a fresh-context subagent so independence is structural — not advisory.
@@ -17,7 +17,7 @@ Long-horizon agentic work; context auto-compacts. State lives in `.devlyn/pipeli
 Hands-free. Measured by how far we get without human intervention.
 
 1. Do not prompt the user mid-pipeline. When tempted to ask, pick the safe default, proceed, and log it in the final report.
-2. Codex availability: on `--engine auto`/`codex`, follow `_shared/engine-preflight.md`. On failure, silently fall back to Claude and log `engine downgraded: codex-unavailable` in the final report.
+2. Engine availability: follow `_shared/engine-preflight.md`. When a selected or conditionally-required engine is unavailable, fail closed with `BLOCKED:<engine>-unavailable` and setup guidance; do not convert a pair-required or explicitly requested engine into a solo run.
 3. Phases run in declared order. No extra phases.
 4. Orchestrator does not write code. It parses input, spawns phases, reads state, branches on verdicts, emits the report.
 5. Continue by default. Halt only on (a) unrecoverable subagent failure, (b) IMPLEMENT producing zero code changes, (c) BUILD_GATE or VERIFY fix-loop exhausting `max_rounds`.
@@ -32,7 +32,7 @@ Each phase routes to an engine and prepends the per-engine adapter header from `
 
 - Claude phases: spawn `Agent` (`mode: "bypassPermissions"`); prompt = adapter-header + canonical-body + task-context.
 - Codex phases: shell out via `bash _shared/codex-monitored.sh` with the same compounded prompt. The wrapper closes stdin and emits a heartbeat. No MCP.
-- Default engine: Claude. `--engine codex` routes IMPLEMENT to Codex; orchestration stays Claude. Pair-mode (only in VERIFY/JUDGE) selects a different engine for the fresh subagent than IMPLEMENT used.
+- Default engine: Claude for PLAN / IMPLEMENT / BUILD_GATE / CLEANUP. `--engine codex` routes IMPLEMENT to Codex; orchestration stays Claude. Pair-mode is conditional-default in VERIFY/JUDGE and selects the OTHER engine for the fresh subagent when the trigger policy fires.
 - Multi-LLM evolution: when a new model adapter ships in `_shared/adapters/`, that engine becomes selectable via `--engine <model>` without further skill changes (NORTH-STAR.md "Multi-LLM evolution direction").
 </engine_routing>
 
@@ -59,20 +59,24 @@ Once `state.implement_passed_sha` is non-null (PHASE 2 returned and produced a d
    - `--spec <path>` — switches to spec mode.
    - `--verify-only <ref>` — switches to verify-only mode. Requires `--spec`.
    - `--pair-verify` — force pair-mode JUDGE in PHASE 5 even when not auto-triggered.
+   - `--no-pair` — disable conditional VERIFY pair-JUDGE for this run. Record `pair_trigger.skipped_reason: "user_no_pair"` whenever a trigger would otherwise fire.
    - `--risk-probes` — insert PHASE 1.5 cross-engine probe derivation. The OTHER engine converts visible `## Verification` bullets into bounded executable probes before IMPLEMENT; BUILD_GATE and VERIFY replay them mechanically.
+   - `--no-risk-probes` — disable automatic high-risk risk probes. Explicit `--risk-probes` wins over `--no-risk-probes`.
    - `--bypass <phase>[,...]` — skip specific phases. Valid: `build-gate`, `cleanup`. PLAN, IMPLEMENT, VERIFY are non-bypassable.
    - `--perf` — opt in to per-phase timing.
 
-2. Engine pre-flight: follow `_shared/engine-preflight.md`. The downgrade banner surfaces in the final report.
+2. Engine pre-flight: follow `_shared/engine-preflight.md`. If a required engine is unavailable, halt with a BLOCKED verdict and setup instructions instead of downgrading.
 
-3. Initialize `.devlyn/pipeline.state.json` per `references/state-schema.md`. Set `state.run_id`, `started_at`, `engine`, `base_ref.{branch, sha}`, `rounds.{max_rounds, global: 0}`, `bypasses`, empty `phases`, empty `criteria`.
+3. Initialize `.devlyn/pipeline.state.json` per `references/state-schema.md`. Set `state.run_id`, `started_at`, `engine`, `base_ref.{branch, sha}`, `rounds.{max_rounds, global: 0}`, `bypasses`, empty `phases`, empty `criteria`, and `risk_profile: { high_risk: false, reasons: [], risk_probes_enabled: false, pair_default_enabled: true }`.
 
 4. **Mode-specific init**:
    - **Free-form**: read `references/free-form-mode.md`. Run the complexity classifier deterministically (rules over keyword density / file count / spec-shape signals). Set `state.complexity ∈ {trivial, medium, large}`. Trivial: write internal mini-spec to `.devlyn/criteria.generated.md` and proceed. Medium: synthesize a minimal spec from the goal + add 1-2 context anchors from the codebase, write to `.devlyn/criteria.generated.md`, proceed. Large: log `recommend: /devlyn:ideate first` in the final report and either halt (default) or proceed with assumed defaults if `--continue-on-large` flag set.
    - **Spec**: validate spec exists + `## Verification` block parses (run `python3 .claude/skills/_shared/spec-verify-check.py --check <spec-path>` to validate carrier shape). Compute `state.source.spec_sha256`. Stage `.devlyn/spec-verify.json` from the spec's verification block.
    - **Verify-only**: skip to PHASE 5 with `state.source.spec_path` set, the supplied diff captured at `.devlyn/external-diff.patch`.
 
-5. Announce one line: `resolve starting — run <run_id> — engine <engine> — mode <mode> — complexity <complexity-or-na>`.
+5. Compute `state.risk_profile` from the user goal plus spec/criteria text. Mark `high_risk: true` when the work touches any of: auth/authz, permissions, security, token/session, payment/money/billing/invoice/pricing/tax/ledger, persistence/data mutation/deletion/migration, idempotency/replay/duplicate, API/webhook/raw-body/signature, allocation/scheduling/inventory/rollback/transaction, or explicit error-priority/output-shape contracts. If high-risk and `--no-risk-probes` is absent, set `risk_probes_enabled: true`; explicit `--risk-probes` also sets it true. If `--no-pair` is present, set `pair_default_enabled: false`.
+
+6. Announce one line: `resolve starting — run <run_id> — engine <engine> — mode <mode> — complexity <complexity-or-na> — pair <conditional|disabled> — risk_probes <on|off>`.
 
 ## PHASE 1: PLAN
 
@@ -90,8 +94,11 @@ After return:
 
 ## PHASE 1.5: RISK_PROBES
 
-Skip unless `--risk-probes` is set. This phase is findings-as-executable-checks,
-not a second plan and not debate.
+Skip unless `--risk-probes` is set OR `state.risk_profile.risk_probes_enabled`
+is true. This phase is findings-as-executable-checks, not a second plan and not
+debate. If this phase is required and the OTHER engine is unavailable, halt with
+`BLOCKED:codex-unavailable` or `BLOCKED:claude-unavailable` plus setup guidance;
+do not silently continue without probes.
 
 Engine: OTHER engine from PHASE 2's selected IMPLEMENT engine. Prompt body:
 `references/phases/probe-derive.md`.
@@ -196,6 +203,9 @@ Two sub-phases:
 
 2. **JUDGE** (fresh-context Agent): grade the diff against the spec on rubric axes (spec compliance, scope, quality, consistency). Split each Requirement into binding clauses and trace code-order counterexamples; a passing verifier proves only the case it exercises, not neighboring `once` / `regardless` / `duplicate` / auth-order / rollback invariants. Respect scope qualifiers such as `inside a warehouse`, `per resource`, `for this line`, and `after validation`; do not widen a scoped clause into a global invariant, and compose multiple ordering rules in the stated order. For stateful flows, explicitly trace failed-operation rollback and the next entity's state before hunting broader edge cases. For high-complexity specs, construct at least one interaction counterexample that combines ordering/priority with failure handling and state mutation, then execute at least one such scenario through the repo's existing CLI/API/test runner without leaving tracked files behind; one-axis examples and pure mental tracing are insufficient. Default engine = same as IMPLEMENT (solo). Pair-mode (cross-model JUDGE) is eligible only when MECHANICAL has no HIGH/CRITICAL findings; deterministic blockers already decide the verdict and route to the fix loop. Pair-mode fires when eligible and:
    - `--pair-verify` flag set, OR
+   - `state.mode == "verify-only"`, OR
+   - `state.risk_profile.high_risk == true`, OR
+   - `.devlyn/risk-probes.jsonl` exists or `state.risk_profile.risk_probes_enabled == true`, OR
    - spec frontmatter has `complexity: high`, OR `state.complexity` is `"high"` or `"large"`, OR
    - MECHANICAL emits findings flagged `severity: warning` (not disqualifier — those route to fix loop directly), OR
    - `state.verify.coverage_failed == true` (judge could not exercise a required spec axis from available evidence).
@@ -205,10 +215,21 @@ Before spawning JUDGE, compute `pair_trigger = { eligible, reasons[] }` and writ
 The `--engine` flag never suppresses this rule. Explicit `--engine claude`
 means "Claude is the primary judge"; it does not mean "do not run Codex as the
 second pair judge." The only valid skip reasons after a non-empty eligible
-trigger are deterministic MECHANICAL HIGH/CRITICAL blockers or Codex
-unavailability proven by the invocation layer.
+trigger are deterministic MECHANICAL HIGH/CRITICAL blockers or an explicit
+`--no-pair`. Engine unavailability is a `BLOCKED:<engine>-unavailable` verdict,
+not a skip reason.
 
 Pair-mode JUDGE: spawn a second Agent with the OTHER engine's adapter; the second judge is a bounded adversarial complement, not a duplicate broad audit. The primary judge owns broad coverage; pair-JUDGE targets the two highest-risk explicit `## Verification` bullets that cross state mutation, all-or-nothing rollback, ordering, idempotency, auth, or error-priority clauses. It must not read `.claude/skills`, `.codex/skills`, `CLAUDE.md`, `AGENTS.md`, or other harness docs unless the orchestrator pasted a specific excerpt into the prompt. It may use only the spec, diff, implementation files, tests, and the repo's existing CLI/API/test runner. It may execute at most two targeted probes before first output, and each probe must compare the full externally visible result (exit/stdout/stderr plus full parsed output object, including accepted/scheduled rows, rejected rows, and remaining state when present), not just a single property. For priority/stateful specs, at least one probe must include an earlier input entity that would succeed under input-order processing, a later higher-priority entity that consumes or blocks the critical resource, and a failure/blocked/rollback edge that determines a later entity's state. For cart/pricing specs where visible verification combines duplicate items, line promotions, tax, coupon, and shipping, the success-path probe must include interleaved duplicates plus taxable and non-taxable items and assert full output rows. Scope qualifiers are binding: pair-JUDGE must not reinterpret `inside a warehouse`, `per resource`, or line-scoped rules as global rules. When both priority ordering and rollback/blocked-interval behavior appear in the spec, this dominance-loss probe is mandatory and comes before any other probe: an earlier lower-priority entity that would succeed alone or under input-order processing must lose because a later higher-priority entity is processed first; a failed/blocked middle entity must not corrupt later state; and the assertion must cover complete accepted/scheduled and rejected output ordering. It must stop and emit JSONL immediately on the first verdict-binding finding, and must emit PASS immediately if both probes plus static scope/dependency checks pass. Both judgments merge with the rule "any HIGH/CRITICAL finding either model surfaces is verdict-binding; high-confidence MEDIUM findings are also verdict-binding when they identify a concrete behavioral regression against the spec, public contract, or existing test contract." Cross-model disagreement on advisory lower-severity findings is logged but does not change the verdict. If MECHANICAL has a HIGH/CRITICAL finding, skip the second judge and record `pair_judge: null`; the fix loop needs the deterministic finding, not duplicate review.
+
+If pair-mode is triggered and the OTHER engine is unavailable, do not downgrade
+or skip the required judge. Set VERIFY to `BLOCKED:<engine>-unavailable`, preserve the
+failed availability check evidence, and print setup guidance:
+
+- Codex: install/configure the Codex CLI, run `codex auth` or the current login
+  flow, verify `codex --version`, then rerun. Use `--no-pair` only when the user
+  intentionally accepts solo VERIFY for this run.
+- Claude: install/configure Claude Code, run `claude --version` when available,
+  confirm the host can spawn Claude agents, then rerun.
 
 Findings written to `.devlyn/verify.findings.jsonl`. **VERIFY agents have no code-mutation tools.** Codex pair-JUDGE is read-only: invoke `codex-monitored.sh` directly with `-c model_reasoning_effort=medium` for this bounded two-probe review, without piping to `tail`/`head`/`grep`, capture stdout/stderr by direct tool capture or file redirection, require JSONL findings on stdout, and have the orchestrator write `.devlyn/verify.pair.findings.jsonl`. If stdout is first captured as `.devlyn/codex-judge.stdout`, run `python3 .claude/skills/_shared/collect-codex-findings.py` before merge; that script is the deterministic boundary writer for `.devlyn/verify.pair.findings.jsonl`. Raw stdout remains diagnostic only: if stdout contains findings or a non-PASS summary while `.devlyn/verify.pair.findings.jsonl` is empty, `verify-merge-findings.py` blocks VERIFY for `verify.pair.emission-contract`. Do not ask Codex to `apply_patch` or edit `.devlyn`. After primary and pair findings are written, run `python3 .claude/skills/_shared/verify-merge-findings.py --write-state`. Branch only on the merged `state.phases.verify.verdict`; a HIGH/CRITICAL finding from either judge must mechanically become `NEEDS_WORK`. Never write `.devlyn/verify-merged.findings.jsonl` or `.devlyn/verify-merge.summary.json` by hand; `verify-merge-findings.py` is their only writer. State write: `phases.verify.{started_at, verdict, completed_at, duration_ms, sub_verdicts: {mechanical, judge, pair_judge?}, artifacts}`.
 
@@ -223,7 +244,7 @@ State write: `phases.final_report.started_at` at the top of this phase.
 
 1. **Terminal verdict** — derive from `state.phases.{plan, implement, build_gate, cleanup, verify}.verdict` per the precedence rules in `references/state-schema.md#terminal-verdict`. Verify-only mode short-circuits to `state.phases.verify.verdict`.
 
-2. **Render report** — sections: header (run_id, engine, mode, verdict, wall-time), per-phase summary, findings table (verify findings only — post-IMPLEMENT phases are findings-only), follow-up notes (any `--continue-on-large` assumptions, any silent fallbacks).
+2. **Render report** — sections: header (run_id, engine, mode, verdict, wall-time), per-phase summary, pair/risk-probe status, findings table (verify findings only — post-IMPLEMENT phases are findings-only), follow-up notes (any `--continue-on-large` assumptions, any `--no-pair` / `--no-risk-probes` opt-out, and any engine setup guidance after BLOCKED).
 
 3. State write: `phases.final_report.{verdict, completed_at, duration_ms}` BEFORE archive runs (archive prune logic skips runs whose `final_report.verdict` is null).
 

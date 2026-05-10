@@ -1,34 +1,38 @@
-# Shared — `--engine` Pre-flight
+# Shared — Engine Pre-flight
 
 Used by `/devlyn:resolve` and `/devlyn:ideate`. One shared availability rule so every skill routes identically.
 
 ## Rule
 
-Each skill resolves the effective engine from its own SKILL.md default plus any explicit `--engine` flag passed by the user. This pre-flight runs **only when the resolved engine is `auto` or `codex`** — when the resolved engine is `claude` (whether by skill default or explicit flag), the Codex check is skipped entirely.
+Each skill resolves the effective engine from its own SKILL.md default plus any explicit `--engine` flag passed by the user. `/devlyn:resolve` also computes conditional pair/risk-probe requirements before the phase that needs the OTHER engine.
 
-When the resolved engine is `auto` or `codex`, on entry (before spawning any phase that could route to Codex):
+When a run or phase requires Codex, before spawning that phase:
 
 1. Check if the Codex CLI is installed: `command -v codex >/dev/null 2>&1` (or equivalent bash test).
-2. On failure → silently set `engine = "claude"` for the remainder of this run AND log `engine downgraded: codex-unavailable` into the skill's final summary/report header.
-3. On success → proceed with the original engine value.
+2. On failure -> set the current phase/run verdict to `BLOCKED:codex-unavailable`, preserve the failed check evidence, and show setup guidance: install/configure the Codex CLI, run the current Codex auth/login flow, verify `codex --version`, then rerun. If the user intentionally wants solo VERIFY, they may rerun with `--no-pair`.
+3. On success -> proceed with the original engine value.
 
-Never prompt the user. Never abort the run on missing CLI.
+When a run or phase requires Claude, before spawning that phase:
 
-Per-skill defaults: `/devlyn:resolve` defaults to `claude` for PLAN/IMPLEMENT (post iter-0020 close-out — Codex BUILD/IMPLEMENT below quality floor; iter-0033g + iter-0034 close-out — PLAN-pair research-only until container/sandbox infra justifies a measurement). `/devlyn:resolve` VERIFY is the exception: gated pair-JUDGE may invoke the OTHER engine when its SKILL.md trigger policy fires. `/devlyn:ideate` defaults to `auto` for the CHALLENGE phase's cross-model GAN-critic dynamic. Each skill's SKILL.md flag block is the source of truth for that skill's default.
+1. Confirm the runtime can spawn Claude agents. Where the CLI is the launcher, `command -v claude >/dev/null 2>&1` is the equivalent check.
+2. On failure -> set the current phase/run verdict to `BLOCKED:claude-unavailable` and show setup guidance: install/configure Claude Code, verify `claude --version` where available, then rerun.
+3. On success -> proceed.
 
-## Why this is the one permitted silent fallback
+Never prompt the user mid-pipeline. Missing required engines are explicit BLOCKED states, not silent fallbacks.
 
-`CLAUDE.md` sets the no-silent-fallback rule for this repo. This downgrade is documented there as the single explicit exception because the hands-free contract — skills the user walks away from — would otherwise fail every run whenever the Codex CLI is absent. The user-visible behavior is identical to an explicit `--engine claude` invocation, and the banner in the final report removes the silence. Any other silent fallback in skills code is a bug.
+Per-skill defaults: `/devlyn:resolve` defaults to `claude` for PLAN/IMPLEMENT (post iter-0020 close-out — Codex BUILD/IMPLEMENT below quality floor; iter-0033g + iter-0034 close-out — PLAN-pair research-only until container/sandbox infra justifies a measurement). `/devlyn:resolve` VERIFY is the exception: conditional-default pair-JUDGE may invoke the OTHER engine when its SKILL.md trigger policy fires. `/devlyn:ideate` may use cross-model challenge phases when configured. Each skill's SKILL.md flag block is the source of truth for that skill's default.
 
-## What a skill must log after downgrade
+## What a skill must report after a BLOCKED engine check
 
-When the resolved engine was `auto` / `codex` and the Codex CLI was absent, the final user-facing report/summary shows both the requested and effective mode:
+When an engine required by the selected route or conditional pair trigger is absent, the final user-facing report/summary shows the requested route, the missing engine, and setup steps:
 
 ```
-Engine: claude (downgraded from auto — codex-unavailable)
+Engine: claude + codex pair required
+Verdict: BLOCKED:codex-unavailable
+Setup: install/configure Codex CLI; run the current Codex auth/login flow; verify `codex --version`; rerun. Use `--no-pair` only for an intentional solo VERIFY run.
 ```
 
-If no downgrade happened (either Codex was available, or the resolved engine was already `claude`), omit the parenthetical. That single line is the contract — the user can always see why Codex did or did not participate.
+Do not report a downgraded successful run when a required engine is missing.
 
 ## Canonical Codex invocation
 

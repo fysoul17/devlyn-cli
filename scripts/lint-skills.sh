@@ -283,10 +283,10 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 9. Engine-downgrade string is canonical (codex-unavailable, not codex-ping failed).
+# 9. Engine availability fails closed; stale silent-downgrade wording is forbidden.
 # ---------------------------------------------------------------------------
-section "Check 9: Downgrade string uses 'codex-unavailable'"
-offenders=$(grep -RIln 'codex-ping failed\|codex-ping fail' \
+section "Check 9: Engine availability fails closed"
+offenders=$(grep -RInE 'codex-ping failed|codex-ping fail|engine downgraded: codex-unavailable|silently downgrades|silently downgrade|silently switch to Claude|Codex CLI availability downgrade' \
   config/skills CLAUDE.md README.md bin/ 2>/dev/null \
   | grep -v 'roadmap-archival-workspace/' \
   | grep -v 'devlyn:auto-resolve-workspace/' \
@@ -294,7 +294,7 @@ offenders=$(grep -RIln 'codex-ping failed\|codex-ping fail' \
   | grep -v 'preflight-workspace/' \
   || true)
 if [ -z "$offenders" ]; then
-  ok "all downgrade strings canonical"
+  ok "engine availability fail-closed wording canonical"
 else
   while IFS= read -r f; do bad "$f"; done <<< "$offenders"
 fi

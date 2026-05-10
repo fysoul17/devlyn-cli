@@ -33,7 +33,7 @@ Read `_shared/runtime-principles.md`. Codex-routed phases receive the inlined ex
 
 - Subtractive-first: every accretion-shaped change is visible in the commit message or a flagged finding. Net-deletion is the default; pure-addition needs a citation.
 - Goal-locked: implement only the listed Requirements. Adjacent code that "looks fixable" is drift unless the spec or plan listed it.
-- No-workaround: no `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scripts that bypass root cause. The only documented exception is the Codex CLI availability downgrade.
+- No-workaround: no `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scripts that bypass root cause. Required unavailable engines stop with `BLOCKED:<engine>-unavailable`; they do not downgrade.
 - Evidence: every claim cites file:line you opened. Hallucinated APIs are excluded.
 </runtime_principles>
 

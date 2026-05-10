@@ -6,7 +6,7 @@ Single source of truth for how every skill calls Codex. **MCP is not used.** Ski
 
 All long-running Codex calls go through `codex-monitored.sh` — a thin wrapper that closes stdin (codex 0.124.0 hangs when both stdin is open and a prompt arg is given), streams Codex stdout fully (no `tail -n` truncation), and prints a `[codex-monitored] heartbeat` line every 30s so the outer `claude -p` byte-watchdog stays fed during long reasoning gaps. The wrapper passes its arguments through verbatim to the underlying CLI, so the canonical flag set is unchanged from a raw call — only the launcher differs.
 
-**Read-only critique / adversarial review / debate** (ideate CHALLENGE phase, `/devlyn:resolve` VERIFY pair-mode when triggered). Security review is delegated to the native `security-review` Claude Code skill, invoked from `/devlyn:resolve` BUILD_GATE rather than from Codex. Read-only critique returns findings on stdout; the orchestrator writes any files.
+**Read-only critique / adversarial review / debate** (ideate CHALLENGE phase, `/devlyn:resolve` VERIFY conditional pair-mode). Security review is delegated to the native `security-review` Claude Code skill, invoked from `/devlyn:resolve` BUILD_GATE rather than from Codex. Read-only critique returns findings on stdout; the orchestrator writes any files.
 
 ```bash
 bash .claude/skills/_shared/codex-monitored.sh \
@@ -41,11 +41,11 @@ Before the first Codex call in a run, verify the CLI is on PATH:
 command -v codex >/dev/null 2>&1
 ```
 
-If the check fails, the skill follows the `_shared/engine-preflight.md` downgrade rule — silently switch to Claude for this run and log `engine downgraded: codex-unavailable` in the final report. Never prompt, never abort.
+If the check fails while Codex is explicitly selected or conditionally required by pair/risk-probe VERIFY, follow `_shared/engine-preflight.md`: stop with `BLOCKED:codex-unavailable`, preserve run evidence, and print setup guidance. Do not convert the run to Claude. `--no-pair` and `--no-risk-probes` are explicit user opt-outs for reruns, not automatic fallbacks.
 
 ## Why CLI over other paths
 
-The local Codex CLI (fronted by `codex-monitored.sh`) is the primary (and only) integration. It beats alternatives on three dimensions: the model is inherited from the CLI's own default so no skill edits are needed when OpenAI ships a new flagship; flags compose on the command line and the skill docs stay grep-friendly; the invocation has one failure mode (the binary is on PATH or it isn't), which the shared availability check covers cleanly.
+The local Codex CLI (fronted by `codex-monitored.sh`) is the primary (and only) integration. It beats alternatives on three dimensions: the model is inherited from the CLI's own default so no skill edits are needed when OpenAI ships a new flagship; flags compose on the command line and the skill docs stay grep-friendly; the invocation has one failure mode (the binary is on PATH or it isn't), which the shared availability check reports explicitly.
 
 ## Invocation from inside a skill prompt
 

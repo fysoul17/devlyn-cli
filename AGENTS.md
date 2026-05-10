@@ -73,7 +73,7 @@ No silent fallbacks.
 - Fallbacks allowed only when widely accepted and harmless (CSS fallback fonts, CDN failover, image placeholders).
 - Silent `catch` blocks are bugs.
 - Logging is not user-visible error handling.
-- The Codex CLI availability downgrade is the one documented exception: emit `engine downgraded: codex-unavailable` and behave exactly like explicit Claude routing.
+- No engine-availability fallback is permitted for pair/risk-probe routes: if required Codex or Claude is unavailable, emit `BLOCKED:codex-unavailable` or `BLOCKED:claude-unavailable` with setup guidance. `--no-pair` and `--no-risk-probes` are explicit user opt-outs, not fallbacks.
 
 ## Evidence Over Claim
 

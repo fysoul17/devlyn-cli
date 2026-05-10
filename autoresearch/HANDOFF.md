@@ -362,7 +362,7 @@ Current status: **OPERATIONAL-MILESTONE 2026-05-04**. L1 solo (`/devlyn:resolve`
 **Active iter at HEAD: iter-0036 OPEN-PARTIAL.** Continue only on:
 - (a) User real-usage failure report → corrective iter (failure mode → smallest-unit fix → re-validate via user usage);
 - (b) Explicit user direction to scale frozen VERIFY/review evidence → continue the SWE-bench Lite/Verified fixed-diff pilot;
-- (c) Explicit user direction to resume full-pipeline L2 work → continue from the clean two-fixture F16+F23 risk-probe PASS; current next step would be broadening beyond the small suite without fixture-oracle ambiguity.
+- (c) Explicit user direction to resume full-pipeline L2 work → continue from the clean three-fixture F16+F23+F25 risk-probe PASS; current next step would be broadening beyond the small suite without fixture-oracle ambiguity.
 
 Prior milestones: iter-0035-prelim CLOSED-PRELIM-PASS 2026-05-04 (closure at `iterations/0035-prelim-tower-defense.md` § "CLOSURE — CLOSED-PRELIM-PASS 2026-05-04"); iter-0034 SHIPPED 2026-05-04 commit `edc6425`. Full iter-0035 STUB at `iterations/0035-real-project-trial.md` remains as design document for if/when user wants a discrete formal trial; expected close path is organic accumulation rather than single-trial.
 
@@ -379,6 +379,6 @@ Prior milestones: iter-0035-prelim CLOSED-PRELIM-PASS 2026-05-04 (closure at `it
 - Do NOT bypass any of CLAUDE.md `## Core principles` (the 7 + 3). The user reminder (repeated multiple times): "no xxxx 원칙들 잊지말고".
 - Do NOT pre-register iter-0035 without user-supplied project + task + developer — it is by definition a real-project trial requiring real input.
 - Do NOT iterate on L1 solo skill prompts / CLAUDE.md / AGENTS.md / `_shared/` files unless user reports a specific failure mode from real usage. User 2026-05-04 directive: solo + docs frozen at OPERATIONAL-MILESTONE; "could be cleaner" is drift.
-- Do NOT claim broad full-pipeline L2 pair-mode beyond the measured surface. `full-pipeline-pair-gate.py` now PASSes on the fair two-fixture F16+F23 headroom set, which proves the harness can produce `bare < solo < pair` on a small clean suite; it is still not evidence of general pair superiority across arbitrary user tasks.
+- Do NOT claim broad full-pipeline L2 pair-mode beyond the measured surface. `full-pipeline-pair-gate.py` now PASSes on the fair three-fixture F16+F23+F25 risk-probe set, which proves the harness can produce `bare < solo < pair` on a small clean suite; it is still not evidence of general pair superiority across arbitrary user tasks.
 
 Multi-LLM evolution direction (Block 5) binds `/devlyn:resolve` (Claude + Codex today, pi-agent tomorrow) under no-xxx / worldclass / measurement-gated principles.

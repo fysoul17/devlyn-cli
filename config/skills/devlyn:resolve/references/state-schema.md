@@ -12,6 +12,7 @@ Single authoritative verdict source for `/devlyn:resolve`. The orchestrator bran
   "engine": "claude",
   "mode": "spec",
   "complexity": null,
+  "risk_profile": { "high_risk": false, "reasons": [], "risk_probes_enabled": false, "pair_default_enabled": true },
   "base_ref": { "branch": "main", "sha": "abc123..." },
   "rounds": { "max_rounds": 4, "global": 0 },
   "bypasses": [],
@@ -44,13 +45,14 @@ Single authoritative verdict source for `/devlyn:resolve`. The orchestrator bran
 - **version** — string. Bump major on a breaking schema change.
 - **mode** — `"free-form" | "spec" | "verify-only"`.
 - **complexity** — `null | "trivial" | "medium" | "large"`. Free-form mode populates this; spec/verify-only mode leaves it null.
-- **engine** — `"claude" | "codex" | "auto"` initially; rewritten by engine-preflight if a downgrade fired.
+- **engine** — `"claude" | "codex" | "auto"` initially; a required unavailable engine stops the run with `BLOCKED:<engine>-unavailable`.
+- **risk_profile** — PHASE 0 classification for conditional defaults. `high_risk` records durable-risk signals from the goal/spec; `risk_probes_enabled` is true for explicit `--risk-probes` or high-risk specs unless `--no-risk-probes`; `pair_default_enabled` is false only for explicit `--no-pair`.
 - **rounds.global** — incremented every fix-loop pass (BUILD_GATE → fix-loop OR VERIFY → fix-loop).
 - **phases.probe_derive** — optional PHASE 1.5 entry when `--risk-probes` is enabled. Artifacts include `.devlyn/risk-probes.jsonl`. Probe failures later surface through BUILD_GATE/VERIFY as `correctness.risk-probe-failed`.
 - **bypasses** — array of phase names from `--bypass`. Valid: `"build-gate" | "cleanup"`. PLAN, IMPLEMENT, VERIFY are non-bypassable (orchestrator rejects at parse time).
 - **implement_passed_sha** — captured at end of PHASE 2; null until then. Activates the post-implement invariant for CLEANUP and VERIFY.
 - **criteria** — generated from spec's `## Requirements` checklist (one per `- [ ]`). `status: pending → implemented` is the legal transition. `failed_by_finding_ids` populates when VERIFY surfaces a finding tied to a criterion.
-- **verify.coverage_failed** — set by VERIFY's JUDGE sub-phase when a spec axis could not be exercised against the diff. Triggers pair-mode escalation when set. Pair-mode also triggers for `complexity: high` specs or `state.complexity` of `"high"`/`"large"` when MECHANICAL has no HIGH/CRITICAL blockers.
+- **verify.coverage_failed** — set by VERIFY's JUDGE sub-phase when a spec axis could not be exercised against the diff. Triggers pair-mode escalation when set. Pair-mode also triggers for verify-only mode, high-risk specs, active risk probes, `complexity: high` specs, or `state.complexity` of `"high"`/`"large"` when MECHANICAL has no HIGH/CRITICAL blockers.
 - **verify.pair_trigger** — VERIFY's trigger decision: `{ "eligible": boolean, "reasons": string[], "skipped_reason": string|null }`. If eligible with any reason, `pair_judge` must be non-null.
 
 ## Per-phase shape
@@ -105,7 +107,7 @@ Per-phase summary table: `phase | verdict | duration_ms | round | triggered_by |
 
 Findings table (post-IMPLEMENT phases only — they are findings-only): each finding's `severity | rule_id | file:line | message | confidence`.
 
-Follow-up notes: any `--continue-on-large` assumptions, any silent fallbacks (engine downgrade), any `state.verify.coverage_failed` axes.
+Follow-up notes: any `--continue-on-large` assumptions, pair/risk-probe opt-out state, engine setup guidance for `BLOCKED:<engine>-unavailable`, any `state.verify.coverage_failed` axes.
 
 ## Archive contract
 

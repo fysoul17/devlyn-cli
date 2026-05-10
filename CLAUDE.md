@@ -24,7 +24,7 @@ The runtime sub-agent contract below (Subtractive-first / Goal-locked / No-worka
 
 ## Quick Start
 
-Two skills cover the full cycle post iter-0034 Phase 4 cutover (2026-05-04). `/devlyn:ideate` is OPTIONAL; `/devlyn:resolve` is REQUIRED. **Both default to `--engine claude`** for PLAN/IMPLEMENT. Codex BUILD/IMPLEMENT and PLAN-pair remain research-only, but `/devlyn:resolve` VERIFY has a gated pair-JUDGE product path when its `SKILL.md` trigger policy fires. Pass `--engine auto` or `--engine codex` explicitly to opt into the broader research path; the harness silently downgrades to `claude` and emits a banner if the Codex CLI is missing.
+Two skills cover the full cycle post iter-0034 Phase 4 cutover (2026-05-04). `/devlyn:ideate` is OPTIONAL; `/devlyn:resolve` is REQUIRED. **Both default to `--engine claude`** for PLAN/IMPLEMENT. Codex BUILD/IMPLEMENT and PLAN-pair remain research-only, but `/devlyn:resolve` VERIFY has conditional-default pair-JUDGE when its `SKILL.md` trigger policy fires. Pass `--engine auto` or `--engine codex` explicitly to opt into the broader research path. If a selected or conditionally required engine is unavailable, the run stops with `BLOCKED:<engine>-unavailable` and setup guidance.
 
 1. `/devlyn:ideate` (optional) — unstructured idea → `docs/specs/<id>/spec.md` + `spec.expected.json`. Modes: default Q&A, `--quick` (autonomous-pipeline-safe), `--from-spec <path>`, `--project`.
 2. `/devlyn:resolve` — hands-free pipeline for any coding task. Free-form goal, `--spec <path>`, or `--verify-only <diff> --spec <path>`. Phases: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (fresh subagent, findings-only).
@@ -123,7 +123,7 @@ No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scr
 
 **Permitted exceptions** (explicitly carved out):
 - CSS fallback fonts, CDN failover, image placeholders — widely-accepted best practices.
-- Codex CLI availability downgrade — the one documented silent fallback in this repo. Fires when the resolved engine is `auto` or `codex` (either via skill default or explicit `--engine` flag) and the Codex CLI is absent. Banner `engine downgraded: codex-unavailable` always prints; verdict identical to `--engine claude`. Any other silent fallback in skills code is a bug — file it against the skill that introduced it.
+- No engine-availability fallback is permitted for `/devlyn:resolve` pair/risk-probe routes. If Codex or Claude is required and unavailable, the run stops with `BLOCKED:codex-unavailable` or `BLOCKED:claude-unavailable` plus setup guidance. `--no-pair` / `--no-risk-probes` are explicit user opt-outs, not fallbacks.
 <!-- runtime-principles:section=no-workaround:end -->
 
 ### Evidence over claim
@@ -141,7 +141,7 @@ A finding without one of these forms is excluded. Vague findings produce vague f
 
 ## Codex invocation
 
-When `/devlyn:resolve` or `/devlyn:ideate` route a phase to Codex (`--engine codex` or `--engine auto`), the wrapper-form contract lives in `config/skills/_shared/codex-config.md` (or `.claude/skills/_shared/codex-config.md` once installed). Omit `-m <model>` — the CLI's current flagship is used automatically. MCP is not in the loop. If the Codex CLI is absent the harness silently downgrades to Claude and prints `engine downgraded: codex-unavailable` in the final report.
+When `/devlyn:resolve` or `/devlyn:ideate` route a phase to Codex (`--engine codex`, `--engine auto`, or conditional VERIFY pair/risk-probe routing), the wrapper-form contract lives in `config/skills/_shared/codex-config.md` (or `.claude/skills/_shared/codex-config.md` once installed). Omit `-m <model>` — the CLI's current flagship is used automatically. MCP is not in the loop. If Codex is required and unavailable, stop with `BLOCKED:codex-unavailable` and setup guidance.
 
 ## Working Mode
 

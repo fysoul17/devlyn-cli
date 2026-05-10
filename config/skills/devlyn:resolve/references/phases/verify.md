@@ -95,10 +95,18 @@ VERIFY agent.
 
 When eligible, trigger pair-mode if any of these are true:
 - `--pair-verify` was set.
+- `state.mode == "verify-only"`.
 - The spec frontmatter has `complexity: high`.
 - `state.complexity` is `"high"` or `"large"`.
+- `state.risk_profile.high_risk == true`.
+- `.devlyn/risk-probes.jsonl` exists or `state.risk_profile.risk_probes_enabled == true`.
 - MECHANICAL emitted warning-level findings but no HIGH/CRITICAL blockers.
 - `state.verify.coverage_failed == true`.
+
+If `--no-pair` was set, do not spawn the OTHER-engine judge. Record
+`pair_trigger: { eligible: false, reasons: [], skipped_reason: "user_no_pair" }`
+and continue with solo VERIFY. This is an explicit user opt-out, not an engine
+availability fallback.
 
 Before JUDGE spawn, compute and persist:
 
@@ -118,8 +126,17 @@ The `--engine` flag never disables this rule. Explicit `--engine claude` means
 Claude is the primary judge; if pair-mode triggers, Codex is still the mandatory
 OTHER-engine judge. Do not record "explicit --engine claude" as a skip reason.
 The only valid skip reasons after a non-empty eligible trigger are deterministic
-MECHANICAL HIGH/CRITICAL blockers or Codex unavailability proven by the
-invocation layer.
+MECHANICAL HIGH/CRITICAL blockers or an explicit `--no-pair`. Engine
+unavailability is not a skip reason; it is `BLOCKED:<engine>-unavailable`.
+
+Before invoking the OTHER-engine judge, run the shared availability pre-flight
+for that engine. If Codex is required and unavailable, set VERIFY to
+`BLOCKED:codex-unavailable` and tell the user to install/configure the Codex CLI,
+run the current Codex auth/login flow, verify `codex --version`, and rerun. If
+Claude is required and the host cannot spawn a Claude agent, set VERIFY to
+`BLOCKED:claude-unavailable` and tell the user to install/configure Claude Code,
+verify `claude --version` where available, and rerun. Do not convert this to a
+solo pass, and do not synthesize pair findings.
 
 When eligible and the orchestrator spawns a second VERIFY agent with the OTHER engine's adapter, both judgments are merged:
 - Any HIGH/CRITICAL finding either model surfaces is verdict-binding.
