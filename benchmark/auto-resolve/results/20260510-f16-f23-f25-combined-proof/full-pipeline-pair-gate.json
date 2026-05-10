@@ -1,0 +1,50 @@
+{
+  "run_id": "20260510-f16-f23-f25-combined-proof",
+  "rule": "headroom candidates only; l2_gated must be clean, pair_mode true, and beat solo_claude by the configured margin",
+  "verdict": "PASS",
+  "fixtures_total": 3,
+  "fixtures_passed": 3,
+  "min_fixtures": 3,
+  "fixture_count_ok": true,
+  "bare_max": 60,
+  "solo_max": 80,
+  "min_pair_margin": 5,
+  "pair_arm": "l2_risk_probes",
+  "max_pair_solo_wall_ratio": 3.0,
+  "avg_pair_solo_wall_ratio": 1.725768446785212,
+  "rows": [
+    {
+      "fixture": "F16-cli-quote-tax-rules",
+      "status": "PASS",
+      "bare_score": 50,
+      "solo_score": 75,
+      "pair_score": 96,
+      "pair_margin": 21,
+      "pair_mode": true,
+      "pair_solo_wall_ratio": 1.2805280528052805,
+      "reason": ""
+    },
+    {
+      "fixture": "F23-cli-fulfillment-wave",
+      "status": "PASS",
+      "bare_score": 33,
+      "solo_score": 66,
+      "pair_score": 97,
+      "pair_margin": 31,
+      "pair_mode": true,
+      "pair_solo_wall_ratio": 2.2506234413965087,
+      "reason": ""
+    },
+    {
+      "fixture": "F25-cli-cart-promotion-rules",
+      "status": "PASS",
+      "bare_score": 25,
+      "solo_score": 75,
+      "pair_score": 99,
+      "pair_margin": 24,
+      "pair_mode": true,
+      "pair_solo_wall_ratio": 1.646153846153846,
+      "reason": ""
+    }
+  ]
+}

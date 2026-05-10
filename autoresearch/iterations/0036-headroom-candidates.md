@@ -1156,15 +1156,16 @@ Root-cause findings from those diagnostics:
 ## Full-pipeline two-fixture closure (2026-05-08)
 
 After the SWE-bench fixed-diff pilot reached n11, the full-pipeline blocker was
-the second clean local fixture. Four direct fixture attempts were rejected
-instead of kept as benchmark bloat:
+the second clean local fixture. Direct fixture attempts that failed the evidence
+bar were rejected instead of kept as benchmark bloat:
 
 | Fixture | Run | Bare | Solo | Pair | Outcome |
 |---|---|---:|---:|---:|---|
-| F25 cart promotions | `20260508-f25-headroom`, `20260508-f16-f25-riskprobes-v1` | 25 | 75 | 75 | Rejected after oracle correction; corrected replay makes solo and pair 4/4. |
+| F25 cart promotions | `20260508-f25-headroom`, `20260508-f16-f25-riskprobes-v1` | 25 | 75 | 75 | Initial attempt rejected after oracle correction; corrected replay made solo and pair 4/4. Later recovered by tighter cart/pricing risk probes. |
 | F26 payout ledger | `20260508-f26-headroom` | 25 | 98 | n/a | Solo ceiling. |
 | F27 gift-card redemption | `20260508-f27-headroom` | 100 | n/a | n/a | Bare ceiling; solo stopped to avoid waste. |
 | F28 rental quote | `20260508-f28-headroom` | 100 | n/a | n/a | Bare ceiling; solo stopped to avoid waste. |
+| F29 tenant adjustment auth | `20260510-f29-headroom-v2` | 25 | 92 | n/a | Rejected after hidden-oracle fairness correction; corrected visible contract made solo 4/4 and score 92, so no headroom. |
 
 The useful path was to fix the F23 risk-probe failure mode rather than invent
 more ceiling fixtures. The observed failure was specific: all-or-nothing probes
@@ -1202,6 +1203,37 @@ This closes the small-suite full-pipeline harness proof for
 `bare < solo < pair`. It does not claim broad product superiority across
 arbitrary user tasks.
 
+## Later broadening updates (2026-05-09 to 2026-05-10)
+
+F25 was recovered after the initial rejected attempt by tightening cart/pricing
+risk probes and validating the probe shell contracts. Combined suite
+`20260509-f16-f25-combined-cartprobe-v2` PASSes:
+
+| Fixture | Bare | Solo | Pair | Margin | Pair mode | Wall ratio |
+|---|---:|---:|---:|---:|---|---:|
+| F16-cli-quote-tax-rules | 50 | 75 | 96 | +21 | true | 1.28x |
+| F25-cli-cart-promotion-rules | 25 | 75 | 99 | +24 | true | 1.65x |
+
+F29 was then tested as a server/API auth + idempotent mutation candidate. The
+first single-fixture pair run tied solo (`20260510-f29-riskprobes-v2`: 25 / 75 /
+75, margin +0), and the fairness audit found two visible-contract gaps in the
+hidden verifier expectations. After making those contracts explicit, corrected
+headroom run `20260510-f29-headroom-v2` failed at bare 25 / solo 92. F29 was
+removed as fixture bloat and should not be treated as headroom, pair evidence,
+or a golden control.
+
+Existing clean rows were then re-gated into a three-fixture aggregate artifact
+without spending provider calls. `20260510-f16-f23-f25-combined-proof` PASSes:
+
+| Fixture | Bare | Solo | Pair | Margin | Pair mode | Wall ratio |
+|---|---:|---:|---:|---:|---|---:|
+| F16-cli-quote-tax-rules | 50 | 75 | 96 | +21 | true | 1.28x |
+| F23-cli-fulfillment-wave | 33 | 66 | 97 | +31 | true | 2.25x |
+| F25-cli-cart-promotion-rules | 25 | 75 | 99 | +24 | true | 1.65x |
+
+The aggregate gate requires at least three fixtures and records average
+pair/solo wall ratio 1.73x under the 3.0 cap.
+
 ## Completion audit
 
 Objective restated as concrete deliverables:
@@ -1231,8 +1263,8 @@ Prompt-to-artifact checklist:
 | Attach a known external corpus without leaking pair context into IMPLEMENT | `fetch-swebench-instances.py` fetches official Lite/Verified/Full rows into JSONL without extra Python deps; `prepare-swebench-solver-worktree.py` prepares local solver worktrees/specs without exposing gold patch/test_patch; `run-swebench-solver-batch.sh` runs bounded local solver batches and captures clean patch diffs; `collect-swebench-predictions.py` converts `<instance_id>/patch.diff` logs to official prediction JSONL; `prepare-swebench-frozen-case.py` prepares SWE-bench-style cases from `instance_id` / `repo` / `base_commit` / `problem_statement` plus a fixed candidate patch; `prepare-swebench-frozen-corpus.py` accepts official prediction JSONL (`instance_id`, `model_name_or_path`, `model_patch`) for bounded corpus prep; `run-swebench-frozen-corpus.sh` executes a prepared manifest, gates the run ids, can re-gate existing ids, forwards a per-arm timeout override, persists run ids, resumes completed arms on retry, and writes explicit failed-attempt artifacts for row failures; `run-frozen-verify-pair.sh --fixtures-root --base-repo --timeout-seconds --resume-completed-arms` reuses the frozen VERIFY runner on external repos with bounded arms; child provider stdin is redirected from `/dev/null` so manifests cannot be consumed by child commands; `test-swebench-frozen-case.sh` proves fetch, collectors/importers, corpus runner prepare-only/gate-only modes, timeout forwarding, run-id output, completed-arm resume, failed-row artifact handling, and external patch application to both arms. The local SWE-bench Lite pilot now has an eleven-run PASS gate. | Complete for infrastructure and a small SWE-bench frozen review pilot |
 | Avoid selection-bias overclaiming in the SWE-bench pilot | `swebench-frozen-matrix.py` renders all attempted rows from compare artifacts and classifies failed attempts explicitly. `swebench-lite-first25-plus-26-50-bounded-matrix.{json,md}` records 48 Lite frozen runs, not only the passing rows: 11/48 included in the n11 gate; 37/48 excluded as no verdict lift, recall-only/advisory, wall-ratio-excluded lift, solo-mechanical-dominated, or timeout. It also reports classification counts, gate rate 0.229, trailing non-gate rows 0, and yield PASS under the configured thresholds. | Complete for the first25 plus bounded 26-50 partial pilot |
 | Avoid false mechanical BLOCKED on qualitative frozen reviews | `run-frozen-verify-pair.sh` no longer writes `.devlyn/spec-verify.json` when `expected.json.verification_commands` is empty; `test-swebench-frozen-case.sh` asserts empty-command imported cases leave no carrier in solo or pair prepare-only worktrees. Rerun `swebench-pilot-new2-django-11001-vbind2` confirmed the earlier empty-carrier BLOCKED became mechanical `PASS` in both arms. | Complete |
-| Avoid overclaiming | `NORTH-STAR.md`, `HANDOFF.md`, `README.md`, and this file now separate fixed-diff review evidence, F21/F23 oracle-control rows, and the single-fixture F16 full-pipeline proof. | Complete |
-| Completion of original full goal | Full-pipeline `bare < solo < pair` is now proven on a clean two-fixture risk-probe suite: F16 v15 plus F23 v17, gated together as `20260508-f16-f23-riskprobes-v2`. F21 remains an oracle control; F22/F26 failed by ceiling, F9 failed by bare disqualifier, F25 was invalid after oracle correction, and F27/F28 were bare ceiling controls. Broad product evidence beyond the small suite would require more validated fixtures or real-project trials. | Complete for the requested small-suite harness proof; broad product superiority remains out of scope |
+| Avoid overclaiming | `NORTH-STAR.md`, `HANDOFF.md`, `README.md`, and this file now separate fixed-diff review evidence, F21/F23 oracle-control rows, the F16+F23 and F16+F25 source suites, and the F16+F23+F25 aggregate proof. | Complete |
+| Completion of original full goal | Full-pipeline `bare < solo < pair` is now proven on a clean three-fixture risk-probe aggregate: F16 v15 plus F23 v17 plus recovered F25 in `20260510-f16-f23-f25-combined-proof`. F21 remains an oracle control; F22/F26/F29 failed by ceiling, F9 failed by bare disqualifier, and F27/F28 were bare ceiling controls. Broad product evidence beyond the small suite would require more validated fixtures or real-project trials. | Complete for the requested small-suite harness proof; broad product superiority remains out of scope |
 
 Audit verdict:
 
@@ -1242,12 +1274,12 @@ the candidate suite was ceiling-saturated. The shipped evidence-backed L2
 surface is gated frozen VERIFY/review, now mechanically gated by
 `frozen-verify-gate.py`.
 
-The requested full-pipeline harness proof is complete for a small clean suite:
-F16+F23 `20260508-f16-f23-riskprobes-v2` PASSes with `bare < solo < pair` on
-both fixtures, `pair_mode=true` on both rows, and average wall ratio 1.77x under
-the 3.0 cap.
+The requested full-pipeline harness proof is complete for a small clean
+three-fixture aggregate: `20260510-f16-f23-f25-combined-proof` PASSes with
+F16/F23/F25 all satisfying `bare < solo < pair`, `pair_mode=true`, and average
+pair/solo wall ratio 1.73x under the 3.0 cap.
 
-This does not prove broad product superiority. F21 and the rejected F25-F28
+This does not prove broad product superiority. F21 and the rejected F26-F29
 rows remain controls showing why fixture-oracle consistency, headroom, and
 efficiency gates matter.
 The SWE-bench bridge provides an accepted external fixed-diff corpus path and an

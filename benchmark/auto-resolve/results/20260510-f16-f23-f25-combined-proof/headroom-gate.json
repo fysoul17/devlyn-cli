@@ -1,0 +1,32 @@
+{
+  "run_id": "20260510-f16-f23-f25-combined-proof",
+  "rule": "at least 3 candidate fixtures; each must satisfy bare <= 60 and solo_claude <= 80, with both arms clean",
+  "verdict": "PASS",
+  "fixtures_total": 3,
+  "fixtures_passed": 3,
+  "min_fixtures": 3,
+  "fixture_count_ok": true,
+  "rows": [
+    {
+      "fixture": "F16-cli-quote-tax-rules",
+      "status": "PASS",
+      "bare_score": 50,
+      "solo_score": 75,
+      "reason": ""
+    },
+    {
+      "fixture": "F23-cli-fulfillment-wave",
+      "status": "PASS",
+      "bare_score": 33,
+      "solo_score": 66,
+      "reason": ""
+    },
+    {
+      "fixture": "F25-cli-cart-promotion-rules",
+      "status": "PASS",
+      "bare_score": 25,
+      "solo_score": 75,
+      "reason": ""
+    }
+  ]
+}

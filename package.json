@@ -1,6 +1,6 @@
 {
   "name": "devlyn-cli",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "AI development toolkit for Claude Code — ideate, auto-resolve, and ship with context engineering and agent orchestration",
   "homepage": "https://github.com/fysoul17/devlyn-cli#readme",
   "bin": {
