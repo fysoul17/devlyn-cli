@@ -57,13 +57,15 @@ The harness refuses `--resolve-skill old` on F9 with a hard error.
   This asymmetry is INTENTIONAL — the fixture tests total-output quality,
   not per-file quality.
 
-## Variant artifact check (out-of-band, NOT in expected.json)
+## Skill-driven artifact check (out-of-band, NOT in expected.json)
 
 Per Codex R0.5 §B: `expected.json.verification_commands` apply to ALL arms
 (see `run-fixture.sh:472`). A `docs/specs/**` check in expected.json would
-punish the bare arm (which doesn't run ideate). Variant-only artifact
+punish the bare arm (which doesn't run ideate). Skill-driven artifact
 verification lives in `scripts/check-f9-artifacts.py`, which runs AFTER
-the per-fixture verification block and asserts variant/solo arms produced:
+the per-fixture verification block and asserts every non-bare skill arm
+(`variant`, `solo_claude`, `l2_gated`, `l2_risk_probes`, `l2_forced`)
+produced:
 
 - `docs/specs/<id>-<slug>/spec.md` exists.
 - `docs/specs/<id>-<slug>/spec.expected.json` exists.
@@ -91,3 +93,13 @@ the per-fixture verification block and asserts variant/solo arms produced:
 F9 is the last fixture we rotate — it's the anchor. If it saturates
 (variant consistently > 95), the whole suite needs a harder novice-flow
 anchor before we retire this one.
+
+## Current pair-evidence status
+
+Rejected as pair-lift evidence until reworked. `20260512-f9-e2e-headroom`
+measured bare 60 / solo_claude 90 with a +30 solo-over-bare margin, and
+`check-f9-artifacts.py` passed for bare (exempt) and solo_claude. The headroom
+gate still failed because bare headroom was 0 < 5, solo_claude exceeded 80, and
+bare carried a judge disqualifier. Keep F9 as the novice-flow anchor, but do not
+spend pair arms on it as pair evidence until the fixture is reworked and clears
+a fresh headroom gate.

@@ -96,16 +96,29 @@ echo "[run-iter-0033c] RUN_ID=$RUN_ID"
 echo "[run-iter-0033c] RESULTS_DIR=$RESULTS_DIR"
 
 # --- Determine pair-eligible set from manifest input bundle ---
-# Build a draft manifest using the C1 summary as the L1 placeholder; we'll
-# rebuild with the real L1 rerun summary at the end. For now we just need
-# the pair-eligible set for arm-selection per fixture.
+# Pair eligibility is pre-registered from C1/F9 before any iter-0033c arms run.
+# The later L1 rerun summary is archived into the final manifest for provenance;
+# it must not change the arm-selection set after execution has begun.
 DRAFT_MANIFEST="$RESULTS_DIR/manifest-draft.json"
 python3 benchmark/auto-resolve/scripts/build-pair-eligible-manifest.py \
   --c1-summary "$C1_SUMMARY" \
   --f9-judge "$F9_JUDGE" \
   --l1-rerun-summary "$C1_SUMMARY" \
   --output "$DRAFT_MANIFEST"
-PAIR_ELIGIBLE=$(python3 -c "import json;print(' '.join(json.load(open('$DRAFT_MANIFEST'))['fixtures_pair_eligible']))")
+PAIR_ELIGIBLE=$(python3 - "$DRAFT_MANIFEST" "$REPO_ROOT/benchmark/auto-resolve/scripts" <<'PY'
+import pathlib
+import sys
+
+sys.path.insert(0, sys.argv[2])
+from pair_evidence_contract import loads_strict_json_object
+
+manifest = loads_strict_json_object(pathlib.Path(sys.argv[1]).read_text())
+fixtures = manifest.get("fixtures_pair_eligible")
+if not isinstance(fixtures, list) or not all(isinstance(item, str) for item in fixtures):
+    raise SystemExit("manifest fixtures_pair_eligible must be a string array")
+print(" ".join(fixtures))
+PY
+)
 echo "[run-iter-0033c] pair-eligible: $PAIR_ELIGIBLE"
 
 # --- Per-fixture interleaved arm loop ---
@@ -161,50 +174,11 @@ done
 
 # --- Build L1 rerun summary from solo_claude arm result.json + judge.json ---
 L1_RERUN_SUMMARY="$RESULTS_DIR/l1-rerun-summary.json"
-python3 - "$RESULTS_DIR" "$L1_RERUN_SUMMARY" "$RUN_ID" "$HEAD_SHA" <<'PY'
-import json, sys
-from pathlib import Path
-results_dir = Path(sys.argv[1])
-out_path = Path(sys.argv[2])
-run_id = sys.argv[3]
-head_sha = sys.argv[4]
-rows = []
-for fx_dir in sorted(results_dir.iterdir()):
-    if not fx_dir.is_dir():
-        continue
-    judge_p = fx_dir / "judge.json"
-    if not judge_p.is_file():
-        continue
-    judge = json.loads(judge_p.read_text())
-    mapping = judge.get("_blind_mapping") or {}
-    inv = {v: k for k, v in mapping.items()}
-    arms = {}
-    for arm_name in ("solo_claude", "l2_gated", "l2_forced", "bare"):
-        letter = inv.get(arm_name)
-        if not letter:
-            continue
-        arm_dir = fx_dir / arm_name
-        result = {}
-        if (arm_dir / "result.json").is_file():
-            result = json.loads((arm_dir / "result.json").read_text())
-        arms[arm_name] = {
-            "score": judge.get(f"{letter}_score"),
-            "wall_s": result.get("elapsed_seconds"),
-            "verify_score": result.get("verify_score"),
-            "files_changed": result.get("files_changed"),
-            "timed_out": result.get("timed_out"),
-            "disqualifier": result.get("disqualifier"),
-        }
-    rows.append({"fixture": fx_dir.name, "arms": arms})
-out = {
-    "run_id": run_id,
-    "git_sha": head_sha,
-    "fixtures_total": len(rows),
-    "rows": rows,
-}
-out_path.write_text(json.dumps(out, indent=2) + "\n")
-print(f"[l1-rerun-summary] wrote {out_path} (fixtures={len(rows)})")
-PY
+python3 benchmark/auto-resolve/scripts/iter-0033c-l1-summary.py \
+  --results-dir "$RESULTS_DIR" \
+  --out "$L1_RERUN_SUMMARY" \
+  --run-id "$RUN_ID" \
+  --git-sha "$HEAD_SHA"
 
 # --- Build final manifest with real L1 rerun summary ---
 FINAL_MANIFEST="$RESULTS_DIR/iter-0033c-pair-eligible.json"

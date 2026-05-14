@@ -57,7 +57,12 @@ prose forces invariant derivation, which is where pair has the edge.
 
 ## Rotation trigger
 
-Retire when both arms consistently land > 90 across two shipped versions,
-OR when "close-together-write" becomes a recognized pattern such that
-solo arm reliably reaches for a serializing mechanism on first read.
+Headroom run `20260507-f10-f11-tier1-full-pipeline` rejected this fixture as
+pair-lift evidence: bare scored 75 and solo_claude scored 94. Keep it as a
+concurrent persistence control unless the visible contract is reworked to
+expose lower bare/solo ceilings.
+
+Retire when both `bare` and `solo_claude` consistently land > 90 across two
+shipped versions, OR when "close-together-write" becomes a recognized pattern
+such that solo arm reliably reaches for a serializing mechanism on first read.
 Whichever comes first.

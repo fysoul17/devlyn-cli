@@ -26,10 +26,12 @@
       "stdout_not_contains": []
     },
     {
-      "cmd": "node -e 'const { app } = require(\"./server\"); const http = require(\"http\"); const s = http.createServer(app).listen(0, () => { const { port } = s.address(); http.get(`http://127.0.0.1:${port}/items?per_page=abc`, r => { console.log(r.statusCode); s.close(); }); });'",
+      "cmd": "node -e 'const { app } = require(\"./server\"); const http = require(\"http\"); const s = http.createServer(app).listen(0, () => { const { port } = s.address(); http.get(`http://127.0.0.1:${port}/items?per_page=abc`, r => { let b = \"\"; r.on(\"data\", c => b += c); r.on(\"end\", () => { const d = JSON.parse(b); console.log(JSON.stringify({ status: r.statusCode, error: d.error, field: d.field })); s.close(); }); }); });'",
       "exit_code": 0,
       "stdout_contains": [
-        "400"
+        "\"status\":400",
+        "\"error\":\"invalid_query\"",
+        "\"field\":\"per_page\""
       ],
       "stdout_not_contains": []
     }

@@ -1,0 +1,7 @@
+Add a bench-cli rebalance-seats command that reads account capacity and seat events from a JSON file, processes events by priority with all-or-nothing transfers, rejects invalid per-event operations without corrupting state, and prints exact applied, rejected, and final account rows.
+
+The command should be `bench-cli rebalance-seats --input <path>`. The input JSON has account rows with id, region, seats, and used, plus event rows for reserve, release, and transfer operations. Process all events by priority descending, then effective_at ascending, then id ascending.
+
+Transfers must be all-or-nothing: if either account is missing, the source lacks used seats, the destination lacks free seats, or the regions differ without allow_cross_region, reject the transfer and leave both accounts unchanged. Reserve and release should reject per-event failures without aborting the whole command. Duplicate event ids are invalid input and must exit 2 with exactly one JSON error object on stderr and no stdout.
+
+On success, stdout must be exactly one JSON object with applied rows in processing order, rejected rows in original input order, and final account rows sorted by account id with free = seats - used. Update `tests/cli.test.js` so existing tests still pass and at least two new tests cover rebalance-seats, including one successful priority/transfer scenario and one validation failure. Do not add dependencies or touch server/web files.

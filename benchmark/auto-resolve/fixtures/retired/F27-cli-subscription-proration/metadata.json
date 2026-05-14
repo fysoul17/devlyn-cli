@@ -1,0 +1,10 @@
+{
+  "id": "F27-cli-subscription-proration",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1800,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a subscription-invoice command that prorates plan changes across a billing period, applies idempotent credits, reads plan and tax rules from data/subscription-plans.json, and prints exact integer-cent invoice totals."
+}

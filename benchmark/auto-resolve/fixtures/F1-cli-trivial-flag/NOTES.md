@@ -6,6 +6,10 @@ Trivial-tier calibration. Every arm should one-shot this; it's here to catch
 catastrophic regressions and to anchor the "saturation" end of the scoring
 scale.
 
+Pair-candidate status: rejected by design. Because every arm is expected to
+one-shot F1, it is a trivial calibration/control fixture and must not be used
+as pair-lift evidence.
+
 ## Failure mode
 
 - **Default-behavior regression.** Careless implementations add `--loud`
@@ -25,6 +29,6 @@ scale.
 
 ## Rotation trigger
 
-When both arms score > 95 for two consecutive shipped versions, replace with
-a harder trivial fixture (e.g., one that requires handling a new flag
-interacting with existing flag precedence).
+When both `bare` and `solo_claude` score > 95 for two consecutive shipped
+versions, replace with a harder trivial fixture (e.g., one that requires
+handling a new flag interacting with existing flag precedence).

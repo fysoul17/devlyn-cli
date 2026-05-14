@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from pair_evidence_contract import reject_json_constant
+
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
@@ -15,7 +17,7 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
         for line_no, line in enumerate(f, start=1):
             if not line.strip():
                 continue
-            value = json.loads(line)
+            value = json.loads(line, parse_constant=reject_json_constant)
             if not isinstance(value, dict):
                 raise ValueError(f"{path}:{line_no}: expected JSON object")
             rows.append(value)
@@ -36,11 +38,17 @@ def instance_ids_from_jsonl(path: Path | None) -> set[str] | None:
 
 def collect_from_root(root: Path, patch_name: str, keep: set[str] | None) -> list[tuple[str, Path]]:
     patches: list[tuple[str, Path]] = []
+    seen: set[str] = set()
     for patch_path in sorted(root.glob(f"*/{patch_name}")):
         instance_id = patch_path.parent.name
         if keep is not None and instance_id not in keep:
             continue
+        seen.add(instance_id)
         patches.append((instance_id, patch_path))
+    if keep is not None:
+        missing = sorted(keep - seen)
+        if missing:
+            raise ValueError(f"missing {patch_name} for instance ids: {', '.join(missing)}")
     return patches
 
 
@@ -81,6 +89,8 @@ def main() -> int:
                 + "\n"
             )
             written += 1
+    if written == 0:
+        raise ValueError("no non-empty patches collected")
 
     report = {
         "patch_root": str(args.patch_root),

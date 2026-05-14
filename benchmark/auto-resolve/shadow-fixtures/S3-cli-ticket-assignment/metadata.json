@@ -1,0 +1,10 @@
+{
+  "id": "S3-cli-ticket-assignment",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 900,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a support ticket assignment CLI command that processes tickets by priority, allocates capacity by deterministic agent tie-breakers, rejects duplicates, and emits an exact JSON output shape."
+}

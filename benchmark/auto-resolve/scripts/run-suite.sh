@@ -6,13 +6,13 @@
 #
 # Usage:
 #   run-suite.sh                            # all fixtures, n=1 smoke
-#   run-suite.sh --n 3                      # 3 runs per fixture for ship decisions
 #   run-suite.sh F2 F5                      # specific fixtures only
 #   run-suite.sh --dry-run                  # skip model invocations, validate setup
 #   run-suite.sh --judge-only --run-id X    # re-judge an existing run
 #   run-suite.sh --label v3.6               # tag this run
 #   run-suite.sh --bless                    # if ship-gate PASS, promote to baselines/shipped.json
 #   run-suite.sh --resolve-skill new        # invoke /devlyn:resolve --spec (the only supported value post iter-0034 cutover; flag kept as accepted no-op for historical runners)
+#   run-suite.sh --suite shadow --dry-run   # list shadow tasks; shadow suite refuses provider/judge runs
 #
 # Exits 0 on PASS, 1 on FAIL.
 
@@ -32,17 +32,26 @@ SUITE="golden"
 RESOLVE_SKILL="new"
 FIXTURES=()
 
+require_value() {
+  local flag="$1"
+  local value="${2:-}"
+  if [ -z "$value" ] || [[ "$value" == --* ]]; then
+    echo "$flag requires a value" >&2
+    exit 1
+  fi
+}
+
 while [ $# -gt 0 ]; do
   case "$1" in
-    --n)              N="$2"; shift 2;;
-    --label)          LABEL="$2"; shift 2;;
+    --n)              require_value "$1" "${2:-}"; N="$2"; shift 2;;
+    --label)          require_value "$1" "${2:-}"; LABEL="$2"; shift 2;;
     --dry-run)        DRY_RUN=1; shift;;
     --judge-only)     JUDGE_ONLY=1; shift;;
-    --run-id)         RUN_ID_ARG="$2"; shift 2;;
+    --run-id)         require_value "$1" "${2:-}"; RUN_ID_ARG="$2"; shift 2;;
     --bless)          BLESS=1; shift;;
     --accept-missing) ACCEPT_MISSING=1; shift;;
-    --suite)          SUITE="$2"; shift 2;;
-    --resolve-skill)  RESOLVE_SKILL="$2"; shift 2;;
+    --suite)          require_value "$1" "${2:-}"; SUITE="$2"; shift 2;;
+    --resolve-skill)  require_value "$1" "${2:-}"; RESOLVE_SKILL="$2"; shift 2;;
     -h|--help)
       head -22 "$0" | sed -n '3,22p'; exit 0;;
     [FS][0-9]*)       FIXTURES+=("$1"); shift;;
@@ -69,8 +78,15 @@ case "$SUITE" in
   *)       echo "error: --suite must be 'golden' or 'shadow' (got '$SUITE')" >&2; exit 1;;
 esac
 
+if [ "$SUITE" = "shadow" ] && [ "$DRY_RUN" -eq 0 ]; then
+  echo "shadow suite run-suite is dry-run only. Use benchmark headroom/pair with explicit S* candidates for real provider measurement." >&2
+  exit 1
+fi
+
 # n must be 1 while iteration semantics aren't wired through judge/report.
 # Remove this block when compile-report.py gains multi-iter aggregation.
+case "$N" in ''|*[!0-9]*) echo "error: --n must be an integer" >&2; exit 1;; esac
+[ "$N" -gt 0 ] || { echo "error: --n must be > 0" >&2; exit 1; }
 if [ "$N" -ne 1 ]; then
   echo "error: --n $N not yet supported — judge/report currently expect a single iteration per fixture." >&2
   echo "       Track progress in benchmark/auto-resolve/BENCHMARK-DESIGN.md (#multi-iter-roadmap)." >&2
@@ -101,6 +117,22 @@ fi
 RES_DIR="$BENCH_ROOT/results/$RUN_ID"
 mkdir -p "$RES_DIR"
 
+print_command() {
+  local cmd=(bash "$0" --n "$N" --suite "$SUITE" --resolve-skill "$RESOLVE_SKILL")
+  [ -z "$LABEL" ] || cmd+=(--label "$LABEL")
+  cmd+=(--run-id "$RUN_ID")
+  [ $DRY_RUN -eq 0 ] || cmd+=(--dry-run)
+  [ $JUDGE_ONLY -eq 0 ] || cmd+=(--judge-only)
+  [ $BLESS -eq 0 ] || cmd+=(--bless)
+  [ $ACCEPT_MISSING -eq 0 ] || cmd+=(--accept-missing)
+  if [ ${#FIXTURES[@]} -gt 0 ]; then
+    cmd+=("${FIXTURES[@]}")
+  fi
+  printf 'Command: '
+  printf '%q ' "${cmd[@]}"
+  printf '\n'
+}
+
 echo ""
 echo "═══ Benchmark Suite Run ═══"
 echo "Run-id:        $RUN_ID"
@@ -111,6 +143,7 @@ echo "n:             $N"
 echo "Resolve skill: $RESOLVE_SKILL"
 [ $DRY_RUN -eq 1 ] && echo "Mode:          DRY RUN (no model invocations)"
 [ $JUDGE_ONLY -eq 1 ] && echo "Mode:          JUDGE ONLY (re-judging existing artifacts)"
+print_command
 echo ""
 
 # ---- Mirror committed skills into .claude/skills (iter-0017) --------------
@@ -201,7 +234,11 @@ done
 if [ $DRY_RUN -eq 1 ]; then
   echo ""
   echo "[suite] DRY RUN complete — results in $RES_DIR"
-  echo "Run without --dry-run to invoke models."
+  if [ "$SUITE" = "shadow" ]; then
+    echo "Use benchmark headroom/pair with explicit S* candidates for real provider measurement."
+  else
+    echo "Run without --dry-run to invoke models."
+  fi
   exit 0
 fi
 

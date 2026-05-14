@@ -1,0 +1,67 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/policy-precedence.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Nonreturnable rejection takes precedence over expiration.",
+        "A defective return (`reason === \"defective\"`) waives any restocking fee.",
+        "Approved `exchange` lines contribute `gross_cents - restocking_fee_cents` to `exchange_credit_cents` and `0` to `refund_cents`."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/validation-and-immutability.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Validate before authorization: dates must parse as ISO dates, ids and SKUs must be non-empty strings, quantities and cents must be positive integers, percents must be non-negative numbers, order SKUs must be unique, requested SKUs must exist, and total requested quantity per SKU must not exceed ordered quantity.",
+        "Invalid input exits `2`, writes exactly one JSON error object to stderr, and writes nothing to stdout.",
+        "The command must not modify the input file."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/validation-boundary.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Validate before authorization: dates must parse as ISO dates, ids and SKUs must be non-empty strings, quantities and cents must be positive integers, percents must be non-negative numbers, order SKUs must be unique, requested SKUs must exist, and total requested quantity per SKU must not exceed ordered quantity.",
+        "Invalid input exits `2`, writes exactly one JSON error object to stderr, and writes nothing to stdout.",
+        "A line is rejected with reason `\"expired\"` when `today` is more than `return_window_days` after `purchased_at`. The purchase day counts as day 0."
+      ]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\})",
+      "description": "silent catch returning fallback in return authorization path",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "/\\*\\s*eslint-disable",
+      "description": "eslint-disable without scoped justification",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js"],
+  "forbidden_files": [],
+  "max_deps_added": 0,
+  "spec_output_files": ["bin/cli.js", "tests/cli.test.js"]
+}

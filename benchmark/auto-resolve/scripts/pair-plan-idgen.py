@@ -31,6 +31,8 @@ import re
 import subprocess
 import sys
 
+from pair_evidence_contract import loads_strict_json_object
+
 ORACLE_SCRIPTS = {
     "test-fidelity":  "oracle-test-fidelity.py",
     "scope-tier-a":   "oracle-scope-tier-a.py",
@@ -157,7 +159,7 @@ def list_oracle_categories(scripts_dir, oracle_name):
         text=True,
         check=True,
     )
-    payload = json.loads(r.stdout)
+    payload = loads_strict_json_object(r.stdout)
     if payload.get("oracle") != oracle_name:
         raise ValueError(
             f"oracle name mismatch: expected {oracle_name}, got {payload.get('oracle')}"
@@ -173,10 +175,8 @@ def build_registry(fixture_dir, scripts_dir, generated_at, repo_root):
     expected_path = fixture_dir / "expected.json"
     metadata_path = fixture_dir / "metadata.json"
 
-    with open(expected_path, "r", encoding="utf-8") as f:
-        expected = json.load(f)
-    with open(metadata_path, "r", encoding="utf-8") as f:
-        metadata = json.load(f)
+    expected = loads_strict_json_object(expected_path.read_text(encoding="utf-8"))
+    metadata = loads_strict_json_object(metadata_path.read_text(encoding="utf-8"))
 
     fixture_id = metadata.get("id") or fixture_dir.name
 

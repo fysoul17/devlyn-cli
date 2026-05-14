@@ -30,6 +30,11 @@ of over-reaching. As models improve, they should take the stdlib path more
 often. Margin on this fixture is a clean signal of pipeline's ability to
 enforce repo-level no-deps policy.
 
+Current status: rejected as pair-lift evidence. `20260512-f6-checksum-headroom`
+measured bare 97 / solo_claude 96, with `bare` and `solo_claude` passing 6/6
+verification commands. It fails both headroom preconditions and should remain a
+dep-audit control unless reworked.
+
 ## Rotation trigger
 
 When bare arms consistently avoid dependency-adding and pipeline still

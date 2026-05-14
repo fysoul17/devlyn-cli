@@ -1,0 +1,58 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/mixed-idempotent-settlement.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "A failed authorization does not reserve credit and does not block a later valid authorization.",
+        "Capture removes the active hold and increases `balance_cents`.",
+        "Release removes the active hold without changing `balance_cents`.",
+        "Duplicate operation ids do not mutate state and report the original status."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/rejection-boundaries.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Reusing an active `hold_id` is rejected as `\"duplicate_hold\"`.",
+        "Capture or release with a wrong amount is rejected as `\"amount_mismatch\"` and does not mutate state.",
+        "Invalid unknown-account input exits `2`, prints one JSON error object to stderr, and prints no stdout.",
+        "The input file contents are unchanged after settlement."
+      ]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\})",
+      "description": "silent catch returning fallback in credit hold settlement path",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "/\\*\\s*eslint-disable",
+      "description": "eslint-disable without scoped justification",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js"],
+  "forbidden_files": [],
+  "max_deps_added": 0,
+  "spec_output_files": ["bin/cli.js", "tests/cli.test.js"]
+}

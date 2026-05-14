@@ -9,8 +9,8 @@ prior `history/runs/`.
 
 ## Scoring — 4 axes, 25 points each, 100 total
 
-The blind judge scores both arms on identical axes without knowing which is
-variant vs. bare.
+The blind judge scores all submitted arms on identical axes without knowing
+which label maps to which arm.
 
 ### Axis 1 — Spec Compliance (0-25)
 
@@ -72,18 +72,23 @@ Disqualifier arms automatically lose the fixture regardless of score.
 After the judge finishes every fixture, `scripts/ship-gate.py` applies these
 rules to the run's `summary.json`.
 
+This section describes the broad run-suite ship gate. Current solo<pair
+evidence uses the full-pipeline pair gate with an explicit selected pair arm
+(`l2_risk_probes` for proof runs, `l2_gated` for diagnostics), and that gate
+compares the selected pair arm against `solo_claude`.
+
 ### Hard floors (any one failure blocks ship)
 
-1. **No disqualifier-level violation** in variant on any fixture.
+1. **No disqualifier-level violation** in any gated harness arm (legacy suite `variant`/L2 and `solo_claude`/L1 when present).
 2. **F9 (E2E) must PASS** — novice-flow contract.
-3. **≥ 7 of 9 fixtures** must have margin ≥ +5 — **headroom-aware** (added 2026-05-02 per iter-0033 R4 + NORTH-STAR amendment): a fixture is excluded from this count when `100 - L0_score < 5` AND `L1_score >= 95` AND the L1 arm has no disqualifier / CRITICAL-HIGH finding / watchdog timeout / regression worse than gate #4. Excluded fixtures become fixture-rotation candidates per the policy below if the two-shipped-version rule is met.
+3. **At least 7 gated, headroom-available fixtures** must have the required margin ≥ +5 for each gated contract — legacy `variant`-`bare` (L2-L0) for the suite gate, and `solo_claude`-`bare` (L1-L0) when `solo_claude` is present. This is **headroom-aware** (added 2026-05-02 per iter-0033 R4 + NORTH-STAR amendment): a fixture is excluded from a contract count when the lower arm is ceiling-near and the higher arm is clean at ceiling. Excluded fixtures become fixture-rotation candidates per the policy below if the two-shipped-version rule is met.
 4. **No fixture regression worse than −5** vs. last `baselines/shipped.json` on the same fixture.
 
 ### Soft gates (produce WARNING but do not block)
 
 5. Suite average margin drop > 3 vs. last shipped.
 6. A fixture that previously had margin > +5 now has margin ≤ 0.
-7. Critical-finding catch-rate decrease vs. last shipped variant (not vs. bare).
+7. Critical-finding catch-rate decrease vs. the last shipped gated harness arm.
 
 ### Known-limit exception
 
@@ -138,15 +143,15 @@ Every suite run appends an immutable record to `history/runs/<ts>-<label>.json`:
 
 ## Fixture Rotation Policy
 
-If any fixture has both arms scoring > 95 for two consecutive shipped
-versions, it's saturated and no longer differentiates. Replace with a harder
-equivalent and record the swap in
+If any fixture has all compared gated arms scoring > 95 for two consecutive
+shipped versions, it's saturated and no longer differentiates. Replace with a
+harder equivalent and record the swap in
 `history/runs/<ts>-fixture-rotation.json`:
 
 ```json
 {
   "retired": "F1-cli-trivial-flag",
-  "retired_reason": "both arms > 95 on v3.7 and v3.8 (saturation)",
+  "retired_reason": "all compared gated arms > 95 on v3.7 and v3.8 (saturation)",
   "replacement": "F1b-cli-trivial-flag-v2",
   "replacement_rationale": "adds exit-code precedence requirement that current leaders didn't handle on first try"
 }
@@ -159,10 +164,14 @@ suspected in their area.
 
 ## Why These Thresholds
 
-- **+5 margin floor** — below this, variant isn't reliably beating bare given
-  judge variance (empirically ~±3 per axis). Worth paying pipeline cost
-  requires margin clearly above noise.
+- **+5 margin floor** — below this, the gated harness arm is not reliably
+  beating its lower baseline given judge variance (empirically ~±3 per axis).
+  For the legacy suite that is `variant` over `bare`; for pair evidence it is
+  the selected pair arm over `solo_claude`. Worth paying pipeline cost requires
+  margin clearly above noise.
 - **−5 regression floor** — one-axis regression can look like −5; allowing
   less would let real regressions slip through.
-- **7/9 fixtures rule** — tolerates one close-call + F8 known-limit; anything
-  worse means the suite is surfacing a broad harness problem.
+- **7-fixture coverage floor** — requires a broad enough set of
+  headroom-available, non-known-limit fixtures to clear the margin floor. This
+  preserves the original core-suite coverage bar without pretending the current
+  extended fixture inventory is still exactly nine fixtures.

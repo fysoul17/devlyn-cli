@@ -1,0 +1,10 @@
+{
+  "id": "S2-cli-inventory-reservation",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 900,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add an inventory reservation CLI command that processes orders by priority, preserves per-order rollback on insufficient stock, rejects duplicate order ids, and emits an exact JSON output shape."
+}

@@ -22,7 +22,7 @@ const CLI_TARGETS = {
     // Codex auto-loads skills from ~/.codex/skills/ (user-global). Same
     // SKILL.md format as Claude Code; descriptions must stay ≤1024 chars.
     skillsDir: path.join(os.homedir(), '.codex', 'skills'),
-    skillsToInstall: ['devlyn:resolve', 'devlyn:ideate', '_shared'],
+    skillsToInstall: ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', '_shared'],
     detect: () => fs.existsSync(path.join(process.cwd(), 'AGENTS.md')) || fs.existsSync(path.join(process.cwd(), '.codex')),
   },
   gemini: {
@@ -183,7 +183,6 @@ const OPTIONAL_ADDONS = [
   { name: 'devlyn:pencil-push', desc: 'Push codebase UI to Pencil canvas for design sync', type: 'local' },
   { name: 'devlyn:reap', desc: 'Safely reap orphaned MCP / codex / Superset child processes left behind by long Claude sessions', type: 'local' },
   { name: 'devlyn:design-system', desc: 'Extract design tokens from a chosen UI style for exact reproduction (creative power-user)', type: 'local' },
-  { name: 'devlyn:design-ui', desc: 'N (default 5) distinct UI style explorations from a single Lead Designer (creative power-user)', type: 'local' },
   { name: 'devlyn:team-design-ui', desc: '5 distinct UI style explorations from a full design team (creative power-user)', type: 'local' },
   // External skill packs (installed via npx skills add)
   { name: 'vercel-labs/agent-skills', desc: 'React, Next.js, React Native best practices', type: 'external' },
@@ -194,7 +193,7 @@ const OPTIONAL_ADDONS = [
   // MCP servers (installed via claude mcp add)
   // Note: the Codex integration uses the local `codex` CLI binary (not MCP).
   // Install the CLI separately per https://platform.openai.com/docs/codex — the
-  // harness auto-detects availability and downgrades to Claude-only on failure.
+  // pair/risk-probe routes fail closed when Codex is required but unavailable.
   { name: 'playwright', desc: 'Playwright MCP for browser testing — powers /devlyn:resolve BUILD_GATE browser tier', type: 'mcp', command: 'npx -y @anthropic-ai/mcp-playwright' },
 ];
 
@@ -524,7 +523,7 @@ function detectOtherCLIs() {
   return detected;
 }
 
-// Install /devlyn:resolve + /devlyn:ideate + _shared skills into a CLI's
+// Install /devlyn:resolve + /devlyn:ideate + /devlyn:design-ui + _shared skills into a CLI's
 // global skills directory (e.g. ~/.codex/skills/). Returns count of skills
 // copied. Skipped silently for CLIs without a skillsDir (e.g. cursor, copilot
 // at the time of writing — they don't have an analogous skill-loader).
@@ -608,11 +607,11 @@ function installAgentsForCLI(cliKey) {
   }
 
   // If this CLI also supports a global skill-loader (currently Codex), install
-  // /devlyn:resolve + /devlyn:ideate + _shared so the same slash commands work
-  // there. Skipped for CLIs without a skillsDir entry.
+  // /devlyn:resolve + /devlyn:ideate + /devlyn:design-ui + _shared so the same
+  // slash commands work there. Skipped for CLIs without a skillsDir entry.
   const skillsCopied = installSkillsForCLI(cliKey);
   if (skillsCopied > 0) {
-    log(`  → ${skillsCopied} skill${skillsCopied > 1 ? 's' : ''} installed (devlyn:resolve / devlyn:ideate / _shared)`, 'dim');
+    log(`  → ${skillsCopied} skill${skillsCopied > 1 ? 's' : ''} installed (devlyn:resolve / devlyn:ideate / devlyn:design-ui / _shared)`, 'dim');
   }
 
   return true;
@@ -689,7 +688,7 @@ async function init(skipPrompts = false) {
     }
   }
   if (!settings.env) settings.env = {};
-  // Auto-allow pipeline state directory and common git commands so auto-resolve doesn't prompt
+  // Auto-allow pipeline state directory and common git commands so resolve doesn't prompt
   if (!settings.permissions) settings.permissions = {};
   if (!settings.permissions.allow) settings.permissions.allow = [];
   const pipelinePermissions = [
@@ -762,7 +761,7 @@ async function init(skipPrompts = false) {
     if (cli.configDir) {
       desc = `Install agents into ${cli.configDir}/`;
     } else if (cli.skillsDir) {
-      desc = `Install ${cli.instructionsFile} + /devlyn:resolve + /devlyn:ideate skills (~/.codex/skills/)`;
+      desc = `Install ${cli.instructionsFile} + /devlyn:resolve + /devlyn:ideate + /devlyn:design-ui skills (~/.codex/skills/)`;
     } else {
       desc = `Install ${cli.instructionsFile}`;
     }
@@ -808,8 +807,14 @@ function showHelp() {
   log('  npx devlyn-cli -y           Install without prompts');
   log('  npx devlyn-cli agents       Install agents for detected CLIs');
   log('  npx devlyn-cli agents all   Install agents for all supported CLIs');
-  log('  npx devlyn-cli benchmark    Run the full A/B benchmark suite vs bare');
-  log('  npx devlyn-cli benchmark --n 3 --bless   Ship-decision run + promote baseline if pass');
+  log('  npx devlyn-cli benchmark    Run the resolve benchmark suite');
+  log('  npx devlyn-cli benchmark recent              Show compact recent benchmark results');
+  log('  npx devlyn-cli benchmark frontier            Show pair candidate frontier scores/triggers without providers');
+  log('  npx devlyn-cli benchmark audit               Audit pair evidence readiness');
+  log('  npx devlyn-cli benchmark audit-headroom      Audit failed headroom results');
+  log('  npx devlyn-cli benchmark headroom <fixtures...>  Score bare vs solo_claude headroom');
+  log('  npx devlyn-cli benchmark pair <fixtures...>      Score solo_claude vs pair path');
+  log('  npx devlyn-cli benchmark --bless         If ship-gate passes, promote baseline');
   log('  npx devlyn-cli benchmark --dry-run       Validate suite setup without model invocation');
   log('  npx devlyn-cli --help       Show this help\n');
   log('Optional skills (select during install):', 'green');
@@ -831,6 +836,170 @@ function showHelp() {
   log('');
 }
 
+function showBenchmarkHelp() {
+  log('Usage:', 'green');
+  log('  npx devlyn-cli benchmark [suite] [options] [fixtures...]');
+  log('  npx devlyn-cli benchmark recent [options]');
+  log('  npx devlyn-cli benchmark frontier [options]');
+  log('  npx devlyn-cli benchmark audit [options]');
+  log('  npx devlyn-cli benchmark audit-headroom [options]');
+  log('  npx devlyn-cli benchmark headroom [options] <fixtures...>');
+  log('  npx devlyn-cli benchmark pair [options] <fixtures...>');
+  log('');
+  log('Score-focused runs:', 'green');
+  log('  recent   Show compact, wrap-safe recent benchmark results');
+  log('  frontier Show active rejected/evidence/unmeasured pair candidates, scores, and triggers without providers');
+  log('  audit     Fail on unmeasured pair candidates and invalid headroom rejections');
+  log('            Prints frontier score rows plus headroom and pair quality handoff rows');
+  log('  audit-headroom  Fail on active failed or unsupported headroom rejections');
+  log('  headroom  Score bare vs solo_claude before spending the pair arm');
+  log('  pair      Score solo_claude vs the selected pair path and print gate tables');
+  log('');
+  log('Shadow suite:', 'green');
+  log('  npx devlyn-cli benchmark suite --suite shadow --dry-run');
+  log('            Lists shadow tasks only; use headroom/pair with explicit S* ids for real measurement');
+  log('');
+  log('Examples:', 'green');
+  log('  npx devlyn-cli benchmark --dry-run F1-cli-trivial-flag');
+  log('  npx devlyn-cli benchmark recent');
+  log('  npx devlyn-cli benchmark recent --out-md /tmp/devlyn-recent-benchmark.md');
+  log('  npx devlyn-cli benchmark frontier --out-md /tmp/devlyn-pair-frontier.md');
+  log('  npx devlyn-cli benchmark audit --out-dir /tmp/devlyn-benchmark-audit');
+  log('  npx devlyn-cli benchmark audit-headroom --out-json /tmp/devlyn-headroom-audit.json');
+  log('  npx devlyn-cli benchmark headroom --min-fixtures 3 F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules');
+  log('  npx devlyn-cli benchmark pair --min-fixtures 3 --max-pair-solo-wall-ratio 3 F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules');
+  log('');
+}
+
+function showBenchmarkModeHelp(mode) {
+  if (mode === 'recent') {
+    log('Usage:', 'green');
+    log('  npx devlyn-cli benchmark recent [options]');
+    log('');
+    log('Options:', 'green');
+    log('  --out-json PATH');
+    log('  --out-md PATH');
+    log('  --fixtures-root PATH');
+    log('  --registry PATH');
+    log('  --results-root PATH');
+    log('  --max-width N  default: 92');
+    log('  --min-pair-margin N  default: 5');
+    log('  --max-pair-solo-wall-ratio N  default: 3');
+    log('');
+    log('Output:', 'green');
+    log('  Prints compact, wrap-safe benchmark status and pair-evidence cards without wide tables');
+    log('');
+    log('Example:', 'green');
+    log('  npx devlyn-cli benchmark recent');
+    log('  npx devlyn-cli benchmark recent --out-md /tmp/devlyn-recent-benchmark.md');
+    log('');
+    return;
+  }
+  if (mode === 'frontier') {
+    log('Usage:', 'green');
+    log('  npx devlyn-cli benchmark frontier [options]');
+    log('');
+    log('Options:', 'green');
+    log('  --out-json PATH');
+    log('  --out-md PATH');
+    log('  --fixtures-root PATH');
+    log('  --registry PATH');
+    log('  --results-root PATH');
+    log('  --min-pair-margin N  default: 5');
+    log('  --max-pair-solo-wall-ratio N  default: 3');
+    log('  --fail-on-unmeasured');
+    log('');
+    log('Output:', 'green');
+    log('  Prints pair evidence score rows with trigger reasons; --out-md includes a Triggers column');
+    log('');
+    log('Example:', 'green');
+    log('  npx devlyn-cli benchmark frontier --out-md /tmp/devlyn-pair-frontier.md');
+    log('');
+    return;
+  }
+  if (mode === 'audit-headroom') {
+    log('Usage:', 'green');
+    log('  npx devlyn-cli benchmark audit-headroom [options]');
+    log('');
+    log('Options:', 'green');
+    log('  --out-json PATH');
+    log('  --fixtures-root PATH');
+    log('  --registry PATH');
+    log('  --results-root PATH');
+    log('');
+    log('Example:', 'green');
+    log('  npx devlyn-cli benchmark audit-headroom --out-json /tmp/devlyn-headroom-audit.json');
+    log('');
+    return;
+  }
+  if (mode === 'audit') {
+    log('Usage:', 'green');
+    log('  npx devlyn-cli benchmark audit [options]');
+    log('');
+    log('Options:', 'green');
+    log('  --out-dir PATH');
+    log('  --fixtures-root PATH');
+    log('  --registry PATH');
+    log('  --results-root PATH');
+    log('  --min-pair-evidence N  default: 4');
+    log('  --min-pair-margin N  default: 5');
+    log('  --max-pair-solo-wall-ratio N  default: 3');
+    log('  --require-hypothesis-trigger');
+    log('');
+    log('Output:', 'green');
+    log('  Prints frontier score rows plus headroom_rejections=PASS/FAIL, pair_evidence_quality=PASS/FAIL, pair_trigger_reasons=PASS/FAIL, pair_evidence_hypotheses=PASS/FAIL, pair_evidence_hypothesis_triggers=PASS/WARN/FAIL, historical-alias, and hypothesis-trigger gap handoff rows');
+    log('');
+    log('Example:', 'green');
+    log('  npx devlyn-cli benchmark audit --out-dir /tmp/devlyn-benchmark-audit');
+    log('  npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict');
+    log('');
+    return;
+  }
+  if (mode === 'headroom') {
+    log('Usage:', 'green');
+    log('  npx devlyn-cli benchmark headroom [options] <fixtures...>');
+    log('');
+    log('Options:', 'green');
+    log('  --run-id ID');
+    log('  --bare-max N       default: 60');
+    log('  --solo-max N       default: 80');
+    log('  --min-bare-headroom N  default: 5');
+    log('  --min-solo-headroom N  default: 5');
+    log('  --min-fixtures N   default: 2; use 3 for F16/F23/F25 proof reruns; audit requires 4 passing evidence rows');
+    log('  --allow-rejected-fixtures  active-fixture diagnostics only');
+    log('  --dry-run          validate args/fixtures and print replay command only');
+    log('');
+    log('Example:', 'green');
+    log('  npx devlyn-cli benchmark headroom --min-fixtures 3 F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules');
+    log('');
+    return;
+  }
+  if (mode === 'pair') {
+    log('Usage:', 'green');
+    log('  npx devlyn-cli benchmark pair [options] <fixtures...>');
+    log('');
+    log('Options:', 'green');
+    log('  --run-id ID');
+    log('  --bare-max N');
+    log('  --solo-max N');
+    log('  --min-bare-headroom N  default: 5');
+    log('  --min-solo-headroom N  default: 5');
+    log('  --min-fixtures N   default: 2; use 3 for F16/F23/F25 proof reruns; audit requires 4 passing evidence rows');
+    log('  --min-pair-margin N  default: 5');
+    log('  --max-pair-solo-wall-ratio N  default: 3');
+    log('  --pair-arm ARM  default: l2_risk_probes; l2_gated is diagnostic');
+    log('  --reuse-calibrated-from RUN_ID');
+    log('  --allow-rejected-fixtures  active-fixture diagnostics only');
+    log('  --dry-run       validate args/fixtures and print replay command only');
+    log('');
+    log('Example:', 'green');
+    log('  npx devlyn-cli benchmark pair --min-fixtures 3 --max-pair-solo-wall-ratio 3 F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules');
+    log('');
+    return;
+  }
+  showBenchmarkHelp();
+}
+
 // Main
 const args = process.argv.slice(2);
 const command = args[0];
@@ -850,16 +1019,40 @@ switch (command) {
     break;
   case 'benchmark':
   case 'bench': {
-    // Delegate to benchmark/auto-resolve/scripts/run-suite.sh with all remaining args.
-    const runSuite = path.join(__dirname, '..', 'benchmark', 'auto-resolve', 'scripts', 'run-suite.sh');
-    if (!fs.existsSync(runSuite)) {
+    const benchmarkScripts = {
+      suite: 'run-suite.sh',
+      recent: 'recent-benchmark-summary.py',
+      frontier: 'pair-candidate-frontier.py',
+      audit: 'audit-pair-evidence.py',
+      'audit-headroom': 'audit-headroom-rejections.py',
+      headroom: 'run-headroom-candidate.sh',
+      pair: 'run-full-pipeline-pair-candidate.sh',
+    };
+    let forwardedArgs = args.slice(1);
+    if (forwardedArgs[0] === '--help' || forwardedArgs[0] === '-h') {
+      showBenchmarkHelp();
+      break;
+    }
+    let benchmarkMode = 'suite';
+    if (forwardedArgs[0] === 'suite' || forwardedArgs[0] === 'recent' || forwardedArgs[0] === 'frontier' || forwardedArgs[0] === 'audit' || forwardedArgs[0] === 'audit-headroom' || forwardedArgs[0] === 'headroom' || forwardedArgs[0] === 'pair') {
+      benchmarkMode = forwardedArgs[0];
+      forwardedArgs = forwardedArgs.slice(1);
+    }
+    if (forwardedArgs[0] === '--help' || forwardedArgs[0] === '-h') {
+      showBenchmarkModeHelp(benchmarkMode);
+      break;
+    }
+    const runnerName = benchmarkScripts[benchmarkMode];
+    const runner = path.join(__dirname, '..', 'benchmark', 'auto-resolve', 'scripts', runnerName);
+    if (!fs.existsSync(runner)) {
       log('❌ Benchmark suite runner missing — is this a clean devlyn-cli checkout?', 'yellow');
-      log(`   Expected: ${runSuite}`, 'dim');
+      log(`   Expected: ${runner}`, 'dim');
       process.exit(1);
     }
     const { spawnSync } = require('child_process');
-    const forwardedArgs = args.slice(1);
-    const res = spawnSync('bash', [runSuite, ...forwardedArgs], { stdio: 'inherit' });
+    const env = { ...process.env, DEVLYN_BENCHMARK_CLI_SUBCOMMAND: benchmarkMode };
+    const executable = (benchmarkMode === 'recent' || benchmarkMode === 'frontier' || benchmarkMode === 'audit' || benchmarkMode === 'audit-headroom') ? 'python3' : 'bash';
+    const res = spawnSync(executable, [runner, ...forwardedArgs], { stdio: 'inherit', env });
     process.exit(res.status ?? 1);
     break;
   }

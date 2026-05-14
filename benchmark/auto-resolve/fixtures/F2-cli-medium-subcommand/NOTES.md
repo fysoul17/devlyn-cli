@@ -39,16 +39,19 @@ small enough that every arm can plausibly finish in < 10 minutes.
 
 ## When should this fixture be retired or replaced?
 
-When both arms score > 95 for two consecutive shipped versions — i.e., the
-fixture saturates and no longer differentiates. Candidate replacement: a
-similar-size CLI task with multiple interacting flags or a subcommand that
-spawns a child process.
+When both `bare` and `solo_claude` score > 95 for two consecutive shipped
+versions — i.e., the fixture saturates and no longer differentiates. Candidate
+replacement: a similar-size CLI task with multiple interacting flags or a
+subcommand that spawns a child process.
 
 ## Calibration history
 
 - v3.4   skill 57 / bare 45 / margin +12 (gpt-5.3-codex judge)
 - v3.4.1 skill 59 / bare 43 / margin +16 (gpt-5.3-codex judge)
 - v3.5   skill 92 / bare 81 / margin +11 (gpt-5.4 xhigh judge) — huge absolute jump; bare silent-catch caught
+- 20260512-f2-medium-headroom bare 83 / solo_claude 95 — rejected as
+  pair-lift evidence because both baseline scores exceed current headroom
+  ceilings.
 
 Absolute scores jumped with the stronger judge. Margin stays solid (+11
 after stdlib calibration is expected to open a few points more).

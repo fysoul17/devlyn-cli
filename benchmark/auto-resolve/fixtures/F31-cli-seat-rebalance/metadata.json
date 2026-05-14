@@ -1,0 +1,10 @@
+{
+  "id": "F31-cli-seat-rebalance",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli rebalance-seats command that reads account capacity and seat events from a JSON file, processes events by priority with all-or-nothing transfers, rejects invalid per-event operations without corrupting state, and prints exact applied, rejected, and final account rows."
+}

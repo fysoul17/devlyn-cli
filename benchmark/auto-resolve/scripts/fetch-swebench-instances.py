@@ -11,6 +11,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from pair_evidence_contract import reject_json_constant
+
 
 DATASETS = {
     "lite": "princeton-nlp/SWE-bench_Lite",
@@ -31,7 +33,17 @@ def fetch_rows(dataset: str, split: str, offset: int, length: int) -> dict[str, 
     )
     url = f"https://datasets-server.huggingface.co/rows?{params}"
     with urllib.request.urlopen(url, timeout=60) as response:
-        return json.load(response)
+        return json.load(response, parse_constant=reject_json_constant)
+
+
+def positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be an integer") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be > 0")
+    return parsed
 
 
 def main() -> int:
@@ -39,7 +51,7 @@ def main() -> int:
     parser.add_argument("--dataset", choices=sorted(DATASETS), default="lite")
     parser.add_argument("--dataset-id", help="Override the Hugging Face dataset id.")
     parser.add_argument("--split", default="test")
-    parser.add_argument("--limit", type=int, help="Fetch at most N rows.")
+    parser.add_argument("--limit", type=positive_int, help="Fetch at most N rows.")
     parser.add_argument("--page-size", type=int, default=100)
     parser.add_argument("--instance-id", action="append", help="Keep only these instance ids.")
     parser.add_argument("--out", required=True, type=Path)
@@ -63,13 +75,19 @@ def main() -> int:
         if total is None:
             total = int(page.get("num_rows_total") or 0)
         page_rows = page.get("rows") or []
+        if not isinstance(page_rows, list):
+            raise ValueError("fetched page malformed: rows must be a list")
         if not page_rows:
             break
-        for wrapper in page_rows:
+        for row_index, wrapper in enumerate(page_rows, start=1):
+            if not isinstance(wrapper, dict):
+                raise ValueError(f"malformed fetched row {row_index}: wrapper must be object")
             row = wrapper.get("row")
             if not isinstance(row, dict):
-                continue
+                raise ValueError(f"malformed fetched row {row_index}: row must be object")
             instance_id = row.get("instance_id")
+            if not isinstance(instance_id, str) or not instance_id:
+                raise ValueError(f"malformed fetched row {row_index}: instance_id must be a non-empty string")
             if keep and instance_id not in keep:
                 continue
             rows.append(row)

@@ -1,0 +1,10 @@
+{
+  "id": "F28-cli-return-authorization",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli authorize-return command that reads an order and return request JSON file, applies return windows, nonreturnable items, defective-item fee waivers, exchange credits, and emits one exact cents-based authorization JSON without mutating the input."
+}

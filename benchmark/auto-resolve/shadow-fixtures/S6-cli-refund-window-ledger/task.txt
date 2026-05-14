@@ -1,0 +1,1 @@
+Add a `settle-refunds` command to bench-cli. It must read policies, orders, and refund requests from JSON CLI arguments, process refund requests by priority, maintain per-order remaining refundable cents, reject duplicates before processing, and emit exact JSON output.

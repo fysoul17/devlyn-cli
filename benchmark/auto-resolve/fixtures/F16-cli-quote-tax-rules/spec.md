@@ -55,3 +55,9 @@ the output must be machine-readable.
 - A quote over combined stock exits `2`, prints one JSON error to stderr, and prints no stdout.
 - The stock error object includes `sku`, `available`, and `requested`.
 - `git diff --stat` shows only `bin/cli.js` and `tests/cli.test.js` touched (the pricing seed comes from setup, not the arm).
+
+## Solo-headroom hypothesis
+
+A capable solo_claude baseline is expected to miss duplicate-SKU aggregation
+before stock validation or tax/discount calculation; observable command
+`node "$BENCH_FIXTURE_DIR/verifiers/exact-success.js"` exposes the miss.

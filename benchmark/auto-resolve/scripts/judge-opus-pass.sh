@@ -23,9 +23,9 @@
 #     `_axis_validation`, same shape as judge.sh).
 #   - Always re-judges (no skip-on-exists) so cross-judge results never go
 #     stale.
-#   - Aggregator computes per-axis L1-L0 disagreement vs GPT (the decisive
-#     metric per Codex R0 Q1 — falsification rule: any axis disagreement >2
-#     means iter-0021/0023 L1 readout is single-judge artifact).
+#   - Aggregator computes per-axis solo_claude-bare (L1-L0) disagreement vs
+#     GPT (the decisive metric per Codex R0 Q1 — falsification rule: any axis
+#     disagreement >2 means iter-0021/0023 L1 readout is single-judge artifact).
 #
 # Usage:
 #   judge-opus-pass.sh --run-id <ID>
@@ -38,10 +38,19 @@
 set -euo pipefail
 
 usage() { echo "usage: $0 --run-id <ID>"; exit 1; }
+require_value() {
+  local flag="$1"
+  local value="${2:-}"
+  if [ -z "$value" ] || [[ "$value" == --* ]]; then
+    echo "$flag requires a value" >&2
+    exit 1
+  fi
+}
+
 RUN_ID=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --run-id) RUN_ID="$2"; shift 2;;
+    --run-id) require_value "$1" "${2:-}"; RUN_ID="$2"; shift 2;;
     *) usage;;
   esac
 done
@@ -50,6 +59,50 @@ done
 BENCH_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 RES_ROOT="$BENCH_ROOT/results/$RUN_ID"
 [ -d "$RES_ROOT" ] || { echo "no results dir: $RES_ROOT"; exit 1; }
+
+python3 - "$RES_ROOT" "$BENCH_ROOT/scripts" <<'PY'
+import json
+import pathlib
+import sys
+sys.path.insert(0, sys.argv[2])
+from pair_evidence_contract import loads_strict_json_object
+
+def is_score(value):
+    return isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 100
+
+res_root = pathlib.Path(sys.argv[1])
+errors = []
+for fixture_dir in sorted(p for p in res_root.glob("F*/") if p.is_dir()):
+    judge_path = fixture_dir / "judge.json"
+    prompt_path = fixture_dir / "judge-prompt.txt"
+    if not judge_path.exists() or not prompt_path.exists():
+        continue
+    judge = loads_strict_json_object(judge_path.read_text())
+    mapping = judge.get("_blind_mapping")
+    if not isinstance(mapping, dict):
+        errors.append(f"{fixture_dir.name}: judge blind mapping missing")
+        continue
+    mapped_arms = {arm for slot, arm in mapping.items() if slot in {"A", "B", "C"}}
+    required = {"bare", "solo_claude"}
+    raw_scores = judge.get("scores_by_arm")
+    scores = raw_scores if isinstance(raw_scores, dict) else {}
+    if "variant" in scores:
+        required.add("variant")
+    malformed_scores = sorted(arm for arm, score in scores.items() if not is_score(score))
+    if malformed_scores:
+        errors.append(f"{fixture_dir.name}: scores_by_arm malformed score(s): {', '.join(malformed_scores)}")
+    missing = sorted(required - mapped_arms)
+    if missing:
+        errors.append(f"{fixture_dir.name}: judge blind mapping missing arm(s): {', '.join(missing)}")
+    unmapped_scores = sorted(set(scores) - mapped_arms)
+    if unmapped_scores:
+        errors.append(f"{fixture_dir.name}: scores_by_arm without blind mapping: {', '.join(unmapped_scores)}")
+
+if errors:
+    for error in errors:
+        print(f"[opus-judge] ✗ {error}", file=sys.stderr)
+    raise SystemExit(2)
+PY
 
 command -v claude >/dev/null 2>&1 || { echo "claude CLI not on PATH"; exit 1; }
 
@@ -105,22 +158,32 @@ for fixture_dir in "$RES_ROOT"/F*/; do
     continue
   fi
 
-  python3 - "$opus_out_raw" "$gpt_judge_f" "$opus_judge_f" "$CLAUDE_CLI_VER" "$JUDGE_MODEL_ALIAS" <<'PY' || { echo "[opus-judge] ✗ $fid parse failed"; failed=$((failed + 1)); continue; }
+  python3 - "$opus_out_raw" "$gpt_judge_f" "$opus_judge_f" "$CLAUDE_CLI_VER" "$JUDGE_MODEL_ALIAS" "$BENCH_ROOT/scripts" <<'PY' || { echo "[opus-judge] ✗ $fid parse failed"; failed=$((failed + 1)); continue; }
 import sys, json, pathlib
+sys.path.insert(0, sys.argv[6])
+from pair_evidence_contract import loads_strict_json_object, reject_json_constant
+
+def is_score(value):
+    return isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 100
+
+def is_bool(value):
+    return isinstance(value, bool)
 
 raw = pathlib.Path(sys.argv[1]).read_text()
-gpt = json.loads(pathlib.Path(sys.argv[2]).read_text())
+gpt = loads_strict_json_object(pathlib.Path(sys.argv[2]).read_text())
 target = pathlib.Path(sys.argv[3])
 cli_ver = sys.argv[4].strip()
 model_alias = sys.argv[5].strip()
 
 # Robust JSON extraction — last valid {} block with required score keys.
-mapping = gpt.get("_blind_mapping") or {}
+mapping = gpt.get("_blind_mapping")
+if not isinstance(mapping, dict):
+    raise SystemExit("gpt judge.json _blind_mapping must be an object")
 required_score_keys = ["a_score", "b_score"]
 if "C" in mapping:
     required_score_keys.append("c_score")
 
-decoder = json.JSONDecoder()
+decoder = json.JSONDecoder(parse_constant=reject_json_constant)
 brace_positions = [i for i, c in enumerate(raw) if c == '{']
 chosen = None
 for pos in reversed(brace_positions):
@@ -135,6 +198,9 @@ if chosen is None:
     raise SystemExit(
         f"no valid JSON with keys {required_score_keys} in opus output: {sys.argv[1]}"
     )
+invalid_scores = [key for key in required_score_keys if not is_score(chosen.get(key))]
+if invalid_scores:
+    raise SystemExit(f"invalid opus score value(s): {', '.join(invalid_scores)}")
 
 # Axis validation — mirror judge.sh post iter-0023.
 AXIS_KEYS = ("spec", "constraint", "scope", "quality")
@@ -147,9 +213,9 @@ for bk in BREAKDOWN_KEYS:
         if axis not in chosen[bk]:
             continue
         v = chosen[bk][axis]
-        if not isinstance(v, (int, float)) or v < 0 or v > 25:
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or v < 0 or v > 25:
             axis_invalid_cells.append({"breakdown": bk, "axis": axis, "value": v})
-            chosen[bk][axis] = max(0, min(25, int(v) if isinstance(v, (int, float)) else 0))
+            chosen[bk][axis] = max(0, min(25, int(v) if not isinstance(v, bool) and isinstance(v, (int, float)) else 0))
 chosen["_axis_validation"] = {
     "out_of_range_count": len(axis_invalid_cells),
     "out_of_range_cells": axis_invalid_cells,
@@ -172,7 +238,7 @@ slot_letters = ["A", "B", "C"]
 scores_by_arm = {}
 for letter, key in zip(slot_letters, slot_keys):
     arm = mapping.get(letter)
-    if arm is not None and key in chosen:
+    if arm is not None and key in chosen and is_score(chosen[key]):
         scores_by_arm[arm] = chosen[key]
 chosen["scores_by_arm"] = scores_by_arm
 
@@ -196,18 +262,26 @@ for letter, bk in zip(slot_letters, BREAKDOWN_KEYS):
 chosen["breakdowns_by_arm"] = breakdowns_by_arm
 
 # Per-arm critical_findings + disqualifiers (same shape judge.sh emits).
-findings_letters = chosen.get("critical_findings", {}) or {}
+raw_findings_letters = chosen.get("critical_findings")
+findings_letters = raw_findings_letters if isinstance(raw_findings_letters, dict) else {}
 chosen["findings_by_arm"] = {
     mapping[l]: findings_letters.get(l, []) for l in slot_letters if l in mapping
 }
-dq_letters = chosen.get("disqualifiers", {}) or {}
+raw_dq_letters = chosen.get("disqualifiers")
+dq_letters = raw_dq_letters if isinstance(raw_dq_letters, dict) else {}
+invalid_dq_letters = [
+    letter for letter in slot_letters
+    if letter in dq_letters and not is_bool(dq_letters.get(letter))
+]
+if invalid_dq_letters:
+    raise SystemExit(f"invalid opus disqualifier value(s): {', '.join(invalid_dq_letters)}")
 dq_by_arm = {}
 for l in slot_letters:
     if l not in mapping:
         continue
     arm = mapping[l]
     dq_by_arm[arm] = {
-        "disqualifier": bool(dq_letters.get(l, False)),
+        "disqualifier": dq_letters.get(l, False) is True,
         "reason": str(dq_letters.get(f"{l}_reason", "") or ""),
     }
 chosen["disqualifiers_by_arm"] = dq_by_arm
@@ -236,7 +310,8 @@ target.write_text(json.dumps(chosen, indent=2))
 print(
     f"[opus-judge] {target.parent.name} "
     f"v={chosen.get('variant_score')} l1={chosen.get('solo_score')} l0={chosen.get('bare_score')} "
-    f"l1-l0={chosen['margins']['solo_over_bare']} v-l1={chosen['margins']['variant_over_solo']}"
+    f"solo_claude-bare={chosen['margins']['solo_over_bare']} "
+    f"variant-solo_claude={chosen['margins']['variant_over_solo']}"
 )
 PY
   processed=$((processed + 1))
@@ -244,9 +319,14 @@ done
 
 echo "[opus-judge] judge passes: processed=$processed skipped=$skipped failed=$failed"
 
-# Aggregate cross-judge agreement, including per-axis L1-L0 disagreement.
-python3 - "$RES_ROOT" <<'PY'
+# Aggregate cross-judge agreement, including per-axis solo_claude-bare (L1-L0) disagreement.
+python3 - "$RES_ROOT" "$BENCH_ROOT/scripts" <<'PY'
 import json, pathlib, sys, math
+sys.path.insert(0, sys.argv[2])
+from pair_evidence_contract import loads_strict_json_object
+
+def is_score(value):
+    return isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 100
 
 res_root = pathlib.Path(sys.argv[1])
 rows = []
@@ -257,21 +337,30 @@ for fdir in sorted(res_root.glob("F*/")):
     o_f = fdir / "judge-opus.json"
     if not g_f.exists() or not o_f.exists():
         continue
-    g = json.loads(g_f.read_text())
-    o = json.loads(o_f.read_text())
+    g = loads_strict_json_object(g_f.read_text())
+    o = loads_strict_json_object(o_f.read_text())
 
-    # Per-axis L1-L0 (solo_claude − bare) for both judges.
+    # Per-axis solo_claude-bare (L1-L0) for both judges.
     # Codex R1 #1: judge.sh historically writes `a/b/c_breakdown` plus
     # `_blind_mapping`, NOT `breakdowns_by_arm`. iter-0020 judge.json files
     # are in that historical shape. Derive per-arm breakdowns from letter
     # fields when `breakdowns_by_arm` is absent; fail loudly when neither
     # source is available so axis disagreement never silently falls to zero.
+    def blind_mapping(j):
+        raw_mapping = j.get("_blind_mapping")
+        return raw_mapping if isinstance(raw_mapping, dict) else {}
+
+    def mapped_arm_set(j):
+        mapping = blind_mapping(j)
+        return {arm for slot, arm in mapping.items() if slot in {"A", "B", "C"}}
+
     def axis_l1_l0(j, label):
+        mapped_arms = mapped_arm_set(j)
         bka = j.get("breakdowns_by_arm") or {}
-        if "solo_claude" in bka and "bare" in bka:
+        if {"solo_claude", "bare"}.issubset(mapped_arms) and "solo_claude" in bka and "bare" in bka:
             l1 = bka["solo_claude"]; l0 = bka["bare"]
         else:
-            mapping = j.get("_blind_mapping") or {}
+            mapping = blind_mapping(j)
             slot_letters = ["A", "B", "C"]
             slot_breakdowns = ["a_breakdown", "b_breakdown", "c_breakdown"]
             derived = {}
@@ -287,16 +376,35 @@ for fdir in sorted(res_root.glob("F*/")):
             l1 = derived["solo_claude"]; l0 = derived["bare"]
         return {a: (l1.get(a, 0) - l0.get(a, 0)) for a in axis_keys}
 
+    def mapped_scores(j):
+        mapped_arms = mapped_arm_set(j)
+        raw_scores = j.get("scores_by_arm")
+        scores = raw_scores if isinstance(raw_scores, dict) else {}
+        return {arm: score for arm, score in scores.items() if arm in mapped_arms and is_score(score)}
+
+    def margin_from_scores(scores, left, right):
+        if left in scores and right in scores:
+            return scores[left] - scores[right]
+        return None
+
+    def mapped_winner(j, scores):
+        winner = j.get("winner_arm")
+        if winner == "tie" or winner in scores:
+            return winner
+        return None
+
     g_axes = axis_l1_l0(g, f"gpt {fdir.name}")
     o_axes = axis_l1_l0(o, f"opus {fdir.name}")
     axis_disagreement = {a: o_axes[a] - g_axes[a] for a in axis_keys}
 
-    g_margins = (g.get("margins") or {})
-    o_margins = (o.get("margins") or {})
-    g_l1_l0 = g_margins.get("solo_over_bare")
-    o_l1_l0 = o_margins.get("solo_over_bare")
-    g_v_l0 = g_margins.get("variant_over_bare")
-    o_v_l0 = o_margins.get("variant_over_bare")
+    g_scores = mapped_scores(g)
+    o_scores = mapped_scores(o)
+    g_l1_l0 = margin_from_scores(g_scores, "solo_claude", "bare")
+    o_l1_l0 = margin_from_scores(o_scores, "solo_claude", "bare")
+    g_v_l0 = margin_from_scores(g_scores, "variant", "bare")
+    o_v_l0 = margin_from_scores(o_scores, "variant", "bare")
+    g_winner = mapped_winner(g, g_scores)
+    o_winner = mapped_winner(o, o_scores)
     margin_l1_l0_diff = (
         abs(g_l1_l0 - o_l1_l0) if g_l1_l0 is not None and o_l1_l0 is not None else None
     )
@@ -306,8 +414,8 @@ for fdir in sorted(res_root.glob("F*/")):
 
     rows.append({
         "fixture": fdir.name,
-        "gpt_scores":   g.get("scores_by_arm") or {},
-        "opus_scores":  o.get("scores_by_arm") or {},
+        "gpt_scores":   g_scores,
+        "opus_scores":  o_scores,
         "gpt_margin_l1_l0":  g_l1_l0,
         "opus_margin_l1_l0": o_l1_l0,
         "margin_l1_l0_diff": margin_l1_l0_diff,
@@ -317,9 +425,9 @@ for fdir in sorted(res_root.glob("F*/")):
         "gpt_axis_l1_l0":    g_axes,
         "opus_axis_l1_l0":   o_axes,
         "axis_disagreement": axis_disagreement,
-        "winner_agree":   g.get("winner_arm") == o.get("winner_arm"),
-        "gpt_winner":     g.get("winner_arm"),
-        "opus_winner":    o.get("winner_arm"),
+        "winner_agree":   g_winner is not None and o_winner is not None and g_winner == o_winner,
+        "gpt_winner":     g_winner,
+        "opus_winner":    o_winner,
     })
 
 if not rows:
@@ -328,7 +436,7 @@ if not rows:
 
 n = len(rows)
 
-# Suite-level per-axis L1-L0 sum (both judges) and disagreement.
+# Suite-level per-axis solo_claude-bare (L1-L0) sum (both judges) and disagreement.
 g_axis_sum = {a: sum(r["gpt_axis_l1_l0"][a] for r in rows) for a in axis_keys}
 o_axis_sum = {a: sum(r["opus_axis_l1_l0"][a] for r in rows) for a in axis_keys}
 axis_sum_disagreement = {a: o_axis_sum[a] - g_axis_sum[a] for a in axis_keys}
@@ -339,7 +447,7 @@ THRESHOLD = 2
 falsified_by_axis = max_abs_axis_disagreement > THRESHOLD
 flipped_axes = [a for a, v in axis_sum_disagreement.items() if abs(v) > THRESHOLD]
 
-# Suite avg L1-L0 (both judges) — Codex R1 #3: divide by valid-count, report denom.
+# Suite avg solo_claude-bare (L1-L0, both judges) — Codex R1 #3: divide by valid-count, report denom.
 gpt_l1_l0_valid = [r["gpt_margin_l1_l0"] for r in rows if r["gpt_margin_l1_l0"] is not None]
 opus_l1_l0_valid = [r["opus_margin_l1_l0"] for r in rows if r["opus_margin_l1_l0"] is not None]
 gpt_l1_l0_avg = (sum(gpt_l1_l0_valid) / len(gpt_l1_l0_valid)) if gpt_l1_l0_valid else None
@@ -408,18 +516,22 @@ summary = {
 out = res_root / "cross-judge-summary.json"
 out.write_text(json.dumps(summary, indent=2))
 
+def fmt_metric(value):
+    return f"{value:.2f}" if value is not None else "na"
+
 print(
     f"[cross-judge] n={n} "
     f"falsified={falsified_by_axis} flipped_axes={flipped_axes} "
     f"max_axis_disagreement={max_abs_axis_disagreement} "
-    f"gpt_l1_l0_avg={gpt_l1_l0_avg:.2f} opus_l1_l0_avg={opus_l1_l0_avg:.2f} "
-    f"suite_avg_diff={suite_avg_diff:.2f}"
+    f"gpt_l1_l0_avg={fmt_metric(gpt_l1_l0_avg)} "
+    f"opus_l1_l0_avg={fmt_metric(opus_l1_l0_avg)} "
+    f"suite_avg_diff={fmt_metric(suite_avg_diff)}"
 )
 print(f"[cross-judge] axis_sum_l1_l0: gpt={g_axis_sum} opus={o_axis_sum} disagree={axis_sum_disagreement}")
 print(f"[cross-judge] wrote {out}")
 PY
 
-# Hard-fail summary if not all 9 fixtures produced paired judgements.
+# Hard-fail summary if any fixture in the selected result set lacks a paired judgement.
 EXPECTED_FIXTURES=$(ls -d "$RES_ROOT"/F*/ 2>/dev/null | wc -l | awk '{print $1}')
 PAIRED=$(find "$RES_ROOT" -maxdepth 2 -name 'judge-opus.json' | wc -l | awk '{print $1}')
 echo "[opus-judge] expected_fixtures=$EXPECTED_FIXTURES paired=$PAIRED"

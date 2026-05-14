@@ -1,0 +1,56 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/exact-proration.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Dates are interpreted as UTC calendar dates. The billing period start is inclusive and the end is exclusive.",
+        "Each segment amount is `Math.round(plan.monthly_cents * segment_days / period_days)`. Round each segment independently before summing.",
+        "Identical duplicate credits, where both `id` and `amount_cents` match, are idempotent and apply only once.",
+        "Tax is computed after credits: `tax_cents = Math.round((subtotal_cents - credit_cents) * tax_rate)`."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/rules-source-and-conflict.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Plan monthly prices and state tax rates come from `data/subscription-plans.json`. Do not hardcode these values in the command implementation.",
+        "Credits with the same `id` but different `amount_cents` are conflicting duplicates. They exit `2` with exact error shape `{ \"error\": \"conflicting_credit\", \"id\": string }`, write it to stderr, and write nothing to stdout."
+      ]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\})",
+      "description": "silent catch returning fallback in subscription-invoice path",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "/\\*\\s*eslint-disable",
+      "description": "eslint-disable without scoped justification",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js"],
+  "forbidden_files": [],
+  "max_deps_added": 0,
+  "spec_output_files": ["bin/cli.js", "tests/cli.test.js"]
+}

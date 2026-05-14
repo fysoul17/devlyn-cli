@@ -31,6 +31,13 @@ calls it done. Verification catches that.
 - **Phase 2.5 FIX LOOP** runs at least once. A fixture passing with 0 fix rounds is a smoke signal that the test-trap design is too lenient; inspect.
 - **Phase 1.4 BUILD GATE** uses `node --test` which exits non-zero on any failure, forcing route to 2.5.
 
+## Current status
+
+Rejected as pair-lift evidence. `20260512-f5-fixloop-headroom` measured bare
+99 / solo_claude 99, with bare and solo each passing 5/5 verification commands.
+It fails both headroom preconditions and should remain a fix-loop control unless
+reworked.
+
 ## Rotation trigger
 
 When fix rounds consistently = 0 across two shipped versions, the trap is too

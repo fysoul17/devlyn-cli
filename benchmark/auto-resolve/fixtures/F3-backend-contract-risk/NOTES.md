@@ -25,4 +25,11 @@ update tests but forget backward-compat requirements (single-item route,
 
 ## Rotation trigger
 
-Retire when both arms consistently score > 95 AND produce 2+ new tests covering paging edge cases without pipeline intervention.
+Headroom run `20260511-f3-http-error-headroom` rejected this fixture as
+pair-lift evidence after the invalid-query HTTP error body verifier was
+tightened: bare scored 97 and solo_claude scored 99. Keep it as a backend
+contract control unless the visible contract is reworked to expose lower
+bare/solo ceilings.
+
+Retire when both `bare` and `solo_claude` consistently score > 95 AND produce
+2+ new tests covering paging edge cases without pipeline intervention.

@@ -14,7 +14,7 @@ anchoring is left-only, which is what we want. Per-oracle convention
 documented here; step 1's content oracle uses regex instead.
 
 Fixtures can waive any Tier A pattern via `expected.json::tier_a_waivers`
-(list of fnmatch globs). Load-bearing case: F9 e2e-ideate-to-preflight
+(list of fnmatch globs). Load-bearing case: F9 e2e-ideate-to-resolve
 legitimately creates docs/VISION.md, docs/ROADMAP.md, docs/roadmap/**.
 
 Step 2 scope: findings only. Scoring integration is a later step.
@@ -26,6 +26,8 @@ import os
 import pathlib
 import subprocess
 import sys
+
+from pair_evidence_contract import loads_strict_json_object
 
 ORACLE_NAME = "scope-tier-a"
 
@@ -222,27 +224,32 @@ def main():
 
     waivers = []
     fixture_id = None
+    expected_error = None
     if args.expected:
         exp_path = pathlib.Path(args.expected)
         # fixture_id = parent directory name of expected.json
         fixture_id = exp_path.parent.name
         try:
-            expected = json.loads(exp_path.read_text())
+            expected = loads_strict_json_object(exp_path.read_text())
             raw = expected.get("tier_a_waivers", [])
             if isinstance(raw, list):
                 waivers = [w for w in raw if isinstance(w, str)]
-        except (OSError, json.JSONDecodeError) as e:
+        except (OSError, json.JSONDecodeError, ValueError) as e:
+            expected_error = f"expected.json unreadable: {e}"
             sys.stderr.write(
                 f"[oracle-scope-tier-a] could not read waivers from {args.expected}: {e}\n"
             )
 
     findings = analyze(args.work, args.scaffold, waivers, fixture_id=fixture_id)
-    print(json.dumps({
+    report = {
         "oracle": "scope-tier-a",
         "waivers": waivers,
         "fixture_id": fixture_id,
         "findings": findings,
-    }, indent=2))
+    }
+    if expected_error:
+        report["error"] = expected_error
+    print(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":

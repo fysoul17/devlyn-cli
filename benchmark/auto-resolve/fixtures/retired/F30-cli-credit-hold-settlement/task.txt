@@ -1,0 +1,17 @@
+Add a bench-cli settle-holds command that reads account credit holds and
+operations, applies authorization/capture/release with idempotency and rollback,
+and emits exact cents-based settlement state without mutating input.
+
+The command should read `--input <path>` JSON with accounts and operations.
+Validate the input before settlement. Use integer cents only, write exactly one
+JSON object to stdout on success, and write exactly one JSON error object to
+stderr with exit code 2 for invalid input. Do not add npm dependencies.
+
+Business rejections should stay on exit code 0. Process operations in input
+order. Authorizations create active holds only when available credit is enough.
+Captures and releases require an active hold for the same account and exact
+amount. Failed operations must not mutate state. Duplicate operation ids are
+idempotent: only the first occurrence mutates state, and later duplicates report
+the original approved/rejected status.
+
+Update the CLI tests. Touch only `bin/cli.js` and `tests/cli.test.js`.

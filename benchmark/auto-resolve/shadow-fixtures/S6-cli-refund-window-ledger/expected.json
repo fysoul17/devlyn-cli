@@ -1,0 +1,56 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/priority-refund-ledger.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Process refund requests globally by `priority` descending, then `requested_on` ascending, then original input order ascending.",
+        "A refund rejects with reason `window_expired` when `requested_on` is more than `refund_window_days` after `purchased_on`.",
+        "A refund accepts only when the order's remaining refundable cents is at least the requested `cents`.",
+        "A rejected refund with reason `over_refund` must not change that order's remaining refundable cents.",
+        "For each accepted refund, decrement that order's remaining refundable cents by the requested `cents`.",
+        "For each accepted refund, compute `fee_cents` as the category policy's `restocking_fee_cents` capped at the requested `cents`, and compute `net_cents = cents - fee_cents`.",
+        "`approved` is ordered in processing order. Each row has keys `id`, `order`, `refund_cents`, `fee_cents`, and `net_cents`.",
+        "`rejected` is ordered in the original input refund order. Each row has keys `id`, `reason`.",
+        "`orders` is ordered by order id ascending. Each row has keys `id` and `remaining_refundable_cents`.",
+        "On success, write exactly one JSON object to stdout and no stderr. Keys: `approved`, `rejected`, `orders`."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/duplicate-refund-error.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Before settling any refund, duplicate refund ids are invalid input: exit `2`, write exactly one JSON error object `{ \"error\": \"duplicate_refund_id\", \"id\": string }` to stderr, and write no stdout."
+      ]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\}|\\[\\])",
+      "description": "silent catch returning fallback in settle-refunds path",
+      "files": ["bin/cli.js", "tests/cli.test.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["bin/cli.js", "tests/cli.test.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js"],
+  "forbidden_files": [],
+  "tier_a_waivers": [],
+  "spec_output_files": ["bin/cli.js", "tests/cli.test.js"],
+  "max_deps_added": 0
+}

@@ -62,3 +62,10 @@ and stdout must stay machine-readable.
 - The stock error object includes `sku`, `available`, and `requested`.
 - Changing `data/catalog.json` prices or rates changes command output without code changes.
 - `git diff --stat` shows only `bin/cli.js` and `tests/cli.test.js` touched (the catalog seed comes from setup, not the arm).
+
+## Solo-headroom hypothesis
+
+A capable solo_claude baseline is expected to miss the interaction between
+duplicate-SKU aggregation, line-promotion ordering, coupon ordering, and
+tax/shipping thresholds; observable command
+`node "$BENCH_FIXTURE_DIR/verifiers/exact-success.js"` exposes the miss.

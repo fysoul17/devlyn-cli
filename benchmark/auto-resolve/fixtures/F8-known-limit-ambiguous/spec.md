@@ -2,7 +2,7 @@
 id: "F8-known-limit-ambiguous"
 title: "Improve the CLI"
 status: planned
-complexity: ambiguous
+complexity: medium
 depends-on: []
 ---
 

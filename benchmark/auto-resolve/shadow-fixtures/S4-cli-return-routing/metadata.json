@@ -1,0 +1,10 @@
+{
+  "id": "S4-cli-return-routing",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 900,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a return routing CLI command that applies category policy, priority ordering, destination capacity mutation, duplicate id rejection, and exact JSON output shape."
+}

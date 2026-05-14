@@ -1,0 +1,5 @@
+Add a bench-cli authorize-return command that reads an order and return request JSON file, applies return windows, nonreturnable items, defective-item fee waivers, exchange credits, and emits one exact cents-based authorization JSON without mutating the input.
+
+The command should be `bench-cli authorize-return --input <path>`. The input contains `today`, an `order`, and a `request`. Validate malformed data before authorizing, and for invalid input exit 2 with one JSON error on stderr and no stdout. Business rejections like nonreturnable or expired items should be normal successful output, not process failures.
+
+Use integer cents only. Approved refund lines add to `refund_cents`; approved exchange lines add to `exchange_credit_cents`; opened non-defective items pay a rounded restocking fee; defective items waive the fee. Output one JSON object with request/order ids, approved rows, rejected rows, and the refund, exchange-credit, and restocking-fee totals. Update `tests/cli.test.js`, keep existing tests passing, do not add dependencies, and do not touch server or web files.

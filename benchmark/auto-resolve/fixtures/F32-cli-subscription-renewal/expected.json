@@ -1,0 +1,57 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/priority-credit-rollback.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Process renewals globally by `priority` descending, then `requested_at` ascending, then `id` ascending.",
+        "A rejected renewal with reason `payment_required` must not consume any credits, even if it tentatively applied credits before discovering the remaining due exceeded `max_due_cents`.",
+        "Usable credits are credits for the same customer with `expires_at >= as_of` and `cents > 0`, consumed by `expires_at` ascending, then `id` ascending.",
+        "`rejected` is ordered in the original input renewal order. Each row has keys `id` and `reason`.",
+        "`remaining_credits` includes only non-expired credits with positive cents after accepted renewals, sorted by `customer`, then `expires_at`, then `id`. Each row has keys `id`, `customer`, `cents`, and `expires_at`.",
+        "Output row key names and nested `credits` key names match the visible spec exactly, with no aliased or extra keys."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/duplicate-renewal-error.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Before processing any renewal, duplicate renewal ids are invalid input: exit `2`, write exactly one JSON error object `{ \"error\": \"duplicate_renewal_id\", \"id\": string }` to stderr, and write no stdout."
+      ]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\})",
+      "description": "silent catch returning fallback in subscription renewal path",
+      "files": ["bin/cli.js", "tests/cli.test.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["bin/cli.js", "tests/cli.test.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "/\\*\\s*eslint-disable",
+      "description": "eslint-disable without scoped justification",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js"],
+  "forbidden_files": [],
+  "max_deps_added": 0,
+  "spec_output_files": ["bin/cli.js", "tests/cli.test.js"]
+}

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""F9 variant/solo arm artifact + transcript fingerprint check.
+"""F9 skill-driven arm artifact + transcript fingerprint check.
 
 Out-of-band per Codex R0.5 §B (iter-0033a): expected.json.verification_commands
 apply to ALL arms (run-fixture.sh:472), so a `docs/specs/**` check there would
-punish bare. This script runs AFTER run-fixture.sh and asserts variant/solo
+punish bare. This script runs AFTER run-fixture.sh and asserts skill-driven
 arms produced the artifacts the 2-skill ideate→resolve chain should emit.
 
 Bare arm is exempt by construction.
@@ -13,7 +13,7 @@ Usage:
 
 Exits:
   0 — all checks pass (or bare arm — exempt).
-  1 — variant/solo arm but artifact contract violated.
+  1 — skill-driven arm but artifact contract violated.
   2 — invalid invocation (missing args, missing dir).
 
 Emits a small JSON report at <result-dir>/check-f9-artifacts.json.
@@ -25,8 +25,10 @@ import re
 import sys
 from pathlib import Path
 
+from pair_evidence_contract import loads_strict_json_object
 
-VARIANT_ARMS = {"variant", "solo_claude", "l2_gated", "l2_forced"}
+
+SKILL_DRIVEN_ARMS = {"variant", "solo_claude", "l2_gated", "l2_risk_probes", "l2_forced"}
 EXEMPT_ARMS = {"bare"}
 
 SPEC_DIR_GLOB = "docs/specs/*/spec.md"
@@ -37,6 +39,18 @@ SPEC_EXPECTED_GLOB = "docs/specs/*/spec.expected.json"
 # tool calls; positive resolve invocation evidence lives in state).
 RE_AUTO_RESOLVE = re.compile(r"/devlyn:auto-resolve\b")
 RE_PREFLIGHT = re.compile(r"/devlyn:preflight\b")
+
+
+def _load_json_object(path: Path) -> tuple[dict | None, str | None]:
+    try:
+        data = loads_strict_json_object(path.read_text())
+    except json.JSONDecodeError as exc:
+        return None, f"{exc.__class__.__name__}: {exc}"
+    except ValueError as exc:
+        if str(exc) == "top-level JSON value must be an object":
+            return None, "expected JSON object"
+        return None, f"{exc.__class__.__name__}: {exc}"
+    return data, None
 
 
 def main() -> int:
@@ -71,8 +85,8 @@ def main() -> int:
         _write_report(result_dir, report)
         return 0
 
-    if arm not in VARIANT_ARMS:
-        print(f"error: unknown arm '{arm}' (expected one of {VARIANT_ARMS | EXEMPT_ARMS})",
+    if arm not in SKILL_DRIVEN_ARMS:
+        print(f"error: unknown arm '{arm}' (expected one of {SKILL_DRIVEN_ARMS | EXEMPT_ARMS})",
               file=sys.stderr)
         return 2
 
@@ -81,13 +95,13 @@ def main() -> int:
     timing_path = result_dir / "timing.json"
     work_dir: Path
     if timing_path.is_file():
-        try:
-            timing = json.loads(timing_path.read_text())
+        timing, _timing_error = _load_json_object(timing_path)
+        if timing is not None:
             work_dir = Path(timing.get("work_dir", ""))
-        except Exception:
-            work_dir = Path("")
+        else:
+            work_dir = Path("__invalid_timing_work_dir__")
     else:
-        work_dir = Path("")
+        work_dir = Path("__missing_timing_work_dir__")
 
     if not work_dir.is_dir():
         report["checks"].append({
@@ -163,16 +177,14 @@ def main() -> int:
     else:
         # Read the most recent run.
         state_path = sorted(state_paths)[-1]
-        try:
-            state = json.loads(state_path.read_text())
-        except Exception as exc:
+        state, state_error = _load_json_object(state_path)
+        if state is None:
             report["checks"].append({
                 "name": "pipeline.state.json-parses",
                 "pass": False,
-                "reason": f"{exc.__class__.__name__}: {exc}",
+                "reason": state_error,
             })
             report["pass"] = False
-            state = None
 
         if state is not None:
             archived = "/runs/" in str(state_path)

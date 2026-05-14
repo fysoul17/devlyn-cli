@@ -59,3 +59,9 @@ failure reasons must be deterministic.
 - Unknown resources are reported in `rejected` without aborting the whole run.
 - Duplicate request ids are invalid input: exit `2`, one JSON error to stderr, no stdout.
 - `git diff --stat` shows only `bin/cli.js` and `tests/cli.test.js` touched.
+
+## Solo-headroom hypothesis
+
+A capable solo_claude baseline is expected to miss global priority ordering
+across resources while preserving blocked-interval earliest-fit placement;
+observable command `node "$BENCH_FIXTURE_DIR/verifiers/priority-blocked.js"` exposes the miss.

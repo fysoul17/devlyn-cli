@@ -1,17 +1,27 @@
 {
   "run_id": "20260510-f16-f23-f25-combined-proof",
-  "rule": "at least 3 candidate fixtures; each must satisfy bare <= 60 and solo_claude <= 80, with both arms clean",
+  "rule": "at least 3 candidate fixtures; each must satisfy bare <= 60 with headroom >= 5, solo_claude <= 80 with headroom >= 5, with both baseline arms evidence-complete",
   "verdict": "PASS",
   "fixtures_total": 3,
   "fixtures_passed": 3,
   "min_fixtures": 3,
+  "bare_max": 60,
+  "solo_max": 80,
+  "min_bare_headroom_required": 5,
+  "min_solo_headroom_required": 5,
   "fixture_count_ok": true,
+  "avg_bare_headroom": 24.0,
+  "min_bare_headroom": 10,
+  "avg_solo_headroom": 8.0,
+  "min_solo_headroom": 5,
   "rows": [
     {
       "fixture": "F16-cli-quote-tax-rules",
       "status": "PASS",
       "bare_score": 50,
       "solo_score": 75,
+      "bare_headroom": 10,
+      "solo_headroom": 5,
       "reason": ""
     },
     {
@@ -19,6 +29,8 @@
       "status": "PASS",
       "bare_score": 33,
       "solo_score": 66,
+      "bare_headroom": 27,
+      "solo_headroom": 14,
       "reason": ""
     },
     {
@@ -26,6 +38,8 @@
       "status": "PASS",
       "bare_score": 25,
       "solo_score": 75,
+      "bare_headroom": 35,
+      "solo_headroom": 5,
       "reason": ""
     }
   ]

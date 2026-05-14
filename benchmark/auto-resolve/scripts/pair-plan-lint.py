@@ -25,6 +25,8 @@ import json
 import pathlib
 import sys
 
+from pair_evidence_contract import reject_json_constant
+
 SCHEMA_VERSION = "1"
 AUTHORITY_ORDER_CANONICAL = [
     "spec.md",
@@ -67,7 +69,11 @@ def _strict_pairs(pairs):
 
 def load_strict_json(path):
     with open(path, "r", encoding="utf-8") as f:
-        return json.load(f, object_pairs_hook=_strict_pairs)
+        return json.load(
+            f,
+            object_pairs_hook=_strict_pairs,
+            parse_constant=reject_json_constant,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -396,7 +402,8 @@ def lint(plan_path, registry_override=None):
         return {"ok": False, "errors": [{"code": "plan_invalid_json",
                                           "message": f"plan parse error: {e}"}]}
     except ValueError as e:
-        return {"ok": False, "errors": [{"code": "plan_duplicate_keys",
+        code = "plan_duplicate_keys" if "duplicate key" in str(e) else "plan_invalid_json"
+        return {"ok": False, "errors": [{"code": code,
                                           "message": str(e)}]}
     except FileNotFoundError:
         return {"ok": False, "errors": [{"code": "plan_not_found",

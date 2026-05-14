@@ -1,0 +1,55 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/priority-agent-assignment.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Process tickets globally by `priority` descending, then `created_at` ascending, then original input order ascending.",
+        "A ticket accepts only when at least one agent has the ticket skill and positive remaining capacity.",
+        "When multiple agents can accept a ticket, assign it to the agent with the most remaining capacity, then `id` ascending.",
+        "Accepted tickets decrement only the selected agent's remaining capacity by `1`.",
+        "Rejected tickets do not change any agent capacity. Use reason `no_agent` when no eligible agent is available at that point in processing.",
+        "`assigned` is ordered by processing order. Each row has keys `id`, `agent`.",
+        "`unassigned` is ordered in the original input order. Each row has keys `id`, `reason`.",
+        "`agents` is ordered by agent id ascending. Each row has keys `id`, `remaining`.",
+        "On success, write exactly one JSON object to stdout and no stderr. Keys: `assigned`, `unassigned`, `agents`."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/duplicate-ticket-error.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Before processing any ticket, duplicate ticket ids are invalid input: exit `2`, write exactly one JSON error object `{ \"error\": \"duplicate_ticket_id\", \"id\": string }` to stderr, and write no stdout."
+      ]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\}|\\[\\])",
+      "description": "silent catch returning fallback in assign-tickets path",
+      "files": ["bin/cli.js", "tests/cli.test.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["bin/cli.js", "tests/cli.test.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js"],
+  "forbidden_files": [],
+  "tier_a_waivers": [],
+  "spec_output_files": ["bin/cli.js", "tests/cli.test.js"],
+  "max_deps_added": 0
+}

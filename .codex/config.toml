@@ -1,0 +1,12 @@
+[mcp_servers.codex-cli]
+args = [
+    "-y",
+    "codex-mcp-server",
+]
+command = "npx"
+
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1"

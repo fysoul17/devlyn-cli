@@ -27,13 +27,13 @@ If devlyn-cli saved you time, [give it a star](https://github.com/fysoul17/devly
 npx devlyn-cli
 ```
 
-That's it. The interactive installer handles everything. Claude Code config is installed by default; optional AI CLI instructions can be selected during install. Choose **Codex CLI (OpenAI)** to install `AGENTS.md` AND `/devlyn:resolve` + `/devlyn:ideate` skills into `~/.codex/skills/` so the same slash commands work inside Codex too. Run it again anytime to update.
+That's it. The interactive installer handles everything. Claude Code config is installed by default; optional AI CLI instructions can be selected during install. Choose **Codex CLI (OpenAI)** to install `AGENTS.md` AND `/devlyn:resolve` + `/devlyn:ideate` + `/devlyn:design-ui` skills into `~/.codex/skills/` so the same slash commands work inside Codex too. Run it again anytime to update.
 
 ---
 
 ## How It Works — Two Skills, Full Cycle
 
-devlyn-cli turns Claude Code into a hands-free development pipeline. The product surface is two skills:
+devlyn-cli turns Claude Code into a hands-free development pipeline. The pipeline surface is two skills, with `/devlyn:design-ui` installed as the required creative UI surface:
 
 ```
 ideate (optional)  →  resolve  →  ship
@@ -80,6 +80,20 @@ PLAN  →  IMPLEMENT  →  BUILD_GATE  →  CLEANUP  →  VERIFY (fresh subagent
 - Git checkpoints at every phase for safe rollback. Fix-loop budget shared across BUILD_GATE and VERIFY (`--max-rounds N`, default 4).
 
 Common flags: `--engine claude|codex|auto` (default `claude`), `--bypass build-gate,cleanup`, `--pair-verify` (force pair-mode JUDGE in VERIFY), `--no-pair` (intentional solo VERIFY), `--risk-probes` / `--no-risk-probes`, `--perf` (per-phase timing).
+`--pair-verify` and `--no-pair` are mutually exclusive; using both stops with `BLOCKED:invalid-flags`.
+
+Free-form goals that ask for benchmark evidence, pair-evidence, risk-probe
+measurement, `solo<pair` proof, or solo-headroom work must include an
+actionable `solo-headroom hypothesis` naming the visible behavior `solo_claude`
+is expected to miss plus a backticked observable command; the backticked line
+itself must contain `miss` and be framed as the command/observable that exposes it. Without that,
+`/devlyn:resolve` stops with `BLOCKED:solo-headroom-hypothesis-required` and
+points you to `/devlyn:ideate` instead of inventing a weak hypothesis.
+Free-form goals that add or run a new unmeasured benchmark, shadow fixture,
+golden fixture, risk-probe, or pair-evidence candidate must also include
+`solo ceiling avoidance`, mention `solo_claude`, and name the concrete
+difference from rejected or solo-saturated controls such as `S2`-`S6`; without
+that, `/devlyn:resolve` stops with `BLOCKED:solo-ceiling-avoidance-required`.
 
 ### Engine selection — Claude implementation, conditional pair VERIFY
 
@@ -93,47 +107,84 @@ Common flags: `--engine claude|codex|auto` (default `claude`), `--bypass build-g
 
 If Codex or Claude is absent when explicitly selected or conditionally required, the harness stops with `BLOCKED:codex-unavailable` or `BLOCKED:claude-unavailable` and prints setup guidance. Use `--no-pair` only when intentionally accepting solo VERIFY; use `--no-risk-probes` only when intentionally disabling automatic high-risk probes.
 
-<details>
-<summary><strong>What's new in 1.14.0</strong> — CPO lens + handoff enforcement</summary>
+### Benchmark score runs
 
-`/devlyn:ideate` now thinks like a world-class Product Owner, and `/devlyn:auto-resolve` finally honors the spec contract the ideate skill was already designed to produce. Validated with 19 parallel eval subagents, 1.2M tokens of evidence — Customer Frame propagation went from 0/20 to 20/20 across seven test scenarios.
+Use the benchmark CLI when a change claims `solo_claude < pair`. The score-focused runners print the run id, startup gate lines, blind-judge score tables, fixture pair margins, average pair margin, wall-time ratio, and failure reasons:
 
-- **Jobs-to-be-Done forcing in FRAME** — ideate's opening FRAME phase now requires a one-sentence JTBD statement ("When [situation], [user] wants [motivation] so they can [outcome]") before anything else. A bare problem statement is a state description, not a job — downstream specs built without this frame describe system behavior instead of customer progress.
-- **Customer Frame field on every item spec** — item-spec template gains a `## Customer Frame` section between Context and Objective that carries the per-item JTBD sentence all the way through to auto-resolve's build agent. The build agent uses this line to resolve ambiguity in Requirements rather than inventing interpretations.
-- **PHASE 0.5 SPEC PREFLIGHT on auto-resolve** — when the task names a `docs/roadmap/phase-N/...md` spec, auto-resolve now reads it BEFORE BUILD, verifies internal dependencies are `status: done`, and writes `.devlyn/SPEC-CONTEXT.md` so downstream phases stop re-deriving what the spec already owns. Un-done deps halt the pipeline with `BLOCKED` rather than shipping out-of-sequence code.
-- **Done-criteria verbatim copy** — when PHASE 0.5 found a spec, BUILD's Phase B copies the spec's `Requirements`, `Out of Scope`, and `Verification` sections verbatim into `.devlyn/done-criteria.md`. No silent re-derivation; the ideate CHALLENGE rubric's validation is preserved through the handoff.
-- **Spec-bounded exploration** — BUILD's Phase A uses the spec's `Architecture Notes` + `Dependencies` as the exploration boundary instead of re-classifying the task type open-endedly.
-- **Complexity-gated team ceremony** — `complexity: low` specs with no security/auth/API/data risk keywords skip TeamCreate entirely. Medium/high complexity or risk-flagged specs still assemble the team as before.
-- **Evidence discipline in ideate EXPLORE** — research phase now labels unsourced market/tech claims `[UNVERIFIED]` inline rather than presenting recall as fact. The CHALLENGE rubric's NO GUESSWORK axis fires on unlabeled authoritative claims.
-- **Mode tie-break rule** — when a request matches two ideate modes (Quick Add vs Expand, Research-first vs Deep-dive), the narrowest mode wins. Deterministic selection replaces intuitive match.
-- **Bloat removal** — three redundant motivational blocks deleted from ideate SKILL.md (`<why_this_matters>` rationale, duplicate CHALLENGE preamble, external engine-routing pointer). SKILL.md shrank from 529 to 519 lines despite the new features.
+```bash
+npx devlyn-cli benchmark headroom --min-fixtures 3 F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules
+npx devlyn-cli benchmark recent
+npx devlyn-cli benchmark recent --out-md /tmp/devlyn-recent-benchmark.md
+npx devlyn-cli benchmark frontier --out-md /tmp/devlyn-pair-frontier.md
+npx devlyn-cli benchmark audit --out-dir /tmp/devlyn-benchmark-audit
+npx devlyn-cli benchmark audit-headroom --out-json /tmp/devlyn-headroom-audit.json
+npx devlyn-cli benchmark pair --min-fixtures 3 --max-pair-solo-wall-ratio 3 F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules
+```
 
-</details>
+`benchmark recent` prints a compact, wrap-safe snapshot of the current local
+pair evidence: status counts, pair-lift aggregates, and one card per passing
+pair-evidence fixture. It intentionally avoids wide Markdown tables, so the
+same output stays readable in narrow terminals, PR comments, and release notes.
+`benchmark frontier` also prints a stdout score summary for existing complete pair
+evidence rows, including pair arm, trigger reasons, average/minimum pair margin,
+and wall ratio, plus row-level verdicts even when `--out-json` or `--out-md`
+writes an artifact. Markdown frontier artifacts include a `Triggers` column.
+Full-pipeline pair gate artifacts record `require_hypothesis_trigger` in JSON
+and include a Markdown `Hypothesis trigger` column, so strict regenerated
+evidence shows whether each row carried `spec.solo_headroom_hypothesis`.
+`benchmark audit` is the provider-free release/handoff guard: it writes
+`audit.json` with the frontier summary, artifact map, and compact trigger-backed verdict-bearing `pair_evidence_rows`
+(each row carries `pair_trigger_eligible: true`, non-empty `pair_trigger_reasons`, `pair_trigger_has_canonical_reason: true`, and `pair_trigger_has_hypothesis_reason`; the audit fails rows missing trigger reasons or missing actionable solo-headroom hypotheses in fixture `spec.md` whose observable command matches `expected.json`), runs the frontier with
+`--fail-on-unmeasured`, requires at least four fixtures with passing pair evidence,
+revalidates frontier `verdict: PASS`, zero unmeasured candidates, and revalidates `pair_mode: true`,
+the default 5-point pair margin, and 3x pair/solo wall ratio, then
+audits failed headroom results. The audit stdout also prints
+`headroom_rejections=...`, `pair_evidence_quality=...`,
+`pair_trigger_reasons=...`, `pair_evidence_hypotheses=...`, and
+`pair_evidence_hypothesis_triggers=...` handoff rows, plus
+`pair_trigger_historical_aliases=...` when archived evidence includes legacy
+trigger aliases and `pair_evidence_hypothesis_trigger_gaps=...` when documented
+hypotheses have not yet propagated into trigger reasons, with the rejected-fixture
+coverage counts plus actual minimum pair margin, maximum pair/solo wall ratio,
+and canonical trigger reason coverage plus row-match status.
+The compact evidence row count must match the frontier evidence count,
+`checks.frontier_stdout` records summary, aggregate, final-verdict, expected, printed score-row, trigger-visible row, and hypothesis-trigger-visible row counts,
+`checks.headroom_rejections` records child verdict plus unrecorded/unsupported counts,
+`checks.pair_evidence_quality` records the same quality thresholds from the compact rows,
+`checks.pair_trigger_reasons` records canonical/historical-alias/exposed/total trigger-reason row counts, fixture-level historical alias details, summary count, and row-match status,
+`checks.pair_evidence_hypotheses` records documented/total pair-evidence hypothesis row counts,
+and `checks.pair_evidence_hypothesis_triggers` records whether documented hypotheses also appear as `spec.solo_headroom_hypothesis` trigger reasons plus fixture-level gap details
+so incomplete or low-quality local score artifacts cannot inflate the claim.
+Add `--require-hypothesis-trigger` to turn those hypothesis-trigger gaps from
+archived-evidence WARN rows into release-blocking FAIL rows for newly
+regenerated pair evidence.
 
-<details>
-<summary><strong>What's new in 1.13.0</strong> — Opus 4.7 pipeline pass</summary>
+```bash
+npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict
+```
 
-Core pipeline skills (`ideate`, `auto-resolve`, `preflight`) rewritten against Anthropic's Opus 4.7 prompting guidance, validated by multi-round comprehension and quality-grading subagents.
-
-- **4.7 prompt patterns** — `<investigate_before_answering>` on evaluator and challenge, `<coverage_over_filtering>` with per-finding confidence, 3 few-shot examples in the Challenge phase, `<orchestrator_context>` (auto-compaction + xhigh effort), `<use_parallel_tool_calls>` in ideate EXPLORE and preflight Phase 0.
-- **`--with-codex` consolidated into `--engine auto`** — auto covers BUILD/FIX + team roles + ideate CHALLENGE critic. Legacy flag still accepted with a graceful handoff. *(Note: post iter-0020 close-out, `--engine auto` is experimental research-only; default is `--engine claude`.)*
-- **Bug fixes** — PHASE 1.5 BLOCKED browser failures re-route correctly via PHASE 2.5; PHASE 1.4-fix and PHASE 2.5 share one global round counter; preflight PHASE 1 numbering fixed; build-gate-exhausted now produces a graceful final report.
-- **CLAUDE.md refresh** (shipped to `npx` installers) — Quick Start pointing to ideate → auto-resolve → preflight, Context Window Management updated for Opus 4.7 auto-compaction, terminology refresh (TodoWrite → task tools, Task agents → Agent subagents).
-
-</details>
-
----
+Historical trigger aliases are only reported for archived artifact review; new
+current pair-evidence gates fail historical-only or unknown trigger reasons and
+require at least one canonical `pair_trigger.reasons` entry.
+`benchmark audit-headroom` fails if an active failed headroom fixture is missing
+from both rejected registry and passing pair evidence.
+Headroom runs use the current claim gate: `bare <= 60`, `solo_claude <= 80`,
+and the default 5-point `bare`/`solo_claude` headroom margins before spending a pair arm.
+Add `--dry-run` to either score runner to validate args, fixture ids, minimum
+fixture count, and the replay command without running arms or judges. Dry-runs
+and lint prove wiring only; real score claims must cite the run id and fixture
+ids.
 
 ## Optional Power-User Skills
 
-Two creative skills have moved to `optional-skills/` — install them via the interactive installer when you need them.
+Two creative companion skills live in `optional-skills/` — install them via the interactive installer when you need them.
 
 | Command | Use When |
 |---|---|
 | `/devlyn:design-system` | Extract exact design tokens (colors, type scale, spacing) from a chosen UI style |
 | `/devlyn:team-design-ui` | Multi-perspective design team generates 5 distinct UI style explorations |
 
-> Earlier versions of devlyn-cli shipped 16+ skills (auto-resolve / preflight / evaluate / review / team-review / clean / update-docs / browser-validate / product-spec / feature-spec / recommend-features / discover-product / design-ui / implement-ui). These were consolidated into `/devlyn:resolve` (which folds verification, review, and cleanup into its phases) plus `/devlyn:ideate` (which absorbs the planning surfaces) in the iter-0034 Phase 4 cutover (2026-05-04). Upgrades automatically remove the legacy skill directories from `~/.claude/skills/`.
+> Earlier versions of devlyn-cli shipped 16+ skills (auto-resolve / preflight / evaluate / review / team-review / clean / update-docs / browser-validate / product-spec / feature-spec / recommend-features / discover-product / design-ui / implement-ui). Most were consolidated into `/devlyn:resolve` (which folds verification, review, and cleanup into its phases) plus `/devlyn:ideate` (which absorbs the planning surfaces) in the iter-0034 Phase 4 cutover (2026-05-04). `/devlyn:design-ui` is now installed as a required creative UI surface. Upgrades automatically remove the legacy skill directories from `~/.claude/skills/`.
 
 ---
 

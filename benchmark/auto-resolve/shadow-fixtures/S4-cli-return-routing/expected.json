@@ -1,0 +1,55 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/priority-return-routing.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Process returns globally by `priority` descending, then original input order ascending.",
+        "A return with an unknown category rejects with reason `unknown_category` and does not change capacity.",
+        "For a known category, choose the target destination by this rule order: `damaged` condition routes to `dispose`; otherwise, if `days_since_purchase` is greater than `restock_window_days`, route to `dispose`; otherwise `sealed` routes to `restock`; otherwise `opened` routes to `refurbish`.",
+        "A return accepts only when the chosen destination exists in `capacity` and has positive remaining capacity. On accept, decrement that destination by `1`.",
+        "A return rejects with reason `destination_full` when the chosen destination is absent from `capacity` or has zero remaining capacity.",
+        "`routed` is ordered by processing order. Each row has keys `id`, `destination`.",
+        "`rejected` is ordered in the original input order. Each row has keys `id`, `reason`.",
+        "`capacity` is an object whose keys are sorted alphabetically and whose values are remaining capacities.",
+        "On success, write exactly one JSON object to stdout and no stderr. Keys: `routed`, `rejected`, `capacity`."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/duplicate-return-error.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Before routing any return, duplicate return ids are invalid input: exit `2`, write exactly one JSON error object `{ \"error\": \"duplicate_return_id\", \"id\": string }` to stderr, and write no stdout."
+      ]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\}|\\[\\])",
+      "description": "silent catch returning fallback in route-returns path",
+      "files": ["bin/cli.js", "tests/cli.test.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["bin/cli.js", "tests/cli.test.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js"],
+  "forbidden_files": [],
+  "tier_a_waivers": [],
+  "spec_output_files": ["bin/cli.js", "tests/cli.test.js"],
+  "max_deps_added": 0
+}

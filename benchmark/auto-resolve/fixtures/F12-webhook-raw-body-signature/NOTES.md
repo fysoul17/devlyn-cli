@@ -77,7 +77,13 @@ keywords. Raw-body trap is intentionally left without explicit
 
 ## Rotation trigger
 
-Retire when both arms consistently land > 90 across two shipped versions
-on this fixture. If the raw-body verifier (#5) becomes saturated faster
-than the others, replace it with a different platform blindspot rather
-than retiring the whole fixture.
+Headroom run `20260511-f12-webhook-headroom` rejected this fixture as pair-lift
+evidence: bare scored 85 and solo_claude scored 99. Bare still missed one of
+seven verifiers, but the `bare` and `solo_claude` judge scores exceed the
+headroom ceilings. Keep it as a webhook/security control unless the visible
+contract is reworked to expose lower bare/solo ceilings.
+
+Retire when both `bare` and `solo_claude` consistently land > 90 across two
+shipped versions on this fixture. If the raw-body verifier (#5) becomes
+saturated faster than the others, replace it with a different platform blindspot
+rather than retiring the whole fixture.

@@ -5,8 +5,8 @@
 # subprocess (isolated session), then captures artifacts + runs verification.
 #
 # Usage:
-#   run-fixture.sh --fixture <FID> --arm <variant|bare> --run-id <ID>
-#   run-fixture.sh --fixture <FID> --arm <variant|bare> --run-id <ID> --dry-run
+#   run-fixture.sh --fixture <FID> --arm <variant|solo_claude|bare|l2_gated|l2_risk_probes|l2_forced> --run-id <ID>
+#   run-fixture.sh --fixture <FID> --arm <variant|solo_claude|bare|l2_gated|l2_risk_probes|l2_forced> --run-id <ID> --dry-run
 #
 # Outputs to benchmark/auto-resolve/results/<run-id>/<fixture>/<arm>/:
 #   input.md, transcript.txt, diff.patch, changed-files.txt, verify.json,
@@ -17,6 +17,15 @@ set -euo pipefail
 usage() {
   echo "usage: $0 --fixture <FID> --arm <variant|solo_claude|bare|l2_gated|l2_risk_probes|l2_forced> --run-id <ID> [--resolve-skill new] [--dry-run]"
   exit 1
+}
+
+require_value() {
+  local flag="$1"
+  local value="${2:-}"
+  if [ -z "$value" ] || [[ "$value" == --* ]]; then
+    echo "$flag requires a value" >&2
+    exit 1
+  fi
 }
 
 kill_worktree_processes() {
@@ -40,16 +49,16 @@ FIXTURE=""; ARM=""; RUN_ID=""; DRY_RUN=0
 RESOLVE_SKILL="new"
 while [ $# -gt 0 ]; do
   case "$1" in
-    --fixture)        FIXTURE="$2"; shift 2;;
-    --arm)            ARM="$2";     shift 2;;
-    --run-id)         RUN_ID="$2";  shift 2;;
-    --resolve-skill)  RESOLVE_SKILL="$2"; shift 2;;
+    --fixture)        require_value "$1" "${2:-}"; FIXTURE="$2"; shift 2;;
+    --arm)            require_value "$1" "${2:-}"; ARM="$2";     shift 2;;
+    --run-id)         require_value "$1" "${2:-}"; RUN_ID="$2";  shift 2;;
+    --resolve-skill)  require_value "$1" "${2:-}"; RESOLVE_SKILL="$2"; shift 2;;
     --dry-run)        DRY_RUN=1;    shift;;
     *) usage;;
   esac
 done
 [ -n "$FIXTURE" ] && [ -n "$ARM" ] && [ -n "$RUN_ID" ] || usage
-# iter-0019: original 3 arms — variant (L2-old: Claude orchestrator + Codex BUILD pair via --engine auto),
+# iter-0019/0037: 3 smoke arms — variant (L2: Claude orchestrator + risk-probes pair path),
 # solo_claude (L1: Claude orchestrator, codex blocked by shim+wrapper enforcement),
 # bare (L0: direct claude -p, no skill, no codex).
 # iter-0033c (Codex R0-infra adoption, 2026-05-02): two L2 diagnostic arms for /devlyn:resolve —
@@ -99,8 +108,21 @@ for f in "$META" "$EXPECTED" "$SPEC" "$TASK"; do
   [ -f "$f" ] || { echo "fixture missing required file: $f (see SCHEMA.md)"; exit 1; }
 done
 
-TIMEOUT=$(python3 -c "import json; print(json.load(open('$META'))['timeout_seconds'])")
-if [ "$ARM" = "l2_risk_probes" ]; then
+TIMEOUT=$(python3 - "$META" "$BENCH_ROOT/scripts" <<'PY'
+import pathlib
+import sys
+
+sys.path.insert(0, sys.argv[2])
+from pair_evidence_contract import loads_strict_json_object
+
+metadata = loads_strict_json_object(pathlib.Path(sys.argv[1]).read_text())
+timeout = metadata.get("timeout_seconds")
+if not isinstance(timeout, int) or isinstance(timeout, bool) or timeout <= 0:
+    raise SystemExit("metadata timeout_seconds must be a positive integer")
+print(timeout)
+PY
+)
+if [ "$ARM" = "variant" ] || [ "$ARM" = "l2_risk_probes" ]; then
   # This arm adds a bounded Codex probe-derive phase before IMPLEMENT and a
   # bounded Codex pair-JUDGE during VERIFY. The full-pipeline gate still
   # enforces wall-time efficiency by pair/solo ratio; this budget prevents a
@@ -119,19 +141,18 @@ WORK_DIR="/tmp/bench-${RUN_ID}-${FIXTURE}-${ARM}"
 rm -rf "$WORK_DIR"
 cp -R "$BENCH_ROOT/fixtures/test-repo" "$WORK_DIR"
 
-# All skill-driven arms (variant / solo_claude / l2_gated / l2_forced) get
-# devlyn skills + project CLAUDE.md pre-baseline + codex shim + monitored
-# wrapper. Bare gets nothing (no skill, no shim, no env).
+# All skill-driven arms (variant / solo_claude / l2_gated / l2_risk_probes /
+# l2_forced) get devlyn skills + project CLAUDE.md pre-baseline + codex shim
+# + monitored wrapper. Bare gets nothing (no skill, no shim, no env).
 #
 # iter-0019: solo_claude (L1) shares variant-arm staging because the L1 arm
 # runs the same orchestrator on the same skills — only difference is codex
 # is blocked. Shim catches PATH resolution; wrapper catches direct-path
 # invocations.
-# iter-0033c (Codex R0-infra Q6): l2_gated/l2_forced share variant staging
-# (codex unblocked, shim+wrapper routing). Difference vs variant is the
-# ENGINE_CLAUSE branch below — l2_* run --engine claude (Claude IMPLEMENT)
-# while variant uses --engine auto (Codex IMPLEMENT). Pair-mode in
-# /devlyn:resolve VERIFY phase pulls Codex via the OTHER-engine rule.
+# iter-0033c/0037 (Codex R0-infra Q6 + risk probes): pair arms share variant
+# staging (codex unblocked, shim+wrapper routing). The smoke `variant` arm now
+# follows the current measured risk-probes path rather than an older
+# auto-engine implement route.
 if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
    || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_risk_probes" ] || [ "$ARM" = "l2_forced" ]; then
   mkdir -p "$WORK_DIR/.claude"
@@ -183,7 +204,7 @@ if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
     # the bypass weapon. Across iter-0019 paid 5-fixture run the bypass
     # was OPEN but never exercised; this closes the surface preemptively
     # before iter-0020's 9-fixture L0/L1/L2 run.
-    # iter-0033c (Codex R0-infra Q5): l2_gated/l2_forced are codex-UNBLOCKED
+    # iter-0033c/0037 (Codex R0-infra Q5 + risk probes): l2_* arms are codex-UNBLOCKED
     # (codex must be reachable for VERIFY pair-JUDGE). They take the variant
     # path: ARM_CODEX_BLOCKED=0 → python writer omits CODEX_BLOCKED from env
     # entirely (the shim refuses on any non-empty value, so 0 ≠ unset).
@@ -209,11 +230,12 @@ if codex_blocked == "1":
     # CODEX_BLOCKED enforcement gap.
     env["CODEX_BLOCKED"] = "1"
 else:
-    # variant arm (L2) — codex routes through wrapper as part of pair-mode
-    # BUILD; both vars are required by the shim/wrapper handshake.
+    # variant / pair arms — codex routes through wrapper for risk-probe
+    # derivation and VERIFY pair-JUDGE; both vars are required by the
+    # shim/wrapper handshake.
     env["CODEX_REAL_BIN"] = real_bin
     env["CODEX_MONITORED_PATH"] = monitored
-    if arm == "l2_risk_probes":
+    if arm in ("variant", "l2_risk_probes"):
         # Risk-probe derivation is a bounded contract-conversion step. A long
         # Codex run is a harness failure, not useful extra quality signal.
         env["CODEX_MONITORED_TIMEOUT_SEC"] = "300"
@@ -273,9 +295,12 @@ fi
 # files. Those commands still run in the post-run verifier below.
 if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
    || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_risk_probes" ] || [ "$ARM" = "l2_forced" ]; then
-  python3 - "$EXPECTED" "$WORK_DIR/.devlyn/spec-verify.json" <<'PY'
-import json, os, sys
-expected = json.load(open(sys.argv[1]))
+  python3 - "$EXPECTED" "$WORK_DIR/.devlyn/spec-verify.json" "$BENCH_ROOT/scripts" <<'PY'
+import json, os, pathlib, sys
+sys.path.insert(0, sys.argv[3])
+from pair_evidence_contract import loads_strict_json_object
+
+expected = loads_strict_json_object(pathlib.Path(sys.argv[1]).read_text())
 out_path = sys.argv[2]
 visible_commands = [
     cmd for cmd in expected.get("verification_commands", [])
@@ -301,11 +326,11 @@ fi
 #   2. Spec-mode `/devlyn:resolve --spec <path>` for the rest (post iter-0034
 #      Phase 4 cutover the OLD `/devlyn:auto-resolve` route was deleted).
 PROMPT_FILE="$RESULT_DIR/input.md"
-# Variant uses --engine auto (experimental dual-engine: codex BUILD + claude
-# critique pair); solo_claude uses --engine claude explicitly so the orchestrator
-# routes every phase to Claude and never tries to invoke codex. The CODEX_BLOCKED
-# shim enforces this at the binary layer if the orchestrator misroutes. Both
-# arms pass the engine flag explicitly so they survive future runtime-default
+# Variant uses the current measured risk-probes pair path; solo_claude uses
+# --engine claude explicitly so the orchestrator routes every implementation
+# phase to Claude and never tries to invoke codex. The CODEX_BLOCKED shim
+# enforces this at the binary layer if the orchestrator misroutes. Both arms
+# pass the engine flag explicitly so they survive future runtime-default
 # changes (post iter-0020 close-out: default flipped to claude).
 if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
    || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_risk_probes" ] || [ "$ARM" = "l2_forced" ]; then
@@ -315,8 +340,8 @@ if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
       ENGINE_PROMPT_HINT="Run with \`--engine claude\` for every phase. Codex must not be invoked — the harness has blocked it at the binary layer for this run."
       ;;
     variant)
-      ENGINE_CLAUSE="--engine auto"
-      ENGINE_PROMPT_HINT="Run with \`--engine auto\` so the experimental dual-engine routing fires (Codex BUILD/FIX, Claude EVAL/CRITIC) — do not override it."
+      ENGINE_CLAUSE="--engine claude --risk-probes"
+      ENGINE_PROMPT_HINT="Run with \`--engine claude --risk-probes\` so the smoke L2 arm uses the current measured pair path: Claude implements, Codex derives bounded visible-verification probes and can act as VERIFY pair-JUDGE."
       ;;
     l2_gated)
       # NEW L2 with natural pair-mode triggers. Claude does IMPLEMENT;
@@ -484,7 +509,7 @@ else
     # iter-0009 + iter-0019: prepend codex shim PATH for any arm that staged
     # one. variant routes through codex-monitored.sh; solo_claude refuses on
     # CODEX_BLOCKED=1; bare has no shim.
-    # iter-0033c (Codex R0-infra Q6): l2_gated/l2_forced ALSO need the shim
+    # iter-0033c/0037 (Codex R0-infra Q6 + risk probes): l2_* arms ALSO need the shim
     # PATH — they route Claude IMPLEMENT but Codex pair-JUDGE in VERIFY hits
     # `codex exec` through the wrapper for starvation safety.
     if { [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
@@ -652,10 +677,13 @@ fi
 # Run verification commands + forbidden pattern scan + deps check. Uses
 # the operator's real HOME (same as the arm saw). Fixtures that need HOME
 # isolation override it inline per verification command.
-python3 - "$EXPECTED" "$RESULT_DIR" "$WORK_DIR" <<'PY'
-import json, os, re, subprocess, sys
+python3 - "$EXPECTED" "$RESULT_DIR" "$WORK_DIR" "$BENCH_ROOT/scripts" <<'PY'
+import json, os, pathlib, re, subprocess, sys
 
-expected = json.load(open(sys.argv[1]))
+sys.path.insert(0, sys.argv[4])
+from pair_evidence_contract import loads_strict_json_object
+
+expected = loads_strict_json_object(pathlib.Path(sys.argv[1]).read_text())
 result_dir = sys.argv[2]
 work = sys.argv[3]
 
@@ -771,12 +799,39 @@ for oracle_file in (
     "oracle-scope-tier-b.json",
     "oracle-test-fidelity.json",
 ):
+    oracle_path = os.path.join(result_dir, oracle_file)
     try:
-        data = json.load(open(os.path.join(result_dir, oracle_file)))
-    except Exception:
+        raw_oracle = loads_strict_json_object(pathlib.Path(oracle_path).read_text())
+    except (OSError, ValueError) as exc:
+        oracle_name = oracle_file.removesuffix(".json")
+        verify["oracle_findings"].append({
+            "oracle": oracle_name,
+            "type": "oracle-error",
+            "severity": "hard",
+            "verdict": "Deterministic oracle failed or emitted an invalid artifact",
+            "error": f"oracle artifact malformed or unreadable: {exc}",
+        })
+        verify["oracle_disqualifier"] = True
         continue
+    data = raw_oracle
     oracle_name = data.get("oracle") or oracle_file.removesuffix(".json")
-    for finding in data.get("findings", []) or []:
+    if not isinstance(oracle_name, str) or not oracle_name:
+        oracle_name = oracle_file.removesuffix(".json")
+    oracle_error = data.get("error")
+    if isinstance(oracle_error, str) and oracle_error:
+        verify["oracle_findings"].append({
+            "oracle": oracle_name,
+            "type": "oracle-error",
+            "severity": "hard",
+            "verdict": "Deterministic oracle failed or emitted an invalid artifact",
+            "error": oracle_error,
+        })
+        verify["oracle_disqualifier"] = True
+    raw_findings = data.get("findings")
+    findings = raw_findings if isinstance(raw_findings, list) else []
+    for finding in findings:
+        if not isinstance(finding, dict):
+            continue
         item = dict(finding)
         item["oracle"] = oracle_name
         verify["oracle_findings"].append(item)
@@ -796,12 +851,15 @@ PY
 
 # Timing + aggregate
 export INVOKE_EXIT WATCHDOG_FIRED
-python3 - "$RESULT_DIR" "$FIXTURE" "$ARM" "$RUN_ID" "$T_END" "$ELAPSED" "$TIMEOUT" <<'PY'
-import json, os, sys
+python3 - "$RESULT_DIR" "$FIXTURE" "$ARM" "$RUN_ID" "$T_END" "$ELAPSED" "$TIMEOUT" "$BENCH_ROOT/scripts" <<'PY'
+import json, os, pathlib, sys
 result_dir, fixture, arm, run_id = sys.argv[1:5]
 t_end, elapsed, timeout = int(sys.argv[5]), int(sys.argv[6]), int(sys.argv[7])
 
-timing = json.load(open(os.path.join(result_dir, "timing.json")))
+sys.path.insert(0, sys.argv[8])
+from pair_evidence_contract import loads_strict_json_object
+
+timing = loads_strict_json_object(pathlib.Path(result_dir, "timing.json").read_text())
 timing["end_epoch"] = t_end
 timing["elapsed_seconds"] = elapsed
 timing["timeout_seconds"] = timeout
@@ -812,7 +870,10 @@ timing["timeout_seconds"] = timeout
 timing["timed_out"] = os.environ.get("WATCHDOG_FIRED", "0") == "1"
 json.dump(timing, open(os.path.join(result_dir, "timing.json"), "w"), indent=2)
 
-verify = json.load(open(os.path.join(result_dir, "verify.json")))
+def as_dict(value):
+    return value if isinstance(value, dict) else {}
+
+verify = as_dict(loads_strict_json_object(pathlib.Path(result_dir, "verify.json").read_text()))
 try:
     with open(os.path.join(result_dir, "diff.patch")) as f: diff_size = len(f.read())
 except Exception: diff_size = 0
@@ -825,15 +886,21 @@ except Exception:
 state = {}
 state_path = os.path.join(result_dir, "run-archive", "pipeline.state.json")
 if os.path.isfile(state_path):
-    with open(state_path) as f:
-        state = json.load(f)
-verify_phase = (state.get("phases") or {}).get("verify") or {}
+    state = as_dict(loads_strict_json_object(pathlib.Path(state_path).read_text()))
+phases = as_dict(state.get("phases"))
+verify_phase = as_dict(phases.get("verify"))
+legacy_verify = as_dict(state.get("verify"))
 sub_verdicts = verify_phase.get("sub_verdicts")
-pair_trigger = verify_phase.get("pair_trigger") or ((state.get("verify") or {}).get("pair_trigger"))
-pair_mode = bool(
-    isinstance(sub_verdicts, dict)
-    and (sub_verdicts.get("judge_codex") is not None or sub_verdicts.get("pair_judge") is not None)
-) or bool(verify_phase.get("pair_mode"))
+pair_trigger = verify_phase.get("pair_trigger") or legacy_verify.get("pair_trigger")
+PAIR_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED", "FAIL"}
+
+def has_pair_judge_verdict(sub_verdicts):
+    return isinstance(sub_verdicts, dict) and (
+        sub_verdicts.get("judge_codex") in PAIR_VERDICTS
+        or sub_verdicts.get("pair_judge") in PAIR_VERDICTS
+    )
+
+pair_mode = has_pair_judge_verdict(sub_verdicts) or verify_phase.get("pair_mode") is True
 
 invoke_exit = int(os.environ.get("INVOKE_EXIT", "0"))
 plugin_contamination = False
@@ -893,7 +960,7 @@ result = {
     "invoke_exit": invoke_exit,
     "invoke_failure": invoke_failure,
     "invoke_failure_reason": invoke_failure_reason,
-    "terminal_verdict": ((state.get("phases") or {}).get("final_report") or {}).get("verdict"),
+    "terminal_verdict": as_dict(phases.get("final_report")).get("verdict"),
     "verify_verdict": verify_phase.get("verdict"),
     "pair_trigger": pair_trigger,
     "pair_mode": pair_mode,

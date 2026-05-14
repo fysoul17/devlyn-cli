@@ -27,12 +27,12 @@ Gates per iter-0033c §"Acceptance gate":
   6  trigger discipline (fixture-level): for each pair-eligible fixture, if
      l2_forced lifts ≥ +5 OR catches categorical rescue, AND forced is not
      impl-confounded, AND forced.pair_judge present → l2_gated MUST also have
-     pair_judge present on that fixture.
+     recognized pair_judge verdict on that fixture.
   7  attribution (4-class, data-only): per-fixture classify into
      {no_material_lift, implementation_confounded, tool_or_trigger_lift,
       deliberation_lift}. Reporting only; not pass/fail.
-  8  artifact contract: pair_judge non-null for every fixture where pair fired;
-     pair findings distinguishable from solo judge findings.
+  8  artifact contract: recognized pair_judge verdict for every fixture where
+     pair fired; pair findings distinguishable from solo judge findings.
 
 Ship-blockers: 1a, 1b, 1c, 2, 3, 4, 6.
 Quality gates: 5, 8 (failure → root-cause iter; Phase 4 holds).
@@ -43,19 +43,55 @@ import json
 import sys
 from pathlib import Path
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from pair_evidence_contract import (
+    is_score,
+    is_strict_number,
+    loads_strict_json_object,
+    reject_json_constant,
+)
+
+PAIR_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED", "FAIL"}
+
+
+def exact_bool(value: object) -> bool | None:
+    return value if isinstance(value, bool) else None
+
+
+def bool_flag(value: object, *, default: bool = False) -> bool:
+    if value is None:
+        return default
+    parsed = exact_bool(value)
+    return parsed if parsed is not None else True
+
+
+def is_pair_judge_verdict(value: object) -> bool:
+    return value in PAIR_VERDICTS
+
 
 def load_judge(results_dir: Path, fixture: str) -> dict | None:
     p = results_dir / fixture / "judge.json"
     if not p.is_file():
         return None
-    return json.loads(p.read_text())
+    try:
+        data = loads_strict_json_object(p.read_text())
+    except (ValueError, json.JSONDecodeError):
+        return None
+    return data
 
 
 def load_result(results_dir: Path, fixture: str, arm: str) -> dict | None:
     p = results_dir / fixture / arm / "result.json"
     if not p.is_file():
         return None
-    return json.loads(p.read_text())
+    try:
+        data = loads_strict_json_object(p.read_text())
+    except (ValueError, json.JSONDecodeError):
+        return None
+    return data
 
 
 def load_state(work_dir_root: Path, run_id: str, fixture: str, arm: str) -> dict | None:
@@ -67,7 +103,11 @@ def load_state(work_dir_root: Path, run_id: str, fixture: str, arm: str) -> dict
     candidates = sorted(runs.glob("*/pipeline.state.json"))
     if not candidates:
         return None
-    return json.loads(candidates[-1].read_text())
+    try:
+        data = loads_strict_json_object(candidates[-1].read_text())
+    except (ValueError, json.JSONDecodeError):
+        return None
+    return data
 
 
 def archive_run_dir(work_dir_root: Path, run_id: str, fixture: str, arm: str) -> Path | None:
@@ -154,19 +194,24 @@ def find_results_dir_fixtures(results_dir: Path) -> list[str]:
 
 
 def get_score(judge: dict, arm: str) -> int | None:
-    """Score for a given arm. Prefer judge.json's `scores_by_arm` (already
-    arm-keyed); fall back to blind A/B/C lookup with case-correct `<letter>_score`
-    field (judge.sh writes a_score/b_score lowercase, not A_score)."""
+    """Score for a given arm, only when the arm is present in `_blind_mapping`.
+
+    `scores_by_arm` is accepted only as a decoded view of the blind A/B/C slots;
+    a score for an arm absent from the blind mapping is not score evidence.
+    """
     if not judge:
         return None
-    sba = judge.get("scores_by_arm") or {}
-    if arm in sba:
-        return sba[arm]
-    mapping = judge.get("_blind_mapping") or {}
+    raw_mapping = judge.get("_blind_mapping")
+    mapping = raw_mapping if isinstance(raw_mapping, dict) else {}
     letter = next((k for k, v in mapping.items() if v == arm), None)
     if not letter:
         return None
-    return judge.get(f"{letter.lower()}_score")
+    raw_scores = judge.get("scores_by_arm")
+    sba = raw_scores if isinstance(raw_scores, dict) else {}
+    if is_score(sba.get(arm)):
+        return sba[arm]
+    legacy = judge.get(f"{letter.lower()}_score")
+    return legacy if is_score(legacy) else None
 
 
 def get_disqualifier(judge: dict, arm: str) -> bool:
@@ -174,15 +219,31 @@ def get_disqualifier(judge: dict, arm: str) -> bool:
     line 314-323; fall back to blind A/B/C with case-correct letter."""
     if not judge:
         return False
-    dba = judge.get("disqualifiers_by_arm") or {}
-    if arm in dba:
-        return bool(dba[arm].get("disqualifier", False))
-    dqs = judge.get("disqualifiers") or {}
-    mapping = judge.get("_blind_mapping") or {}
+    raw_mapping = judge.get("_blind_mapping")
+    mapping = raw_mapping if isinstance(raw_mapping, dict) else {}
     letter = next((k for k, v in mapping.items() if v == arm), None)
     if not letter:
-        return False
-    return bool(dqs.get(letter, False))
+        raw_scores = judge.get("scores_by_arm")
+        sba = raw_scores if isinstance(raw_scores, dict) else {}
+        raw_dba = judge.get("disqualifiers_by_arm")
+        if raw_dba is not None and not isinstance(raw_dba, dict):
+            return True
+        dba = raw_dba if isinstance(raw_dba, dict) else {}
+        return arm in sba or arm in dba
+    raw_dba = judge.get("disqualifiers_by_arm")
+    if raw_dba is not None and not isinstance(raw_dba, dict):
+        return True
+    dba = raw_dba if isinstance(raw_dba, dict) else {}
+    if arm in dba:
+        entry = dba[arm]
+        return bool_flag(
+            entry.get("disqualifier") if isinstance(entry, dict) else entry
+        )
+    raw_dqs = judge.get("disqualifiers")
+    if raw_dqs is not None and not isinstance(raw_dqs, dict):
+        return True
+    dqs = raw_dqs if isinstance(raw_dqs, dict) else {}
+    return bool_flag(dqs.get(letter))
 
 
 def gate_2_no_regression(rows: list[dict]) -> dict:
@@ -268,9 +329,11 @@ def load_mechanical_findings(work_dir_root: Path, run_id: str, fixture: str, arm
         if not ln:
             continue
         try:
-            out.append(json.loads(ln))
+            parsed = json.loads(ln, parse_constant=reject_json_constant)
         except json.JSONDecodeError:
             continue
+        if isinstance(parsed, dict):
+            out.append(parsed)
     return out
 
 
@@ -401,7 +464,7 @@ def gate_8_artifact_contract(rows: list[dict]) -> dict:
     return {
         "gate": "8-artifact-contract",
         "status": "PASS" if not failures else "FAIL",
-        "rule": "pair_judge non-null when fired; pair findings distinguishable from solo",
+        "rule": "recognized pair_judge verdict when fired; pair findings distinguishable from solo",
         "failures": failures,
     }
 
@@ -418,12 +481,18 @@ def build_rows(results_dir: Path, work_dir_root: Path, run_id: str) -> list[dict
         forced_state = load_state(work_dir_root, run_id, fx, "l2_forced")
 
         def pair_judge_present(state: dict | None) -> bool:
-            if not state:
+            if not isinstance(state, dict):
                 return False
-            phases = state.get("phases") or {}
-            verify = phases.get("verify") or {}
-            sub = verify.get("sub_verdicts") or {}
-            return sub.get("pair_judge") is not None
+            phases = state.get("phases")
+            if not isinstance(phases, dict):
+                return False
+            verify = phases.get("verify")
+            if not isinstance(verify, dict):
+                return False
+            sub = verify.get("sub_verdicts")
+            if not isinstance(sub, dict):
+                return False
+            return is_pair_judge_verdict(sub.get("pair_judge"))
 
         # Pair findings distinguishability — checked from archive of whichever
         # arm fired pair-mode. l2_forced always fires (when present); l2_gated
@@ -444,10 +513,10 @@ def build_rows(results_dir: Path, work_dir_root: Path, run_id: str) -> list[dict
             "solo_dq": get_disqualifier(judge, "solo_claude"),
             "l2_gated_dq": get_disqualifier(judge, "l2_gated"),
             "l2_forced_dq": get_disqualifier(judge, "l2_forced"),
-            "solo_wall": (solo_r or {}).get("elapsed_seconds"),
-            "l2_gated_wall": (gated_r or {}).get("elapsed_seconds"),
-            "solo_timeout": bool((solo_r or {}).get("timed_out")),
-            "l2_gated_timeout": bool((gated_r or {}).get("timed_out")),
+            "solo_wall": strict_elapsed_seconds(solo_r),
+            "l2_gated_wall": strict_elapsed_seconds(gated_r),
+            "solo_timeout": timeout_flag(solo_r),
+            "l2_gated_timeout": timeout_flag(gated_r),
             "l2_gated_pair_judge_present": pair_judge_present(gated_state),
             "l2_forced_pair_judge_present": pair_judge_present(forced_state),
             "pair_fired": pair_judge_present(gated_state) or pair_judge_present(forced_state),
@@ -464,6 +533,57 @@ def build_rows(results_dir: Path, work_dir_root: Path, run_id: str) -> list[dict
             "mechanical_finding_drove_change": False,
         })
     return rows
+
+
+def strict_elapsed_seconds(result: dict | None) -> float | int | None:
+    if not result:
+        return None
+    value = result.get("elapsed_seconds")
+    return value if is_strict_number(value) else None
+
+
+def timeout_flag(result: dict | None) -> bool:
+    if not result:
+        return False
+    return bool_flag(result.get("timed_out"))
+
+
+def validate_manifest(manifest: object) -> tuple[dict | None, str | None]:
+    if not isinstance(manifest, dict):
+        return None, "manifest malformed: expected object"
+    raw_eligible = manifest.get("fixtures_pair_eligible")
+    if not isinstance(raw_eligible, list) or not all(isinstance(fx, str) for fx in raw_eligible):
+        return None, "manifest malformed: fixtures_pair_eligible must be a string array"
+    if not raw_eligible:
+        return None, "manifest malformed: fixtures_pair_eligible must not be empty"
+    threshold = manifest.get("gate3_threshold_count")
+    total = manifest.get("gate3_total")
+    if not isinstance(threshold, int) or isinstance(threshold, bool) or threshold <= 0:
+        return None, "manifest malformed: gate3_threshold_count must be a positive integer"
+    if not isinstance(total, int) or isinstance(total, bool) or total <= 0:
+        return None, "manifest malformed: gate3_total must be a positive integer"
+    if total != len(raw_eligible):
+        return None, "manifest malformed: gate3_total must equal fixtures_pair_eligible length"
+    if threshold > total:
+        return None, "manifest malformed: gate3_threshold_count must be <= gate3_total"
+    rule = manifest.get("selection_rule")
+    if rule is not None:
+        if not isinstance(rule, dict):
+            return None, "manifest malformed: selection_rule must be an object"
+        rejected = rule.get("rejected_excluded")
+        reasons = rule.get("rejected_excluded_reasons")
+        if rejected is not None:
+            if not isinstance(rejected, list) or not all(isinstance(fx, str) for fx in rejected):
+                return None, "manifest malformed: selection_rule.rejected_excluded must be a string array"
+        if reasons is not None:
+            if (
+                not isinstance(reasons, dict)
+                or not all(isinstance(fx, str) and isinstance(reason, str) and reason for fx, reason in reasons.items())
+            ):
+                return None, "manifest malformed: selection_rule.rejected_excluded_reasons must map fixture ids to non-empty strings"
+            if rejected is not None and set(reasons) != set(rejected):
+                return None, "manifest malformed: selection_rule.rejected_excluded_reasons keys must match rejected_excluded"
+    return manifest, None
 
 
 def render_markdown(gates: list[dict], rows: list[dict]) -> str:
@@ -511,7 +631,18 @@ def main() -> int:
     ap.add_argument("--out-md", required=True)
     args = ap.parse_args()
 
-    manifest = json.loads(Path(args.manifest).read_text())
+    try:
+        raw_manifest = json.loads(
+            Path(args.manifest).read_text(),
+            parse_constant=reject_json_constant,
+        )
+    except (ValueError, json.JSONDecodeError) as exc:
+        print(f"error: manifest malformed: invalid JSON: {exc}", file=sys.stderr)
+        return 2
+    manifest, manifest_error = validate_manifest(raw_manifest)
+    if manifest is None:
+        print(f"error: {manifest_error}", file=sys.stderr)
+        return 2
     rows = build_rows(Path(args.results_dir), Path(args.work_dir_root), args.run_id)
 
     gates = [

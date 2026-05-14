@@ -20,6 +20,14 @@ F16 covers order quote arithmetic, but not ledger idempotency or full-input
 validation before mutation. F21 covers interval scheduling. Server fixtures
 cover API behavior rather than CLI reconciliation.
 
+## Measurement status
+
+Headroom runs reject F22 as full-pipeline pair-lift evidence. In
+`20260507-f21-f22-full-pipeline-pair`, F22 scored bare 91 / solo_claude 98 and
+failed the headroom gate. In `20260508-f22-exact-error-headroom`, F22 scored
+bare 94 / solo_claude 98 after the exact-error fixture revision. Keep it as a ledger
+reconciliation control, not as counted `solo < pair` evidence.
+
 ## Retirement
 
 Retire or replace if both bare and solo consistently score above the headroom

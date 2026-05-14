@@ -10,6 +10,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from pair_evidence_contract import loads_strict_json_object, reject_json_constant
+
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
@@ -17,7 +19,7 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
         for line_no, line in enumerate(f, start=1):
             if not line.strip():
                 continue
-            value = json.loads(line)
+            value = json.loads(line, parse_constant=reject_json_constant)
             if not isinstance(value, dict):
                 raise ValueError(f"{path}:{line_no}: expected JSON object")
             rows.append(value)
@@ -29,6 +31,32 @@ def require_text(row: dict[str, Any], key: str, source: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{source} missing non-empty {key!r}")
     return value.strip()
+
+
+def positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be an integer") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be > 0")
+    return parsed
+
+
+def parse_prepared_case(stdout: str, source: str) -> dict[str, Any]:
+    try:
+        value = loads_strict_json_object(stdout)
+    except ValueError as exc:
+        if str(exc) == "top-level JSON value must be an object":
+            raise ValueError(f"{source}: expected JSON object") from exc
+        raise
+    for key in ("instance_id", "case_dir", "repo_dir", "run_command"):
+        if key == "run_command":
+            if not isinstance(value.get(key), list) or not value[key]:
+                raise ValueError(f"{source}: missing non-empty {key!r}")
+        elif not isinstance(value.get(key), str) or not value[key].strip():
+            raise ValueError(f"{source}: missing non-empty {key!r}")
+    return value
 
 
 def main() -> int:
@@ -47,8 +75,8 @@ def main() -> int:
     )
     parser.add_argument("--repo-dir", type=Path, help="Use one local repo clone for every selected instance.")
     parser.add_argument("--instance-id", action="append", help="Prepare only these instance ids.")
-    parser.add_argument("--limit", type=int, help="Prepare at most N matched instances after filtering.")
-    parser.add_argument("--timeout-seconds", type=int, default=2400)
+    parser.add_argument("--limit", type=positive_int, help="Prepare at most N matched instances after filtering.")
+    parser.add_argument("--timeout-seconds", type=positive_int, default=2400)
     parser.add_argument("--out-manifest", type=Path)
     args = parser.parse_args()
 
@@ -61,6 +89,8 @@ def main() -> int:
         predictions[instance_id] = row
 
     selected_ids = args.instance_id or list(predictions)
+    if not selected_ids:
+        raise ValueError("no prediction instances selected")
     script = Path(__file__).with_name("prepare-swebench-frozen-case.py")
     prepared: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory() as tmp:
@@ -98,7 +128,7 @@ def main() -> int:
             if args.repo_dir is not None:
                 cmd.extend(["--repo-dir", str(args.repo_dir)])
             completed = subprocess.run(cmd, check=True, text=True, capture_output=True)
-            prepared.append(json.loads(completed.stdout))
+            prepared.append(parse_prepared_case(completed.stdout, f"prepared case {instance_id}"))
 
     manifest = {
         "instances_jsonl": str(args.instances_jsonl),

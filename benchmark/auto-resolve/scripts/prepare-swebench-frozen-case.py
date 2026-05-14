@@ -17,8 +17,12 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from pair_evidence_contract import loads_strict_json_object
+
 
 SAFE_ID = re.compile(r"^[A-Za-z0-9_.-]+$")
+SAFE_REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+SAFE_COMMIT = re.compile(r"^[0-9a-fA-F]{7,40}$")
 
 
 def run(cmd: list[str], cwd: Path | None = None) -> None:
@@ -26,11 +30,12 @@ def run(cmd: list[str], cwd: Path | None = None) -> None:
 
 
 def read_json(path: Path) -> dict[str, Any]:
-    with path.open(encoding="utf8") as f:
-        data = json.load(f)
-    if not isinstance(data, dict):
-        raise ValueError(f"expected JSON object: {path}")
-    return data
+    try:
+        return loads_strict_json_object(path.read_text(encoding="utf8"))
+    except ValueError as exc:
+        if str(exc) == "top-level JSON value must be an object":
+            raise ValueError(f"expected JSON object: {path}") from exc
+        raise
 
 
 def require_text(instance: dict[str, Any], key: str) -> str:
@@ -40,14 +45,38 @@ def require_text(instance: dict[str, Any], key: str) -> str:
     return value.strip()
 
 
+def positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be an integer") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be > 0")
+    return parsed
+
+
+def require_safe_repo(instance: dict[str, Any]) -> str:
+    repo = require_text(instance, "repo")
+    if not SAFE_REPO.match(repo):
+        raise ValueError(f"unsafe SWE-bench repo: {repo!r}")
+    return repo
+
+
+def require_safe_base_commit(instance: dict[str, Any]) -> str:
+    base_commit = require_text(instance, "base_commit")
+    if not SAFE_COMMIT.match(base_commit):
+        raise ValueError(f"unsafe SWE-bench base_commit: {base_commit!r}")
+    return base_commit
+
+
 def repo_cache_name(repo: str, base_commit: str) -> str:
     safe_repo = repo.replace("/", "__")
     return f"{safe_repo}-{base_commit[:12]}"
 
 
 def prepare_repo(instance: dict[str, Any], repo_dir: Path | None, repos_root: Path) -> Path:
-    repo = require_text(instance, "repo")
-    base_commit = require_text(instance, "base_commit")
+    repo = require_safe_repo(instance)
+    base_commit = require_safe_base_commit(instance)
     repos_root.mkdir(parents=True, exist_ok=True)
     dest = repos_root / repo_cache_name(repo, base_commit)
 
@@ -72,8 +101,8 @@ def write_case_files(
     timeout_seconds: int,
 ) -> None:
     instance_id = require_text(instance, "instance_id")
-    repo = require_text(instance, "repo")
-    base_commit = require_text(instance, "base_commit")
+    repo = require_safe_repo(instance)
+    base_commit = require_safe_base_commit(instance)
     problem = require_text(instance, "problem_statement")
     case_dir.mkdir(parents=True, exist_ok=True)
 
@@ -196,7 +225,7 @@ def main() -> int:
         type=Path,
         help="Local clone/source repo to copy instead of cloning GitHub; useful for tests and cached runs.",
     )
-    parser.add_argument("--timeout-seconds", type=int, default=2400)
+    parser.add_argument("--timeout-seconds", type=positive_int, default=2400)
     args = parser.parse_args()
 
     instance = read_json(args.instance_json)

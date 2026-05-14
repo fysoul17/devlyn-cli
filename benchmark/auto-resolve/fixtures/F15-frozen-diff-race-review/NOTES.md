@@ -92,7 +92,13 @@ that doesn't read the await sequence carefully will gloss over these.
 
 ## Rotation trigger
 
-Retire when both bare and solo arms consistently land > 85 across two
-shipped versions. If 2026 baseline reliably catches the awaited RMW race
-on cold read of someone else's code, the frozen-diff review thesis also
-needs updating — not just the seeded bug.
+Headroom run `20260511-f15-concurrency-headroom` rejected this fixture as
+pair-lift evidence: bare scored 99 and solo_claude scored 94, so `bare` and
+`solo_claude` are above the headroom ceilings (`bare <= 60`, `solo_claude <=
+80`). Keep the fixture as a frozen-diff review control unless the visible
+contract is reworked to expose a lower solo ceiling.
+
+Retire when both `bare` and `solo_claude` consistently land > 85 across two
+shipped versions. If 2026 baseline reliably catches the awaited RMW race on
+cold read of someone else's code, the frozen-diff review thesis also needs
+updating — not just the seeded bug.

@@ -50,6 +50,6 @@ so existing assertions continue to pass alongside new paging assertions.
 - Server start: `node server/index.js` listens on port 3000 (exit via SIGINT).
 - `curl -s http://127.0.0.1:3000/items | jq '.total'` returns `2`.
 - `curl -s 'http://127.0.0.1:3000/items?per_page=1&page=2' | jq '.items[0].name'` returns `"beta"`.
-- `curl -s 'http://127.0.0.1:3000/items?per_page=abc' -o /dev/null -w '%{http_code}'` returns `400`.
+- `curl -s 'http://127.0.0.1:3000/items?per_page=abc'` returns HTTP status `400` with JSON error body `{ "error": "invalid_query", "field": "per_page" }`.
 - `node --test tests/server.test.js` passes; must include ≥ 2 new paging tests.
 - `git diff --stat` shows only `server/index.js` and `tests/server.test.js` touched.

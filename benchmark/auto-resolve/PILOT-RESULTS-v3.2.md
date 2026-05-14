@@ -1,5 +1,10 @@
 # Pilot Run Results (v3.2, n=1, claude engine)
 
+> Archive note (2026-05-14): historical v3.2 pilot for the deleted
+> `auto-resolve` route. This n=1 pilot is not current solo<pair evidence; use
+> `npx devlyn-cli benchmark audit` and complete pair-evidence rows for current
+> decisions.
+
 Date: 2026-04-23
 Context: the user challenged the `run-real-benchmark.md` "15–45 hours / 30-paired-run" claim as unrealistic. This pilot confirms the claim was massively overestimated.
 

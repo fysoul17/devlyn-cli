@@ -11,8 +11,12 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from pair_evidence_contract import reject_json_constant
+
 
 SAFE_ID = re.compile(r"^[A-Za-z0-9_.-]+$")
+SAFE_REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+SAFE_COMMIT = re.compile(r"^[0-9a-fA-F]{7,40}$")
 
 
 def run(cmd: list[str], cwd: Path | None = None) -> None:
@@ -25,7 +29,7 @@ def read_instances(path: Path) -> list[dict[str, Any]]:
         for line_no, line in enumerate(f, start=1):
             if not line.strip():
                 continue
-            value = json.loads(line)
+            value = json.loads(line, parse_constant=reject_json_constant)
             if not isinstance(value, dict):
                 raise ValueError(f"{path}:{line_no}: expected JSON object")
             rows.append(value)
@@ -37,6 +41,20 @@ def require_text(instance: dict[str, Any], key: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"SWE-bench instance missing non-empty {key!r}")
     return value.strip()
+
+
+def require_safe_repo(instance: dict[str, Any]) -> str:
+    repo = require_text(instance, "repo")
+    if not SAFE_REPO.match(repo):
+        raise ValueError(f"unsafe SWE-bench repo: {repo!r}")
+    return repo
+
+
+def require_safe_base_commit(instance: dict[str, Any]) -> str:
+    base_commit = require_text(instance, "base_commit")
+    if not SAFE_COMMIT.match(base_commit):
+        raise ValueError(f"unsafe SWE-bench base_commit: {base_commit!r}")
+    return base_commit
 
 
 def pick_instance(path: Path, instance_id: str) -> dict[str, Any]:
@@ -51,8 +69,8 @@ def repo_cache_name(repo: str, base_commit: str) -> str:
 
 
 def prepare_repo(instance: dict[str, Any], repos_root: Path) -> Path:
-    repo = require_text(instance, "repo")
-    base_commit = require_text(instance, "base_commit")
+    repo = require_safe_repo(instance)
+    base_commit = require_safe_base_commit(instance)
     repos_root.mkdir(parents=True, exist_ok=True)
     dest = repos_root / repo_cache_name(repo, base_commit)
 
@@ -77,8 +95,8 @@ def copy_worktree(repo_path: Path, worktree: Path) -> None:
 
 def write_spec(instance: dict[str, Any], worktree: Path) -> Path:
     instance_id = require_text(instance, "instance_id")
-    repo = require_text(instance, "repo")
-    base_commit = require_text(instance, "base_commit")
+    repo = require_safe_repo(instance)
+    base_commit = require_safe_base_commit(instance)
     problem = require_text(instance, "problem_statement")
     spec_path = worktree / "docs" / "roadmap" / "phase-1" / f"{instance_id}.md"
     spec_path.parent.mkdir(parents=True, exist_ok=True)

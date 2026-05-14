@@ -20,6 +20,18 @@ F21 covers interval scheduling. F16 covers quote arithmetic. F22 was too easy
 for bare in the first calibration run. This fixture targets allocation rollback
 and inventory consumption across multiple dimensions.
 
+## Measurement status
+
+Pair evidence passed in `20260510-f16-f23-f25-combined-proof`: bare `33`,
+solo_claude `66`, pair `97`, margin `+31`, wall `2.25x`,
+arm `l2_risk_probes`, verdict `pair_evidence_passed`.
+
+## Solo-headroom hypothesis
+
+A capable solo_claude baseline is expected to miss all-or-nothing rollback after
+a higher-priority order consumes stock first; observable command
+`node "$BENCH_FIXTURE_DIR/verifiers/priority-rollback.js"` exposes the miss.
+
 ## Retirement
 
 Retire or replace if both bare and solo consistently exceed the headroom

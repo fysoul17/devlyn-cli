@@ -1,0 +1,57 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/priority-transfer-rollback.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Process events globally by `priority` descending, then `effective_at` ascending, then `id` ascending.",
+        "`transfer` is all-or-nothing. It accepts only when both accounts exist, the source has `used >= qty`, the destination has at least `qty` free seats, and both accounts have the same `region` unless `allow_cross_region` is `true`.",
+        "A rejected `transfer` must not change either account. Use reason `unknown_account`, `region_mismatch`, `insufficient_used`, or `no_capacity` for the first failing transfer rule in the order listed above.",
+        "`rejected` is ordered in the original input event order. Each row has keys `id`, `reason`.",
+        "`accounts` is sorted by account id ascending. Each row has keys `id`, `region`, `seats`, `used`, `free`, where `free = seats - used`.",
+        "On success, write exactly one JSON object to stdout and no stderr. Keys: `applied`, `rejected`, `accounts`."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/duplicate-event-error.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Before processing any event, duplicate event ids are invalid input: exit `2`, write exactly one JSON error object `{ \"error\": \"duplicate_event_id\", \"id\": string }` to stderr, and write no stdout."
+      ]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\})",
+      "description": "silent catch returning fallback in seat rebalance path",
+      "files": ["bin/cli.js", "tests/cli.test.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["bin/cli.js", "tests/cli.test.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "/\\*\\s*eslint-disable",
+      "description": "eslint-disable without scoped justification",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js"],
+  "forbidden_files": [],
+  "max_deps_added": 0,
+  "spec_output_files": ["bin/cli.js", "tests/cli.test.js"]
+}

@@ -7,30 +7,46 @@
 # Reads:
 #   results/<run-id>/<fixture>/variant/diff.patch + verify.json
 #   results/<run-id>/<fixture>/bare/diff.patch + verify.json
-#   fixtures/<fixture>/spec.md + expected.json + NOTES.md
+#   fixtures/<fixture>/spec.md + expected.json, or shadow-fixtures/<fixture>/...
 #   RUBRIC.md (stable rubric)
 #
 # Writes:
 #   results/<run-id>/<fixture>/judge.json
 #
-# Blind: A/B assignment randomized per fixture, seed stored in judge.json.
+# Blind: arm-to-slot assignment randomized per fixture, seed stored in judge.json.
 
 set -euo pipefail
 
 usage() { echo "usage: $0 --fixture <FID> --run-id <ID>"; exit 1; }
+require_value() {
+  local flag="$1"
+  local value="${2:-}"
+  if [ -z "$value" ] || [[ "$value" == --* ]]; then
+    echo "$flag requires a value" >&2
+    exit 1
+  fi
+}
+
 FIXTURE=""; RUN_ID=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --fixture) FIXTURE="$2"; shift 2;;
-    --run-id)  RUN_ID="$2";  shift 2;;
+    --fixture) require_value "$1" "${2:-}"; FIXTURE="$2"; shift 2;;
+    --run-id)  require_value "$1" "${2:-}"; RUN_ID="$2";  shift 2;;
     *) usage;;
   esac
 done
 [ -n "$FIXTURE" ] && [ -n "$RUN_ID" ] || usage
 
 BENCH_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-FIX_DIR="$BENCH_ROOT/fixtures/$FIXTURE"
 RES_DIR="$BENCH_ROOT/results/$RUN_ID/$FIXTURE"
+FIX_DIR=""
+for candidate in "$BENCH_ROOT/fixtures/$FIXTURE" "$BENCH_ROOT/shadow-fixtures/$FIXTURE"; do
+  if [ -d "$candidate" ]; then
+    FIX_DIR="$candidate"
+    break
+  fi
+done
+[ -n "$FIX_DIR" ] || { echo "fixture not found in fixtures/ or shadow-fixtures/: $FIXTURE"; exit 1; }
 
 # iter-0019: 3 arms — variant (L2), solo_claude (L1), bare (L0). The judge
 # scores all three in a single pass with the same prompt + same model so
@@ -43,10 +59,11 @@ ARMS_PRESENT=()
 # iter-0033c: l2_gated/l2_forced added for NEW L2 vs NEW L1 measurement.
 # iter-0037: l2_risk_probes adds bounded visible-verification probes before
 # IMPLEMENT; judge treats it as another blind arm when artifacts exist.
-# Slot count is still A/B/C max 3 — pair-eligible iter-0033c fixtures supply
-# {solo_claude, l2_gated, l2_forced}; non-pair-eligible fixtures supply
-# {solo_claude, l2_gated}. The blind-shuffle slot mapping below already
-# tolerates arbitrary ARMS_PRESENT counts ≥2.
+# Slot count is still A/B/C max 3. Current pair-candidate proof runs supply
+# {bare, solo_claude, selected pair arm} where the selected pair arm is usually
+# l2_risk_probes; older diagnostic runs may instead supply l2_gated/l2_forced.
+# The blind-shuffle slot mapping below already tolerates arbitrary
+# ARMS_PRESENT counts >=2.
 for arm in variant solo_claude bare l2_gated l2_risk_probes l2_forced; do
   if [ -f "$RES_DIR/$arm/diff.patch" ] && [ -f "$RES_DIR/$arm/verify.json" ]; then
     ARMS_PRESENT+=("$arm")
@@ -100,12 +117,15 @@ fi
 # pipeline-commit markers, .devlyn/ archive lines) don't leak to the judge.
 # Judge sees only file-content changes; the transcript, arm label, NOTES.md,
 # and all process artifacts stay out of the prompt.
-python3 - "$PROMPT_FILE" "$FIX_DIR/spec.md" "$FIX_DIR/expected.json" "$BENCH_ROOT/RUBRIC.md" "$A_DIFF" "$B_DIFF" "$A_VERIFY" "$B_VERIFY" "$C_DIFF" "$C_VERIFY" <<'PY'
+python3 - "$PROMPT_FILE" "$FIX_DIR/spec.md" "$FIX_DIR/expected.json" "$BENCH_ROOT/RUBRIC.md" "$A_DIFF" "$B_DIFF" "$A_VERIFY" "$B_VERIFY" "$C_DIFF" "$C_VERIFY" "$BENCH_ROOT/scripts" <<'PY'
 import sys, pathlib, re, json
 args = sys.argv[1:]
 out_p, spec_p, exp_p, rubric_p = map(pathlib.Path, args[:4])
 a_diff, b_diff, a_ver, b_ver = map(pathlib.Path, args[4:8])
 c_diff_arg, c_ver_arg = args[8], args[9]
+sys.path.insert(0, args[10])
+from pair_evidence_contract import loads_strict_json_object
+
 c_diff = pathlib.Path(c_diff_arg) if c_diff_arg else None
 c_ver = pathlib.Path(c_ver_arg) if c_ver_arg else None
 out = out_p
@@ -139,7 +159,7 @@ def sanitize(diff: str) -> str:
 
 # Also strip arm-identifying fields from verify.json before passing to judge.
 def sanitize_verify(path: pathlib.Path) -> str:
-    data = json.loads(path.read_text())
+    data = loads_strict_json_object(path.read_text())
     # Remove anything that could name the arm
     data.pop("arm", None)
     return json.dumps(data, indent=2)
@@ -253,8 +273,88 @@ rm -rf "$JUDGE_CWD"
 mkdir -p "$JUDGE_CWD"
 
 JUDGE_OUT="$RES_DIR/judge-output.txt"
+JUDGE_LAST="$RES_DIR/judge-last-message.txt"
+JUDGE_SCHEMA="$RES_DIR/judge-output.schema.json"
+python3 - "$JUDGE_SCHEMA" "$C_ARM" <<'PY'
+import json
+import pathlib
+import sys
+
+out = pathlib.Path(sys.argv[1])
+have_c = bool(sys.argv[2])
+letters = ["A", "B"] + (["C"] if have_c else [])
+
+breakdown = {
+    "type": "object",
+    "required": ["spec", "constraint", "scope", "quality", "notes"],
+    "properties": {
+        "spec": {"type": "integer", "minimum": 0, "maximum": 25},
+        "constraint": {"type": "integer", "minimum": 0, "maximum": 25},
+        "scope": {"type": "integer", "minimum": 0, "maximum": 25},
+        "quality": {"type": "integer", "minimum": 0, "maximum": 25},
+        "notes": {"type": "string"},
+    },
+    "additionalProperties": False,
+}
+findings = {
+    "type": "object",
+    "required": letters,
+    "properties": {letter: {"type": "array", "items": {"type": "string"}} for letter in letters},
+    "additionalProperties": False,
+}
+disqualifier_props = {}
+for letter in letters:
+    disqualifier_props[letter] = {"type": "boolean"}
+    disqualifier_props[f"{letter}_reason"] = {"type": "string"}
+schema = {
+    "type": "object",
+    "required": [
+        "a_score",
+        "b_score",
+        "winner",
+        "a_breakdown",
+        "b_breakdown",
+        "critical_findings",
+        "disqualifiers",
+        "overall_reasoning",
+    ] + (["c_score", "c_breakdown"] if have_c else []),
+    "properties": {
+        "a_score": {"type": "integer", "minimum": 0, "maximum": 100},
+        "b_score": {"type": "integer", "minimum": 0, "maximum": 100},
+        "winner": {"type": "string", "enum": letters + ["tie"]},
+        "a_breakdown": breakdown,
+        "b_breakdown": breakdown,
+        "critical_findings": findings,
+        "disqualifiers": {
+            "type": "object",
+            "required": list(disqualifier_props),
+            "properties": disqualifier_props,
+            "additionalProperties": False,
+        },
+        "overall_reasoning": {"type": "string"},
+    },
+    "additionalProperties": False,
+}
+if have_c:
+    schema["properties"]["c_score"] = {"type": "integer", "minimum": 0, "maximum": 100}
+    schema["properties"]["c_breakdown"] = breakdown
+out.write_text(json.dumps(schema, indent=2))
+PY
 set +e
-cat "$PROMPT_FILE" | (cd "$JUDGE_CWD" && codex exec -s read-only --skip-git-repo-check -c model_reasoning_effort=xhigh - ) > "$JUDGE_OUT" 2>&1
+cat "$PROMPT_FILE" | (
+  cd "$JUDGE_CWD" && codex exec \
+    --ignore-user-config \
+    --ignore-rules \
+    --ephemeral \
+    --disable codex_hooks \
+    --disable hooks \
+    -s read-only \
+    --skip-git-repo-check \
+    -c model_reasoning_effort=xhigh \
+    --output-schema "$JUDGE_SCHEMA" \
+    --output-last-message "$JUDGE_LAST" \
+    -
+) > "$JUDGE_OUT" 2>&1
 JUDGE_EXIT=$?
 set -e
 rm -rf "$JUDGE_CWD"
@@ -264,18 +364,23 @@ if [ $JUDGE_EXIT -ne 0 ]; then
 fi
 
 # Extract JSON (codex wraps with banners; pick the last {...} block)
-python3 - "$JUDGE_OUT" "$RES_DIR/judge.json" "$A_ARM" "$B_ARM" "$C_ARM" "$SEED" "$CODEX_CLI_VER" "$JUDGE_MODEL" <<'PY'
+python3 - "$JUDGE_OUT" "$JUDGE_LAST" "$RES_DIR/judge.json" "$A_ARM" "$B_ARM" "$C_ARM" "$SEED" "$CODEX_CLI_VER" "$JUDGE_MODEL" "$BENCH_ROOT/scripts" <<'PY'
 import math
 import sys, re, json, pathlib
-out = pathlib.Path(sys.argv[1]).read_text()
-target = pathlib.Path(sys.argv[2])
-a_arm, b_arm, c_arm, seed, codex_ver, judge_model = sys.argv[3:9]
+out_path = pathlib.Path(sys.argv[1])
+last_path = pathlib.Path(sys.argv[2])
+target = pathlib.Path(sys.argv[3])
+a_arm, b_arm, c_arm, seed, codex_ver, judge_model = sys.argv[4:10]
+sys.path.insert(0, sys.argv[10])
+from pair_evidence_contract import loads_strict_json_object, reject_json_constant
+
+out = last_path.read_text() if last_path.is_file() and last_path.stat().st_size else out_path.read_text()
 
 # Extract the last valid judgment JSON. A naive brace-counter breaks on
 # `{`/`}` that appear inside strings (e.g. JS source embedded in the arms'
 # diffs), so use json.JSONDecoder.raw_decode starting at each `{` position
 # and keep the last successful parse with the required keys.
-decoder = json.JSONDecoder()
+decoder = json.JSONDecoder(parse_constant=reject_json_constant)
 brace_positions = [i for i, c in enumerate(out) if c == '{']
 chosen = None
 for pos in reversed(brace_positions):
@@ -287,7 +392,21 @@ for pos in reversed(brace_positions):
         chosen = obj
         break
 if chosen is None:
-    raise SystemExit(f"no valid JSON in judge output; see {sys.argv[1]}")
+    raise SystemExit(f"no valid JSON in judge output; see {out_path}")
+
+def is_score(value):
+    return isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 100
+
+def is_bool(value):
+    return isinstance(value, bool)
+
+def is_axis_score(value):
+    return isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 25
+
+required_score_keys = ["a_score", "b_score"] + (["c_score"] if c_arm else [])
+invalid_scores = [key for key in required_score_keys if not is_score(chosen.get(key))]
+if invalid_scores:
+    raise SystemExit(f"invalid judge score value(s): {', '.join(invalid_scores)}")
 
 # Decode blind labels — record full mapping so summary code can iterate
 mapping = {"A": a_arm, "B": b_arm}
@@ -313,9 +432,9 @@ for bk in BREAKDOWN_KEYS:
         if axis not in chosen[bk]:
             continue
         v = chosen[bk][axis]
-        if not isinstance(v, (int, float)) or v < 0 or v > 25:
+        if not is_axis_score(v):
             axis_invalid_cells.append({"breakdown": bk, "axis": axis, "value": v})
-            chosen[bk][axis] = max(0, min(25, int(v) if isinstance(v, (int, float)) else 0))
+            chosen[bk][axis] = max(0, min(25, int(v) if not isinstance(v, bool) and isinstance(v, (int, float)) else 0))
 chosen["_axis_validation"] = {
     "out_of_range_count": len(axis_invalid_cells),
     "out_of_range_cells": axis_invalid_cells,
@@ -335,7 +454,7 @@ def arm_verify_score(arm: str):
     path = target.parent / arm / "verify.json"
     if not path.is_file():
         return None
-    data = json.loads(path.read_text())
+    data = loads_strict_json_object(path.read_text())
     value = data.get("verify_score")
     return float(value) if isinstance(value, (int, float)) else None
 
@@ -367,7 +486,7 @@ for letter, score_key, breakdown_key in (
         "score_capped": False,
         "spec_capped": False,
     }
-    if isinstance(raw_score, (int, float)) and raw_score > score_cap:
+    if is_score(raw_score) and raw_score > score_cap:
         chosen[score_key] = score_cap
         row["score_capped"] = True
     breakdown = chosen.get(breakdown_key)
@@ -386,23 +505,31 @@ slot_keys = ["a_score", "b_score", "c_score"]
 slot_letters = ["A", "B", "C"]
 for letter, key in zip(slot_letters, slot_keys):
     arm = mapping.get(letter)
-    if arm is not None and key in chosen:
+    if arm is not None and key in chosen and is_score(chosen[key]):
         scores_by_arm[arm] = chosen[key]
 chosen["scores_by_arm"] = scores_by_arm
 
 # Per-letter critical_findings / disqualifiers also rotated to per-arm.
-findings_letters = chosen.get("critical_findings", {}) or {}
+raw_findings_letters = chosen.get("critical_findings")
+findings_letters = raw_findings_letters if isinstance(raw_findings_letters, dict) else {}
 findings_by_arm = {mapping[l]: findings_letters.get(l, []) for l in slot_letters if l in mapping}
 chosen["findings_by_arm"] = findings_by_arm
 
-dq_letters = chosen.get("disqualifiers", {}) or {}
+raw_dq_letters = chosen.get("disqualifiers")
+dq_letters = raw_dq_letters if isinstance(raw_dq_letters, dict) else {}
+invalid_dq_letters = [
+    letter for letter in slot_letters
+    if letter in dq_letters and not is_bool(dq_letters.get(letter))
+]
+if invalid_dq_letters:
+    raise SystemExit(f"invalid judge disqualifier value(s): {', '.join(invalid_dq_letters)}")
 dq_by_arm = {}
 for l in slot_letters:
     if l not in mapping:
         continue
     arm = mapping[l]
     dq_by_arm[arm] = {
-        "disqualifier": bool(dq_letters.get(l, False)),
+        "disqualifier": dq_letters.get(l, False) is True,
         "reason": str(dq_letters.get(f"{l}_reason", "") or ""),
     }
 chosen["disqualifiers_by_arm"] = dq_by_arm

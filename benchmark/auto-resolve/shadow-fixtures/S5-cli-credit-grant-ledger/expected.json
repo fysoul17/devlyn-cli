@@ -1,0 +1,54 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/credit-ledger-priority.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Process charges globally by `occurred_on` ascending, then `priority` descending, then original input order ascending.",
+        "A grant is usable for a charge only when it belongs to the same `account`, has positive remaining `cents`, and `expires_on` is greater than or equal to the charge's `occurred_on`.",
+        "For each charge, consume usable grants by `expires_on` ascending, then grant `id` ascending, until the charge is fully covered or no usable grant remains.",
+        "Consuming a grant decrements that grant's remaining `cents` immediately; later charges see the reduced balance.",
+        "Each `settled` row is ordered by processing order and has keys `id`, `covered_cents`, `uncovered_cents`, and `grants`.",
+        "`balances` is ordered by grant `id` ascending. Each row has keys `id` and `remaining_cents`.",
+        "`expired` is ordered by grant `id` ascending and includes grants with positive remaining `cents` whose `expires_on` is less than `--as-of`.",
+        "On success, write exactly one JSON object to stdout and no stderr. Keys: `settled`, `balances`, `expired`."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/duplicate-charge-error.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Before settling any charge, duplicate charge ids are invalid input: exit `2`, write exactly one JSON error object `{ \"error\": \"duplicate_charge_id\", \"id\": string }` to stderr, and write no stdout."
+      ]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\}|\\[\\])",
+      "description": "silent catch returning fallback in settle-credits path",
+      "files": ["bin/cli.js", "tests/cli.test.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["bin/cli.js", "tests/cli.test.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js"],
+  "forbidden_files": [],
+  "tier_a_waivers": [],
+  "spec_output_files": ["bin/cli.js", "tests/cli.test.js"],
+  "max_deps_added": 0
+}

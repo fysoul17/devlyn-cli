@@ -64,7 +64,12 @@ forces invariant derivation — the discriminating axis.
 
 ## Rotation trigger
 
-Retire when both arms consistently land > 90 across two shipped versions,
-OR when "all-or-nothing batch" becomes a recognized pattern such that
-solo arm reliably validates-first on the initial implementation pass.
+Headroom run `20260507-f10-f11-tier1-full-pipeline` rejected this fixture as
+pair-lift evidence: bare scored 98 and solo_claude scored 97. Keep it as an
+atomic batch control unless the visible contract is reworked to expose lower
+bare/solo ceilings.
+
+Retire when both `bare` and `solo_claude` consistently land > 90 across two
+shipped versions, OR when "all-or-nothing batch" becomes a recognized pattern
+such that solo arm reliably validates-first on the initial implementation pass.
 Whichever comes first.

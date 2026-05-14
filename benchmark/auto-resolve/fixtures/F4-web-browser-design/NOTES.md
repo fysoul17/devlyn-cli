@@ -33,8 +33,15 @@ tests won't surface.
   stricter browser-required gating; today the fixture only checks file
   presence in verification.
 
+## Current status
+
+Rejected as pair-lift evidence. `20260512-f4-web-headroom` measured bare 70 /
+solo_claude 92, with a +22 solo-over-bare margin, but failed headroom because
+bare exceeded 60, solo exceeded 80, and bare carried judge/result/verify
+disqualifiers. Rework the fixture or verifier before spending a pair arm on it.
+
 ## Rotation trigger
 
-When both arms consistently produce correct output AND include accessible
-markup without pipeline intervention, rotate to a harder UI task (e.g., a
-form with validation states).
+When both `bare` and `solo_claude` consistently produce correct output AND
+include accessible markup without pipeline intervention, rotate to a harder UI
+task (e.g., a form with validation states).

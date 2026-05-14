@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """
-measure-static.py — Static property comparison between two git refs of auto-resolve skill.
+measure-static.py — archived static comparison helper for pre-cutover auto-resolve.
+
+Archive note (2026-05-14): this helper reads the deleted
+config/skills/devlyn:auto-resolve paths for historical v3-era comparisons. It
+is not current solo<pair evidence. Use scripts/static-ab.sh for current prompt
+load checks and npx devlyn-cli benchmark audit for pair evidence.
 
 Usage:
     python3 measure-static.py --baseline <ref> --head <ref> [--out FILE]

@@ -68,3 +68,9 @@ orders must be deterministic.
 - Lot choice is FEFO by expiry date, then lot id.
 - `remaining` is sorted by warehouse id, then sku, then expires, then lot.
 - `git diff --stat` shows only `bin/cli.js` and `tests/cli.test.js` touched.
+
+## Solo-headroom hypothesis
+
+A capable solo_claude baseline is expected to miss all-or-nothing rollback after
+a higher-priority order tentatively allocates FEFO lots; observable command
+`node "$BENCH_FIXTURE_DIR/verifiers/priority-rollback.js"` exposes the miss.

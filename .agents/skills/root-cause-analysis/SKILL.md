@@ -1,0 +1,66 @@
+# Root Cause Analysis
+
+Standard methodology for investigating bugs, issues, and unexpected behavior. Apply this framework whenever diagnosing a problem.
+
+## Trigger
+
+- User reports a bug or unexpected behavior
+- Error logs or stack traces need diagnosis
+- "Why does X happen?" or "What's causing X?" questions
+- Debugging sessions
+- Any use of `/devlyn:resolve` or `/devlyn:team-resolve`
+
+## 5 Whys Protocol
+
+For every issue, trace from symptom to root cause:
+
+**Why 1**: Why did [symptom] happen?
+→ Because [cause 1]. Evidence: [file:line]
+
+**Why 2**: Why did [cause 1] happen?
+→ Because [cause 2]. Evidence: [file:line]
+
+**Why 3**: Why did [cause 2] happen?
+→ Because [cause 3]. Evidence: [file:line]
+
+Continue until you reach something **actionable** — a code change that prevents the entire chain.
+
+### Stop Criteria
+- You've reached a design decision or architectural choice that caused the issue
+- You've found a missing validation, wrong assumption, or incorrect logic
+- Further "whys" leave the codebase (external dependency, infrastructure)
+
+**NEVER stop at "the code does X"** — always ask WHY the code does X.
+
+## Evidence Standards
+
+Every claim MUST reference a specific `file:line`. Never speculate about code you have not opened. Never make any claims about code before investigating unless you are certain of the correct answer — give grounded and hallucination-free answers. Never use placeholders or guess missing details — use tools to discover them.
+
+1. Read the actual code before forming hypotheses
+2. Trace the execution path: entry → intermediate calls → issue location
+3. Check git blame for when/why the problematic code was introduced
+4. Find related tests that cover (or miss) the affected area
+5. Generate 2-3 hypotheses, each with supporting evidence
+
+## No-Workaround Rule
+
+Write a high-quality, general-purpose solution that addresses the actual root cause. Do not create helper scripts or workarounds. Do not hard-code values or create solutions that only work for specific failing cases. Instead, implement the actual logic that solves the problem generally.
+
+Every fix MUST address the root cause. Stop immediately if you catch yourself:
+
+- Adding `|| defaultValue` to mask null/undefined
+- Adding `try/catch` that swallows errors silently
+- Using `?.` to skip over null when null IS the bug
+- Hard-coding a value for the specific failing case
+- Adding a "just in case" check that shouldn't be needed
+- Suppressing warnings/errors instead of fixing them
+- Adding retry logic instead of fixing why it fails
+
+If the task is unreasonable or infeasible, or if any of the tests are incorrect, inform the user rather than working around them. The solution should be robust, maintainable, and extendable.
+
+If the real fix requires significant refactoring, present the scope to the user — never ship a workaround "for now".
+
+## Routing
+
+- **Simple issue** (single file, obvious cause): Use `/devlyn:resolve`
+- **Complex issue** (multi-module, unclear cause, security implications): Use `/devlyn:team-resolve` for multi-perspective investigation

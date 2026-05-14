@@ -56,4 +56,4 @@ inside `/devlyn:resolve` (no separate preflight skill in the 2-skill design).
 - `cd /tmp && node <worktree>/bin/cli.js gitstats` (from outside a repo — use the worktree's absolute path) exits 2.
 - `node --test tests/` passes.
 
-(Variant-only artifact checks — `docs/specs/<id>-<slug>/spec.md` + `spec.expected.json` existence, transcript fingerprint — live in `scripts/check-f9-artifacts.py`, NOT in the shared verification block above. See NOTES.md.)
+(Skill-driven artifact checks — `docs/specs/<id>-<slug>/spec.md` + `spec.expected.json` existence, transcript fingerprint — live in `scripts/check-f9-artifacts.py`, NOT in the shared verification block above. Bare is exempt. See NOTES.md.)

@@ -25,6 +25,24 @@ EOF
   exit "${1:-1}"
 }
 
+require_value() {
+  local flag="$1"
+  local value="${2:-}"
+  if [ -z "$value" ] || [[ "$value" == --* ]]; then
+    echo "$flag requires a value" >&2
+    exit 1
+  fi
+}
+
+require_safe_id() {
+  local label="$1"
+  local value="$2"
+  if [[ ! "$value" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+    echo "$label must match [A-Za-z0-9_.-]+: $value" >&2
+    exit 1
+  fi
+}
+
 FIXTURE=""
 DIFF_PATH=""
 RUN_ID=""
@@ -36,13 +54,13 @@ TIMEOUT_OVERRIDE=""
 RESUME_COMPLETED_ARMS=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --fixture) FIXTURE="$2"; shift 2;;
-    --diff)    DIFF_PATH="$2"; shift 2;;
-    --run-id)  RUN_ID="$2"; shift 2;;
-    --pair-mode) PAIR_MODE="$2"; shift 2;;
-    --fixtures-root) FIXTURES_ROOT="$2"; shift 2;;
-    --base-repo) BASE_REPO="$2"; shift 2;;
-    --timeout-seconds) TIMEOUT_OVERRIDE="$2"; shift 2;;
+    --fixture) require_value "$1" "${2:-}"; FIXTURE="$2"; shift 2;;
+    --diff)    require_value "$1" "${2:-}"; DIFF_PATH="$2"; shift 2;;
+    --run-id)  require_value "$1" "${2:-}"; RUN_ID="$2"; shift 2;;
+    --pair-mode) require_value "$1" "${2:-}"; PAIR_MODE="$2"; shift 2;;
+    --fixtures-root) require_value "$1" "${2:-}"; FIXTURES_ROOT="$2"; shift 2;;
+    --base-repo) require_value "$1" "${2:-}"; BASE_REPO="$2"; shift 2;;
+    --timeout-seconds) require_value "$1" "${2:-}"; TIMEOUT_OVERRIDE="$2"; shift 2;;
     --prepare-only) PREPARE_ONLY=1; shift;;
     --resume-completed-arms) RESUME_COMPLETED_ARMS=1; shift;;
     -h|--help) usage 0;;
@@ -51,6 +69,7 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$FIXTURE" ] && [ -n "$DIFF_PATH" ] || usage 1
+require_safe_id "--fixture" "$FIXTURE"
 [ -f "$DIFF_PATH" ] || { echo "diff not found: $DIFF_PATH" >&2; exit 1; }
 [ -s "$DIFF_PATH" ] || { echo "diff is empty: $DIFF_PATH" >&2; exit 1; }
 [ "$PAIR_MODE" = "forced" ] || [ "$PAIR_MODE" = "gated" ] || { echo "--pair-mode must be forced|gated (got '$PAIR_MODE')" >&2; exit 1; }
@@ -74,7 +93,20 @@ for f in "$META" "$EXPECTED" "$SPEC" "$TASK" "$SETUP"; do
   [ -f "$f" ] || { echo "fixture missing required file: $f" >&2; exit 1; }
 done
 
-TIMEOUT=$(python3 -c "import json; print(json.load(open('$META'))['timeout_seconds'])")
+TIMEOUT=$(python3 - "$META" "$BENCH_ROOT/scripts" <<'PY'
+import pathlib
+import sys
+
+sys.path.insert(0, sys.argv[2])
+from pair_evidence_contract import loads_strict_json_object
+
+metadata = loads_strict_json_object(pathlib.Path(sys.argv[1]).read_text())
+timeout = metadata.get("timeout_seconds")
+if not isinstance(timeout, int) or isinstance(timeout, bool) or timeout <= 0:
+    raise SystemExit("metadata timeout_seconds must be a positive integer")
+print(timeout)
+PY
+)
 if [ -n "$TIMEOUT_OVERRIDE" ]; then
   case "$TIMEOUT_OVERRIDE" in ''|*[!0-9]*) echo "--timeout-seconds must be an integer" >&2; exit 1;; esac
   [ "$TIMEOUT_OVERRIDE" -gt 0 ] || { echo "--timeout-seconds must be > 0" >&2; exit 1; }
@@ -85,9 +117,27 @@ if [ -z "$RUN_ID" ]; then
   SHA=$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)
   RUN_ID="${TS}-${SHA}-frozen-verify"
 fi
+require_safe_id "--run-id" "$RUN_ID"
 
 RESULT_ROOT="$BENCH_ROOT/results/$RUN_ID"
 mkdir -p "$RESULT_ROOT"
+
+print_command() {
+  local cmd=(bash "$0"
+    --fixture "$FIXTURE"
+    --fixtures-root "$FIXTURES_ROOT"
+    --base-repo "$BASE_REPO"
+    --diff "$DIFF_PATH"
+    --run-id "$RUN_ID"
+    --pair-mode "$PAIR_MODE"
+    --timeout-seconds "$TIMEOUT"
+  )
+  [ "$PREPARE_ONLY" -eq 0 ] || cmd+=(--prepare-only)
+  [ "$RESUME_COMPLETED_ARMS" -eq 0 ] || cmd+=(--resume-completed-arms)
+  printf 'Command: '
+  printf '%q ' "${cmd[@]}"
+  printf '\n'
+}
 
 echo ""
 echo "═══ Frozen Verify Pair Run ═══"
@@ -99,6 +149,7 @@ echo "Diff:    $DIFF_PATH"
 echo "Pair:    $PAIR_MODE"
 echo "Timeout: ${TIMEOUT}s per arm"
 [ "$PREPARE_ONLY" -eq 0 ] || echo "Mode:    prepare-only"
+print_command
 echo ""
 
 mirror_skills() {
@@ -195,17 +246,36 @@ summarize_arm() {
   local result_dir="$1"
   local elapsed="$2"
   local invoke_exit="$3"
-  python3 - "$result_dir" "$elapsed" "$invoke_exit" <<'PY'
+  python3 - "$result_dir" "$elapsed" "$invoke_exit" "$BENCH_ROOT/scripts" <<'PY'
 import json, pathlib, sys
+sys.path.insert(0, sys.argv[4])
+from pair_evidence_contract import loads_strict_json_object, reject_json_constant
+
 result_dir = pathlib.Path(sys.argv[1])
 elapsed = int(sys.argv[2])
 invoke_exit = int(sys.argv[3])
 archive = result_dir / "run-archive"
 state_path = archive / "pipeline.state.json"
-state = json.loads(state_path.read_text()) if state_path.is_file() else {}
-verify = ((state.get("phases") or {}).get("verify") or {})
+def as_dict(value):
+    return value if isinstance(value, dict) else {}
+
+def strict_nonnegative_int(value):
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+state = as_dict(loads_strict_json_object(state_path.read_text())) if state_path.is_file() else {}
+phases = as_dict(state.get("phases"))
+verify = as_dict(phases.get("verify"))
+legacy_verify = as_dict(state.get("verify"))
 sub_verdicts = verify.get("sub_verdicts")
-pair_trigger = verify.get("pair_trigger") or ((state.get("verify") or {}).get("pair_trigger"))
+pair_trigger = verify.get("pair_trigger") or legacy_verify.get("pair_trigger")
+PAIR_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED", "FAIL"}
+
+def has_pair_judge_verdict(sub_verdicts):
+    return isinstance(sub_verdicts, dict) and (
+        sub_verdicts.get("judge_codex") in PAIR_VERDICTS
+        or sub_verdicts.get("pair_judge") in PAIR_VERDICTS
+    )
+
 findings = []
 finding_paths = []
 merged_path = archive / "verify-merged.findings.jsonl"
@@ -231,7 +301,7 @@ for findings_path in finding_paths:
     for line in findings_path.read_text().splitlines():
         if line.strip():
             try:
-                parsed = json.loads(line)
+                parsed = json.loads(line, parse_constant=reject_json_constant)
             except json.JSONDecodeError:
                 continue
             if not isinstance(parsed, dict):
@@ -240,9 +310,10 @@ for findings_path in finding_paths:
             if sev not in finding_severities:
                 continue
             findings.append(parsed)
-merged = verify.get("merged") if isinstance(verify.get("merged"), dict) else {}
+merged = as_dict(verify.get("merged"))
 merged_findings_count = sum(
-    int(merged.get(k) or 0) for k in ("critical", "high", "medium", "low")
+    merged.get(k) if strict_nonnegative_int(merged.get(k)) else 0
+    for k in ("critical", "high", "medium", "low")
 )
 findings_count = len(findings) if findings else merged_findings_count
 severity_counts = {}
@@ -262,15 +333,12 @@ summary = {
     "invoke_exit": invoke_exit,
     "timed_out": invoke_exit == 124,
     "invoke_failure_reason": invoke_failure_reason,
-    "terminal_verdict": ((state.get("phases") or {}).get("final_report") or {}).get("verdict"),
+    "terminal_verdict": as_dict(phases.get("final_report")).get("verdict"),
     "verify_verdict": verify.get("verdict"),
     "sub_verdicts": sub_verdicts,
     "pair_trigger": pair_trigger,
-    "pair_mode": bool(isinstance(sub_verdicts, dict) and (
-        sub_verdicts.get("judge_codex") is not None
-        or sub_verdicts.get("pair_judge") is not None
-    ))
-        or bool(verify.get("pair_mode")),
+    "pair_mode": has_pair_judge_verdict(sub_verdicts)
+        or verify.get("pair_mode") is True,
     "verify_findings_count": findings_count,
     "verify_findings_source": findings_source if finding_paths else (
         "state.merged" if merged_findings_count else "missing"
@@ -302,11 +370,13 @@ run_arm() {
   local result_dir="$RESULT_ROOT/$arm"
   local work_dir="/tmp/bench-${RUN_ID}-${FIXTURE}-${arm}"
   if [ "$RESUME_COMPLETED_ARMS" -eq 1 ] && [ "$PREPARE_ONLY" -eq 0 ] && [ -f "$result_dir/summary.json" ]; then
-    if python3 - "$result_dir/summary.json" <<'PY'
-import json
+    if python3 - "$result_dir/summary.json" "$BENCH_ROOT/scripts" <<'PY'
+import pathlib
 import sys
+sys.path.insert(0, sys.argv[2])
+from pair_evidence_contract import loads_strict_json_object
 
-summary = json.load(open(sys.argv[1]))
+summary = loads_strict_json_object(pathlib.Path(sys.argv[1]).read_text())
 raise SystemExit(0 if summary.get("invoke_exit") == 0 else 1)
 PY
     then
@@ -330,9 +400,12 @@ PY
   mkdir -p "$work_dir/docs/roadmap/phase-1" "$work_dir/.devlyn"
   cp "$SPEC" "$work_dir/docs/roadmap/phase-1/$FIXTURE.md"
   cp "$DIFF_PATH" "$work_dir/.devlyn/external-diff.patch"
-  python3 - "$EXPECTED" "$work_dir/.devlyn/spec-verify.json" <<'PY'
-import json, os, sys
-expected = json.load(open(sys.argv[1]))
+  python3 - "$EXPECTED" "$work_dir/.devlyn/spec-verify.json" "$BENCH_ROOT/scripts" <<'PY'
+import json, os, pathlib, sys
+sys.path.insert(0, sys.argv[3])
+from pair_evidence_contract import loads_strict_json_object
+
+expected = loads_strict_json_object(pathlib.Path(sys.argv[1]).read_text())
 out_path = sys.argv[2]
 commands = expected.get("verification_commands", [])
 if not commands:
@@ -462,14 +535,17 @@ else
   run_arm pair ""
 fi
 
-python3 - "$RESULT_ROOT" "$PAIR_MODE" <<'PY'
-import json, pathlib, sys
+python3 - "$RESULT_ROOT" "$PAIR_MODE" "$BENCH_ROOT/scripts" <<'PY'
+import json, math, pathlib, sys
+sys.path.insert(0, sys.argv[3])
+from pair_evidence_contract import loads_strict_json_object
+
 root = pathlib.Path(sys.argv[1])
 pair_mode_requested = sys.argv[2]
 out = {}
 for arm in ("solo", "pair"):
     path = root / arm / "summary.json"
-    out[arm] = json.loads(path.read_text()) if path.is_file() else {"missing": True}
+    out[arm] = loads_strict_json_object(path.read_text()) if path.is_file() else {"missing": True}
 solo = out.get("solo", {})
 pair = out.get("pair", {})
 rank = {
@@ -481,31 +557,127 @@ rank = {
 }
 solo_rank = rank.get(solo.get("verify_verdict"), 0)
 pair_rank = rank.get(pair.get("verify_verdict"), 0)
-pair_sub = pair.get("sub_verdicts") or {}
+raw_pair_sub = pair.get("sub_verdicts")
+pair_sub = raw_pair_sub if isinstance(raw_pair_sub, dict) else {}
 pair_primary_verdict = pair_sub.get("judge")
 pair_judge_verdict = pair_sub.get("pair_judge")
 pair_primary_rank = rank.get(pair_primary_verdict, 0)
 pair_judge_rank = rank.get(pair_judge_verdict, 0)
+def strict_positive_number(value):
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and value > 0
+    )
+
+def elapsed_ratio(pair_elapsed, solo_elapsed):
+    if not strict_positive_number(pair_elapsed) or not strict_positive_number(solo_elapsed):
+        return None
+    return pair_elapsed / solo_elapsed
+
+def strict_nonnegative_int(value):
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+def summary_findings_count(data):
+    value = data.get("verify_findings_count")
+    return value if strict_nonnegative_int(value) else None
+
+def severity_count_sum(data):
+    raw_counts = data.get("severity_counts")
+    if not isinstance(raw_counts, dict):
+        return None
+    total = 0
+    for key in ("LOW", "MEDIUM", "HIGH", "CRITICAL"):
+        value = raw_counts.get(key, 0)
+        if not strict_nonnegative_int(value):
+            return None
+        total += value
+    return total
+
+def strict_greater(left, right):
+    return left is not None and right is not None and left > right
+
+wall_ratio = elapsed_ratio(pair.get("elapsed_seconds"), solo.get("elapsed_seconds"))
+pair_mode_true = pair.get("pair_mode") is True
+raw_pair_trigger = pair.get("pair_trigger")
+pair_trigger = raw_pair_trigger if isinstance(raw_pair_trigger, dict) else {}
+pair_findings_count = summary_findings_count(pair)
+solo_findings_count = summary_findings_count(solo)
+pair_low_or_worse = severity_count_sum(pair)
+solo_low_or_worse = severity_count_sum(solo)
 out["comparison"] = {
     "pair_mode_requested": pair_mode_requested,
     "pair_trigger_missed": bool(
         pair_mode_requested == "gated"
-        and (pair.get("pair_trigger") or {}).get("eligible") is True
-        and (pair.get("pair_trigger") or {}).get("reasons")
-        and not pair.get("pair_mode")
+        and pair_trigger.get("eligible") is True
+        and pair_trigger.get("reasons")
+        and not pair_mode_true
     ),
-    "pair_found_more_findings": (pair.get("verify_findings_count") or 0) > (solo.get("verify_findings_count") or 0),
-    "pair_found_more_low_or_worse": sum((pair.get("severity_counts") or {}).get(k, 0) for k in ("LOW", "MEDIUM", "HIGH", "CRITICAL"))
-        > sum((solo.get("severity_counts") or {}).get(k, 0) for k in ("LOW", "MEDIUM", "HIGH", "CRITICAL")),
-    "pair_verdict_lift": bool(pair.get("pair_mode")) and pair_rank > solo_rank and pair_rank >= rank["NEEDS_WORK"],
-    "pair_internal_verdict_lift": bool(pair.get("pair_mode"))
+    "pair_found_more_findings": strict_greater(pair_findings_count, solo_findings_count),
+    "pair_found_more_low_or_worse": strict_greater(pair_low_or_worse, solo_low_or_worse),
+    "pair_verdict_lift": pair_mode_true and pair_rank > solo_rank and pair_rank >= rank["NEEDS_WORK"],
+    "pair_internal_verdict_lift": pair_mode_true
         and pair_judge_rank > pair_primary_rank
         and pair_rank >= rank["NEEDS_WORK"],
     "solo_verdict": solo.get("verify_verdict"),
     "pair_verdict": pair.get("verify_verdict"),
     "pair_primary_verdict": pair_primary_verdict,
     "pair_judge_verdict": pair_judge_verdict,
+    "pair_solo_wall_ratio": wall_ratio,
 }
 (root / "compare.json").write_text(json.dumps(out, indent=2) + "\n")
 print(json.dumps(out, indent=2))
+
+def fmt_bool(value):
+    return str(value is True).lower()
+
+def fmt_ratio(value):
+    return f"{value:.2f}x" if strict_positive_number(value) else "n/a"
+
+def fmt_seconds(value):
+    return f"{value}s" if strict_positive_number(value) else "n/a"
+
+def fmt_trigger_reasons(value):
+    if not isinstance(value, dict):
+        return ""
+    reasons = value.get("reasons")
+    if not isinstance(reasons, list) or not all(isinstance(reason, str) for reason in reasons):
+        return ""
+    return ",".join(reasons)
+
+def arm_row(name, data):
+    return (
+        f"| {name} | {data.get('verify_verdict') or 'n/a'} | "
+        f"{fmt_bool(data.get('pair_mode'))} | "
+        f"{fmt_trigger_reasons(data.get('pair_trigger'))} | "
+        f"{data.get('verify_findings_count', 'n/a')} | "
+        f"{fmt_seconds(data.get('elapsed_seconds'))} | {data.get('invoke_exit', 'n/a')} | "
+        f"{data.get('invoke_failure_reason') or 'n/a'} |"
+    )
+
+summary_lines = [
+    "# Frozen VERIFY Pair Summary",
+    "",
+    f"Run id: `{root.name}`",
+    f"Pair mode requested: `{pair_mode_requested}`",
+    "",
+    "| Arm | Verdict | Pair mode | Triggers | Findings | Elapsed | Invoke exit | Failure |",
+    "|---|---|---:|---|---:|---:|---:|---|",
+    arm_row("solo", solo),
+    arm_row("pair", pair),
+    "",
+    "| Wall ratio | External lift | Internal lift | Trigger missed |",
+    "|---:|---:|---:|---:|",
+    (
+        f"| {fmt_ratio(wall_ratio)} | "
+        f"{fmt_bool(out['comparison']['pair_verdict_lift'])} | "
+        f"{fmt_bool(out['comparison']['pair_internal_verdict_lift'])} | "
+        f"{fmt_bool(out['comparison']['pair_trigger_missed'])} |"
+    ),
+    "",
+]
+summary_text = "\n".join(summary_lines)
+(root / "compare.md").write_text(summary_text, encoding="utf8")
+print(summary_text)
 PY

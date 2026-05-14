@@ -1,0 +1,10 @@
+{
+  "id": "F30-cli-credit-hold-settlement",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli settle-holds command that reads account credit holds and operations, applies authorization/capture/release with idempotency and rollback, and emits exact cents-based settlement state without mutating input."
+}

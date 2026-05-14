@@ -12,6 +12,9 @@ Margin ∈ [-3, +3] is the expected range. Both arms should produce small,
 reasonable improvements. The judge may slightly prefer one or the other
 based on taste.
 
+Pair-candidate status: rejected by design. F8 is a known-limit ambiguity
+barometer whose expected margin is a tie range, not pair-lift evidence.
+
 Margin > +3 means the fixture is no longer a known limit — either the
 harness got notably better at ambiguous specs (improve prompt or reuse the
 pattern elsewhere), or the task is drifting from its "under-specified"

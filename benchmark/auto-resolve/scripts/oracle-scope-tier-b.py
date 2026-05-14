@@ -34,6 +34,8 @@ import re
 import subprocess
 import sys
 
+from pair_evidence_contract import loads_strict_json_object
+
 ORACLE_NAME = "scope-tier-b"
 
 # iter-0022: stable category enumeration. tier-b-reachable is `info` severity
@@ -221,8 +223,8 @@ def main():
         ap.error("--work, --scaffold, and --expected are required unless --list-categories is set")
 
     try:
-        expected = json.loads(pathlib.Path(args.expected).read_text())
-    except (OSError, json.JSONDecodeError) as e:
+        expected = loads_strict_json_object(pathlib.Path(args.expected).read_text())
+    except (OSError, json.JSONDecodeError, ValueError) as e:
         sys.stderr.write(f"[oracle-scope-tier-b] cannot read expected: {e}\n")
         print(json.dumps({
             "oracle": "scope-tier-b",
@@ -237,6 +239,27 @@ def main():
     waivers = expected.get("tier_a_waivers", [])
     # fixture_id = parent directory name of expected.json
     fixture_id = pathlib.Path(args.expected).parent.name
+
+    if not isinstance(tier_c, list) or not all(isinstance(item, str) for item in tier_c):
+        print(json.dumps({
+            "oracle": "scope-tier-b",
+            "trace_method": TRACE_METHOD,
+            "tier_c_seeds_matched": [],
+            "fixture_id": fixture_id,
+            "findings": [],
+            "error": "expected.json malformed: spec_output_files must be a string array",
+        }, indent=2))
+        return
+    if not isinstance(waivers, list) or not all(isinstance(item, str) for item in waivers):
+        print(json.dumps({
+            "oracle": "scope-tier-b",
+            "trace_method": TRACE_METHOD,
+            "tier_c_seeds_matched": [],
+            "fixture_id": fixture_id,
+            "findings": [],
+            "error": "expected.json malformed: tier_a_waivers must be a string array",
+        }, indent=2))
+        return
 
     if not tier_c:
         print(json.dumps({

@@ -2,17 +2,15 @@
 # static-ab.sh — Measure prompt-size delta between baseline HEAD and working tree.
 #
 # Answers: "did our harness changes shrink or grow the cold-start prompt budget
-# that a modal /devlyn:auto-resolve run actually loads?"
+# that a typical /devlyn:resolve run actually loads?"
 #
-# Files measured (bare-case load set per Codex's earlier token math):
-#   - devlyn:auto-resolve/SKILL.md
-#   - devlyn:auto-resolve/references/{pipeline-state.md, engine-routing.md,
-#     pipeline-routing.md, findings-schema.md, build-gate.md}
-#   - devlyn:auto-resolve/references/phases/phase-1-build.md
-#   - devlyn:auto-resolve/references/phases/phase-2-evaluate.md
-#   - devlyn:auto-resolve/references/phases/phase-3-critic.md
+# Files measured (current two-skill resolve load set):
+#   - devlyn:resolve/SKILL.md
+#   - devlyn:resolve/references/{state-schema.md, free-form-mode.md}
+#   - devlyn:resolve/references/phases/{plan,probe-derive,implement,build-gate,cleanup,verify}.md
 #   - _shared/codex-config.md
 #   - _shared/engine-preflight.md
+#   - _shared/runtime-principles.md
 #   - CLAUDE.md
 #
 # Uses word count ~= 1.3 tokens/word as the rough conversion. This is a static
@@ -26,21 +24,28 @@ FILES=(
   CLAUDE.md
   config/skills/_shared/codex-config.md
   config/skills/_shared/engine-preflight.md
-  config/skills/devlyn:auto-resolve/SKILL.md
-  config/skills/devlyn:auto-resolve/references/pipeline-state.md
-  config/skills/devlyn:auto-resolve/references/engine-routing.md
-  config/skills/devlyn:auto-resolve/references/pipeline-routing.md
-  config/skills/devlyn:auto-resolve/references/findings-schema.md
-  config/skills/devlyn:auto-resolve/references/build-gate.md
-  config/skills/devlyn:auto-resolve/references/phases/phase-1-build.md
-  config/skills/devlyn:auto-resolve/references/phases/phase-2-evaluate.md
-  config/skills/devlyn:auto-resolve/references/phases/phase-3-critic.md
+  config/skills/_shared/runtime-principles.md
+  config/skills/devlyn:resolve/SKILL.md
+  config/skills/devlyn:resolve/references/state-schema.md
+  config/skills/devlyn:resolve/references/free-form-mode.md
+  config/skills/devlyn:resolve/references/phases/plan.md
+  config/skills/devlyn:resolve/references/phases/probe-derive.md
+  config/skills/devlyn:resolve/references/phases/implement.md
+  config/skills/devlyn:resolve/references/phases/build-gate.md
+  config/skills/devlyn:resolve/references/phases/cleanup.md
+  config/skills/devlyn:resolve/references/phases/verify.md
 )
 
 WORDS_A=0
 WORDS_B=0
 LINES_A=0
 LINES_B=0
+MAX_GROWTH_PCT="${DEVLYN_STATIC_AB_MAX_GROWTH_PCT:-15}"
+
+if ! awk "BEGIN { exit !($MAX_GROWTH_PCT >= 0) }" >/dev/null 2>&1; then
+  echo "error: DEVLYN_STATIC_AB_MAX_GROWTH_PCT must be a non-negative number" >&2
+  exit 2
+fi
 
 printf '%-60s %10s %10s %10s\n' 'file' 'lines(A)' 'lines(B)' 'Δ_lines'
 printf '%-60s %10s %10s %10s\n' '----' '--------' '--------' '-------'
@@ -86,5 +91,10 @@ if [ "$delta_tokens" -le 0 ]; then
   echo "✓ Bare-case guardrail: prompt budget did NOT grow (Δ≈${delta_tokens} tokens)."
 else
   pct=$(awk "BEGIN { printf \"%.1f\", ($delta_tokens / $tokens_a) * 100 }")
-  echo "⚠ Bare-case guardrail: prompt budget grew by ≈${delta_tokens} tokens (+${pct}%)."
+  over_limit=$(awk "BEGIN { exit !($pct > $MAX_GROWTH_PCT) }"; echo $?)
+  if [ "$over_limit" -eq 0 ]; then
+    echo "⚠ Bare-case guardrail: prompt budget grew by ≈${delta_tokens} tokens (+${pct}%, limit +${MAX_GROWTH_PCT}%)."
+  else
+    echo "✓ Bare-case guardrail: prompt budget growth is within limit (Δ≈${delta_tokens} tokens, +${pct}%, limit +${MAX_GROWTH_PCT}%)."
+  fi
 fi

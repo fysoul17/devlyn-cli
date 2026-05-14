@@ -1,0 +1,10 @@
+{
+  "id": "F32-cli-subscription-renewal",
+  "category": "high-risk",
+  "difficulty": "hard",
+  "timeout_seconds": 1800,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a subscription renewal CLI command that applies expiring credits in priority order with rollback and exact machine-readable output."
+}

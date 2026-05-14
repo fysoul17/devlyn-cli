@@ -45,6 +45,13 @@ If bare somehow beats variant (variant fixes the bug = scope violation,
 bare doesn't), that's a real signal that the pipeline's scope discipline
 is weak and needs CRITIC prompt tuning.
 
+## Current status
+
+Rejected as pair-lift evidence. `20260512-f7-scope-headroom` measured bare
+99 / solo_claude 100, with bare and solo each passing 6/6 verification commands.
+It fails both headroom preconditions and should remain a scope-discipline
+control unless reworked.
+
 ## Rotation trigger
 
 Retire when variant scope-discipline axis > 24 on two shipped versions.

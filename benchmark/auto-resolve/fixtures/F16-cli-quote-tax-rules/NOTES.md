@@ -19,6 +19,18 @@ F1/F2 test CLI shape, but not business-rule arithmetic. F10/F11/F12 test
 server behavior and persistence. F15 tests review behavior. None combine
 hidden product math, exact machine output, and source-of-truth pricing.
 
+## Measurement status
+
+Pair evidence passed in `20260510-f16-f23-f25-combined-proof`:
+bare `50`, solo_claude `75`, pair `96`, margin `+21`, wall `1.28x`,
+arm `l2_risk_probes`, verdict `pair_evidence_passed`.
+
+## Solo-headroom hypothesis
+
+A capable solo_claude baseline is expected to miss duplicate-SKU aggregation
+before stock validation and exact integer tax/shipping totals; observable
+command `node "$BENCH_FIXTURE_DIR/verifiers/exact-success.js"` exposes the miss.
+
 ## Retirement
 
 Retire or replace this fixture if both bare and solo consistently score

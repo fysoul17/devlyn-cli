@@ -1,0 +1,3 @@
+Add a subscription renewal CLI command that applies expiring credits in priority order with rollback and exact machine-readable output.
+
+The command should be `bench-cli renew-subscriptions --input <path>`. It reads plans, customers, credits, and renewal requests from JSON, processes renewals by priority, applies usable credits in expiration order, rejects unpaid renewals without consuming their tentative credits, and prints JSON invoices, rejected rows, and remaining credits. Keep the change scoped to the CLI and CLI tests, with no new dependencies and no extra stdout/stderr text.

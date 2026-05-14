@@ -28,18 +28,27 @@ RESUME=0
 LIMIT=""
 INSTANCE_IDS=()
 
+require_value() {
+  local flag="$1"
+  local value="${2:-}"
+  if [ -z "$value" ] || [[ "$value" == --* ]]; then
+    echo "$flag requires a value" >&2
+    exit 1
+  fi
+}
+
 while [ $# -gt 0 ]; do
   case "$1" in
-    --instances-jsonl) INSTANCES_JSONL="$2"; shift 2;;
-    --predictions-out) PREDICTIONS_OUT="$2"; shift 2;;
-    --model-name) MODEL_NAME="$2"; shift 2;;
-    --repos-root) REPOS_ROOT="$2"; shift 2;;
-    --worktrees-root) WORKTREES_ROOT="$2"; shift 2;;
-    --timeout-seconds) TIMEOUT_SECONDS="$2"; shift 2;;
+    --instances-jsonl) require_value "$1" "${2:-}"; INSTANCES_JSONL="$2"; shift 2;;
+    --predictions-out) require_value "$1" "${2:-}"; PREDICTIONS_OUT="$2"; shift 2;;
+    --model-name) require_value "$1" "${2:-}"; MODEL_NAME="$2"; shift 2;;
+    --repos-root) require_value "$1" "${2:-}"; REPOS_ROOT="$2"; shift 2;;
+    --worktrees-root) require_value "$1" "${2:-}"; WORKTREES_ROOT="$2"; shift 2;;
+    --timeout-seconds) require_value "$1" "${2:-}"; TIMEOUT_SECONDS="$2"; shift 2;;
     --copy-devlyn-context) COPY_DEVLYN_CONTEXT=1; shift;;
     --resume) RESUME=1; shift;;
-    --limit) LIMIT="$2"; shift 2;;
-    --instance-id) INSTANCE_IDS+=("$2"); shift 2;;
+    --limit) require_value "$1" "${2:-}"; LIMIT="$2"; shift 2;;
+    --instance-id) require_value "$1" "${2:-}"; INSTANCE_IDS+=("$2"); shift 2;;
     -h|--help) usage 0;;
     *) echo "unknown arg: $1" >&2; usage 1;;
   esac
@@ -62,22 +71,31 @@ TMP_IDS="$(mktemp)"
 TMP_SELECTED_INSTANCES="$(mktemp)"
 trap 'rm -f "$TMP_IDS" "$TMP_SELECTED_INSTANCES"' EXIT
 
-python3 - "$INSTANCES_JSONL" "$TMP_SELECTED_INSTANCES" "$LIMIT" "${INSTANCE_IDS[@]}" > "$TMP_IDS" <<'PY'
+selection_args=("$INSTANCES_JSONL" "$TMP_SELECTED_INSTANCES" "$LIMIT")
+if [ "${#INSTANCE_IDS[@]}" -gt 0 ]; then
+  selection_args+=("${INSTANCE_IDS[@]}")
+fi
+
+python3 - "$SCRIPT_DIR" "${selection_args[@]}" > "$TMP_IDS" <<'PY'
 import json
 import sys
 from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from pair_evidence_contract import reject_json_constant
 
-instances_path = Path(sys.argv[1])
-selected_path = Path(sys.argv[2])
-limit = int(sys.argv[3]) if sys.argv[3] else None
-requested = sys.argv[4:]
+instances_path = Path(sys.argv[2])
+selected_path = Path(sys.argv[3])
+limit = int(sys.argv[4]) if sys.argv[4] else None
+requested = sys.argv[5:]
 requested_set = set(requested)
 rows = []
 with instances_path.open(encoding="utf8") as f:
     for line_no, line in enumerate(f, start=1):
         if not line.strip():
             continue
-        row = json.loads(line)
+        row = json.loads(line, parse_constant=reject_json_constant)
+        if not isinstance(row, dict):
+            raise SystemExit(f"{instances_path}:{line_no}: expected JSON object")
         instance_id = row.get("instance_id")
         if not isinstance(instance_id, str) or not instance_id:
             raise SystemExit(f"{instances_path}:{line_no}: missing instance_id")

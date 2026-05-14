@@ -1,5 +1,10 @@
 # Auto-Resolve Benchmark Results (v3.2 — Karpathy-aligned)
 
+> Archive note (2026-05-14): historical pre-cutover results for the deleted
+> `auto-resolve`/`preflight` skill topology. Do not treat these projected
+> v3-era scores as current solo<pair evidence; current evidence comes from
+> `npx devlyn-cli benchmark audit` and complete pair-evidence rows.
+
 Date: 2026-04-23
 Baseline ref: `58ca1df` (v2.1 STEP 6 — last committed v2.1 state)
 Head state: v3.2 working tree

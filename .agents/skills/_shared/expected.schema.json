@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/fysoul17/devlyn-cli/config/skills/_shared/expected.schema.json",
+  "title": "spec.expected.json — mechanical acceptance contract",
+  "description": "Load-bearing LLM-agnostic decoupler for the devlyn-cli harness. Defines the machine-readable acceptance criteria a spec ships alongside spec.md. Stable across model upgrades — when Opus 5 / GPT-6 / Qwen / Gemini land, this schema does not move; only the per-model adapter files in _shared/adapters/ do.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "verification_commands": {
+      "type": "array",
+      "description": "Each command is executed against the post-BUILD code. Each pass/fail contributes to verify_score. At least one entry is required when the spec has any observable runtime check (CLI, test command, HTTP request).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cmd"],
+        "properties": {
+          "cmd": {
+            "type": "string",
+            "description": "Shell command, executed via `subprocess.run(..., shell=True)` from the build's working directory.",
+            "minLength": 1
+          },
+          "exit_code": {
+            "type": "integer",
+            "description": "Required exit code. Default 0 if omitted.",
+            "default": 0
+          },
+          "stdout_contains": {
+            "type": "array",
+            "description": "Each substring must appear verbatim in (stdout + stderr) for pass.",
+            "items": { "type": "string", "minLength": 1 },
+            "default": []
+          },
+          "stdout_not_contains": {
+            "type": "array",
+            "description": "None of these substrings may appear in (stdout + stderr) for pass.",
+            "items": { "type": "string", "minLength": 1 },
+            "default": []
+          },
+          "contract_refs": {
+            "type": "array",
+            "description": "For hidden BENCH_FIXTURE_DIR commands, exact substrings from spec.md that this oracle verifies. Hidden oracles may test only visible spec clauses.",
+            "items": { "type": "string", "minLength": 1 },
+            "default": []
+          }
+        }
+      }
+    },
+    "forbidden_patterns": {
+      "type": "array",
+      "description": "Regex patterns scanned across diff.patch. Match at severity=disqualifier is a hard-floor fail; match at severity=warning is judge-only critical-finding.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pattern", "description", "severity"],
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "Python re.search-compatible regex. Anchored implicitly by the surrounding regex, NOT by ^ / $ unless intended.",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable explanation of what the pattern catches and why it's forbidden.",
+            "minLength": 1
+          },
+          "files": {
+            "type": "array",
+            "description": "Optional allow-list of files (substrings of diff --git lines). When present, scan is sliced to hunks touching only these files.",
+            "items": { "type": "string", "minLength": 1 },
+            "default": []
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["disqualifier", "warning"],
+            "description": "disqualifier = hard-floor fail (DQ). warning = judge-visible critical-finding only."
+          }
+        }
+      }
+    },
+    "required_files": {
+      "type": "array",
+      "description": "Files that must exist after the arm runs.",
+      "items": { "type": "string", "minLength": 1 },
+      "default": []
+    },
+    "forbidden_files": {
+      "type": "array",
+      "description": "Files that must NOT appear in the arm's diff (e.g. tooling artifacts the spec didn't request).",
+      "items": { "type": "string", "minLength": 1 },
+      "default": []
+    },
+    "tier_a_waivers": {
+      "type": "array",
+      "description": "Optional fnmatch globs exempted from Tier A scope-oracle path checks when the spec explicitly authorizes those files.",
+      "items": { "type": "string", "minLength": 1 },
+      "default": []
+    },
+    "spec_output_files": {
+      "type": "array",
+      "description": "Files or globs that define the spec-authorized output surface for scope oracles. Touched files outside this set must be reachable from it via static imports or separately waived.",
+      "items": { "type": "string", "minLength": 1 },
+      "default": []
+    },
+    "max_deps_added": {
+      "type": "integer",
+      "description": "Hard cap on new entries under dependencies/devDependencies in package.json. Exceeds → DQ.",
+      "minimum": 0,
+      "default": 0
+    }
+  }
+}
