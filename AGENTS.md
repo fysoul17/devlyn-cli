@@ -28,7 +28,7 @@ ideate (optional)  ->  resolve  ->  ship
 
 - `/devlyn:ideate` (optional) — unstructured idea → `docs/specs/<id>/spec.md` + `spec.expected.json`. Modes: default Q&A, `--quick` (autonomous-pipeline-safe), `--from-spec <path>`, `--project` (multi-feature).
 - `/devlyn:resolve` — hands-free pipeline for any coding task. Free-form goal, `--spec <path>`, or `--verify-only <ref> --spec <path>`. Phases run inline: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (fresh-subagent, findings-only).
-- Three creative power-user skills (`/devlyn:reap`, `/devlyn:design-system`, `/devlyn:team-design-ui`) live in `optional-skills/` and install only when the user opts in.
+- Four creative power-user skills (`/devlyn:reap`, `/devlyn:design-system`, `/devlyn:design-ui`, `/devlyn:team-design-ui`) live in `optional-skills/` and install only when the user opts in.
 
 Each skill's `SKILL.md` is the source of truth for flags and workflow. Do not duplicate.
 

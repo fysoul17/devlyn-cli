@@ -103,7 +103,6 @@ const DEPRECATED_DIRS = [
   'skills/devlyn:auto-resolve',
   'skills/devlyn:browser-validate',
   'skills/devlyn:clean',
-  'skills/devlyn:design-ui',
   'skills/devlyn:discover-product',
   'skills/devlyn:evaluate',
   'skills/devlyn:feature-spec',
@@ -184,6 +183,7 @@ const OPTIONAL_ADDONS = [
   { name: 'devlyn:pencil-push', desc: 'Push codebase UI to Pencil canvas for design sync', type: 'local' },
   { name: 'devlyn:reap', desc: 'Safely reap orphaned MCP / codex / Superset child processes left behind by long Claude sessions', type: 'local' },
   { name: 'devlyn:design-system', desc: 'Extract design tokens from a chosen UI style for exact reproduction (creative power-user)', type: 'local' },
+  { name: 'devlyn:design-ui', desc: 'N (default 5) distinct UI style explorations from a single Lead Designer (creative power-user)', type: 'local' },
   { name: 'devlyn:team-design-ui', desc: '5 distinct UI style explorations from a full design team (creative power-user)', type: 'local' },
   // External skill packs (installed via npx skills add)
   { name: 'vercel-labs/agent-skills', desc: 'React, Next.js, React Native best practices', type: 'external' },
@@ -467,6 +467,17 @@ function installLocalSkill(skillName) {
 
   log(`\n🛠️  Installing ${skillName}...`, 'cyan');
   copyRecursive(src, dest, targetDir);
+
+  // Mirror to every CLI skill-loader directory that already exists so optional
+  // skills are picked up by Codex (and any future CLI with a skillsDir) the
+  // same way required skills are. Existing dir, not new dir — we don't create
+  // a Codex install just because someone opted into a Claude-side skill.
+  for (const cli of Object.values(CLI_TARGETS)) {
+    if (!cli.skillsDir || !fs.existsSync(cli.skillsDir)) continue;
+    const cliDest = path.join(cli.skillsDir, skillName);
+    if (fs.existsSync(cliDest)) fs.rmSync(cliDest, { recursive: true, force: true });
+    copyRecursive(src, cliDest, cli.skillsDir);
+  }
   return true;
 }
 
