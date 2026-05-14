@@ -179,14 +179,13 @@ ids.
 
 ## Optional Power-User Skills
 
-Two creative companion skills live in `optional-skills/` — install them via the interactive installer when you need them.
+One creative companion skill lives in `optional-skills/` — install it via the interactive installer when you need it.
 
 | Command | Use When |
 |---|---|
 | `/devlyn:design-system` | Extract exact design tokens (colors, type scale, spacing) from a chosen UI style |
-| `/devlyn:team-design-ui` | Multi-perspective design team generates 5 distinct UI style explorations |
 
-> Earlier versions of devlyn-cli shipped 16+ skills (auto-resolve / preflight / evaluate / review / team-review / clean / update-docs / browser-validate / product-spec / feature-spec / recommend-features / discover-product / design-ui / implement-ui). Most were consolidated into `/devlyn:resolve` (which folds verification, review, and cleanup into its phases) plus `/devlyn:ideate` (which absorbs the planning surfaces) in the iter-0034 Phase 4 cutover (2026-05-04). `/devlyn:design-ui` is now installed as a required creative UI surface. Upgrades automatically remove the legacy skill directories from `~/.claude/skills/`.
+> Earlier versions of devlyn-cli shipped 16+ skills (auto-resolve / preflight / evaluate / review / team-review / clean / update-docs / browser-validate / product-spec / feature-spec / recommend-features / discover-product / design-ui / implement-ui). Most were consolidated into `/devlyn:resolve` (which folds verification, review, and cleanup into its phases) plus `/devlyn:ideate` (which absorbs the planning surfaces) in the iter-0034 Phase 4 cutover (2026-05-04). `/devlyn:design-ui` is the required creative UI surface — on 2026-05-14 the optional `/devlyn:team-design-ui` was merged into it, so `/devlyn:design-ui` now always spawns a 5-specialist design team (Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer). Upgrades automatically remove the legacy skill directories from `~/.claude/skills/`.
 
 ---
 
@@ -223,7 +222,6 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 | `devlyn:pencil-push` | Push codebase UI to Pencil canvas |
 | `devlyn:reap` | Safely reap orphaned MCP / codex / Superset child processes |
 | `devlyn:design-system` | Extract design tokens from a chosen UI style for exact reproduction |
-| `devlyn:team-design-ui` | 5 distinct UI style explorations from a full design team |
 
 </details>
 
