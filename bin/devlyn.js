@@ -523,7 +523,7 @@ function detectOtherCLIs() {
   return detected;
 }
 
-// Install /devlyn:resolve + /devlyn:ideate + /devlyn:design-ui + _shared skills into a CLI's
+// Install devlyn:resolve + devlyn:ideate + devlyn:design-ui + _shared skills into a CLI's
 // global skills directory (e.g. ~/.codex/skills/). Returns count of skills
 // copied. Skipped silently for CLIs without a skillsDir (e.g. cursor, copilot
 // at the time of writing — they don't have an analogous skill-loader).
@@ -607,8 +607,8 @@ function installAgentsForCLI(cliKey) {
   }
 
   // If this CLI also supports a global skill-loader (currently Codex), install
-  // /devlyn:resolve + /devlyn:ideate + /devlyn:design-ui + _shared so the same
-  // slash commands work there. Skipped for CLIs without a skillsDir entry.
+  // devlyn:resolve + devlyn:ideate + devlyn:design-ui + _shared. Codex invokes
+  // these as skills (for example `$devlyn:resolve`), not Claude slash commands.
   const skillsCopied = installSkillsForCLI(cliKey);
   if (skillsCopied > 0) {
     log(`  → ${skillsCopied} skill${skillsCopied > 1 ? 's' : ''} installed (devlyn:resolve / devlyn:ideate / devlyn:design-ui / _shared)`, 'dim');
@@ -761,7 +761,7 @@ async function init(skipPrompts = false) {
     if (cli.configDir) {
       desc = `Install agents into ${cli.configDir}/`;
     } else if (cli.skillsDir) {
-      desc = `Install ${cli.instructionsFile} + /devlyn:resolve + /devlyn:ideate + /devlyn:design-ui skills (~/.codex/skills/)`;
+      desc = `Install ${cli.instructionsFile} + devlyn:resolve/devlyn:ideate/devlyn:design-ui skills (~/.codex/skills/; use $devlyn:* in Codex)`;
     } else {
       desc = `Install ${cli.instructionsFile}`;
     }
@@ -776,7 +776,7 @@ async function init(skipPrompts = false) {
     log(`  ✅ Agent instructions installed for ${agentsInstalled} CLI${agentsInstalled !== 1 ? 's' : ''}`, 'green');
   } else {
     log('💡 No additional CLI instructions selected', 'dim');
-    log('   Run `npx devlyn-cli agents codex` later to install Codex AGENTS.md + /devlyn skills', 'dim');
+    log('   Run `npx devlyn-cli agents codex` later to install Codex AGENTS.md + devlyn skills', 'dim');
   }
 
   // Ask about optional addons (local skills + external packs)
