@@ -177,15 +177,16 @@ fixture count, and the replay command without running arms or judges. Dry-runs
 and lint prove wiring only; real score claims must cite the run id and fixture
 ids.
 
-## Optional Power-User Skills
+### Migration from earlier versions
 
-One creative companion skill lives in `optional-skills/` — install it via the interactive installer when you need it.
+Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4 cutover (2026-05-04) and the 2026-05-14 follow-up consolidated them down to the three current commands. Upgrades automatically purge the legacy skill directories from `~/.claude/skills/`.
 
-| Command | Use When |
+| Old command | Now use |
 |---|---|
-| `/devlyn:design-system` | Extract exact design tokens (colors, type scale, spacing) from a chosen UI style |
-
-> Earlier versions of devlyn-cli shipped 16+ skills (auto-resolve / preflight / evaluate / review / team-review / clean / update-docs / browser-validate / product-spec / feature-spec / recommend-features / discover-product / design-ui / implement-ui). Most were consolidated into `/devlyn:resolve` (which folds verification, review, and cleanup into its phases) plus `/devlyn:ideate` (which absorbs the planning surfaces) in the iter-0034 Phase 4 cutover (2026-05-04). `/devlyn:design-ui` is the required creative UI surface — on 2026-05-14 the optional `/devlyn:team-design-ui` was merged into it, so `/devlyn:design-ui` now always spawns a 5-specialist design team (Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer). Upgrades automatically remove the legacy skill directories from `~/.claude/skills/`.
+| `/devlyn:auto-resolve`, `/devlyn:preflight`, `/devlyn:evaluate`, `/devlyn:review`, `/devlyn:team-resolve`, `/devlyn:team-review`, `/devlyn:clean`, `/devlyn:update-docs`, `/devlyn:browser-validate`, `/devlyn:implement-ui` | `/devlyn:resolve` (folds them into PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY) |
+| `/devlyn:product-spec`, `/devlyn:feature-spec`, `/devlyn:recommend-features`, `/devlyn:discover-product` | `/devlyn:ideate` |
+| `/devlyn:team-design-ui` | `/devlyn:design-ui` (now always spawns the 5-specialist team — Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer) |
+| `/devlyn:design-system` | Removed 2026-05-14 — no replacement |
 
 ---
 
@@ -221,7 +222,6 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 | `devlyn:pencil-pull` | Pull Pencil designs into code |
 | `devlyn:pencil-push` | Push codebase UI to Pencil canvas |
 | `devlyn:reap` | Safely reap orphaned MCP / codex / Superset child processes |
-| `devlyn:design-system` | Extract design tokens from a chosen UI style for exact reproduction |
 
 </details>
 

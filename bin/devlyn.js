@@ -118,11 +118,11 @@ const DEPRECATED_DIRS = [
   // upgrade so users only have them if they opt in via the interactive
   // installer (matches the pencil-pull / pencil-push pattern).
   'skills/devlyn:reap',
-  'skills/devlyn:design-system',
-  // Merged into devlyn:design-ui on 2026-05-14. Source dir deleted entirely;
-  // entry kept here so users who opted into the team variant get their stale
-  // copy purged on upgrade.
+  // Deleted entirely on 2026-05-14 (devlyn:team-design-ui merged into
+  // devlyn:design-ui; devlyn:design-system removed outright). Entries kept
+  // so users who previously opted in get their stale copies purged on upgrade.
   'skills/devlyn:team-design-ui',
+  'skills/devlyn:design-system',
 ];
 
 function getTargetDir() {
@@ -185,7 +185,6 @@ const OPTIONAL_ADDONS = [
   { name: 'devlyn:pencil-pull', desc: 'Pull Pencil designs into code with exact visual fidelity', type: 'local' },
   { name: 'devlyn:pencil-push', desc: 'Push codebase UI to Pencil canvas for design sync', type: 'local' },
   { name: 'devlyn:reap', desc: 'Safely reap orphaned MCP / codex / Superset child processes left behind by long Claude sessions', type: 'local' },
-  { name: 'devlyn:design-system', desc: 'Extract design tokens from a chosen UI style for exact reproduction (creative power-user)', type: 'local' },
   // External skill packs (installed via npx skills add)
   { name: 'vercel-labs/agent-skills', desc: 'React, Next.js, React Native best practices', type: 'external' },
   { name: 'supabase/agent-skills', desc: 'Supabase integration patterns', type: 'external' },

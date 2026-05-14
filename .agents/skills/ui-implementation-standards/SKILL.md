@@ -7,7 +7,7 @@ Quality framework for building and improving UI from design systems. Apply these
 - Building UI components or pages
 - Implementing designs from a design system
 - Improving or refactoring existing UI
-- Any use of `/devlyn:implement-ui`, `/devlyn:design-ui`, or `/devlyn:design-system`
+- Any use of `/devlyn:design-ui`
 - Frontend development tasks involving visual design
 
 ## Design System Fidelity
