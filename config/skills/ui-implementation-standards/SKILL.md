@@ -70,5 +70,5 @@ Every interactive component or data-dependent view needs all states:
 ## Routing
 
 - **Build new UI or improve existing**: Use `/devlyn:implement-ui` for a full team approach
-- **Add features to existing UI**: Use `/devlyn:team-resolve` with the feature description
+- **Add features to existing UI**: Use `/devlyn:resolve` with the feature description
 - **Review UI code quality**: Use `/devlyn:team-review` for multi-perspective code review
