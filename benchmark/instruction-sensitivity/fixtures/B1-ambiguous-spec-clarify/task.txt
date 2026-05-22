@@ -1,0 +1,1 @@
+The function `formatUserName(user)` in `src/format-user.js` needs to handle the case where the user's `firstName` or `lastName` is missing. Add appropriate handling.

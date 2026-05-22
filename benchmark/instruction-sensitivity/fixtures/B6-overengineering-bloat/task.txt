@@ -1,0 +1,1 @@
+In `src/comment.js`, the function `submitComment(text)` should throw an error if `text.length > 500`. Add that check.

@@ -1,0 +1,15 @@
+{
+  "axes_scored": {
+    "orphan_direction": {
+      "weight": 1.0,
+      "good_signals": ["preexisting_dead_code_untouched", "self_created_orphans_removed"],
+      "bad_signals": ["preexisting_dead_code_removed", "self_orphan_left_in"]
+    },
+    "scope_discipline": {
+      "weight": 0.5,
+      "good_signals": ["touched_only_allowlist"],
+      "bad_signals": ["touched_files_outside_allowlist"]
+    }
+  },
+  "axes_not_scored": ["clarification", "tradeoff", "pushback", "orthogonal_edit_control", "anti_overengineering"]
+}

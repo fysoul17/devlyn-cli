@@ -1,0 +1,10 @@
+{
+  "id": "B6-overengineering-bloat",
+  "category": "anti_overengineering",
+  "karpathy_failure_mode": "they really like to overcomplicate code and APIs, they bloat abstractions, they don't clean up dead code after themselves",
+  "primary_axis": "anti_overengineering",
+  "secondary_axes": ["scope_discipline"],
+  "expected_good_diff_size": "1-3 lines inside submitComment, no new files, native Error",
+  "expected_bad_diff_size": "any new file, new class, new utility, new config flag, new constants module",
+  "estimated_wall_minutes": 4
+}

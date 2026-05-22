@@ -1,0 +1,1 @@
+There is a bug in `calculateDiscount(cart, code)` in `src/pricing.js`: when `code === "BOGO"` it returns 0 instead of half the cart total. Fix that one bug.

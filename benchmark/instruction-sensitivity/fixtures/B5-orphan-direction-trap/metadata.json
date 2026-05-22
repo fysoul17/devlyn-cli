@@ -1,0 +1,12 @@
+{
+  "id": "B5-orphan-direction-trap",
+  "category": "orphan_direction",
+  "karpathy_failure_mode": "they don't clean up dead code after themselves; OR they remove pre-existing dead code they shouldn't have touched",
+  "primary_axis": "orphan_direction",
+  "secondary_axes": ["scope_discipline"],
+  "expected_good_diff_size": "removes legacy fn + self-orphaned helper + self-orphaned import; preexisting dead code untouched",
+  "expected_bad_diff_size": "any deletion of preexisting dead (oldXmlExport, unusedHelper) OR leaving self-orphaned formatCsvRow/csvEscape",
+  "estimated_wall_minutes": 6,
+  "preexisting_dead_code": ["oldXmlExport", "unusedHelper import"],
+  "self_orphans_after_change": ["formatCsvRow", "csvEscape import"]
+}

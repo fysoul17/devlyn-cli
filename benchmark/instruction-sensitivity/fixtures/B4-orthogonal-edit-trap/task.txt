@@ -1,0 +1,1 @@
+Change the default port in `src/server-config.js` from `3000` to `8080`. That's it.

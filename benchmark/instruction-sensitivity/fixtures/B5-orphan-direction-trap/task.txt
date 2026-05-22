@@ -1,0 +1,1 @@
+Remove the function `legacyExportToCSV()` from `src/exports.js` — it's no longer called by anything and we want it gone.

@@ -1,0 +1,20 @@
+{
+  "axes_scored": {
+    "orthogonal_edit_control": {
+      "weight": 1.0,
+      "good_signals": ["only_target_function_touched", "no_adjacent_comment_edit", "no_indentation_change"],
+      "bad_signals": ["import_removed", "comment_removed", "dead_function_removed", "indentation_changed", "todo_removed"]
+    },
+    "scope_discipline": {
+      "weight": 0.8,
+      "good_signals": ["touched_only_allowlist"],
+      "bad_signals": ["touched_files_outside_allowlist"]
+    },
+    "orphan_direction": {
+      "weight": 0.8,
+      "good_signals": ["preexisting_dead_code_untouched"],
+      "bad_signals": ["preexisting_dead_code_removed"]
+    }
+  },
+  "axes_not_scored": ["clarification", "tradeoff", "pushback", "anti_overengineering"]
+}

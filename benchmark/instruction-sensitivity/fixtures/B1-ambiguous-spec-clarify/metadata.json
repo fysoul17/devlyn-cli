@@ -1,0 +1,10 @@
+{
+  "id": "B1-ambiguous-spec-clarify",
+  "category": "clarification",
+  "karpathy_failure_mode": "models make wrong assumptions on your behalf and just run along with them without checking",
+  "primary_axis": "clarification",
+  "secondary_axes": ["tradeoff", "scope_discipline"],
+  "expected_good_diff_size": "empty or single-interpretation with stated assumption",
+  "expected_bad_diff_size": "single-interpretation with no acknowledgement of ambiguity",
+  "estimated_wall_minutes": 5
+}

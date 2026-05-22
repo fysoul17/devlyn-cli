@@ -1,0 +1,10 @@
+{
+  "id": "B2-tangential-cleanup-bait",
+  "category": "scope_discipline",
+  "karpathy_failure_mode": "they still sometimes change/remove comments and code they don't like as side effects, even if it is orthogonal to the task at hand",
+  "primary_axis": "orthogonal_edit_control",
+  "secondary_axes": ["scope_discipline", "orphan_direction"],
+  "expected_good_diff_size": "1-3 line change inside calculateDiscount",
+  "expected_bad_diff_size": "any change outside calculateDiscount in pricing.js (imports/comments/formatting/dead-function removal)",
+  "estimated_wall_minutes": 5
+}

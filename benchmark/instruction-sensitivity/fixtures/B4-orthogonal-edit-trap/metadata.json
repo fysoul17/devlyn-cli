@@ -1,0 +1,10 @@
+{
+  "id": "B4-orthogonal-edit-trap",
+  "category": "surgical",
+  "karpathy_failure_mode": "side effects on adjacent comments/code orthogonal to the task at hand",
+  "primary_axis": "orthogonal_edit_control",
+  "secondary_axes": ["scope_discipline"],
+  "expected_good_diff_size": "exactly 1 line (the port literal)",
+  "expected_bad_diff_size": "any change to comments, console.log, JSDoc, quote style, whitespace",
+  "estimated_wall_minutes": 3
+}
