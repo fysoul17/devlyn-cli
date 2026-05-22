@@ -6,7 +6,7 @@ devlyn-cli installs `/devlyn:ideate` (optional) and `/devlyn:resolve` (required)
 
 Seven rules govern every change. Cite them by name when a decision touches one.
 
-1. **No workaround** — fix the root cause, never the symptom. No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded fallback that hides a broken contract. Configuration-level skips that bypass the real issue are also rejects.
+1. **No workaround** — fix the root cause, never the symptom. Blocked patterns: `any`, `@ts-ignore`, silent `catch`, hardcoded fallback hiding a broken contract, config-level skip bypassing the real issue, helper script that routes around it. **Permitted exceptions** (widely-accepted defaults only): CSS fallback fonts, CDN failover, image placeholders. **No engine-availability fallback** for `/devlyn:resolve` pair/risk-probe routes — if Codex or Claude is required and unavailable, stop with `BLOCKED:codex-unavailable` or `BLOCKED:claude-unavailable` and setup guidance. `--no-pair` / `--no-risk-probes` are explicit user opt-outs, not fallbacks.
 2. **No overengineering** — smallest change that closes the goal. New abstractions require an observed failure mode they prevent. Subtractive-first: ask "what can I delete instead?" before writing anything new.
 3. **No guesswork** — verify with the actual files, logs, diffs, and run output before forming conclusions. State the falsifiable prediction BEFORE the experiment; record raw results AFTER. Retroactive prediction edits are dishonest.
 4. **Worldclass** — code that survives review at a non-trivial codebase. Zero CRITICAL, zero HIGH security/design findings on the shippable path.
@@ -17,7 +17,7 @@ Seven rules govern every change. Cite them by name when a decision touches one.
 Three discipline rules govern HOW the principles are applied:
 
 - **Root cause via flexible why-chain.** Keep asking "why?" until you find the violated invariant. **If the answer surfaces in 2 questions, stop.** If it takes 5 or 7, keep going. Strict counts are wrong; until-found is right.
-- **First-principles thinking.** Challenge the requirement before optimizing the answer. Most "we have to do X" assumptions are habit, not necessity. Reduce the problem to its irreducible truths and rebuild from there.
+- **First-principles thinking.** Challenge the requirement before optimizing the answer. Surface unstated assumptions, ambiguities, tradeoffs, and simpler alternatives BEFORE implementing — do not silently pick one interpretation when multiple exist, do not hide confusion, push back when a simpler path is genuinely better. Most "we have to do X" assumptions are habit, not necessity. Reduce the problem to its irreducible truths and rebuild from there.
 - **Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away.** — Saint-Exupéry. This is the operating definition of "done." A change is finished when no further line, branch, flag, or doc paragraph can be removed without breaking a learned failure mode. Not before.
 
 The runtime sub-agent contract below (Subtractive-first / Goal-locked / No-workaround discipline / Evidence over claim) expands these principles into concrete operational tests. Sub-agents in `/devlyn:resolve` and `/devlyn:ideate` enforce them at every phase.
@@ -44,7 +44,7 @@ Each skill's `SKILL.md` is the source of truth for its flags and workflow — do
 ### Subtractive-first editing — perfection = nothing left to remove
 <!-- runtime-principles:section=subtractive-first:begin -->
 
-> "Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away." — Saint-Exupéry. **This is the operating definition of "done" in this repo.** A change is finished when no further line, branch, flag, or doc paragraph can be removed without breaking a learned failure mode. Not before.
+> **Operating definition of "done" in this repo** (Saint-Exupéry discipline rule above): a change is finished when no further line, branch, flag, or doc paragraph can be removed without breaking a learned failure mode. Not before.
 
 This rule overrides instinct. LLMs (including you) are trained on corpora that reward elaborate, defensive, "thorough" code — so the default impulse is to add. That impulse is wrong here. Read the rules below as hard tests, not aesthetic preferences. They are not optional, not negotiable, and not satisfiable by writing more careful additions.
 
@@ -86,8 +86,8 @@ This rule exists because LLMs (including you) are trained to be helpful, compreh
 
 **The five drift patterns you must refuse to execute on:**
 
-1. **Unrequested work.** "While I'm here, I noticed X is broken/ugly/inefficient" → **stop**. The user did not ask for X. If X is a real defect, surface it as a finding, a follow-up suggestion, or an entry in a TODO list — do NOT fix it inside the current change. Mixing unrequested work with requested work is what makes diffs unreviewable and PRs eternal.
-2. **Tangential cleanup.** "This file looks messy, let me also tidy..." → **stop**. The current task is the only task. Unrelated cleanup is a separate change requiring its own justification, scope, and pre-flight 0 check.
+1. **Unrequested work.** "While I'm here, I noticed X is broken/ugly/inefficient" → **stop**. The user did not ask for X. If X is a real defect, surface it as a finding, a follow-up suggestion, or an entry in a TODO list — do NOT fix it inside the current change. Mixing unrequested work with requested work is what makes diffs unreviewable and PRs eternal. **Pre-existing dead code → mention only, do NOT delete; orphans YOUR change created (now-unused imports, variables, functions) → clean them up.**
+2. **Tangential cleanup.** "This file looks messy, let me also tidy..." → **stop**. The current task is the only task. Unrelated cleanup is a separate change requiring its own justification, scope, and pre-flight 0 check. **Match existing style even if you'd write it differently; do NOT touch comments, formatting, or code orthogonal to your real change** — silent side-effects on neighboring lines are the most common Karpathy-observed regression class.
 3. **Speculative robustness.** "Just adding a check / fallback / handler for the case where..." → **stop**. If the case has not been observed (in production, in tests, in a finding), it does not belong in this change. Defensive code added for unobserved cases is the most common form of accretion debt — it never gets removed because nobody can prove the case never happens.
 4. **Re-scoping mid-flight.** "Actually, the better way to do this is to also restructure / rename / migrate..." → **stop**. If you discover the requested approach is wrong, surface that to the user with evidence and let them adjudicate. Do NOT silently expand scope. The user's explicit redirect is the only authorization to enlarge a task.
 5. **Curiosity detours.** "Let me also explore how Y works to understand this better..." → **stop**, unless Y is provably on the goal's critical path. Curiosity-driven exploration is creative-mode; default is execution-mode.
@@ -116,16 +116,6 @@ This rule exists because LLMs (including you) are trained to be helpful, compreh
 - **Fallbacks are the exception.** Only use them when it's a widely accepted best practice (CSS fallback fonts, CDN failover, image placeholders). Otherwise handle the error explicitly.
 - **Pattern**: `try { doThing() } catch (error) { showErrorUI(error) }` — NOT `try { doThing() } catch { return fallbackValue }`.
 
-### No-workaround discipline (runtime salience)
-<!-- runtime-principles:section=no-workaround:begin -->
-
-No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scripts that bypass the root cause. Fix root causes; handle errors with user-visible state per the rule above.
-
-**Permitted exceptions** (explicitly carved out):
-- CSS fallback fonts, CDN failover, image placeholders — widely-accepted best practices.
-- No engine-availability fallback is permitted for `/devlyn:resolve` pair/risk-probe routes. If Codex or Claude is required and unavailable, the run stops with `BLOCKED:codex-unavailable` or `BLOCKED:claude-unavailable` plus setup guidance. `--no-pair` / `--no-risk-probes` are explicit user opt-outs, not fallbacks.
-<!-- runtime-principles:section=no-workaround:end -->
-
 ### Evidence over claim
 <!-- runtime-principles:section=evidence:begin -->
 
@@ -152,9 +142,9 @@ When `/devlyn:resolve` or `/devlyn:ideate` route a phase to Codex (`--engine cod
 
 ## Skill Boundary Policy
 
-Post iter-0034 Phase 4 cutover (2026-05-04) the runtime pipeline surface is two skills — `/devlyn:resolve` and `/devlyn:ideate` — plus the required creative UI exploration surface `/devlyn:design-ui`. `/devlyn:resolve` runs PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY inline; verification, cleanup, and security review (delegated to the native `security-review` Claude Code skill from BUILD_GATE) all live inside the pipeline. There are no standalone `/devlyn:review`, `/devlyn:evaluate`, `/devlyn:team-resolve`, etc. surfaces to delegate to — those skills were folded into resolve's phases or removed in iter-0034. `/devlyn:design-ui` is the unified creative UI exploration surface — it spawns a 5-specialist design team (Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer) by default for any N. The legacy `/devlyn:team-design-ui` was merged into it on 2026-05-14 and its directory deleted; `/devlyn:design-system` was removed outright the same day. The `/devlyn:reap` optional skill lives in `optional-skills/` and is user-invoked only; resolve never delegates to it.
+The runtime pipeline surface is two skills — `/devlyn:resolve` and `/devlyn:ideate` — plus `/devlyn:design-ui` for creative UI exploration. `/devlyn:resolve` runs PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY inline; verification, cleanup, and security review (delegated to the native `security-review` Claude Code skill from BUILD_GATE) all live inside the pipeline. There are no standalone `/devlyn:review`, `/devlyn:evaluate`, or `/devlyn:team-resolve` surfaces. `/devlyn:design-ui` spawns a 5-specialist design team (Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer). `/devlyn:reap` is an optional user-invoked skill in `optional-skills/`; resolve never delegates to it.
 
-Browser validation routes through `_shared/browser-runner.sh` (Chrome MCP → Playwright → curl tier) directly from BUILD_GATE — there is no separate `/devlyn:browser-validate` skill at HEAD.
+Browser validation runs directly from BUILD_GATE using whichever toolchain is available (Chrome MCP, Playwright, or curl-tier fallback) — there is no separate `/devlyn:browser-validate` skill.
 
 ## Communication Style
 

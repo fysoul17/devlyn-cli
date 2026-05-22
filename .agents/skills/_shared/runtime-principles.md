@@ -2,13 +2,13 @@
 
 The runtime contract every sub-agent inside `/devlyn:resolve` (PLAN / IMPLEMENT / BUILD_GATE / CLEANUP / VERIFY) and `/devlyn:ideate` must satisfy. Source of truth for sub-agent behavior on user tasks. NOT for autoresearch-loop / harness-developer concerns (see `autoresearch/PRINCIPLES.md`).
 
-The four sections below mirror the corresponding CLAUDE.md sections (Subtractive-first editing, Goal-locked execution, No-workaround discipline, Evidence over claim). Each section is wrapped in `<!-- runtime-principles:section=NAME:begin -->` / `:end -->` markers in BOTH this file and CLAUDE.md; lint Check 12 (added in iter-0019.A Step 5) extracts each named block from both files and diffs to detect drift.
+The three sections below mirror the corresponding CLAUDE.md sections (Subtractive-first editing, Goal-locked execution, Evidence over claim). No-workaround discipline lives in CLAUDE.md Core Principle #1 only — it does not have a runtime-mirror block. Each mirrored section is wrapped in `<!-- runtime-principles:section=NAME:begin -->` / `:end -->` markers in BOTH this file and CLAUDE.md; lint Check 12 extracts each named block from both files and diffs to detect drift.
 
 <!-- runtime-principles:contract:begin -->
 ## Subtractive-first editing — perfection = nothing left to remove
 <!-- runtime-principles:section=subtractive-first:begin -->
 
-> "Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away." — Saint-Exupéry. **This is the operating definition of "done" in this repo.** A change is finished when no further line, branch, flag, or doc paragraph can be removed without breaking a learned failure mode. Not before.
+> **Operating definition of "done" in this repo** (Saint-Exupéry discipline rule above): a change is finished when no further line, branch, flag, or doc paragraph can be removed without breaking a learned failure mode. Not before.
 
 This rule overrides instinct. LLMs (including you) are trained on corpora that reward elaborate, defensive, "thorough" code — so the default impulse is to add. That impulse is wrong here. Read the rules below as hard tests, not aesthetic preferences. They are not optional, not negotiable, and not satisfiable by writing more careful additions.
 
@@ -50,8 +50,8 @@ This rule exists because LLMs (including you) are trained to be helpful, compreh
 
 **The five drift patterns you must refuse to execute on:**
 
-1. **Unrequested work.** "While I'm here, I noticed X is broken/ugly/inefficient" → **stop**. The user did not ask for X. If X is a real defect, surface it as a finding, a follow-up suggestion, or an entry in a TODO list — do NOT fix it inside the current change. Mixing unrequested work with requested work is what makes diffs unreviewable and PRs eternal.
-2. **Tangential cleanup.** "This file looks messy, let me also tidy..." → **stop**. The current task is the only task. Unrelated cleanup is a separate change requiring its own justification, scope, and pre-flight 0 check.
+1. **Unrequested work.** "While I'm here, I noticed X is broken/ugly/inefficient" → **stop**. The user did not ask for X. If X is a real defect, surface it as a finding, a follow-up suggestion, or an entry in a TODO list — do NOT fix it inside the current change. Mixing unrequested work with requested work is what makes diffs unreviewable and PRs eternal. **Pre-existing dead code → mention only, do NOT delete; orphans YOUR change created (now-unused imports, variables, functions) → clean them up.**
+2. **Tangential cleanup.** "This file looks messy, let me also tidy..." → **stop**. The current task is the only task. Unrelated cleanup is a separate change requiring its own justification, scope, and pre-flight 0 check. **Match existing style even if you'd write it differently; do NOT touch comments, formatting, or code orthogonal to your real change** — silent side-effects on neighboring lines are the most common Karpathy-observed regression class.
 3. **Speculative robustness.** "Just adding a check / fallback / handler for the case where..." → **stop**. If the case has not been observed (in production, in tests, in a finding), it does not belong in this change. Defensive code added for unobserved cases is the most common form of accretion debt — it never gets removed because nobody can prove the case never happens.
 4. **Re-scoping mid-flight.** "Actually, the better way to do this is to also restructure / rename / migrate..." → **stop**. If you discover the requested approach is wrong, surface that to the user with evidence and let them adjudicate. Do NOT silently expand scope. The user's explicit redirect is the only authorization to enlarge a task.
 5. **Curiosity detours.** "Let me also explore how Y works to understand this better..." → **stop**, unless Y is provably on the goal's critical path. Curiosity-driven exploration is creative-mode; default is execution-mode.
@@ -71,16 +71,6 @@ This rule exists because LLMs (including you) are trained to be helpful, compreh
 
 **Stopping rule.** A task is done when the user's stated goal is closed AND no off-path work was added. If you find yourself hesitating because "I should also do Z" — Z is drift. Note it for follow-up, do not execute.
 <!-- runtime-principles:section=goal-locked:end -->
-
-## No-workaround discipline
-<!-- runtime-principles:section=no-workaround:begin -->
-
-No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scripts that bypass the root cause. Fix root causes; handle errors with user-visible state per the rule above.
-
-**Permitted exceptions** (explicitly carved out):
-- CSS fallback fonts, CDN failover, image placeholders — widely-accepted best practices.
-- No engine-availability fallback is permitted for `/devlyn:resolve` pair/risk-probe routes. If Codex or Claude is required and unavailable, the run stops with `BLOCKED:codex-unavailable` or `BLOCKED:claude-unavailable` plus setup guidance. `--no-pair` / `--no-risk-probes` are explicit user opt-outs, not fallbacks.
-<!-- runtime-principles:section=no-workaround:end -->
 
 ## Evidence over claim
 <!-- runtime-principles:section=evidence:begin -->

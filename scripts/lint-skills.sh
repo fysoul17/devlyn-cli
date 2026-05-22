@@ -3773,14 +3773,16 @@ fi
 # must mirror the corresponding CLAUDE.md sections. Drift in one source-of-truth without
 # the other produces silent behavioral divergence between session-level and sub-agent
 # enforcement. Per-section markers `<!-- runtime-principles:section=NAME:begin/end -->`
-# wrap each of the 4 sections (subtractive-first, goal-locked, no-workaround, evidence)
-# in BOTH files. Check 12 extracts each named block from both files and diffs.
+# wrap each of the 3 mirrored sections (subtractive-first, goal-locked, evidence)
+# in BOTH files. No-workaround discipline lives in CLAUDE.md Core Principle #1
+# only and is not mirrored to runtime-principles.md.
+# Check 12 extracts each named block from both files and diffs.
 # ---------------------------------------------------------------------------
 section "Check 12: CLAUDE.md ↔ runtime-principles.md per-section excerpt parity"
 rp_src="config/skills/_shared/runtime-principles.md"
 claude_src="CLAUDE.md"
 rp_drift=0
-expected_sections="subtractive-first goal-locked no-workaround evidence"
+expected_sections="subtractive-first goal-locked evidence"
 
 if [ ! -f "$rp_src" ]; then
   bad "$rp_src — missing"
@@ -3859,7 +3861,7 @@ else
   fi
 
   if [ $rp_drift -eq 0 ]; then
-    ok "all 4 contract sections in parity (subtractive-first / goal-locked / no-workaround / evidence) — markers, topology, content"
+    ok "all 3 mirrored contract sections in parity (subtractive-first / goal-locked / evidence) — markers, topology, content"
   fi
 fi
 

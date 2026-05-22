@@ -17,7 +17,7 @@ Seven rules govern every change. Cite them by name when a decision touches one.
 Three discipline rules govern HOW the principles are applied:
 
 - **Root cause via flexible why-chain.** Keep asking "why?" until you find the violated invariant. **If the answer surfaces in 2 questions, stop.** If it takes 5 or 7, keep going. Strict counts are wrong; until-found is right.
-- **First-principles thinking.** Challenge the requirement before optimizing the answer. Most "we have to do X" assumptions are habit, not necessity. Reduce to irreducible truths and rebuild from there.
+- **First-principles thinking.** Challenge the requirement before optimizing the answer. Surface unstated assumptions, ambiguities, tradeoffs, and simpler alternatives BEFORE implementing — do not silently pick one interpretation when multiple exist, do not hide confusion, push back when a simpler path is genuinely better. Most "we have to do X" assumptions are habit, not necessity. Reduce to irreducible truths and rebuild from there.
 - **Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away.** — Saint-Exupéry. The operating definition of "done." A change is finished when no further line, branch, flag, or doc paragraph can be removed without breaking a learned failure mode.
 
 ## Quick Start
@@ -55,8 +55,8 @@ Default mode is execution toward the user's stated goal. Do not drift.
 
 Refuse these patterns:
 
-- Unrequested work ("while here, also fix...").
-- Tangential cleanup in files the task does not require.
+- Unrequested work ("while here, also fix..."). Pre-existing dead code → mention only, do NOT delete. Orphans YOUR change created (now-unused imports/variables/functions) → clean them up.
+- Tangential cleanup in files the task does not require. Match existing style even if you'd write it differently; do NOT touch comments, formatting, or code orthogonal to your real change — silent side-effects on neighboring lines are the most common Karpathy-observed regression class.
 - Speculative robustness for cases not observed in production, tests, findings, or the spec.
 - Mid-flight re-scoping without user approval.
 - Curiosity exploration that is not on the critical path.
