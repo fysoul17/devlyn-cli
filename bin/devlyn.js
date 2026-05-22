@@ -558,64 +558,66 @@ function installSkillsForCLI(cliKey) {
 function installAgentsForCLI(cliKey) {
   const cli = CLI_TARGETS[cliKey];
   if (!cli) return false;
-  if (!fs.existsSync(AGENTS_SOURCE)) return false;
 
-  const agents = fs.readdirSync(AGENTS_SOURCE).filter((f) => f.endsWith('.md'));
-  if (agents.length === 0) return false;
+  const agents = fs.existsSync(AGENTS_SOURCE)
+    ? fs.readdirSync(AGENTS_SOURCE).filter((f) => f.endsWith('.md'))
+    : [];
 
-  log(`\n🤖 Installing agents for ${cli.name}...`, 'cyan');
+  if (agents.length > 0) {
+    log(`\n🤖 Installing agents for ${cli.name}...`, 'cyan');
 
-  if (cli.configDir) {
-    // CLI supports an agents directory — copy agent files there
-    const destDir = path.join(process.cwd(), cli.configDir);
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
-    }
-    for (const file of agents) {
-      const src = path.join(AGENTS_SOURCE, file);
-      const dest = path.join(destDir, file);
-      fs.copyFileSync(src, dest);
-      log(`  → ${cli.configDir}/${file}`, 'dim');
-    }
-  } else {
-    // CLI uses a single instructions file — append agent content
-    const destFile = path.join(process.cwd(), cli.instructionsFile);
-    const separator = '\n\n---\n\n# Devlyn Agent Instructions\n\n';
-    const agentContent = agents.map((file) => {
-      return fs.readFileSync(path.join(AGENTS_SOURCE, file), 'utf8');
-    }).join('\n\n---\n\n');
-
-    let existing = '';
-    if (fs.existsSync(destFile)) {
-      existing = fs.readFileSync(destFile, 'utf8');
-      // Remove previous devlyn agent section if present
-      const devlynMarker = '# Devlyn Agent Instructions';
-      const markerIdx = existing.indexOf(devlynMarker);
-      if (markerIdx > 0) {
-        // Find the separator before the marker (---\n\n)
-        const sepIdx = existing.lastIndexOf('---', markerIdx);
-        existing = existing.slice(0, sepIdx > 0 ? sepIdx : markerIdx).trimEnd();
+    if (cli.configDir) {
+      // CLI supports an agents directory — copy agent files there
+      const destDir = path.join(process.cwd(), cli.configDir);
+      if (!fs.existsSync(destDir)) {
+        fs.mkdirSync(destDir, { recursive: true });
       }
-    } else if (cli.baseInstructionsFile) {
-      const baseInstructionsSrc = path.join(__dirname, '..', cli.baseInstructionsFile);
-      if (fs.existsSync(baseInstructionsSrc)) {
-        existing = fs.readFileSync(baseInstructionsSrc, 'utf8').trimEnd();
+      for (const file of agents) {
+        const src = path.join(AGENTS_SOURCE, file);
+        const dest = path.join(destDir, file);
+        fs.copyFileSync(src, dest);
+        log(`  → ${cli.configDir}/${file}`, 'dim');
       }
-    }
+    } else {
+      // CLI uses a single instructions file — append agent content
+      const destFile = path.join(process.cwd(), cli.instructionsFile);
+      const separator = '\n\n---\n\n# Devlyn Agent Instructions\n\n';
+      const agentContent = agents.map((file) => {
+        return fs.readFileSync(path.join(AGENTS_SOURCE, file), 'utf8');
+      }).join('\n\n---\n\n');
 
-    fs.writeFileSync(destFile, existing + separator + agentContent + '\n');
-    log(`  → ${cli.instructionsFile} (agent instructions appended)`, 'dim');
+      let existing = '';
+      if (fs.existsSync(destFile)) {
+        existing = fs.readFileSync(destFile, 'utf8');
+        // Remove previous devlyn agent section if present
+        const devlynMarker = '# Devlyn Agent Instructions';
+        const markerIdx = existing.indexOf(devlynMarker);
+        if (markerIdx > 0) {
+          // Find the separator before the marker (---\n\n)
+          const sepIdx = existing.lastIndexOf('---', markerIdx);
+          existing = existing.slice(0, sepIdx > 0 ? sepIdx : markerIdx).trimEnd();
+        }
+      } else if (cli.baseInstructionsFile) {
+        const baseInstructionsSrc = path.join(__dirname, '..', cli.baseInstructionsFile);
+        if (fs.existsSync(baseInstructionsSrc)) {
+          existing = fs.readFileSync(baseInstructionsSrc, 'utf8').trimEnd();
+        }
+      }
+
+      fs.writeFileSync(destFile, existing + separator + agentContent + '\n');
+      log(`  → ${cli.instructionsFile} (agent instructions appended)`, 'dim');
+    }
   }
 
-  // If this CLI also supports a global skill-loader (currently Codex), install
-  // devlyn:resolve + devlyn:ideate + devlyn:design-ui + _shared. Codex invokes
-  // these as skills (for example `$devlyn:resolve`), not Claude slash commands.
+  // Always install global skills (Codex-style skill loader) regardless of
+  // whether agent files were present. Agent install and skill install are
+  // independent capabilities.
   const skillsCopied = installSkillsForCLI(cliKey);
   if (skillsCopied > 0) {
     log(`  → ${skillsCopied} skill${skillsCopied > 1 ? 's' : ''} installed (devlyn:resolve / devlyn:ideate / devlyn:design-ui / _shared)`, 'dim');
   }
 
-  return true;
+  return agents.length > 0 || skillsCopied > 0;
 }
 
 function installAgentsForAllDetected() {
