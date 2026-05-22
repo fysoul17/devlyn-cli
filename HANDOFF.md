@@ -2,7 +2,7 @@
 
 **Read this first if you are picking up the Lane B benchmark work cold.**
 
-Updated: 2026-05-22. Owner: Terry K. Last completed step: Day 2 — full pipeline built, first measurement run, B4-noise disproven, 4 hard fixtures added, measurement-harness defect found and partially fixed. **Day 3 opens with a required driver rewrite — see the CRITICAL section.**
+Updated: 2026-05-22. Owner: Terry K. Last completed step: **Day 3 step 0 — driver rewrite IMPLEMENTED** (3 new scripts + RUNBOOK.md, Codex-reviewed REWORK→SHIP). Next: the USER starts the clean `claude --bare` session and runs the measurement per `benchmark/instruction-sensitivity/RUNBOOK.md`.
 
 ## What this is
 
@@ -12,69 +12,40 @@ Design docs already on disk — don't re-derive:
 1. `benchmark/README.md` — two-lane hub
 2. `benchmark/instruction-sensitivity/README.md` — Lane B overview + I/O contract
 3. `benchmark/instruction-sensitivity/RUBRIC.md` — instruction-blind judge prompt
-4. This file — status, findings, the driver-rewrite plan
+4. `benchmark/instruction-sensitivity/RUNBOOK.md` — **authoritative Day-3 driver operations doc** (§A setup → §E judge/score)
+5. This file — status, findings, the driver-rewrite record
 
-## CRITICAL — the driver must be rewritten before any further measurement
+## Day-3 driver — REWRITTEN (step 0 done)
 
-**`claude -p` is no longer usable as the measurement driver.** As of 2026-05-22 the user reports that `claude -p` (Claude Code CLI headless mode) is billed as separate API usage and is NOT covered by the Claude subscription. Every Day-2 measurement used `claude -p`; that path is closed for cost reasons.
+`claude -p` is retired as the driver — it is billed as separate API usage, not
+subscription-covered, and every Day-2 measurement used it. The model under test
+now runs as an **Agent (subagent)** spawned from a clean, isolated `claude
+--bare` session whose harness directory has no `CLAUDE.md`; instruction text
+reaches each arm only via a bundle injected by prompt. (Measuring inside a
+devlyn-cli session is structurally impossible: a non-fork subagent auto-loads
+the parent's `CLAUDE.md`, so the baseline arm would see candidate text.)
 
-The only subscription-covered way to run the model-under-test is **inside a live Claude Code session, via the Agent (subagent) tool**. A future session cannot shell out to `claude -p` and cannot spin up an external Claude instance.
+**On disk now** — `benchmark/instruction-sensitivity/`:
+- `RUNBOOK.md` — **authoritative** operations doc (USER setup → judge/score). Read it, don't re-derive from §A–§G.
+- `scripts/build-bundle.py` — ref → instruction bundle (`bundle.md` + manifest).
+- `scripts/prepare-run.py` — bundles + slot_map + workspace scaffolding + fail-closed gate → v2 manifest.
+- `scripts/capture-arm.py` — post-subagent capture (diff/transcript/meta + detector + hidden-verify).
+- `extract-transcript.py` + `run-fixture.sh` + `run-compare.sh` are the retired `claude -p` driver — kept for reference, do not extend.
+- The judge/score pipeline (`build-judge-input.py` → `judge-blind.sh` → `append-judge-row.py` → `score-behavior.py`) is UNCHANGED and works in the harness because the harness mirrors the repo's `benchmark/instruction-sensitivity/` path layout.
 
-Codex confirmed the failure mode: a non-fork subagent **auto-loads the parent session's `CLAUDE.md` + memory hierarchy at start** (Explore/Plan are the only exceptions). This session runs *inside* devlyn-cli, whose current `CLAUDE.md` already contains the Karpathy-gap (candidate) text — so measuring here would let the baseline arm see candidate text via the parent. **Measurement inside a devlyn-cli session is structurally impossible.**
+**Deviations from the converged §A–§G spec** (RUNBOOK.md supersedes §A–§G):
+1. Harness MIRRORS the `benchmark/instruction-sensitivity/` tree (not §A's flat `$HARNESS/{...}`) — the unchanged judge scripts resolve repo-root via `parents[3]`; a flat layout breaks fixture resolution.
+2. `build-bundle.py` runs in USER setup, not the clean session — keeps the clean session 100% devlyn-isolated.
+3. No `extract-transcript-v2.py` — transcript = subagent final message verbatim, written by `capture-arm.py`; `[FIRST_TURN]/[LAST_TURN]` markers dropped (a `claude -p` multi-turn artifact).
+4. `prepare-run.py` scaffolds all fixture-arm workspaces up front.
+5. Model pin: the parent session is launched `--model claude-sonnet-4-6` and Agent calls OMIT `model` so subagents inherit it — the Agent tool's `model` param is an alias-only enum and cannot take the full ID. RUNBOOK §C adds a parent-model self-check gate.
+6. `exec_order` randomization uses an independent seed (`run_id:fixture:exec`), decoupled from the A/B judge-slot seed.
+7. `build-bundle.py` FAIL-CLOSES on any `@import` that resolves at the ref (inline expansion unimplemented) instead of recursive append — both real refs have zero resolvable imports, so `bundle.md` == `CLAUDE.md` verbatim.
+8. Workspaces are opaque OS-temp git repos outside the harness tree (no arm identity in the path; manifest/other-bundle unreachable by walking up). Subagent prompt uses neutral wording — no "implement minimally" (would coach the `anti_overengineering` axis).
 
-## Day-3 driver rewrite — full implementation spec (Codex Round 4+5, converged)
+**Codex review**: Round 1 → REWORK (2 CRITICAL — arm identity leaked via workspace path; subagent could walk up to the manifest and read both bundles — plus 4 HIGH/MED/LOW). All 6 fixed (deviations 7+8 above). Round 2 → **SHIP**.
 
-The judge/score pipeline survives unchanged (`build-judge-input.py` → `judge-blind.sh` → `append-judge-row.py` → `score-behavior.py`, all keyed off the arm-dir contract `diff.patch` + `transcript.txt`). Only the **model-execution + capture step** is replaced. `run-fixture.sh` / `run-compare.sh` are retired.
-
-Key reversal from Day 2: **`claude --bare` is now REQUIRED, not forbidden.** Day-2 banned `--bare` because it disables `CLAUDE.md` auto-discovery — but the old driver depended on auto-load. The new driver injects instruction text by prompt, so auto-discovery is pure contamination; `--bare` (disables CLAUDE.md auto-discovery + auto-memory) is the contamination guard.
-
-### A. Clean-dir harness setup (the USER starts this session)
-```bash
-HARNESS=/tmp/laneb-harness
-mkdir -p "$HARNESS"/{fixtures,bundles,runs,tools,logs}
-cp -R /Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/instruction-sensitivity/fixtures "$HARNESS/"
-# copy the surviving helper scripts into $HARNESS/tools/ too
-unset CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD
-cd "$HARNESS"
-claude --bare --strict-mcp-config --mcp-config '{"mcpServers":{}}'
-```
-The harness dir has NO `CLAUDE.md`. Subagents spawned from this session inherit the same clean baseline. `--bare` is the load-bearing flag; `--setting-sources` is not the guard (add `--setting-sources local` only if needed).
-
-### B. Orchestration form
-`runbook + harness helper scripts`, NOT a devlyn-repo skill (a skill would re-introduce a devlyn project-context load path = contamination). The clean session's Claude reads a RUNBOOK and: (1) runs `prepare-run` (manifest + slot_map), (2) loops fixture×arm spawning subagents, (3) calls `judge-blind.sh` + `score-behavior.py`.
-
-### C. Subagent call
-- Model pin: **`claude-sonnet-4-6`** (full name, NOT the `sonnet` alias — alias drifts).
-- `subagent_type: general-purpose` (Explore/Plan skip CLAUDE load but can't edit).
-- Prompt template per arm:
-  ```
-  [ROLE] You are a lane-b measurement worker for one fixture arm.
-  [INSTRUCTIONS_BUNDLE] <bundle text verbatim>
-  [TASK] Fixture / Arm / Ref / Workspace(abs path)
-   1) cd to Workspace  2) read task.txt + spec.md  3) implement minimally
-   4) run the fixture's verification commands  5) output FINAL_SUMMARY,
-      FILES_CHANGED, VERIFY_RESULT. No unrelated edits.
-  ```
-- diff capture: orchestrator does before/after git snapshot in the arm workdir (`git add -A && git diff <scaffold-sha>`), NOT the subagent.
-- **AskUserQuestion note**: the subagent cannot call AskUserQuestion (non-interactive). The prompt must say so *neutrally* — "the AskUserQuestion tool is unavailable here; if the task is ambiguous, follow your INSTRUCTIONS_BUNDLE" — do NOT tell it to write questions (that would coach the clarification behavior being measured). Clarification then surfaces as text in FINAL_SUMMARY or not at all.
-
-### D. `build-bundle.py` (new script)
-Input `--repo-root --ref --out`. Steps: load `git show <ref>:CLAUDE.md`; recursively expand `@path` imports (max depth 5, dedup by normalized path); append `.claude/rules/**/*.md` if present (devlyn HEAD has none — verified). Output `bundles/<ref>/bundle.md` + `bundle.manifest.json` (`files[]`, `sha256`, `ref`). Inject the whole `bundle.md` text into the `[INSTRUCTIONS_BUNDLE]` slot.
-
-### E. Contamination gate (run once per run-id, before any arm)
-In the clean session run `/memory`; if the output lists ANY path under `devlyn-cli/`, **abort** and write `runs/<run-id>/gate-fail.json`. Also abort if `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD` is set. This is the fastest single proof the harness is clean.
-
-### F. Capture + reproducibility
-Arm-dir contract unchanged: `runs/<run-id>/arms/<arm>/<fixture>/{diff.patch,transcript.txt,transcript.meta.json,meta.json}`. transcript = subagent final message, saved by the orchestrator (no `claude.raw.json` in the new driver — `extract-transcript.py` becomes optional or is replaced by an `extract-transcript-v2.py` that keeps the `[FIRST_TURN]/[LAST_TURN]` format). Manifest extends the v1 schema with: `execution_mode:"clean_harness_subagent"`, `model_pin`, `bundle_sha_old`, `bundle_sha_new`, `fixture_pack_sha`, `slot_map`, `canary_gate`, `memory_log_paths[]`. Save `/memory` output to `runs/<run-id>/logs/memory-preflight.txt`.
-
-### G. Trap mitigations
-1. auto-memory leak → `--bare` + the §E `/memory` gate.
-2. `ADDITIONAL_DIRECTORIES_CLAUDE_MD` → `unset` it; no `--add-dir` during runs.
-3. model alias drift → pin `claude-sonnet-4-6`; record actual `modelUsage` in meta.
-4. background-subagent nondeterminism → foreground only, one fixture-arm at a time, no parallel fan-out.
-5. prompt-cache timing bias → randomize arm order (seed `run_id:fixture`), fixed 10s sleep between old/new of the same fixture.
-
-**Day 3 step 0 is: implement A–G, then run the §E gate, then measure.** Do not measure on the old `claude -p` driver.
+**Day 3 step 0 is DONE.** Next: the USER starts the clean `claude --bare` session and runs the measurement per RUNBOOK.md. Do not measure on the old `claude -p` driver.
 
 ## Day 2 — what shipped (committed)
 
@@ -125,8 +96,8 @@ This commit: `extract-transcript.py` now captures `permission_denials` AskUserQu
 
 ## Day 3 plan
 
-0. **Driver rewrite (BLOCKING — do first). The design is done** — implement spec §A–§G above. New scripts: `build-bundle.py` (§D), an orchestration RUNBOOK (§B), `extract-transcript-v2.py` (§F). The USER must start the clean-dir `claude --bare` session (§A) — Claude cannot start it. Run the §E contamination gate before any measurement.
-1. **Re-measure on the new driver.** B1–B6 + H1a (the accepted hard fixture). Compare against the Day-2 `claude -p` numbers to see if the driver change shifts results.
+0. ✓ **Driver rewrite — DONE.** 3 scripts + RUNBOOK.md on disk, self-tested, Codex REWORK→SHIP. See the "Day-3 driver — REWRITTEN" section above.
+1. **Re-measure on the new driver.** USER starts the clean `claude --bare` session and follows RUNBOOK.md: B1–B6 + H1a (the accepted hard fixture). Compare against the Day-2 `claude -p` numbers to see if the driver change shifts results.
 2. **Fix the clarification fixtures.** H1a/H1b task wording must trigger questioning — add an evaluative/ambiguous word, or restructure so the model cannot proceed without a policy decision. Re-run the pilot gate after.
 3. **Reconsider H2/H3.** Both ceiling-saturated. Either redesign harder, or accept "sonnet is instruction-insensitive on orphan/orthogonal" as the finding and retire them.
 4. **15-sample human audit** (carried over from Day 2). Calibrate the rubric; log disagreements to `judge-calibration.jsonl`.
@@ -150,10 +121,8 @@ This commit: `extract-transcript.py` now captures `permission_denials` AskUserQu
 ls benchmark/instruction-sensitivity/fixtures/{B,H}*/ -d | wc -l        # 10 fixtures
 ls benchmark/instruction-sensitivity/fixtures/H*/hidden/verify.sh | wc -l   # 4
 
-# Canary — confirm a driver loads the instruction text the way you expect
-# (re-run this as a sanity check after the driver rewrite, adapted to the subagent path)
-
-# DO NOT run run-compare.sh / run-fixture.sh — they use the retired claude -p driver.
+# Day-3 measurement is driven by RUNBOOK.md §A onward — start there, not here.
+# DO NOT run run-compare.sh / run-fixture.sh — retired claude -p driver.
 ```
 
 ## Known issues to surface, not solve

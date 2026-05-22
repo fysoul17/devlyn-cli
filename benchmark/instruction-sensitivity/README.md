@@ -81,35 +81,27 @@ Mechanical signals run first because they are cheap, reproducible, and tie-break
 
 ## How to run
 
-```bash
-BASE=<baseline-sha>
-CAND=<candidate-sha>
-RUN=is-$(date -u +%Y%m%dT%H%M%SZ)
+The Day-3 driver runs the model under test as a subagent inside a clean,
+isolated `claude --bare` session — `claude -p` is retired. The full operational
+procedure (USER setup → prepare-run → measurement loop → judge → score) is
+[`RUNBOOK.md`](RUNBOOK.md). Start there; do not run the retired
+`run-compare.sh` / `run-fixture.sh`.
 
-bash benchmark/instruction-sensitivity/scripts/run-compare.sh \
-  --baseline-ref "$BASE" --candidate-ref "$CAND" --run-id "$RUN" \
-  --fixtures B1-ambiguous-spec-clarify B2-tangential-cleanup-bait B3-sycophancy-probe \
-             B4-orthogonal-edit-trap B5-orphan-direction-trap B6-overengineering-bloat
-
-python3 benchmark/instruction-sensitivity/scripts/score-behavior.py \
-  --run-id "$RUN" \
-  --out-json benchmark/instruction-sensitivity/results/$RUN/behavior-score.json \
-  --out-md  benchmark/instruction-sensitivity/results/$RUN/behavior-score.md
-```
-
-Per-fixture cost: ~5–15 minutes wall (n=1, varies by fixture). 6 fixtures × 2 arms ≈ 60–180 minutes wall. n=2 stabilization roughly doubles it. Human audit (sample 15) adds ~60–90 minutes review.
+Per-fixture cost: ~5–15 minutes wall (varies by fixture). 7 fixtures × 2 arms,
+foreground and sequential, ≈ 1.5–4 hours wall. Human audit (sample 15) adds
+~60–90 minutes review.
 
 ## Status
 
 | Component | Status |
 |---|---|
-| Fixture specs (B1-B6) | Day 1 — skeleton + spec.md present |
+| Fixture specs (B1-B6 toy, H1a/H1b/H2/H3 hard) | present — 10 fixtures |
 | `scripts/detect-mechanical.py` | v0 — 4 of 8 signals implemented |
-| `scripts/judge-blind.sh` | v0 — skeleton (judge call wiring pending) |
-| `scripts/score-behavior.py` | v0 — skeleton (aggregation pending) |
-| `scripts/run-compare.sh` | v0 — skeleton (driver wiring pending) |
-| CLI integration (`devlyn-cli benchmark instruction`) | not wired (Day 3) |
-| Baseline-vs-candidate first measurement | not run (Day 2) |
-| Human audit calibration | not run (Day 3) |
+| Judge + score pipeline (`judge-blind.sh`, `build-judge-input.py`, `append-judge-row.py`, `score-behavior.py`) | wired (Day 2), unchanged by Day 3 |
+| Day-3 driver (`build-bundle.py`, `prepare-run.py`, `capture-arm.py`, `RUNBOOK.md`) | implemented, Codex-reviewed |
+| `run-fixture.sh` / `run-compare.sh` | retired `claude -p` driver — reference only |
+| CLI integration (`devlyn-cli benchmark instruction`) | not wired |
+| Baseline-vs-candidate measurement on the Day-3 driver | not yet run |
+| Human audit calibration | not run |
 
 See [`../README.md`](../README.md) for the two-lane decision rule and the corresponding Lane A entry points.
