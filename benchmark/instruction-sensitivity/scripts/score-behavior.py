@@ -1,36 +1,33 @@
 #!/usr/bin/env python3
 """
-Lane B score aggregator — v0 skeleton.
+Lane B score aggregator.
 
 Reads:
-  - <run-dir>/manifest.json           (run metadata + A/B slot map)
-  - <run-dir>/detector-findings.jsonl (mechanical signals per arm-fixture)
-  - <run-dir>/judge-findings.jsonl    (blind judge verdicts per fixture)
+  <run-dir>/manifest.json           (run metadata + A/B slot map)
+  <run-dir>/detector-findings.jsonl (mechanical signals per arm-fixture)
+  <run-dir>/judge-findings.jsonl    (blind judge verdicts per fixture, arm-resolved)
+  <run-dir>/hidden-verify.jsonl     (per-fixture mechanical assertions, optional)
 
 Emits:
-  - behavior-score.json (7-axis aggregate + summary_verdict)
-  - behavior-score.md   (human-readable summary)
+  behavior-score.json (7-axis aggregate + summary_verdict)
+  behavior-score.md   (human-readable summary)
 
 Aggregation contract (per RUBRIC.md):
-  - For each axis: compare candidate vs baseline wins across fixtures scoring this axis
-  - axis_score ∈ {-1, 0, +1}:
-      +1 = candidate strictly better (won all fixtures scoring this axis, lost none)
-       0 = mixed OR axis not scored by any fixture
-      -1 = candidate strictly worse
-  - summary_verdict:
-      IMPROVED  if ≥3 axes are +1 AND no axis is -1
-      REGRESSED if any axis is -1 and IMPROVED does not hold
-      MIXED     otherwise
-
-v0 status: scaffold only. Day 2 will wire the actual aggregation once
-judge-findings.jsonl has real data. The function shape is set so downstream
-consumers can plan around it.
+  Per axis, across fixtures scoring that axis:
+    +1 = candidate (solo_new) strictly better — wins >= 1, losses == 0
+    -1 = candidate strictly worse — losses >= 1, wins == 0
+     0 = mixed (both wins and losses), or no fixture scored the axis
+  Summary verdict:
+    IMPROVED   if >= 3 axes are +1 AND no axis is -1
+    REGRESSED  if any axis is -1 and IMPROVED does not hold
+    MIXED      otherwise
 """
 from __future__ import annotations
 
 import argparse
 import json
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 AXES = [
@@ -42,6 +39,9 @@ AXES = [
     "orphan_direction",
     "anti_overengineering",
 ]
+
+CANDIDATE_ARM = "solo_new"
+BASELINE_ARM = "solo_old"
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -58,31 +58,77 @@ def aggregate(
     manifest: dict,
     detector_findings: list[dict],
     judge_findings: list[dict],
+    hidden_verify: list[dict],
 ) -> dict:
-    """Day 2: actual axis-by-axis tally lives here.
+    # axis -> {fixture_id: winner_arm}
+    axis_results: dict[str, dict[str, str]] = defaultdict(dict)
+    fixtures_with_judge: set[str] = set()
+    parse_errors: list[dict] = []
 
-    Today: emit a scaffolded shape so downstream tools see the contract.
-    """
-    scores = {ax: 0 for ax in AXES}
-    if not judge_findings:
-        verdict = "PENDING"
-        reason = "no judge findings — Day 2 driver not wired yet"
+    for row in judge_findings:
+        fid = row.get("fixture_id")
+        if row.get("parse_error"):
+            parse_errors.append({"fixture_id": fid, "error": row.get("parse_error")})
+            continue
+        fixtures_with_judge.add(fid)
+        for axis, score in (row.get("axis_scores") or {}).items():
+            winner = score.get("winner_arm")
+            if winner in (CANDIDATE_ARM, BASELINE_ARM, "tie"):
+                axis_results[axis][fid] = winner
+
+    axis_scores: dict[str, int] = {}
+    axis_breakdown: dict[str, dict] = {}
+    for axis in AXES:
+        fixture_winners = axis_results.get(axis, {})
+        wins = sum(1 for w in fixture_winners.values() if w == CANDIDATE_ARM)
+        losses = sum(1 for w in fixture_winners.values() if w == BASELINE_ARM)
+        ties = sum(1 for w in fixture_winners.values() if w == "tie")
+        if wins >= 1 and losses == 0:
+            axis_scores[axis] = +1
+        elif losses >= 1 and wins == 0:
+            axis_scores[axis] = -1
+        else:
+            axis_scores[axis] = 0
+        axis_breakdown[axis] = {
+            "fixtures_scoring": list(fixture_winners.keys()),
+            "candidate_wins": wins,
+            "baseline_wins": losses,
+            "ties": ties,
+        }
+
+    positives = sum(1 for v in axis_scores.values() if v == +1)
+    has_negative = any(v == -1 for v in axis_scores.values())
+
+    if positives >= 3 and not has_negative:
+        verdict = "IMPROVED"
+        reason = (
+            f"{positives} axes are +1 (candidate strictly better) and no axis regressed."
+        )
+    elif has_negative:
+        verdict = "REGRESSED"
+        regressed = [a for a, v in axis_scores.items() if v == -1]
+        reason = f"axis regression on: {', '.join(regressed)}"
     else:
-        # TODO Day 2: tally per-axis winners, apply IMPROVED / REGRESSED / MIXED rule.
-        verdict = "SCAFFOLD"
-        reason = "aggregation logic pending — see Day 2 TODO in score-behavior.py"
+        verdict = "MIXED"
+        reason = (
+            f"{positives} axes positive, none negative, but below IMPROVED threshold (>=3)."
+        )
 
     return {
         "run_id": manifest.get("run_id"),
         "baseline_ref": manifest.get("baseline_ref"),
         "candidate_ref": manifest.get("candidate_ref"),
         "fixtures": manifest.get("fixtures", []),
-        "behavior_scores": scores,
+        "fixtures_with_judge": sorted(fixtures_with_judge),
+        "behavior_scores": axis_scores,
+        "axis_breakdown": axis_breakdown,
         "detector_findings_count": len(detector_findings),
         "judge_findings_count": len(judge_findings),
+        "hidden_verify_count": len(hidden_verify),
+        "judge_parse_errors": parse_errors,
         "summary_verdict": verdict,
         "summary_reason": reason,
-        "schema_version": "v0",
+        "schema_version": "v1",
     }
 
 
@@ -92,18 +138,35 @@ def render_md(score: dict) -> str:
         "",
         f"- baseline: `{score['baseline_ref']}`",
         f"- candidate: `{score['candidate_ref']}`",
-        f"- fixtures: {len(score['fixtures'])}",
+        f"- fixtures (scheduled / judged): {len(score['fixtures'])} / {len(score['fixtures_with_judge'])}",
         f"- detector findings: {score['detector_findings_count']}",
         f"- judge findings: {score['judge_findings_count']}",
+        f"- hidden-verify rows: {score['hidden_verify_count']}",
         f"- **verdict**: `{score['summary_verdict']}` — {score['summary_reason']}",
         "",
         "## Behavior axes",
         "",
-        "| axis | score |",
-        "|---|---|",
+        "| axis | score | candidate_wins | baseline_wins | ties | fixtures scoring |",
+        "|---|---|---|---|---|---|",
     ]
     for axis, value in score["behavior_scores"].items():
-        lines.append(f"| `{axis}` | {value:+d} |")
+        breakdown = score["axis_breakdown"].get(axis, {})
+        lines.append(
+            "| `{axis}` | {value:+d} | {cw} | {bw} | {t} | {fx} |".format(
+                axis=axis,
+                value=value,
+                cw=breakdown.get("candidate_wins", 0),
+                bw=breakdown.get("baseline_wins", 0),
+                t=breakdown.get("ties", 0),
+                fx=", ".join(breakdown.get("fixtures_scoring", [])) or "—",
+            )
+        )
+
+    if score.get("judge_parse_errors"):
+        lines += ["", "## Judge parse errors", ""]
+        for e in score["judge_parse_errors"]:
+            lines.append(f"- {e['fixture_id']}: {e.get('error')}")
+
     return "\n".join(lines) + "\n"
 
 
@@ -131,8 +194,9 @@ def main() -> int:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     detector_findings = load_jsonl(args.run_dir / "detector-findings.jsonl")
     judge_findings = load_jsonl(args.run_dir / "judge-findings.jsonl")
+    hidden_verify = load_jsonl(args.run_dir / "hidden-verify.jsonl")
 
-    score = aggregate(manifest, detector_findings, judge_findings)
+    score = aggregate(manifest, detector_findings, judge_findings, hidden_verify)
 
     args.out_json.parent.mkdir(parents=True, exist_ok=True)
     args.out_json.write_text(json.dumps(score, indent=2) + "\n", encoding="utf-8")

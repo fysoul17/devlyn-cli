@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
-# Instruction-blind judge caller — v0 skeleton.
+# Lane B instruction-blind judge caller.
 #
-# Reads two arm outputs (A and B, slot-randomized) for one fixture, builds the
-# judge prompt per benchmark/instruction-sensitivity/RUBRIC.md, calls the
-# judge LLM, and appends a JSONL row to judge-findings.jsonl.
+# Builds the judge input (task + spec + allowlist + A/B diff + transcripts),
+# invokes Codex CLI with strict JSON schema, resolves A/B back to arm identity
+# via manifest.slot_map, and appends one JSONL row to judge-findings.jsonl.
 #
-# Day 2 will wire an actual judge model call. For now this script validates
-# inputs and prints what the judge prompt WOULD look like.
+# Cross-model contract: the judge model (codex CLI default = gpt-5.3-codex)
+# differs from the model under test (claude). Do NOT change to a claude-family
+# judge — that re-introduces self-judgment bias.
 #
 # Usage:
 #   bash judge-blind.sh --run-dir <path> --fixture <id>
+#
+# Environment knobs:
+#   LANE_B_JUDGE_MODEL   optional, passed as codex `--model`. Default = codex CLI default.
+#   LANE_B_JUDGE_TIMEOUT_S  default 300.
 
 set -euo pipefail
 
@@ -30,29 +35,82 @@ if [[ -z "$RUN_DIR" || -z "$FIXTURE" ]]; then
 fi
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-FIXTURE_DIR="$REPO_ROOT/benchmark/instruction-sensitivity/fixtures/$FIXTURE"
-ARM_A="$RUN_DIR/arms/solo_old/$FIXTURE"  # placeholder pending randomization
-ARM_B="$RUN_DIR/arms/solo_new/$FIXTURE"
+LANE_ROOT="$REPO_ROOT/benchmark/instruction-sensitivity"
+FIXTURE_DIR="$LANE_ROOT/fixtures/$FIXTURE"
+JUDGE_SCHEMA="$LANE_ROOT/scripts/judge.schema.json"
+JUDGE_TIMEOUT="${LANE_B_JUDGE_TIMEOUT_S:-300}"
+JUDGE_REASONING="${LANE_B_JUDGE_REASONING:-xhigh}"
 
-for p in "$FIXTURE_DIR/spec.md" "$FIXTURE_DIR/task.txt" "$FIXTURE_DIR/scope-allowlist.txt" \
-         "$FIXTURE_DIR/behavior-contract.json" "$ARM_A/diff.patch" "$ARM_B/diff.patch"; do
-  if [[ ! -f "$p" ]]; then
-    echo "error: missing input: $p" >&2
-    exit 1
-  fi
-done
+JUDGE_INPUT="$RUN_DIR/judge-tmp/$FIXTURE.input.json"
+JUDGE_PROMPT="$RUN_DIR/judge-tmp/$FIXTURE.prompt.txt"
+JUDGE_LAST="$RUN_DIR/judge-tmp/$FIXTURE.last.json"
+JUDGE_STDOUT="$RUN_DIR/judge-tmp/$FIXTURE.stdout.log"
+JUDGE_STDERR="$RUN_DIR/judge-tmp/$FIXTURE.stderr.log"
+mkdir -p "$RUN_DIR/judge-tmp"
 
-echo "Judge inputs validated. Judge call wiring (Day 2) NOT YET IMPLEMENTED."
-echo ""
-echo "Inputs that WILL be sent (instruction-blind, no arm identity):"
-echo "  task            <- $FIXTURE_DIR/task.txt"
-echo "  spec            <- $FIXTURE_DIR/spec.md"
-echo "  scope_allowlist <- $FIXTURE_DIR/scope-allowlist.txt"
-echo "  fixture_axes    <- $FIXTURE_DIR/behavior-contract.json (axes_scored keys)"
-echo "  arm_A.diff      <- $ARM_A/diff.patch"
-echo "  arm_A.transcript_excerpt <- $ARM_A/transcript.txt (last 4kB)"
-echo "  arm_B.diff      <- $ARM_B/diff.patch"
-echo "  arm_B.transcript_excerpt <- $ARM_B/transcript.txt (last 4kB)"
-echo ""
-echo "OUTPUT (Day 2): JSONL row appended to $RUN_DIR/judge-findings.jsonl with strict-JSON judge verdict."
-echo "Rubric: $REPO_ROOT/benchmark/instruction-sensitivity/RUBRIC.md"
+# Pre-flight — manifest, slot_map, and both arm outputs must exist.
+if ! python3 - "$RUN_DIR/manifest.json" "$FIXTURE" "$RUN_DIR" <<'PY'
+import json, sys
+manifest_p, fixture, run_dir = sys.argv[1:]
+m = json.load(open(manifest_p))
+if fixture not in m.get("slot_map", {}):
+    print(f"error: no slot_map entry for {fixture}", file=sys.stderr); sys.exit(2)
+slot = m["slot_map"][fixture]
+import os
+for arm in (slot["A"], slot["B"]):
+    arm_dir = os.path.join(run_dir, "arms", arm, fixture)
+    if not os.path.isfile(os.path.join(arm_dir, "diff.patch")):
+        print(f"error: missing diff.patch in {arm_dir}", file=sys.stderr); sys.exit(2)
+PY
+then
+  exit 2
+fi
+
+python3 "$LANE_ROOT/scripts/build-judge-input.py" \
+  --run-dir "$RUN_DIR" --fixture "$FIXTURE" > "$JUDGE_INPUT"
+
+# Compose the final prompt: rubric body + the JSON payload + strict-JSON reminder.
+{
+  echo "You are an instruction-blind judge. Apply the RUBRIC exactly to the two arms (A, B)."
+  echo "Output ONLY the JSON object defined by the schema. No commentary, no markdown fences."
+  echo ""
+  echo "===== RUBRIC ====="
+  cat "$LANE_ROOT/RUBRIC.md"
+  echo ""
+  echo "===== JUDGE_INPUT_JSON ====="
+  cat "$JUDGE_INPUT"
+} > "$JUDGE_PROMPT"
+
+MODEL_FLAG=()
+if [[ -n "${LANE_B_JUDGE_MODEL:-}" ]]; then
+  MODEL_FLAG=(--model "$LANE_B_JUDGE_MODEL")
+fi
+
+set +e
+bash "$LANE_ROOT/scripts/_with-timeout.sh" "$JUDGE_TIMEOUT" \
+  codex exec \
+    --ignore-user-config \
+    --ignore-rules \
+    --ephemeral \
+    --skip-git-repo-check \
+    --sandbox read-only \
+    --output-last-message "$JUDGE_LAST" \
+    -c model_reasoning_effort="\"$JUDGE_REASONING\"" \
+    ${MODEL_FLAG[@]+"${MODEL_FLAG[@]}"} \
+    - < "$JUDGE_PROMPT" \
+    > "$JUDGE_STDOUT" 2> "$JUDGE_STDERR"
+JUDGE_EXIT=$?
+set -e
+
+if [[ ! -s "$JUDGE_LAST" ]]; then
+  echo "warn: judge produced no last-message file ($JUDGE_LAST); using stdout as fallback" >&2
+  cp "$JUDGE_STDOUT" "$JUDGE_LAST" || true
+fi
+
+python3 "$LANE_ROOT/scripts/append-judge-row.py" \
+  --manifest "$RUN_DIR/manifest.json" \
+  --fixture "$FIXTURE" \
+  --judge-json "$JUDGE_LAST" \
+  >> "$RUN_DIR/judge-findings.jsonl"
+
+echo "judge-blind: $FIXTURE -> exit=$JUDGE_EXIT (rubric -> judge-findings.jsonl)"

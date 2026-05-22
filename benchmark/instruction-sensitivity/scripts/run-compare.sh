@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
-# Lane B driver — v0 skeleton.
+# Lane B — baseline-vs-candidate runner.
 #
-# Runs each named fixture against two arms (baseline-ref vs candidate-ref) and
-# emits a run manifest. Driver-to-LLM wiring (Day 2) is NOT yet implemented —
-# this script currently sets up the run directory layout and writes the
-# manifest so downstream scripts (detect-mechanical.py, judge-blind.sh,
-# score-behavior.py) have a stable contract to consume.
-#
-# Day 2 will plug an actual LLM driver (claude-code CLI, codex CLI, or a
-# minimal API call) into the per-arm execution step.
+# For each fixture, runs both arms (solo_old @ baseline-ref, solo_new @ candidate-ref),
+# emits a manifest with A/B slot randomization, runs the mechanical detector, and
+# invokes the instruction-blind judge.
 #
 # Usage:
 #   bash run-compare.sh --baseline-ref <sha> --candidate-ref <sha> \
-#                       --run-id <id> --fixtures B1-... B2-... ...
+#                       --run-id <id> --fixtures B1-... [B2-...] ...
+#
+# Outputs land in benchmark/instruction-sensitivity/results/<run-id>/.
 
 set -euo pipefail
 
@@ -36,14 +33,11 @@ if [[ -z "$BASELINE_REF" || -z "$CANDIDATE_REF" || -z "$RUN_ID" || ${#FIXTURES[@
   exit 2
 fi
 
-# Resolve canonical paths relative to repo root.
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 LANE_ROOT="$REPO_ROOT/benchmark/instruction-sensitivity"
 RUN_DIR="$LANE_ROOT/results/$RUN_ID"
-
 mkdir -p "$RUN_DIR/arms/solo_old" "$RUN_DIR/arms/solo_new"
 
-# Verify the two refs actually exist in git (commit-pinned only — see README).
 for ref in "$BASELINE_REF" "$CANDIDATE_REF"; do
   if ! git -C "$REPO_ROOT" rev-parse --verify "$ref^{commit}" >/dev/null 2>&1; then
     echo "error: ref not found: $ref" >&2
@@ -51,29 +45,88 @@ for ref in "$BASELINE_REF" "$CANDIDATE_REF"; do
   fi
 done
 
-# Write run manifest with A/B slot randomization seed.
-# A/B mapping is consulted ONLY at score aggregation, NOT during the judge call.
-RANDOM_SEED="$(date -u +%s%N)"
-cat > "$RUN_DIR/manifest.json" <<JSON
-{
-  "run_id": "$RUN_ID",
-  "baseline_ref": "$BASELINE_REF",
-  "candidate_ref": "$CANDIDATE_REF",
-  "fixtures": [$(printf '"%s",' "${FIXTURES[@]}" | sed 's/,$//')],
-  "random_seed": "$RANDOM_SEED",
-  "status": "scaffolded",
-  "next_step": "Day 2: wire LLM driver into arm execution loop, then run detect-mechanical.py + judge-blind.sh"
+# Manifest + slot_map: A/B randomization is fixed at manifest-write time so the
+# mapping survives partial reruns and is never re-derived during judge calls.
+python3 - "$RUN_DIR/manifest.json" "$RUN_ID" "$BASELINE_REF" "$CANDIDATE_REF" "${FIXTURES[@]}" <<'PY'
+import hashlib, json, sys
+out, run_id, baseline, candidate, *fixtures = sys.argv[1:]
+slot_map = {}
+for f in fixtures:
+    h = hashlib.sha256(f"{run_id}:{f}".encode()).hexdigest()
+    if int(h, 16) % 2 == 0:
+        slot_map[f] = {"A": "solo_old", "B": "solo_new", "seed": f"{run_id}:{f}"}
+    else:
+        slot_map[f] = {"A": "solo_new", "B": "solo_old", "seed": f"{run_id}:{f}"}
+manifest = {
+    "run_id": run_id,
+    "baseline_ref": baseline,
+    "candidate_ref": candidate,
+    "fixtures": fixtures,
+    "slot_map": slot_map,
+    "status": "running",
+    "schema_version": "v1",
 }
-JSON
+open(out, "w").write(json.dumps(manifest, indent=2) + "\n")
+PY
 
-echo "Run directory created: $RUN_DIR"
-echo "Manifest: $RUN_DIR/manifest.json"
+echo "manifest: $RUN_DIR/manifest.json"
+
+# Per-arm execution loop. Each fixture is run on solo_old then solo_new.
+for fixture in "${FIXTURES[@]}"; do
+  for pair in "solo_old:$BASELINE_REF" "solo_new:$CANDIDATE_REF"; do
+    arm="${pair%%:*}"
+    ref="${pair##*:}"
+    arm_dir="$RUN_DIR/arms/$arm/$fixture"
+    mkdir -p "$arm_dir"
+    echo ""
+    echo "===== fixture=$fixture arm=$arm ref=$ref ====="
+    if ! bash "$LANE_ROOT/scripts/run-fixture.sh" \
+          --fixture "$fixture" --ref "$ref" --out-dir "$arm_dir"; then
+      echo "warn: run-fixture failed for $fixture / $arm — continuing" >&2
+    fi
+
+    # Mechanical detector — fixture-generic.
+    python3 "$LANE_ROOT/scripts/detect-mechanical.py" \
+      --fixture-dir "$LANE_ROOT/fixtures/$fixture" \
+      --arm-dir "$arm_dir" \
+      --out "$RUN_DIR/detector-findings.jsonl" || true
+
+    # Per-fixture hidden verifier (mechanical assertions tied to bad_signals).
+    verify_sh="$LANE_ROOT/fixtures/$fixture/hidden/verify.sh"
+    if [[ -x "$verify_sh" ]]; then
+      python3 - "$verify_sh" "$arm_dir" "$fixture" "$arm" "$RUN_DIR/hidden-verify.jsonl" <<'PY'
+import json, subprocess, sys
+verify_sh, arm_dir, fixture, arm, out = sys.argv[1:]
+res = subprocess.run(["bash", verify_sh, arm_dir], capture_output=True, text=True)
+try:
+    parsed = json.loads(res.stdout)
+except Exception:
+    parsed = {"raw_stdout": res.stdout, "stderr": res.stderr, "parse_error": True}
+parsed["arm"] = arm
+open(out, "a").write(json.dumps(parsed) + "\n")
+PY
+    fi
+  done
+done
+
+# Judge pass — once per fixture.
+for fixture in "${FIXTURES[@]}"; do
+  echo ""
+  echo "===== judge: $fixture ====="
+  bash "$LANE_ROOT/scripts/judge-blind.sh" --run-dir "$RUN_DIR" --fixture "$fixture" || \
+    echo "warn: judge failed for $fixture — continuing" >&2
+done
+
+# Mark manifest done.
+python3 - "$RUN_DIR/manifest.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+m = json.load(open(p))
+m["status"] = "complete"
+open(p, "w").write(json.dumps(m, indent=2) + "\n")
+PY
+
 echo ""
-echo "NEXT: Day 2 will plug a driver (claude / codex CLI) into the arm-execution step."
-echo "For now you can:"
-echo "  1. Manually run a fixture against each ref using your driver of choice"
-echo "  2. Write the diff to $RUN_DIR/arms/<solo_old|solo_new>/<fixture-id>/diff.patch"
-echo "  3. Write the assistant transcript to .../transcript.txt"
-echo "  4. Run detect-mechanical.py per arm-fixture pair"
-echo "  5. Run judge-blind.sh per fixture (A/B paired)"
-echo "  6. Run score-behavior.py to aggregate"
+echo "run-compare done. Aggregate with:"
+echo "  python3 $LANE_ROOT/scripts/score-behavior.py --run-id $RUN_ID \\"
+echo "    --out-json $RUN_DIR/behavior-score.json --out-md $RUN_DIR/behavior-score.md"

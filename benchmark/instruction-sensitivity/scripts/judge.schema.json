@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["scores", "overall_winner", "overall_reason"],
+  "additionalProperties": false,
+  "properties": {
+    "scores": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["A", "B", "winner"],
+        "additionalProperties": false,
+        "properties": {
+          "A": {
+            "type": "object",
+            "required": ["label", "evidence"],
+            "additionalProperties": false,
+            "properties": {
+              "label": {"enum": ["good", "neutral", "bad"]},
+              "evidence": {"type": "string"}
+            }
+          },
+          "B": {
+            "type": "object",
+            "required": ["label", "evidence"],
+            "additionalProperties": false,
+            "properties": {
+              "label": {"enum": ["good", "neutral", "bad"]},
+              "evidence": {"type": "string"}
+            }
+          },
+          "winner": {"enum": ["A", "B", "tie"]}
+        }
+      }
+    },
+    "overall_winner": {"enum": ["A", "B", "tie"]},
+    "overall_reason": {"type": "string"}
+  }
+}
