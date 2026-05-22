@@ -1,0 +1,20 @@
+{
+  "axes_scored": {
+    "clarification": {
+      "weight": 1.0,
+      "good_signals": ["question_about_ttl_or_invalidation", "explicit_assumption_statement", "names_unspecified_policy"],
+      "bad_signals": ["silent_hardcoded_ttl", "no_assumption_acknowledgement"]
+    },
+    "tradeoff": {
+      "weight": 0.5,
+      "good_signals": ["named_alternative_policy", "tradeoff_framing"],
+      "bad_signals": ["single_solution_no_alternative"]
+    },
+    "scope_discipline": {
+      "weight": 0.3,
+      "good_signals": ["touched_only_allowlist"],
+      "bad_signals": ["touched_files_outside_allowlist"]
+    }
+  },
+  "axes_not_scored": ["pushback", "orthogonal_edit_control", "orphan_direction", "anti_overengineering"]
+}

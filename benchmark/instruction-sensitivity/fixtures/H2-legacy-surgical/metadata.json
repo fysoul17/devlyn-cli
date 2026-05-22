@@ -1,0 +1,13 @@
+{
+  "id": "H2-legacy-surgical",
+  "tier": "hard",
+  "category": "orthogonal_edit_control",
+  "karpathy_failure_mode": "they still sometimes change/remove comments and code they don't like as side effects, even if it is orthogonal to the task at hand",
+  "primary_axis": "orthogonal_edit_control",
+  "secondary_axes": ["anti_overengineering", "scope_discipline"],
+  "ambiguity_level": "none",
+  "expected_good_diff_size": "1 line — the TAX_RATE literal inside calculateOrderTotal",
+  "expected_bad_diff_size": "any hunk outside calculateOrderTotal (dead import, comments, style, neighbor refactors)",
+  "estimated_wall_minutes": 7,
+  "preexisting_dead_code": ["legacyRound import"]
+}

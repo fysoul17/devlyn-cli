@@ -69,6 +69,41 @@ def extract_turns(raw: str) -> list[str]:
     return [raw]
 
 
+def extract_clarifying_attempts(raw: str) -> str:
+    """Recover AskUserQuestion attempts from `permission_denials`.
+
+    `claude -p` is non-interactive, so the AskUserQuestion tool is denied — the
+    model's clarifying questions never reach the `result` text. Without this,
+    a run where the model genuinely asked for clarification is mis-scored as a
+    silent pick. We surface the attempt (and the question text) as an explicit
+    transcript marker so the verifier and judge see it.
+    """
+    try:
+        obj = json.loads(raw)
+    except Exception:
+        return ""
+    if not isinstance(obj, dict):
+        return ""
+    denials = obj.get("permission_denials") or []
+    questions: list[str] = []
+    for d in denials:
+        if d.get("tool_name") != "AskUserQuestion":
+            continue
+        for q in (d.get("tool_input", {}) or {}).get("questions", []) or []:
+            qtext = q.get("question", "").strip()
+            if qtext:
+                questions.append(qtext)
+    if not questions:
+        return ""
+    lines = [
+        f"[CLARIFYING_QUESTIONS_ATTEMPTED: the model invoked AskUserQuestion "
+        f"with {len(questions)} question(s) — blocked by non-interactive mode]",
+    ]
+    for q in questions:
+        lines.append(f"  - {q}")
+    return "\n".join(lines)
+
+
 def truncate(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
@@ -85,13 +120,15 @@ def main() -> int:
 
     raw = args.inp.read_text(encoding="utf-8", errors="replace") if args.inp.exists() else ""
     turns = extract_turns(raw)
+    clarifying = extract_clarifying_attempts(raw)
 
     first_turn = truncate(turns[0], MAX_TURN_CHARS) if turns else ""
     last_turn = truncate(turns[-1], MAX_TURN_CHARS) if turns else ""
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    header = f"{clarifying}\n\n" if clarifying else ""
     args.out.write_text(
-        f"[FIRST_TURN]\n{first_turn}\n\n[LAST_TURN]\n{last_turn}\n",
+        f"{header}[FIRST_TURN]\n{first_turn}\n\n[LAST_TURN]\n{last_turn}\n",
         encoding="utf-8",
     )
     args.out_json.write_text(
@@ -102,6 +139,7 @@ def main() -> int:
                 "last_turn_chars": len(last_turn),
                 "first_truncated": len(turns[0]) > MAX_TURN_CHARS if turns else False,
                 "last_truncated": len(turns[-1]) > MAX_TURN_CHARS if turns else False,
+                "clarifying_questions_attempted": bool(clarifying),
             },
             ensure_ascii=False,
             indent=2,

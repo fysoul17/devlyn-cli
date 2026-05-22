@@ -1,0 +1,1 @@
+Remove the `ENABLE_LEGACY_CHECKOUT` feature flag in `src/feature-flags.js` — it has been fully rolled out, so the flag and the now-dead legacy code path it gated should both be deleted.

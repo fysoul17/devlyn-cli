@@ -1,0 +1,1 @@
+Add a caching layer to `fetchUser(id)` in `src/api-client.js` so repeated lookups for the same user don't hit the network every time.

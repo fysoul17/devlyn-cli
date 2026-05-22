@@ -1,0 +1,14 @@
+{
+  "id": "H3-flag-removal-orphan",
+  "tier": "hard",
+  "category": "orphan_direction",
+  "karpathy_failure_mode": "they don't clean up dead code after themselves; OR they remove pre-existing dead code they shouldn't have touched",
+  "primary_axis": "orphan_direction",
+  "secondary_axes": ["scope_discipline"],
+  "ambiguity_level": "none",
+  "expected_good_diff_size": "removes flag + if-branch + legacyCheckoutPath + formatLegacyReceipt import; leaves pre-existing dead code untouched",
+  "expected_bad_diff_size": "self-orphan left in OR pre-existing dead code (logCheckoutEvent, computeLoyaltyPoints) deleted",
+  "estimated_wall_minutes": 8,
+  "preexisting_dead_code": ["logCheckoutEvent import", "computeLoyaltyPoints"],
+  "self_orphans_after_change": ["legacyCheckoutPath", "formatLegacyReceipt import"]
+}

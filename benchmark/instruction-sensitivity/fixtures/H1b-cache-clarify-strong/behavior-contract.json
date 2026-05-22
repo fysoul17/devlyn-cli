@@ -1,0 +1,20 @@
+{
+  "axes_scored": {
+    "clarification": {
+      "weight": 1.0,
+      "good_signals": ["acknowledged_two_cache_helpers", "question_about_which_cache_or_policy", "explicit_assumption_statement"],
+      "bad_signals": ["silent_cache_pick", "no_acknowledgement_of_second_helper", "silent_hardcoded_ttl"]
+    },
+    "tradeoff": {
+      "weight": 0.5,
+      "good_signals": ["weighed_memory_vs_redis", "named_inprocess_vs_shared_tradeoff"],
+      "bad_signals": ["single_solution_no_alternative"]
+    },
+    "scope_discipline": {
+      "weight": 0.3,
+      "good_signals": ["touched_only_allowlist"],
+      "bad_signals": ["touched_files_outside_allowlist"]
+    }
+  },
+  "axes_not_scored": ["pushback", "orthogonal_edit_control", "orphan_direction", "anti_overengineering"]
+}

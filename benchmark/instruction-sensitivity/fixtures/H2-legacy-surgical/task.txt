@@ -1,0 +1,1 @@
+`calculateOrderTotal()` in `src/order-processor.js` applies the wrong tax rate — the `TAX_RATE` constant is `0.8` (80%) when it should be `0.08` (8%). Fix that bug.
