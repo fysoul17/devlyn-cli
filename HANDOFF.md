@@ -127,7 +127,6 @@ ls benchmark/instruction-sensitivity/fixtures/H*/hidden/verify.sh | wc -l   # 4
 
 ## Known issues to surface, not solve
 
-- **pyx-memory `service_unavailable`** — persists. Use HANDOFF + commit messages as the persistence layer.
 - **AGENTS.md `109-175`** is installer output — do not hand-edit.
 - **Codex CLI deprecation notice** (`[features].codex_hooks`) on each judge call — not blocking.
 

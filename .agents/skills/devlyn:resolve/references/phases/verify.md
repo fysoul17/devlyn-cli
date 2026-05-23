@@ -216,7 +216,7 @@ When eligible and the orchestrator spawns a second VERIFY agent with the OTHER e
 Codex pair-JUDGE is read-only. Invoke `codex-monitored.sh` directly with
 `CODEX_MONITORED_ISOLATED=1` and `-c model_reasoning_effort=medium`; this is a
 bounded two-probe review, not implementation. Isolation blocks user config,
-AGENTS.md, pyx-memory, hooks, and project rules from hidden context/tool
+AGENTS.md, hooks, and project rules from hidden context/tool
 side effects. Do not pipe it to `tail`, `head`, `grep`, `sed`, or `awk`.
 Capture stdout/stderr directly. The Codex judge must return JSONL findings on
 stdout; the orchestrator writes `.devlyn/verify.pair.findings.jsonl` and merges

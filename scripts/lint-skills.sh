@@ -177,18 +177,6 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 2a. Packaged root instruction files must not contain pyx-memory secrets.
-# ---------------------------------------------------------------------------
-section "Check 2a: No pyx-memory secrets in packaged root instructions"
-offenders=$(grep -RInE 'memory\.api\.pyxmate\.com|Authorization: Bearer pyx_[A-Za-z0-9]{12,}|X-API-Key: pyx_[A-Za-z0-9]{12,}|pyx_[A-Za-z0-9]{16,}' \
-  AGENTS.md CLAUDE.md 2>/dev/null || true)
-if [ -z "$offenders" ]; then
-  ok "AGENTS.md and CLAUDE.md contain no pyx-memory secret material"
-else
-  while IFS= read -r f; do bad "$f"; done <<< "$offenders"
-fi
-
-# ---------------------------------------------------------------------------
 # 3. No stale model strings (gpt-5.0..5.4 hardcoded outside config).
 # ---------------------------------------------------------------------------
 section "Check 3: No hardcoded pre-5.5 model strings"
@@ -1458,9 +1446,9 @@ fi
 # ---------------------------------------------------------------------------
 # 10a. Bounded Codex probe/judge calls must run isolated.
 #      Pair/risk-probe paths are measured read-only judges, not implementation
-#      phases. They must not inherit user config, AGENTS.md, hooks, pyx-memory,
-#      or other local rules that can add hidden context or transcript side
-#      effects. The wrapper owns the flag expansion; skill docs own requiring
+#      phases. They must not inherit user config, AGENTS.md, hooks, or other
+#      local rules that can add hidden context or transcript side effects.
+#      The wrapper owns the flag expansion; skill docs own requiring
 #      CODEX_MONITORED_ISOLATED=1 for probe-derive and pair-JUDGE.
 # ---------------------------------------------------------------------------
 section "Check 10a: Bounded Codex calls use isolated wrapper mode"
