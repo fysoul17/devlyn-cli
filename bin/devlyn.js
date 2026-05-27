@@ -195,7 +195,7 @@ const OPTIONAL_ADDONS = [
   // Note: the Codex integration uses the local `codex` CLI binary (not MCP).
   // Install the CLI separately per https://platform.openai.com/docs/codex — the
   // pair/risk-probe routes fail closed when Codex is required but unavailable.
-  { name: 'playwright', desc: 'Playwright MCP for browser testing — powers /devlyn:resolve BUILD_GATE browser tier', type: 'mcp', command: 'npx -y @anthropic-ai/mcp-playwright' },
+  { name: 'playwright', desc: 'Playwright MCP for browser testing — powers /devlyn:resolve BUILD_GATE browser tier', type: 'mcp', command: 'npx -y @playwright/mcp@latest' },
 ];
 
 function log(msg, color = 'reset') {
