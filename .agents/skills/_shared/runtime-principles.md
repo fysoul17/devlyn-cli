@@ -82,6 +82,8 @@ Every finding cites concrete evidence. Vague claims are speculation; exclude the
 - **Doc findings**: quote of the stale text + section/line reference.
 - **Browser findings**: screenshot reference + URL/route.
 
+**Negative existence claims** ("X lacks Y", "X cannot Z", "X is Y-specific") are the highest-risk shape — they feel like recall but fail to any single counter-example. They require active search at write time, not absence-of-memory. This rule applies to conversational answers and comparison-table cells, not only `/devlyn:resolve` findings — every cell of a trade-off table is a falsifiable claim.
+
 A finding without one of these forms is excluded. Vague findings produce vague fixes.
 <!-- runtime-principles:section=evidence:end -->
 <!-- runtime-principles:contract:end -->

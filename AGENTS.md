@@ -84,6 +84,7 @@ Every finding cites concrete evidence:
 - Doc: cite the stale text + section/line.
 - Browser: route/URL + screenshot or observed evidence.
 - Benchmark: run id, fixture id, metric, raw result path.
+- Negative existence ("X lacks Y", "X cannot Z", "X is Y-specific"): highest-risk claim shape — fails to any single counter-example. Active search required at write time, not absence-of-memory. Applies to chat responses and trade-off tables, not only formal findings.
 
 Exclude vague claims. They produce vague fixes.
 
