@@ -73,7 +73,7 @@ No silent fallbacks.
 - Fallbacks allowed only when widely accepted and harmless (CSS fallback fonts, CDN failover, image placeholders).
 - Silent `catch` blocks are bugs.
 - Logging is not user-visible error handling.
-- No engine-availability fallback is permitted for pair/risk-probe routes: if required Codex or Claude is unavailable, emit `BLOCKED:codex-unavailable` or `BLOCKED:claude-unavailable` with setup guidance. `--no-pair` and `--no-risk-probes` are explicit user opt-outs, not fallbacks.
+- No engine-availability fallback for EXPLICITLY-requested routes (`--engine`, `--risk-probes`, `--pair-verify`): if the required engine is unavailable, emit `BLOCKED:codex-unavailable` or `BLOCKED:claude-unavailable` with setup guidance; never downgrade an explicit route to solo. Automatic high-risk escalations (auto risk-probes / auto VERIFY pair) are capability-gated: they activate only when the OTHER engine is available, else the run proceeds solo and reports the skip (route selection, not a fallback — keeps single-LLM users first-class). `--no-pair` and `--no-risk-probes` remain explicit opt-outs.
 
 ## Evidence Over Claim
 

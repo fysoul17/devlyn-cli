@@ -148,18 +148,24 @@ reasons and at least one reason: `mode.verify-only`, `complexity.high`, `complex
 The `--engine` flag never disables this rule. Explicit `--engine claude` means
 Claude is the primary judge; if pair-mode triggers, Codex is still the mandatory
 OTHER-engine judge. Do not record "explicit --engine claude" as a skip reason.
-The only valid skip reasons after a non-empty eligible trigger are deterministic
-MECHANICAL HIGH/CRITICAL blockers or an explicit `--no-pair`. Engine
-unavailability is not a skip reason; it is `BLOCKED:<engine>-unavailable`.
+The valid skip reasons after a non-empty eligible trigger are deterministic
+MECHANICAL HIGH/CRITICAL blockers, an explicit `--no-pair`, or — when none of the
+applicable reasons is `mode.pair-verify` (every reason is automatic) — the OTHER
+engine being unavailable. Explicit `--pair-verify` with the OTHER engine absent
+is a promise and stays `BLOCKED:<engine>-unavailable`, never a skip.
 
 Before invoking the OTHER-engine judge, run the shared availability pre-flight
-for that engine. If Codex is required and unavailable, set VERIFY to
-`BLOCKED:codex-unavailable` and tell the user to install/configure the Codex CLI,
-run the current Codex auth/login flow, verify `codex --version`, and rerun. If
-Claude is required and the host cannot spawn a Claude agent, set VERIFY to
-`BLOCKED:claude-unavailable` and tell the user to install/configure Claude Code,
-verify `claude --version` where available, and rerun. Do not convert this to a
-solo pass, and do not synthesize pair findings.
+for that engine. If the route is explicit (`--pair-verify`) and Codex is required
+and unavailable, set VERIFY to `BLOCKED:codex-unavailable` and tell the user to
+install/configure the Codex CLI, run the current Codex auth/login flow, verify
+`codex --version`, and rerun. If Claude is required and the host cannot spawn a
+Claude agent, set VERIFY to `BLOCKED:claude-unavailable` and tell the user to
+install/configure Claude Code, verify `claude --version`, and rerun. For an
+explicit route, do not convert this to a solo pass and do not synthesize pair
+findings. When the trigger was AUTO-only and the OTHER engine is unavailable, set
+`eligible: false`, `reasons: []`, `skipped_reason:
+"auto_pair_other_engine_unavailable"`, run solo VERIFY, and report the skipped
+auto escalation — route selection, not a fallback.
 
 When eligible and the orchestrator spawns a second VERIFY agent with the OTHER engine's adapter, both judgments are merged:
 - Any HIGH/CRITICAL finding either model surfaces is verdict-binding.

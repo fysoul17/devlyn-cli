@@ -336,8 +336,12 @@ if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
    || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_risk_probes" ] || [ "$ARM" = "l2_forced" ]; then
   case "$ARM" in
     solo_claude)
-      ENGINE_CLAUSE="--engine claude"
-      ENGINE_PROMPT_HINT="Run with \`--engine claude\` for every phase. Codex must not be invoked — the harness has blocked it at the binary layer for this run."
+      # L1 = pure solo by construction. --no-risk-probes --no-pair so a high-risk
+      # spec measures Claude-only solo deterministically instead of auto-escalating
+      # toward the (blocked) OTHER engine. Without these, a security/high-risk
+      # fixture auto-triggers the cross-engine path and the arm mis-measures L1.
+      ENGINE_CLAUSE="--engine claude --no-risk-probes --no-pair"
+      ENGINE_PROMPT_HINT="Run with \`--engine claude --no-risk-probes --no-pair\` for every phase — pure solo L1. Codex must not be invoked — the harness has blocked it at the binary layer for this run."
       ;;
     variant)
       ENGINE_CLAUSE="--engine claude --risk-probes"

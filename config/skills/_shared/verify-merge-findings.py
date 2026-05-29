@@ -33,7 +33,12 @@ VERDICT_RANK = {
     "BLOCKED": 3,
 }
 RANK_VERDICT = {0: "PASS", 1: "PASS_WITH_ISSUES", 2: "NEEDS_WORK", 3: "BLOCKED"}
-ALLOWED_PAIR_SKIP_REASONS = {"user_no_pair", "mechanical_blocker", "primary_judge_blocker"}
+ALLOWED_PAIR_SKIP_REASONS = {
+    "user_no_pair",
+    "mechanical_blocker",
+    "primary_judge_blocker",
+    "auto_pair_other_engine_unavailable",
+}
 KNOWN_PAIR_TRIGGER_REASONS = {
     "mode.verify-only",
     "mode.pair-verify",
@@ -504,10 +509,28 @@ def pair_trigger_skip_contract_violation(
             "id": "verify-pair-trigger-skipped-reason-unsupported",
             "message": (
                 "pair_trigger.skipped_reason must be user_no_pair, "
-                "mechanical_blocker, primary_judge_blocker, or null."
+                "mechanical_blocker, primary_judge_blocker, "
+                "auto_pair_other_engine_unavailable, or null."
             ),
             "file": "pipeline.state.json",
         }
+    if skipped_reason == "auto_pair_other_engine_unavailable":
+        # alpha+ capability-gating: an AUTOMATIC pair trigger may skip to solo
+        # VERIFY when the OTHER engine is unavailable (single-LLM users stay
+        # first-class). An EXPLICIT --pair-verify route is a promise and must
+        # BLOCK on an unavailable engine, never skip — enforce that here so the
+        # auto-skip cannot launder an explicit request.
+        pair_verify = state.get("pair_verify") if isinstance(state, dict) else None
+        if pair_verify is True:
+            return {
+                "id": "verify-pair-trigger-auto-skip-explicit-conflict",
+                "message": (
+                    "pair_trigger skipped_reason auto_pair_other_engine_unavailable is "
+                    "only valid for an automatic trigger; an explicit --pair-verify run "
+                    "must BLOCK on an unavailable OTHER engine, not skip."
+                ),
+                "file": "pipeline.state.json",
+            }
     if skipped_reason == "user_no_pair":
         risk_profile = state.get("risk_profile") if isinstance(state, dict) else {}
         if not isinstance(risk_profile, dict) or risk_profile.get("pair_default_enabled") is not False:

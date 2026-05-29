@@ -6,6 +6,11 @@ Used by `/devlyn:resolve` and `/devlyn:ideate`. One shared availability rule so 
 
 Each skill resolves the effective engine from its own SKILL.md default plus any explicit `--engine` flag passed by the user. `/devlyn:resolve` also computes conditional pair/risk-probe requirements before the phase that needs the OTHER engine.
 
+Engine requirements have two classes:
+
+- **Explicit routes** — `--engine`, `--risk-probes`, `--pair-verify`. These are promises. If the required engine is unavailable, fail closed with `BLOCKED:<engine>-unavailable` and never downgrade to solo.
+- **Automatic escalations** — auto high-risk risk-probes and auto VERIFY pair-JUDGE inferred from the spec. These are candidate routes, selected only when their preconditions hold, OTHER-engine availability included. If an auto candidate would fire but the OTHER engine is absent, do not select the cross-engine route: proceed solo and report the skipped escalation and its reason. This is route selection, not a fallback.
+
 When a run or phase requires Codex, before spawning that phase:
 
 1. Check if the Codex CLI is installed: `command -v codex >/dev/null 2>&1` (or equivalent bash test).
@@ -18,7 +23,7 @@ When a run or phase requires Claude, before spawning that phase:
 2. On failure -> set the current phase/run verdict to `BLOCKED:claude-unavailable` and show setup guidance: install/configure Claude Code, verify `claude --version` where available, then rerun.
 3. On success -> proceed.
 
-Never prompt the user mid-pipeline. Missing required engines are explicit BLOCKED states, not silent fallbacks.
+Never prompt the user mid-pipeline. Missing engines for explicit routes are BLOCKED states, not silent fallbacks. Missing OTHER engines for automatic escalations are reported solo-skips, not fallbacks — the auto route was never selected.
 
 Per-skill defaults: `/devlyn:resolve` uses Claude for PLAN/IMPLEMENT; VERIFY may invoke the OTHER engine when its pair-JUDGE trigger fires. `/devlyn:ideate` defaults to Claude; `--engine` selects the elicitation/normalization adapter, not an automatic cross-model challenge phase. Any future ideate read-only critique must follow `_shared/codex-config.md` isolation rules. Each SKILL.md flag block is source of truth for that skill's default.
 
