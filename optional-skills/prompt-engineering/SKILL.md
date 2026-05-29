@@ -5,7 +5,7 @@ allowed-tools: Read, Grep, Glob, Edit, Write
 ---
 
 <!--
-  Version: 2026-01 | Claude 4.x (Opus 4.5, Sonnet 4.5, Haiku 4.5)
+  Version: 2026-05 | Claude 4.x (Opus 4.8, Sonnet 4.6, Haiku 4.5)
   Source: https://platform.claude.com/docs/build-with-claude/prompt-engineering/claude-4-best-practices
 -->
 
@@ -103,13 +103,13 @@ explicitly requested. Incorporate information naturally into sentences.
 START: Which Claude model?
     │
     ├─► Complex reasoning, multi-step analysis, or highest quality?
-    │       → Opus 4.5 (claude-opus-4-5-20250929)
+    │       → Opus 4.8 (claude-opus-4-8)
     │
     ├─► Balance of quality, speed, and cost?
-    │       → Sonnet 4.5 (claude-sonnet-4-5-20250929)
+    │       → Sonnet 4.6 (claude-sonnet-4-6)
     │
     └─► Fast responses, simple tasks, cost-sensitive?
-            → Haiku 4.5 (claude-haiku-4-5-20250929)
+            → Haiku 4.5 (claude-haiku-4-5-20251001)
 ```
 
 ---
@@ -152,7 +152,7 @@ results, execute sequentially. Never use placeholders for missing parameters.
 |--------------|--------------|-----|
 | "Can you suggest changes?" | Claude will only suggest, not implement | "Change this function to..." |
 | "Think about this carefully" | Triggers thinking sensitivity | "Consider this carefully" |
-| "CRITICAL: You MUST..." | Opus 4.5 may over-trigger | "Use this when..." |
+| "CRITICAL: You MUST..." | Claude may over-trigger | "Use this when..." |
 | Vague instructions | Literal interpretation | Add explicit detail |
 | No context for rules | Claude can't generalize | Explain WHY behind rules |
 | Examples with unwanted patterns | Claude mimics examples precisely | Remove unwanted behaviors from examples |

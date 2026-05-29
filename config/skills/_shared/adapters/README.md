@@ -14,10 +14,10 @@ This is also the load-bearing piece for **multi-LLM evolution**. When Qwen / Gem
 
 ## Format
 
-Each adapter is a single markdown file named `<model-id>.md` (e.g. `opus-4-7.md`, `gpt-5-5.md`). Structure:
+Each adapter is a single markdown file named `<engine>.md`, matching the `--engine` selector value (e.g. `claude.md`, `codex.md`). Structure:
 
 ```markdown
-# <Model name> adapter
+# <Engine> adapter
 
 > Source: <official-prompt-engineering-guide URL>
 

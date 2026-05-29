@@ -1,6 +1,6 @@
 # PHASE 1 — PLAN (canonical body)
 
-The per-engine adapter header from `_shared/adapters/<model>.md` is prepended at runtime. This file is engine-agnostic.
+The per-engine adapter header from `_shared/adapters/<engine>.md` is prepended at runtime. This file is engine-agnostic.
 
 <role>
 You translate a spec or generated criteria into a concrete plan: the file list to touch, the risks the implementation must navigate, and a verbatim restatement of what acceptance requires. The plan is the contract IMPLEMENT executes against.

@@ -28,7 +28,7 @@ Read `_shared/runtime-principles.md` (Subtractive-first / Goal-locked / No-worka
 </harness_principles>
 
 <engine_routing>
-Default engine: Claude. The per-engine adapter from `_shared/adapters/<model>.md` is prepended to the elicitation prompt so the model honors its own official prompt-engineering guidance during the Q&A.
+Default engine: Claude. The per-engine adapter from `_shared/adapters/<engine>.md` is prepended to the elicitation prompt so the model honors its own official prompt-engineering guidance during the Q&A.
 </engine_routing>
 
 <modes>

@@ -75,8 +75,8 @@ devlyn:resolve/references/phases/cleanup.md
 devlyn:resolve/references/phases/verify.md
 _shared/expected.schema.json
 _shared/adapters/README.md
-_shared/adapters/opus-4-7.md
-_shared/adapters/gpt-5-5.md
+_shared/adapters/claude.md
+_shared/adapters/codex.md
 _shared/codex-config.md
 _shared/codex-monitored.sh
 _shared/engine-preflight.md
@@ -1586,29 +1586,29 @@ fi
 section "Check 10d: Prompt adapters cite official model guidance"
 adapter_missing=0
 if ! grep -Fq 'https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.5' \
-  config/skills/_shared/adapters/gpt-5-5.md; then
-  bad "gpt-5-5 adapter missing official OpenAI prompt guidance URL"
+  config/skills/_shared/adapters/codex.md; then
+  bad "codex adapter missing official OpenAI prompt guidance URL"
   adapter_missing=1
 fi
 if ! grep -Fq 'https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices' \
-  config/skills/_shared/adapters/opus-4-7.md; then
-  bad "opus-4-7 adapter missing official Claude prompting best-practices URL"
+  config/skills/_shared/adapters/claude.md; then
+  bad "claude adapter missing official Claude prompting best-practices URL"
   adapter_missing=1
 fi
 for pattern in 'Use Markdown only where it carries structure' 'metaprompter for itself'; do
-  if ! grep -Fq "$pattern" config/skills/_shared/adapters/gpt-5-5.md; then
-    bad "gpt-5-5 adapter missing official-guidance tactic: $pattern"
+  if ! grep -Fq "$pattern" config/skills/_shared/adapters/codex.md; then
+    bad "codex adapter missing official-guidance tactic: $pattern"
     adapter_missing=1
   fi
 done
 for pattern in 'high` or `xhigh` effort' 'report every issue you find' 'do not filter for importance or confidence' 'prefer concise positive examples' '<example>'; do
-  if ! grep -Fq "$pattern" config/skills/_shared/adapters/opus-4-7.md; then
-    bad "opus-4-7 adapter missing official-guidance tactic: $pattern"
+  if ! grep -Fq "$pattern" config/skills/_shared/adapters/claude.md; then
+    bad "claude adapter missing official-guidance tactic: $pattern"
     adapter_missing=1
   fi
 done
 for file in config/skills/devlyn:resolve/SKILL.md config/skills/devlyn:ideate/SKILL.md; do
-  if ! grep -Fq '_shared/adapters/<model>.md' "$file"; then
+  if ! grep -Fq '_shared/adapters/<engine>.md' "$file"; then
     bad "$file — missing per-engine adapter injection contract"
     adapter_missing=1
   fi

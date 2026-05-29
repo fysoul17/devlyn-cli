@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# judge-opus-pass.sh — POST-RUN Opus 4.7 dual-judge sidecar.
+# judge-opus-pass.sh — POST-RUN Opus dual-judge sidecar.
 #
-# Runs Opus 4.7 over the SAME sanitized blind prompts that judge.sh wrote
+# Runs Opus (the Claude CLI's default model) over the SAME sanitized blind prompts that judge.sh wrote
 # (judge-prompt.txt), producing a parallel judge-opus.json alongside the
 # canonical judge.json. Does NOT modify judge.sh and does NOT change the
 # measurement contract for the in-flight run — this is a sidecar that adds
@@ -107,7 +107,7 @@ PY
 command -v claude >/dev/null 2>&1 || { echo "claude CLI not on PATH"; exit 1; }
 
 CLAUDE_CLI_VER=$(claude --version 2>/dev/null || echo "claude-cli unknown")
-JUDGE_MODEL_ALIAS="opus-4.7"
+JUDGE_MODEL_ALIAS="opus-default"
 
 echo "[opus-judge] run-id=$RUN_ID  cli=$CLAUDE_CLI_VER  model=$JUDGE_MODEL_ALIAS"
 
