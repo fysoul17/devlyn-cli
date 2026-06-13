@@ -27,7 +27,7 @@ If devlyn-cli saved you time, [give it a star](https://github.com/fysoul17/devly
 npx devlyn-cli
 ```
 
-That's it. The interactive installer handles everything. Claude Code config is installed by default; optional AI CLI instructions can be selected during install. Choose **Codex CLI (OpenAI)** to install `AGENTS.md` and the `devlyn:resolve`, `devlyn:ideate`, and `devlyn:design-ui` skills into `~/.codex/skills/`. In Codex, invoke them as skills with `$devlyn:resolve`, `$devlyn:ideate`, or `$devlyn:design-ui` rather than Claude Code slash commands. Run it again anytime to update.
+That's it. The installer opens with a single **agent selector** — pick any combination of **Claude Code**, **Codex CLI**, **oh-my-pi (omp)**, **Pi**, Gemini, Cursor, Copilot, or Windsurf, and devlyn installs into every one you choose in a single pass. Claude Code and any agent already present on your machine are pre-checked, so the common case is just Enter. Skill-capable agents receive the `devlyn:resolve`, `devlyn:ideate`, and `devlyn:design-ui` skills in the directory each one loads from: Codex → `~/.codex/skills/`, while **omp and Pi share `~/.agents/skills/`** — the cross-agent standard both read — so the bundle is written there once, not duplicated per agent. In Codex / omp / Pi, invoke them as skills (`$devlyn:resolve`, `$devlyn:ideate`, `$devlyn:design-ui`); in Claude Code they're slash commands (`/devlyn:resolve`). Run it again anytime to update. (`npx devlyn-cli -y` installs the Claude core non-interactively; `npx devlyn-cli agents <cli>` adds one agent later.)
 
 ---
 
@@ -39,7 +39,7 @@ devlyn-cli turns Claude Code into a hands-free development pipeline. The pipelin
 ideate (optional)  →  resolve  →  ship
 ```
 
-Codex note: when the optional Codex install is selected, these workflows are installed as Codex skills. Use `$devlyn:ideate`, `$devlyn:resolve`, or `$devlyn:design-ui` in Codex; the `/devlyn:*` slash-command form is for Claude Code.
+Non-Claude agents (Codex / omp / Pi): when one of these is selected, the workflows install as that agent's skills. Use `$devlyn:ideate`, `$devlyn:resolve`, or `$devlyn:design-ui`; the `/devlyn:*` slash-command form is for Claude Code.
 
 ### Step 1 (optional) — Plan with `/devlyn:ideate`
 

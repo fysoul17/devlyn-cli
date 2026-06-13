@@ -242,10 +242,11 @@ if [ ! -e "optional-skills/devlyn:design-ui" ]; then
 else
   bad "devlyn:design-ui must not be installed as an optional addon"
 fi
-if grep -Fq "skillsToInstall: ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', '_shared']" bin/devlyn.js; then
-  ok "Codex install includes devlyn:design-ui"
+if grep -Fq "const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', '_shared'];" bin/devlyn.js \
+   && grep -Fq "skillsToInstall: DEVLYN_CORE_SKILLS" bin/devlyn.js; then
+  ok "Codex install includes devlyn:design-ui (via shared DEVLYN_CORE_SKILLS bundle)"
 else
-  bad "Codex skillsToInstall must include devlyn:design-ui"
+  bad "Codex skillsToInstall must include devlyn:design-ui (shared DEVLYN_CORE_SKILLS bundle)"
 fi
 if ! grep -F "name: 'devlyn:design-ui'" bin/devlyn.js >/dev/null 2>&1; then
   ok "devlyn:design-ui is absent from OPTIONAL_ADDONS"

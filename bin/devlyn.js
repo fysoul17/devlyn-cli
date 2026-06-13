@@ -11,6 +11,19 @@ const AGENTS_SOURCE = path.join(__dirname, '..', 'agents-config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
 
+// The devlyn skill bundle installed into every skill-capable agent's loader
+// directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
+// skill here installs it everywhere. Standards skills (code-*, root-cause-*,
+// ui-*) stay Claude-core-only, matching the pre-existing Codex bundle.
+const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', '_shared'];
+
+// Cross-agent shared skills directory read by BOTH oh-my-pi and Pi. Verified
+// from the omp binary's skill-provider strings ("skills from .agents/skills —
+// project walk-up + user home") and Pi's docs ("~/.agents/skills/"). Installing
+// the bundle here once covers both agents — the de-dup driver writes it a single
+// time even when both are selected.
+const SHARED_AGENTS_SKILLS_DIR = path.join(os.homedir(), '.agents', 'skills');
+
 // Cross-CLI agent installation targets
 // Each entry maps a CLI tool to where its agent instructions should be placed
 const CLI_TARGETS = {
@@ -22,8 +35,31 @@ const CLI_TARGETS = {
     // Codex auto-loads skills from ~/.codex/skills/ (user-global). Same
     // SKILL.md format as Claude Code; descriptions must stay ≤1024 chars.
     skillsDir: path.join(os.homedir(), '.codex', 'skills'),
-    skillsToInstall: ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', '_shared'],
+    skillsToInstall: DEVLYN_CORE_SKILLS,
     detect: () => fs.existsSync(path.join(process.cwd(), 'AGENTS.md')) || fs.existsSync(path.join(process.cwd(), '.codex')),
+  },
+  omp: {
+    name: 'oh-my-pi (omp)',
+    instructionsFile: 'AGENTS.md',
+    baseInstructionsFile: 'AGENTS.md',
+    configDir: null, // omp discovers AGENTS.md at project root + user home
+    // omp loads skills from ~/.agents/skills (user home) — shared with Pi.
+    skillsDir: SHARED_AGENTS_SKILLS_DIR,
+    skillsToInstall: DEVLYN_CORE_SKILLS,
+    // Project-scoped only: machine-level ~/.omp must not auto-trigger a project
+    // AGENTS.md write via `npx devlyn-cli agents` in an unrelated repo.
+    detect: () => fs.existsSync(path.join(process.cwd(), '.omp')) || fs.existsSync(path.join(process.cwd(), '.agents')),
+  },
+  pi: {
+    name: 'Pi (earendil-works)',
+    instructionsFile: 'AGENTS.md',
+    baseInstructionsFile: 'AGENTS.md',
+    configDir: null, // Pi reads AGENTS.md / CLAUDE.md walking up from cwd
+    // Pi loads skills from ~/.agents/skills — shared with oh-my-pi.
+    skillsDir: SHARED_AGENTS_SKILLS_DIR,
+    skillsToInstall: DEVLYN_CORE_SKILLS,
+    // Project-scoped only (see omp): machine-level ~/.pi must not auto-trigger.
+    detect: () => fs.existsSync(path.join(process.cwd(), '.pi')) || fs.existsSync(path.join(process.cwd(), '.agents')),
   },
   gemini: {
     name: 'Gemini CLI (Google)',
@@ -363,9 +399,9 @@ function cleanManagedSkillDirs(sourceSkillsDir, targetSkillsDir) {
   return cleaned;
 }
 
-function multiSelect(items) {
+function multiSelect(items, preselectedIndices = []) {
   return new Promise((resolve) => {
-    const selected = new Set();
+    const selected = new Set(preselectedIndices.filter((i) => i >= 0 && i < items.length));
     let cursor = 0;
     let firstRender = true;
 
@@ -470,11 +506,15 @@ function installLocalSkill(skillName) {
   copyRecursive(src, dest, targetDir);
 
   // Mirror to every CLI skill-loader directory that already exists so optional
-  // skills are picked up by Codex (and any future CLI with a skillsDir) the
-  // same way required skills are. Existing dir, not new dir — we don't create
-  // a Codex install just because someone opted into a Claude-side skill.
+  // skills are picked up by Codex/omp/Pi (and any future CLI with a skillsDir)
+  // the same way required skills are. Existing dir, not new dir — we don't
+  // create an agent install just because someone opted into a Claude-side skill.
+  // De-dup by directory: omp and Pi share ~/.agents/skills, so the mirror runs
+  // once per unique destination.
+  const mirrored = new Set();
   for (const cli of Object.values(CLI_TARGETS)) {
-    if (!cli.skillsDir || !fs.existsSync(cli.skillsDir)) continue;
+    if (!cli.skillsDir || mirrored.has(cli.skillsDir) || !fs.existsSync(cli.skillsDir)) continue;
+    mirrored.add(cli.skillsDir);
     const cliDest = path.join(cli.skillsDir, skillName);
     if (fs.existsSync(cliDest)) fs.rmSync(cliDest, { recursive: true, force: true });
     copyRecursive(src, cliDest, cli.skillsDir);
@@ -556,94 +596,136 @@ function installSkillsForCLI(cliKey) {
   return copied;
 }
 
-function installAgentsForCLI(cliKey) {
+// Strip devlyn's previously-appended "# Devlyn Agent Instructions" block from an
+// instruction file (or the packaged base) before re-appending, so installs stay
+// idempotent and never duplicate the block. Anchors on the LAST marker, not the
+// first: the packaged AGENTS.md ships its own "# Devlyn Agent Instructions"
+// section, so indexOf would truncate that real content — lastIndexOf targets the
+// devlyn-appended block (always last) and preserves everything above it.
+function stripManagedBlock(content) {
+  const marker = '# Devlyn Agent Instructions';
+  const markerIdx = content.lastIndexOf(marker);
+  if (markerIdx > 0) {
+    const sepIdx = content.lastIndexOf('\n---', markerIdx);
+    return content.slice(0, sepIdx > 0 ? sepIdx : markerIdx).trimEnd();
+  }
+  return content.trimEnd();
+}
+
+// One-line description of exactly what selecting a CLI target installs, so the
+// unified selector stays honest — "Gemini" (instructions only) must not look
+// identical to "Codex" (instructions + skills).
+function targetDesc(cli) {
+  if (cli.skillsDir) {
+    return `${cli.instructionsFile} + devlyn skills → ${cli.skillsDir.replace(os.homedir(), '~')}`;
+  }
+  if (cli.configDir) return `Agent instructions → ${cli.configDir}/`;
+  return `${cli.instructionsFile} instructions only`;
+}
+
+// Install only the instruction file(s) for a CLI (no skills). Returns true when
+// instruction content was written. Split from skills so the de-dup driver can
+// write a shared destination (e.g. project AGENTS.md for codex/omp/pi) once.
+function installInstructionsForCLI(cliKey) {
   const cli = CLI_TARGETS[cliKey];
   if (!cli) return false;
 
   const agents = fs.existsSync(AGENTS_SOURCE)
     ? fs.readdirSync(AGENTS_SOURCE).filter((f) => f.endsWith('.md'))
     : [];
+  if (agents.length === 0) return false;
 
-  if (agents.length > 0) {
-    log(`\n🤖 Installing agents for ${cli.name}...`, 'cyan');
+  log(`\n🤖 Installing agent instructions for ${cli.name}...`, 'cyan');
 
-    if (cli.configDir) {
-      // CLI supports an agents directory — copy agent files there
-      const destDir = path.join(process.cwd(), cli.configDir);
-      if (!fs.existsSync(destDir)) {
-        fs.mkdirSync(destDir, { recursive: true });
-      }
-      for (const file of agents) {
-        const src = path.join(AGENTS_SOURCE, file);
-        const dest = path.join(destDir, file);
-        fs.copyFileSync(src, dest);
-        log(`  → ${cli.configDir}/${file}`, 'dim');
-      }
-    } else {
-      // CLI uses a single instructions file — append agent content
-      const destFile = path.join(process.cwd(), cli.instructionsFile);
-      const separator = '\n\n---\n\n# Devlyn Agent Instructions\n\n';
-      const agentContent = agents.map((file) => {
-        return fs.readFileSync(path.join(AGENTS_SOURCE, file), 'utf8');
-      }).join('\n\n---\n\n');
-
-      let existing = '';
-      if (fs.existsSync(destFile)) {
-        existing = fs.readFileSync(destFile, 'utf8');
-        // Remove previous devlyn agent section if present
-        const devlynMarker = '# Devlyn Agent Instructions';
-        const markerIdx = existing.indexOf(devlynMarker);
-        if (markerIdx > 0) {
-          // Find the separator before the marker (---\n\n)
-          const sepIdx = existing.lastIndexOf('---', markerIdx);
-          existing = existing.slice(0, sepIdx > 0 ? sepIdx : markerIdx).trimEnd();
-        }
-      } else if (cli.baseInstructionsFile) {
-        const baseInstructionsSrc = path.join(__dirname, '..', cli.baseInstructionsFile);
-        if (fs.existsSync(baseInstructionsSrc)) {
-          existing = fs.readFileSync(baseInstructionsSrc, 'utf8').trimEnd();
-        }
-      }
-
-      fs.writeFileSync(destFile, existing + separator + agentContent + '\n');
-      log(`  → ${cli.instructionsFile} (agent instructions appended)`, 'dim');
+  if (cli.configDir) {
+    // CLI supports an agents directory — copy agent files there
+    const destDir = path.join(process.cwd(), cli.configDir);
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
     }
-  }
+    for (const file of agents) {
+      const src = path.join(AGENTS_SOURCE, file);
+      const dest = path.join(destDir, file);
+      fs.copyFileSync(src, dest);
+      log(`  → ${cli.configDir}/${file}`, 'dim');
+    }
+  } else {
+    // CLI uses a single instructions file — append agent content
+    const destFile = path.join(process.cwd(), cli.instructionsFile);
+    const separator = '\n\n---\n\n# Devlyn Agent Instructions\n\n';
+    const agentContent = agents.map((file) => {
+      return fs.readFileSync(path.join(AGENTS_SOURCE, file), 'utf8');
+    }).join('\n\n---\n\n');
 
-  // Always install global skills (Codex-style skill loader) regardless of
-  // whether agent files were present. Agent install and skill install are
-  // independent capabilities.
+    let existing = '';
+    if (fs.existsSync(destFile)) {
+      existing = stripManagedBlock(fs.readFileSync(destFile, 'utf8'));
+    } else if (cli.baseInstructionsFile) {
+      const baseInstructionsSrc = path.join(__dirname, '..', cli.baseInstructionsFile);
+      if (fs.existsSync(baseInstructionsSrc)) {
+        existing = stripManagedBlock(fs.readFileSync(baseInstructionsSrc, 'utf8'));
+      }
+    }
+
+    fs.writeFileSync(destFile, existing + separator + agentContent + '\n');
+    log(`  → ${cli.instructionsFile} (agent instructions appended)`, 'dim');
+  }
+  return true;
+}
+
+// Install both instructions and skills for a single CLI. Used by the
+// `agents <cli>` command; multi-target paths use installSelectedCLITargets.
+function installAgentsForCLI(cliKey) {
+  const instr = installInstructionsForCLI(cliKey);
   const skillsCopied = installSkillsForCLI(cliKey);
   if (skillsCopied > 0) {
     log(`  → ${skillsCopied} skill${skillsCopied > 1 ? 's' : ''} installed (devlyn:resolve / devlyn:ideate / devlyn:design-ui / _shared)`, 'dim');
   }
+  return instr || skillsCopied > 0;
+}
 
-  return agents.length > 0 || skillsCopied > 0;
+// Install instructions + skills for a set of selected CLI targets, writing each
+// unique destination exactly once. omp and Pi share project AGENTS.md and the
+// ~/.agents/skills dir, so selecting both does not duplicate writes — this is
+// the researched "group the common" model: targets are the user's selection,
+// destinations are the unit of work.
+function installSelectedCLITargets(cliKeys) {
+  const instrDone = new Set();
+  const skillsDone = new Set();
+  let count = 0;
+  for (const cliKey of cliKeys) {
+    const cli = CLI_TARGETS[cliKey];
+    if (!cli) continue;
+    const instrKey = cli.configDir ? `dir:${cli.configDir}` : `file:${cli.instructionsFile}`;
+    if (!instrDone.has(instrKey)) {
+      installInstructionsForCLI(cliKey);
+      instrDone.add(instrKey);
+    }
+    if (cli.skillsDir && !skillsDone.has(cli.skillsDir)) {
+      const copied = installSkillsForCLI(cliKey);
+      if (copied > 0) {
+        log(`  → ${copied} skill${copied > 1 ? 's' : ''} → ${cli.skillsDir.replace(os.homedir(), '~')}`, 'dim');
+      }
+      skillsDone.add(cli.skillsDir);
+    }
+    count++;
+  }
+  return count;
 }
 
 function installAgentsForAllDetected() {
   const detected = detectOtherCLIs();
   if (detected.length === 0) return 0;
-
-  let installed = 0;
-  for (const cliKey of detected) {
-    if (installAgentsForCLI(cliKey)) installed++;
-  }
-  return installed;
+  return installSelectedCLITargets(detected);
 }
 
-async function init(skipPrompts = false) {
-  showLogo();
-  log('─'.repeat(44), 'dim');
-
-  if (!fs.existsSync(CONFIG_SOURCE)) {
-    log('❌ Config source not found', 'yellow');
-    process.exit(1);
-  }
-
-  // Install core config
+// Install the Claude Code core config: project .claude/ (skills, templates,
+// settings, CLAUDE.md, .gitignore) plus global ~/.claude/settings.json tweaks.
+// Extracted so the unified target selector installs it only when "Claude Code"
+// is chosen. Behavior is unchanged from the previous unconditional core install.
+function installClaudeCore() {
   const targetDir = getTargetDir();
-  log('\n📁 Installing core config to .claude/', 'green');
+  log('\n📁 Installing Claude Code config to .claude/', 'green');
   const refreshed = cleanManagedSkillDirs(
     path.join(CONFIG_SOURCE, 'skills'),
     path.join(targetDir, 'skills'),
@@ -747,40 +829,55 @@ async function init(skipPrompts = false) {
     log('  → ~/.claude/settings.json (disabled adaptive thinking, enabled 1h prompt caching)', 'dim');
   }
 
-  log('\n✅ Core config installed!', 'green');
+  log('\n✅ Claude Code config installed!', 'green');
+}
 
-  // Skip prompts if -y flag or non-interactive
+async function init(skipPrompts = false) {
+  showLogo();
+  log('─'.repeat(44), 'dim');
+
+  if (!fs.existsSync(CONFIG_SOURCE)) {
+    log('❌ Config source not found', 'yellow');
+    process.exit(1);
+  }
+
+  // Non-interactive / -y: preserve historical behavior — install Claude core
+  // only. Multi-target selection needs a TTY; scripted runs add other agents
+  // via `npx devlyn-cli agents <cli>`.
   if (skipPrompts || !process.stdin.isTTY) {
+    installClaudeCore();
     log('\n💡 Add optional addons later: run `npx devlyn-cli` without -y', 'dim');
-    log('   Add Codex instructions + skills later: run `npx devlyn-cli agents codex`', 'dim');
+    log('   Add another agent (Codex / omp / Pi / …) later: `npx devlyn-cli agents <cli>`', 'dim');
     log(`\n${COLORS.dim}   Enjoying devlyn? Star it on GitHub — it helps others find it:${COLORS.reset}`);
     log(`   ${COLORS.purple}→ https://github.com/fysoul17/devlyn-cli${COLORS.reset}\n`);
     return;
   }
 
-  // Ask which non-Claude CLIs should receive instruction files.
-  log('\n🤖 Optional AI CLI instructions:\n', 'blue');
-  const cliOptions = Object.entries(CLI_TARGETS).map(([key, cli]) => {
-    let desc;
-    if (cli.configDir) {
-      desc = `Install agents into ${cli.configDir}/`;
-    } else if (cli.skillsDir) {
-      desc = `Install ${cli.instructionsFile} + devlyn:resolve/devlyn:ideate/devlyn:design-ui skills (~/.codex/skills/; use $devlyn:* in Codex)`;
-    } else {
-      desc = `Install ${cli.instructionsFile}`;
-    }
-    return { key, name: cli.name, desc, type: 'cli' };
-  });
-  const selectedClis = await multiSelect(cliOptions);
-  if (selectedClis.length > 0) {
-    let agentsInstalled = 0;
-    for (const selectedCli of selectedClis) {
-      if (installAgentsForCLI(selectedCli.key)) agentsInstalled++;
-    }
-    log(`  ✅ Agent instructions installed for ${agentsInstalled} CLI${agentsInstalled !== 1 ? 's' : ''}`, 'green');
-  } else {
-    log('💡 No additional CLI instructions selected', 'dim');
-    log('   Run `npx devlyn-cli agents codex` later to install Codex AGENTS.md + devlyn skills', 'dim');
+  // Pick every agent to install devlyn into, up front. Claude Code is
+  // pre-checked (the happy path); every other agent is an explicit opt-in so a
+  // bare Enter never mutates a project's AGENTS.md or a shared skills dir for an
+  // agent the user didn't choose.
+  log('\n🎯 Select the agents to install devlyn into:\n', 'blue');
+  const targetOptions = [
+    { key: 'claude', name: 'Claude Code', desc: '.claude/ config — skills, templates, settings, CLAUDE.md', type: 'cli' },
+    ...Object.entries(CLI_TARGETS).map(([key, cli]) => ({ key, name: cli.name, desc: targetDesc(cli), type: 'cli' })),
+  ];
+  const preselected = [targetOptions.findIndex((o) => o.key === 'claude')];
+  const selectedKeys = (await multiSelect(targetOptions, preselected)).map((t) => t.key);
+
+  if (selectedKeys.length === 0) {
+    log('\n💡 No agents selected — nothing installed.', 'yellow');
+    log('   Run `npx devlyn-cli` again and pick at least one agent.\n', 'dim');
+    return;
+  }
+
+  if (selectedKeys.includes('claude')) {
+    installClaudeCore();
+  }
+  const cliKeys = selectedKeys.filter((k) => k !== 'claude');
+  if (cliKeys.length > 0) {
+    const installed = installSelectedCLITargets(cliKeys);
+    log(`\n  ✅ Installed devlyn into ${installed} agent${installed !== 1 ? 's' : ''}`, 'green');
   }
 
   // Ask about optional addons (local skills + external packs)
@@ -806,9 +903,9 @@ async function init(skipPrompts = false) {
 function showHelp() {
   showLogo();
   log('Usage:', 'green');
-  log('  npx devlyn-cli              Install/update .claude config');
+  log('  npx devlyn-cli              Install/update devlyn (pick agents: Claude / Codex / omp / Pi / …)');
   log('  npx devlyn-cli list         List available skills & templates');
-  log('  npx devlyn-cli -y           Install without prompts');
+  log('  npx devlyn-cli -y           Install Claude core without prompts');
   log('  npx devlyn-cli agents       Install agents for detected CLIs');
   log('  npx devlyn-cli agents all   Install agents for all supported CLIs');
   log('  npx devlyn-cli benchmark    Run the resolve benchmark suite');
@@ -1065,12 +1162,10 @@ switch (command) {
     log('─'.repeat(44), 'dim');
     const subArg = args[1];
     if (subArg === 'all') {
-      // Install for all supported CLIs regardless of detection
+      // Install for all supported CLIs regardless of detection. De-duped so the
+      // shared ~/.agents/skills dir (omp + Pi) and shared AGENTS.md write once.
       log('\n🤖 Installing agents for all supported CLIs...', 'blue');
-      let count = 0;
-      for (const cliKey of Object.keys(CLI_TARGETS)) {
-        if (installAgentsForCLI(cliKey)) count++;
-      }
+      const count = installSelectedCLITargets(Object.keys(CLI_TARGETS));
       log(`\n✅ Agents installed for ${count} CLI${count !== 1 ? 's' : ''}`, 'green');
     } else if (subArg && CLI_TARGETS[subArg]) {
       // Install for a specific CLI
