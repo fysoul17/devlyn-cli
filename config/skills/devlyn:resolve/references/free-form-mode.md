@@ -1,6 +1,6 @@
 # Free-form mode — complexity classifier
 
-When `/devlyn:resolve` is invoked with a free-form goal (no `--spec`), PHASE 0 runs this classifier to set `state.complexity ∈ {trivial, medium, large}` and either proceeds with an internal mini-spec, drafts focused questions for in-prompt resolution, or recommends `/devlyn:ideate` first.
+When `/devlyn:resolve` is invoked with a free-form goal (no `--spec`) — whether the goal is the inline positional text or the content of `--goal-file <path>` (PHASE 0 resolves `goal_text` from either source before classifying) — PHASE 0 runs this classifier to set `state.complexity ∈ {trivial, medium, large}` and either proceeds with an internal mini-spec, drafts focused questions for in-prompt resolution, or recommends `/devlyn:ideate` first.
 
 The classifier is rules-based / deterministic — not an LLM judgment call. Decision rules below.
 
