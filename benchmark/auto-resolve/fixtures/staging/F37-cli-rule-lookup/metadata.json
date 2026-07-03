@@ -1,0 +1,10 @@
+{
+  "id": "F37-cli-rule-lookup",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli price-events command that prices a batch of purchase events using the pricing rule revision that was in effect for that event's category at the event's own timestamp, drawn from a seeded, unsorted rule-revisions file, and that must finish processing a 200,000-event verification input against the seeded revision set within its process timeout."
+}

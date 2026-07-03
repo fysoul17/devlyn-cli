@@ -1,0 +1,10 @@
+{
+  "id": "F36-cli-session-admission",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli admit command that admits scheduling sessions against a global concurrency capacity in start-time order with file-order tie-break, deferring sessions that would exceed capacity, and that must finish processing a 150,000-session verification input within its process timeout without changing which sessions are admitted or deferred."
+}

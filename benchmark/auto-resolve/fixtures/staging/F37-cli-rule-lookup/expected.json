@@ -1,0 +1,65 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/correctness-small.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "an exact match (`effectiveAt` equal to the event's `timestamp`) counts as eligible, not just strictly earlier ones",
+        "If more than one eligible revision for that category shares the greatest `effectiveAt`, the one with the greatest `id` (plain string comparison) applies.",
+        "If the event's `categoryId` has zero revisions anywhere in `data/rule-revisions.json`, the event is rejected with reason `unknown_category`.",
+        "If the event's `categoryId` has at least one revision but none with `effectiveAt` less than or equal to the event's `timestamp`, the event is rejected with reason `no_effective_rule`."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/validation.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Validation happens before any pricing.",
+        "a duplicate event `id` uses shape `{ \"error\": \"duplicate_event_id\", \"id\": string }`"
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/scale.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "`bench-cli price-events` must finish processing the 200,000-event verification input (see `## Verification`) against the seeded revision set within its process timeout, without changing the priced or rejected outcome for any event compared to a smaller input processed the same way."
+      ]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\})",
+      "description": "silent catch returning fallback in price-events path",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "/\\*\\s*eslint-disable",
+      "description": "eslint-disable without scoped justification",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js", "data/rule-revisions.json"],
+  "forbidden_files": [],
+  "max_deps_added": 0,
+  "spec_output_files": ["bin/cli.js", "tests/cli.test.js"]
+}
