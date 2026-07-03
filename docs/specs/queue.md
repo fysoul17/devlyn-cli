@@ -13,9 +13,10 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   + timeout); both retired honestly, commit ae7711d, run
   iter-0039-headroom-f34-f35.
 - [F] needs-review: precondition failed — no headroom-passing fixtures exist
-  (F34/F35 both failed the gate above; solo aces Tier-1 difficulty). Engine
-  cross-mix measurement needs a harder fixture batch first, which is new
-  design work requiring user direction.
+  (F34/F35 failed the gate above; Tier-2 F36/F37 on the performance/scale
+  axis also failed in iter-0041-headroom-f36-f37, solo 96 on both, commit
+  0520ff6). Two design generations solo-saturated; the solo ≤ 80 ceiling
+  needs a rethink of fixture strategy — user direction required.
   With headroom-passing fixtures: measure engine combinations via
   `run-fixture.sh --engines-config` cross-mix arms; iterate iter-0040+ per
   `autoresearch/PRINCIPLES.md` (findings → next fixture/harness iteration).
