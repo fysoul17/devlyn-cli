@@ -69,6 +69,12 @@ rejected_pair_fixture_reason() {
     F32-*|F32)
       echo "bare 33 / solo_claude 98 in 20260512-f32-subscription-renewal-headroom"
       ;;
+    F34-*|F34)
+      echo "bare 92 / solo_claude 88 in iter-0039-headroom-f34-f35"
+      ;;
+    F35-*|F35)
+      echo "bare 50 / solo_claude 97 in iter-0039-headroom-f34-f35"
+      ;;
     S2-*|S2)
       echo "bare 33 / solo_claude 99 with solo timeout in 20260513-s2-inventory-headroom"
       ;;
