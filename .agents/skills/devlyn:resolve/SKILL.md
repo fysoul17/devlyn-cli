@@ -3,7 +3,7 @@ name: devlyn:resolve
 description: Hands-free pipeline for any coding task — bug fix, feature, refactor, debug, modify, PR review. Free-form goal or formal spec input. Plan → Implement → Build-gate → Cleanup → Verify (fresh subagent, findings-only). Mechanical-first verification; pair-mode is conditional-default in Verify. Use when the user says "resolve this", "fix this", "implement this", "refactor this", "debug this", "review this PR", or wants hands-off completion.
 ---
 
-Orchestrator for the 2-skill harness pipeline. One subagent per phase; file-based handoff via `.devlyn/pipeline.state.json`. VERIFY spawns a fresh-context subagent so independence is structural — not advisory.
+Orchestrator for the 2-skill harness pipeline. One fresh worker per phase; file-based handoff via `.devlyn/pipeline.state.json`. VERIFY spawns a fresh-context worker so independence is structural — not advisory.
 
 <pipeline_config>
 $ARGUMENTS
@@ -27,12 +27,34 @@ Hands-free. Measured by how far we get without human intervention.
 Every phase reads `_shared/runtime-principles.md` (Subtractive-first / Goal-locked / No-workaround / Evidence). Codex routings receive the contract excerpt inlined in their prompt body.
 </harness_principles>
 
+<runtime_paths>
+Resolve shared scripts from this skill's installed directory, never from the project cwd. At PHASE 0, before any phase command:
+
+```bash
+DEVLYN_SKILL_DIR="${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}"
+if [ "$DEVLYN_SKILL_DIR" = "__DEVLYN_SKILL_DIR__" ] || [ ! -d "$DEVLYN_SKILL_DIR/../_shared" ]; then
+  echo "BLOCKED:shared-dir-unresolved: $DEVLYN_SKILL_DIR/../_shared" >&2
+  exit 1
+fi
+DEVLYN_SHARED_DIR="$(cd "$DEVLYN_SKILL_DIR/../_shared" && pwd)"
+CODEX_MONITORED_PATH="$DEVLYN_SHARED_DIR/codex-monitored.sh"
+if [ ! -f "$CODEX_MONITORED_PATH" ]; then
+  echo "BLOCKED:shared-dir-unresolved: $CODEX_MONITORED_PATH" >&2
+  exit 1
+fi
+```
+
+`DEVLYN_SHARED_DIR` is the only valid `_shared` anchor. Claude Code supplies `CLAUDE_SKILL_DIR` by native render substitution; Codex/oh-my-pi installs receive an absolute copy-time stamp in the default branch. If the resolved skill directory is still the placeholder, `../_shared` is absent, or a required script is missing, halt with report-level `BLOCKED:shared-dir-unresolved` and include the failed path. Pass the absolute `DEVLYN_SHARED_DIR` and `CODEX_MONITORED_PATH` into every fresh phase worker.
+</runtime_paths>
+
 <engine_routing>
 Each phase routes to an engine and prepends the per-engine adapter header from `_shared/adapters/<engine>.md` (e.g. `claude.md`, `codex.md`) to the canonical phase body. Adapter is the per-model delta (Anthropic's prompt-engineering guide for Claude, OpenAI's prompt guidance for Codex). Canonical body is engine-agnostic.
 
-- Claude phases: spawn `Agent` (`mode: "bypassPermissions"`); prompt = adapter-header + canonical-body + task-context.
-- Codex phases: shell out via `bash _shared/codex-monitored.sh` with the same compounded prompt. The wrapper closes stdin and emits a heartbeat. No MCP.
-- Default engine: Claude for PLAN / IMPLEMENT / BUILD_GATE / CLEANUP. Role resolution (`_shared/engine-preflight.md#role-resolution`): explicit `--engine` flag > machine-local `.devlyn/engines.json` `executor` pin > `claude`. `--engine codex` routes IMPLEMENT to Codex; orchestration stays Claude. Pair-mode is conditional-default in VERIFY/JUDGE and selects the OTHER engine for the fresh subagent when the trigger policy fires — OTHER = first adapter-valid, non-primary, available entry of `engines.json` `pair_judge_priority`, or the binary claude↔codex complement when unset.
+- Phase spawning is mandatory for every orchestrator. Same-context PLAN / IMPLEMENT / BUILD_GATE / CLEANUP / VERIFY is a contract violation. If the current CLI cannot spawn a fresh worker, write the current phase verdict as `"BLOCKED"` and report `BLOCKED:fresh-context-unavailable` with the failed spawn command; do not continue with ad-hoc same-context execution.
+- Claude Code phases: spawn `Agent` (`mode: "bypassPermissions"`); prompt = adapter-header + canonical-body + task-context.
+- Codex CLI phases: shell out via `bash "$CODEX_MONITORED_PATH"` with the same compounded prompt. Each `codex exec` child is a new session/fresh context. The wrapper closes stdin and emits a heartbeat. No MCP.
+- oh-my-pi phases: spawn the native `task` tool with a fresh `context` containing adapter-header + canonical-body + task-context. Capture the task result into `.devlyn/<phase>.stdout` and any tool error into `.devlyn/<phase>.stderr` before updating state. If the `task` tool is unavailable for an omp-routed phase, write the current phase verdict as `"BLOCKED"` and report `BLOCKED:fresh-context-unavailable`; do not fall back to same-context execution or a nested `omp -p` subprocess.
+- Default engine: Claude for PLAN / IMPLEMENT / BUILD_GATE / CLEANUP when the orchestrator has Claude Code's native `Agent` primitive; otherwise the default route is the current CLI's fresh worker (`codex` child process for Codex CLI, native `task` for oh-my-pi). Role resolution (`_shared/engine-preflight.md#role-resolution`): explicit `--engine` flag > machine-local `.devlyn/engines.json` `executor` pin > orchestrator-supported default above. Explicit routes and pins still fail closed when their required engine/spawn channel is unavailable. Pair-mode is conditional-default in VERIFY/JUDGE and selects the OTHER engine for the fresh worker when the trigger policy fires — OTHER = first adapter-valid, non-primary, available entry of `engines.json` `pair_judge_priority`, or the binary claude↔codex complement when unset.
 - Multi-LLM evolution: when a new model adapter ships in `_shared/adapters/`, that engine becomes selectable via `--engine <model>` without further skill changes (NORTH-STAR.md "Multi-LLM evolution direction").
 </engine_routing>
 
@@ -48,7 +70,7 @@ Three input shapes:
 Once `state.implement_passed_sha` is non-null (PHASE 2 returned and produced a diff), the post-IMPLEMENT phases (CLEANUP, VERIFY) operate under structural constraints:
 
 - CLEANUP may only mutate files in the cleanup allowlist (tooling artifacts, dead code added by this diff, doc references this diff invalidated). Other paths trigger revert.
-- VERIFY runs in a fresh subagent context with no code-mutation tools. Findings only — never edits files. The fresh-context spawn is the structural guarantee; the prompt body reinforces it but the spawn is what makes independence real.
+- VERIFY runs in a fresh worker context with no code-mutation tools. Findings only — never edits files. The fresh-context spawn is the structural guarantee; the prompt body reinforces it but the spawn is what makes independence real. If no fresh worker can be spawned, VERIFY is `BLOCKED:fresh-context-unavailable`, never a same-context review.
 </post_implement_invariant>
 
 ## PHASE 0: PARSE + CLASSIFY + ROUTE
@@ -161,9 +183,9 @@ State write: `phases.probe_derive.{started_at, verdict, completed_at, duration_m
 
 Invocation contract when OTHER engine is Codex:
 
-- Invoke Codex only through the monitored wrapper path in `CODEX_MONITORED_PATH`,
-  or `.claude/skills/_shared/codex-monitored.sh` when the env var is absent:
-  `CODEX_MONITORED_ISOLATED=1 bash "$CODEX_MONITORED_PATH" -C "$PWD" --full-auto -c model_reasoning_effort=high "<probe prompt>"`.
+- Invoke Codex only through the monitored wrapper path in `CODEX_MONITORED_PATH`
+  resolved from `DEVLYN_SHARED_DIR`:
+  `CODEX_MONITORED_ISOLATED=1 bash "$CODEX_MONITORED_PATH" -C "$PWD" -s workspace-write -c model_reasoning_effort=high "<probe prompt>"`.
   Isolation keeps user config, AGENTS.md, hooks, and project rules
   from adding hidden context, tool calls, or transcript side effects.
 - Do not run `codex`, `codex exec`, `/Users/.../codex`, or a plugin-provided
@@ -174,7 +196,7 @@ Invocation contract when OTHER engine is Codex:
   validating `.devlyn/risk-probes.jsonl`.
 
 After return:
-1. Run `python3 .claude/skills/_shared/spec-verify-check.py --validate-risk-probes`
+1. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --validate-risk-probes`
    for the artifact boundary before IMPLEMENT; malformed probes halt with
    `BLOCKED:probe-derive-malformed`.
 2. IMPLEMENT receives `.devlyn/plan.md` plus `.devlyn/risk-probes.jsonl` as
@@ -209,7 +231,7 @@ Skip in verify-only mode OR when `build-gate` in `state.bypasses`. Deterministic
 Spawn Claude `Agent` (`mode: "bypassPermissions"`) with prompt body `references/phases/build-gate.md`. The agent:
 1. Detects language/framework via project files (`package.json`, `pyproject.toml`, etc.).
 2. Runs language-specific gates (tsc / lint / test).
-3. Always runs `python3 .claude/skills/_shared/spec-verify-check.py --include-risk-probes` (verification_commands literal-match plus `.devlyn/risk-probes.jsonl` when present). If `state.risk_profile.risk_probes_enabled == true`, the script requires `.devlyn/risk-probes.jsonl`; a missing file is a CRITICAL mechanical blocker, not a silent solo run.
+3. Always runs `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --include-risk-probes` (verification_commands literal-match plus `.devlyn/risk-probes.jsonl` when present). If `state.risk_profile.risk_probes_enabled == true`, the script requires `.devlyn/risk-probes.jsonl`; a missing file is a CRITICAL mechanical blocker, not a silent solo run.
 4. If diff touches web-surface files: run the browser tier with the repo's available toolchain (for example Playwright or curl).
 5. Emits `.devlyn/build_gate.findings.jsonl` + `.devlyn/build_gate.log.md`.
 
@@ -242,7 +264,7 @@ Independent quality layer. **Spawned with empty conversation context** — no ca
 
 Two sub-phases:
 
-1. **MECHANICAL** (deterministic): re-run `SPEC_VERIFY_PHASE=verify_mechanical SPEC_VERIFY_FINDINGS_FILE=verify-mechanical.findings.jsonl SPEC_VERIFY_FINDING_PREFIX=VERIFY-MECH python3 .claude/skills/_shared/spec-verify-check.py --include-risk-probes` against the post-CLEANUP code (independent of BUILD_GATE's earlier run). If `state.risk_profile.risk_probes_enabled == true`, missing `.devlyn/risk-probes.jsonl` is a CRITICAL mechanical blocker. This emits `.devlyn/verify-mechanical.findings.jsonl` for `verify-merge-findings.py`.
+1. **MECHANICAL** (deterministic): re-run `SPEC_VERIFY_PHASE=verify_mechanical SPEC_VERIFY_FINDINGS_FILE=verify-mechanical.findings.jsonl SPEC_VERIFY_FINDING_PREFIX=VERIFY-MECH python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --include-risk-probes` against the post-CLEANUP code (independent of BUILD_GATE's earlier run). If `state.risk_profile.risk_probes_enabled == true`, missing `.devlyn/risk-probes.jsonl` is a CRITICAL mechanical blocker. This emits `.devlyn/verify-mechanical.findings.jsonl` for `verify-merge-findings.py`.
 
 2. **JUDGE** (fresh-context Agent): grade the diff against the spec on rubric axes (spec compliance, scope, quality, consistency). Split each Requirement into binding clauses and trace code-order counterexamples; a passing verifier proves only the case it exercises, not neighboring `once` / `regardless` / `duplicate` / auth-order / rollback invariants. Respect scope qualifiers such as `inside a warehouse`, `per resource`, `for this line`, and `after validation`; do not widen a scoped clause into a global invariant, and compose multiple ordering rules in the stated order. For stateful flows, explicitly trace failed-operation rollback and the next entity's state before hunting broader edge cases. For high-complexity specs, construct at least one interaction counterexample that combines ordering/priority with failure handling and state mutation, then execute at least one such scenario through the repo's existing CLI/API/test runner without leaving tracked files behind; one-axis examples and pure mental tracing are insufficient. Default engine = same as IMPLEMENT (solo). Pair-mode (cross-model JUDGE) is eligible only after MECHANICAL and the primary JUDGE have no verdict-binding findings; deterministic blockers and primary JUDGE blockers already decide the verdict and route to the fix loop. Pair-mode fires when eligible and:
    - `--pair-verify` flag set, OR
@@ -278,7 +300,7 @@ failed availability check evidence, and print setup guidance:
 - Claude: install/configure Claude Code, run `claude --version` when available,
   confirm the host can spawn Claude agents, then rerun.
 
-Findings written to `.devlyn/verify.findings.jsonl`. **VERIFY agents have no code-mutation tools.** Codex pair-JUDGE is read-only: invoke `codex-monitored.sh` with `CODEX_MONITORED_ISOLATED=1` and `-c model_reasoning_effort=medium`, no `tail`/`head`/`grep` pipes, direct stdout/stderr capture, JSONL findings on stdout, and orchestrator-written `.devlyn/verify.pair.findings.jsonl`. Isolation blocks user config, AGENTS.md, hooks, and project rules from hidden context/tool/transcript side effects. If stdout is captured as `.devlyn/codex-judge.stdout`, run `python3 .claude/skills/_shared/collect-codex-findings.py` before merge; raw stdout is diagnostic only. If stdout contains findings or a non-PASS summary while `.devlyn/verify.pair.findings.jsonl` is empty, `verify-merge-findings.py` blocks VERIFY for `verify.pair.emission-contract`. Do not ask Codex to `apply_patch` or edit `.devlyn`. After primary and pair findings are written, run `python3 .claude/skills/_shared/verify-merge-findings.py --write-state`. Branch only on the merged `state.phases.verify.verdict`; a HIGH/CRITICAL finding from either judge must mechanically become `NEEDS_WORK`. Never write `.devlyn/verify-merged.findings.jsonl` or `.devlyn/verify-merge.summary.json` by hand; `verify-merge-findings.py` is their only writer. State write: `phases.verify.{started_at, verdict, completed_at, duration_ms, sub_verdicts: {mechanical, judge, pair_judge?}, artifacts}`.
+Findings written to `.devlyn/verify.findings.jsonl`. **VERIFY agents have no code-mutation tools.** Codex pair-JUDGE is read-only: invoke `codex-monitored.sh` with `CODEX_MONITORED_ISOLATED=1` and `-c model_reasoning_effort=medium`, no `tail`/`head`/`grep` pipes, direct stdout/stderr capture, JSONL findings on stdout, and orchestrator-written `.devlyn/verify.pair.findings.jsonl`. Isolation blocks user config, AGENTS.md, hooks, and project rules from hidden context/tool/transcript side effects. If stdout is captured as `.devlyn/codex-judge.stdout`, run `python3 "$DEVLYN_SHARED_DIR/collect-codex-findings.py"` before merge; raw stdout is diagnostic only. If stdout contains findings or a non-PASS summary while `.devlyn/verify.pair.findings.jsonl` is empty, `verify-merge-findings.py` blocks VERIFY for `verify.pair.emission-contract`. Do not ask Codex to `apply_patch` or edit `.devlyn`. After primary and pair findings are written, run `python3 "$DEVLYN_SHARED_DIR/verify-merge-findings.py" --write-state`. Branch only on the merged `state.phases.verify.verdict`; a HIGH/CRITICAL finding from either judge must mechanically become `NEEDS_WORK`. Never write `.devlyn/verify-merged.findings.jsonl` or `.devlyn/verify-merge.summary.json` by hand; `verify-merge-findings.py` is their only writer. State write: `phases.verify.{started_at, verdict, completed_at, duration_ms, sub_verdicts: {mechanical, judge, pair_judge?}, artifacts}`.
 
 Branch:
 - `PASS` → PHASE 6.
@@ -295,7 +317,7 @@ State write: `phases.final_report.started_at` at the top of this phase.
 
 3. State write: `phases.final_report.{verdict, completed_at, duration_ms}` BEFORE archive runs (archive prune logic skips runs whose `final_report.verdict` is null).
 
-4. **Archive** — invoke the deterministic script: `python3 .claude/skills/_shared/archive_run.py`. The script reads `run_id` from `.devlyn/pipeline.state.json`, moves the per-run artifact set (`PER_RUN_PATTERNS` in the script is the single source of truth) into `.devlyn/runs/<run_id>/`, then best-effort prunes to last 10 completed runs. Archive must run; running this step as deterministic-script-not-prose ensures the move actually happens (iter-0033a Smoke 3 caught a case where the agent claimed archive ran without moving the files).
+4. **Archive** — invoke the deterministic script: `python3 "$DEVLYN_SHARED_DIR/archive_run.py"`. The script reads `run_id` from `.devlyn/pipeline.state.json`, moves the per-run artifact set (`PER_RUN_PATTERNS` in the script is the single source of truth) into `.devlyn/runs/<run_id>/`, then best-effort prunes to last 10 completed runs. Archive must run; running this step as deterministic-script-not-prose ensures the move actually happens (iter-0033a Smoke 3 caught a case where the agent claimed archive ran without moving the files).
 
 5. Kill any dev server PHASE 3 left running.
 

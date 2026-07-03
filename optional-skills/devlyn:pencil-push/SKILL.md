@@ -1,3 +1,8 @@
+---
+name: devlyn:pencil-push
+description: Push codebase UI to Pencil canvas for design sync.
+---
+
 # Push Codebase Design to Pencil
 
 Read the current UI implementation and recreate it as a matching design in Pencil, so the .pen canvas accurately reflects what's live in code.

@@ -77,6 +77,7 @@ _shared/expected.schema.json
 _shared/adapters/README.md
 _shared/adapters/claude.md
 _shared/adapters/codex.md
+_shared/adapters/omp.md
 _shared/codex-config.md
 _shared/codex-monitored.sh
 _shared/engine-preflight.md
@@ -1458,7 +1459,7 @@ isolation_missing=0
 for needle in \
   'CODEX_MONITORED_ISOLATED=1 bash "$CODEX_MONITORED_PATH"' \
   'CODEX_MONITORED_ISOLATED=1` and `-c model_reasoning_effort=medium' \
-  'CODEX_MONITORED_ISOLATED=1 bash .claude/skills/_shared/codex-monitored.sh'
+  'CODEX_MONITORED_PATH="$DEVLYN_SHARED_DIR/codex-monitored.sh"'
 do
   if ! grep -RInF "$needle" config/skills >/dev/null 2>&1; then
     bad "missing isolated Codex invocation contract: $needle"
@@ -1542,6 +1543,19 @@ else
 fi
 if [ $isolation_missing -eq 0 ]; then
   ok "bounded Codex probe/judge calls require isolated wrapper mode"
+fi
+
+section "Check 10a1: Shared helper paths resolve from the invoked skill"
+shared_path_offenders=$(grep -RInF '.claude/skills/_shared' config/skills 2>/dev/null \
+  | grep -v 'roadmap-archival-workspace/' \
+  | grep -v 'devlyn:auto-resolve-workspace/' \
+  | grep -v 'devlyn:ideate-workspace/' \
+  | grep -v 'preflight-workspace/' \
+  || true)
+if [ -z "$shared_path_offenders" ]; then
+  ok "no project-relative .claude/skills/_shared paths in managed skills"
+else
+  while IFS= read -r f; do bad "$f"; done <<< "$shared_path_offenders"
 fi
 
 # ---------------------------------------------------------------------------

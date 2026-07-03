@@ -1,6 +1,6 @@
-# PHASE 5 — VERIFY (canonical body, fresh subagent context)
+# PHASE 5 — VERIFY (canonical body, fresh worker context)
 
-Per-engine adapter header is prepended at runtime. **You are spawned with empty conversation context.** No carry-over from PLAN / IMPLEMENT / BUILD_GATE / CLEANUP. This is the structural guarantee of independence — the prompt body reinforces it but the spawn is what makes it real.
+Per-engine adapter header is prepended at runtime. **You are spawned with empty conversation context.** No carry-over from PLAN / IMPLEMENT / BUILD_GATE / CLEANUP. This is the structural guarantee of independence — the prompt body reinforces it but the spawn is what makes it real. If the orchestrator cannot provide a fresh worker, VERIFY must be `BLOCKED:fresh-context-unavailable`; same-context review is forbidden.
 
 <role>
 Independent quality layer. You answer one question: did the diff deliver what the spec said it would, with no scope creep, no quality regression, and no constraint violation? You produce findings only — you have no code-mutation tools.
@@ -21,7 +21,7 @@ You do NOT receive: PLAN, IMPLEMENT's reasoning, BUILD_GATE's findings, CLEANUP'
 
 Re-run the mechanical checks fresh, independent of BUILD_GATE's earlier run:
 
-1. `SPEC_VERIFY_PHASE=verify_mechanical SPEC_VERIFY_FINDINGS_FILE=verify-mechanical.findings.jsonl SPEC_VERIFY_FINDING_PREFIX=VERIFY-MECH python3 .claude/skills/_shared/spec-verify-check.py --include-risk-probes` against the post-CLEANUP code. In spec mode, sibling `spec.expected.json` wins; a malformed sibling is CRITICAL, not a fallback. When `state.risk_profile.risk_probes_enabled == true`, missing `.devlyn/risk-probes.jsonl` is also CRITICAL. The script also checks `forbidden_patterns`, `required_files`, `forbidden_files`, and `max_deps_added`.
+1. `SPEC_VERIFY_PHASE=verify_mechanical SPEC_VERIFY_FINDINGS_FILE=verify-mechanical.findings.jsonl SPEC_VERIFY_FINDING_PREFIX=VERIFY-MECH python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --include-risk-probes` against the post-CLEANUP code. In spec mode, sibling `spec.expected.json` wins; a malformed sibling is CRITICAL, not a fallback. When `state.risk_profile.risk_probes_enabled == true`, missing `.devlyn/risk-probes.jsonl` is also CRITICAL. The script also checks `forbidden_patterns`, `required_files`, `forbidden_files`, and `max_deps_added`.
 
 Emit findings to `.devlyn/verify-mechanical.findings.jsonl`. Each match = one finding. Severity from the pattern's `severity` field (disqualifier → CRITICAL, warning → MEDIUM).
 
@@ -231,7 +231,7 @@ The Codex prompt must include a bounded-output contract: no harness-doc reads,
 maximum two targeted probes before first output, stop on the first
 verdict-binding finding, and emit PASS immediately after the bounded checks pass.
 If stdout is first captured to `.devlyn/codex-judge.stdout`, run
-`python3 .claude/skills/_shared/collect-codex-findings.py` before merge. That
+`python3 "$DEVLYN_SHARED_DIR/collect-codex-findings.py"` before merge. That
 script is the deterministic boundary writer for
 `.devlyn/verify.pair.findings.jsonl`.
 If raw Codex stdout is captured as `.devlyn/codex-judge.stdout`,
@@ -243,7 +243,7 @@ silently recover from a broken capture contract.
 After all VERIFY findings files are written, run:
 
 ```bash
-python3 .claude/skills/_shared/verify-merge-findings.py --write-state
+python3 "$DEVLYN_SHARED_DIR/verify-merge-findings.py" --write-state
 ```
 
 This deterministic merge is the routing source of truth for VERIFY. It writes

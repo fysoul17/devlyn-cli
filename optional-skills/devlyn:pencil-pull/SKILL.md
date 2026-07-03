@@ -1,3 +1,8 @@
+---
+name: devlyn:pencil-pull
+description: Pull Pencil designs into code with exact visual fidelity.
+---
+
 # Pull Pencil Design into Code
 
 Implement the selected Pencil design in code with exact visual fidelity. Work through one component at a time, verifying each against the design before moving on.

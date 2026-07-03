@@ -198,3 +198,91 @@ None of the above are pre-registered as an iteration per the headroom-first /
 goal-locked discipline (`feedback_pair_measurement_needs_headroom`,
 CLAUDE.md Goal-locked execution) — this session's mandate was smoke-test and
 log, not fix. Follow-up requires explicit user direction to open iter-0041+.
+
+## Round 2 addendum — F2-F5 fixed, F1 closed for omp + Claude Code, new F6 opened for Codex CLI (2026-07-03)
+
+**Status**: fix implemented and mechanically verified over 2 Codex delegation
+rounds (hard 2-round max per user direction), then independently re-verified
+via fresh 3-CLI headless smoke by the finishing session. Committed.
+
+### Mechanism shipped
+
+- F2 fixed via install-time absolute-path stamping, not prose. `SKILL.md`
+  ships a placeholder token (`DEVLYN_SKILL_DIR="${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}"`);
+  `bin/devlyn.js`'s `installSkillsForCLI()` calls a new `stampInstalledSkillDir()`
+  after `copyRecursive()` that token-replaces the placeholder with the real
+  absolute installed path, for codex/omp/pi user-global targets only. Claude
+  Code's install path is never stamped — it keeps relying on Claude Code's own
+  native `${CLAUDE_SKILL_DIR}` pre-render substitution (confirmed via official
+  Claude Code docs: this is a text substitution performed before the model
+  sees the skill body, not a portable shell env var — round 1's `${CLAUDE_SKILL_DIR:?msg}`
+  guard worked by coincidence on Claude Code and was never going to work on
+  Codex/omp, which expose no equivalent). A real bash mechanical check
+  (`if [ "$DEVLYN_SKILL_DIR" = "__DEVLYN_SKILL_DIR__" ] ... ; exit 1; fi`)
+  replaces the round-1 approach of asking the model to self-police a
+  `:?`-unset-variable error — a process exit code, not a prompt request.
+  Verified: stamped path appears correctly in `~/.codex/skills/devlyn:resolve/SKILL.md`
+  and `~/.agents/skills/devlyn:resolve/SKILL.md`; repo source
+  (`config/skills/devlyn:resolve/SKILL.md`) stays unstamped (placeholder
+  literal, confirmed via grep); reinstalling a second time does not corrupt or
+  duplicate the stamp (idempotent).
+- F3 resolved for omp, re-scoped for Codex CLI. omp's own transcript (this
+  iteration's original F1 evidence) showed it has a native fresh-context
+  `task` tool it reaches for unprompted; the fresh-worker spawn contract for
+  omp now specifies that native `task` tool (not a nested `omp -p`
+  subprocess) — named criterion: native observed fresh-context primitive
+  beats subprocess inference. Codex CLI still has no equivalent
+  self-referential spawn primitive (F3's original diagnosis stands
+  unchanged for Codex); Codex-routed phases spawn via `codex-monitored.sh`
+  (a real new `codex exec` child process = genuine fresh context).
+- F4 (pencil-pull/pencil-push missing YAML frontmatter) and F5 (stale-skill
+  purge Claude-Code-only) fixed as originally scoped, no changes needed.
+
+### Re-verification (fresh 3-CLI headless smoke, throwaway repos, real global installs)
+
+| CLI | Result |
+|---|---|
+| Claude Code | **PASS** — full PLAN→IMPLEMENT→BUILD_GATE→CLEANUP→VERIFY, real `.devlyn/pipeline.state.json`, VERIFY `sub_verdicts: {mechanical: PASS, judge: PASS, pair_judge: PASS}`. No regression from the stamping change (install path untouched). |
+| omp | **PASS** — same full phase-gated engagement, real `.devlyn/pipeline.state.json`, 5 confirmed real `tool_execution_start` events with `toolName: "task"` (one per phase: PLAN, IMPLEMENT, BUILD_GATE, CLEANUP, VERIFY) — genuine fresh-context spawns, not narrated. `build_gate.log.md` shows the mechanical script actually running with the stamp resolved: `DEVLYN_SHARED_DIR=/Users/<user>/.agents/skills/_shared`, `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --include-risk-probes` → exit 0. F1 is closed for omp. |
+| Codex CLI | **FAIL — new failure class (F6 below)**. |
+
+### F6 — HIGH (new, distinct from F1-F5) — Codex CLI's `codex exec` orchestrator treats the phase-gated pipeline contract as skippable for tasks it judges "small," independent of whether path resolution works
+
+With the F2 stamping fix confirmed mechanically correct and installed,
+Codex's smoke run still produced no `.devlyn/` directory and no phase
+spawns — but for a different reason than round 1. The model never executed
+the `<runtime_paths>` bash resolution block at all this time: no
+`DEVLYN_SKILL_DIR` check, no `BLOCKED:shared-dir-unresolved` guard triggered,
+nothing. It read the full installed `SKILL.md` (`sed -n '1,240p'` then
+`sed -n '241,520p'`, covering the whole file including the new
+`<runtime_paths>` block), then verbatim: *"This is small enough that the
+plan is: locate the existing test framework, add `add(a, b)` in the existing
+util module style, add one focused test, then run the relevant test command
+and any package test gate if it exists."* — and proceeded directly to ad-hoc
+same-context implementation, skipping the entire phase-gated machinery by
+choice, not by inability.
+
+This falsifies path-resolution as Codex CLI's remaining blocker: the fix
+that converted omp from FAIL to PASS (same round, same stamped mechanism,
+same SKILL.md revision) left Codex CLI unchanged, because Codex's model
+never reached the code path where the fix would matter. The defect is in how
+`codex exec` frames an invoked skill to the model — something makes the
+phase-gate ceremony read as optional/skippable there in a way it does not
+for omp (reading the identical document) or Claude Code (native skill
+invocation). Diagnosing *why* requires understanding Codex's skill
+presentation semantics specifically, which this smoke-and-fix cycle did not
+investigate — logged as a candidate for the next iteration, not
+pre-registered. A further prose-only tweak to the SKILL.md body is not
+expected to close this on its own, per this repo's own
+`project_iter0033g_asymptotic_firewall_lesson` finding that prompt-level
+contracts are empirically weak; closing F6 likely needs either a structural
+change specific to Codex-routed invocation or an honest capability
+declaration (Codex CLI as orchestrator = free-form single-pass only, stated
+up front) rather than another attempt at a stronger-worded guard.
+
+Decision (user-directed): ship the F2-F5 fix now — it is root-cause-correct
+for what it targeted, verified working for 2 of 3 CLIs with real evidence,
+and a no-regression path for Claude Code. Per the anti-asymptotic lesson
+(iter-0033g: stop chasing a moving target across rounds; ship what's
+verified, record the frontier), do not chase a 3rd Codex-specific round in
+this session. F6 stands as an open, undiagnosed finding for iter-0041+.

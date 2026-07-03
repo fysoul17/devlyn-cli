@@ -82,7 +82,7 @@ Anything binding all features (e.g. "no new top-level dependencies", "all CLI ou
 - `<spec-dir>/<id-N>/spec.md` for each feature (per `references/spec-template.md`).
 - `<spec-dir>/<id-N>/spec.expected.json` for each feature (per `_shared/expected.schema.json`).
 
-Each per-feature spec is structurally lint-validated using `python3 .claude/skills/_shared/spec-verify-check.py --check <spec-path>`, including supported `complexity` frontmatter and any present actionable solo-headroom hypothesis, and each sibling expected contract plus sibling spec `complexity` frontmatter and any present actionable solo-headroom hypothesis is validated using `python3 .claude/skills/_shared/spec-verify-check.py --check-expected <expected-path>`; if the spec has a solo-headroom hypothesis, its observable command must match `spec.expected.json.verification_commands[].cmd`.
+Each per-feature spec is structurally lint-validated using `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>`, including supported `complexity` frontmatter and any present actionable solo-headroom hypothesis, and each sibling expected contract plus sibling spec `complexity` frontmatter and any present actionable solo-headroom hypothesis is validated using `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>`; if the spec has a solo-headroom hypothesis, its observable command must match `spec.expected.json.verification_commands[].cmd`.
 
 Final announcement: `project ready — N specs at <spec-dir>/. Start with /devlyn:resolve --spec <first-spec-path>`.
 </output>

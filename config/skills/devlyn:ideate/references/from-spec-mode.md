@@ -37,8 +37,8 @@ You must NOT:
 3. For each missing/malformed piece: apply the smallest allowed fix.
 4. Write the normalized spec. Default location: `<spec-dir>/<id>-<slug>/spec.md`. With `--in-place` flag: write to `<path>` directly (overwrites the original).
 5. Generate or fix `spec.expected.json` per the rules above. Same dir as the spec.
-6. Run `python3 .claude/skills/_shared/spec-verify-check.py --check <spec-path>` to validate the spec carrier and supported `complexity` frontmatter; if the spec uses a legacy inline `## Verification` JSON carrier, any solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`.
-7. Run `python3 .claude/skills/_shared/spec-verify-check.py --check-expected <expected-path>` to validate sibling `spec.expected.json` plus sibling spec `complexity` frontmatter and any present solo-headroom hypothesis command against `spec.expected.json.verification_commands[].cmd`.
+6. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>` to validate the spec carrier and supported `complexity` frontmatter; if the spec uses a legacy inline `## Verification` JSON carrier, any solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`.
+7. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>` to validate sibling `spec.expected.json` plus sibling spec `complexity` frontmatter and any present solo-headroom hypothesis command against `spec.expected.json.verification_commands[].cmd`.
 8. If lint still fails after allowed fixes (e.g. Requirements section is empty in the source), surface the issue and exit non-zero — do NOT invent Requirements.
 9. If the preserved Requirements combine state mutation with ordering/priority,
    idempotency, auth/error priority, or exact output shape but the Verification

@@ -15,6 +15,7 @@ const PKG = require('../package.json');
 // skill here installs it everywhere. Standards skills (code-*, root-cause-*,
 // ui-*) stay Claude-core-only, matching the pre-existing Codex bundle.
 const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', 'devlyn:queue', '_shared'];
+const DEVLYN_SKILL_DIR_STAMP = '__DEVLYN_SKILL_DIR__';
 
 // Cross-agent shared skills directory read by BOTH oh-my-pi and Pi. Verified
 // from the omp binary's skill-provider strings ("skills from .agents/skills —
@@ -340,6 +341,34 @@ function copyRecursive(src, dest, baseDir) {
   }
 }
 
+function shellDoubleQuoteDefault(value) {
+  if (value.includes('\n')) {
+    throw new Error(`Cannot stamp skill path with newline: ${value}`);
+  }
+  return value.replace(/[\\$"`}]/g, '\\$&');
+}
+
+function stampInstalledSkillDir(rootDir, skillDir) {
+  const stampedSkillDir = shellDoubleQuoteDefault(skillDir);
+
+  function visit(current) {
+    const stats = fs.statSync(current);
+    if (stats.isDirectory()) {
+      for (const item of fs.readdirSync(current)) {
+        visit(path.join(current, item));
+      }
+      return;
+    }
+    if (path.extname(current) !== '.md') return;
+
+    const content = fs.readFileSync(current, 'utf8');
+    if (!content.includes(DEVLYN_SKILL_DIR_STAMP)) return;
+    fs.writeFileSync(current, content.split(DEVLYN_SKILL_DIR_STAMP).join(stampedSkillDir));
+  }
+
+  visit(rootDir);
+}
+
 // Dev artifacts that live under config/skills/ but must never ship or install.
 // Mirrors the `!` exclusions in package.json files[].
 const UNSHIPPED_SKILL_DIRS = new Set([
@@ -551,6 +580,11 @@ function installSkillsForCLI(cliKey) {
     fs.mkdirSync(cli.skillsDir, { recursive: true });
   }
 
+  const removed = cleanupDeprecated(path.dirname(cli.skillsDir));
+  if (removed > 0) {
+    log(`\n🧹 Cleaned up ${removed} deprecated file${removed > 1 ? 's' : ''}`, 'yellow');
+  }
+
   let copied = 0;
   for (const skillName of cli.skillsToInstall) {
     const src = path.join(sourceSkillsDir, skillName);
@@ -562,6 +596,7 @@ function installSkillsForCLI(cliKey) {
       fs.rmSync(dest, { recursive: true, force: true });
     }
     copyRecursive(src, dest, cli.skillsDir);
+    stampInstalledSkillDir(dest, dest);
     copied++;
     log(`  → ${cli.skillsDir.replace(os.homedir(), '~')}/${skillName}`, 'dim');
   }

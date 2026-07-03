@@ -27,6 +27,25 @@ The user does not know context engineering. They will under-specify and over-ass
 Read `_shared/runtime-principles.md` (Subtractive-first / Goal-locked / No-workaround / Evidence). The principles bind the spec content as well as your conversation. A spec that says "for future flexibility" is a Subtractive-first violation. A spec that asks for `try { ... } catch { return null }` is a No-workaround violation. AI flags these in elicitation, not after `/devlyn:resolve` has built them.
 </harness_principles>
 
+<runtime_paths>
+Resolve shared scripts from this skill's installed directory, never from the project cwd:
+
+```bash
+DEVLYN_SKILL_DIR="${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}"
+if [ "$DEVLYN_SKILL_DIR" = "__DEVLYN_SKILL_DIR__" ] || [ ! -d "$DEVLYN_SKILL_DIR/../_shared" ]; then
+  echo "BLOCKED:shared-dir-unresolved: $DEVLYN_SKILL_DIR/../_shared" >&2
+  exit 1
+fi
+DEVLYN_SHARED_DIR="$(cd "$DEVLYN_SKILL_DIR/../_shared" && pwd)"
+if [ ! -f "$DEVLYN_SHARED_DIR/spec-verify-check.py" ]; then
+  echo "BLOCKED:shared-dir-unresolved: $DEVLYN_SHARED_DIR/spec-verify-check.py" >&2
+  exit 1
+fi
+```
+
+Use `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py"` for all spec validation commands. Claude Code supplies `CLAUDE_SKILL_DIR` by native render substitution; Codex/oh-my-pi installs receive an absolute copy-time stamp in the default branch. If the resolved skill directory is still the placeholder or `../_shared` is absent, stop with `BLOCKED:shared-dir-unresolved`.
+</runtime_paths>
+
 <engine_routing>
 Default engine: Claude. The per-engine adapter from `_shared/adapters/<engine>.md` is prepended to the elicitation prompt so the model honors its own official prompt-engineering guidance during the Q&A.
 </engine_routing>
@@ -91,8 +110,8 @@ Structural lint (inline check, no script needed):
 After lint passes:
 1. Write `<spec-dir>/<id>-<slug>/spec.md` (the spec).
 2. Generate `<spec-dir>/<id>-<slug>/spec.expected.json` from the spec's `## Verification` block + any `forbidden_patterns` / `required_files` / `forbidden_files` / `max_deps_added` the conversation surfaced.
-3. Run `python3 .claude/skills/_shared/spec-verify-check.py --check <spec-path>` to validate the verification carrier shape, supported `complexity` frontmatter, and any present actionable solo-headroom hypothesis; if the spec uses a legacy inline `## Verification` JSON carrier, any solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`. If exit 2, fix the carrier/frontmatter/hypothesis and re-run.
-4. Run `python3 .claude/skills/_shared/spec-verify-check.py --check-expected <expected-path>` to validate sibling `spec.expected.json` against `_shared/expected.schema.json` plus sibling spec `complexity` frontmatter and any present actionable solo-headroom hypothesis; if the spec has a solo-headroom hypothesis, its observable command must match `spec.expected.json.verification_commands[].cmd`. If exit 2, fix the JSON/frontmatter/hypothesis and re-run.
+3. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>` to validate the verification carrier shape, supported `complexity` frontmatter, and any present actionable solo-headroom hypothesis; if the spec uses a legacy inline `## Verification` JSON carrier, any solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`. If exit 2, fix the carrier/frontmatter/hypothesis and re-run.
+4. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>` to validate sibling `spec.expected.json` against `_shared/expected.schema.json` plus sibling spec `complexity` frontmatter and any present actionable solo-headroom hypothesis; if the spec has a solo-headroom hypothesis, its observable command must match `spec.expected.json.verification_commands[].cmd`. If exit 2, fix the JSON/frontmatter/hypothesis and re-run.
 5. Print: `spec ready — /devlyn:resolve --spec <spec-path>`.
 
 ## PHASE 1Q: QUICK MODE

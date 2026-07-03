@@ -94,8 +94,8 @@ Before declaring the spec ready, verify structurally:
 If the lint fails, fix the missing piece (ask one focused question if needed) before announcing.
 
 After lint passes, run both mechanical checks:
-1. `python3 .claude/skills/_shared/spec-verify-check.py --check <spec-path>` validates the spec's verification carrier shape, supported `complexity` frontmatter, and any present actionable solo-headroom hypothesis; if the spec uses a legacy inline `## Verification` JSON carrier, any solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`.
-2. `python3 .claude/skills/_shared/spec-verify-check.py --check-expected <expected-path>` validates sibling `spec.expected.json` against `_shared/expected.schema.json` plus sibling spec `complexity` frontmatter and any present actionable solo-headroom hypothesis; if the spec has a solo-headroom hypothesis, its observable command must match `spec.expected.json.verification_commands[].cmd`.
+1. `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>` validates the spec's verification carrier shape, supported `complexity` frontmatter, and any present actionable solo-headroom hypothesis; if the spec uses a legacy inline `## Verification` JSON carrier, any solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`.
+2. `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>` validates sibling `spec.expected.json` against `_shared/expected.schema.json` plus sibling spec `complexity` frontmatter and any present actionable solo-headroom hypothesis; if the spec has a solo-headroom hypothesis, its observable command must match `spec.expected.json.verification_commands[].cmd`.
 
 If either exits 2: read the stderr message, fix the malformed carrier or JSON, and re-run the failed command. Both commands must exit 0 before ready.
 </lint>
