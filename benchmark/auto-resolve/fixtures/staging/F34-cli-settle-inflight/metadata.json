@@ -1,0 +1,10 @@
+{
+  "id": "F34-cli-settle-inflight",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli settle command that authorizes transfers through a seeded async gateway with overlapping in-flight authorizations while settling balances strictly in file order, with exact accepted/rejected/balances JSON output and validation before any authorization."
+}

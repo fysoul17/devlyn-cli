@@ -1,0 +1,64 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/priority-apply.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "An op whose `op_id` is already listed in the journal's `applied` array is recorded as skipped and changes nothing, regardless of its other fields.",
+        "Non-skipped ops apply in descending `priority`; ties apply in file order.",
+        "On success, persist the final quantities to `data/inventory.json`, append the applied `op_id`s to the journal's `applied` array in application order, and write exactly one JSON object to stdout with keys `applied` (op_ids in application order), `skipped` (op_ids in file order), and `inventory` (final quantities for every sku)."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/rollback.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "An op fails when applying its `delta` would take the sku's quantity below zero, evaluated at its turn in that order, with exact error shape `{ \"error\": \"insufficient_stock\", \"op_id\": string, \"sku\": string, \"available\": number, \"requested\": number }` where `available` is the quantity at that op's turn and `requested` is the absolute value of its `delta`.",
+        "If any op fails, nothing persists: `data/inventory.json` and `data/journal.json` are byte-for-byte unchanged, the command exits `2`, and exactly one JSON error object is written to stderr with nothing on stdout."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/dup-op.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "or an `op_id` that appears more than once in the input file exits `2` and writes exactly one JSON error object to stderr with shape `{ \"error\": \"invalid_input\", \"reason\": string }`, printing nothing to stdout and changing neither file."
+      ]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\})",
+      "description": "silent catch returning fallback in apply path",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "/\\*\\s*eslint-disable",
+      "description": "eslint-disable without scoped justification",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js", "data/inventory.json", "data/journal.json"],
+  "forbidden_files": [],
+  "max_deps_added": 0,
+  "spec_output_files": ["bin/cli.js", "tests/cli.test.js"]
+}

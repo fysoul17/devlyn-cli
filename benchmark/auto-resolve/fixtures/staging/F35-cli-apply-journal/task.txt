@@ -1,0 +1,9 @@
+Add an `apply` command to `bench-cli` so users can run `bench-cli apply --input <path>` with an ops JSON file of inventory adjustments. Quantities live in `data/inventory.json` and previously applied op ids live in the `applied` array of `data/journal.json` (both seeded).
+
+Validate the whole file before applying anything: bad JSON, missing/invalid fields, unknown sku, non-integer delta or priority, or the same `op_id` appearing twice in one file exits `2` with exactly one JSON error object `{ "error": "invalid_input", "reason": string }` on stderr, nothing on stdout, and neither file changed.
+
+An op whose `op_id` is already in the journal is recorded as skipped and changes nothing — whatever its other fields say. Everything else applies in descending `priority` (ties in file order). An op fails if its `delta` would push the sku below zero at its turn in that order; the error is the exact object `{ "error": "insufficient_stock", "op_id", "sku", "available", "requested" }` with `available` measured at that op's turn. Any failure means nothing persists — inventory and journal stay byte-for-byte identical and the command exits `2`.
+
+On success, write the final quantities back to `data/inventory.json`, append applied op ids to the journal in application order, and print exactly one JSON object with `applied` (application order), `skipped` (file order), and `inventory` — with nothing on stderr.
+
+Update `tests/cli.test.js`: existing tests still pass, plus at least two apply tests (one success mixing a journaled op with different priorities, one failing batch that leaves both files unchanged). No new npm dependencies. Only touch `bin/cli.js` and `tests/cli.test.js`.

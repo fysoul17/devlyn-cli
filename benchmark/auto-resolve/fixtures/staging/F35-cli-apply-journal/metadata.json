@@ -1,0 +1,10 @@
+{
+  "id": "F35-cli-apply-journal",
+  "category": "high-risk",
+  "difficulty": "high",
+  "timeout_seconds": 1500,
+  "required_tools": ["node"],
+  "browser": false,
+  "deps_change_expected": false,
+  "intent": "Add a bench-cli apply command that applies inventory adjustments in priority order with journal-based replay skipping, at-its-turn stock checks, exact JSON output, and all-or-nothing persistence of inventory and journal."
+}

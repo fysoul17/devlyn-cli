@@ -1,0 +1,57 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/cli.test.js",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok "]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/ordered-settlement.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Every transfer is authorized by calling `authorize(transfer)` from `lib/gateway.js` exactly once per transfer.",
+        "Regardless of the order in which authorizations complete, transfers settle in file order, each exactly once.",
+        "Each rejected transfer produces exact row shape `{ \"id\": string, \"error\": \"insufficient_funds\", \"available\": number, \"requested\": number }`, where `available` is the sender's balance at that transfer's turn in file order.",
+        "The seeded gateway records the maximum number of authorizations in flight at once in `data/gateway-stats.json`; settling the six-transfer sample in `## Verification` must record `high_water` of at least `3`.",
+        "The command must not modify `data/accounts.json`."
+      ]
+    },
+    {
+      "cmd": "node \"$BENCH_FIXTURE_DIR/verifiers/reject-invalid.js\"",
+      "exit_code": 0,
+      "stdout_contains": ["\"ok\":true"],
+      "stdout_not_contains": [],
+      "contract_refs": [
+        "Validation happens before any authorization starts.",
+        "unknown account, or non-positive or non-integer `amount` exits `2` and writes exactly one JSON error object to stderr with shape `{ \"error\": \"invalid_input\", \"reason\": string }`, printing nothing to stdout."
+      ]
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{[^}]*return\\s+(null|undefined|''|\\{\\})",
+      "description": "silent catch returning fallback in settle path",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "description": "empty catch block",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    },
+    {
+      "pattern": "/\\*\\s*eslint-disable",
+      "description": "eslint-disable without scoped justification",
+      "files": ["bin/cli.js"],
+      "severity": "disqualifier"
+    }
+  ],
+  "required_files": ["bin/cli.js", "tests/cli.test.js", "data/accounts.json", "lib/gateway.js"],
+  "forbidden_files": [],
+  "max_deps_added": 0,
+  "spec_output_files": ["bin/cli.js", "tests/cli.test.js"]
+}

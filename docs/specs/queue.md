@@ -1,11 +1,20 @@
 # Intent Queue
 
-Ordered backlog for the loop-engineering drain (CLAUDE.md "Intent queue"). One
-line per intent; link a spec dir once specced. `[x]` done · `[F]` blocked/needs-review.
+Ordered backlog for the loop-engineering drain (`/devlyn:queue`; contract in
+CLAUDE.md / AGENTS.md "Intent queue"). One line per intent; link a spec dir
+once specced. `[x]` done · `[F]` blocked/needs-review.
 
-- [ ] Benchmark evolution loop (autoresearch-style): build the Tier-1
-  pair-discriminating headroom fixtures (H1 race, A1 atomic batch first — see
-  memory `project_pair_fixture_tier1_2026_05_05`), pass `headroom-gate.py`
-  (bare ≤ 60 / solo ≤ 80, both clean), then measure engine combinations via
-  `run-fixture.sh --engines-config` cross-mix arms. Iterate iter-0039+ per
-  `autoresearch/PRINCIPLES.md`.
+- [ ] Activate + measure Tier-1 headroom fixtures F34/F35 (written and
+  self-validated in `benchmark/auto-resolve/fixtures/staging/` — follow
+  `staging/README.md`: mv into `fixtures/`, lint, bare+solo arms via
+  `run-full-pipeline-pair-candidate.sh`, `headroom-gate.py` bare ≤ 60 /
+  solo ≤ 80; on FAIL retire honestly, never tune the oracle).
+- [ ] With headroom-passing fixtures: measure engine combinations via
+  `run-fixture.sh --engines-config` cross-mix arms; iterate iter-0040+ per
+  `autoresearch/PRINCIPLES.md` (findings → next fixture/harness iteration).
+- [ ] Cross-CLI smoke (user direction 2026-07-03: harness must run on Codex
+  CLI and oh-my-pi, not only Claude Code): install via `npx devlyn-cli` with
+  codex/omp targets, then run `/devlyn:queue` status and one trivial
+  `/devlyn:resolve` item from each CLI; log every asymmetry found (subagent
+  spawning semantics for VERIFY fresh-context independence is the predicted
+  gap) as iter-0040 candidates.

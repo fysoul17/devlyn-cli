@@ -1,0 +1,9 @@
+Add a `settle` command to `bench-cli` so users can run `bench-cli settle --input <path>` with a transfers JSON file. Starting balances come from `data/accounts.json` (read-only — settle is a preview and must not modify it). Every transfer must be authorized by calling `authorize(transfer)` from the seeded `lib/gateway.js` exactly once; do not modify or bypass that module.
+
+The gateway is slow, so authorizations for different transfers must be able to overlap — while one is awaited, later ones must be able to start. The seeded gateway records `calls` and the in-flight `high_water` mark in `data/gateway-stats.json`; a six-transfer batch must reach a high-water mark of at least 3.
+
+No matter which order authorizations finish in, transfers settle in file order, each exactly once: a transfer is accepted when the sender's balance after all earlier-in-file accepted transfers covers the amount, otherwise it is rejected with the exact row `{ "id", "error": "insufficient_funds", "available", "requested" }` where `available` is the balance at that transfer's file-order turn.
+
+Validate the whole file before any authorization starts: bad JSON, missing fields, unknown accounts, or non-positive/non-integer amounts exit `2` with exactly one JSON error object `{ "error": "invalid_input", "reason": string }` on stderr and nothing on stdout. On success print exactly one JSON object with `accepted` (ids in file order), `rejected` (rows in file order), and `balances` (every account) — and nothing on stderr.
+
+Update `tests/cli.test.js`: existing tests still pass, plus at least two new settle tests (one where a later transfer depends on an earlier transfer's settlement, one rejection). No new npm dependencies. Only touch `bin/cli.js` and `tests/cli.test.js`.
