@@ -125,14 +125,14 @@ Top-level wrapper:
       "status":              "sign | block",
       "blocked_ids":         [],
       "signed_plan_sha256":  "...",                  // canonical pre-stamp sha (see below)
-      "model":               "claude-opus-4-7",
+      "model":               "<exact claude model id>",
       "timestamp":           "2026-04-29T..."
     },
     "codex": {
       "status":              "sign | block",
       "blocked_ids":         [],
       "signed_plan_sha256":  "...",
-      "model":               "gpt-5.5",
+      "model":               "<exact codex model id>",
       "timestamp":           "..."
     }
   }

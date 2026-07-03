@@ -28,7 +28,7 @@ Every phase reads `_shared/runtime-principles.md` (Subtractive-first / Goal-lock
 </harness_principles>
 
 <engine_routing>
-Each phase routes to an engine and prepends the per-engine adapter header from `_shared/adapters/<engine>.md` (e.g. `claude.md`, `codex.md`) to the canonical phase body. Adapter is the per-model delta (Anthropic's Opus prompt-engineering guide for Claude, OpenAI's GPT-5.5 guide for Codex). Canonical body is engine-agnostic.
+Each phase routes to an engine and prepends the per-engine adapter header from `_shared/adapters/<engine>.md` (e.g. `claude.md`, `codex.md`) to the canonical phase body. Adapter is the per-model delta (Anthropic's prompt-engineering guide for Claude, OpenAI's prompt guidance for Codex). Canonical body is engine-agnostic.
 
 - Claude phases: spawn `Agent` (`mode: "bypassPermissions"`); prompt = adapter-header + canonical-body + task-context.
 - Codex phases: shell out via `bash _shared/codex-monitored.sh` with the same compounded prompt. The wrapper closes stdin and emits a heartbeat. No MCP.

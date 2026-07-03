@@ -24,7 +24,7 @@ The runtime sub-agent contract below (Subtractive-first / Goal-locked / No-worka
 
 ## Quick Start
 
-Two skills cover the full cycle post iter-0034 Phase 4 cutover (2026-05-04). `/devlyn:ideate` is OPTIONAL; `/devlyn:resolve` is REQUIRED; `/devlyn:design-ui` is also REQUIRED as the creative UI exploration surface. **Both pipeline skills default to `--engine claude`** for PLAN/IMPLEMENT. Codex BUILD/IMPLEMENT and PLAN-pair remain research-only, but `/devlyn:resolve` VERIFY has conditional-default pair-JUDGE when its `SKILL.md` trigger policy fires. Pass `--engine auto` or `--engine codex` explicitly to opt into the broader research path. If a selected or conditionally required engine is unavailable, the run stops with `BLOCKED:<engine>-unavailable` and setup guidance.
+Two skills cover the full cycle. `/devlyn:ideate` is OPTIONAL; `/devlyn:resolve` is REQUIRED; `/devlyn:design-ui` is also REQUIRED as the creative UI exploration surface. **Both pipeline skills default to `--engine claude`** for PLAN/IMPLEMENT. Codex BUILD/IMPLEMENT and PLAN-pair remain research-only, but `/devlyn:resolve` VERIFY has conditional-default pair-JUDGE when its `SKILL.md` trigger policy fires. Pass `--engine codex` explicitly to opt into the broader research path. If a selected or conditionally required engine is unavailable, the run stops with `BLOCKED:<engine>-unavailable` and setup guidance.
 
 1. `/devlyn:ideate` (optional) — unstructured idea → `docs/specs/<id>/spec.md` + `spec.expected.json`. Modes: default Q&A, `--quick` (autonomous-pipeline-safe), `--from-spec <path>`, `--project`.
 2. `/devlyn:resolve` — hands-free pipeline for any coding task. Free-form goal, `--spec <path>`, or `--verify-only <diff> --spec <path>`. Phases: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (fresh subagent, findings-only).
@@ -135,7 +135,7 @@ A finding without one of these forms is excluded. Vague findings produce vague f
 
 ## Codex invocation
 
-When `/devlyn:resolve` or `/devlyn:ideate` route a phase to Codex (`--engine codex`, `--engine auto`, or conditional VERIFY pair/risk-probe routing), the wrapper-form contract lives in `config/skills/_shared/codex-config.md` (or `.claude/skills/_shared/codex-config.md` once installed). Omit `-m <model>` — the CLI's current flagship is used automatically. MCP is not in the loop. If Codex is required and unavailable, stop with `BLOCKED:codex-unavailable` and setup guidance.
+When `/devlyn:resolve` or `/devlyn:ideate` route a phase to Codex (`--engine codex` or conditional VERIFY pair/risk-probe routing), the wrapper-form contract lives in `config/skills/_shared/codex-config.md` (or `.claude/skills/_shared/codex-config.md` once installed). Omit `-m <model>` — the CLI's current flagship is used automatically. MCP is not in the loop. If Codex is required and unavailable, stop with `BLOCKED:codex-unavailable` and setup guidance.
 
 ## Working Mode
 

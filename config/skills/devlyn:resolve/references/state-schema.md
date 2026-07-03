@@ -71,7 +71,7 @@ Each entry under `phases.<name>` (for `plan`, `probe_derive`, `implement`, `buil
   "triggered_by": null,
   "verdict": "PASS",
   "engine": "claude",
-  "model": "claude-opus-4-7",
+  "model": "<exact model id that ran this phase>",
   "pre_sha": null,
   "artifacts": { "findings_file": null, "log_file": null },
   "sub_verdicts": null
