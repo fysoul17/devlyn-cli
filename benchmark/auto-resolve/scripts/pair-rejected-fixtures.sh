@@ -75,6 +75,12 @@ rejected_pair_fixture_reason() {
     F35-*|F35)
       echo "bare 50 / solo_claude 97 in iter-0039-headroom-f34-f35"
       ;;
+    F36-*|F36)
+      echo "bare 50 / solo_claude 96 with solo timeout in iter-0041-headroom-f36-f37"
+      ;;
+    F37-*|F37)
+      echo "bare 75 / solo_claude 96 with solo invoke failure in iter-0041-headroom-f36-f37"
+      ;;
     S2-*|S2)
       echo "bare 33 / solo_claude 99 with solo timeout in 20260513-s2-inventory-headroom"
       ;;
