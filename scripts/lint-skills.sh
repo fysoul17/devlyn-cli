@@ -243,7 +243,7 @@ if [ ! -e "optional-skills/devlyn:design-ui" ]; then
 else
   bad "devlyn:design-ui must not be installed as an optional addon"
 fi
-if grep -Fq "const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', '_shared'];" bin/devlyn.js \
+if grep -Fq "const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', '_shared'];" bin/devlyn.js \
    && grep -Fq "skillsToInstall: DEVLYN_CORE_SKILLS" bin/devlyn.js; then
   ok "Codex install includes devlyn:design-ui (via shared DEVLYN_CORE_SKILLS bundle)"
 else
@@ -1352,7 +1352,7 @@ for file in \
   .agents/skills/devlyn:resolve/references/state-schema.md
 do
   if ! grep -Fq 'MECHANICAL and the primary JUDGE have no verdict-binding blockers' "$file" \
-    || ! grep -Fq 'may set only `user_no_pair`, `mechanical_blocker`, `primary_judge_blocker`, or null' "$file" \
+    || ! grep -Fq 'may set only `user_no_pair`, `mechanical_blocker`, `primary_judge_blocker`, `auto_pair_other_engine_unavailable`, or null' "$file" \
     || ! grep -Fq '`risk_profile` must remain an object with boolean' "$file" \
     || ! grep -Fq 'state implies a pair decision is required but `pair_trigger` is missing' "$file"; then
     bad "$file — state schema must document pair_trigger blocker and missing-trigger enforcement"

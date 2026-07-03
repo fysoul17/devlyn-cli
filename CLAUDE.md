@@ -24,22 +24,35 @@ The runtime sub-agent contract below (Subtractive-first / Goal-locked / No-worka
 
 ## Quick Start
 
-Two skills cover the full cycle. `/devlyn:ideate` is OPTIONAL; `/devlyn:resolve` is REQUIRED; `/devlyn:design-ui` is also REQUIRED as the creative UI exploration surface. **Both pipeline skills default to `--engine claude`** for PLAN/IMPLEMENT. Codex BUILD/IMPLEMENT and PLAN-pair remain research-only, but `/devlyn:resolve` VERIFY has conditional-default pair-JUDGE when its `SKILL.md` trigger policy fires. Pass `--engine codex` explicitly to opt into the broader research path. If a selected or conditionally required engine is unavailable, the run stops with `BLOCKED:<engine>-unavailable` and setup guidance.
+Two skills cover the full cycle. `/devlyn:ideate` is OPTIONAL; `/devlyn:resolve` is REQUIRED; `/devlyn:design-ui` is also REQUIRED as the creative UI exploration surface. Engine selection follows the role map below.
 
 1. `/devlyn:ideate` (optional) — unstructured idea → `docs/specs/<id>/spec.md` + `spec.expected.json`. Modes: default Q&A, `--quick` (autonomous-pipeline-safe), `--from-spec <path>`, `--project`.
 2. `/devlyn:resolve` — hands-free pipeline for any coding task. Free-form goal, `--spec <path>`, or `--verify-only <diff> --spec <path>`. Phases: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (fresh subagent, findings-only).
 
 Each skill's `SKILL.md` is the source of truth for its flags and workflow — don't duplicate them here.
 
-### When to use which
+### Engine roles — auto-detected, manually pinnable
 
-| Situation | Command |
-|-----------|---------|
-| New project / multi-feature plan / external spec to normalize | `/devlyn:ideate` (`--project`, default, or `--from-spec`) |
-| One-line goal you want turned into a spec autonomously | `/devlyn:ideate --quick` |
-| Spec already in hand | `/devlyn:resolve --spec <path>` |
-| Free-form fix / feature / refactor / debug / PR review | `/devlyn:resolve "<describe the work>"` |
-| Verify a diff or PR against a spec | `/devlyn:resolve --verify-only <ref> --spec <path>` |
+| Role | Default | Manual override |
+|---|---|---|
+| Orchestrator — conversation, handoff, loop driving | whichever CLI you open (contract is symmetric: CLAUDE.md ↔ AGENTS.md) | switch CLIs; the file artifacts (spec/queue/state) carry over |
+| Executor — PLAN/IMPLEMENT/CLEANUP + primary VERIFY judge | `claude` | `--engine <name>` per run, or `/devlyn:engines executor <name>` (durable pin) |
+| Pair judge — VERIFY pair-JUDGE, risk probes | first available OTHER engine (claude↔codex) | `/devlyn:engines pair <name>,...`; `--no-pair` opts out |
+
+`/devlyn:engines` with no args shows the current role table, detected engines, and how to pin or clear — the pins live in `.devlyn/engines.json`.
+
+`.devlyn/engines.json` is machine-local — not committed, not archived. Pins are promises: a pinned unavailable engine stops with `BLOCKED:<engine>-unavailable`; a name without a `_shared/adapters/<name>.md` adapter stops with `BLOCKED:invalid-engine-config`. New engines (GLM, pi-agent backends) plug in by shipping an adapter file — no skill changes. Codex BUILD/IMPLEMENT and PLAN-pair remain research-only paths behind explicit `--engine codex`.
+
+### Conversational handoff + loop engineering — the default entry for all work
+
+The user does not invoke skills manually; the orchestrating model does. Small tasks: invoke `/devlyn:resolve "<goal>"` directly. Large tasks agreed in conversation:
+
+1. Write the agreed contract to `docs/specs/<id>/spec.md` (+ `spec.expected.json` when mechanical verifications exist). Always a spec file for large work — never `--goal-file`, which routes into `BLOCKED:large-needs-ideation`.
+2. Present a one-screen plan-contract summary — the user's single review checkpoint, BEFORE the pipeline starts.
+3. On go-ahead, invoke `/devlyn:resolve --spec <path>` hands-free to completion.
+4. **Per-task outer loop**: read the terminal verdict. PASS → done. Verdicts backed by spec/verification findings (NEEDS_WORK, verify/build-gate exhaustion) → adjudicate the findings, amend the spec (recorded in the spec file; spec stays read-only inside a run), re-invoke — at most 3 outer iterations, then surface with the findings trail. Infrastructure, invalid-input, engine-availability, and implement-empty BLOCKED verdicts are not spec-amendable: surface immediately. Every iteration re-enters through durable artifacts (spec, findings, run archive), never conversation memory.
+
+**Intent queue (unattended drain)**: the user stacks intents in `docs/specs/queue.md` (ordered checklist). Drain strictly serially — per item: spec it, run the outer loop, mark `[x]` done or `[F]` blocked with reason, continue; a blocked item never halts the queue. The queue entry is the user's go-ahead, so assume-and-log replaces the interactive checkpoint — but unattended assumptions may only take scope-narrowing, reversible, non-user-visible defaults. Material ambiguity (user-visible behavior, data/state semantics, new files/scripts/flags, implementation surface) → mark `[F] needs-review` and move on. End the drain with a per-item verdict + assumptions report.
 
 ### Subtractive-first editing — perfection = nothing left to remove
 <!-- runtime-principles:section=subtractive-first:begin -->
@@ -146,7 +159,7 @@ When `/devlyn:resolve` or `/devlyn:ideate` route a phase to Codex (`--engine cod
 
 ## Skill Boundary Policy
 
-The runtime pipeline surface is two skills — `/devlyn:resolve` and `/devlyn:ideate` — plus `/devlyn:design-ui` for creative UI exploration. `/devlyn:resolve` runs PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY inline; verification, cleanup, and security review (delegated to the native `security-review` Claude Code skill from BUILD_GATE) all live inside the pipeline. There are no standalone `/devlyn:review`, `/devlyn:evaluate`, or `/devlyn:team-resolve` surfaces. `/devlyn:design-ui` spawns a 5-specialist design team (Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer). `/devlyn:reap` is an optional user-invoked skill in `optional-skills/`; resolve never delegates to it.
+The runtime pipeline surface is two skills — `/devlyn:resolve` and `/devlyn:ideate` — plus `/devlyn:design-ui` for creative UI exploration and `/devlyn:engines` as the engine-role config utility (front-end for `.devlyn/engines.json`; added on explicit user direction, iter-0038). `/devlyn:resolve` runs PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY inline; verification, cleanup, and security review (delegated to the native `security-review` Claude Code skill from BUILD_GATE) all live inside the pipeline. There are no standalone `/devlyn:review`, `/devlyn:evaluate`, or `/devlyn:team-resolve` surfaces. `/devlyn:design-ui` spawns a 5-specialist design team (Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer). `/devlyn:reap` is an optional user-invoked skill in `optional-skills/`; resolve never delegates to it.
 
 Browser validation runs directly from BUILD_GATE using whichever toolchain is available (Chrome MCP, Playwright, or curl-tier fallback) — there is no separate `/devlyn:browser-validate` skill.
 

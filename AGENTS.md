@@ -32,6 +32,10 @@ ideate (optional)  ->  resolve  ->  ship
 
 Each skill's `SKILL.md` is the source of truth for flags and workflow. Do not duplicate.
 
+Engine roles: orchestrator = whichever CLI the user opened (this contract is symmetric with CLAUDE.md); executor (PLAN/IMPLEMENT/CLEANUP) defaults to `claude`, overridable per run with `--engine <name>` or durably via machine-local `.devlyn/engines.json` `{"executor": "<name>", "pair_judge_priority": ["<name>", ...]}`; pair judge = first available OTHER engine. Pins fail closed (`BLOCKED:<engine>-unavailable` / `BLOCKED:invalid-engine-config`); new engines plug in by shipping `_shared/adapters/<name>.md`. `/devlyn:engines` (no args) shows the role table + detected engines; `executor <name>` / `pair <name>,...` / `clear` manage the pins.
+
+Conversational handoff + loop engineering (default entry): the orchestrating model — not the user — invokes the skills. Large agreed work is written to `docs/specs/<id>/spec.md` (always a spec file; `--goal-file` is trivial/medium-only), summarized once for user review, then run hands-free via `--spec`. Outer loop per task: findings-backed verdicts (NEEDS_WORK, verify/build-gate exhaustion) get spec amendment + re-run, max 3 iterations; infrastructure / invalid-input / engine-availability / implement-empty BLOCKED verdicts surface immediately. Unattended queue drain (`docs/specs/queue.md`, strictly serial): assumptions may only take scope-narrowing, reversible, non-user-visible defaults — material ambiguity marks the item `[F] needs-review` and the drain continues.
+
 ## Subtractive-First Editing
 
 Before writing any change, answer in this order:

@@ -15,7 +15,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 --fixture <FID> --arm <variant|solo_claude|bare|l2_gated|l2_risk_probes|l2_forced> --run-id <ID> [--resolve-skill new] [--dry-run]"
+  echo "usage: $0 --fixture <FID> --arm <variant|solo_claude|bare|l2_gated|l2_risk_probes|l2_forced> --run-id <ID> [--resolve-skill new] [--engines-config '<json>'] [--dry-run]"
   exit 1
 }
 
@@ -47,17 +47,36 @@ kill_worktree_processes() {
 
 FIXTURE=""; ARM=""; RUN_ID=""; DRY_RUN=0
 RESOLVE_SKILL="new"
+ENGINES_CONFIG=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --fixture)        require_value "$1" "${2:-}"; FIXTURE="$2"; shift 2;;
     --arm)            require_value "$1" "${2:-}"; ARM="$2";     shift 2;;
     --run-id)         require_value "$1" "${2:-}"; RUN_ID="$2";  shift 2;;
     --resolve-skill)  require_value "$1" "${2:-}"; RESOLVE_SKILL="$2"; shift 2;;
+    --engines-config) require_value "$1" "${2:-}"; ENGINES_CONFIG="$2"; shift 2;;
     --dry-run)        DRY_RUN=1;    shift;;
     *) usage;;
   esac
 done
 [ -n "$FIXTURE" ] && [ -n "$ARM" ] && [ -n "$RUN_ID" ] || usage
+
+# iter-0038: --engines-config stages a machine-config role pin
+# (.devlyn/engines.json) into the arm worktree so engine COMBINATIONS are
+# runnable as variant-class arms without new hardcoded arm names. Existing
+# arm launch commands are untouched when the flag is absent. Fail fast on
+# malformed JSON, and refuse bare (no skills — the config would be dead
+# weight that silently mis-labels the arm as configured).
+if [ -n "$ENGINES_CONFIG" ]; then
+  if [ "$ARM" = "bare" ]; then
+    echo "--engines-config is invalid for the bare arm (no skills consume it)" >&2
+    exit 1
+  fi
+  if ! printf '%s' "$ENGINES_CONFIG" | python3 -c 'import json,sys; json.load(sys.stdin)' 2>/dev/null; then
+    echo "--engines-config is not valid JSON" >&2
+    exit 1
+  fi
+fi
 # iter-0019/0037: 3 smoke arms — variant (L2: Claude orchestrator + risk-probes pair path),
 # solo_claude (L1: Claude orchestrator, codex blocked by shim+wrapper enforcement),
 # bare (L0: direct claude -p, no skill, no codex).
@@ -163,6 +182,14 @@ if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
   fi
   if [ -f "$REPO_ROOT/CLAUDE.md" ]; then
     cp "$REPO_ROOT/CLAUDE.md" "$WORK_DIR/CLAUDE.md"
+  fi
+  # iter-0038: stage the engine role pin (validated above) pre-baseline.
+  # test-repo/.gitignore covers .devlyn, so it never enters scaffold commits
+  # or arm diffs. A verbatim copy lands in RESULT_DIR as run evidence.
+  if [ -n "$ENGINES_CONFIG" ]; then
+    mkdir -p "$WORK_DIR/.devlyn"
+    printf '%s\n' "$ENGINES_CONFIG" > "$WORK_DIR/.devlyn/engines.json"
+    printf '%s\n' "$ENGINES_CONFIG" > "$RESULT_DIR/engines-config.json"
   fi
   # Stage the codex PATH shim. Required for both variant (route to monitored
   # wrapper) and solo_claude (CODEX_BLOCKED enforcement at PATH layer).

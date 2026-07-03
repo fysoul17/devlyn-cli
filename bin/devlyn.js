@@ -14,7 +14,7 @@ const PKG = require('../package.json');
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
 // skill here installs it everywhere. Standards skills (code-*, root-cause-*,
 // ui-*) stay Claude-core-only, matching the pre-existing Codex bundle.
-const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', '_shared'];
+const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', '_shared'];
 
 // Cross-agent shared skills directory read by BOTH oh-my-pi and Pi. Verified
 // from the omp binary's skill-provider strings ("skills from .agents/skills —

@@ -11,6 +11,17 @@ Engine requirements have two classes:
 - **Explicit routes** — `--engine`, `--risk-probes`, `--pair-verify`. These are promises. If the required engine is unavailable, fail closed with `BLOCKED:<engine>-unavailable` and never downgrade to solo.
 - **Automatic escalations** — auto high-risk risk-probes and auto VERIFY pair-JUDGE inferred from the spec. These are candidate routes, selected only when their preconditions hold, OTHER-engine availability included. If an auto candidate would fire but the OTHER engine is absent, do not select the cross-engine route: proceed solo and report the skipped escalation and its reason. This is route selection, not a fallback.
 
+## Role resolution
+
+Two configurable roles; the orchestrator role is whichever CLI the user opened and is not configurable here.
+
+- **Executor** (IMPLEMENT / CLEANUP / primary VERIFY judge): explicit `--engine` flag > `cwd/.devlyn/engines.json` `executor` > built-in default `claude`. No parent-directory or global config lookup.
+- **Pair judge** (VERIFY pair-JUDGE, risk-probe derivation): first entry of `engines.json` `pair_judge_priority` that is (a) adapter-valid, (b) not the primary judge engine, (c) available. When the key or file is absent: the binary claude↔codex complement.
+
+Validation is fail-closed: malformed JSON, or any engine name without a `_shared/adapters/<name>.md` adapter file, halts with report-level `BLOCKED:invalid-engine-config` naming the offending entry. This is the plug-in point for new engines — ship an adapter file and the name becomes valid with zero skill-body changes. Availability probe default is `command -v <name>`; an adapter may declare a different probe. A pin is an explicit route (same promise class as `--engine`): pinned-but-unavailable → `BLOCKED:<engine>-unavailable`, never a silent downgrade. `engines.json` is machine-local config — not committed, not archived (`archive_run.py` moves only `PER_RUN_PATTERNS`).
+
+The explicit-vs-automatic split above applies unchanged to resolved engines: explicit routes (`--engine`, `--risk-probes`, `--pair-verify`, config pins) fail closed; automatic escalations select a cross-engine route only when the resolved pair-judge engine is available, else proceed solo and report the skip.
+
 When a run or phase requires Codex, before spawning that phase:
 
 1. Check if the Codex CLI is installed: `command -v codex >/dev/null 2>&1` (or equivalent bash test).
