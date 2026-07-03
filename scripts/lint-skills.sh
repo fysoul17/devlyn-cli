@@ -196,10 +196,11 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 4. No stale Opus 4.6 benchmark references (should be 4.7 after P1).
+# 4. No model-pinned Claude references, any generation. Engine-scope docs say
+#    "Claude"; exact model ids belong in run metadata only.
 # ---------------------------------------------------------------------------
-section "Check 4: No stale 'Claude Opus 4.6' in routing table"
-offenders=$(grep -RIln 'Claude Opus 4\.6' \
+section "Check 4: No model-pinned Claude references"
+offenders=$(grep -RIlnE 'Claude (Opus|Sonnet|Haiku|Fable)|claude-(opus|sonnet|haiku|fable)-[0-9]' \
   config/skills 2>/dev/null \
   | grep -v 'config/skills/roadmap-archival-workspace/' \
   | grep -v 'config/skills/devlyn:auto-resolve-workspace/' \
@@ -207,7 +208,7 @@ offenders=$(grep -RIln 'Claude Opus 4\.6' \
   | grep -v 'config/skills/preflight-workspace/' \
   || true)
 if [ -z "$offenders" ]; then
-  ok "routing table on Opus 4.7"
+  ok "no model-pinned Claude references"
 else
   while IFS= read -r f; do bad "$f"; done <<< "$offenders"
 fi
@@ -1566,7 +1567,8 @@ fi
 section "Check 10c: User-facing current docs avoid retired skill surfaces"
 offenders=$(
   {
-    grep -nE '/devlyn:auto-resolve|ideate CHALLENGE|--with-codex|Quick Start pointing to ideate → auto-resolve → preflight|auto-resolve'\''s build agent|Core pipeline skills \(`ideate`, `auto-resolve`, `preflight`\)' README.md 2>/dev/null || true
+    sed '/<!-- legacy-surface-map:begin/,/<!-- legacy-surface-map:end/s/.*//' README.md 2>/dev/null \
+      | grep -nE '/devlyn:auto-resolve|ideate CHALLENGE|--with-codex|Quick Start pointing to ideate → auto-resolve → preflight|auto-resolve'\''s build agent|Core pipeline skills \(`ideate`, `auto-resolve`, `preflight`\)' || true
     grep -nE '"description": .*auto-resolve|"description": .*preflight' package.json 2>/dev/null || true
     grep -nE 'so auto-resolve doesn'\''t prompt' bin/devlyn.js 2>/dev/null || true
     grep -nE 'devlyn:auto-resolve|phase-1-build\.md|phase-2-evaluate\.md|phase-3-critic\.md' scripts/static-ab.sh 2>/dev/null || true

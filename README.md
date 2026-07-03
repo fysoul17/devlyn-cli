@@ -27,7 +27,7 @@ If devlyn-cli saved you time, [give it a star](https://github.com/fysoul17/devly
 npx devlyn-cli
 ```
 
-That's it. The installer opens with a single **agent selector** — pick any combination of **Claude Code**, **Codex CLI**, **oh-my-pi (omp)**, **Pi**, Gemini, Cursor, Copilot, or Windsurf, and devlyn installs into every one you choose in a single pass. Claude Code and any agent already present on your machine are pre-checked, so the common case is just Enter. Skill-capable agents receive the `devlyn:resolve`, `devlyn:ideate`, and `devlyn:design-ui` skills in the directory each one loads from: Codex → `~/.codex/skills/`, while **omp and Pi share `~/.agents/skills/`** — the cross-agent standard both read — so the bundle is written there once, not duplicated per agent. In Codex / omp / Pi, invoke them as skills (`$devlyn:resolve`, `$devlyn:ideate`, `$devlyn:design-ui`); in Claude Code they're slash commands (`/devlyn:resolve`). Run it again anytime to update. (`npx devlyn-cli -y` installs the Claude core non-interactively; `npx devlyn-cli agents <cli>` adds one agent later.)
+That's it. The installer opens with a single **agent selector** — pick any combination of **Claude Code**, **Codex CLI**, **oh-my-pi (omp)**, or **Pi**, and devlyn installs into every one you choose in a single pass. Claude Code and any agent already present on your machine are pre-checked, so the common case is just Enter. Skill-capable agents receive the `devlyn:resolve`, `devlyn:ideate`, and `devlyn:design-ui` skills in the directory each one loads from: Codex → `~/.codex/skills/`, while **omp and Pi share `~/.agents/skills/`** — the cross-agent standard both read — so the bundle is written there once, not duplicated per agent. In Codex / omp / Pi, invoke them as skills (`$devlyn:resolve`, `$devlyn:ideate`, `$devlyn:design-ui`); in Claude Code they're slash commands (`/devlyn:resolve`). Run it again anytime to update. (`npx devlyn-cli -y` installs the Claude core non-interactively; `npx devlyn-cli agents <cli>` adds one agent later.)
 
 ---
 
@@ -101,10 +101,10 @@ that, `/devlyn:resolve` stops with `BLOCKED:solo-ceiling-avoidance-required`.
 
 `--engine claude` (default) is the canonical implementation surface for PLAN, IMPLEMENT, BUILD_GATE, and CLEANUP. VERIFY/JUDGE conditionally runs pair mode for verify-only runs, high-risk specs, risk probes, mechanical warnings, coverage gaps, or explicit `--pair-verify`.
 
-`--engine codex` routes IMPLEMENT to Codex; `--engine auto` opts into the experimental dual-engine routing where applicable. Both are research-only at HEAD: iter-0020 closed Codex BUILD/IMPLEMENT below the quality floor on the 9-fixture suite (L2 vs L1 = −3.6, 3/8 gated fixtures cleared the +5 margin floor — release-readiness FAIL); iter-0033g + iter-0034 closed PLAN-pair as research-only with explicit unblock conditions (container/sandbox infra OR production telemetry capturing positive evidence of subagent introspection). Install the Codex CLI (https://platform.openai.com/docs/codex) and pass the flag explicitly to opt in:
+`--engine codex` routes IMPLEMENT to Codex — research-only at HEAD: iter-0020 closed Codex BUILD/IMPLEMENT below the quality floor on the 9-fixture suite (L2 vs L1 = −3.6, 3/8 gated fixtures cleared the +5 margin floor — release-readiness FAIL); iter-0033g + iter-0034 closed PLAN-pair as research-only with explicit unblock conditions (container/sandbox infra OR production telemetry capturing positive evidence of subagent introspection). Install the Codex CLI (https://platform.openai.com/docs/codex) and pass the flag explicitly to opt in:
 
 ```
-/devlyn:resolve "fix the auth bug" --engine auto   # experimental, research-only
+/devlyn:resolve "fix the auth bug" --engine codex   # research-only
 ```
 
 If Codex or Claude is absent when explicitly selected or conditionally required, the harness stops with `BLOCKED:codex-unavailable` or `BLOCKED:claude-unavailable` and prints setup guidance. Use `--no-pair` only when intentionally accepting solo VERIFY; use `--no-risk-probes` only when intentionally disabling automatic high-risk probes.
@@ -179,6 +179,7 @@ ids.
 
 ### Migration from earlier versions
 
+<!-- legacy-surface-map:begin — retired command names below are documented as OLD, not current; lint Check 10c skips this block -->
 Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4 cutover (2026-05-04) and the 2026-05-14 follow-up consolidated them down to the three current commands. Upgrades automatically purge the legacy skill directories from `~/.claude/skills/`.
 
 | Old command | Now use |
@@ -187,6 +188,7 @@ Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4
 | `/devlyn:product-spec`, `/devlyn:feature-spec`, `/devlyn:recommend-features`, `/devlyn:discover-product` | `/devlyn:ideate` |
 | `/devlyn:team-design-ui` | `/devlyn:design-ui` (now always spawns the 5-specialist team — Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer) |
 | `/devlyn:design-system` | Removed 2026-05-14 — no replacement |
+<!-- legacy-surface-map:end -->
 
 ---
 
@@ -215,7 +217,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 | `asset-creator` | AI pixel art game asset pipeline — generate, chroma-key, catalog |
 | `cloudflare-nextjs-setup` | Cloudflare Workers + Next.js with OpenNext |
 | `generate-skill` | Create Claude Code skills following Anthropic best practices |
-| `prompt-engineering` | Claude 4 prompt optimization |
+| `prompt-engineering` | Claude prompt optimization |
 | `better-auth-setup` | Better Auth + Hono + Drizzle + PostgreSQL |
 | `pyx-scan` | Check if an AI agent skill is safe before installing |
 | `dokkit` | Document template filling for DOCX/HWPX |
@@ -245,7 +247,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 |---|---|
 | `playwright` | Playwright MCP — powers `/devlyn:resolve` BUILD_GATE browser tier (Chrome MCP → Playwright → curl fallback) |
 
-> `--engine auto/codex` and conditional VERIFY pair mode use the local `codex` CLI binary, not MCP. Install from https://platform.openai.com/docs/codex, run the current Codex auth/login flow, verify `codex --version`, then rerun.
+> `--engine codex` and conditional VERIFY pair mode use the local `codex` CLI binary, not MCP. Install from https://platform.openai.com/docs/codex, run the current Codex auth/login flow, verify `codex --version`, then rerun.
 
 </details>
 

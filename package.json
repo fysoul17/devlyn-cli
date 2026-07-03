@@ -17,7 +17,6 @@
     "!config/skills/devlyn:auto-resolve-workspace/**",
     "!config/skills/roadmap-archival-workspace",
     "!config/skills/roadmap-archival-workspace/**",
-    "agents-config",
     "optional-skills",
     "benchmark/auto-resolve/BENCHMARK-DESIGN.md",
     "benchmark/auto-resolve/BENCHMARK-RESULTS.md",

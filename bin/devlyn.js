@@ -7,7 +7,6 @@ const readline = require('readline');
 const { execSync } = require('child_process');
 
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
-const AGENTS_SOURCE = path.join(__dirname, '..', 'agents-config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
 
@@ -31,7 +30,6 @@ const CLI_TARGETS = {
     name: 'Codex CLI (OpenAI)',
     instructionsFile: 'AGENTS.md',
     baseInstructionsFile: 'AGENTS.md',
-    configDir: null, // Codex uses AGENTS.md at project root
     // Codex auto-loads skills from ~/.codex/skills/ (user-global). Same
     // SKILL.md format as Claude Code; descriptions must stay ≤1024 chars.
     skillsDir: path.join(os.homedir(), '.codex', 'skills'),
@@ -42,7 +40,6 @@ const CLI_TARGETS = {
     name: 'oh-my-pi (omp)',
     instructionsFile: 'AGENTS.md',
     baseInstructionsFile: 'AGENTS.md',
-    configDir: null, // omp discovers AGENTS.md at project root + user home
     // omp loads skills from ~/.agents/skills (user home) — shared with Pi.
     skillsDir: SHARED_AGENTS_SKILLS_DIR,
     skillsToInstall: DEVLYN_CORE_SKILLS,
@@ -54,36 +51,11 @@ const CLI_TARGETS = {
     name: 'Pi (earendil-works)',
     instructionsFile: 'AGENTS.md',
     baseInstructionsFile: 'AGENTS.md',
-    configDir: null, // Pi reads AGENTS.md / CLAUDE.md walking up from cwd
     // Pi loads skills from ~/.agents/skills — shared with oh-my-pi.
     skillsDir: SHARED_AGENTS_SKILLS_DIR,
     skillsToInstall: DEVLYN_CORE_SKILLS,
     // Project-scoped only (see omp): machine-level ~/.pi must not auto-trigger.
     detect: () => fs.existsSync(path.join(process.cwd(), '.pi')) || fs.existsSync(path.join(process.cwd(), '.agents')),
-  },
-  gemini: {
-    name: 'Gemini CLI (Google)',
-    instructionsFile: 'GEMINI.md',
-    configDir: null, // Gemini uses GEMINI.md at project root
-    detect: () => fs.existsSync(path.join(process.cwd(), 'GEMINI.md')) || fs.existsSync(path.join(process.cwd(), '.gemini')),
-  },
-  cursor: {
-    name: 'Cursor',
-    instructionsFile: '.cursorrules',
-    configDir: '.cursor/rules',
-    detect: () => fs.existsSync(path.join(process.cwd(), '.cursorrules')) || fs.existsSync(path.join(process.cwd(), '.cursor')),
-  },
-  copilot: {
-    name: 'GitHub Copilot',
-    instructionsFile: '.github/copilot-instructions.md',
-    configDir: '.github/copilot/agents',
-    detect: () => fs.existsSync(path.join(process.cwd(), '.github', 'copilot-instructions.md')) || fs.existsSync(path.join(process.cwd(), '.github', 'copilot')),
-  },
-  windsurf: {
-    name: 'Windsurf',
-    instructionsFile: '.windsurfrules',
-    configDir: '.windsurf/rules',
-    detect: () => fs.existsSync(path.join(process.cwd(), '.windsurfrules')) || fs.existsSync(path.join(process.cwd(), '.windsurf')),
   },
 };
 
@@ -214,7 +186,7 @@ const OPTIONAL_ADDONS = [
   { name: 'asset-creator', desc: 'AI pixel art game asset pipeline — generate, chroma-key, catalog', type: 'local' },
   { name: 'cloudflare-nextjs-setup', desc: 'Cloudflare Workers + Next.js deployment with OpenNext', type: 'local' },
   { name: 'generate-skill', desc: 'Create well-structured Claude Code skills following Anthropic best practices', type: 'local' },
-  { name: 'prompt-engineering', desc: 'Claude 4 prompt optimization using Anthropic best practices', type: 'local' },
+  { name: 'prompt-engineering', desc: 'Claude prompt optimization using Anthropic best practices', type: 'local' },
   { name: 'better-auth-setup', desc: 'Production-ready Better Auth + Hono + Drizzle + PostgreSQL auth setup', type: 'local' },
   { name: 'polar-billing-setup', desc: 'Polar usage-based / metered billing — correct setup + diagnose silent $0-billing failures', type: 'local' },
   { name: 'pyx-scan', desc: 'Check whether an AI agent skill is safe before installing', type: 'local' },
@@ -596,15 +568,13 @@ function installSkillsForCLI(cliKey) {
   return copied;
 }
 
-// Strip devlyn's previously-appended "# Devlyn Agent Instructions" block from an
-// instruction file (or the packaged base) before re-appending, so installs stay
-// idempotent and never duplicate the block. Anchors on the LAST marker, not the
-// first: the packaged AGENTS.md ships its own "# Devlyn Agent Instructions"
-// section, so indexOf would truncate that real content — lastIndexOf targets the
-// devlyn-appended block (always last) and preserves everything above it.
+// Strip the legacy "# Devlyn Agent Instructions" block (the retired evaluator
+// agent) that earlier installs appended to instruction files, so upgrades scrub
+// it instead of carrying it forever. Anchors on the LAST marker so user content
+// above a stray copy of the block is preserved.
+const DEVLYN_AGENTS_MARKER = '# Devlyn Agent Instructions';
 function stripManagedBlock(content) {
-  const marker = '# Devlyn Agent Instructions';
-  const markerIdx = content.lastIndexOf(marker);
+  const markerIdx = content.lastIndexOf(DEVLYN_AGENTS_MARKER);
   if (markerIdx > 0) {
     const sepIdx = content.lastIndexOf('\n---', markerIdx);
     return content.slice(0, sepIdx > 0 ? sepIdx : markerIdx).trimEnd();
@@ -613,63 +583,40 @@ function stripManagedBlock(content) {
 }
 
 // One-line description of exactly what selecting a CLI target installs, so the
-// unified selector stays honest — "Gemini" (instructions only) must not look
-// identical to "Codex" (instructions + skills).
+// unified selector stays honest.
 function targetDesc(cli) {
   if (cli.skillsDir) {
     return `${cli.instructionsFile} + devlyn skills → ${cli.skillsDir.replace(os.homedir(), '~')}`;
   }
-  if (cli.configDir) return `Agent instructions → ${cli.configDir}/`;
   return `${cli.instructionsFile} instructions only`;
 }
 
-// Install only the instruction file(s) for a CLI (no skills). Returns true when
-// instruction content was written. Split from skills so the de-dup driver can
-// write a shared destination (e.g. project AGENTS.md for codex/omp/pi) once.
+// Install the packaged base instruction file for a CLI (project AGENTS.md for
+// codex/omp/pi). Creates it from the packaged base when missing; on existing
+// files, scrubs the legacy appended block and otherwise leaves user content
+// untouched. Returns true when the destination was written.
 function installInstructionsForCLI(cliKey) {
   const cli = CLI_TARGETS[cliKey];
-  if (!cli) return false;
+  if (!cli || !cli.baseInstructionsFile) return false;
 
-  const agents = fs.existsSync(AGENTS_SOURCE)
-    ? fs.readdirSync(AGENTS_SOURCE).filter((f) => f.endsWith('.md'))
-    : [];
-  if (agents.length === 0) return false;
-
-  log(`\n🤖 Installing agent instructions for ${cli.name}...`, 'cyan');
-
-  if (cli.configDir) {
-    // CLI supports an agents directory — copy agent files there
-    const destDir = path.join(process.cwd(), cli.configDir);
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
-    }
-    for (const file of agents) {
-      const src = path.join(AGENTS_SOURCE, file);
-      const dest = path.join(destDir, file);
-      fs.copyFileSync(src, dest);
-      log(`  → ${cli.configDir}/${file}`, 'dim');
+  const destFile = path.join(process.cwd(), cli.instructionsFile);
+  let content = null;
+  if (fs.existsSync(destFile)) {
+    const current = fs.readFileSync(destFile, 'utf8');
+    if (current.includes(DEVLYN_AGENTS_MARKER)) {
+      content = stripManagedBlock(current) + '\n';
     }
   } else {
-    // CLI uses a single instructions file — append agent content
-    const destFile = path.join(process.cwd(), cli.instructionsFile);
-    const separator = '\n\n---\n\n# Devlyn Agent Instructions\n\n';
-    const agentContent = agents.map((file) => {
-      return fs.readFileSync(path.join(AGENTS_SOURCE, file), 'utf8');
-    }).join('\n\n---\n\n');
-
-    let existing = '';
-    if (fs.existsSync(destFile)) {
-      existing = stripManagedBlock(fs.readFileSync(destFile, 'utf8'));
-    } else if (cli.baseInstructionsFile) {
-      const baseInstructionsSrc = path.join(__dirname, '..', cli.baseInstructionsFile);
-      if (fs.existsSync(baseInstructionsSrc)) {
-        existing = stripManagedBlock(fs.readFileSync(baseInstructionsSrc, 'utf8'));
-      }
+    const baseInstructionsSrc = path.join(__dirname, '..', cli.baseInstructionsFile);
+    if (fs.existsSync(baseInstructionsSrc)) {
+      content = fs.readFileSync(baseInstructionsSrc, 'utf8');
     }
-
-    fs.writeFileSync(destFile, existing + separator + agentContent + '\n');
-    log(`  → ${cli.instructionsFile} (agent instructions appended)`, 'dim');
   }
+  if (content === null) return false;
+
+  log(`\n🤖 Installing instructions for ${cli.name}...`, 'cyan');
+  fs.writeFileSync(destFile, content);
+  log(`  → ${cli.instructionsFile}`, 'dim');
   return true;
 }
 
@@ -696,7 +643,7 @@ function installSelectedCLITargets(cliKeys) {
   for (const cliKey of cliKeys) {
     const cli = CLI_TARGETS[cliKey];
     if (!cli) continue;
-    const instrKey = cli.configDir ? `dir:${cli.configDir}` : `file:${cli.instructionsFile}`;
+    const instrKey = cli.instructionsFile;
     if (!instrDone.has(instrKey)) {
       installInstructionsForCLI(cliKey);
       instrDone.add(instrKey);
