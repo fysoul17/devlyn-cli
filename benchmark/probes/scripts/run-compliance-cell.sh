@@ -34,6 +34,30 @@ PROBES_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(cd "$PROBES_ROOT/../.." && pwd)"
 BENCH_ROOT="$REPO_ROOT/benchmark/auto-resolve"
 
+# codex/omp load skills from a user-global directory rather than a
+# project-scoped WORK_DIR copy (unlike claude, staged below). Mirrors
+# run-full-pipeline-pair-candidate.sh's mirror_skills(), pointed at each
+# candidate global dir instead of the repo-local .claude/skills mirror.
+sync_global_skills() {
+  local dest_root="$1"
+  local src_skills="$REPO_ROOT/config/skills"
+  local src_dir name staging
+  mkdir -p "$dest_root"
+  for src_dir in "$src_skills"/*/; do
+    [ -d "$src_dir" ] || continue
+    name=$(basename "$src_dir")
+    case "$name" in
+      devlyn:auto-resolve-workspace|devlyn:ideate-workspace|preflight-workspace|roadmap-archival-workspace)
+        continue ;;
+    esac
+    staging="$dest_root/.${name}.staging"
+    rm -rf "$staging"
+    cp -R "$src_dir" "$staging"
+    rm -rf "$dest_root/$name"
+    mv "$staging" "$dest_root/$name"
+  done
+}
+
 case "$SIZE" in
   small)  TASK_FILE="$BENCH_ROOT/fixtures/F1-cli-trivial-flag/task.txt" ;;
   medium) TASK_FILE="$BENCH_ROOT/fixtures/F2-cli-medium-subcommand/task.txt" ;;
@@ -49,10 +73,33 @@ WORK_DIR="/tmp/probe-${RUN_ID}-compliance-${CELL}"
 rm -rf "$WORK_DIR"
 cp -R "$BENCH_ROOT/fixtures/test-repo" "$WORK_DIR"
 
+# Neither F1 nor F2's task.txt touches networking (bin/cli.js only), but the
+# shared test-repo fixture's tests/server.test.js does a real
+# server.listen(0) TCP bind. codex's workspace-write sandbox denies that
+# bind with EPERM, failing the cell for a sandbox reason unrelated to
+# pipeline compliance (iter-0046/0048 finding). Removed for all 3 CLIs
+# before the CLI-specific branch below so the cells stay comparable.
+rm -f "$WORK_DIR/tests/server.test.js"
+
 if [ "$CLI" = "claude" ]; then
   mkdir -p "$WORK_DIR/.claude"
   cp -R "$REPO_ROOT/.claude/skills" "$WORK_DIR/.claude/skills"
   [ -f "$REPO_ROOT/CLAUDE.md" ] && cp "$REPO_ROOT/CLAUDE.md" "$WORK_DIR/CLAUDE.md"
+else
+  # codex/omp read skills from a user-global directory regardless of cwd, so
+  # a WORK_DIR copy (as above) would never be seen — without this sync, the
+  # cell silently tests whatever is already installed globally instead of
+  # the repo under test (iter-0046 finding, root-caused via a clean
+  # git-worktree-at-HEAD A/B pair, not fixed there). iter-0046 also found
+  # the codex loader's precedence between ~/.codex/skills/ (documented in
+  # bin/devlyn.js) and ~/.agents/skills/ (observed live in one real codex
+  # exec transcript) unresolved on this machine — sync both candidate dirs
+  # for codex rather than guess which one wins; omp only ever documented
+  # ~/.agents/skills/.
+  case "$CLI" in
+    codex) sync_global_skills "$HOME/.codex/skills"; sync_global_skills "$HOME/.agents/skills" ;;
+    omp)   sync_global_skills "$HOME/.agents/skills" ;;
+  esac
 fi
 
 (cd "$WORK_DIR" && git init -q && git add -A \
