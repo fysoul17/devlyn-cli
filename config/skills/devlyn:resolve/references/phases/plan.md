@@ -20,7 +20,7 @@ Write `.devlyn/plan.md` with three sections:
 3. **Acceptance restatement** — verbatim copy of the spec's `## Verification` block (or generated criteria's equivalent). The plan is wrong if any verification command later fails because of a planning oversight.
 4. **Execution phases** — conditional; large work only. Emit this section ONLY when ALL hold: (a) spec frontmatter `complexity: high` (legacy `large`) or `state.complexity == "large"`; (b) the work spans multiple subsystems or more than ~8 files; (c) every phase boundary has at least one runnable gate command. Otherwise emit exactly the three sections above — when in doubt, do not decompose. When emitted: 2-5 `### Phase <k> — <title>` blocks, each with task checkboxes (`- [ ]`), a `gate:` line (1-2 commands, exit-code truth, runnable at that boundary), and the files it owns (a subset of section 1). Definitions are written once here and are the contract; the orchestrator later updates checkboxes as a display mirror only — routing truth lives in `pipeline.state.json`.
 
-Also update `pipeline.state.json:phases.plan.{verdict, completed_at, duration_ms}`. Verdict: `PASS` if plan is shippable; `BLOCKED` if spec is internally contradictory or cannot be planned without violating constraints.
+Report your verdict in this reply: `PASS` if plan is shippable; `BLOCKED` if spec is internally contradictory or cannot be planned without violating constraints. Do not edit `pipeline.state.json` yourself — the orchestrator records it via `state-phase-write.py`.
 </output>
 
 <quality_bar>

@@ -264,7 +264,7 @@ VERIFY to `BLOCKED`; do not synthesize merge artifacts in prose.
 - `.devlyn/verify-mechanical.findings.jsonl` — MECHANICAL findings.
 - `.devlyn/verify.findings.jsonl` — JUDGE findings.
 - `.devlyn/verify-merged.findings.jsonl` and `.devlyn/verify-merge.summary.json` — deterministic merge artifacts.
-- `state.phases.verify.{verdict, completed_at, duration_ms, sub_verdicts: {mechanical, judge, pair_judge?}, merged, artifacts}`. Verdict: result of `verify-merge-findings.py`. `PASS` requires zero CRITICAL/HIGH findings, zero verdict-binding MEDIUM regressions, and coverage met.
+- `phases.verify.{verdict, sub_verdicts, merged}` are written by `verify-merge-findings.py --write-state`, never by you (VERIFY agents have no code-mutation tools). `completed_at`/`duration_ms`/`artifacts` are recorded by the orchestrator via `state-phase-write.py` after this phase returns. `PASS` requires zero CRITICAL/HIGH findings, zero verdict-binding MEDIUM regressions, and coverage met.
 </output>
 
 <quality_bar>

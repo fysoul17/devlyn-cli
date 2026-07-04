@@ -59,6 +59,7 @@ critical_path_files=$(cat <<'EOF'
 _shared/spec-verify-check.py
 _shared/collect-codex-findings.py
 _shared/verify-merge-findings.py
+_shared/state-phase-write.py
 devlyn:ideate/SKILL.md
 devlyn:ideate/references/spec-template.md
 devlyn:ideate/references/elicitation.md

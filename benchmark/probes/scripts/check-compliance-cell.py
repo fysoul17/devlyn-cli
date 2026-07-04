@@ -80,17 +80,40 @@ def check_phases_ordered(state: dict) -> dict:
     for p in DECLARED_PHASE_ORDER:
         entry = phases[p]
         timestamps.append((p, entry.get("started_at"), entry.get("completed_at")))
+    # iter-0044: a VERIFY-triggered fix-loop respawns IMPLEMENT only —
+    # BUILD_GATE/CLEANUP intentionally do not re-run (SKILL.md PHASE 5
+    # branch: "NEEDS_WORK/BLOCKED -> fix loop... Spawn IMPLEMENT-engine
+    # agent with the verify findings"; confirmed against real iter-0042
+    # production data, where build_gate/cleanup both stayed at round: 0
+    # after such a respawn). That makes implement.completed_at legitimately
+    # later than build_gate's single completed_at — not corruption. Skip
+    # only that one known edge; a genuine ordering bug anywhere else still
+    # fails normally.
+    implement = phases.get("implement") or {}
+    build_gate = phases.get("build_gate") or {}
+    skip_edge = (
+        implement.get("triggered_by") == "verify"
+        and isinstance(implement.get("round"), int)
+        and isinstance(build_gate.get("round"), int)
+        and implement["round"] > build_gate["round"]
+    )
     prev_end = None
     out_of_order = None
+    skipped_edges = []
     for name, started, completed in timestamps:
-        if prev_end is not None and started is not None and started < prev_end:
+        if name == "build_gate" and skip_edge:
+            skipped_edges.append(name)
+        elif prev_end is not None and started is not None and started < prev_end:
             out_of_order = name
             break
         if completed is not None:
             prev_end = completed
     if out_of_order:
         return {"pass": False, "out_of_order_phase": out_of_order}
-    return {"pass": True}
+    result = {"pass": True}
+    if skipped_edges:
+        result["skipped_edges"] = skipped_edges
+    return result
 
 
 def check_verify_evidence(state: dict, workdir: Path, archive_dir: Path | None,
@@ -152,16 +175,83 @@ def check_archive_ran(archive_dir: Path | None) -> dict:
     return {"pass": (archive_dir / "pipeline.state.json").is_file()}
 
 
+def _phase_entry(started, completed, round_=0, triggered_by=None):
+    return {
+        "started_at": started, "completed_at": completed, "duration_ms": 1000,
+        "round": round_, "triggered_by": triggered_by, "verdict": "PASS",
+        "engine": "claude", "artifacts": {"findings_file": None, "log_file": None},
+        "sub_verdicts": None,
+    }
+
+
+def self_test() -> int:
+    # iter-0044: VERIFY-triggered fix-loop respawns IMPLEMENT only —
+    # BUILD_GATE/CLEANUP legitimately stay at round 0. This must not be
+    # flagged as out-of-order.
+    legitimate_respawn = {"phases": {
+        "plan": _phase_entry("2026-01-01T10:00:00.000Z", "2026-01-01T10:01:00.000Z"),
+        "implement": _phase_entry("2026-01-01T10:05:00.000Z", "2026-01-01T10:06:00.000Z",
+                                   round_=1, triggered_by="verify"),
+        "build_gate": _phase_entry("2026-01-01T10:01:30.000Z", "2026-01-01T10:02:00.000Z"),
+        "cleanup": _phase_entry("2026-01-01T10:02:30.000Z", "2026-01-01T10:03:00.000Z"),
+        "verify": _phase_entry("2026-01-01T10:06:30.000Z", "2026-01-01T10:07:00.000Z",
+                                round_=1, triggered_by="verify"),
+        "final_report": _phase_entry("2026-01-01T10:07:30.000Z", "2026-01-01T10:08:00.000Z"),
+    }}
+    result = check_phases_ordered(legitimate_respawn)
+    assert result["pass"] is True, result
+    assert result.get("skipped_edges") == ["build_gate"], result
+
+    # A genuine ordering bug unrelated to any fix-loop must still fail —
+    # the exemption must not turn this check into a no-op.
+    genuine_bug = {"phases": {
+        "plan": _phase_entry("2026-01-01T10:00:00.000Z", "2026-01-01T10:01:00.000Z"),
+        "implement": _phase_entry("2026-01-01T10:00:30.000Z", "2026-01-01T10:02:00.000Z"),
+        "build_gate": _phase_entry("2026-01-01T10:02:30.000Z", "2026-01-01T10:03:00.000Z"),
+        "cleanup": _phase_entry("2026-01-01T10:03:30.000Z", "2026-01-01T10:04:00.000Z"),
+        "verify": _phase_entry("2026-01-01T10:04:30.000Z", "2026-01-01T10:05:00.000Z"),
+        "final_report": _phase_entry("2026-01-01T10:05:30.000Z", "2026-01-01T10:06:00.000Z"),
+    }}
+    result = check_phases_ordered(genuine_bug)
+    assert result["pass"] is False, result
+    assert result["out_of_order_phase"] == "implement", result
+
+    # A BUILD_GATE-triggered respawn where build_gate itself also re-runs
+    # (round matches implement's) must NOT hit the exemption — it isn't the
+    # verify-only-respawn shape, and the timing should be checked normally.
+    build_gate_refixed = {"phases": {
+        "plan": _phase_entry("2026-01-01T10:00:00.000Z", "2026-01-01T10:01:00.000Z"),
+        "implement": _phase_entry("2026-01-01T10:01:30.000Z", "2026-01-01T10:02:00.000Z",
+                                   round_=1, triggered_by="build_gate"),
+        "build_gate": _phase_entry("2026-01-01T10:02:30.000Z", "2026-01-01T10:03:00.000Z",
+                                    round_=1, triggered_by=None),
+        "cleanup": _phase_entry("2026-01-01T10:03:30.000Z", "2026-01-01T10:04:00.000Z"),
+        "verify": _phase_entry("2026-01-01T10:04:30.000Z", "2026-01-01T10:05:00.000Z"),
+        "final_report": _phase_entry("2026-01-01T10:05:30.000Z", "2026-01-01T10:06:00.000Z"),
+    }}
+    result = check_phases_ordered(build_gate_refixed)
+    assert result["pass"] is True, result
+    assert "skipped_edges" not in result, result
+
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
-    parser.add_argument("--workdir", required=True, type=Path)
-    parser.add_argument("--cli", required=True, choices=["claude", "codex", "omp"])
+    parser.add_argument("--workdir", required=False, type=Path)
+    parser.add_argument("--cli", required=False, choices=["claude", "codex", "omp"])
     parser.add_argument(
         "--transcript", type=Path, default=None,
         help="Path to the raw invocation transcript (required for omp's "
              "stronger tool_execution_start evidence check).",
     )
+    parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
+
+    if args.self_test:
+        return self_test()
+    if not args.workdir or not args.cli:
+        parser.error("--workdir and --cli are required unless --self-test")
 
     workdir: Path = args.workdir
     transcript_path = args.transcript if args.transcript else (workdir / "transcript.txt")

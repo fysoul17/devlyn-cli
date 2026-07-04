@@ -16,7 +16,7 @@ You execute the plan. Constrained design judgment within PLAN's invariants — w
 - Code changes implementing every Requirement. Verify with `git diff`.
 - Tests added or updated for changed behavior. Run the full test suite before stopping.
 - For each criterion satisfied, set `state.criteria[i].status: "implemented"` with an `evidence` record `{"file": "...", "line": N, "note": "brief"}`.
-- `state.phases.implement.{verdict, completed_at, duration_ms}`. Verdict: `PASS` on success; `BLOCKED` if a criterion cannot be satisfied (missing external dep, blocking ambiguity in the spec) — never silently `pending`.
+- Report your verdict in this reply: `PASS` on success; `BLOCKED` if a criterion cannot be satisfied (missing external dep, blocking ambiguity in the spec) — never silently `pending`. Do not edit `pipeline.state.json` yourself — the orchestrator records it via `state-phase-write.py`.
 </output>
 
 <quality_bar>

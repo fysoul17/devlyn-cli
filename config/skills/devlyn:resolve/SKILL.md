@@ -250,7 +250,7 @@ Engine: per `--engine`. Prompt body: `references/phases/cleanup.md`. Allowlist e
 - Dead code added by this diff (not pre-existing dead code).
 - Doc references whose target this diff renamed or removed.
 
-Before spawn: capture `state.phases.cleanup.pre_sha = git rev-parse HEAD`.
+Before spawn: pass `--pre-sha "$(git rev-parse HEAD)"` to the `state-phase-write.py ... spawn` call for this phase.
 
 State write: `phases.cleanup.{started_at, verdict, completed_at, duration_ms}`.
 
@@ -323,4 +323,4 @@ State write: `phases.final_report.started_at` at the top of this phase.
 
 ## State management
 
-`.devlyn/pipeline.state.json` is the single authoritative verdict source. Branch on `state.phases.<name>.verdict` directly; never parse `.devlyn/*.findings.jsonl` for routing decisions. Schema: `references/state-schema.md`.
+`.devlyn/pipeline.state.json` is the single authoritative verdict source. Branch on `state.phases.<name>.verdict` directly; never parse `.devlyn/*.findings.jsonl` for routing decisions. Schema and write protocol: `references/state-schema.md`. Every "State write: `phases.X.{...}`" note above describes the resulting shape only — the orchestrator always writes it via `state-phase-write.py spawn`/`complete` (`references/state-schema.md#write-protocol`); phase workers never edit `pipeline.state.json` directly.

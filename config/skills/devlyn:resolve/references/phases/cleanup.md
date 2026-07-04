@@ -25,7 +25,7 @@ Files outside this allowlist must not change. Pre-existing tooling leaks (alread
 
 <output>
 - Code changes within the allowlist.
-- `state.phases.cleanup.{verdict, completed_at, duration_ms}`. Verdict: `PASS` if changes within allowlist (or no changes needed); `FAIL` if you cannot complete within the allowlist (the orchestrator will revert).
+- Report your verdict in this reply: `PASS` if changes within allowlist (or no changes needed); `FAIL` if you cannot complete within the allowlist (the orchestrator will revert). Do not edit `pipeline.state.json` yourself — the orchestrator records it via `state-phase-write.py`.
 </output>
 
 <quality_bar>

@@ -31,7 +31,7 @@ Append all findings; do not stop on the first failure.
 <output>
 - `.devlyn/build_gate.findings.jsonl` — JSONL stream, one finding per line. Schema: `{id, rule_id, severity, file, line, message, fix_hint, criterion_ref}`.
 - `.devlyn/build_gate.log.md` — human-readable summary of which gates ran and their raw output.
-- `state.phases.build_gate.{verdict, completed_at, duration_ms, artifacts}`. Verdict: `PASS` if zero CRITICAL/HIGH findings; `FAIL` otherwise.
+- Report your verdict via these artifacts: `PASS` if zero CRITICAL/HIGH findings; `FAIL` otherwise. Do not edit `pipeline.state.json` yourself — the orchestrator records it via `state-phase-write.py` from these artifacts.
 </output>
 
 <quality_bar>
