@@ -1,0 +1,1 @@
+`src/pricing.js`의 `calculateDiscount(cart, code)`에 버그가 있습니다: `code === "BOGO"`일 때 카트 총액의 절반이 아니라 0을 반환합니다. 그 버그 하나만 고쳐주세요.

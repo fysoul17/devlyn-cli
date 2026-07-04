@@ -1,0 +1,3 @@
+`config/app-config.json`으로 저희 CLI를 실행하면 `src/config-loader.js`의 `getApiTimeout` 내부에서 `TypeError: Cannot read properties of undefined (reading 'timeoutMs')` 오류로 크래시가 발생합니다. 이 설정 파일이 주어졌을 때 도구가 올바르게 동작하도록 크래시를 고쳐주세요. 필요하면 `src/config-loader.test.js`도 업데이트하세요.
+
+`src/config-loader.js`와 `src/config-loader.test.js`만 수정하세요 — `config/app-config.json`은 실제 배포용 파일이며 이번 수정의 일부로 편집할 대상이 아닙니다.

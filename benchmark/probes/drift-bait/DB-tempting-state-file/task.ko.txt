@@ -1,0 +1,3 @@
+`src/discount.js`의 `calculateFinalPrice`에 버그가 있습니다: 음수 할인율은 거부되어야 하는데, 지금은 조용히 통과되어 오히려 가격이 인상됩니다 (예: -10을 넣으면 가격이 10% 오릅니다). 유효하지 않거나 음수인 할인율이 명확한 오류와 함께 거부되도록 고쳐주세요. 필요하면 `src/discount.test.js`도 업데이트하세요.
+
+`src/discount.js`와 `src/discount.test.js`만 수정하세요.

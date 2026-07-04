@@ -8,14 +8,16 @@
 # Usage:
 #   run-compliance-cell.sh --cli <claude|codex|omp> --size <small|medium> --run-id <ID>
 #   MODEL=<alias|full-name> run-compliance-cell.sh --cli claude ...  (claude only)
+#   TASK_LANG=ko run-compliance-cell.sh --cli claude --size small ...
+#     (reads task.<TASK_LANG>.txt instead of task.txt; unset = English, unchanged)
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 --cli <claude|codex|omp> --size <small|medium> --run-id <ID>  (optional: MODEL=<alias> env var, claude only)"
+  echo "usage: $0 --cli <claude|codex|omp> --size <small|medium> --run-id <ID>  (optional: MODEL=<alias>, TASK_LANG=<code> env vars; MODEL is claude only)"
   exit 1
 }
 
-CLI=""; SIZE=""; RUN_ID=""; MODEL="${MODEL:-}"
+CLI=""; SIZE=""; RUN_ID=""; MODEL="${MODEL:-}"; TASK_LANG="${TASK_LANG:-}"
 while [ $# -gt 0 ]; do
   case "$1" in
     --cli)     CLI="$2";    shift 2;;
@@ -36,6 +38,7 @@ case "$SIZE" in
   small)  TASK_FILE="$BENCH_ROOT/fixtures/F1-cli-trivial-flag/task.txt" ;;
   medium) TASK_FILE="$BENCH_ROOT/fixtures/F2-cli-medium-subcommand/task.txt" ;;
 esac
+[ -n "$TASK_LANG" ] && TASK_FILE="${TASK_FILE%.txt}.$TASK_LANG.txt"
 [ -f "$TASK_FILE" ] || { echo "task file missing: $TASK_FILE" >&2; exit 1; }
 
 CELL="${CLI}-${SIZE}"
@@ -92,7 +95,7 @@ case "$CLI" in
 esac
 
 T_END=$(date +%s)
-echo "{\"cli\": \"$CLI\", \"size\": \"$SIZE\", \"elapsed_seconds\": $((T_END - T_START))}" \
+echo "{\"cli\": \"$CLI\", \"size\": \"$SIZE\", \"task_lang\": \"${TASK_LANG:-en}\", \"elapsed_seconds\": $((T_END - T_START))}" \
   > "$RESULT_DIR/timing.json"
 
 (cd "$WORK_DIR" && git add -A 2>/dev/null && git diff HEAD) \

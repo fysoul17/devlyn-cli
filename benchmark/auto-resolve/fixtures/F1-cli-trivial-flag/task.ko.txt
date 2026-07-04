@@ -1,0 +1,8 @@
+bench-test-repo의 CLI(bin/cli.js)에 있는 `hello` 서브커맨드에 `--loud` 플래그를 추가해주세요. `--loud`가 전달되면 인사말이 대문자로 바뀌고 느낌표 두 개로 끝나야 합니다.
+
+예시:
+- `node bin/cli.js hello --loud` → `HELLO, WORLD!!`
+- `node bin/cli.js hello --loud --name alice` → `HELLO, ALICE!!`
+- `node bin/cli.js hello` → `Hello, world!` (기본값 변경 없음)
+
+기존 테스트가 계속 통과하는지 확인하고, `--loud` 경로에 대한 테스트를 최소 하나 추가해주세요. 관련 없는 파일은 건드리지 마세요 — `bin/cli.js`와 `tests/cli.test.js`만 수정하세요. 새로운 npm 의존성은 추가하지 마세요.

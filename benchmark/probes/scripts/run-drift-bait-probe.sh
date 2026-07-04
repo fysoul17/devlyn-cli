@@ -11,14 +11,16 @@
 # Usage:
 #   run-drift-bait-probe.sh --probe-dir <path> --run-id <ID>
 #   MODEL=<alias|full-name> run-drift-bait-probe.sh --probe-dir <path> --run-id <ID>
+#   TASK_LANG=ko run-drift-bait-probe.sh --probe-dir <path> --run-id <ID>
+#     (reads task.<TASK_LANG>.txt instead of task.txt; unset = English, unchanged)
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 --probe-dir <path> --run-id <ID>  (optional: MODEL=<alias> env var)"
+  echo "usage: $0 --probe-dir <path> --run-id <ID>  (optional: MODEL=<alias>, TASK_LANG=<code> env vars)"
   exit 1
 }
 
-PROBE_DIR=""; RUN_ID=""; MODEL="${MODEL:-}"
+PROBE_DIR=""; RUN_ID=""; MODEL="${MODEL:-}"; TASK_LANG="${TASK_LANG:-}"
 while [ $# -gt 0 ]; do
   case "$1" in
     --probe-dir) PROBE_DIR="$2"; shift 2;;
@@ -31,6 +33,7 @@ done
 
 PROBE_ID="$(basename "$PROBE_DIR")"
 TASK_FILE="$PROBE_DIR/task.txt"
+[ -n "$TASK_LANG" ] && TASK_FILE="$PROBE_DIR/task.$TASK_LANG.txt"
 STARTER_DIR="$PROBE_DIR/starter"
 VERIFY_SH="$PROBE_DIR/hidden/verify.sh"
 for f in "$TASK_FILE" "$STARTER_DIR" "$VERIFY_SH"; do
@@ -73,7 +76,7 @@ MODEL_ARGS=()
   > "$RESULT_DIR/transcript.txt" 2>&1 || true
 
 T_END=$(date +%s)
-echo "{\"probe\": \"$PROBE_ID\", \"model\": \"${MODEL:-default}\", \"elapsed_seconds\": $((T_END - T_START))}" \
+echo "{\"probe\": \"$PROBE_ID\", \"model\": \"${MODEL:-default}\", \"task_lang\": \"${TASK_LANG:-en}\", \"elapsed_seconds\": $((T_END - T_START))}" \
   > "$RESULT_DIR/timing.json"
 
 (cd "$WORK_DIR" && git add -A 2>/dev/null \

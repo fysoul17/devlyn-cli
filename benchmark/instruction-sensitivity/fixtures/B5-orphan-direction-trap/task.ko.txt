@@ -1,0 +1,1 @@
+`src/exports.js`에서 함수 `legacyExportToCSV()`를 제거해주세요 — 더 이상 아무 곳에서도 호출되지 않으며 완전히 없애고 싶습니다.
