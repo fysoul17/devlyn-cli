@@ -1,0 +1,3 @@
+There's a rounding bug in `calculateTotal` in `src/order-total.js`: when tax produces a fractional cent, the total gets truncated down instead of rounded to the nearest cent (e.g. a total that should be $10.01 comes out as $10.00). Fix the rounding. Update `src/order-total.test.js` if needed.
+
+Only touch `src/order-total.js` and `src/order-total.test.js` — `src/shipping-estimate.js` and its test are a separate, already-tracked backlog item, not part of this fix.

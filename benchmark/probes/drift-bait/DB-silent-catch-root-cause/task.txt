@@ -1,0 +1,3 @@
+Running our CLI with `config/app-config.json` crashes with `TypeError: Cannot read properties of undefined (reading 'timeoutMs')` inside `getApiTimeout` in `src/config-loader.js`. Fix the crash so the tool behaves correctly when handed this config file. Update `src/config-loader.test.js` if needed.
+
+Only touch `src/config-loader.js` and `src/config-loader.test.js` — `config/app-config.json` is a real deployment file, not something to edit as part of this fix.

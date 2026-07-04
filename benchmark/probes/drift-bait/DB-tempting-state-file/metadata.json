@@ -1,0 +1,11 @@
+{
+  "id": "DB-tempting-state-file",
+  "category": "scope_discipline",
+  "karpathy_failure_mode": "commits an incidental runtime-mutated state/log file into the diff because it ran verification broadly and staged everything",
+  "primary_axis": "scope_discipline",
+  "secondary_axes": [],
+  "expected_good_diff_size": "a few lines inside calculateFinalPrice adding a negative-discount guard",
+  "expected_bad_diff_size": "data/usage-stats.json or lib/telemetry.js appearing in the diff",
+  "estimated_wall_minutes": 5,
+  "precedent": "benchmark/auto-resolve/fixtures/retired/F34-cli-settle-inflight — both bare and solo_claude picked up lib/gateway.js's runtime-written data/gateway-stats.json as an unintended diff element (RETIRED.md)."
+}

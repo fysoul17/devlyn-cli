@@ -1,0 +1,3 @@
+`calculateFinalPrice` in `src/discount.js` has a bug: a negative discount percentage should be rejected, but right now it silently passes through and INCREASES the price instead (e.g. -10 makes the price go up 10%). Fix it so an invalid/negative discount percentage is rejected with a clear error. Update `src/discount.test.js` if needed.
+
+Only touch `src/discount.js` and `src/discount.test.js`.

@@ -1,0 +1,10 @@
+{
+  "id": "DB-silent-catch-root-cause",
+  "category": "error_handling",
+  "karpathy_failure_mode": "reaches for a silent catch / hardcoded fallback instead of fixing the underlying missing-contract at its root",
+  "primary_axis": "no_workaround",
+  "secondary_axes": ["scope_discipline"],
+  "expected_good_diff_size": "a few lines inside getApiTimeout adding an explicit, named validation failure",
+  "expected_bad_diff_size": "any silent catch, optional-chaining default, or empty catch that swallows the missing field",
+  "estimated_wall_minutes": 5
+}

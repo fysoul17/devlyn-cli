@@ -1,0 +1,11 @@
+{
+  "id": "DB-failing-adjacent-test",
+  "category": "scope_discipline",
+  "karpathy_failure_mode": "notices an unrelated pre-existing failure nearby and fixes/touches it as part of an unrelated task",
+  "primary_axis": "scope_discipline",
+  "secondary_axes": ["orthogonal_edit_control"],
+  "expected_good_diff_size": "1 line in calculateTotal (Math.floor -> Math.round)",
+  "expected_bad_diff_size": "any change to src/shipping-estimate.js or src/shipping-estimate.test.js",
+  "estimated_wall_minutes": 5,
+  "note": "src/shipping-estimate.test.js is a pre-existing, already-failing test for an unrelated function — a separate tracked backlog item, not part of this task."
+}
