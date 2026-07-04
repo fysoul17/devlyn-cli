@@ -1,9 +1,13 @@
-# iter-0060 — engine-symmetric pair-judge invocation (piece 1 in flight)
+# iter-0060 — engine-symmetric pair-judge invocation
 
-**Status**: IN-PROGRESS 2026-07-05 — piece 1 (mechanical state fix)
-implemented + pair-reviewed; G1 cell rerun pending (prediction registered
-below BEFORE the run). Pieces 2-4 still STUB; their pre-registration is
-filled before their first run.
+**Status**: CLOSED-PASS / SHIPPED 2026-07-05. All four gates satisfied:
+G1 (pair_judge null-on-skip, commit `b02e53a`), G2 (first-ever
+codex-orchestrator → Claude pair-judge fire, commit `3fd034d`, run
+`iter0060-g2-pair`), G3 (omp orchestrator → codex judge per role
+resolution, run `iter0060-g3-pair`), G4 (claude-orchestrator path
+no-regression, `iter0060-g4b-{claude,codex}` cells + lint + mirrors).
+Pair rounds: piece 1 R0 SHIP-WITH-EDITS → R1 SHIP; pieces 2-4 R0
+SHIP-WITH-EDITS (4 edits applied) → R1 SHIP.
 **Trigger**: user direction 2026-07-04/05 — "codex나 omp가 오케스트레이터일
 때도 다른 에이전트와 페어 협업이 일관되어야 한다." Verified NOT true today.
 
@@ -184,6 +188,49 @@ null, PASS_WITH_ISSUES unchanged.
   `BLOCKED:claude-unavailable` reported honestly is a PARTIAL PASS of the
   fail-closed contract but a FAIL of G2's real-fire gate; a codex pipeline
   skip is the F6 class, not a piece-2 regression.
+
+## G2/G4 raw results (2026-07-05, pieces 2-4 committed as `3fd034d`)
+
+- **P5 (G2) CONFIRMED — first-ever reverse-direction pair fire.** Run
+  `benchmark/probes/results/iter0060-g2-pair/` (codex orchestrator,
+  `--pair-verify`, network-enabled sandbox, 1147s). State: `engine: codex`,
+  `pair_verify: true`, `pair_trigger {eligible: true, reasons:
+  ["mode.pair-verify"]}`, `sub_verdicts.pair_judge: "PASS"` backed by real
+  spawn evidence. Transcript shows codex built a contract-conformant
+  fresh-context judge prompt (read-only, two-probe bound, no harness-doc
+  reads, JSONL output contract) and executed the adapter's exact invocation
+  shape: `claude -p "$PROMPT" --permission-mode dontAsk --allowedTools
+  "Read,Grep,Glob,Bash(node bin/cli.js *),Bash(git diff *)"
+  --setting-sources project --strict-mcp-config --mcp-config
+  '{"mcpServers":{}}' --effort medium` with stdout/stderr captured to
+  `.devlyn/claude-judge.{stdout,stderr}` (archived via the new `*-judge.*`
+  pattern). `claude-judge.stdout` contains a real Claude deliberation ending
+  `# SUMMARY {"verdict":"PASS","source":"pair_judge"}`.
+- **Refinement candidate (logged, not fixed here)**: the Claude judge
+  reported its Bash probes were DENIED and fell back to static analysis —
+  the dontAsk deny worked as designed (no hang, honest report), but an
+  allowlist that doesn't match the judge's actual probe commands reduces
+  judge power to static-only. Candidate: adapter guidance on deriving the
+  allowlist from the spec's verification commands. Needs one more observed
+  case before an edit (no speculative robustness).
+- **P7 (G4) CONFIRMED.** `iter0060-g4b-claude` (sonnet): compliance PASS —
+  and the pair trigger fired NATURALLY (`judge.warning`), spawning a real
+  Codex judge (`codex-judge.stdout` `# SUMMARY PASS`), i.e. the forward
+  direction end-to-end under the new merge semantics. `iter0060-g4b-codex`:
+  compliance PASS, `pair_judge: null` honest-on-no-trigger. Lint PASS;
+  mirror parity SHA-verified in R1.
+
+## G3 raw result (2026-07-05)
+
+**P6 (G3) CONFIRMED.** Run `benchmark/probes/results/iter0060-g3-pair/`
+(omp 15.11.0 orchestrator, `--pair-verify`, 2009s): state `engine: omp`,
+`pair_verify: true`, `pair_trigger {eligible: true, reasons:
+["mode.pair-verify"]}`, real codex judge spawned (`codex-judge.stdout`
+`# SUMMARY {"verdict":"PASS"}` + stderr + summary artifacts, archived),
+`sub_verdicts.pair_judge: "PASS"` with spawn evidence, `final_report:
+PASS`. Judge engine selection matched role resolution exactly (omp executor
+default = claude adapter → OTHER = codex), so the judge engine did not
+silently match the orchestrator's backing family.
 
 ## Non-goals
 
