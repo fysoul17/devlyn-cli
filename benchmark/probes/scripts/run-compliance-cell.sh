@@ -7,14 +7,15 @@
 #
 # Usage:
 #   run-compliance-cell.sh --cli <claude|codex|omp> --size <small|medium> --run-id <ID>
+#   MODEL=<alias|full-name> run-compliance-cell.sh --cli claude ...  (claude only)
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 --cli <claude|codex|omp> --size <small|medium> --run-id <ID>"
+  echo "usage: $0 --cli <claude|codex|omp> --size <small|medium> --run-id <ID>  (optional: MODEL=<alias> env var, claude only)"
   exit 1
 }
 
-CLI=""; SIZE=""; RUN_ID=""
+CLI=""; SIZE=""; RUN_ID=""; MODEL="${MODEL:-}"
 while [ $# -gt 0 ]; do
   case "$1" in
     --cli)     CLI="$2";    shift 2;;
@@ -65,6 +66,9 @@ PROMPT="Use the \`/devlyn:resolve\` skill to implement the following as a free-f
 $(cat "$TASK_FILE")"
 T_START=$(date +%s)
 
+MODEL_ARGS=()
+[ -n "$MODEL" ] && MODEL_ARGS=(--model "$MODEL")
+
 case "$CLI" in
   claude)
     (cd "$WORK_DIR" \
@@ -73,6 +77,7 @@ case "$CLI" in
             --dangerously-skip-permissions --effort xhigh \
             --setting-sources project,local --strict-mcp-config \
             --mcp-config '{"mcpServers":{}}' \
+            ${MODEL_ARGS[@]+"${MODEL_ARGS[@]}"} \
             --debug-file "$RESULT_DIR/claude-debug.log") \
       > "$RESULT_DIR/transcript.txt" 2>&1 || true
     ;;

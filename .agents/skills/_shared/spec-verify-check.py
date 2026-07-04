@@ -118,6 +118,9 @@ def output_finding_prefix() -> str:
 VERIFICATION_SECTION_RE = re.compile(
     r'(?ms)^##[ \t]+Verification\b[^\n]*\n(.*?)(?=^##[ \t]+|\Z)'
 )
+FILES_TO_TOUCH_SECTION_RE = re.compile(
+    r'(?ms)^##[ \t]+(?:\d+\.\s*)?Files to touch\b[^\n]*\n(.*?)(?=^##[ \t]+|\Z)'
+)
 JSON_FENCE_RE = re.compile(r'(?ms)^```json[ \t]*\n(.*?)\n```[ \t]*$')
 FORBIDDEN_RISK_PROBE_CMD_RE = re.compile(
     r'BENCH_FIXTURE_DIR|benchmark/auto-resolve/fixtures|/verifiers/|verifiers/'
@@ -1163,6 +1166,179 @@ def expected_contract_findings(
             "phase": output_phase(),
             "criterion_ref": "spec.expected.json/max_deps_added",
             "fix_hint": "Remove the new dependency or explicitly license it in spec.expected.json.",
+            "blocking": True,
+            "status": "open",
+        })
+        seq += 1
+    return (findings, seq)
+
+
+def extract_authorized_surface_block(text: str) -> str | None:
+    """Return the fenced ```json``` block under plan.md's "Files to touch"
+    section, or None if the section or the block is absent."""
+    section = FILES_TO_TOUCH_SECTION_RE.search(text)
+    if not section:
+        return None
+    fence = JSON_FENCE_RE.search(section.group(1))
+    return fence.group(1) if fence else None
+
+
+def validate_authorized_surface_shape(data: object) -> str | None:
+    if not isinstance(data, dict):
+        return "top-level must be a JSON object"
+    err = validate_string_list(data, "authorized_surface")
+    if err:
+        return err
+    surface = data.get("authorized_surface", [])
+    if not surface:
+        return "authorized_surface must contain at least one entry"
+    seen: set[str] = set()
+    for entry in surface:
+        if entry in seen:
+            return f"authorized_surface has a duplicate entry: {entry!r}"
+        seen.add(entry)
+        if entry == "." or entry.startswith("/") or entry.startswith("./"):
+            return (
+                "authorized_surface entry must be a repo-relative path "
+                f"without a leading '/' or './': {entry!r}"
+            )
+        stem = entry[:-3] if entry.endswith("/**") else entry
+        if entry.endswith("/**") and not stem:
+            return f"authorized_surface directory grant needs a non-empty prefix before '/**': {entry!r}"
+        if ".." in stem.split("/"):
+            return f"authorized_surface entry must not contain '..': {entry!r}"
+    return None
+
+
+def path_matches_surface(path: str, surface: list[str]) -> bool:
+    for entry in surface:
+        if entry.endswith("/**"):
+            prefix = entry[:-3]
+            if path == prefix or path.startswith(prefix + "/"):
+                return True
+        elif path == entry:
+            return True
+    return False
+
+
+def authorized_surface_findings(
+    work: Path, devlyn_dir: Path, state: dict, finding_start: int,
+) -> tuple[list[dict], int]:
+    """BUILD_GATE-only (caller gates on `output_phase() == "build_gate"`):
+    enforce PLAN's declared `authorized_surface` against this run's diff.
+
+    iter-0046: closes the scope-leak drift class measured in
+    autoresearch/iterations/0042 + 0045 — bare-model diffs leak an
+    out-of-scope tracked file even with the full CLAUDE.md contract loaded,
+    on every measured model tier. `fix_hint` deliberately never offers
+    "widen the surface" — the fix-loop respawns the same IMPLEMENT worker
+    that produced the leak, and letting it edit `plan.md` to authorize its
+    own diff would let it self-authorize the exact drift this gate exists
+    to catch. A persistent finding exhausts the existing BUILD_GATE
+    fix-loop budget and halts for user/orchestrator review instead.
+
+    Not re-run at VERIFY MECHANICAL time (post-CLEANUP): CLEANUP's own
+    allowlist (tooling artifacts, dead code, doc-reference fixes) licenses
+    paths PLAN never declared, so re-checking there would false-positive on
+    CLEANUP's own sanctioned changes.
+    """
+    plan_path = devlyn_dir / "plan.md"
+    if not plan_path.is_file():
+        return ([{
+            "id": f"{output_finding_prefix()}-{finding_start:04d}",
+            "rule_id": "scope.authorized-surface-malformed",
+            "level": "error",
+            "severity": "CRITICAL",
+            "confidence": 1.0,
+            "message": "BUILD_GATE requires .devlyn/plan.md with a declared authorized_surface; the file is missing.",
+            "file": ".devlyn/plan.md",
+            "line": 1,
+            "phase": output_phase(),
+            "criterion_ref": "plan.md/authorized_surface",
+            "fix_hint": "PLAN must write .devlyn/plan.md with a `Files to touch` section and an authorized_surface json block before BUILD_GATE can run.",
+            "blocking": True,
+            "status": "open",
+        }], finding_start + 1)
+    try:
+        plan_text = plan_path.read_text(encoding="utf-8")
+    except OSError as e:
+        return ([{
+            "id": f"{output_finding_prefix()}-{finding_start:04d}",
+            "rule_id": "scope.authorized-surface-malformed",
+            "level": "error",
+            "severity": "CRITICAL",
+            "confidence": 1.0,
+            "message": f"Cannot read {plan_path}: {e}",
+            "file": ".devlyn/plan.md",
+            "line": 1,
+            "phase": output_phase(),
+            "criterion_ref": "plan.md/authorized_surface",
+            "fix_hint": "Ensure .devlyn/plan.md is a readable UTF-8 file.",
+            "blocking": True,
+            "status": "open",
+        }], finding_start + 1)
+
+    block = extract_authorized_surface_block(plan_text)
+    parse_error: str | None = None
+    data: dict | None = None
+    if block is None:
+        parse_error = (
+            "plan.md's `Files to touch` section must include a fenced "
+            "```json``` block: {\"authorized_surface\": [...]}."
+        )
+    else:
+        try:
+            data = loads_strict_json(block)
+        except ValueError as e:
+            parse_error = f"authorized_surface json block is invalid JSON: {e}"
+    if parse_error is None:
+        parse_error = validate_authorized_surface_shape(data)
+    if parse_error is not None:
+        return ([{
+            "id": f"{output_finding_prefix()}-{finding_start:04d}",
+            "rule_id": "scope.authorized-surface-malformed",
+            "level": "error",
+            "severity": "CRITICAL",
+            "confidence": 1.0,
+            "message": f"plan.md authorized_surface is malformed: {parse_error}",
+            "file": ".devlyn/plan.md",
+            "line": 1,
+            "phase": output_phase(),
+            "criterion_ref": "plan.md/authorized_surface",
+            "fix_hint": (
+                "Restate section 1's already-listed paths as a fenced "
+                "```json``` block immediately after the `Files to touch` "
+                'list: `{"authorized_surface": ["path/one", "path/two"]}`. '
+                "Do not invent new paths."
+            ),
+            "blocking": True,
+            "status": "open",
+        }], finding_start + 1)
+
+    surface = data["authorized_surface"]
+    findings: list[dict] = []
+    seq = finding_start
+    for path in changed_files(work, state, devlyn_dir):
+        if path_matches_surface(path, surface):
+            continue
+        findings.append({
+            "id": f"{output_finding_prefix()}-{seq:04d}",
+            "rule_id": "scope.out-of-scope-file",
+            "level": "error",
+            "severity": "CRITICAL",
+            "confidence": 1.0,
+            "message": f"{path} is outside PLAN's declared authorized_surface.",
+            "file": path,
+            "line": 1,
+            "phase": output_phase(),
+            "criterion_ref": "plan.md/authorized_surface",
+            "fix_hint": (
+                f"Remove {path} from the diff. Do not widen plan.md's "
+                "authorized_surface to include it — that would let this "
+                "fix loop self-authorize its own scope leak. If the file "
+                "is genuinely required, halt per implement.md's contract "
+                "so this finding reaches the user/orchestrator for a new run."
+            ),
             "blocking": True,
             "status": "open",
         })
@@ -3021,6 +3197,161 @@ def run_self_test() -> int:
         if incomplete_atomic_batch_probe.returncode == 0:
             print("atomic_batch_state without success-order evidence was accepted", file=sys.stderr)
             return 1
+
+        # iter-0046: PLAN-declared authorized_surface enforced at BUILD_GATE.
+        scope_root = work / "scope-gate"
+        scope_root.mkdir()
+        scope_devlyn = scope_root / ".devlyn"
+        scope_devlyn.mkdir()
+        (scope_root / "bin").mkdir()
+        (scope_root / "lib").mkdir()
+        (scope_root / "lib2").mkdir()
+        (scope_root / "data").mkdir()
+        (scope_root / "bin" / "cli.js").write_text("module.exports = {};\n")
+        (scope_root / "lib" / "keep.js").write_text("module.exports = {};\n")
+        (scope_root / "lib2" / "keep.js").write_text("module.exports = {};\n")
+        (scope_root / "data" / "usage-stats.json").write_text("{}\n")
+        scope_spec = scope_root / "spec.md"
+        scope_spec.write_text("# Spec\n\n## Verification\n\n- scope gate checks.\n")
+        (scope_root / "spec.expected.json").write_text(json.dumps({
+            "verification_commands": [{"cmd": "printf ok", "stdout_contains": ["ok"]}],
+        }) + "\n")
+        subprocess.run(["git", "init", "-q"], cwd=scope_root, check=True)
+        subprocess.run(["git", "add", "-A"], cwd=scope_root, check=True)
+        subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "base"],
+            cwd=scope_root,
+            check=True,
+        )
+        scope_base_sha = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=scope_root, text=True,
+        ).strip()
+        (scope_devlyn / "pipeline.state.json").write_text(json.dumps({
+            "source": {"type": "spec", "spec_path": str(scope_spec)},
+            "base_ref": {"sha": scope_base_sha},
+        }))
+        scope_findings_path = scope_devlyn / "spec-verify-findings.jsonl"
+
+        # Test 1: no .devlyn/plan.md at all -> fail-closed CRITICAL, not a no-op.
+        (scope_root / "bin" / "cli.js").write_text("module.exports = { ok: true };\n")
+        missing_plan_run = subprocess.run(
+            [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
+        )
+        if missing_plan_run.returncode == 0:
+            print("BUILD_GATE accepted a run with no plan.md", file=sys.stderr)
+            return 1
+        if "scope.authorized-surface-malformed" not in scope_findings_path.read_text():
+            print("missing plan.md did not emit scope.authorized-surface-malformed", file=sys.stderr)
+            return 1
+
+        # Test 2: plan.md present but no authorized_surface json block -> malformed.
+        (scope_devlyn / "plan.md").write_text(
+            "# PLAN\n\n## 1. Files to touch\n\n- `bin/cli.js` (edit): ship the fix.\n"
+        )
+        malformed_block_run = subprocess.run(
+            [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
+        )
+        if malformed_block_run.returncode == 0:
+            print("BUILD_GATE accepted plan.md with no authorized_surface block", file=sys.stderr)
+            return 1
+        if "scope.authorized-surface-malformed" not in scope_findings_path.read_text():
+            print("missing authorized_surface block did not emit scope.authorized-surface-malformed", file=sys.stderr)
+            return 1
+
+        # Test 3: valid surface, in-scope-only diff -> no scope findings, exit 0.
+        (scope_devlyn / "plan.md").write_text(
+            "# PLAN\n\n## 1. Files to touch\n\n"
+            "- `bin/cli.js` (edit): ship the fix.\n\n"
+            "```json\n"
+            '{"authorized_surface": ["bin/cli.js", "lib/**"]}\n'
+            "```\n"
+        )
+        in_scope_run = subprocess.run(
+            [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
+        )
+        if in_scope_run.returncode != 0:
+            print("in-scope-only diff was rejected", file=sys.stderr)
+            print(in_scope_run.stderr, file=sys.stderr)
+            return 1
+        if "scope." in scope_findings_path.read_text():
+            print("in-scope-only diff produced a spurious scope finding", file=sys.stderr)
+            print(scope_findings_path.read_text(), file=sys.stderr)
+            return 1
+
+        # Test 4: directory grant covers lib/**; an out-of-scope file must be
+        # flagged, and the fix_hint must never suggest self-authorization.
+        (scope_root / "lib" / "keep.js").write_text("module.exports = { touched: true };\n")
+        (scope_root / "data" / "usage-stats.json").write_text('{"leaked": true}\n')
+        out_of_scope_run = subprocess.run(
+            [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
+        )
+        if out_of_scope_run.returncode == 0:
+            print("out-of-scope file was accepted", file=sys.stderr)
+            return 1
+        out_of_scope_lines = scope_findings_path.read_text().splitlines()
+        out_of_scope_findings = [loads_strict_json(line) for line in out_of_scope_lines if line.strip()]
+        flagged_files = {f["file"] for f in out_of_scope_findings if f.get("rule_id") == "scope.out-of-scope-file"}
+        if "data/usage-stats.json" not in flagged_files:
+            print("scope.out-of-scope-file did not name data/usage-stats.json", file=sys.stderr)
+            return 1
+        if "lib/keep.js" in flagged_files:
+            print("lib/** directory grant did not cover lib/keep.js", file=sys.stderr)
+            return 1
+        for f in out_of_scope_findings:
+            if f.get("rule_id") != "scope.out-of-scope-file":
+                continue
+            hint = f.get("fix_hint", "")
+            if "Remove" not in hint or "amend" in hint.lower():
+                print("scope.out-of-scope-file fix_hint must say remove, never amend/self-authorize", file=sys.stderr)
+                print(hint, file=sys.stderr)
+                return 1
+
+        # Test 5: lib2/keep.js must NOT be covered by the lib/** grant
+        # (directory-prefix boundary, not a bare string-prefix match).
+        (scope_root / "lib2" / "keep.js").write_text("module.exports = { touched: true };\n")
+        subprocess.run(
+            [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
+        )
+        boundary_flagged = {
+            loads_strict_json(line)["file"]
+            for line in scope_findings_path.read_text().splitlines() if line.strip()
+        }
+        if "lib2/keep.js" not in boundary_flagged:
+            print("lib/** incorrectly matched lib2/keep.js (directory-prefix boundary bug)", file=sys.stderr)
+            return 1
+
+        # Test 6: VERIFY MECHANICAL (post-CLEANUP re-check) must never run this
+        # gate, even with plan.md entirely absent -- CLEANUP's own allowlist
+        # licenses paths PLAN never declared, so re-checking here would
+        # false-positive on CLEANUP's own sanctioned changes.
+        (scope_devlyn / "plan.md").unlink()
+        verify_mech_env = os.environ.copy()
+        verify_mech_env.update({
+            "SPEC_VERIFY_PHASE": "verify_mechanical",
+            "SPEC_VERIFY_FINDINGS_FILE": "verify-mechanical.findings.jsonl",
+            "SPEC_VERIFY_FINDING_PREFIX": "VERIFY-MECH",
+        })
+        subprocess.run(
+            [sys.executable, script_path], cwd=scope_root, env=verify_mech_env,
+            capture_output=True, text=True,
+        )
+        verify_mech_findings = (scope_devlyn / "verify-mechanical.findings.jsonl").read_text()
+        if "scope." in verify_mech_findings:
+            print("VERIFY MECHANICAL ran the BUILD_GATE-only authorized_surface gate", file=sys.stderr)
+            print(verify_mech_findings, file=sys.stderr)
+            return 1
+
+        # Test 7: shape validation rejects absolute paths, `..`, and duplicates.
+        for bad_surface in (
+            {"authorized_surface": ["/etc/passwd"]},
+            {"authorized_surface": ["bin/../etc/passwd"]},
+            {"authorized_surface": ["bin/cli.js", "bin/cli.js"]},
+            {"authorized_surface": []},
+        ):
+            err = validate_authorized_surface_shape(bad_surface)
+            if err is None:
+                print(f"validate_authorized_surface_shape accepted invalid input: {bad_surface}", file=sys.stderr)
+                return 1
     return 0
 
 
@@ -3398,6 +3729,13 @@ def main() -> int:
         finding_seq,
     )
     findings.extend(expected_findings)
+
+    base_sha = ((state.get("base_ref") or {}).get("sha") or "").strip()
+    if output_phase() == "build_gate" and base_sha:
+        surface_findings, finding_seq = authorized_surface_findings(
+            work, devlyn_dir, state, finding_seq,
+        )
+        findings.extend(surface_findings)
 
     results_path.write_text(json.dumps({"commands": results}, indent=2) + "\n")
 
