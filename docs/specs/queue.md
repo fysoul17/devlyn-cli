@@ -33,3 +33,14 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   hardcoded `.claude/skills/_shared/*.py` paths that don't exist on
   Codex/omp's global install locations. 5 findings (F1-F5) logged, findings
   only, no fix applied — see `autoresearch/iterations/0040-cross-cli-smoke.md`.
+- [ ] iter-0060: engine-symmetric pair-judge invocation — reverse direction
+  (codex/omp orchestrator → Claude pair judge) never fires today; evidence,
+  fix order (mechanical pair_judge-null state fix → claude adapter
+  `## Invocation` → symmetric preflight probes → engine-neutral verify.md
+  dual-declaration update), and gates G1-G4 locked in
+  autoresearch/iterations/0060-engine-symmetric-pair.md. (user direction
+  2026-07-05)
+- [ ] iter-0058: run the N=4 violation-rate baseline matrix per
+  autoresearch/iterations/0058-violation-rate-axis.md (sonnet + one other
+  model; fable never a test arm; document per-probe flip-band before any
+  A/B claim).
