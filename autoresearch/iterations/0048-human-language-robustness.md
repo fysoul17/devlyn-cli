@@ -338,4 +338,4 @@ each threatens correctness or measurement validity today:
   (the clean rerun replacing the one anomalous cell),
   `iter0048-ko-compliance/compliance/{claude-small,omp-small}/` (compliance
   cells).
-- Commit: (filled in after `git commit`).
+- Commit: see `git log --oneline -- autoresearch/iterations/0048-human-language-robustness.md`.
