@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 # engine-doctor.sh — read-only detection for /devlyn:engines' no-arg output.
 #
-# WHY (iter-0050): the harness is heading toward hybrid multi-engine
-# collaboration (codex, vLLM-hosted local models, ...). Users need to see
-# what's actually on the machine, not just what's pinned. This script never
-# writes .devlyn/engines.json, never installs anything, never changes pin
-# validation — it only reports.
+# WHY (iter-0050): users need to see what's actually on the machine, not
+# just what's pinned. This script never writes .devlyn/engines.json, never
+# installs anything, never changes pin validation — it only reports.
 #
 # CATALOG NOTE: `pi` (bin/devlyn.js's Pi/earendil-works install target) has
 # no verified CLI binary name anywhere in this repo — its own installer
@@ -19,34 +17,20 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 ADAPTERS_DIR="$SCRIPT_DIR/adapters"
 
-TARGETS=(claude codex omp pi ollama vllm)
-KINDS=(cli-engine cli-engine cli-engine orchestrator-only local-backend local-backend)
-BINARIES=(claude codex omp "" ollama vllm)
-SERVER_URLS=("" "" "" "" "http://localhost:11434/api/version" "http://localhost:8000/v1/models")
+TARGETS=(claude codex omp pi)
+KINDS=(cli-engine cli-engine cli-engine orchestrator-only)
+BINARIES=(claude codex omp "")
 INSTALL_HINTS=(
   "see https://docs.anthropic.com/en/docs/claude-code"
   "npm install -g @openai/codex"
   "brew install can1357/tap/omp"
   ""
-  "curl -fsSL https://ollama.com/install.sh | sh"
-  "see https://docs.vllm.ai/en/latest/getting_started/installation.html"
 )
 
 check_binary() {
   # $1 = binary name, "" means no known binary to probe
   [ -n "$1" ] || { printf 'unknown'; return; }
   if command -v "$1" >/dev/null 2>&1; then printf 'yes'; else printf 'no'; fi
-}
-
-check_server() {
-  # $1 = URL, "" means not a server-backed target
-  [ -n "$1" ] || { printf 'n/a'; return; }
-  if ! command -v curl >/dev/null 2>&1; then printf 'no'; return; fi
-  if curl -s -o /dev/null --connect-timeout 1 --max-time 2 "$1" 2>/dev/null; then
-    printf 'yes'
-  else
-    printf 'no'
-  fi
 }
 
 check_adapter() {
@@ -69,8 +53,8 @@ check_role() {
   fi
 }
 
-printf '%-8s %-17s %-8s %-6s %-8s %-14s %-12s %s\n' \
-  'target' 'kind' 'binary' 'server' 'adapter' 'role' 'pin_eligible' 'note'
+printf '%-8s %-17s %-8s %-8s %-14s %-12s %s\n' \
+  'target' 'kind' 'binary' 'adapter' 'role' 'pin_eligible' 'note'
 
 pin_eligible_count=0
 missing_hints=()
@@ -79,17 +63,12 @@ for i in "${!TARGETS[@]}"; do
   target="${TARGETS[$i]}"
   kind="${KINDS[$i]}"
   binary="$(check_binary "${BINARIES[$i]}")"
-  server="$(check_server "${SERVER_URLS[$i]}")"
   adapter="$(check_adapter "$target")"
   role="$(check_role "$ADAPTERS_DIR/$target.md")"
 
-  # Invocation mechanism differs by kind: a CLI engine is invoked via its
-  # binary; a local-backend engine is invoked via its HTTP server, so a
-  # present-but-stopped server must not read pin_eligible=yes.
   pin_eligible='no'
   case "$kind" in
-    cli-engine)     [ "$binary" = 'yes' ] && [ "$adapter" = 'yes' ] && pin_eligible='yes' ;;
-    local-backend)  [ "$server" = 'yes' ] && [ "$adapter" = 'yes' ] && pin_eligible='yes' ;;
+    cli-engine) [ "$binary" = 'yes' ] && [ "$adapter" = 'yes' ] && pin_eligible='yes' ;;
   esac
 
   note='-'
@@ -107,21 +86,10 @@ for i in "${!TARGETS[@]}"; do
     orchestrator-only)
       note='informational only; not a routable role engine — no verified CLI binary or adapter'
       ;;
-    local-backend)
-      if [ "$adapter" = 'no' ]; then
-        note="no --engine route yet; ${INSTALL_HINTS[$i]}"
-      elif [ "$pin_eligible" = 'yes' ]; then
-        note="$role route live (pair_judge_priority); server reachable"
-      elif [ "$binary" = 'no' ]; then
-        note="not installed; ${INSTALL_HINTS[$i]}"
-      else
-        note='binary present, server down — start it (e.g. `ollama serve` or `brew services start ollama`)'
-      fi
-      ;;
   esac
 
-  printf '%-8s %-17s %-8s %-6s %-8s %-14s %-12s %s\n' \
-    "$target" "$kind" "$binary" "$server" "$adapter" "$role" "$pin_eligible" "$note"
+  printf '%-8s %-17s %-8s %-8s %-14s %-12s %s\n' \
+    "$target" "$kind" "$binary" "$adapter" "$role" "$pin_eligible" "$note"
 done
 
 printf '\n'

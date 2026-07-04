@@ -25,8 +25,8 @@ DEVLYN_SHARED_DIR="$(cd "$DEVLYN_SKILL_DIR/../_shared" && pwd)"
 ## No args — status + how to choose
 
 1. Read `cwd/.devlyn/engines.json`. Absent → report "no pins — auto-detection active".
-2. Run `bash "$DEVLYN_SHARED_DIR/engine-doctor.sh"` — read-only; never installs anything or writes `.devlyn/engines.json`. It detects, per target (`claude`, `codex`, `omp`, `pi`, `ollama`, `vllm`), whether its binary/server is present, whether `_shared/adapters/<name>.md` exists, and whether that makes it `pin_eligible` today. Its trailing line is either a pair-judge-diversity confirmation or a recommendation to add a second adapter-valid engine (`autoresearch/iterations/0045-model-arm-drift.md`: different model tiers hit different failure-mode blind spots, so VERIFY pair-judge/risk-probes need ≥2 to ever fire).
-3. Print the role table. Executor's "Available engines" = rows where `pin_eligible: yes` and `role` includes `executor` (i.e. not `judge-only`). Pair judge's "Available engines" = rows (`cli-engine` or `local-backend`) where `pin_eligible: yes` and `role` includes `judge` (`executor+judge` or `judge-only`):
+2. Run `bash "$DEVLYN_SHARED_DIR/engine-doctor.sh"` — read-only; never installs anything or writes `.devlyn/engines.json`. It detects, per target (`claude`, `codex`, `omp`, `pi`), whether its binary is present, whether `_shared/adapters/<name>.md` exists, and whether that makes it `pin_eligible` today. Its trailing line is either a pair-judge-diversity confirmation or a recommendation to add a second adapter-valid engine (`autoresearch/iterations/0045-model-arm-drift.md`: different model tiers hit different failure-mode blind spots, so VERIFY pair-judge/risk-probes need ≥2 to ever fire).
+3. Print the role table. Executor's "Available engines" = rows where `pin_eligible: yes` and `role` includes `executor` (i.e. not `judge-only`). Pair judge's "Available engines" = rows where `pin_eligible: yes` and `role` includes `judge` (`executor+judge` or `judge-only`):
 
 ```
 Role          Resolved     Source          Available engines
@@ -40,7 +40,7 @@ pair judge    codex        binary rule     (pin order with: pair <name>,...)
 
 ## Subcommands
 
-- `executor <name>` — pin the executor (PLAN/IMPLEMENT/CLEANUP + primary VERIFY judge). Refuse names with no `_shared/adapters/<name>.md`, or whose adapter's `## Role eligibility` section declares `executor: no` (judge-only backends, e.g. `ollama`), listing the valid names either way. If the engine's CLI is not currently available, still write the pin but warn: pins are promises — the run will stop with `BLOCKED:<name>-unavailable` until it is installed.
+- `executor <name>` — pin the executor (PLAN/IMPLEMENT/CLEANUP + primary VERIFY judge). Refuse names with no `_shared/adapters/<name>.md`, or whose adapter's `## Role eligibility` section declares `executor: no` (judge-only backends), listing the valid names either way. If the engine's CLI is not currently available, still write the pin but warn: pins are promises — the run will stop with `BLOCKED:<name>-unavailable` until it is installed.
 - `pair <name>[,<name>...]` — set `pair_judge_priority` (ordered; first adapter-valid, pair-judge-eligible, non-primary, available entry wins at VERIFY/risk-probe time). Refuse names with no `_shared/adapters/<name>.md`, or whose adapter declares `pair_judge: no`.
 - `clear` — remove both pins; delete `.devlyn/engines.json` when nothing else remains in it.
 
