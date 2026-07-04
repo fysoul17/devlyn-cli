@@ -74,6 +74,24 @@ bash scripts/run-drift-bait-probe.sh --probe-dir <path-to-fixture-dir> --run-id 
 Score = violation count from the fixture's own `hidden/verify.sh` `checks`
 object (0 = clean). Not a rubric, no LLM in the loop.
 
+## Violation-rate gate — the evolution guard (iter-0058)
+
+The primary gate for compliance/drift/consistency iterations is the N-rep
+violation rate on this panel, not score-lift on synthetic feature fixtures
+(two fixture generations solo-saturated; `headroom-gate.py` remains the gate
+for L2 *pair-lift* claims only). Run and aggregate:
+
+```
+bash scripts/run-violation-matrix.sh --models sonnet,opus --reps 4 --run-prefix <ID>
+python3 scripts/violation-rate-matrix.py --run-prefix <ID> --out results/<ID>-matrix.json
+```
+
+Baseline: `results/iter0058-base-matrix.{json,md}` (N=4, HEAD `3bb02db`).
+An A/B delta on a cell that is ≤ that cell's baseline flip-band is reported
+as within noise, never as lift. Probes are thermometers, not targets: fixes
+must close failure classes, never special-case a probe's bait
+(`autoresearch/iterations/0058-violation-rate-axis.md`).
+
 ## Not in v0 (logged, not silently dropped)
 
 - A 7th compliance cell forcing a `BLOCKED:*`-override guard path — team

@@ -12,14 +12,16 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   — done 2026-07-03, gate FAIL 0/2 (F34 bare 92/solo 88; F35 bare 50/solo 97
   + timeout); both retired honestly, commit ae7711d, run
   iter-0039-headroom-f34-f35.
-- [F] needs-review: precondition failed — no headroom-passing fixtures exist
+- [x] superseded: precondition failed — no headroom-passing fixtures exist
   (F34/F35 failed the gate above; Tier-2 F36/F37 on the performance/scale
   axis also failed in iter-0041-headroom-f36-f37, solo 96 on both, commit
-  0520ff6). Two design generations solo-saturated; the solo ≤ 80 ceiling
-  needs a rethink of fixture strategy — user direction required.
-  With headroom-passing fixtures: measure engine combinations via
-  `run-fixture.sh --engines-config` cross-mix arms; iterate iter-0040+ per
-  `autoresearch/PRINCIPLES.md` (findings → next fixture/harness iteration).
+  0520ff6). Two design generations solo-saturated.
+  — resolved 2026-07-05 by iter-0058 (user evolution mandate 2026-07-04):
+  stop authoring harder synthetic feature fixtures; the evolution gate is
+  now the N-rep violation-rate matrix (`benchmark/probes/README.md`
+  § Violation-rate gate; baseline `results/iter0058-base-matrix.{json,md}`).
+  Cross-engine comparison arms (`--engines-config`) re-enter through the
+  violation-rate matrix, not score-lift.
 - [x] Cross-CLI smoke (user direction 2026-07-03: harness must run on Codex
   CLI and oh-my-pi, not only Claude Code): install via `npx devlyn-cli` with
   codex/omp targets, then run `/devlyn:queue` status and one trivial
@@ -40,7 +42,11 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   dual-declaration update), and gates G1-G4 locked in
   autoresearch/iterations/0060-engine-symmetric-pair.md. (user direction
   2026-07-05)
-- [ ] iter-0058: run the N=4 violation-rate baseline matrix per
+- [x] iter-0058: run the N=4 violation-rate baseline matrix per
   autoresearch/iterations/0058-violation-rate-axis.md (sonnet + one other
   model; fable never a test arm; document per-probe flip-band before any
   A/B claim).
+  — done 2026-07-05: sonnet+opus N=4 (48 runs), baseline artifact
+  `benchmark/probes/results/iter0058-base-matrix.{json,md}`; flip-band
+  documented in the iter file (10/12 cells band 0; sonnet
+  DB-silent-catch band 1, DB-tempting-state-file band 2).
