@@ -786,7 +786,18 @@ def write_state(devlyn: pathlib.Path, summary: dict[str, Any]) -> None:
         verify = {}
         phases["verify"] = verify
     verify["verdict"] = summary["verdict"]
-    sub = verify.setdefault("sub_verdicts", {})
+    sub = verify.get("sub_verdicts")
+    if sub is None:
+        # spawn (state-phase-write.py) always writes sub_verdicts: null as
+        # part of the per-round reset contract (state-schema.md#write-protocol)
+        # — legal, expected state before this function populates it.
+        # setdefault() would not replace an existing null, only an absent key.
+        sub = {}
+        verify["sub_verdicts"] = sub
+    elif not isinstance(sub, dict):
+        raise SystemExit(
+            f"error: phases.verify.sub_verdicts must be null or an object, got {type(sub).__name__}"
+        )
     for source, source_verdict in summary["source_verdicts"].items():
         if source in {"mechanical", "judge", "pair_judge"}:
             sub[source] = source_verdict
@@ -801,6 +812,40 @@ def write_state(devlyn: pathlib.Path, summary: dict[str, Any]) -> None:
 def self_test() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         devlyn = pathlib.Path(tmp)
+
+        # state-phase-write.py's spawn always writes sub_verdicts: null (the
+        # per-round reset contract, state-schema.md#write-protocol) — this is
+        # the real shape write_state() sees on every VERIFY completion, not
+        # the pre-populated {} the other scenarios below seed for brevity.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({"phases": {"verify": {"verdict": None, "sub_verdicts": None}}}),
+            encoding="utf-8",
+        )
+        (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        write_state(devlyn, summary)
+        state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
+        assert summary["verdict"] == "PASS", summary
+        assert state["phases"]["verify"]["sub_verdicts"] == {
+            "mechanical": "PASS", "judge": "PASS", "pair_judge": "PASS",
+        }, state
+
+        # A non-null, non-dict sub_verdicts is corrupted state, not a legal
+        # placeholder — write_state() must fail loud, not silently coerce it.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({"phases": {"verify": {"verdict": None, "sub_verdicts": "corrupt"}}}),
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        try:
+            write_state(devlyn, summary)
+        except SystemExit as e:
+            assert "sub_verdicts must be null or an object" in str(e), e
+        else:
+            raise AssertionError("write_state() must reject non-dict, non-null sub_verdicts")
+
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
                 "phases": {
