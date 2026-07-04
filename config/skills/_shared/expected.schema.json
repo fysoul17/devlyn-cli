@@ -106,6 +106,32 @@
       "description": "Hard cap on new entries under dependencies/devDependencies in package.json. Exceeds → DQ.",
       "minimum": 0,
       "default": 0
+    },
+    "pure_design": {
+      "type": "boolean",
+      "description": "Declares that every Requirement is pure-design (no observable runtime check). Lets verification_commands stay empty without failing shape validation. Contradictory (and rejected) when true alongside a non-empty verification_commands.",
+      "default": false
+    },
+    "required_risk_probe_requirements": {
+      "type": "array",
+      "description": "Language-neutral replacement for prose-keyword risk-probe classification: explicit {tag, derived_from} obligations the spec author declares directly. When `--risk-probes` is enabled, risk-probes.jsonl must include a probe whose tags include `tag` and whose derived_from exactly equals `derived_from` for each entry.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tag", "derived_from"],
+        "properties": {
+          "tag": {
+            "type": "string",
+            "description": "One of the risk-probe tags defined in _shared/spec-verify-check.py:RISK_PROBE_TAGS (e.g. ordering_inversion, rollback_state, shape_contract)."
+          },
+          "derived_from": {
+            "type": "string",
+            "description": "Exact substring of the sibling spec.md's visible verification section that demands this tag.",
+            "minLength": 1
+          }
+        }
+      },
+      "default": []
     }
   }
 }

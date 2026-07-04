@@ -11,6 +11,14 @@ second planner, critic essay, or debate participant. Your output is JSONL only.
 - Source spec or generated criteria.
 - `.devlyn/plan.md`.
 - Codebase read/search at `state.base_ref.sha`.
+- If the spec declares `required_risk_probe_requirements` (a language-neutral
+  `{tag, derived_from}` obligation list — see `_shared/expected.schema.json`),
+  the orchestrator pastes just that array into this prompt, never the rest of
+  `spec.expected.json`. Every `derived_from` value is already an exact
+  substring of the visible `## Verification` text you read directly, so this
+  exposes nothing hidden. Emit at least one probe per declared entry whose
+  `tags` includes that `tag` and whose `derived_from` matches the declared
+  value verbatim — BUILD_GATE mechanically checks this coverage.
 </input>
 
 <forbidden_input>

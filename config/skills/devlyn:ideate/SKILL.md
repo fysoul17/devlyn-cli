@@ -105,7 +105,7 @@ Structural lint (inline check, no script needed):
 - `## Context` non-empty (≥ 1 sentence).
 - `## Requirements` has ≥ 1 `- [ ]` bullet.
 - `## Out of Scope` present (may list "none" if truly nothing).
-- `## Verification` has either ≥ 1 named command OR an explicit "all Requirements are pure-design" note.
+- `## Verification` is preceded by a `<!-- devlyn:verification -->` sentinel and has either ≥ 1 named command OR sibling `spec.expected.json` declares `"pure_design": true`.
 
 After lint passes:
 1. Write `<spec-dir>/<id>-<slug>/spec.md` (the spec).

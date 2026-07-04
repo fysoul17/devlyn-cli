@@ -603,9 +603,16 @@ then
 else
   bad "solo-headroom command detection constants must stay in parity"
 fi
-if ! grep -Fq 'required.add("rollback_state")' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'rollback verification text did not require rollback_state probe tag' config/skills/_shared/spec-verify-check.py; then
-  bad "spec-verify-check.py must require rollback_state risk probes for rollback/all-or-nothing verification text"
+if ! grep -Fq 'def resolve_required_risk_probe_requirements' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'def validate_required_risk_probe_requirement' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'missing required probe(s)' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'risk-probes.jsonl missing a declared required_risk_probe_requirements' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'risk-probes.jsonl covering a declared required_risk_probe_requirements' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'required_risk_probe_requirements with an unknown tag was accepted' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'required_risk_probe_requirements.derived_from not present in the' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'required_risk_probe_requirements' config/skills/_shared/expected.schema.json \
+  || ! grep -Fq 'required_risk_probe_requirements' config/skills/devlyn:ideate/references/spec-template.md; then
+  bad "spec-verify-check.py must enforce declared required_risk_probe_requirements (iter-0049 language-neutral F3 replacement)"
 fi
 if ! grep -Fq 'spec.expected.json top-level array produced a traceback' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'invalid spec.expected.json produced a traceback' config/skills/_shared/spec-verify-check.py \
@@ -617,10 +624,6 @@ if ! grep -Fq 'spec.expected.json top-level array produced a traceback' config/s
   || ! grep -Fq 'top-level must be a JSON object' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'has invalid JSON' config/skills/_shared/spec-verify-check.py; then
   bad "spec-verify-check.py self-test must fail malformed spec.expected.json cleanly without traceback"
-fi
-if ! grep -Fq 'required.add("error_contract")' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'error_contract without exit-code evidence was accepted' config/skills/_shared/spec-verify-check.py; then
-  bad "spec-verify-check.py must require error_contract risk probes for invalid/stderr/JSON-error/exit-2 verification text"
 fi
 if ! grep -Fq '"asserts_named_stream_output"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '"asserts_error_payload_or_stderr"' config/skills/_shared/spec-verify-check.py \
@@ -634,7 +637,6 @@ if ! grep -Fq '"asserts_named_stream_output"' config/skills/_shared/spec-verify-
 fi
 if ! grep -Fq '"http_error_contract"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'asserts_http_error_status' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'http error text did not require http_error_contract tag' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'http_error_contract without payload evidence was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'exact error body shape_contract without exact object evidence was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'exact error body shape_contract with exact object evidence was rejected' config/skills/_shared/spec-verify-check.py \
@@ -645,55 +647,31 @@ fi
 if ! grep -Fq '"uses_visible_input_key_names"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '"asserts_visible_output_key_names"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '"asserts_no_unexpected_output_keys"' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'JSON error object text did not require shape_contract tag' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'shape_contract co-occurring with error_contract without' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'JSON error object shape_contract with exact object evidence was rejected' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'INLINE_JSON_OBJECT_RE' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'inline JSON object text did not require shape_contract tag' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'inline JSON object shape_contract with key evidence was rejected' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'inline JSON error text did not require shape_contract tag' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'inline JSON error shape_contract with exact object evidence was rejected' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'shape_contract without exact key evidence was accepted' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'shape_contract without any evidence was accepted' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'shape_contract with exact key evidence was rejected' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '`shape_contract` when the visible text names exact keys' config/skills/devlyn:resolve/references/phases/probe-derive.md \
   || ! grep -Fq '`shape_contract` must' config/skills/devlyn:resolve/SKILL.md; then
-  bad "risk-probe shape contracts must require exact visible input/output key evidence when visible text names shape"
-fi
-if ! grep -Fq "forbidden[ -]+window" config/skills/_shared/spec-verify-check.py \
-  || grep -Fq "r'blocked|overlap|forbidden|window'" config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'generic forbidden-pattern verification text incorrectly required boundary_overlap' config/skills/_shared/spec-verify-check.py; then
-  bad "risk-probe boundary_overlap must trigger for forbidden windows / blocked overlap, not generic forbidden pattern text"
-fi
-if ! grep -Fq '(?:stock|inventory|balance|availability).{0,80}(?:later|remaining|after failures)' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'stock validation error text incorrectly required prior_consumption' config/skills/_shared/spec-verify-check.py; then
-  bad "risk-probe prior_consumption must trigger on later/remaining state consumption, not plain stock validation errors"
+  bad "risk-probe shape contracts must require exact visible input/output key evidence unconditionally, and asserts_exact_error_object when co-occurring with error_contract/http_error_contract"
 fi
 if ! grep -Fq '"auth_signature_contract"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '"idempotency_replay"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'asserts_signature_over_exact_bytes' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'duplicate_id_rejected_regardless_of_body' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'webhook signature/replay text did not require auth/idempotency probe tags' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '`auth_signature_contract`: `asserts_signature_over_exact_bytes`' config/skills/devlyn:resolve/references/phases/probe-derive.md \
   || ! grep -Fq '`idempotency_replay`: `first_delivery_then_duplicate`' config/skills/devlyn:resolve/references/phases/probe-derive.md \
   || ! grep -Fq '`auth_signature_contract` must include `asserts_signature_over_exact_bytes`' config/skills/devlyn:resolve/SKILL.md; then
   bad "risk-probe webhook/signature/replay contracts must require concrete auth_signature_contract and idempotency_replay tags"
 fi
-if ! grep -Fq 'signing|signed' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'same.{0,40}`?id`?' config/skills/_shared/spec-verify-check.py; then
-  bad "risk-probe webhook signature/replay trigger must catch signing/signed and same accepted id wording"
-fi
-if ! grep -Fq 'duplicate[ -]+(?:delivery|event|id)' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'duplicate SKU verification text incorrectly required idempotency_replay' config/skills/_shared/spec-verify-check.py; then
-  bad "risk-probe idempotency_replay must trigger on duplicate delivery/event/id, not duplicate SKU aggregation"
-fi
 if ! grep -Fq '"concurrent_state_consistency"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'overlapping_mutations_exercised' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'concurrent state text did not require concurrent_state_consistency tag' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '`concurrent_state_consistency`: `overlapping_mutations_exercised`' config/skills/devlyn:resolve/references/phases/probe-derive.md \
   || ! grep -Fq '`concurrent_state_consistency` must' config/skills/devlyn:resolve/SKILL.md; then
   bad "risk-probe concurrent state contracts must require concrete concurrent_state_consistency markers"
 fi
 if ! grep -Fq '"atomic_batch_state"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'mixed_valid_invalid_batch' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'atomic batch text did not require atomic_batch_state tag' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'atomic_batch_state without success-order evidence was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '`atomic_batch_state`: `mixed_valid_invalid_batch`' config/skills/devlyn:resolve/references/phases/probe-derive.md \
   || ! grep -Fq '`atomic_batch_state` must include `mixed_valid_invalid_batch`' config/skills/devlyn:resolve/SKILL.md; then
@@ -3655,7 +3633,7 @@ if ! grep -Fq 'high-risk fixture must include a resolve risk-trigger term' scrip
   || ! grep -Fq 'DEVLYN_FIXTURES_DIR="$FIXTURES_DIR" bash "$ROOT/scripts/lint-fixtures.sh"' benchmark/auto-resolve/scripts/test-lint-fixtures.sh \
   || ! grep -Fq 'DEVLYN_LINT_FIXTURES_NO_JSONSCHEMA=1' benchmark/auto-resolve/scripts/test-lint-fixtures.sh \
 	  || ! grep -Fq 'spec-verify-check --check-expected failed' benchmark/auto-resolve/scripts/test-lint-fixtures.sh \
-	  || ! grep -Fq 'unless sibling spec.md declares all Requirements are pure-design' benchmark/auto-resolve/scripts/test-lint-fixtures.sh \
+	  || ! grep -Fq 'unless spec.expected.json declares "pure_design": true' benchmark/auto-resolve/scripts/test-lint-fixtures.sh \
 	  || ! grep -Fq 'verification_commands must be an array' benchmark/auto-resolve/scripts/test-lint-fixtures.sh \
 	  || ! grep -Fq 'expected.json must be an object' benchmark/auto-resolve/scripts/test-lint-fixtures.sh \
 	  || ! grep -Fq 'hidden oracle missing contract_refs' benchmark/auto-resolve/scripts/test-lint-fixtures.sh \

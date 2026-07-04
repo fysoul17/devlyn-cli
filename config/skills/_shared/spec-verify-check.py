@@ -116,10 +116,10 @@ def output_finding_prefix() -> str:
 
 
 VERIFICATION_SECTION_RE = re.compile(
-    r'(?ms)^##[ \t]+Verification\b[^\n]*\n(.*?)(?=^##[ \t]+|\Z)'
+    r'(?ms)^<!--[ \t]*devlyn:verification[ \t]*-->[ \t]*\n(##[ \t]+[^\n]*\n.*?)(?=^##[ \t]+|\Z)'
 )
 FILES_TO_TOUCH_SECTION_RE = re.compile(
-    r'(?ms)^##[ \t]+(?:\d+\.\s*)?Files to touch\b[^\n]*\n(.*?)(?=^##[ \t]+|\Z)'
+    r'(?ms)^<!--[ \t]*devlyn:authorized-surface[ \t]*-->[ \t]*\n(##[ \t]+[^\n]*\n.*?)(?=^##[ \t]+|\Z)'
 )
 JSON_FENCE_RE = re.compile(r'(?ms)^```json[ \t]*\n(.*?)\n```[ \t]*$')
 FORBIDDEN_RISK_PROBE_CMD_RE = re.compile(
@@ -246,6 +246,8 @@ EXPECTED_TOP_LEVEL_KEYS = {
     "tier_a_waivers",
     "spec_output_files",
     "max_deps_added",
+    "pure_design",
+    "required_risk_probe_requirements",
 }
 EXPECTED_VERIFICATION_COMMAND_KEYS = {
     "cmd",
@@ -254,27 +256,44 @@ EXPECTED_VERIFICATION_COMMAND_KEYS = {
     "stdout_not_contains",
     "contract_refs",
 }
-PURE_DESIGN_ESCAPE = "all Requirements are pure-design"
 SPEC_COMPLEXITY_VALUES = {"trivial", "medium", "high", "large"}
 
 
-def extract_verification_block(text: str) -> str | None:
-    """Return the contents of the first ```json``` fenced block under the
-    first `## Verification` H2 heading, or None if not found.
+def extract_verification_block(text: str) -> tuple[bool, str | None]:
+    """Locate the verification section via the `<!-- devlyn:verification -->`
+    sentinel (language-neutral — the human-readable heading after it may be
+    any text, any language) and return (section_found, json_block).
 
-    Boundary: the fenced block must appear AFTER the `## Verification`
-    heading and BEFORE the next H2 (`## ...`) heading or end-of-file.
+    section_found=False: the sentinel is absent entirely — a legitimate
+    handwritten spec with no mechanical verification contract. Callers treat
+    this as a silent no-op, matching pre-existing backward compat.
+
+    section_found=True, json_block=None: the sentinel is present (the author
+    clearly intended a verification section) but no fenced ```json``` block
+    was found inside it — this is a malformed carrier, not a no-op.
     """
     section = VERIFICATION_SECTION_RE.search(text)
     if not section:
-        return None
+        return (False, None)
     fence = JSON_FENCE_RE.search(section.group(1))
-    return fence.group(1) if fence else None
+    return (True, fence.group(1) if fence else None)
 
 
 def extract_verification_text(text: str) -> str:
     section = VERIFICATION_SECTION_RE.search(text)
     return section.group(1) if section else ""
+
+
+def extract_authorized_surface_block(text: str) -> tuple[bool, str | None]:
+    """Locate PLAN's `Files to touch` section via the
+    `<!-- devlyn:authorized-surface -->` sentinel and return
+    (section_found, json_block) — same semantics as
+    `extract_verification_block()`."""
+    section = FILES_TO_TOUCH_SECTION_RE.search(text)
+    if not section:
+        return (False, None)
+    fence = JSON_FENCE_RE.search(section.group(1))
+    return (True, fence.group(1) if fence else None)
 
 
 def extract_frontmatter_field(text: str, field: str) -> str | None:
@@ -517,6 +536,26 @@ def validate_expected_shape(data) -> str | None:
     max_deps = data.get("max_deps_added", 0)
     if isinstance(max_deps, bool) or not isinstance(max_deps, int) or max_deps < 0:
         return "max_deps_added must be a non-negative integer"
+    if "pure_design" in data and not isinstance(data["pure_design"], bool):
+        return "pure_design must be a boolean"
+    requirements = data.get("required_risk_probe_requirements", [])
+    if not isinstance(requirements, list):
+        return "required_risk_probe_requirements must be a list"
+    for i, requirement in enumerate(requirements):
+        if not isinstance(requirement, dict):
+            return f"required_risk_probe_requirements[{i}] must be an object"
+        unknown_requirement_keys = sorted(set(requirement) - {"tag", "derived_from"})
+        if unknown_requirement_keys:
+            return (
+                f"required_risk_probe_requirements[{i}] unknown key(s): "
+                f"{', '.join(unknown_requirement_keys)}"
+            )
+        tag = requirement.get("tag")
+        if not isinstance(tag, str) or tag not in RISK_PROBE_TAGS:
+            return f"required_risk_probe_requirements[{i}].tag must be one of: {', '.join(sorted(RISK_PROBE_TAGS))}"
+        derived_from = requirement.get("derived_from")
+        if not isinstance(derived_from, str) or not derived_from:
+            return f"required_risk_probe_requirements[{i}].derived_from must be a non-empty string"
     patterns = data.get("forbidden_patterns", [])
     if not isinstance(patterns, list):
         return "forbidden_patterns must be a list"
@@ -565,13 +604,16 @@ def validate_expected_against_sibling_spec(expected_path: Path, data: object) ->
     )
     if solo_headroom_command_err:
         return solo_headroom_command_err
+    pure_design = data.get("pure_design") is True
     if commands:
+        if pure_design:
+            return 'pure_design: true is contradictory with a non-empty verification_commands'
         return None
-    if PURE_DESIGN_ESCAPE in spec_text:
+    if pure_design:
         return None
     return (
-        "verification_commands must contain at least one entry unless sibling "
-        "spec.md declares all Requirements are pure-design"
+        'verification_commands must contain at least one entry unless '
+        'spec.expected.json declares "pure_design": true'
     )
 
 
@@ -623,24 +665,6 @@ def validate_risk_probe(probe: object, index: int, verification_text: str) -> st
     unknown_tags = sorted(set(tags) - RISK_PROBE_TAGS)
     if unknown_tags:
         return f"risk-probes[{index}].tags contains unknown tag(s): {', '.join(unknown_tags)}"
-    if "error_contract" in tags and not re.search(
-        r'stderr|exit[ `]*2|(?:prints?|writes?).{0,40}json[ -]?error|'
-        r'json[ -]?error.{0,40}(?:stderr|exit)',
-        derived_from,
-        re.IGNORECASE,
-    ):
-        return (
-            f"risk-probes[{index}].derived_from for error_contract must name "
-            "a stderr, JSON-error stream, or exit-2 verification bullet"
-        )
-    if "http_error_contract" in tags and not (
-        re.search(r'\b(?:400|401|403|404|409|422|5[0-9][0-9])\b|http|status', derived_from, re.IGNORECASE)
-        and re.search(r'error|invalid', derived_from, re.IGNORECASE)
-    ):
-        return (
-            f"risk-probes[{index}].derived_from for http_error_contract must name "
-            "an HTTP/status error response verification bullet"
-        )
     evidence = probe.get("tag_evidence")
     if not isinstance(evidence, dict):
         return f"risk-probes[{index}].tag_evidence must be an object"
@@ -657,15 +681,12 @@ def validate_risk_probe(probe: object, index: int, verification_text: str) -> st
                 f"risk-probes[{index}].tag_evidence.{tag} missing required "
                 f"item(s): {', '.join(missing_evidence)}"
             )
-    if "shape_contract" in tags and shape_contract_requires_evidence(derived_from):
+    if "shape_contract" in tags:
         actual = evidence.get("shape_contract")
         if not isinstance(actual, list) or not all(isinstance(item, str) for item in actual):
             return f"risk-probes[{index}].tag_evidence.shape_contract must be a list of strings"
         required_shape = set(SHAPE_CONTRACT_REQUIRED_EVIDENCE)
-        if re.search(r'error object|error body', derived_from, re.IGNORECASE) or (
-            INLINE_JSON_OBJECT_RE.search(derived_from)
-            and re.search(r'error|invalid', derived_from, re.IGNORECASE)
-        ):
+        if {"error_contract", "http_error_contract"} & set(tags):
             required_shape.add("asserts_exact_error_object")
         missing_shape = sorted(required_shape - set(actual))
         if missing_shape:
@@ -676,75 +697,66 @@ def validate_risk_probe(probe: object, index: int, verification_text: str) -> st
     return None
 
 
-def shape_contract_requires_evidence(text: str) -> bool:
-    return bool(re.search(
-        r'\b(?:keys?|fields?|rows?|shape|object|json[ -]?object|'
-        r'error body|stdout|stderr|response body)\b|'
-        r'\b(?:applied|rejected|accounts|scheduled|accepted|remaining)\b',
-        text,
-        re.IGNORECASE,
-    ) or INLINE_JSON_OBJECT_RE.search(text))
+def validate_required_risk_probe_requirement(
+    requirement: object, index: int, verification_text: str,
+) -> str | None:
+    if not isinstance(requirement, dict):
+        return f"required_risk_probe_requirements[{index}] must be a JSON object"
+    tag = requirement.get("tag")
+    if not isinstance(tag, str) or tag not in RISK_PROBE_TAGS:
+        return (
+            f"required_risk_probe_requirements[{index}].tag must be one of: "
+            f"{', '.join(sorted(RISK_PROBE_TAGS))}"
+        )
+    derived_from = requirement.get("derived_from")
+    if not isinstance(derived_from, str) or not derived_from.strip():
+        return f"required_risk_probe_requirements[{index}].derived_from must be a non-empty string"
+    if derived_from not in verification_text:
+        return (
+            f"required_risk_probe_requirements[{index}].derived_from must be an "
+            "exact substring of the source verification section"
+        )
+    return None
 
 
-def required_risk_probe_tags(verification_text: str) -> set[str]:
-    text = verification_text.lower()
-    required: set[str] = set()
-    if re.search(r'priority|higher-priority|ordered by|ordering|appears first|input order', text):
-        required.add("ordering_inversion")
-    if re.search(r'blocked|overlap|forbidden[ -]+window', text):
-        required.add("boundary_overlap")
-    if re.search(r'rolls? back|rollback|all-or-nothing|tentative', text):
-        required.add("rollback_state")
-    if re.search(
-        r'rolls? back|rollback|all-or-nothing|tentative|reduce[s]? stock|'
-        r'available to later|later orders|remaining|'
-        r'(?:stock|inventory|balance|availability).{0,80}(?:later|remaining|after failures)',
-        text,
-    ):
-        required.add("prior_consumption")
-    if "remaining" in text:
-        required.add("positive_remaining")
-    if re.search(
-        r'stderr|exit[ `]*2|(?:prints?|writes?).{0,40}json[ -]?error|'
-        r'json[ -]?error.{0,40}(?:stderr|exit)',
-        text,
-    ):
-        required.add("error_contract")
-    if re.search(
-        r'\b(?:400|401|403|404|409|422|5[0-9][0-9])\b|http status|status code',
-        text,
-    ) and re.search(r'json error|error object|error body|invalid_query|error.*field', text):
-        required.add("http_error_contract")
-    if re.search(
-        r'\b(?:keys?|fields?|rows?|shape|json[ -]?object|'
-        r'error object|error body|response body)\b|'
-        r'\b(?:applied|rejected|accounts|scheduled|accepted|remaining)\b',
-        text,
-    ) or INLINE_JSON_OBJECT_RE.search(verification_text):
-        required.add("shape_contract")
-    if re.search(r'stderr|stdout|exit `?2`?', text):
-        required.add("stdout_stderr_contract")
-    if re.search(r'signature|signing|signed|x-signature|hmac|raw[ -]?body|timingsafeequal', text):
-        required.add("auth_signature_contract")
-    if re.search(
-        r'replay|same.{0,40}`?id`?|already-seen|idempotent|re-delivery|'
-        r'duplicate[ -]+(?:delivery|event|id)',
-        text,
-    ):
-        required.add("idempotency_replay")
-    if re.search(
-        r'concurrent|close together|simultaneous|parallel|race|lost update|'
-        r'many at once|several .{0,40}requests',
-        text,
-    ):
-        required.add("concurrent_state_consistency")
-    if re.search(
-        r'one valid \+ one invalid|valid \+ one invalid|all-or-nothing|'
-        r'same list as before|0 inserts|no partial updates',
-        text,
-    ):
-        required.add("atomic_batch_state")
-    return required
+def resolve_required_risk_probe_requirements(
+    source_md: Path | None,
+) -> tuple[list[dict], str | None]:
+    """Return the spec author's declared `required_risk_probe_requirements`
+    (a language-neutral replacement for a keyword-prose classifier): a list
+    of `{"tag": ..., "derived_from": ...}` obligations that risk-probes.jsonl
+    must cover when risk probes are required. Resolved from whichever
+    carrier `verification_commands` itself would come from — sibling
+    `spec.expected.json` wins when present, else the inline fenced block
+    under source_md's `<!-- devlyn:verification -->` sentinel. Absence in
+    either carrier is not an error: it means the spec author declared no
+    required risk-probe obligations, not that none apply.
+    """
+    if source_md is None or not source_md.is_file():
+        return ([], None)
+    expected_path = source_md.with_name("spec.expected.json")
+    if expected_path.is_file():
+        data, err = load_expected_contract(expected_path)
+        if err:
+            return ([], err)
+        reqs = (data or {}).get("required_risk_probe_requirements", [])
+    else:
+        _section_found, block = extract_verification_block(source_md.read_text())
+        if block is None:
+            return ([], None)
+        try:
+            parsed = loads_strict_json(block)
+        except ValueError as e:
+            return ([], f"<!-- devlyn:verification --> ```json``` block in {source_md} has invalid JSON: {e}")
+        reqs = parsed.get("required_risk_probe_requirements", []) if isinstance(parsed, dict) else []
+    if not isinstance(reqs, list):
+        return ([], "required_risk_probe_requirements must be a list")
+    verification_text = extract_verification_text(source_md.read_text())
+    for i, req in enumerate(reqs):
+        err = validate_required_risk_probe_requirement(req, i, verification_text)
+        if err:
+            return ([], err)
+    return (reqs, None)
 
 
 def load_risk_probes(
@@ -763,7 +775,7 @@ def load_risk_probes(
 
     verification_text = extract_verification_text(source_md.read_text())
     if not verification_text:
-        return ([], "risk-probes.jsonl exists but source has no ## Verification section")
+        return ([], "risk-probes.jsonl exists but source has no <!-- devlyn:verification --> section")
 
     probes: list[dict] = []
     for index, line in enumerate(probes_path.read_text().splitlines()):
@@ -785,10 +797,19 @@ def load_risk_probes(
     if require_present and not probes:
         return ([], "risk-probes.jsonl must contain at least one probe")
     if require_present:
-        present_tags = {tag for probe in probes for tag in probe.get("tags", [])}
-        missing_tags = sorted(required_risk_probe_tags(verification_text) - present_tags)
-        if missing_tags:
-            return ([], f"risk-probes.jsonl missing required probe tag(s): {', '.join(missing_tags)}")
+        required_reqs, req_err = resolve_required_risk_probe_requirements(source_md)
+        if req_err:
+            return ([], req_err)
+        missing = [
+            req for req in required_reqs
+            if not any(
+                req["tag"] in probe.get("tags", []) and probe.get("derived_from") == req["derived_from"]
+                for probe in probes
+            )
+        ]
+        if missing:
+            formatted = "; ".join(f"{r['tag']} (derived_from={r['derived_from']!r})" for r in missing)
+            return ([], f"risk-probes.jsonl missing required probe(s): {formatted}")
     solo_headroom_probe_err = validate_risk_probes_cover_solo_headroom_hypothesis(
         probes,
         verification_text,
@@ -899,20 +920,25 @@ def stage_from_source(md: Path, devlyn_dir: Path) -> tuple[bool, str | None]:
     """Materialize .devlyn/spec-verify.json from the json block in `md`.
 
     Returns (staged, error). staged=True → wrote spec-verify.json. error
-    non-None → carrier was found but malformed (caller emits CRITICAL).
-    staged=False, error=None → no json block in the source (handwritten
-    spec or generated source missing the contract).
+    non-None → carrier was found but malformed (caller emits CRITICAL) —
+    this now also covers a `<!-- devlyn:verification -->` sentinel present
+    with no fenced ```json``` block inside it (the author clearly intended a
+    contract; a missing fence is a mistake, not a no-op). staged=False,
+    error=None → the sentinel is absent entirely (handwritten spec or
+    generated source missing the contract).
     """
-    block = extract_verification_block(md.read_text())
-    if block is None:
+    section_found, block = extract_verification_block(md.read_text())
+    if not section_found:
         return (False, None)
+    if block is None:
+        return (False, f"`<!-- devlyn:verification -->` section in {md} has no fenced ```json``` block")
     try:
         data = loads_strict_json(block)
     except ValueError as e:
-        return (False, f"`## Verification` ```json``` block in {md} has invalid JSON: {e}")
+        return (False, f"`<!-- devlyn:verification -->` ```json``` block in {md} has invalid JSON: {e}")
     err = validate_shape(data)
     if err:
-        return (False, f"`## Verification` ```json``` block in {md}: {err}")
+        return (False, f"`<!-- devlyn:verification -->` ```json``` block in {md}: {err}")
     normalized = {"verification_commands": data["verification_commands"]}
     devlyn_dir.mkdir(parents=True, exist_ok=True)
     (devlyn_dir / "spec-verify.json").write_text(json.dumps(normalized, indent=2) + "\n")
@@ -1173,16 +1199,6 @@ def expected_contract_findings(
     return (findings, seq)
 
 
-def extract_authorized_surface_block(text: str) -> str | None:
-    """Return the fenced ```json``` block under plan.md's "Files to touch"
-    section, or None if the section or the block is absent."""
-    section = FILES_TO_TOUCH_SECTION_RE.search(text)
-    if not section:
-        return None
-    fence = JSON_FENCE_RE.search(section.group(1))
-    return fence.group(1) if fence else None
-
-
 def validate_authorized_surface_shape(data: object) -> str | None:
     if not isinstance(data, dict):
         return "top-level must be a JSON object"
@@ -1278,13 +1294,14 @@ def authorized_surface_findings(
             "status": "open",
         }], finding_start + 1)
 
-    block = extract_authorized_surface_block(plan_text)
+    _section_found, block = extract_authorized_surface_block(plan_text)
     parse_error: str | None = None
     data: dict | None = None
     if block is None:
         parse_error = (
-            "plan.md's `Files to touch` section must include a fenced "
-            "```json``` block: {\"authorized_surface\": [...]}."
+            "plan.md must include a `<!-- devlyn:authorized-surface -->` "
+            "section with a fenced ```json``` block: "
+            "{\"authorized_surface\": [...]}."
         )
     else:
         try:
@@ -1350,8 +1367,10 @@ def run_check_mode(md_path: Path) -> int:
     """`--check <markdown>` — validate the verification carrier without
     running any commands. Used by /devlyn:ideate after item-spec write.
 
-    Exit 0: section absent OR section present and well-formed.
-    Exit 2: section present but malformed (so ideate can re-prompt).
+    Exit 0: `<!-- devlyn:verification -->` sentinel absent OR section present
+    and well-formed.
+    Exit 2: sentinel present but the section is malformed — no fenced json
+    block, invalid JSON, or bad shape (so ideate can re-prompt).
     """
     if not md_path.is_file():
         print(f"[spec-verify --check] error: {md_path} not found", file=sys.stderr)
@@ -1369,18 +1388,25 @@ def run_check_mode(md_path: Path) -> int:
     if solo_ceiling_err:
         print(f"[spec-verify --check] {md_path}: {solo_ceiling_err}", file=sys.stderr)
         return 2
-    block = extract_verification_block(text)
-    if block is None:
-        # Section absent or no json block — opt-in nature preserved for
-        # ideate (a spec without machine verification is still valid; it
-        # just won't activate the BUILD_GATE gate).
+    section_found, block = extract_verification_block(text)
+    if not section_found:
+        # Sentinel absent entirely — opt-in nature preserved for ideate (a
+        # spec without machine verification is still valid; it just won't
+        # activate the BUILD_GATE gate).
         return 0
+    if block is None:
+        print(
+            f"[spec-verify --check] {md_path}: `<!-- devlyn:verification -->` "
+            "section found but no fenced ```json``` block inside it",
+            file=sys.stderr,
+        )
+        return 2
     try:
         data = loads_strict_json(block)
     except ValueError as e:
         print(
-            f"[spec-verify --check] {md_path}: invalid JSON in `## Verification` "
-            f"```json``` block: {e}",
+            f"[spec-verify --check] {md_path}: invalid JSON in "
+            f"`<!-- devlyn:verification -->` ```json``` block: {e}",
             file=sys.stderr,
         )
         return 2
@@ -1425,7 +1451,7 @@ def run_self_test() -> int:
         devlyn = work / ".devlyn"
         devlyn.mkdir()
         spec_md = work / "spec.md"
-        spec_md.write_text("# Spec\n\n## Verification\n\n- probe must pass visible marker.\n")
+        spec_md.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- probe must pass visible marker.\n")
         (devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(spec_md)}
         }))
@@ -1442,7 +1468,13 @@ def run_self_test() -> int:
             "stdout_contains": ["probe-ok"],
             "stdout_not_contains": [],
             "tags": ["shape_contract"],
-            "tag_evidence": {},
+            "tag_evidence": {
+                "shape_contract": [
+                    "uses_visible_input_key_names",
+                    "asserts_visible_output_key_names",
+                    "asserts_no_unexpected_output_keys",
+                ],
+            },
         }) + "\n")
         env = os.environ.copy()
         env["BENCH_WORKDIR"] = str(work)
@@ -1542,7 +1574,13 @@ def run_self_test() -> int:
             "stdout_contains": ["probe-ok"],
             "stdout_not_contains": [],
             "tags": ["shape_contract"],
-            "tag_evidence": {},
+            "tag_evidence": {
+                "shape_contract": [
+                    "uses_visible_input_key_names",
+                    "asserts_visible_output_key_names",
+                    "asserts_no_unexpected_output_keys",
+                ],
+            },
         }) + "\n")
 
         good_complexity = work / "good-complexity.md"
@@ -1581,7 +1619,7 @@ def run_self_test() -> int:
 
         weak_solo_headroom = work / "weak-solo-headroom.md"
         weak_solo_headroom.write_text(
-            "# Weak\n\n## Verification\n\n"
+            "# Weak\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- solo-headroom hypothesis: solo_claude should miss duplicate handling.\n"
             "- Observable command: `node check.js` exposes behavior.\n",
             encoding="utf-8",
@@ -1602,7 +1640,7 @@ def run_self_test() -> int:
 
         weak_descriptive_backtick = work / "weak-descriptive-backtick.md"
         weak_descriptive_backtick.write_text(
-            "# Weak descriptive backtick\n\n## Verification\n\n"
+            "# Weak descriptive backtick\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- solo-headroom hypothesis: solo_claude should miss behavior where observable `priority rollback` exposes the miss.\n",
             encoding="utf-8",
         )
@@ -1653,7 +1691,7 @@ def run_self_test() -> int:
 
         weak_solo_ceiling = work / "weak-solo-ceiling.md"
         weak_solo_ceiling.write_text(
-            "# Weak ceiling\n\n## Verification\n\n"
+            "# Weak ceiling\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- solo ceiling avoidance: this is not like the previous ones.\n",
             encoding="utf-8",
         )
@@ -1691,7 +1729,7 @@ def run_self_test() -> int:
 
         inline_mismatched_solo = work / "inline-mismatched-solo.md"
         inline_mismatched_solo.write_text(
-            "# Inline mismatch\n\n## Verification\n\n"
+            "# Inline mismatch\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- solo-headroom hypothesis: solo_claude should miss duplicate handling; "
             "`node check.js` exposes the miss.\n\n"
             "```json\n"
@@ -1715,7 +1753,7 @@ def run_self_test() -> int:
 
         inline_matched_solo = work / "inline-matched-solo.md"
         inline_matched_solo.write_text(
-            "# Inline match\n\n## Verification\n\n"
+            "# Inline match\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- solo-headroom hypothesis: solo_claude should miss duplicate handling; "
             "`printf ok` exposes the miss.\n\n"
             "```json\n"
@@ -1787,7 +1825,7 @@ def run_self_test() -> int:
             return 1
 
         spec_md.write_text(
-            "# Spec\n\n## Verification\n\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- solo-headroom hypothesis: solo_claude should miss duplicate handling; "
             "`printf ok` exposes the miss.\n"
             "- probe must pass visible marker.\n",
@@ -1801,7 +1839,13 @@ def run_self_test() -> int:
             "stdout_contains": ["unrelated"],
             "stdout_not_contains": [],
             "tags": ["shape_contract"],
-            "tag_evidence": {},
+            "tag_evidence": {
+                "shape_contract": [
+                    "uses_visible_input_key_names",
+                    "asserts_visible_output_key_names",
+                    "asserts_no_unexpected_output_keys",
+                ],
+            },
         }) + "\n")
         bad_solo_headroom_probe = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
@@ -1826,7 +1870,13 @@ def run_self_test() -> int:
             "stdout_contains": ["ok"],
             "stdout_not_contains": [],
             "tags": ["shape_contract"],
-            "tag_evidence": {},
+            "tag_evidence": {
+                "shape_contract": [
+                    "uses_visible_input_key_names",
+                    "asserts_visible_output_key_names",
+                    "asserts_no_unexpected_output_keys",
+                ],
+            },
         }) + "\n")
         bad_solo_headroom_derived_from = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
@@ -1852,7 +1902,13 @@ def run_self_test() -> int:
                 "stdout_contains": ["first-unrelated"],
                 "stdout_not_contains": [],
                 "tags": ["shape_contract"],
-                "tag_evidence": {},
+                "tag_evidence": {
+                    "shape_contract": [
+                        "uses_visible_input_key_names",
+                        "asserts_visible_output_key_names",
+                        "asserts_no_unexpected_output_keys",
+                    ],
+                },
             }) + "\n" + json.dumps({
                 "id": "P5b",
                 "derived_from": "probe must pass visible marker.",
@@ -1861,7 +1917,13 @@ def run_self_test() -> int:
                 "stdout_contains": ["ok"],
                 "stdout_not_contains": [],
                 "tags": ["shape_contract"],
-                "tag_evidence": {},
+                "tag_evidence": {
+                    "shape_contract": [
+                        "uses_visible_input_key_names",
+                        "asserts_visible_output_key_names",
+                        "asserts_no_unexpected_output_keys",
+                    ],
+                },
             }) + "\n"
         )
         late_solo_headroom_probe = subprocess.run(
@@ -1883,7 +1945,13 @@ def run_self_test() -> int:
             "stdout_contains": ["ok2"],
             "stdout_not_contains": [],
             "tags": ["shape_contract"],
-            "tag_evidence": {},
+            "tag_evidence": {
+                "shape_contract": [
+                    "uses_visible_input_key_names",
+                    "asserts_visible_output_key_names",
+                    "asserts_no_unexpected_output_keys",
+                ],
+            },
         }) + "\n")
         prefix_solo_headroom_probe = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
@@ -1904,7 +1972,13 @@ def run_self_test() -> int:
             "stdout_contains": ["ok"],
             "stdout_not_contains": [],
             "tags": ["shape_contract"],
-            "tag_evidence": {},
+            "tag_evidence": {
+                "shape_contract": [
+                    "uses_visible_input_key_names",
+                    "asserts_visible_output_key_names",
+                    "asserts_no_unexpected_output_keys",
+                ],
+            },
         }) + "\n")
         good_solo_headroom_probe = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
@@ -1935,7 +2009,7 @@ def run_self_test() -> int:
             "max_deps_added": 0,
         }) + "\n")
         spec_md.write_text(
-            "# Spec\n\n## Verification\n\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- solo-headroom hypothesis: solo_claude should miss duplicate handling.\n"
             "- Observable command: `node check.js` exposes behavior.\n"
         )
@@ -1954,7 +2028,7 @@ def run_self_test() -> int:
             return 1
 
         spec_md.write_text(
-            "# Spec\n\n## Verification\n\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- solo-headroom hypothesis: solo_claude should miss duplicate handling; "
             "`node check.js` exposes the miss.\n",
             encoding="utf-8",
@@ -1974,7 +2048,7 @@ def run_self_test() -> int:
             return 1
 
         spec_md.write_text(
-            "# Spec\n\n## Verification\n\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- solo-headroom hypothesis: solo_claude should miss duplicate handling; "
             "`printf ok` exposes the miss.\n",
             encoding="utf-8",
@@ -1991,7 +2065,7 @@ def run_self_test() -> int:
             return 1
 
         spec_md.write_text(
-            "# Spec\n\n## Verification\n\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- Solo-headroom hypothesis: the spec must literally contain `solo_claude`, `miss`, and an observable command; "
             "`printf ok` exposes the miss.\n",
             encoding="utf-8",
@@ -2008,7 +2082,7 @@ def run_self_test() -> int:
             return 1
 
         spec_md.write_text(
-            "# Spec\n\n## Verification\n\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- solo ceiling avoidance: this differs from controls but omits the required baseline.\n",
             encoding="utf-8",
         )
@@ -2027,7 +2101,7 @@ def run_self_test() -> int:
             return 1
 
         spec_md.write_text(
-            "# Spec\n\n## Verification\n\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- solo ceiling avoidance: unlike solo-saturated `S2`-`S6`, this includes a "
             "multi-run temporal dependency because solo_claude headroom should remain.\n",
             encoding="utf-8",
@@ -2043,7 +2117,7 @@ def run_self_test() -> int:
             print(strong_sibling_solo_ceiling.stderr, file=sys.stderr)
             return 1
 
-        spec_md.write_text("# Spec\n\n## Verification\n\n- probe must pass visible marker.\n")
+        spec_md.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- probe must pass visible marker.\n")
         expected_good = subprocess.run(
             [sys.executable, script_path, "--check-expected", str(expected_json)],
             cwd=work,
@@ -2055,7 +2129,7 @@ def run_self_test() -> int:
             return 1
 
         spec_md.write_text(
-            "---\nid: bad-sibling\ncomplexity: hihg\n---\n\n# Bad sibling\n\n## Verification\n\n- ok\n",
+            "---\nid: bad-sibling\ncomplexity: hihg\n---\n\n# Bad sibling\n\n<!-- devlyn:verification -->\n## Verification\n\n- ok\n",
             encoding="utf-8",
         )
         expected_bad_sibling_complexity = subprocess.run(
@@ -2071,7 +2145,7 @@ def run_self_test() -> int:
             print("--check-expected did not report unsupported sibling spec complexity", file=sys.stderr)
             print(expected_bad_sibling_complexity.stderr, file=sys.stderr)
             return 1
-        spec_md.write_text("# Spec\n\n## Verification\n\n- probe must pass visible marker.\n")
+        spec_md.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- probe must pass visible marker.\n")
 
         expected_json.write_text(json.dumps({"verification_commands": []}) + "\n")
         expected_empty_runtime = subprocess.run(
@@ -2088,11 +2162,14 @@ def run_self_test() -> int:
         pure_root.mkdir()
         pure_spec = pure_root / "spec.md"
         pure_spec.write_text(
-            "# Pure design\n\n## Verification\n\n- (all Requirements are pure-design; no runtime verification commands)\n",
+            "# Pure design\n\n<!-- devlyn:verification -->\n## Verification\n\n- no runtime verification commands.\n",
             encoding="utf-8",
         )
         pure_expected = pure_root / "spec.expected.json"
-        pure_expected.write_text(json.dumps({"verification_commands": []}) + "\n", encoding="utf-8")
+        pure_expected.write_text(
+            json.dumps({"verification_commands": [], "pure_design": True}) + "\n",
+            encoding="utf-8",
+        )
         expected_empty_design = subprocess.run(
             [sys.executable, script_path, "--check-expected", str(pure_expected)],
             cwd=work,
@@ -2102,6 +2179,45 @@ def run_self_test() -> int:
         if expected_empty_design.returncode != 0:
             print("empty verification_commands should be valid for pure-design specs", file=sys.stderr)
             print(expected_empty_design.stderr, file=sys.stderr)
+            return 1
+
+        pure_expected.write_text(
+            json.dumps({
+                "verification_commands": [{"cmd": "printf ok", "stdout_contains": ["ok"]}],
+                "pure_design": True,
+            }) + "\n",
+            encoding="utf-8",
+        )
+        pure_design_contradiction = subprocess.run(
+            [sys.executable, script_path, "--check-expected", str(pure_expected)],
+            cwd=work,
+            capture_output=True,
+            text=True,
+        )
+        if pure_design_contradiction.returncode == 0:
+            print("pure_design: true with non-empty verification_commands was accepted", file=sys.stderr)
+            return 1
+        if "contradictory" not in pure_design_contradiction.stderr:
+            print("pure_design contradiction did not report the right error", file=sys.stderr)
+            print(pure_design_contradiction.stderr, file=sys.stderr)
+            return 1
+
+        pure_expected.write_text(
+            json.dumps({"verification_commands": [], "pure_design": "yes"}) + "\n",
+            encoding="utf-8",
+        )
+        pure_design_not_boolean = subprocess.run(
+            [sys.executable, script_path, "--check-expected", str(pure_expected)],
+            cwd=work,
+            capture_output=True,
+            text=True,
+        )
+        if pure_design_not_boolean.returncode == 0:
+            print("non-boolean pure_design was accepted", file=sys.stderr)
+            return 1
+        if "pure_design must be a boolean" not in pure_design_not_boolean.stderr:
+            print("non-boolean pure_design did not report the right error", file=sys.stderr)
+            print(pure_design_not_boolean.stderr, file=sys.stderr)
             return 1
 
         expected_json.write_text(json.dumps({"unknown": True}) + "\n")
@@ -2185,7 +2301,7 @@ def run_self_test() -> int:
         spec_integrity_devlyn.mkdir()
         integrity_spec = spec_integrity / "spec.md"
         integrity_spec.write_text(
-            "# Spec\n\n## Verification\n\n```json\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n"
             "{\"verification_commands\":[{\"cmd\":\"printf spec-hash-ok\",\"stdout_contains\":[\"spec-hash-ok\"]}]}\n"
             "```\n",
             encoding="utf-8",
@@ -2239,7 +2355,7 @@ def run_self_test() -> int:
         generated_devlyn.mkdir()
         generated_criteria = generated_user / ".devlyn" / "criteria.generated.md"
         generated_criteria.write_text(
-            "# Criteria\n\n## Verification\n\n```json\n"
+            "# Criteria\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n"
             "{\"verification_commands\":[{\"cmd\":\"printf generated-ok\",\"stdout_contains\":[\"generated-ok\"]}]}\n"
             "```\n",
             encoding="utf-8",
@@ -2336,7 +2452,7 @@ def run_self_test() -> int:
         real_devlyn.mkdir()
         real_spec = real_user / "spec.md"
         real_spec.write_text(
-            "# Spec\n\n## Verification\n\n- sibling command must print sibling-ok.\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- sibling command must print sibling-ok.\n"
         )
         (real_user / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [
@@ -2366,7 +2482,7 @@ def run_self_test() -> int:
         malformed_devlyn.mkdir()
         malformed_spec = malformed / "spec.md"
         malformed_spec.write_text(
-            "# Spec\n\n## Verification\n\n```json\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n"
             "{\"verification_commands\":[{\"cmd\":\"printf inline-ok\"}]}\n"
             "```\n"
         )
@@ -2385,7 +2501,7 @@ def run_self_test() -> int:
             return 1
 
         bench_spec = work / "bench-spec.md"
-        bench_spec.write_text("# Spec\n\n## Verification\n\n- benchmark pre-staged wins.\n")
+        bench_spec.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- benchmark pre-staged wins.\n")
         (work / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [
                 {"cmd": "printf wrong", "stdout_contains": ["wrong"]}
@@ -2419,7 +2535,7 @@ def run_self_test() -> int:
         verify_devlyn = verify_output / ".devlyn"
         verify_devlyn.mkdir()
         verify_spec = verify_output / "spec.md"
-        verify_spec.write_text("# Spec\n\n## Verification\n\n- verify mechanical output.\n")
+        verify_spec.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- verify mechanical output.\n")
         (verify_output / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [
                 {"cmd": "printf wrong", "stdout_contains": ["expected"]}
@@ -2469,7 +2585,7 @@ def run_self_test() -> int:
             text=True,
         ).strip()
         contract_spec = contract_root / "spec.md"
-        contract_spec.write_text("# Spec\n\n## Verification\n\n- expected contract checks.\n")
+        contract_spec.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- expected contract checks.\n")
         (contract_root / "app.js").write_text("try { work(); } catch { return null; }\n")
         (contract_root / "forbidden.txt").write_text("forbidden\n")
         (contract_root / "package.json").write_text(
@@ -2531,52 +2647,13 @@ def run_self_test() -> int:
             print("incomplete boundary_overlap evidence was accepted", file=sys.stderr)
             return 1
 
-        rollback_root = work / "rollback-risk-probe"
-        rollback_root.mkdir()
-        rollback_devlyn = rollback_root / ".devlyn"
-        rollback_devlyn.mkdir()
-        rollback_spec = rollback_root / "spec.md"
-        rollback_spec.write_text(
-            "# Spec\n\n## Verification\n\n"
-            "- A failed all-or-nothing operation must roll back tentative state "
-            "so later orders can use the released stock.\n"
-        )
-        (rollback_devlyn / "pipeline.state.json").write_text(json.dumps({
-            "source": {"type": "spec", "spec_path": str(rollback_spec)}
-        }))
-        (rollback_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P5",
-            "derived_from": (
-                "A failed all-or-nothing operation must roll back tentative "
-                "state so later orders can use the released stock."
-            ),
-            "cmd": "printf weak-rollback",
-            "exit_code": 0,
-            "tags": ["prior_consumption"],
-            "tag_evidence": {
-                "prior_consumption": [
-                    "same_resource_consumed_first",
-                    "later_entity_fails_or_reroutes",
-                ],
-            },
-        }) + "\n")
-        weak_rollback = subprocess.run(
-            [sys.executable, script_path, "--validate-risk-probes"],
-            cwd=rollback_root,
-            capture_output=True,
-            text=True,
-        )
-        if weak_rollback.returncode == 0:
-            print("rollback verification text did not require rollback_state probe tag", file=sys.stderr)
-            return 1
-
         error_root = work / "error-contract-risk-probe"
         error_root.mkdir()
         error_devlyn = error_root / ".devlyn"
         error_devlyn.mkdir()
         error_spec = error_root / "spec.md"
         error_spec.write_text(
-            "# Spec\n\n## Verification\n\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- Invalid input must print a JSON error object to stderr and exit 2.\n"
         )
         (error_devlyn / "pipeline.state.json").write_text(json.dumps({
@@ -2628,31 +2705,40 @@ def run_self_test() -> int:
             return 1
 
         (error_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P7b",
+            "id": "P7c",
             "derived_from": "Invalid input must print a JSON error object to stderr and exit 2.",
-            "cmd": "printf weak-json-error-shape-contract",
+            "cmd": "printf json-error-shape-contract-missing-exact",
             "exit_code": 2,
-            "tags": ["stdout_stderr_contract", "error_contract"],
+            "tags": ["stdout_stderr_contract", "error_contract", "shape_contract"],
             "tag_evidence": {
                 "stdout_stderr_contract": ["asserts_named_stream_output"],
                 "error_contract": [
                     "asserts_error_payload_or_stderr",
                     "asserts_nonzero_or_exit_2",
                 ],
+                "shape_contract": [
+                    "uses_visible_input_key_names",
+                    "asserts_visible_output_key_names",
+                    "asserts_no_unexpected_output_keys",
+                ],
             },
         }) + "\n")
-        weak_json_error_shape_contract = subprocess.run(
+        missing_exact_error_object = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=error_root,
             capture_output=True,
             text=True,
         )
-        if weak_json_error_shape_contract.returncode == 0:
-            print("JSON error object text did not require shape_contract tag", file=sys.stderr)
+        if missing_exact_error_object.returncode == 0:
+            print(
+                "shape_contract co-occurring with error_contract without "
+                "asserts_exact_error_object was accepted",
+                file=sys.stderr,
+            )
             return 1
 
         (error_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P7c",
+            "id": "P7d",
             "derived_from": "Invalid input must print a JSON error object to stderr and exit 2.",
             "cmd": "printf json-error-shape-contract",
             "exit_code": 2,
@@ -2682,98 +2768,18 @@ def run_self_test() -> int:
             print(strong_json_error_shape_contract.stderr, file=sys.stderr)
             return 1
 
-        inline_json_error = (
-            'Invalid input prints JSON error `{ "error": "invalid" }` to stderr and exits 2.'
-        )
-        error_spec.write_text("# Spec\n\n## Verification\n\n- " + inline_json_error + "\n")
-        (error_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P7d",
-            "derived_from": inline_json_error,
-            "cmd": "printf weak-inline-json-error-shape-contract",
-            "exit_code": 2,
-            "tags": ["stdout_stderr_contract", "error_contract"],
-            "tag_evidence": {
-                "stdout_stderr_contract": ["asserts_named_stream_output"],
-                "error_contract": [
-                    "asserts_error_payload_or_stderr",
-                    "asserts_nonzero_or_exit_2",
-                ],
-            },
-        }) + "\n")
-        weak_inline_json_error_shape_contract = subprocess.run(
-            [sys.executable, script_path, "--validate-risk-probes"],
-            cwd=error_root,
-            capture_output=True,
-            text=True,
-        )
-        if weak_inline_json_error_shape_contract.returncode == 0:
-            print("inline JSON error text did not require shape_contract tag", file=sys.stderr)
-            return 1
-
-        (error_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P7e",
-            "derived_from": inline_json_error,
-            "cmd": "printf inline-json-error-shape-contract",
-            "exit_code": 2,
-            "tags": ["stdout_stderr_contract", "error_contract", "shape_contract"],
-            "tag_evidence": {
-                "stdout_stderr_contract": ["asserts_named_stream_output"],
-                "error_contract": [
-                    "asserts_error_payload_or_stderr",
-                    "asserts_nonzero_or_exit_2",
-                ],
-                "shape_contract": [
-                    "uses_visible_input_key_names",
-                    "asserts_visible_output_key_names",
-                    "asserts_no_unexpected_output_keys",
-                    "asserts_exact_error_object",
-                ],
-            },
-        }) + "\n")
-        strong_inline_json_error_shape_contract = subprocess.run(
-            [sys.executable, script_path, "--validate-risk-probes"],
-            cwd=error_root,
-            capture_output=True,
-            text=True,
-        )
-        if strong_inline_json_error_shape_contract.returncode != 0:
-            print("inline JSON error shape_contract with exact object evidence was rejected", file=sys.stderr)
-            print(strong_inline_json_error_shape_contract.stderr, file=sys.stderr)
-            return 1
-
         http_error_root = work / "http-error-contract-risk-probe"
         http_error_root.mkdir()
         http_error_devlyn = http_error_root / ".devlyn"
         http_error_devlyn.mkdir()
         http_error_spec = http_error_root / "spec.md"
         http_error_spec.write_text(
-            "# Spec\n\n## Verification\n\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- An invalid query returns HTTP 400 with JSON error body `{ \"error\": \"invalid_query\", \"field\": \"per_page\" }`.\n"
         )
         (http_error_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(http_error_spec)}
         }))
-        (http_error_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P8",
-            "derived_from": (
-                "An invalid query returns HTTP 400 with JSON error body "
-                "`{ \"error\": \"invalid_query\", \"field\": \"per_page\" }`."
-            ),
-            "cmd": "printf weak-http-error-contract",
-            "exit_code": 0,
-            "tags": ["shape_contract"],
-            "tag_evidence": {},
-        }) + "\n")
-        weak_http_error_contract = subprocess.run(
-            [sys.executable, script_path, "--validate-risk-probes"],
-            cwd=http_error_root,
-            capture_output=True,
-            text=True,
-        )
-        if weak_http_error_contract.returncode == 0:
-            print("http error text did not require http_error_contract tag", file=sys.stderr)
-            return 1
-
         (http_error_devlyn / "risk-probes.jsonl").write_text(json.dumps({
             "id": "P8b",
             "derived_from": (
@@ -2867,7 +2873,7 @@ def run_self_test() -> int:
         shape_devlyn.mkdir()
         shape_spec = shape_root / "spec.md"
         shape_spec.write_text(
-            "# Spec\n\n## Verification\n\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- On success, output is one JSON object with keys `applied`, `rejected`, and `accounts`; "
             "`rejected` rows have keys `id` and `reason`.\n"
         )
@@ -2875,7 +2881,7 @@ def run_self_test() -> int:
             "source": {"type": "spec", "spec_path": str(shape_spec)}
         }))
         (shape_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P8c",
+            "id": "P8e",
             "derived_from": (
                 "On success, output is one JSON object with keys `applied`, `rejected`, and `accounts`; "
                 "`rejected` rows have keys `id` and `reason`."
@@ -2892,11 +2898,11 @@ def run_self_test() -> int:
             text=True,
         )
         if weak_shape_contract.returncode == 0:
-            print("shape_contract without exact key evidence was accepted", file=sys.stderr)
+            print("shape_contract without any evidence was accepted", file=sys.stderr)
             return 1
 
         (shape_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P8d",
+            "id": "P8f",
             "derived_from": (
                 "On success, output is one JSON object with keys `applied`, `rejected`, and `accounts`; "
                 "`rejected` rows have keys `id` and `reason`."
@@ -2923,219 +2929,138 @@ def run_self_test() -> int:
             print(strong_shape_contract.stderr, file=sys.stderr)
             return 1
 
-        inline_json_success = 'On success, stdout is `{ "id": "acct_1", "status": "accepted" }`.'
-        shape_spec.write_text("# Spec\n\n## Verification\n\n- " + inline_json_success + "\n")
-        (shape_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P8e",
-            "derived_from": inline_json_success,
-            "cmd": "printf weak-inline-json-shape-contract",
-            "exit_code": 0,
-            "tags": ["stdout_stderr_contract"],
-            "tag_evidence": {
-                "stdout_stderr_contract": ["asserts_named_stream_output"],
-            },
-        }) + "\n")
-        weak_inline_json_shape_contract = subprocess.run(
-            [sys.executable, script_path, "--validate-risk-probes"],
-            cwd=shape_root,
-            capture_output=True,
-            text=True,
+        # iter-0049 F3: required_risk_probe_requirements replaces the deleted
+        # required_risk_probe_tags() English-keyword classifier. The spec
+        # author declares required {tag, derived_from} obligations directly
+        # in the verification carrier instead of the harness guessing from
+        # prose -- this works identically for any human language.
+        required_root = work / "required-risk-probe-requirements"
+        required_root.mkdir()
+        required_devlyn = required_root / ".devlyn"
+        required_devlyn.mkdir()
+        required_spec = required_root / "spec.md"
+        required_spec.write_text(
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
+            "- A failed all-or-nothing operation must roll back tentative state "
+            "so later orders can use the released stock.\n"
         )
-        if weak_inline_json_shape_contract.returncode == 0:
-            print("inline JSON object text did not require shape_contract tag", file=sys.stderr)
-            return 1
-
-        (shape_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P8f",
-            "derived_from": inline_json_success,
-            "cmd": "printf inline-json-shape-contract",
+        (required_root / "spec.expected.json").write_text(json.dumps({
+            "verification_commands": [{"cmd": "printf ok", "stdout_contains": ["ok"]}],
+            "required_risk_probe_requirements": [
+                {
+                    "tag": "rollback_state",
+                    "derived_from": (
+                        "A failed all-or-nothing operation must roll back "
+                        "tentative state so later orders can use the released stock."
+                    ),
+                },
+            ],
+        }) + "\n")
+        (required_devlyn / "pipeline.state.json").write_text(json.dumps({
+            "source": {"type": "spec", "spec_path": str(required_spec)}
+        }))
+        (required_devlyn / "risk-probes.jsonl").write_text(json.dumps({
+            "id": "P14",
+            "derived_from": (
+                "A failed all-or-nothing operation must roll back tentative "
+                "state so later orders can use the released stock."
+            ),
+            "cmd": "printf weak-rollback",
             "exit_code": 0,
-            "tags": ["stdout_stderr_contract", "shape_contract"],
+            "tags": ["prior_consumption"],
             "tag_evidence": {
-                "stdout_stderr_contract": ["asserts_named_stream_output"],
-                "shape_contract": [
-                    "uses_visible_input_key_names",
-                    "asserts_visible_output_key_names",
-                    "asserts_no_unexpected_output_keys",
+                "prior_consumption": [
+                    "same_resource_consumed_first",
+                    "later_entity_fails_or_reroutes",
                 ],
             },
         }) + "\n")
-        strong_inline_json_shape_contract = subprocess.run(
+        missing_declared_requirement = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
-            cwd=shape_root,
+            cwd=required_root,
             capture_output=True,
             text=True,
         )
-        if strong_inline_json_shape_contract.returncode != 0:
-            print("inline JSON object shape_contract with key evidence was rejected", file=sys.stderr)
-            print(strong_inline_json_shape_contract.stderr, file=sys.stderr)
+        if missing_declared_requirement.returncode == 0:
+            print(
+                "risk-probes.jsonl missing a declared required_risk_probe_requirements "
+                "entry was accepted",
+                file=sys.stderr,
+            )
+            return 1
+        if (
+            "missing required probe(s)" not in missing_declared_requirement.stderr
+            or "rollback_state" not in missing_declared_requirement.stderr
+        ):
+            print("missing required_risk_probe_requirements coverage had the wrong error", file=sys.stderr)
+            print(missing_declared_requirement.stderr, file=sys.stderr)
             return 1
 
-        forbidden_text_root = work / "forbidden-pattern-risk-probe"
-        forbidden_text_root.mkdir()
-        forbidden_text_devlyn = forbidden_text_root / ".devlyn"
-        forbidden_text_devlyn.mkdir()
-        forbidden_text_spec = forbidden_text_root / "spec.md"
-        forbidden_text_spec.write_text(
-            "# Spec\n\n## Verification\n\n"
-            "- The diff must not add forbidden fallback patterns.\n"
-        )
-        (forbidden_text_devlyn / "pipeline.state.json").write_text(json.dumps({
-            "source": {"type": "spec", "spec_path": str(forbidden_text_spec)}
-        }))
-        (forbidden_text_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P8",
-            "derived_from": "The diff must not add forbidden fallback patterns.",
-            "cmd": "printf forbidden-pattern-static-check",
-            "exit_code": 0,
-            "tags": ["shape_contract"],
-            "tag_evidence": {},
-        }) + "\n")
-        forbidden_pattern_probe = subprocess.run(
-            [sys.executable, script_path, "--validate-risk-probes"],
-            cwd=forbidden_text_root,
-            capture_output=True,
-            text=True,
-        )
-        if forbidden_pattern_probe.returncode != 0:
-            print("generic forbidden-pattern verification text incorrectly required boundary_overlap", file=sys.stderr)
-            print(forbidden_pattern_probe.stderr, file=sys.stderr)
-            return 1
-
-        stock_validation_root = work / "stock-validation-risk-probe"
-        stock_validation_root.mkdir()
-        stock_validation_devlyn = stock_validation_root / ".devlyn"
-        stock_validation_devlyn.mkdir()
-        stock_validation_spec = stock_validation_root / "spec.md"
-        stock_validation_spec.write_text(
-            "# Spec\n\n## Verification\n\n"
-            "- A quote over combined stock exits `2`, prints one JSON error to stderr, and prints no stdout.\n"
-        )
-        (stock_validation_devlyn / "pipeline.state.json").write_text(json.dumps({
-            "source": {"type": "spec", "spec_path": str(stock_validation_spec)}
-        }))
-        (stock_validation_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P9",
+        (required_devlyn / "risk-probes.jsonl").write_text(json.dumps({
+            "id": "P15",
             "derived_from": (
-                "A quote over combined stock exits `2`, prints one JSON error "
-                "to stderr, and prints no stdout."
+                "A failed all-or-nothing operation must roll back tentative "
+                "state so later orders can use the released stock."
             ),
-            "cmd": "printf stock-validation-error",
-            "exit_code": 2,
-            "tags": ["stdout_stderr_contract", "error_contract"],
+            "cmd": "printf good-rollback",
+            "exit_code": 0,
+            "tags": ["rollback_state"],
             "tag_evidence": {
-                "stdout_stderr_contract": ["asserts_named_stream_output"],
-                "error_contract": [
-                    "asserts_error_payload_or_stderr",
-                    "asserts_nonzero_or_exit_2",
+                "rollback_state": [
+                    "failed_entity_tentative_state_absent",
+                    "later_entity_uses_released_state",
                 ],
             },
         }) + "\n")
-        stock_validation_probe = subprocess.run(
+        covered_declared_requirement = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
-            cwd=stock_validation_root,
+            cwd=required_root,
             capture_output=True,
             text=True,
         )
-        if stock_validation_probe.returncode != 0:
-            print("stock validation error text incorrectly required prior_consumption", file=sys.stderr)
-            print(stock_validation_probe.stderr, file=sys.stderr)
+        if covered_declared_requirement.returncode != 0:
+            print(
+                "risk-probes.jsonl covering a declared required_risk_probe_requirements "
+                "entry was rejected",
+                file=sys.stderr,
+            )
+            print(covered_declared_requirement.stderr, file=sys.stderr)
             return 1
 
-        webhook_root = work / "webhook-risk-probe"
-        webhook_root.mkdir()
-        webhook_devlyn = webhook_root / ".devlyn"
-        webhook_devlyn.mkdir()
-        webhook_spec = webhook_root / "spec.md"
-        webhook_spec.write_text(
-            "# Spec\n\n## Verification\n\n"
-            "- A POST whose body has been modified after signing returns 401.\n"
-            "- A second POST with the same accepted `id` returns 409 even if the duplicate body would otherwise fail shape validation.\n"
-        )
-        (webhook_devlyn / "pipeline.state.json").write_text(json.dumps({
-            "source": {"type": "spec", "spec_path": str(webhook_spec)}
-        }))
-        (webhook_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P10",
-            "derived_from": "A POST whose body has been modified after signing returns 401.",
-            "cmd": "printf weak-webhook",
-            "exit_code": 0,
-            "tags": ["shape_contract"],
-            "tag_evidence": {},
+        (required_root / "spec.expected.json").write_text(json.dumps({
+            "verification_commands": [{"cmd": "printf ok", "stdout_contains": ["ok"]}],
+            "required_risk_probe_requirements": [
+                {"tag": "not-a-real-tag", "derived_from": "irrelevant"},
+            ],
         }) + "\n")
-        weak_webhook_probe = subprocess.run(
+        malformed_requirement_tag = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
-            cwd=webhook_root,
+            cwd=required_root,
             capture_output=True,
             text=True,
         )
-        if weak_webhook_probe.returncode == 0:
-            print("webhook signature/replay text did not require auth/idempotency probe tags", file=sys.stderr)
+        if malformed_requirement_tag.returncode == 0:
+            print("required_risk_probe_requirements with an unknown tag was accepted", file=sys.stderr)
             return 1
 
-        duplicate_sku_root = work / "duplicate-sku-risk-probe"
-        duplicate_sku_root.mkdir()
-        duplicate_sku_devlyn = duplicate_sku_root / ".devlyn"
-        duplicate_sku_devlyn.mkdir()
-        duplicate_sku_spec = duplicate_sku_root / "spec.md"
-        duplicate_sku_spec.write_text(
-            "# Spec\n\n## Verification\n\n"
-            "- A cart with duplicate SKUs combines quantities before stock validation.\n"
-        )
-        (duplicate_sku_devlyn / "pipeline.state.json").write_text(json.dumps({
-            "source": {"type": "spec", "spec_path": str(duplicate_sku_spec)}
-        }))
-        (duplicate_sku_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P11",
-            "derived_from": "A cart with duplicate SKUs combines quantities before stock validation.",
-            "cmd": "printf duplicate-sku-shape",
-            "exit_code": 0,
-            "tags": ["shape_contract"],
-            "tag_evidence": {},
+        (required_root / "spec.expected.json").write_text(json.dumps({
+            "verification_commands": [{"cmd": "printf ok", "stdout_contains": ["ok"]}],
+            "required_risk_probe_requirements": [
+                {"tag": "rollback_state", "derived_from": "text not present in the spec"},
+            ],
         }) + "\n")
-        duplicate_sku_probe = subprocess.run(
+        malformed_requirement_derived_from = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
-            cwd=duplicate_sku_root,
+            cwd=required_root,
             capture_output=True,
             text=True,
         )
-        if duplicate_sku_probe.returncode != 0:
-            print("duplicate SKU verification text incorrectly required idempotency_replay", file=sys.stderr)
-            print(duplicate_sku_probe.stderr, file=sys.stderr)
-            return 1
-
-        concurrent_root = work / "concurrent-state-risk-probe"
-        concurrent_root.mkdir()
-        concurrent_devlyn = concurrent_root / ".devlyn"
-        concurrent_devlyn.mkdir()
-        concurrent_spec = concurrent_root / "spec.md"
-        concurrent_spec.write_text(
-            "# Spec\n\n## Verification\n\n"
-            "- Several POST requests close together must all appear exactly once "
-            "in GET output with distinct ids.\n"
-        )
-        (concurrent_devlyn / "pipeline.state.json").write_text(json.dumps({
-            "source": {"type": "spec", "spec_path": str(concurrent_spec)}
-        }))
-        (concurrent_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P12",
-            "derived_from": (
-                "Several POST requests close together must all appear exactly "
-                "once in GET output with distinct ids."
-            ),
-            "cmd": "printf weak-concurrent-state",
-            "exit_code": 0,
-            "tags": ["shape_contract"],
-            "tag_evidence": {},
-        }) + "\n")
-        weak_concurrent_probe = subprocess.run(
-            [sys.executable, script_path, "--validate-risk-probes"],
-            cwd=concurrent_root,
-            capture_output=True,
-            text=True,
-        )
-        if weak_concurrent_probe.returncode == 0:
-            print("concurrent state text did not require concurrent_state_consistency tag", file=sys.stderr)
+        if malformed_requirement_derived_from.returncode == 0:
+            print(
+                "required_risk_probe_requirements.derived_from not present in the "
+                "spec was accepted",
+                file=sys.stderr,
+            )
             return 1
 
         atomic_batch_root = work / "atomic-batch-risk-probe"
@@ -3144,34 +3069,13 @@ def run_self_test() -> int:
         atomic_batch_devlyn.mkdir()
         atomic_batch_spec = atomic_batch_root / "spec.md"
         atomic_batch_spec.write_text(
-            "# Spec\n\n## Verification\n\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- A POST with one valid + one invalid item returns `400`, AND a subsequent GET returns the same list as before the import.\n"
             "- A POST with all-valid items returns `201`, and the items appear in GET output in order with distinct ids.\n"
         )
         (atomic_batch_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(atomic_batch_spec)}
         }))
-        (atomic_batch_devlyn / "risk-probes.jsonl").write_text(json.dumps({
-            "id": "P13",
-            "derived_from": (
-                "A POST with one valid + one invalid item returns `400`, AND "
-                "a subsequent GET returns the same list as before the import."
-            ),
-            "cmd": "printf weak-atomic-batch",
-            "exit_code": 0,
-            "tags": ["shape_contract"],
-            "tag_evidence": {},
-        }) + "\n")
-        weak_atomic_batch_probe = subprocess.run(
-            [sys.executable, script_path, "--validate-risk-probes"],
-            cwd=atomic_batch_root,
-            capture_output=True,
-            text=True,
-        )
-        if weak_atomic_batch_probe.returncode == 0:
-            print("atomic batch text did not require atomic_batch_state tag", file=sys.stderr)
-            return 1
-
         (atomic_batch_devlyn / "risk-probes.jsonl").write_text(json.dumps({
             "id": "P13b",
             "derived_from": (
@@ -3212,7 +3116,7 @@ def run_self_test() -> int:
         (scope_root / "lib2" / "keep.js").write_text("module.exports = {};\n")
         (scope_root / "data" / "usage-stats.json").write_text("{}\n")
         scope_spec = scope_root / "spec.md"
-        scope_spec.write_text("# Spec\n\n## Verification\n\n- scope gate checks.\n")
+        scope_spec.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- scope gate checks.\n")
         (scope_root / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [{"cmd": "printf ok", "stdout_contains": ["ok"]}],
         }) + "\n")
@@ -3246,7 +3150,7 @@ def run_self_test() -> int:
 
         # Test 2: plan.md present but no authorized_surface json block -> malformed.
         (scope_devlyn / "plan.md").write_text(
-            "# PLAN\n\n## 1. Files to touch\n\n- `bin/cli.js` (edit): ship the fix.\n"
+            "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## 1. Files to touch\n\n- `bin/cli.js` (edit): ship the fix.\n"
         )
         malformed_block_run = subprocess.run(
             [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
@@ -3260,7 +3164,7 @@ def run_self_test() -> int:
 
         # Test 3: valid surface, in-scope-only diff -> no scope findings, exit 0.
         (scope_devlyn / "plan.md").write_text(
-            "# PLAN\n\n## 1. Files to touch\n\n"
+            "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## 1. Files to touch\n\n"
             "- `bin/cli.js` (edit): ship the fix.\n\n"
             "```json\n"
             '{"authorized_surface": ["bin/cli.js", "lib/**"]}\n'

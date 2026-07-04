@@ -432,6 +432,17 @@ EOF
     # OLD branch and this is now the only non-F9 path.
     mkdir -p "$WORK_DIR/docs/roadmap/phase-1"
     cp "$SPEC" "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"
+    # iter-0049: fixtures keep spec.md prose-only (expected.json is the real
+    # carrier, validated separately by lint-fixtures.sh) but spec-verify-check.py
+    # now locates the visible ## Verification prose via a <!-- devlyn:verification -->
+    # sentinel rather than the English header text. Inject it into the WORK_DIR
+    # copy only, so risk-probe derived_from substring matching still finds the
+    # section during a run; the source fixture repo stays untouched.
+    if ! grep -q '<!-- devlyn:verification -->' "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"; then
+      sed -i.bak 's/^## Verification\b/<!-- devlyn:verification -->\n## Verification/' \
+        "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"
+      rm -f "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md.bak"
+    fi
     cat > "$PROMPT_FILE" <<EOF
 Use the \`/devlyn:resolve --spec docs/roadmap/phase-1/$FIXTURE.md ${ENGINE_CLAUSE}\` skill to implement the spec. ${ENGINE_PROMPT_HINT}
 

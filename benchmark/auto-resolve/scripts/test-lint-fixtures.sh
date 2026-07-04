@@ -387,7 +387,7 @@ status=$?
 set -e
 [ "$status" -ne 0 ]
 grep -Fq 'spec-verify-check --check-expected failed' "$TMP/spec-verify-check-expected-fail.out"
-grep -Fq 'unless sibling spec.md declares all Requirements are pure-design' "$TMP/spec-verify-check-expected-fail.out"
+grep -Fq 'unless spec.expected.json declares "pure_design": true' "$TMP/spec-verify-check-expected-fail.out"
 
 write_fixture "Add idempotency handling for duplicate requests."
 
