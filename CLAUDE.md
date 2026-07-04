@@ -2,6 +2,10 @@
 
 devlyn-cli installs `/devlyn:ideate` (optional) and `/devlyn:resolve` (required) into Claude Code, plus the contract below. These principles are non-negotiable on every change — yours and any sub-agent's.
 
+## North Star
+
+This contract serves one goal: any capable engine — Claude, GPT/Codex, or a future adapter-equipped model — takes a user's intent (prompt, spec, or queue entry) end-to-end to shipped, engineer-quality software, hands-free, with consistent quality across engines. The harness must measurably out-earn bare prompting, and every added layer (pair mode, probes, gates) must out-earn the layer below it. When rules below conflict or feel ambiguous in context, resolve toward this goal.
+
 ## Core principles
 
 Seven rules govern every change. Cite them by name when a decision touches one.
@@ -35,7 +39,7 @@ Each skill's `SKILL.md` is the source of truth for its flags and workflow — do
 
 | Role | Default | Manual override |
 |---|---|---|
-| Orchestrator — conversation, handoff, loop driving | whichever CLI you open (contract is symmetric: CLAUDE.md ↔ AGENTS.md) | switch CLIs; the file artifacts (spec/queue/state) carry over |
+| Orchestrator — conversation, handoff, loop driving | whichever CLI you open (contract is symmetric: CLAUDE.md ↔ AGENTS.md). Measured status 2026-07-04: Claude Code + omp run the full phase-gated pipeline; Codex CLI is experimental as orchestrator — it skips the pipeline on trivial tasks in minimal repos (iter-0040 F6) | switch CLIs; the file artifacts (spec/queue/state) carry over |
 | Executor — PLAN/IMPLEMENT/CLEANUP + primary VERIFY judge | `claude` | `--engine <name>` per run, or `/devlyn:engines executor <name>` (durable pin) |
 | Pair judge — VERIFY pair-JUDGE, risk probes | first available OTHER engine (claude↔codex) | `/devlyn:engines pair <name>,...`; `--no-pair` opts out |
 

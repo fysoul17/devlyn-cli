@@ -82,12 +82,12 @@ Pair-mode is gated by per-phase measurement evidence, not by architectural defau
 
 ## 🤝 Codex pair-collab protocol (mandatory for non-trivial work)
 
-Per `feedback_codex_collaboration_not_consult.md`:
+Per `feedback_codex_collaboration_not_consult.md`; round-shape refined 2026-07-04 (pair-converged, this file § is the canonical form):
 
-- **Multi-round, not one-shot.** R0 (design) + R0.5 (push back on adopted/contested items) + R-final (post-test interpretation when surprised). Round-3 pair-redesign 2026-05-03 used 3 rounds × 3 levels (R0+R0.5+R-final each round) to reach convergence after user rejected R-final twice.
+- **Round budget: R0 adversarial + R1 reconciliation by default.** R0 must return, per contested position: strongest counter, strongest form of MY position, synthesis with a NAMED decisive criterion (refute-only responses are rejected — CLAUDE.md "Evidence over claim"). R1 reconciles on the actual diff/raw results. **Any further round requires NEW evidence** (a fresh measurement, a file the prior round didn't open) — not sharper prose. Anti-asymptotic rule, iter-0033g.
 - **Position-stating, not verdict-asking.** State position with evidence; Codex pushes back; iterate.
 - **Convergence is the stop.** Not "Codex agreed." Codex must read codebase directly and form independent verdicts; don't just package context for him.
-- **Per-round prompt shape**: rich evidence + falsification ask + my response to prior round. Use:
+- **Per-round prompt shape** (all four, every round): (1) source packet — exact file:lines for every claim; (2) supersession map — which prior claims/docs this packet supersedes (stale-reference fabrication guard); (3) the decisive criterion stated BEFORE the arguments; (4) the falsifier each side would accept. Use:
   ```bash
   bash config/skills/_shared/codex-monitored.sh \
     -C /Users/aipalm/Documents/GitHub/devlyn-cli \

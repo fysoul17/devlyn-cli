@@ -286,3 +286,41 @@ and a no-regression path for Claude Code. Per the anti-asymptotic lesson
 (iter-0033g: stop chasing a moving target across rounds; ship what's
 verified, record the frontier), do not chase a 3rd Codex-specific round in
 this session. F6 stands as an open, undiagnosed finding for iter-0041+.
+
+## Round 3 addendum — F6 re-verified REPRODUCED (2026-07-04)
+
+Re-verification in the original minimal-repo shape (codex-cli 0.141.0,
+freshly stamped skills via `node bin/devlyn.js agents codex`, throwaway repo
+with one `src/util.js` and NO package.json, single headless
+`codex exec -s workspace-write --json "/devlyn:resolve ..."`):
+**F6-REPRODUCED**. No `.devlyn/` directory, zero phase commits (git log =
+init commit only), `<runtime_paths>` block never executed. The model read
+the full SKILL.md (`sed -n '1,240p'` + `241,520p`), narrated awareness of
+the contract ("The resolve skill expects fresh phase workers and a
+file-backed state"), judged the work "very small", and self-selected
+same-context ad-hoc execution anyway.
+
+Combined with iter-0052's codex-small compliance PASS (realistic fixture
+repo: package.json + src/ + tests/, current globally synced skills — plain
+`cp -R` sync, unstamped placeholder per the iter-0052 transcript; R1 caught
+the earlier "same stamped skills" phrasing as an overstatement), the
+corrected diagnosis is: **F6 is task-triviality / repo-shape dependent, not an
+absolute incapability and not stale.** Pair-review criterion (Codex GPT-5.5
+R0 2026-07-04): "ordinary-invocation non-skippability" — until the ordinary
+Codex path passes the mechanical compliance checks without bespoke prompt
+reinforcement, Codex-CLI orchestration is labeled experimental in
+CLAUDE.md/AGENTS.md engine-roles (shipped this date) rather than claimed
+symmetric. Full evidence:
+`<scratchpad>/f6-reverify/codex-resolve.log` (session-scratch, reproducible
+via the commands above).
+
+Incidental latent finding (surfaced, NOT fixed — no guesswork): install-time
+stamping replaces ALL `__DEVLYN_SKILL_DIR__` occurrences including the
+guard's comparison literal (`[ "$DEVLYN_SKILL_DIR" = "<stamped path>" ]`),
+so a stamped install that ever executes the block with `CLAUDE_SKILL_DIR`
+unset would false-positive `BLOCKED:shared-dir-unresolved`. Unexercised in
+every observed run (codex never executes the block; omp runs resolved paths
+successfully in iter-0040 R2 / iter-0052 — mechanism for omp's pass not yet
+established). Candidate fix for iter-0059: stamp only the assignment-default
+occurrence, keep the sentinel comparison literal intact; verify against a
+real omp + codex install before shipping.
