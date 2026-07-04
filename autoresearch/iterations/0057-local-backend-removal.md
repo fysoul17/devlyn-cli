@@ -1,6 +1,8 @@
 # iter-0057 — delete ollama/vllm local-backend engine product surface
 
-**Status**: DRAFT-IMPLEMENTED (awaiting review). Not committed.
+**Status**: SHIPPED 2026-07-04, commit `2e4701e` (reviewed by team-lead +
+Codex R1 item E: SHIP — "deletion scoped correctly; engine-doctor renders
+cleanly; role eligibility remains dormant infrastructure").
 
 **Trigger**: iter-0055 (JUDGE-QUALITY) measured `ollama/gemma3:4b` as VERIFY
 pair-judge: 100% false-positive rate (would flip every pair-triggered VERIFY
