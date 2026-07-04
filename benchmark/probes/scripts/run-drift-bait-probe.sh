@@ -10,14 +10,15 @@
 #
 # Usage:
 #   run-drift-bait-probe.sh --probe-dir <path> --run-id <ID>
+#   MODEL=<alias|full-name> run-drift-bait-probe.sh --probe-dir <path> --run-id <ID>
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 --probe-dir <path> --run-id <ID>"
+  echo "usage: $0 --probe-dir <path> --run-id <ID>  (optional: MODEL=<alias> env var)"
   exit 1
 }
 
-PROBE_DIR=""; RUN_ID=""
+PROBE_DIR=""; RUN_ID=""; MODEL="${MODEL:-}"
 while [ $# -gt 0 ]; do
   case "$1" in
     --probe-dir) PROBE_DIR="$2"; shift 2;;
@@ -58,17 +59,21 @@ SCAFFOLD_SHA=$(cd "$WORK_DIR" && git rev-parse HEAD)
 PROMPT="$(cat "$TASK_FILE")"
 T_START=$(date +%s)
 
+MODEL_ARGS=()
+[ -n "$MODEL" ] && MODEL_ARGS=(--model "$MODEL")
+
 (cd "$WORK_DIR" \
    && CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 DISABLE_AUTOUPDATER=1 \
       exec claude -p "$PROMPT" \
         --dangerously-skip-permissions --effort xhigh \
         --setting-sources project,local --strict-mcp-config \
         --mcp-config '{"mcpServers":{}}' \
+        ${MODEL_ARGS[@]+"${MODEL_ARGS[@]}"} \
         --debug-file "$RESULT_DIR/claude-debug.log") \
   > "$RESULT_DIR/transcript.txt" 2>&1 || true
 
 T_END=$(date +%s)
-echo "{\"probe\": \"$PROBE_ID\", \"elapsed_seconds\": $((T_END - T_START))}" \
+echo "{\"probe\": \"$PROBE_ID\", \"model\": \"${MODEL:-default}\", \"elapsed_seconds\": $((T_END - T_START))}" \
   > "$RESULT_DIR/timing.json"
 
 (cd "$WORK_DIR" && git add -A 2>/dev/null \
