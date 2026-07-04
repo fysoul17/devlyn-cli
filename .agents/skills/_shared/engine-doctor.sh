@@ -54,8 +54,23 @@ check_adapter() {
   if [ -f "$ADAPTERS_DIR/$1.md" ]; then printf 'yes'; else printf 'no'; fi
 }
 
-printf '%-8s %-17s %-8s %-6s %-8s %-12s %s\n' \
-  'target' 'kind' 'binary' 'server' 'adapter' 'pin_eligible' 'note'
+check_role() {
+  # $1 = adapter file path. Reads the optional `## Role eligibility` fixed
+  # ASCII fields (_shared/adapters/README.md); absent file or section = both
+  # roles eligible by default (every adapter shipped before iter-0051).
+  [ -f "$1" ] || { printf 'n/a'; return; }
+  local exec_ok='yes' judge_ok='yes'
+  grep -q '^executor: no' "$1" 2>/dev/null && exec_ok='no'
+  grep -q '^pair_judge: no' "$1" 2>/dev/null && judge_ok='no'
+  if [ "$exec_ok" = 'yes' ] && [ "$judge_ok" = 'yes' ]; then printf 'executor+judge'
+  elif [ "$judge_ok" = 'yes' ]; then printf 'judge-only'
+  elif [ "$exec_ok" = 'yes' ]; then printf 'executor-only'
+  else printf 'none'
+  fi
+}
+
+printf '%-8s %-17s %-8s %-6s %-8s %-14s %-12s %s\n' \
+  'target' 'kind' 'binary' 'server' 'adapter' 'role' 'pin_eligible' 'note'
 
 pin_eligible_count=0
 missing_hints=()
@@ -66,11 +81,16 @@ for i in "${!TARGETS[@]}"; do
   binary="$(check_binary "${BINARIES[$i]}")"
   server="$(check_server "${SERVER_URLS[$i]}")"
   adapter="$(check_adapter "$target")"
+  role="$(check_role "$ADAPTERS_DIR/$target.md")"
 
+  # Invocation mechanism differs by kind: a CLI engine is invoked via its
+  # binary; a local-backend engine is invoked via its HTTP server, so a
+  # present-but-stopped server must not read pin_eligible=yes.
   pin_eligible='no'
-  if [ "$binary" = 'yes' ] && [ "$adapter" = 'yes' ]; then
-    pin_eligible='yes'
-  fi
+  case "$kind" in
+    cli-engine)     [ "$binary" = 'yes' ] && [ "$adapter" = 'yes' ] && pin_eligible='yes' ;;
+    local-backend)  [ "$server" = 'yes' ] && [ "$adapter" = 'yes' ] && pin_eligible='yes' ;;
+  esac
 
   note='-'
   case "$kind" in
@@ -88,16 +108,20 @@ for i in "${!TARGETS[@]}"; do
       note='informational only; not a routable role engine — no verified CLI binary or adapter'
       ;;
     local-backend)
-      if [ "$binary" = 'no' ] && [ "$server" = 'no' ]; then
-        note="no --engine route yet (tracked: iter-0051); ${INSTALL_HINTS[$i]}"
+      if [ "$adapter" = 'no' ]; then
+        note="no --engine route yet; ${INSTALL_HINTS[$i]}"
+      elif [ "$pin_eligible" = 'yes' ]; then
+        note="$role route live (pair_judge_priority); server reachable"
+      elif [ "$binary" = 'no' ]; then
+        note="not installed; ${INSTALL_HINTS[$i]}"
       else
-        note='no --engine route yet (tracked: iter-0051)'
+        note='binary present, server down — start it (e.g. `ollama serve` or `brew services start ollama`)'
       fi
       ;;
   esac
 
-  printf '%-8s %-17s %-8s %-6s %-8s %-12s %s\n' \
-    "$target" "$kind" "$binary" "$server" "$adapter" "$pin_eligible" "$note"
+  printf '%-8s %-17s %-8s %-6s %-8s %-14s %-12s %s\n' \
+    "$target" "$kind" "$binary" "$server" "$adapter" "$role" "$pin_eligible" "$note"
 done
 
 printf '\n'

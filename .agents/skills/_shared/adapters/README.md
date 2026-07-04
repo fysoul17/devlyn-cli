@@ -42,6 +42,13 @@ Specific patterns the official guide warns about for this model.
 
 Keep each section to ≤ 8 lines. Adapters are deltas, not full prompts. If an adapter grows past ~80 lines, the content probably belongs in canonical body.
 
+## Role-scoped and non-agentic adapters
+
+Adapters may add two more sections beyond the base format:
+
+- **`## Role eligibility`** — fixed ASCII fields, one per line: `executor: yes|no`, `pair_judge: yes|no`. Absent section = eligible for both roles (every adapter shipped before iter-0051). Present only when a backend is structurally unable to fill a role — e.g. a completion-only local model has no tool/file-edit access, so it declares `executor: no`. `_shared/engine-preflight.md` and `/devlyn:engines` read this section as a structured marker, not prose, so it validates mechanically.
+- **`## Invocation`** — for backends called over an API instead of a CLI (e.g. Ollama): the concrete request shape (endpoint, JSON body, timeout) and the adapter-declared availability probe (`_shared/engine-preflight.md#role-resolution`'s "an adapter may declare a different probe" hook).
+
 ## When to add a new adapter
 
 A new adapter file ships when:

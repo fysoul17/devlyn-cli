@@ -17,7 +17,7 @@ Long-horizon agentic work; context auto-compacts. State lives in `.devlyn/pipeli
 Hands-free. Measured by how far we get without human intervention.
 
 1. Do not prompt the user mid-pipeline. When tempted to ask, pick the safe default, proceed, and log it in the final report.
-2. Engine availability: follow `_shared/engine-preflight.md`. Two classes. **Explicit cross-engine routes** (`--engine`, `--risk-probes`, `--pair-verify`) are promises: if the required engine is unavailable, fail closed with `BLOCKED:<engine>-unavailable` and setup guidance — never downgrade an explicitly requested route to solo. **Automatic cross-engine escalations** (auto high-risk risk-probes, auto VERIFY pair-JUDGE) are candidate routes selected only when their preconditions hold, including OTHER-engine availability. If an auto candidate would fire but the OTHER engine is absent, do not select the cross-engine route — proceed solo and report the skipped escalation and its reason. Skipping an unselected optional route is route selection, not a fallback; an explicitly requested route is never skipped this way.
+2. Engine availability: follow `_shared/engine-preflight.md` for the explicit-route-vs-automatic-escalation distinction and BLOCKED-vs-skip behavior. Explicit routes (`--engine`, `--risk-probes`, `--pair-verify`) never downgrade to solo; unavailable auto-escalations proceed solo and report the skip.
 3. Phases run in declared order. No extra phases.
 4. Orchestrator does not write code. It parses input, spawns phases, reads state, branches on verdicts, emits the report.
 5. Continue by default. Halt only on (a) unrecoverable subagent failure, (b) IMPLEMENT producing zero code changes, (c) BUILD_GATE or VERIFY fix-loop exhausting `max_rounds`.
@@ -88,7 +88,7 @@ Once `state.implement_passed_sha` is non-null (PHASE 2 returned and produced a d
    - `--bypass <phase>[,...]` — skip specific phases. Valid: `build-gate`, `cleanup`. PLAN, IMPLEMENT, VERIFY are non-bypassable.
    - `--perf` — opt in to per-phase timing.
 
-2. Engine pre-flight: follow `_shared/engine-preflight.md`, including role resolution. If `.devlyn/engines.json` exists: malformed JSON, or any named engine without a `_shared/adapters/<name>.md` adapter, halts with report-level `BLOCKED:invalid-engine-config` naming the offending entry. A pin is an explicit route — a pinned but unavailable engine halts with `BLOCKED:<engine>-unavailable`. If a required engine is unavailable, halt with a BLOCKED verdict and setup instructions instead of downgrading.
+2. Engine pre-flight: follow `_shared/engine-preflight.md`, including role resolution. If `.devlyn/engines.json` exists: malformed JSON, any named engine without a `_shared/adapters/<name>.md` adapter, or an adapter that declares itself ineligible for the requested role, halts with report-level `BLOCKED:invalid-engine-config` naming the offending entry. A pin is an explicit route — a pinned but unavailable engine halts with `BLOCKED:<engine>-unavailable`. If a required engine is unavailable, halt with a BLOCKED verdict and setup instructions instead of downgrading.
 
    `--pair-verify` and `--no-pair` are mutually exclusive; if both are present, stop with `BLOCKED:invalid-flags`. Likewise `--goal-file` combined with `--spec`, `--verify-only`, or an inline positional goal — or a missing/repeated `--goal-file` value — stops with `BLOCKED:invalid-flags`. (These `BLOCKED:<reason>` strings are report-level only; the JSON `phases.*.verdict` carrier in `pipeline.state.json` always stays the bare enum `"BLOCKED"`.)
 
