@@ -127,6 +127,24 @@ null, PASS_WITH_ISSUES unchanged.
   be the F6 class (task-shape dependent), not a piece-1 regression — decided
   by whether the claude-small cell shows the same shape.
 
+**G1/G4 raw results (2026-07-05, fix committed as `b02e53a`)**:
+- P1 CONFIRMED: codex-small rerun (`iter0060-g1-codex`, run
+  rs-20260704T163231Z-d23ceb5cb395) records `sub_verdicts.pair_judge: null`.
+- P2 WRONG in the letter, substance holds: `pair_trigger` recorded
+  `{eligible: false, reasons: [], skipped_reason: null}` — this run raised
+  no pair-trigger reason at all (trivial F1 task), unlike the 2026-07-04
+  cell which skipped on `auto_pair_other_engine_unavailable`. Both are legal
+  shapes; the reverse-direction invocation gap (piece 2) remains untested by
+  this cell and is what G2 exists for. Prediction recorded as-missed, not
+  edited.
+- P3 CONFIRMED: `check-compliance-cell.py` overall PASS, no failed
+  assertions.
+- P4 CONFIRMED: claude-small (sonnet) rerun (`iter0060-g4-claude`)
+  compliance PASS, `pair_judge: null`, `pair_trigger` written as
+  `{eligible: false, reasons: [], skipped_reason: null}`.
+- **G1 gate: SATISFIED. Piece 1 CLOSED** (fix + self-tests + lint + pair
+  rounds R0→R1 SHIP + archived-cell replay + live G1/G4 cells).
+
 ## Non-goals
 
 - No always-on pair (NORTH-STAR: measurement-gated).
