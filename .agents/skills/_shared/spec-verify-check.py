@@ -116,10 +116,10 @@ def output_finding_prefix() -> str:
 
 
 VERIFICATION_SECTION_RE = re.compile(
-    r'(?ms)^<!--[ \t]*devlyn:verification[ \t]*-->[ \t]*\n(##[ \t]+[^\n]*\n.*?)(?=^##[ \t]+|\Z)'
+    r'(?ms)^<!--[ \t]*devlyn:verification[ \t]*-->[ \t]*\n(#{1,6}[ \t]+[^\n]*\n.*?)(?=^#{1,6}[ \t]+|\Z)'
 )
 FILES_TO_TOUCH_SECTION_RE = re.compile(
-    r'(?ms)^<!--[ \t]*devlyn:authorized-surface[ \t]*-->[ \t]*\n(##[ \t]+[^\n]*\n.*?)(?=^##[ \t]+|\Z)'
+    r'(?ms)^<!--[ \t]*devlyn:authorized-surface[ \t]*-->[ \t]*\n(#{1,6}[ \t]+[^\n]*\n.*?)(?=^#{1,6}[ \t]+|\Z)'
 )
 JSON_FENCE_RE = re.compile(r'(?ms)^```json[ \t]*\n(.*?)\n```[ \t]*$')
 FORBIDDEN_RISK_PROBE_CMD_RE = re.compile(
@@ -262,7 +262,8 @@ SPEC_COMPLEXITY_VALUES = {"trivial", "medium", "high", "large"}
 def extract_verification_block(text: str) -> tuple[bool, str | None]:
     """Locate the verification section via the `<!-- devlyn:verification -->`
     sentinel (language-neutral — the human-readable heading after it may be
-    any text, any language) and return (section_found, json_block).
+    any text, any language, any ATX heading level 1-6) and return
+    (section_found, json_block).
 
     section_found=False: the sentinel is absent entirely — a legitimate
     handwritten spec with no mechanical verification contract. Callers treat
@@ -3256,6 +3257,50 @@ def run_self_test() -> int:
             if err is None:
                 print(f"validate_authorized_surface_shape accepted invalid input: {bad_surface}", file=sys.stderr)
                 return 1
+
+        # Test 8 (iter-0054): heading LEVEL after the sentinel is decoration,
+        # same as heading text/language (iter-0049) -- any ATX level 1-6 must
+        # be accepted, not just H2. Reproduces the real iter-0047 claude-small
+        # compliance-cell defect (`# Files to touch` H1 was rejected as
+        # malformed, burning a BUILD_GATE fix-loop round).
+        for heading_prefix in ("#", "###"):
+            h_level_text = (
+                f"<!-- devlyn:authorized-surface -->\n{heading_prefix} Files to touch\n\n"
+                "- `bin/cli.js` (edit): ship the fix.\n\n"
+                '```json\n{"authorized_surface": ["bin/cli.js"]}\n```\n'
+            )
+            found, block = extract_authorized_surface_block(h_level_text)
+            if not found or block is None:
+                print(f"extract_authorized_surface_block rejected a {heading_prefix!r} heading after the sentinel", file=sys.stderr)
+                return 1
+            if loads_strict_json(block) != {"authorized_surface": ["bin/cli.js"]}:
+                print(f"extract_authorized_surface_block parsed the wrong json for a {heading_prefix!r} heading", file=sys.stderr)
+                return 1
+
+        for heading_prefix in ("#", "###"):
+            h_level_verif_text = (
+                f"<!-- devlyn:verification -->\n{heading_prefix} Verification\n\n"
+                '```json\n{"verification_commands": []}\n```\n'
+            )
+            found, block = extract_verification_block(h_level_verif_text)
+            if not found or block is None:
+                print(f"extract_verification_block rejected a {heading_prefix!r} heading after the sentinel", file=sys.stderr)
+                return 1
+
+        # Mixed levels across sections (the exact iter-0047 shape once fixed:
+        # PLAN's own `## Files to touch` H2 followed by a `# Risks` H1) must
+        # still bound the authorized_surface section correctly -- not swallow
+        # the rest of the document.
+        mixed_levels_text = (
+            "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## Files to touch\n\n"
+            "- `bin/cli.js` (edit): ship the fix.\n\n"
+            '```json\n{"authorized_surface": ["bin/cli.js"]}\n```\n\n'
+            "# Risks\n\n- none.\n"
+        )
+        found, block = extract_authorized_surface_block(mixed_levels_text)
+        if not found or block is None or loads_strict_json(block) != {"authorized_surface": ["bin/cli.js"]}:
+            print("extract_authorized_surface_block mis-parsed the mixed H2/H1 section-boundary shape", file=sys.stderr)
+            return 1
     return 0
 
 
