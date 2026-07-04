@@ -80,6 +80,19 @@ def write_state(state_path: pathlib.Path, state: dict) -> None:
         raise
 
 
+def clear_verify_round_artifacts(devlyn: pathlib.Path) -> None:
+    # The per-round reset contract covers files, not just JSON fields: a
+    # VERIFY fix-loop respawn reuses the same .devlyn, so a prior round's
+    # findings/stdout would otherwise read as current-round spawn evidence in
+    # verify-merge-findings.py (iter-0060 R0 finding).
+    # verify*.jsonl (not just *.findings.jsonl): judge-specific files like
+    # verify.findings.judge-codex.jsonl end in .judge-<engine>.jsonl.
+    for pattern in ("verify*.jsonl", "codex-judge.*"):
+        for path in devlyn.glob(pattern):
+            path.unlink()
+    (devlyn / "verify-merge.summary.json").unlink(missing_ok=True)
+
+
 def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
              pre_sha: str | None, engine: str | None, model: str | None) -> None:
     # Merge, don't replace: a phase-gated large run's `exec` progress (or any
@@ -257,6 +270,32 @@ def self_test() -> int:
         else:
             raise AssertionError("VERIFY complete() with no verdict anywhere must raise")
 
+        # VERIFY respawn must clear the prior round's on-disk artifacts too —
+        # a stale round-0 pair findings file would otherwise read as
+        # current-round spawn evidence in verify-merge-findings.py
+        # (iter-0060 R0 finding: current-round spawn evidence).
+        for name in (
+            "verify.findings.jsonl",
+            "verify.pair.findings.jsonl",
+            "verify.findings.judge-codex.jsonl",
+            "verify-merged.findings.jsonl",
+            "verify-merge.summary.json",
+            "codex-judge.stdout",
+        ):
+            (devlyn / name).write_text("stale\n", encoding="utf-8")
+        (devlyn / "spec-verify.json").write_text("{}", encoding="utf-8")
+        clear_verify_round_artifacts(devlyn)
+        for name in (
+            "verify.findings.jsonl",
+            "verify.pair.findings.jsonl",
+            "verify.findings.judge-codex.jsonl",
+            "verify-merged.findings.jsonl",
+            "verify-merge.summary.json",
+            "codex-judge.stdout",
+        ):
+            assert not (devlyn / name).exists(), f"{name} must be cleared on VERIFY spawn"
+        assert (devlyn / "spec-verify.json").exists(), "non-VERIFY-round files must survive"
+
         # Fix-loop respawn of phase-gated IMPLEMENT must preserve `exec`
         # (routing truth for large runs, state-schema.md line 55) — spawn
         # merges into the existing entry rather than replacing it wholesale.
@@ -316,6 +355,8 @@ def main() -> int:
     state = read_state(state_path)
 
     if args.event == "spawn":
+        if args.phase == "verify":
+            clear_verify_round_artifacts(devlyn)
         do_spawn(state, args.phase, args.round, args.triggered_by, args.pre_sha, args.engine, args.model)
     else:
         do_complete(state, args.phase, args.verdict, args.findings_file, args.log_file, args.engine, args.model)

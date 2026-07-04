@@ -119,13 +119,19 @@ def finding_rank(finding: dict[str, Any]) -> int:
     return 0
 
 
-def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, str]]:
+def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, str | None]]:
     findings: list[dict[str, Any]] = []
-    source_verdicts = {source: "PASS" for source, _ in SOURCE_FILES}
+    source_verdicts: dict[str, str | None] = {source: "PASS" for source, _ in SOURCE_FILES}
+    # A verdict must come from a judge that ran: pair_judge stays null until
+    # spawn evidence exists (a pair findings file or pair stdout). verify.md's
+    # pair contract records null when no second agent is spawned.
+    source_verdicts["pair_judge"] = None
     for source, name in SOURCE_FILES:
         path = devlyn / name
         if not path.is_file():
             continue
+        if source_verdicts[source] is None:
+            source_verdicts[source] = "PASS"
         with path.open(encoding="utf-8") as handle:
             for line_no, line in enumerate(handle, 1):
                 raw = line.strip()
@@ -401,7 +407,7 @@ def is_command_like_backtick(value: str) -> bool:
 
 def state_pair_trigger_reasons(
     devlyn: pathlib.Path,
-    source_verdicts: dict[str, str],
+    source_verdicts: dict[str, str | None],
 ) -> list[str]:
     state_path = devlyn / "pipeline.state.json"
     if not state_path.is_file():
@@ -450,7 +456,7 @@ def state_pair_trigger_reasons(
 
 def pair_trigger_missing_contract_violation(
     devlyn: pathlib.Path,
-    source_verdicts: dict[str, str],
+    source_verdicts: dict[str, str | None],
 ) -> dict[str, Any] | None:
     if rank(source_verdicts.get("mechanical")) >= 2 or rank(source_verdicts.get("judge")) >= 2:
         return None
@@ -469,7 +475,7 @@ def pair_trigger_missing_contract_violation(
 
 def pair_trigger_skip_contract_violation(
     devlyn: pathlib.Path,
-    source_verdicts: dict[str, str],
+    source_verdicts: dict[str, str | None],
 ) -> dict[str, Any] | None:
     state_path = devlyn / "pipeline.state.json"
     if not state_path.is_file():
@@ -565,7 +571,7 @@ def pair_trigger_skip_contract_violation(
 
 def pair_trigger_reason_completeness_violation(
     devlyn: pathlib.Path,
-    source_verdicts: dict[str, str],
+    source_verdicts: dict[str, str | None],
 ) -> dict[str, Any] | None:
     if rank(source_verdicts.get("mechanical")) >= 2 or rank(source_verdicts.get("judge")) >= 2:
         return None
@@ -623,7 +629,7 @@ def pair_blocker(id_: str, message: str, file_: str | None = None) -> dict[str, 
 
 def detect_pair_stdout_contract_violations(
     devlyn: pathlib.Path,
-    source_verdicts: dict[str, str],
+    source_verdicts: dict[str, str | None],
 ) -> list[dict[str, Any]]:
     stdout_path = devlyn / "codex-judge.stdout"
     flag_violation = pair_flag_contract_violation(devlyn)
@@ -700,6 +706,8 @@ def detect_pair_stdout_contract_violations(
                 )
             ]
         return []
+    if source_verdicts["pair_judge"] is None:
+        source_verdicts["pair_judge"] = "PASS"
     raw_text = stdout_path.read_text(encoding="utf-8")
     if not raw_text.strip():
         source_verdicts["pair_judge"] = "BLOCKED"
@@ -755,7 +763,7 @@ def detect_pair_stdout_contract_violations(
 def write_outputs(
     devlyn: pathlib.Path,
     findings: list[dict[str, Any]],
-    source_verdicts: dict[str, str],
+    source_verdicts: dict[str, str | None],
 ) -> dict[str, Any]:
     merged_path = devlyn / "verify-merged.findings.jsonl"
     summary_path = devlyn / "verify-merge.summary.json"
@@ -828,8 +836,36 @@ def self_test() -> int:
         state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
         assert summary["verdict"] == "PASS", summary
         assert state["phases"]["verify"]["sub_verdicts"] == {
-            "mechanical": "PASS", "judge": "PASS", "pair_judge": "PASS",
+            "mechanical": "PASS", "judge": "PASS", "pair_judge": None,
         }, state
+
+        # 2026-07-04 field bug (iter-0060 G1): an AUTO pair trigger skipped on
+        # OTHER-engine unavailability spawns no second judge — pair_judge must
+        # be recorded null, never a synthesized PASS.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "mode": "spec",
+                "phases": {
+                    "verify": {
+                        "verdict": None,
+                        "sub_verdicts": None,
+                        "pair_trigger": {
+                            "eligible": False,
+                            "reasons": [],
+                            "skipped_reason": "auto_pair_other_engine_unavailable",
+                        },
+                    }
+                },
+            }),
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        write_state(devlyn, summary)
+        state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
+        assert summary["verdict"] == "PASS", summary
+        assert summary["source_verdicts"]["pair_judge"] is None, summary
+        assert state["phases"]["verify"]["sub_verdicts"]["pair_judge"] is None, state
 
         # A non-null, non-dict sub_verdicts is corrupted state, not a legal
         # placeholder — write_state() must fail loud, not silently coerce it.
