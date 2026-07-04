@@ -43,45 +43,58 @@ Next focused run is optional broadening only: pick a visible-contract fixture wi
 
 ---
 
-## 🚦 START-HERE — three active frontiers (2026-07-05)
+## 🚦 START-HERE — state after 2026-07-05 session (Frontiers A+B CLOSED)
 
 The 2026-05-04 solo+docs freeze is LIFTED: user failure report 2026-07-03
 (iter-0037) and the user audit+evolution mandate 2026-07-04 re-opened skill,
 CLAUDE.md, and AGENTS.md iteration. Goal-locked discipline still binds every
 edit; the golden fixture suite stays retired as an evolution signal
 (solo-saturates 88-99 — `benchmark/probes/README.md`); the probe panel
-(compliance cells + drift-bait + token gauge) is the working instrument.
+(compliance cells + drift-bait + token gauge + NEW violation-rate matrix) is
+the working instrument.
 
-1. **Frontier A — iter-0060 engine-symmetric pair-judge invocation**
-   (`iterations/0060-engine-symmetric-pair.md`, STUB with locked 2026-07-04
-   evidence). Reverse pair direction (codex/omp orchestrator → Claude judge)
-   never fires: no invocation contract exists (claude adapter lacks
-   `## Invocation`; codex-config.md is Claude→Codex only), so codex recorded
-   Claude "unavailable" on a machine where `claude` v2.1.201 resolves. Plus a
-   mechanical state bug: `pair_judge: "PASS"` recorded when no pair judge ran
-   (contract says null, verify.md:91). Fix order: state fix → claude
-   invocation contract → symmetric preflight probes → engine-neutral
-   verify.md wording (lint dual-declaration-pinned; update both copies).
-2. **Frontier B — iter-0058 violation-rate measurement axis**
-   (`iterations/0058-violation-rate-axis.md`, PRE-REGISTERED, not run).
-   First run: N=4 HEAD baseline matrix on the drift-bait panel, ≥2 models
-   (sonnet + one other; engine tiering — fable is never a test arm), flip-band
-   documented per probe BEFORE any A/B claim. headroom-gate is demoted to L2
-   pair-lift claims only — do not author more synthetic feature fixtures.
-3. **Frontier C — F6 structural closure (Codex-CLI ordinary-invocation
-   non-skippability).** Honest experimental label shipped in
-   CLAUDE.md/AGENTS.md (iter-0059); re-verified REPRODUCED 2026-07-04 on
-   minimal-repo trivial tasks while realistic-repo compliance cells PASS
-   (`iterations/0040-cross-cli-smoke.md` § Round 3 addendum). Structural fix
-   requires investigating codex exec's skill-presentation semantics — a
-   prose-only guard is pre-falsified (iter-0033g lesson). Related open
+1. **Frontier A — iter-0060 engine-symmetric pair — ✅ CLOSED-PASS
+   2026-07-05** (commits `b02e53a` + `3fd034d` + `902de77`). pair_judge is
+   null unless a judge actually ran (spawn evidence: pair findings file or
+   `*-judge.stdout`; VERIFY spawn clears stale round artifacts). Reverse
+   direction now REAL: G2 = codex orchestrator spawned a headless Claude
+   pair judge via `adapters/claude.md ## Invocation` (run
+   `benchmark/probes/results/iter0060-g2-pair`, adapter shape verbatim in
+   transcript); G3 = omp spawned a codex judge per role resolution
+   (`iter0060-g3-pair`); G4 = claude path clean, one cell fired forward
+   pair NATURALLY (judge.warning → real codex judge). Open refinement
+   candidate (needs a 2nd observation): G2's judge had its Bash probes
+   denied by the allowlist and judged static-only — consider deriving the
+   allowlist from the spec's verification commands.
+2. **Frontier B — iter-0058 violation-rate axis — ✅ BASELINE SHIPPED
+   2026-07-05** (commits `3bb02db` + `3ac9def`). N=4 sonnet+opus matrix:
+   opus 12/24, sonnet 9/24; 10/12 cells rep-stable; flip-band sonnet
+   DB-silent-catch 1, DB-tempting-state-file 2; opus fully deterministic
+   (B4 / DB-silent-catch / DB-tempting-state-file are 4/4 stable-dirty —
+   the live discriminating surface for the next compliance/drift iter).
+   Gate wired in `benchmark/probes/README.md` § Violation-rate gate; every
+   future A/B claim is valid only above the cell's flip band. Runner:
+   `run-violation-matrix.sh`; aggregate: `violation-rate-matrix.py`.
+3. **Frontier C — F6 structural closure — mechanism ESTABLISHED, fix not
+   designed.** 2026-07-05 recon (evidence: `iter0060-g2-pair` transcript):
+   codex-cli 0.141 has NO binding skill-invocation semantics — the
+   orchestrator model READS `~/.agents/skills/<name>/SKILL.md` via shell
+   when it chooses to; skill content is advisory. F6's structural
+   variables: advisory discovery + invocation-framing strength (compliance
+   cells pass because their prompt is a strong framing; F6 repro used
+   ordinary invocation; test-repo has NO AGENTS.md). Binding-entry
+   candidate: AGENTS.md — codex loads it unconditionally and devlyn-cli
+   already installs it into real projects. NEXT: pre-register an A/B —
+   minimal repo, ORDINARY (unframed) invocation, ± devlyn AGENTS.md — to
+   test whether AGENTS.md presence alone closes the F6 class. Prose-only
+   reinforcement remains pre-falsified (iter-0033g). Related open
    candidate: install-stamping rewrites the sentinel guard's comparison
-   literal (latent false-BLOCKED; omp's pass mechanism unestablished).
+   literal (latent false-BLOCKED).
 
 **Mission 2 (parallel-fleet substrate)**: still BLOCKED (NORTH-STAR test #15
 evidence accumulating via real usage). Hard NO list unchanged.
 
-Everything below this fold supports those three.
+Everything below this fold supports the remaining frontier.
 
 ---
 
@@ -390,26 +403,29 @@ iter-0029 shipped initial adapter files at `_shared/adapters/{opus-4-7, gpt-5-5}
 
 ## ⏭️ End of HANDOFF
 
-Current status 2026-07-05: **evolution loop re-opened** (user failure report
-2026-07-03 → iter-0037; user audit+evolution mandate 2026-07-04 → iter-0059).
-Shipped since re-open: conversational handoff + intent queue (0037-0039),
-cross-CLI portability + F6 diagnosis (0040, re-verified 2026-07-04),
-instrument panel — compliance cells / drift-bait probes / token gauge
-(0042-0047), language-neutral machinery (0048-0049), engine doctor (0050),
-local-backend adapter shipped→measured→deleted (0051-0057), North-Star
-preamble + engine-status honesty + pair-protocol v2 (0059). Mission 1 still
-NOT formally CLOSED (NORTH-STAR test #15 evidence accumulating via real
-usage). Pair-evidence gates unchanged: SWE-bench n11 frozen-VERIFY PASS +
-F16/F23/F25 risk-probe `bare<solo<pair` aggregate PASS (details:
+Current status 2026-07-05 (end of session): **evolution loop re-opened**
+(user failure report 2026-07-03 → iter-0037; user audit+evolution mandate
+2026-07-04 → iter-0059). Shipped since re-open: conversational handoff +
+intent queue (0037-0039), cross-CLI portability + F6 diagnosis (0040,
+re-verified 2026-07-04), instrument panel — compliance cells / drift-bait
+probes / token gauge (0042-0047), language-neutral machinery (0048-0049),
+engine doctor (0050), local-backend adapter shipped→measured→deleted
+(0051-0057), North-Star preamble + engine-status honesty + pair-protocol v2
+(0059), violation-rate evolution gate + N=4 baseline (0058), engine-symmetric
+pair-judge invocation with first reverse-direction fire (0060). Mission 1
+still NOT formally CLOSED (NORTH-STAR test #15 evidence accumulating via
+real usage). Pair-evidence gates unchanged: SWE-bench n11 frozen-VERIFY PASS
++ F16/F23/F25 risk-probe `bare<solo<pair` aggregate PASS (details:
 NORTH-STAR.md § Pair-mode policy + `iterations/0036-headroom-candidates.md`).
 
-**Next session entry point: the three frontiers in START-HERE** (A iter-0060
-engine-symmetric pair, B iter-0058 violation-rate baseline, C F6 structural).
-Recommended order: A's mechanical state fix first (small, self-testable),
-then B's N=4 baseline (unblocks all future A/B claims), then A's invocation
-contract with live codex-orchestrator smoke, then C. Every non-trivial step
-runs pair rounds under protocol v2 (R0 adversarial + R1 reconciliation, new
-evidence for extra rounds).
+**Next session entry point: Frontier C in START-HERE** (F6 structural
+closure — mechanism established 2026-07-05, run the pre-registerable
+AGENTS.md ± A/B with an ORDINARY invocation on a minimal repo). Secondary:
+the G2 allowlist-derivation refinement candidate if a second static-only
+judge case is observed. Frontiers A (iter-0060) and B (iter-0058 baseline)
+are CLOSED — details in START-HERE. Every non-trivial step runs pair rounds
+under protocol v2 (R0 adversarial + R1 reconciliation, new evidence for
+extra rounds).
 
 **Forbidden under this branch** (per iter-0033g closure §G + memory lesson `project_iter0033g_asymptotic_firewall_lesson_2026_05_03.md`):
 - Do NOT open iter-0033h with another firewall architecture attempt. If user later wants to revisit PLAN-pair, the unblock conditions are documented in `config/skills/devlyn:resolve/SKILL.md` PHASE 1 + `iterations/0033g-pair-plan-impl-pmo.md` § "CLOSURE" §H.
