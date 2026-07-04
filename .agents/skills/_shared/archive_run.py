@@ -56,7 +56,9 @@ PER_RUN_PATTERNS = (
     # ("pair_judge findings archive distinguishable") would false-fail on
     # every paired fixture without this glob.
     "verify-judge-*.md",
-    "codex-judge.*",
+    # *-judge.*: every engine's pair-judge stdout/stderr capture
+    # (codex-judge.*, claude-judge.* — adapters/claude.md ## Invocation).
+    "*-judge.*",
 )
 
 SAFE_RUN_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
@@ -140,12 +142,14 @@ def self_test() -> int:
             "verify-merge.summary.json",
             "codex-judge.stdout",
             "codex-judge.summary.json",
+            "claude-judge.stdout",
+            "claude-judge.stderr",
         ):
             (devlyn / name).write_text("{}\n", encoding="utf-8")
         run_id = read_run_id(devlyn)
         assert run_id == "run-1", run_id
         moved = move_artifacts(devlyn, devlyn / "runs" / run_id)
-        assert moved >= 6, moved
+        assert moved >= 8, moved
         for name in (
             "pipeline.state.json",
             "risk-probes.jsonl",
@@ -153,6 +157,8 @@ def self_test() -> int:
             "verify-merge.summary.json",
             "codex-judge.stdout",
             "codex-judge.summary.json",
+            "claude-judge.stdout",
+            "claude-judge.stderr",
         ):
             assert (devlyn / "runs" / run_id / name).is_file(), name
 

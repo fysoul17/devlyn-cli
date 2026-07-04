@@ -2,6 +2,53 @@
 
 > Source: <https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices>
 
+## Invocation
+
+Orchestrator-side contract for spawning a Claude judge from a non-Claude
+orchestrator (Codex CLI, oh-my-pi) — the reverse-direction counterpart of
+`_shared/codex-config.md`. Source: <https://code.claude.com/docs/en/headless>
+and <https://code.claude.com/docs/en/cli-reference>.
+
+**Availability probe**: `command -v claude >/dev/null 2>&1`; record
+`claude --version` as evidence. The probe is necessary, not sufficient:
+`claude -p` needs network access to the Anthropic API, so a network-denying
+sandbox (e.g. Codex CLI's default `workspace-write`) fails the spawn even
+though the binary resolves. A failed spawn is the same fail-closed class as a
+failed probe (`_shared/engine-preflight.md`): explicit route →
+`BLOCKED:claude-unavailable`; automatic escalation → solo + reported skip.
+
+**Read-only pair-JUDGE call** (bounded by the VERIFY pair contract — at most
+two targeted probes; the invoking phase sets `--effort`, pair-JUDGE uses
+`medium`):
+
+```bash
+claude -p "<judge prompt>" \
+  --permission-mode dontAsk \
+  --allowedTools "Read,Grep,Glob,Bash(<repo test command> *)" \
+  --setting-sources project --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
+  --effort medium \
+  > .devlyn/claude-judge.stdout 2> .devlyn/claude-judge.stderr
+```
+
+- Omit `--model` — the CLI's configured default is used (zero-touch, same
+  rule as codex-config.md's "omit `-m`").
+- `dontAsk` denies anything not allowlisted (official guide: "denies
+  anything not in your permissions.allow rules or the read-only command
+  set — useful for locked-down CI runs"); in `-p` mode a denied tool call
+  fails without prompting, so the child can never hang on a permission ask.
+- The `--setting-sources project --strict-mcp-config --mcp-config
+  '{"mcpServers":{}}'` trio is the hermetic-child pattern: no user-global
+  settings, hooks, or MCP servers. `--bare` is NOT used — it skips
+  OAuth/keychain reads and requires `ANTHROPIC_API_KEY`, which
+  subscription-auth machines do not have.
+- Findings come back as JSONL on stdout (same emission shape as the Codex
+  direction); the orchestrator writes the canonical
+  `.devlyn/verify.pair.findings.jsonl`. Raw stdout stays diagnostic at
+  `.devlyn/claude-judge.stdout`; `verify-merge-findings.py` blocks the run
+  if stdout contains findings the canonical file lacks.
+- Do not pipe stdout (`| tail`, `| grep`); capture to file. Non-zero exit or
+  empty stdout → spawn failure, fail closed per the probe rule above.
+
 ## Identity
 
 You are Claude by Anthropic. Anthropic's prompt-engineering guide for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.

@@ -396,7 +396,7 @@ if ! grep -Fq 'SAFE_RUN_ID_RE' config/skills/_shared/archive_run.py \
   || ! grep -Fq 'invalid JSON numeric constant: NaN' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"verify.pair.findings.jsonl"' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"verify-merge.summary.json"' config/skills/_shared/archive_run.py \
-  || ! grep -Fq '"codex-judge.*"' config/skills/_shared/archive_run.py; then
+  || ! grep -Fq '"*-judge.*"' config/skills/_shared/archive_run.py; then
   bad "archive_run.py must safely archive pair/risk-probe evidence and reject unsafe run ids"
 fi
 
@@ -1077,6 +1077,20 @@ if ! grep -Fq 'If the spec includes a solo-headroom hypothesis, one of the two t
   bad "resolve pair-JUDGE prompts must prioritize solo-headroom hypothesis"
 else
   ok "resolve pair-JUDGE prompts prioritize solo-headroom hypothesis"
+fi
+if ! grep -Fq 'names the primary judge; if pair-mode triggers, the first available OTHER' config/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq 'names the primary judge; if pair-mode triggers, the first available OTHER' .claude/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq 'names the primary judge; if pair-mode triggers, the first available OTHER' .agents/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq 'do not run the OTHER engine as the' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'do not run the OTHER engine as the' .claude/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'do not run the OTHER engine as the' .agents/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq '_shared/adapters/claude.md` `## Invocation' config/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq '_shared/adapters/claude.md` `## Invocation' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq '## Invocation' config/skills/_shared/adapters/claude.md \
+  || ! grep -Fq '.devlyn/claude-judge.stdout' config/skills/_shared/adapters/claude.md; then
+  bad "engine-neutral pair-judge dual declaration (iter-0060) out of sync"
+else
+  ok "engine-neutral pair-judge dual declaration (iter-0060) in sync"
 fi
 if ! grep -Fq 'current free-form `state.complexity` is `"large"`' config/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'current free-form `state.complexity` is `"large"`' .claude/skills/devlyn:resolve/SKILL.md \

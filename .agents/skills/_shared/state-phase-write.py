@@ -87,7 +87,9 @@ def clear_verify_round_artifacts(devlyn: pathlib.Path) -> None:
     # verify-merge-findings.py (iter-0060 R0 finding).
     # verify*.jsonl (not just *.findings.jsonl): judge-specific files like
     # verify.findings.judge-codex.jsonl end in .judge-<engine>.jsonl.
-    for pattern in ("verify*.jsonl", "codex-judge.*"):
+    # *-judge.* covers every engine's stdout/stderr capture (codex-judge.*,
+    # claude-judge.* — adapters/claude.md ## Invocation).
+    for pattern in ("verify*.jsonl", "*-judge.*"):
         for path in devlyn.glob(pattern):
             path.unlink()
     (devlyn / "verify-merge.summary.json").unlink(missing_ok=True)
@@ -281,6 +283,7 @@ def self_test() -> int:
             "verify-merged.findings.jsonl",
             "verify-merge.summary.json",
             "codex-judge.stdout",
+            "claude-judge.stdout",
         ):
             (devlyn / name).write_text("stale\n", encoding="utf-8")
         (devlyn / "spec-verify.json").write_text("{}", encoding="utf-8")
@@ -292,6 +295,7 @@ def self_test() -> int:
             "verify-merged.findings.jsonl",
             "verify-merge.summary.json",
             "codex-judge.stdout",
+            "claude-judge.stdout",
         ):
             assert not (devlyn / name).exists(), f"{name} must be cleared on VERIFY spawn"
         assert (devlyn / "spec-verify.json").exists(), "non-VERIFY-round files must survive"

@@ -145,6 +145,46 @@ null, PASS_WITH_ISSUES unchanged.
 - **G1 gate: SATISFIED. Piece 1 CLOSED** (fix + self-tests + lint + pair
   rounds R0→R1 SHIP + archived-cell replay + live G1/G4 cells).
 
+## Pieces 2-4 pre-registration (2026-07-05, BEFORE any G2/G3 run)
+
+**Design facts locked before implementation** (verified this session):
+- Local `claude` v2.1.201 supports `-p`, `--allowedTools` (permission-rule
+  syntax, prefix `Bash(cmd *)`), `--permission-mode dontAsk`,
+  `--setting-sources`, `--strict-mcp-config`, `--output-format`, `--effort`.
+- Empirical (this machine): in `-p` mode a non-allowlisted tool call is
+  auto-DENIED without prompting; the run completes and reports the denial.
+- Official guide (standing rule citation):
+  <https://code.claude.com/docs/en/headless> — `--allowedTools` rule syntax,
+  `dontAsk` locked-down semantics, `--output-format`;
+  <https://code.claude.com/docs/en/cli-reference> — flag inventory. `--bare`
+  is documented as the scripted-call recommendation but skips OAuth/keychain
+  (requires `ANTHROPIC_API_KEY`) — NOT usable on subscription-auth machines,
+  so the judge uses the existing hermetic pattern
+  (`--setting-sources project --strict-mcp-config --mcp-config
+  '{"mcpServers":{}}'` — raw `'{}'` fails validation, iter-0004 evidence).
+- Constraint: Codex CLI default `workspace-write` sandbox denies network
+  (probes README + run-compliance-cell.sh:76-79 evidence) — `claude -p`
+  inside it cannot reach the API. Availability probe (`command -v claude`)
+  is necessary, not sufficient; spawn failure = same fail-closed class.
+  G2 smoke must run codex with network enabled
+  (`-c sandbox_workspace_write.network_access=true`).
+
+**Predictions**:
+- P5 (G2): codex-orchestrator `/devlyn:resolve --pair-verify` on the F1
+  test-repo shape (network-enabled sandbox) spawns a real `claude -p` judge:
+  `.devlyn/claude-judge.stdout` + `.devlyn/verify.pair.findings.jsonl`
+  written; `pair_trigger.eligible: true` with `mode.pair-verify`;
+  `sub_verdicts.pair_judge` non-null; terminal verdict not BLOCKED.
+- P6 (G3): omp-orchestrator `--pair-verify` run spawns the first available
+  OTHER engine per role resolution (executor default claude → codex judge
+  via the existing wrapper contract); pair artifacts + non-null pair_judge.
+- P7 (G4): claude-orchestrator cells (claude-small, codex-small) still PASS
+  after pieces 2-4; lint PASS; mirror parity.
+- Failure classification pre-agreed: a G2 spawn failure with
+  `BLOCKED:claude-unavailable` reported honestly is a PARTIAL PASS of the
+  fail-closed contract but a FAIL of G2's real-fire gate; a codex pipeline
+  skip is the F6 class, not a piece-2 regression.
+
 ## Non-goals
 
 - No always-on pair (NORTH-STAR: measurement-gated).

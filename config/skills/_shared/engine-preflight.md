@@ -24,17 +24,11 @@ Validation is fail-closed: malformed JSON, any engine name without a `_shared/ad
 
 The explicit-vs-automatic split above applies unchanged to resolved engines: explicit routes (`--engine`, `--risk-probes`, `--pair-verify`, config pins) fail closed; automatic escalations select a cross-engine route only when the resolved pair-judge engine is available, else proceed solo and report the skip.
 
-When a run or phase requires Codex, before spawning that phase:
+When a run or phase requires engine `<name>` (claude, codex, omp, or any adapter-backed engine), before spawning that phase:
 
-1. Check if the Codex CLI is installed: `command -v codex >/dev/null 2>&1` (or equivalent bash test).
-2. On failure -> set the current phase/run verdict to `BLOCKED:codex-unavailable`, preserve the failed check evidence, and show setup guidance: install/configure the Codex CLI, run the current Codex auth/login flow, verify `codex --version`, then rerun. If the user intentionally wants solo VERIFY, they may rerun with `--no-pair`.
+1. Run the adapter's availability probe — default `command -v <name> >/dev/null 2>&1`; an adapter's `## Invocation` section may declare a stricter contract (e.g. `adapters/claude.md`: the probe is necessary but not sufficient under a network-denying sandbox, so a failed spawn is handled identically to a failed probe).
+2. On failure -> set the current phase/run verdict to `BLOCKED:<name>-unavailable`, preserve the failed check evidence, and show the adapter's setup guidance: install/configure that CLI, run its auth/login flow, verify `<name> --version`, then rerun. If the user intentionally wants solo VERIFY, they may rerun with `--no-pair`.
 3. On success -> proceed with the original engine value.
-
-When a run or phase requires Claude, before spawning that phase:
-
-1. Confirm the runtime can spawn Claude agents. Where the CLI is the launcher, `command -v claude >/dev/null 2>&1` is the equivalent check.
-2. On failure -> set the current phase/run verdict to `BLOCKED:claude-unavailable` and show setup guidance: install/configure Claude Code, verify `claude --version` where available, then rerun.
-3. On success -> proceed.
 
 Never prompt the user mid-pipeline. Missing engines for explicit routes are BLOCKED states, not silent fallbacks. Missing OTHER engines for automatic escalations are reported solo-skips, not fallbacks — the auto route was never selected.
 
@@ -52,6 +46,6 @@ Setup: install/configure Codex CLI; run the current Codex auth/login flow; verif
 
 Do not report a downgraded successful run when a required engine is missing.
 
-## Canonical Codex invocation
+## Canonical cross-engine invocations
 
-See `config/skills/_shared/codex-config.md` for the canonical wrapper invocation and flag set skills should use after the availability check passes.
+After the availability check passes: a Claude-side orchestrator spawning a Codex judge/worker uses `config/skills/_shared/codex-config.md` (monitored wrapper, canonical flag set); a non-Claude orchestrator spawning a Claude judge uses `_shared/adapters/claude.md` `## Invocation` (headless `claude -p`, locked-down allowlist, hermetic settings).

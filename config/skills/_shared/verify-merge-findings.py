@@ -631,7 +631,10 @@ def detect_pair_stdout_contract_violations(
     devlyn: pathlib.Path,
     source_verdicts: dict[str, str | None],
 ) -> list[dict[str, Any]]:
-    stdout_path = devlyn / "codex-judge.stdout"
+    # *-judge.stdout: any engine's pair-judge capture (codex-judge.stdout,
+    # claude-judge.stdout — adapters/claude.md ## Invocation). The emission
+    # contract is engine-neutral.
+    stdout_paths = sorted(devlyn.glob("*-judge.stdout"))
     flag_violation = pair_flag_contract_violation(devlyn)
     if flag_violation is not None:
         source_verdicts["pair_judge"] = "BLOCKED"
@@ -695,69 +698,70 @@ def detect_pair_stdout_contract_violations(
         ]
     if has_pair_findings(devlyn):
         return []
-    if not stdout_path.is_file():
+    if not stdout_paths:
         if required:
             source_verdicts["pair_judge"] = "BLOCKED"
             return [
                 pair_blocker(
                     "verify-pair-required-output-missing",
-                    "Pair-mode was required, but Codex pair-JUDGE produced no stdout or canonical findings file.",
-                    "codex-judge.stdout",
+                    "Pair-mode was required, but the pair-JUDGE produced no stdout or canonical findings file.",
+                    "verify.pair.findings.jsonl",
                 )
             ]
         return []
     if source_verdicts["pair_judge"] is None:
         source_verdicts["pair_judge"] = "PASS"
-    raw_text = stdout_path.read_text(encoding="utf-8")
-    if not raw_text.strip():
-        source_verdicts["pair_judge"] = "BLOCKED"
-        return [
-            pair_blocker(
-                "verify-pair-empty-output",
-                "Codex pair-JUDGE stdout was empty; the bounded contract requires a JSONL finding or PASS line.",
-                "codex-judge.stdout",
-            )
-        ]
-    has_jsonl_finding = False
-    has_nonpass_summary = False
-    for line in raw_text.splitlines():
-        raw = line.strip()
-        if not raw:
-            continue
-        if raw.startswith("# SUMMARY "):
+    for stdout_path in stdout_paths:
+        raw_text = stdout_path.read_text(encoding="utf-8")
+        if not raw_text.strip():
+            source_verdicts["pair_judge"] = "BLOCKED"
+            return [
+                pair_blocker(
+                    "verify-pair-empty-output",
+                    f"pair-JUDGE stdout {stdout_path.name} was empty; the bounded contract requires a JSONL finding or PASS line.",
+                    stdout_path.name,
+                )
+            ]
+        has_jsonl_finding = False
+        has_nonpass_summary = False
+        for line in raw_text.splitlines():
+            raw = line.strip()
+            if not raw:
+                continue
+            if raw.startswith("# SUMMARY "):
+                try:
+                    summary = loads_strict_json(raw.removeprefix("# SUMMARY ").strip())
+                except ValueError:
+                    continue
+                if summary.get("verdict") in {"NEEDS_WORK", "FAIL", "BLOCKED"}:
+                    has_nonpass_summary = True
+                continue
+            if raw.startswith("#"):
+                continue
             try:
-                summary = loads_strict_json(raw.removeprefix("# SUMMARY ").strip())
+                item = loads_strict_json(raw)
             except ValueError:
                 continue
-            if summary.get("verdict") in {"NEEDS_WORK", "FAIL", "BLOCKED"}:
-                has_nonpass_summary = True
-            continue
-        if raw.startswith("#"):
-            continue
-        try:
-            item = loads_strict_json(raw)
-        except ValueError:
-            continue
-        if isinstance(item, dict) and str(item.get("severity") or "").upper() in {
-            "CRITICAL",
-            "HIGH",
-            "MEDIUM",
-            "LOW",
-        }:
-            has_jsonl_finding = True
-    if not has_jsonl_finding and not has_nonpass_summary:
-        return []
-    source_verdicts["pair_judge"] = "BLOCKED"
-    return [
-        pair_blocker(
-            "verify-pair-emission-contract-violated",
-            (
-                "Codex pair-JUDGE stdout contained findings or a non-PASS summary, "
-                "but the canonical pair findings JSONL file was empty."
-            ),
-            "codex-judge.stdout",
-        )
-    ]
+            if isinstance(item, dict) and str(item.get("severity") or "").upper() in {
+                "CRITICAL",
+                "HIGH",
+                "MEDIUM",
+                "LOW",
+            }:
+                has_jsonl_finding = True
+        if has_jsonl_finding or has_nonpass_summary:
+            source_verdicts["pair_judge"] = "BLOCKED"
+            return [
+                pair_blocker(
+                    "verify-pair-emission-contract-violated",
+                    (
+                        f"pair-JUDGE stdout {stdout_path.name} contained findings or a non-PASS "
+                        "summary, but the canonical pair findings JSONL file was empty."
+                    ),
+                    stdout_path.name,
+                )
+            ]
+    return []
 
 
 def write_outputs(
@@ -950,8 +954,24 @@ def self_test() -> int:
         state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
         assert summary["verdict"] == "BLOCKED", summary
         assert state["phases"]["verify"]["sub_verdicts"]["pair_judge"] == "BLOCKED", state
-
         (devlyn / "codex-judge.stdout").unlink()
+
+        # Engine-neutral stdout contract (iter-0060): a Claude pair-judge
+        # capture (claude-judge.stdout, adapters/claude.md ## Invocation)
+        # binds the same emission contract as the Codex one.
+        (devlyn / "claude-judge.stdout").write_text(
+            json.dumps({"id": "clj1", "severity": "HIGH"}) + "\n",
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "BLOCKED", summary
+        assert any(
+            finding.get("id") == "verify-pair-emission-contract-violated"
+            and "claude-judge.stdout" in finding.get("message", "")
+            for finding in findings
+        ), findings
+        (devlyn / "claude-judge.stdout").unlink()
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
                 "phases": {
@@ -1753,6 +1773,21 @@ def self_test() -> int:
             finding.get("id") == "verify-pair-trigger-reasons-unknown"
             for finding in findings
         ), findings
+
+        # stdout-only spawn evidence: no pair findings file at all; a clean
+        # PASS stdout from a claude judge promotes pair_judge null -> PASS.
+        (devlyn / "verify.pair.findings.jsonl").unlink()
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({"phases": {"verify": {"verdict": None, "sub_verdicts": None}}}),
+            encoding="utf-8",
+        )
+        (devlyn / "claude-judge.stdout").write_text("PASS\n", encoding="utf-8")
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        write_state(devlyn, summary)
+        state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
+        assert summary["verdict"] == "PASS", summary
+        assert state["phases"]["verify"]["sub_verdicts"]["pair_judge"] == "PASS", state
     return 0
 
 

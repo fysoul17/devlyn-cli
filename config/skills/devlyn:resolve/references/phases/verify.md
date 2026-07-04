@@ -145,9 +145,11 @@ reasons and at least one reason: `mode.verify-only`, `complexity.high`, `complex
 `risk_probes.present`, `coverage.failed`, `mechanical.warning`, or
 `judge.warning`.
 
-The `--engine` flag never disables this rule. Explicit `--engine claude` means
-Claude is the primary judge; if pair-mode triggers, Codex is still the mandatory
-OTHER-engine judge. Do not record "explicit --engine claude" as a skip reason.
+The `--engine` flag never disables this rule. An explicit `--engine <name>`
+names the primary judge; if pair-mode triggers, the first available OTHER
+engine is still the mandatory pair judge (role resolution:
+`_shared/engine-preflight.md`). Do not record "explicit --engine <name>" as a
+skip reason.
 The valid skip reasons after a non-empty eligible trigger are deterministic
 MECHANICAL HIGH/CRITICAL blockers, an explicit `--no-pair`, or — when none of the
 applicable reasons is `mode.pair-verify` (every reason is automatic) — the OTHER
@@ -227,6 +229,13 @@ side effects. Do not pipe it to `tail`, `head`, `grep`, `sed`, or `awk`.
 Capture stdout/stderr directly. The Codex judge must return JSONL findings on
 stdout; the orchestrator writes `.devlyn/verify.pair.findings.jsonl` and merges
 verdicts. Do not ask Codex to `apply_patch` or edit `.devlyn`.
+When the OTHER engine is Claude (codex/omp orchestrator), the judge call
+follows `_shared/adapters/claude.md` `## Invocation`: headless `claude -p`
+with `--permission-mode dontAsk`, an allowlist of `Read,Grep,Glob` plus the
+repo test command, hermetic settings, stdout captured to
+`.devlyn/claude-judge.stdout`. The same bounded-output contract and emission
+rule apply to that stdout file, and the orchestrator writes the same
+canonical `.devlyn/verify.pair.findings.jsonl`.
 The Codex prompt must include a bounded-output contract: no harness-doc reads,
 maximum two targeted probes before first output, stop on the first
 verdict-binding finding, and emit PASS immediately after the bounded checks pass.
