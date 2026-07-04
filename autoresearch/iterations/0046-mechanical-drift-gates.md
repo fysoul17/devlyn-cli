@@ -170,21 +170,59 @@ implementation."
    `authorized_surface` block entirely. Root cause: unlike its `claude`
    branch (which copies `$REPO_ROOT/.claude/skills` into the work dir), the
    `codex` branch invokes `codex exec` directly against whatever is
-   globally installed — confirmed to be `~/.agents/skills/` by reading the
-   failing run's own transcript path, not `~/.codex/skills/` as first
-   assumed (a second attempt syncing only `~/.codex/skills/` was *also*
-   inconclusive for this reason). Team-lead review correctly declined to
-   accept an inferred conclusion here and asked for a clean-checkout proof;
-   resolved with `git worktree add` at `f02d06d` (zero uncommitted diff),
+   globally installed — one run's own transcript recorded the path it
+   actually invoked as `/Users/aipalm/.agents/skills/_shared/spec-verify-check.py`,
+   another (`iter0046-verify-v2`, synced only into `~/.codex/skills/`)
+   picked up the new `authorized_surface` block correctly from that
+   directory instead. Team-lead review correctly declined to accept an
+   inferred conclusion here and asked for a clean-checkout proof; resolved
+   with `git worktree add` at `f02d06d` (zero uncommitted diff),
    `rsync --delete` into `~/.agents/skills/`, md5-verified byte-identical to
    `git show HEAD`, and a paired re-run with the full working-tree diff
-   synced the same way — see the regression section above for the matching
-   before/after result. This is a machine-local install-staleness issue, not
-   a repo bug. Flagging the underlying gap in `run-compliance-cell.sh` for a
-   future iteration (add the same skill-install step the `claude` branch
-   already has, and confirm which directory codex actually resolves against
-   rather than assuming); out of this iteration's scope to fix here.
-3. **Found, not fixed: `verify-merge-findings.py:789` crashes when
+   synced into both `~/.agents/skills/` and `~/.codex/skills/` — see the
+   regression section above for the matching before/after result. This is a
+   machine-local install-staleness issue, not a repo bug.
+
+   **Significant separate finding, flagged not fixed**: `bin/devlyn.js:33-36`
+   (`CLI_TARGETS.codex.skillsDir`) states, as an installer design assumption,
+   "Codex auto-loads skills from `~/.codex/skills/` (user-global)" — but the
+   transcript evidence above shows at least one real `codex exec` run
+   resolving skills from `~/.agents/skills/` instead (the directory
+   `bin/devlyn.js:25`'s own comment documents as the *omp/Pi* shared
+   convention, not codex's). The two directories on this machine were NOT
+   in sync with each other before this investigation (`~/.codex/skills/`
+   was missing `state-phase-write.py` entirely — older than `f02d06d` —
+   while `~/.agents/skills/` was current), so this is not just a naming
+   confusion; it's a real behavioral question about which directory codex
+   actually honors, and under what precedence. **This needs dedicated
+   re-verification (loader precedence? does codex check both dirs? does it
+   depend on `AGENTS.md` presence or cwd?) — not resolved here, and the
+   installer is deliberately untouched by this iteration.** Filing as a
+   follow-up candidate distinct from the `run-compliance-cell.sh` skill-sync
+   gap.
+
+   Also flagging `run-compliance-cell.sh`'s codex branch itself for a future
+   iteration: add the same skill-install step the `claude` branch already
+   has (to whichever directory the re-verification above lands on); out of
+   this iteration's scope to fix here.
+
+3. **`codex-small` as a compliance-panel instrument is environment-limited
+   on this machine, independent of this iteration.** `tests/server.test.js`
+   in the shared `test-repo` fixture calls `server.listen(0)` — codex's
+   `workspace-write` sandbox denies the TCP bind with `EPERM`, failing
+   `npm test` and, transitively, BUILD_GATE's spec-literal check on every
+   attempt observed in this session (with and without the iter-0046 diff;
+   see the regression section's A/B pair). iter-0042's own baseline table
+   recorded `codex x small: PASS` on this same fixture, so this may be
+   machine- or codex-version-dependent rather than a constant — not
+   re-investigated here. Recording as a known panel limitation with a
+   concrete follow-up candidate: change the compliance-probe scaffold/task
+   to avoid a real TCP bind (e.g. an in-process handler test instead of
+   `server.listen(0)`, or skip/mocks the network layer) so `codex-small`
+   returns to being a trustworthy pass/fail signal for future regression
+   checks instead of one that fails on sandbox policy regardless of the
+   code under test.
+4. **Found, not fixed: `verify-merge-findings.py:789` crashes when
    `sub_verdicts` is `None`.** Surfaced during the negative-control run —
    `write_state()`'s `verify.setdefault("sub_verdicts", {})` does not
    replace an *existing* key whose value is `None` (only a genuinely absent
@@ -249,12 +287,13 @@ point.)
   `PASS`.
 - `codex`, F1-small: **FAILs on this fixture regardless of this iteration's
   diff — verified with a clean A/B pair, not inferred.** `run-compliance-cell.sh`'s
-  codex branch invokes the CLI against a global skill install
-  (`~/.agents/skills/`, confirmed the actual resolution target by reading
-  the run's own transcript path — not `~/.codex/skills/` as initially
-  assumed; two earlier attempts (`iter0046-verify`, `iter0046-verify-v2`)
-  used stale or partially-synced global installs and are superseded by this
-  pair):
+  codex branch invokes the CLI against a global skill install rather than
+  installing a fresh copy into the work dir (see "Bugs caught" #2 for the
+  `~/.agents/skills/` vs. `~/.codex/skills/` resolution ambiguity this
+  surfaced — flagged for dedicated re-verification, not resolved here); two
+  earlier attempts (`iter0046-verify`, `iter0046-verify-v2`) used stale or
+  partially-synced global installs and are superseded by this pair, which
+  syncs both candidate directories on each side of the comparison:
   - **A — clean HEAD** (`git worktree add` at `f02d06d`, zero uncommitted
     diff, `rsync --delete`d into `~/.agents/skills/`; md5-verified
     byte-identical to `git show HEAD:config/skills/_shared/spec-verify-check.py`):
