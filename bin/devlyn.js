@@ -349,7 +349,13 @@ function shellDoubleQuoteDefault(value) {
 }
 
 function stampInstalledSkillDir(rootDir, skillDir) {
-  const stampedSkillDir = shellDoubleQuoteDefault(skillDir);
+  // Stamp ONLY the assignment-default occurrence. The sentinel comparison
+  // literal on the guard line must stay intact: stamping it makes the guard
+  // compare the stamped default to itself and false-positive
+  // BLOCKED:shared-dir-unresolved on every codex/omp run that executes the
+  // block (CLAUDE_SKILL_DIR unset) — iter-0040 R3 latent finding.
+  const assignmentStamp = '${CLAUDE_SKILL_DIR:-' + DEVLYN_SKILL_DIR_STAMP + '}';
+  const stampedAssignment = '${CLAUDE_SKILL_DIR:-' + shellDoubleQuoteDefault(skillDir) + '}';
 
   function visit(current) {
     const stats = fs.statSync(current);
@@ -362,8 +368,8 @@ function stampInstalledSkillDir(rootDir, skillDir) {
     if (path.extname(current) !== '.md') return;
 
     const content = fs.readFileSync(current, 'utf8');
-    if (!content.includes(DEVLYN_SKILL_DIR_STAMP)) return;
-    fs.writeFileSync(current, content.split(DEVLYN_SKILL_DIR_STAMP).join(stampedSkillDir));
+    if (!content.includes(assignmentStamp)) return;
+    fs.writeFileSync(current, content.split(assignmentStamp).join(stampedAssignment));
   }
 
   visit(rootDir);
