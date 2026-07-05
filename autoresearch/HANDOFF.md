@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — project goal + 3-layer composition contract + pair-mode policy (round-3 redesign 2026-05-03)
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active, hard NO list
-5. The active-iter files (currently none active — latest shipped `iterations/0061-f6-agents-binding-entry.md` CLOSED-PASS; trajectory since 2026-07-03 in `DECISIONS.md` 0037-0061 + memory index `MEMORY.md`)
+5. The active-iter files (currently none active — latest shipped `iterations/0062-contract-decidability-gaps.md` CLOSED-PARTIAL; trajectory since 2026-07-03 in `DECISIONS.md` 0037-0062 + memory index `MEMORY.md`)
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (most recent entries first to read)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction.
@@ -43,7 +43,46 @@ Next focused run is optional broadening only: pick a visible-contract fixture wi
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-05 sessions (Frontiers A+B+C CLOSED)
+## 🚦 START-HERE — state after 2026-07-05 late session (iter-0062 CLOSED-PARTIAL)
+
+**iter-0062 — contract decidability gaps — CLOSED-PARTIAL / E1 SHIPPED
+2026-07-05** (`iterations/0062-contract-decidability-gaps.md`, full closure
++ corrected matrices inside). Cell-level ship rule (Codex R0 criterion
+"Per-Class Above-Band Closure Without Collateral"):
+
+1. **E1 SHIPPED** — "on touched lines, replace only the bytes the task
+   requires" now in CLAUDE.md Goal-locked §2 + AGENTS.md + runtime-principles
+   + both installed mirrors. Sonnet B4 4/4 → 1/4 (band 0): first flip of the
+   cell that was 8/8 stable-dirty across both models at baseline. Residual
+   1/4 = same trailing-space signature; if the cell must reach 0 the next
+   mechanism is mechanical (Edit-tool/lint trailing-byte guard), not prose.
+2. **E2 INVALIDATED, verifier fixed** — the pre-registered arm-B manual
+   diff audit caught `DB-silent-catch-root-cause/hidden/verify.sh`
+   false-positiving validation guards (`if (typeof config.network?.timeoutMs
+   !== 'number') throw`) as fallbacks. Pattern narrowed to return-shaped
+   reads; 16 archived verdicts re-scored (iter-0058 baseline UNCHANGED:
+   opus 12/24, sonnet 9/24). Corrected cell: arm A 2/4 → arm B 0/4 —
+   direction positive, but arm-A ≥3/4 repro precondition lost → no
+   above-noise claim. Candidate sentence preserved in the iter file;
+   re-measure against a corrected-oracle N=4 baseline first.
+3. **E3 CANARY, reverted** — opus DB-tempting 4/4 → 2/4 (needs ≤1/4).
+   Arm-B r1/r3 transcripts show the finish-audit sentence working verbatim
+   (revert of runtime-mutated tracked file + final git-status check); r2/r4
+   reproduce the violation incl. the false "only two files touched" claim.
+   Next attempt: mechanical finish-gate (BUILD_GATE-style diff-vs-authorized
+   check at CLEANUP) or N=8 prose re-measure.
+4. **Amendment A1** (pre-arm-B, resource-driven): sonnet carries the full
+   panel; opus only the E3 cell; deferred opus confirmation cells logged.
+   **Codex drift-bait lane logged as follow-up instrument** — codex reads
+   AGENTS.md not CLAUDE.md, so the AGENTS.md mirror edits are parity-only
+   (unmeasured) until a `codex exec` instrument + fresh baseline exists.
+
+Previous frontiers (A iter-0060 / B iter-0058 / C iter-0061) remain CLOSED —
+record below.
+
+---
+
+## Frontier record — 2026-07-05 morning (A+B+C CLOSED)
 
 The 2026-05-04 solo+docs freeze is LIFTED: user failure report 2026-07-03
 (iter-0037) and the user audit+evolution mandate 2026-07-04 re-opened skill,
@@ -415,25 +454,35 @@ engine doctor (0050), local-backend adapter shipped→measured→deleted
 (0059), violation-rate evolution gate + N=4 baseline (0058), engine-symmetric
 pair-judge invocation with first reverse-direction fire (0060), F6 structural
 closure — AGENTS.md binding entry proven by ordinary-invocation A/B 4/4-vs-4/4,
-stamping sentinel fix, docs narrowed to the measured condition (0061).
+stamping sentinel fix, docs narrowed to the measured condition (0061),
+first contract-sentence A/B on the violation-rate axis — E1 byte-preservation
+shipped (B4 4/4→1/4), DB-silent verifier false-positive fixed, E2/E3
+reverted per cell-level ship rule (0062).
 Mission 1 still NOT formally CLOSED (NORTH-STAR test #15 evidence
 accumulating via real usage). Pair-evidence gates unchanged: SWE-bench n11 frozen-VERIFY PASS
 + F16/F23/F25 risk-probe `bare<solo<pair` aggregate PASS (details:
 NORTH-STAR.md § Pair-mode policy + `iterations/0036-headroom-candidates.md`).
 
-**Next session entry point: iter-0058's live discriminating surface** —
-the three opus stable-dirty violation cells (B4 / DB-silent-catch /
-DB-tempting-state-file, 4/4 stable-dirty in the N=4 baseline,
-`benchmark/probes/README.md` § Violation-rate gate). Pre-register ONE
-mechanism change targeting that violation class and A/B it above the flip
-band. Secondary candidates: the two logged iter-0061 follow-ups
+**Next session entry point — pick ONE from the iter-0062 follow-up list**
+(`iterations/0062-contract-decidability-gaps.md` § Follow-ups), in this
+recommended order:
+1. **E3 mechanical finish-gate** — the strongest signal: prose moved the
+   cell 4/4→2/4 and the failing reps still emit a false "only two files
+   touched" claim; a mechanical diff-vs-authorized check at CLEANUP is the
+   class-closing shape (BUILD_GATE precedent, iter-0046).
+2. **E2 re-measurement** — corrected-oracle N=4 sonnet baseline on the
+   DB-silent cell, then re-A/B the preserved fallback-contract sentence.
+3. **Codex drift-bait lane** — `codex exec` instrument + AGENTS.md arm
+   files + fresh baseline; measures the parity-only AGENTS.md mirrors and
+   honors codex-first test tiering.
+Secondary candidates unchanged: iter-0061 follow-ups
 (`check-compliance-cell.py:127-131` honest_blocked gap; G2
-allowlist-derivation on a 2nd static-only-judge observation). Frontiers A
-(iter-0060), B (iter-0058 baseline), and C (iter-0061) are CLOSED —
-details in START-HERE. iter-0035 real-project trial (Mission 1 terminal
-gate) stays user-gated. Every non-trivial step runs pair rounds under
-protocol v2 (R0 adversarial + R1 reconciliation, new evidence for extra
-rounds).
+allowlist-derivation on a 2nd static-only-judge observation). iter-0035
+real-project trial (Mission 1 terminal gate) stays user-gated. Every
+non-trivial step runs pair rounds under protocol v2 (R0 adversarial + R1
+reconciliation, new evidence for extra rounds). Engine tiering: probe/test
+arms are codex/sonnet/opus — opus quota was constrained 2026-07-05; prefer
+sonnet-primary designs (A1 precedent) until it recovers.
 
 **Forbidden under this branch** (per iter-0033g closure §G + memory lesson `project_iter0033g_asymptotic_firewall_lesson_2026_05_03.md`):
 - Do NOT open iter-0033h with another firewall architecture attempt. If user later wants to revisit PLAN-pair, the unblock conditions are documented in `config/skills/devlyn:resolve/SKILL.md` PHASE 1 + `iterations/0033g-pair-plan-impl-pmo.md` § "CLOSURE" §H.

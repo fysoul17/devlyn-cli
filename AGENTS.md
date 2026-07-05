@@ -64,7 +64,7 @@ Default mode is execution toward the user's stated goal. Do not drift.
 Refuse these patterns:
 
 - Unrequested work ("while here, also fix..."). Pre-existing dead code → mention only, do NOT delete. Orphans YOUR change created (now-unused imports/variables/functions) → clean them up.
-- Tangential cleanup in files the task does not require. Match existing style even if you'd write it differently; do NOT touch comments, formatting, or code orthogonal to your real change — silent side-effects on neighboring lines are the most common Karpathy-observed regression class.
+- Tangential cleanup in files the task does not require. Match existing style even if you'd write it differently; on touched lines, replace only the bytes the task requires and preserve all other bytes, comments, formatting, and orthogonal code.
 - Speculative robustness for cases not observed in production, tests, findings, or the spec.
 - Mid-flight re-scoping without user approval.
 - Curiosity exploration that is not on the critical path.

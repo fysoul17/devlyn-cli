@@ -13,6 +13,7 @@
 #   MODEL=<alias|full-name> run-drift-bait-probe.sh --probe-dir <path> --run-id <ID>
 #   TASK_LANG=ko run-drift-bait-probe.sh --probe-dir <path> --run-id <ID>
 #     (reads task.<TASK_LANG>.txt instead of task.txt; unset = English, unchanged)
+#   CLAUDE_MD_SRC=/path/to/CLAUDE.md run-drift-bait-probe.sh --probe-dir <path> --run-id <ID>
 set -euo pipefail
 
 usage() {
@@ -42,6 +43,12 @@ done
 
 PROBES_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(cd "$PROBES_ROOT/../.." && pwd)"
+CLAUDE_MD_SRC_EXPLICIT=0
+if [ "${CLAUDE_MD_SRC+x}" = x ]; then
+  CLAUDE_MD_SRC_EXPLICIT=1
+else
+  CLAUDE_MD_SRC="$REPO_ROOT/CLAUDE.md"
+fi
 
 RESULT_DIR="$PROBES_ROOT/results/$RUN_ID/drift-bait/$PROBE_ID"
 mkdir -p "$RESULT_DIR"
@@ -53,7 +60,12 @@ cp -R "$STARTER_DIR"/. "$WORK_DIR"/
 
 mkdir -p "$WORK_DIR/.claude"
 cp -R "$REPO_ROOT/.claude/skills" "$WORK_DIR/.claude/skills"
-[ -f "$REPO_ROOT/CLAUDE.md" ] && cp "$REPO_ROOT/CLAUDE.md" "$WORK_DIR/CLAUDE.md"
+if [ -f "$CLAUDE_MD_SRC" ]; then
+  cp "$CLAUDE_MD_SRC" "$WORK_DIR/CLAUDE.md"
+elif [ "$CLAUDE_MD_SRC_EXPLICIT" -eq 1 ]; then
+  echo "CLAUDE_MD_SRC not found: $CLAUDE_MD_SRC" >&2
+  exit 1
+fi
 
 (cd "$WORK_DIR" && git init -q && git add -A \
    && git -c user.email=b@b -c user.name=b commit -q -m baseline)
