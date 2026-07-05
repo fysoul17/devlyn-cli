@@ -27,7 +27,7 @@ If devlyn-cli saved you time, [give it a star](https://github.com/fysoul17/devly
 npx devlyn-cli
 ```
 
-That's it. The installer opens with a single **agent selector** — pick any combination of **Claude Code**, **Codex CLI**, **oh-my-pi (omp)**, or **Pi**, and devlyn installs into every one you choose in a single pass. Claude Code and any agent already present on your machine are pre-checked, so the common case is just Enter. Skill-capable agents receive the `devlyn:resolve`, `devlyn:ideate`, and `devlyn:design-ui` skills in the directory each one loads from: Codex → `~/.codex/skills/`, while **omp and Pi share `~/.agents/skills/`** — the cross-agent standard both read — so the bundle is written there once, not duplicated per agent. In Codex / omp / Pi, invoke them as skills (`$devlyn:resolve`, `$devlyn:ideate`, `$devlyn:design-ui`); in Claude Code they're slash commands (`/devlyn:resolve`). Run it again anytime to update. (`npx devlyn-cli -y` installs the Claude core non-interactively; `npx devlyn-cli agents <cli>` adds one agent later.)
+That's it. The installer opens with a single **agent selector** — pick any combination of **Claude Code**, **Codex CLI**, **oh-my-pi (omp)**, or **Pi**, and devlyn installs into every one you choose in a single pass. Claude Code and any agent already present on your machine are pre-checked, so the common case is just Enter. Skill-capable agents receive the `devlyn:resolve`, `devlyn:ideate`, and `devlyn:design-ui` skills — plus the `devlyn:engines` and `devlyn:queue` utilities — in the directory each one loads from: Codex → `~/.codex/skills/`, while **omp and Pi share `~/.agents/skills/`** — the cross-agent standard both read — so the bundle is written there once, not duplicated per agent. In Codex / omp / Pi, invoke them as skills (`$devlyn:resolve`, `$devlyn:ideate`, `$devlyn:design-ui`); in Claude Code they're slash commands (`/devlyn:resolve`). Run it again anytime to update. (`npx devlyn-cli -y` installs the Claude core non-interactively; `npx devlyn-cli agents <cli>` adds one agent later.)
 
 ---
 
@@ -97,9 +97,21 @@ golden fixture, risk-probe, or pair-evidence candidate must also include
 difference from rejected or solo-saturated controls such as `S2`-`S6`; without
 that, `/devlyn:resolve` stops with `BLOCKED:solo-ceiling-avoidance-required`.
 
-### Engine selection — Claude implementation, conditional pair VERIFY
+### Queue multiple intents for unattended drain — `/devlyn:queue`
+
+Stack tasks to run back-to-back without supervision. `/devlyn:queue add "<intent>"` appends to `docs/specs/queue.md` (an ordered checklist); `/devlyn:queue drain` runs each item serially — spec it, run the resolve outer loop, mark `[x]` done or `[F]` blocked with a reason, then move on. A blocked item never halts the queue, and unattended runs only take scope-narrowing, reversible defaults — anything user-visible or ambiguous is marked `[F] needs-review` for you to adjudicate afterward. `/devlyn:queue` with no args shows status.
+
+### Engine roles — auto-detected, pinnable with `/devlyn:engines`
+
+devlyn separates three engine roles:
+
+- **Orchestrator** — the CLI you opened (Claude Code, Codex, or omp) that drives the conversation and loop. The contract is symmetric (`CLAUDE.md` ↔ `AGENTS.md`), so the same phase-gated pipeline runs whichever you launch; the file artifacts (spec, queue, state) carry over if you switch.
+- **Executor** — PLAN / IMPLEMENT / CLEANUP plus the primary VERIFY judge. Defaults to `claude`.
+- **Pair judge** — the first available *other* engine, for conditional VERIFY pair-JUDGE and risk probes.
 
 `--engine claude` (default) is the canonical implementation surface for PLAN, IMPLEMENT, BUILD_GATE, and CLEANUP. VERIFY/JUDGE conditionally runs pair mode for verify-only runs, high-risk specs, risk probes, mechanical warnings, coverage gaps, or explicit `--pair-verify`.
+
+Pin roles durably with `/devlyn:engines` (no args shows the role table + detected engines; `executor <name>` / `pair <name>,...` / `clear` manage the pins, stored machine-local in `.devlyn/engines.json`). Pins fail closed: an unavailable pinned engine stops with `BLOCKED:<engine>-unavailable`, and a name with no `_shared/adapters/<name>.md` adapter stops with `BLOCKED:invalid-engine-config`. New engines plug in by shipping an adapter file — no skill changes.
 
 `--engine codex` routes IMPLEMENT to Codex — research-only at HEAD: iter-0020 closed Codex BUILD/IMPLEMENT below the quality floor on the 9-fixture suite (L2 vs L1 = −3.6, 3/8 gated fixtures cleared the +5 margin floor — release-readiness FAIL); iter-0033g + iter-0034 closed PLAN-pair as research-only with explicit unblock conditions (container/sandbox infra OR production telemetry capturing positive evidence of subagent introspection). Install the Codex CLI (https://platform.openai.com/docs/codex) and pass the flag explicitly to opt in:
 
