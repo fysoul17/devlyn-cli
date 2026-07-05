@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — project goal + 3-layer composition contract + pair-mode policy (round-3 redesign 2026-05-03)
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active, hard NO list
-5. The active-iter files (currently `iterations/0060-engine-symmetric-pair.md` STUB + `iterations/0058-violation-rate-axis.md` PRE-REGISTERED; latest shipped context `iterations/0059-north-star-audit.md`; trajectory since 2026-07-03 in `DECISIONS.md` 0037-0059 + memory index `MEMORY.md`)
+5. The active-iter files (currently none active — latest shipped `iterations/0061-f6-agents-binding-entry.md` CLOSED-PASS; trajectory since 2026-07-03 in `DECISIONS.md` 0037-0061 + memory index `MEMORY.md`)
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (most recent entries first to read)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction.
@@ -43,7 +43,7 @@ Next focused run is optional broadening only: pick a visible-contract fixture wi
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-05 session (Frontiers A+B CLOSED)
+## 🚦 START-HERE — state after 2026-07-05 sessions (Frontiers A+B+C CLOSED)
 
 The 2026-05-04 solo+docs freeze is LIFTED: user failure report 2026-07-03
 (iter-0037) and the user audit+evolution mandate 2026-07-04 re-opened skill,
@@ -75,21 +75,22 @@ the working instrument.
    Gate wired in `benchmark/probes/README.md` § Violation-rate gate; every
    future A/B claim is valid only above the cell's flip band. Runner:
    `run-violation-matrix.sh`; aggregate: `violation-rate-matrix.py`.
-3. **Frontier C — F6 structural closure — mechanism ESTABLISHED, fix not
-   designed.** 2026-07-05 recon (evidence: `iter0060-g2-pair` transcript):
-   codex-cli 0.141 has NO binding skill-invocation semantics — the
-   orchestrator model READS `~/.agents/skills/<name>/SKILL.md` via shell
-   when it chooses to; skill content is advisory. F6's structural
-   variables: advisory discovery + invocation-framing strength (compliance
-   cells pass because their prompt is a strong framing; F6 repro used
-   ordinary invocation; test-repo has NO AGENTS.md). Binding-entry
-   candidate: AGENTS.md — codex loads it unconditionally and devlyn-cli
-   already installs it into real projects. NEXT: pre-register an A/B —
-   minimal repo, ORDINARY (unframed) invocation, ± devlyn AGENTS.md — to
-   test whether AGENTS.md presence alone closes the F6 class. Prose-only
-   reinforcement remains pre-falsified (iter-0033g). Related open
-   candidate: install-stamping rewrites the sentinel guard's comparison
-   literal (latent false-BLOCKED).
+3. **Frontier C — F6 structural closure — ✅ CLOSED-PASS 2026-07-05
+   (iter-0061)**. AGENTS.md IS the binding entry: A/B (minimal repo,
+   ORDINARY unframed invocation, N=4/arm interleaved) → arm A (no
+   AGENTS.md) F6 4/4; arm B (+packaged AGENTS.md) PIPELINE 4/4 —
+   first-ever ordinary-invocation codex pipeline passes (all 6 phases
+   PASS, `engine: codex`, compliance PASS, artifacts
+   `benchmark/probes/results/iter0061-*`). Piece 0 fixed the
+   install-stamping sentinel false-BLOCKED (commit `1039f6b` — assignment
+   default stamped, guard literal intact, both install dirs verified).
+   Docs narrowed per the pre-agreed ship rule: "experimental" → measured
+   condition (CLAUDE.md engine-roles row + AGENTS.md:39; the imperative
+   phase-machinery sentence preserved verbatim). Follow-ups logged, NOT
+   opened: (a) `check-compliance-cell.py:127-131` diff_empty vacuous on
+   the honest_blocked branch; (b) G2 judge-allowlist static-only judging
+   (needs a 2nd observation — arm B spawned no pair judge, all
+   `pair_judge: null`).
 
 **Mission 2 (parallel-fleet substrate)**: still BLOCKED (NORTH-STAR test #15
 evidence accumulating via real usage). Hard NO list unchanged.
@@ -412,20 +413,27 @@ probes / token gauge (0042-0047), language-neutral machinery (0048-0049),
 engine doctor (0050), local-backend adapter shipped→measured→deleted
 (0051-0057), North-Star preamble + engine-status honesty + pair-protocol v2
 (0059), violation-rate evolution gate + N=4 baseline (0058), engine-symmetric
-pair-judge invocation with first reverse-direction fire (0060). Mission 1
-still NOT formally CLOSED (NORTH-STAR test #15 evidence accumulating via
-real usage). Pair-evidence gates unchanged: SWE-bench n11 frozen-VERIFY PASS
+pair-judge invocation with first reverse-direction fire (0060), F6 structural
+closure — AGENTS.md binding entry proven by ordinary-invocation A/B 4/4-vs-4/4,
+stamping sentinel fix, docs narrowed to the measured condition (0061).
+Mission 1 still NOT formally CLOSED (NORTH-STAR test #15 evidence
+accumulating via real usage). Pair-evidence gates unchanged: SWE-bench n11 frozen-VERIFY PASS
 + F16/F23/F25 risk-probe `bare<solo<pair` aggregate PASS (details:
 NORTH-STAR.md § Pair-mode policy + `iterations/0036-headroom-candidates.md`).
 
-**Next session entry point: Frontier C in START-HERE** (F6 structural
-closure — mechanism established 2026-07-05, run the pre-registerable
-AGENTS.md ± A/B with an ORDINARY invocation on a minimal repo). Secondary:
-the G2 allowlist-derivation refinement candidate if a second static-only
-judge case is observed. Frontiers A (iter-0060) and B (iter-0058 baseline)
-are CLOSED — details in START-HERE. Every non-trivial step runs pair rounds
-under protocol v2 (R0 adversarial + R1 reconciliation, new evidence for
-extra rounds).
+**Next session entry point: iter-0058's live discriminating surface** —
+the three opus stable-dirty violation cells (B4 / DB-silent-catch /
+DB-tempting-state-file, 4/4 stable-dirty in the N=4 baseline,
+`benchmark/probes/README.md` § Violation-rate gate). Pre-register ONE
+mechanism change targeting that violation class and A/B it above the flip
+band. Secondary candidates: the two logged iter-0061 follow-ups
+(`check-compliance-cell.py:127-131` honest_blocked gap; G2
+allowlist-derivation on a 2nd static-only-judge observation). Frontiers A
+(iter-0060), B (iter-0058 baseline), and C (iter-0061) are CLOSED —
+details in START-HERE. iter-0035 real-project trial (Mission 1 terminal
+gate) stays user-gated. Every non-trivial step runs pair rounds under
+protocol v2 (R0 adversarial + R1 reconciliation, new evidence for extra
+rounds).
 
 **Forbidden under this branch** (per iter-0033g closure §G + memory lesson `project_iter0033g_asymptotic_firewall_lesson_2026_05_03.md`):
 - Do NOT open iter-0033h with another firewall architecture attempt. If user later wants to revisit PLAN-pair, the unblock conditions are documented in `config/skills/devlyn:resolve/SKILL.md` PHASE 1 + `iterations/0033g-pair-plan-impl-pmo.md` § "CLOSURE" §H.

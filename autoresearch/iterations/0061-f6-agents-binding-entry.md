@@ -1,6 +1,6 @@
 # iter-0061 — F6 structural closure: AGENTS.md as the binding entry for Codex-CLI orchestration (+ stamping sentinel fix)
 
-status: PRE-REGISTERED 2026-07-05 (predictions locked BEFORE any A/B run)
+status: CLOSED-PASS / SHIPPED 2026-07-05 (pre-registered; predictions locked before any run; matrix 8/8 complete; ship rule fired)
 
 **Trigger**: HANDOFF Frontier C (2026-07-05). F6 mechanism established via
 `iter0060-g2-pair` recon: codex-cli 0.141 has NO binding skill-invocation
@@ -238,11 +238,75 @@ artifacts per rep (preserved under
   side while implementing edit 5 and folded into the design: the bare
   sentinel string appears in F6 transcripts as SKILL.md file-dump content,
   so INFRA matches only the expanded-path form.
-- **R1 reconciliation**: (after raw results; below)
+- **R1 reconciliation** (Codex GPT-5.5 xhigh, read-only, own file:line
+  citations; log `/tmp/codex-iter0061/r1-response.log`, 415s, 276k tokens):
+  verdict **SHIP-WITH-EDITS**. Independently verified on raw artifacts:
+  pre-registered classifier precedence matches the runner implementation
+  (`iter0061-runner.sh:106`); outcomes A = F6 4/4, B = PIPELINE 4/4; zero
+  INFRA / HONEST-STOP / UNCLASSIFIED; every B rep's evidence path is
+  `sub_verdicts_with_artifacts`, NOT the honest_blocked checker gap.
+  Adjudications: (a) first-draft narrowed wording overclaimed beyond the
+  measured surface ("runs it too when AGENTS.md is present" reads general;
+  measured = one trivial-add shape, minimal repo, this machine, N=4) —
+  Codex's exact tightened wording adopted in both files, with one named
+  delta on my side: "silently" retained in the AGENTS.md clause (Codex's
+  own CLAUDE.md text kept it, its AGENTS.md text dropped it; silent
+  degradation is F6's defining property). (b) Measured-vs-shipped
+  AGENTS.md delta: recorded sufficiently, NOT a re-run trigger — the
+  imperative sentence is byte-identical. (c) Next-frontier choice (opus
+  stable-dirty violation cells) endorsed under named criterion
+  "repeat-stable Mission-1 discriminator above flip-band". (d) Closure
+  sections consistent with raw evidence ("all 6 phases PASS" valid under
+  the checker's phase order incl. final_report). Secondary finding fixed:
+  DECISIONS `0061` entry appended so the HANDOFF `0037-0061` pointer names
+  an existing entry.
+
+## Ship record (2026-07-05)
+
+- **Docs narrowing** (the pre-agreed ship, P1+P2a at 4/4): CLAUDE.md
+  engine-roles orchestrator row + AGENTS.md:39 status clause — the
+  "Codex CLI is experimental as orchestrator" sentence REPLACED by the
+  measured condition: with the devlyn AGENTS.md present, ordinary
+  invocation runs the phase-gated pipeline (4/4, iter-0061); without it,
+  codex skips on trivial tasks in minimal repos (iter-0040 F6, 4/4).
+  Supersession, not addition — net doc size flat.
+- **Measured-vs-shipped delta (bounded, recorded)**: arm B measured the
+  AGENTS.md as committed at `1039f6b` (status clause still carrying the
+  2026-07-04 "experimental" wording). The shipped AGENTS.md differs ONLY
+  in that descriptive status clause; the imperative F6-targeting sentence
+  ("the phase machinery is mandatory regardless of task size… do not
+  silently degrade") — the plausibly load-bearing instruction — is
+  byte-identical. Any future F6 recurrence re-opens with the shipped file
+  as the new arm-B artifact. Provenance caveat (R1): arm-B artifacts
+  preserve outcomes and `.devlyn` state but not the copied AGENTS.md
+  bytes — "measured at `1039f6b`" is inferred from runner shape +
+  worktree chronology, not a checksum artifact; future A/B runners should
+  snapshot the treatment file verbatim.
+- **Follow-up candidates logged, NOT opened** (goal-lock):
+  (a) `check-compliance-cell.py:127-131` honest_blocked branch tests a
+  `workdir/diff.patch` no runner writes — `diff_empty` vacuous there
+  (classifier enforced it against the real artifact this iter);
+  (b) iter-0060 G2 judge Bash-probe allowlist → static-only judging
+  (needs a 2nd observation; arm B produced none — `pair_judge: null` in
+  all 4 reps, R3 predicted).
 
 ## Principles check
 
-(to be completed at closure; pre-flight 0 answered above)
+- **No workaround**: closed at the violated invariant — codex-cli skill
+  discovery is advisory, so the fix rides the one file codex loads
+  unconditionally (AGENTS.md), not stronger prompt framing
+  (prose-in-SKILL.md pre-falsified, iter-0033g). Piece 0 fixed the
+  stamping root cause (assignment-only replacement), not the guard.
+- **No guesswork**: P1-P4 locked before the first run; classifier
+  mechanical with exact precedence; falsifiers pre-stated; none fired.
+- **No overengineering / Subtractive-first**: ship = two sentence
+  replacements (supersession) + closure docs; no new flag, branch, or
+  skill surface; runner/classifier stayed under gitignored results.
+- **Goal-locked**: both discovered defect candidates (checker gap, G2
+  allowlist) logged as follow-ups, not fixed mid-iter.
+- **Evidence over claim**: every cell cites
+  `benchmark/probes/results/iter0061-<arm><n>/outcome.json` + transcript;
+  8/8 re-verified at closure time in this session.
 
 ## Results
 
