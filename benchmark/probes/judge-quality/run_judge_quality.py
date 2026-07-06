@@ -6,13 +6,17 @@ Runs every case in cases/*.json through both judges (ollama/gemma3:4b via
 the documented adapter contract, sonnet via `claude -p`), REPS times each,
 and scores mechanically per README.md's rules. No LLM meta-judging.
 
-Usage: python3 run_judge_quality.py [--reps N] [--judges ollama,sonnet]
+Usage: python3 run_judge_quality.py [--reps N] [--judges ollama,sonnet,codex]
 """
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
+import os
 import re
+import shlex
+import signal
 import subprocess
 import sys
 import urllib.request
@@ -144,6 +148,125 @@ def call_sonnet(prompt, scratch_dir):
     return parsed, None
 
 
+def terminate_process_group(pid):
+    try:
+        os.killpg(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    except PermissionError:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            return
+
+
+def call_codex(prompt, scratch_dir, codex_command, stdout_path, stderr_path):
+    cmd = [
+        *codex_command,
+        "exec",
+        "--ignore-user-config",
+        "--ignore-rules",
+        "--ephemeral",
+        "--skip-git-repo-check",
+        "--disable", "codex_hooks",
+        "--disable", "hooks",
+        "-C", str(scratch_dir),
+        "-s", "read-only",
+        "-c", "model_reasoning_effort=xhigh",
+        prompt,
+    ]
+    try:
+        with stdout_path.open("w", encoding="utf-8") as stdout, stderr_path.open("w", encoding="utf-8") as stderr:
+            proc = subprocess.Popen(
+                cmd,
+                cwd=scratch_dir,
+                stdin=subprocess.DEVNULL,
+                stdout=stdout,
+                stderr=stderr,
+                text=True,
+                start_new_session=True,
+            )
+            try:
+                returncode = proc.wait(timeout=300)
+            except subprocess.TimeoutExpired:
+                terminate_process_group(proc.pid)
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    try:
+                        os.killpg(proc.pid, signal.SIGKILL)
+                    except OSError:
+                        pass
+                    proc.wait()
+                return None, "transport_error: timeout"
+    except FileNotFoundError:
+        return None, f"transport_error: command_not_found {codex_command[0]}"
+    if returncode != 0:
+        stderr_text = stderr_path.read_text(encoding="utf-8", errors="replace") if stderr_path.is_file() else ""
+        return None, f"transport_error: exit={returncode} stderr={stderr_text[:300]!r}"
+    stdout_text = stdout_path.read_text(encoding="utf-8", errors="replace")
+    parsed = extract_json_object(stdout_text)
+    if parsed is None:
+        return None, f"parse_error: raw={stdout_text[:300]!r}"
+    return parsed, None
+
+
+def call_judge_with_retry(judge, prompt, scratch_dir, *, codex_command, judge_dir, artifact_stem):
+    attempts = []
+    parsed = None
+    err = None
+    for attempt in (1, 2):
+        if judge == "ollama":
+            parsed, err = call_ollama(prompt)
+        elif judge == "sonnet":
+            parsed, err = call_sonnet(prompt, scratch_dir)
+        elif judge == "codex":
+            stdout_path = judge_dir / f"{artifact_stem}-attempt{attempt}.stdout.txt"
+            stderr_path = judge_dir / f"{artifact_stem}-attempt{attempt}.stderr.txt"
+            parsed, err = call_codex(prompt, scratch_dir, codex_command, stdout_path, stderr_path)
+        else:
+            raise ValueError(f"unknown judge: {judge}")
+        attempts.append({"attempt": attempt, "error": err})
+        if parsed is not None or not (err or "").startswith("parse_error:"):
+            break
+    return parsed, err, attempts
+
+
+def probe_version(command, args):
+    try:
+        result = subprocess.run(
+            [*command, *args],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    text = (result.stdout or result.stderr or "").strip()
+    return text.splitlines()[0] if text else None
+
+
+def write_identity(judge, judge_dir, run_id, codex_command):
+    if judge == "ollama":
+        cli_version = probe_version(["ollama"], ["--version"])
+        model = OLLAMA_MODEL
+    elif judge == "sonnet":
+        cli_version = probe_version(["claude"], ["--version"])
+        model = "sonnet"
+    elif judge == "codex":
+        cli_version = probe_version(codex_command, ["--version"])
+        model = os.environ.get("CODEX_MODEL") or os.environ.get("OPENAI_MODEL")
+    else:
+        raise ValueError(f"unknown judge: {judge}")
+    identity = {
+        "cli_version": cli_version,
+        "model_id_or_alias": model,
+        "recorded_at_run_id": run_id,
+    }
+    (judge_dir / "identity.json").write_text(json.dumps(identity, indent=2) + "\n", encoding="utf-8")
+
+
 def matches_file(finding_file, ground_truth_file):
     a = finding_file.strip().lstrip("./")
     b = ground_truth_file.strip().lstrip("./")
@@ -171,27 +294,34 @@ def score_response(case, parsed):
     return {"hit": False, "false_positive": None, "matched_findings": []}
 
 
-def run(reps, judges):
+def run(reps, judges, *, run_id, results_dir, codex_command):
     cases = load_cases()
     scratch_dir = Path("/private/tmp/claude-501-judge-quality-scratch")
     scratch_dir.mkdir(parents=True, exist_ok=True)
+    codex_scratch_dir = Path("/private/tmp/codex-501-judge-quality-scratch")
+    codex_scratch_dir.mkdir(parents=True, exist_ok=True)
 
     all_results = {}
     for judge in judges:
-        judge_dir = RESULTS_DIR / judge
+        judge_dir = results_dir / judge
         judge_dir.mkdir(parents=True, exist_ok=True)
+        write_identity(judge, judge_dir, run_id, codex_command)
         judge_results = []
         for case in cases:
             prompt = build_prompt(case)
             for rep in range(1, reps + 1):
-                if judge == "ollama":
-                    parsed, err = call_ollama(prompt)
-                elif judge == "sonnet":
-                    parsed, err = call_sonnet(prompt, scratch_dir)
-                else:
-                    raise ValueError(f"unknown judge: {judge}")
+                parsed, err, attempts = call_judge_with_retry(
+                    judge,
+                    prompt,
+                    codex_scratch_dir if judge == "codex" else scratch_dir,
+                    codex_command=codex_command,
+                    judge_dir=judge_dir,
+                    artifact_stem=f"{case['id']}-rep{rep}",
+                )
 
                 record = {"case": case["id"], "rep": rep, "error": err}
+                if len(attempts) > 1 or err is not None:
+                    record["attempts"] = attempts
                 if parsed is not None:
                     record["parsed"] = parsed
                     record.update(score_response(case, parsed))
@@ -209,7 +339,7 @@ def run(reps, judges):
                       file=sys.stderr)
         all_results[judge] = judge_results
 
-    summary_path = RESULTS_DIR / "summary.json"
+    summary_path = results_dir / "summary.json"
     summary_path.write_text(json.dumps(all_results, indent=2), encoding="utf-8")
     print(f"wrote {summary_path}", file=sys.stderr)
     return all_results
@@ -219,5 +349,25 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--reps", type=int, default=2)
     parser.add_argument("--judges", default="ollama,sonnet")
+    parser.add_argument("--run-id", default=f"manual-{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}")
+    parser.add_argument("--results-dir", type=Path, default=RESULTS_DIR)
+    parser.add_argument(
+        "--codex-command",
+        default=os.environ.get("JUDGE_QUALITY_CODEX_CMD", "codex"),
+        help="command used for codex judge route; shell-split, then 'exec ...' is appended",
+    )
+    parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
-    run(args.reps, args.judges.split(","))
+    judges = [judge for judge in args.judges.split(",") if judge]
+    codex_command = shlex.split(args.codex_command)
+    if not codex_command:
+        parser.error("--codex-command must not be empty")
+    if args.dry_run:
+        print(json.dumps({
+            "run_id": args.run_id,
+            "judges": judges,
+            "results_dir": str(args.results_dir),
+            "codex_command": codex_command,
+        }, indent=2))
+        raise SystemExit(0)
+    run(args.reps, judges, run_id=args.run_id, results_dir=args.results_dir, codex_command=codex_command)
