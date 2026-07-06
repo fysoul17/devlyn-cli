@@ -5,7 +5,7 @@ Usage:
     python3 state-phase-write.py --devlyn-dir .devlyn --phase implement spawn \
         --round 1 --triggered-by verify [--pre-sha <sha>] [--engine claude] [--model <id>]
     python3 state-phase-write.py --devlyn-dir .devlyn --phase implement complete \
-        --verdict PASS [--findings-file <path>] [--log-file <path>] [--engine claude] [--model <id>]
+        --verdict PASS [--post-sha <sha>] [--findings-file <path>] [--log-file <path>] [--engine claude] [--model <id>]
 
 references/state-schema.md#write-protocol is the contract this implements.
 iter-0042 (autoresearch/iterations/0042-compliance-drift-probes.md) found a
@@ -121,7 +121,7 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
 
 
 def do_complete(state: dict, phase: str, verdict: str | None,
-                 findings_file: str | None, log_file: str | None,
+                 post_sha: str | None, findings_file: str | None, log_file: str | None,
                  engine: str | None, model: str | None) -> None:
     phases = state.setdefault("phases", {})
     entry = phases.get(phase)
@@ -156,6 +156,8 @@ def do_complete(state: dict, phase: str, verdict: str | None,
         entry["engine"] = engine
     if model is not None:
         entry["model"] = model
+    if post_sha is not None:
+        entry["post_sha"] = post_sha
 
 
 def self_test() -> int:
@@ -174,7 +176,7 @@ def self_test() -> int:
 
         time.sleep(0.05)
         state = read_state(state_path)
-        do_complete(state, "implement", "NEEDS_WORK", None, None, None, "test-model-id")
+        do_complete(state, "implement", "NEEDS_WORK", None, None, None, None, "test-model-id")
         write_state(state_path, state)
         entry = read_state(state_path)["phases"]["implement"]
         assert entry["completed_at"] is not None
@@ -199,7 +201,7 @@ def self_test() -> int:
 
         time.sleep(0.05)
         state = read_state(state_path)
-        do_complete(state, "implement", "PASS", ".devlyn/x.jsonl", None, None, None)
+        do_complete(state, "implement", "PASS", None, ".devlyn/x.jsonl", None, None, None)
         write_state(state_path, state)
         final = read_state(state_path)["phases"]["implement"]
         assert final["verdict"] == "PASS"
@@ -211,7 +213,7 @@ def self_test() -> int:
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
         try:
-            do_complete(state, "build_gate", "PASS", None, None, None, None)
+            do_complete(state, "build_gate", "PASS", None, None, None, None, None)
         except SystemExit as e:
             assert "never spawned" in str(e)
         else:
@@ -226,7 +228,7 @@ def self_test() -> int:
         state["phases"]["verify"]["sub_verdicts"] = {"mechanical": "PASS", "judge": "PASS"}
         write_state(state_path, state)
         state = read_state(state_path)
-        do_complete(state, "verify", None, None, None, None, None)
+        do_complete(state, "verify", None, None, None, None, None, None)
         write_state(state_path, state)
         verify_entry = read_state(state_path)["phases"]["verify"]
         assert verify_entry["verdict"] == "PASS", "complete() must preserve pre-set verdict when omitted"
@@ -237,7 +239,7 @@ def self_test() -> int:
         # owned exclusively by verify-merge-findings.py --write-state.
         state = read_state(state_path)
         try:
-            do_complete(state, "verify", "PASS", None, None, None, None)
+            do_complete(state, "verify", "PASS", None, None, None, None, None)
         except SystemExit as e:
             assert "owned by verify-merge-findings.py" in str(e)
         else:
@@ -252,7 +254,7 @@ def self_test() -> int:
         write_state(state_path, state)
         state = read_state(state_path)
         try:
-            do_complete(state, "plan", None, None, None, None, None)
+            do_complete(state, "plan", None, None, None, None, None, None)
         except SystemExit as e:
             assert "is required" in str(e)
         else:
@@ -266,7 +268,7 @@ def self_test() -> int:
         write_state(state_path, state)
         state = read_state(state_path)
         try:
-            do_complete(state, "verify", None, None, None, None, None)
+            do_complete(state, "verify", None, None, None, None, None, None)
         except SystemExit as e:
             assert "still null" in str(e)
         else:
@@ -311,7 +313,7 @@ def self_test() -> int:
         }
         write_state(state_path, state)
         state = read_state(state_path)
-        do_complete(state, "implement", "PASS", None, None, None, None)
+        do_complete(state, "implement", "PASS", None, None, None, None, None)
         write_state(state_path, state)
         state = read_state(state_path)
         do_spawn(state, "implement", 1, "verify", None, None, None)
@@ -319,6 +321,19 @@ def self_test() -> int:
         respawned_exec = read_state(state_path)["phases"]["implement"]
         assert respawned_exec["exec"]["current"] == 3, "spawn must not clobber unowned fields like exec"
         assert respawned_exec["verdict"] is None, "respawn still nulls owned fields even with exec present"
+
+        # complete() records a post-state commit when a bounded phase needs an
+        # exact diff window for later mechanical checks.
+        write_state(state_path, {"phases": {}})
+        state = read_state(state_path)
+        do_spawn(state, "cleanup", 0, None, "pre-sha", None, None)
+        write_state(state_path, state)
+        state = read_state(state_path)
+        do_complete(state, "cleanup", "PASS", "post-sha", None, None, None, None)
+        write_state(state_path, state)
+        cleanup_entry = read_state(state_path)["phases"]["cleanup"]
+        assert cleanup_entry["pre_sha"] == "pre-sha"
+        assert cleanup_entry["post_sha"] == "post-sha"
 
     return 0
 
@@ -339,6 +354,7 @@ def main() -> int:
 
     complete_p = sub.add_parser("complete")
     complete_p.add_argument("--verdict", choices=sorted(VALID_VERDICTS), default=None)
+    complete_p.add_argument("--post-sha", default=None)
     complete_p.add_argument("--findings-file", default=None)
     complete_p.add_argument("--log-file", default=None)
     complete_p.add_argument("--engine", default=None)
@@ -363,7 +379,7 @@ def main() -> int:
             clear_verify_round_artifacts(devlyn)
         do_spawn(state, args.phase, args.round, args.triggered_by, args.pre_sha, args.engine, args.model)
     else:
-        do_complete(state, args.phase, args.verdict, args.findings_file, args.log_file, args.engine, args.model)
+        do_complete(state, args.phase, args.verdict, args.post_sha, args.findings_file, args.log_file, args.engine, args.model)
 
     write_state(state_path, state)
     sys.stdout.write(f"ok: phases.{args.phase}.{args.event}\n")

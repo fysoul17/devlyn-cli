@@ -75,6 +75,7 @@ Each entry under `phases.<name>` (for `plan`, `probe_derive`, `implement`, `buil
   "engine": "claude",
   "model": "<exact model id that ran this phase>",
   "pre_sha": null,
+  "post_sha": null,
   "artifacts": { "findings_file": null, "log_file": null },
   "sub_verdicts": null
 }
@@ -83,6 +84,7 @@ Each entry under `phases.<name>` (for `plan`, `probe_derive`, `implement`, `buil
 - `verdict` — `"PASS" | "PASS_WITH_ISSUES" | "FAIL" | "NEEDS_WORK" | "BLOCKED"`. PHASE 6 (FINAL_REPORT) writes its own verdict per the terminal-verdict precedence.
 - `triggered_by` — null on first run; one of `"build_gate" | "verify"` when the phase is a fix-loop respawn.
 - `pre_sha` — captured by orchestrator before CLEANUP and (if needed) other allowlist-enforced phases. Used to validate the post-spawn diff.
+- `post_sha` — captured on CLEANUP complete when that phase ran; finish-gate subtracts `pre_sha..post_sha` as the cleanup window.
 - `sub_verdicts` — only populated for VERIFY: `{ "mechanical": "PASS|FAIL", "judge": "PASS|...", "pair_judge": "PASS|..." | null }`. Values are normalized by `verify-merge-findings.py`; model prose verdicts cannot upgrade or downgrade the deterministic findings-derived verdict.
 - `merged` — only populated for VERIFY after `verify-merge-findings.py --write-state`: `{ "verdict": "...", "findings_file": ".devlyn/verify-merged.findings.jsonl", "summary_file": ".devlyn/verify-merge.summary.json" }`.
 - `pair_trigger` — only populated for VERIFY; same shape as top-level `verify.pair_trigger` when the phase stores it locally.
@@ -93,16 +95,16 @@ Each entry under `phases.<name>` (for `plan`, `probe_derive`, `implement`, `buil
 Phase lifecycle (`started_at`/`completed_at`/`duration_ms`/`round`/`triggered_by`/`verdict`) is written by a deterministic script, never hand-edited JSON — a hand-edited fix-loop respawn left `started_at` stale in iter-0042 (`autoresearch/iterations/0042-compliance-drift-probes.md`), corrupting cross-phase ordering because `completed_at`/`round`/`triggered_by` advanced to the new round while `started_at` didn't. Phase workers report their verdict and artifact paths in their reply; they never edit `pipeline.state.json` themselves.
 
 1. **Spawn** (before every phase dispatch, including a fix-loop respawn — one call per outer phase-gated IMPLEMENT run, not per inner sub-phase): `python3 "$DEVLYN_SHARED_DIR/state-phase-write.py" --devlyn-dir .devlyn --phase <name> spawn --round <N> [--triggered-by build_gate|verify] [--pre-sha <sha>] [--engine <e>] [--model <m>]`. Resets `started_at` to now and nulls `completed_at`/`duration_ms`/`verdict`/`artifacts`/`sub_verdicts` — a respawn can never inherit a prior round's stale timing or verdict. A VERIFY spawn also deletes the prior round's on-disk VERIFY artifacts (`verify*.jsonl`, `verify-merge.summary.json`, `*-judge.*`) so a stale pair findings file can never read as current-round spawn evidence in `verify-merge-findings.py`. Fields the script doesn't own (e.g. `phases.implement.exec`, the phase-gated progress tracker) are left untouched.
-2. **Complete** (after the orchestrator reads the phase's reply and determines the verdict): `python3 "$DEVLYN_SHARED_DIR/state-phase-write.py" --devlyn-dir .devlyn --phase <name> complete --verdict <V> [--findings-file <path>] [--log-file <path>]`. `duration_ms` is derived from the phase's own recorded `started_at` — it cannot drift from `completed_at`. `--verdict` is required for every phase except VERIFY: `verify-merge-findings.py --write-state` is the sole writer of `phases.verify.verdict`, so `complete verify` is always called without `--verdict` (an explicit one is rejected) and preserves what's already on disk.
-3. **Before archive** (PHASE 6 step 3): `phases.final_report.verdict` must be non-null. Archive prune skips runs whose final_report verdict is null (treated as in-flight).
+2. **Complete** (after the orchestrator reads the phase's reply and determines the verdict): `python3 "$DEVLYN_SHARED_DIR/state-phase-write.py" --devlyn-dir .devlyn --phase <name> complete --verdict <V> [--post-sha <sha>] [--findings-file <path>] [--log-file <path>]`. `duration_ms` is derived from the phase's own recorded `started_at` — it cannot drift from `completed_at`. `--verdict` is required for every phase except VERIFY: `verify-merge-findings.py --write-state` is the sole writer of `phases.verify.verdict`, so `complete verify` is always called without `--verdict` (an explicit one is rejected) and preserves what's already on disk.
+3. **Before archive** (PHASE 6 step 5): `phases.final_report.verdict` must be non-null. Archive prune skips runs whose final_report verdict is null (treated as in-flight).
 
 ## Terminal verdict (PHASE 6)
 
 Precedence:
 
-1. `phases.<any>.verdict == "BLOCKED"` → terminal `BLOCKED:<reason>`.
+1. finish-gate exit 1 or 2 → `BLOCKED:finish-gate-unclean`; `phases.<any>.verdict == "BLOCKED"` → terminal `BLOCKED:<reason>`.
 2. `phases.verify.verdict == "NEEDS_WORK"` after fix-loop exhaustion → terminal `NEEDS_WORK`.
-3. `phases.verify.verdict == "PASS_WITH_ISSUES"` → terminal `PASS_WITH_ISSUES`.
+3. `phases.verify.verdict == "PASS_WITH_ISSUES"` or finish-gate findings file present → terminal `PASS_WITH_ISSUES`.
 4. `phases.verify.verdict == "PASS"` → terminal `PASS`.
 5. Verify-only mode: terminal = `phases.verify.verdict` directly (PHASE 1-4 are skipped).
 

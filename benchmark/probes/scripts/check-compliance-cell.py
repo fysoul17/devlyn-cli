@@ -26,6 +26,9 @@ Round 2 addendum):
                               transcript contains >=1 tool_execution_start
                               event with toolName "task".
 4. archive_ran         — .devlyn/runs/<run_id>/pipeline.state.json exists.
+5. finish_gate_ran     — completed non-verify-only runs archived
+                         finish-gate.summary.json; verify-only and
+                         blocked-mid-run shapes are n/a.
 
 No LLM judge anywhere in this script — every check is a file/field
 inspection.
@@ -35,6 +38,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 DECLARED_PHASE_ORDER = [
@@ -175,6 +179,22 @@ def check_archive_ran(archive_dir: Path | None) -> dict:
     return {"pass": (archive_dir / "pipeline.state.json").is_file()}
 
 
+def check_finish_gate_ran(state: dict, archive_dir: Path | None) -> dict:
+    if state.get("mode") == "verify-only":
+        return {"pass": True, "method": "n/a", "reason": "verify-only"}
+    final_report = (state.get("phases") or {}).get("final_report") or {}
+    if final_report.get("verdict") is None:
+        return {"pass": True, "method": "n/a", "reason": "blocked-mid-run"}
+    if archive_dir is None:
+        return {"pass": False, "method": "archived_summary_missing"}
+    summary_path = archive_dir / "finish-gate.summary.json"
+    return {
+        "pass": summary_path.is_file(),
+        "method": "archived_summary",
+        "path": str(summary_path),
+    }
+
+
 def _phase_entry(started, completed, round_=0, triggered_by=None):
     return {
         "started_at": started, "completed_at": completed, "duration_ms": 1000,
@@ -233,6 +253,26 @@ def self_test() -> int:
     assert result["pass"] is True, result
     assert "skipped_edges" not in result, result
 
+    completed_state = {"mode": "full", "phases": {"final_report": {"verdict": "PASS"}}}
+    with tempfile.TemporaryDirectory() as tmp:
+        archive_dir = Path(tmp) / ".devlyn" / "runs" / "run-1"
+        archive_dir.mkdir(parents=True)
+        result = check_finish_gate_ran(completed_state, archive_dir)
+        assert result["pass"] is False, result
+        (archive_dir / "finish-gate.summary.json").write_text('{"exit":0}\n', encoding="utf-8")
+        result = check_finish_gate_ran(completed_state, archive_dir)
+        assert result["pass"] is True, result
+
+    verify_only = {"mode": "verify-only", "phases": {"final_report": {"verdict": "PASS"}}}
+    result = check_finish_gate_ran(verify_only, None)
+    assert result["pass"] is True, result
+    assert result["reason"] == "verify-only", result
+
+    blocked_mid_run = {"mode": "full", "phases": {"final_report": {"verdict": None}}}
+    result = check_finish_gate_ran(blocked_mid_run, None)
+    assert result["pass"] is True, result
+    assert result["reason"] == "blocked-mid-run", result
+
     return 0
 
 
@@ -278,6 +318,7 @@ def main() -> int:
         state, workdir, archive_dir, args.cli, transcript_path
     )
     result["assertions"]["archive_ran"] = check_archive_ran(archive_dir)
+    result["assertions"]["finish_gate_ran"] = check_finish_gate_ran(state, archive_dir)
 
     failed = [name for name, out in result["assertions"].items() if not out.get("pass")]
     result["overall"] = "PASS" if not failed else "FAIL"

@@ -39,6 +39,7 @@ PER_RUN_PATTERNS = (
     "spec-verify.results.json",
     "spec-verify-findings.jsonl",
     "verify-merge.summary.json",
+    "finish-gate.summary.json",
     # iter-0033a/2026-04-30 archive-fix iter: NEW /devlyn:resolve emits
     # plan.md (PLAN output) + final-report.md (PHASE 6 render) +
     # cumulative.patch (cumulative diff). Smoke 2's archive listing

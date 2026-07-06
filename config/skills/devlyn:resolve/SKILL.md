@@ -252,11 +252,12 @@ Engine: per `--engine`. Prompt body: `references/phases/cleanup.md`. Allowlist e
 
 Before spawn: pass `--pre-sha "$(git rev-parse HEAD)"` to the `state-phase-write.py ... spawn` call for this phase.
 
-State write: `phases.cleanup.{started_at, verdict, completed_at, duration_ms}`.
+State write: `phases.cleanup.{started_at, verdict, completed_at, duration_ms, pre_sha, post_sha}`.
 
 After return:
 1. Run `git diff --name-only <pre_sha>` — any path outside the cleanup allowlist → revert to `pre_sha` and emit `invariant.cleanup-out-of-scope` finding into `.devlyn/cleanup.findings.jsonl`.
 2. If allowlist honored and diff non-empty: `git add -A && git commit -m "chore(pipeline): cleanup"`.
+3. Complete cleanup with `--post-sha "$(git rev-parse HEAD)"` (also when the diff was empty).
 
 ## PHASE 5: VERIFY (fresh subagent, findings-only)
 
@@ -311,15 +312,17 @@ Branch:
 
 State write: `phases.final_report.started_at` at the top of this phase.
 
-1. **Terminal verdict** — derive from `state.phases.{plan, implement, build_gate, cleanup, verify}.verdict` per the precedence rules in `references/state-schema.md#terminal-verdict`. Verify-only mode short-circuits to `state.phases.verify.verdict`.
+1. Kill any dev server PHASE 3 left running.
 
-2. **Render report** — sections: header (run_id, engine, mode, verdict, wall-time), per-phase summary, pair/risk-probe status, findings table (verify findings only — post-IMPLEMENT phases are findings-only), follow-up notes (any `--continue-on-large` assumptions, any `--no-pair` / `--no-risk-probes` opt-out, any engine setup guidance after BLOCKED, `/devlyn:ideate` guidance after `BLOCKED:solo-headroom-hypothesis-required` that asks for the visible behavior `solo_claude` is expected to miss, and `/devlyn:ideate` guidance after `BLOCKED:solo-ceiling-avoidance-required` that asks for the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`).
+2. **FINISH GATE** — run `python3 "$DEVLYN_SHARED_DIR/finish-gate.py"`; branch only on exit code plus `.devlyn/finish-gate.findings.jsonl` existence: 0 without the file → clean; 0 with it → terminal verdict floors at `PASS_WITH_ISSUES` (report lists the reverted paths); 1 or 2 → `BLOCKED:finish-gate-unclean`.
 
-3. State write: `phases.final_report.{verdict, completed_at, duration_ms}` BEFORE archive runs (archive prune logic skips runs whose `final_report.verdict` is null).
+3. **Terminal verdict** — derive from `state.phases.{plan, implement, build_gate, cleanup, verify}.verdict` per the precedence rules in `references/state-schema.md#terminal-verdict`. Verify-only mode short-circuits to `state.phases.verify.verdict`.
 
-4. **Archive** — invoke the deterministic script: `python3 "$DEVLYN_SHARED_DIR/archive_run.py"`. The script reads `run_id` from `.devlyn/pipeline.state.json`, moves the per-run artifact set (`PER_RUN_PATTERNS` in the script is the single source of truth) into `.devlyn/runs/<run_id>/`, then best-effort prunes to last 10 completed runs. Archive must run; running this step as deterministic-script-not-prose ensures the move actually happens (iter-0033a Smoke 3 caught a case where the agent claimed archive ran without moving the files).
+4. **Render report** — sections: header (run_id, engine, mode, verdict, wall-time), per-phase summary, pair/risk-probe status, findings table (verify + finish-gate findings), follow-up notes (any `--continue-on-large` assumptions, any `--no-pair` / `--no-risk-probes` opt-out, any engine setup guidance after BLOCKED, `/devlyn:ideate` guidance after `BLOCKED:solo-headroom-hypothesis-required` that asks for the visible behavior `solo_claude` is expected to miss, and `/devlyn:ideate` guidance after `BLOCKED:solo-ceiling-avoidance-required` that asks for the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`).
 
-5. Kill any dev server PHASE 3 left running.
+5. State write: `phases.final_report.{verdict, completed_at, duration_ms}` BEFORE archive runs (archive prune logic skips runs whose `final_report.verdict` is null).
+
+6. **Archive** — invoke the deterministic script: `python3 "$DEVLYN_SHARED_DIR/archive_run.py"`. The script reads `run_id` from `.devlyn/pipeline.state.json`, moves the per-run artifact set (`PER_RUN_PATTERNS` in the script is the single source of truth) into `.devlyn/runs/<run_id>/`, then best-effort prunes to last 10 completed runs. Archive must run; running this step as deterministic-script-not-prose ensures the move actually happens (iter-0033a Smoke 3 caught a case where the agent claimed archive ran without moving the files).
 
 ## State management
 

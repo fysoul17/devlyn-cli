@@ -43,7 +43,47 @@ Next focused run is optional broadening only: pick a visible-contract fixture wi
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-05 late session (iter-0062 CLOSED-PARTIAL)
+## 🚦 START-HERE — state after 2026-07-06 session (iter-0063 SHIPPED)
+
+**iter-0063 — mechanical finish-gate — CLOSED-PASS / SHIPPED 2026-07-06**
+(`iterations/0063-finish-gate-mechanical.md` — full closure inside). E3's
+second attempt via mechanism per iter-0062 §Follow-ups #2: deterministic
+PHASE 6 gate (`_shared/finish-gate.py`) audits the final cumulative diff
+against authorized_surface ∪ cleanup window (`pre_sha..post_sha`, new
+`state-phase-write.py complete --post-sha` carrier), reverts offenders to
+base, floors the verdict at PASS_WITH_ISSUES (exit 1/2 →
+`BLOCKED:finish-gate-unclean`); routing is exit-code + findings-file
+existence only. Closes iter-0046's recorded VERIFY-respawn gap + the
+post-scope-check browser window + VERIFY probe side effects. Pair rounds:
+R0 adversarial (no conforming-run falsifier found; post_sha anchor
+adopted) → R1 on the diff (3 review findings CONFIRMED+fixed) → R2/R3/R4
+fixing three REAL defects live verification caught (auditor pyc
+self-mutation → `dont_write_bytecode`; destructive `.devlyn` revert
+potential → devlyn-prefix exclusion; clean-run-vs-skip indistinguishability
+→ always-written `finish-gate.summary.json` + `finish_gate_ran` compliance
+assertion). Final evidence: V1b forced-leak exact catch + byte-identical
+restore; V2b e2e terminal PASS with fixture oracle `passed: true`; V4c
+`finish_gate_ran` asserted. Honest scope: pipeline-class closure — the
+bare-session E3 violation cell is untouched by design.
+
+**Next session entry points (recommended order)**:
+1. **Codex drift-bait lane** (iter-0062 follow-up #3) — `codex exec`
+   instrument + AGENTS.md arm files + fresh N=4 baseline; the AGENTS.md
+   mirror edits (E1 + parity) are still parity-only/unmeasured; honors
+   codex-first test tiering.
+2. **E2 re-measurement** — corrected-oracle N=4 sonnet baseline on
+   DB-silent, then re-A/B the preserved fallback-contract sentence.
+3. **Finish-gate skip-rate watch** — `finish_gate_ran` now lands in every
+   compliance cell; if skips appear, escalate to the structural anchor
+   (archive requires the gate summary), evidence-gated.
+4. `.git/info/exclude` for `.devlyn/` at PHASE 0 (iter-0063 follow-up #1)
+   — root-closes the tracked-`.devlyn` class; needs own pre-registration.
+
+Previous frontier record (iter-0062 CLOSED-PARTIAL) below.
+
+---
+
+## Frontier record — iter-0062 (2026-07-05, CLOSED-PARTIAL)
 
 **iter-0062 — contract decidability gaps — CLOSED-PARTIAL / E1 SHIPPED
 2026-07-05** (`iterations/0062-contract-decidability-gaps.md`, full closure
@@ -457,24 +497,18 @@ closure — AGENTS.md binding entry proven by ordinary-invocation A/B 4/4-vs-4/4
 stamping sentinel fix, docs narrowed to the measured condition (0061),
 first contract-sentence A/B on the violation-rate axis — E1 byte-preservation
 shipped (B4 4/4→1/4), DB-silent verifier false-positive fixed, E2/E3
-reverted per cell-level ship rule (0062).
+reverted per cell-level ship rule (0062), mechanical PHASE 6 finish-gate —
+final-diff audit + revert + `finish_gate_ran` observability, 3 live-caught
+defects fixed pre-ship (0063).
 Mission 1 still NOT formally CLOSED (NORTH-STAR test #15 evidence
 accumulating via real usage). Pair-evidence gates unchanged: SWE-bench n11 frozen-VERIFY PASS
 + F16/F23/F25 risk-probe `bare<solo<pair` aggregate PASS (details:
 NORTH-STAR.md § Pair-mode policy + `iterations/0036-headroom-candidates.md`).
 
-**Next session entry point — pick ONE from the iter-0062 follow-up list**
-(`iterations/0062-contract-decidability-gaps.md` § Follow-ups), in this
-recommended order:
-1. **E3 mechanical finish-gate** — the strongest signal: prose moved the
-   cell 4/4→2/4 and the failing reps still emit a false "only two files
-   touched" claim; a mechanical diff-vs-authorized check at CLEANUP is the
-   class-closing shape (BUILD_GATE precedent, iter-0046).
-2. **E2 re-measurement** — corrected-oracle N=4 sonnet baseline on the
-   DB-silent cell, then re-A/B the preserved fallback-contract sentence.
-3. **Codex drift-bait lane** — `codex exec` instrument + AGENTS.md arm
-   files + fresh baseline; measures the parity-only AGENTS.md mirrors and
-   honors codex-first test tiering.
+**Next session entry point**: see § START-HERE above (iter-0063 SHIPPED
+2026-07-06 closed the E3-mechanism path; recommended order now: codex
+drift-bait lane → E2 re-measure → finish-gate skip-rate watch →
+`.git/info/exclude` follow-up).
 Secondary candidates unchanged: iter-0061 follow-ups
 (`check-compliance-cell.py:127-131` honest_blocked gap; G2
 allowlist-derivation on a 2nd static-only-judge observation). iter-0035
