@@ -68,14 +68,18 @@ bare-session E3 violation cell is untouched by design.
 
 **Next session entry points (recommended order — reordered 2026-07-06 by
 Block 7 ceiling mandate + Codex R0)**:
-1. **iter-0064 ceiling-instrument v0** (NEW #1, Block 7 mandate): the
-   three-arm losable comparison — devlyn vs matched-wall-time
-   bare-best-of-N vs copycat-best-of-N — on blind real-shaped holdout
-   tasks; objective acceptance checks first, calibrated cross-vendor
-   judges second (0055/0056 calibration precedent binding); pre-registered
-   loss conditions. Every ceiling lever (PLAN/ideate-pair depth, knowledge
-   compounding) stays queued BEHIND this instrument — without it, ceiling
-   work is unfalsifiable.
+1. **iter-0064 ceiling & seat-fitness instrument family v0** (NEW #1,
+   Block 7 mandate; STUB with locked design contract at
+   `iterations/0064-ceiling-seat-instrument.md`): Product 1 = the
+   three-arm losable ceiling comparison (devlyn vs matched-wall-time
+   bare-best-of-N vs copycat-best-of-N, blind real-shaped holdout,
+   objective checks first, calibrated judges second — 0055/0056 binding);
+   Product 2 = seat-fitness matrix (model × seat from existing
+   instruments + Product 1) + re-certification runner consumed by
+   `.devlyn/engines.json` on every model/version change (GPT-5.6,
+   fable→opus scenarios). Every ceiling lever (PLAN/ideate-pair depth,
+   knowledge compounding) stays queued BEHIND this instrument — without
+   it, ceiling work is unfalsifiable.
 2. **Codex drift-bait lane** (iter-0062 follow-up #3) — AGENTS.md mirrors
    still parity-only/unmeasured; codex-first test tiering.
 3. **E2 re-measurement** — corrected-oracle N=4 sonnet baseline on
@@ -336,6 +340,16 @@ PLAN은 non-negotiable invariants + acceptance contract을 만든다. BUILD는 �
 
 > 그래서 하이브리드를 구상했던거고 에이전트 군단으로 만들어서 하네스 + 루프 엔지니어링으로 나는 최소한의 의도와 목표, 북극성만 주면 끝까지 에이전트들이 협력을 해서 완벽하게 완수하는것을 생각하고있어. 그게 궁극적인 엔드게임이야
 
+> (2026-07-07) 일단은 최대한 너가 해줘야해. 천장을 뚫고 세계최고 수준의 Loop Egnineering/Harness Engineering 이 되려면. 최대한 너에게 맡길거야. 너가 없어도 돌아가는건 차선이야.
+
+> (2026-07-07) 압도적이고 독보적이어야해
+
+→ **Operating priority**: the strongest available orchestrator (Fable
+while available) DRIVES the loop directly at maximum depth — design,
+research, orchestration, verification. Orchestrator-neutral mechanical
+continuation (CLAUDE.md/AGENTS.md § Evolution loop, seat re-certification)
+is INSURANCE (차선), not the design center. Delegation stays tiered:
+implementation → codex CLI; test arms → codex/sonnet/opus.
 → NORTH-STAR ceiling amendment 2026-07-06 (mid-level sentence, ceiling
 contract, ops test #17, moat = survives-copycat). Codex R0
 (`/tmp/codex-northstar2/r0-response.log`, 197s xhigh, 251k tokens) verdict:

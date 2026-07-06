@@ -127,6 +127,10 @@ This rule exists because LLMs (including you) are trained to be helpful, compreh
 **Stopping rule.** A task is done when the user's stated goal is closed AND no off-path work was added. If you find yourself hesitating because "I should also do Z" — Z is drift. Note it for follow-up, do not execute.
 <!-- runtime-principles:section=goal-locked:end -->
 
+## Evolution loop — orchestrator-neutral continuation
+
+Any orchestrating engine (Claude, Codex, or future) continuing harness / loop-engineering work cold-starts from `autoresearch/HANDOFF.md` (read order inside), then `autoresearch/NORTH-STAR.md` (goal + floor/ceiling contracts + ops-test gates) and `autoresearch/PRINCIPLES.md`. Instruments and gates are scripts + files, never model memory. The pair partner is the strongest available OTHER engine — the protocol is direction-symmetric (iter-0060). On any model/version change, re-certify engine seats with the seat-fitness instrument before re-pinning `.devlyn/engines.json` (NORTH-STAR ceiling contract; iter-0064).
+
 ## Error Handling Philosophy
 
 **No silent fallbacks.** Handle errors explicitly and show the user what happened.

@@ -106,6 +106,10 @@ Exclude vague claims. They produce vague fixes.
 - For installer or skill edits inside the devlyn-cli source repo, run `bash scripts/lint-skills.sh`.
 - Treat the project's own `docs/VISION.md`, `docs/ROADMAP.md`, `docs/roadmap/**`, and any local `AGENTS.md` / `CLAUDE.md` overrides as authoritative when present.
 
+### Evolution loop — orchestrator-neutral continuation
+
+Any orchestrating engine (Claude, Codex, or future) continuing harness / loop-engineering work cold-starts from `autoresearch/HANDOFF.md` (read order inside), then `autoresearch/NORTH-STAR.md` (goal + floor/ceiling contracts + ops-test gates) and `autoresearch/PRINCIPLES.md`. Instruments and gates are scripts + files, never model memory. The pair partner is the strongest available OTHER engine — the protocol is direction-symmetric (iter-0060). On any model/version change, re-certify engine seats with the seat-fitness instrument before re-pinning `.devlyn/engines.json` (NORTH-STAR ceiling contract; iter-0064).
+
 ## Communication
 
 - Lead with objective evidence before opinion.

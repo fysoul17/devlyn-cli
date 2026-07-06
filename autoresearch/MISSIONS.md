@@ -45,6 +45,22 @@ The user's standing directive (HANDOFF "STANDING USER DIRECTIVE" block) is the s
 - ❌ No cross-vendor / model-agnostic infrastructure work.
 - ❌ No "skill description tuning to expand trigger surface." Description stays scoped to actual capabilities.
 
+**Ceiling addendum (2026-07-06/07, HANDOFF Block 7 — binding)**: Mission 1's
+"world-class" bar is raised to 세계최고·대체불가능·압도적·독보적. The gates
+above remain the FLOOR; the ceiling is governed by NORTH-STAR's ceiling
+contract + ops test #17 (three-arm losable comparison incl. the copycat
+arm; moat = lift that survives copycat). The instrument track
+(iter-0064: ceiling verdict + seat-fitness matrix + re-certification on
+model/version change) is Mission 1 in-scope work — it is single-task
+measurement, not parallel infra. Ceiling levers (design-pair depth,
+knowledge compounding into PLAN/ideate) queue BEHIND the instrument.
+Roadmap to endgame: M1 floor+ceiling proven → M1.5 deterministic runner
+(evidence-gated: orchestration skip-rate data; single-task only) → M2
+parallel fleet (substrate design already recorded below) → M3 autonomous
+organisation (user endgame: 의도·목표·북극성만 주면 에이전트 군단이 협력해
+완수). Operating priority: the strongest available orchestrator drives the
+loop directly; orchestrator-neutral continuation is insurance (차선).
+
 **What IS in scope during Mission 1**:
 - Skill prompt + reference body refinement (BUILD/EVAL/CRITIC/DOCS/fix-loop quality).
 - Mechanical gates that catch known failure classes (e.g. `spec-verify-check.py` pattern from iter-0019.6/.8/.9 — extend if measurement shows new categorical failure).
