@@ -2,7 +2,10 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Last refined: 2026-05-07 (2-skill redesign locked: `/devlyn:ideate` + `/devlyn:resolve` + internal kernel; verify folded into resolve as fresh-subagent final phase; pair-mode confined to gated VERIFY's JUDGE; schema = LLM-agnostic decoupler).
+Last refined: 2026-07-06 (ceiling amendment — user directive raised the
+quality bar from engineer-quality to world-best/irreplaceable; ceiling
+contract + ops test #17 added; floor contract unchanged. Prior refinement
+2026-05-07: 2-skill redesign locked).
 
 ---
 
@@ -92,7 +95,16 @@ The repo already contains the hard-won pieces: mechanical spec verification, sta
 
 ## The goal in one sentence (mid-level, in service of the ultimate)
 
-**The harness composes frontier LLMs (and eventually local models like Qwen / Gemma) into a hands-free pipeline that delivers engineer-quality software for users who do not know context engineering, with each layer of composition justifying its own additional cost over the layer below — and the full pair-mode (or future multi-agent) experience must be _overwhelmingly_ better than bare prompting, not marginally.**
+**The harness composes frontier LLMs (and eventually local models like Qwen / Gemma) into a hands-free pipeline that delivers world-best, irreplaceable software quality — engineer-quality is the FLOOR, not the target — for users who do not know context engineering, with each layer of composition justifying its own additional cost over the layer below — and the full pair-mode (or future multi-agent) experience must be _overwhelmingly_ better than bare prompting, not marginally.**
+
+User directive 2026-07-06 (operative form): the quality target is 세계최고
+수준의 대체불가능한 품질; efficiency / performance / accuracy must be
+ceiling-breaking, not merely better. The harness philosophy is **asymmetric**:
+maximum determinism in the skeleton (phase sequencing, state, gates, scope —
+code, not prose), maximum autonomy in the intelligence (each engine plays to
+its measured strengths inside phases; adapters follow each vendor's official
+guide; no stale defensive constraints suppressing capability). Combining
+agents means combining measured comparative advantages, never diluting them.
 
 Two user groups, both first-class:
 
@@ -110,6 +122,23 @@ Two user groups, both first-class:
 | **L2 — pair harness** | 2+ LLMs (Claude + Codex today; profile-neutral so future swaps are possible). Pair-mode is conditional-default only for `/devlyn:resolve` VERIFY/JUDGE on measured triggers; PLAN/IMPLEMENT/BUILD_GATE/CLEANUP stay solo by default. iter-0020 falsified Codex-BUILD/IMPLEMENT, NOT pair-mode generally. iter-0033d/f/g closed PLAN-pair as research-only. | **Materially better than L1** on quality axes — by lifting fixtures L1 ties or loses on, not by re-confirming fixtures L1 already wins | **Pair budget must out-earn `L1-best-of-M`**, where M is the wall-time ratio of L2 to L1. If pair takes 3× the wall-time, the quality gain must beat the gain from running L1 three times. |
 
 The efficiency contract applies equally to L1 and L2. **"Slower but more thoughtful" is not free** — at every layer, the alternative "just run the cheaper layer N more times" must be empirically worse.
+
+## The ceiling contract (added 2026-07-06)
+
+The L0/L1/L2 table above is the FLOOR contract — necessary, unchanged, and
+no longer the differentiator. The ceiling contract governs every claim of
+세계최고 / 대체불가능 / 압도적:
+
+- A ceiling claim must reduce to a **losable, blind, matched-wall-time
+  comparison**: devlyn vs `bare-best-of-N` vs **`copycat-best-of-N`** (the
+  same frontier models explicitly prompted to imitate devlyn from public
+  docs) on real-shaped holdout tasks, judged by objective acceptance checks
+  first, calibrated cross-vendor judges second (judge calibration is a
+  prerequisite — iter-0055/0056 precedent).
+- **Moat definition**: moat is measured lift that SURVIVES the copycat arm.
+  Lift that a copycat reproduces is prompt engineering, not product.
+- Absolute scores are banned as ceiling evidence (they saturate — golden
+  suite retirement precedent); relative forced outcomes only.
 
 ---
 
@@ -166,6 +195,14 @@ A change ships only if it can answer all of these with concrete numbers:
 15. **Final stop condition for Mission 1** — even if all of #1-#14 pass on the 9-fixture suite, the loop does NOT terminate until **one fresh real-project trial passes without manual context engineering**. Definition: a developer who has not tuned the harness picks a real (not fixture) feature/bug from a real (not test) codebase, runs `/devlyn:resolve "<spec or goal>"` end-to-end, and the output ships without human prompt-engineering rescue. Pass = (a) no human edits to skill prompts mid-run, (b) no manual phase re-runs, (c) the produced code passes the project's existing test suite + the developer's spec acceptance check, (d) wall-time within budget for the layer the user paid for.
 
 This gate exists because benchmark fixtures are calibrated targets — passing them confirms the harness behaves *as designed against known cases*, not that it serves the actual user goal. Without #15, the loop can hit perfect 1-14 and ship a benchmark-tuned harness that fails real users on day one.
+
+### Ceiling instrument gate (added 2026-07-06)
+
+17. **No 세계최고 / 대체불가능 / 압도적 claim ships without the ceiling
+    contract's three-arm comparison** (devlyn vs bare-best-of-N vs
+    copycat-best-of-N, blind holdout, pre-registered loss conditions). Until
+    the instrument exists, the honest label for ceiling quality is
+    "unmeasured" — the same discipline rule 6 applies to solo-vs-pair.
 
 ### Parallel-fleet gate (Mission 2 axis — DEFERRED)
 
