@@ -47,6 +47,8 @@ Each skill's `SKILL.md` is the source of truth for its flags and workflow — do
 
 `.devlyn/engines.json` is machine-local — not committed, not archived. Pins are promises: a pinned unavailable engine stops with `BLOCKED:<engine>-unavailable`; a name without a `_shared/adapters/<name>.md` adapter stops with `BLOCKED:invalid-engine-config`. New engines (GLM, pi-agent backends) plug in by shipping an adapter file — no skill changes. Codex BUILD/IMPLEMENT and PLAN-pair remain research-only paths behind explicit `--engine codex`.
 
+**The executor pin binds the orchestrator in plain conversation too, not only inside a skill run.** When you would do implementation work directly and executor is pinned to a non-default engine, route that work through the pin — run it via `/devlyn:resolve` (which reads the pin at PHASE 0), or delegate to that engine — instead of editing as `claude`. No pin / no `.devlyn/engines.json` → unchanged (`claude`). The pair-judge pin stays pipeline-scoped.
+
 ### Conversational handoff + loop engineering — the default entry for all work
 
 The user does not invoke skills manually; the orchestrating model does. Small tasks: invoke `/devlyn:resolve "<goal>"` directly. Large tasks agreed in conversation:
