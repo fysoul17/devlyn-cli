@@ -1,0 +1,12 @@
+--select
+SW1-django-13230=B1
+--select
+SW1-django-13230=C1
+--select
+SW2-django-13265=B1
+--select
+SW2-django-13265=C2
+--select
+FS1-schedule-max-runs=B1
+--select
+FS1-schedule-max-runs=C1

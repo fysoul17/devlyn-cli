@@ -1,0 +1,375 @@
+{
+  "run_id": "iter0064-t1",
+  "tasks": {
+    "FS1-schedule-max-runs": {
+      "a_packet": "P1",
+      "c_packet": "P3",
+      "axes": {
+        "design_coherence": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 confines the new behavior to Job.run()'s existing before/after overdue-check pattern, while P3 additionally rewrites Scheduler._run_job with a new try/except BaseException block, spreading the feature across two classes."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 implements the full max_runs feature across Job/README/docs/tests, whereas P1's diff is empty and contains no code at all."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 implements the full max_runs feature across Job/Scheduler/README/docs/tests, whereas P1's diff is empty and contains no code at all."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 1,
+            "tie": 0
+          }
+        },
+        "robustness": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P3's Scheduler._run_job wraps job.run() in `except BaseException`, which also intercepts KeyboardInterrupt/SystemExit on every scheduled job run, a broader and riskier catch than P2 leaves the Scheduler class untouched."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 adds 5 passing tests exercising run_pending, run_all, validation, per-job isolation, and until-interaction, while P1 has zero tests and zero implementation."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 adds passing tests covering run_pending, run_all, validation, exception-during-run, and until-interaction, while P1 has zero tests and zero implementation."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 1,
+            "tie": 0
+          }
+        },
+        "spec_long_horizon_consistency": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "The spec only defines counting 'actual executions of the job function'; P2 stays within that literal scope while P3 invents and hard-codes an additional exception-counts-as-a-run policy in Scheduler._run_job that the spec never requested."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 fully covers max_runs, its interaction with .until(), run_pending/run_all paths, and documentation per the spec; P1 delivers none of it."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 fully covers max_runs, its interaction with .until(), run_pending/run_all paths, and documentation per the spec; P1 delivers none of it."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 1,
+            "tie": 0
+          }
+        },
+        "maintainability_api_ergonomics": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2's change set touches only the Job class (new fields, max_runs(), _is_run_limit_reached(), run() edits), while P3 also modifies Scheduler._run_job with new exception-handling control flow, widening the surface a maintainer must reason about for the same public API."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 ships a documented, chainable max_runs(n) matching both call patterns from the spec (README/docs/index updated); P1 adds no API and no docs."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 ships a documented, chainable max_runs(n) matching both call patterns from the spec (README/docs/index updated); P1 adds no API and no docs."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 1,
+            "tie": 0
+          }
+        }
+      }
+    },
+    "SW1-django-13230": {
+      "a_packet": "P3",
+      "c_packet": "P1",
+      "axes": {
+        "design_coherence": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1 keeps `comments` as its own explicit named argument in the `feed.add_item()` call, matching every sibling hook, while P2 merges the computed value into `item_extra_kwargs` and only exposes it via `**item_extra_kwargs`, hiding it from the explicit argument list."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1 explicitly pops any pre-existing `'comments'` key out of `item_extra_kwargs` (`item_extra_kwargs.pop('comments')`) before unpacking it, whereas P3 appends `comments=self._get_dynamic_attr('item_comments', item)` next to the unmodified `**self.item_extra_kwargs(item)`, leaving two independent paths that can both supply the same key."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2's `if 'comments' not in item_extra_kwargs` check integrates the new hook into the existing extra-kwargs resolution mechanism, while P3 adds `comments=` as a fully separate, unguarded kwarg alongside the untouched `**self.item_extra_kwargs(item)`."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 1,
+            "tie": 0
+          }
+        },
+        "robustness": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1 adds `test_rss2_feed_with_comments_from_extra_kwargs`, directly exercising the case where `item_extra_kwargs()` already defines `'comments'`, while P2's equivalent precedence logic has no corresponding test."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1's `comments = item_extra_kwargs.pop('comments')` branch prevents `feed.add_item()` from ever receiving `comments` twice, whereas P3's unconditional `comments=` plus `**self.item_extra_kwargs(item)` will raise `TypeError: got multiple values for keyword argument 'comments'` if `item_extra_kwargs()` returns a `'comments'` key."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2's dict-merge guard (`{**item_extra_kwargs, 'comments': ...}` only when absent) avoids ever passing `comments` twice to `add_item()`, while P3 has no such guard and will crash under the identical scenario."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 1,
+            "tie": 0
+          }
+        },
+        "spec_long_horizon_consistency": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1's dedicated `TestRss2FeedWithCommentsFromExtraKwargs` fixture locks in the exact 'detour via item_extra_kwargs' scenario named in the ticket as a permanent regression guard, while P2 implements but never tests that scenario."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1 satisfies both ticket sentences with tests for each \u2014 a direct `item_comments` hook and continued support for feeds using the `item_extra_kwargs` detour \u2014 while P3 only satisfies the first and silently regresses the second."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 preserves the pre-existing `item_extra_kwargs`-based comments mechanism the ticket explicitly references, while P3's `views.py` change has no such preservation and will break feeds relying on it."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 1,
+            "tie": 0
+          }
+        },
+        "maintainability_api_ergonomics": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1's two isolated test subclasses (`TestRss2FeedWithComments`, `TestRss2FeedWithCommentsFromExtraKwargs`) each cover one behavior cleanly, while P2 covers only the new-hook case, leaving the extra_kwargs branch without direct test evidence."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1 introduces a separately-named `TestRss2FeedWithComments` fixture, while P3 adds `item_comments` straight onto the shared base `TestRss2Feed` class using the same literal string already used for `item_copyright`, coupling the new field to every existing subclass and weakening the test's ability to detect a copyright/comments mix-up."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 tests its new hook via an isolated subclass with a distinct comments URL value, while P3 mutates the shared `TestRss2Feed` base fixture and reuses the copyright string as the comments value, reducing test isolation and assertion power."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 1,
+            "tie": 0
+          }
+        }
+      }
+    },
+    "SW2-django-13265": {
+      "a_packet": "P1",
+      "c_packet": "P2",
+      "axes": {
+        "design_coherence": {
+          "per_judge": {},
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 0,
+            "tie": 0
+          }
+        },
+        "robustness": {
+          "per_judge": {},
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 0,
+            "tie": 0
+          }
+        },
+        "spec_long_horizon_consistency": {
+          "per_judge": {},
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 0,
+            "tie": 0
+          }
+        },
+        "maintainability_api_ergonomics": {
+          "per_judge": {},
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 0,
+            "tie": 0
+          }
+        }
+      }
+    }
+  }
+}

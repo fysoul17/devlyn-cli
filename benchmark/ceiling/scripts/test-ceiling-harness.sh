@@ -92,7 +92,7 @@ export FAKE_CODEX_PROMPT_DIR="$PROMPTS"
 
 WORK_A="$TMP_DIR/work-a"
 make_repo "$WORK_A"
-CEILING_TEST_WORKTREE="$WORK_A" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
+CEILING_TEST_WORKTREE="$WORK_A" CEILING_TEST_BASE_SHA="$(git -C "$WORK_A" rev-parse HEAD)" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
   --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm A --attempt 1 --timeout-seconds 30 >/tmp/ceiling-arm-a.log
 test -d "$WORK_A/.claude/skills"
 test "$(cat "$WORK_A/.devlyn/engines.json")" = '{"executor":"codex"}'
@@ -103,7 +103,7 @@ grep -q 'changed by A' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/p
 
 WORK_B="$TMP_DIR/work-b"
 make_repo "$WORK_B"
-FAKE_CODEX_LABEL=B CEILING_TEST_WORKTREE="$WORK_B" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
+FAKE_CODEX_LABEL=B CEILING_TEST_WORKTREE="$WORK_B" CEILING_TEST_BASE_SHA="$(git -C "$WORK_B" rev-parse HEAD)" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
   --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm B --attempt 1 --timeout-seconds 30 >/tmp/ceiling-arm-b.log
 python3 - "$CEILING_ROOT/corpus/FS1-schedule-max-runs/task.txt" "$PROMPTS/prompt-B.txt" <<'PY'
 import sys
@@ -116,7 +116,7 @@ PY
 
 WORK_C="$TMP_DIR/work-c"
 make_repo "$WORK_C"
-FAKE_CODEX_LABEL=C CEILING_TEST_WORKTREE="$WORK_C" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
+FAKE_CODEX_LABEL=C CEILING_TEST_WORKTREE="$WORK_C" CEILING_TEST_BASE_SHA="$(git -C "$WORK_C" rev-parse HEAD)" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
   --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm C --attempt 1 --timeout-seconds 30 >/tmp/ceiling-arm-c.log
 python3 - "$CEILING_ROOT/corpus/copycat-doc.md" "$CEILING_ROOT/corpus/FS1-schedule-max-runs/task.txt" "$PROMPTS/prompt-C.txt" <<'PY'
 import sys

@@ -1,0 +1,144 @@
+diff --git a/django/contrib/syndication/views.py b/django/contrib/syndication/views.py
+index 68ffb0bfe0..62524c611e 100644
+--- a/django/contrib/syndication/views.py
++++ b/django/contrib/syndication/views.py
+@@ -199,21 +199,36 @@ class Feed:
+             if updateddate and is_naive(updateddate):
+                 updateddate = make_aware(updateddate, tz)
+ 
++            unique_id = self._get_dynamic_attr('item_guid', item, link)
++            unique_id_is_permalink = self._get_dynamic_attr(
++                'item_guid_is_permalink', item)
++            categories = self._get_dynamic_attr('item_categories', item)
++            item_copyright = self._get_dynamic_attr('item_copyright', item)
++            item_extra_kwargs = self.item_extra_kwargs(item)
++            if 'comments' in item_extra_kwargs:
++                comments = item_extra_kwargs['comments']
++                item_extra_kwargs = {
++                    key: value for key, value in item_extra_kwargs.items()
++                    if key != 'comments'
++                }
++            else:
++                comments = self._get_dynamic_attr('item_comments', item)
++
+             feed.add_item(
+                 title=title,
+                 link=link,
+                 description=description,
+-                unique_id=self._get_dynamic_attr('item_guid', item, link),
+-                unique_id_is_permalink=self._get_dynamic_attr(
+-                    'item_guid_is_permalink', item),
++                comments=comments,
++                unique_id=unique_id,
++                unique_id_is_permalink=unique_id_is_permalink,
+                 enclosures=enclosures,
+                 pubdate=pubdate,
+                 updateddate=updateddate,
+                 author_name=author_name,
+                 author_email=author_email,
+                 author_link=author_link,
+-                categories=self._get_dynamic_attr('item_categories', item),
+-                item_copyright=self._get_dynamic_attr('item_copyright', item),
+-                **self.item_extra_kwargs(item)
++                categories=categories,
++                item_copyright=item_copyright,
++                **item_extra_kwargs
+             )
+         return feed
+diff --git a/docs/ref/contrib/syndication.txt b/docs/ref/contrib/syndication.txt
+index 13aa944e8a..fc0a10960e 100644
+--- a/docs/ref/contrib/syndication.txt
++++ b/docs/ref/contrib/syndication.txt
+@@ -836,6 +836,23 @@ This example illustrates all possible attributes and methods for a
+ 
+         item_pubdate = datetime.datetime(2005, 5, 3) # Hard-coded pubdate.
+ 
++        # ITEM COMMENTS URL (only applicable to RSS 2.0 feeds) -- It's
++        # optional to use one of these three. This is a hook that specifies how
++        # to get the comments URL for a given item.
++
++        def item_comments(self, item):
++            """
++            Takes an item, as returned by items(), and returns the item's
++            comments URL as a normal Python string.
++            """
++
++        def item_comments(self):
++            """
++            Returns the comments URL for every item in the feed.
++            """
++
++        item_comments = 'https://www.example.com/comments' # Hard-coded URL.
++
+         # ITEM UPDATED -- It's optional to use one of these three. This is a
+         # hook that specifies how to get the updateddate for a given item.
+         # In each case, the method/attribute should return a Python
+diff --git a/tests/syndication_tests/feeds.py b/tests/syndication_tests/feeds.py
+index 4e9b1170b1..5047a68476 100644
+--- a/tests/syndication_tests/feeds.py
++++ b/tests/syndication_tests/feeds.py
+@@ -49,6 +49,18 @@ class TestRss2FeedWithGuidIsPermaLinkFalse(TestRss2Feed):
+         return False
+ 
+ 
++class TestRss2FeedWithComments(TestRss2Feed):
++    def item_comments(self, item):
++        return 'http://example.com/blog/%s/comments/' % item.pk
++
++
++class TestRss2FeedWithCommentsFromExtraKwargs(TestRss2FeedWithComments):
++    def item_extra_kwargs(self, item):
++        return {
++            'comments': 'http://example.com/blog/%s/discussion/' % item.pk,
++        }
++
++
+ class TestRss091Feed(TestRss2Feed):
+     feed_type = feedgenerator.RssUserland091Feed
+ 
+diff --git a/tests/syndication_tests/tests.py b/tests/syndication_tests/tests.py
+index dab7ebab33..9f2225ba9d 100644
+--- a/tests/syndication_tests/tests.py
++++ b/tests/syndication_tests/tests.py
+@@ -176,6 +176,26 @@ class SyndicationFeedTest(FeedTestCase):
+                 item.getElementsByTagName('guid')[0].attributes.get(
+                     'isPermaLink').value, "true")
+ 
++    def test_rss2_feed_comments(self):
++        response = self.client.get('/syndication/rss2/comments/')
++        doc = minidom.parseString(response.content)
++        chan = doc.getElementsByTagName(
++            'rss')[0].getElementsByTagName('channel')[0]
++        items = chan.getElementsByTagName('item')
++        self.assertChildNodeContent(items[0], {
++            'comments': 'http://example.com/blog/1/comments/',
++        })
++
++    def test_rss2_feed_comments_from_extra_kwargs(self):
++        response = self.client.get('/syndication/rss2/comments-extra-kwargs/')
++        doc = minidom.parseString(response.content)
++        chan = doc.getElementsByTagName(
++            'rss')[0].getElementsByTagName('channel')[0]
++        items = chan.getElementsByTagName('item')
++        self.assertChildNodeContent(items[0], {
++            'comments': 'http://example.com/blog/1/discussion/',
++        })
++
+     def test_rss2_single_enclosure(self):
+         response = self.client.get('/syndication/rss2/single-enclosure/')
+         doc = minidom.parseString(response.content)
+diff --git a/tests/syndication_tests/urls.py b/tests/syndication_tests/urls.py
+index bff7bd0c8d..96f8b3e519 100644
+--- a/tests/syndication_tests/urls.py
++++ b/tests/syndication_tests/urls.py
+@@ -10,6 +10,10 @@ urlpatterns = [
+     path(
+         'syndication/rss2/guid_ispermalink_false/',
+         feeds.TestRss2FeedWithGuidIsPermaLinkFalse()),
++    path('syndication/rss2/comments/', feeds.TestRss2FeedWithComments()),
++    path(
++        'syndication/rss2/comments-extra-kwargs/',
++        feeds.TestRss2FeedWithCommentsFromExtraKwargs()),
+     path('syndication/rss091/', feeds.TestRss091Feed()),
+     path('syndication/no_pubdate/', feeds.TestNoPubdateFeed()),
+     path('syndication/atom/', feeds.TestAtomFeed()),

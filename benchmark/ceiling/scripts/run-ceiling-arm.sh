@@ -175,6 +175,19 @@ stage_devlyn_context() {
 write_patch() {
   local worktree="$1"
   local out="$2"
+  # Arms may commit their work (observed: devlyn IMPLEMENT committed
+  # "chore(pipeline): implement", making diff-vs-HEAD empty). Diff against
+  # the frozen corpus base sha so committed and uncommitted deltas are
+  # captured identically regardless of arm git behavior.
+  local base_sha
+  if [ -n "${CEILING_TEST_BASE_SHA:-}" ]; then
+    # test seam only (CEILING_TEST_WORKTREE fake workspaces lack corpus shas)
+    base_sha="$CEILING_TEST_BASE_SHA"
+  elif [[ "$TASK" == SW* ]]; then
+    base_sha="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["base_commit"])' "$TASK_DIR/hidden/instance.json")"
+  else
+    base_sha="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["sha"])' "$TASK_DIR/base.json")"
+  fi
   (
     cd "$worktree"
     git add -N -- . \
@@ -183,14 +196,22 @@ write_patch() {
       ':(exclude)CLAUDE.md' \
       ':(exclude)AGENTS.md' \
       ':(exclude)docs/roadmap/phase-1/*.md' \
-      ':(exclude)solve-prompt.txt' >/dev/null 2>&1 || true
-    git diff --binary -- . \
+      ':(exclude)solve-prompt.txt' \
+      ':(exclude).venv/**' \
+      ':(exclude)venv/**' \
+      ':(exclude)__pycache__/**' \
+      ':(exclude)*.pyc' >/dev/null 2>&1 || true
+    git diff --binary "$base_sha" -- . \
       ':(exclude).claude/**' \
       ':(exclude).devlyn/**' \
       ':(exclude)CLAUDE.md' \
       ':(exclude)AGENTS.md' \
       ':(exclude)docs/roadmap/phase-1/*.md' \
-      ':(exclude)solve-prompt.txt' > "$out"
+      ':(exclude)solve-prompt.txt' \
+      ':(exclude).venv/**' \
+      ':(exclude)venv/**' \
+      ':(exclude)__pycache__/**' \
+      ':(exclude)*.pyc' > "$out"
   )
 }
 

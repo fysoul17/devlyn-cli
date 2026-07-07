@@ -1,0 +1,277 @@
+diff --git a/django/db/migrations/autodetector.py b/django/db/migrations/autodetector.py
+index 89e2dceeaf..b0bae31ea8 100644
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -392,6 +392,12 @@ class MigrationAutodetector:
+                     isinstance(operation, operations.AddField) and
+                     operation.model_name_lower == dependency[1].lower() and
+                     operation.name_lower == dependency[2].lower()
++                ) or
++                (
++                    dependency[2] == "_order" and
++                    isinstance(operation, operations.AlterOrderWithRespectTo) and
++                    operation.name_lower == dependency[1].lower() and
++                    operation.order_with_respect_to is not None
+                 )
+             )
+         # Removed field
+@@ -625,7 +631,18 @@ class MigrationAutodetector:
+                         model_name=model_name,
+                         index=index,
+                     ),
+-                    dependencies=related_dependencies,
++                    dependencies=(
++                        related_dependencies +
++                        self._get_dependencies_for_generated_fields(
++                            app_label,
++                            model_name,
++                            chain(
++                                (field_name for field_name, _ in index.fields_orders),
++                                index.include,
++                            ),
++                            expressions=(index.condition,),
++                        )
++                    ),
+                 )
+             for constraint in constraints:
+                 self.add_operation(
+@@ -634,7 +651,21 @@ class MigrationAutodetector:
+                         model_name=model_name,
+                         constraint=constraint,
+                     ),
+-                    dependencies=related_dependencies,
++                    dependencies=(
++                        related_dependencies +
++                        self._get_dependencies_for_generated_fields(
++                            app_label,
++                            model_name,
++                            chain(
++                                getattr(constraint, 'fields', ()) or (),
++                                getattr(constraint, 'include', ()) or (),
++                            ),
++                            expressions=(
++                                getattr(constraint, 'condition', None),
++                                getattr(constraint, 'check', None),
++                            ),
++                        )
++                    ),
+                 )
+             if unique_together:
+                 self.add_operation(
+@@ -1020,7 +1051,16 @@ class MigrationAutodetector:
+                     operations.AddIndex(
+                         model_name=model_name,
+                         index=index,
+-                    )
++                    ),
++                    dependencies=self._get_dependencies_for_generated_fields(
++                        app_label,
++                        model_name,
++                        chain(
++                            (field_name for field_name, _ in index.fields_orders),
++                            index.include,
++                        ),
++                        expressions=(index.condition,),
++                    ),
+                 )
+ 
+     def generate_removed_indexes(self):
+@@ -1060,7 +1100,19 @@ class MigrationAutodetector:
+                     operations.AddConstraint(
+                         model_name=model_name,
+                         constraint=constraint,
+-                    )
++                    ),
++                    dependencies=self._get_dependencies_for_generated_fields(
++                        app_label,
++                        model_name,
++                        chain(
++                            getattr(constraint, 'fields', ()) or (),
++                            getattr(constraint, 'include', ()) or (),
++                        ),
++                        expressions=(
++                            getattr(constraint, 'condition', None),
++                            getattr(constraint, 'check', None),
++                        ),
++                    ),
+                 )
+ 
+     def generate_removed_constraints(self):
+@@ -1093,6 +1145,23 @@ class MigrationAutodetector:
+             ))
+         return dependencies
+ 
++    def _get_dependencies_for_generated_fields(
++        self, app_label, model_name, field_names, expressions=()
++    ):
++        """Make generated fields available before database operations use them."""
++        model = self.new_apps.get_model(app_label, model_name)
++        fields = set(field_names)
++        for expression in expressions:
++            if expression is not None:
++                fields.update(
++                    field_name
++                    for field_name, *_ in model._get_expr_references(expression)
++                )
++        dependencies = []
++        if '_order' in fields:
++            dependencies.append((app_label, model_name, '_order', True))
++        return dependencies
++
+     def _generate_altered_foo_together(self, operation):
+         option_name = operation.option_name
+         for app_label, model_name in sorted(self.kept_model_keys):
+diff --git a/tests/migrations/test_autodetector.py b/tests/migrations/test_autodetector.py
+index 236af43834..0b43cf9228 100644
+--- a/tests/migrations/test_autodetector.py
++++ b/tests/migrations/test_autodetector.py
+@@ -214,6 +214,33 @@ class AutodetectorTests(TestCase):
+         ("name", models.CharField(max_length=200)),
+         ("book", models.ForeignKey("otherapp.Book", models.CASCADE)),
+     ], options={"order_with_respect_to": "book"})
++    author_with_book_order_wrt_index_constraint = ModelState("testapp", "Author", [
++        ("id", models.AutoField(primary_key=True)),
++        ("name", models.CharField(max_length=200)),
++        ("book", models.ForeignKey("otherapp.Book", models.CASCADE)),
++    ], options={
++        "order_with_respect_to": "book",
++        "indexes": [models.Index(fields=["book", "_order"], name="book_order_idx")],
++        "constraints": [models.UniqueConstraint(fields=["book", "_order"], name="book_order_unique")],
++    })
++    author_with_book_order_wrt_index_constraint_condition = ModelState("testapp", "Author", [
++        ("id", models.AutoField(primary_key=True)),
++        ("name", models.CharField(max_length=200)),
++        ("book", models.ForeignKey("otherapp.Book", models.CASCADE)),
++    ], options={
++        "order_with_respect_to": "book",
++        "indexes": [
++            models.Index(fields=["book"], name="book_order_condition_idx", condition=models.Q(_order__gte=0)),
++        ],
++        "constraints": [
++            models.CheckConstraint(check=models.Q(_order__gte=0), name="book_order_check"),
++            models.UniqueConstraint(
++                fields=["book"],
++                condition=models.Q(_order__gte=0),
++                name="book_order_condition_unique",
++            ),
++        ],
++    })
+     author_renamed_with_book = ModelState("testapp", "Writer", [
+         ("id", models.AutoField(primary_key=True)),
+         ("name", models.CharField(max_length=200)),
+@@ -2113,6 +2140,58 @@ class AutodetectorTests(TestCase):
+         self.assertOperationTypes(changes, 'testapp', 0, ["AlterOrderWithRespectTo"])
+         self.assertOperationAttributes(changes, 'testapp', 0, 0, name="author", order_with_respect_to="book")
+ 
++    def test_set_alter_order_with_respect_to_before_index_constraint(self):
++        """
++        Indexes and constraints that reference the generated _order field must
++        be added after AlterOrderWithRespectTo creates _order.
++        """
++        changes = self.get_changes(
++            [self.book, self.author_with_book],
++            [self.book, self.author_with_book_order_wrt_index_constraint],
++        )
++        self.assertNumberMigrations(changes, 'testapp', 1)
++        self.assertOperationTypes(changes, 'testapp', 0, [
++            "AlterOrderWithRespectTo", "AddIndex", "AddConstraint",
++        ])
++        self.assertOperationAttributes(changes, 'testapp', 0, 0, name="author", order_with_respect_to="book")
++        added_index = models.Index(fields=["book", "_order"], name="book_order_idx")
++        self.assertOperationAttributes(changes, 'testapp', 0, 1, model_name="author", index=added_index)
++        added_constraint = models.UniqueConstraint(fields=["book", "_order"], name="book_order_unique")
++        self.assertOperationAttributes(changes, 'testapp', 0, 2, model_name="author", constraint=added_constraint)
++
++    def test_set_alter_order_with_respect_to_before_condition_index_constraint(self):
++        """
++        Indexes and constraints that reference the generated _order field in
++        expressions must be added after AlterOrderWithRespectTo creates _order.
++        """
++        changes = self.get_changes(
++            [self.book, self.author_with_book],
++            [self.book, self.author_with_book_order_wrt_index_constraint_condition],
++        )
++        self.assertNumberMigrations(changes, 'testapp', 1)
++        self.assertOperationTypes(changes, 'testapp', 0, [
++            "AlterOrderWithRespectTo", "AddIndex", "AddConstraint", "AddConstraint",
++        ])
++        self.assertOperationAttributes(changes, 'testapp', 0, 0, name="author", order_with_respect_to="book")
++        added_index = models.Index(
++            fields=["book"],
++            name="book_order_condition_idx",
++            condition=models.Q(_order__gte=0),
++        )
++        self.assertOperationAttributes(changes, 'testapp', 0, 1, model_name="author", index=added_index)
++        added_check_constraint = models.CheckConstraint(check=models.Q(_order__gte=0), name="book_order_check")
++        self.assertOperationAttributes(
++            changes, 'testapp', 0, 2, model_name="author", constraint=added_check_constraint,
++        )
++        added_unique_constraint = models.UniqueConstraint(
++            fields=["book"],
++            condition=models.Q(_order__gte=0),
++            name="book_order_condition_unique",
++        )
++        self.assertOperationAttributes(
++            changes, 'testapp', 0, 3, model_name="author", constraint=added_unique_constraint,
++        )
++
+     def test_add_alter_order_with_respect_to(self):
+         """
+         Setting order_with_respect_to when adding the FK too does
+@@ -2151,6 +2230,56 @@ class AutodetectorTests(TestCase):
+         )
+         self.assertNotIn("_order", [name for name, field in changes['testapp'][0].operations[0].fields])
+ 
++    def test_add_model_order_with_respect_to_index_constraint(self):
++        """
++        Indexes and constraints that reference the generated _order field must
++        not be added before _order exists when adding a model.
++        """
++        changes = self.get_changes([], [self.book, self.author_with_book_order_wrt_index_constraint])
++        self.assertNumberMigrations(changes, 'testapp', 1)
++        self.assertOperationTypes(changes, 'testapp', 0, ["CreateModel", "AddIndex", "AddConstraint"])
++        self.assertOperationAttributes(
++            changes, 'testapp', 0, 0, name="Author", options={'order_with_respect_to': 'book'}
++        )
++        self.assertNotIn("_order", [name for name, field in changes['testapp'][0].operations[0].fields])
++        added_index = models.Index(fields=["book", "_order"], name="book_order_idx")
++        self.assertOperationAttributes(changes, 'testapp', 0, 1, model_name="author", index=added_index)
++        added_constraint = models.UniqueConstraint(fields=["book", "_order"], name="book_order_unique")
++        self.assertOperationAttributes(changes, 'testapp', 0, 2, model_name="author", constraint=added_constraint)
++
++    def test_add_model_order_with_respect_to_condition_index_constraint(self):
++        """
++        Indexes and constraints that reference the generated _order field in
++        expressions must not be added before _order exists when adding a model.
++        """
++        changes = self.get_changes([], [self.book, self.author_with_book_order_wrt_index_constraint_condition])
++        self.assertNumberMigrations(changes, 'testapp', 1)
++        self.assertOperationTypes(changes, 'testapp', 0, [
++            "CreateModel", "AddIndex", "AddConstraint", "AddConstraint",
++        ])
++        self.assertOperationAttributes(
++            changes, 'testapp', 0, 0, name="Author", options={'order_with_respect_to': 'book'}
++        )
++        self.assertNotIn("_order", [name for name, field in changes['testapp'][0].operations[0].fields])
++        added_index = models.Index(
++            fields=["book"],
++            name="book_order_condition_idx",
++            condition=models.Q(_order__gte=0),
++        )
++        self.assertOperationAttributes(changes, 'testapp', 0, 1, model_name="author", index=added_index)
++        added_check_constraint = models.CheckConstraint(check=models.Q(_order__gte=0), name="book_order_check")
++        self.assertOperationAttributes(
++            changes, 'testapp', 0, 2, model_name="author", constraint=added_check_constraint,
++        )
++        added_unique_constraint = models.UniqueConstraint(
++            fields=["book"],
++            condition=models.Q(_order__gte=0),
++            name="book_order_condition_unique",
++        )
++        self.assertOperationAttributes(
++            changes, 'testapp', 0, 3, model_name="author", constraint=added_unique_constraint,
++        )
++
+     def test_alter_model_managers(self):
+         """
+         Changing the model managers adds a new operation.

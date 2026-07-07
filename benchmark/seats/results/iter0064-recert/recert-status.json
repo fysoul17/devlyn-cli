@@ -1,0 +1,13 @@
+{
+  "run_prefix": "iter0064-recert",
+  "date": "2026-07-07",
+  "engines": [
+    "sonnet",
+    "opus",
+    "codex"
+  ],
+  "skip": [
+    "judge_quality"
+  ],
+  "failures": []
+}

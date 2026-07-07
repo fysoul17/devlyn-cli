@@ -1,0 +1,131 @@
+diff --git a/django/db/migrations/autodetector.py b/django/db/migrations/autodetector.py
+index 89e2dceeaf..3ba7047ea3 100644
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -98,6 +98,13 @@ class MigrationAutodetector:
+             fields_def.append(deconstruction)
+         return fields_def
+ 
++    @staticmethod
++    def _index_references_field(index, field_name):
++        return (
++            any(index_field_name == field_name for index_field_name, _ in index.fields_orders) or
++            field_name in index.include
++        )
++
+     def _detect_changes(self, convert_apps=None, graph=None):
+         """
+         Return a dict of migration plans which will achieve the
+@@ -421,6 +428,13 @@ class MigrationAutodetector:
+                 operation.name_lower == dependency[1].lower() and
+                 (operation.order_with_respect_to or "").lower() != dependency[2].lower()
+             )
++        # order_with_respect_to being set for a field
++        elif dependency[2] is not None and dependency[3] == "order_wrt_set":
++            return (
++                isinstance(operation, operations.AlterOrderWithRespectTo) and
++                operation.name_lower == dependency[1].lower() and
++                (operation.order_with_respect_to or "").lower() == dependency[2].lower()
++            )
+         # Field is removed and part of an index/unique_together
+         elif dependency[2] is not None and dependency[3] == "foo_together_change":
+             return (
+@@ -619,13 +633,18 @@ class MigrationAutodetector:
+             ]
+             related_dependencies.append((app_label, model_name, None, True))
+             for index in indexes:
++                dependencies = related_dependencies
++                if order_with_respect_to and self._index_references_field(index, '_order'):
++                    dependencies = dependencies + [
++                        (app_label, model_name, order_with_respect_to, "order_wrt_set"),
++                    ]
+                 self.add_operation(
+                     app_label,
+                     operations.AddIndex(
+                         model_name=model_name,
+                         index=index,
+                     ),
+-                    dependencies=related_dependencies,
++                    dependencies=dependencies,
+                 )
+             for constraint in constraints:
+                 self.add_operation(
+@@ -1014,13 +1033,21 @@ class MigrationAutodetector:
+ 
+     def generate_added_indexes(self):
+         for (app_label, model_name), alt_indexes in self.altered_indexes.items():
++            new_model_state = self.to_state.models[app_label, model_name]
++            order_with_respect_to = new_model_state.options.get("order_with_respect_to")
+             for index in alt_indexes['added_indexes']:
++                dependencies = []
++                if order_with_respect_to and self._index_references_field(index, '_order'):
++                    dependencies.append(
++                        (app_label, model_name, order_with_respect_to, "order_wrt_set")
++                    )
+                 self.add_operation(
+                     app_label,
+                     operations.AddIndex(
+                         model_name=model_name,
+                         index=index,
+-                    )
++                    ),
++                    dependencies=dependencies,
+                 )
+ 
+     def generate_removed_indexes(self):
+diff --git a/tests/migrations/test_autodetector.py b/tests/migrations/test_autodetector.py
+index 236af43834..1f23444073 100644
+--- a/tests/migrations/test_autodetector.py
++++ b/tests/migrations/test_autodetector.py
+@@ -1432,6 +1432,24 @@ class AutodetectorTests(TestCase):
+         self.assertOperationAttributes(changes, 'otherapp', 0, 0, name='Author')
+         self.assertOperationAttributes(changes, 'otherapp', 0, 1, model_name='author', index=added_index)
+ 
++    def test_create_model_with_order_with_respect_to_and_index_on_order(self):
++        index = models.Index(fields=['book', '_order'], name='author_book_order_idx')
++        author = ModelState('testapp', 'Author', [
++            ('id', models.AutoField(primary_key=True)),
++            ('name', models.CharField(max_length=200)),
++            ('book', models.ForeignKey('otherapp.Book', models.CASCADE)),
++        ], {
++            'order_with_respect_to': 'book',
++            'indexes': [index],
++        })
++        changes = self.get_changes([self.book_with_no_author], [self.book_with_no_author, author])
++        self.assertNumberMigrations(changes, 'testapp', 1)
++        self.assertOperationTypes(changes, 'testapp', 0, ['CreateModel', 'AddIndex'])
++        self.assertOperationAttributes(
++            changes, 'testapp', 0, 0, name='Author', options={'order_with_respect_to': 'book'}
++        )
++        self.assertOperationAttributes(changes, 'testapp', 0, 1, model_name='author', index=index)
++
+     def test_add_indexes(self):
+         """Test change detection of new indexes."""
+         changes = self.get_changes([self.author_empty, self.book], [self.author_empty, self.book_indexes])
+@@ -2113,6 +2131,26 @@ class AutodetectorTests(TestCase):
+         self.assertOperationTypes(changes, 'testapp', 0, ["AlterOrderWithRespectTo"])
+         self.assertOperationAttributes(changes, 'testapp', 0, 0, name="author", order_with_respect_to="book")
+ 
++    def test_set_alter_order_with_respect_to_and_add_index_on_order(self):
++        """Add _order indexes after order_with_respect_to creates _order."""
++        index = models.Index(fields=['book', '_order'], name='author_book_order_idx')
++        author_with_book_order_wrt_index = ModelState("testapp", "Author", [
++            ("id", models.AutoField(primary_key=True)),
++            ("name", models.CharField(max_length=200)),
++            ("book", models.ForeignKey("otherapp.Book", models.CASCADE)),
++        ], options={
++            "order_with_respect_to": "book",
++            "indexes": [index],
++        })
++        changes = self.get_changes(
++            [self.book, self.author_with_book],
++            [self.book, author_with_book_order_wrt_index],
++        )
++        self.assertNumberMigrations(changes, 'testapp', 1)
++        self.assertOperationTypes(changes, 'testapp', 0, ["AlterOrderWithRespectTo", "AddIndex"])
++        self.assertOperationAttributes(changes, 'testapp', 0, 0, name="author", order_with_respect_to="book")
++        self.assertOperationAttributes(changes, 'testapp', 0, 1, model_name='author', index=index)
++
+     def test_add_alter_order_with_respect_to(self):
+         """
+         Setting order_with_respect_to when adding the FK too does

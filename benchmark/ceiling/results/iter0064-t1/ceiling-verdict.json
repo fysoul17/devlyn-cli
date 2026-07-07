@@ -1,0 +1,355 @@
+{
+  "certified_judges": [
+    "sonnet",
+    "codex"
+  ],
+  "claim_shape": "current devlyn stack (sonnet orchestrator + codex executor) vs codex bare/copycat, matched wall",
+  "invalid_rows_excluded": {},
+  "judge_certification": {
+    "codex": {
+      "axis_recall": {
+        "no_workaround": 1.0,
+        "scope_discipline": 1.0
+      },
+      "axis_totals": {
+        "no_workaround": 8,
+        "scope_discipline": 8
+      },
+      "certified": true,
+      "clean_total": 8,
+      "false_positive_rate": 0.0,
+      "identity": {
+        "cli_version": "codex-cli 0.141.0",
+        "model_id_or_alias": null,
+        "recorded_at_run_id": "manual-20260706T165858Z"
+      },
+      "missing": [],
+      "thresholds": {
+        "axis_recall_min": 0.75,
+        "false_positive_rate_max": 0.125
+      }
+    },
+    "sonnet": {
+      "axis_recall": {
+        "no_workaround": 1.0,
+        "scope_discipline": 1.0
+      },
+      "axis_totals": {
+        "no_workaround": 8,
+        "scope_discipline": 8
+      },
+      "certified": true,
+      "clean_total": 8,
+      "false_positive_rate": 0.125,
+      "identity": {
+        "cli_version": "2.1.201 (Claude Code)",
+        "model_id_or_alias": "sonnet",
+        "recorded_at_run_id": "manual-20260706T165646Z"
+      },
+      "missing": [],
+      "thresholds": {
+        "axis_recall_min": 0.75,
+        "false_positive_rate_max": 0.125
+      }
+    }
+  },
+  "loss_conditions": {
+    "LC1_stack_vs_bare": {
+      "A_resolved": 2,
+      "best_B_resolved": 1
+    },
+    "LC2_moat": {
+      "A_resolved": 2,
+      "best_C_resolved": 1,
+      "moat_shown": true,
+      "objective_moat": true,
+      "ranked_axes_annex": {
+        "aggregate_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0064-t1/ceiling-judge-aggregate.json",
+        "by_task": {
+          "FS1-schedule-max-runs": {
+            "design_coherence": {
+              "sonnet": "C_win"
+            },
+            "maintainability_api_ergonomics": {
+              "sonnet": "C_win"
+            },
+            "robustness": {
+              "sonnet": "C_win"
+            },
+            "spec_long_horizon_consistency": {
+              "sonnet": "C_win"
+            }
+          },
+          "SW1-django-13230": {
+            "design_coherence": {
+              "sonnet": "C_win"
+            },
+            "maintainability_api_ergonomics": {
+              "sonnet": "C_win"
+            },
+            "robustness": {
+              "sonnet": "C_win"
+            },
+            "spec_long_horizon_consistency": {
+              "sonnet": "C_win"
+            }
+          },
+          "SW2-django-13265": {
+            "design_coherence": {},
+            "maintainability_api_ergonomics": {},
+            "robustness": {},
+            "spec_long_horizon_consistency": {}
+          }
+        },
+        "counts": {
+          "A_win": 0,
+          "C_win": 8,
+          "tie": 0,
+          "total": 8
+        },
+        "participating_judges": [
+          "sonnet"
+        ]
+      },
+      "ranked_axes_mode": "low-confidence-annex",
+      "ranked_counts": {
+        "A_win": 0,
+        "C_win": 8,
+        "tie": 0,
+        "total": 8
+      },
+      "ranked_majority": false
+    },
+    "LC3_efficiency": {
+      "cap": 3.0,
+      "mean_wall_ratio": 4.320868851408265
+    },
+    "LC4_instrument_invalid": {
+      "reasons": []
+    }
+  },
+  "run_id": "iter0064-t1",
+  "selection": {
+    "run_id": "iter0064-t1",
+    "select_args": [
+      "--select",
+      "SW1-django-13230=B1",
+      "--select",
+      "SW1-django-13230=C1",
+      "--select",
+      "SW2-django-13265=B1",
+      "--select",
+      "SW2-django-13265=C2",
+      "--select",
+      "FS1-schedule-max-runs=B1",
+      "--select",
+      "FS1-schedule-max-runs=C1"
+    ],
+    "tasks": {
+      "FS1-schedule-max-runs": {
+        "A": "A1",
+        "best_B": {
+          "arm_attempt": "B1",
+          "attempt_number": 1,
+          "candidates": [
+            {
+              "arm_attempt": "B1",
+              "attempt_number": 1,
+              "objective_score": 1.0,
+              "regression_count": 0,
+              "resolved": true
+            }
+          ],
+          "objective_score": 1.0,
+          "panel_rank_tiebreak": "not_applied_before_blind_judge",
+          "regression_count": 0,
+          "resolved": true
+        },
+        "best_C": {
+          "arm_attempt": "C1",
+          "attempt_number": 1,
+          "candidates": [
+            {
+              "arm_attempt": "C1",
+              "attempt_number": 1,
+              "objective_score": 1.0,
+              "regression_count": 0,
+              "resolved": true
+            }
+          ],
+          "objective_score": 1.0,
+          "panel_rank_tiebreak": "not_applied_before_blind_judge",
+          "regression_count": 0,
+          "resolved": true
+        },
+        "n_rule": {
+          "denominator_attempt": "B1",
+          "n": 1,
+          "retry_used": false,
+          "status": "VALID",
+          "task": "FS1-schedule-max-runs",
+          "wall_A_seconds": 270.0,
+          "wall_B_first_seconds": 367.0,
+          "wall_ratio": 0.7356948228882834
+        },
+        "row_status": "VALID",
+        "task": "FS1-schedule-max-runs"
+      },
+      "SW1-django-13230": {
+        "A": "A1",
+        "best_B": {
+          "arm_attempt": "B1",
+          "attempt_number": 1,
+          "candidates": [
+            {
+              "arm_attempt": "B1",
+              "attempt_number": 1,
+              "objective_score": 0.0,
+              "regression_count": 22,
+              "resolved": false
+            },
+            {
+              "arm_attempt": "B2",
+              "attempt_number": 2,
+              "objective_score": 0.0,
+              "regression_count": 22,
+              "resolved": false
+            },
+            {
+              "arm_attempt": "B3",
+              "attempt_number": 3,
+              "objective_score": 0.0,
+              "regression_count": 22,
+              "resolved": false
+            }
+          ],
+          "objective_score": 0.0,
+          "panel_rank_tiebreak": "not_applied_before_blind_judge",
+          "regression_count": 22,
+          "resolved": false
+        },
+        "best_C": {
+          "arm_attempt": "C1",
+          "attempt_number": 1,
+          "candidates": [
+            {
+              "arm_attempt": "C1",
+              "attempt_number": 1,
+              "objective_score": 0.0,
+              "regression_count": 22,
+              "resolved": false
+            },
+            {
+              "arm_attempt": "C2",
+              "attempt_number": 2,
+              "objective_score": 0.0,
+              "regression_count": 22,
+              "resolved": false
+            },
+            {
+              "arm_attempt": "C3",
+              "attempt_number": 3,
+              "objective_score": 0.0,
+              "regression_count": 22,
+              "resolved": false
+            }
+          ],
+          "objective_score": 0.0,
+          "panel_rank_tiebreak": "not_applied_before_blind_judge",
+          "regression_count": 22,
+          "resolved": false
+        },
+        "n_rule": {
+          "denominator_attempt": "B1",
+          "n": 3,
+          "retry_used": false,
+          "status": "VALID",
+          "task": "SW1-django-13230",
+          "wall_A_seconds": 1798.0,
+          "wall_B_first_seconds": 339.0,
+          "wall_ratio": 5.303834808259587
+        },
+        "row_status": "VALID",
+        "task": "SW1-django-13230"
+      },
+      "SW2-django-13265": {
+        "A": "A1",
+        "best_B": {
+          "arm_attempt": "B1",
+          "attempt_number": 1,
+          "candidates": [
+            {
+              "arm_attempt": "B1",
+              "attempt_number": 1,
+              "objective_score": 0.0,
+              "regression_count": 0,
+              "resolved": false
+            },
+            {
+              "arm_attempt": "B2",
+              "attempt_number": 2,
+              "objective_score": 0.0,
+              "regression_count": 0,
+              "resolved": false
+            },
+            {
+              "arm_attempt": "B3",
+              "attempt_number": 3,
+              "objective_score": 0.0,
+              "regression_count": 0,
+              "resolved": false
+            }
+          ],
+          "objective_score": 0.0,
+          "panel_rank_tiebreak": "not_applied_before_blind_judge",
+          "regression_count": 0,
+          "resolved": false
+        },
+        "best_C": {
+          "arm_attempt": "C2",
+          "attempt_number": 2,
+          "candidates": [
+            {
+              "arm_attempt": "C2",
+              "attempt_number": 2,
+              "objective_score": 0.004796163069544364,
+              "regression_count": 0,
+              "resolved": false
+            },
+            {
+              "arm_attempt": "C1",
+              "attempt_number": 1,
+              "objective_score": 0.0,
+              "regression_count": 0,
+              "resolved": false
+            },
+            {
+              "arm_attempt": "C3",
+              "attempt_number": 3,
+              "objective_score": 0.0,
+              "regression_count": 0,
+              "resolved": false
+            }
+          ],
+          "objective_score": 0.004796163069544364,
+          "panel_rank_tiebreak": "not_applied_before_blind_judge",
+          "regression_count": 0,
+          "resolved": false
+        },
+        "n_rule": {
+          "denominator_attempt": "B1",
+          "n": 3,
+          "retry_used": false,
+          "status": "VALID",
+          "task": "SW2-django-13265",
+          "wall_A_seconds": 3600.0,
+          "wall_B_first_seconds": 520.0,
+          "wall_ratio": 6.923076923076923
+        },
+        "row_status": "VALID",
+        "task": "SW2-django-13265"
+      }
+    }
+  },
+  "verdict": "FAIL-pilot"
+}

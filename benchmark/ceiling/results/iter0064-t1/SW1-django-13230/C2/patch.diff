@@ -1,0 +1,121 @@
+diff --git a/django/contrib/syndication/views.py b/django/contrib/syndication/views.py
+index 68ffb0bfe0..fbac7531f9 100644
+--- a/django/contrib/syndication/views.py
++++ b/django/contrib/syndication/views.py
+@@ -199,6 +199,13 @@ class Feed:
+             if updateddate and is_naive(updateddate):
+                 updateddate = make_aware(updateddate, tz)
+ 
++            item_extra_kwargs = self.item_extra_kwargs(item)
++            if 'comments' not in item_extra_kwargs:
++                item_extra_kwargs = {
++                    **item_extra_kwargs,
++                    'comments': self._get_dynamic_attr('item_comments', item),
++                }
++
+             feed.add_item(
+                 title=title,
+                 link=link,
+@@ -214,6 +221,6 @@ class Feed:
+                 author_link=author_link,
+                 categories=self._get_dynamic_attr('item_categories', item),
+                 item_copyright=self._get_dynamic_attr('item_copyright', item),
+-                **self.item_extra_kwargs(item)
++                **item_extra_kwargs
+             )
+         return feed
+diff --git a/docs/ref/contrib/syndication.txt b/docs/ref/contrib/syndication.txt
+index 13aa944e8a..439612cc88 100644
+--- a/docs/ref/contrib/syndication.txt
++++ b/docs/ref/contrib/syndication.txt
+@@ -854,6 +854,23 @@ This example illustrates all possible attributes and methods for a
+ 
+         item_updateddate = datetime.datetime(2005, 5, 3) # Hard-coded updateddate.
+ 
++        # ITEM COMMENTS URL -- It's optional to use one of these three. This is
++        # a hook that specifies how to get the URL of a page for comments for a
++        # given item.
++
++        def item_comments(self, item):
++            """
++            Takes an item, as returned by items(), and returns the item's
++            comments URL.
++            """
++
++        def item_comments(self):
++            """
++            Returns the comments URL for every item in the feed.
++            """
++
++        item_comments = 'https://www.example.com/comments/' # Hard-coded comments URL.
++
+         # ITEM CATEGORIES -- It's optional to use one of these three. This is
+         # a hook that specifies how to get the list of categories for a given
+         # item. In each case, the method/attribute should return an iterable
+diff --git a/tests/syndication_tests/feeds.py b/tests/syndication_tests/feeds.py
+index 4e9b1170b1..ec0aaf9dbb 100644
+--- a/tests/syndication_tests/feeds.py
++++ b/tests/syndication_tests/feeds.py
+@@ -49,6 +49,16 @@ class TestRss2FeedWithGuidIsPermaLinkFalse(TestRss2Feed):
+         return False
+ 
+ 
++class TestRss2FeedWithComments(TestRss2Feed):
++    def item_comments(self, item):
++        return 'http://example.com/blog/%s/comments/' % item.pk
++
++
++class TestRss2FeedWithCommentsFromExtraKwargs(TestRss2Feed):
++    def item_extra_kwargs(self, item):
++        return {'comments': 'http://example.com/blog/%s/comments/' % item.pk}
++
++
+ class TestRss091Feed(TestRss2Feed):
+     feed_type = feedgenerator.RssUserland091Feed
+ 
+diff --git a/tests/syndication_tests/tests.py b/tests/syndication_tests/tests.py
+index dab7ebab33..9d42ae73d2 100644
+--- a/tests/syndication_tests/tests.py
++++ b/tests/syndication_tests/tests.py
+@@ -176,6 +176,25 @@ class SyndicationFeedTest(FeedTestCase):
+                 item.getElementsByTagName('guid')[0].attributes.get(
+                     'isPermaLink').value, "true")
+ 
++    def test_rss2_feed_comments(self):
++        paths = [
++            '/syndication/rss2/comments/',
++            '/syndication/rss2/comments-extra-kwargs/',
++        ]
++        for path in paths:
++            with self.subTest(path=path):
++                response = self.client.get(path)
++                doc = minidom.parseString(response.content)
++                chan = doc.getElementsByTagName(
++                    'rss')[0].getElementsByTagName('channel')[0]
++                items = chan.getElementsByTagName('item')
++                for item in items:
++                    link = item.getElementsByTagName(
++                        'link')[0].firstChild.wholeText
++                    comments = item.getElementsByTagName(
++                        'comments')[0].firstChild.wholeText
++                    self.assertEqual(comments, '%scomments/' % link)
++
+     def test_rss2_single_enclosure(self):
+         response = self.client.get('/syndication/rss2/single-enclosure/')
+         doc = minidom.parseString(response.content)
+diff --git a/tests/syndication_tests/urls.py b/tests/syndication_tests/urls.py
+index bff7bd0c8d..7c6ba7cabf 100644
+--- a/tests/syndication_tests/urls.py
++++ b/tests/syndication_tests/urls.py
+@@ -10,6 +10,11 @@ urlpatterns = [
+     path(
+         'syndication/rss2/guid_ispermalink_false/',
+         feeds.TestRss2FeedWithGuidIsPermaLinkFalse()),
++    path('syndication/rss2/comments/', feeds.TestRss2FeedWithComments()),
++    path(
++        'syndication/rss2/comments-extra-kwargs/',
++        feeds.TestRss2FeedWithCommentsFromExtraKwargs(),
++    ),
+     path('syndication/rss091/', feeds.TestRss091Feed()),
+     path('syndication/no_pubdate/', feeds.TestNoPubdateFeed()),
+     path('syndication/atom/', feeds.TestAtomFeed()),

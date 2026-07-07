@@ -1,0 +1,94 @@
+diff --git a/django/contrib/syndication/views.py b/django/contrib/syndication/views.py
+index 68ffb0bfe0..b37fb588a4 100644
+--- a/django/contrib/syndication/views.py
++++ b/django/contrib/syndication/views.py
+@@ -209,6 +209,7 @@ class Feed:
+                 enclosures=enclosures,
+                 pubdate=pubdate,
+                 updateddate=updateddate,
++                comments=self._get_dynamic_attr('item_comments', item),
+                 author_name=author_name,
+                 author_email=author_email,
+                 author_link=author_link,
+diff --git a/docs/ref/contrib/syndication.txt b/docs/ref/contrib/syndication.txt
+index 13aa944e8a..62871e9136 100644
+--- a/docs/ref/contrib/syndication.txt
++++ b/docs/ref/contrib/syndication.txt
+@@ -673,6 +673,23 @@ This example illustrates all possible attributes and methods for a
+             Returns the URL for every item in the feed.
+             """
+ 
++        # ITEM COMMENTS URL -- One of these three is optional. The framework
++        # looks for them in this order. Ignored for Atom feeds.
++
++        def item_comments(self, item):
++            """
++            Takes an item, as returned by items(), and returns the item's
++            comments URL as a normal Python string.
++            """
++
++        def item_comments(self):
++            """
++            Returns the comments URL for every item in the feed.
++            """
++
++        # Hard-coded comments URL.
++        item_comments = 'https://www.example.com/comments/'
++
+         # ITEM_GUID -- The following method is optional. If not provided, the
+         # item's link is used by default.
+ 
+diff --git a/tests/syndication_tests/feeds.py b/tests/syndication_tests/feeds.py
+index 4e9b1170b1..8cae958fc6 100644
+--- a/tests/syndication_tests/feeds.py
++++ b/tests/syndication_tests/feeds.py
+@@ -49,6 +49,11 @@ class TestRss2FeedWithGuidIsPermaLinkFalse(TestRss2Feed):
+         return False
+ 
+ 
++class TestRss2FeedWithComments(TestRss2Feed):
++    def item_comments(self, item):
++        return 'http://www.example.com/comments/%s/' % item.pk
++
++
+ class TestRss091Feed(TestRss2Feed):
+     feed_type = feedgenerator.RssUserland091Feed
+ 
+diff --git a/tests/syndication_tests/tests.py b/tests/syndication_tests/tests.py
+index dab7ebab33..18ef8ef89b 100644
+--- a/tests/syndication_tests/tests.py
++++ b/tests/syndication_tests/tests.py
+@@ -176,6 +176,21 @@ class SyndicationFeedTest(FeedTestCase):
+                 item.getElementsByTagName('guid')[0].attributes.get(
+                     'isPermaLink').value, "true")
+ 
++    def test_rss2_feed_comments(self):
++        """
++        item_comments() is passed to the RSS feed generator as comments.
++        """
++        response = self.client.get('/syndication/rss2/comments/')
++        doc = minidom.parseString(response.content)
++        chan = doc.getElementsByTagName(
++            'rss')[0].getElementsByTagName('channel')[0]
++        items = chan.getElementsByTagName('item')
++        self.assertChildNodeContent(items[0], {
++            'comments': 'http://www.example.com/comments/1/',
++        })
++        for item in items:
++            self.assertEqual(len(item.getElementsByTagName('comments')), 1)
++
+     def test_rss2_single_enclosure(self):
+         response = self.client.get('/syndication/rss2/single-enclosure/')
+         doc = minidom.parseString(response.content)
+diff --git a/tests/syndication_tests/urls.py b/tests/syndication_tests/urls.py
+index bff7bd0c8d..8ebf8f18ed 100644
+--- a/tests/syndication_tests/urls.py
++++ b/tests/syndication_tests/urls.py
+@@ -10,6 +10,7 @@ urlpatterns = [
+     path(
+         'syndication/rss2/guid_ispermalink_false/',
+         feeds.TestRss2FeedWithGuidIsPermaLinkFalse()),
++    path('syndication/rss2/comments/', feeds.TestRss2FeedWithComments()),
+     path('syndication/rss091/', feeds.TestRss091Feed()),
+     path('syndication/no_pubdate/', feeds.TestNoPubdateFeed()),
+     path('syndication/atom/', feeds.TestAtomFeed()),

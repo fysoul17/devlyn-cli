@@ -1,0 +1,168 @@
+diff --git a/django/db/migrations/autodetector.py b/django/db/migrations/autodetector.py
+index 89e2dceeaf..7f88f5dfb2 100644
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -392,6 +392,12 @@ class MigrationAutodetector:
+                     isinstance(operation, operations.AddField) and
+                     operation.model_name_lower == dependency[1].lower() and
+                     operation.name_lower == dependency[2].lower()
++                ) or
++                (
++                    dependency[2] == "_order" and
++                    isinstance(operation, operations.AlterOrderWithRespectTo) and
++                    operation.name_lower == dependency[1].lower() and
++                    operation.order_with_respect_to is not None
+                 )
+             )
+         # Removed field
+@@ -625,7 +631,14 @@ class MigrationAutodetector:
+                         model_name=model_name,
+                         index=index,
+                     ),
+-                    dependencies=related_dependencies,
++                    dependencies=[
++                        *related_dependencies,
++                        *self._get_dependencies_for_generated_field_index(
++                            app_label,
++                            model_name,
++                            index,
++                        ),
++                    ],
+                 )
+             for constraint in constraints:
+                 self.add_operation(
+@@ -1020,7 +1033,12 @@ class MigrationAutodetector:
+                     operations.AddIndex(
+                         model_name=model_name,
+                         index=index,
+-                    )
++                    ),
++                    dependencies=self._get_dependencies_for_generated_field_index(
++                        app_label,
++                        model_name,
++                        index,
++                    ),
+                 )
+ 
+     def generate_removed_indexes(self):
+@@ -1093,6 +1111,13 @@ class MigrationAutodetector:
+             ))
+         return dependencies
+ 
++    def _get_dependencies_for_generated_field_index(self, app_label, model_name, index):
++        fields = {field_name for field_name, _ in index.fields_orders}
++        fields.update(index.include)
++        if '_order' in fields:
++            return [(app_label, model_name, '_order', True)]
++        return []
++
+     def _generate_altered_foo_together(self, operation):
+         option_name = operation.option_name
+         for app_label, model_name in sorted(self.kept_model_keys):
+diff --git a/tests/migrations/test_autodetector.py b/tests/migrations/test_autodetector.py
+index 236af43834..4922651a2e 100644
+--- a/tests/migrations/test_autodetector.py
++++ b/tests/migrations/test_autodetector.py
+@@ -1432,6 +1432,32 @@ class AutodetectorTests(TestCase):
+         self.assertOperationAttributes(changes, 'otherapp', 0, 0, name='Author')
+         self.assertOperationAttributes(changes, 'otherapp', 0, 1, model_name='author', index=added_index)
+ 
++    def test_create_model_with_order_with_respect_to_index(self):
++        """
++        Indexes on the generated _order field are created after the field.
++        """
++        look = ModelState('otherapp', 'Look', [
++            ('id', models.AutoField(primary_key=True)),
++        ])
++        look_image = ModelState('testapp', 'LookImage', [
++            ('id', models.AutoField(primary_key=True)),
++            ('look', models.ForeignKey('otherapp.Look', models.CASCADE)),
++        ], {
++            'order_with_respect_to': 'look',
++            'indexes': [
++                models.Index(fields=['look', '_order'], name='look_image_look_order_idx'),
++            ],
++        })
++        changes = self.get_changes([look], [look, look_image])
++        added_index = models.Index(fields=['look', '_order'], name='look_image_look_order_idx')
++        self.assertNumberMigrations(changes, 'testapp', 1)
++        self.assertOperationTypes(changes, 'testapp', 0, ['CreateModel', 'AddIndex'])
++        self.assertOperationAttributes(
++            changes, 'testapp', 0, 0, name='LookImage',
++            options={'order_with_respect_to': 'look'},
++        )
++        self.assertOperationAttributes(changes, 'testapp', 0, 1, model_name='lookimage', index=added_index)
++
+     def test_add_indexes(self):
+         """Test change detection of new indexes."""
+         changes = self.get_changes([self.author_empty, self.book], [self.author_empty, self.book_indexes])
+@@ -2125,6 +2151,69 @@ class AutodetectorTests(TestCase):
+         self.assertOperationAttributes(changes, 'testapp', 0, 0, model_name="author", name="book")
+         self.assertOperationAttributes(changes, 'testapp', 0, 1, name="author", order_with_respect_to="book")
+ 
++    def test_add_alter_order_with_respect_to_index(self):
++        """
++        Adding order_with_respect_to and an _order index in the same change
++        creates the _order field before the index.
++        """
++        look = ModelState('otherapp', 'Look', [
++            ('id', models.AutoField(primary_key=True)),
++        ])
++        look_image = ModelState('testapp', 'LookImage', [
++            ('id', models.AutoField(primary_key=True)),
++            ('look', models.ForeignKey('otherapp.Look', models.CASCADE)),
++        ])
++        look_image_order_wrt_index = ModelState('testapp', 'LookImage', [
++            ('id', models.AutoField(primary_key=True)),
++            ('look', models.ForeignKey('otherapp.Look', models.CASCADE)),
++        ], {
++            'order_with_respect_to': 'look',
++            'indexes': [
++                models.Index(fields=['look', '_order'], name='look_image_look_order_idx'),
++            ],
++        })
++        changes = self.get_changes(
++            [look, look_image],
++            [look, look_image_order_wrt_index],
++        )
++        added_index = models.Index(fields=['look', '_order'], name='look_image_look_order_idx')
++        self.assertNumberMigrations(changes, 'testapp', 1)
++        self.assertOperationTypes(changes, 'testapp', 0, ['AlterOrderWithRespectTo', 'AddIndex'])
++        self.assertOperationAttributes(changes, 'testapp', 0, 0, name='lookimage', order_with_respect_to='look')
++        self.assertOperationAttributes(changes, 'testapp', 0, 1, model_name='lookimage', index=added_index)
++
++    def test_add_index_order_with_respect_to_existing_order(self):
++        """
++        Adding an _order index works when the generated _order field already
++        exists.
++        """
++        look = ModelState('otherapp', 'Look', [
++            ('id', models.AutoField(primary_key=True)),
++        ])
++        look_image_order_wrt = ModelState('testapp', 'LookImage', [
++            ('id', models.AutoField(primary_key=True)),
++            ('look', models.ForeignKey('otherapp.Look', models.CASCADE)),
++        ], {
++            'order_with_respect_to': 'look',
++        })
++        look_image_order_wrt_index = ModelState('testapp', 'LookImage', [
++            ('id', models.AutoField(primary_key=True)),
++            ('look', models.ForeignKey('otherapp.Look', models.CASCADE)),
++        ], {
++            'order_with_respect_to': 'look',
++            'indexes': [
++                models.Index(fields=['look', '_order'], name='look_image_look_order_idx'),
++            ],
++        })
++        changes = self.get_changes(
++            [look, look_image_order_wrt],
++            [look, look_image_order_wrt_index],
++        )
++        added_index = models.Index(fields=['look', '_order'], name='look_image_look_order_idx')
++        self.assertNumberMigrations(changes, 'testapp', 1)
++        self.assertOperationTypes(changes, 'testapp', 0, ['AddIndex'])
++        self.assertOperationAttributes(changes, 'testapp', 0, 0, model_name='lookimage', index=added_index)
++
+     def test_remove_alter_order_with_respect_to(self):
+         """
+         Removing order_with_respect_to when removing the FK too does

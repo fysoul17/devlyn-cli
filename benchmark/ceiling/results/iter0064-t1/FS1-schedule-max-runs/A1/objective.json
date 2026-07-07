@@ -1,0 +1,19 @@
+{
+  "task": "FS1-schedule-max-runs",
+  "arm_attempt": "A1",
+  "resolved": false,
+  "tests_passed": 0,
+  "tests_total": 14,
+  "hidden_test_failures": 14,
+  "upstream_suite_pass": true,
+  "upstream_counts": {
+    "passed": 40,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 41
+  },
+  "apply_exit": 0,
+  "hidden_pytest_exit": 1,
+  "upstream_pytest_exit": 0,
+  "report_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/external/eval/iter0064-t1/FS1-schedule-max-runs/A1/hidden-pytest.log"
+}

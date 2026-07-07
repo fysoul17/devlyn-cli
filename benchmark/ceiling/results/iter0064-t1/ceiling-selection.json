@@ -1,0 +1,222 @@
+{
+  "run_id": "iter0064-t1",
+  "select_args": [
+    "--select",
+    "SW1-django-13230=B1",
+    "--select",
+    "SW1-django-13230=C1",
+    "--select",
+    "SW2-django-13265=B1",
+    "--select",
+    "SW2-django-13265=C2",
+    "--select",
+    "FS1-schedule-max-runs=B1",
+    "--select",
+    "FS1-schedule-max-runs=C1"
+  ],
+  "tasks": {
+    "FS1-schedule-max-runs": {
+      "A": "A1",
+      "best_B": {
+        "arm_attempt": "B1",
+        "attempt_number": 1,
+        "candidates": [
+          {
+            "arm_attempt": "B1",
+            "attempt_number": 1,
+            "objective_score": 1.0,
+            "regression_count": 0,
+            "resolved": true
+          }
+        ],
+        "objective_score": 1.0,
+        "panel_rank_tiebreak": "not_applied_before_blind_judge",
+        "regression_count": 0,
+        "resolved": true
+      },
+      "best_C": {
+        "arm_attempt": "C1",
+        "attempt_number": 1,
+        "candidates": [
+          {
+            "arm_attempt": "C1",
+            "attempt_number": 1,
+            "objective_score": 1.0,
+            "regression_count": 0,
+            "resolved": true
+          }
+        ],
+        "objective_score": 1.0,
+        "panel_rank_tiebreak": "not_applied_before_blind_judge",
+        "regression_count": 0,
+        "resolved": true
+      },
+      "n_rule": {
+        "denominator_attempt": "B1",
+        "n": 1,
+        "retry_used": false,
+        "status": "VALID",
+        "task": "FS1-schedule-max-runs",
+        "wall_A_seconds": 270.0,
+        "wall_B_first_seconds": 367.0,
+        "wall_ratio": 0.7356948228882834
+      },
+      "row_status": "VALID",
+      "task": "FS1-schedule-max-runs"
+    },
+    "SW1-django-13230": {
+      "A": "A1",
+      "best_B": {
+        "arm_attempt": "B1",
+        "attempt_number": 1,
+        "candidates": [
+          {
+            "arm_attempt": "B1",
+            "attempt_number": 1,
+            "objective_score": 0.0,
+            "regression_count": 22,
+            "resolved": false
+          },
+          {
+            "arm_attempt": "B2",
+            "attempt_number": 2,
+            "objective_score": 0.0,
+            "regression_count": 22,
+            "resolved": false
+          },
+          {
+            "arm_attempt": "B3",
+            "attempt_number": 3,
+            "objective_score": 0.0,
+            "regression_count": 22,
+            "resolved": false
+          }
+        ],
+        "objective_score": 0.0,
+        "panel_rank_tiebreak": "not_applied_before_blind_judge",
+        "regression_count": 22,
+        "resolved": false
+      },
+      "best_C": {
+        "arm_attempt": "C1",
+        "attempt_number": 1,
+        "candidates": [
+          {
+            "arm_attempt": "C1",
+            "attempt_number": 1,
+            "objective_score": 0.0,
+            "regression_count": 22,
+            "resolved": false
+          },
+          {
+            "arm_attempt": "C2",
+            "attempt_number": 2,
+            "objective_score": 0.0,
+            "regression_count": 22,
+            "resolved": false
+          },
+          {
+            "arm_attempt": "C3",
+            "attempt_number": 3,
+            "objective_score": 0.0,
+            "regression_count": 22,
+            "resolved": false
+          }
+        ],
+        "objective_score": 0.0,
+        "panel_rank_tiebreak": "not_applied_before_blind_judge",
+        "regression_count": 22,
+        "resolved": false
+      },
+      "n_rule": {
+        "denominator_attempt": "B1",
+        "n": 3,
+        "retry_used": false,
+        "status": "VALID",
+        "task": "SW1-django-13230",
+        "wall_A_seconds": 1798.0,
+        "wall_B_first_seconds": 339.0,
+        "wall_ratio": 5.303834808259587
+      },
+      "row_status": "VALID",
+      "task": "SW1-django-13230"
+    },
+    "SW2-django-13265": {
+      "A": "A1",
+      "best_B": {
+        "arm_attempt": "B1",
+        "attempt_number": 1,
+        "candidates": [
+          {
+            "arm_attempt": "B1",
+            "attempt_number": 1,
+            "objective_score": 0.0,
+            "regression_count": 0,
+            "resolved": false
+          },
+          {
+            "arm_attempt": "B2",
+            "attempt_number": 2,
+            "objective_score": 0.0,
+            "regression_count": 0,
+            "resolved": false
+          },
+          {
+            "arm_attempt": "B3",
+            "attempt_number": 3,
+            "objective_score": 0.0,
+            "regression_count": 0,
+            "resolved": false
+          }
+        ],
+        "objective_score": 0.0,
+        "panel_rank_tiebreak": "not_applied_before_blind_judge",
+        "regression_count": 0,
+        "resolved": false
+      },
+      "best_C": {
+        "arm_attempt": "C2",
+        "attempt_number": 2,
+        "candidates": [
+          {
+            "arm_attempt": "C2",
+            "attempt_number": 2,
+            "objective_score": 0.004796163069544364,
+            "regression_count": 0,
+            "resolved": false
+          },
+          {
+            "arm_attempt": "C1",
+            "attempt_number": 1,
+            "objective_score": 0.0,
+            "regression_count": 0,
+            "resolved": false
+          },
+          {
+            "arm_attempt": "C3",
+            "attempt_number": 3,
+            "objective_score": 0.0,
+            "regression_count": 0,
+            "resolved": false
+          }
+        ],
+        "objective_score": 0.004796163069544364,
+        "panel_rank_tiebreak": "not_applied_before_blind_judge",
+        "regression_count": 0,
+        "resolved": false
+      },
+      "n_rule": {
+        "denominator_attempt": "B1",
+        "n": 3,
+        "retry_used": false,
+        "status": "VALID",
+        "task": "SW2-django-13265",
+        "wall_A_seconds": 3600.0,
+        "wall_B_first_seconds": 520.0,
+        "wall_ratio": 6.923076923076923
+      },
+      "row_status": "VALID",
+      "task": "SW2-django-13265"
+    }
+  }
+}

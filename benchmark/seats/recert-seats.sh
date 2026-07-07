@@ -180,7 +180,10 @@ PY
 )"
 
 run_suite seat_matrix \
-  python3 "$SEATS_ROOT/seat-matrix.py" --date "$DATE" --engine-versions "$ENGINE_VERSIONS"
+  python3 "$SEATS_ROOT/seat-matrix.py" \
+    --date "$DATE" \
+    --engine-versions "$ENGINE_VERSIONS" \
+    --attest-run-prefix "$RUN_PREFIX"
 
 FAILURES_CSV=""
 if [ ${#FAILURES[@]} -gt 0 ]; then

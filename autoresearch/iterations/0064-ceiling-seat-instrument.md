@@ -1,9 +1,11 @@
 # iter-0064 — ceiling & seat-fitness instrument family v0
 
-status: PRE-REGISTERED 2026-07-07 (design contract locked 2026-07-07 prior
-session; pre-registration frozen below BEFORE any arm run; Codex R0
-SHIP-WITH-EDITS — all 5 MUST-FIX adopted below; archive
-`/tmp/codex-iter0064/r0-response.log`)
+status: CLOSED 2026-07-07 — instrument family v0 SHIPPED (ceiling 3-arm
+harness + seat-fitness matrix + recert runner, all live-verified);
+tranche-1 ceiling verdict: **FAIL-pilot** (LC3 efficiency; quality lift +
+objective moat present — see Tranche-1 results). Pre-registration was
+frozen pre-arms at commit `0bb4ef7`; Codex R0 SHIP-WITH-EDITS (5 MUST-FIX
+adopted), R1 tranche-VALID. Archives `/tmp/codex-iter0064/`.
 
 **Serves**: Mission 1 ceiling axis (NORTH-STAR ceiling contract + ops test
 #17, added 2026-07-06) + HANDOFF Block 7 (user ceiling mandate + seat
@@ -288,9 +290,12 @@ Self-tests per repo precedent (`test-*.sh`); lint + mirrors clean.
   (CLI 2.1.201, exact model `claude-sonnet-5` via modelUsage probe): recall
   16/16 = 1.00 both axes, FP 1/8 = 0.125 — passes exactly at the bar (note:
   iter-0055 had FP 0/8; the WD3-CLEAN FP is new this run). codex (CLI
-  0.141.0, exact model `gpt-5.5` via stderr banner artifact): recall 16/16
-  = 1.00, FP 0/8 = 0.00, parse 0/24. Panel = 2 certified judges → LC2
-  ranked axes decision-capable. P3 CONFIRMED.
+  0.141.0; machine-readable `model_id_or_alias` null — `gpt-5.5` observed
+  in stderr banner artifacts, not recorded as identity): recall 16/16
+  = 1.00, FP 0/8 = 0.00, parse 0/24. Both judges CERTIFIED (P3 CONFIRMED)
+  — but certification ≠ participation: in the tranche's ranked-axes phase
+  codex parse-failed all 3 tasks and SW2 sonnet timed out, so ranked axes
+  ended `low-confidence-annex` (sonnet-only, 2 tasks).
 - **Live-caught route defect (fixed pre-arms, surfaced for reconciliation)**:
   first codex calibration run failed 24/24 `transport_error` — `codex exec`
   refuses non-git scratch dirs; fix = `--skip-git-repo-check` in
@@ -299,6 +304,50 @@ Self-tests per repo precedent (`test-*.sh`); lint + mirrors clean.
   standing lesson (iter-0063 lens 3 analog). Known cosmetic: parallel
   per-judge invocations last-writer-win `summary.json`; per-rep files are
   authoritative (aggregator reads those).
+
+### Tranche-1 results (raw; run `iter0064-t1`, artifacts under `benchmark/ceiling/results/iter0064-t1/`)
+
+**VERDICT: `FAIL-pilot`** — pre-registered LC3 fired: mean `wall_A /
+wall_B_first` = **4.32 > 3.0 cap** (SW1 5.30, SW2 6.92, FS1 0.74).
+Claim shape: current devlyn stack (sonnet orchestrator + codex executor)
+vs codex bare/copycat, matched wall. Quality axes went the stack's way;
+efficiency lost the pilot, exactly as the loss conditions define.
+
+| task | A (devlyn) | best-B (bare codex) | best-C (copycat) | N | wall A / B1 |
+|---|---|---|---|---|---|
+| SW1 | **resolved** (1798s) | not resolved (0/3) | not resolved (0/3) | 3 | 5.30 |
+| SW2 | **resolved** (timed out 3600s mid pair-VERIFY; implement/build_gate/cleanup PASS; patch resolves) | not resolved (0/3) | not resolved (0/3) | 3 | 6.92 |
+| FS1 | **not resolved** — `BLOCKED:large-needs-ideation` interactive stop in hands-free context, 0-byte delivery, 270s | **resolved 14/14** | **resolved 14/14** | 1 | 0.74 |
+
+LC1: A 2 vs best-B 1 (lift, no tie). LC2: objective moat TRUE (A 2 > C 1);
+ranked axes NOT decision-capable (low-confidence-annex: sonnet-only, C
+over A 8/8 — including SW1 where A objectively resolved and C did not;
+objective-first ordering protected the verdict). Leave-one-out: excluding
+FS1, A 2/2 vs B 0/2 vs C 0/2 with mean ratio 6.11 — FAIL-pilot on LC3
+either way; FS1 does not flip any verdict component alone.
+
+**Predictions vs actuals**: P1 CONFIRMED exactly (A 2/3 ≥ best-B 1/3).
+P2 objective half CONFIRMED (A > C); ranked-axis half moot (annex). P3
+CONFIRMED (both certified). **P4 REFUTED** — wall ratios 5.30/6.92/0.74,
+not [1.5, 3.0]; the devlyn stack is far slower than predicted on
+bug-shaped tasks and faster only by failing early on FS1. P5: matrix
+populated 5/6 seats from existing artifacts (PLAN seat pilot-only).
+
+**Product findings the pilot licenses (class-level, with repro)**:
+1. **Hands-free break on spec-shaped free-form goals**: FS1 A1 returned a
+   PHASE-0 interactive question (`large-needs-ideation`) with zero
+   delivery while bare AND copycat codex implemented the feature 14/14.
+2. **Pair-VERIFY wall consumes the delivery window**: SW2 A1 spent its
+   final ~30+ min inside VERIFY after all build phases PASSed, hitting the
+   3600s cap; SW1's 1798s vs bare 339s is the same axis.
+3. **Blind rank axes prefer plausible-but-wrong**: judges ranked failing
+   copycat diffs above objectively-resolving devlyn diffs 8/8 — style
+   axes must never override objective checks (pre-registered ordering held).
+4. Instrument nits (non-verdict): SW `f2p_total` mislabel (reporting
+   field only); codex-judge structured-output contract needs schema-first
+   prompt (do NOT relax the validator — official structured-output
+   guidance both vendors); SW2 judge packets exceeded sonnet judge
+   timeout.
 
 ### Pair rounds
 
@@ -310,6 +359,52 @@ Self-tests per repo precedent (`test-*.sh`); lint + mirrors clean.
   fail-closed). SHOULD-FIX adopted: per-task + leave-one-out reporting,
   indistinguishable-as-tie + cited-delta wins, Reuse-Before-New-Script;
   sonnet bare/copycat lane deferred to tranche 2.
+- **R1** (2026-07-07, read-only xhigh on raw results, archive
+  `/tmp/codex-iter0064/r1-response.log`): **tranche VALID, FAIL-pilot
+  stands**; no pre-registration retro-edits (git-log verified); all 6
+  orchestrator in-run fixes CONFIRMED at file:line (skip-git-repo-check,
+  mapfile×4, BSD find, diff-vs-base patch extraction, FS1 eval str/Path +
+  uv-pip, gate participation labeling); 2 execution-record overstatements
+  patched (panel decision-capability; codex identity wording); next levers
+  adopted: (1) hands-free fix for spec-shaped free-form goals, (2) bounded
+  pair-VERIFY wall. F-E ruling: tighten judge schema/prompt per official
+  structured-output guidance, never relax the validator.
+
+### Seat-matrix final state (2026-07-07, post-recert `iter0064-recert`)
+
+`benchmark/seats/seat-matrix-2026-07-07.{json,md}` — 80 cells; 5 CURRENT
+via recert attestation (drift: sonnet 0.708 / opus 0.625 non-violation
+N=24 each; orchestrator compliance: sonnet 1.0, opus 1.0, codex 0.0 —
+codex cell is the hung/aborted observation, single-N caveat), judge
+certification block current for sonnet+codex, PLAN seat now pilot-stale
+(`ceiling_pilot_a_resolved` 0.67). **Pins recommendation: fail-closed
+`recert required` for executor + pair-judge** — their instruments
+(fixture verify-score, frozen-VERIFY pair gate) predate current engine
+versions; the recert runner correctly refuses to pin from stale identity.
+`.devlyn/engines.json` stays `{"executor":"codex"}` (no evidence to
+change; ceiling pilot informally supports codex-as-executor 2/2 SW under
+harness). Recert-attestation provenance (`--attest-run-prefix`) closes
+the infinite-"recert required" regress found live.
+
+### Follow-ups (logged, not opened)
+
+1. **iter-0065 lever A (R1-adopted)**: hands-free break on spec-shaped
+   free-form goals — FS1 A1 repro (`BLOCKED:large-needs-ideation`
+   interactive stop, 0-byte delivery). Fix class: hands-free contexts must
+   assume-and-log or synthesize the spec, never ask.
+2. **iter-0065 lever B (R1-adopted)**: bounded pair-VERIFY wall — SW2 A1
+   burned its window inside VERIFY after all build phases PASSed (3600s
+   timeout); SW1 1798s vs bare 339s same axis.
+3. Instrument follow-ups before tranche 2: codex-judge schema-first prompt
+   (deltas came back as strings; validator stays strict per official
+   structured-output guidance); judge packet size vs sonnet timeout (SW2
+   rankings lost); SW `f2p_total` label fix.
+4. Codex compliance cell hung ≥2.5h idle (recert `iter0064-recert`,
+   externally aborted, recorded FAIL) — single observation; needs a 2nd
+   before any doc/pin change (iter-0059 "experimental" label consistent).
+5. Recert cadence: violation+compliance suites re-run bounded (~2h wall
+   incl. the hang); judge-quality ~30 min/judge. Re-certify on any
+   model/version change per NORTH-STAR ceiling contract.
 
 ## Hand-off contract for the running session
 

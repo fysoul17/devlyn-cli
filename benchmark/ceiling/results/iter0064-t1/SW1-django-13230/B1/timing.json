@@ -1,0 +1,9 @@
+{
+  "task": "SW1-django-13230",
+  "arm": "B",
+  "attempt": 1,
+  "elapsed_seconds": 339,
+  "invoke_exit": 0,
+  "timed_out": false,
+  "worktree": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/external/workspaces/iter0064-t1/SW1-django-13230/B1/django__django-13230"
+}

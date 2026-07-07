@@ -225,7 +225,8 @@ write_fs1_objective() {
     (cd "$worktree" && uv venv --python 3.11 .venv) > "$eval_dir/uv-venv.stdout.log" 2> "$eval_dir/uv-venv.stderr.log"
     local venv_exit=$?
     if [ "$venv_exit" -eq 0 ]; then
-      (cd "$worktree" && .venv/bin/python -m pip install -q pytest) > "$eval_dir/pip-install.stdout.log" 2> "$eval_dir/pip-install.stderr.log"
+      # uv venvs ship without pip — install via uv against the venv python
+      (cd "$worktree" && uv pip install -q --python .venv/bin/python pytest) > "$eval_dir/pip-install.stdout.log" 2> "$eval_dir/pip-install.stderr.log"
       local pip_exit=$?
       if [ "$pip_exit" -eq 0 ]; then
         (cd "$worktree" && .venv/bin/python -m pytest -q test_max_runs_oracle.py) > "$eval_dir/hidden-pytest.log" 2>&1
@@ -277,7 +278,7 @@ payload = {
     "upstream_pytest_exit": int(upstream_exit),
     "report_path": str(Path(eval_dir) / "hidden-pytest.log"),
 }
-out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+Path(out).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
 }
 

@@ -11,6 +11,7 @@ import sys
 from typing import Any
 
 
+DRIFT_RUN_ID_RE = re.compile(r"^(?P<prefix>.+)-(?P<model>[A-Za-z0-9_.]+)-r(?P<rep>\d+)$")
 SEATS = (
     "orchestrator",
     "drift_resistance",
@@ -40,6 +41,30 @@ def rel(root: pathlib.Path, path: pathlib.Path) -> str:
         return str(path.relative_to(root))
     except ValueError:
         return str(path)
+
+
+def artifact_has_attested_prefix(artifact: str | None, attest_run_prefix: str | None) -> bool:
+    if not artifact or not attest_run_prefix:
+        return False
+    return any(part.startswith(f"{attest_run_prefix}-") for part in pathlib.PurePosixPath(artifact).parts)
+
+
+def alias_from_attested_artifact(
+    artifact: str,
+    attest_run_prefix: str | None,
+    engine_versions: dict[str, str],
+) -> str | None:
+    if not attest_run_prefix:
+        return None
+    aliases = set(engine_versions)
+    for part in pathlib.PurePosixPath(artifact).parts:
+        if not part.startswith(f"{attest_run_prefix}-"):
+            continue
+        tokens = part[len(attest_run_prefix) + 1:].split("-")
+        for token in tokens:
+            if token in aliases:
+                return token
+    return None
 
 
 def model_value(cli_version: Any, model_id_or_alias: Any) -> str | None:
@@ -86,7 +111,11 @@ def make_cell(
     artifact: str | None,
     model_version_value: str | None = None,
     model_version_source: str | None = None,
+    attest_run_prefix: str | None = None,
 ) -> dict[str, Any]:
+    if artifact_has_attested_prefix(artifact, attest_run_prefix) and engine_alias in engine_versions:
+        model_version_value = engine_versions[engine_alias]
+        model_version_source = f"recert-attestation:{attest_run_prefix}"
     return {
         "seat": seat,
         "engine_alias": engine_alias,
@@ -103,7 +132,12 @@ def make_cell(
     }
 
 
-def collect_drift_cells(root: pathlib.Path, date: str, engine_versions: dict[str, str]) -> list[dict[str, Any]]:
+def collect_drift_cells(
+    root: pathlib.Path,
+    date: str,
+    engine_versions: dict[str, str],
+    attest_run_prefix: str | None,
+) -> list[dict[str, Any]]:
     cells: list[dict[str, Any]] = []
     results = root / "benchmark/probes/results"
     for name in (
@@ -134,11 +168,64 @@ def collect_drift_cells(root: pathlib.Path, date: str, engine_versions: dict[str
                 value=(reps - violations) / reps,
                 n=reps,
                 artifact=rel(root, path),
+                attest_run_prefix=attest_run_prefix,
             ))
+    if attest_run_prefix:
+        cells.extend(collect_attested_drift_cells(root, date, engine_versions, attest_run_prefix))
     return cells
 
 
-def collect_compliance_cells(root: pathlib.Path, date: str, engine_versions: dict[str, str]) -> list[dict[str, Any]]:
+def collect_attested_drift_cells(
+    root: pathlib.Path,
+    date: str,
+    engine_versions: dict[str, str],
+    attest_run_prefix: str,
+) -> list[dict[str, Any]]:
+    cells: list[dict[str, Any]] = []
+    results = root / "benchmark/probes/results"
+    groups: dict[str, dict[str, Any]] = {}
+    for run_dir in sorted(results.glob(f"{attest_run_prefix}-violation-*-r*")):
+        match = DRIFT_RUN_ID_RE.match(run_dir.name)
+        if not match or match.group("prefix") != f"{attest_run_prefix}-violation":
+            continue
+        model = match.group("model")
+        group = groups.setdefault(model, {"total": 0, "violations": 0, "artifact": None})
+        if group["artifact"] is None:
+            group["artifact"] = f"{rel(root, results)}/{attest_run_prefix}-violation-{model}-r*/drift-bait/*/verdict.json"
+        for verdict_path in sorted(run_dir.glob("drift-bait/*/verdict.json")):
+            try:
+                verdict = load_json(verdict_path)
+            except (OSError, ValueError, json.JSONDecodeError):
+                continue
+            if isinstance(verdict, dict) and isinstance(verdict.get("passed"), bool):
+                group["total"] += 1
+                if verdict.get("passed") is False:
+                    group["violations"] += 1
+    for model, group in sorted(groups.items()):
+        reps = group["total"]
+        violations = group["violations"]
+        if reps <= 0:
+            continue
+        cells.append(make_cell(
+            date=date,
+            engine_versions=engine_versions,
+            seat="drift_resistance",
+            engine_alias=model,
+            metric="non_violation_rate",
+            value=(reps - violations) / reps,
+            n=reps,
+            artifact=group["artifact"],
+            attest_run_prefix=attest_run_prefix,
+        ))
+    return cells
+
+
+def collect_compliance_cells(
+    root: pathlib.Path,
+    date: str,
+    engine_versions: dict[str, str],
+    attest_run_prefix: str | None,
+) -> list[dict[str, Any]]:
     cells: list[dict[str, Any]] = []
     results = root / "benchmark/probes/results"
     for path in sorted(results.glob("**/compliance-check.json")):
@@ -151,15 +238,18 @@ def collect_compliance_cells(root: pathlib.Path, date: str, engine_versions: dic
         if not isinstance(cli, str) or not cli:
             continue
         overall = data.get("overall")
+        artifact = rel(root, path)
+        engine_alias = alias_from_attested_artifact(artifact, attest_run_prefix, engine_versions) or cli
         cells.append(make_cell(
             date=date,
             engine_versions=engine_versions,
             seat="orchestrator",
-            engine_alias=cli,
+            engine_alias=engine_alias,
             metric="compliance_pass",
             value=1.0 if overall == "PASS" else 0.0,
             n=1,
-            artifact=rel(root, path),
+            artifact=artifact,
+            attest_run_prefix=attest_run_prefix,
         ))
     return cells
 
@@ -177,6 +267,7 @@ def collect_judge_quality_cells(
     root: pathlib.Path,
     date: str,
     engine_versions: dict[str, str],
+    attest_run_prefix: str | None,
 ) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
     cells: list[dict[str, Any]] = []
     certification: dict[str, dict[str, Any]] = {}
@@ -234,11 +325,17 @@ def collect_judge_quality_cells(
                 artifact=rel(root, judge_dir),
                 model_version_value=identity_value,
                 model_version_source=identity_source,
+                attest_run_prefix=attest_run_prefix,
             ))
     return cells, certification
 
 
-def collect_pair_judge_cells(root: pathlib.Path, date: str, engine_versions: dict[str, str]) -> list[dict[str, Any]]:
+def collect_pair_judge_cells(
+    root: pathlib.Path,
+    date: str,
+    engine_versions: dict[str, str],
+    attest_run_prefix: str | None,
+) -> list[dict[str, Any]]:
     cells: list[dict[str, Any]] = []
     artifacts = [
         root / "benchmark/auto-resolve/results/swebench-lite-proof-gate-n11.json",
@@ -279,11 +376,17 @@ def collect_pair_judge_cells(root: pathlib.Path, date: str, engine_versions: dic
             artifact=rel(root, path),
             model_version_value=version,
             model_version_source=version_source,
+            attest_run_prefix=attest_run_prefix,
         ))
     return cells
 
 
-def collect_implement_cells(root: pathlib.Path, date: str, engine_versions: dict[str, str]) -> list[dict[str, Any]]:
+def collect_implement_cells(
+    root: pathlib.Path,
+    date: str,
+    engine_versions: dict[str, str],
+    attest_run_prefix: str | None,
+) -> list[dict[str, Any]]:
     cells: list[dict[str, Any]] = []
     proof_root = root / "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof"
     if not proof_root.is_dir():
@@ -328,7 +431,69 @@ def collect_implement_cells(root: pathlib.Path, date: str, engine_versions: dict
                 artifact=rel(root, proof_root),
                 model_version_value=version_value,
                 model_version_source=version_source,
+                attest_run_prefix=attest_run_prefix,
             ))
+    return cells
+
+
+def valid_ceiling_rows(verdict: dict[str, Any]) -> dict[str, Any]:
+    selection = verdict.get("selection")
+    if not isinstance(selection, dict):
+        return {}
+    tasks = selection.get("tasks")
+    if not isinstance(tasks, dict):
+        return {}
+    return {str(task): row for task, row in tasks.items() if isinstance(row, dict) and row.get("row_status") == "VALID"}
+
+
+def ceiling_a_resolved_fraction(verdict: dict[str, Any], valid_count: int) -> float | None:
+    loss_conditions = verdict.get("loss_conditions")
+    if not isinstance(loss_conditions, dict):
+        return None
+    stack_vs_bare = loss_conditions.get("LC1_stack_vs_bare")
+    if not isinstance(stack_vs_bare, dict):
+        return None
+    a_resolved = stack_vs_bare.get("A_resolved")
+    if not (isinstance(a_resolved, int) and not isinstance(a_resolved, bool) and a_resolved >= 0 and valid_count > 0):
+        return None
+    return a_resolved / valid_count
+
+
+def collect_ceiling_cells(root: pathlib.Path, date: str, engine_versions: dict[str, str]) -> list[dict[str, Any]]:
+    cells: list[dict[str, Any]] = []
+    for path in sorted((root / "benchmark/ceiling/results").glob("*/ceiling-verdict.json")):
+        try:
+            verdict = load_json(path)
+        except (OSError, ValueError, json.JSONDecodeError):
+            continue
+        if not isinstance(verdict, dict):
+            continue
+        valid_rows = valid_ceiling_rows(verdict)
+        n = len(valid_rows)
+        value = ceiling_a_resolved_fraction(verdict, n)
+        if value is None:
+            continue
+        artifact = rel(root, path)
+        cells.append(make_cell(
+            date=date,
+            engine_versions=engine_versions,
+            seat="implement_executor",
+            engine_alias="codex",
+            metric="ceiling_objective_resolved_under_harness",
+            value=value,
+            n=n,
+            artifact=artifact,
+        ))
+        cells.append(make_cell(
+            date=date,
+            engine_versions=engine_versions,
+            seat="plan_ideate_designer",
+            engine_alias="sonnet+codex stack",
+            metric="ceiling_pilot_a_resolved",
+            value=value,
+            n=n,
+            artifact=artifact,
+        ))
     return cells
 
 
@@ -422,14 +587,20 @@ def render_md(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def build_report(root: pathlib.Path, date: str, engine_versions: dict[str, str]) -> dict[str, Any]:
+def build_report(
+    root: pathlib.Path,
+    date: str,
+    engine_versions: dict[str, str],
+    attest_run_prefix: str | None,
+) -> dict[str, Any]:
     cells: list[dict[str, Any]] = []
-    cells.extend(collect_compliance_cells(root, date, engine_versions))
-    cells.extend(collect_drift_cells(root, date, engine_versions))
-    judge_cells, certification = collect_judge_quality_cells(root, date, engine_versions)
+    cells.extend(collect_compliance_cells(root, date, engine_versions, attest_run_prefix))
+    cells.extend(collect_drift_cells(root, date, engine_versions, attest_run_prefix))
+    judge_cells, certification = collect_judge_quality_cells(root, date, engine_versions, attest_run_prefix)
     cells.extend(judge_cells)
-    cells.extend(collect_pair_judge_cells(root, date, engine_versions))
-    cells.extend(collect_implement_cells(root, date, engine_versions))
+    cells.extend(collect_pair_judge_cells(root, date, engine_versions, attest_run_prefix))
+    cells.extend(collect_implement_cells(root, date, engine_versions, attest_run_prefix))
+    cells.extend(collect_ceiling_cells(root, date, engine_versions))
     add_unmeasured_cells(cells, date, engine_versions)
     cells.sort(key=lambda c: (c["seat"], c["engine_alias"], c["metric"], c["artifact"] or ""))
     return {
@@ -453,6 +624,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--date", required=True, help="YYYY-MM-DD; also used in output filename")
     parser.add_argument("--engine-versions", required=True, type=parse_engine_versions)
+    parser.add_argument("--attest-run-prefix", help="recert run prefix whose alias-only result dirs attest current engine versions")
     parser.add_argument("--repo-root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--out-dir", type=pathlib.Path)
     args = parser.parse_args()
@@ -461,7 +633,7 @@ def main() -> int:
     root = args.repo_root.resolve()
     out_dir = args.out_dir or (root / "benchmark/seats")
     out_dir.mkdir(parents=True, exist_ok=True)
-    report = build_report(root, args.date, args.engine_versions)
+    report = build_report(root, args.date, args.engine_versions, args.attest_run_prefix)
     out_json = out_dir / f"seat-matrix-{args.date}.json"
     out_md = out_dir / f"seat-matrix-{args.date}.md"
     out_json.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")

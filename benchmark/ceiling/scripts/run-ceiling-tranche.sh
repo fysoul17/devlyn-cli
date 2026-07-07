@@ -123,9 +123,12 @@ PY
 eval_task_attempts() {
   local task="$1"
   local args=(--run-id "$RUN_ID" --task "$task")
-  while IFS= read -r dir; do
+  # BSD find -regex has no ERE '+' by default (macOS) — portable glob instead
+  local dir
+  for dir in "$CEILING_ROOT/results/$RUN_ID/$task"/[ABC][0-9]*; do
+    [ -d "$dir" ] || continue
     args+=(--arm-attempt "$(basename "$dir")")
-  done < <(find "$CEILING_ROOT/results/$RUN_ID/$task" -maxdepth 1 -type d -regex '.*/[ABC][0-9]+' 2>/dev/null | sort)
+  done
   bash "$SCRIPT_DIR/ceiling-eval.sh" "${args[@]}"
 }
 

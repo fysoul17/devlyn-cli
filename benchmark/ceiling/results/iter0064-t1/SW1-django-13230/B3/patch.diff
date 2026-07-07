@@ -1,0 +1,123 @@
+diff --git a/django/contrib/syndication/views.py b/django/contrib/syndication/views.py
+index 68ffb0bfe0..59b3805ffc 100644
+--- a/django/contrib/syndication/views.py
++++ b/django/contrib/syndication/views.py
+@@ -199,6 +199,12 @@ class Feed:
+             if updateddate and is_naive(updateddate):
+                 updateddate = make_aware(updateddate, tz)
+ 
++            extra_kwargs = dict(self.item_extra_kwargs(item))
++            if 'comments' in extra_kwargs:
++                comments = extra_kwargs.pop('comments')
++            else:
++                comments = self._get_dynamic_attr('item_comments', item)
++
+             feed.add_item(
+                 title=title,
+                 link=link,
+@@ -208,12 +214,13 @@ class Feed:
+                     'item_guid_is_permalink', item),
+                 enclosures=enclosures,
+                 pubdate=pubdate,
++                comments=comments,
+                 updateddate=updateddate,
+                 author_name=author_name,
+                 author_email=author_email,
+                 author_link=author_link,
+                 categories=self._get_dynamic_attr('item_categories', item),
+                 item_copyright=self._get_dynamic_attr('item_copyright', item),
+-                **self.item_extra_kwargs(item)
++                **extra_kwargs
+             )
+         return feed
+diff --git a/docs/ref/contrib/syndication.txt b/docs/ref/contrib/syndication.txt
+index 13aa944e8a..3a9acdfd5b 100644
+--- a/docs/ref/contrib/syndication.txt
++++ b/docs/ref/contrib/syndication.txt
+@@ -673,6 +673,23 @@ This example illustrates all possible attributes and methods for a
+             Returns the URL for every item in the feed.
+             """
+ 
++        # ITEM COMMENTS URL -- One of the following three is optional. The
++        # framework looks for them in this order. In each case, the URL should
++        # include the "http://" and domain name.
++
++        def item_comments(self, item):
++            """
++            Takes an item, as returned by items(), and returns the item's
++            comments URL as a normal Python string.
++            """
++
++        def item_comments(self):
++            """
++            Returns the comments URL for every item in the feed.
++            """
++
++        item_comments = 'https://www.example.com/comments/' # Hard-coded URL.
++
+         # ITEM_GUID -- The following method is optional. If not provided, the
+         # item's link is used by default.
+ 
+diff --git a/docs/releases/3.1.txt b/docs/releases/3.1.txt
+index 22e47c93ae..c87e5c101d 100644
+--- a/docs/releases/3.1.txt
++++ b/docs/releases/3.1.txt
+@@ -227,6 +227,11 @@ Minor features
+ 
+ * The :setting:`STATICFILES_DIRS` setting now supports :class:`pathlib.Path`.
+ 
++:mod:`django.contrib.syndication`
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++* The new ``item_comments`` hook allows specifying comments URLs per feed item.
++
+ Cache
+ ~~~~~
+ 
+diff --git a/tests/syndication_tests/feeds.py b/tests/syndication_tests/feeds.py
+index 4e9b1170b1..6909beaca4 100644
+--- a/tests/syndication_tests/feeds.py
++++ b/tests/syndication_tests/feeds.py
+@@ -49,6 +49,11 @@ class TestRss2FeedWithGuidIsPermaLinkFalse(TestRss2Feed):
+         return False
+ 
+ 
++class TestRss2FeedWithItemComments(TestRss2Feed):
++    def item_comments(self, item):
++        return 'http://example.com/blog/%s/comments/' % item.pk
++
++
+ class TestRss091Feed(TestRss2Feed):
+     feed_type = feedgenerator.RssUserland091Feed
+ 
+diff --git a/tests/syndication_tests/tests.py b/tests/syndication_tests/tests.py
+index dab7ebab33..da119d13b7 100644
+--- a/tests/syndication_tests/tests.py
++++ b/tests/syndication_tests/tests.py
+@@ -176,6 +176,14 @@ class SyndicationFeedTest(FeedTestCase):
+                 item.getElementsByTagName('guid')[0].attributes.get(
+                     'isPermaLink').value, "true")
+ 
++    def test_rss2_feed_item_comments(self):
++        response = self.client.get('/syndication/rss2/comments/')
++        doc = minidom.parseString(response.content)
++        items = doc.getElementsByTagName('item')
++        self.assertChildNodeContent(items[0], {
++            'comments': 'http://example.com/blog/1/comments/',
++        })
++
+     def test_rss2_single_enclosure(self):
+         response = self.client.get('/syndication/rss2/single-enclosure/')
+         doc = minidom.parseString(response.content)
+diff --git a/tests/syndication_tests/urls.py b/tests/syndication_tests/urls.py
+index bff7bd0c8d..4f428a472d 100644
+--- a/tests/syndication_tests/urls.py
++++ b/tests/syndication_tests/urls.py
+@@ -10,6 +10,7 @@ urlpatterns = [
+     path(
+         'syndication/rss2/guid_ispermalink_false/',
+         feeds.TestRss2FeedWithGuidIsPermaLinkFalse()),
++    path('syndication/rss2/comments/', feeds.TestRss2FeedWithItemComments()),
+     path('syndication/rss091/', feeds.TestRss091Feed()),
+     path('syndication/no_pubdate/', feeds.TestNoPubdateFeed()),
+     path('syndication/atom/', feeds.TestAtomFeed()),

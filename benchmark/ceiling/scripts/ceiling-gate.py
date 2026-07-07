@@ -292,7 +292,13 @@ def ranked_axes_counts(run_id: str, valid_rows: dict[str, Any], certified_judges
                     counts[outcome] += 1
                     counts["total"] += 1
                     by_task[task][axis][judge] = outcome
-    return {"counts": counts, "by_task": by_task, "aggregate_path": str(aggregate_path)}
+    participating = sorted({j for axes in by_task.values() for a in axes.values() for j in a})
+    return {
+        "counts": counts,
+        "by_task": by_task,
+        "aggregate_path": str(aggregate_path),
+        "participating_judges": participating,
+    }
 
 
 def verdict(run_id: str, tasks: list[str]) -> dict[str, Any]:
@@ -321,7 +327,10 @@ def verdict(run_id: str, tasks: list[str]) -> dict[str, Any]:
 
     ranked = ranked_axes_counts(run_id, valid_rows, certified_judges)
     ranked_counts = ranked["counts"]
-    if len(certified_judges) >= 2 and ranked_counts["total"] > 0:
+    # Panel mode requires >= 2 certified judges that actually PRODUCED valid
+    # rankings (certification alone is not participation — a judge whose
+    # rankings all parse-failed contributes nothing).
+    if len(ranked["participating_judges"]) >= 2 and ranked_counts["total"] > 0:
         ranked_axes_mode = "certified-panel"
         ranked_majority = ranked_counts["A_win"] > (ranked_counts["total"] / 2)
     else:
