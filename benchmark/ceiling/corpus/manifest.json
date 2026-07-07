@@ -1,35 +1,62 @@
 {
-  "iter": "0064",
-  "tranche": 1,
-  "frozen_at": "2026-07-07",
-  "selection_rule": "first django instances of SWE-bench Lite at rows >= 51; replacements only on oracle-smoke failure, in order: django__django-13315, 13321, 13401",
-  "tasks": {
-    "SW1-django-13230": {
-      "instance_id": "django__django-13230",
-      "row": 51,
-      "task_sha256": "01c44ad3abafa94e55416cebcfcb879bff1cf9f5cbfec25fc86e0517e93d41cf",
-      "hidden_instance_sha256": "e5e021199d1dc35e2e1efccccd4a37ea6d5b7e374b8f0cfee94993d707ef9171",
-      "oracle_smoke": "gold patch resolved=true via official harness (uvx swebench, local x86_64 docker build, run_id iter0064-oracle-smoke, 2026-07-07); report: benchmark/ceiling/results/oracle-smoke/gold.iter0064-oracle-smoke.json"
-    },
-    "SW2-django-13265": {
-      "instance_id": "django__django-13265",
-      "row": 52,
-      "task_sha256": "6d41387c67f83f41c8ab0e61b7a0167b8b4375db162fc12509a0ef70546bd6e6",
-      "hidden_instance_sha256": "51beefbe08652270f4826803433c362ab512d9f57f787da88528dc0956cd4e03",
-      "oracle_smoke": "gold patch resolved=true via official harness (uvx swebench, local x86_64 docker build, run_id iter0064-oracle-smoke, 2026-07-07); report: benchmark/ceiling/results/oracle-smoke/gold.iter0064-oracle-smoke.json"
-    },
-    "FS1-schedule-max-runs": {
-      "repo": "https://github.com/dbader/schedule.git",
-      "sha": "82a43db1b938d8fdf60103bd41f329e06c8d3651",
-      "task_sha256": "0194d750427cec5c6a6f6c3e0196e7ba20f0238162648ca1db6bbe4ce2b5a309",
-      "hidden_oracle_sha256": "67972deab86e5c69a3418b243bc563afa0fd733f5c969b1e1250c116c1cc9429",
-      "hidden_reference_sha256": "69a28653529450139cee28a28b62ef995c29f3e0218e9af75a401b2528abc979",
-      "oracle_smoke": "base 14/14 FAIL -> reference 14/14 PASS; upstream suite 40 passed / 41 skipped (2026-07-07, py3.11 venv)"
-    }
+ "iter": "0064",
+ "tranche": 1,
+ "frozen_at": "2026-07-07",
+ "selection_rule": "first django instances of SWE-bench Lite at rows >= 51; replacements only on oracle-smoke failure, in order: django__django-13315, 13321, 13401",
+ "tasks": {
+  "SW1-django-13230": {
+   "instance_id": "django__django-13230",
+   "row": 51,
+   "task_sha256": "01c44ad3abafa94e55416cebcfcb879bff1cf9f5cbfec25fc86e0517e93d41cf",
+   "hidden_instance_sha256": "e5e021199d1dc35e2e1efccccd4a37ea6d5b7e374b8f0cfee94993d707ef9171",
+   "oracle_smoke": "gold patch resolved=true via official harness (uvx swebench, local x86_64 docker build, run_id iter0064-oracle-smoke, 2026-07-07); report: benchmark/ceiling/results/oracle-smoke/gold.iter0064-oracle-smoke.json"
   },
-  "copycat_doc_sha256": "c6daf6d2807aba5f3e91b46e2684d7cce3247c7d44bfc04e8cba12424d6031cf",
-  "arms_see": [
-    "task.txt",
-    "base checkout only"
-  ]
+  "SW2-django-13265": {
+   "instance_id": "django__django-13265",
+   "row": 52,
+   "task_sha256": "6d41387c67f83f41c8ab0e61b7a0167b8b4375db162fc12509a0ef70546bd6e6",
+   "hidden_instance_sha256": "51beefbe08652270f4826803433c362ab512d9f57f787da88528dc0956cd4e03",
+   "oracle_smoke": "gold patch resolved=true via official harness (uvx swebench, local x86_64 docker build, run_id iter0064-oracle-smoke, 2026-07-07); report: benchmark/ceiling/results/oracle-smoke/gold.iter0064-oracle-smoke.json"
+  },
+  "FS1-schedule-max-runs": {
+   "repo": "https://github.com/dbader/schedule.git",
+   "sha": "82a43db1b938d8fdf60103bd41f329e06c8d3651",
+   "task_sha256": "0194d750427cec5c6a6f6c3e0196e7ba20f0238162648ca1db6bbe4ce2b5a309",
+   "hidden_oracle_sha256": "67972deab86e5c69a3418b243bc563afa0fd733f5c969b1e1250c116c1cc9429",
+   "hidden_reference_sha256": "69a28653529450139cee28a28b62ef995c29f3e0218e9af75a401b2528abc979",
+   "oracle_smoke": "base 14/14 FAIL -> reference 14/14 PASS; upstream suite 40 passed / 41 skipped (2026-07-07, py3.11 venv)"
+  }
+ },
+ "copycat_doc_sha256": "c6daf6d2807aba5f3e91b46e2684d7cce3247c7d44bfc04e8cba12424d6031cf",
+ "arms_see": [
+  "task.txt",
+  "base checkout only"
+ ],
+ "tranche2": {
+  "frozen_at": "2026-07-07",
+  "selection_rule": "continuation of the tranche-1 frozen walk: next django instances of SWE-bench Lite after row 52 (one-indexed), oracle-smoke-gated; replacements in order: django__django-13447, 13448, 13551",
+  "tasks": {
+   "SW3-django-13315": {
+    "instance_id": "django__django-13315",
+    "row": 53,
+    "task_sha256": "23acf4cc72106d313ec1c5743de12eed7749031842e215685a30db410495531f",
+    "hidden_instance_sha256": "39128172ea9248efb167f291bb5daa1815a102d9f95b5e37d1a0e9ff311a250d",
+    "oracle_smoke": "gold patch resolved=true via official harness (uvx swebench, run_id iter0067-oracle-smoke, 2026-07-07); report: benchmark/ceiling/results/oracle-smoke/gold.iter0067-oracle-smoke.json"
+   },
+   "SW4-django-13321": {
+    "instance_id": "django__django-13321",
+    "row": 54,
+    "task_sha256": "9c8dacf497a44f4e827d746e3cce8e4db31e4a61481977440dd4636c826c62f8",
+    "hidden_instance_sha256": "ee3e83ab40cee7000e00a6d22b693c173d4a7680fd4e2b2e4da2f09f0e928a56",
+    "oracle_smoke": "gold patch resolved=true via official harness (uvx swebench, run_id iter0067-oracle-smoke, 2026-07-07); report: benchmark/ceiling/results/oracle-smoke/gold.iter0067-oracle-smoke.json"
+   },
+   "SW5-django-13401": {
+    "instance_id": "django__django-13401",
+    "row": 55,
+    "task_sha256": "07a5d3176edc3678b34a08f4f72789a0f7e0af6a29389b6109c5009e098762a3",
+    "hidden_instance_sha256": "b90de5dceb37dd4e80d62aaf395ed6c7826bacf2aca09433604133920144acc7",
+    "oracle_smoke": "gold patch resolved=true via official harness (uvx swebench, run_id iter0067-oracle-smoke, 2026-07-07); report: benchmark/ceiling/results/oracle-smoke/gold.iter0067-oracle-smoke.json"
+   }
+  }
+ }
 }

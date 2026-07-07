@@ -145,7 +145,7 @@ def call_sonnet(prompt: str, scratch_dir: Path) -> tuple[Any | None, str | None,
         "json",
     ]
     try:
-        result = subprocess.run(cmd, cwd=scratch_dir, capture_output=True, text=True, timeout=300, check=False)
+        result = subprocess.run(cmd, cwd=scratch_dir, capture_output=True, text=True, timeout=900, check=False)
     except subprocess.TimeoutExpired:
         return None, "transport_error: timeout", {"stdout": "", "stderr": ""}
     meta: dict[str, Any] = {"stdout": result.stdout, "stderr": result.stderr}
@@ -204,7 +204,7 @@ def call_codex(
                 start_new_session=True,
             )
             try:
-                returncode = proc.wait(timeout=300)
+                returncode = proc.wait(timeout=900)
             except subprocess.TimeoutExpired:
                 terminate_process_group(proc.pid)
                 try:
@@ -253,7 +253,8 @@ def call_with_retry(judge: str, prompt: str, task_dir: Path, codex_command: list
         else:
             raise ValueError(f"unknown judge: {judge}")
         attempts.append({"attempt": attempt, "error": err})
-        if parsed is not None or not (err or "").startswith("parse_error:"):
+        retryable = (err or "").startswith("parse_error:") or err == "transport_error: timeout"
+        if parsed is not None or not retryable:
             break
     return parsed, err, attempts, last_meta
 
@@ -309,10 +310,11 @@ def build_prompt(task_text: str, labeled_packets: list[dict[str, str]]) -> str:
         + "\n\n".join(packet_blocks)
         + "\n\nRank P1/P2/P3 on exactly these axes: design_coherence, robustness, "
         "spec_long_horizon_consistency, maintainability_api_ergonomics.\n"
-        "Use this strict JSON schema and no markdown fences:\n"
-        '{"axes":{"design_coherence":{"tiers":[["P1","P2","P3"]],"strict_win_deltas":[]},"robustness":{"tiers":[["P1","P2","P3"]],"strict_win_deltas":[]},"spec_long_horizon_consistency":{"tiers":[["P1","P2","P3"]],"strict_win_deltas":[]},"maintainability_api_ergonomics":{"tiers":[["P1","P2","P3"]],"strict_win_deltas":[]}}}\n'
+        "Use this strict JSON schema:\n"
+        '{"axes":{"design_coherence":{"tiers":[["P2"],["P1"],["P3"]],"strict_win_deltas":[{"winner":"P2","loser":"P1","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P2","loser":"P3","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P1","loser":"P3","delta":"<one concrete sentence citing something visible in the diffs>"}]},"robustness":{"tiers":[["P2"],["P1"],["P3"]],"strict_win_deltas":[{"winner":"P2","loser":"P1","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P2","loser":"P3","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P1","loser":"P3","delta":"<one concrete sentence citing something visible in the diffs>"}]},"spec_long_horizon_consistency":{"tiers":[["P2"],["P1"],["P3"]],"strict_win_deltas":[{"winner":"P2","loser":"P1","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P2","loser":"P3","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P1","loser":"P3","delta":"<one concrete sentence citing something visible in the diffs>"}]},"maintainability_api_ergonomics":{"tiers":[["P2"],["P1"],["P3"]],"strict_win_deltas":[{"winner":"P2","loser":"P1","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P2","loser":"P3","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P1","loser":"P3","delta":"<one concrete sentence citing something visible in the diffs>"}]}}}\n'
         "Ties are allowed only by putting indistinguishable packets in the same tier. "
-        "For every strict winner-loser pair created by tiers, include exactly one concrete one-sentence delta citing something visible in the diffs."
+        "For every strict winner-loser pair created by tiers, include exactly one concrete one-sentence delta citing something visible in the diffs. "
+        "Output ONLY the JSON object -- no prose before or after, no markdown fences."
     )
 
 

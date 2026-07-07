@@ -96,8 +96,17 @@ eval_dir = Path(sys.argv[2])
 out = Path(sys.argv[3])
 harness_exit = int(sys.argv[4])
 instance_id = instance["instance_id"]
-f2p_total = len(instance.get("FAIL_TO_PASS") or [])
-p2p_total = len(instance.get("PASS_TO_PASS") or [])
+
+def decode_test_list(value):
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return []
+    return value or []
+
+f2p_total = len(decode_test_list(instance.get("FAIL_TO_PASS")))
+p2p_total = len(decode_test_list(instance.get("PASS_TO_PASS")))
 
 def load_json(path: Path):
     try:

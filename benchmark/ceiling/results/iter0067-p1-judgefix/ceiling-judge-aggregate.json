@@ -1,0 +1,875 @@
+{
+  "run_id": "iter0067-p1-judgefix",
+  "tasks": {
+    "FS1-schedule-max-runs": {
+      "a_packet": "P1",
+      "c_packet": "P3",
+      "axes": {
+        "design_coherence": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 confines the whole feature to the Job class, mirroring the existing cancel_after/_is_overdue pattern with a parallel _is_run_limit_reached helper, whereas P3 also rewrites Scheduler._run_job to wrap job.run() in a try/except BaseException block, spreading the concern across two classes."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 delivers a complete max_runs() implementation with validation, cancellation logic, and tests in schedule/__init__.py and test_schedule.py, while P1's diff is completely empty."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 delivers a working max_runs() implementation spanning Job and Scheduler._run_job with passing tests, while P1's diff contains no code changes whatsoever."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 keeps max-run cancellation localized in Job.run via _is_run_limit_reached(), while P3 adds a Scheduler._run_job try/except that reaches into job._is_max_runs_reached()."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 adds Job.max_runs(), per-job state, cancellation checks, tests, and docs, while P1's diff is empty."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 adds a chainable Job.max_runs() implementation with validation, counters, docs, and tests, while P1 contains no implementation."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        },
+        "robustness": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P3"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P3",
+                  "loser": "P2",
+                  "delta": "P3 increments self._runs before calling self.job_func() and adds a try/except in Scheduler._run_job so a job that raises on its nth call is still canceled (test_max_runs_counts_failing_job_execution), while P2 increments self._run_count only after job_func() returns, so a raising call never counts toward the budget."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 ships tests like test_max_runs_cancels_after_run_pending_budget and test_max_runs_counts_failing_job_execution proving the cancellation and error paths behave correctly, while P1 has no implementation or tests at all."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 ships test_max_runs_cancels_after_budget_with_run_pending and test_max_runs_and_until_cancel_on_first_limit demonstrating correct run_pending/until interplay, while P1 provides nothing to evaluate."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P3"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P3",
+                  "loser": "P2",
+                  "delta": "P3 increments _runs before job_func() and cancels in Scheduler._run_job's exception path, while P2 increments _run_count only after job_func() returns."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 covers run_pending(), run_all(), validation, chaining before the time unit, per-job budgets, until interaction, and failing executions in tests, while P1 has no tests or behavior."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 covers run_pending(), run_all(), validation, last-call-wins, per-job budgets, until interaction, and next_run/idle_seconds removal behavior, while P1 has no coverage."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        },
+        "spec_long_horizon_consistency": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 updates all three doc surfaces touched by comparable Job methods \u2014 README.rst, docs/examples.rst, and docs/index.rst \u2014 while P3 leaves docs/index.rst's mirrored Usage block un-updated even though it duplicates the same example list changed in README.rst."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 implements and tests every enumerated requirement (chainable setter in both positions, run_pending/run_all coverage, until first-limit-wins, next_run/idle_seconds reflection, validation, per-job isolation, docs) while P1's empty diff satisfies none of them."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 implements and tests nearly every enumerated requirement including both chain orderings (test_max_runs_can_be_chained_before_time_unit) and until interaction, while P1 implements nothing."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 documents the new API in README.rst, docs/examples.rst, and docs/index.rst, while P3 omits docs/index.rst."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 implements and tests the requested successful execution budget semantics across run_pending(), run_all(), until(), validation, and per-job isolation, while P1 leaves the feature absent."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 implements and tests the requested scheduler-driven budget cancellation behavior, while P1 leaves every requested behavior absent."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        },
+        "maintainability_api_ergonomics": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2's max_runs() stays confined to Job with a docstring matching the concise style of neighboring methods like .until(), while P3 also requires future readers to reason about a newly added except BaseException: ... raise clause in Scheduler._run_job, an unusually broad except clause for this codebase."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 adds a documented, tested max_runs() API consistent with the existing Job fluent-chain methods (README.rst, docs/examples.rst, docs/index.rst all updated), while P1 adds no API and no docs at all."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 adds a documented, tested max_runs() API with a docstring explaining the exception-bubbling contract, while P1's diff is empty and adds nothing for maintainers to use."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 adds the public API without coupling Scheduler._run_job to a private Job max-run helper, while P3 introduces that cross-class private-state dependency."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 provides the chainable max_runs(n) setter with ValueError validation and fluent usage examples, while P1 provides no API surface."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 provides the chainable max_runs(n) setter, validation, and usage documentation, while P1 has no ergonomic surface at all."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        }
+      }
+    },
+    "SW1-django-13230": {
+      "a_packet": "P3",
+      "c_packet": "P1",
+      "axes": {
+        "design_coherence": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1 keeps `comments=comments` as its own named argument beside `description=description` and `categories=...`, matching the call's existing one-parameter-per-line style, while P2 drops `comments` from the explicit argument list and buries it inside the `**item_extra_kwargs` spread."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1's `item_extra_kwargs.pop('comments')` branch explicitly reconciles the new `item_comments` hook with the pre-existing `item_extra_kwargs()` 'detour' the ticket names, whereas P3 just appends `comments=self._get_dynamic_attr('item_comments', item),` next to `**self.item_extra_kwargs(item)` with no acknowledgment the two can supply the same key."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2's `if 'comments' not in item_extra_kwargs` guard still integrates the new hook with the `item_extra_kwargs()` extension point, while P3 adds the `comments` kwarg as a bare, unconditional sibling of `**self.item_extra_kwargs(item)` with no such check."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1 adds an explicit `comments=comments` argument to `feed.add_item()` after resolving `item_comments`, while P2 hides the new hook by injecting `'comments'` into `item_extra_kwargs` before `**item_extra_kwargs`."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1 reconciles the new direct `item_comments` hook with the existing `'comments'` detour by popping that key from `item_extra_kwargs`, while P3 adds `comments=...` directly before `**self.item_extra_kwargs(item)`."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 preserves existing `item_extra_kwargs` comments values by checking `'comments' not in item_extra_kwargs`, while P3 always passes `comments=self._get_dynamic_attr(...)` alongside `**self.item_extra_kwargs(item)`."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        },
+        "robustness": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1 calls `dict(self.item_extra_kwargs(item))` before popping `comments` out of it, guaranteeing the object returned by a subclass's `item_extra_kwargs()` is never mutated even if that method returns a cached/shared dict, while P2 reassigns the bare return value and only avoids mutating it because no `.pop()`/`.update()` happens to be called on it."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1's pop-if-present/else-dynamic-attr logic guarantees `feed.add_item()` is never called with two values for `comments`, whereas P3's bare `comments=self._get_dynamic_attr('item_comments', item),` next to `**self.item_extra_kwargs(item)` raises `TypeError: got multiple values for keyword argument 'comments'` whenever an existing subclass's `item_extra_kwargs()` already returns `'comments'`."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2's `if 'comments' not in item_extra_kwargs` check prevents the same duplicate-keyword collision when `**item_extra_kwargs` is spread into `feed.add_item()`, while P3 has no such guard and crashes under the identical scenario."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1 adds a dedicated regression test for `TestRss2FeedWithCommentsFromExtraKwargs`, while P2 only tests the new `item_comments` hook path."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1 avoids duplicate keyword errors by removing `'comments'` from the copied extra kwargs before passing `comments=comments`, while P3 would collide when `item_extra_kwargs()` returns a `comments` key."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 checks for an existing `'comments'` key before adding the dynamic hook value, while P3 unconditionally combines `comments=...` with arbitrary `**self.item_extra_kwargs(item)`."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        },
+        "spec_long_horizon_consistency": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1 ships `TestRss2FeedWithCommentsFromExtraKwargs` plus `test_rss2_feed_with_comments_from_extra_kwargs` to lock in that an existing `item_extra_kwargs()`-supplied `comments` value still wins, while P2 implements the identical precedence in `views.py` but adds no test exercising that branch."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1's `/syndication/rss2/comments-extra/` fixture proves the old `item_extra_kwargs` 'detour' mentioned in the ticket keeps working after `item_comments` is added, while P3's test changes only cover the new `item_comments` attribute and never test the `item_extra_kwargs` interaction at all."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2's `if 'comments' not in item_extra_kwargs` merge keeps the previously-working `item_extra_kwargs()`-based comments path functioning going forward, while P3 adds no equivalent check anywhere in `views.py` or its tests."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1 documents that `item_comments` is only applicable to RSS feeds, while P2's new documentation describes the comments URL hook without that RSS-only constraint."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1 keeps the existing `item_extra_kwargs` comments detour working and tests it, while P3's direct keyword addition breaks that explicitly mentioned migration path."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 uses a realistic per-item comments URL in its test feed, while P3 sets `item_comments` to the unrelated copyright string `'Copyright (c) 2007, Sally Smith'`."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        },
+        "maintainability_api_ergonomics": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1's `feed.add_item()` call still lists `comments=comments,` explicitly next to every other named argument, so a maintainer sees it at the call site, whereas P2's call only spreads `**item_extra_kwargs`, making `comments` invisible there and discoverable only by tracing the preceding `if` block."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1's explicit if/else over `item_extra_kwargs`/`item_comments` documents in code which source wins on conflict, while P3 gives no such signal and the conflict only surfaces as a runtime `TypeError`."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2's `if 'comments' not in item_extra_kwargs` at least documents in code that the two sources can collide, while P3's single added `comments=self._get_dynamic_attr('item_comments', item),` line gives a future maintainer no indication that pairing it with an `item_extra_kwargs()` returning `'comments'` will crash."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1 makes `comments` a visible first-class `feed.add_item()` argument in `views.py`, while P2 makes future readers discover it indirectly inside the constructed `item_extra_kwargs` mapping."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1 separates compatibility handling from the new API by copying and popping `item_extra_kwargs`, while P3 leaves the old and new APIs competing for the same `comments` keyword."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 centralizes precedence by only adding the hook value when extras lack `comments`, while P3 provides no precedence rule for users who already supply `comments` through `item_extra_kwargs()`."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        }
+      }
+    },
+    "SW2-django-13265": {
+      "a_packet": "P1",
+      "c_packet": "P2",
+      "axes": {
+        "design_coherence": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 adds explicit dependency tuples (app_label, model_name, '_order', True) resolved via a new AlterOrderWithRespectTo branch in the dependency-satisfaction check, staying inside the autodetector's existing dependency-graph idiom, whereas P1 achieves ordering purely by relocating generate_altered_order_with_respect_to() earlier in the top-level call sequence in _detect_changes and relying on insertion-order tie-breaking in the topological sort."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 factors index/constraint field-and-expression detection into one reusable _get_dependencies_for_generated_fields() helper wired into generate_added_indexes, generate_added_constraints, and both CreateModel loops, whereas P3 builds a bespoke _index_references_order() helper plus a new 'order_wrt_set' dependency-type string that is wired only into the index code paths."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1's single reorder of two code blocks uniformly protects both the CreateModel indexes loop and the constraints loop with one change, whereas P3 introduces a new dependency-type sentinel and helper but never touches generate_added_constraints or the CreateModel constraints loop, leaving that path structurally unaddressed."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 models the ordering as explicit dependencies via _get_dependencies_for_generated_fields(), while P1 relies on moving generate_altered_order_with_respect_to() earlier in the whole generation sequence."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 reuses the existing dependency mechanism with a generated _order dependency, while P3 introduces a bespoke order_wrt_set dependency kind only for this case."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1 consistently reorders AlterOrderWithRespectTo before indexes, constraints, unique_together, and index_together, while P3 only adds special dependencies for AddIndex operations."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        },
+        "robustness": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2's helper also inspects index.condition and constraint.check/condition via model._get_expr_references(), so an Index(condition=Q(_order__gte=0)) or CheckConstraint(check=Q(_order__gte=0)) is correctly ordered after '_order' is created, a case P1 never detects and only happens to satisfy because its reorder is unconditional rather than reasoned about field references."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 adds '_order' dependency tracking to generate_added_constraints and the CreateModel constraints loop via the same helper, while P3's '_index_references_order' check and 'order_wrt_set' dependency are consulted only inside generate_created_models's index loop and generate_added_indexes, leaving AddConstraint operations referencing '_order' unprotected against the same crash."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1's reorder in generate_created_models unconditionally emits AlterOrderWithRespectTo before both the index loop and the 'for constraint in constraints' loop, so any constraint referencing '_order' is also safely ordered, whereas P3 special-cases only AddIndex operations and leaves AddConstraint operations for the same model with no '_order'-aware dependency at all."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 detects _order references in index fields, include fields, index conditions, constraint fields, constraint includes, constraint conditions, and check expressions, while P1 only changes operation ordering."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 covers constraints and expression references through model._get_expr_references(), while P3's _index_references_order() only checks index.fields and index.include."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1's tests cover constraints plus unique_together and index_together involving _order, while P3 has no handling or tests for constraints or together options."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        },
+        "spec_long_horizon_consistency": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2's tests test_set_alter_order_with_respect_to_before_condition_index_constraint and test_add_model_order_with_respect_to_condition_index_constraint pin down behavior for Q(_order__gte=0)-style expression references, a regression net P1's test_add_model_order_with_respect_to_index_constraint and test_set_order_with_respect_to_index_constraint_together never assert."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2's added tests assert exact operation ordering for both AddIndex and AddConstraint across create and alter paths, whereas P3's test_set_alter_order_with_respect_to_index and test_add_model_order_with_respect_to_index cover indexes only and add no constraint-referencing-'_order' regression test at all."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1's test_set_order_with_respect_to_index_constraint_together exercises order_with_respect_to combined with unique_together, index_together, indexes, and constraints simultaneously and asserts the full resulting operation order, a broader combined-option surface than P3's index-only tests which never touch constraints, unique_together, or index_together."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 makes future database operations depending on generated fields sortable by dependency, while P1 bakes in a fixed generator order that can be disturbed by later operation categories."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 handles both newly created models and later-added indexes or constraints that reference _order, while P3 handles only indexes and misses constraint/check-condition variants."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1 accounts for AddConstraint in the created-model path and adds tests for it, while P3 never changes AddConstraint dependency handling."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        },
+        "maintainability_api_ergonomics": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 keeps the fix entirely inside dependency-declaration code (one new helper plus one new elif branch) without touching the master method-call sequence in _detect_changes, whereas P1 permanently relocates self.generate_altered_order_with_respect_to() in that sequence, a global reordering whose rationale isn't localized to the '_order'-referencing-index case it addresses."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 exposes one general-purpose helper (_get_dependencies_for_generated_fields) callable from all four index/constraint generation sites, whereas P3 spreads the fix across a new 'order_wrt_set' string literal, a new _index_references_order static method, and duplicated old/new-model-state lookups inside generate_added_indexes."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1's change is confined to relocating two already-existing code blocks with no new dependency-type vocabulary, whereas P3 adds a new magic string 'order_wrt_set' as a dependency-tuple sentinel alongside the pre-existing True/'order_wrt_unset' conventions, growing the implicit protocol the dependency-resolution code must handle."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ],
+                [
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 centralizes generated-field dependency discovery in _get_dependencies_for_generated_fields(), while P1 duplicates ordering concerns by moving calls in both generate_changes() and generate_created_models()."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2's helper accepts field names and expressions for reuse by indexes and constraints, while P3's _index_references_order(index) is narrowly tied to Index internals."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1 avoids adding a new dependency sentinel string, while P3 adds the custom 'order_wrt_set' dependency mode to _satisfies_dependency()."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        }
+      }
+    }
+  }
+}
