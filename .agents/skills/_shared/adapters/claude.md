@@ -22,7 +22,7 @@ two targeted probes; the invoking phase sets `--effort`, pair-JUDGE uses
 `medium`):
 
 ```bash
-claude -p "<judge prompt>" \
+python3 "$DEVLYN_SHARED_DIR/run-bounded.py" 600 -- claude -p "<judge prompt>" \
   --permission-mode dontAsk \
   --allowedTools "Read,Grep,Glob,Bash(<repo test command> *)" \
   --setting-sources project --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
@@ -46,8 +46,11 @@ claude -p "<judge prompt>" \
   `.devlyn/verify.pair.findings.jsonl`. Raw stdout stays diagnostic at
   `.devlyn/claude-judge.stdout`; `verify-merge-findings.py` blocks the run
   if stdout contains findings the canonical file lacks.
-- Do not pipe stdout (`| tail`, `| grep`); capture to file. Non-zero exit or
-  empty stdout → spawn failure, fail closed per the probe rule above.
+- Exit 124 is a wall-budget abort (kills the process group) → the orchestrator
+  writes `.devlyn/verify.pair.timeout.json`; budget abort ≠ availability failure
+  and the fail-closed availability rules above are unchanged.
+- Do not pipe stdout (`| tail`, `| grep`); capture to file. Non-zero exit other
+  than 124 or empty stdout → spawn failure, fail closed per the probe rule above.
 
 ## Identity
 

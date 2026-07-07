@@ -27,6 +27,7 @@ SOURCE_FILES = (
 
 VERDICT_RANK = {
     "PASS": 0,
+    "TIMEOUT": 0,
     "PASS_WITH_ISSUES": 1,
     "FAIL": 2,
     "NEEDS_WORK": 2,
@@ -627,6 +628,45 @@ def pair_blocker(id_: str, message: str, file_: str | None = None) -> dict[str, 
     }
 
 
+def read_pair_timeout_marker(devlyn: pathlib.Path) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    path = devlyn / "verify.pair.timeout.json"
+    if not path.is_file():
+        return None, None
+    try:
+        marker = loads_strict_json(path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        return None, {
+            "id": "verify-pair-timeout-marker-malformed",
+            "message": f"verify.pair.timeout.json is malformed JSON: {exc}",
+            "file": "verify.pair.timeout.json",
+        }
+    if not isinstance(marker, dict):
+        return None, {
+            "id": "verify-pair-timeout-marker-malformed",
+            "message": "verify.pair.timeout.json must be a JSON object.",
+            "file": "verify.pair.timeout.json",
+        }
+    engine = marker.get("engine")
+    budget_seconds = marker.get("budget_seconds")
+    if not isinstance(engine, str) or not engine:
+        return None, {
+            "id": "verify-pair-timeout-marker-malformed",
+            "message": "verify.pair.timeout.json engine must be a non-empty string.",
+            "file": "verify.pair.timeout.json",
+        }
+    if (
+        not isinstance(budget_seconds, int)
+        or isinstance(budget_seconds, bool)
+        or budget_seconds <= 0
+    ):
+        return None, {
+            "id": "verify-pair-timeout-marker-malformed",
+            "message": "verify.pair.timeout.json budget_seconds must be a positive integer.",
+            "file": "verify.pair.timeout.json",
+        }
+    return {"engine": engine, "budget_seconds": budget_seconds}, None
+
+
 def detect_pair_stdout_contract_violations(
     devlyn: pathlib.Path,
     source_verdicts: dict[str, str | None],
@@ -635,6 +675,16 @@ def detect_pair_stdout_contract_violations(
     # claude-judge.stdout — adapters/claude.md ## Invocation). The emission
     # contract is engine-neutral.
     stdout_paths = sorted(devlyn.glob("*-judge.stdout"))
+    timeout_marker, timeout_violation = read_pair_timeout_marker(devlyn)
+    if timeout_violation is not None:
+        source_verdicts["pair_judge"] = "BLOCKED"
+        return [
+            pair_blocker(
+                timeout_violation["id"],
+                timeout_violation["message"],
+                timeout_violation["file"],
+            )
+        ]
     flag_violation = pair_flag_contract_violation(devlyn)
     if flag_violation is not None:
         source_verdicts["pair_judge"] = "BLOCKED"
@@ -699,6 +749,9 @@ def detect_pair_stdout_contract_violations(
     if has_pair_findings(devlyn):
         return []
     if not stdout_paths:
+        if timeout_marker is not None:
+            source_verdicts["pair_judge"] = "TIMEOUT"
+            return []
         if required:
             source_verdicts["pair_judge"] = "BLOCKED"
             return [
@@ -709,11 +762,13 @@ def detect_pair_stdout_contract_violations(
                 )
             ]
         return []
-    if source_verdicts["pair_judge"] is None:
+    if source_verdicts["pair_judge"] is None and timeout_marker is None:
         source_verdicts["pair_judge"] = "PASS"
     for stdout_path in stdout_paths:
         raw_text = stdout_path.read_text(encoding="utf-8")
         if not raw_text.strip():
+            if timeout_marker is not None:
+                continue
             source_verdicts["pair_judge"] = "BLOCKED"
             return [
                 pair_blocker(
@@ -761,6 +816,8 @@ def detect_pair_stdout_contract_violations(
                     stdout_path.name,
                 )
             ]
+    if timeout_marker is not None:
+        source_verdicts["pair_judge"] = "TIMEOUT"
     return []
 
 
@@ -783,6 +840,11 @@ def write_outputs(
         "findings_count": len(findings),
         "findings_file": str(merged_path),
     }
+    if source_verdicts.get("pair_judge") == "TIMEOUT":
+        timeout_marker, _timeout_violation = read_pair_timeout_marker(devlyn)
+        if timeout_marker is not None:
+            summary["pair_timeout"] = timeout_marker
+            summary["report_header_note"] = "solo verdict after pair TIMEOUT"
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return summary
 
@@ -972,6 +1034,140 @@ def self_test() -> int:
             for finding in findings
         ), findings
         (devlyn / "claude-judge.stdout").unlink()
+
+        # iter-0065 case 1: a valid pair timeout marker plus empty pair output
+        # records TIMEOUT and leaves the merged verdict to mechanical+primary.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "phases": {
+                    "verify": {
+                        "verdict": "PASS",
+                        "sub_verdicts": {},
+                        "pair_trigger": {
+                            "eligible": True,
+                            "reasons": ["judge.warning"],
+                            "skipped_reason": None,
+                        },
+                    }
+                }
+            }),
+            encoding="utf-8",
+        )
+        (devlyn / "verify.findings.jsonl").write_text(
+            json.dumps({"id": "j-timeout-low", "severity": "LOW"}) + "\n",
+            encoding="utf-8",
+        )
+        (devlyn / "verify.pair.findings.jsonl").write_text("", encoding="utf-8")
+        (devlyn / "claude-judge.stdout").write_text("", encoding="utf-8")
+        (devlyn / "verify.pair.timeout.json").write_text(
+            json.dumps({"engine": "claude", "budget_seconds": 600}),
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        write_state(devlyn, summary)
+        state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
+        assert summary["verdict"] == "PASS_WITH_ISSUES", summary
+        assert summary["source_verdicts"]["pair_judge"] == "TIMEOUT", summary
+        assert summary["pair_timeout"] == {"engine": "claude", "budget_seconds": 600}, summary
+        assert summary["report_header_note"] == "solo verdict after pair TIMEOUT", summary
+        assert state["phases"]["verify"]["sub_verdicts"]["pair_judge"] == "TIMEOUT", state
+        (devlyn / "claude-judge.stdout").unlink()
+        (devlyn / "verify.pair.timeout.json").unlink()
+        (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
+
+        # iter-0065 case 2: canonical pair findings still bind after timeout.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({"phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
+            encoding="utf-8",
+        )
+        (devlyn / "verify.pair.findings.jsonl").write_text(
+            json.dumps({"id": "p-timeout-high", "severity": "HIGH"}) + "\n",
+            encoding="utf-8",
+        )
+        (devlyn / "verify.pair.timeout.json").write_text(
+            json.dumps({"engine": "codex", "budget_seconds": 600}),
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "NEEDS_WORK", summary
+        assert summary["source_verdicts"]["pair_judge"] == "NEEDS_WORK", summary
+        assert "pair_timeout" not in summary, summary
+        (devlyn / "verify.pair.timeout.json").unlink()
+        (devlyn / "verify.pair.findings.jsonl").write_text("", encoding="utf-8")
+
+        # iter-0065 case 2b: stdout-only HIGH still blocks on emission contract;
+        # timeout never converts an observed finding into a solo pass.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({"phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
+            encoding="utf-8",
+        )
+        (devlyn / "codex-judge.stdout").write_text(
+            json.dumps({"id": "cj-timeout-high", "severity": "HIGH"}) + "\n",
+            encoding="utf-8",
+        )
+        (devlyn / "verify.pair.timeout.json").write_text(
+            json.dumps({"engine": "codex", "budget_seconds": 600}),
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "BLOCKED", summary
+        assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", summary
+        assert any(
+            finding.get("id") == "verify-pair-emission-contract-violated"
+            for finding in findings
+        ), findings
+        (devlyn / "codex-judge.stdout").unlink()
+        (devlyn / "verify.pair.timeout.json").unlink()
+
+        # iter-0065 case 3: without a marker, required empty pair output remains BLOCKED.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "phases": {
+                    "verify": {
+                        "verdict": "PASS",
+                        "sub_verdicts": {},
+                        "pair_trigger": {
+                            "eligible": True,
+                            "reasons": ["risk.high"],
+                            "skipped_reason": None,
+                        },
+                    }
+                }
+            }),
+            encoding="utf-8",
+        )
+        (devlyn / "claude-judge.stdout").write_text("", encoding="utf-8")
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "BLOCKED", summary
+        assert any(
+            finding.get("id") == "verify-pair-empty-output"
+            for finding in findings
+        ), findings
+        (devlyn / "claude-judge.stdout").unlink()
+
+        # iter-0065 malformed timeout markers fail closed as a CRITICAL pair blocker.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({"phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
+            encoding="utf-8",
+        )
+        (devlyn / "verify.pair.timeout.json").write_text(
+            json.dumps({"engine": "claude", "budget_seconds": 0}),
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "BLOCKED", summary
+        assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", summary
+        assert any(
+            finding.get("id") == "verify-pair-timeout-marker-malformed"
+            and finding.get("severity") == "CRITICAL"
+            for finding in findings
+        ), findings
+        (devlyn / "verify.pair.timeout.json").unlink()
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
                 "phases": {

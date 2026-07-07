@@ -222,7 +222,8 @@ When eligible and the orchestrator spawns a second VERIFY agent with the OTHER e
   (or scheduled) and rejected rows.
 
 Codex pair-JUDGE is read-only. Invoke `codex-monitored.sh` directly with
-`CODEX_MONITORED_ISOLATED=1` and `-c model_reasoning_effort=medium`; this is a
+`CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600` and
+`-c model_reasoning_effort=medium`; this is a
 bounded two-probe review, not implementation. Isolation blocks user config,
 AGENTS.md, hooks, and project rules from hidden context/tool
 side effects. Do not pipe it to `tail`, `head`, `grep`, `sed`, or `awk`.
@@ -230,9 +231,10 @@ Capture stdout/stderr directly. The Codex judge must return JSONL findings on
 stdout; the orchestrator writes `.devlyn/verify.pair.findings.jsonl` and merges
 verdicts. Do not ask Codex to `apply_patch` or edit `.devlyn`.
 When the OTHER engine is Claude (codex/omp orchestrator), the judge call
-follows `_shared/adapters/claude.md` `## Invocation`: headless `claude -p`
-with `--permission-mode dontAsk`, an allowlist of `Read,Grep,Glob` plus the
-repo test command, hermetic settings, stdout captured to
+follows `_shared/adapters/claude.md` `## Invocation`: wrap headless `claude -p`
+as `python3 "$DEVLYN_SHARED_DIR/run-bounded.py" 600 -- claude -p ...` with
+`--permission-mode dontAsk`, an allowlist of `Read,Grep,Glob` plus the repo test
+command, hermetic settings, stdout captured to
 `.devlyn/claude-judge.stdout`. The same bounded-output contract and emission
 rule apply to that stdout file, and the orchestrator writes the same
 canonical `.devlyn/verify.pair.findings.jsonl`.
@@ -248,6 +250,19 @@ If raw Codex stdout is captured as `.devlyn/codex-judge.stdout`,
 findings or a non-PASS summary while `.devlyn/verify.pair.findings.jsonl` is
 empty, VERIFY is `BLOCKED` for `verify.pair.emission-contract`; do not pass or
 silently recover from a broken capture contract.
+
+Both pair-judge directions are wall-budgeted at 600s. A judge subprocess exit
+124 is a budget abort: before merge, the orchestrator writes
+`.devlyn/verify.pair.timeout.json` with `{"engine": "<codex|claude>",
+"budget_seconds": 600}`. Three cases are binding: marker plus no canonical pair
+findings and no parseable stdout findings records `pair_judge: "TIMEOUT"`,
+computes the merged verdict from mechanical plus primary judge, and surfaces
+`solo verdict after pair TIMEOUT` in the report header; marker plus canonical
+findings or parseable stdout findings binds those findings exactly as today,
+including the stdout emission contract; no marker preserves the existing
+`BLOCKED` contract for missing, empty, or uncaptured pair output. A budget
+abort is not an availability fallback; explicit-route availability still fails
+closed.
 
 After all VERIFY findings files are written, run:
 

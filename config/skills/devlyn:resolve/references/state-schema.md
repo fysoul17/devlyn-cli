@@ -85,7 +85,7 @@ Each entry under `phases.<name>` (for `plan`, `probe_derive`, `implement`, `buil
 - `triggered_by` — null on first run; one of `"build_gate" | "verify"` when the phase is a fix-loop respawn.
 - `pre_sha` — captured by orchestrator before CLEANUP and (if needed) other allowlist-enforced phases. Used to validate the post-spawn diff.
 - `post_sha` — captured on CLEANUP complete when that phase ran; finish-gate subtracts `pre_sha..post_sha` as the cleanup window.
-- `sub_verdicts` — only populated for VERIFY: `{ "mechanical": "PASS|FAIL", "judge": "PASS|...", "pair_judge": "PASS|..." | null }`. Values are normalized by `verify-merge-findings.py`; model prose verdicts cannot upgrade or downgrade the deterministic findings-derived verdict.
+- `sub_verdicts` — only populated for VERIFY: `{ "mechanical": "PASS|FAIL", "judge": "PASS|...", "pair_judge": "PASS|..." | "TIMEOUT" | null }`. Values are normalized by `verify-merge-findings.py`; model prose verdicts cannot upgrade or downgrade the deterministic findings-derived verdict. `sub_verdicts.pair_judge` is `"TIMEOUT"` when a pair judge exceeded its wall budget and a valid `.devlyn/verify.pair.timeout.json` marker was read — semantics in `references/phases/verify.md` (pair budget section).
 - `merged` — only populated for VERIFY after `verify-merge-findings.py --write-state`: `{ "verdict": "...", "findings_file": ".devlyn/verify-merged.findings.jsonl", "summary_file": ".devlyn/verify-merge.summary.json" }`.
 - `pair_trigger` — only populated for VERIFY; same shape as top-level `verify.pair_trigger` when the phase stores it locally.
 - `correctness.risk-probe-failed` — emitted by `spec-verify-check.py --include-risk-probes` when an executable probe derived from the visible `## Verification` section fails.
@@ -116,7 +116,7 @@ Per-phase summary table: `phase | verdict | duration_ms | round | triggered_by |
 
 Findings table (post-IMPLEMENT phases only — they are findings-only): each finding's `severity | rule_id | file:line | message | confidence`.
 
-Follow-up notes: any `--continue-on-large` assumptions, pair/risk-probe opt-out state, engine setup guidance for `BLOCKED:<engine>-unavailable`, `/devlyn:ideate` guidance for `BLOCKED:solo-headroom-hypothesis-required` that asks for the visible behavior `solo_claude` is expected to miss, `/devlyn:ideate` guidance for `BLOCKED:solo-ceiling-avoidance-required` that asks for the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`, and any `state.verify.coverage_failed` axes.
+Follow-up notes: any large-mode assumptions, any pair-judge TIMEOUT surfaced as `solo verdict after pair TIMEOUT`, pair/risk-probe opt-out state, engine setup guidance for `BLOCKED:<engine>-unavailable`, `/devlyn:ideate` guidance for `BLOCKED:solo-headroom-hypothesis-required` that asks for the visible behavior `solo_claude` is expected to miss, `/devlyn:ideate` guidance for `BLOCKED:solo-ceiling-avoidance-required` that asks for the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`, and any `state.verify.coverage_failed` axes.
 
 ## Archive contract
 

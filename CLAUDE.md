@@ -53,7 +53,7 @@ Each skill's `SKILL.md` is the source of truth for its flags and workflow — do
 
 The user does not invoke skills manually; the orchestrating model does. Small tasks: invoke `/devlyn:resolve "<goal>"` directly. Large tasks agreed in conversation:
 
-1. Write the agreed contract to `docs/specs/<id>/spec.md` (+ `spec.expected.json` when mechanical verifications exist). Always a spec file for large work — never `--goal-file`, which routes into `BLOCKED:large-needs-ideation`.
+1. Write the agreed contract to `docs/specs/<id>/spec.md` (+ `spec.expected.json` when mechanical verifications exist). Always a spec file for large work — a written spec is the user's reviewed contract; free-form large now assumes-and-logs instead of halting (zero-scope-signal goals still halt to ideate).
 2. Present a one-screen plan-contract summary — the user's single review checkpoint, BEFORE the pipeline starts.
 3. On go-ahead, invoke `/devlyn:resolve --spec <path>` hands-free to completion.
 4. **Per-task outer loop**: read the terminal verdict. PASS → done. Verdicts backed by spec/verification findings (NEEDS_WORK, verify/build-gate exhaustion) → adjudicate the findings, amend the spec (recorded in the spec file; spec stays read-only inside a run), re-invoke — at most 3 outer iterations, then surface with the findings trail. Infrastructure, invalid-input, engine-availability, and implement-empty BLOCKED verdicts are not spec-amendable: surface immediately. Every iteration re-enters through durable artifacts (spec, findings, run archive), never conversation memory.

@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Latest closed iter: [`iterations/0064-ceiling-seat-instrument.md`](iterations/0064-ceiling-seat-instrument.md) (CLOSED 2026-07-07; iter-0065 levers A/B not yet opened)
+5. Latest closed iter: [`iterations/0065-hands-free-large-goals-bounded-pair-verify.md`](iterations/0065-hands-free-large-goals-bounded-pair-verify.md) (CLOSED 2026-07-07)
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,19 +14,18 @@ Last rewritten 2026-07-07 (pollution cleanup per user directive; prior full hist
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-07 (late)
+## 🚦 START-HERE — state after 2026-07-07 (iter-0065 closed)
 
-1. **iter-0064 — ceiling & seat-fitness instrument family v0 — CLOSED / SHIPPED 2026-07-07** (freeze commit `0bb4ef7` + closure commit; full record `iterations/0064-ceiling-seat-instrument.md`). Both products live and live-verified: 3-arm blind ceiling harness (`benchmark/ceiling/`) + seat matrix & fail-closed recert runner (`benchmark/seats/`) + codex judge route. **Tranche-1 ceiling verdict: FAIL-pilot** — pre-registered LC3 fired (mean wall_A/wall_B_first 4.32 > 3.0) even though quality went devlyn's way (LC1 lift A 2/3 vs bare-best 1/3; objective moat over copycat A 2 > C 1). 세계최고 axis honest label: instrument LIVE, pilot LOST on efficiency. Standing lenses reconfirmed: fake-binary self-tests cannot catch real-CLI contract gaps (8 live-caught defects: skip-git-repo-check, bash-3.2 mapfile, BSD find, diff-vs-frozen-base after the arm committed, uv-venv-no-pip, str/Path, participation≠certification, recert-attestation regress).
-2. **Product findings the pilot licenses (repro archived under `benchmark/ceiling/results/iter0064-t1/`)**: (a) hands-free break — `/devlyn:resolve` free-form on a spec-shaped feature goal returned `BLOCKED:large-needs-ideation` as an interactive question → 0-byte delivery while bare AND copycat codex shipped 14/14 (FS1); (b) pair-VERIFY wall — SW2 arm burned to the 3600s cap inside VERIFY after implement/build_gate/cleanup all PASSed; (c) blind rank axes preferred failing-copycat diffs over objectively-resolving devlyn diffs 8/8 — objective-first adjudication is load-bearing, never let style axes decide.
+1. **iter-0065 — hands-free large goals + bounded pair-VERIFY — CLOSED / SHIPPED 2026-07-07** (full record `iterations/0065-hands-free-large-goals-bounded-pair-verify.md`; R0 SHIP-WITH-EDITS → R1 VALID-WITH-EDITS). Lever A: free-form Large default is now assume-and-log (`## Assumptions` block + `recommend: /devlyn:ideate first`, proceed); `--continue-on-large` deleted; zero-scope-signal Large + both measurement-integrity halts still halt (probes P2/P2b green). Live proof: FS1 A-arm re-run full delivery — all phases PASS, patch 7,750B, hidden oracle 14/14 (was 0-byte in tranche-1). Lever B: 600s wall budget on BOTH pair-judge directions (codex `CODEX_MONITORED_TIMEOUT_SEC=600`; claude via new portable `_shared/run-bounded.py`), exit-124 → `.devlyn/verify.pair.timeout.json` → merge three-case contract (`pair_judge:"TIMEOUT"` solo verdict surfaced / findings always bind / no-marker unchanged), self-tested; bound never fired live (observed judges 143-316s). **Claim boundary: LC3/wall movement NOT claimed** — SW2's terminal stall was SDK-layer (artifact decomposition reframed 0064's "pair consumed the window"); pre-VERIFY overhead is the open efficiency lever.
+2. **New failure class caught + fixed in-iter (P1 attempt 1)**: sonnet orchestrator backgrounded the IMPLEMENT wrapper call; headless print-mode wind-down killed it → 0-byte. Foreground-blocking rule shipped at SKILL.md `<engine_routing>` + `codex-config.md`. **R1-registered escalation trigger (binding)**: any recurrence of `print wind-down: killing background shell` or 0-byte delivery traced to a backgrounded wrapper call ⇒ prompt-level is falsified, build a binding mechanism.
 
 **Next session entry points (recommended order)**:
-1. **iter-0065 lever A — hands-free spec-shaped free-form goals** (FS1 repro): in hands-free contexts the complexity gate must assume-and-log / synthesize the spec, never ask. Needs own pre-registration; probe = FS1-class task through free-form resolve.
-2. **iter-0065 lever B — bounded pair-VERIFY wall**: pair audit must not consume the delivery window after primary+mechanical verification passed (SW2/SW1 walls are the repro). Can pair with A or run separately.
-3. **Ceiling tranche 2** (after A/B ship): more rows + the user-supplied real-project task (still user-gated), codex-judge schema-first prompt fix + judge packet-size/timeout fix first (0064 follow-ups #3).
-4. **Codex drift-bait lane** (iter-0062 follow-up) — now also feeds the codex orchestrator seat, whose only current cell is a hung/aborted FAIL (single observation — needs the 2nd before conclusions).
-5. E2 re-measurement; finish-gate skip-rate watch; `.git/info/exclude` for `.devlyn/` — unchanged from previous rotation.
+1. **Pre-VERIFY overhead lever** (the remaining LC3 axis, now the only unowned efficiency root): SW2 decomposition = phases 1702s incl. probe_derive 484s + ~503s orchestrator gaps before VERIFY (61% of budget); SW1 1798s vs bare 339s. Needs own pre-registration; candidate surfaces: probe-derive wall, inter-phase orchestrator turns.
+2. **Ceiling tranche 2**: more rows + user-supplied real-project task (still user-gated); FIRST fix 0064 follow-ups #3 (codex-judge schema-first prompt; judge packet-size/timeout — SW2 rankings were lost to it). FS1 A2 (3324s, resolved) is an encouraging single point, not tranche evidence.
+3. **Codex drift-bait lane** (iter-0062 follow-up) — also feeds the codex orchestrator seat (single hung/aborted FAIL cell needs its 2nd observation).
+4. E2 re-measurement; finish-gate skip-rate watch; `.git/info/exclude` for `.devlyn/` — unchanged.
 
-Runner ("Mission 1.5") still NOT next — re-enters on skip-rate evidence. Doc nit pending: SKILL.md:110 "PLAN-pair unmeasured at HEAD" vs NORTH-STAR "research-only after 0033d/f/g" — reconcile in the next skill-touching iter (lever A/B likely IS that iter).
+Runner ("Mission 1.5") still NOT next — re-enters on skip-rate evidence. SKILL.md:110 PLAN-pair doc nit: RESOLVED in 0065 (research-only label).
 
 **Mission 2 (parallel-fleet substrate)**: BLOCKED until Mission 1 gates + real-project trial (#15). iter-0035 real-project trial stays user-gated (needs real project + task + developer). Hard NO list in MISSIONS.md binding.
 
@@ -169,7 +168,7 @@ At `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`: `feed
 | Codex ordinary-invocation pipeline | AGENTS.md IS the binding entry | iter-0061 A/B 4/4-vs-4/4 |
 | Engine-symmetric pair invocation | REAL both directions | iter-0060 (codex→claude judge fired via adapter) |
 | gemma3:4b as judge | MODEL CEILING — do not re-prompt | iter-0055/0056 |
-| Ceiling quality (세계최고 axis) | **MEASURED-pilot: FAIL-pilot on efficiency** (LC3 4.32 > 3.0); quality lift + objective moat present (A 2/3 vs B 1/3 vs C 1/3, n=3) | iter-0064 `benchmark/ceiling/results/iter0064-t1/ceiling-verdict.json` |
+| Ceiling quality (세계최고 axis) | **MEASURED-pilot: FAIL-pilot on efficiency** (LC3 4.32 > 3.0); quality lift + objective moat present (A 2/3 vs B 1/3 vs C 1/3, n=3). Both pilot product findings CLOSED by iter-0065 (FS1-class delivery + bounded pair-VERIFY); wall/LC3 axis still open (pre-VERIFY overhead) | iter-0064 `ceiling-verdict.json`; iter-0065 P1 A2 (FS1 resolved 14/14, 3324s) |
 | Seat fitness (모델 × 포지션) | matrix live; 5 current cells; executor/pair-judge pins fail-closed "recert required" | `benchmark/seats/seat-matrix-2026-07-07.json` |
 
 Working instruments: violation matrix (`run-violation-matrix.sh`), compliance cells (`run-compliance-cell.sh` + `check-compliance-cell.py`, now incl. `finish_gate_ran`), drift-bait probes (bare + resolve-framed), judge-quality bench (+codex route), frozen-VERIFY pair gates, token gauge (`scripts/skill-token-gauge.py`), **ceiling 3-arm harness** (`benchmark/ceiling/scripts/run-ceiling-tranche.sh`), **seat matrix + recert runner** (`benchmark/seats/recert-seats.sh`, fail-closed pins).
@@ -178,7 +177,7 @@ Working instruments: violation matrix (`run-violation-matrix.sh`), compliance ce
 
 ## 📍 Project state (verify before editing)
 
-- **Branch**: `main`. HEAD ≈ iter-0064 closure commit ← `0bb4ef7` (iter-0064 pre-arms freeze) ← `b63dde9` (HANDOFF rewrite). Run `git log --oneline -5`.
+- **Branch**: `main`. HEAD ≈ iter-0065 closure commit ← `81b146a` (iter-0064 closure) ← `0bb4ef7` (iter-0064 pre-arms freeze). Run `git log --oneline -5`.
 - **Engine pins**: `.devlyn/engines.json` = `{"executor": "codex"}` (machine-local; orchestrator passes `--pair-verify` on resolve runs per `feedback_executor_codex_always_pair_verify.md`).
 - Housekeeping (deferred per user 2026-04-30, unchanged): 4 dirty `.claude/worktrees/agent-*` — save patches before any removal; NOT in iter scope.
 
@@ -189,8 +188,9 @@ git status                                  # main, clean
 bash scripts/lint-skills.sh                 # "All checks passed." (npm-pack check is occasionally slow — rerun once before diagnosing)
 diff -q config/skills/devlyn:resolve/SKILL.md .claude/skills/devlyn:resolve/SKILL.md
 diff -q config/skills/_shared/finish-gate.py .claude/skills/_shared/finish-gate.py
-grep -q "CLOSED-PASS" autoresearch/iterations/0063-finish-gate-mechanical.md && echo "0063 ✓"
 grep -q "^status: CLOSED" autoresearch/iterations/0064-ceiling-seat-instrument.md && echo "0064 CLOSED ✓"
+grep -q "^status: CLOSED" autoresearch/iterations/0065-hands-free-large-goals-bounded-pair-verify.md && echo "0065 CLOSED ✓"
+python3 config/skills/_shared/run-bounded.py 1 -- sleep 3 >/dev/null 2>&1; [ $? -eq 124 ] && echo "run-bounded ✓"
 grep -q "FAIL-pilot" benchmark/ceiling/results/iter0064-t1/ceiling-verdict.json && echo "ceiling verdict artifact ✓"
 grep -q "Ceiling instrument gate" autoresearch/NORTH-STAR.md && echo "ceiling contract ✓"
 command -v codex && codex --version 2>&1 | head -1
@@ -215,4 +215,4 @@ If any unexpected output, do NOT proceed. Surface to user.
 
 ## ⏭️ End of HANDOFF
 
-Evolution loop trajectory since re-open (2026-07-03): 0037-0039 conversational handoff + queue → 0040 cross-CLI portability → 0042-0047 instrument panel → 0048-0050 language-neutral + doctor → 0051-0057 local-backend shipped→measured→deleted → 0058-0060 violation-rate axis + engine-symmetric pair → 0061 F6 closed (AGENTS.md binding) → 0062 contract decidability (E1 shipped) → 0063 mechanical finish-gate → 0064 ceiling & seat instrument SHIPPED, pilot verdict FAIL-pilot on efficiency → **0065 levers: hands-free spec-shaped goals + bounded pair-VERIFY wall (next)**. Detail: DECISIONS.md + iteration files. Mission 1 not formally closed (test #15 user-gated). 압도적·독보적 is the bar; the ceiling instrument made it losable — and round 1 was honestly lost on wall-time, which is what keeps it honest.
+Evolution loop trajectory since re-open (2026-07-03): 0037-0039 conversational handoff + queue → 0040 cross-CLI portability → 0042-0047 instrument panel → 0048-0050 language-neutral + doctor → 0051-0057 local-backend shipped→measured→deleted → 0058-0060 violation-rate axis + engine-symmetric pair → 0061 F6 closed (AGENTS.md binding) → 0062 contract decidability (E1 shipped) → 0063 mechanical finish-gate → 0064 ceiling & seat instrument SHIPPED, pilot verdict FAIL-pilot on efficiency → 0065 hands-free large goals + bounded pair-VERIFY SHIPPED (FS1-class closed live; foreground-blocking rule; LC3 not claimed) → **pre-VERIFY overhead lever + ceiling tranche 2 (next)**. Detail: DECISIONS.md + iteration files. Mission 1 not formally closed (test #15 user-gated). 압도적·독보적 is the bar; the ceiling instrument made it losable — and round 1 was honestly lost on wall-time, which is what keeps it honest.

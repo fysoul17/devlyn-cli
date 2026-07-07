@@ -1451,7 +1451,7 @@ section "Check 10a: Bounded Codex calls use isolated wrapper mode"
 isolation_missing=0
 for needle in \
   'CODEX_MONITORED_ISOLATED=1 bash "$CODEX_MONITORED_PATH"' \
-  'CODEX_MONITORED_ISOLATED=1` and `-c model_reasoning_effort=medium' \
+  'CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600` and `-c model_reasoning_effort=medium' \
   'CODEX_MONITORED_PATH="$DEVLYN_SHARED_DIR/codex-monitored.sh"'
 do
   if ! grep -RInF "$needle" config/skills >/dev/null 2>&1; then

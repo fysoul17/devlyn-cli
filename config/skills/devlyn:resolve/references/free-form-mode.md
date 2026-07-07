@@ -1,6 +1,6 @@
 # Free-form mode — complexity classifier
 
-When `/devlyn:resolve` is invoked with a free-form goal (no `--spec`) — whether the goal is the inline positional text or the content of `--goal-file <path>` (PHASE 0 resolves `goal_text` from either source before classifying) — PHASE 0 runs this classifier to set `state.complexity ∈ {trivial, medium, large}` and either proceeds with an internal mini-spec, drafts focused questions for in-prompt resolution, or recommends `/devlyn:ideate` first.
+When `/devlyn:resolve` is invoked with a free-form goal (no `--spec`) — whether the goal is the inline positional text or the content of `--goal-file <path>` (PHASE 0 resolves `goal_text` from either source before classifying) — PHASE 0 runs this classifier to set `state.complexity ∈ {trivial, medium, large}` and either proceeds with an internal mini-spec, drafts focused questions for in-prompt resolution, synthesizes a best-effort spec with logged assumptions, or halts zero-scope-signal goals with `/devlyn:ideate` guidance.
 
 The classifier is rules-based / deterministic — not an LLM judgment call. Decision rules below.
 
@@ -57,11 +57,11 @@ Conditions (any one):
 - `pair_evidence_intent == true` and `has_actionable_solo_headroom == false`.
 - `unmeasured_pair_candidate_intent == true` and `has_solo_ceiling_avoidance == false`.
 
-Action: log `recommend: /devlyn:ideate first` in `.devlyn/criteria.generated.md` plus the final report. Two policies:
-- Default: halt with terminal verdict `BLOCKED:large-needs-ideation`.
-- `--continue-on-large` flag: synthesize a best-effort spec from the goal with explicit "assumptions made" block; proceed to PHASE 1; the final report flags every assumption for user review.
-- Exception: if the large classification came from pair-evidence intent without an actionable solo-headroom hypothesis, halt with `BLOCKED:solo-headroom-hypothesis-required` even when `--continue-on-large` is set. Do not invent a hypothesis; recommend `/devlyn:ideate` so the user can supply the visible behavior `solo_claude` is expected to miss.
-- Exception: if the large classification came from unmeasured pair-candidate intent without solo ceiling avoidance, halt with `BLOCKED:solo-ceiling-avoidance-required` even when `--continue-on-large` is set. Do not invent the note; recommend `/devlyn:ideate` so the user can supply the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`.
+Action:
+- Default: synthesize a best-effort spec from the goal with an explicit `## Assumptions` block (every assumption scope-narrowing and reversible — when in doubt, narrower); log `recommend: /devlyn:ideate first` in `.devlyn/criteria.generated.md` AND the final report; proceed to PHASE 1; the final report flags every assumption for user review.
+- Zero-signal exception: if the large classification includes `file_scope_signals == 0` (classifier cannot pick scope), halt with terminal verdict `BLOCKED:large-needs-ideation` — assumptions there would be scope-invention, not narrowing.
+- Exception: if the large classification came from pair-evidence intent without an actionable solo-headroom hypothesis, halt with `BLOCKED:solo-headroom-hypothesis-required`. Do not invent a hypothesis; recommend `/devlyn:ideate` so the user can supply the visible behavior `solo_claude` is expected to miss.
+- Exception: if the large classification came from unmeasured pair-candidate intent without solo ceiling avoidance, halt with `BLOCKED:solo-ceiling-avoidance-required`. Do not invent the note; recommend `/devlyn:ideate` so the user can supply the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`.
 
 ## Anti-pattern: drift to LLM judgment
 
@@ -71,7 +71,7 @@ When the rules are silent (rare — pathological goal text), default to `medium`
 
 ## Mini-spec quality bar
 
-The internal mini-spec written for trivial / medium / `--continue-on-large` paths must satisfy:
+The internal mini-spec written for trivial / medium / large-assumptions paths must satisfy:
 
 - `## Requirements` non-empty, each bullet testable (CLI command, test command, observable file change).
 - `## Verification` is preceded by a `<!-- devlyn:verification -->` sentinel on its own line directly above the heading — the machine locator `spec-verify-check.py` uses; the heading text itself is decorative and may be any language. `## Verification` non-empty if the goal implies any runnable acceptance check. Empty Verification is allowed only when all Requirements are pure-design (e.g. "follow existing pattern X").
