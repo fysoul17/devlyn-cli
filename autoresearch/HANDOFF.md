@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Latest closed iter: [`iterations/0065-hands-free-large-goals-bounded-pair-verify.md`](iterations/0065-hands-free-large-goals-bounded-pair-verify.md) (CLOSED 2026-07-07)
+5. Latest closed iter: [`iterations/0066-pre-verify-overhead.md`](iterations/0066-pre-verify-overhead.md) (CLOSED 2026-07-07)
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,18 +14,19 @@ Last rewritten 2026-07-07 (pollution cleanup per user directive; prior full hist
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-07 (iter-0065 closed)
+## 🚦 START-HERE — state after 2026-07-07 (iter-0066 closed)
 
-1. **iter-0065 — hands-free large goals + bounded pair-VERIFY — CLOSED / SHIPPED 2026-07-07** (full record `iterations/0065-hands-free-large-goals-bounded-pair-verify.md`; R0 SHIP-WITH-EDITS → R1 VALID-WITH-EDITS). Lever A: free-form Large default is now assume-and-log (`## Assumptions` block + `recommend: /devlyn:ideate first`, proceed); `--continue-on-large` deleted; zero-scope-signal Large + both measurement-integrity halts still halt (probes P2/P2b green). Live proof: FS1 A-arm re-run full delivery — all phases PASS, patch 7,750B, hidden oracle 14/14 (was 0-byte in tranche-1). Lever B: 600s wall budget on BOTH pair-judge directions (codex `CODEX_MONITORED_TIMEOUT_SEC=600`; claude via new portable `_shared/run-bounded.py`), exit-124 → `.devlyn/verify.pair.timeout.json` → merge three-case contract (`pair_judge:"TIMEOUT"` solo verdict surfaced / findings always bind / no-marker unchanged), self-tested; bound never fired live (observed judges 143-316s). **Claim boundary: LC3/wall movement NOT claimed** — SW2's terminal stall was SDK-layer (artifact decomposition reframed 0064's "pair consumed the window"); pre-VERIFY overhead is the open efficiency lever.
-2. **New failure class caught + fixed in-iter (P1 attempt 1)**: sonnet orchestrator backgrounded the IMPLEMENT wrapper call; headless print-mode wind-down killed it → 0-byte. Foreground-blocking rule shipped at SKILL.md `<engine_routing>` + `codex-config.md`. **R1-registered escalation trigger (binding)**: any recurrence of `print wind-down: killing background shell` or 0-byte delivery traced to a backgrounded wrapper call ⇒ prompt-level is falsified, build a binding mechanism.
+1. **iter-0066 — pre-VERIFY overhead levers — CLOSED / SHIPPED 2026-07-07** (full record `iterations/0066-pre-verify-overhead.md`; R0 SHIP-WITH-EDITS → R1 VALID-WITH-EDITS). Shipped: (A) checkpoint commits scoped to PLAN's authorized_surface (`--print-authorized-surface` shares the gate's matcher; `git add -A` gone from the contract) + fail-loud untracked delta vs a PHASE-0 `--write-untracked-baseline` (shared parser, dir-expansion safe); (B) probe-derive tracked-file mutation ban + base-outcome classification + `.devlyn/probes/` script files, integrity-bound by `state.risk_probes_digest` (fail-closed `correctness.risk-probe-integrity`, archive includes probes/); (D) `rounds_history` — failed/superseded rounds now attributable in state. **Lever C (turn-batching sentence) FALSIFIED by its frozen gate and DELETED same-day (L5)** — like-for-like turns went UP (10→32), prose didn't move behavior. Live proof: SW2-shaped re-run completed 3157s exit 0, every phase + both judges PASS (tranche-1 killed this task at the 3600s cap); probe_derive 484.0→204.6s; implement round-0 captured live in rounds_history. P6 token gate FAILED-as-frozen (+2.81% vs ≤+1%), adjudicated openly (R1: no deletable sentence; freeze mis-calibration). LC3 still NOT claimed (n=1) — tranche 2 owns it.
+2. **Named delta vs iter-0065's decomposition**: "~503s orchestrator gaps" was 336s hidden failed BUILD_GATE round (git add -A swept 512 scaffold files; scope gate correctly FAILed it) + ~165s micro-turns — session subagent transcripts, unopened in 0065, re-attributed it. `rounds_history` exists so state can never hide this again (2/2 multi-round runs had hidden rounds).
+3. **iter-0065 remains the prior context** (hands-free large goals + bounded pair-VERIFY; foreground-blocking rule + its R1 escalation trigger binding: any recurrence of `print wind-down: killing background shell` or 0-byte delivery from a backgrounded wrapper call ⇒ build a binding mechanism).
 
 **Next session entry points (recommended order)**:
-1. **Pre-VERIFY overhead lever** (the remaining LC3 axis, now the only unowned efficiency root): SW2 decomposition = phases 1702s incl. probe_derive 484s + ~503s orchestrator gaps before VERIFY (61% of budget); SW1 1798s vs bare 339s. Needs own pre-registration; candidate surfaces: probe-derive wall, inter-phase orchestrator turns.
-2. **Ceiling tranche 2**: more rows + user-supplied real-project task (still user-gated); FIRST fix 0064 follow-ups #3 (codex-judge schema-first prompt; judge packet-size/timeout — SW2 rankings were lost to it). FS1 A2 (3324s, resolved) is an encouraging single point, not tranche evidence.
-3. **Codex drift-bait lane** (iter-0062 follow-up) — also feeds the codex orchestrator seat (single hung/aborted FAIL cell needs its 2nd observation).
-4. E2 re-measurement; finish-gate skip-rate watch; `.git/info/exclude` for `.devlyn/` — unchanged.
+1. **Ceiling tranche 2** (LC3 re-measurement now unblocked — both 0064 product findings + pre-VERIFY overhead lever shipped): more rows + user-supplied real-project task (still user-gated); FIRST fix 0064 follow-ups #3 (codex-judge schema-first prompt; judge packet-size/timeout — SW2 rankings were lost to it).
+2. **Codex drift-bait lane** (iter-0062 follow-up) — also feeds the codex orchestrator seat (single hung/aborted FAIL cell needs its 2nd observation).
+3. E2 re-measurement; finish-gate skip-rate watch; `.git/info/exclude` for `.devlyn/` — unchanged.
+4. Logged, not opened: probe-derive quality_bar fixture-domain slimming (thermometer-discipline doc pass); orchestrator round-complete compliance nudge (round-0 `complete` skipped in both observed correction loops — watch for 3rd observation before any edit).
 
-Runner ("Mission 1.5") still NOT next — re-enters on skip-rate evidence. SKILL.md:110 PLAN-pair doc nit: RESOLVED in 0065 (research-only label).
+Runner ("Mission 1.5") still NOT next — re-enters on skip-rate evidence.
 
 **Mission 2 (parallel-fleet substrate)**: BLOCKED until Mission 1 gates + real-project trial (#15). iter-0035 real-project trial stays user-gated (needs real project + task + developer). Hard NO list in MISSIONS.md binding.
 
@@ -188,9 +189,10 @@ git status                                  # main, clean
 bash scripts/lint-skills.sh                 # "All checks passed." (npm-pack check is occasionally slow — rerun once before diagnosing)
 diff -q config/skills/devlyn:resolve/SKILL.md .claude/skills/devlyn:resolve/SKILL.md
 diff -q config/skills/_shared/finish-gate.py .claude/skills/_shared/finish-gate.py
-grep -q "^status: CLOSED" autoresearch/iterations/0064-ceiling-seat-instrument.md && echo "0064 CLOSED ✓"
 grep -q "^status: CLOSED" autoresearch/iterations/0065-hands-free-large-goals-bounded-pair-verify.md && echo "0065 CLOSED ✓"
+grep -q "^status: CLOSED" autoresearch/iterations/0066-pre-verify-overhead.md && echo "0066 CLOSED ✓"
 python3 config/skills/_shared/run-bounded.py 1 -- sleep 3 >/dev/null 2>&1; [ $? -eq 124 ] && echo "run-bounded ✓"
+python3 config/skills/_shared/spec-verify-check.py --self-test && echo "spec-verify self-test ✓"
 grep -q "FAIL-pilot" benchmark/ceiling/results/iter0064-t1/ceiling-verdict.json && echo "ceiling verdict artifact ✓"
 grep -q "Ceiling instrument gate" autoresearch/NORTH-STAR.md && echo "ceiling contract ✓"
 command -v codex && codex --version 2>&1 | head -1
@@ -215,4 +217,4 @@ If any unexpected output, do NOT proceed. Surface to user.
 
 ## ⏭️ End of HANDOFF
 
-Evolution loop trajectory since re-open (2026-07-03): 0037-0039 conversational handoff + queue → 0040 cross-CLI portability → 0042-0047 instrument panel → 0048-0050 language-neutral + doctor → 0051-0057 local-backend shipped→measured→deleted → 0058-0060 violation-rate axis + engine-symmetric pair → 0061 F6 closed (AGENTS.md binding) → 0062 contract decidability (E1 shipped) → 0063 mechanical finish-gate → 0064 ceiling & seat instrument SHIPPED, pilot verdict FAIL-pilot on efficiency → 0065 hands-free large goals + bounded pair-VERIFY SHIPPED (FS1-class closed live; foreground-blocking rule; LC3 not claimed) → **pre-VERIFY overhead lever + ceiling tranche 2 (next)**. Detail: DECISIONS.md + iteration files. Mission 1 not formally closed (test #15 user-gated). 압도적·독보적 is the bar; the ceiling instrument made it losable — and round 1 was honestly lost on wall-time, which is what keeps it honest.
+Evolution loop trajectory since re-open (2026-07-03): 0037-0039 conversational handoff + queue → 0040 cross-CLI portability → 0042-0047 instrument panel → 0048-0050 language-neutral + doctor → 0051-0057 local-backend shipped→measured→deleted → 0058-0060 violation-rate axis + engine-symmetric pair → 0061 F6 closed (AGENTS.md binding) → 0062 contract decidability (E1 shipped) → 0063 mechanical finish-gate → 0064 ceiling & seat instrument SHIPPED, pilot verdict FAIL-pilot on efficiency → 0065 hands-free large goals + bounded pair-VERIFY SHIPPED → 0066 pre-VERIFY overhead SHIPPED (scoped commits + probe boundary/digest + rounds_history; turn-batching prose falsified & deleted; SW2 re-run completes inside the old cap) → **ceiling tranche 2 (next)**. Detail: DECISIONS.md + iteration files. Mission 1 not formally closed (test #15 user-gated). 압도적·독보적 is the bar; the ceiling instrument made it losable — and round 1 was honestly lost on wall-time, which is what keeps it honest.

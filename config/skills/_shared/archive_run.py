@@ -29,6 +29,8 @@ PER_RUN_PATTERNS = (
     "fix-batch.round-*.json",
     "criteria.generated.md",
     "risk-probes.jsonl",
+    # Probe scripts referenced by risk-probes.jsonl are archived by
+    # move_probe_scripts() to preserve probes/<file> layout.
     # iter-0019.8: spec-verify carrier artifacts get archived alongside
     # other per-run state. Killed mid-run cleanup is enforced separately
     # by spec-verify-check.py main() — when source markdown has no json
@@ -97,6 +99,24 @@ def move_artifacts(devlyn: pathlib.Path, dest: pathlib.Path) -> int:
             if src.is_file():
                 shutil.move(str(src), str(dest / src.name))
                 moved += 1
+    moved += move_probe_scripts(devlyn, dest)
+    return moved
+
+
+def move_probe_scripts(devlyn: pathlib.Path, dest: pathlib.Path) -> int:
+    probes = devlyn / "probes"
+    if not probes.is_dir():
+        return 0
+    moved = 0
+    for src in sorted(probes.rglob("*")):
+        if not src.is_file():
+            continue
+        target = dest / src.relative_to(devlyn)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(src), str(target))
+        moved += 1
+    if probes.exists():
+        shutil.rmtree(probes, ignore_errors=False)
     return moved
 
 
@@ -147,13 +167,16 @@ def self_test() -> int:
             "claude-judge.stderr",
         ):
             (devlyn / name).write_text("{}\n", encoding="utf-8")
+        (devlyn / "probes").mkdir()
+        (devlyn / "probes" / "P1.py").write_text("print('probe')\n", encoding="utf-8")
         run_id = read_run_id(devlyn)
         assert run_id == "run-1", run_id
         moved = move_artifacts(devlyn, devlyn / "runs" / run_id)
-        assert moved >= 8, moved
+        assert moved >= 9, moved
         for name in (
             "pipeline.state.json",
             "risk-probes.jsonl",
+            "probes/P1.py",
             "verify.pair.findings.jsonl",
             "verify-merge.summary.json",
             "codex-judge.stdout",

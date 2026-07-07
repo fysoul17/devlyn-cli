@@ -94,14 +94,16 @@ Once `state.implement_passed_sha` is non-null (PHASE 2 returned and produced a d
 
 3. Initialize `.devlyn/pipeline.state.json` per `references/state-schema.md`. Set `state.run_id`, `started_at`, `engine`, `engine_source` (`"flag"` | `"engines.json"` | `"default"`), `pair_verify: true` only when `--pair-verify` was passed and `false` otherwise, `base_ref.{branch, sha}`, `rounds.{max_rounds, global: 0}`, `bypasses`, empty `phases`, empty `criteria`, and `risk_profile: { high_risk: false, reasons: [], risk_probes_enabled: false, pair_default_enabled: true }`. `risk_profile` is strict typed state: keep it an object, keep the three flags as JSON booleans, and keep `reasons` as a string array; never serialize booleans as strings.
 
-4. **Mode-specific init**:
+4. Write `.devlyn/untracked.baseline`: `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --write-untracked-baseline`.
+
+5. **Mode-specific init**:
    - **Free-form**: first resolve `goal_text` — the inline positional goal, OR (when `--goal-file <path>` was passed) the raw UTF-8 content of `<path>`, read as opaque goal text (never re-parsed as flags). Fail closed before classifying: empty/whitespace-only file → `BLOCKED:goal-file-empty`; missing/unreadable/not-a-regular-file/invalid-UTF-8 → `BLOCKED:goal-file-unreadable`; an absolute path, a `..` segment, or a path that canonicalizes outside cwd → `BLOCKED:goal-file-invalid-path`. (Like all PHASE-0 halts these are report-level `BLOCKED:<reason>` strings — no `phases.*.verdict` is written, so the bare-enum carrier rule is never violated.) Then read `references/free-form-mode.md` and run the complexity classifier deterministically on `goal_text` (rules over keyword density / file count / spec-shape signals, plus pair-evidence intent). Set `state.complexity ∈ {trivial, medium, large}`. Trivial: write internal mini-spec to `.devlyn/criteria.generated.md` and proceed. Medium: synthesize a minimal spec from the goal + add 1-2 context anchors from the codebase, write to `.devlyn/criteria.generated.md`, proceed. Every free-form branch that writes criteria must set `state.source.type = "generated"`, `state.source.criteria_path = ".devlyn/criteria.generated.md"`, and `state.source.criteria_sha256` from the raw file bytes. Large: follow the Large action in `references/free-form-mode.md` — synthesize a best-effort spec with an `## Assumptions` block, log `recommend: /devlyn:ideate first`, proceed, and flag every assumption in the final report; zero-scope-signal goals halt `BLOCKED:large-needs-ideation`; pair-evidence intent without an actionable solo-headroom hypothesis must halt with `BLOCKED:solo-headroom-hypothesis-required`, and unmeasured pair-candidate intent without solo ceiling avoidance must halt with `BLOCKED:solo-ceiling-avoidance-required`.
    - **Spec**: validate spec exists. If sibling `spec.expected.json` exists, run `--check-expected <expected-path>` to validate both the expected contract, sibling spec `complexity` frontmatter, and any present actionable solo-headroom hypothesis; if the spec has a solo-headroom hypothesis, its observable command must match `spec.expected.json.verification_commands[].cmd`. Then stage `.devlyn/spec-verify.json` from `verification_commands`. Otherwise run `--check <spec-path>` to validate the legacy inline carrier plus supported `complexity` frontmatter and any present actionable solo-headroom hypothesis; if the spec uses an inline `## Verification` JSON carrier, any solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`. Then stage from the legacy inline carrier. Compute `state.source.spec_sha256`.
    - **Verify-only**: skip to PHASE 5 with `state.source.spec_path` set, the supplied diff captured at `.devlyn/external-diff.patch`.
 
-5. Compute `state.risk_profile` from the user goal plus spec/criteria text. Mark `high_risk: true` when the work touches any of: auth/authz, permissions, security, token/session, payment/money/billing/invoice/pricing/tax/ledger, persistence/data mutation/deletion/migration, idempotency/replay/duplicate, API/webhook/raw-body/signature, allocation/scheduling/inventory/rollback/transaction, or explicit error-priority/output-shape contracts. Explicit `--risk-probes` sets `risk_probes_enabled: true` unconditionally (the OTHER engine is then a promise; unavailability blocks at PHASE 1.5). If high-risk is detected and `--no-risk-probes` is absent, this is an AUTO escalation: set `risk_probes_enabled: true` only when a pair-judge engine is available per role resolution (first adapter-valid, non-primary, available entry of `pair_judge_priority`; binary complement when unset — for a Claude run without a config, `command -v codex`); if none is available, leave `risk_probes_enabled: false`, keep `high_risk: true`, and append a reason such as `auto-risk-probes skipped: codex-unavailable` so the report shows it. `--no-risk-probes` disables only the auto escalation; a single-engine run does not need it to proceed. If `--no-pair` is present, set `pair_default_enabled: false`. Add concise string reasons for the classification, but do not use reasons as substitutes for the boolean fields.
+6. Compute `state.risk_profile` from the user goal plus spec/criteria text. Mark `high_risk: true` when the work touches any of: auth/authz, permissions, security, token/session, payment/money/billing/invoice/pricing/tax/ledger, persistence/data mutation/deletion/migration, idempotency/replay/duplicate, API/webhook/raw-body/signature, allocation/scheduling/inventory/rollback/transaction, or explicit error-priority/output-shape contracts. Explicit `--risk-probes` sets `risk_probes_enabled: true` unconditionally (the OTHER engine is then a promise; unavailability blocks at PHASE 1.5). If high-risk is detected and `--no-risk-probes` is absent, this is an AUTO escalation: set `risk_probes_enabled: true` only when a pair-judge engine is available per role resolution (first adapter-valid, non-primary, available entry of `pair_judge_priority`; binary complement when unset — for a Claude run without a config, `command -v codex`); if none is available, leave `risk_probes_enabled: false`, keep `high_risk: true`, and append a reason such as `auto-risk-probes skipped: codex-unavailable` so the report shows it. `--no-risk-probes` disables only the auto escalation; a single-engine run does not need it to proceed. If `--no-pair` is present, set `pair_default_enabled: false`. Add concise string reasons for the classification, but do not use reasons as substitutes for the boolean fields.
 
-6. Announce one line: `resolve starting — run <run_id> — engine <engine> — mode <mode> — complexity <complexity-or-na> — pair <conditional|disabled> — risk_probes <on|off>`.
+7. Announce one line: `resolve starting — run <run_id> — engine <engine> — mode <mode> — complexity <complexity-or-na> — pair <conditional|disabled> — risk_probes <on|off>`.
 
 ## PHASE 1: PLAN
 
@@ -199,7 +201,19 @@ After return:
 1. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --validate-risk-probes`
    for the artifact boundary before IMPLEMENT; malformed probes halt with
    `BLOCKED:probe-derive-malformed`.
-2. IMPLEMENT receives `.devlyn/plan.md` plus `.devlyn/risk-probes.jsonl` as
+2. Compute `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --print-risk-probes-digest` and write the result to top-level `state.risk_probes_digest`:
+   ```bash
+   RISK_PROBES_DIGEST="$(python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --print-risk-probes-digest)"
+   python3 - "$RISK_PROBES_DIGEST" <<'PY'
+   import json, pathlib, sys
+   path = pathlib.Path(".devlyn/pipeline.state.json")
+   state = json.loads(path.read_text())
+   state["risk_probes_digest"] = sys.argv[1]
+   path.write_text(json.dumps(state, indent=2) + "\n")
+   PY
+   ```
+   Any later legitimate probe regeneration is orchestrator-only and repeats validate plus digest-write.
+3. IMPLEMENT receives `.devlyn/plan.md` plus `.devlyn/risk-probes.jsonl` as
    concrete acceptance obligations. It must not receive the producer engine's
    commentary or any mention of pair/critic/debate.
 
@@ -214,12 +228,12 @@ State write: `phases.implement.{started_at, verdict, completed_at, duration_ms}`
 **Single-phase path** (plan.md has no `## Execution phases` section — every trivial/medium run, and any large run PLAN judged atomic): spawn IMPLEMENT once. No phase metadata of any kind appears in the prompt. After return:
 1. `git diff --stat` — empty diff → halt with `BLOCKED:implement-empty`.
 2. Set `state.implement_passed_sha = git rev-parse HEAD` (activates `<post_implement_invariant>`).
-3. Checkpoint: `git add -A && git commit -m "chore(pipeline): implement"`.
+3. Checkpoint (**scoped staging** — this exact shape everywhere a pipeline commit is made): `bash -o pipefail -c 'python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --print-authorized-surface | git add --pathspec-from-file=- --pathspec-file-nul' && git commit -m "chore(pipeline): implement"`.
 
 **Phase-gated path** (plan.md has `## Execution phases` with >1 phase): definitions are the contract in plan.md; progress is routing truth in `state.phases.implement.exec = { total, current, statuses, commits }` — never route on plan.md checkbox parsing. For each phase k = 1..N:
 1. Spawn IMPLEMENT with the standard prompt plus: this phase's plan.md block only, the current worktree as the working base (overrides the body's `base_ref.sha` framing after phase 1), a `git diff <base_ref.sha>...HEAD --stat` summary, and the prior phase's gate output.
 2. After return: run the phase's `gate:` commands directly — deterministic, exit-code truth, no LLM judgment.
-3. Gate PASS → `git add -A && git commit -m "chore(pipeline): implement phase <k>/<N>"`, write `exec.statuses[k-1] = "PASS"` + commit sha, advance `exec.current`, tick the plan.md checkbox mirror (display only).
+3. Gate PASS → scoped-staging checkpoint with message `chore(pipeline): implement phase <k>/<N>`, write `exec.statuses[k-1] = "PASS"` + commit sha, advance `exec.current`, tick the plan.md checkbox mirror (display only).
 4. Gate FAIL → no commit. One fix respawn for this phase with the gate output (increments `rounds.global`, shares `max_rounds`); second FAIL → `exec.statuses[k-1] = "FAIL"`, halt with `BLOCKED:phase-gate-exhausted`.
 
 After the final phase's gate PASS: `git diff <base_ref.sha>...HEAD --stat` — empty → halt with `BLOCKED:implement-empty`; otherwise set `state.implement_passed_sha = git rev-parse HEAD` (phase commits already checkpoint the work — no extra commit).
@@ -239,7 +253,7 @@ State write: `phases.build_gate.{started_at, verdict, completed_at, duration_ms,
 
 Branch:
 - `PASS` → PHASE 4.
-- `FAIL` → fix loop. Spawn IMPLEMENT-engine agent with the build_gate findings as input. Increment `state.rounds.global`. On second FAIL with `state.rounds.global >= state.rounds.max_rounds` → halt with verdict `BLOCKED:build-gate-exhausted`.
+- `FAIL` → fix loop. Spawn IMPLEMENT-engine agent with the build_gate findings as input. Increment `state.rounds.global`. After a fix-loop IMPLEMENT return, scoped-staging checkpoint with message `chore(pipeline): implement fix round <n>`. On second FAIL with `state.rounds.global >= state.rounds.max_rounds` → halt with verdict `BLOCKED:build-gate-exhausted`.
 
 ## PHASE 4: CLEANUP
 
@@ -255,8 +269,8 @@ Before spawn: pass `--pre-sha "$(git rev-parse HEAD)"` to the `state-phase-write
 State write: `phases.cleanup.{started_at, verdict, completed_at, duration_ms, pre_sha, post_sha}`.
 
 After return:
-1. Run `git diff --name-only <pre_sha>` — any path outside the cleanup allowlist → revert to `pre_sha` and emit `invariant.cleanup-out-of-scope` finding into `.devlyn/cleanup.findings.jsonl`.
-2. If allowlist honored and diff non-empty: `git add -A && git commit -m "chore(pipeline): cleanup"`.
+1. Run `git diff --name-only <pre_sha>` and compare new untracked files against `.devlyn/untracked.baseline` (`.devlyn/` exempt) — any path outside the cleanup allowlist (including a cleanup-created untracked file) → revert to `pre_sha`, delete the unauthorized untracked file, and emit `invariant.cleanup-out-of-scope` into `.devlyn/cleanup.findings.jsonl`.
+2. If allowlist honored and diff non-empty: `git add -u && git commit -m "chore(pipeline): cleanup"`.
 3. Complete cleanup with `--post-sha "$(git rev-parse HEAD)"` (also when the diff was empty).
 
 ## PHASE 5: VERIFY (fresh subagent, findings-only)

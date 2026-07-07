@@ -42,6 +42,12 @@ When a batch/import operation must be all-or-nothing, the probe must exercise a
 mixed valid/invalid batch and prove the externally-visible state is unchanged
 after the failure.
 
+Do not modify tracked files, and do not pre-implement the candidate fix to prove
+post-fix success. Validate each probe by executing it against `state.base_ref.sha`
+and classify the base outcome: bug-exposing probes fail on base for the asserted
+reason, while preservation/regression probes may pass on base when they exercise
+unchanged behavior.
+
 If the visible spec includes a solo-headroom hypothesis, the first probe must
 target that hypothesis: use the visible command/input shape it names, exercise
 the behavior the spec says `solo_claude` is expected to miss, and assert the
@@ -105,9 +111,10 @@ must request the same scarce first-line SKU so the probe proves rollback by
 observable success, not by internal reasoning.
 
 Each probe must run entirely from the worktree with standard shell/Node/Python
-tools already present in the repo. Use inline temp-file scripts when needed.
-Leave no tracked files behind. Probe commands must not call external network
-APIs or write to external memory/telemetry services.
+tools already present in the repo. For multiline probes, write a script under
+`.devlyn/probes/<id>.<ext>` and set `cmd` to invoke it (rules below). Probe
+commands must not call external network APIs or write to external
+memory/telemetry services.
 </task>
 
 <output>
@@ -171,6 +178,10 @@ Rules:
   paths, hidden oracle files, external URLs, or files outside the worktree.
   Localhost URLs are allowed only when the visible verification command needs a
   local server.
+- `cmd` may invoke `.devlyn/probes/<id>.<ext>`; the script is part of the
+  replayed probe and obeys the same hidden-path/external-URL rules as `cmd`.
+  Solo-headroom hypothesis probes keep the hypothesis's backticked observable
+  command inline in `cmd` for mechanical validation.
 - Match the spec's visible input and output key names literally; do not invent
   aliases such as `stock` for `lots`, `order_id` for `id`, or `warehouse_id`
   for `warehouse`.

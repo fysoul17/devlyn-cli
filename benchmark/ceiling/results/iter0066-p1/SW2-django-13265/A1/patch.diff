@@ -1,0 +1,74 @@
+diff --git a/django/db/migrations/autodetector.py b/django/db/migrations/autodetector.py
+index 89e2dceeaf..8eabb4f238 100644
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -612,6 +612,18 @@ class MigrationAutodetector:
+                     ),
+                     dependencies=list(set(dependencies)),
+                 )
++            if order_with_respect_to:
++                self.add_operation(
++                    app_label,
++                    operations.AlterOrderWithRespectTo(
++                        name=model_name,
++                        order_with_respect_to=order_with_respect_to,
++                    ),
++                    dependencies=[
++                        (app_label, model_name, order_with_respect_to, True),
++                        (app_label, model_name, None, True),
++                    ]
++                )
+             # Generate other opns
+             related_dependencies = [
+                 (app_label, model_name, name, True)
+@@ -654,18 +666,6 @@ class MigrationAutodetector:
+                     ),
+                     dependencies=related_dependencies
+                 )
+-            if order_with_respect_to:
+-                self.add_operation(
+-                    app_label,
+-                    operations.AlterOrderWithRespectTo(
+-                        name=model_name,
+-                        order_with_respect_to=order_with_respect_to,
+-                    ),
+-                    dependencies=[
+-                        (app_label, model_name, order_with_respect_to, True),
+-                        (app_label, model_name, None, True),
+-                    ]
+-                )
+ 
+             # Fix relationships if the model changed from a proxy model to a
+             # concrete model.
+diff --git a/tests/migrations/test_autodetector.py b/tests/migrations/test_autodetector.py
+index 236af43834..9ba7d0e8e3 100644
+--- a/tests/migrations/test_autodetector.py
++++ b/tests/migrations/test_autodetector.py
+@@ -2151,6 +2151,27 @@ class AutodetectorTests(TestCase):
+         )
+         self.assertNotIn("_order", [name for name, field in changes['testapp'][0].operations[0].fields])
+ 
++    def test_add_model_order_with_respect_to_index(self):
++        book = ModelState('testapp', 'Book', [
++            ('id', models.AutoField(primary_key=True)),
++        ])
++        author = ModelState('testapp', 'Author', [
++            ('id', models.AutoField(primary_key=True)),
++            ('name', models.CharField(max_length=200)),
++            ('book', models.ForeignKey('testapp.Book', models.CASCADE)),
++        ], options={
++            'order_with_respect_to': 'book',
++            'indexes': [models.Index(fields=['book', '_order'], name='book_order_idx')],
++        })
++        changes = self.get_changes([book], [book, author])
++        self.assertOperationTypes(changes, 'testapp', 0, [
++            "CreateModel",
++            "AddIndex",
++        ])
++        self.assertOperationAttributes(
++            changes, 'testapp', 0, 0, name="Author", options={'order_with_respect_to': 'book'}
++        )
++
+     def test_alter_model_managers(self):
+         """
+         Changing the model managers adds a new operation.

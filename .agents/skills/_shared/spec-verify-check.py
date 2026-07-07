@@ -126,6 +126,14 @@ FORBIDDEN_RISK_PROBE_CMD_RE = re.compile(
     r'BENCH_FIXTURE_DIR|benchmark/auto-resolve/fixtures|/verifiers/|verifiers/'
 )
 EXTERNAL_URL_RE = re.compile(r"https?://([^/\s\"']+)", re.IGNORECASE)
+RISK_PROBE_SCRIPT_RE = re.compile(
+    r'(?<![\w./-])(\.devlyn/probes/[A-Za-z0-9][A-Za-z0-9._/-]*)'
+)
+RISK_PROBE_INTEGRITY_FIX_HINT = (
+    "Probe artifacts changed after PHASE 1.5. Only the orchestrator may regenerate probes: "
+    "re-run probe validation and re-write state.risk_probes_digest; workers must never modify "
+    ".devlyn/risk-probes.jsonl or .devlyn/probes/."
+)
 INLINE_JSON_OBJECT_RE = re.compile(r'`?\{\s*"[^"\n]+"\s*:', re.IGNORECASE)
 BACKTICKED_TEXT_RE = re.compile(r"`[^`\n]+`")
 OBSERVABLE_COMMAND_MARKERS = ("command", "observable", "expose")
@@ -457,6 +465,113 @@ def external_url_hosts(text: str) -> list[str]:
     return hosts
 
 
+def referenced_risk_probe_scripts(cmd: str) -> list[str]:
+    scripts: list[str] = []
+    for match in RISK_PROBE_SCRIPT_RE.finditer(cmd or ""):
+        path = match.group(1)
+        if path not in scripts:
+            scripts.append(path)
+    return scripts
+
+
+def validate_risk_probe_scripts(cmd: str, index: int, work: Path) -> str | None:
+    for rel_path in referenced_risk_probe_scripts(cmd):
+        path = Path(rel_path)
+        if ".." in path.parts:
+            return f"risk-probes[{index}].cmd references invalid probe script path: {rel_path}"
+        script_path = work / path
+        if not script_path.is_file():
+            return f"risk-probes[{index}].cmd references missing probe script: {rel_path}"
+        try:
+            content = script_path.read_text(encoding="utf-8")
+        except OSError as e:
+            return f"risk-probes[{index}].cmd references unreadable probe script {rel_path}: {e}"
+        if FORBIDDEN_RISK_PROBE_CMD_RE.search(content):
+            return (
+                f"risk-probes[{index}].cmd references {rel_path}, whose content "
+                "references hidden fixture/verifier paths; risk probes must "
+                "derive from visible spec text only"
+            )
+        external_hosts = external_url_hosts(content)
+        if external_hosts:
+            return (
+                f"risk-probes[{index}].cmd references {rel_path}, whose content "
+                f"references external URL(s): {', '.join(external_hosts)}; "
+                "use only worktree-local or localhost resources"
+            )
+    return None
+
+
+def risk_probe_script_path(work: Path, rel_path: str) -> tuple[Path | None, str | None]:
+    path = Path(rel_path)
+    if path.is_absolute() or ".." in path.parts:
+        return (None, f"referenced probe script path is invalid: {rel_path}")
+    script_path = work / path
+    if not script_path.is_file():
+        return (None, f"referenced probe script is missing: {rel_path}")
+    return (script_path, None)
+
+
+def risk_probes_digest(devlyn_dir: Path) -> tuple[str | None, str | None]:
+    probes_path = devlyn_dir / "risk-probes.jsonl"
+    if not probes_path.is_file():
+        return (None, "missing .devlyn/risk-probes.jsonl")
+    try:
+        probes_bytes = probes_path.read_bytes()
+    except OSError as e:
+        return (None, f"cannot read .devlyn/risk-probes.jsonl: {e}")
+    try:
+        probes_text = probes_bytes.decode("utf-8")
+    except UnicodeDecodeError as e:
+        return (None, f".devlyn/risk-probes.jsonl is not UTF-8: {e}")
+
+    scripts: set[str] = set()
+    for index, line in enumerate(probes_text.splitlines()):
+        if not line.strip():
+            continue
+        try:
+            probe = loads_strict_json(line)
+        except ValueError as e:
+            return (None, f"risk-probes[{index}] invalid JSON: {e}")
+        cmd = probe.get("cmd") if isinstance(probe, dict) else ""
+        scripts.update(referenced_risk_probe_scripts(cmd))
+
+    digest = hashlib.sha256()
+    digest.update(b".devlyn/risk-probes.jsonl\0")
+    digest.update(probes_bytes)
+    digest.update(b"\0")
+    for rel_path in sorted(scripts):
+        script_path, path_error = risk_probe_script_path(devlyn_dir.parent, rel_path)
+        if path_error:
+            return (None, path_error)
+        assert script_path is not None
+        try:
+            script_bytes = script_path.read_bytes()
+        except OSError as e:
+            return (None, f"cannot read {rel_path}: {e}")
+        digest.update(rel_path.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(script_bytes)
+        digest.update(b"\0")
+    return (digest.hexdigest(), None)
+
+
+def risk_probe_integrity_error(state: dict, devlyn_dir: Path) -> str | None:
+    if not state_requires_risk_probes(state) and not (devlyn_dir / "risk-probes.jsonl").is_file():
+        return None
+    expected = state.get("risk_probes_digest")
+    if not isinstance(expected, str) or not expected.strip():
+        return "pipeline.state.json risk_probes_digest is required when risk probes are enabled or present"
+    actual, digest_error = risk_probes_digest(devlyn_dir)
+    if digest_error:
+        return digest_error
+    assert actual is not None
+    expected = expected.strip()
+    if expected != actual:
+        return f"pipeline.state.json risk_probes_digest mismatch: expected {expected}, actual {actual}"
+    return None
+
+
 def validate_shape(data) -> str | None:
     """Return None if shape matches the canonical verification_commands
     schema; else a human-readable error string.
@@ -629,7 +744,12 @@ def validate_sibling_spec_complexity(expected_path: Path) -> str | None:
     return validate_present_spec_complexity(spec_text)
 
 
-def validate_risk_probe(probe: object, index: int, verification_text: str) -> str | None:
+def validate_risk_probe(
+    probe: object,
+    index: int,
+    verification_text: str,
+    work: Path,
+) -> str | None:
     if not isinstance(probe, dict):
         return f"risk-probes[{index}] must be a JSON object"
     probe_id = probe.get("id")
@@ -658,6 +778,9 @@ def validate_risk_probe(probe: object, index: int, verification_text: str) -> st
             f"risk-probes[{index}].cmd references external URL(s): "
             f"{', '.join(external_hosts)}; use only worktree-local or localhost resources"
         )
+    script_err = validate_risk_probe_scripts(cmd, index, work)
+    if script_err:
+        return script_err
     if len(cmd) > 4000:
         return f"risk-probes[{index}].cmd exceeds 4000 characters"
     tags = probe.get("tags")
@@ -786,7 +909,7 @@ def load_risk_probes(
             probe = loads_strict_json(line)
         except ValueError as e:
             return ([], f"risk-probes[{index}] invalid JSON: {e}")
-        err = validate_risk_probe(probe, index, verification_text)
+        err = validate_risk_probe(probe, index, verification_text, devlyn_dir.parent)
         if err:
             return ([], err)
         normalized = dict(probe)
@@ -999,6 +1122,28 @@ def write_malformed_finding(devlyn_dir: Path, error: str, source_path: Path | No
             "{cmd, exit_code?, stdout_contains?, stdout_not_contains?} "
             "entries. See references/build-gate.md § 'Spec literal check'."
         ),
+        "blocking": True,
+        "status": "open",
+    }
+    with findings_path.open("w") as fh:
+        fh.write(json.dumps(finding) + "\n")
+
+
+def write_risk_probe_integrity_finding(devlyn_dir: Path, error: str) -> None:
+    devlyn_dir.mkdir(parents=True, exist_ok=True)
+    findings_path = devlyn_dir / output_findings_name()
+    finding = {
+        "id": f"{output_finding_prefix()}-0001",
+        "rule_id": "correctness.risk-probe-integrity",
+        "level": "error",
+        "severity": "CRITICAL",
+        "confidence": 1.0,
+        "message": f"Risk probe artifact integrity check failed: {error}.",
+        "file": ".devlyn/risk-probes.jsonl",
+        "line": 1,
+        "phase": output_phase(),
+        "criterion_ref": "risk-probes://digest",
+        "fix_hint": RISK_PROBE_INTEGRITY_FIX_HINT,
         "blocking": True,
         "status": "open",
     }
@@ -1238,62 +1383,82 @@ def path_matches_surface(path: str, surface: list[str]) -> bool:
     return False
 
 
-def authorized_surface_findings(
-    work: Path, devlyn_dir: Path, state: dict, finding_start: int,
-) -> tuple[list[dict], int]:
-    """BUILD_GATE-only (caller gates on `output_phase() == "build_gate"`):
-    enforce PLAN's declared `authorized_surface` against this run's diff.
+def is_devlyn_path(path: str) -> bool:
+    return path == ".devlyn" or path.startswith(".devlyn/")
 
-    iter-0046: closes the scope-leak drift class measured in
-    autoresearch/iterations/0042 + 0045 — bare-model diffs leak an
-    out-of-scope tracked file even with the full CLAUDE.md contract loaded,
-    on every measured model tier. `fix_hint` deliberately never offers
-    "widen the surface" — the fix-loop respawns the same IMPLEMENT worker
-    that produced the leak, and letting it edit `plan.md` to authorize its
-    own diff would let it self-authorize the exact drift this gate exists
-    to catch. A persistent finding exhausts the existing BUILD_GATE
-    fix-loop budget and halts for user/orchestrator review instead.
 
-    Not re-run at VERIFY MECHANICAL time (post-CLEANUP): CLEANUP's own
-    allowlist (tooling artifacts, dead code, doc-reference fixes) licenses
-    paths PLAN never declared, so re-checking there would false-positive on
-    CLEANUP's own sanctioned changes.
-    """
+def git_status_entries(work: Path) -> tuple[list[tuple[str, str]], str | None]:
+    proc = subprocess.run(
+        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+        cwd=str(work),
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        error = (proc.stderr or proc.stdout).decode("utf-8", "replace").strip()
+        return ([], error or "git status failed")
+    entries: list[tuple[str, str]] = []
+    fields = proc.stdout.split(b"\0")
+    i = 0
+    while i < len(fields):
+        raw = fields[i]
+        i += 1
+        if not raw:
+            continue
+        if len(raw) < 4:
+            return ([], f"unexpected git status record: {raw!r}")
+        status = raw[:2].decode("utf-8", "surrogateescape")
+        path = raw[3:].decode("utf-8", "surrogateescape")
+        entries.append((status, path))
+        if ("R" in status or "C" in status) and i < len(fields) and fields[i]:
+            old_path = fields[i].decode("utf-8", "surrogateescape")
+            i += 1
+            entries.append(("D ", old_path))
+    return (entries, None)
+
+
+def current_worktree_changed_paths(work: Path) -> tuple[list[str], str | None]:
+    entries, error = git_status_entries(work)
+    if error:
+        return ([], error)
+    paths: list[str] = []
+    seen: set[str] = set()
+    for _status, path in entries:
+        if is_devlyn_path(path) or path in seen:
+            continue
+        paths.append(path)
+        seen.add(path)
+    return (sorted(paths), None)
+
+
+def current_untracked_files(work: Path) -> tuple[set[str], str | None]:
+    entries, error = git_status_entries(work)
+    if error:
+        return (set(), error)
+    return ({path for status, path in entries if status == "??" and not is_devlyn_path(path)}, None)
+
+
+def load_untracked_baseline(devlyn_dir: Path) -> tuple[set[str], str | None]:
+    baseline_path = devlyn_dir / "untracked.baseline"
+    if not baseline_path.is_file():
+        return (set(), "BUILD_GATE requires .devlyn/untracked.baseline from PHASE 0; the file is missing.")
+    try:
+        lines = baseline_path.read_text(encoding="utf-8").splitlines()
+    except OSError as e:
+        return (set(), f"Cannot read {baseline_path}: {e}")
+    return ({line for line in lines if line and not is_devlyn_path(line)}, None)
+
+
+def load_authorized_surface(devlyn_dir: Path) -> tuple[list[str] | None, str | None]:
     plan_path = devlyn_dir / "plan.md"
     if not plan_path.is_file():
-        return ([{
-            "id": f"{output_finding_prefix()}-{finding_start:04d}",
-            "rule_id": "scope.authorized-surface-malformed",
-            "level": "error",
-            "severity": "CRITICAL",
-            "confidence": 1.0,
-            "message": "BUILD_GATE requires .devlyn/plan.md with a declared authorized_surface; the file is missing.",
-            "file": ".devlyn/plan.md",
-            "line": 1,
-            "phase": output_phase(),
-            "criterion_ref": "plan.md/authorized_surface",
-            "fix_hint": "PLAN must write .devlyn/plan.md with a `Files to touch` section and an authorized_surface json block before BUILD_GATE can run.",
-            "blocking": True,
-            "status": "open",
-        }], finding_start + 1)
+        return (
+            None,
+            "BUILD_GATE requires .devlyn/plan.md with a declared authorized_surface; the file is missing.",
+        )
     try:
         plan_text = plan_path.read_text(encoding="utf-8")
     except OSError as e:
-        return ([{
-            "id": f"{output_finding_prefix()}-{finding_start:04d}",
-            "rule_id": "scope.authorized-surface-malformed",
-            "level": "error",
-            "severity": "CRITICAL",
-            "confidence": 1.0,
-            "message": f"Cannot read {plan_path}: {e}",
-            "file": ".devlyn/plan.md",
-            "line": 1,
-            "phase": output_phase(),
-            "criterion_ref": "plan.md/authorized_surface",
-            "fix_hint": "Ensure .devlyn/plan.md is a readable UTF-8 file.",
-            "blocking": True,
-            "status": "open",
-        }], finding_start + 1)
+        return (None, f"Cannot read {plan_path}: {e}")
 
     _section_found, block = extract_authorized_surface_block(plan_text)
     parse_error: str | None = None
@@ -1306,62 +1471,189 @@ def authorized_surface_findings(
         )
     else:
         try:
-            data = loads_strict_json(block)
+            parsed = loads_strict_json(block)
         except ValueError as e:
             parse_error = f"authorized_surface json block is invalid JSON: {e}"
+        else:
+            data = parsed
     if parse_error is None:
         parse_error = validate_authorized_surface_shape(data)
     if parse_error is not None:
-        return ([{
-            "id": f"{output_finding_prefix()}-{finding_start:04d}",
-            "rule_id": "scope.authorized-surface-malformed",
-            "level": "error",
-            "severity": "CRITICAL",
-            "confidence": 1.0,
-            "message": f"plan.md authorized_surface is malformed: {parse_error}",
-            "file": ".devlyn/plan.md",
-            "line": 1,
-            "phase": output_phase(),
-            "criterion_ref": "plan.md/authorized_surface",
-            "fix_hint": (
-                "Restate section 1's already-listed paths as a fenced "
-                "```json``` block immediately after the `Files to touch` "
-                'list: `{"authorized_surface": ["path/one", "path/two"]}`. '
-                "Do not invent new paths."
-            ),
-            "blocking": True,
-            "status": "open",
-        }], finding_start + 1)
+        return (None, f"plan.md authorized_surface is malformed: {parse_error}")
+    assert data is not None
+    return (list(data["authorized_surface"]), None)
 
-    surface = data["authorized_surface"]
+
+def scope_finding(
+    seq: int,
+    rule_id: str,
+    message: str,
+    file_ref: str,
+    fix_hint: str,
+) -> dict:
+    return {
+        "id": f"{output_finding_prefix()}-{seq:04d}",
+        "rule_id": rule_id,
+        "level": "error",
+        "severity": "CRITICAL",
+        "confidence": 1.0,
+        "message": message,
+        "file": file_ref,
+        "line": 1,
+        "phase": output_phase(),
+        "criterion_ref": "plan.md/authorized_surface",
+        "fix_hint": fix_hint,
+        "blocking": True,
+        "status": "open",
+    }
+
+
+def authorized_surface_findings(
+    work: Path, devlyn_dir: Path, state: dict, finding_start: int,
+) -> tuple[list[dict], int]:
+    """BUILD_GATE-only (caller gates on `output_phase() == "build_gate"`):
+    enforce PLAN's declared `authorized_surface` against this run's diff.
+
+    This closes the measured scope-leak drift class: bare-model diffs leaked
+    an out-of-scope tracked file even with the full CLAUDE.md contract loaded,
+    on every measured model tier. `fix_hint` deliberately never offers
+    "widen the surface" — the fix-loop respawns the same IMPLEMENT worker
+    that produced the leak, and letting it edit `plan.md` to authorize its
+    own diff would let it self-authorize the exact drift this gate exists
+    to catch. A persistent finding exhausts the existing BUILD_GATE
+    fix-loop budget and halts for user/orchestrator review instead.
+
+    Not re-run at VERIFY MECHANICAL time (post-CLEANUP): CLEANUP's own
+    allowlist (tooling artifacts, dead code, doc-reference fixes) licenses
+    paths PLAN never declared, so re-checking there would false-positive on
+    CLEANUP's own sanctioned changes.
+    """
+    surface, surface_error = load_authorized_surface(devlyn_dir)
+    if surface_error is not None:
+        return ([scope_finding(
+            finding_start,
+            "scope.authorized-surface-malformed",
+            surface_error,
+            ".devlyn/plan.md",
+            (
+                "PLAN must write .devlyn/plan.md with a `Files to touch` "
+                "section and an authorized_surface json block before "
+                "BUILD_GATE can run."
+            ),
+        )], finding_start + 1)
+    assert surface is not None
+
+    baseline, baseline_error = load_untracked_baseline(devlyn_dir)
+    if baseline_error is not None:
+        return ([scope_finding(
+            finding_start,
+            "scope.authorized-surface-malformed",
+            baseline_error,
+            ".devlyn/untracked.baseline",
+            (
+                "PHASE 0 must write .devlyn/untracked.baseline before "
+                "BUILD_GATE so created-during-run untracked files remain "
+                "visible to the scope gate."
+            ),
+        )], finding_start + 1)
+    current_untracked, untracked_error = current_untracked_files(work)
+    if untracked_error is not None:
+        return ([scope_finding(
+            finding_start,
+            "scope.authorized-surface-malformed",
+            f"Cannot read current untracked files: {untracked_error}",
+            ".devlyn/untracked.baseline",
+            "Ensure BUILD_GATE runs inside a readable git worktree.",
+        )], finding_start + 1)
+
     findings: list[dict] = []
     seq = finding_start
     for path in changed_files(work, state, devlyn_dir):
         if path_matches_surface(path, surface):
             continue
-        findings.append({
-            "id": f"{output_finding_prefix()}-{seq:04d}",
-            "rule_id": "scope.out-of-scope-file",
-            "level": "error",
-            "severity": "CRITICAL",
-            "confidence": 1.0,
-            "message": f"{path} is outside PLAN's declared authorized_surface.",
-            "file": path,
-            "line": 1,
-            "phase": output_phase(),
-            "criterion_ref": "plan.md/authorized_surface",
-            "fix_hint": (
+        findings.append(scope_finding(
+            seq,
+            "scope.out-of-scope-file",
+            f"{path} is outside PLAN's declared authorized_surface.",
+            path,
+            (
                 f"Remove {path} from the diff. Do not widen plan.md's "
                 "authorized_surface to include it — that would let this "
                 "fix loop self-authorize its own scope leak. If the file "
                 "is genuinely required, halt per implement.md's contract "
                 "so this finding reaches the user/orchestrator for a new run."
             ),
-            "blocking": True,
-            "status": "open",
-        })
+        ))
+        seq += 1
+    for path in sorted(current_untracked - baseline):
+        if path_matches_surface(path, surface):
+            continue
+        findings.append(scope_finding(
+            seq,
+            "scope.out-of-scope-file",
+            f"{path} is a created-during-run unauthorized untracked file.",
+            path,
+            (
+                f"Remove {path}. Do not widen plan.md's authorized_surface "
+                "to include it — new untracked leaks must be removed, not "
+                "self-authorized by the fix loop."
+            ),
+        ))
         seq += 1
     return (findings, seq)
+
+
+def run_print_authorized_surface(work: Path, devlyn_dir: Path) -> int:
+    surface, surface_error = load_authorized_surface(devlyn_dir)
+    if surface_error is not None:
+        print(f"[spec-verify --print-authorized-surface] {surface_error}", file=sys.stderr)
+        return 2
+    assert surface is not None
+    paths, status_error = current_worktree_changed_paths(work)
+    if status_error is not None:
+        print(f"[spec-verify --print-authorized-surface] git status failed: {status_error}", file=sys.stderr)
+        return 2
+    authorized_paths = [path for path in paths if path_matches_surface(path, surface)]
+    if authorized_paths:
+        sys.stdout.buffer.write("\0".join(authorized_paths).encode("utf-8", "surrogateescape") + b"\0")
+    return 0
+
+
+def run_print_risk_probes_digest(devlyn_dir: Path) -> int:
+    digest, error = risk_probes_digest(devlyn_dir)
+    if error:
+        print(f"[spec-verify --print-risk-probes-digest] {error}", file=sys.stderr)
+        return 2
+    assert digest is not None
+    print(digest)
+    return 0
+
+
+def run_write_untracked_baseline(work: Path, devlyn_dir: Path) -> int:
+    """PHASE 0 writer for `.devlyn/untracked.baseline`. Shares
+    git_status_entries with the BUILD_GATE reader so writer and comparer can
+    never disagree on quoting or directory collapsing (a shell-side
+    `git status --porcelain | awk` writer records untracked directories as
+    `dir/` and C-quotes special characters, while the comparer sees
+    `--untracked-files=all` unquoted per-file paths — every pre-existing
+    file under an untracked directory would false-positive as
+    created-during-run)."""
+    entries, error = git_status_entries(work)
+    if error:
+        print(f"[spec-verify --write-untracked-baseline] git status failed: {error}", file=sys.stderr)
+        return 2
+    untracked = sorted(
+        path for status, path in entries
+        if status == "??" and not is_devlyn_path(path)
+    )
+    devlyn_dir.mkdir(parents=True, exist_ok=True)
+    baseline_path = devlyn_dir / "untracked.baseline"
+    baseline_path.write_text(
+        "".join(path + "\n" for path in untracked),
+        encoding="utf-8",
+        errors="surrogateescape",
+    )
+    return 0
 
 
 def run_check_mode(md_path: Path) -> int:
@@ -1461,10 +1753,14 @@ def run_self_test() -> int:
                 {"cmd": "printf ok", "exit_code": 0, "stdout_contains": ["ok"]}
             ]
         }) + "\n")
-        (devlyn / "risk-probes.jsonl").write_text(json.dumps({
+        probes_dir = devlyn / "probes"
+        probes_dir.mkdir()
+        probe_script = probes_dir / "P1.py"
+        probe_script.write_text("print('probe-ok')\n", encoding="utf-8")
+        risk_probe_payload = {
             "id": "P1",
             "derived_from": "probe must pass visible marker.",
-            "cmd": "printf probe-ok",
+            "cmd": "python3 .devlyn/probes/P1.py",
             "exit_code": 0,
             "stdout_contains": ["probe-ok"],
             "stdout_not_contains": [],
@@ -1476,9 +1772,42 @@ def run_self_test() -> int:
                     "asserts_no_unexpected_output_keys",
                 ],
             },
-        }) + "\n")
+        }
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps(risk_probe_payload) + "\n")
         env = os.environ.copy()
         env["BENCH_WORKDIR"] = str(work)
+        validate_without_digest = subprocess.run(
+            [sys.executable, script_path, "--validate-risk-probes"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if validate_without_digest.returncode != 0:
+            print("--validate-risk-probes rejected valid probes without digest", file=sys.stderr)
+            print(validate_without_digest.stderr, file=sys.stderr)
+            return 1
+        digest_run = subprocess.run(
+            [sys.executable, script_path, "--print-risk-probes-digest"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if digest_run.returncode != 0:
+            print("--print-risk-probes-digest rejected valid probes", file=sys.stderr)
+            print(digest_run.stderr, file=sys.stderr)
+            return 1
+        risk_digest = digest_run.stdout.strip()
+        if not re.fullmatch(r"[0-9a-f]{64}", risk_digest):
+            print("--print-risk-probes-digest printed a non-sha256 digest", file=sys.stderr)
+            print(repr(digest_run.stdout), file=sys.stderr)
+            return 1
+        (devlyn / "pipeline.state.json").write_text(json.dumps({
+            "source": {"type": "spec", "spec_path": str(spec_md)},
+            "risk_profile": {"risk_probes_enabled": True},
+            "risk_probes_digest": risk_digest,
+        }))
         good = subprocess.run(
             [sys.executable, script_path, "--include-risk-probes"],
             cwd=work,
@@ -1490,10 +1819,84 @@ def run_self_test() -> int:
             print(good.stderr, file=sys.stderr)
             return 1
 
-        (devlyn / "risk-probes.jsonl").unlink()
+        probe_script.write_text("print('mutated-probe')\n", encoding="utf-8")
+        mutated_script = subprocess.run(
+            [sys.executable, script_path, "--include-risk-probes"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if mutated_script.returncode == 0:
+            print("--include-risk-probes accepted mutated probe script bytes", file=sys.stderr)
+            return 1
+        integrity_findings = (devlyn / "spec-verify-findings.jsonl").read_text(encoding="utf-8")
+        if "correctness.risk-probe-integrity" not in integrity_findings:
+            print("mutated probe script did not emit correctness.risk-probe-integrity", file=sys.stderr)
+            print(integrity_findings, file=sys.stderr)
+            return 1
+        probe_script.write_text("print('probe-ok')\n", encoding="utf-8")
+
+        mutated_payload = dict(risk_probe_payload)
+        mutated_payload["id"] = "P1-mutated"
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps(mutated_payload) + "\n")
+        mutated_jsonl = subprocess.run(
+            [sys.executable, script_path, "--include-risk-probes"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if mutated_jsonl.returncode == 0:
+            print("--include-risk-probes accepted mutated risk-probes.jsonl bytes", file=sys.stderr)
+            return 1
+        integrity_findings = (devlyn / "spec-verify-findings.jsonl").read_text(encoding="utf-8")
+        if "correctness.risk-probe-integrity" not in integrity_findings:
+            print("mutated risk-probes.jsonl did not emit correctness.risk-probe-integrity", file=sys.stderr)
+            print(integrity_findings, file=sys.stderr)
+            return 1
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps(risk_probe_payload) + "\n")
+
         (devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(spec_md)},
             "risk_profile": {"risk_probes_enabled": True},
+        }))
+        missing_digest = subprocess.run(
+            [sys.executable, script_path, "--include-risk-probes"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if missing_digest.returncode == 0:
+            print("--include-risk-probes accepted enabled risk probes with missing digest", file=sys.stderr)
+            return 1
+        integrity_findings = (devlyn / "spec-verify-findings.jsonl").read_text(encoding="utf-8")
+        if "correctness.risk-probe-integrity" not in integrity_findings:
+            print("missing risk_probes_digest did not emit correctness.risk-probe-integrity", file=sys.stderr)
+            print(integrity_findings, file=sys.stderr)
+            return 1
+
+        (devlyn / "risk-probes.jsonl").unlink()
+        missing_jsonl_digest = subprocess.run(
+            [sys.executable, script_path, "--print-risk-probes-digest"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if missing_jsonl_digest.returncode != 2:
+            print("--print-risk-probes-digest accepted missing risk-probes.jsonl", file=sys.stderr)
+            print(missing_jsonl_digest.stderr, file=sys.stderr)
+            return 1
+        if "missing .devlyn/risk-probes.jsonl" not in missing_jsonl_digest.stderr:
+            print("missing risk-probes.jsonl digest mode had the wrong error", file=sys.stderr)
+            print(missing_jsonl_digest.stderr, file=sys.stderr)
+            return 1
+        (devlyn / "pipeline.state.json").write_text(json.dumps({
+            "source": {"type": "spec", "spec_path": str(spec_md)},
+            "risk_profile": {"risk_probes_enabled": True},
+            "risk_probes_digest": risk_digest,
         }))
         missing_required_probe = subprocess.run(
             [sys.executable, script_path, "--include-risk-probes"],
@@ -1505,8 +1908,8 @@ def run_self_test() -> int:
         if missing_required_probe.returncode == 0:
             print("--include-risk-probes accepted missing required risk-probes.jsonl", file=sys.stderr)
             return 1
-        if "risk-probes.jsonl is required when --risk-probes is enabled" not in missing_required_probe.stderr:
-            print("--include-risk-probes missing required probe had the wrong error", file=sys.stderr)
+        if "risk probes integrity failed" not in missing_required_probe.stderr:
+            print("--include-risk-probes missing required probe had the wrong integrity error", file=sys.stderr)
             print(missing_required_probe.stderr, file=sys.stderr)
             return 1
 
@@ -1788,6 +2191,117 @@ def run_self_test() -> int:
         )
         if bad.returncode == 0:
             print("hidden verifier path was accepted", file=sys.stderr)
+            return 1
+
+        probes_dir = devlyn / "probes"
+        probes_dir.mkdir(exist_ok=True)
+        (probes_dir / "Pscript.py").write_text("print('script-ok')\n", encoding="utf-8")
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps({
+            "id": "Pscript",
+            "derived_from": "probe must pass visible marker.",
+            "cmd": "python3 .devlyn/probes/Pscript.py",
+            "exit_code": 0,
+            "stdout_contains": ["script-ok"],
+            "stdout_not_contains": [],
+            "tags": ["shape_contract"],
+            "tag_evidence": {
+                "shape_contract": [
+                    "uses_visible_input_key_names",
+                    "asserts_visible_output_key_names",
+                    "asserts_no_unexpected_output_keys",
+                ],
+            },
+        }) + "\n")
+        good_script_probe = subprocess.run(
+            [sys.executable, script_path, "--validate-risk-probes"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if good_script_probe.returncode != 0:
+            print("risk probe script file was rejected", file=sys.stderr)
+            print(good_script_probe.stderr, file=sys.stderr)
+            return 1
+
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps({
+            "id": "Pmissing",
+            "derived_from": "probe must pass visible marker.",
+            "cmd": "python3 .devlyn/probes/missing.py",
+            "exit_code": 0,
+        }) + "\n")
+        missing_script_probe = subprocess.run(
+            [sys.executable, script_path, "--validate-risk-probes"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if missing_script_probe.returncode == 0:
+            print("risk probe missing script file was accepted", file=sys.stderr)
+            return 1
+        if "references missing probe script" not in missing_script_probe.stderr:
+            print("missing risk probe script had the wrong error", file=sys.stderr)
+            print(missing_script_probe.stderr, file=sys.stderr)
+            return 1
+        missing_script_digest = subprocess.run(
+            [sys.executable, script_path, "--print-risk-probes-digest"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if missing_script_digest.returncode != 2:
+            print("--print-risk-probes-digest accepted a missing referenced script", file=sys.stderr)
+            print(missing_script_digest.stderr, file=sys.stderr)
+            return 1
+        if "referenced probe script is missing" not in missing_script_digest.stderr:
+            print("missing script digest mode had the wrong error", file=sys.stderr)
+            print(missing_script_digest.stderr, file=sys.stderr)
+            return 1
+
+        (probes_dir / "Phidden.py").write_text("print('benchmark/auto-resolve/fixtures')\n", encoding="utf-8")
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps({
+            "id": "Phidden",
+            "derived_from": "probe must pass visible marker.",
+            "cmd": "python3 .devlyn/probes/Phidden.py",
+            "exit_code": 0,
+        }) + "\n")
+        hidden_script_probe = subprocess.run(
+            [sys.executable, script_path, "--validate-risk-probes"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if hidden_script_probe.returncode == 0:
+            print("risk probe script containing a hidden fixture path was accepted", file=sys.stderr)
+            return 1
+        if "whose content references hidden fixture/verifier paths" not in hidden_script_probe.stderr:
+            print("hidden-path risk probe script had the wrong error", file=sys.stderr)
+            print(hidden_script_probe.stderr, file=sys.stderr)
+            return 1
+
+        (probes_dir / "Pexternal.py").write_text("print('https://example.com/check')\n", encoding="utf-8")
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps({
+            "id": "Pexternal",
+            "derived_from": "probe must pass visible marker.",
+            "cmd": "python3 .devlyn/probes/Pexternal.py",
+            "exit_code": 0,
+        }) + "\n")
+        external_script_probe = subprocess.run(
+            [sys.executable, script_path, "--validate-risk-probes"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if external_script_probe.returncode == 0:
+            print("risk probe script containing an external URL was accepted", file=sys.stderr)
+            return 1
+        if "whose content references external URL" not in external_script_probe.stderr:
+            print("external-URL risk probe script had the wrong error", file=sys.stderr)
+            print(external_script_probe.stderr, file=sys.stderr)
             return 1
 
         (devlyn / "risk-probes.jsonl").write_text('{"id":NaN}\n')
@@ -3135,6 +3649,27 @@ def run_self_test() -> int:
             "source": {"type": "spec", "spec_path": str(scope_spec)},
             "base_ref": {"sha": scope_base_sha},
         }))
+        (scope_root / "preexisting.local").write_text("pre-existing untracked\n", encoding="utf-8")
+        # Writer parity: --write-untracked-baseline must share the reader's
+        # parser — untracked DIRECTORIES expand to per-file paths and
+        # special-character paths stay unquoted, or every pre-existing file
+        # under an untracked directory false-positives as created-during-run.
+        preexisting_dir = scope_root / "pre existing dir"
+        preexisting_dir.mkdir()
+        (preexisting_dir / "nested file.txt").write_text("scaffold\n", encoding="utf-8")
+        write_baseline_run = subprocess.run(
+            [sys.executable, script_path, "--write-untracked-baseline"],
+            cwd=scope_root, capture_output=True, text=True,
+        )
+        if write_baseline_run.returncode != 0:
+            print("--write-untracked-baseline failed", file=sys.stderr)
+            print(write_baseline_run.stderr, file=sys.stderr)
+            return 1
+        baseline_lines = (scope_devlyn / "untracked.baseline").read_text(encoding="utf-8").splitlines()
+        if baseline_lines != ["pre existing dir/nested file.txt", "preexisting.local"]:
+            print("--write-untracked-baseline wrote wrong content", file=sys.stderr)
+            print(repr(baseline_lines), file=sys.stderr)
+            return 1
         scope_findings_path = scope_devlyn / "spec-verify-findings.jsonl"
 
         # Test 1: no .devlyn/plan.md at all -> fail-closed CRITICAL, not a no-op.
@@ -3162,15 +3697,58 @@ def run_self_test() -> int:
         if "scope.authorized-surface-malformed" not in scope_findings_path.read_text():
             print("missing authorized_surface block did not emit scope.authorized-surface-malformed", file=sys.stderr)
             return 1
+        malformed_print_surface = subprocess.run(
+            [sys.executable, script_path, "--print-authorized-surface"],
+            cwd=scope_root,
+            capture_output=True,
+        )
+        if malformed_print_surface.returncode == 0:
+            print("--print-authorized-surface accepted malformed plan.md", file=sys.stderr)
+            return 1
 
         # Test 3: valid surface, in-scope-only diff -> no scope findings, exit 0.
         (scope_devlyn / "plan.md").write_text(
             "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## 1. Files to touch\n\n"
             "- `bin/cli.js` (edit): ship the fix.\n\n"
             "```json\n"
-            '{"authorized_surface": ["bin/cli.js", "lib/**"]}\n'
+            '{"authorized_surface": ["bin/cli.js", "lib/**", "authorized-but-uncreated.txt"]}\n'
             "```\n"
         )
+        (scope_root / "lib" / "new.js").write_text("module.exports = { created: true };\n")
+        print_surface = subprocess.run(
+            [sys.executable, script_path, "--print-authorized-surface"],
+            cwd=scope_root,
+            capture_output=True,
+        )
+        if print_surface.returncode != 0:
+            print("--print-authorized-surface rejected valid plan.md", file=sys.stderr)
+            print(print_surface.stderr.decode("utf-8", "replace"), file=sys.stderr)
+            return 1
+        printed_paths = {
+            path.decode("utf-8", "surrogateescape")
+            for path in print_surface.stdout.split(b"\0") if path
+        }
+        if printed_paths != {"bin/cli.js", "lib/new.js"}:
+            print("--print-authorized-surface printed the wrong paths", file=sys.stderr)
+            print(repr(printed_paths), file=sys.stderr)
+            return 1
+        (scope_devlyn / "untracked.baseline").unlink()
+        missing_baseline_run = subprocess.run(
+            [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
+        )
+        if missing_baseline_run.returncode == 0:
+            print("BUILD_GATE accepted missing .devlyn/untracked.baseline", file=sys.stderr)
+            return 1
+        if "untracked.baseline" not in scope_findings_path.read_text():
+            print("missing untracked baseline did not emit a scope finding", file=sys.stderr)
+            return 1
+        rewrite_baseline_run = subprocess.run(
+            [sys.executable, script_path, "--write-untracked-baseline"],
+            cwd=scope_root, capture_output=True, text=True,
+        )
+        if rewrite_baseline_run.returncode != 0:
+            print("--write-untracked-baseline re-run failed", file=sys.stderr)
+            return 1
         in_scope_run = subprocess.run(
             [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
         )
@@ -3187,6 +3765,7 @@ def run_self_test() -> int:
         # flagged, and the fix_hint must never suggest self-authorization.
         (scope_root / "lib" / "keep.js").write_text("module.exports = { touched: true };\n")
         (scope_root / "data" / "usage-stats.json").write_text('{"leaked": true}\n')
+        (scope_root / "data" / "scratch.json").write_text('{"untracked": true}\n')
         out_of_scope_run = subprocess.run(
             [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
         )
@@ -3198,6 +3777,15 @@ def run_self_test() -> int:
         flagged_files = {f["file"] for f in out_of_scope_findings if f.get("rule_id") == "scope.out-of-scope-file"}
         if "data/usage-stats.json" not in flagged_files:
             print("scope.out-of-scope-file did not name data/usage-stats.json", file=sys.stderr)
+            return 1
+        if "data/scratch.json" not in flagged_files:
+            print("created-during-run unauthorized untracked file was not flagged", file=sys.stderr)
+            return 1
+        if "pre existing dir/nested file.txt" in flagged_files:
+            print("pre-existing untracked directory file was flagged (writer/reader parity broken)", file=sys.stderr)
+            return 1
+        if "preexisting.local" in flagged_files:
+            print("pre-existing untracked baseline file was flagged", file=sys.stderr)
             return 1
         if "lib/keep.js" in flagged_files:
             print("lib/** directory grant did not cover lib/keep.js", file=sys.stderr)
@@ -3307,12 +3895,24 @@ def run_self_test() -> int:
 def main() -> int:
     include_risk_probes = False
     validate_risk_probes_only = False
+    print_risk_probes_digest = False
+    print_authorized_surface = False
+    write_untracked_baseline = False
     if "--include-risk-probes" in sys.argv[1:]:
         include_risk_probes = True
         sys.argv = [arg for arg in sys.argv if arg != "--include-risk-probes"]
     if "--validate-risk-probes" in sys.argv[1:]:
         validate_risk_probes_only = True
         sys.argv = [arg for arg in sys.argv if arg != "--validate-risk-probes"]
+    if "--print-risk-probes-digest" in sys.argv[1:]:
+        print_risk_probes_digest = True
+        sys.argv = [arg for arg in sys.argv if arg != "--print-risk-probes-digest"]
+    if "--print-authorized-surface" in sys.argv[1:]:
+        print_authorized_surface = True
+        sys.argv = [arg for arg in sys.argv if arg != "--print-authorized-surface"]
+    if "--write-untracked-baseline" in sys.argv[1:]:
+        write_untracked_baseline = True
+        sys.argv = [arg for arg in sys.argv if arg != "--write-untracked-baseline"]
 
     if len(sys.argv) == 2 and sys.argv[1] == "--self-test":
         return run_self_test()
@@ -3333,6 +3933,24 @@ def main() -> int:
     work = Path(os.environ.get("BENCH_WORKDIR") or os.getcwd())
     devlyn_dir = work / ".devlyn"
     spec_path = devlyn_dir / "spec-verify.json"
+
+    if print_risk_probes_digest:
+        if include_risk_probes or validate_risk_probes_only or print_authorized_surface or write_untracked_baseline or len(sys.argv) != 1:
+            print("usage: spec-verify-check.py --print-risk-probes-digest", file=sys.stderr)
+            return 2
+        return run_print_risk_probes_digest(devlyn_dir)
+
+    if print_authorized_surface:
+        if include_risk_probes or validate_risk_probes_only or write_untracked_baseline or len(sys.argv) != 1:
+            print("usage: spec-verify-check.py --print-authorized-surface", file=sys.stderr)
+            return 2
+        return run_print_authorized_surface(work, devlyn_dir)
+
+    if write_untracked_baseline:
+        if include_risk_probes or validate_risk_probes_only or len(sys.argv) != 1:
+            print("usage: spec-verify-check.py --write-untracked-baseline", file=sys.stderr)
+            return 2
+        return run_write_untracked_baseline(work, devlyn_dir)
 
     # iter-0019.8 + iter-0019.9 (Codex R-phaseA): determine the contract
     # carrier source for THIS run. Order:
@@ -3460,6 +4078,11 @@ def main() -> int:
         if risk_state_error:
             print(f"[spec-verify] risk probes malformed: {risk_state_error}", file=sys.stderr)
             write_malformed_finding(devlyn_dir, risk_state_error, Path("pipeline.state.json"))
+            return 1
+        integrity_error = risk_probe_integrity_error(state, devlyn_dir)
+        if integrity_error:
+            print(f"[spec-verify] risk probes integrity failed: {integrity_error}", file=sys.stderr)
+            write_risk_probe_integrity_finding(devlyn_dir, integrity_error)
             return 1
         risk_probes, risk_error = load_risk_probes(
             devlyn_dir,
