@@ -1,7 +1,10 @@
 # iter-0067 — ceiling tranche 2 (instrument fixes first, then re-measurement)
 
-status: PRE-REGISTERED 2026-07-07 — phase 1 (judge-fix trio) frozen before
-implementation; phase 2 (tranche rows) freezes its corpus before any arm run.
+status: IN-FLIGHT 2026-07-08 — phase 1 (judge-fix trio) CLOSED + committed
+(3e64cba); phase-2 R0 NO-GO → all MUST-FIX landed → R1 GO (12d54e1);
+phase-2 tranche `iter0067-t2` (SW3/SW4/SW5, self-driving arm→eval→gate→judge
+→verdict, neutral judge prompt) LAUNCHED and running unattended. Closure
+(R1-on-results + verdict adjudication + HANDOFF/DECISIONS) pending the run.
 
 **Serves**: Mission 1 ceiling axis — NORTH-STAR ceiling contract / ops test
 #17. Tranche-1 verdict was FAIL-pilot on LC3; iter-0065 + iter-0066 shipped
