@@ -1,0 +1,373 @@
+Reading additional input from stdin...
+2026-07-08T04:55:02.132514Z ERROR codex_core::session::session: failed to load skill /Users/aipalm/.codex/skills/code-health-standards/SKILL.md: missing YAML frontmatter delimited by ---
+2026-07-08T04:55:02.133155Z ERROR codex_core::session::session: failed to load skill /Users/aipalm/.codex/skills/code-review-standards/SKILL.md: missing YAML frontmatter delimited by ---
+2026-07-08T04:55:02.133161Z ERROR codex_core::session::session: failed to load skill /Users/aipalm/.codex/skills/ui-implementation-standards/SKILL.md: missing YAML frontmatter delimited by ---
+2026-07-08T04:55:02.133165Z ERROR codex_core::session::session: failed to load skill /Users/aipalm/.codex/skills/root-cause-analysis/SKILL.md: missing YAML frontmatter delimited by ---
+2026-07-08T04:55:02.133169Z ERROR codex_core::session::session: failed to load skill /Users/aipalm/.agents/skills/code-health-standards/SKILL.md: missing YAML frontmatter delimited by ---
+2026-07-08T04:55:02.133172Z ERROR codex_core::session::session: failed to load skill /Users/aipalm/.agents/skills/code-review-standards/SKILL.md: missing YAML frontmatter delimited by ---
+2026-07-08T04:55:02.133175Z ERROR codex_core::session::session: failed to load skill /Users/aipalm/.agents/skills/ui-implementation-standards/SKILL.md: missing YAML frontmatter delimited by ---
+2026-07-08T04:55:02.133178Z ERROR codex_core::session::session: failed to load skill /Users/aipalm/.agents/skills/root-cause-analysis/SKILL.md: missing YAML frontmatter delimited by ---
+2026-07-08T04:55:02.133181Z ERROR codex_core::session::session: failed to load skill /Users/aipalm/Documents/GitHub/devlyn-cli/.agents/skills/code-health-standards/SKILL.md: missing YAML frontmatter delimited by ---
+2026-07-08T04:55:02.133184Z ERROR codex_core::session::session: failed to load skill /Users/aipalm/Documents/GitHub/devlyn-cli/.agents/skills/code-review-standards/SKILL.md: missing YAML frontmatter delimited by ---
+2026-07-08T04:55:02.133187Z ERROR codex_core::session::session: failed to load skill /Users/aipalm/Documents/GitHub/devlyn-cli/.agents/skills/ui-implementation-standards/SKILL.md: missing YAML frontmatter delimited by ---
+2026-07-08T04:55:02.133190Z ERROR codex_core::session::session: failed to load skill /Users/aipalm/Documents/GitHub/devlyn-cli/.agents/skills/root-cause-analysis/SKILL.md: missing YAML frontmatter delimited by ---
+OpenAI Codex v0.141.0
+--------
+workdir: /Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/external/judge-scratch/codex
+model: gpt-5.5
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f4014-52a5-7052-a81d-b32d53d23668
+--------
+user
+You are a blind ceiling-quality judge. You receive one task and three anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, or author identity; judge only the task text and diffs.
+
+Task text:
+limit_choices_to on a ForeignKey can render duplicate options in formfield
+Description
+	
+If you pass a Q object as limit_choices_to on a ForeignKey field involving a join, you may end up with duplicate options in your form.
+See regressiontest in patch for a clear view on the problem.
+
+P1 patch.diff:
+```diff
+diff --git a/django/forms/models.py b/django/forms/models.py
+index 5d115458a1..2b4a60b0e7 100644
+--- a/django/forms/models.py
++++ b/django/forms/models.py
+@@ -98,9 +98,16 @@ def model_to_dict(instance, fields=None, exclude=None):
+ def apply_limit_choices_to_to_formfield(formfield):
+     """Apply limit_choices_to to the formfield's queryset if needed."""
+     if hasattr(formfield, 'queryset') and hasattr(formfield, 'get_limit_choices_to'):
++        from django.db.models import Exists, OuterRef, Q
++
+         limit_choices_to = formfield.get_limit_choices_to()
+-        if limit_choices_to is not None:
+-            formfield.queryset = formfield.queryset.complex_filter(limit_choices_to)
++        if limit_choices_to:
++            if not isinstance(limit_choices_to, Q):
++                limit_choices_to = Q(**limit_choices_to)
++            limit_choices_to &= Q(pk=OuterRef('pk'))
++            formfield.queryset = formfield.queryset.filter(
++                Exists(formfield.queryset.model._base_manager.filter(limit_choices_to)),
++            )
+ 
+ 
+ def fields_for_model(model, fields=None, exclude=None, widgets=None,
+diff --git a/tests/model_forms/models.py b/tests/model_forms/models.py
+index 1a2102f898..375b5e4a8f 100644
+--- a/tests/model_forms/models.py
++++ b/tests/model_forms/models.py
+@@ -411,9 +411,10 @@ class StumpJoke(models.Model):
+         Character,
+         models.CASCADE,
+         limit_choices_to=today_callable_dict,
+-        related_name="+",
++        related_name='jokes',
+     )
+-    has_fooled_today = models.ManyToManyField(Character, limit_choices_to=today_callable_q, related_name="+")
++    has_fooled_today = models.ManyToManyField(Character, limit_choices_to=today_callable_q, related_name='jokes_today')
++    funny = models.BooleanField()
+ 
+ 
+ # Model for #13776
+diff --git a/tests/model_forms/tests.py b/tests/model_forms/tests.py
+index 9e900e35f4..98ce51c617 100644
+--- a/tests/model_forms/tests.py
++++ b/tests/model_forms/tests.py
+@@ -16,6 +16,7 @@ from django.forms.models import (
+ )
+ from django.template import Context, Template
+ from django.test import SimpleTestCase, TestCase, skipUnlessDBFeature
++from django.test.utils import isolate_apps
+ 
+ from .models import (
+     Article, ArticleStatus, Author, Author1, Award, BetterWriter, BigInt, Book,
+@@ -2819,6 +2820,49 @@ class LimitChoicesToTests(TestCase):
+         fields = fields_for_model(StumpJoke, ['has_fooled_today'])
+         self.assertSequenceEqual(fields['has_fooled_today'].queryset, [self.threepwood])
+ 
++    @isolate_apps('model_forms')
++    def test_limit_choices_to_no_duplicates(self):
++        class CharacterDetails(models.Model):
++            character1 = models.ForeignKey(
++                Character,
++                models.CASCADE,
++                limit_choices_to=models.Q(jokes__funny=True),
++                related_name='+',
++            )
++            character2 = models.ForeignKey(
++                Character,
++                models.CASCADE,
++                limit_choices_to={'jokes__funny': True},
++                related_name='+',
++            )
++            characters = models.ManyToManyField(
++                Character,
++                limit_choices_to=models.Q(jokes_today__funny=True),
++                related_name='+',
++            )
++
++        class CharacterDetailsForm(forms.ModelForm):
++            class Meta:
++                model = CharacterDetails
++                fields = '__all__'
++
++        jokes = [
++            StumpJoke.objects.create(most_recently_fooled=self.threepwood, funny=True),
++            StumpJoke.objects.create(most_recently_fooled=self.threepwood, funny=True),
++            StumpJoke.objects.create(most_recently_fooled=self.marley, funny=True),
++            StumpJoke.objects.create(most_recently_fooled=self.marley, funny=False),
++        ]
++        jokes[0].has_fooled_today.add(self.threepwood)
++        jokes[1].has_fooled_today.add(self.threepwood)
++        jokes[2].has_fooled_today.add(self.marley)
++        jokes[3].has_fooled_today.add(self.marley)
++
++        form = CharacterDetailsForm()
++        expected = [self.threepwood, self.marley]
++        self.assertCountEqual(form.fields['character1'].queryset, expected)
++        self.assertCountEqual(form.fields['character2'].queryset, expected)
++        self.assertCountEqual(form.fields['characters'].queryset, expected)
++
+     def test_callable_called_each_time_form_is_instantiated(self):
+         field = StumpJokeForm.base_fields['most_recently_fooled']
+         with mock.patch.object(field, 'limit_choices_to') as today_callable_dict:
+
+```
+
+P2 patch.diff:
+```diff
+diff --git a/django/forms/models.py b/django/forms/models.py
+index 5d115458a1..6ec81a6815 100644
+--- a/django/forms/models.py
++++ b/django/forms/models.py
+@@ -98,9 +98,17 @@ def model_to_dict(instance, fields=None, exclude=None):
+ def apply_limit_choices_to_to_formfield(formfield):
+     """Apply limit_choices_to to the formfield's queryset if needed."""
+     if hasattr(formfield, 'queryset') and hasattr(formfield, 'get_limit_choices_to'):
++        from django.db.models import Exists, OuterRef, Q
++
+         limit_choices_to = formfield.get_limit_choices_to()
+-        if limit_choices_to is not None:
+-            formfield.queryset = formfield.queryset.complex_filter(limit_choices_to)
++        if limit_choices_to:
++            complex_filter = limit_choices_to
++            if not isinstance(complex_filter, Q):
++                complex_filter = Q(**limit_choices_to)
++            complex_filter &= Q(pk=OuterRef('pk'))
++            formfield.queryset = formfield.queryset.filter(
++                Exists(formfield.queryset.model._base_manager.filter(complex_filter)),
++            )
+ 
+ 
+ def fields_for_model(model, fields=None, exclude=None, widgets=None,
+diff --git a/tests/model_forms/models.py b/tests/model_forms/models.py
+index 1a2102f898..7a4d7cd6b8 100644
+--- a/tests/model_forms/models.py
++++ b/tests/model_forms/models.py
+@@ -406,6 +406,11 @@ class Character(models.Model):
+         return self.username
+ 
+ 
++class CharacterTag(models.Model):
++    character = models.ForeignKey(Character, models.CASCADE, related_name='tags')
++    name = models.CharField(max_length=100)
++
++
+ class StumpJoke(models.Model):
+     most_recently_fooled = models.ForeignKey(
+         Character,
+@@ -416,6 +421,15 @@ class StumpJoke(models.Model):
+     has_fooled_today = models.ManyToManyField(Character, limit_choices_to=today_callable_q, related_name="+")
+ 
+ 
++class StumpJokeCharacterTag(models.Model):
++    most_recently_fooled = models.ForeignKey(
++        Character,
++        models.CASCADE,
++        limit_choices_to=models.Q(tags__name='foo'),
++        related_name="+",
++    )
++
++
+ # Model for #13776
+ class Student(models.Model):
+     character = models.ForeignKey(Character, models.CASCADE)
+diff --git a/tests/model_forms/tests.py b/tests/model_forms/tests.py
+index 9e900e35f4..d4496f2bf9 100644
+--- a/tests/model_forms/tests.py
++++ b/tests/model_forms/tests.py
+@@ -19,14 +19,14 @@ from django.test import SimpleTestCase, TestCase, skipUnlessDBFeature
+ 
+ from .models import (
+     Article, ArticleStatus, Author, Author1, Award, BetterWriter, BigInt, Book,
+-    Category, Character, Colour, ColourfulItem, CustomErrorMessage, CustomFF,
+-    CustomFieldForExclusionModel, DateTimePost, DerivedBook, DerivedPost,
+-    Document, ExplicitPK, FilePathModel, FlexibleDatePost, Homepage,
+-    ImprovedArticle, ImprovedArticleWithParentLink, Inventory,
+-    NullableUniqueCharFieldModel, Person, Photo, Post, Price, Product,
+-    Publication, PublicationDefaults, StrictAssignmentAll,
+-    StrictAssignmentFieldSpecific, Student, StumpJoke, TextFile, Triple,
+-    Writer, WriterProfile, test_images,
++    Category, Character, CharacterTag, Colour, ColourfulItem,
++    CustomErrorMessage, CustomFF, CustomFieldForExclusionModel, DateTimePost,
++    DerivedBook, DerivedPost, Document, ExplicitPK, FilePathModel,
++    FlexibleDatePost, Homepage, ImprovedArticle, ImprovedArticleWithParentLink,
++    Inventory, NullableUniqueCharFieldModel, Person, Photo, Post, Price,
++    Product, Publication, PublicationDefaults, StrictAssignmentAll,
++    StrictAssignmentFieldSpecific, Student, StumpJoke, StumpJokeCharacterTag,
++    TextFile, Triple, Writer, WriterProfile, test_images,
+ )
+ 
+ if test_images:
+@@ -2766,6 +2766,12 @@ class StumpJokeForm(forms.ModelForm):
+         fields = '__all__'
+ 
+ 
++class StumpJokeCharacterTagForm(forms.ModelForm):
++    class Meta:
++        model = StumpJokeCharacterTag
++        fields = '__all__'
++
++
+ class CustomFieldWithQuerysetButNoLimitChoicesTo(forms.Field):
+     queryset = 42
+ 
+@@ -2819,6 +2825,22 @@ class LimitChoicesToTests(TestCase):
+         fields = fields_for_model(StumpJoke, ['has_fooled_today'])
+         self.assertSequenceEqual(fields['has_fooled_today'].queryset, [self.threepwood])
+ 
++    def test_limit_choices_to_no_duplicates_for_joining_query(self):
++        CharacterTag.objects.create(character=self.threepwood, name='foo')
++        CharacterTag.objects.create(character=self.threepwood, name='foo')
++        CharacterTag.objects.create(character=self.marley, name='bar')
++
++        stumpjokeform = StumpJokeCharacterTagForm()
++        field = stumpjokeform.fields['most_recently_fooled']
++        self.assertSequenceEqual(
++            field.queryset,
++            [self.threepwood],
++        )
++        self.assertEqual(
++            [str(value) for value, _ in field.choices],
++            ['', str(self.threepwood.pk)],
++        )
++
+     def test_callable_called_each_time_form_is_instantiated(self):
+         field = StumpJokeForm.base_fields['most_recently_fooled']
+         with mock.patch.object(field, 'limit_choices_to') as today_callable_dict:
+
+```
+
+P3 patch.diff:
+```diff
+diff --git a/django/forms/models.py b/django/forms/models.py
+index 5d115458a1..b274762bcf 100644
+--- a/django/forms/models.py
++++ b/django/forms/models.py
+@@ -99,8 +99,14 @@ def apply_limit_choices_to_to_formfield(formfield):
+     """Apply limit_choices_to to the formfield's queryset if needed."""
+     if hasattr(formfield, 'queryset') and hasattr(formfield, 'get_limit_choices_to'):
+         limit_choices_to = formfield.get_limit_choices_to()
+-        if limit_choices_to is not None:
+-            formfield.queryset = formfield.queryset.complex_filter(limit_choices_to)
++        if limit_choices_to:
++            from django.db.models import Exists, OuterRef, Q
++            if not isinstance(limit_choices_to, Q):
++                limit_choices_to = Q(**limit_choices_to)
++            limit_choices_to &= Q(pk=OuterRef('pk'))
++            formfield.queryset = formfield.queryset.filter(
++                Exists(formfield.queryset.model._base_manager.filter(limit_choices_to)),
++            )
+ 
+ 
+ def fields_for_model(model, fields=None, exclude=None, widgets=None,
+diff --git a/tests/model_forms/models.py b/tests/model_forms/models.py
+index 1a2102f898..067562e744 100644
+--- a/tests/model_forms/models.py
++++ b/tests/model_forms/models.py
+@@ -416,6 +416,14 @@ class StumpJoke(models.Model):
+     has_fooled_today = models.ManyToManyField(Character, limit_choices_to=today_callable_q, related_name="+")
+ 
+ 
++class ColourfulItemChoice(models.Model):
++    item = models.ForeignKey(
++        ColourfulItem,
++        models.CASCADE,
++        limit_choices_to=models.Q(colours__name='red') | models.Q(colours__name='blue'),
++    )
++
++
+ # Model for #13776
+ class Student(models.Model):
+     character = models.ForeignKey(Character, models.CASCADE)
+diff --git a/tests/model_forms/tests.py b/tests/model_forms/tests.py
+index 9e900e35f4..369b480558 100644
+--- a/tests/model_forms/tests.py
++++ b/tests/model_forms/tests.py
+@@ -19,10 +19,10 @@ from django.test import SimpleTestCase, TestCase, skipUnlessDBFeature
+ 
+ from .models import (
+     Article, ArticleStatus, Author, Author1, Award, BetterWriter, BigInt, Book,
+-    Category, Character, Colour, ColourfulItem, CustomErrorMessage, CustomFF,
+-    CustomFieldForExclusionModel, DateTimePost, DerivedBook, DerivedPost,
+-    Document, ExplicitPK, FilePathModel, FlexibleDatePost, Homepage,
+-    ImprovedArticle, ImprovedArticleWithParentLink, Inventory,
++    Category, Character, Colour, ColourfulItem, ColourfulItemChoice,
++    CustomErrorMessage, CustomFF, CustomFieldForExclusionModel, DateTimePost,
++    DerivedBook, DerivedPost, Document, ExplicitPK, FilePathModel,
++    FlexibleDatePost, Homepage, ImprovedArticle, ImprovedArticleWithParentLink, Inventory,
+     NullableUniqueCharFieldModel, Person, Photo, Post, Price, Product,
+     Publication, PublicationDefaults, StrictAssignmentAll,
+     StrictAssignmentFieldSpecific, Student, StumpJoke, TextFile, Triple,
+@@ -2766,6 +2766,12 @@ class StumpJokeForm(forms.ModelForm):
+         fields = '__all__'
+ 
+ 
++class ColourfulItemChoiceForm(forms.ModelForm):
++    class Meta:
++        model = ColourfulItemChoice
++        fields = '__all__'
++
++
+ class CustomFieldWithQuerysetButNoLimitChoicesTo(forms.Field):
+     queryset = 42
+ 
+@@ -2807,6 +2813,19 @@ class LimitChoicesToTests(TestCase):
+         stumpjokeform = StumpJokeForm()
+         self.assertSequenceEqual(stumpjokeform.fields['most_recently_fooled'].queryset, [self.threepwood])
+ 
++    def test_limit_choices_to_no_duplicates_for_joining_q_object(self):
++        """
++        A Q object limit_choices_to with joins doesn't duplicate formfield
++        choices.
++        """
++        red = Colour.objects.create(name='red')
++        blue = Colour.objects.create(name='blue')
++        item = ColourfulItem.objects.create(name='Rainbow')
++        item.colours.add(red, blue)
++
++        form = ColourfulItemChoiceForm()
++        self.assertSequenceEqual(form.fields['item'].queryset, [item])
++
+     def test_custom_field_with_queryset_but_no_limit_choices_to(self):
+         """
+         A custom field with a `queryset` attribute but no `limit_choices_to`
+
+```
+
+Rank P1/P2/P3 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics.
+Emit exactly this JSON SHAPE. The packet labels and tier orderings below are ARBITRARY placeholders that illustrate the object shape only (a tie in one axis, distinct orders in the others) — do NOT copy this ordering; rank strictly from the three diffs you were given. Every axis needs its own `tiers` and a `strict_win_deltas` entry for each strict winner>loser pair those tiers create:
+{"axes":{"design_coherence":{"tiers":[["P1","P3"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P3","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"robustness":{"tiers":[["P3"],["P1"],["P2"]],"strict_win_deltas":[{"winner":"P3","loser":"P1","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P3","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"spec_long_horizon_consistency":{"tiers":[["P2"],["P3"],["P1"]],"strict_win_deltas":[{"winner":"P2","loser":"P3","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P2","loser":"P1","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P3","loser":"P1","delta":"<one concrete sentence citing something visible in the diffs>"}]},"maintainability_api_ergonomics":{"tiers":[["P1"],["P2","P3"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P1","loser":"P3","delta":"<one concrete sentence citing something visible in the diffs>"}]}}}
+Ties are allowed and expected wherever two packets are genuinely indistinguishable on an axis — put them in the same tier. For every strict winner-loser pair created by tiers, include exactly one concrete one-sentence delta citing something visible in the diffs. Output ONLY the JSON object -- no prose before or after, no markdown fences.
+deprecated: `[features].codex_hooks` is deprecated. Use `[features].hooks` instead.
+Enable it with `--enable hooks` or `[features].hooks` in config.toml. See https://developers.openai.com/codex/config-basic#feature-flags for details.
+warning: Skill descriptions were shortened to fit the 2% skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+codex
+{"axes":{"design_coherence":{"tiers":[["P2"],["P3"],["P1"]],"strict_win_deltas":[{"winner":"P2","loser":"P3","delta":"P2 ties the regression to actual rendered options by checking `field.choices`, whereas P3 stops at `form.fields['item'].queryset`."},{"winner":"P2","loser":"P1","delta":"P2 adds focused `CharacterTag` and `StumpJokeCharacterTag` fixtures for a join duplicate, whereas P1 alters the existing `StumpJoke` model's reverse names and required fields."},{"winner":"P3","loser":"P1","delta":"P3 adds one dedicated `ColourfulItemChoice` ForeignKey case, whereas P1 modifies `StumpJoke` with `related_name='jokes'`, `related_name='jokes_today'`, and `funny = models.BooleanField()`."}]},"robustness":{"tiers":[["P2"],["P3"],["P1"]],"strict_win_deltas":[{"winner":"P2","loser":"P3","delta":"P2 asserts both the de-duplicated queryset and the resulting choice values `['', pk]`, so it catches duplicate rendering that P3's queryset-only assertion does not directly inspect."},{"winner":"P2","loser":"P1","delta":"P2 avoids changing existing `StumpJokeForm` inputs, while P1 adds `funny = models.BooleanField()` to a model whose form uses `fields = '__all__'`."},{"winner":"P3","loser":"P1","delta":"P3 leaves the existing `StumpJoke` relationships untouched, while P1 changes two `related_name='+'` relationships to named reverse relations."}]},"spec_long_horizon_consistency":{"tiers":[["P3"],["P2"],["P1"]],"strict_win_deltas":[{"winner":"P3","loser":"P2","delta":"P3's regression uses a composed `Q(colours__name='red') | Q(colours__name='blue')`, covering Q connector preservation beyond P2's single-clause `Q(tags__name='foo')`."},{"winner":"P3","loser":"P1","delta":"P3 exercises a complex Q join without repurposing existing model semantics, while P1 changes the long-standing `StumpJoke` reverse API to create its join."},{"winner":"P2","loser":"P1","delta":"P2 creates a dedicated tag join for the regression, while P1 changes the existing `StumpJoke` schema and reverse names to support its test."}]},"maintainability_api_ergonomics":{"tiers":[["P2"],["P3"],["P1"]],"strict_win_deltas":[{"winner":"P2","loser":"P3","delta":"P2 keeps the raw `limit_choices_to` value separate from the derived `complex_filter`, whereas P3 reassigns `limit_choices_to` as the correlated predicate."},{"winner":"P2","loser":"P1","delta":"P2's implementation uses the clearer `complex_filter` local and its test fixtures do not alter `StumpJoke`, while P1 reuses and changes that existing model."},{"winner":"P3","loser":"P1","delta":"P3's test fixture is a single new model, while P1's fixture requires changes to both `StumpJoke` relationships plus a new required field."}]}}}
+tokens used
+42,776

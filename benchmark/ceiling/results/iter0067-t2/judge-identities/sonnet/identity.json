@@ -1,0 +1,8 @@
+{
+  "cli_version": "2.1.204 (Claude Code)",
+  "model_id_or_alias": "sonnet",
+  "recorded_at_run_id": "iter0067-t2",
+  "model_usage_keys": [
+    "claude-sonnet-5"
+  ]
+}
