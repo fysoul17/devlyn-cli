@@ -153,9 +153,26 @@ verdict-json diffs are the run-id string + task iteration order.
 ### Pair protocol
 
 - R0 on the frozen phase-2 corpus + this file: DONE (NO-GO → all MUST-FIX
-  adopted). A bounded R1 confirms the fix diff (NEW evidence = the fixes)
-  before arm launch.
+  adopted). A bounded R1 confirmed the fix diff (NEW evidence = the fixes)
+  before arm launch: GO.
 - R1 on raw arm results after the tranche completes.
+
+### In-flight defect caught + fixed (2026-07-08, before any eval/judge)
+
+SW3-django-13315 A1 completed clean (all phases PASS, wall 2277s, complexity
+medium — no 0-byte break, the iter-0065/0066 levers hold on a fresh holdout
+row), but its captured `patch.diff` was 10 MB / 1412 files: **1409 were
+`.venv-devlyn/`**, the tooling virtualenv BUILD_GATE's `pip install` created.
+Root cause: `run-ceiling-arm.sh` patch-capture excluded `.venv/**` + `venv/**`
+by literal name; BUILD_GATE picked `.venv-devlyn/` this run (tranche-1 used
+`.venv/`, which matched). Same name-enumeration fragility iter-0066 fixed for
+the skill scope gate. Fix (`0bf6f4b`): generalized to `.venv*/**` + `venv*/**`
+in both capture blocks; regenerated SW3 A1 `patch.diff` from its intact
+worktree (deterministic git diff, model output unchanged) → 3 files
+(`django/forms/models.py` + 2 tests), correct django-13315 scope. Caught
+before the per-task eval and judge ran, so no polluted downstream artifact.
+Tranche relaunched with `--resume` (SW3 A1 kept; B1/C + SW4/SW5 fresh under
+the fixed extraction).
 
 ## Pair rounds
 
