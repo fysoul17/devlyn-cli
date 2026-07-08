@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Latest closed iter: [`iterations/0067-ceiling-tranche-2.md`](iterations/0067-ceiling-tranche-2.md) (CLOSED 2026-07-08, verdict FAIL-pilot)
+5. Latest closed iter: [`iterations/0067-ceiling-tranche-2.md`](iterations/0067-ceiling-tranche-2.md) (CLOSED 2026-07-08, verdict FAIL-pilot). In-flight: [`iterations/0068-discriminating-corpus.md`](iterations/0068-discriminating-corpus.md) (PRE-REGISTERED + R0 done, implementation deferred — see its RESUME HERE)
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -20,12 +20,15 @@ Last rewritten 2026-07-07 (pollution cleanup per user directive; prior full hist
 2. **The honest ceiling state (Codex R1 verbatim)**: "the current full devlyn stack does not show a ceiling moat here; a single codex copycat matches objective outcomes, wins subjective diff quality, and is about 8.3× faster." Reproduces tranche-1 FAIL-pilot with a fixed+de-biased instrument on a fresh corpus — stronger, cleaner negative. 압도적·독보적 is NOT yet real; the instrument is losable and has lost twice honestly.
 3. **iter-0066 (prior)** — pre-VERIFY overhead levers CLOSED (scoped commits, probe boundary/digest, rounds_history; turn-batching prose falsified+deleted). iter-0065 — hands-free large + bounded pair-VERIFY. Both A-arm levers HELD on the fresh holdout (no 0-byte break, every phase PASS on all 3 A arms).
 
-**Next session entry points (recommended order — from R1 Q6 license)**:
-1. **Attack the wall root cause** (the dominant FAIL axis, 8.33×): phase short-circuiting / make full-pipeline + pair-mode CONDITIONAL on evidence they earn their wall vs a bounded single agent. The 8.33× is inherent to full-pipeline-vs-single-shot — the lever is "when is the pipeline worth it."
-2. **Claim-shape question** (strategic, may need user): is the honest ceiling competitor a codex-only current-method single agent, not the sonnet+codex pair stack? A codex-only devlyn arm would isolate harness-method quality from pair overhead.
-3. **Corpus informativeness**: pre-register NON-saturated rows (bare fails, harness plausibly wins) + cross-repo breadth before any quality claim — all tranche-2 rows were objective-non-discriminating and django-only.
-4. **Codex judge parse robustness** (0064 f/u #3 partially open): schema-first+900s recovered SW2 but codex judge still parse-failed on SW4 — enforce output completeness (length budget / per-axis calls). Sonnet judge is the reliable panel member.
-5. Codex drift-bait lane (iter-0062 f/u); E2 re-measurement; finish-gate skip-rate watch; `.git/info/exclude` for `.devlyn/`.
+**Next session entry point — iter-0068 IN-FLIGHT (design done, implementation deferred to Fable)**:
+
+**iter-0068 — discriminating ceiling corpus — PRE-REGISTERED + R0 GO-WITH-EDITS folded; implementation NOT started (rolled back unverified 2026-07-08 per user; resume with Fable).** Full record + RESUME-HERE steps: `iterations/0068-discriminating-corpus.md`. Context: after iter-0067 FAIL-pilot, the STUB decomposition (`iterations/0068-attack-the-wall-STUB.md`) showed the A-arm wall is pair-VERIFY (pair_judge 0/3 verdict changes) + orchestrator correction loops — shaving it on saturated tasks is 산으로. **User chose (2026-07-08) to PIVOT the corpus** to discriminating tasks over shaving the wall. iter-0068 builds that: a **bare-fails admission gate** (admit a row only if gold-passes AND bare-codex-fails ≥2/3 — the inverse of tranche-2 saturation) over a POOL of categorical-reliability trap fixtures (F21/F25/F26/F11/F12/F7 → FS-format; let the gate select, do NOT hand-pick — R0 caught that my first pick F7/F11 was already bare-aced). Prereqs: a **generic FS oracle runner** (the evaluator is FS1-hardcoded) + fixture ports. **Product moat = A > best_B AND A > best_C** (copycat), not just A>B. Labeled a **synthetic categorical-trap CALIBRATION pilot**, not real-shaped ceiling evidence. Resume steps + exact deliverables are in the iter doc's "RESUME HERE" block. R1 gates the admitted set before any A/C tranche.
+
+**Deferred behind iter-0068 (still on the R1 Q6 license list)**:
+- Attack the wall (conditional full-pipeline/pair) — re-enters once the discriminating corpus can measure whether the wall is ever earned.
+- Claim-shape (codex-only current-method arm; strategic, may need user).
+- Codex judge parse robustness (0064 f/u #3 partially open — codex judge parse-failed on SW4; sonnet is the reliable panel member).
+- Codex drift-bait lane (iter-0062 f/u); E2 re-measurement; finish-gate skip-rate watch; `.git/info/exclude` for `.devlyn/`.
 
 Runner ("Mission 1.5") still NOT next — re-enters on skip-rate evidence.
 

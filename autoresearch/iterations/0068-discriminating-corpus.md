@@ -1,8 +1,10 @@
 # iter-0068 — discriminating ceiling corpus (bare-fails gate + categorical-reliability trap tasks)
 
-status: PRE-REGISTERED 2026-07-08 (R0 GO-WITH-EDITS folded) — design frozen
-before implementation; corpus freezes (with the bare-fails gate results)
-before any A/C arm runs. Direction chosen by user 2026-07-08 (corpus pivot,
+status: PRE-REGISTERED 2026-07-08 (R0 GO-WITH-EDITS folded) — design frozen,
+**implementation DEFERRED (user directive: run next session with Fable)**;
+a first slice was started then rolled back unverified (see Execution record
+→ RESUME HERE). Corpus freezes (with the bare-fails gate results) before any
+A/C arm runs. Direction chosen by user 2026-07-08 (corpus pivot,
 option A) after the iter-0067 verdict + iter-0068-STUB A-arm decomposition.
 **This is a categorical-trap CALIBRATION pilot on synthetic fixtures, NOT
 real-shaped ceiling evidence** (R0 SHOULD-FIX 3; NORTH-STAR requires
@@ -216,4 +218,36 @@ rows + labels. (The gate result is itself the pilot's first finding.)
 
 ## Execution record
 
-(pending)
+- **2026-07-08 — design + R0 DONE; implementation DEFERRED to next session
+  (user directive, to be run with Fable).** A first implementation slice
+  (Delegation 1: generic FS oracle runner + F21 port + gold smoke + bare
+  probe) was started and then **rolled back unverified** at user request —
+  it was killed mid-slice (no gold oracle smoke, no bare-codex probe ran),
+  and it carried unverified edits to shared harness scripts
+  (`run-ceiling-arm.sh`, `ceiling-eval.sh`) + an embedded nested git repo,
+  so it was not safe to keep. Working tree reverted to the committed
+  pre-registration; all iter-0067 fixes intact (venv exclude 4×, tree
+  clean).
+
+### RESUME HERE (next session, Fable)
+
+Start fresh from THIS frozen pre-registration — the design + R0 edits are
+complete and committed. Implementation order (all deliverables in the
+"Implementation deliverables" section above, R0-folded):
+1. **Generic FS oracle runner (MUST-FIX 1)**: generalize the FS1-hardcoded
+   evaluator (`run-ceiling-arm.sh` prepare_fs1_workspace ~156-182 +
+   dispatch ~307-310; `ceiling-eval.sh` FS1 block ~254-325 copies
+   `test_max_runs_oracle.py`/runs pytest) to run a task-declared
+   `hidden/oracle.sh` (exit-0=pass) against the cloned+patched repo; base.json
+   `repo` may be a local path or url; FS1 keeps working via a thin oracle.sh
+   wrapper (regression guard). NOTE: do NOT commit an embedded `.git`
+   directory inside the corpus — use a git bundle or a documented
+   local-clone-source layout the runner can consume without nesting repos.
+2. **Port a POOL** (F21/F25/F26/F11/F12/F7 → FS-format, de-leaked visible
+   spec that keeps the observable invariant; F7 oracle is same-file per
+   MUST-FIX 2) — let the gate select, do NOT hand-pick.
+3. **Bare-fails gate** (bare-CODEX N=3 + gold smoke): admit gold-pass AND
+   bare-fail ≥2/3; FS1 must be REJECTED (self-test). STOP at the admitted
+   set for R1 before any A/C tranche.
+Delegation-1 prompt archived at `/tmp/codex-iter0068/impl1-prompt.txt`
+(ephemeral; the plan above is the durable source).
