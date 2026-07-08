@@ -1,0 +1,730 @@
+{
+  "run_id": "iter0067-t2",
+  "tasks": {
+    "SW3-django-13315": {
+      "a_packet": "P1",
+      "c_packet": "P3",
+      "axes": {
+        "design_coherence": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 keeps the fix isolated via a separate `complex_filter` variable and adds only new, additive test models (`CharacterTag`, `StumpJokeCharacterTag`) that extend the existing Character/StumpJoke naming convention, whereas P3 reassigns `limit_choices_to` in place and reaches for an unrelated `Colour`/`ColourfulItem` fixture instead."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 uses one consistent strategy of adding brand-new models for its regression test, while P1 mixes that with an unrelated edit to the pre-existing `StumpJoke` model, renaming `related_name='+'` to `'jokes'`/`'jokes_today'` and adding a `funny` field."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 only adds a new `ColourfulItemChoice` model to reproduce the bug, leaving `StumpJoke`/`Character` untouched, whereas P1 renames `StumpJoke`'s `related_name`s and adds a `funny` field directly onto that long-lived shared model."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 ties the regression to actual rendered options by checking `field.choices`, whereas P3 stops at `form.fields['item'].queryset`."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 adds focused `CharacterTag` and `StumpJokeCharacterTag` fixtures for a join duplicate, whereas P1 alters the existing `StumpJoke` model's reverse names and required fields."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 adds one dedicated `ColourfulItemChoice` ForeignKey case, whereas P1 modifies `StumpJoke` with `related_name='jokes'`, `related_name='jokes_today'`, and `funny = models.BooleanField()`."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        },
+        "robustness": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P2"
+                ]
+              ],
+              "a_vs_c": "A_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1's single test exercises three different `limit_choices_to` shapes (a `Q` object, a dict `{'jokes__funny': True}`, and an M2M field) against duplicate-producing joins, while P3's test exercises only one field/format combination."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1's `character2` field uses `limit_choices_to={'jokes__funny': True}`, exercising the dict-to-`Q(**limit_choices_to)` conversion branch under a duplicate-producing join, a path P2's Q-object-only test never touches."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P2",
+                  "delta": "P3's `models.Q(colours__name='red') | models.Q(colours__name='blue')` verifies the fix also dedupes when the `limit_choices_to` Q object is OR-combined across joins, a combinator P2's single `Q(tags__name='foo')` lookup doesn't test."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 asserts both the de-duplicated queryset and the resulting choice values `['', pk]`, so it catches duplicate rendering that P3's queryset-only assertion does not directly inspect."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 avoids changing existing `StumpJokeForm` inputs, while P1 adds `funny = models.BooleanField()` to a model whose form uses `fields = '__all__'`."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 leaves the existing `StumpJoke` relationships untouched, while P1 changes two `related_name='+'` relationships to named reverse relations."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 1,
+            "C_win": 1,
+            "tie": 0
+          }
+        },
+        "spec_long_horizon_consistency": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 asserts directly on the rendered `field.choices` tuple (`['', str(self.threepwood.pk)]`), matching the ticket's literal complaint of 'duplicate options in your form', while P3 only asserts on `form.fields['item'].queryset`."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 checks `field.choices` output for the actual rendered options, whereas P1's test only checks `queryset` via `assertCountEqual`, one step removed from the reported symptom of duplicate form options."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3's regression fixture (`ColourfulItemChoice`) is additive only and leaves the shared `StumpJoke`/`Character` fixtures used throughout `LimitChoicesToTests` unchanged, while P1 permanently changes `StumpJoke`'s `related_name`s and schema, creating drift risk for other tests relying on that model."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P3"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P3",
+                  "loser": "P2",
+                  "delta": "P3's regression uses a composed `Q(colours__name='red') | Q(colours__name='blue')`, covering Q connector preservation beyond P2's single-clause `Q(tags__name='foo')`."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 exercises a complex Q join without repurposing existing model semantics, while P1 changes the long-standing `StumpJoke` reverse API to create its join."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 creates a dedicated tag join for the regression, while P1 changes the existing `StumpJoke` schema and reverse names to support its test."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        },
+        "maintainability_api_ergonomics": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2's fix binds the derived filter to a distinctly-named `complex_filter` variable, leaving `limit_choices_to` unmodified for a reader tracing the function, while P3 reassigns `limit_choices_to = limit_choices_to & Q(pk=OuterRef('pk'))` in place, discarding the original value's semantic meaning."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 leaves `StumpJoke`'s public field/related_name API untouched for other tests, while P1 renames `related_name` from `'+'` to `'jokes'`/`'jokes_today'` and adds a `funny` field to the shared model, a permanent API change future maintainers of unrelated `StumpJoke` tests must now account for."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 adds only a new, self-contained `ColourfulItemChoice` model for its test, while P1 alters the existing `StumpJoke` model's field set and related_names, expanding the API surface maintainers of that shared fixture must track."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2 keeps the raw `limit_choices_to` value separate from the derived `complex_filter`, whereas P3 reassigns `limit_choices_to` as the correlated predicate."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2's implementation uses the clearer `complex_filter` local and its test fixtures do not alter `StumpJoke`, while P1 reuses and changes that existing model."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3's test fixture is a single new model, while P1's fixture requires changes to both `StumpJoke` relationships plus a new required field."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        }
+      }
+    },
+    "SW4-django-13321": {
+      "a_packet": "P1",
+      "c_packet": "P3",
+      "axes": {
+        "design_coherence": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 updates the except-block comment to explicitly name 'binascii.Error' as a now-caught exception, aligning documentation with the try block's expanded scope, while P1 leaves the comment listing only 'ValueError, SuspiciousOperation, unpickling exceptions' unchanged even though that block now also swallows base64 decode failures."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P2",
+                  "delta": "P3's comment names the specific exception class ('binascii.Error') newly caught, whereas P2 only appends the vague qualifier 'unpickling exceptions, etc.' without stating what 'etc.' covers."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1 makes no comment edit, leaving the existing enumerated exception list intact and accurate, while P2 inserts an unspecific 'etc.' into that same list, weakening its precision without adding information."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 1,
+            "tie": 0
+          }
+        },
+        "robustness": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P3"
+                ],
+                [
+                  "P1",
+                  "P2"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 adds a second test, test_legacy_decode_invalid_base64_session_data, calling self.session._legacy_decode('abc') directly to verify the exact method whose try-block scope changed, whereas P1's single test only exercises the public decode() wrapper."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P2",
+                  "delta": "P3's two tests cover both the public decode() entry point and the internal _legacy_decode() method directly, while P2 adds only one test (test_decode_invalid_session_data) through decode()."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 1,
+            "tie": 0
+          }
+        },
+        "spec_long_horizon_consistency": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3's test_legacy_decode_invalid_base64_session_data pins the exact contract of _legacy_decode independent of decode()'s dispatch logic, so the regression guard survives future changes to that dispatch before the method's eventual removal, while P1's test only verifies behavior through the decode() wrapper."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P2",
+                  "delta": "P3 explicitly documents 'binascii.Error' as a handled case in the comment, tying the code's documented contract directly to the exact exception class in the reported traceback, while P2's 'etc.' leaves that contract implicit and undocumented."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1's test name and input test_decode_failure_with_invalid_base64 / 'bad-padding' directly mirror the ticket's reported 'binascii.Error: Incorrect padding' failure, while P2's generic 'invalid session data' string and test name don't reference the specific reported failure mode."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 1,
+            "tie": 0
+          }
+        },
+        "maintainability_api_ergonomics": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ],
+                [
+                  "P2"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3's two precisely-named tests (test_decode_invalid_legacy_session_data, test_legacy_decode_invalid_base64_session_data) each document exactly which layer and input they exercise, giving future maintainers clearer signal than P1's single test."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P2",
+                  "delta": "P3 names the exact exception class in its comment update, giving maintainers a precise reference, while P2's 'unpickling exceptions, etc.' forces a future reader to guess what else is covered."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1's test name test_decode_failure_with_invalid_base64 states precisely what is being tested, while P2's test_decode_invalid_session_data is generic enough to be confused with the neighboring corrupted-session-data tests already in the suite."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 1,
+            "tie": 0
+          }
+        }
+      }
+    },
+    "SW5-django-13401": {
+      "a_packet": "P1",
+      "c_packet": "P3",
+      "axes": {
+        "design_coherence": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P1",
+                  "P3"
+                ],
+                [
+                  "P2"
+                ]
+              ],
+              "a_vs_c": "tie",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1 keeps model-identity comparison uniform (hasattr checks in __lt__, raw model object in __hash__) while P2's __lt__ derives a `label_lower` string key and adds an `id(self_model) < id(other_model)` fallback that P2's own __hash__ never uses, mixing three different bases for the same concept."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P2",
+                  "delta": "P3 consistently uses identity (`is`) in __eq__ and `id(...)` inside __hash__, matching bases end-to-end, whereas P2 pairs `==`/hash(model) in __eq__/__hash__ with a separate label_lower+id() tiebreak only inside __lt__."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P3"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P3",
+                  "loser": "P2",
+                  "delta": "P3 uses identity semantics consistently in __eq__ with `is`, while P2 uses `==` for model comparison but falls back to `id()` ordering when label strings collide."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 gives __lt__ an identity tie-breaker for same-label distinct models, while P1 stops at `(app_label, model_name)` and can leave unequal fields unordered."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 at least adds an `id(self_model) < id(other_model)` tie-breaker after matching `_meta.label_lower`, while P1 has no tie-breaker beyond app label and model name."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 1,
+            "tie": 1
+          }
+        },
+        "robustness": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P2"
+                ]
+              ],
+              "a_vs_c": "A_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1's test sets `bare_field.creation_counter = field_a.creation_counter` to force the no-model tie-break branch and directly asserts `hash(f1) == hash(f1.creation_counter)`, whereas P3's `later_field` has a distinct higher creation_counter so its assertLess comparisons never actually reach the model tie-break code."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1's new test explicitly exercises the field-without-a-model path (a bare `models.Field()` compared and hashed against an attached field), while P2's `test_abstract_model_field_equality` defines models A/B/C with no `@isolate_apps` decorator at all, leaking real Model classes into the global app registry."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P2",
+                  "delta": "P3's __lt__ adds an `id(self_model) < id(other_model)` tiebreak for colliding (app_label, model_name) pairs and places its test inside `test_abstract_inheritance.py`'s existing isolated test class, whereas P2 defines ad hoc classes A/B/C directly under `BasicFieldTests` with no isolation decorator."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P3"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P3",
+                  "loser": "P2",
+                  "delta": "P3's hash uses `id(getattr(self, 'model', None))`, matching its identity-based equality, while P2 hashes the model object after comparing models with `==`."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 handles same app-label/model-name collisions with an id tie-breaker in __lt__, whereas P1 returns False for both directions in that case."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2's __lt__ avoids an ordering dead end for same label strings by comparing model ids, while P1 does not."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 1,
+            "C_win": 1,
+            "tie": 0
+          }
+        },
+        "spec_long_horizon_consistency": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P2"
+                ],
+                [
+                  "P3"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P2",
+                  "loser": "P3",
+                  "delta": "P2's test directly reproduces the ticket's stated regression risk via `self.assertLess(c_first, B._meta.get_field('second'))`, proving creation_counter-first ordering survives across two different models' fields, a scenario P3's test never sets up."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2's test explicitly checks cross-model, cross-field ordering (`b_first < c_first` and `c_first < B.second`) matching the ticket's exact concern about re-ordering fields unaffected by the equality collision, while P1's test covers eq/hash edge cases for modelless fields but has no analogous cross-model multi-field ordering assertion."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3's test asserts `child_a_field < later_field` and `child_b_field < later_field` to confirm creation-counter-first ordering still holds after the model tie-break was added, which P1's test never checks against a genuinely later-created field."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P3"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P3",
+                  "loser": "P2",
+                  "delta": "P3 most directly satisfies the spec's 'if field.model is different' wording by using `is` identity in __eq__ rather than model equality."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3 preserves creation-counter-first ordering and then distinguishes different model objects, while P1 can treat different models with the same metadata label as neither less-than nor equal."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 preserves creation-counter-first ordering and includes a final model-id discriminator, while P1 only compares model metadata labels."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 0,
+            "C_win": 2,
+            "tie": 0
+          }
+        },
+        "maintainability_api_ergonomics": {
+          "per_judge": {
+            "sonnet": {
+              "tiers": [
+                [
+                  "P1"
+                ],
+                [
+                  "P2",
+                  "P3"
+                ]
+              ],
+              "a_vs_c": "A_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P1",
+                  "loser": "P2",
+                  "delta": "P1's __lt__ resolves ties with only hasattr checks and an (app_label, model_name) tuple compare, whereas P2 adds an unexplained `id(self_model) < id(other_model)` branch for a collision case that no new test triggers or asserts."
+                },
+                {
+                  "winner": "P1",
+                  "loser": "P3",
+                  "delta": "P1 needs no fallback beyond the (app_label, model_name) tuple compare, while P3 adds both None-guards and an `id(self_model) < id(other_model)` tiebreak plus mirrors `id(...)` inside __hash__, more branches than P1 for a scenario the diff never demonstrates occurring."
+                }
+              ]
+            },
+            "codex": {
+              "tiers": [
+                [
+                  "P3"
+                ],
+                [
+                  "P2"
+                ],
+                [
+                  "P1"
+                ]
+              ],
+              "a_vs_c": "C_win",
+              "strict_win_deltas": [
+                {
+                  "winner": "P3",
+                  "loser": "P2",
+                  "delta": "P3 keeps equality, hashing, and ordering all visibly identity-oriented, while P2 mixes model equality, label strings, and id fallback."
+                },
+                {
+                  "winner": "P3",
+                  "loser": "P1",
+                  "delta": "P3's comparison logic is explicit about the None, same-model, label, and id cases, while P1's `hasattr()` branch assumes any present model has `_meta` and omits the same-label tie-breaker."
+                },
+                {
+                  "winner": "P2",
+                  "loser": "P1",
+                  "delta": "P2 uses `getattr(..., None)` throughout __lt__, while P1 separately tracks `hasattr()` and then dereferences `self.model._meta`."
+                }
+              ]
+            }
+          },
+          "a_vs_c_counts": {
+            "A_win": 1,
+            "C_win": 1,
+            "tie": 0
+          }
+        }
+      }
+    }
+  }
+}

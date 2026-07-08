@@ -1,0 +1,12 @@
+--select
+SW3-django-13315=B1
+--select
+SW3-django-13315=C1
+--select
+SW4-django-13321=B1
+--select
+SW4-django-13321=C1
+--select
+SW5-django-13401=B1
+--select
+SW5-django-13401=C1

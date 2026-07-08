@@ -1,0 +1,145 @@
+{
+  "judge": "sonnet",
+  "task": "SW4-django-13321",
+  "prompt": "You are a blind ceiling-quality judge. You receive one task and three anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, or author identity; judge only the task text and diffs.\n\nTask text:\nDecoding an invalid session data crashes.\nDescription\n\t \n\t\t(last modified by Matt Hegarty)\n\t \nHi\nI recently upgraded my staging server to 3.1. I think that there was an old session which was still active.\nOn browsing to any URL, I get the crash below. It looks similar to \u200bthis issue.\nI cannot login at all with Chrome - each attempt to access the site results in a crash. Login with Firefox works fine.\nThis is only happening on my Staging site, which is running Gunicorn behind nginx proxy.\nInternal Server Error: /overview/\nTraceback (most recent call last):\nFile \"/usr/local/lib/python3.8/site-packages/django/contrib/sessions/backends/base.py\", line 215, in _get_session\nreturn self._session_cache\nAttributeError: 'SessionStore' object has no attribute '_session_cache'\nDuring handling of the above exception, another exception occurred:\nTraceback (most recent call last):\nFile \"/usr/local/lib/python3.8/site-packages/django/contrib/sessions/backends/base.py\", line 118, in decode\nreturn signing.loads(session_data, salt=self.key_salt, serializer=self.serializer)\nFile \"/usr/local/lib/python3.8/site-packages/django/core/signing.py\", line 135, in loads\nbase64d = TimestampSigner(key, salt=salt).unsign(s, max_age=max_age).encode()\nFile \"/usr/local/lib/python3.8/site-packages/django/core/signing.py\", line 201, in unsign\nresult = super().unsign(value)\nFile \"/usr/local/lib/python3.8/site-packages/django/core/signing.py\", line 184, in unsign\nraise BadSignature('Signature \"%s\" does not match' % sig)\ndjango.core.signing.BadSignature: Signature \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\" does not match\nDuring handling of the above exception, another exception occurred:\nTraceback (most recent call last):\nFile \"/usr/local/lib/python3.8/site-packages/django/core/handlers/exception.py\", line 47, in inner\nresponse = get_response(request)\nFile \"/usr/local/lib/python3.8/site-packages/django/core/handlers/base.py\", line 179, in _get_response\nresponse = wrapped_callback(request, *callback_args, **callback_kwargs)\nFile \"/usr/local/lib/python3.8/site-packages/django/views/generic/base.py\", line 73, in view\nreturn self.dispatch(request, *args, **kwargs)\nFile \"/usr/local/lib/python3.8/site-packages/django/contrib/auth/mixins.py\", line 50, in dispatch\nif not request.user.is_authenticated:\nFile \"/usr/local/lib/python3.8/site-packages/django/utils/functional.py\", line 240, in inner\nself._setup()\nFile \"/usr/local/lib/python3.8/site-packages/django/utils/functional.py\", line 376, in _setup\nself._wrapped = self._setupfunc()\nFile \"/usr/local/lib/python3.8/site-packages/django_otp/middleware.py\", line 38, in _verify_user\nuser.otp_device = None\nFile \"/usr/local/lib/python3.8/site-packages/django/utils/functional.py\", line 270, in __setattr__\nself._setup()\nFile \"/usr/local/lib/python3.8/site-packages/django/utils/functional.py\", line 376, in _setup\nself._wrapped = self._setupfunc()\nFile \"/usr/local/lib/python3.8/site-packages/django/contrib/auth/middleware.py\", line 23, in <lambda>\nrequest.user = SimpleLazyObject(lambda: get_user(request))\nFile \"/usr/local/lib/python3.8/site-packages/django/contrib/auth/middleware.py\", line 11, in get_user\nrequest._cached_user = auth.get_user(request)\nFile \"/usr/local/lib/python3.8/site-packages/django/contrib/auth/__init__.py\", line 174, in get_user\nuser_id = _get_user_session_key(request)\nFile \"/usr/local/lib/python3.8/site-packages/django/contrib/auth/__init__.py\", line 58, in _get_user_session_key\nreturn get_user_model()._meta.pk.to_python(request.session[SESSION_KEY])\nFile \"/usr/local/lib/python3.8/site-packages/django/contrib/sessions/backends/base.py\", line 65, in __getitem__\nreturn self._session[key]\nFile \"/usr/local/lib/python3.8/site-packages/django/contrib/sessions/backends/base.py\", line 220, in _get_session\nself._session_cache = self.load()\nFile \"/usr/local/lib/python3.8/site-packages/django/contrib/sessions/backends/db.py\", line 44, in load\nreturn self.decode(s.session_data) if s else {}\nFile \"/usr/local/lib/python3.8/site-packages/django/contrib/sessions/backends/base.py\", line 122, in decode\nreturn self._legacy_decode(session_data)\nFile \"/usr/local/lib/python3.8/site-packages/django/contrib/sessions/backends/base.py\", line 126, in _legacy_decode\nencoded_data = base64.b64decode(session_data.encode('ascii'))\nFile \"/usr/local/lib/python3.8/base64.py\", line 87, in b64decode\nreturn binascii.a2b_base64(s)\nbinascii.Error: Incorrect padding\n\nP1 patch.diff:\n```diff\ndiff --git a/django/contrib/sessions/backends/base.py b/django/contrib/sessions/backends/base.py\nindex 187e14b1b7..cbdacd2c16 100644\n--- a/django/contrib/sessions/backends/base.py\n+++ b/django/contrib/sessions/backends/base.py\n@@ -132,8 +132,8 @@ class SessionBase:\n \n     def _legacy_decode(self, session_data):\n         # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.\n-        encoded_data = base64.b64decode(session_data.encode('ascii'))\n         try:\n+            encoded_data = base64.b64decode(session_data.encode('ascii'))\n             # could produce ValueError if there is no ':'\n             hash, serialized = encoded_data.split(b':', 1)\n             expected_hash = self._hash(serialized)\ndiff --git a/tests/sessions_tests/tests.py b/tests/sessions_tests/tests.py\nindex e7615d0f11..7b53831785 100644\n--- a/tests/sessions_tests/tests.py\n+++ b/tests/sessions_tests/tests.py\n@@ -339,6 +339,9 @@ class SessionTestsMixin:\n         # The failed decode is logged.\n         self.assertIn('corrupted', cm.output[0])\n \n+    def test_decode_failure_with_invalid_base64(self):\n+        self.assertEqual({}, self.session.decode('bad-padding'))\n+\n     def test_actual_expiry(self):\n         # this doesn't work with JSONSerializer (serializing timedelta)\n         with override_settings(SESSION_SERIALIZER='django.contrib.sessions.serializers.PickleSerializer'):\n\n```\n\nP2 patch.diff:\n```diff\ndiff --git a/django/contrib/sessions/backends/base.py b/django/contrib/sessions/backends/base.py\nindex 187e14b1b7..603fe904ed 100644\n--- a/django/contrib/sessions/backends/base.py\n+++ b/django/contrib/sessions/backends/base.py\n@@ -132,8 +132,8 @@ class SessionBase:\n \n     def _legacy_decode(self, session_data):\n         # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.\n-        encoded_data = base64.b64decode(session_data.encode('ascii'))\n         try:\n+            encoded_data = base64.b64decode(session_data.encode('ascii'))\n             # could produce ValueError if there is no ':'\n             hash, serialized = encoded_data.split(b':', 1)\n             expected_hash = self._hash(serialized)\n@@ -142,8 +142,9 @@ class SessionBase:\n             else:\n                 return self.serializer().loads(serialized)\n         except Exception as e:\n-            # ValueError, SuspiciousOperation, unpickling exceptions. If any of\n-            # these happen, just return an empty dictionary (an empty session).\n+            # ValueError, SuspiciousOperation, unpickling exceptions, etc. If\n+            # any of these happen, just return an empty dictionary (an empty\n+            # session).\n             if isinstance(e, SuspiciousOperation):\n                 logger = logging.getLogger('django.security.%s' % e.__class__.__name__)\n                 logger.warning(str(e))\ndiff --git a/tests/sessions_tests/tests.py b/tests/sessions_tests/tests.py\nindex e7615d0f11..a7f6f12949 100644\n--- a/tests/sessions_tests/tests.py\n+++ b/tests/sessions_tests/tests.py\n@@ -339,6 +339,9 @@ class SessionTestsMixin:\n         # The failed decode is logged.\n         self.assertIn('corrupted', cm.output[0])\n \n+    def test_decode_invalid_session_data(self):\n+        self.assertEqual(self.session.decode('invalid session data'), {})\n+\n     def test_actual_expiry(self):\n         # this doesn't work with JSONSerializer (serializing timedelta)\n         with override_settings(SESSION_SERIALIZER='django.contrib.sessions.serializers.PickleSerializer'):\n\n```\n\nP3 patch.diff:\n```diff\ndiff --git a/django/contrib/sessions/backends/base.py b/django/contrib/sessions/backends/base.py\nindex 187e14b1b7..cc74d2802d 100644\n--- a/django/contrib/sessions/backends/base.py\n+++ b/django/contrib/sessions/backends/base.py\n@@ -132,8 +132,8 @@ class SessionBase:\n \n     def _legacy_decode(self, session_data):\n         # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.\n-        encoded_data = base64.b64decode(session_data.encode('ascii'))\n         try:\n+            encoded_data = base64.b64decode(session_data.encode('ascii'))\n             # could produce ValueError if there is no ':'\n             hash, serialized = encoded_data.split(b':', 1)\n             expected_hash = self._hash(serialized)\n@@ -142,8 +142,9 @@ class SessionBase:\n             else:\n                 return self.serializer().loads(serialized)\n         except Exception as e:\n-            # ValueError, SuspiciousOperation, unpickling exceptions. If any of\n-            # these happen, just return an empty dictionary (an empty session).\n+            # ValueError, SuspiciousOperation, unpickling exceptions, and\n+            # binascii.Error. If any of these happen, just return an empty\n+            # dictionary (an empty session).\n             if isinstance(e, SuspiciousOperation):\n                 logger = logging.getLogger('django.security.%s' % e.__class__.__name__)\n                 logger.warning(str(e))\ndiff --git a/tests/sessions_tests/tests.py b/tests/sessions_tests/tests.py\nindex e7615d0f11..365043f68a 100644\n--- a/tests/sessions_tests/tests.py\n+++ b/tests/sessions_tests/tests.py\n@@ -325,6 +325,12 @@ class SessionTestsMixin:\n             {'a test key': 'a test value'},\n         )\n \n+    def test_decode_invalid_legacy_session_data(self):\n+        self.assertEqual(self.session.decode('abc'), {})\n+\n+    def test_legacy_decode_invalid_base64_session_data(self):\n+        self.assertEqual(self.session._legacy_decode('abc'), {})\n+\n     @ignore_warnings(category=RemovedInDjango40Warning)\n     def test_default_hashing_algorith_legacy_decode(self):\n         with self.settings(DEFAULT_HASHING_ALGORITHM='sha1'):\n\n```\n\nRank P1/P2/P3 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics.\nEmit exactly this JSON SHAPE. The packet labels and tier orderings below are ARBITRARY placeholders that illustrate the object shape only (a tie in one axis, distinct orders in the others) \u2014 do NOT copy this ordering; rank strictly from the three diffs you were given. Every axis needs its own `tiers` and a `strict_win_deltas` entry for each strict winner>loser pair those tiers create:\n{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\",\"P3\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P3\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"robustness\":{\"tiers\":[[\"P3\"],[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P3\",\"loser\":\"P1\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P3\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P2\"],[\"P3\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P3\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P3\",\"loser\":\"P1\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\",\"P3\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P1\",\"loser\":\"P3\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]}}}\nTies are allowed and expected wherever two packets are genuinely indistinguishable on an axis \u2014 put them in the same tier. For every strict winner-loser pair created by tiers, include exactly one concrete one-sentence delta citing something visible in the diffs. Output ONLY the JSON object -- no prose before or after, no markdown fences.",
+  "attempts": [
+    {
+      "attempt": 1,
+      "error": null
+    }
+  ],
+  "error": null,
+  "parsed": {
+    "axes": {
+      "design_coherence": {
+        "tiers": [
+          [
+            "P3"
+          ],
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P3",
+            "loser": "P1",
+            "delta": "P3 updates the except-block comment to explicitly name 'binascii.Error' as a now-caught exception, aligning documentation with the try block's expanded scope, while P1 leaves the comment listing only 'ValueError, SuspiciousOperation, unpickling exceptions' unchanged even though that block now also swallows base64 decode failures."
+          },
+          {
+            "winner": "P3",
+            "loser": "P2",
+            "delta": "P3's comment names the specific exception class ('binascii.Error') newly caught, whereas P2 only appends the vague qualifier 'unpickling exceptions, etc.' without stating what 'etc.' covers."
+          },
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1 makes no comment edit, leaving the existing enumerated exception list intact and accurate, while P2 inserts an unspecific 'etc.' into that same list, weakening its precision without adding information."
+          }
+        ]
+      },
+      "robustness": {
+        "tiers": [
+          [
+            "P3"
+          ],
+          [
+            "P1",
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P3",
+            "loser": "P1",
+            "delta": "P3 adds a second test, test_legacy_decode_invalid_base64_session_data, calling self.session._legacy_decode('abc') directly to verify the exact method whose try-block scope changed, whereas P1's single test only exercises the public decode() wrapper."
+          },
+          {
+            "winner": "P3",
+            "loser": "P2",
+            "delta": "P3's two tests cover both the public decode() entry point and the internal _legacy_decode() method directly, while P2 adds only one test (test_decode_invalid_session_data) through decode()."
+          }
+        ]
+      },
+      "spec_long_horizon_consistency": {
+        "tiers": [
+          [
+            "P3"
+          ],
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P3",
+            "loser": "P1",
+            "delta": "P3's test_legacy_decode_invalid_base64_session_data pins the exact contract of _legacy_decode independent of decode()'s dispatch logic, so the regression guard survives future changes to that dispatch before the method's eventual removal, while P1's test only verifies behavior through the decode() wrapper."
+          },
+          {
+            "winner": "P3",
+            "loser": "P2",
+            "delta": "P3 explicitly documents 'binascii.Error' as a handled case in the comment, tying the code's documented contract directly to the exact exception class in the reported traceback, while P2's 'etc.' leaves that contract implicit and undocumented."
+          },
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1's test name and input test_decode_failure_with_invalid_base64 / 'bad-padding' directly mirror the ticket's reported 'binascii.Error: Incorrect padding' failure, while P2's generic 'invalid session data' string and test name don't reference the specific reported failure mode."
+          }
+        ]
+      },
+      "maintainability_api_ergonomics": {
+        "tiers": [
+          [
+            "P3"
+          ],
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P3",
+            "loser": "P1",
+            "delta": "P3's two precisely-named tests (test_decode_invalid_legacy_session_data, test_legacy_decode_invalid_base64_session_data) each document exactly which layer and input they exercise, giving future maintainers clearer signal than P1's single test."
+          },
+          {
+            "winner": "P3",
+            "loser": "P2",
+            "delta": "P3 names the exact exception class in its comment update, giving maintainers a precise reference, while P2's 'unpickling exceptions, etc.' forces a future reader to guess what else is covered."
+          },
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1's test name test_decode_failure_with_invalid_base64 states precisely what is being tested, while P2's test_decode_invalid_session_data is generic enough to be confused with the neighboring corrupted-session-data tests already in the suite."
+          }
+        ]
+      }
+    }
+  },
+  "meta": {
+    "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":197235,\"duration_api_ms\":197057,\"ttft_ms\":189224,\"ttft_stream_ms\":1577,\"time_to_request_ms\":73,\"num_turns\":1,\"result\":\"```json\\n{\\\"axes\\\":{\\\"design_coherence\\\":{\\\"tiers\\\":[[\\\"P3\\\"],[\\\"P1\\\"],[\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P3\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P3 updates the except-block comment to explicitly name 'binascii.Error' as a now-caught exception, aligning documentation with the try block's expanded scope, while P1 leaves the comment listing only 'ValueError, SuspiciousOperation, unpickling exceptions' unchanged even though that block now also swallows base64 decode failures.\\\"},{\\\"winner\\\":\\\"P3\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P3's comment names the specific exception class ('binascii.Error') newly caught, whereas P2 only appends the vague qualifier 'unpickling exceptions, etc.' without stating what 'etc.' covers.\\\"},{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1 makes no comment edit, leaving the existing enumerated exception list intact and accurate, while P2 inserts an unspecific 'etc.' into that same list, weakening its precision without adding information.\\\"}]},\\\"robustness\\\":{\\\"tiers\\\":[[\\\"P3\\\"],[\\\"P1\\\",\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P3\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P3 adds a second test, test_legacy_decode_invalid_base64_session_data, calling self.session._legacy_decode('abc') directly to verify the exact method whose try-block scope changed, whereas P1's single test only exercises the public decode() wrapper.\\\"},{\\\"winner\\\":\\\"P3\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P3's two tests cover both the public decode() entry point and the internal _legacy_decode() method directly, while P2 adds only one test (test_decode_invalid_session_data) through decode().\\\"}]},\\\"spec_long_horizon_consistency\\\":{\\\"tiers\\\":[[\\\"P3\\\"],[\\\"P1\\\"],[\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P3\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P3's test_legacy_decode_invalid_base64_session_data pins the exact contract of _legacy_decode independent of decode()'s dispatch logic, so the regression guard survives future changes to that dispatch before the method's eventual removal, while P1's test only verifies behavior through the decode() wrapper.\\\"},{\\\"winner\\\":\\\"P3\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P3 explicitly documents 'binascii.Error' as a handled case in the comment, tying the code's documented contract directly to the exact exception class in the reported traceback, while P2's 'etc.' leaves that contract implicit and undocumented.\\\"},{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1's test name and input test_decode_failure_with_invalid_base64 / 'bad-padding' directly mirror the ticket's reported 'binascii.Error: Incorrect padding' failure, while P2's generic 'invalid session data' string and test name don't reference the specific reported failure mode.\\\"}]},\\\"maintainability_api_ergonomics\\\":{\\\"tiers\\\":[[\\\"P3\\\"],[\\\"P1\\\"],[\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P3\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P3's two precisely-named tests (test_decode_invalid_legacy_session_data, test_legacy_decode_invalid_base64_session_data) each document exactly which layer and input they exercise, giving future maintainers clearer signal than P1's single test.\\\"},{\\\"winner\\\":\\\"P3\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P3 names the exact exception class in its comment update, giving maintainers a precise reference, while P2's 'unpickling exceptions, etc.' forces a future reader to guess what else is covered.\\\"},{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1's test name test_decode_failure_with_invalid_base64 states precisely what is being tested, while P2's test_decode_invalid_session_data is generic enough to be confused with the neighboring corrupted-session-data tests already in the suite.\\\"}]}}}\\n```\",\"stop_reason\":\"end_turn\",\"session_id\":\"50edcefb-91b0-4c44-9d1b-3264d6d745a1\",\"total_cost_usd\":0.5069196,\"usage\":{\"input_tokens\":11359,\"cache_creation_input_tokens\":31556,\"cache_read_input_tokens\":23422,\"output_tokens\":18432,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":31556,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":11359,\"output_tokens\":18432,\"cache_read_input_tokens\":23422,\"cache_creation_input_tokens\":31556,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":31556},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":11359,\"outputTokens\":18432,\"cacheReadInputTokens\":23422,\"cacheCreationInputTokens\":31556,\"webSearchRequests\":0,\"costUSD\":0.5069196,\"contextWindow\":1000000,\"maxOutputTokens\":64000}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"4dd255c7-afa0-45e0-a7f4-333105b3d781\"}\n",
+    "stderr": "",
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 11359,
+        "outputTokens": 18432,
+        "cacheReadInputTokens": 23422,
+        "cacheCreationInputTokens": 31556,
+        "webSearchRequests": 0,
+        "costUSD": 0.5069196,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000
+      }
+    }
+  }
+}

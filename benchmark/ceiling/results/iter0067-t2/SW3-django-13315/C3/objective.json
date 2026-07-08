@@ -1,0 +1,11 @@
+{
+  "task": "SW3-django-13315",
+  "arm_attempt": "C3",
+  "resolved": true,
+  "f2p_passed": 1,
+  "f2p_total": 1,
+  "p2p_regressions": 0,
+  "p2p_total": 146,
+  "harness_exit": 0,
+  "report_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/external/eval/iter0067-t2/SW3-django-13315/C3/logs/run_evaluation/iter0067-t2-SW3-django-13315-C3/ceiling/django__django-13315/report.json"
+}

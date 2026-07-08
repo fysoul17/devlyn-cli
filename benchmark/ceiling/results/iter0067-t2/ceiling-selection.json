@@ -1,0 +1,250 @@
+{
+  "run_id": "iter0067-t2",
+  "select_args": [
+    "--select",
+    "SW3-django-13315=B1",
+    "--select",
+    "SW3-django-13315=C1",
+    "--select",
+    "SW4-django-13321=B1",
+    "--select",
+    "SW4-django-13321=C1",
+    "--select",
+    "SW5-django-13401=B1",
+    "--select",
+    "SW5-django-13401=C1"
+  ],
+  "tasks": {
+    "SW3-django-13315": {
+      "A": "A1",
+      "best_B": {
+        "arm_attempt": "B1",
+        "attempt_number": 1,
+        "candidates": [
+          {
+            "arm_attempt": "B1",
+            "attempt_number": 1,
+            "objective_score": 1.0,
+            "regression_count": 0,
+            "resolved": true
+          },
+          {
+            "arm_attempt": "B2",
+            "attempt_number": 2,
+            "objective_score": 1.0,
+            "regression_count": 0,
+            "resolved": true
+          },
+          {
+            "arm_attempt": "B3",
+            "attempt_number": 3,
+            "objective_score": 1.0,
+            "regression_count": 0,
+            "resolved": true
+          }
+        ],
+        "objective_score": 1.0,
+        "panel_rank_tiebreak": "not_applied_before_blind_judge",
+        "regression_count": 0,
+        "resolved": true
+      },
+      "best_C": {
+        "arm_attempt": "C1",
+        "attempt_number": 1,
+        "candidates": [
+          {
+            "arm_attempt": "C1",
+            "attempt_number": 1,
+            "objective_score": 1.0,
+            "regression_count": 0,
+            "resolved": true
+          },
+          {
+            "arm_attempt": "C2",
+            "attempt_number": 2,
+            "objective_score": 1.0,
+            "regression_count": 0,
+            "resolved": true
+          },
+          {
+            "arm_attempt": "C3",
+            "attempt_number": 3,
+            "objective_score": 1.0,
+            "regression_count": 0,
+            "resolved": true
+          }
+        ],
+        "objective_score": 1.0,
+        "panel_rank_tiebreak": "not_applied_before_blind_judge",
+        "regression_count": 0,
+        "resolved": true
+      },
+      "n_rule": {
+        "denominator_attempt": "B1",
+        "n": 3,
+        "retry_used": false,
+        "status": "VALID",
+        "task": "SW3-django-13315",
+        "wall_A_seconds": 2277.0,
+        "wall_B_first_seconds": 356.0,
+        "wall_ratio": 6.396067415730337
+      },
+      "row_status": "VALID",
+      "task": "SW3-django-13315"
+    },
+    "SW4-django-13321": {
+      "A": "A1",
+      "best_B": {
+        "arm_attempt": "B1",
+        "attempt_number": 1,
+        "candidates": [
+          {
+            "arm_attempt": "B1",
+            "attempt_number": 1,
+            "objective_score": 0.9492957746478873,
+            "regression_count": 0,
+            "resolved": false
+          },
+          {
+            "arm_attempt": "B2",
+            "attempt_number": 2,
+            "objective_score": 0.9492957746478873,
+            "regression_count": 0,
+            "resolved": false
+          },
+          {
+            "arm_attempt": "B3",
+            "attempt_number": 3,
+            "objective_score": 0.9492957746478873,
+            "regression_count": 0,
+            "resolved": false
+          }
+        ],
+        "objective_score": 0.9492957746478873,
+        "panel_rank_tiebreak": "not_applied_before_blind_judge",
+        "regression_count": 0,
+        "resolved": false
+      },
+      "best_C": {
+        "arm_attempt": "C1",
+        "attempt_number": 1,
+        "candidates": [
+          {
+            "arm_attempt": "C1",
+            "attempt_number": 1,
+            "objective_score": 0.9492957746478873,
+            "regression_count": 0,
+            "resolved": false
+          },
+          {
+            "arm_attempt": "C2",
+            "attempt_number": 2,
+            "objective_score": 0.9492957746478873,
+            "regression_count": 0,
+            "resolved": false
+          },
+          {
+            "arm_attempt": "C3",
+            "attempt_number": 3,
+            "objective_score": 0.9492957746478873,
+            "regression_count": 0,
+            "resolved": false
+          }
+        ],
+        "objective_score": 0.9492957746478873,
+        "panel_rank_tiebreak": "not_applied_before_blind_judge",
+        "regression_count": 0,
+        "resolved": false
+      },
+      "n_rule": {
+        "denominator_attempt": "B1",
+        "n": 3,
+        "retry_used": false,
+        "status": "VALID",
+        "task": "SW4-django-13321",
+        "wall_A_seconds": 2005.0,
+        "wall_B_first_seconds": 207.0,
+        "wall_ratio": 9.68599033816425
+      },
+      "row_status": "VALID",
+      "task": "SW4-django-13321"
+    },
+    "SW5-django-13401": {
+      "A": "A1",
+      "best_B": {
+        "arm_attempt": "B1",
+        "attempt_number": 1,
+        "candidates": [
+          {
+            "arm_attempt": "B1",
+            "attempt_number": 1,
+            "objective_score": 1.0,
+            "regression_count": 0,
+            "resolved": true
+          },
+          {
+            "arm_attempt": "B2",
+            "attempt_number": 2,
+            "objective_score": 1.0,
+            "regression_count": 0,
+            "resolved": true
+          },
+          {
+            "arm_attempt": "B3",
+            "attempt_number": 3,
+            "objective_score": 1.0,
+            "regression_count": 0,
+            "resolved": true
+          }
+        ],
+        "objective_score": 1.0,
+        "panel_rank_tiebreak": "not_applied_before_blind_judge",
+        "regression_count": 0,
+        "resolved": true
+      },
+      "best_C": {
+        "arm_attempt": "C1",
+        "attempt_number": 1,
+        "candidates": [
+          {
+            "arm_attempt": "C1",
+            "attempt_number": 1,
+            "objective_score": 1.0,
+            "regression_count": 0,
+            "resolved": true
+          },
+          {
+            "arm_attempt": "C2",
+            "attempt_number": 2,
+            "objective_score": 1.0,
+            "regression_count": 0,
+            "resolved": true
+          },
+          {
+            "arm_attempt": "C3",
+            "attempt_number": 3,
+            "objective_score": 1.0,
+            "regression_count": 0,
+            "resolved": true
+          }
+        ],
+        "objective_score": 1.0,
+        "panel_rank_tiebreak": "not_applied_before_blind_judge",
+        "regression_count": 0,
+        "resolved": true
+      },
+      "n_rule": {
+        "denominator_attempt": "B1",
+        "n": 3,
+        "retry_used": false,
+        "status": "VALID",
+        "task": "SW5-django-13401",
+        "wall_A_seconds": 2689.0,
+        "wall_B_first_seconds": 302.0,
+        "wall_ratio": 8.903973509933774
+      },
+      "row_status": "VALID",
+      "task": "SW5-django-13401"
+    }
+  }
+}

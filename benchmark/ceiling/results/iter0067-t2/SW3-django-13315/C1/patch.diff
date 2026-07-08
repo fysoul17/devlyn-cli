@@ -1,0 +1,92 @@
+diff --git a/django/forms/models.py b/django/forms/models.py
+index 5d115458a1..b274762bcf 100644
+--- a/django/forms/models.py
++++ b/django/forms/models.py
+@@ -99,8 +99,14 @@ def apply_limit_choices_to_to_formfield(formfield):
+     """Apply limit_choices_to to the formfield's queryset if needed."""
+     if hasattr(formfield, 'queryset') and hasattr(formfield, 'get_limit_choices_to'):
+         limit_choices_to = formfield.get_limit_choices_to()
+-        if limit_choices_to is not None:
+-            formfield.queryset = formfield.queryset.complex_filter(limit_choices_to)
++        if limit_choices_to:
++            from django.db.models import Exists, OuterRef, Q
++            if not isinstance(limit_choices_to, Q):
++                limit_choices_to = Q(**limit_choices_to)
++            limit_choices_to &= Q(pk=OuterRef('pk'))
++            formfield.queryset = formfield.queryset.filter(
++                Exists(formfield.queryset.model._base_manager.filter(limit_choices_to)),
++            )
+ 
+ 
+ def fields_for_model(model, fields=None, exclude=None, widgets=None,
+diff --git a/tests/model_forms/models.py b/tests/model_forms/models.py
+index 1a2102f898..067562e744 100644
+--- a/tests/model_forms/models.py
++++ b/tests/model_forms/models.py
+@@ -416,6 +416,14 @@ class StumpJoke(models.Model):
+     has_fooled_today = models.ManyToManyField(Character, limit_choices_to=today_callable_q, related_name="+")
+ 
+ 
++class ColourfulItemChoice(models.Model):
++    item = models.ForeignKey(
++        ColourfulItem,
++        models.CASCADE,
++        limit_choices_to=models.Q(colours__name='red') | models.Q(colours__name='blue'),
++    )
++
++
+ # Model for #13776
+ class Student(models.Model):
+     character = models.ForeignKey(Character, models.CASCADE)
+diff --git a/tests/model_forms/tests.py b/tests/model_forms/tests.py
+index 9e900e35f4..369b480558 100644
+--- a/tests/model_forms/tests.py
++++ b/tests/model_forms/tests.py
+@@ -19,10 +19,10 @@ from django.test import SimpleTestCase, TestCase, skipUnlessDBFeature
+ 
+ from .models import (
+     Article, ArticleStatus, Author, Author1, Award, BetterWriter, BigInt, Book,
+-    Category, Character, Colour, ColourfulItem, CustomErrorMessage, CustomFF,
+-    CustomFieldForExclusionModel, DateTimePost, DerivedBook, DerivedPost,
+-    Document, ExplicitPK, FilePathModel, FlexibleDatePost, Homepage,
+-    ImprovedArticle, ImprovedArticleWithParentLink, Inventory,
++    Category, Character, Colour, ColourfulItem, ColourfulItemChoice,
++    CustomErrorMessage, CustomFF, CustomFieldForExclusionModel, DateTimePost,
++    DerivedBook, DerivedPost, Document, ExplicitPK, FilePathModel,
++    FlexibleDatePost, Homepage, ImprovedArticle, ImprovedArticleWithParentLink, Inventory,
+     NullableUniqueCharFieldModel, Person, Photo, Post, Price, Product,
+     Publication, PublicationDefaults, StrictAssignmentAll,
+     StrictAssignmentFieldSpecific, Student, StumpJoke, TextFile, Triple,
+@@ -2766,6 +2766,12 @@ class StumpJokeForm(forms.ModelForm):
+         fields = '__all__'
+ 
+ 
++class ColourfulItemChoiceForm(forms.ModelForm):
++    class Meta:
++        model = ColourfulItemChoice
++        fields = '__all__'
++
++
+ class CustomFieldWithQuerysetButNoLimitChoicesTo(forms.Field):
+     queryset = 42
+ 
+@@ -2807,6 +2813,19 @@ class LimitChoicesToTests(TestCase):
+         stumpjokeform = StumpJokeForm()
+         self.assertSequenceEqual(stumpjokeform.fields['most_recently_fooled'].queryset, [self.threepwood])
+ 
++    def test_limit_choices_to_no_duplicates_for_joining_q_object(self):
++        """
++        A Q object limit_choices_to with joins doesn't duplicate formfield
++        choices.
++        """
++        red = Colour.objects.create(name='red')
++        blue = Colour.objects.create(name='blue')
++        item = ColourfulItem.objects.create(name='Rainbow')
++        item.colours.add(red, blue)
++
++        form = ColourfulItemChoiceForm()
++        self.assertSequenceEqual(form.fields['item'].queryset, [item])
++
+     def test_custom_field_with_queryset_but_no_limit_choices_to(self):
+         """
+         A custom field with a `queryset` attribute but no `limit_choices_to`

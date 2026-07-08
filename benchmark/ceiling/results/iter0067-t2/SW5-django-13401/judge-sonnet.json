@@ -1,0 +1,138 @@
+{
+  "judge": "sonnet",
+  "task": "SW5-django-13401",
+  "prompt": "You are a blind ceiling-quality judge. You receive one task and three anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, or author identity; judge only the task text and diffs.\n\nTask text:\nAbstract model field should not be equal across models\nDescription\n\t\nConsider the following models:\nclass A(models.Model):\n\tclass Meta:\n\t\tabstract = True\n\tmyfield = IntegerField()\nclass B(A):\n\tpass\nclass C(A):\n\tpass\nIf I pull the fields of B and C into a shared set, one will be de-duplicated away, because they compare as equal. I found this surprising, though in practice using a list was sufficient for my need. The root of the issue is that they compare equal, as fields only consider self.creation_counter when comparing for equality.\nlen({B._meta.get_field('myfield'), C._meta.get_field('myfield')}) == 1\nB._meta.get_field('myfield') == C._meta.get_field('myfield')\nWe should adjust __eq__ so that if the field.model is different, they will compare unequal. Similarly, it is probably wise to adjust __hash__ and __lt__ to match.\nWhen adjusting __lt__, it may be wise to order first by self.creation_counter so that cases not affected by this equality collision won't be re-ordered. In my experimental branch, there was one test that broke if I ordered them by model first.\nI brought this up on IRC django-dev to check my intuitions, and those conversing with me there seemed to agree that the current behavior is not intuitive.\n\nP1 patch.diff:\n```diff\ndiff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py\nindex 28374272f4..b4a0d979e4 100644\n--- a/django/db/models/fields/__init__.py\n+++ b/django/db/models/fields/__init__.py\n@@ -516,17 +516,36 @@ class Field(RegisterLookupMixin):\n     def __eq__(self, other):\n         # Needed for @total_ordering\n         if isinstance(other, Field):\n-            return self.creation_counter == other.creation_counter\n+            return (\n+                self.creation_counter == other.creation_counter and\n+                getattr(self, 'model', None) == getattr(other, 'model', None)\n+            )\n         return NotImplemented\n \n     def __lt__(self, other):\n         # This is needed because bisect does not take a comparison function.\n         if isinstance(other, Field):\n-            return self.creation_counter < other.creation_counter\n+            if self.creation_counter != other.creation_counter:\n+                return self.creation_counter < other.creation_counter\n+            self_has_model = hasattr(self, 'model')\n+            other_has_model = hasattr(other, 'model')\n+            if self_has_model != other_has_model:\n+                return not self_has_model\n+            if self_has_model:\n+                self_model = self.model._meta\n+                other_model = other.model._meta\n+                return (\n+                    (self_model.app_label, self_model.model_name) <\n+                    (other_model.app_label, other_model.model_name)\n+                )\n+            return False\n         return NotImplemented\n \n     def __hash__(self):\n-        return hash(self.creation_counter)\n+        model = getattr(self, 'model', None)\n+        if model is None:\n+            return hash(self.creation_counter)\n+        return hash((self.creation_counter, model))\n \n     def __deepcopy__(self, memodict):\n         # We don't have to deepcopy very much here, since most things are not\ndiff --git a/tests/model_fields/tests.py b/tests/model_fields/tests.py\nindex b97c99d42d..9ab68b959c 100644\n--- a/tests/model_fields/tests.py\n+++ b/tests/model_fields/tests.py\n@@ -4,6 +4,7 @@ from django import forms\n from django.core.exceptions import ValidationError\n from django.db import models\n from django.test import SimpleTestCase, TestCase\n+from django.test.utils import isolate_apps\n from django.utils.functional import lazy\n \n from .models import (\n@@ -90,6 +91,43 @@ class BasicFieldTests(SimpleTestCase):\n         self.assertIsNotNone(f1)\n         self.assertNotIn(f2, (None, 1, ''))\n \n+    @isolate_apps('model_fields')\n+    def test_abstract_model_field_equality_uses_model(self):\n+        class AbstractModel(models.Model):\n+            myfield = models.IntegerField()\n+\n+            class Meta:\n+                abstract = True\n+\n+        class ModelA(AbstractModel):\n+            pass\n+\n+        class ModelB(AbstractModel):\n+            pass\n+\n+        field_a = ModelA._meta.get_field('myfield')\n+        field_b = ModelB._meta.get_field('myfield')\n+        self.assertEqual(field_a.creation_counter, field_b.creation_counter)\n+        self.assertNotEqual(field_a, field_b)\n+        self.assertEqual(len({field_a, field_b}), 2)\n+\n+        bare_field = models.Field()\n+        bare_field.creation_counter = field_a.creation_counter\n+        self.assertFalse(hasattr(bare_field, 'model'))\n+        self.assertNotEqual(bare_field, field_a)\n+        self.assertLess(bare_field, field_a)\n+        self.assertFalse(field_a < bare_field)\n+        self.assertEqual([bare_field, field_a], sorted([field_a, bare_field]))\n+        self.assertEqual([bare_field, field_a], sorted([bare_field, field_a]))\n+\n+        f1 = models.Field()\n+        f2 = models.Field(auto_created=True)\n+        f3 = models.Field()\n+        self.assertFalse(hasattr(f1, 'model'))\n+        self.assertEqual(hash(f1), hash(f1.creation_counter))\n+        self.assertLess(f2, f1)\n+        self.assertGreater(f3, f1)\n+\n     def test_field_instance_is_picklable(self):\n         \"\"\"Field instances can be pickled.\"\"\"\n         field = models.Field(max_length=100, default='a string')\n\n```\n\nP2 patch.diff:\n```diff\ndiff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py\nindex 28374272f4..096484a613 100644\n--- a/django/db/models/fields/__init__.py\n+++ b/django/db/models/fields/__init__.py\n@@ -516,17 +516,30 @@ class Field(RegisterLookupMixin):\n     def __eq__(self, other):\n         # Needed for @total_ordering\n         if isinstance(other, Field):\n-            return self.creation_counter == other.creation_counter\n+            return (\n+                self.creation_counter == other.creation_counter and\n+                getattr(self, 'model', None) == getattr(other, 'model', None)\n+            )\n         return NotImplemented\n \n     def __lt__(self, other):\n         # This is needed because bisect does not take a comparison function.\n         if isinstance(other, Field):\n-            return self.creation_counter < other.creation_counter\n+            if self.creation_counter != other.creation_counter:\n+                return self.creation_counter < other.creation_counter\n+            self_model = getattr(self, 'model', None)\n+            other_model = getattr(other, 'model', None)\n+            if self_model != other_model:\n+                self_model_key = self_model._meta.label_lower if self_model else ''\n+                other_model_key = other_model._meta.label_lower if other_model else ''\n+                if self_model_key != other_model_key:\n+                    return self_model_key < other_model_key\n+                return id(self_model) < id(other_model)\n+            return False\n         return NotImplemented\n \n     def __hash__(self):\n-        return hash(self.creation_counter)\n+        return hash((self.creation_counter, getattr(self, 'model', None)))\n \n     def __deepcopy__(self, memodict):\n         # We don't have to deepcopy very much here, since most things are not\ndiff --git a/tests/model_fields/tests.py b/tests/model_fields/tests.py\nindex b97c99d42d..8a154493a2 100644\n--- a/tests/model_fields/tests.py\n+++ b/tests/model_fields/tests.py\n@@ -90,6 +90,28 @@ class BasicFieldTests(SimpleTestCase):\n         self.assertIsNotNone(f1)\n         self.assertNotIn(f2, (None, 1, ''))\n \n+    def test_abstract_model_field_equality(self):\n+        class A(models.Model):\n+            first = models.IntegerField()\n+            second = models.IntegerField()\n+\n+            class Meta:\n+                abstract = True\n+\n+        class B(A):\n+            pass\n+\n+        class C(A):\n+            pass\n+\n+        b_first = B._meta.get_field('first')\n+        c_first = C._meta.get_field('first')\n+        self.assertIsNot(b_first, c_first)\n+        self.assertNotEqual(b_first, c_first)\n+        self.assertEqual(len({b_first, c_first}), 2)\n+        self.assertLess(b_first, c_first)\n+        self.assertLess(c_first, B._meta.get_field('second'))\n+\n     def test_field_instance_is_picklable(self):\n         \"\"\"Field instances can be pickled.\"\"\"\n         field = models.Field(max_length=100, default='a string')\n\n```\n\nP3 patch.diff:\n```diff\ndiff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py\nindex 28374272f4..708fefbb9f 100644\n--- a/django/db/models/fields/__init__.py\n+++ b/django/db/models/fields/__init__.py\n@@ -516,17 +516,34 @@ class Field(RegisterLookupMixin):\n     def __eq__(self, other):\n         # Needed for @total_ordering\n         if isinstance(other, Field):\n-            return self.creation_counter == other.creation_counter\n+            return (\n+                self.creation_counter == other.creation_counter and\n+                getattr(self, 'model', None) is getattr(other, 'model', None)\n+            )\n         return NotImplemented\n \n     def __lt__(self, other):\n         # This is needed because bisect does not take a comparison function.\n         if isinstance(other, Field):\n-            return self.creation_counter < other.creation_counter\n+            if self.creation_counter != other.creation_counter:\n+                return self.creation_counter < other.creation_counter\n+            self_model = getattr(self, 'model', None)\n+            other_model = getattr(other, 'model', None)\n+            if self_model is other_model:\n+                return False\n+            if self_model is None:\n+                return True\n+            if other_model is None:\n+                return False\n+            self_key = (self_model._meta.app_label, self_model._meta.model_name)\n+            other_key = (other_model._meta.app_label, other_model._meta.model_name)\n+            if self_key != other_key:\n+                return self_key < other_key\n+            return id(self_model) < id(other_model)\n         return NotImplemented\n \n     def __hash__(self):\n-        return hash(self.creation_counter)\n+        return hash((self.creation_counter, id(getattr(self, 'model', None))))\n \n     def __deepcopy__(self, memodict):\n         # We don't have to deepcopy very much here, since most things are not\ndiff --git a/tests/model_inheritance/test_abstract_inheritance.py b/tests/model_inheritance/test_abstract_inheritance.py\nindex 1293efc531..11baab84cb 100644\n--- a/tests/model_inheritance/test_abstract_inheritance.py\n+++ b/tests/model_inheritance/test_abstract_inheritance.py\n@@ -34,6 +34,30 @@ class AbstractInheritanceTests(SimpleTestCase):\n         self.assertEqual(DerivedChild._meta.get_field('name').max_length, 50)\n         self.assertEqual(DerivedGrandChild._meta.get_field('name').max_length, 50)\n \n+    def test_abstract_field_copies_compare_by_model(self):\n+        class AbstractBase(models.Model):\n+            myfield = models.IntegerField()\n+\n+            class Meta:\n+                abstract = True\n+\n+        class ChildA(AbstractBase):\n+            pass\n+\n+        class ChildB(AbstractBase):\n+            pass\n+\n+        child_a_field = ChildA._meta.get_field('myfield')\n+        child_b_field = ChildB._meta.get_field('myfield')\n+        later_field = models.IntegerField()\n+\n+        self.assertIsNot(child_a_field, child_b_field)\n+        self.assertNotEqual(child_a_field, child_b_field)\n+        self.assertEqual(len({child_a_field, child_b_field}), 2)\n+        self.assertNotEqual(child_a_field < child_b_field, child_b_field < child_a_field)\n+        self.assertLess(child_a_field, later_field)\n+        self.assertLess(child_b_field, later_field)\n+\n     def test_multiple_inheritance_cannot_shadow_inherited_field(self):\n         class ParentA(models.Model):\n             name = models.CharField(max_length=255)\n\n```\n\nRank P1/P2/P3 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics.\nEmit exactly this JSON SHAPE. The packet labels and tier orderings below are ARBITRARY placeholders that illustrate the object shape only (a tie in one axis, distinct orders in the others) \u2014 do NOT copy this ordering; rank strictly from the three diffs you were given. Every axis needs its own `tiers` and a `strict_win_deltas` entry for each strict winner>loser pair those tiers create:\n{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\",\"P3\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P3\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"robustness\":{\"tiers\":[[\"P3\"],[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P3\",\"loser\":\"P1\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P3\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P2\"],[\"P3\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P3\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P3\",\"loser\":\"P1\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\",\"P3\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P1\",\"loser\":\"P3\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]}}}\nTies are allowed and expected wherever two packets are genuinely indistinguishable on an axis \u2014 put them in the same tier. For every strict winner-loser pair created by tiers, include exactly one concrete one-sentence delta citing something visible in the diffs. Output ONLY the JSON object -- no prose before or after, no markdown fences.",
+  "attempts": [
+    {
+      "attempt": 1,
+      "error": null
+    }
+  ],
+  "error": null,
+  "parsed": {
+    "axes": {
+      "design_coherence": {
+        "tiers": [
+          [
+            "P1",
+            "P3"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1 keeps model-identity comparison uniform (hasattr checks in __lt__, raw model object in __hash__) while P2's __lt__ derives a `label_lower` string key and adds an `id(self_model) < id(other_model)` fallback that P2's own __hash__ never uses, mixing three different bases for the same concept."
+          },
+          {
+            "winner": "P3",
+            "loser": "P2",
+            "delta": "P3 consistently uses identity (`is`) in __eq__ and `id(...)` inside __hash__, matching bases end-to-end, whereas P2 pairs `==`/hash(model) in __eq__/__hash__ with a separate label_lower+id() tiebreak only inside __lt__."
+          }
+        ]
+      },
+      "robustness": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P3"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P3",
+            "delta": "P1's test sets `bare_field.creation_counter = field_a.creation_counter` to force the no-model tie-break branch and directly asserts `hash(f1) == hash(f1.creation_counter)`, whereas P3's `later_field` has a distinct higher creation_counter so its assertLess comparisons never actually reach the model tie-break code."
+          },
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1's new test explicitly exercises the field-without-a-model path (a bare `models.Field()` compared and hashed against an attached field), while P2's `test_abstract_model_field_equality` defines models A/B/C with no `@isolate_apps` decorator at all, leaking real Model classes into the global app registry."
+          },
+          {
+            "winner": "P3",
+            "loser": "P2",
+            "delta": "P3's __lt__ adds an `id(self_model) < id(other_model)` tiebreak for colliding (app_label, model_name) pairs and places its test inside `test_abstract_inheritance.py`'s existing isolated test class, whereas P2 defines ad hoc classes A/B/C directly under `BasicFieldTests` with no isolation decorator."
+          }
+        ]
+      },
+      "spec_long_horizon_consistency": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P3"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P3",
+            "delta": "P2's test directly reproduces the ticket's stated regression risk via `self.assertLess(c_first, B._meta.get_field('second'))`, proving creation_counter-first ordering survives across two different models' fields, a scenario P3's test never sets up."
+          },
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2's test explicitly checks cross-model, cross-field ordering (`b_first < c_first` and `c_first < B.second`) matching the ticket's exact concern about re-ordering fields unaffected by the equality collision, while P1's test covers eq/hash edge cases for modelless fields but has no analogous cross-model multi-field ordering assertion."
+          },
+          {
+            "winner": "P3",
+            "loser": "P1",
+            "delta": "P3's test asserts `child_a_field < later_field` and `child_b_field < later_field` to confirm creation-counter-first ordering still holds after the model tie-break was added, which P1's test never checks against a genuinely later-created field."
+          }
+        ]
+      },
+      "maintainability_api_ergonomics": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2",
+            "P3"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1's __lt__ resolves ties with only hasattr checks and an (app_label, model_name) tuple compare, whereas P2 adds an unexplained `id(self_model) < id(other_model)` branch for a collision case that no new test triggers or asserts."
+          },
+          {
+            "winner": "P1",
+            "loser": "P3",
+            "delta": "P1 needs no fallback beyond the (app_label, model_name) tuple compare, while P3 adds both None-guards and an `id(self_model) < id(other_model)` tiebreak plus mirrors `id(...)` inside __hash__, more branches than P1 for a scenario the diff never demonstrates occurring."
+          }
+        ]
+      }
+    }
+  },
+  "meta": {
+    "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":235429,\"duration_api_ms\":235214,\"ttft_ms\":226992,\"ttft_stream_ms\":2687,\"time_to_request_ms\":127,\"num_turns\":1,\"result\":\"```json\\n{\\\"axes\\\":{\\\"design_coherence\\\":{\\\"tiers\\\":[[\\\"P1\\\",\\\"P3\\\"],[\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1 keeps model-identity comparison uniform (hasattr checks in __lt__, raw model object in __hash__) while P2's __lt__ derives a `label_lower` string key and adds an `id(self_model) < id(other_model)` fallback that P2's own __hash__ never uses, mixing three different bases for the same concept.\\\"},{\\\"winner\\\":\\\"P3\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P3 consistently uses identity (`is`) in __eq__ and `id(...)` inside __hash__, matching bases end-to-end, whereas P2 pairs `==`/hash(model) in __eq__/__hash__ with a separate label_lower+id() tiebreak only inside __lt__.\\\"}]},\\\"robustness\\\":{\\\"tiers\\\":[[\\\"P1\\\"],[\\\"P3\\\"],[\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P3\\\",\\\"delta\\\":\\\"P1's test sets `bare_field.creation_counter = field_a.creation_counter` to force the no-model tie-break branch and directly asserts `hash(f1) == hash(f1.creation_counter)`, whereas P3's `later_field` has a distinct higher creation_counter so its assertLess comparisons never actually reach the model tie-break code.\\\"},{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1's new test explicitly exercises the field-without-a-model path (a bare `models.Field()` compared and hashed against an attached field), while P2's `test_abstract_model_field_equality` defines models A/B/C with no `@isolate_apps` decorator at all, leaking real Model classes into the global app registry.\\\"},{\\\"winner\\\":\\\"P3\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P3's __lt__ adds an `id(self_model) < id(other_model)` tiebreak for colliding (app_label, model_name) pairs and places its test inside `test_abstract_inheritance.py`'s existing isolated test class, whereas P2 defines ad hoc classes A/B/C directly under `BasicFieldTests` with no isolation decorator.\\\"}]},\\\"spec_long_horizon_consistency\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P3\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P3\\\",\\\"delta\\\":\\\"P2's test directly reproduces the ticket's stated regression risk via `self.assertLess(c_first, B._meta.get_field('second'))`, proving creation_counter-first ordering survives across two different models' fields, a scenario P3's test never sets up.\\\"},{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P2's test explicitly checks cross-model, cross-field ordering (`b_first < c_first` and `c_first < B.second`) matching the ticket's exact concern about re-ordering fields unaffected by the equality collision, while P1's test covers eq/hash edge cases for modelless fields but has no analogous cross-model multi-field ordering assertion.\\\"},{\\\"winner\\\":\\\"P3\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P3's test asserts `child_a_field < later_field` and `child_b_field < later_field` to confirm creation-counter-first ordering still holds after the model tie-break was added, which P1's test never checks against a genuinely later-created field.\\\"}]},\\\"maintainability_api_ergonomics\\\":{\\\"tiers\\\":[[\\\"P1\\\"],[\\\"P2\\\",\\\"P3\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1's __lt__ resolves ties with only hasattr checks and an (app_label, model_name) tuple compare, whereas P2 adds an unexplained `id(self_model) < id(other_model)` branch for a collision case that no new test triggers or asserts.\\\"},{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P3\\\",\\\"delta\\\":\\\"P1 needs no fallback beyond the (app_label, model_name) tuple compare, while P3 adds both None-guards and an `id(self_model) < id(other_model)` tiebreak plus mirrors `id(...)` inside __hash__, more branches than P1 for a scenario the diff never demonstrates occurring.\\\"}]}}}\\n```\",\"stop_reason\":\"end_turn\",\"session_id\":\"46ccdde5-890e-45ac-a417-b914a938ed0c\",\"total_cost_usd\":0.5281044,\"usage\":{\"input_tokens\":11359,\"cache_creation_input_tokens\":25463,\"cache_read_input_tokens\":29748,\"output_tokens\":22155,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":25463,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":11359,\"output_tokens\":22155,\"cache_read_input_tokens\":29748,\"cache_creation_input_tokens\":25463,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":25463},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":11359,\"outputTokens\":22155,\"cacheReadInputTokens\":29748,\"cacheCreationInputTokens\":25463,\"webSearchRequests\":0,\"costUSD\":0.5281044,\"contextWindow\":1000000,\"maxOutputTokens\":64000}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"8c8d0322-0b36-4481-b7bf-a3d2e920c4db\"}\n",
+    "stderr": "",
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 11359,
+        "outputTokens": 22155,
+        "cacheReadInputTokens": 29748,
+        "cacheCreationInputTokens": 25463,
+        "webSearchRequests": 0,
+        "costUSD": 0.5281044,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000
+      }
+    }
+  }
+}

@@ -1,0 +1,68 @@
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index 28374272f4..28006dd681 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -516,17 +516,28 @@ class Field(RegisterLookupMixin):
+     def __eq__(self, other):
+         # Needed for @total_ordering
+         if isinstance(other, Field):
+-            return self.creation_counter == other.creation_counter
++            return self._comparison_key() == other._comparison_key()
+         return NotImplemented
+ 
+     def __lt__(self, other):
+         # This is needed because bisect does not take a comparison function.
+         if isinstance(other, Field):
+-            return self.creation_counter < other.creation_counter
++            return self._comparison_key() < other._comparison_key()
+         return NotImplemented
+ 
+     def __hash__(self):
+-        return hash(self.creation_counter)
++        return hash(self._comparison_key())
++
++    def _comparison_key(self):
++        model = getattr(self, 'model', None)
++        if model is None:
++            return (self.creation_counter, '', '', 0)
++        return (
++            self.creation_counter,
++            model._meta.app_label,
++            model._meta.model_name,
++            id(model),
++        )
+ 
+     def __deepcopy__(self, memodict):
+         # We don't have to deepcopy very much here, since most things are not
+diff --git a/tests/model_inheritance/test_abstract_inheritance.py b/tests/model_inheritance/test_abstract_inheritance.py
+index 1293efc531..b280a47588 100644
+--- a/tests/model_inheritance/test_abstract_inheritance.py
++++ b/tests/model_inheritance/test_abstract_inheritance.py
+@@ -34,6 +34,27 @@ class AbstractInheritanceTests(SimpleTestCase):
+         self.assertEqual(DerivedChild._meta.get_field('name').max_length, 50)
+         self.assertEqual(DerivedGrandChild._meta.get_field('name').max_length, 50)
+ 
++    def test_abstract_fields_compare_distinct_across_models(self):
++        class AbstractBase(models.Model):
++            myfield = models.IntegerField()
++
++            class Meta:
++                abstract = True
++
++        class ConcreteModelB(AbstractBase):
++            pass
++
++        class ConcreteModelC(AbstractBase):
++            pass
++
++        field_b = ConcreteModelB._meta.get_field('myfield')
++        field_c = ConcreteModelC._meta.get_field('myfield')
++
++        self.assertNotEqual(field_b, field_c)
++        self.assertEqual(len({field_b, field_c}), 2)
++        self.assertLess(field_b, field_c)
++        self.assertEqual(sorted([field_c, field_b]), [field_b, field_c])
++
+     def test_multiple_inheritance_cannot_shadow_inherited_field(self):
+         class ParentA(models.Model):
+             name = models.CharField(max_length=255)

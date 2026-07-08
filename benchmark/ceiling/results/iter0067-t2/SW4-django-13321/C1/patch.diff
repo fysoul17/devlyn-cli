@@ -1,0 +1,43 @@
+diff --git a/django/contrib/sessions/backends/base.py b/django/contrib/sessions/backends/base.py
+index 187e14b1b7..cc74d2802d 100644
+--- a/django/contrib/sessions/backends/base.py
++++ b/django/contrib/sessions/backends/base.py
+@@ -132,8 +132,8 @@ class SessionBase:
+ 
+     def _legacy_decode(self, session_data):
+         # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.
+-        encoded_data = base64.b64decode(session_data.encode('ascii'))
+         try:
++            encoded_data = base64.b64decode(session_data.encode('ascii'))
+             # could produce ValueError if there is no ':'
+             hash, serialized = encoded_data.split(b':', 1)
+             expected_hash = self._hash(serialized)
+@@ -142,8 +142,9 @@ class SessionBase:
+             else:
+                 return self.serializer().loads(serialized)
+         except Exception as e:
+-            # ValueError, SuspiciousOperation, unpickling exceptions. If any of
+-            # these happen, just return an empty dictionary (an empty session).
++            # ValueError, SuspiciousOperation, unpickling exceptions, and
++            # binascii.Error. If any of these happen, just return an empty
++            # dictionary (an empty session).
+             if isinstance(e, SuspiciousOperation):
+                 logger = logging.getLogger('django.security.%s' % e.__class__.__name__)
+                 logger.warning(str(e))
+diff --git a/tests/sessions_tests/tests.py b/tests/sessions_tests/tests.py
+index e7615d0f11..365043f68a 100644
+--- a/tests/sessions_tests/tests.py
++++ b/tests/sessions_tests/tests.py
+@@ -325,6 +325,12 @@ class SessionTestsMixin:
+             {'a test key': 'a test value'},
+         )
+ 
++    def test_decode_invalid_legacy_session_data(self):
++        self.assertEqual(self.session.decode('abc'), {})
++
++    def test_legacy_decode_invalid_base64_session_data(self):
++        self.assertEqual(self.session._legacy_decode('abc'), {})
++
+     @ignore_warnings(category=RemovedInDjango40Warning)
+     def test_default_hashing_algorith_legacy_decode(self):
+         with self.settings(DEFAULT_HASHING_ALGORITHM='sha1'):

@@ -1,0 +1,80 @@
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index 28374272f4..e9f31d0f07 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -516,17 +516,32 @@ class Field(RegisterLookupMixin):
+     def __eq__(self, other):
+         # Needed for @total_ordering
+         if isinstance(other, Field):
+-            return self.creation_counter == other.creation_counter
++            return (
++                self.creation_counter == other.creation_counter and
++                getattr(self, 'model', None) is getattr(other, 'model', None)
++            )
+         return NotImplemented
+ 
+     def __lt__(self, other):
+         # This is needed because bisect does not take a comparison function.
+         if isinstance(other, Field):
+-            return self.creation_counter < other.creation_counter
++            return (
++                self.creation_counter,
++                *self._model_sort_key(getattr(self, 'model', None)),
++            ) < (
++                other.creation_counter,
++                *self._model_sort_key(getattr(other, 'model', None)),
++            )
+         return NotImplemented
+ 
+     def __hash__(self):
+-        return hash(self.creation_counter)
++        return hash((self.creation_counter, id(getattr(self, 'model', None))))
++
++    @staticmethod
++    def _model_sort_key(model):
++        if model is None:
++            return (False, '', '', 0)
++        return (True, model._meta.app_label, model._meta.model_name, id(model))
+ 
+     def __deepcopy__(self, memodict):
+         # We don't have to deepcopy very much here, since most things are not
+diff --git a/tests/model_fields/tests.py b/tests/model_fields/tests.py
+index b97c99d42d..05bda4ea38 100644
+--- a/tests/model_fields/tests.py
++++ b/tests/model_fields/tests.py
+@@ -4,6 +4,7 @@ from django import forms
+ from django.core.exceptions import ValidationError
+ from django.db import models
+ from django.test import SimpleTestCase, TestCase
++from django.test.utils import isolate_apps
+ from django.utils.functional import lazy
+ 
+ from .models import (
+@@ -90,6 +91,27 @@ class BasicFieldTests(SimpleTestCase):
+         self.assertIsNotNone(f1)
+         self.assertNotIn(f2, (None, 1, ''))
+ 
++    @isolate_apps('model_fields')
++    def test_abstract_model_field_equality(self):
++        class AbstractModel(models.Model):
++            field = models.IntegerField()
++
++            class Meta:
++                abstract = True
++
++        class ModelA(AbstractModel):
++            pass
++
++        class ModelB(AbstractModel):
++            pass
++
++        field_a = ModelA._meta.get_field('field')
++        field_b = ModelB._meta.get_field('field')
++        self.assertEqual(field_a.creation_counter, field_b.creation_counter)
++        self.assertNotEqual(field_a, field_b)
++        self.assertEqual(len({field_a, field_b}), 2)
++        self.assertNotEqual(field_a < field_b, field_b < field_a)
++
+     def test_field_instance_is_picklable(self):
+         """Field instances can be pickled."""
+         field = models.Field(max_length=100, default='a string')

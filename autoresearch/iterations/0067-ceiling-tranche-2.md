@@ -1,10 +1,14 @@
 # iter-0067 — ceiling tranche 2 (instrument fixes first, then re-measurement)
 
-status: IN-FLIGHT 2026-07-08 — phase 1 (judge-fix trio) CLOSED + committed
-(3e64cba); phase-2 R0 NO-GO → all MUST-FIX landed → R1 GO (12d54e1);
-phase-2 tranche `iter0067-t2` (SW3/SW4/SW5, self-driving arm→eval→gate→judge
-→verdict, neutral judge prompt) LAUNCHED and running unattended. Closure
-(R1-on-results + verdict adjudication + HANDOFF/DECISIONS) pending the run.
+status: CLOSED 2026-07-08 — ceiling tranche 2 measured; verdict **FAIL-pilot**
+(reproduces tranche-1 on a fresh django holdout, fixed+de-biased instrument).
+Phase 1 judge-fix trio CLOSED (3e64cba); phase-2 R0 NO-GO → MUST-FIX → R1 GO
+(12d54e1); in-flight venv-leak caught+fixed (0bf6f4b); tranche `iter0067-t2`
+ran to verdict; R1-on-results **TRUSTWORTHY** (archive
+`/tmp/codex-iter0067/r1-results-response.log`, 2 corrections folded). The
+current stack shows NO ceiling moat here: objective tie with bare/copycat,
+neutral judge prefers copycat diffs 16:3, wall 8.33× bare. Next-lever license
+recorded (attack wall OR change claim-shape; + corpus informativeness).
 
 **Serves**: Mission 1 ceiling axis — NORTH-STAR ceiling contract / ops test
 #17. Tranche-1 verdict was FAIL-pilot on LC3; iter-0065 + iter-0066 shipped
@@ -181,6 +185,20 @@ the fixed extraction).
   adjudication (anti-asymptotic rule). R0 fires on phase 2's corpus freeze.
 - (pending)
 
+## Infra-failure discipline (measurement integrity)
+
+A copycat/bare arm killed by transient infrastructure (codex "Selected model
+is at capacity", rate-limit, network) is NOT a real solve attempt and must
+not count as a 0-score data point — that would unfairly advantage devlyn in
+the best-of-N comparison. Observed: SW3 C3 exit=1 at 80s = codex capacity
+error (transcript tail). Policy for this tranche: after the driver produces
+its verdict, audit every B/C arm for an infra-failure signature (exit≠0,
+not timed_out, empty patch, capacity/rate-limit in transcript), delete +
+re-run each so every arm is a real attempt, re-eval the re-run arms, then
+re-run gate select→judge→verdict. best-of-N `best_C`/`best_B` is a MAX so a
+single infra fail among ≥1 real attempts does not move the selection, but
+the audit guarantees no infra-0 is ever the row's evidence.
+
 ## Execution record (raw only)
 
 - **Phase-1 implementation (2026-07-07, Codex CLI workspace-write xhigh,
@@ -227,3 +245,126 @@ the fixed extraction).
   resolved** via official harness (`iter0067-oracle-smoke`, report copied
   to `results/oracle-smoke/`); manifest `tranche2` section frozen with
   sha256 hashes + replacement order 13447/13448/13551.
+
+- **Phase-2 tranche `iter0067-t2` COMPLETE (2026-07-08) — verdict
+  FAIL-pilot** (`ceiling-verdict.{json,md}`; neutral judge, fixed
+  instrument). All rows N=3. Objective resolve (official swebench harness):
+  SW3 A/B/C all True, SW4 A/B/C all False (django-13321 hard row, 355 F2P,
+  nobody solves), SW5 A/B/C all True. **All three rows objective-
+  non-discriminating** (all-solve or all-fail), so LC1/LC2 objective have
+  zero discriminating power on this corpus — the verdict rests on the
+  subjective judge + wall:
+  - **LC1 stack-vs-bare**: A_resolved 2 = best_B 2 → **no objective lift**.
+  - **LC2 moat**: A 2 = best_C 2, `objective_moat=False`; certified-panel
+    ranked axes **A_win 3 / C_win 16 / tie 1 (of 20)** → copycat WINS the
+    neutral subjective judge, `ranked_majority=False`, `moat_shown=False`.
+  - **LC3 efficiency**: mean wall ratio **8.33 > cap 3.0** — devlyn's full
+    pipeline (A ≈ 2005-2689s) vs bare single-shot codex (best_B ≈
+    207-356s). Same class as tranche-1 LC3 4.32, larger here (bare arms
+    faster this corpus).
+  - **LC4**: no instrument-invalid reasons.
+  Honest reading: on three fresh django holdout rows, the current stack
+  (sonnet orchestrator + codex executor + pair-verify) does NOT break the
+  ceiling — it solves exactly what bare/copycat solve, the neutral judge
+  prefers the copycat's single-agent diffs 16:3, and it costs 8× the wall.
+  This is a STRONGER, cleaner negative than tranche-1 (fixed instrument +
+  fresh corpus + de-biased judge). The ceiling instrument is losable and
+  lost honestly.
+  - **SW3 C3 infra note**: original C3 = codex API capacity abort of a real
+    in-progress attempt (transcript did real `rg`/test exploration, then
+    `ERROR: Selected model is at capacity` → exit 1, empty patch). Re-run as
+    hygiene → clean (exit 0, 404s, resolved 1/1); re-eval + re-select +
+    re-verdict → best_C still C1, verdict still FAIL-pilot, counts + LC3
+    unchanged. Verdict is C3-independent, now confirmed mechanically; SW3
+    copycat is 3/3 real attempts all resolved.
+
+## R1-on-results corrections folded (2026-07-08)
+
+R1 verdict **TRUSTWORTHY** (all 6 Q CONFIRM except 2 hygiene items):
+
+- **Q2 precision**: the verdict MECHANICALLY rests on **LC3 (wall) alone** —
+  mean ratio > 3.0 is an automatic efficiency fail regardless of LC1/LC2.
+  The "no objective lift + 16:3 subjective loss" is the corroborating
+  QUALITY picture, not the gate trigger. SW4 (all-fail) is flagged
+  objective-non-informative for lift, like a saturated row.
+- **Q3 caveat (honest scope of 16:3)**: the count is over **20 valid cells,
+  not 24** — the codex judge **parse-failed both attempts on SW4** (valid-
+  looking JSON but truncated/incomplete under the validator), so SW4 is
+  sonnet-only (4 cells, all C_win). Breakdown: SW3 7C/1A, SW4 4C, SW5
+  5C/2A/1tie = 16C/3A/1tie. Trustworthy tranche-level negative signal; NOT
+  conclusive proof the stack never adds subjective quality. Diff inspection
+  (mine + R1's) confirms it is not a copycat-over-production artifact: on
+  SW3 the devlyn A-arm mutated the shared `StumpJoke` test fixture (renamed
+  related_names, added a required `funny` field) to host its regression
+  test, while copycat added a self-contained `ColourfulItemChoice` model —
+  a real maintainability anti-pattern the pair-VERIFY did not catch.
+- **Q4**: wall ratio is the pre-registered LC3 baseline (bare best-of-N
+  economic baseline, NORTH-STAR §145). Method-isolation caveat: this
+  measures the current PRODUCT claim (full sonnet pipeline + codex executor
+  vs bare codex), not isolated harness-method quality — a codex-only devlyn
+  arm would isolate that.
+
+### Residual instrument follow-up (logged, not blocking)
+
+Codex judge parse robustness: schema-first prompt + 900s timeout recovered
+SW2 (tranche-1) but the codex judge still parse-failed on SW4 this run. The
+sonnet judge is the reliable panel member; codex is a corroborator that
+drops cells silently. Next codex-judge iter: enforce output completeness
+(length budget / segmented per-axis calls) — 0064 follow-up #3 partially
+open.
+
+## Next-lever license (R1 Q6)
+
+FAIL-pilot on BOTH quality (16:3) and efficiency (8.33×). Highest-value next
+work is NOT another judge-prompt polish. Options, in the harness's own
+terms:
+1. **Attack the wall root cause**: phase short-circuiting / making pair-mode
+   and full-pipeline conditional on evidence they earn their wall — the
+   8.33× is inherent to full-pipeline-vs-single-shot, so the lever is "when
+   is the full pipeline worth it vs a bounded single agent."
+2. **Change the claim shape**: a codex-only current-method product surface
+   (single strong agent following the plan/implement/verify method) may be
+   the honest ceiling competitor to measure against, not the sonnet+codex
+   pair stack.
+3. **Corpus informativeness**: pre-register enough NON-SATURATED rows
+   (bare fails, harness plausibly wins) before any quality claim — all three
+   tranche-2 rows were objective-non-discriminating, so quality rested
+   entirely on subjective judging. django-only single-repo is an admitted
+   boundary.
+
+## Principles check (final, at close)
+
+- **0 Pre-flight**: ✅ this iter was the last attribution run before the next
+  ceiling go/no-go — it fixed the instrument (SW2/codex rankings were LOST
+  in tranche-1) and produced a trustworthy verdict; user-visible signal =
+  routing/claim decision (the stack does not break the ceiling as-is).
+- **7 Mission-bound**: ✅ Mission 1 ceiling gate (ops #17); measurement iter
+  permitted (closes tranche-1's instrument defects before a policy call).
+- **1 No overengineering**: ✅ instrument fixes only; dropped tranche-1
+  regression re-runs (subtractive); no new mechanism added to the harness.
+- **2 No guesswork**: ✅ P1-P3 (phase 1) + LC1-LC4 (phase 2) frozen before
+  runs; SF2 falsifier fired and was recorded raw (0/24→5/19); FAIL-pilot
+  recorded raw, not softened.
+- **3 No workaround**: ✅ R0 blockers fixed at root (manifest-derived
+  allowlist, per-instance oracle, generalized venv exclude) — none stale by
+  construction; C3 infra-fail re-run instead of counted as a real 0.
+- **4/5 Worldclass/Best practice**: ✅ validator never relaxed; regression
+  guard (iter0064 verdict reproduces); official swebench harness for
+  objective; blind + de-biased judge.
+- **6 Layer-cost-justified**: ✅ this IS the layer-cost measurement — and it
+  says the L2/full-pipeline layer does NOT out-earn bare codex on this
+  corpus (8.33× wall, no quality moat). That is the honest, losable result
+  the ceiling instrument exists to produce.
+
+## Pair rounds (results)
+
+- **R1-on-results (2026-07-08, read-only xhigh, archive
+  `/tmp/codex-iter0067/r1-results-response.log`): TRUSTWORTHY.** Q1 verdict
+  arithmetic CONFIRM; Q2 objective-non-discrimination CONFIRM + LC3-mechanical
+  refinement; Q3 16:3 CONFIRM as tranche-level negative (SW4 codex parse-fail
+  caveat + diff-verified genuine signal); Q4 wall baseline CONFIRM +
+  method-isolation note; Q5 venv CONFIRM / C3 wording corrected; Q6
+  next-lever CONFIRM. Single most important takeaway (Codex, verbatim): "the
+  current full devlyn stack does not show a ceiling moat here; a single codex
+  copycat matches objective outcomes, wins subjective diff quality, and is
+  about 8.3x faster."
