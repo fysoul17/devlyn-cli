@@ -217,8 +217,8 @@ write_patch() {
       ':(exclude)AGENTS.md' \
       ':(exclude)docs/roadmap/phase-1/*.md' \
       ':(exclude)solve-prompt.txt' \
-      ':(exclude).venv/**' \
-      ':(exclude)venv/**' \
+      ':(exclude).venv*/**' \
+      ':(exclude)venv*/**' \
       ':(exclude)__pycache__/**' \
       ':(exclude)*.pyc' >/dev/null 2>&1 || true
     git diff --binary "$base_sha" -- . \
@@ -228,8 +228,8 @@ write_patch() {
       ':(exclude)AGENTS.md' \
       ':(exclude)docs/roadmap/phase-1/*.md' \
       ':(exclude)solve-prompt.txt' \
-      ':(exclude).venv/**' \
-      ':(exclude)venv/**' \
+      ':(exclude).venv*/**' \
+      ':(exclude)venv*/**' \
       ':(exclude)__pycache__/**' \
       ':(exclude)*.pyc' > "$out"
   )
