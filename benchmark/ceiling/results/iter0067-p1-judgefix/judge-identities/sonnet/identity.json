@@ -1,0 +1,8 @@
+{
+  "cli_version": "2.1.202 (Claude Code)",
+  "model_id_or_alias": "sonnet",
+  "recorded_at_run_id": "iter0067-p1-judgefix",
+  "model_usage_keys": [
+    "claude-sonnet-5"
+  ]
+}
