@@ -1,9 +1,15 @@
 # iter-0068 — discriminating ceiling corpus (bare-fails gate + categorical-reliability trap tasks)
 
-status: PRE-REGISTERED 2026-07-08 — design frozen before implementation;
-corpus freezes (with the bare-fails gate results) before any A/C arm runs.
-Direction chosen by user 2026-07-08 (corpus pivot, option A) after the
-iter-0067 verdict + iter-0068-STUB A-arm decomposition.
+status: PRE-REGISTERED 2026-07-08 (R0 GO-WITH-EDITS folded) — design frozen
+before implementation; corpus freezes (with the bare-fails gate results)
+before any A/C arm runs. Direction chosen by user 2026-07-08 (corpus pivot,
+option A) after the iter-0067 verdict + iter-0068-STUB A-arm decomposition.
+**This is a categorical-trap CALIBRATION pilot on synthetic fixtures, NOT
+real-shaped ceiling evidence** (R0 SHOULD-FIX 3; NORTH-STAR requires
+real-shaped holdout for ceiling claims — F-fixtures are shared-test-repo
+toys). Its job: prove the discriminating instrument (bare-fails gate +
+generic FS oracle) works and produce a first pilot signal, not a ceiling
+quality claim.
 
 **Serves**: Mission 1 ceiling axis / ops test #17. iter-0067 FAIL-pilot on 3
 saturated SWE rows proved the ceiling corpus was measuring the pipeline
@@ -59,30 +65,40 @@ oracle gate + manifest-derived allowlist. The only additions: the bare-fails
 admission gate at corpus-freeze, and FS-format task packaging for the trap
 tasks.
 
-### Task source — categorical-reliability trap tasks (pilot: 2 + 1 control)
+### Task source — a candidate POOL the gate selects from (R0 MUST-FIX 3)
 
-Port the two strongest, distinct-class trap fixtures from
-`benchmark/auto-resolve/fixtures/` into ceiling FS-format (git repo at a
-base sha + visible `task.txt` + `hidden/<oracle>.py` pass/fail test +
-`hidden/reference.patch` gold), each mapping to a specific harness gate so a
-win is attributable, not luck:
-- **DR1 ← F11-batch-import-all-or-nothing** (state-integrity class): bare
-  tends to partial-write on a mixed valid/invalid batch; the harness's
-  VERIFY state-consistency probe + risk-probes target exactly this. Oracle:
-  mixed batch leaves the store byte-unchanged after failure + an all-valid
-  batch succeeds with distinct ids in order.
-- **DR2 ← F7-out-of-scope-trap** (scope-discipline class): bare tends to
-  "while I'm here" edit an unrelated file; the harness's PLAN
-  authorized_surface + BUILD_GATE scope gate (iter-0046) + finish-gate
-  (iter-0063) target exactly this. Oracle: the required behavior works AND
-  the tempting out-of-scope file is unchanged from base.
-- **Control: FS1** (schedule max_runs) — known bare-passes; MUST be rejected
-  by the bare-fails gate. Proves the gate discriminates.
+**Do NOT hand-pick which fixtures discriminate** — R0 showed my first pick
+(F7, F11) was already measured non-discriminating for bare-Claude (F7 bare
+99/solo 100 6/6 pass, `F7/NOTES.md:50-53`; F11 bare 98/solo 97,
+`F11/NOTES.md:67-70`), so the bare-fails gate would have rejected them and
+left an empty tranche. The design innovation IS the gate; let it select.
 
-Pilot is deliberately 2 admitted rows — enough to prove the discriminating
-instrument works and produce the first "pipeline earns its keep" data point
-or its honest absence; scale to more classes (F12 signature, F21 priority)
-in a follow-up once the gate + one tranche are validated.
+Port a POOL of ≥5 diverse-class trap fixtures to ceiling FS-format, then let
+the **bare-fails gate (bare-CODEX N=3)** admit whichever discriminate. Each
+must carry (a) a named categorical-reliability class and (b) a plausible
+harness mechanism that would catch it (R0 POS-1 synthesis). Candidate pool
+(strongest recorded discrimination first): **F21-cli-scheduler-priority**
+(ordering-inversion → risk-probe/VERIFY ordering; strongest recorded
+discrimination `F21/NOTES.md:23-27`), **F25-cli-cart-promotion-rules**
+(shape/compound), **F26-cli-payout-ledger-rules**, **F11-batch-import**
+(atomic-state), **F12-webhook-raw-body-signature** (auth-signature),
+**F7-out-of-scope-trap** (scope). The pool is frozen; admission is data.
+- **Control: FS1** (schedule max_runs) — known bare-passes (14/14 hidden
+  TESTS, B1; R0 SHOULD-FIX 4 wording); MUST be rejected by the gate.
+
+**F7 port correction (R0 MUST-FIX 2)**: if F7 is admitted, its trap is NOT a
+cross-file edit — the bait is a planted region INSIDE `bin/cli.js` while
+`version` must also change there, and the `hello` subcommand behavior must
+be preserved (`F7/setup.sh:13-35`, `F7/expected.json:45-54`). The oracle
+asserts version-json works AND `hello` unchanged AND the planted
+same-file snippet preserved — a byte-preservation/finish-gate class, not the
+cross-file scope gate.
+
+Pilot admits whatever the gate passes (could be 0). **Pilot-signal-only
+(R0 SHOULD-FIX 1)**: ≥3 distinct categorical classes must be admitted before
+any "the instrument discriminates" claim; fewer = plumbing-validated only.
+0 admitted = the honest finding "even categorical-trap fixtures don't
+discriminate bare-codex" (a deep result worth reporting).
 
 **Port mechanics (for R0 to judge fidelity)**: each F-fixture today is
 `setup.sh` (stages a base repo state + node verifier scripts) +
@@ -109,22 +125,30 @@ C copycat codex), N = round(wall_A/wall_B) capped [1,3], neutral blind judge
 
 ## Predictions (frozen before implementation)
 
-- **P1 (the gate works)**: the bare-fails gate REJECTS FS1
-  (`saturated:bare-resolves`, bare ≥2/3 pass) and ADMITS DR1 + DR2 (bare
-  ≥2/3 fail, gold passes). If FS1 is admitted or a trap row is rejected, the
-  gate is mis-calibrated → fix before any tranche.
-- **P2 (first earns-its-keep signal)**: on the admitted trap rows, devlyn A
-  resolves the objective oracle on ≥1 row where bare B fails — i.e. LC1
-  A_resolved > best_B_resolved on at least one admitted row. This is the
-  first objective lift the ceiling has ever been able to express (tranche-2
-  could not). Recorded raw; a NULL result (A also fails the traps) is itself
-  a load-bearing finding (the harness does not deliver categorical
-  reliability on real-shaped traps → a much deeper problem than wall).
-- **P3 (moat attribution)**: copycat C (codex told the full method) tests
-  whether the METHOD alone catches the trap or the HARNESS GATES do. If C
-  also resolves, the moat is the method (portable, weak); if only A
-  resolves, the moat is the harness's deterministic gates (the real
-  product). Recorded, not gated.
+- **P1 (the gate discriminates)**: run the bare-fails gate over the frozen
+  pool + FS1. FS1 is REJECTED (`saturated:bare-resolves`, bare ≥2/3 pass) —
+  the gate's self-test. At least ONE pool fixture is ADMITTED (gold-pass AND
+  bare-codex fails ≥2/3); the admitted set + every rejection reason is
+  reported. If FS1 is admitted, the gate is mis-calibrated (L1). If ZERO
+  pool fixtures admit, that is not a gate failure — it is the honest finding
+  that categorical-trap fixtures do not discriminate bare-codex (report it,
+  do not re-tune the gate to force admissions — that would be fixture
+  tuning, R0's decisive-criterion dishonesty).
+- **P2 (earns-its-keep signal — objective lift)**: on admitted rows, devlyn
+  A resolves where bare B fails — A_resolved > best_B_resolved on ≥1 row.
+  This is objective lift tranche-2 could not express. **But per NORTH-STAR
+  (`:132-140`), A>B is NOT a product moat by itself (R0 MUST-FIX 4)** — it
+  is method/harness lift over bare. Recorded raw; NULL (A also fails the
+  traps) is a load-bearing finding (the harness does not deliver categorical
+  reliability even on traps built for it → deeper than wall).
+- **P3 (moat = survives copycat)**: the **product moat requires A > best_B
+  AND A > best_C** (copycat = codex told the full plan/implement/verify
+  method). If C ≥ A on an admitted row, that row shows METHOD lift (portable
+  prompt engineering), NOT a devlyn product moat — and per R0 POS-4 that is
+  a genuine honest finding, not a corpus failure. The final report labels
+  each admitted row: bare-fail + A-pass + C-pass = method lift; bare-fail +
+  A-pass + C-fail = harness-gate moat (the real product). A C-solved row is
+  NEVER labeled a devlyn moat.
 - **P4 (wall in context)**: LC3 wall ratio recorded — but now against a
   bare that FAILS, so "8× the wall of a wrong answer" reframes the
   efficiency question entirely (bare-best-of-N of a failing arm never
@@ -133,8 +157,9 @@ C copycat codex), N = round(wall_A/wall_B) capped [1,3], neutral blind judge
 
 ## Loss conditions
 
-- **L1**: P1 falsified (gate admits FS1 or rejects a trap row) → gate
-  mis-calibrated, revert/re-tune before tranche.
+- **L1**: gate admits FS1 (the saturated control) → gate mis-calibrated,
+  revert/re-tune before any tranche. (Zero pool admissions is NOT L1 — it is
+  a reported finding, never a trigger to loosen the gate.)
 - **L2**: oracle-invalid on a ported trap (gold fails its own oracle) →
   the port is wrong, fix the oracle before admitting.
 - **L3**: the ported trap task leaks the trap answer in the visible
@@ -144,24 +169,50 @@ C copycat codex), N = round(wall_A/wall_B) capped [1,3], neutral blind judge
 
 ## Implementation deliverables (Codex CLI; verification by orchestrator)
 
-1. `ceiling` harness: bare-fails admission gate — a new
-   `ceiling-corpus-gate` step (or extend oracle-smoke) that runs N bare
-   attempts per candidate, records pass/fail, and writes admit/reject +
-   reason into the manifest freeze. Reuse `run-ceiling-arm.sh --arm B` for
-   the bare attempts; no new solver.
-2. `benchmark/ceiling/corpus/DR1-batch-atomic/` + `DR2-scope-trap/`:
-   FS-format port of F11 + F7 (base.json/task.txt/hidden oracle + reference)
-   with the visible spec de-leaked per L3.
-3. Manifest `tranche3` (or `discriminating` section) frozen with hashes +
-   bare-fails gate results after the gate runs.
-4. Oracle smoke: gold 2/2 pass + bare-fails evidence recorded.
+1. **Generic FS oracle runner (R0 MUST-FIX 1, prerequisite)**: the FS
+   evaluator is FS1-hardcoded — `run-ceiling-arm.sh:156-182,307-310` treats
+   every non-SW task as FS1; `ceiling-eval.sh:254-266,323-324` copies
+   `hidden/test_max_runs_oracle.py` + runs `test_schedule.py`. Generalize to
+   run an arbitrary declared hidden oracle (`hidden/oracle.sh` exit-0=pass)
+   against the cloned+patched repo, task-agnostic. FS1 keeps working via a
+   thin oracle.sh wrapper (regression guard).
+2. **Fixture pool port**: `benchmark/ceiling/corpus/DR-<class>-*/` for the
+   candidate pool (F21/F25/F26/F11/F12/F7 → FS-format: local git repo at a
+   base sha, de-leaked visible `task.txt` that STILL states the observable
+   invariant (R0 SHOULD-FIX 2, just not the trigger words), `hidden/oracle.sh`
+   converted from the fixture's verifiers, `hidden/reference.patch` gold).
+   F7's oracle is same-file per MUST-FIX 2.
+3. **Bare-fails admission gate**: a corpus-gate step that runs
+   `run-ceiling-arm.sh --arm B` (bare CODEX) N=3 per candidate + the gold
+   oracle smoke, and writes admit/reject + reason
+   (`saturated:bare-resolves` / `oracle-invalid` / `admitted:<class>`) into
+   the manifest freeze. Admission = gold-pass AND bare-fail ≥2/3.
+4. Manifest `discriminating` section frozen with hashes + gate results.
+   Report the admitted set + every rejection with its reason (no silent
+   drops).
+
+Sequencing: deliver 1+2+3, RUN the gate, and STOP at the admitted set for
+R1 — the 3-arm A/C tranche only launches after R1 confirms the admitted
+rows + labels. (The gate result is itself the pilot's first finding.)
 
 ## Pair rounds
 
-- R0 (pending): Codex read-only xhigh on this pre-registration — stress the
-  bare-fails gate honesty, the F11/F7→FS port fidelity, the 2-row pilot
-  size, and the copycat-collapses-the-moat risk.
-- R1 (pending): on the frozen corpus + gate results before A/C arms.
+- **R0 (2026-07-08, read-only xhigh, archive `/tmp/codex-iter0068/r0-response.log`):
+  GO-WITH-EDITS.** All 4 MUST-FIX + 4 SHOULD-FIX ADOPTED: (MF1) generic FS
+  oracle runner is a prerequisite deliverable — the evaluator was
+  FS1-hardcoded; (MF2) F7 trap is same-file bait + `hello` preservation, not
+  a cross-file scope edit — port target corrected; (MF3, decisive) F7/F11
+  were already measured bare-aced → don't hand-pick, freeze a POOL and let
+  the bare-fails gate select (F21 has stronger recorded discrimination); (MF4)
+  product moat requires A > best_C, not just A > best_B — labels fixed.
+  SHOULD-FIX: pilot-signal-only ≥3-classes-for-a-claim; F11 de-leak keeps the
+  observable invariant; tranche labeled synthetic-calibration not ceiling
+  evidence; FS1 "14/14" = tests. Decisive criterion Codex named: the corpus
+  is dishonest if a positive comes from leakage / fixture tuning /
+  copycat-reproducible method lift mislabeled as a harness moat — the adopted
+  labels + gate + copycat arm guard exactly that.
+- R1 (pending): on the frozen corpus + gate results (admitted set + reasons)
+  BEFORE any A/C arm run.
 
 ## Execution record
 
