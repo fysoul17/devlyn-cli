@@ -9,6 +9,9 @@ EOF
   exit "${1:-1}"
 }
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CEILING_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 RUN_ID=""
 TASK=""
 ARM_ATTEMPTS=()
@@ -33,10 +36,29 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$RUN_ID" ] && [ -n "$TASK" ] || usage 1
-case "$TASK" in SW1-django-13230|SW2-django-13265|FS1-schedule-max-runs) ;; *) usage 1;; esac
+validate_task() {
+  python3 - "$SCRIPT_DIR/ceiling-gate.py" "$CEILING_ROOT" "$TASK" <<'PY'
+import runpy
+import sys
+from pathlib import Path
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CEILING_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+gate_path, ceiling_root, task = sys.argv[1:]
+gate = runpy.run_path(gate_path)
+valid_tasks = gate["task_ids"](None)
+task_text = Path(ceiling_root) / "corpus" / task / "task.txt"
+if task not in valid_tasks:
+    print(f"invalid ceiling task: {task}", file=sys.stderr)
+    print("valid tasks: " + ", ".join(valid_tasks), file=sys.stderr)
+    raise SystemExit(1)
+if not task_text.is_file():
+    print(f"task text missing: {task_text}", file=sys.stderr)
+    raise SystemExit(1)
+PY
+}
+if ! validate_task; then
+  usage 1
+fi
+
 TASK_DIR="$CEILING_ROOT/corpus/$TASK"
 RESULT_TASK_DIR="$CEILING_ROOT/results/$RUN_ID/$TASK"
 EXTERNAL_ROOT="$CEILING_ROOT/external"

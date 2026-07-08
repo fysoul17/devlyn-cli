@@ -4,12 +4,15 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: run-ceiling-arm.sh --task <SW1-django-13230|SW2-django-13265|FS1-schedule-max-runs>
+usage: run-ceiling-arm.sh --task <ceiling-task>
                           --arm <A|B|C> --run-id <ID> --attempt <n>
                           [--timeout-seconds 3600]
 EOF
   exit "${1:-1}"
 }
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CEILING_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 TASK=""
 ARM=""
@@ -39,15 +42,34 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$TASK" ] && [ -n "$ARM" ] && [ -n "$RUN_ID" ] && [ -n "$ATTEMPT" ] || usage 1
-case "$TASK" in SW1-django-13230|SW2-django-13265|FS1-schedule-max-runs) ;; *) usage 1;; esac
+validate_task() {
+  python3 - "$SCRIPT_DIR/ceiling-gate.py" "$CEILING_ROOT" "$TASK" <<'PY'
+import runpy
+import sys
+from pathlib import Path
+
+gate_path, ceiling_root, task = sys.argv[1:]
+gate = runpy.run_path(gate_path)
+valid_tasks = gate["task_ids"](None)
+task_text = Path(ceiling_root) / "corpus" / task / "task.txt"
+if task not in valid_tasks:
+    print(f"invalid ceiling task: {task}", file=sys.stderr)
+    print("valid tasks: " + ", ".join(valid_tasks), file=sys.stderr)
+    raise SystemExit(1)
+if not task_text.is_file():
+    print(f"task text missing: {task_text}", file=sys.stderr)
+    raise SystemExit(1)
+PY
+}
+if ! validate_task; then
+  usage 1
+fi
 case "$ARM" in A|B|C) ;; *) usage 1;; esac
 case "$ATTEMPT" in ''|*[!0-9]*) echo "--attempt must be a positive integer" >&2; exit 1;; esac
 [ "$ATTEMPT" -gt 0 ] || { echo "--attempt must be > 0" >&2; exit 1; }
 case "$TIMEOUT_SECONDS" in ''|*[!0-9]*) echo "--timeout-seconds must be a positive integer" >&2; exit 1;; esac
 [ "$TIMEOUT_SECONDS" -gt 0 ] || { echo "--timeout-seconds must be > 0" >&2; exit 1; }
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CEILING_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$CEILING_ROOT/../.." && pwd)"
 AUTO_RESOLVE_SCRIPTS="$REPO_ROOT/benchmark/auto-resolve/scripts"
 TASK_DIR="$CEILING_ROOT/corpus/$TASK"
@@ -55,8 +77,6 @@ TASK_TEXT_FILE="$TASK_DIR/task.txt"
 RESULT_DIR="$CEILING_ROOT/results/$RUN_ID/$TASK/${ARM}${ATTEMPT}"
 EXTERNAL_ROOT="$CEILING_ROOT/external"
 mkdir -p "$RESULT_DIR" "$EXTERNAL_ROOT"
-
-[ -f "$TASK_TEXT_FILE" ] || { echo "task text missing: $TASK_TEXT_FILE" >&2; exit 1; }
 
 json_quote_task_prompt() {
   python3 - "$TASK_TEXT_FILE" <<'PY'

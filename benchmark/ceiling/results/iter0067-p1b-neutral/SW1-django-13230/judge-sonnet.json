@@ -1,0 +1,145 @@
+{
+  "judge": "sonnet",
+  "task": "SW1-django-13230",
+  "prompt": "You are a blind ceiling-quality judge. You receive one task and three anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, or author identity; judge only the task text and diffs.\n\nTask text:\nAdd support for item_comments to syndication framework\nDescription\n\t\nAdd comments argument to feed.add_item() in syndication.views so that item_comments can be defined directly without having to take the detour via item_extra_kwargs .\nAdditionally, comments is already explicitly mentioned in the feedparser, but not implemented in the view.\n\nP1 patch.diff:\n```diff\ndiff --git a/django/contrib/syndication/views.py b/django/contrib/syndication/views.py\nindex 68ffb0bfe0..a531fcfc3a 100644\n--- a/django/contrib/syndication/views.py\n+++ b/django/contrib/syndication/views.py\n@@ -199,10 +199,17 @@ class Feed:\n             if updateddate and is_naive(updateddate):\n                 updateddate = make_aware(updateddate, tz)\n \n+            item_extra_kwargs = dict(self.item_extra_kwargs(item))\n+            if 'comments' in item_extra_kwargs:\n+                comments = item_extra_kwargs.pop('comments')\n+            else:\n+                comments = self._get_dynamic_attr('item_comments', item)\n+\n             feed.add_item(\n                 title=title,\n                 link=link,\n                 description=description,\n+                comments=comments,\n                 unique_id=self._get_dynamic_attr('item_guid', item, link),\n                 unique_id_is_permalink=self._get_dynamic_attr(\n                     'item_guid_is_permalink', item),\n@@ -214,6 +221,6 @@ class Feed:\n                 author_link=author_link,\n                 categories=self._get_dynamic_attr('item_categories', item),\n                 item_copyright=self._get_dynamic_attr('item_copyright', item),\n-                **self.item_extra_kwargs(item)\n+                **item_extra_kwargs\n             )\n         return feed\ndiff --git a/docs/ref/contrib/syndication.txt b/docs/ref/contrib/syndication.txt\nindex 13aa944e8a..993f1e2ff8 100644\n--- a/docs/ref/contrib/syndication.txt\n+++ b/docs/ref/contrib/syndication.txt\n@@ -673,6 +673,22 @@ This example illustrates all possible attributes and methods for a\n             Returns the URL for every item in the feed.\n             \"\"\"\n \n+        # ITEM COMMENTS URL -- One of the following three is optional. This is\n+        # only applicable to RSS feeds.\n+\n+        def item_comments(self, item):\n+            \"\"\"\n+            Takes an item, as returned by items(), and returns the item's\n+            comments URL as a normal Python string.\n+            \"\"\"\n+\n+        def item_comments(self):\n+            \"\"\"\n+            Returns the comments URL for every item in the feed.\n+            \"\"\"\n+\n+        item_comments = 'https://www.example.com/comments/' # Hard-coded comments URL.\n+\n         # ITEM_GUID -- The following method is optional. If not provided, the\n         # item's link is used by default.\n \ndiff --git a/tests/syndication_tests/feeds.py b/tests/syndication_tests/feeds.py\nindex 4e9b1170b1..5d7bc6f553 100644\n--- a/tests/syndication_tests/feeds.py\n+++ b/tests/syndication_tests/feeds.py\n@@ -49,6 +49,18 @@ class TestRss2FeedWithGuidIsPermaLinkFalse(TestRss2Feed):\n         return False\n \n \n+class TestRss2FeedWithComments(TestRss2Feed):\n+    def item_comments(self, item):\n+        return 'http://example.com/blog/%s/comments/' % item.pk\n+\n+\n+class TestRss2FeedWithCommentsFromExtraKwargs(TestRss2Feed):\n+    def item_extra_kwargs(self, item):\n+        return {\n+            'comments': 'http://example.com/blog/%s/comments/' % item.pk,\n+        }\n+\n+\n class TestRss091Feed(TestRss2Feed):\n     feed_type = feedgenerator.RssUserland091Feed\n \ndiff --git a/tests/syndication_tests/tests.py b/tests/syndication_tests/tests.py\nindex dab7ebab33..5ff7fe7688 100644\n--- a/tests/syndication_tests/tests.py\n+++ b/tests/syndication_tests/tests.py\n@@ -176,6 +176,24 @@ class SyndicationFeedTest(FeedTestCase):\n                 item.getElementsByTagName('guid')[0].attributes.get(\n                     'isPermaLink').value, \"true\")\n \n+    def test_rss2_feed_with_comments(self):\n+        response = self.client.get('/syndication/rss2/comments/')\n+        doc = minidom.parseString(response.content)\n+        items = doc.getElementsByTagName('channel')[0].getElementsByTagName('item')\n+\n+        self.assertChildNodeContent(items[0], {\n+            'comments': 'http://example.com/blog/1/comments/',\n+        })\n+\n+    def test_rss2_feed_with_comments_from_extra_kwargs(self):\n+        response = self.client.get('/syndication/rss2/comments-extra/')\n+        doc = minidom.parseString(response.content)\n+        items = doc.getElementsByTagName('channel')[0].getElementsByTagName('item')\n+\n+        self.assertChildNodeContent(items[0], {\n+            'comments': 'http://example.com/blog/1/comments/',\n+        })\n+\n     def test_rss2_single_enclosure(self):\n         response = self.client.get('/syndication/rss2/single-enclosure/')\n         doc = minidom.parseString(response.content)\ndiff --git a/tests/syndication_tests/urls.py b/tests/syndication_tests/urls.py\nindex bff7bd0c8d..23904b5bfb 100644\n--- a/tests/syndication_tests/urls.py\n+++ b/tests/syndication_tests/urls.py\n@@ -10,6 +10,10 @@ urlpatterns = [\n     path(\n         'syndication/rss2/guid_ispermalink_false/',\n         feeds.TestRss2FeedWithGuidIsPermaLinkFalse()),\n+    path('syndication/rss2/comments/', feeds.TestRss2FeedWithComments()),\n+    path(\n+        'syndication/rss2/comments-extra/',\n+        feeds.TestRss2FeedWithCommentsFromExtraKwargs()),\n     path('syndication/rss091/', feeds.TestRss091Feed()),\n     path('syndication/no_pubdate/', feeds.TestNoPubdateFeed()),\n     path('syndication/atom/', feeds.TestAtomFeed()),\n\n```\n\nP2 patch.diff:\n```diff\ndiff --git a/django/contrib/syndication/views.py b/django/contrib/syndication/views.py\nindex 68ffb0bfe0..7855963652 100644\n--- a/django/contrib/syndication/views.py\n+++ b/django/contrib/syndication/views.py\n@@ -199,6 +199,12 @@ class Feed:\n             if updateddate and is_naive(updateddate):\n                 updateddate = make_aware(updateddate, tz)\n \n+            item_extra_kwargs = self.item_extra_kwargs(item)\n+            if 'comments' not in item_extra_kwargs:\n+                item_extra_kwargs = {\n+                    **item_extra_kwargs,\n+                    'comments': self._get_dynamic_attr('item_comments', item),\n+                }\n             feed.add_item(\n                 title=title,\n                 link=link,\n@@ -214,6 +220,6 @@ class Feed:\n                 author_link=author_link,\n                 categories=self._get_dynamic_attr('item_categories', item),\n                 item_copyright=self._get_dynamic_attr('item_copyright', item),\n-                **self.item_extra_kwargs(item)\n+                **item_extra_kwargs\n             )\n         return feed\ndiff --git a/docs/ref/contrib/syndication.txt b/docs/ref/contrib/syndication.txt\nindex 13aa944e8a..65cba2c15c 100644\n--- a/docs/ref/contrib/syndication.txt\n+++ b/docs/ref/contrib/syndication.txt\n@@ -854,6 +854,22 @@ This example illustrates all possible attributes and methods for a\n \n         item_updateddate = datetime.datetime(2005, 5, 3) # Hard-coded updateddate.\n \n+        # ITEM COMMENTS URL -- It's optional to use one of these three. This is\n+        # a hook that specifies how to get the comments URL for a given item.\n+\n+        def item_comments(self, item):\n+            \"\"\"\n+            Takes an item, as returned by items(), and returns the item's\n+            comments URL.\n+            \"\"\"\n+\n+        def item_comments(self):\n+            \"\"\"\n+            Returns the comments URL for every item in the feed.\n+            \"\"\"\n+\n+        item_comments = 'https://www.example.com/comments' # Hard-coded comments URL.\n+\n         # ITEM CATEGORIES -- It's optional to use one of these three. This is\n         # a hook that specifies how to get the list of categories for a given\n         # item. In each case, the method/attribute should return an iterable\ndiff --git a/tests/syndication_tests/feeds.py b/tests/syndication_tests/feeds.py\nindex 4e9b1170b1..b2956a2510 100644\n--- a/tests/syndication_tests/feeds.py\n+++ b/tests/syndication_tests/feeds.py\n@@ -49,6 +49,11 @@ class TestRss2FeedWithGuidIsPermaLinkFalse(TestRss2Feed):\n         return False\n \n \n+class TestRss2FeedWithComments(TestRss2Feed):\n+    def item_comments(self, item):\n+        return 'http://example.com/blog/%s/comments/' % item.pk\n+\n+\n class TestRss091Feed(TestRss2Feed):\n     feed_type = feedgenerator.RssUserland091Feed\n \ndiff --git a/tests/syndication_tests/tests.py b/tests/syndication_tests/tests.py\nindex dab7ebab33..e47d4df2d1 100644\n--- a/tests/syndication_tests/tests.py\n+++ b/tests/syndication_tests/tests.py\n@@ -176,6 +176,21 @@ class SyndicationFeedTest(FeedTestCase):\n                 item.getElementsByTagName('guid')[0].attributes.get(\n                     'isPermaLink').value, \"true\")\n \n+    def test_rss2_feed_item_comments(self):\n+        response = self.client.get('/syndication/rss2/comments/')\n+        doc = minidom.parseString(response.content)\n+        chan = doc.getElementsByTagName(\n+            'rss')[0].getElementsByTagName('channel')[0]\n+        items = chan.getElementsByTagName('item')\n+        self.assertChildNodeContent(items[0], {\n+            'comments': 'http://example.com/blog/1/comments/',\n+        })\n+        for item in items:\n+            self.assertChildNodes(item, [\n+                'title', 'link', 'description', 'guid', 'category', 'pubDate',\n+                'comments', 'author',\n+            ])\n+\n     def test_rss2_single_enclosure(self):\n         response = self.client.get('/syndication/rss2/single-enclosure/')\n         doc = minidom.parseString(response.content)\ndiff --git a/tests/syndication_tests/urls.py b/tests/syndication_tests/urls.py\nindex bff7bd0c8d..8ebf8f18ed 100644\n--- a/tests/syndication_tests/urls.py\n+++ b/tests/syndication_tests/urls.py\n@@ -10,6 +10,7 @@ urlpatterns = [\n     path(\n         'syndication/rss2/guid_ispermalink_false/',\n         feeds.TestRss2FeedWithGuidIsPermaLinkFalse()),\n+    path('syndication/rss2/comments/', feeds.TestRss2FeedWithComments()),\n     path('syndication/rss091/', feeds.TestRss091Feed()),\n     path('syndication/no_pubdate/', feeds.TestNoPubdateFeed()),\n     path('syndication/atom/', feeds.TestAtomFeed()),\n\n```\n\nP3 patch.diff:\n```diff\ndiff --git a/django/contrib/syndication/views.py b/django/contrib/syndication/views.py\nindex 68ffb0bfe0..a09cc5fe74 100644\n--- a/django/contrib/syndication/views.py\n+++ b/django/contrib/syndication/views.py\n@@ -214,6 +214,7 @@ class Feed:\n                 author_link=author_link,\n                 categories=self._get_dynamic_attr('item_categories', item),\n                 item_copyright=self._get_dynamic_attr('item_copyright', item),\n+                comments=self._get_dynamic_attr('item_comments', item),\n                 **self.item_extra_kwargs(item)\n             )\n         return feed\ndiff --git a/docs/ref/contrib/syndication.txt b/docs/ref/contrib/syndication.txt\nindex 13aa944e8a..26faef59cb 100644\n--- a/docs/ref/contrib/syndication.txt\n+++ b/docs/ref/contrib/syndication.txt\n@@ -889,6 +889,22 @@ This example illustrates all possible attributes and methods for a\n \n         item_copyright = 'Copyright (c) 2007, Sally Smith' # Hard-coded copyright notice.\n \n+        # ITEM COMMENTS (only applicable to RSS feeds) -- One of the following\n+        # three is optional. The framework looks for them in this order.\n+\n+        def item_comments(self, obj):\n+            \"\"\"\n+            Takes an item, as returned by items(), and returns the item's\n+            comments as a normal Python string.\n+            \"\"\"\n+\n+        def item_comments(self):\n+            \"\"\"\n+            Returns the comments for every item in the feed.\n+            \"\"\"\n+\n+        item_comments = 'http://example.com/comments' # Hard-coded comments.\n+\n \n The low-level framework\n =======================\ndiff --git a/docs/releases/3.2.txt b/docs/releases/3.2.txt\nindex 129026cf89..ec6e596d28 100644\n--- a/docs/releases/3.2.txt\n+++ b/docs/releases/3.2.txt\n@@ -144,7 +144,7 @@ Minor features\n :mod:`django.contrib.syndication`\n ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n \n-* ...\n+* Added the ``item_comments`` hook for per-item comments in RSS feeds.\n \n Cache\n ~~~~~\ndiff --git a/tests/syndication_tests/feeds.py b/tests/syndication_tests/feeds.py\nindex 4e9b1170b1..62b24b4d10 100644\n--- a/tests/syndication_tests/feeds.py\n+++ b/tests/syndication_tests/feeds.py\n@@ -34,6 +34,7 @@ class TestRss2Feed(views.Feed):\n     item_author_link = 'http://www.example.com/'\n     item_categories = ('python', 'testing')\n     item_copyright = 'Copyright (c) 2007, Sally Smith'\n+    item_comments = 'Copyright (c) 2007, Sally Smith'\n \n \n class TestRss2FeedWithGuidIsPermaLinkTrue(TestRss2Feed):\ndiff --git a/tests/syndication_tests/tests.py b/tests/syndication_tests/tests.py\nindex dab7ebab33..e604fc935f 100644\n--- a/tests/syndication_tests/tests.py\n+++ b/tests/syndication_tests/tests.py\n@@ -136,10 +136,14 @@ class SyndicationFeedTest(FeedTestCase):\n             'guid': 'http://example.com/blog/1/',\n             'pubDate': pub_date,\n             'author': 'test@example.com (Sally Smith)',\n+            'comments': 'Copyright (c) 2007, Sally Smith',\n         })\n         self.assertCategories(items[0], ['python', 'testing'])\n         for item in items:\n-            self.assertChildNodes(item, ['title', 'link', 'description', 'guid', 'category', 'pubDate', 'author'])\n+            self.assertChildNodes(item, [\n+                'title', 'link', 'description', 'guid', 'category', 'pubDate',\n+                'author', 'comments',\n+            ])\n             # Assert that <guid> does not have any 'isPermaLink' attribute\n             self.assertIsNone(item.getElementsByTagName(\n                 'guid')[0].attributes.get('isPermaLink'))\n\n```\n\nRank P1/P2/P3 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics.\nEmit exactly this JSON SHAPE. The packet labels and tier orderings below are ARBITRARY placeholders that illustrate the object shape only (a tie in one axis, distinct orders in the others) \u2014 do NOT copy this ordering; rank strictly from the three diffs you were given. Every axis needs its own `tiers` and a `strict_win_deltas` entry for each strict winner>loser pair those tiers create:\n{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\",\"P3\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P3\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"robustness\":{\"tiers\":[[\"P3\"],[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P3\",\"loser\":\"P1\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P3\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P2\"],[\"P3\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P3\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P3\",\"loser\":\"P1\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\",\"P3\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"},{\"winner\":\"P1\",\"loser\":\"P3\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]}}}\nTies are allowed and expected wherever two packets are genuinely indistinguishable on an axis \u2014 put them in the same tier. For every strict winner-loser pair created by tiers, include exactly one concrete one-sentence delta citing something visible in the diffs. Output ONLY the JSON object -- no prose before or after, no markdown fences.",
+  "attempts": [
+    {
+      "attempt": 1,
+      "error": null
+    }
+  ],
+  "error": null,
+  "parsed": {
+    "axes": {
+      "design_coherence": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ],
+          [
+            "P3"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1 passes comments as its own explicit `comments=comments` kwarg in the add_item() call, matching how categories/item_copyright are passed, while P2 only delivers comments through `**item_extra_kwargs` unpacking with no discrete kwarg in the call."
+          },
+          {
+            "winner": "P1",
+            "loser": "P3",
+            "delta": "P1 computes `comments = item_extra_kwargs.pop('comments')` when present so item_extra_kwargs takes precedence for backward compatibility, while P3's `feed.add_item(..., comments=self._get_dynamic_attr('item_comments', item), **self.item_extra_kwargs(item))` has no such precedence handling."
+          },
+          {
+            "winner": "P2",
+            "loser": "P3",
+            "delta": "P2's `if 'comments' not in item_extra_kwargs:` check respects a pre-existing item_extra_kwargs comments value, while P3 unconditionally unpacks `**self.item_extra_kwargs(item)` after already setting `comments=`, ignoring whether item_extra_kwargs also defines it."
+          }
+        ]
+      },
+      "robustness": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ],
+          [
+            "P3"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1 adds `test_rss2_feed_with_comments_from_extra_kwargs` exercising the item_extra_kwargs-precedence branch, while P2 ships the identical precedence logic (`if 'comments' not in item_extra_kwargs`) with no test covering that branch."
+          },
+          {
+            "winner": "P1",
+            "loser": "P3",
+            "delta": "P1's `dict(self.item_extra_kwargs(item))` + pop guarantees 'comments' is never duplicated in `feed.add_item(comments=comments, **item_extra_kwargs)`, while P3's `feed.add_item(..., comments=self._get_dynamic_attr('item_comments', item), **self.item_extra_kwargs(item))` raises `TypeError: got multiple values for keyword argument 'comments'` whenever item_extra_kwargs() also returns a 'comments' key."
+          },
+          {
+            "winner": "P2",
+            "loser": "P3",
+            "delta": "P2's conditional `if 'comments' not in item_extra_kwargs` merge prevents ever combining an explicit comments kwarg with a 'comments' key from **item_extra_kwargs, while P3 does exactly that unconditionally, crashing for such feeds."
+          }
+        ]
+      },
+      "spec_long_horizon_consistency": {
+        "tiers": [
+          [
+            "P3"
+          ],
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P3",
+            "loser": "P2",
+            "delta": "P3 updates `docs/releases/3.2.txt` with \"Added the `item_comments` hook for per-item comments in RSS feeds.\", while P2 leaves the `* ...` placeholder in that file untouched."
+          },
+          {
+            "winner": "P3",
+            "loser": "P1",
+            "delta": "P3 updates the 3.2 release notes entry documenting the new hook, while P1 does not modify `docs/releases/3.2.txt` at all."
+          },
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2's `test_rss2_feed_item_comments` adds a full ordered `assertChildNodes(item, ['title', 'link', 'description', 'guid', 'category', 'pubDate', 'comments', 'author'])` check, while P1's new tests only use `assertChildNodeContent` for the comments value without asserting the full ordered child-node list."
+          }
+        ]
+      },
+      "maintainability_api_ergonomics": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2",
+            "P3"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1 exposes `comments=comments` as its own named argument in the `feed.add_item()` call, directly matching the ticket's ask to \"Add comments argument to feed.add_item()\", while P2 never adds a discrete `comments=` kwarg \u2014 it's only reachable by reading back through the item_extra_kwargs merge logic above the call."
+          },
+          {
+            "winner": "P1",
+            "loser": "P3",
+            "delta": "P1 pairs its explicit `comments=comments` kwarg with a pop-based precedence guard so it's safe alongside item_extra_kwargs, while P3's equally explicit `comments=self._get_dynamic_attr('item_comments', item)` kwarg is unsafe to combine with an item_extra_kwargs() that also sets 'comments', turning a simple-looking API into a maintenance trap."
+          }
+        ]
+      }
+    }
+  },
+  "meta": {
+    "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":164393,\"duration_api_ms\":164037,\"ttft_ms\":151653,\"ttft_stream_ms\":2232,\"time_to_request_ms\":100,\"num_turns\":2,\"result\":\"{\\\"axes\\\":{\\\"design_coherence\\\":{\\\"tiers\\\":[[\\\"P1\\\"],[\\\"P2\\\"],[\\\"P3\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1 passes comments as its own explicit `comments=comments` kwarg in the add_item() call, matching how categories/item_copyright are passed, while P2 only delivers comments through `**item_extra_kwargs` unpacking with no discrete kwarg in the call.\\\"},{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P3\\\",\\\"delta\\\":\\\"P1 computes `comments = item_extra_kwargs.pop('comments')` when present so item_extra_kwargs takes precedence for backward compatibility, while P3's `feed.add_item(..., comments=self._get_dynamic_attr('item_comments', item), **self.item_extra_kwargs(item))` has no such precedence handling.\\\"},{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P3\\\",\\\"delta\\\":\\\"P2's `if 'comments' not in item_extra_kwargs:` check respects a pre-existing item_extra_kwargs comments value, while P3 unconditionally unpacks `**self.item_extra_kwargs(item)` after already setting `comments=`, ignoring whether item_extra_kwargs also defines it.\\\"}]},\\\"robustness\\\":{\\\"tiers\\\":[[\\\"P1\\\"],[\\\"P2\\\"],[\\\"P3\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1 adds `test_rss2_feed_with_comments_from_extra_kwargs` exercising the item_extra_kwargs-precedence branch, while P2 ships the identical precedence logic (`if 'comments' not in item_extra_kwargs`) with no test covering that branch.\\\"},{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P3\\\",\\\"delta\\\":\\\"P1's `dict(self.item_extra_kwargs(item))` + pop guarantees 'comments' is never duplicated in `feed.add_item(comments=comments, **item_extra_kwargs)`, while P3's `feed.add_item(..., comments=self._get_dynamic_attr('item_comments', item), **self.item_extra_kwargs(item))` raises `TypeError: got multiple values for keyword argument 'comments'` whenever item_extra_kwargs() also returns a 'comments' key.\\\"},{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P3\\\",\\\"delta\\\":\\\"P2's conditional `if 'comments' not in item_extra_kwargs` merge prevents ever combining an explicit comments kwarg with a 'comments' key from **item_extra_kwargs, while P3 does exactly that unconditionally, crashing for such feeds.\\\"}]},\\\"spec_long_horizon_consistency\\\":{\\\"tiers\\\":[[\\\"P3\\\"],[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P3\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P3 updates `docs/releases/3.2.txt` with \\\\\\\"Added the `item_comments` hook for per-item comments in RSS feeds.\\\\\\\", while P2 leaves the `* ...` placeholder in that file untouched.\\\"},{\\\"winner\\\":\\\"P3\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P3 updates the 3.2 release notes entry documenting the new hook, while P1 does not modify `docs/releases/3.2.txt` at all.\\\"},{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P2's `test_rss2_feed_item_comments` adds a full ordered `assertChildNodes(item, ['title', 'link', 'description', 'guid', 'category', 'pubDate', 'comments', 'author'])` check, while P1's new tests only use `assertChildNodeContent` for the comments value without asserting the full ordered child-node list.\\\"}]},\\\"maintainability_api_ergonomics\\\":{\\\"tiers\\\":[[\\\"P1\\\"],[\\\"P2\\\",\\\"P3\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1 exposes `comments=comments` as its own named argument in the `feed.add_item()` call, directly matching the ticket's ask to \\\\\\\"Add comments argument to feed.add_item()\\\\\\\", while P2 never adds a discrete `comments=` kwarg \u2014 it's only reachable by reading back through the item_extra_kwargs merge logic above the call.\\\"},{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P3\\\",\\\"delta\\\":\\\"P1 pairs its explicit `comments=comments` kwarg with a pop-based precedence guard so it's safe alongside item_extra_kwargs, while P3's equally explicit `comments=self._get_dynamic_attr('item_comments', item)` kwarg is unsafe to combine with an item_extra_kwargs() that also sets 'comments', turning a simple-looking API into a maintenance trap.\\\"}]}}}\",\"stop_reason\":\"end_turn\",\"session_id\":\"47ca03ad-fca5-4855-bc39-e76d91196eaf\",\"total_cost_usd\":0.662922,\"usage\":{\"input_tokens\":11361,\"cache_creation_input_tokens\":59328,\"cache_read_input_tokens\":79770,\"output_tokens\":16596,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":59328,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":1562,\"cache_read_input_tokens\":56348,\"cache_creation_input_tokens\":26402,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":26402},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":11361,\"outputTokens\":16596,\"cacheReadInputTokens\":79770,\"cacheCreationInputTokens\":59328,\"webSearchRequests\":0,\"costUSD\":0.662922,\"contextWindow\":1000000,\"maxOutputTokens\":64000}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"5058de0d-364d-47dc-aa21-663c56006920\"}\n",
+    "stderr": "Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer.\n",
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 11361,
+        "outputTokens": 16596,
+        "cacheReadInputTokens": 79770,
+        "cacheCreationInputTokens": 59328,
+        "webSearchRequests": 0,
+        "costUSD": 0.662922,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000
+      }
+    }
+  }
+}

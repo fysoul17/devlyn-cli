@@ -90,26 +90,69 @@ Mission-bound (#7): Mission 1 ceiling gate; tranche 2 is the decision run.
 - **L3**: P3 falsified (decoded totals still wrong) → revert defect-3 edit,
   keep the mislabel documented as reporting-only.
 
-## Phase 2 — tranche-2 rows (gated on phase 1 PASS)
+## Phase 2 — tranche-2 rows (gated on phase 1 PASS + R0 GO)
 
-Frozen shape (rows themselves selected + hash-frozen only after phase 1):
+Frozen corpus (hashes in `manifest.json` `tranche2`; dataset-order proof in
+`corpus/tranche2-dataset-order.json`):
 
-- Corpus: tranche-1's three rows stay (regression anchors; A-arm re-runs on
-  the 0066 skill surface) + new SW rows continuing the 0064 selection walk
-  (next eligible rows after 51-52 in the frozen SWE-bench order; same
-  eligibility rules), sized so total new arm-wall stays inside one
-  overnight window. Real-project row remains USER-GATED and is NOT part of
-  this pre-registration.
+- **Corpus = three fresh holdout rows ONLY**: SW3-django-13315 (row 53),
+  SW4-django-13321 (row 54), SW5-django-13401 (row 55) — the
+  mechanically-next django instances of SWE-bench Lite after tranche-1's
+  rows 51-52 (frozen-walk continuation; replacement order 13447/13448/
+  13551). Oracle smoke 3/3 gold resolved. **Tranche-1 regression re-runs
+  DROPPED (R0 SHOULD-FIX 1, subtractive)**: re-running SW1/SW2/FS1 A-arm
+  here would double-count pilot rows in the phase-2 aggregate; the 0066
+  skill-surface regression is already covered by iter-0066's own SW2
+  re-run. Real-project row remains USER-GATED, not in this pre-registration.
 - Arms/N/loss conditions/judge ordering: identical to the 0064
   pre-registration (objective-first, LC1-LC4, bare/copycat best-of-N,
-  blind packets) — tranche 2 changes the instrument ONLY via phase 1's
-  three fixes.
-- Judge panel: sonnet + codex as certified 2026-07-07 (identities
-  unchanged since certification; the judge-quality certification measures
-  defect recall, which the ranking-prompt schema fix does not touch —
-  recertification triggers on model/version change only, per NORTH-STAR).
-- Pair protocol: R0 on the frozen phase-2 corpus + this file BEFORE any
-  arm run; R1 on raw results.
+  blind packets). Instrument changes vs 0064 = phase-1's three judge fixes
+  + R0's harness fixes below.
+- Judge panel: sonnet + codex, certified 2026-07-07 (identities unchanged;
+  the ranking-prompt schema fix does not touch defect-recall certification
+  — recert triggers on model/version change only, per NORTH-STAR).
+- **Single-repo caveat (R0 POS-1, honest label)**: all three rows are
+  django. The phase-2 verdict is a django-shaped ceiling probe, not a
+  cross-repo claim; cross-repo breadth is a later tranche.
+
+### R0 adopted edits (2026-07-07, before any arm run)
+
+R0 verdict **NO-GO** (archive `/tmp/codex-iter0067/r0-response.log`) — it
+caught that the harness could not run tranche-2 rows at all. All fixes
+landed before launch:
+
+- **MF1 (harness allowlist hardcoded to tranche-1)**: `run-ceiling-arm.sh`
+  + `ceiling-eval.sh` rejected SW3/SW4/SW5. Root-cause fix: task allowlist
+  is now manifest-derived (union of `tasks` + every `trancheN.tasks`),
+  so it never goes stale — a new tranche needs no script edit.
+- **MF2 (oracle gate hardcoded to `gold.iter0064` + `>=2`)**:
+  `ceiling-gate.py oracle_smoke_ok()` now takes the gated tasks and
+  requires per-instance resolved evidence from ANY
+  `gold.*-oracle-smoke.json` (tranche-1 → iter0064 report, tranche-2 →
+  iter0067 report). No run-id literal remains.
+- **MF3 (row-order claim unreproducible)**:
+  `corpus/tranche2-dataset-order.json` commits the live dataset slice
+  (rows 50-57) proving 53-55 = 13315/13321/13401.
+- **SF1 adopted**: tranche-1 regression rows dropped (above).
+- **SF2 (judge example bias)**: the schema example repeated P2>P1>P3 on
+  every axis. Neutralized — varied orders + a tie per the shape, explicit
+  "illustrative shape only, do not copy this ordering." P1 re-validated on
+  the neutral example (falsifier: material tie/win-rate shift = old example
+  was biasing).
+- **Logged, not blocking (R0 SHOULD-FIX)**: hidden fields are not staged
+  into solver worktrees (same guarantee tranche-1 used; OS-level isolation
+  is a separate hardening iter).
+
+Regression guard: `--phase verdict` on iter0064-t1 (copied to scratch)
+still reproduces FAIL-pilot, original artifact byte-unchanged; the only
+verdict-json diffs are the run-id string + task iteration order.
+
+### Pair protocol
+
+- R0 on the frozen phase-2 corpus + this file: DONE (NO-GO → all MUST-FIX
+  adopted). A bounded R1 confirms the fix diff (NEW evidence = the fixes)
+  before arm launch.
+- R1 on raw arm results after the tranche completes.
 
 ## Pair rounds
 
@@ -143,6 +186,20 @@ Frozen shape (rows themselves selected + hash-frozen only after phase 1):
   objectively-resolving devlyn diffs) now with cross-judge agreement —
   strengthens the pre-registered objective-first verdict ordering;
   tranche-1's shipped FAIL-pilot verdict is not re-opened.
+- **SF2 falsifier FIRED (2026-07-07, `iter0067-p1b-neutral` vs
+  `iter0067-p1-judgefix`, same tranche-1 patches)**: the P2>P1>P3-on-every-
+  axis example WAS biasing judges. Original example → A/C/tie **0/24/0**;
+  neutral example → **5/19/0** — SW2 flipped 0/8 → 4/4 (sonnet+codex each
+  recovered A-wins the biased example suppressed); SW1 0/8 → 1/7; FS1
+  unchanged 0/8. Interpretation: the neutral prompt is the trustworthy
+  instrument (adopted for tranche 2). The subjective-axis copycat lean
+  survives directionally (19/24 C_win) so the **objective-first ordering
+  safeguard is still load-bearing** — and the fact that a worked-example
+  order could move 5 cells is itself the strongest argument for never
+  letting subjective axes override objective acceptance checks. Tranche-1's
+  finding #3 magnitude was prompt-inflated; its DIRECTION (subjective
+  judges lean plausible-but-wrong) holds. Tranche-1's shipped verdict is
+  not re-opened (different prompt, immutable artifact).
 - **Phase-2 corpus staged + frozen (2026-07-07)**: SW3-django-13315 /
   SW4-django-13321 / SW5-django-13401 (rows 53-55, the frozen walk's next
   django instances — verified against the live dataset order);

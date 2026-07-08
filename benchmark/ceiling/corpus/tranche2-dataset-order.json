@@ -1,0 +1,49 @@
+{
+  "dataset": "princeton-nlp/SWE-bench_Lite",
+  "split": "test",
+  "config": "default",
+  "fetched_via": "datasets-server.huggingface.co/rows offset=49 length=8",
+  "note": "Frozen-walk proof for the ceiling corpus. Tranche-1 took rows 51-52 (one-indexed): django-13230, django-13265. Tranche-2 continues at rows 53-55: django-13315, django-13321, django-13401 (SW3/SW4/SW5). Zero-indexed row_idx = one-indexed - 1.",
+  "rows": [
+    {
+      "row_idx_zero_indexed": 49,
+      "row_one_indexed": 50,
+      "instance_id": "django__django-13220"
+    },
+    {
+      "row_idx_zero_indexed": 50,
+      "row_one_indexed": 51,
+      "instance_id": "django__django-13230"
+    },
+    {
+      "row_idx_zero_indexed": 51,
+      "row_one_indexed": 52,
+      "instance_id": "django__django-13265"
+    },
+    {
+      "row_idx_zero_indexed": 52,
+      "row_one_indexed": 53,
+      "instance_id": "django__django-13315"
+    },
+    {
+      "row_idx_zero_indexed": 53,
+      "row_one_indexed": 54,
+      "instance_id": "django__django-13321"
+    },
+    {
+      "row_idx_zero_indexed": 54,
+      "row_one_indexed": 55,
+      "instance_id": "django__django-13401"
+    },
+    {
+      "row_idx_zero_indexed": 55,
+      "row_one_indexed": 56,
+      "instance_id": "django__django-13447"
+    },
+    {
+      "row_idx_zero_indexed": 56,
+      "row_one_indexed": 57,
+      "instance_id": "django__django-13448"
+    }
+  ]
+}

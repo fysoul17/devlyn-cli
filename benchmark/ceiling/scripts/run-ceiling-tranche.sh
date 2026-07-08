@@ -43,11 +43,12 @@ else
   TASKS=()
   while IFS= read -r task_line || [ -n "$task_line" ]; do
     TASKS+=("$task_line")
-  done < <(python3 - "$CEILING_ROOT/corpus/manifest.json" <<'PY'
-import json, sys
-from pathlib import Path
-manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-for task in manifest["tasks"]:
+  done < <(python3 - "$SCRIPT_DIR/ceiling-gate.py" <<'PY'
+import runpy
+import sys
+
+gate = runpy.run_path(sys.argv[1])
+for task in gate["task_ids"](None):
     print(task)
 PY
 )

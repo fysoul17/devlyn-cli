@@ -35,11 +35,28 @@ def write_json(path: Path, data: Any) -> None:
     path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def manifest_task_records(manifest: dict[str, Any] | None = None) -> dict[str, dict[str, Any]]:
+    if manifest is None:
+        manifest = read_json(CORPUS_ROOT / "manifest.json")
+    tasks = dict(manifest.get("tasks") or {})
+    for key, value in manifest.items():
+        if re.match(r"^tranche[0-9]+$", key):
+            tasks.update((value or {}).get("tasks") or {})
+    return tasks
+
+
 def task_ids(selected: str | None) -> list[str]:
     if selected:
         return [part for part in selected.split(",") if part]
-    manifest = read_json(CORPUS_ROOT / "manifest.json")
-    return list(manifest["tasks"].keys())
+    return list(manifest_task_records().keys())
+
+
+def recorded_selection_task_ids(run_id: str) -> list[str] | None:
+    path = RESULTS_ROOT / run_id / "ceiling-selection.json"
+    if not path.exists():
+        return None
+    tasks = (read_json(path).get("tasks") or {})
+    return list(tasks.keys()) if tasks else None
 
 
 def attempt_dir(run_id: str, task: str, arm_attempt: str) -> Path:
@@ -265,12 +282,36 @@ def resolved(run_id: str, task: str, arm_attempt: str | None) -> bool:
     return bool(obj and obj.get("resolved"))
 
 
-def oracle_smoke_ok() -> bool:
-    path = RESULTS_ROOT / "oracle-smoke" / "gold.iter0064-oracle-smoke.json"
-    if not path.exists():
+def string_set(value: Any) -> set[str]:
+    if not isinstance(value, list):
+        return set()
+    return {item for item in value if isinstance(item, str)}
+
+
+def oracle_report_resolved_instance(report: dict[str, Any], instance_id: str) -> bool:
+    if instance_id not in string_set(report.get("resolved_ids")):
         return False
-    data = read_json(path)
-    return int(data.get("resolved_instances", 0)) >= 2 and not data.get("error_instances")
+    if instance_id in string_set(report.get("error_ids")):
+        return False
+    instance = report.get(instance_id)
+    return not (isinstance(instance, dict) and instance.get("error"))
+
+
+def oracle_smoke_ok(tasks: list[str]) -> bool:
+    reports = [read_json(path) for path in sorted((RESULTS_ROOT / "oracle-smoke").glob("gold.*-oracle-smoke.json"))]
+    manifest_tasks = manifest_task_records()
+    for task in tasks:
+        record = manifest_tasks.get(task)
+        if record is None:
+            return False
+        instance_id = record.get("instance_id")
+        if not instance_id:
+            if not record.get("oracle_smoke"):
+                return False
+            continue
+        if not any(oracle_report_resolved_instance(report, instance_id) for report in reports):
+            return False
+    return True
 
 
 def ranked_axes_counts(run_id: str, valid_rows: dict[str, Any], certified_judges: list[str]) -> dict[str, Any]:
@@ -309,7 +350,7 @@ def verdict(run_id: str, tasks: list[str]) -> dict[str, Any]:
     invalid_rows = {task: row for task, row in sel["tasks"].items() if row.get("row_status") != "VALID"}
     blocking_invalid = {task: row for task, row in invalid_rows.items() if row.get("row_status") != "INVALID-infra"}
     lc4_reasons: list[str] = []
-    if not oracle_smoke_ok():
+    if not oracle_smoke_ok(tasks):
         lc4_reasons.append("oracle-smoke-failed-or-missing")
     if not certified_judges:
         lc4_reasons.append("zero-certified-judges")
@@ -447,7 +488,9 @@ def main() -> int:
     args = parser.parse_args()
     if args.select_only:
         args.phase = "select"
-    tasks = task_ids(args.tasks)
+    tasks = recorded_selection_task_ids(args.run_id) if args.phase == "verdict" and not args.tasks else None
+    if tasks is None:
+        tasks = task_ids(args.tasks)
     run_root = RESULTS_ROOT / args.run_id
     run_root.mkdir(parents=True, exist_ok=True)
 
