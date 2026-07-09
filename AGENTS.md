@@ -85,13 +85,12 @@ No silent fallbacks.
 
 ## Evidence Over Claim
 
-Every finding — and every completion claim — cites concrete evidence:
+Every finding cites concrete evidence:
 
 - Code: `file:line` you opened.
 - Missing implementation: state exactly what you searched and found absent.
 - Doc: cite the stale text + section/line.
 - Browser: route/URL + screenshot or observed evidence.
-- Completion claim ("implemented", "done", "완료"): the behavior you observed — route rendered, command run, output seen. A green typecheck/lint/build proves the code compiles, not that the feature works.
 - Benchmark: run id, fixture id, metric, raw result path.
 - Negative existence ("X lacks Y", "X cannot Z", "X is Y-specific"): highest-risk claim shape — fails to any single counter-example. Active search required at write time, not absence-of-memory. Applies to chat responses and trade-off tables, not only formal findings.
 - Position reversal in an oracle-less debate (design, strategy, trade-off): a reversal is itself a claim. Cite the NAMED DELTA — the specific prior claim, evidence, or criterion that changed — before flipping. Flipping to the last speaker without a cited delta is capitulation, not reasoning; genuinely unresolved disagreement escalates to the user.

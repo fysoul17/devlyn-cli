@@ -142,20 +142,18 @@ Any orchestrating engine (Claude, Codex, or future) continuing harness / loop-en
 ## Evidence over claim
 <!-- runtime-principles:section=evidence:begin -->
 
-Every finding — and every completion claim — cites concrete evidence. Vague claims are speculation; exclude them.
+Every finding cites concrete evidence. Vague claims are speculation; exclude them.
 
 - **Code findings**: `file:line` you have opened.
 - **Missing findings**: explicit "searched X and found no implementation" statement.
 - **Doc findings**: quote of the stale text + section/line reference.
 - **Browser findings**: screenshot reference + URL/route.
 
-**A completion claim is a claim.** "Implemented", "done", "완료" must cite the behavior you observed — the route rendered, the command run, the output seen. A green typecheck, lint, or build proves the code compiles, not that the feature works: build-green is not feature-visible.
-
 **Negative existence claims** ("X lacks Y", "X cannot Z", "X is Y-specific") are the highest-risk shape — they feel like recall but fail to any single counter-example. They require active search at write time, not absence-of-memory. This rule applies to conversational answers and comparison-table cells, not only `/devlyn:resolve` findings — every cell of a trade-off table is a falsifiable claim.
 
 **A position reversal is itself a claim.** In an oracle-less debate — design, strategy, trade-off, any decision with no spec or verifier to check against — changing your mind after a critique requires a NAMED DELTA: cite the specific prior claim, evidence, or criterion that changed, not a post-hoc rationale invented to justify a flip you were already going to make. Before reversing or choosing between contested positions, state each side's strongest form and the decisive criterion; the chosen outcome may adopt one side wholesale — synthesis means the best decision, not a forced blend. Flipping to whoever spoke last without a cited delta is capitulation, not reasoning; genuinely unresolved disagreement is escalated to the user, never closed by deferring to the last speaker. When you commission an adversarial review, require the critic to return the strongest counter, the strongest form of your own position, AND a synthesis — a refute-only mandate produces debate, not better decisions.
 
-A finding or claim without one of these forms is excluded. Vague findings produce vague fixes.
+A finding without one of these forms is excluded. Vague findings produce vague fixes.
 <!-- runtime-principles:section=evidence:end -->
 
 ## Codex invocation
