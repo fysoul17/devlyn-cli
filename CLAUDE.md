@@ -28,7 +28,7 @@ The runtime sub-agent contract below (Subtractive-first / Goal-locked / No-worka
 
 ## Quick Start
 
-Two skills cover the full cycle. `/devlyn:ideate` is OPTIONAL; `/devlyn:resolve` is REQUIRED; `/devlyn:design-ui` is also REQUIRED as the creative UI exploration surface. Engine selection follows the role map below.
+Engine selection follows the role map below.
 
 1. `/devlyn:ideate` (optional) — unstructured idea → `docs/specs/<id>/spec.md` + `spec.expected.json`. Modes: default Q&A, `--quick` (autonomous-pipeline-safe), `--from-spec <path>`, `--project`.
 2. `/devlyn:resolve` — hands-free pipeline for any coding task. Free-form goal, `--spec <path>`, or `--verify-only <diff> --spec <path>`. Phases: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (fresh subagent, findings-only).
@@ -60,7 +60,7 @@ The user does not invoke skills manually; the orchestrating model does. Small ta
 
 **Intent queue (unattended drain)**: the user stacks intents in `docs/specs/queue.md` (ordered checklist; `/devlyn:queue` is the front-end — no args shows status, `add <intent>` appends, `drain` starts the serial drain). Drain strictly serially — per item: spec it, run the outer loop, mark `[x]` done or `[F]` blocked with reason, continue; a blocked item never halts the queue. The queue entry is the user's go-ahead, so assume-and-log replaces the interactive checkpoint — but unattended assumptions may only take scope-narrowing, reversible, non-user-visible defaults. Material ambiguity (user-visible behavior, data/state semantics, new files/scripts/flags, implementation surface) → mark `[F] needs-review` and move on. End the drain with a per-item verdict + assumptions report.
 
-### Subtractive-first editing — perfection = nothing left to remove
+## Subtractive-first editing — perfection = nothing left to remove
 <!-- runtime-principles:section=subtractive-first:begin -->
 
 > **Operating definition of "done" in this repo** (Saint-Exupéry discipline rule above): a change is finished when no further line, branch, flag, or doc paragraph can be removed without breaking a learned failure mode. Not before.
@@ -96,7 +96,7 @@ If you skip question 1 or 2, you are violating this rule even if the resulting c
 **Never grow surface area silently.** Every accretion-shaped change must be visible: in the commit message, in the iteration file, or in a flagged review. Silent growth is the failure mode this rule exists to prevent.
 <!-- runtime-principles:section=subtractive-first:end -->
 
-### Goal-locked execution — stay on the North Star, do not wander
+## Goal-locked execution — stay on the North Star, do not wander
 <!-- runtime-principles:section=goal-locked:begin -->
 
 Even with a North Star defined, work drifts off-course ("산으로 간다" / "삼천포로 빠진다" — going up the wrong mountain instead of forward). The harness must **actively block** this drift at run time, not merely discourage it. The default is ruler-straight execution toward the user's stated goal; any deviation requires explicit justification, not the inverse.
@@ -139,21 +139,23 @@ Any orchestrating engine (Claude, Codex, or future) continuing harness / loop-en
 - **Fallbacks are the exception.** Only use them when it's a widely accepted best practice (CSS fallback fonts, CDN failover, image placeholders). Otherwise handle the error explicitly.
 - **Pattern**: `try { doThing() } catch (error) { showErrorUI(error) }` — NOT `try { doThing() } catch { return fallbackValue }`.
 
-### Evidence over claim
+## Evidence over claim
 <!-- runtime-principles:section=evidence:begin -->
 
-Every finding cites concrete evidence. Vague claims are speculation; exclude them.
+Every finding — and every completion claim — cites concrete evidence. Vague claims are speculation; exclude them.
 
 - **Code findings**: `file:line` you have opened.
 - **Missing findings**: explicit "searched X and found no implementation" statement.
 - **Doc findings**: quote of the stale text + section/line reference.
 - **Browser findings**: screenshot reference + URL/route.
 
+**A completion claim is a claim.** "Implemented", "done", "완료" must cite the behavior you observed — the route rendered, the command run, the output seen. A green typecheck, lint, or build proves the code compiles, not that the feature works: build-green is not feature-visible.
+
 **Negative existence claims** ("X lacks Y", "X cannot Z", "X is Y-specific") are the highest-risk shape — they feel like recall but fail to any single counter-example. They require active search at write time, not absence-of-memory. This rule applies to conversational answers and comparison-table cells, not only `/devlyn:resolve` findings — every cell of a trade-off table is a falsifiable claim.
 
 **A position reversal is itself a claim.** In an oracle-less debate — design, strategy, trade-off, any decision with no spec or verifier to check against — changing your mind after a critique requires a NAMED DELTA: cite the specific prior claim, evidence, or criterion that changed, not a post-hoc rationale invented to justify a flip you were already going to make. Before reversing or choosing between contested positions, state each side's strongest form and the decisive criterion; the chosen outcome may adopt one side wholesale — synthesis means the best decision, not a forced blend. Flipping to whoever spoke last without a cited delta is capitulation, not reasoning; genuinely unresolved disagreement is escalated to the user, never closed by deferring to the last speaker. When you commission an adversarial review, require the critic to return the strongest counter, the strongest form of your own position, AND a synthesis — a refute-only mandate produces debate, not better decisions.
 
-A finding without one of these forms is excluded. Vague findings produce vague fixes.
+A finding or claim without one of these forms is excluded. Vague findings produce vague fixes.
 <!-- runtime-principles:section=evidence:end -->
 
 ## Codex invocation
