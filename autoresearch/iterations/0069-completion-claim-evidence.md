@@ -60,11 +60,40 @@ Doc-token gauge (measured three times independently — author, Codex, Grok, all
 
 Meanwhile `config/skills/devlyn:resolve/references/phases/build-gate.md` gate 5 **already** forces dev-server + browser validation when the diff touches `*.tsx`/`*.jsx`/`page.*`/`*.css` — exactly the files `1974ffba` edited. **The gate that would have caught the failure already exists and is unreachable from the surface where the failure happens.**
 
-## THE decision this iter surfaces (escalated to the user — NOT decided here)
+## THE decision this iter surfaced — RESOLVED by the user 2026-07-09
 
 > **Must code/UI edits made in plain conversation route through `/devlyn:resolve`?**
 
-This is the same decision as the still-open `or delegate to that engine` branch (`CLAUDE.md:50`, `AGENTS.md`) — an ungated implementation path that conflicts with the standing user directive that implementation goes to Codex CLI. Deciding the **surface** must precede building any **mechanism**. Both reviewers converged on this ordering.
+**Answer: NO. Do not force it.** User, verbatim: *"평문으로 대화하다가 아이디에이션, 설계를 하다가 구현을 해야하는 순간에는 알아서 할수도 있지. 왜냐하면 이게 다 루프 엔지니어링의 사전 준비단계니까."* Plain conversation is the ideation / design / loop-engineering-prep surface; when implementation becomes necessary mid-flow the orchestrator may carry it out. No hook, no gate, no new flag. **`or delegate to that engine` (`CLAUDE.md:50`, `AGENTS.md`) STAYS.**
+
+The evidence supports the decision — the author's earlier recommendation to delete that branch was weakly motivated and is withdrawn (named delta below):
+
+- The branch is **irrelevant to the confirmed incident**. Session `1974ffba` had 0 delegations; the orchestrator edited directly.
+- More decisively: **the pin sentence did not exist in that repo at incident time.** `pyx-agent-www/CLAUDE.md` was installed 2026-07-06 10:22; commit `47c4202`, which introduced the sentence, landed 2026-07-06 10:48 — 26 minutes later, and ~11 hours *after* the 2026-07-05 23:41 incident. F1 was not a rule violation. It was an **ungoverned surface**.
+- The only incident the branch touches is the harness-local one in this session (Codex's success-shaped report over a failing lint), which the orchestrator caught by re-running the gate. That is the branch working as intended under verification, not a leak.
+
+## Distribution finding — the fix does not reach the failure (NOT new; a known class the author had forgotten)
+
+**Correction (user caught this):** the author first wrote this up as "new, missed by all three reviewers." That is false, and it is a negative-existence claim made without a search — exactly the shape `## Evidence over claim` forbids and E3 is about. The installed-contract-drift class is **prior art discussed since early July**:
+
+- memory `contract-drift-propagation-version-cohesion` (2026-06-25): a downstream consumer hard-copied a contract block and drifted; the named fix was a canonical import + a drift-guard test + a "Version-Cohesion Delta" (rendered snippet older than installed tools).
+- memory `cross-model portability patch` (2026-07-03): "`.claude/skills` mirror was stale (v2.6.1 `--goal-file` never installed) — synced"; follow-up logged `.agents` mirror drift.
+- memory `evaluator carve / installer decoupling` (2026-07-03): "stale `evaluator.md` may remain in old downstream … **inert**" — a staleness residual already **accepted without new machinery**.
+- In-repo mechanism already exists: `bin/devlyn.js` `DEPRECATED_DIRS` (line 92) force-removes retired skill dirs from downstream installs (NORTH-STAR.md:83), and `stripManagedBlock` (line 617) scrubs legacy managed blocks from an existing `AGENTS.md`. So downstream staleness is **partially governed already** — just not for the `CLAUDE.md` body.
+
+What IS specific to today: the CLAUDE.md *body* carries no version stamp, so contract-prose vintages drift silently and E3 in particular reaches no product repo yet. The contract is **installed per project**, not read from this repo:
+
+| repo | installed `CLAUDE.md` | date | carries E3? |
+|---|---|---|---|
+| devlyn-cli (source) | 188 lines | HEAD | yes |
+| pyx-www, ai-rag-hub | 186 lines | 2026-07-08 | no |
+| pyx-agent-www, devlyn-os-v1, moonmaker-engine | 180 lines | 2026-07-06 | no |
+
+There is **no version stamp in the installed contract** — copies drift silently, and at least two vintages coexist today. `grep 'build-green is not feature-visible' pyx-agent-www/CLAUDE.md` → 0.
+
+**Consequence**: E3 currently protects nothing outside this repo, and the confirmed incident's repo is two vintages behind. **Do NOT reinstall to propagate E3** — that would spray an unmeasured prose canary into five product repos. Measure first (pre-registration below), then propagate whatever survives.
+
+The real defect on the product surface is therefore **distribution + staleness visibility**, not a missing gate. Recorded, not designed. Do not build a version-stamp mechanism until the user asks.
 
 ## Pre-registration — E3 measure-or-revert
 
