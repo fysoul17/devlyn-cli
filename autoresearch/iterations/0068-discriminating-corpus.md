@@ -147,11 +147,26 @@ against a cloned+patched repo (FS1 precedent), so no eval-engine change —
 only the oracle must be self-contained and language-present in the repo
 (node, already there).
 
-### Arms / judge / LC — unchanged from 0067
+### Arms / judge / LC — unchanged from 0067 except benchmark codex seat = terra
 
 3-arm (A devlyn = sonnet orch + codex executor + pair-verify; B bare codex;
 C copycat codex), N = round(wall_A/wall_B) capped [1,3], neutral blind judge
 (sonnet+codex), LC1-LC4, objective-first. Test arms codex/sonnet only.
+
+**Benchmark codex model = `gpt-5.6-terra` on ALL arms (seat correction,
+2026-07-10, user directive).** The measured arms must NOT use the user's
+global `~/.codex/config.toml` default (`gpt-5.6-sol`) — sol is reserved for
+the three-way design/review team (Fable + codex-sol + Grok), never the
+measured arms (avoids the expensive reviewer model leaking into the seat
+under test, and keeps A/B/C model-fair). Wired without touching global
+config: `run-ceiling-arm.sh` exports a benchmark-owned `CODEX_HOME`
+(`external/codex-home-terra/`, gitignored, config.toml model=terra + auth
+symlink) so the A-arm's nested resolve→codex IMPLEMENT loads terra, and pins
+`-m gpt-5.6-terra` directly on the B/C `codex exec` (which `--ignore-user-config`).
+Cohort identity now records requested-alias `gpt-5.6-terra` per bare attempt.
+Follow-up: the neutral blind judge's codex seat must be pinned to terra too
+before the A/C tranche runs (separate invocation, not through the arm
+script) — it does not run in the admission gate.
 
 ## Predictions (frozen before implementation)
 
@@ -352,6 +367,21 @@ rows + labels. (The gate result is itself the pilot's first finding.)
 
 ## Execution record
 
+- **2026-07-10 evening — gate cohorts c/d discarded; bare seat corrected to
+  terra; relaunched as `iter0068-gate-20260710e`.** (a) `...710c` killed by
+  an unexpected machine reboot at 21:23 mid-F7 (single-cohort integrity →
+  discard). (b) On relaunch as `...710d`, the user caught that the bare arm
+  was NOT the intended model: `run-ceiling-arm.sh` B/C used
+  `--ignore-user-config` with no `-m`, so bare ran codex's built-in default,
+  and the A-arm executor inherited the global config default `gpt-5.6-sol` —
+  neither is the intended benchmark seat. User directive: **benchmark = sonnet
+  + `gpt-5.6-terra` only; sol is for the three-way team, not the measured
+  arms.** `...710d` discarded (mis-seated cohort). Fix (verified `bash -n` +
+  `lint-skills` pass): benchmark-owned `CODEX_HOME` (terra config + auth
+  symlink, gitignored) + explicit `-m gpt-5.6-terra` on B/C; global
+  `~/.codex/config.toml` (sol) untouched. terra validity + CODEX_HOME auth
+  smoke-confirmed (`model: gpt-5.6-terra`, no auth error). Durable log/pid
+  moved to `~/iter0068-gate-logs/` (survives `/tmp` reboot wipe).
 - **2026-07-10 — three-way amendment + D1 SHIPPED (Fable orchestrating,
   Codex executing, Grok third reviewer — user directive).** (a)
   Pre-registration amended BEFORE any gate run (R0-grok + R1-codex, Pair

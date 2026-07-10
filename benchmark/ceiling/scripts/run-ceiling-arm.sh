@@ -78,6 +78,20 @@ RESULT_DIR="$CEILING_ROOT/results/$RUN_ID/$TASK/${ARM}${ATTEMPT}"
 EXTERNAL_ROOT="$CEILING_ROOT/external"
 mkdir -p "$RESULT_DIR" "$EXTERNAL_ROOT"
 
+# Benchmark codex seat = gpt-5.6-terra (all arms), never the user's global
+# sol default. sol is reserved for the three-way design/review team, not the
+# measured arms (user directive 2026-07-10). Scope terra to this subprocess
+# via a benchmark-owned CODEX_HOME so ~/.codex/config.toml (sol) is untouched:
+#  - B/C arms pin `-m gpt-5.6-terra` directly (they --ignore-user-config, so
+#    config.toml is not read; auth still resolves via CODEX_HOME).
+#  - A-arm's nested resolve->codex IMPLEMENT loads $CODEX_HOME/config.toml
+#    (workspace-write, not isolated) => terra.
+CODEX_HOME_TERRA="$EXTERNAL_ROOT/codex-home-terra"
+mkdir -p "$CODEX_HOME_TERRA"
+printf 'model = "gpt-5.6-terra"\nmodel_reasoning_effort = "xhigh"\n' > "$CODEX_HOME_TERRA/config.toml"
+ln -sf "$HOME/.codex/auth.json" "$CODEX_HOME_TERRA/auth.json"
+export CODEX_HOME="$CODEX_HOME_TERRA"
+
 json_quote_task_prompt() {
   python3 - "$TASK_TEXT_FILE" <<'PY'
 import json
@@ -273,6 +287,7 @@ run_with_timeout() {
           --disable hooks \
           -C "$worktree" \
           -s workspace-write \
+          -m gpt-5.6-terra \
           -c model_reasoning_effort=xhigh \
           "$prompt"
       ) > "$transcript" 2>&1 &
