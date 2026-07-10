@@ -11,6 +11,13 @@ codex_r05_round3_iter0033c: 2026-05-03 (230s — verdict "Partially agree. PROJE
 
 # iter-0033e — ideate PROJECT coherence audit (QUEUED-STUB)
 
+> **Superseded 2026-07-10**: the deferred measurement-architecture question
+> is resolved by the **Packet Utility Differential** design in
+> `0070-loop-architecture-STUB.md` § "Non-coding exam corpus fold" —
+> calibration-first, exactly per this stub's own Codex R0.5 warning
+> ("downstream-coupled resolve scoring is too blunt as first oracle").
+> This file stays as provenance.
+
 ## Why this stub exists
 
 User direction (2026-05-03): "이거야말로 가장 중요한 스탭이고 이거야말로 여러 LLM이 유저와 면밀하게 검토해서 가장 정확한 방향의 북극성을 만드는 역할을 할텐데 (특히 프로덕트 전체 그림을 보고 일관되게 그림을 그리는 용도)."
