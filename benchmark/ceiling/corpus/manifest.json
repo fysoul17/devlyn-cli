@@ -24,7 +24,8 @@
    "task_sha256": "0194d750427cec5c6a6f6c3e0196e7ba20f0238162648ca1db6bbe4ce2b5a309",
    "hidden_oracle_sha256": "f060b480a5839b87a59cf056d5c42ac057d4359bb1666f1f9a3a095f6886bc08",
    "hidden_reference_sha256": "69a28653529450139cee28a28b62ef995c29f3e0218e9af75a401b2528abc979",
-   "oracle_smoke": "base 14/14 FAIL -> reference 14/14 PASS; upstream suite 40 passed / 41 skipped (2026-07-07, py3.11 venv)"
+   "oracle_smoke": "base 14/14 FAIL -> reference 14/14 PASS; upstream suite 40 passed / 41 skipped (2026-07-07, py3.11 venv)",
+   "base_sha256": "9b04b9e02dd314e1c37b5b1c808aa47a8a1ff1fd9864efddcfc422f5ac7f9fd4"
   }
  },
  "copycat_doc_sha256": "c6daf6d2807aba5f3e91b46e2684d7cce3247c7d44bfc04e8cba12424d6031cf",
@@ -78,7 +79,8 @@
     "hidden_priority_blocked_sha256": "bbeb88f3e690a4f3d829260ccbb977811b23a16e932eb70d717f36156023bc00",
     "hidden_error_order_sha256": "fc0123bdaeefb6cac57b3ec96580fddf13d0be65b5e69abf23250262650646bb",
     "hidden_reference_sha256": "ed6adb912c11415dbddfc94c414b7d37220a374c17b981ddea3c38150e2be312",
-    "oracle_smoke": "reference resolved=true twice (iter0068-d2-f21-gold-smoke-1/A1 and iter0068-d2-f21-gold-smoke-2/A1); base/no-op resolved=false with oracle_exit=1 (iter0068-d2-f21-noop-smoke/B1); port validation only, not admission evidence"
+    "oracle_smoke": "reference resolved=true twice (iter0068-d2-f21-gold-smoke-1/A1 and iter0068-d2-f21-gold-smoke-2/A1); base/no-op resolved=false with oracle_exit=1 (iter0068-d2-f21-noop-smoke/B1); port validation only, not admission evidence",
+    "base_sha256": "fb80278969b62d1665e3c1608ca633be1f84ee0f9659a9b78b0c9c5b051c2b9a"
    },
    "DR-byte-preservation-f7-out-of-scope-trap": {
     "source_fixture": "F7-out-of-scope-trap",
@@ -94,7 +96,8 @@
     "hidden_preservation_sha256": "1172459fff302a7b7f5180a24bceb94b264807c8ee6fd42808a1cc91a56b4688",
     "hidden_version_behavior_sha256": "504fee0aeefc94a2bed511957fa87e454f9cb9af9b18e27a4efd03634fd1ad54",
     "hidden_reference_sha256": "0fff3edd82baa82bbb2b29706b363ed74975285ae951f534634cac1304ce5564",
-    "oracle_smoke": "reference resolved=true twice (iter0068-d2-f7-fable-gold1/A1, iter0068-d2-f7-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f7-fable-noop/B1); adversarial guards (bait mutation / out-of-scope file / forbidden pattern) all fail per codex isolated smoke; port validation only, not admission evidence"
+    "oracle_smoke": "reference resolved=true twice (iter0068-d2-f7-fable-gold1/A1, iter0068-d2-f7-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f7-fable-noop/B1); adversarial guards (bait mutation / out-of-scope file / forbidden pattern) all fail per codex isolated smoke; port validation only, not admission evidence",
+    "base_sha256": "cd6dec842584a013857dc547b8c79a3f67d1bb4051fead53c960f2ee991013b2"
    },
    "DR-shape-compound-rules-f25-cart": {
     "source_fixture": "F25-cli-cart-promotion-rules",
@@ -111,7 +114,8 @@
     "oracle_smoke": "reference resolved=true twice (iter0068-d2-f25-fable-gold1/A1, iter0068-d2-f25-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f25-fable-noop/B1); port validation only, not admission evidence",
     "hidden_catalog_source_sha256": "41119b28fc5a2c4a3fe20714e4b7204fe7bcc4730eefc5c815be5a1d7168604a",
     "hidden_exact_success_sha256": "a7ca7503422e4d213982b10daeb68d899d6a92a1f5d80052fd3be976782ece2b",
-    "hidden_stock_error_sha256": "fea01712c164089cc7941ed5514ad4febe922e4df674313ede46f4e205d9d11e"
+    "hidden_stock_error_sha256": "fea01712c164089cc7941ed5514ad4febe922e4df674313ede46f4e205d9d11e",
+    "base_sha256": "045d390d5486e0d1cdc471315a9e2be98f10d4ff8fdbb9d50401c9ec69d52126"
    },
    "DR-ledger-rounding-consistency-f26-payout": {
     "source_fixture": "F26-cli-payout-ledger-rules",
@@ -128,7 +132,8 @@
     "oracle_smoke": "reference resolved=true twice (iter0068-d2-f26-fable-gold1/A1, iter0068-d2-f26-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f26-fable-noop/B1); port validation only, not admission evidence",
     "hidden_conflicting_duplicate_sha256": "3983c1642cfa14a0bf9f83bcea618cf49f990b6e58d2d413dd08d4bdd5bce5d7",
     "hidden_exact_payout_sha256": "f689a91bb8dbaaf3fd39648c2f37a5e2cd28ab2dc3b5f4bb784f57308329bdd1",
-    "hidden_rules_source_sha256": "2b626c15a5df42cb6071471decaf68b53cf1527ce9ab19aa9cdfc36f40e74d34"
+    "hidden_rules_source_sha256": "2b626c15a5df42cb6071471decaf68b53cf1527ce9ab19aa9cdfc36f40e74d34",
+    "base_sha256": "c565b90190d96956b3fa95034849eb00febac2c2b1c7c2fec30257a0b1e05300"
    },
    "DR-atomic-state-f11-batch-import": {
     "source_fixture": "F11-batch-import-all-or-nothing",
@@ -146,7 +151,8 @@
     "hidden_failed_unchanged_sha256": "4c0f007cb83a630f1ccd56b40073cef6b5192154f49ae61ff6700e6f4285c8e4",
     "hidden_invalid_body_sha256": "cc38914e4515b83b53043f69574a09ba631caca8f59cb5657c2b6d5f7981fe3a",
     "hidden_invoke_app_sha256": "7727b9a2d939182c5ee0bb702837409c1a81978bf2e3aeb5c0bf41bb920fe643",
-    "hidden_success_sha256": "1d6448c3a3d2f41bf9dec38765a0bc8259f7011c66ce783545c101a6d2e3bd18"
+    "hidden_success_sha256": "1d6448c3a3d2f41bf9dec38765a0bc8259f7011c66ce783545c101a6d2e3bd18",
+    "base_sha256": "0147adf36d6a9beeec1fd95e5dd864143381c38faccf09aef893f4e42398b45c"
    },
    "DR-auth-signature-f12-webhook": {
     "source_fixture": "F12-webhook-raw-body-signature",
@@ -163,7 +169,8 @@
     "oracle_smoke": "reference resolved=true twice (iter0068-d2-f12-fable-gold1/A1, iter0068-d2-f12-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f12-fable-noop/B1); port validation only, not admission evidence",
     "hidden_invoke_app_sha256": "7727b9a2d939182c5ee0bb702837409c1a81978bf2e3aeb5c0bf41bb920fe643",
     "hidden_replay_contract_sha256": "986cf0526815d8f7cfaf6b24daa8089e7ffe4ad2230d064fbc53fcced26986b5",
-    "hidden_signature_contract_sha256": "7ef74a6dd7d3903f1aaa6c4e452863229ecb1562bfe514d2de15c523c37ea970"
+    "hidden_signature_contract_sha256": "7ef74a6dd7d3903f1aaa6c4e452863229ecb1562bfe514d2de15c523c37ea970",
+    "base_sha256": "e499d4eae1104c8cbb55a7ca565d9d9a95b23084d8edbcbf91d1314f331d61d6"
    },
    "DR-allocation-fefo-priority-rollback-f23-fulfillment": {
     "source_fixture": "F23-cli-fulfillment-wave",
@@ -180,7 +187,8 @@
     "oracle_smoke": "reference resolved=true twice (iter0068-d2-f23-fable-gold1/A1, iter0068-d2-f23-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f23-fable-noop/B1); port validation only, not admission evidence",
     "hidden_contract_shapes_sha256": "33592ce207ace363ff2a2e68d9c2c74a0722732393763d05e482756b2c783ddf",
     "hidden_priority_rollback_sha256": "a2fa1c08f0bc269f3f2217a9c19f988075d674001c95344bcfff8f1efea3264c",
-    "hidden_single_warehouse_fefo_sha256": "bb6e917b2d8403652821bb403e1d52fe530098f33bc08780efad9b6cced840b5"
+    "hidden_single_warehouse_fefo_sha256": "bb6e917b2d8403652821bb403e1d52fe530098f33bc08780efad9b6cced840b5",
+    "base_sha256": "fb80278969b62d1665e3c1608ca633be1f84ee0f9659a9b78b0c9c5b051c2b9a"
    }
   }
  }
