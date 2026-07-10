@@ -1,9 +1,11 @@
 # iter-0068 — discriminating ceiling corpus (bare-fails gate + categorical-reliability trap tasks)
 
-status: PRE-REGISTERED 2026-07-08 (R0 GO-WITH-EDITS folded) — design frozen,
-**implementation DEFERRED (user directive: run next session with Fable)**;
-a first slice was started then rolled back unverified (see Execution record
-→ RESUME HERE). Corpus freezes (with the bare-fails gate results) before any
+status: PRE-REGISTERED 2026-07-08 (R0 GO-WITH-EDITS folded); **AMENDED
+2026-07-10 before any gate run** (three-way fold: R0-grok GO-WITH-EDITS +
+R1-codex CONVERGED — see Pair rounds); **implementation IN PROGRESS
+2026-07-10 (Fable orchestrating, Codex executing, Grok third reviewer —
+user directive)**; a first slice was started 2026-07-08 then rolled back
+unverified (see Execution record → RESUME HERE). Corpus freezes (with the bare-fails gate results) before any
 A/C arm runs. Direction chosen by user 2026-07-08 (corpus pivot,
 option A) after the iter-0067 verdict + iter-0068-STUB A-arm decomposition.
 **This is a categorical-trap CALIBRATION pilot on synthetic fixtures, NOT
@@ -50,12 +52,25 @@ A candidate row is ADMITTED to the discriminating tranche only if oracle
 smoke shows BOTH:
 1. **gold reference PASSES** the hidden objective oracle (existing
    oracle-smoke check), AND
-2. **bare single-shot codex FAILS** the oracle on ≥ ⌈2/3⌉ of 3 attempts
-   (NEW: the discrimination gate).
+2. **bare single-shot codex produces exactly 3 VALID attempts and 0/3
+   resolve** (the discrimination gate; amended 2026-07-10, R0-grok +
+   R1-codex folded — estimator alignment: the verdict compares against
+   `best_B`, so admission must mean `best_B` fails, not majority-fail).
 
-A row where bare passes is REJECTED with reason `saturated:bare-resolves`
-(FS1 is the built-in positive control — it must be rejected: bare solved it
-14/14 in tranche-1). A row where gold fails is `oracle-invalid` (existing).
+**Attempt validity is end-to-end**: invocation (bounded invoke exit 0, no
+timeout), workspace materialization, patch apply, AND oracle runtime all
+succeed or legibly fail the task — oracle semantics are pass/fail/INVALID,
+and an oracle-runtime crash (e.g. uv panic) is INVALID, never "bare failed".
+A successful zero-diff attempt IS a valid unresolved attempt (a genuine
+model failure) unless transport evidence says otherwise (iter-0067
+conjunctive-signature precedent). Fewer than 3 valid attempts →
+`INVALID/PENDING` (re-run the invalid slots); a row is NEVER admitted on
+infra evidence.
+
+A row where any valid bare attempt resolves is REJECTED with reason
+`saturated:bare-resolves` (FS1 is the built-in positive control — it must
+be rejected: bare solved it 14/14 hidden tests in tranche-1). A row where
+gold fails is `oracle-invalid` (existing).
 This is the direct corpus-informativeness fix the iter-0067 verdict demanded:
 the corpus can no longer admit a saturated row.
 
@@ -107,11 +122,18 @@ discriminate bare-codex" (a deep result worth reporting).
 `expected.json` (verification_commands + forbidden_patterns) on the shared
 `test-repo/`. The FS-format port packages the fixture's pre-task state as a
 standalone git repo, commits it → `base.json {repo:local-path, sha}`, and
-converts the `expected.json` verifiers into ONE hidden pass/fail oracle
-(`hidden/oracle.sh` or `.js`) that boots the app and asserts the same
-state (F11: failed-batch-leaves-store-unchanged + all-valid-succeeds;
-F7: version-json-works + out-of-scope-file-unchanged-from-base). Gold =
-`hidden/reference.patch`. The visible `task.txt` is the de-leaked spec
+converts the `expected.json` verifiers into ONE hidden oracle
+(`hidden/oracle.sh` or `.js`, semantics pass/fail/INVALID) that boots the
+app and asserts the same state (F11: failed-batch-leaves-store-unchanged +
+all-valid-succeeds; F7: version-json-works + `hello` unchanged +
+planted-same-file-snippet preserved, per MUST-FIX 2). **Oracle fidelity
+contract (2026-07-10 amendment — criterion: pass-set equivalence)**: the
+oracle must encode every load-bearing behavioral verifier, regression
+check, AND class-defining `forbidden_patterns` disqualifier (or a
+documented semantic equivalent) — a thin oracle that gold happens to pass
+is not a port. Gold smoke = `hidden/reference.patch` resolves on N≥2
+identical runs (artifact-backed), AND a base/no-op patch must FAIL the
+oracle. The visible `task.txt` is the de-leaked spec
 (F7's "Only touch bin/cli.js…" scope line stays visible — it IS the trap;
 F11's "all-or-nothing" phrasing is softened so bare is not handed the
 answer). The ceiling FS eval already runs an arbitrary hidden oracle
@@ -128,17 +150,17 @@ C copycat codex), N = round(wall_A/wall_B) capped [1,3], neutral blind judge
 ## Predictions (frozen before implementation)
 
 - **P1 (the gate discriminates)**: run the bare-fails gate over the frozen
-  pool + FS1. FS1 is REJECTED (`saturated:bare-resolves`, bare ≥2/3 pass) —
-  the gate's self-test. At least ONE pool fixture is ADMITTED (gold-pass AND
-  bare-codex fails ≥2/3); the admitted set + every rejection reason is
-  reported. If FS1 is admitted, the gate is mis-calibrated (L1). If ZERO
+  pool + FS1. FS1 is REJECTED (`saturated:bare-resolves`, ≥1 valid bare
+  attempt resolves) — the gate's self-test. At least ONE pool fixture is
+  ADMITTED (gold-pass AND 0/3 valid bare attempts resolve); the admitted
+  set + every rejection reason is reported. If FS1 is admitted, the gate is mis-calibrated (L1). If ZERO
   pool fixtures admit, that is not a gate failure — it is the honest finding
   that categorical-trap fixtures do not discriminate bare-codex (report it,
   do not re-tune the gate to force admissions — that would be fixture
   tuning, R0's decisive-criterion dishonesty).
-- **P2 (earns-its-keep signal — objective lift)**: on admitted rows, devlyn
-  A resolves where bare B fails — A_resolved > best_B_resolved on ≥1 row.
-  This is objective lift tranche-2 could not express. **But per NORTH-STAR
+- **P2 (earns-its-keep signal — objective lift)**: on admitted rows, the
+  exact per-row predicate `A1.resolved ∧ ¬best_B.resolved` holds on ≥1 row
+  (raw counts reported). This is objective lift tranche-2 could not express. **But per NORTH-STAR
   (`:132-140`), A>B is NOT a product moat by itself (R0 MUST-FIX 4)** — it
   is method/harness lift over bare. Recorded raw; NULL (A also fails the
   traps) is a load-bearing finding (the harness does not deliver categorical
@@ -151,11 +173,21 @@ C copycat codex), N = round(wall_A/wall_B) capped [1,3], neutral blind judge
   each admitted row: bare-fail + A-pass + C-pass = method lift; bare-fail +
   A-pass + C-fail = harness-gate moat (the real product). A C-solved row is
   NEVER labeled a devlyn moat.
-- **P4 (wall in context)**: LC3 wall ratio recorded — but now against a
-  bare that FAILS, so "8× the wall of a wrong answer" reframes the
-  efficiency question entirely (bare-best-of-N of a failing arm never
-  resolves, so the economic baseline math changes). This is the reframe
-  that makes the wall question honest.
+  **Pilot-scoped mechanical moat policy (2026-07-10, R0-grok CRITICAL 3 +
+  R1-codex synthesis — criterion: claim-contract locality under the
+  NORTH-STAR evidence hierarchy)**: for THIS pilot, per-row product moat is
+  the mechanical predicate `A_resolved ∧ ¬best_B_resolved ∧
+  ¬best_C_resolved`; overall `PASS-pilot` requires `A_sum > C_sum` AND ≥1
+  product-moat row; `ranked_majority` is recorded in the annex only and
+  cannot create a pilot PASS (stock `moat_shown = objective_moat or
+  ranked_majority`, `ceiling-gate.py:380`, is NOT used as this pilot's
+  verdict). The judge-second tier is not deleted globally — it remains
+  available to a future real-shaped, explicitly quality-bearing
+  pre-registration.
+- **P4 (reporting note, demoted from prediction 2026-07-10)**: LC3 wall
+  ratio recorded RAW only. No efficiency-PASS claim may be made when
+  `best_B` never resolves; "cost of a wrong answer" framing goes in an
+  annex, not the verdict.
 
 ## Loss conditions
 
@@ -164,10 +196,19 @@ C copycat codex), N = round(wall_A/wall_B) capped [1,3], neutral blind judge
   a reported finding, never a trigger to loosen the gate.)
 - **L2**: oracle-invalid on a ported trap (gold fails its own oracle) →
   the port is wrong, fix the oracle before admitting.
-- **L3**: the ported trap task leaks the trap answer in the visible
-  `task.txt` (bare would pass by reading the spec) → re-author the visible
-  spec to hide the leading keywords (the pair-fixture discipline:
-  "public spec must hide leading keywords or solo aces").
+- **L3 (rewritten 2026-07-10 — criterion: contract-complete,
+  test-non-tutoring)**: the visible `task.txt` tutors the solver toward the
+  hidden adversarial cases. Two classes: ALGORITHM rows (F21-like) keep the
+  full public contract — their hardness is interacting invariants, and the
+  leak model is hidden-case tutoring, not keywords; KEYWORD-TRAP rows
+  (F11-like) remove trigger wording while preserving the observable
+  invariant. Before freeze, a static bare-oracle-from-spec review checks
+  each row for hidden-test tutoring.
+- **L4 (added 2026-07-10)**: fewer than 3 distinct categorical classes
+  admitted → only "plumbing-validated" + enumerated per-row outcomes may be
+  claimed; any cross-class "the instrument discriminates" claim is invalid.
+- **L5 (added 2026-07-10, pilot-scoped)**: any C-resolved row labeled a
+  product moat invalidates the report.
 
 ## Implementation deliverables (Codex CLI; verification by orchestrator)
 
@@ -185,13 +226,21 @@ C copycat codex), N = round(wall_A/wall_B) capped [1,3], neutral blind judge
    converted from the fixture's verifiers, `hidden/reference.patch` gold).
    F7's oracle is same-file per MUST-FIX 2.
 3. **Bare-fails admission gate**: a corpus-gate step that runs
-   `run-ceiling-arm.sh --arm B` (bare CODEX) N=3 per candidate + the gold
-   oracle smoke, and writes admit/reject + reason
-   (`saturated:bare-resolves` / `oracle-invalid` / `admitted:<class>`) into
-   the manifest freeze. Admission = gold-pass AND bare-fail ≥2/3.
-4. Manifest `discriminating` section frozen with hashes + gate results.
-   Report the admitted set + every rejection with its reason (no silent
-   drops).
+   `run-ceiling-arm.sh --arm B` (bare CODEX) to 3 VALID attempts per
+   candidate + the gold oracle smoke, and writes admit/reject + reason
+   (`saturated:bare-resolves` / `oracle-invalid` / `INVALID/PENDING` /
+   `admitted:<class>`) into the manifest freeze. Admission = gold-pass AND
+   0/3 valid bare attempts resolve; INVALID attempts (infra: invoke,
+   materialization, apply, oracle-runtime) are re-run, never counted as
+   fails.
+4. Manifest `discriminating` section frozen with hashes + gate results +
+   **cohort identity per role** (CLI version, requested alias,
+   runtime-reported resolved model where available, run ID) — alias/model
+   drift between admission and tranche invalidates the freeze and requires
+   re-gating. Report the admitted set + every rejection with its reason
+   (no silent drops). NOTES.md Claude rubric scores are pool provenance
+   only — never admission evidence (construct = binary-oracle bare-CODEX
+   discrimination).
 
 Sequencing: deliver 1+2+3, RUN the gate, and STOP at the admitted set for
 R1 — the 3-arm A/C tranche only launches after R1 confirms the admitted
@@ -213,11 +262,50 @@ rows + labels. (The gate result is itself the pilot's first finding.)
   is dishonest if a positive comes from leakage / fixture tuning /
   copycat-reproducible method lift mislabeled as a harness moat — the adopted
   labels + gate + copycat arm guard exactly that.
-- R1 (pending): on the frozen corpus + gate results (admitted set + reasons)
-  BEFORE any A/C arm run.
+- **R0-grok (2026-07-10, Grok 4.5 read-only, archive
+  `/tmp/grok-iter0068/r0-response.log`): GO-WITH-EDITS** — 15 findings (3
+  CRITICAL), 10 enumerated edits. All 3 CRITICALs orchestrator-verified at
+  the cited lines (gate↔`best_B` estimator mismatch; no infra-validity
+  filter; `moat_shown = objective_moat or ranked_majority` at
+  `ceiling-gate.py:380` open to subjective-only moat).
+- **R1-design (2026-07-10, Codex read-only xhigh, archive
+  `/tmp/codex-iter0068-r1design/response.log`): CONVERGED, UNRESOLVED
+  none** — edits 1-10 adopted (7 with tighter criteria: exactly-3-valid +
+  0/3; end-to-end attempt validity with pass/fail/INVALID oracle semantics
+  and zero-diff = valid unresolved; pilot-scoped mechanical moat policy;
+  cohort identity; pass-set equivalence + gold N≥2 + no-op-must-fail;
+  contract-complete/test-non-tutoring L3; L4 claim granularity; L5
+  pilot-scoped; NOTES scores = provenance only). Codex affirmed amendment
+  legitimacy: lands before any candidate admission attempt (active search
+  of `benchmark/ceiling/results` found only D1 FS1 runner-verification
+  artifacts); pre-amendment D1 artifacts are EXCLUDED from admission
+  evidence. All amendments folded into this doc 2026-07-10.
+- R1-gate (pending): on the frozen corpus + gate results (admitted set +
+  reasons) BEFORE any A/C arm run.
 
 ## Execution record
 
+- **2026-07-10 — three-way amendment + D1 SHIPPED (Fable orchestrating,
+  Codex executing, Grok third reviewer — user directive).** (a)
+  Pre-registration amended BEFORE any gate run (R0-grok + R1-codex, Pair
+  rounds above). (b) Deliverable 1 delivered by Codex (archive
+  `/tmp/codex-iter0068-d1/`, ephemeral), **net −21 lines**: task-keyed
+  `prepare_fs_workspace` + local-path/bundle source resolution
+  (run-ceiling-arm.sh), ONE generic `hidden/oracle.sh` eval path with the
+  FS1 legacy branch DELETED (ceiling-eval.sh), FS1 thin wrapper oracle
+  (corpus FS1 `hidden/oracle.sh`), corpus README layout rule (no embedded
+  `.git`; bundle/local source), manifest FS1 oracle hash. Orchestrator
+  verified independently in a clean env: `bash -n` both scripts PASS; FS1
+  regression via archived iter0064-t1 patches through the NEW path — A1
+  resolved=False, B1 resolved=True, both exactly matching recorded values
+  (`benchmark/ceiling/results/iter0068-d1-fable-verify/`). Codex's
+  sandboxed uv 0.9.22 panicked mid-run (its own report flags it) —
+  clean-env re-run showed no panic; that panic artifact is what motivated
+  the amendment's INVALID oracle semantics. Pre-existing gap OBSERVED, not
+  fixed (Goal-locked): `test-ceiling-harness.sh` exits 1/INVALID at HEAD
+  too (worktree-at-HEAD A/B, identical failure) — its fixtures enumerate
+  SW1/SW2/FS1 while the iter-0067 manifest freeze (3e64cba) added SW3-5;
+  follow-up candidate.
 - **2026-07-08 — design + R0 DONE; implementation DEFERRED to next session
   (user directive, to be run with Fable).** A first implementation slice
   (Delegation 1: generic FS oracle runner + F21 port + gold smoke + bare
