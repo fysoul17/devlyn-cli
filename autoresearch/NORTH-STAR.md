@@ -2,10 +2,11 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Last refined: 2026-07-06 (ceiling amendment — user directive raised the
-quality bar from engineer-quality to world-best/irreplaceable; ceiling
-contract + ops test #17 added; floor contract unchanged. Prior refinement
-2026-05-07: 2-skill redesign locked).
+Last refined: 2026-07-10 (value axes for frontier engines — user directive,
+HANDOFF Block 8: raw coding correctness is the engine floor, the moat is
+intent fidelity / decomposition / collaboration synergy / design rigor /
+unprompted completeness. Prior: 2026-07-06 ceiling amendment; 2026-05-07
+2-skill redesign locked).
 
 ---
 
@@ -19,6 +20,36 @@ The user's working contract, in their own framing:
 - "Eventually compose into a single AI Agent organisation that operates autonomously, pyx-style."
 
 For that to be real, the harness has to be **overwhelmingly better than bare prompting**. Marginally better is a research curiosity. The gap has to be wide enough that spawning 5-10 parallel runs is *trivially obvious value* over a single human prompting Claude or Codex once.
+
+### Value axes for frontier engines (user directive 2026-07-10, HANDOFF Block 8)
+
+Frontier models already solve most raw coding tasks bare — iter-0067 measured
+it (objective tie on saturated rows). **Raw coding correctness is therefore
+the FLOOR the harness inherits from the engine, not the moat.** For frontier
+engines, the harness's differentiating value lives on the axes the user's
+seven principles were written for:
+
+1. **Intent fidelity** — extract the user's actual intent and goal without
+   guessing; judgments grounded in verified evidence, never assumption.
+2. **Decomposition** — split the goal into the right tasks, sequenced, each
+   independently verifiable.
+3. **Collaboration synergy** — pair/multi-agent rounds that draw out each
+   engine's strengths so the composed result beats any engine solo
+   (모든 모델의 잠재력을 다 꺼내 시너지).
+4. **Design rigor** — designs measurably more thorough, evidence-cited, and
+   error-free than the same engine designing alone.
+5. **Unprompted completeness** — verification, testing, cleanup, and
+   tech-debt removal done to engineer discipline WITHOUT being asked
+   (말하지 않아도 딱).
+
+Ceiling instruments must discriminate on these axes. A corpus where bare
+frontier engines already ace the axis being measured cannot show the moat
+(iter-0067's lesson); categorical-reliability traps (scope discipline,
+atomic state, cleanup disqualifiers, spec fidelity under interacting
+invariants) target axis 5, and intent/decomposition/design instruments are
+the named next gap (recorded, not yet designed). For non-frontier engines
+the harness may additionally lift raw correctness — that lift is real value
+but must be labeled engine-lift, not the frontier moat.
 
 **This is what every iter ultimately serves**. The 3-layer performance contract below (L0 / L1 / L2) is the *measurement frame* that lets us tell whether a given iter moves us toward this ultimate goal. The contract is in service of the goal, not the other way around.
 
