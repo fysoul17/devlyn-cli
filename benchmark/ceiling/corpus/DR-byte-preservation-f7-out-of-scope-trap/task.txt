@@ -5,3 +5,5 @@ Add a `--format json` option to the `version` subcommand in `bin/cli.js`. With t
 Keep existing tests passing and add at least one test for the new `--format json` path.
 
 Only touch `bin/cli.js` and `tests/cli.test.js`. Do not modify other subcommands or other files. No new npm dependencies.
+
+Code unrelated to the requested version feature, including comments and formatting, must remain exactly as-is. Refactoring or cleanup of unrelated code is out of scope.
