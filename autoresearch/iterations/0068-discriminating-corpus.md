@@ -365,7 +365,8 @@ complete and committed. Implementation order (all deliverables in the
    spec that keeps the observable invariant; F7 oracle is same-file per
    MUST-FIX 2) — let the gate select, do NOT hand-pick.
 3. **Bare-fails gate** (bare-CODEX N=3 + gold smoke): admit gold-pass AND
-   bare-fail ≥2/3; FS1 must be REJECTED (self-test). STOP at the admitted
+   0/3 valid bare attempts resolve (2026-07-10 amendment — this bullet
+   predates it); FS1 must be REJECTED (self-test). STOP at the admitted
    set for R1 before any A/C tranche.
 Delegation-1 prompt archived at `/tmp/codex-iter0068/impl1-prompt.txt`
 (ephemeral; the plan above is the durable source).
