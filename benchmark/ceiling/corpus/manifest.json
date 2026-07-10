@@ -129,6 +129,41 @@
     "hidden_conflicting_duplicate_sha256": "3983c1642cfa14a0bf9f83bcea618cf49f990b6e58d2d413dd08d4bdd5bce5d7",
     "hidden_exact_payout_sha256": "609ba1a4e02426b6c25dc8802d0e40e7e471bb7a3f61a206ae15159b15b2911d",
     "hidden_rules_source_sha256": "2b626c15a5df42cb6071471decaf68b53cf1527ce9ab19aa9cdfc36f40e74d34"
+   },
+   "DR-atomic-state-f11-batch-import": {
+    "source_fixture": "F11-batch-import-all-or-nothing",
+    "categorical_class": "atomic-state",
+    "candidate": true,
+    "admitted": false,
+    "frozen": false,
+    "repo": "./source.bundle",
+    "sha": "95e5dc4d0038242b53ba2389384c707840771af4",
+    "task_sha256": "3f124d5d42951855f40a8acea52338a4320f7415d26a440d9f5cbf4a295f9af1",
+    "source_bundle_sha256": "74fe436f74d08b9bb17cdbe1acfd4dee63cb3338ef2c8c018ccb1b19f1d681a6",
+    "hidden_oracle_sha256": "51e901ef18e913232599397f8807596a4213f37b05aa89d76d0320effd27596f",
+    "hidden_reference_sha256": "c4079690a32dbd420a958332850bf08be5456e31cee839be7d5e6eaa661789ea",
+    "oracle_smoke": "reference resolved=true twice (iter0068-d2-f11-fable-gold1/A1, iter0068-d2-f11-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f11-fable-noop/B1); port validation only, not admission evidence",
+    "hidden_failed_unchanged_sha256": "84840f6062290e10ce51a4789a0ec53e7daeb7a2db0c7b5ef2ec919f305fc3b3",
+    "hidden_invalid_body_sha256": "353549736ded0986258b46522e75f377e497f0ac5535e6ff3112d9839f338fc9",
+    "hidden_invoke_app_sha256": "7727b9a2d939182c5ee0bb702837409c1a81978bf2e3aeb5c0bf41bb920fe643",
+    "hidden_success_sha256": "4750bf1359a9221202314ae5300b0b84b431778d259ce6cbdb033aa9773cad13"
+   },
+   "DR-auth-signature-f12-webhook": {
+    "source_fixture": "F12-webhook-raw-body-signature",
+    "categorical_class": "auth-signature",
+    "candidate": true,
+    "admitted": false,
+    "frozen": false,
+    "repo": "./source.bundle",
+    "sha": "28d2137b511c09ba99c4672a1c5c9e1e7b7e2a6c",
+    "task_sha256": "58e149bd9cbe6be89e214600420416b3ba17ecd83c523dd6d1d787b1cf1900e3",
+    "source_bundle_sha256": "c473fb2c6801caeabfc1d848ebb72843e994fa121127b527f28b6bc4c9d9b69f",
+    "hidden_oracle_sha256": "a9103d3b2b7768c9064006573723ef091c1bca6eeca4aef1982af862ee0713b4",
+    "hidden_reference_sha256": "e9496500b0f6626b752bec877a6921ae0253b8a09efb5b4fde596b3aff29a9e4",
+    "oracle_smoke": "reference resolved=true twice (iter0068-d2-f12-fable-gold1/A1, iter0068-d2-f12-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f12-fable-noop/B1); port validation only, not admission evidence",
+    "hidden_invoke_app_sha256": "7727b9a2d939182c5ee0bb702837409c1a81978bf2e3aeb5c0bf41bb920fe643",
+    "hidden_replay_contract_sha256": "986cf0526815d8f7cfaf6b24daa8089e7ffe4ad2230d064fbc53fcced26986b5",
+    "hidden_signature_contract_sha256": "e7a4e3c63a1feba87b23ba5f297be5adc1ffd60837abfc0ac02d33b972449efc"
    }
   }
  }
