@@ -58,5 +58,28 @@
     "oracle_smoke": "gold patch resolved=true via official harness (uvx swebench, run_id iter0067-oracle-smoke, 2026-07-07); report: benchmark/ceiling/results/oracle-smoke/gold.iter0067-oracle-smoke.json"
    }
   }
+ },
+ "tranche3": {
+  "status": "candidate_pool",
+  "frozen_at": null,
+  "selection_rule": "iter-0068 candidate pool; admission and freeze are deferred to the Deliverable 3 bare-fails gate",
+  "tasks": {
+   "DR-ordering-f21-scheduler": {
+    "source_fixture": "F21-cli-scheduler-priority",
+    "categorical_class": "ordering-inversion",
+    "candidate": true,
+    "admitted": false,
+    "frozen": false,
+    "repo": "./source.bundle",
+    "sha": "3baa954764454430e00f7036e0e08b1840557f22",
+    "task_sha256": "69c569659b602c024469a838ca1fe259024bfef5e779395fff6671b65f107e3e",
+    "source_bundle_sha256": "46fb7e6aa308180d7ba442cb807cde07aab51b6ebc697b4506920f7e1957cfbb",
+    "hidden_oracle_sha256": "f7f7fdd4335b4b9f076d178cd9102be75443be5ab95292a58e24225a8bbf2e95",
+    "hidden_priority_blocked_sha256": "bbeb88f3e690a4f3d829260ccbb977811b23a16e932eb70d717f36156023bc00",
+    "hidden_error_order_sha256": "fc0123bdaeefb6cac57b3ec96580fddf13d0be65b5e69abf23250262650646bb",
+    "hidden_reference_sha256": "ed6adb912c11415dbddfc94c414b7d37220a374c17b981ddea3c38150e2be312",
+    "oracle_smoke": "reference resolved=true twice (iter0068-d2-f21-gold-smoke-1/A1 and iter0068-d2-f21-gold-smoke-2/A1); base/no-op resolved=false with oracle_exit=1 (iter0068-d2-f21-noop-smoke/B1); port validation only, not admission evidence"
+   }
+  }
  }
 }
