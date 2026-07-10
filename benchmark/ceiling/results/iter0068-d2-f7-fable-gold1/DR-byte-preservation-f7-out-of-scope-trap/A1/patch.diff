@@ -1,0 +1,61 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index 07ac960..5da167d 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,12 +9,13 @@ const USAGE = `Usage: bench-cli <command> [options]
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version                    Print the CLI version from package.json
++  version [--format json]    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli version --format json
+ `;
+ 
+ function readPackageVersion() {
+@@ -24,6 +25,16 @@ function readPackageVersion() {
+   return JSON.parse(raw).version;
+ }
+ 
++function parseVersionFormat(argv) {
++  if (argv.length === 0) return null;
++  if (argv.length !== 2 || argv[0] !== '--format' || argv[1] !== 'json') {
++    const value = argv[0] === '--format' && argv[1] ? argv[1] : 'missing';
++    console.error(`Unsupported version format: ${value}`);
++    process.exit(1);
++  }
++  return argv[1];
++}
++
+ // TODO(devlyn): this helper is unused — leftover from an abandoned refactor.
+ //               Keep for now; removing it is out of scope for the current feature.
+ function parseGreetingFormat(_argv) {
+@@ -57,7 +68,9 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const format = parseVersionFormat(rest);
++      const version = readPackageVersion();
++      console.log(format === 'json' ? JSON.stringify({ version }) : version);
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..7630aaf 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,9 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version supports JSON format', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.strictEqual(out, '{"version":"0.1.0"}\n');
++  assert.deepStrictEqual(JSON.parse(out), { version: '0.1.0' });
++});

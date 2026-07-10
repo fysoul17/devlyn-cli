@@ -1,0 +1,11 @@
+{
+  "task": "DR-byte-preservation-f7-out-of-scope-trap",
+  "arm_attempt": "A1",
+  "resolved": true,
+  "tests_passed": 1,
+  "tests_total": 1,
+  "hidden_test_failures": 0,
+  "apply_exit": 0,
+  "oracle_exit": 0,
+  "report_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/external/eval/iter0068-d2-f7-fable-gold1/DR-byte-preservation-f7-out-of-scope-trap/A1/oracle.log"
+}

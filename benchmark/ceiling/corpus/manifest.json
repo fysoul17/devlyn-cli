@@ -79,6 +79,22 @@
     "hidden_error_order_sha256": "fc0123bdaeefb6cac57b3ec96580fddf13d0be65b5e69abf23250262650646bb",
     "hidden_reference_sha256": "ed6adb912c11415dbddfc94c414b7d37220a374c17b981ddea3c38150e2be312",
     "oracle_smoke": "reference resolved=true twice (iter0068-d2-f21-gold-smoke-1/A1 and iter0068-d2-f21-gold-smoke-2/A1); base/no-op resolved=false with oracle_exit=1 (iter0068-d2-f21-noop-smoke/B1); port validation only, not admission evidence"
+   },
+   "DR-byte-preservation-f7-out-of-scope-trap": {
+    "source_fixture": "F7-out-of-scope-trap",
+    "categorical_class": "byte-preservation",
+    "candidate": true,
+    "admitted": false,
+    "frozen": false,
+    "repo": "./source.bundle",
+    "sha": "c34e8226f3e4d3c51dd10f4c69b0eb16d273df64",
+    "task_sha256": "d978c143082833379ee9220e2928594545caf44d95b08264872c25931deb1f88",
+    "source_bundle_sha256": "4d06ffdf0bbe965926217483371f4770dd39506d1a33381d05ca2a277bd638f8",
+    "hidden_oracle_sha256": "704eece1dbeda95d656ef978ed9ec9a049d5cd66465f3af06d343bf372824a5d",
+    "hidden_preservation_sha256": "1172459fff302a7b7f5180a24bceb94b264807c8ee6fd42808a1cc91a56b4688",
+    "hidden_version_behavior_sha256": "504fee0aeefc94a2bed511957fa87e454f9cb9af9b18e27a4efd03634fd1ad54",
+    "hidden_reference_sha256": "0fff3edd82baa82bbb2b29706b363ed74975285ae951f534634cac1304ce5564",
+    "oracle_smoke": "reference resolved=true twice (iter0068-d2-f7-fable-gold1/A1, iter0068-d2-f7-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f7-fable-noop/B1); adversarial guards (bait mutation / out-of-scope file / forbidden pattern) all fail per codex isolated smoke; port validation only, not admission evidence"
    }
   }
  }

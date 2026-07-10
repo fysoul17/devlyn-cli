@@ -1,0 +1,7 @@
+Add a `--format json` option to the `version` subcommand in `bin/cli.js`. With the flag, output should be valid JSON: `{"version":"<x.y.z>"}` (single line). Without the flag, keep the current bare version string.
+
+`--format yaml` (or any other unsupported value) should exit 1 with an error.
+
+Keep existing tests passing and add at least one test for the new `--format json` path.
+
+Only touch `bin/cli.js` and `tests/cli.test.js`. Do not modify other subcommands or other files. No new npm dependencies.
