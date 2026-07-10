@@ -30,8 +30,9 @@ where bare single-shot codex is MEASURED to fail — so the next ceiling
 go/no-go decision is made on tasks where the harness can plausibly win,
 instead of on saturated tasks where no honest positive is even possible.
 Measurement iter, permitted as the attribution run before the wall/claim
-policy call (PRINCIPLES #0 carve-out); it directly unlocks iter-0069's
-wall-vs-value decision.
+policy call (PRINCIPLES #0 carve-out). (The original "unlocks iter-0069"
+framing is stale — iter-0069 became the completion-claim investigation,
+CLOSED 2026-07-09; this iter unlocks the NEXT wall-vs-value decision.)
 
 ## The core defect it fixes (from iter-0067 + the STUB decomposition)
 
@@ -310,6 +311,37 @@ rows + labels. (The gate result is itself the pilot's first finding.)
   dependency-DAG differential (decomposition); design-artifact adversarial
   review cell / blind design-defect differential (design rigor) — named,
   NOT designed (deferred behind this iter).
+- **R-quality (2026-07-10, three-way corpus-quality round — user-directed
+  "보강·개선·추가·클린업"; archives
+  `/tmp/iter0068-direction/{grok,codex}-quality-response.log`)**: Grok
+  GATE-READY-after-1 (commit the gate script; corpus content clean); Codex
+  GATE-READY-after-8, deeper — adjudicated results: (a) **oracle
+  UNDER-assertion found (inverse of UNFAIR)**: F11 (exact error bodies /
+  `inserted` / id semantics unasserted), F12 (malformed-body-with-valid-sig
+  400 path untested), F26 (minimum-payout hold never exercised — seeded
+  payouts all above threshold) → oracle repair with PUBLIC-contract-only
+  cases, pre-gate (criterion: objective-oracle soundness — a too-weak
+  oracle mislabels hard rows `saturated:bare-resolves`); (b) `eslint-disable`
+  forbidden-pattern DELETED from all oracles (broader than its own label,
+  not class-defining; silent-catch patterns remain — criterion:
+  binary-disqualifier specificity, subtractive); (c) gate-script integrity
+  fixes required before live run: recompute-and-fail-closed hash freeze +
+  `base_sha256` binding, frozen-rerun refusal, FS1/tranche-1 record
+  non-mutation, admitted_amplification_rows vs
+  saturated_no_degradation_controls separation (serves Block-8
+  no-suppression directive), deterministic tests, script committed; (d)
+  **retry policy pre-registered as implemented**: up to 2 replacement
+  attempts per invalid slot; slot exhaustion invalidates the row's cohort
+  (INVALID/PENDING); resumption = rerun the whole gate under a NEW run id
+  (single-cohort estimator integrity); (e) **F23-cli-fulfillment-wave ADDED
+  to the pool** (7th class: allocation/FEFO/priority-rollback — missing
+  from pool; bare-codex provenance 33; adjudication: Codex's quantitative
+  slack argument wins — only 3 rows carry low-bare provenance vs L4's
+  ≥3-admitted bar; added PRE-GATE with class-coverage rationale, which the
+  no-force-admissions rule permits; Grok's default-freeze position noted);
+  (f) all other pool additions rejected (overlap/weak evidence/rework-needed
+  or non-coding axes needing different instruments). F21/F25/F7 fairness
+  edits: NO-CHANGE (no new tutoring, both engines).
 - R1-gate (pending): on the frozen corpus + gate results (admitted set +
   reasons) BEFORE any A/C arm run.
 
