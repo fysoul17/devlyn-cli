@@ -161,7 +161,9 @@ PLAN은 non-negotiable invariants + acceptance contract을 만든다. BUILD는 �
 
 > 방향을 제대로.
 
-→ Folded: NORTH-STAR § Value axes for frontier engines (2026-07-10); three-way pair protocol live (memory `feedback_threeway_pair_grok_2026_07_10.md`); iter-0068's categorical-trap corpus measures the DISCIPLINE axis (scope/atomicity/cleanup/spec-fidelity), which is this directive's axis — raw algorithm-solving is the floor, not the moat.
+> 그렇다고 해서 코딩을 놓자는 얘기가 아니야. 말그대로 각자 에이전트의 코딩능력 분석능력등 기본적인 잠재력은 최대한 가져가고, 추가적으로 이해력, 의도파악 능력, 분해, 설계, 협업 능력, 시너지 등을 더 극대화해보자는 얘기지.
+
+→ Folded: NORTH-STAR § Value axes for frontier engines (2026-07-10, nuance-corrected same day: baseline capability extraction is kept at MAXIMUM — the five axes are ADDITIVE maximization on top, not a substitute); three-way pair protocol live (memory `feedback_threeway_pair_grok_2026_07_10.md`); iter-0068's categorical-trap corpus measures the DISCIPLINE axis (scope/atomicity/cleanup/spec-fidelity).
 
 ### Memory directives (auto-loaded; cite, do not duplicate)
 

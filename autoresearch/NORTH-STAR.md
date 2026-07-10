@@ -24,10 +24,12 @@ For that to be real, the harness has to be **overwhelmingly better than bare pro
 ### Value axes for frontier engines (user directive 2026-07-10, HANDOFF Block 8)
 
 Frontier models already solve most raw coding tasks bare — iter-0067 measured
-it (objective tie on saturated rows). **Raw coding correctness is therefore
-the FLOOR the harness inherits from the engine, not the moat.** For frontier
-engines, the harness's differentiating value lives on the axes the user's
-seven principles were written for:
+it (objective tie on saturated rows). **This does NOT de-prioritize coding:
+the harness must still extract each engine's baseline potential (coding,
+analysis) at maximum. But that baseline is inherited from the engine — the
+harness's DIFFERENTIATING value is additive, on the axes the user's seven
+principles were written for** (user nuance, Block 8: "기본적인 잠재력은
+최대한 가져가고, 추가적으로 … 더 극대화"):
 
 1. **Intent fidelity** — extract the user's actual intent and goal without
    guessing; judgments grounded in verified evidence, never assumption.
