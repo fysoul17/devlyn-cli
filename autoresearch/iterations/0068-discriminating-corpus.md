@@ -280,6 +280,36 @@ rows + labels. (The gate result is itself the pilot's first finding.)
   of `benchmark/ceiling/results` found only D1 FS1 runner-verification
   artifacts); pre-amendment D1 artifacts are EXCLUDED from admission
   evidence. All amendments folded into this doc 2026-07-10.
+- **R-preFreeze (2026-07-10, three-way static leak review — the amended L3
+  bare-oracle-from-spec review; archives `/tmp/iter0068-direction/{grok,codex}-response.log`)**:
+  both engines DIRECTION-ALIGNED on NORTH-STAR Block-8 axes; **0 LEAK** rows;
+  F12 restore + orchestrator port fixes RATIFIED (Codex initially refuted the
+  F11 id-trim — adjudicated in Codex's favor, see below). **NEW defect class
+  found: UNFAIR** — the binary oracle asserts observables the visible
+  task.txt does not state (source fixtures were rubric-scored with partial
+  credit, where underdetermined specs cost points; a binary oracle makes
+  underdetermination fatal, so bare would fail for SPEC-THINNESS, not
+  discipline → manufactured discrimination, decisive-criterion (b)).
+  Verdicts: F25/F26 UNFAIR (both engines); F21 UNFAIR (Codex right — Grok's
+  CLEAN judged source-fidelity, which is true but not the binary-oracle
+  fairness criterion); F11 UNFAIR (Codex right, orchestrator REVERSED its
+  own trim — named delta: criterion is contract-completeness w.r.t. the
+  oracle, not source-task.txt fidelity; source spec.md:25 states unique ids
+  as a public observable and hidden/success.js asserts it); F7 adjudicated
+  keep-byte-exact + make-the-observable-visible (design pre-registered the
+  class as byte-preservation in MUST-FIX 2; stating the constraint remains
+  discriminating per iter-0062 E1 evidence that models violate stated
+  byte-preservation rules; reverting to source presence-grep would abandon
+  the registered class). **Fix rule (converged)**: fold each source
+  fixture's public formal contract (spec.md observables: exact keys,
+  formulas, error shapes, id semantics, preservation constraint) into the
+  ceiling task.txt; never fold hidden adversarial case values or solution
+  mechanisms. F12 untouched (CLEAN both). Next-instrument names recorded for
+  the axes 1/2/4 gap: ambiguous-goal fidelity gate / intent-lock
+  counterfactual holdout (intent); PLAN-DAG mechanical check /
+  dependency-DAG differential (decomposition); design-artifact adversarial
+  review cell / blind design-defect differential (design rigor) — named,
+  NOT designed (deferred behind this iter).
 - R1-gate (pending): on the frozen corpus + gate results (admitted set +
   reasons) BEFORE any A/C arm run.
 
