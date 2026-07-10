@@ -44,18 +44,55 @@ closure) — active-experiment integrity, both engines.
 8. **No-suppression**: every loop layer must not regress saturated bare
    coding; measure on the no-degradation controls when quality claims ship.
 
+## Full-loop alignment amendments (2026-07-10, second three-way round —
+Codex ALIGNED-with-6 + Grok ALIGNED-with-5, adjudicated; archives
+`/tmp/iter0068-direction/{codex,grok}-fullloop-response.log`)
+
+1. **Team = target semantics, promotion = measured** (criterion: target
+   semantics vs default-activation policy): team intake/closure surfaces
+   appear WITH their stage as explicit-request or pre-registered-trigger
+   experiments (0071/0072); rung 0074 decides PROMOTION to default. Never
+   always-on unearned.
+2. **Enqueue**: explicit `queue add-plan <plan.md>` stays (creation ≠
+   execution authority); after the user's go-ahead the ORCHESTRATOR invokes
+   it. Entries bind plan path + task/spec id + dependency order +
+   locked-intent digest; idempotent seeding; drain recomputes the digest
+   and fails closed if the locked intent changed. After ideate --project,
+   print the exact next command.
+3. **Dual execution path**: drain items may run via `/devlyn:resolve` OR
+   orchestrator-direct; BOTH emit a common verdict/evidence bundle (spec
+   met, tests, cleanup, scoped commits) before `[x]`.
+4. **Closure evidence = acceptance-carrying, bound to the final SHA**:
+   project + off-resolve INTENT_CLOSURE consume final-SHA diff,
+   side-effect, test, hygiene evidence; UI-touching work adds route/browser
+   evidence + screenshots when a real browser is available (curl tier =
+   explicitly limited fallback); BUILD_GATE browser evidence is reused only
+   when content-bound to the post-cleanup SHA, else replayed.
+5. **Terminal ship**: per-item scoped commits stay; after aggregate PASS,
+   only a scoped finalization commit of plan/queue/closure artifacts; push
+   ONCE only with explicit authority + named remote/branch + clean verified
+   HEAD + fast-forward safety; never force; otherwise report
+   `READY_TO_PUSH`.
+
 ## Ladder (run in order; instruments before mechanisms)
 
-- **0070 — intent/decomposition instruments** (Block 8 axes 1+2): planted
-  multi-feature intent-drift cells + plain-conversation false-done cells
-  ("build green, feature absent"). Defines "measured" for the closure
-  class. Design-rigor axis instrument: named, deferred.
+- **0070 — intent/decomposition/design-rigor instruments** (Block 8 axes
+  1+2+4): planted multi-feature intent-drift cells + plain-conversation
+  false-done cells ("build green, feature absent") + design-rigor cell
+  (team-design promotion needs an admission metric — Codex amendment 2).
+  Defines "measured" for the closure class. Split into two iters if too
+  big.
 - **0071 — plan.md context contract + queue wiring**: locked sections,
   structural lint, `queue add-plan` (idempotent, topological, intent
-  digest). No quality claim.
-- **0072 — project intent-closure loop** (solo): post-drain verify + ≤2
-  re-queue rounds; measured on 0070 cells; ship-or-adjust.
+  digest, digest revalidation at drain). Explicit-request team-design
+  experiment surface. No quality claim.
+- **0072 — project intent-closure loop** (solo default): post-drain verify
+  + ≤2 re-queue rounds; final-SHA evidence incl. browser/screenshots for
+  UI; measured on 0070 cells; ship-or-adjust. Pre-registered-trigger team
+  closure experiment surface.
 - **0073 — plain-conversation INTENT_CLOSURE checkpoint** experiment:
   ship-or-revert on the 0070 bar; failure result names the M1.5 seam.
-- **0074 — team-design/team-closure pair surfaces** — ONLY if 0072/0073
-  measure solo miss rates high enough (measurement-gated pair policy).
+- **0074 — team promotion decision** — promote team-design/team-closure to
+  default ONLY where 0071-0073 experiments measure solo miss rates high
+  enough (measurement-gated pair policy) + no-suppression clean-control
+  evidence.
