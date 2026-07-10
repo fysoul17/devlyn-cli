@@ -384,26 +384,10 @@ rows + labels. (The gate result is itself the pilot's first finding.)
   pre-registration; all iter-0067 fixes intact (venv exclude 4×, tree
   clean).
 
-### RESUME HERE (next session, Fable)
+### RESUME HERE — superseded 2026-07-10
 
-Start fresh from THIS frozen pre-registration — the design + R0 edits are
-complete and committed. Implementation order (all deliverables in the
-"Implementation deliverables" section above, R0-folded):
-1. **Generic FS oracle runner (MUST-FIX 1)**: generalize the FS1-hardcoded
-   evaluator (`run-ceiling-arm.sh` prepare_fs1_workspace ~156-182 +
-   dispatch ~307-310; `ceiling-eval.sh` FS1 block ~254-325 copies
-   `test_max_runs_oracle.py`/runs pytest) to run a task-declared
-   `hidden/oracle.sh` (exit-0=pass) against the cloned+patched repo; base.json
-   `repo` may be a local path or url; FS1 keeps working via a thin oracle.sh
-   wrapper (regression guard). NOTE: do NOT commit an embedded `.git`
-   directory inside the corpus — use a git bundle or a documented
-   local-clone-source layout the runner can consume without nesting repos.
-2. **Port a POOL** (F21/F25/F26/F11/F12/F7/F23 → FS-format, de-leaked visible
-   spec that keeps the observable invariant; F7 oracle is same-file per
-   MUST-FIX 2) — let the gate select, do NOT hand-pick.
-3. **Bare-fails gate** (bare-CODEX N=3 + gold smoke): admit gold-pass AND
-   0/3 valid bare attempts resolve (2026-07-10 amendment — this bullet
-   predates it); FS1 must be REJECTED (self-test). STOP at the admitted
-   set for R1 before any A/C tranche.
-Delegation-1 prompt archived at `/tmp/codex-iter0068/impl1-prompt.txt`
-(ephemeral; the plan above is the durable source).
+D1+D2+D3 shipped and verified (Execution record above); live gate running
+as `iter0068-gate-20260710b`. Current entry point: read the gate result →
+three-way R1-gate on the admitted set → A/C + no-suppression decision →
+closure. The original 3-step implementation plan is recoverable from git
+history of this section (pre-`a33ae5d`).
