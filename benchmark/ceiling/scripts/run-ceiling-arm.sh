@@ -153,16 +153,19 @@ print(json.loads(open(sys.argv[1], encoding="utf-8").read())["worktree"])
 PY
 }
 
-prepare_fs1_workspace() {
+prepare_fs_workspace() {
   local base_json="$TASK_DIR/base.json"
-  local repos_root="$EXTERNAL_ROOT/repos/fs1"
+  local repos_root="$EXTERNAL_ROOT/repos/fs"
   local worktree_root="$EXTERNAL_ROOT/workspaces/$RUN_ID/$TASK/${ARM}${ATTEMPT}"
-  local cache="$repos_root/schedule"
+  local cache="$repos_root/$TASK"
   local worktree="$worktree_root/repo"
   # Bash 3.2 (macOS /bin/bash) has no mapfile — judge.sh iter-0019.4 precedent
   local repo sha
   repo="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["repo"])' "$base_json")"
   sha="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["sha"])' "$base_json")"
+  case "$repo" in
+    ./*|../*) repo="$(cd "$TASK_DIR/$(dirname "$repo")" && pwd -P)/$(basename "$repo")" ;;
+  esac
   mkdir -p "$repos_root"
   if [ ! -d "$cache/.git" ]; then
     rm -rf "$cache"
@@ -307,7 +310,7 @@ if [ -n "${CEILING_TEST_WORKTREE:-}" ]; then
 elif [[ "$TASK" == SW* ]]; then
   WORKTREE="$(prepare_swe_workspace)"
 else
-  WORKTREE="$(prepare_fs1_workspace)"
+  WORKTREE="$(prepare_fs_workspace)"
 fi
 [ -d "$WORKTREE/.git" ] || { echo "workspace is not a git repo: $WORKTREE" >&2; exit 1; }
 

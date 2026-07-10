@@ -22,7 +22,7 @@
    "repo": "https://github.com/dbader/schedule.git",
    "sha": "82a43db1b938d8fdf60103bd41f329e06c8d3651",
    "task_sha256": "0194d750427cec5c6a6f6c3e0196e7ba20f0238162648ca1db6bbe4ce2b5a309",
-   "hidden_oracle_sha256": "67972deab86e5c69a3418b243bc563afa0fd733f5c969b1e1250c116c1cc9429",
+   "hidden_oracle_sha256": "f060b480a5839b87a59cf056d5c42ac057d4359bb1666f1f9a3a095f6886bc08",
    "hidden_reference_sha256": "69a28653529450139cee28a28b62ef995c29f3e0218e9af75a401b2528abc979",
    "oracle_smoke": "base 14/14 FAIL -> reference 14/14 PASS; upstream suite 40 passed / 41 skipped (2026-07-07, py3.11 venv)"
   }

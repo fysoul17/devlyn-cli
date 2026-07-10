@@ -189,15 +189,18 @@ out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
 }
 
-clone_fs1_base() {
+clone_fs_base() {
   local worktree="$1"
   local base_json="$TASK_DIR/base.json"
-  local repos_root="$EXTERNAL_ROOT/repos/fs1"
-  local cache="$repos_root/schedule"
+  local repos_root="$EXTERNAL_ROOT/repos/fs"
+  local cache="$repos_root/$TASK"
   # Bash 3.2 (macOS /bin/bash) has no mapfile — judge.sh iter-0019.4 precedent
   local repo sha
   repo="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["repo"])' "$base_json")"
   sha="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["sha"])' "$base_json")"
+  case "$repo" in
+    ./*|../*) repo="$(cd "$TASK_DIR/$(dirname "$repo")" && pwd -P)/$(basename "$repo")" ;;
+  esac
   mkdir -p "$repos_root"
   if [ ! -d "$cache/.git" ]; then
     rm -rf "$cache"
@@ -216,31 +219,16 @@ clone_fs1_base() {
   git -C "$worktree" clean -ffdqx
 }
 
-parse_pytest_counts() {
-  python3 - "$1" <<'PY'
-import json
-import re
-import sys
-from pathlib import Path
-text = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace") if Path(sys.argv[1]).exists() else ""
-counts = {"passed": 0, "failed": 0, "errors": 0, "skipped": 0}
-for key in list(counts):
-    singular = key[:-1] if key.endswith("s") else key
-    match = re.search(rf"(\d+) (?:{key}|{singular})", text)
-    if match:
-        counts[key] = int(match.group(1))
-print(json.dumps(counts))
-PY
-}
-
-write_fs1_objective() {
+write_fs_objective() {
   local attempt="$1"
   local attempt_dir="$RESULT_TASK_DIR/$attempt"
   local eval_dir="$EXTERNAL_ROOT/eval/$RUN_ID/$TASK/$attempt"
   local worktree="$eval_dir/worktree"
+  local oracle="$TASK_DIR/hidden/oracle.sh"
+  [ -f "$oracle" ] || { echo "hidden oracle missing: $oracle" >&2; exit 1; }
   rm -rf "$eval_dir"
   mkdir -p "$eval_dir"
-  clone_fs1_base "$worktree"
+  clone_fs_base "$worktree"
   local apply_exit=0
   if [ -s "$attempt_dir/patch.diff" ]; then
     set +e
@@ -248,66 +236,31 @@ write_fs1_objective() {
     apply_exit=$?
     set -e
   fi
-  local hidden_exit=1
-  local upstream_exit=1
+  local oracle_exit=1
   if [ "$apply_exit" -eq 0 ]; then
-    cp "$TASK_DIR/hidden/test_max_runs_oracle.py" "$worktree/test_max_runs_oracle.py"
     set +e
-    (cd "$worktree" && uv venv --python 3.11 .venv) > "$eval_dir/uv-venv.stdout.log" 2> "$eval_dir/uv-venv.stderr.log"
-    local venv_exit=$?
-    if [ "$venv_exit" -eq 0 ]; then
-      # uv venvs ship without pip — install via uv against the venv python
-      (cd "$worktree" && uv pip install -q --python .venv/bin/python pytest) > "$eval_dir/pip-install.stdout.log" 2> "$eval_dir/pip-install.stderr.log"
-      local pip_exit=$?
-      if [ "$pip_exit" -eq 0 ]; then
-        (cd "$worktree" && .venv/bin/python -m pytest -q test_max_runs_oracle.py) > "$eval_dir/hidden-pytest.log" 2>&1
-        hidden_exit=$?
-        if [ -f "$worktree/test_schedule.py" ]; then
-          (cd "$worktree" && .venv/bin/python -m pytest -q test_schedule.py) > "$eval_dir/upstream-pytest.log" 2>&1
-          upstream_exit=$?
-        else
-          echo "missing test_schedule.py" > "$eval_dir/upstream-pytest.log"
-          upstream_exit=1
-        fi
-      else
-        echo "pip install failed" > "$eval_dir/hidden-pytest.log"
-        echo "pip install failed" > "$eval_dir/upstream-pytest.log"
-      fi
-    else
-      echo "uv venv failed" > "$eval_dir/hidden-pytest.log"
-      echo "uv venv failed" > "$eval_dir/upstream-pytest.log"
-    fi
+    (cd "$worktree" && bash "$oracle") > "$eval_dir/oracle.log" 2>&1
+    oracle_exit=$?
     set -e
   else
-    echo "git apply failed" > "$eval_dir/hidden-pytest.log"
-    echo "git apply failed" > "$eval_dir/upstream-pytest.log"
+    echo "git apply failed" > "$eval_dir/oracle.log"
   fi
-  local hidden_counts
-  local upstream_counts
-  hidden_counts="$(parse_pytest_counts "$eval_dir/hidden-pytest.log")"
-  upstream_counts="$(parse_pytest_counts "$eval_dir/upstream-pytest.log")"
-  python3 - "$attempt_dir/objective.json" "$TASK" "$attempt" "$apply_exit" "$hidden_exit" "$upstream_exit" "$hidden_counts" "$upstream_counts" "$eval_dir" <<'PY'
+  python3 - "$attempt_dir/objective.json" "$TASK" "$attempt" "$apply_exit" "$oracle_exit" "$eval_dir" <<'PY'
 import json
 import sys
 from pathlib import Path
-out, task, attempt, apply_exit, hidden_exit, upstream_exit, hidden_counts, upstream_counts, eval_dir = sys.argv[1:]
-hidden = json.loads(hidden_counts)
-upstream = json.loads(upstream_counts)
-hidden_total = hidden["passed"] + hidden["failed"] + hidden["errors"]
-hidden_failures = hidden["failed"] + hidden["errors"]
+out, task, attempt, apply_exit, oracle_exit, eval_dir = sys.argv[1:]
+passed = int(apply_exit) == 0 and int(oracle_exit) == 0
 payload = {
     "task": task,
     "arm_attempt": attempt,
-    "resolved": int(apply_exit) == 0 and int(hidden_exit) == 0 and int(upstream_exit) == 0 and hidden_total > 0,
-    "tests_passed": hidden["passed"],
-    "tests_total": hidden_total,
-    "hidden_test_failures": hidden_failures,
-    "upstream_suite_pass": int(upstream_exit) == 0,
-    "upstream_counts": upstream,
+    "resolved": passed,
+    "tests_passed": int(passed),
+    "tests_total": 1,
+    "hidden_test_failures": int(not passed),
     "apply_exit": int(apply_exit),
-    "hidden_pytest_exit": int(hidden_exit),
-    "upstream_pytest_exit": int(upstream_exit),
-    "report_path": str(Path(eval_dir) / "hidden-pytest.log"),
+    "oracle_exit": int(oracle_exit),
+    "report_path": str(Path(eval_dir) / "oracle.log"),
 }
 Path(out).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
@@ -320,7 +273,7 @@ for attempt in "${ARM_ATTEMPTS[@]}"; do
     echo "[ceiling-eval] SWE $TASK $attempt"
     write_swe_objective "$attempt"
   else
-    echo "[ceiling-eval] FS1 $attempt"
-    write_fs1_objective "$attempt"
+    echo "[ceiling-eval] FS $TASK $attempt"
+    write_fs_objective "$attempt"
   fi
 done
