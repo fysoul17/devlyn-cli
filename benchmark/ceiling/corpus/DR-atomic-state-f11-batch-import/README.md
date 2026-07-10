@@ -11,6 +11,7 @@ exercised.
 
 L3 classification: **KEYWORD-TRAP** (`atomic-state`). The source fixture's
 notes identify `transactional`, `atomic`, and `rollback` as answer-revealing
-terms. `task.txt` omits those triggers while retaining both observable
-outcomes: a rejected request leaves `GET /items` unchanged, and a fully valid
-request appends every item successfully.
+terms. `task.txt` omits those triggers while retaining the observable outcomes:
+a rejected request leaves `GET /items` unchanged, a fully valid request appends
+every item successfully, and every appended row receives a distinct numeric id
+that does not collide with an existing id.

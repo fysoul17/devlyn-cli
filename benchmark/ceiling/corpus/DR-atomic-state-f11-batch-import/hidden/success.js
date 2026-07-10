@@ -22,13 +22,36 @@ async function main() {
   });
   const after = await invokeApp(app, { path: '/items' });
   const afterItems = after.body && Array.isArray(after.body.items) ? after.body.items : [];
-  const ids = afterItems.map((item) => item && item.id);
-  const unique = new Set(ids).size === ids.length;
+  const appended = afterItems.slice(beforeItems.length);
+  const appendedIds = appended.map((item) => item && item.id);
+  const beforeIds = new Set(beforeItems.map((item) => item && item.id));
+  // Public contract (task.txt): "Every appended row must receive a distinct numeric `id` that does not collide with any existing item id."
+  const numericIds = appendedIds.every((id) => typeof id === 'number');
+  const distinctIds = new Set(appendedIds).size === appendedIds.length;
+  const noExistingCollision = appendedIds.every((id) => !beforeIds.has(id));
   const lengthOk = afterItems.length === beforeItems.length + 3;
-  const names = afterItems.slice(-3).map((item) => item && item.name).join(',');
+  const names = appended.map((item) => item && item.name).join(',');
   const orderOk = names === 'gamma,delta,epsilon';
-  const ok = response.status === 201 && unique && lengthOk && orderOk;
-  console.log(JSON.stringify({ status: response.status, unique, lengthOk, orderOk, names, ok }));
+  // Public contract (task.txt): "When every item is valid, append all of them in input order and respond `201` with `{ inserted: <count> }`."
+  const responseBodyExact = JSON.stringify(response.body) === JSON.stringify({ inserted: 3 });
+  const ok = response.status === 201
+    && responseBodyExact
+    && numericIds
+    && distinctIds
+    && noExistingCollision
+    && lengthOk
+    && orderOk;
+  console.log(JSON.stringify({
+    status: response.status,
+    response_body_exact: responseBodyExact,
+    numeric_ids: numericIds,
+    distinct_ids: distinctIds,
+    no_existing_collision: noExistingCollision,
+    lengthOk,
+    orderOk,
+    names,
+    ok,
+  }));
   process.exitCode = ok ? 0 : 1;
 }
 

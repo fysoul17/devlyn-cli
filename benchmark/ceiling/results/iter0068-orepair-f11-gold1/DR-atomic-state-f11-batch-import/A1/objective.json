@@ -1,0 +1,11 @@
+{
+  "task": "DR-atomic-state-f11-batch-import",
+  "arm_attempt": "A1",
+  "resolved": true,
+  "tests_passed": 1,
+  "tests_total": 1,
+  "hidden_test_failures": 0,
+  "apply_exit": 0,
+  "oracle_exit": 0,
+  "report_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/external/eval/iter0068-orepair-f11-gold1/DR-atomic-state-f11-batch-import/A1/oracle.log"
+}

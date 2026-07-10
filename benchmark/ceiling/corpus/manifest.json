@@ -74,7 +74,7 @@
     "sha": "3baa954764454430e00f7036e0e08b1840557f22",
     "task_sha256": "03b3db9f266d2bf7c9759ae46e73d2ec75c53a6afc5aaac0f1e7bf1e8abb7acd",
     "source_bundle_sha256": "46fb7e6aa308180d7ba442cb807cde07aab51b6ebc697b4506920f7e1957cfbb",
-    "hidden_oracle_sha256": "f7f7fdd4335b4b9f076d178cd9102be75443be5ab95292a58e24225a8bbf2e95",
+    "hidden_oracle_sha256": "1c25e709319a988941e09f15d0943c8a1dfdb4f15740eebd7e3880e8e59a65a5",
     "hidden_priority_blocked_sha256": "bbeb88f3e690a4f3d829260ccbb977811b23a16e932eb70d717f36156023bc00",
     "hidden_error_order_sha256": "fc0123bdaeefb6cac57b3ec96580fddf13d0be65b5e69abf23250262650646bb",
     "hidden_reference_sha256": "ed6adb912c11415dbddfc94c414b7d37220a374c17b981ddea3c38150e2be312",
@@ -106,7 +106,7 @@
     "sha": "e5a4a030ee77da23d1eb5de998e6d5567b83e1d5",
     "task_sha256": "c603e6b1ea3132e0b70912d5ac5e787d3e5c691becb273bac31c0d31724af630",
     "source_bundle_sha256": "cb862c3a10d50787596a3e90f8aa9d912458a9fae025f098ce09edaf246d2a86",
-    "hidden_oracle_sha256": "fae151f0ffbfeb8407e4e490d8b146051d106886521ff7cab7a9a25624def89b",
+    "hidden_oracle_sha256": "996b0c39a05558fc306ac41b5b3b3fb4e5872ba0c41e84d3735cdd0909e58803",
     "hidden_reference_sha256": "65040b29cb8c2febd0cc3b16a7ed578ec6893fe7d80ebc6de56f5abb89d908f1",
     "oracle_smoke": "reference resolved=true twice (iter0068-d2-f25-fable-gold1/A1, iter0068-d2-f25-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f25-fable-noop/B1); port validation only, not admission evidence",
     "hidden_catalog_source_sha256": "41119b28fc5a2c4a3fe20714e4b7204fe7bcc4730eefc5c815be5a1d7168604a",
@@ -123,11 +123,11 @@
     "sha": "850d2ad708d3c2deaa6d59e5691ddc9dcdda217b",
     "task_sha256": "5d0f111cdf7de05c79efb9cacd540758fc3336ce691cda1888dd4fe8bedf71d9",
     "source_bundle_sha256": "a5ded520220ac04f3d6681649f9d261fbce051ae555f19b2848ccafdc04d37f8",
-    "hidden_oracle_sha256": "b420768b017f967683dbb56f3096c290465f83deec9876246ddfab9511737635",
+    "hidden_oracle_sha256": "12ed3ea1a14d5e9fa54b8dd5b4377f45eea2fdbb1dece775f58d68b5e4c455dc",
     "hidden_reference_sha256": "dddfb8adad1ef925fac78dbd0c064bb1e0d0a2a154787c2567c636d69ae50079",
     "oracle_smoke": "reference resolved=true twice (iter0068-d2-f26-fable-gold1/A1, iter0068-d2-f26-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f26-fable-noop/B1); port validation only, not admission evidence",
     "hidden_conflicting_duplicate_sha256": "3983c1642cfa14a0bf9f83bcea618cf49f990b6e58d2d413dd08d4bdd5bce5d7",
-    "hidden_exact_payout_sha256": "609ba1a4e02426b6c25dc8802d0e40e7e471bb7a3f61a206ae15159b15b2911d",
+    "hidden_exact_payout_sha256": "f689a91bb8dbaaf3fd39648c2f37a5e2cd28ab2dc3b5f4bb784f57308329bdd1",
     "hidden_rules_source_sha256": "2b626c15a5df42cb6071471decaf68b53cf1527ce9ab19aa9cdfc36f40e74d34"
    },
    "DR-atomic-state-f11-batch-import": {
@@ -140,13 +140,13 @@
     "sha": "95e5dc4d0038242b53ba2389384c707840771af4",
     "task_sha256": "9b9a805b85c1d617269b0d22c321fe13fffcc6ea670745fcdc090c7ead921775",
     "source_bundle_sha256": "74fe436f74d08b9bb17cdbe1acfd4dee63cb3338ef2c8c018ccb1b19f1d681a6",
-    "hidden_oracle_sha256": "51e901ef18e913232599397f8807596a4213f37b05aa89d76d0320effd27596f",
+    "hidden_oracle_sha256": "c8f8e24fe2e3b1523153a84891808f7eb25331f5b0a1ed5fa32bb9b759a60033",
     "hidden_reference_sha256": "c4079690a32dbd420a958332850bf08be5456e31cee839be7d5e6eaa661789ea",
     "oracle_smoke": "reference resolved=true twice (iter0068-d2-f11-fable-gold1/A1, iter0068-d2-f11-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f11-fable-noop/B1); port validation only, not admission evidence",
-    "hidden_failed_unchanged_sha256": "84840f6062290e10ce51a4789a0ec53e7daeb7a2db0c7b5ef2ec919f305fc3b3",
-    "hidden_invalid_body_sha256": "353549736ded0986258b46522e75f377e497f0ac5535e6ff3112d9839f338fc9",
+    "hidden_failed_unchanged_sha256": "4c0f007cb83a630f1ccd56b40073cef6b5192154f49ae61ff6700e6f4285c8e4",
+    "hidden_invalid_body_sha256": "cc38914e4515b83b53043f69574a09ba631caca8f59cb5657c2b6d5f7981fe3a",
     "hidden_invoke_app_sha256": "7727b9a2d939182c5ee0bb702837409c1a81978bf2e3aeb5c0bf41bb920fe643",
-    "hidden_success_sha256": "4750bf1359a9221202314ae5300b0b84b431778d259ce6cbdb033aa9773cad13"
+    "hidden_success_sha256": "1d6448c3a3d2f41bf9dec38765a0bc8259f7011c66ce783545c101a6d2e3bd18"
    },
    "DR-auth-signature-f12-webhook": {
     "source_fixture": "F12-webhook-raw-body-signature",
@@ -158,12 +158,12 @@
     "sha": "28d2137b511c09ba99c4672a1c5c9e1e7b7e2a6c",
     "task_sha256": "58e149bd9cbe6be89e214600420416b3ba17ecd83c523dd6d1d787b1cf1900e3",
     "source_bundle_sha256": "c473fb2c6801caeabfc1d848ebb72843e994fa121127b527f28b6bc4c9d9b69f",
-    "hidden_oracle_sha256": "a9103d3b2b7768c9064006573723ef091c1bca6eeca4aef1982af862ee0713b4",
+    "hidden_oracle_sha256": "45c81e67e9d262e663eb547531527fb496c7c2d6e6657d3f11cc7fb1d3fdfb7a",
     "hidden_reference_sha256": "e9496500b0f6626b752bec877a6921ae0253b8a09efb5b4fde596b3aff29a9e4",
     "oracle_smoke": "reference resolved=true twice (iter0068-d2-f12-fable-gold1/A1, iter0068-d2-f12-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f12-fable-noop/B1); port validation only, not admission evidence",
     "hidden_invoke_app_sha256": "7727b9a2d939182c5ee0bb702837409c1a81978bf2e3aeb5c0bf41bb920fe643",
     "hidden_replay_contract_sha256": "986cf0526815d8f7cfaf6b24daa8089e7ffe4ad2230d064fbc53fcced26986b5",
-    "hidden_signature_contract_sha256": "e7a4e3c63a1feba87b23ba5f297be5adc1ffd60837abfc0ac02d33b972449efc"
+    "hidden_signature_contract_sha256": "7ef74a6dd7d3903f1aaa6c4e452863229ecb1562bfe514d2de15c523c37ea970"
    }
   }
  }

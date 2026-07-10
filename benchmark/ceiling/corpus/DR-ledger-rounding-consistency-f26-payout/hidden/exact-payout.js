@@ -55,4 +55,51 @@ assert.deepStrictEqual(JSON.parse(proc.stdout), {
   ]
 });
 
+const rules = JSON.parse(fs.readFileSync(path.join(workdir, 'data', 'payout-rules.json'), 'utf8'));
+const heldAmount = rules.minimum_payout_cents;
+const heldProcessingFee = Math.round(heldAmount * rules.processing_fee_percent / 100)
+  + rules.fixed_fee_cents;
+const heldNetBeforeReserve = heldAmount - heldProcessingFee;
+const heldReserveBeforeHold = heldNetBeforeReserve > 0
+  ? Math.round(heldNetBeforeReserve * rules.reserve_percent / 100)
+  : 0;
+const heldPayoutBeforeMinimum = heldNetBeforeReserve - heldReserveBeforeHold;
+assert.ok(
+  heldPayoutBeforeMinimum > 0 && heldPayoutBeforeMinimum < rules.minimum_payout_cents,
+  'catalog rules must produce a positive below-threshold payout for this case'
+);
+
+const holdInput = path.join(os.tmpdir(), `payout-minimum-hold-${process.pid}.json`);
+fs.writeFileSync(holdInput, JSON.stringify({
+  events: [
+    { id: 'evt-hold', merchant_id: 'm_hold', type: 'charge', amount_cents: heldAmount }
+  ]
+}));
+const holdProc = spawnSync('node', ['bin/cli.js', 'payout', '--input', holdInput], {
+  cwd: workdir,
+  encoding: 'utf8'
+});
+
+assert.strictEqual(holdProc.status, 0, holdProc.stderr || holdProc.stdout);
+assert.strictEqual(holdProc.stderr, '');
+// Public contract (task.txt): "If `0 < payout_cents < minimum_payout_cents`, keep the merchant row, add that original positive payout amount to `reserve_cents`, and set `payout_cents` to `0`."
+assert.deepStrictEqual(JSON.parse(holdProc.stdout), {
+  total_payout_cents: 0,
+  total_processing_fee_cents: heldProcessingFee,
+  total_dispute_fee_cents: 0,
+  total_reserve_cents: heldNetBeforeReserve,
+  merchants: [
+    {
+      merchant_id: 'm_hold',
+      gross_charge_cents: heldAmount,
+      refund_cents: 0,
+      dispute_cents: 0,
+      processing_fee_cents: heldProcessingFee,
+      dispute_fee_cents: 0,
+      reserve_cents: heldReserveBeforeHold + heldPayoutBeforeMinimum,
+      payout_cents: 0
+    }
+  ]
+});
+
 process.stdout.write(JSON.stringify({ ok: true }) + '\n');

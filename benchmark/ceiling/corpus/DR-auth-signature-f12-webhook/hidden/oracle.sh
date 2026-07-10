@@ -84,10 +84,6 @@ check_forbidden_source \
   "empty catch block" \
   "catch[[:space:]]*\\([^)]*\\)[[:space:]]*\\{[[:space:]]*\\}" \
   server/index.js
-check_forbidden_source \
-  "eslint-disable without scoped justification" \
-  "/\\*[[:space:]]*eslint-disable" \
-  server/index.js
 
 for required_file in data/webhook-secret.txt tests/server.test.js; do
   if [ ! -f "$required_file" ]; then

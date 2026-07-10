@@ -33,6 +33,12 @@ async function main() {
   const wire = Buffer.from('{ "id":"evt_rb1","type":"x","timestamp":1,"data":{} }');
   const rawBody = await postRaw(wire, hmacHex(canonical));
 
+  const invalidBodyBytes = Buffer.from('{"id":"evt_invalid_first","type":"x","timestamp":"bad","data":{}}');
+  const invalidBody = await postRaw(invalidBodyBytes, hmacHex(invalidBodyBytes));
+  // Public contract (task.txt): "A body that fails this shape returns 400 with `{ error: 'invalid_body' }` (sig check still runs first — a bad body with a valid sig is 400, not 401)."
+  const invalidBodyExact = JSON.stringify(invalidBody.body)
+    === JSON.stringify({ error: 'invalid_body' });
+
   const ok = happy.status === 200
     && happy.body
     && happy.body.accepted === true
@@ -45,13 +51,17 @@ async function main() {
     && missing.body.error === 'invalid_signature'
     && rawBody.status === 401
     && rawBody.body
-    && rawBody.body.error === 'invalid_signature';
+    && rawBody.body.error === 'invalid_signature'
+    && invalidBody.status === 400
+    && invalidBodyExact;
   console.log(JSON.stringify({
     ok,
     happy: happy.status,
     tampered: tamperedResult.status,
     missing: missing.status,
     raw_body: rawBody.status,
+    invalid_first_delivery: invalidBody.status,
+    invalid_body_exact: invalidBodyExact,
   }));
   process.exitCode = ok ? 0 : 1;
 }

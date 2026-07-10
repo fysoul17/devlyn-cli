@@ -1,0 +1,189 @@
+diff --git a/server/index.js b/server/index.js
+index e681dde..a3df167 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -27,6 +27,34 @@ app.get('/items/:id', (req, res) => {
+   res.json({ item });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (let index = 0; index < req.body.items.length; index += 1) {
++    const item = req.body.items[index];
++    if (!item || typeof item.name !== 'string' || item.name.trim().length === 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  const firstId = items[0].id;
++  const imported = req.body.items.map((item, index) => ({
++    id: firstId + index,
++    name: item.name.trim(),
++    qty: item.qty,
++  }));
++  items.push(...imported);
++  res.status(201).json({ inserted: imported.length });
++});
++
+ if (require.main === module) {
+   const port = Number(process.env.PORT) || 3000;
+   app.listen(port, () => {
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..8453bc7 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -1,25 +1,69 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const http = require('node:http');
++const { Duplex } = require('node:stream');
+ const { app } = require('../server');
+ 
+-function startServer() {
+-  return new Promise((resolve) => {
+-    const server = http.createServer(app);
+-    server.listen(0, () => resolve(server));
+-  });
++class MemorySocket extends Duplex {
++  constructor() {
++    super();
++    this.responseChunks = [];
++    this.remoteAddress = '127.0.0.1';
++  }
++
++  _read() {}
++
++  _write(chunk, _encoding, callback) {
++    this.responseChunks.push(Buffer.from(chunk));
++    callback();
++  }
+ }
+ 
+-function get(server, path) {
++function invoke({ method = 'GET', path = '/', headers = {}, body } = {}) {
+   return new Promise((resolve, reject) => {
+-    const { port } = server.address();
+-    http
+-      .get(`http://127.0.0.1:${port}${path}`, (res) => {
+-        let body = '';
+-        res.on('data', (chunk) => (body += chunk));
+-        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
+-      })
+-      .on('error', reject);
++    const bytes = body === undefined ? Buffer.alloc(0) : Buffer.from(body);
++    const requestHeaders = Object.fromEntries(
++      Object.entries(headers).map(([name, value]) => [name.toLowerCase(), String(value)])
++    );
++    if (bytes.length > 0) requestHeaders['content-length'] = String(bytes.length);
++    const socket = new MemorySocket();
++    const req = new http.IncomingMessage(socket);
++    req.method = method;
++    req.url = path;
++    req.headers = requestHeaders;
++    req.rawHeaders = Object.entries(requestHeaders).flat();
++    const res = new http.ServerResponse(req);
++    res.assignSocket(socket);
++    socket.on('error', reject);
++    res.on('error', reject);
++    res.on('finish', () => {
++      const raw = Buffer.concat(socket.responseChunks);
++      const separator = raw.indexOf('\r\n\r\n');
++      const responseBody = raw.subarray(separator + 4).toString('utf8');
++      resolve({ status: res.statusCode, body: JSON.parse(responseBody) });
++    });
++    app(req, res);
++    process.nextTick(() => {
++      if (bytes.length > 0) req.push(bytes);
++      req.push(null);
++    });
++  });
++}
++
++function startServer() {
++  return Promise.resolve({ close() {} });
++}
++
++function get(_server, path) {
++  return invoke({ path });
++}
++
++function post(server, path, body) {
++  return invoke({
++    method: 'POST',
++    path,
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify(body),
+   });
+ }
+ 
+@@ -56,3 +100,61 @@ test('GET /items/:id returns 404 for missing', async () => {
+     server.close();
+   }
+ });
++
++test('POST /items/import appends a fully valid request in order', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 2 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const appended = after.body.items.slice(before.body.items.length);
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: 2 });
++    assert.deepStrictEqual(appended.map(({ name, qty }) => ({ name, qty })), [
++      { name: 'gamma', qty: 1 },
++      { name: 'delta', qty: 2 },
++    ]);
++    assert.strictEqual(appended.length, 2);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import leaves the list unchanged after an invalid middle item', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'valid-prefix', qty: 1 },
++        { name: 'bad', qty: 0 },
++        { name: 'valid-suffix', qty: 2 },
++      ],
++    });
++    const after = await get(server, '/items');
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.deepStrictEqual(after.body, before.body);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import rejects a missing items array without changing the list', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', { wrong: 'shape' });
++    const after = await get(server, '/items');
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_body' });
++    assert.deepStrictEqual(after.body, before.body);
++  } finally {
++    server.close();
++  }
++});

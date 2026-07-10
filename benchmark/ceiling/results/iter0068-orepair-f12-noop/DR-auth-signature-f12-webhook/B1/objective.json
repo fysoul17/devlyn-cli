@@ -1,0 +1,11 @@
+{
+  "task": "DR-auth-signature-f12-webhook",
+  "arm_attempt": "B1",
+  "resolved": false,
+  "tests_passed": 0,
+  "tests_total": 1,
+  "hidden_test_failures": 1,
+  "apply_exit": 0,
+  "oracle_exit": 1,
+  "report_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/external/eval/iter0068-orepair-f12-noop/DR-auth-signature-f12-webhook/B1/oracle.log"
+}

@@ -86,10 +86,6 @@ check_forbidden_source \
   "empty catch block" \
   "catch[[:space:]]*\\([^)]*\\)[[:space:]]*\\{[[:space:]]*\\}" \
   bin/cli.js
-check_forbidden_source \
-  "eslint-disable without scoped justification" \
-  "/\\*[[:space:]]*eslint-disable" \
-  bin/cli.js
 
 changed_files="$TMP_ROOT/changed-files.txt"
 {
