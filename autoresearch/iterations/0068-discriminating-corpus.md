@@ -164,9 +164,10 @@ config: `run-ceiling-arm.sh` exports a benchmark-owned `CODEX_HOME`
 symlink) so the A-arm's nested resolve→codex IMPLEMENT loads terra, and pins
 `-m gpt-5.6-terra` directly on the B/C `codex exec` (which `--ignore-user-config`).
 Cohort identity now records requested-alias `gpt-5.6-terra` per bare attempt.
-Follow-up: the neutral blind judge's codex seat must be pinned to terra too
-before the A/C tranche runs (separate invocation, not through the arm
-script) — it does not run in the admission gate.
+The neutral blind judge's codex seat is ALSO pinned to terra
+(`ceiling-judge.py call_codex` adds `-m gpt-5.6-terra`; it `--ignore-user-config`
+so `-m` is the only lever) — done ahead of the A/C tranche so the whole
+benchmark is sonnet + terra, sol nowhere in the measured path.
 
 ## Predictions (frozen before implementation)
 

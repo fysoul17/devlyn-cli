@@ -188,6 +188,13 @@ def call_codex(
         str(scratch_dir),
         "-s",
         "read-only",
+        # Benchmark judge codex seat = gpt-5.6-terra, never the user's global
+        # sol default. --ignore-user-config above means config.toml is not
+        # read, so -m is the only lever (same as the B/C arms). sol is
+        # team-only; the measured benchmark uses sonnet + terra (user
+        # directive 2026-07-10).
+        "-m",
+        "gpt-5.6-terra",
         "-c",
         "model_reasoning_effort=xhigh",
         prompt,
