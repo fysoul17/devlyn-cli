@@ -1,0 +1,11 @@
+{
+  "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+  "arm_attempt": "A1",
+  "resolved": true,
+  "tests_passed": 1,
+  "tests_total": 1,
+  "hidden_test_failures": 0,
+  "apply_exit": 0,
+  "oracle_exit": 0,
+  "report_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/external/eval/iter0068-d2-f23-fable-gold2/DR-allocation-fefo-priority-rollback-f23-fulfillment/A1/oracle.log"
+}

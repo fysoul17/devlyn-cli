@@ -164,6 +164,23 @@
     "hidden_invoke_app_sha256": "7727b9a2d939182c5ee0bb702837409c1a81978bf2e3aeb5c0bf41bb920fe643",
     "hidden_replay_contract_sha256": "986cf0526815d8f7cfaf6b24daa8089e7ffe4ad2230d064fbc53fcced26986b5",
     "hidden_signature_contract_sha256": "7ef74a6dd7d3903f1aaa6c4e452863229ecb1562bfe514d2de15c523c37ea970"
+   },
+   "DR-allocation-fefo-priority-rollback-f23-fulfillment": {
+    "source_fixture": "F23-cli-fulfillment-wave",
+    "categorical_class": "allocation/FEFO/priority-rollback",
+    "candidate": true,
+    "admitted": false,
+    "frozen": false,
+    "repo": "./source.bundle",
+    "sha": "3baa954764454430e00f7036e0e08b1840557f22",
+    "task_sha256": "026a153501107373a5e14ade6a4548cd3e9769a69c06a38ed8f4b44fc82183fc",
+    "source_bundle_sha256": "46fb7e6aa308180d7ba442cb807cde07aab51b6ebc697b4506920f7e1957cfbb",
+    "hidden_oracle_sha256": "f8f078f037c6964078d59418b6afea8e2b678b14b0e61fb5f5b22542f039535b",
+    "hidden_reference_sha256": "6afe60c63adaab7f3be5f7755e0454d8a226d5c9403541b68a5db796a4f9c9fa",
+    "oracle_smoke": "reference resolved=true twice (iter0068-d2-f23-fable-gold1/A1, iter0068-d2-f23-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f23-fable-noop/B1); port validation only, not admission evidence",
+    "hidden_contract_shapes_sha256": "33592ce207ace363ff2a2e68d9c2c74a0722732393763d05e482756b2c783ddf",
+    "hidden_priority_rollback_sha256": "a2fa1c08f0bc269f3f2217a9c19f988075d674001c95344bcfff8f1efea3264c",
+    "hidden_single_warehouse_fefo_sha256": "bb6e917b2d8403652821bb403e1d52fe530098f33bc08780efad9b6cced840b5"
    }
   }
  }

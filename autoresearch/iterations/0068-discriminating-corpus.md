@@ -100,7 +100,12 @@ harness mechanism that would catch it (R0 POS-1 synthesis). Candidate pool
 discrimination `F21/NOTES.md:23-27`), **F25-cli-cart-promotion-rules**
 (shape/compound), **F26-cli-payout-ledger-rules**, **F11-batch-import**
 (atomic-state), **F12-webhook-raw-body-signature** (auth-signature),
-**F7-out-of-scope-trap** (scope). The pool is frozen; admission is data.
+**F7-out-of-scope-trap** (scope), and **F23-cli-fulfillment-wave**
+(allocation/FEFO/priority-rollback). F23 is the pre-registered seventh row:
+the original six omit its allocation class, and only three carry low-bare
+provenance against L4's ≥3-admitted-class bar, so it adds class-coverage slack
+without forcing an admission or relaxing the unchanged gold-pass + 0/3-valid-
+bare-resolves gate. The pool is frozen; admission is data.
 - **Control: FS1** (schedule max_runs) — known bare-passes (14/14 hidden
   TESTS, B1; R0 SHOULD-FIX 4 wording); MUST be rejected by the gate.
 
@@ -221,7 +226,7 @@ C copycat codex), N = round(wall_A/wall_B) capped [1,3], neutral blind judge
    against the cloned+patched repo, task-agnostic. FS1 keeps working via a
    thin oracle.sh wrapper (regression guard).
 2. **Fixture pool port**: `benchmark/ceiling/corpus/DR-<class>-*/` for the
-   candidate pool (F21/F25/F26/F11/F12/F7 → FS-format: local git repo at a
+   candidate pool (F21/F25/F26/F11/F12/F7/F23 → FS-format: local git repo at a
    base sha, de-leaked visible `task.txt` that STILL states the observable
    invariant (R0 SHOULD-FIX 2, just not the trigger words), `hidden/oracle.sh`
    converted from the fixture's verifiers, `hidden/reference.patch` gold).
@@ -393,7 +398,7 @@ complete and committed. Implementation order (all deliverables in the
    wrapper (regression guard). NOTE: do NOT commit an embedded `.git`
    directory inside the corpus — use a git bundle or a documented
    local-clone-source layout the runner can consume without nesting repos.
-2. **Port a POOL** (F21/F25/F26/F11/F12/F7 → FS-format, de-leaked visible
+2. **Port a POOL** (F21/F25/F26/F11/F12/F7/F23 → FS-format, de-leaked visible
    spec that keeps the observable invariant; F7 oracle is same-file per
    MUST-FIX 2) — let the gate select, do NOT hand-pick.
 3. **Bare-fails gate** (bare-CODEX N=3 + gold smoke): admit gold-pass AND
