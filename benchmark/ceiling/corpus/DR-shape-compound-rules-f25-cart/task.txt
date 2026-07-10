@@ -1,0 +1,7 @@
+Add a bench-cli cart command that reads a cart JSON file, prices it from data/catalog.json, combines duplicate SKU quantities, applies line promotions before an order coupon, and prints one exact JSON total with cents-based discounts, tax, shipping, and item rows.
+
+The command should be `bench-cli cart --input <path>`. The input JSON has a state, an optional coupon, and item rows with sku and qty. Use integer cents for every public amount. Read all catalog data from `data/catalog.json`; do not hardcode products, stock, tax codes, promotions, coupons, tax rates, shipping, or the free-shipping threshold.
+
+Duplicate SKUs must be combined before stock validation and before promotion math. On success, stdout must be exactly one JSON object with subtotal, line discount, coupon discount, tax, shipping, total, and one item row per SKU in first-seen order. Validation errors must exit 2, print exactly one JSON error object to stderr, and print no stdout. Combined stock errors must include the sku, available quantity, and requested combined quantity.
+
+Update `tests/cli.test.js` so existing tests still pass and at least two new tests cover the cart command, including one successful cart and one validation failure. Do not add dependencies or touch the server/web files.

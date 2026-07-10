@@ -95,6 +95,40 @@
     "hidden_version_behavior_sha256": "504fee0aeefc94a2bed511957fa87e454f9cb9af9b18e27a4efd03634fd1ad54",
     "hidden_reference_sha256": "0fff3edd82baa82bbb2b29706b363ed74975285ae951f534634cac1304ce5564",
     "oracle_smoke": "reference resolved=true twice (iter0068-d2-f7-fable-gold1/A1, iter0068-d2-f7-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f7-fable-noop/B1); adversarial guards (bait mutation / out-of-scope file / forbidden pattern) all fail per codex isolated smoke; port validation only, not admission evidence"
+   },
+   "DR-shape-compound-rules-f25-cart": {
+    "source_fixture": "F25-cli-cart-promotion-rules",
+    "categorical_class": "shape/compound-rules",
+    "candidate": true,
+    "admitted": false,
+    "frozen": false,
+    "repo": "./source.bundle",
+    "sha": "e5a4a030ee77da23d1eb5de998e6d5567b83e1d5",
+    "task_sha256": "df3150677be12630580a09c9b42c04c3bd85f41f95c3d32af38aac4f7d4db22e",
+    "source_bundle_sha256": "cb862c3a10d50787596a3e90f8aa9d912458a9fae025f098ce09edaf246d2a86",
+    "hidden_oracle_sha256": "fae151f0ffbfeb8407e4e490d8b146051d106886521ff7cab7a9a25624def89b",
+    "hidden_reference_sha256": "65040b29cb8c2febd0cc3b16a7ed578ec6893fe7d80ebc6de56f5abb89d908f1",
+    "oracle_smoke": "reference resolved=true twice (iter0068-d2-f25-fable-gold1/A1, iter0068-d2-f25-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f25-fable-noop/B1); port validation only, not admission evidence",
+    "hidden_catalog_source_sha256": "41119b28fc5a2c4a3fe20714e4b7204fe7bcc4730eefc5c815be5a1d7168604a",
+    "hidden_exact_success_sha256": "a7ca7503422e4d213982b10daeb68d899d6a92a1f5d80052fd3be976782ece2b",
+    "hidden_stock_error_sha256": "fea01712c164089cc7941ed5514ad4febe922e4df674313ede46f4e205d9d11e"
+   },
+   "DR-ledger-rounding-consistency-f26-payout": {
+    "source_fixture": "F26-cli-payout-ledger-rules",
+    "categorical_class": "ledger/rounding-consistency",
+    "candidate": true,
+    "admitted": false,
+    "frozen": false,
+    "repo": "./source.bundle",
+    "sha": "850d2ad708d3c2deaa6d59e5691ddc9dcdda217b",
+    "task_sha256": "fa58751cd16ad0004836c3e04fb4300ada584c3bd12e21aa409e690d17911225",
+    "source_bundle_sha256": "a5ded520220ac04f3d6681649f9d261fbce051ae555f19b2848ccafdc04d37f8",
+    "hidden_oracle_sha256": "b420768b017f967683dbb56f3096c290465f83deec9876246ddfab9511737635",
+    "hidden_reference_sha256": "dddfb8adad1ef925fac78dbd0c064bb1e0d0a2a154787c2567c636d69ae50079",
+    "oracle_smoke": "reference resolved=true twice (iter0068-d2-f26-fable-gold1/A1, iter0068-d2-f26-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f26-fable-noop/B1); port validation only, not admission evidence",
+    "hidden_conflicting_duplicate_sha256": "3983c1642cfa14a0bf9f83bcea618cf49f990b6e58d2d413dd08d4bdd5bce5d7",
+    "hidden_exact_payout_sha256": "609ba1a4e02426b6c25dc8802d0e40e7e471bb7a3f61a206ae15159b15b2911d",
+    "hidden_rules_source_sha256": "2b626c15a5df42cb6071471decaf68b53cf1527ce9ab19aa9cdfc36f40e74d34"
    }
   }
  }

@@ -1,0 +1,286 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index 78fdd98..54e47a9 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@ const USAGE = `Usage: bench-cli <command> [options]
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  payout --input <path>      Compute merchant payouts from a ledger JSON file
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli payout --input ledger.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,173 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function emitError(obj) {
++  process.stderr.write(JSON.stringify(obj) + '\n');
++  process.exit(2);
++}
++
++function payout(argv) {
++  const idx = argv.indexOf('--input');
++  if (idx === -1 || !argv[idx + 1]) {
++    emitError({ error: 'missing_input' });
++  }
++  const inputPath = path.resolve(process.cwd(), argv[idx + 1]);
++
++  let raw;
++  try {
++    raw = fs.readFileSync(inputPath, 'utf8');
++  } catch (_err) {
++    emitError({ error: 'unreadable_input' });
++  }
++
++  let parsed;
++  try {
++    parsed = JSON.parse(raw);
++  } catch (_err) {
++    emitError({ error: 'invalid_json' });
++  }
++
++  if (!parsed || !Array.isArray(parsed.events)) {
++    emitError({ error: 'missing_events' });
++  }
++
++  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
++  let rules;
++  try {
++    rules = JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
++  } catch (_err) {
++    emitError({ error: 'unreadable_rules' });
++  }
++
++  const VALID_TYPES = new Set(['charge', 'refund', 'dispute']);
++  const seen = new Map();
++  const deduped = [];
++
++  for (const ev of parsed.events) {
++    if (!ev || typeof ev !== 'object') {
++      emitError({ error: 'invalid_event' });
++    }
++    if (typeof ev.id !== 'string' || ev.id.length === 0) {
++      emitError({ error: 'missing_id' });
++    }
++    if (typeof ev.merchant_id !== 'string' || ev.merchant_id.length === 0) {
++      emitError({ error: 'missing_merchant_id', id: ev.id });
++    }
++    if (!VALID_TYPES.has(ev.type)) {
++      emitError({ error: 'unknown_event_type', id: ev.id });
++    }
++    if (
++      typeof ev.amount_cents !== 'number' ||
++      !Number.isInteger(ev.amount_cents) ||
++      ev.amount_cents <= 0
++    ) {
++      emitError({ error: 'invalid_amount_cents', id: ev.id });
++    }
++
++    const prior = seen.get(ev.id);
++    if (prior) {
++      if (
++        prior.merchant_id === ev.merchant_id &&
++        prior.type === ev.type &&
++        prior.amount_cents === ev.amount_cents
++      ) {
++        continue; // idempotent duplicate
++      }
++      emitError({ error: 'conflicting_duplicate', id: ev.id });
++    }
++    const normalized = {
++      id: ev.id,
++      merchant_id: ev.merchant_id,
++      type: ev.type,
++      amount_cents: ev.amount_cents,
++    };
++    seen.set(ev.id, normalized);
++    deduped.push(normalized);
++  }
++
++  // Walk deduped events in order, building merchant rows in first-seen order.
++  const merchants = new Map();
++  function getRow(merchant_id) {
++    let row = merchants.get(merchant_id);
++    if (!row) {
++      row = {
++        merchant_id,
++        gross_charge_cents: 0,
++        refund_cents: 0,
++        dispute_cents: 0,
++        processing_fee_cents: 0,
++        dispute_fee_cents: 0,
++        reserve_cents: 0,
++        payout_cents: 0,
++      };
++      merchants.set(merchant_id, row);
++    }
++    return row;
++  }
++
++  for (const ev of deduped) {
++    const row = getRow(ev.merchant_id);
++    if (ev.type === 'charge') {
++      row.gross_charge_cents += ev.amount_cents;
++      row.processing_fee_cents +=
++        Math.round(ev.amount_cents * rules.processing_fee_percent / 100) +
++        rules.fixed_fee_cents;
++    } else if (ev.type === 'refund') {
++      row.refund_cents += ev.amount_cents;
++    } else if (ev.type === 'dispute') {
++      row.dispute_cents += ev.amount_cents;
++      row.dispute_fee_cents += rules.dispute_fee_cents;
++    }
++  }
++
++  let total_payout_cents = 0;
++  let total_processing_fee_cents = 0;
++  let total_dispute_fee_cents = 0;
++  let total_reserve_cents = 0;
++  const merchantRows = [];
++
++  for (const row of merchants.values()) {
++    const net_before_reserve =
++      row.gross_charge_cents -
++      row.refund_cents -
++      row.dispute_cents -
++      row.processing_fee_cents -
++      row.dispute_fee_cents;
++    row.reserve_cents =
++      net_before_reserve > 0
++        ? Math.round(net_before_reserve * rules.reserve_percent / 100)
++        : 0;
++    row.payout_cents = net_before_reserve - row.reserve_cents;
++    if (row.payout_cents > 0 && row.payout_cents < rules.minimum_payout_cents) {
++      row.reserve_cents += row.payout_cents;
++      row.payout_cents = 0;
++    }
++    total_payout_cents += row.payout_cents;
++    total_processing_fee_cents += row.processing_fee_cents;
++    total_dispute_fee_cents += row.dispute_fee_cents;
++    total_reserve_cents += row.reserve_cents;
++    merchantRows.push({
++      merchant_id: row.merchant_id,
++      gross_charge_cents: row.gross_charge_cents,
++      refund_cents: row.refund_cents,
++      dispute_cents: row.dispute_cents,
++      processing_fee_cents: row.processing_fee_cents,
++      dispute_fee_cents: row.dispute_fee_cents,
++      reserve_cents: row.reserve_cents,
++      payout_cents: row.payout_cents,
++    });
++  }
++
++  const result = {
++    total_payout_cents,
++    total_processing_fee_cents,
++    total_dispute_fee_cents,
++    total_reserve_cents,
++    merchants: merchantRows,
++  };
++  process.stdout.write(JSON.stringify(result) + '\n');
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +222,10 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'payout': {
++      payout(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..21763db 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+-const { execFileSync } = require('node:child_process');
++const { execFileSync, spawnSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -23,3 +25,67 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('payout: charges + refund + dispute with idempotent duplicate', () => {
++  const fixture = {
++    events: [
++      { id: 'c1', merchant_id: 'm1', type: 'charge', amount_cents: 10000 },
++      { id: 'c2', merchant_id: 'm2', type: 'charge', amount_cents: 8000 },
++      { id: 'c1', merchant_id: 'm1', type: 'charge', amount_cents: 10000 },
++      { id: 'r1', merchant_id: 'm1', type: 'refund', amount_cents: 2000 },
++      { id: 'd1', merchant_id: 'm1', type: 'dispute', amount_cents: 3000 },
++      { id: 'c3', merchant_id: 'm1', type: 'charge', amount_cents: 5000 },
++    ],
++  };
++  const file = path.join(os.tmpdir(), `payout-success-${process.pid}-${Date.now()}.json`);
++  fs.writeFileSync(file, JSON.stringify(fixture));
++
++  const out = run(['payout', '--input', file]);
++  const parsed = JSON.parse(out);
++
++  assert.deepStrictEqual(parsed, {
++    total_payout_cents: 14168,
++    total_processing_fee_cents: 757,
++    total_dispute_fee_cents: 1500,
++    total_reserve_cents: 1575,
++    merchants: [
++      {
++        merchant_id: 'm1',
++        gross_charge_cents: 15000,
++        refund_cents: 2000,
++        dispute_cents: 3000,
++        processing_fee_cents: 495,
++        dispute_fee_cents: 1500,
++        reserve_cents: 801,
++        payout_cents: 7204,
++      },
++      {
++        merchant_id: 'm2',
++        gross_charge_cents: 8000,
++        refund_cents: 0,
++        dispute_cents: 0,
++        processing_fee_cents: 262,
++        dispute_fee_cents: 0,
++        reserve_cents: 774,
++        payout_cents: 6964,
++      },
++    ],
++  });
++});
++
++test('payout: conflicting duplicate exits 2 with error to stderr and no stdout', () => {
++  const fixture = {
++    events: [
++      { id: 'x1', merchant_id: 'm1', type: 'charge', amount_cents: 10000 },
++      { id: 'x1', merchant_id: 'm1', type: 'charge', amount_cents: 9999 },
++    ],
++  };
++  const file = path.join(os.tmpdir(), `payout-conflict-${process.pid}-${Date.now()}.json`);
++  fs.writeFileSync(file, JSON.stringify(fixture));
++
++  const result = spawnSync('node', [CLI, 'payout', '--input', file], { encoding: 'utf8' });
++  assert.strictEqual(result.status, 2);
++  assert.strictEqual(result.stdout, '');
++  const err = JSON.parse(result.stderr);
++  assert.deepStrictEqual(err, { error: 'conflicting_duplicate', id: 'x1' });
++});
