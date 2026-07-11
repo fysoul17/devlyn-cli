@@ -61,8 +61,8 @@
   }
  },
  "tranche3": {
-  "status": "candidate_pool",
-  "frozen_at": null,
+  "status": "frozen",
+  "frozen_at": "2026-07-11T07:35:22Z",
   "selection_rule": "iter-0068 candidate pool; admission and freeze are deferred to the Deliverable 3 bare-fails gate",
   "tasks": {
    "DR-ordering-f21-scheduler": {
@@ -80,7 +80,167 @@
     "hidden_error_order_sha256": "fc0123bdaeefb6cac57b3ec96580fddf13d0be65b5e69abf23250262650646bb",
     "hidden_reference_sha256": "ed6adb912c11415dbddfc94c414b7d37220a374c17b981ddea3c38150e2be312",
     "oracle_smoke": "reference resolved=true twice (iter0068-d2-f21-gold-smoke-1/A1 and iter0068-d2-f21-gold-smoke-2/A1); base/no-op resolved=false with oracle_exit=1 (iter0068-d2-f21-noop-smoke/B1); port validation only, not admission evidence",
-    "base_sha256": "fb80278969b62d1665e3c1608ca633be1f84ee0f9659a9b78b0c9c5b051c2b9a"
+    "base_sha256": "fb80278969b62d1665e3c1608ca633be1f84ee0f9659a9b78b0c9c5b051c2b9a",
+    "gate_reason": "saturated:bare-resolves",
+    "gold_attempt": {
+     "attempt": "A1",
+     "run_id": "iter0068-gate-20260711g-gold",
+     "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/DR-ordering-f21-scheduler/A1",
+     "evaluator_exit": 0,
+     "patch": {
+      "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/DR-ordering-f21-scheduler/A1/patch.diff",
+      "exists": true,
+      "bytes": 9707,
+      "sha256": "ed6adb912c11415dbddfc94c414b7d37220a374c17b981ddea3c38150e2be312"
+     },
+     "objective": {
+      "task": "DR-ordering-f21-scheduler",
+      "arm_attempt": "A1",
+      "resolved": true,
+      "tests_passed": 1,
+      "tests_total": 1,
+      "hidden_test_failures": 0,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g-gold/DR-ordering-f21-scheduler/A1/oracle.log"
+     },
+     "objective_error": null,
+     "apply_exit": 0,
+     "oracle_exit": 0,
+     "resolved": true,
+     "invalid_reasons": []
+    },
+    "attempts": [
+     {
+      "attempt": "B1",
+      "slot": 1,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-ordering-f21-scheduler/B1",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-ordering-f21-scheduler",
+       "arm": "B",
+       "attempt": 1,
+       "elapsed_seconds": 442,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-ordering-f21-scheduler/B1/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-ordering-f21-scheduler/B1/patch.diff",
+       "exists": true,
+       "bytes": 14127,
+       "sha256": "7c918f702f09b66e201af356920a9f70e88104a503d7b6765265765fdf475f7d"
+      },
+      "objective": {
+       "task": "DR-ordering-f21-scheduler",
+       "arm_attempt": "B1",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-ordering-f21-scheduler/B1/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B2",
+      "slot": 2,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-ordering-f21-scheduler/B2",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-ordering-f21-scheduler",
+       "arm": "B",
+       "attempt": 2,
+       "elapsed_seconds": 297,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-ordering-f21-scheduler/B2/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-ordering-f21-scheduler/B2/patch.diff",
+       "exists": true,
+       "bytes": 12465,
+       "sha256": "d8e045f6510eab5123f8d4099343508833f777649e58118ab738ae5712be9f38"
+      },
+      "objective": {
+       "task": "DR-ordering-f21-scheduler",
+       "arm_attempt": "B2",
+       "resolved": false,
+       "tests_passed": 0,
+       "tests_total": 1,
+       "hidden_test_failures": 1,
+       "apply_exit": 0,
+       "oracle_exit": 1,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-ordering-f21-scheduler/B2/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 1,
+      "valid": true,
+      "resolved": false,
+      "outcome": "fail",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B3",
+      "slot": 3,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-ordering-f21-scheduler/B3",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-ordering-f21-scheduler",
+       "arm": "B",
+       "attempt": 3,
+       "elapsed_seconds": 287,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-ordering-f21-scheduler/B3/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-ordering-f21-scheduler/B3/patch.diff",
+       "exists": true,
+       "bytes": 11734,
+       "sha256": "13a97510f4d8608a1313e4922eed396fc16ae329e4604eabb5d57fd8534694c5"
+      },
+      "objective": {
+       "task": "DR-ordering-f21-scheduler",
+       "arm_attempt": "B3",
+       "resolved": false,
+       "tests_passed": 0,
+       "tests_total": 1,
+       "hidden_test_failures": 1,
+       "apply_exit": 0,
+       "oracle_exit": 1,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-ordering-f21-scheduler/B3/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 1,
+      "valid": true,
+      "resolved": false,
+      "outcome": "fail",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     }
+    ]
    },
    "DR-byte-preservation-f7-out-of-scope-trap": {
     "source_fixture": "F7-out-of-scope-trap",
@@ -97,7 +257,167 @@
     "hidden_version_behavior_sha256": "504fee0aeefc94a2bed511957fa87e454f9cb9af9b18e27a4efd03634fd1ad54",
     "hidden_reference_sha256": "0fff3edd82baa82bbb2b29706b363ed74975285ae951f534634cac1304ce5564",
     "oracle_smoke": "reference resolved=true twice (iter0068-d2-f7-fable-gold1/A1, iter0068-d2-f7-fable-gold2/A1); base/no-op resolved=false oracle_exit=1 (iter0068-d2-f7-fable-noop/B1); adversarial guards (bait mutation / out-of-scope file / forbidden pattern) all fail per codex isolated smoke; port validation only, not admission evidence",
-    "base_sha256": "cd6dec842584a013857dc547b8c79a3f67d1bb4051fead53c960f2ee991013b2"
+    "base_sha256": "cd6dec842584a013857dc547b8c79a3f67d1bb4051fead53c960f2ee991013b2",
+    "gate_reason": "saturated:bare-resolves",
+    "gold_attempt": {
+     "attempt": "A1",
+     "run_id": "iter0068-gate-20260711g-gold",
+     "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/DR-byte-preservation-f7-out-of-scope-trap/A1",
+     "evaluator_exit": 0,
+     "patch": {
+      "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/DR-byte-preservation-f7-out-of-scope-trap/A1/patch.diff",
+      "exists": true,
+      "bytes": 2063,
+      "sha256": "0fff3edd82baa82bbb2b29706b363ed74975285ae951f534634cac1304ce5564"
+     },
+     "objective": {
+      "task": "DR-byte-preservation-f7-out-of-scope-trap",
+      "arm_attempt": "A1",
+      "resolved": true,
+      "tests_passed": 1,
+      "tests_total": 1,
+      "hidden_test_failures": 0,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g-gold/DR-byte-preservation-f7-out-of-scope-trap/A1/oracle.log"
+     },
+     "objective_error": null,
+     "apply_exit": 0,
+     "oracle_exit": 0,
+     "resolved": true,
+     "invalid_reasons": []
+    },
+    "attempts": [
+     {
+      "attempt": "B1",
+      "slot": 1,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-byte-preservation-f7-out-of-scope-trap/B1",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-byte-preservation-f7-out-of-scope-trap",
+       "arm": "B",
+       "attempt": 1,
+       "elapsed_seconds": 107,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-byte-preservation-f7-out-of-scope-trap/B1/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-byte-preservation-f7-out-of-scope-trap/B1/patch.diff",
+       "exists": true,
+       "bytes": 1066,
+       "sha256": "a3142c55a95efa3b6deff940cf82a60ccc6a95f3386696ace08a22ab96b7caed"
+      },
+      "objective": {
+       "task": "DR-byte-preservation-f7-out-of-scope-trap",
+       "arm_attempt": "B1",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-byte-preservation-f7-out-of-scope-trap/B1/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B2",
+      "slot": 2,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-byte-preservation-f7-out-of-scope-trap/B2",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-byte-preservation-f7-out-of-scope-trap",
+       "arm": "B",
+       "attempt": 2,
+       "elapsed_seconds": 86,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-byte-preservation-f7-out-of-scope-trap/B2/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-byte-preservation-f7-out-of-scope-trap/B2/patch.diff",
+       "exists": true,
+       "bytes": 1728,
+       "sha256": "cc5dd7d510c96e6ae91053ad92d9224e7e9923418edbe0b8a4a9c491a44fc6ac"
+      },
+      "objective": {
+       "task": "DR-byte-preservation-f7-out-of-scope-trap",
+       "arm_attempt": "B2",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-byte-preservation-f7-out-of-scope-trap/B2/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B3",
+      "slot": 3,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-byte-preservation-f7-out-of-scope-trap/B3",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-byte-preservation-f7-out-of-scope-trap",
+       "arm": "B",
+       "attempt": 3,
+       "elapsed_seconds": 128,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-byte-preservation-f7-out-of-scope-trap/B3/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-byte-preservation-f7-out-of-scope-trap/B3/patch.diff",
+       "exists": true,
+       "bytes": 1602,
+       "sha256": "b9de22a6a116dac88b52f02296241ac7bf9a158cf0c4e00bcae6766618f1bae7"
+      },
+      "objective": {
+       "task": "DR-byte-preservation-f7-out-of-scope-trap",
+       "arm_attempt": "B3",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-byte-preservation-f7-out-of-scope-trap/B3/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     }
+    ]
    },
    "DR-shape-compound-rules-f25-cart": {
     "source_fixture": "F25-cli-cart-promotion-rules",
@@ -115,7 +435,167 @@
     "hidden_catalog_source_sha256": "41119b28fc5a2c4a3fe20714e4b7204fe7bcc4730eefc5c815be5a1d7168604a",
     "hidden_exact_success_sha256": "a7ca7503422e4d213982b10daeb68d899d6a92a1f5d80052fd3be976782ece2b",
     "hidden_stock_error_sha256": "fea01712c164089cc7941ed5514ad4febe922e4df674313ede46f4e205d9d11e",
-    "base_sha256": "045d390d5486e0d1cdc471315a9e2be98f10d4ff8fdbb9d50401c9ec69d52126"
+    "base_sha256": "045d390d5486e0d1cdc471315a9e2be98f10d4ff8fdbb9d50401c9ec69d52126",
+    "gate_reason": "saturated:bare-resolves",
+    "gold_attempt": {
+     "attempt": "A1",
+     "run_id": "iter0068-gate-20260711g-gold",
+     "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/DR-shape-compound-rules-f25-cart/A1",
+     "evaluator_exit": 0,
+     "patch": {
+      "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/DR-shape-compound-rules-f25-cart/A1/patch.diff",
+      "exists": true,
+      "bytes": 12108,
+      "sha256": "65040b29cb8c2febd0cc3b16a7ed578ec6893fe7d80ebc6de56f5abb89d908f1"
+     },
+     "objective": {
+      "task": "DR-shape-compound-rules-f25-cart",
+      "arm_attempt": "A1",
+      "resolved": true,
+      "tests_passed": 1,
+      "tests_total": 1,
+      "hidden_test_failures": 0,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g-gold/DR-shape-compound-rules-f25-cart/A1/oracle.log"
+     },
+     "objective_error": null,
+     "apply_exit": 0,
+     "oracle_exit": 0,
+     "resolved": true,
+     "invalid_reasons": []
+    },
+    "attempts": [
+     {
+      "attempt": "B1",
+      "slot": 1,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-shape-compound-rules-f25-cart/B1",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-shape-compound-rules-f25-cart",
+       "arm": "B",
+       "attempt": 1,
+       "elapsed_seconds": 206,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-shape-compound-rules-f25-cart/B1/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-shape-compound-rules-f25-cart/B1/patch.diff",
+       "exists": true,
+       "bytes": 9594,
+       "sha256": "d27db8d28828aa72700f0b285ab81e39504c4c35b0afc007fa5c01392b7eeb76"
+      },
+      "objective": {
+       "task": "DR-shape-compound-rules-f25-cart",
+       "arm_attempt": "B1",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-shape-compound-rules-f25-cart/B1/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B2",
+      "slot": 2,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-shape-compound-rules-f25-cart/B2",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-shape-compound-rules-f25-cart",
+       "arm": "B",
+       "attempt": 2,
+       "elapsed_seconds": 174,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-shape-compound-rules-f25-cart/B2/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-shape-compound-rules-f25-cart/B2/patch.diff",
+       "exists": true,
+       "bytes": 8335,
+       "sha256": "30953d0e5a336b086c8411e9a28366512f24408a3000ba31986f17bef9aebc39"
+      },
+      "objective": {
+       "task": "DR-shape-compound-rules-f25-cart",
+       "arm_attempt": "B2",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-shape-compound-rules-f25-cart/B2/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B3",
+      "slot": 3,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-shape-compound-rules-f25-cart/B3",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-shape-compound-rules-f25-cart",
+       "arm": "B",
+       "attempt": 3,
+       "elapsed_seconds": 246,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-shape-compound-rules-f25-cart/B3/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-shape-compound-rules-f25-cart/B3/patch.diff",
+       "exists": true,
+       "bytes": 9852,
+       "sha256": "d60d1ef85907c904cc619355736865ba7b2fc5c0589c67e6e11154e9ae827b4f"
+      },
+      "objective": {
+       "task": "DR-shape-compound-rules-f25-cart",
+       "arm_attempt": "B3",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-shape-compound-rules-f25-cart/B3/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     }
+    ]
    },
    "DR-ledger-rounding-consistency-f26-payout": {
     "source_fixture": "F26-cli-payout-ledger-rules",
@@ -133,7 +613,167 @@
     "hidden_conflicting_duplicate_sha256": "3983c1642cfa14a0bf9f83bcea618cf49f990b6e58d2d413dd08d4bdd5bce5d7",
     "hidden_exact_payout_sha256": "f689a91bb8dbaaf3fd39648c2f37a5e2cd28ab2dc3b5f4bb784f57308329bdd1",
     "hidden_rules_source_sha256": "2b626c15a5df42cb6071471decaf68b53cf1527ce9ab19aa9cdfc36f40e74d34",
-    "base_sha256": "c565b90190d96956b3fa95034849eb00febac2c2b1c7c2fec30257a0b1e05300"
+    "base_sha256": "c565b90190d96956b3fa95034849eb00febac2c2b1c7c2fec30257a0b1e05300",
+    "gate_reason": "saturated:bare-resolves",
+    "gold_attempt": {
+     "attempt": "A1",
+     "run_id": "iter0068-gate-20260711g-gold",
+     "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/DR-ledger-rounding-consistency-f26-payout/A1",
+     "evaluator_exit": 0,
+     "patch": {
+      "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/DR-ledger-rounding-consistency-f26-payout/A1/patch.diff",
+      "exists": true,
+      "bytes": 8948,
+      "sha256": "dddfb8adad1ef925fac78dbd0c064bb1e0d0a2a154787c2567c636d69ae50079"
+     },
+     "objective": {
+      "task": "DR-ledger-rounding-consistency-f26-payout",
+      "arm_attempt": "A1",
+      "resolved": true,
+      "tests_passed": 1,
+      "tests_total": 1,
+      "hidden_test_failures": 0,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g-gold/DR-ledger-rounding-consistency-f26-payout/A1/oracle.log"
+     },
+     "objective_error": null,
+     "apply_exit": 0,
+     "oracle_exit": 0,
+     "resolved": true,
+     "invalid_reasons": []
+    },
+    "attempts": [
+     {
+      "attempt": "B1",
+      "slot": 1,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-ledger-rounding-consistency-f26-payout/B1",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-ledger-rounding-consistency-f26-payout",
+       "arm": "B",
+       "attempt": 1,
+       "elapsed_seconds": 250,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-ledger-rounding-consistency-f26-payout/B1/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-ledger-rounding-consistency-f26-payout/B1/patch.diff",
+       "exists": true,
+       "bytes": 11099,
+       "sha256": "e02281ea77d88d64d079afc013a7c8640ea8ce28123f301fbcaa56e301c9be91"
+      },
+      "objective": {
+       "task": "DR-ledger-rounding-consistency-f26-payout",
+       "arm_attempt": "B1",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-ledger-rounding-consistency-f26-payout/B1/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B2",
+      "slot": 2,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-ledger-rounding-consistency-f26-payout/B2",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-ledger-rounding-consistency-f26-payout",
+       "arm": "B",
+       "attempt": 2,
+       "elapsed_seconds": 195,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-ledger-rounding-consistency-f26-payout/B2/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-ledger-rounding-consistency-f26-payout/B2/patch.diff",
+       "exists": true,
+       "bytes": 11072,
+       "sha256": "5605a816172b8e3b5ef44c1c57db6cfe4a8edb24e64664672b8c3a72d8c62fa6"
+      },
+      "objective": {
+       "task": "DR-ledger-rounding-consistency-f26-payout",
+       "arm_attempt": "B2",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-ledger-rounding-consistency-f26-payout/B2/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B3",
+      "slot": 3,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-ledger-rounding-consistency-f26-payout/B3",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-ledger-rounding-consistency-f26-payout",
+       "arm": "B",
+       "attempt": 3,
+       "elapsed_seconds": 221,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-ledger-rounding-consistency-f26-payout/B3/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-ledger-rounding-consistency-f26-payout/B3/patch.diff",
+       "exists": true,
+       "bytes": 11448,
+       "sha256": "56e192cc94a9be8584613fc9634889011ba0eeb1827fd5894ed6533b1bcb0501"
+      },
+      "objective": {
+       "task": "DR-ledger-rounding-consistency-f26-payout",
+       "arm_attempt": "B3",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-ledger-rounding-consistency-f26-payout/B3/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     }
+    ]
    },
    "DR-atomic-state-f11-batch-import": {
     "source_fixture": "F11-batch-import-all-or-nothing",
@@ -152,7 +792,167 @@
     "hidden_invalid_body_sha256": "cc38914e4515b83b53043f69574a09ba631caca8f59cb5657c2b6d5f7981fe3a",
     "hidden_invoke_app_sha256": "7727b9a2d939182c5ee0bb702837409c1a81978bf2e3aeb5c0bf41bb920fe643",
     "hidden_success_sha256": "1d6448c3a3d2f41bf9dec38765a0bc8259f7011c66ce783545c101a6d2e3bd18",
-    "base_sha256": "0147adf36d6a9beeec1fd95e5dd864143381c38faccf09aef893f4e42398b45c"
+    "base_sha256": "0147adf36d6a9beeec1fd95e5dd864143381c38faccf09aef893f4e42398b45c",
+    "gate_reason": "saturated:bare-resolves",
+    "gold_attempt": {
+     "attempt": "A1",
+     "run_id": "iter0068-gate-20260711g-gold",
+     "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/DR-atomic-state-f11-batch-import/A1",
+     "evaluator_exit": 0,
+     "patch": {
+      "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/DR-atomic-state-f11-batch-import/A1/patch.diff",
+      "exists": true,
+      "bytes": 6217,
+      "sha256": "c4079690a32dbd420a958332850bf08be5456e31cee839be7d5e6eaa661789ea"
+     },
+     "objective": {
+      "task": "DR-atomic-state-f11-batch-import",
+      "arm_attempt": "A1",
+      "resolved": true,
+      "tests_passed": 1,
+      "tests_total": 1,
+      "hidden_test_failures": 0,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g-gold/DR-atomic-state-f11-batch-import/A1/oracle.log"
+     },
+     "objective_error": null,
+     "apply_exit": 0,
+     "oracle_exit": 0,
+     "resolved": true,
+     "invalid_reasons": []
+    },
+    "attempts": [
+     {
+      "attempt": "B1",
+      "slot": 1,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-atomic-state-f11-batch-import/B1",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-atomic-state-f11-batch-import",
+       "arm": "B",
+       "attempt": 1,
+       "elapsed_seconds": 174,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-atomic-state-f11-batch-import/B1/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-atomic-state-f11-batch-import/B1/patch.diff",
+       "exists": true,
+       "bytes": 4208,
+       "sha256": "25b1463212a58f96ad651b4a46ae5b5517477924fe14ecbc591d5193318aad3b"
+      },
+      "objective": {
+       "task": "DR-atomic-state-f11-batch-import",
+       "arm_attempt": "B1",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-atomic-state-f11-batch-import/B1/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B2",
+      "slot": 2,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-atomic-state-f11-batch-import/B2",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-atomic-state-f11-batch-import",
+       "arm": "B",
+       "attempt": 2,
+       "elapsed_seconds": 141,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-atomic-state-f11-batch-import/B2/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-atomic-state-f11-batch-import/B2/patch.diff",
+       "exists": true,
+       "bytes": 4215,
+       "sha256": "45905fea7b9413964d7da75889f73a864f8ac7dc5a45062f5ebdd8eb6ba3a61f"
+      },
+      "objective": {
+       "task": "DR-atomic-state-f11-batch-import",
+       "arm_attempt": "B2",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-atomic-state-f11-batch-import/B2/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B3",
+      "slot": 3,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-atomic-state-f11-batch-import/B3",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-atomic-state-f11-batch-import",
+       "arm": "B",
+       "attempt": 3,
+       "elapsed_seconds": 145,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-atomic-state-f11-batch-import/B3/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-atomic-state-f11-batch-import/B3/patch.diff",
+       "exists": true,
+       "bytes": 4337,
+       "sha256": "3f9ea01e28dbf36f2bf2c636a0a9bd1093a3c1e94ec968fd46b82dd3a80506af"
+      },
+      "objective": {
+       "task": "DR-atomic-state-f11-batch-import",
+       "arm_attempt": "B3",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-atomic-state-f11-batch-import/B3/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     }
+    ]
    },
    "DR-auth-signature-f12-webhook": {
     "source_fixture": "F12-webhook-raw-body-signature",
@@ -170,7 +970,167 @@
     "hidden_invoke_app_sha256": "7727b9a2d939182c5ee0bb702837409c1a81978bf2e3aeb5c0bf41bb920fe643",
     "hidden_replay_contract_sha256": "986cf0526815d8f7cfaf6b24daa8089e7ffe4ad2230d064fbc53fcced26986b5",
     "hidden_signature_contract_sha256": "7ef74a6dd7d3903f1aaa6c4e452863229ecb1562bfe514d2de15c523c37ea970",
-    "base_sha256": "e499d4eae1104c8cbb55a7ca565d9d9a95b23084d8edbcbf91d1314f331d61d6"
+    "base_sha256": "e499d4eae1104c8cbb55a7ca565d9d9a95b23084d8edbcbf91d1314f331d61d6",
+    "gate_reason": "saturated:bare-resolves",
+    "gold_attempt": {
+     "attempt": "A1",
+     "run_id": "iter0068-gate-20260711g-gold",
+     "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/DR-auth-signature-f12-webhook/A1",
+     "evaluator_exit": 0,
+     "patch": {
+      "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/DR-auth-signature-f12-webhook/A1/patch.diff",
+      "exists": true,
+      "bytes": 7585,
+      "sha256": "e9496500b0f6626b752bec877a6921ae0253b8a09efb5b4fde596b3aff29a9e4"
+     },
+     "objective": {
+      "task": "DR-auth-signature-f12-webhook",
+      "arm_attempt": "A1",
+      "resolved": true,
+      "tests_passed": 1,
+      "tests_total": 1,
+      "hidden_test_failures": 0,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g-gold/DR-auth-signature-f12-webhook/A1/oracle.log"
+     },
+     "objective_error": null,
+     "apply_exit": 0,
+     "oracle_exit": 0,
+     "resolved": true,
+     "invalid_reasons": []
+    },
+    "attempts": [
+     {
+      "attempt": "B1",
+      "slot": 1,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-auth-signature-f12-webhook/B1",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-auth-signature-f12-webhook",
+       "arm": "B",
+       "attempt": 1,
+       "elapsed_seconds": 180,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-auth-signature-f12-webhook/B1/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-auth-signature-f12-webhook/B1/patch.diff",
+       "exists": true,
+       "bytes": 6350,
+       "sha256": "ea1308420763f67185b8a35644a75fa91d4f62d8549bba098b69380d6ca145c9"
+      },
+      "objective": {
+       "task": "DR-auth-signature-f12-webhook",
+       "arm_attempt": "B1",
+       "resolved": false,
+       "tests_passed": 0,
+       "tests_total": 1,
+       "hidden_test_failures": 1,
+       "apply_exit": 0,
+       "oracle_exit": 1,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-auth-signature-f12-webhook/B1/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 1,
+      "valid": true,
+      "resolved": false,
+      "outcome": "fail",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B2",
+      "slot": 2,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-auth-signature-f12-webhook/B2",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-auth-signature-f12-webhook",
+       "arm": "B",
+       "attempt": 2,
+       "elapsed_seconds": 256,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-auth-signature-f12-webhook/B2/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-auth-signature-f12-webhook/B2/patch.diff",
+       "exists": true,
+       "bytes": 6076,
+       "sha256": "60d348e1d922241b00a0904fe0e564d8d224f18119ff99e5f3ddeea878d0dab2"
+      },
+      "objective": {
+       "task": "DR-auth-signature-f12-webhook",
+       "arm_attempt": "B2",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-auth-signature-f12-webhook/B2/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B3",
+      "slot": 3,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-auth-signature-f12-webhook/B3",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-auth-signature-f12-webhook",
+       "arm": "B",
+       "attempt": 3,
+       "elapsed_seconds": 298,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-auth-signature-f12-webhook/B3/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-auth-signature-f12-webhook/B3/patch.diff",
+       "exists": true,
+       "bytes": 8183,
+       "sha256": "484dca6eb2ce4d169172dd7b495568dfa3fdf8df3f8bfc2be02347a62d9e74b9"
+      },
+      "objective": {
+       "task": "DR-auth-signature-f12-webhook",
+       "arm_attempt": "B3",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-auth-signature-f12-webhook/B3/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     }
+    ]
    },
    "DR-allocation-fefo-priority-rollback-f23-fulfillment": {
     "source_fixture": "F23-cli-fulfillment-wave",
@@ -188,7 +1148,562 @@
     "hidden_contract_shapes_sha256": "33592ce207ace363ff2a2e68d9c2c74a0722732393763d05e482756b2c783ddf",
     "hidden_priority_rollback_sha256": "a2fa1c08f0bc269f3f2217a9c19f988075d674001c95344bcfff8f1efea3264c",
     "hidden_single_warehouse_fefo_sha256": "bb6e917b2d8403652821bb403e1d52fe530098f33bc08780efad9b6cced840b5",
-    "base_sha256": "fb80278969b62d1665e3c1608ca633be1f84ee0f9659a9b78b0c9c5b051c2b9a"
+    "base_sha256": "fb80278969b62d1665e3c1608ca633be1f84ee0f9659a9b78b0c9c5b051c2b9a",
+    "gate_reason": "saturated:bare-resolves",
+    "gold_attempt": {
+     "attempt": "A1",
+     "run_id": "iter0068-gate-20260711g-gold",
+     "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/DR-allocation-fefo-priority-rollback-f23-fulfillment/A1",
+     "evaluator_exit": 0,
+     "patch": {
+      "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/DR-allocation-fefo-priority-rollback-f23-fulfillment/A1/patch.diff",
+      "exists": true,
+      "bytes": 13568,
+      "sha256": "6afe60c63adaab7f3be5f7755e0454d8a226d5c9403541b68a5db796a4f9c9fa"
+     },
+     "objective": {
+      "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+      "arm_attempt": "A1",
+      "resolved": true,
+      "tests_passed": 1,
+      "tests_total": 1,
+      "hidden_test_failures": 0,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g-gold/DR-allocation-fefo-priority-rollback-f23-fulfillment/A1/oracle.log"
+     },
+     "objective_error": null,
+     "apply_exit": 0,
+     "oracle_exit": 0,
+     "resolved": true,
+     "invalid_reasons": []
+    },
+    "attempts": [
+     {
+      "attempt": "B1",
+      "slot": 1,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+       "arm": "B",
+       "attempt": 1,
+       "elapsed_seconds": 245,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1/patch.diff",
+       "exists": true,
+       "bytes": 12782,
+       "sha256": "009f8ee7ce15f65742b71f2e406545e14ad70b84dd8dfd47afcb92baab950239"
+      },
+      "objective": {
+       "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+       "arm_attempt": "B1",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B2",
+      "slot": 2,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-allocation-fefo-priority-rollback-f23-fulfillment/B2",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+       "arm": "B",
+       "attempt": 2,
+       "elapsed_seconds": 559,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-allocation-fefo-priority-rollback-f23-fulfillment/B2/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-allocation-fefo-priority-rollback-f23-fulfillment/B2/patch.diff",
+       "exists": true,
+       "bytes": 14304,
+       "sha256": "d60a30b32f81c37d3891ec3f83d852e07581a83a307b89338849939048feb5c9"
+      },
+      "objective": {
+       "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+       "arm_attempt": "B2",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-allocation-fefo-priority-rollback-f23-fulfillment/B2/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B3",
+      "slot": 3,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-allocation-fefo-priority-rollback-f23-fulfillment/B3",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+       "arm": "B",
+       "attempt": 3,
+       "elapsed_seconds": 266,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-allocation-fefo-priority-rollback-f23-fulfillment/B3/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/DR-allocation-fefo-priority-rollback-f23-fulfillment/B3/patch.diff",
+       "exists": true,
+       "bytes": 14802,
+       "sha256": "05f55e2b03566c5584a17b95e2b8d53f245e1953134bef66ef794046417c3602"
+      },
+      "objective": {
+       "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+       "arm_attempt": "B3",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-allocation-fefo-priority-rollback-f23-fulfillment/B3/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     }
+    ]
+   }
+  },
+  "discriminating": {
+   "status": "frozen",
+   "frozen": true,
+   "frozen_at": "2026-07-11T07:35:22Z",
+   "run_id": "iter0068-gate-20260711g",
+   "selection_rule": "gold reference resolves once and bare Codex has exactly three valid attempts with zero resolves",
+   "cohort_identity": {
+    "bare_codex": {
+     "cli_version": "codex-cli 0.144.1",
+     "requested_alias": "default",
+     "runtime_resolved_model": "gpt-5.6-terra",
+     "run_id": "iter0068-gate-20260711g",
+     "captured_at": "2026-07-11T07:35:22Z",
+     "observed_runtime_models": [
+      "gpt-5.6-terra"
+     ]
+    },
+    "gold_oracle": {
+     "runner": "ceiling-eval.sh",
+     "run_id": "iter0068-gate-20260711g-gold",
+     "captured_at": "2026-07-11T07:35:22Z"
+    }
+   },
+   "drift_note": "Alias or runtime-resolved model drift between corpus admission and the discriminating tranche invalidates the freeze and requires re-gating.",
+   "cohort_drift_observed": false,
+   "observed_runtime_models": [
+    "gpt-5.6-terra"
+   ],
+   "positive_control": {
+    "task": "FS1-schedule-max-runs",
+    "categorical_class": "positive-control",
+    "control": true,
+    "hashes": {
+     "sha": "82a43db1b938d8fdf60103bd41f329e06c8d3651",
+     "base_sha256": "9b04b9e02dd314e1c37b5b1c808aa47a8a1ff1fd9864efddcfc422f5ac7f9fd4",
+     "hidden_oracle_sha256": "f060b480a5839b87a59cf056d5c42ac057d4359bb1666f1f9a3a095f6886bc08",
+     "hidden_reference_sha256": "69a28653529450139cee28a28b62ef995c29f3e0218e9af75a401b2528abc979",
+     "task_sha256": "0194d750427cec5c6a6f6c3e0196e7ba20f0238162648ca1db6bbe4ce2b5a309"
+    },
+    "admitted": false,
+    "gate_reason": "saturated:bare-resolves",
+    "gold_attempt": {
+     "attempt": "A1",
+     "run_id": "iter0068-gate-20260711g-gold",
+     "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/FS1-schedule-max-runs/A1",
+     "evaluator_exit": 0,
+     "patch": {
+      "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g-gold/FS1-schedule-max-runs/A1/patch.diff",
+      "exists": true,
+      "bytes": 1970,
+      "sha256": "69a28653529450139cee28a28b62ef995c29f3e0218e9af75a401b2528abc979"
+     },
+     "objective": {
+      "task": "FS1-schedule-max-runs",
+      "arm_attempt": "A1",
+      "resolved": true,
+      "tests_passed": 1,
+      "tests_total": 1,
+      "hidden_test_failures": 0,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g-gold/FS1-schedule-max-runs/A1/oracle.log"
+     },
+     "objective_error": null,
+     "apply_exit": 0,
+     "oracle_exit": 0,
+     "resolved": true,
+     "invalid_reasons": []
+    },
+    "attempts": [
+     {
+      "attempt": "B1",
+      "slot": 1,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/FS1-schedule-max-runs/B1",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "FS1-schedule-max-runs",
+       "arm": "B",
+       "attempt": 1,
+       "elapsed_seconds": 264,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/FS1-schedule-max-runs/B1/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/FS1-schedule-max-runs/B1/patch.diff",
+       "exists": true,
+       "bytes": 8054,
+       "sha256": "fae806fc97c6949c26ee56c13a153356b48bf7cd98a7bf9f2b11e564f8523966"
+      },
+      "objective": {
+       "task": "FS1-schedule-max-runs",
+       "arm_attempt": "B1",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/FS1-schedule-max-runs/B1/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B2",
+      "slot": 2,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/FS1-schedule-max-runs/B2",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "FS1-schedule-max-runs",
+       "arm": "B",
+       "attempt": 2,
+       "elapsed_seconds": 263,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/FS1-schedule-max-runs/B2/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/FS1-schedule-max-runs/B2/patch.diff",
+       "exists": true,
+       "bytes": 6917,
+       "sha256": "747c9d3fedd79555b28ee067544d6a9d138851c930d4e915f0905e7919de6fa1"
+      },
+      "objective": {
+       "task": "FS1-schedule-max-runs",
+       "arm_attempt": "B2",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/FS1-schedule-max-runs/B2/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     },
+     {
+      "attempt": "B3",
+      "slot": 3,
+      "retry_index": 0,
+      "artifact_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/FS1-schedule-max-runs/B3",
+      "runner_exit": 0,
+      "evaluator_exit": 0,
+      "timing": {
+       "task": "FS1-schedule-max-runs",
+       "arm": "B",
+       "attempt": 3,
+       "elapsed_seconds": 209,
+       "invoke_exit": 0,
+       "timed_out": false,
+       "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/FS1-schedule-max-runs/B3/repo"
+      },
+      "timing_error": null,
+      "patch": {
+       "path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711g/FS1-schedule-max-runs/B3/patch.diff",
+       "exists": true,
+       "bytes": 7851,
+       "sha256": "3ea69f5e306f536868f8a7e80854c508460f8b2f7a9c3a95f911b7b39f6acc7b"
+      },
+      "objective": {
+       "task": "FS1-schedule-max-runs",
+       "arm_attempt": "B3",
+       "resolved": true,
+       "tests_passed": 1,
+       "tests_total": 1,
+       "hidden_test_failures": 0,
+       "apply_exit": 0,
+       "oracle_exit": 0,
+       "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/FS1-schedule-max-runs/B3/oracle.log"
+      },
+      "objective_error": null,
+      "apply_exit": 0,
+      "oracle_exit": 0,
+      "valid": true,
+      "resolved": true,
+      "outcome": "pass",
+      "attempt_invalid_reasons": [],
+      "runtime_resolved_model": "gpt-5.6-terra"
+     }
+    ],
+    "valid_attempts": 3,
+    "resolved_attempts": 3,
+    "physical_attempts": 3,
+    "passed": true
+   },
+   "admitted_amplification_rows": [],
+   "saturated_no_degradation_controls": [
+    "DR-ordering-f21-scheduler",
+    "DR-byte-preservation-f7-out-of-scope-trap",
+    "DR-shape-compound-rules-f25-cart",
+    "DR-ledger-rounding-consistency-f26-payout",
+    "DR-atomic-state-f11-batch-import",
+    "DR-auth-signature-f12-webhook",
+    "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+    "FS1-schedule-max-runs"
+   ],
+   "admitted": [],
+   "rejected": [
+    "DR-ordering-f21-scheduler",
+    "DR-byte-preservation-f7-out-of-scope-trap",
+    "DR-shape-compound-rules-f25-cart",
+    "DR-ledger-rounding-consistency-f26-payout",
+    "DR-atomic-state-f11-batch-import",
+    "DR-auth-signature-f12-webhook",
+    "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+    "FS1-schedule-max-runs"
+   ],
+   "oracle_invalid": [],
+   "pending": [],
+   "rows": {
+    "DR-ordering-f21-scheduler": {
+     "categorical_class": "ordering-inversion",
+     "control": false,
+     "hashes": {
+      "sha": "3baa954764454430e00f7036e0e08b1840557f22",
+      "base_sha256": "fb80278969b62d1665e3c1608ca633be1f84ee0f9659a9b78b0c9c5b051c2b9a",
+      "hidden_error_order_sha256": "fc0123bdaeefb6cac57b3ec96580fddf13d0be65b5e69abf23250262650646bb",
+      "hidden_oracle_sha256": "1c25e709319a988941e09f15d0943c8a1dfdb4f15740eebd7e3880e8e59a65a5",
+      "hidden_priority_blocked_sha256": "bbeb88f3e690a4f3d829260ccbb977811b23a16e932eb70d717f36156023bc00",
+      "hidden_reference_sha256": "ed6adb912c11415dbddfc94c414b7d37220a374c17b981ddea3c38150e2be312",
+      "source_bundle_sha256": "46fb7e6aa308180d7ba442cb807cde07aab51b6ebc697b4506920f7e1957cfbb",
+      "task_sha256": "03b3db9f266d2bf7c9759ae46e73d2ec75c53a6afc5aaac0f1e7bf1e8abb7acd"
+     },
+     "admitted": false,
+     "gate_reason": "saturated:bare-resolves",
+     "gold_resolved": true,
+     "valid_attempts": 3,
+     "resolved_attempts": 1,
+     "physical_attempts": 3
+    },
+    "DR-byte-preservation-f7-out-of-scope-trap": {
+     "categorical_class": "byte-preservation",
+     "control": false,
+     "hashes": {
+      "sha": "c34e8226f3e4d3c51dd10f4c69b0eb16d273df64",
+      "base_sha256": "cd6dec842584a013857dc547b8c79a3f67d1bb4051fead53c960f2ee991013b2",
+      "hidden_oracle_sha256": "704eece1dbeda95d656ef978ed9ec9a049d5cd66465f3af06d343bf372824a5d",
+      "hidden_preservation_sha256": "1172459fff302a7b7f5180a24bceb94b264807c8ee6fd42808a1cc91a56b4688",
+      "hidden_reference_sha256": "0fff3edd82baa82bbb2b29706b363ed74975285ae951f534634cac1304ce5564",
+      "hidden_version_behavior_sha256": "504fee0aeefc94a2bed511957fa87e454f9cb9af9b18e27a4efd03634fd1ad54",
+      "source_bundle_sha256": "4d06ffdf0bbe965926217483371f4770dd39506d1a33381d05ca2a277bd638f8",
+      "task_sha256": "55391caf171d958aacca92a9326cb2b8c0f461599674829c984876bdfbc99528"
+     },
+     "admitted": false,
+     "gate_reason": "saturated:bare-resolves",
+     "gold_resolved": true,
+     "valid_attempts": 3,
+     "resolved_attempts": 3,
+     "physical_attempts": 3
+    },
+    "DR-shape-compound-rules-f25-cart": {
+     "categorical_class": "shape/compound-rules",
+     "control": false,
+     "hashes": {
+      "sha": "e5a4a030ee77da23d1eb5de998e6d5567b83e1d5",
+      "base_sha256": "045d390d5486e0d1cdc471315a9e2be98f10d4ff8fdbb9d50401c9ec69d52126",
+      "hidden_catalog_source_sha256": "41119b28fc5a2c4a3fe20714e4b7204fe7bcc4730eefc5c815be5a1d7168604a",
+      "hidden_exact_success_sha256": "a7ca7503422e4d213982b10daeb68d899d6a92a1f5d80052fd3be976782ece2b",
+      "hidden_oracle_sha256": "996b0c39a05558fc306ac41b5b3b3fb4e5872ba0c41e84d3735cdd0909e58803",
+      "hidden_reference_sha256": "65040b29cb8c2febd0cc3b16a7ed578ec6893fe7d80ebc6de56f5abb89d908f1",
+      "hidden_stock_error_sha256": "fea01712c164089cc7941ed5514ad4febe922e4df674313ede46f4e205d9d11e",
+      "source_bundle_sha256": "cb862c3a10d50787596a3e90f8aa9d912458a9fae025f098ce09edaf246d2a86",
+      "task_sha256": "c603e6b1ea3132e0b70912d5ac5e787d3e5c691becb273bac31c0d31724af630"
+     },
+     "admitted": false,
+     "gate_reason": "saturated:bare-resolves",
+     "gold_resolved": true,
+     "valid_attempts": 3,
+     "resolved_attempts": 3,
+     "physical_attempts": 3
+    },
+    "DR-ledger-rounding-consistency-f26-payout": {
+     "categorical_class": "ledger/rounding-consistency",
+     "control": false,
+     "hashes": {
+      "sha": "850d2ad708d3c2deaa6d59e5691ddc9dcdda217b",
+      "base_sha256": "c565b90190d96956b3fa95034849eb00febac2c2b1c7c2fec30257a0b1e05300",
+      "hidden_conflicting_duplicate_sha256": "3983c1642cfa14a0bf9f83bcea618cf49f990b6e58d2d413dd08d4bdd5bce5d7",
+      "hidden_exact_payout_sha256": "f689a91bb8dbaaf3fd39648c2f37a5e2cd28ab2dc3b5f4bb784f57308329bdd1",
+      "hidden_oracle_sha256": "12ed3ea1a14d5e9fa54b8dd5b4377f45eea2fdbb1dece775f58d68b5e4c455dc",
+      "hidden_reference_sha256": "dddfb8adad1ef925fac78dbd0c064bb1e0d0a2a154787c2567c636d69ae50079",
+      "hidden_rules_source_sha256": "2b626c15a5df42cb6071471decaf68b53cf1527ce9ab19aa9cdfc36f40e74d34",
+      "source_bundle_sha256": "a5ded520220ac04f3d6681649f9d261fbce051ae555f19b2848ccafdc04d37f8",
+      "task_sha256": "5d0f111cdf7de05c79efb9cacd540758fc3336ce691cda1888dd4fe8bedf71d9"
+     },
+     "admitted": false,
+     "gate_reason": "saturated:bare-resolves",
+     "gold_resolved": true,
+     "valid_attempts": 3,
+     "resolved_attempts": 3,
+     "physical_attempts": 3
+    },
+    "DR-atomic-state-f11-batch-import": {
+     "categorical_class": "atomic-state",
+     "control": false,
+     "hashes": {
+      "sha": "95e5dc4d0038242b53ba2389384c707840771af4",
+      "base_sha256": "0147adf36d6a9beeec1fd95e5dd864143381c38faccf09aef893f4e42398b45c",
+      "hidden_failed_unchanged_sha256": "4c0f007cb83a630f1ccd56b40073cef6b5192154f49ae61ff6700e6f4285c8e4",
+      "hidden_invalid_body_sha256": "cc38914e4515b83b53043f69574a09ba631caca8f59cb5657c2b6d5f7981fe3a",
+      "hidden_invoke_app_sha256": "7727b9a2d939182c5ee0bb702837409c1a81978bf2e3aeb5c0bf41bb920fe643",
+      "hidden_oracle_sha256": "c8f8e24fe2e3b1523153a84891808f7eb25331f5b0a1ed5fa32bb9b759a60033",
+      "hidden_reference_sha256": "c4079690a32dbd420a958332850bf08be5456e31cee839be7d5e6eaa661789ea",
+      "hidden_success_sha256": "1d6448c3a3d2f41bf9dec38765a0bc8259f7011c66ce783545c101a6d2e3bd18",
+      "source_bundle_sha256": "74fe436f74d08b9bb17cdbe1acfd4dee63cb3338ef2c8c018ccb1b19f1d681a6",
+      "task_sha256": "9b9a805b85c1d617269b0d22c321fe13fffcc6ea670745fcdc090c7ead921775"
+     },
+     "admitted": false,
+     "gate_reason": "saturated:bare-resolves",
+     "gold_resolved": true,
+     "valid_attempts": 3,
+     "resolved_attempts": 3,
+     "physical_attempts": 3
+    },
+    "DR-auth-signature-f12-webhook": {
+     "categorical_class": "auth-signature",
+     "control": false,
+     "hashes": {
+      "sha": "28d2137b511c09ba99c4672a1c5c9e1e7b7e2a6c",
+      "base_sha256": "e499d4eae1104c8cbb55a7ca565d9d9a95b23084d8edbcbf91d1314f331d61d6",
+      "hidden_invoke_app_sha256": "7727b9a2d939182c5ee0bb702837409c1a81978bf2e3aeb5c0bf41bb920fe643",
+      "hidden_oracle_sha256": "45c81e67e9d262e663eb547531527fb496c7c2d6e6657d3f11cc7fb1d3fdfb7a",
+      "hidden_reference_sha256": "e9496500b0f6626b752bec877a6921ae0253b8a09efb5b4fde596b3aff29a9e4",
+      "hidden_replay_contract_sha256": "986cf0526815d8f7cfaf6b24daa8089e7ffe4ad2230d064fbc53fcced26986b5",
+      "hidden_signature_contract_sha256": "7ef74a6dd7d3903f1aaa6c4e452863229ecb1562bfe514d2de15c523c37ea970",
+      "source_bundle_sha256": "c473fb2c6801caeabfc1d848ebb72843e994fa121127b527f28b6bc4c9d9b69f",
+      "task_sha256": "58e149bd9cbe6be89e214600420416b3ba17ecd83c523dd6d1d787b1cf1900e3"
+     },
+     "admitted": false,
+     "gate_reason": "saturated:bare-resolves",
+     "gold_resolved": true,
+     "valid_attempts": 3,
+     "resolved_attempts": 2,
+     "physical_attempts": 3
+    },
+    "DR-allocation-fefo-priority-rollback-f23-fulfillment": {
+     "categorical_class": "allocation/FEFO/priority-rollback",
+     "control": false,
+     "hashes": {
+      "sha": "3baa954764454430e00f7036e0e08b1840557f22",
+      "base_sha256": "fb80278969b62d1665e3c1608ca633be1f84ee0f9659a9b78b0c9c5b051c2b9a",
+      "hidden_contract_shapes_sha256": "33592ce207ace363ff2a2e68d9c2c74a0722732393763d05e482756b2c783ddf",
+      "hidden_oracle_sha256": "f8f078f037c6964078d59418b6afea8e2b678b14b0e61fb5f5b22542f039535b",
+      "hidden_priority_rollback_sha256": "a2fa1c08f0bc269f3f2217a9c19f988075d674001c95344bcfff8f1efea3264c",
+      "hidden_reference_sha256": "6afe60c63adaab7f3be5f7755e0454d8a226d5c9403541b68a5db796a4f9c9fa",
+      "hidden_single_warehouse_fefo_sha256": "bb6e917b2d8403652821bb403e1d52fe530098f33bc08780efad9b6cced840b5",
+      "source_bundle_sha256": "46fb7e6aa308180d7ba442cb807cde07aab51b6ebc697b4506920f7e1957cfbb",
+      "task_sha256": "026a153501107373a5e14ade6a4548cd3e9769a69c06a38ed8f4b44fc82183fc"
+     },
+     "admitted": false,
+     "gate_reason": "saturated:bare-resolves",
+     "gold_resolved": true,
+     "valid_attempts": 3,
+     "resolved_attempts": 3,
+     "physical_attempts": 3
+    },
+    "FS1-schedule-max-runs": {
+     "categorical_class": "positive-control",
+     "control": true,
+     "hashes": {
+      "sha": "82a43db1b938d8fdf60103bd41f329e06c8d3651",
+      "base_sha256": "9b04b9e02dd314e1c37b5b1c808aa47a8a1ff1fd9864efddcfc422f5ac7f9fd4",
+      "hidden_oracle_sha256": "f060b480a5839b87a59cf056d5c42ac057d4359bb1666f1f9a3a095f6886bc08",
+      "hidden_reference_sha256": "69a28653529450139cee28a28b62ef995c29f3e0218e9af75a401b2528abc979",
+      "task_sha256": "0194d750427cec5c6a6f6c3e0196e7ba20f0238162648ca1db6bbe4ce2b5a309"
+     },
+     "admitted": false,
+     "gate_reason": "saturated:bare-resolves",
+     "gold_resolved": true,
+     "valid_attempts": 3,
+     "resolved_attempts": 3,
+     "physical_attempts": 3
+    }
    }
   }
  }

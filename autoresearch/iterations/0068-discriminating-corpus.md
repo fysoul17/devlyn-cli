@@ -1,12 +1,13 @@
 # iter-0068 — discriminating ceiling corpus (bare-fails gate + categorical-reliability trap tasks)
 
-status: PRE-REGISTERED 2026-07-08 (R0 GO-WITH-EDITS folded); **AMENDED
-2026-07-10 before any gate run** (three-way fold: R0-grok GO-WITH-EDITS +
-R1-codex CONVERGED — see Pair rounds); **implementation IN PROGRESS
-2026-07-10 (Fable orchestrating, Codex executing, Grok third reviewer —
-user directive)**; a first slice was started 2026-07-08 then rolled back
-unverified (see Execution record → RESUME HERE). Corpus freezes (with the bare-fails gate results) before any
-A/C arm runs. Direction chosen by user 2026-07-08 (corpus pivot,
+status: CLOSED 2026-07-11 — **VALID-NEGATIVE** (gate cohort
+`iter0068-gate-20260711g`: 0/7 admitted, instrument plumbing-validated;
+see § Closure at the end of this file). Originally PRE-REGISTERED
+2026-07-08 (R0 GO-WITH-EDITS folded); AMENDED 2026-07-10 before any gate
+run (three-way fold: R0-grok GO-WITH-EDITS + R1-codex CONVERGED — see Pair
+rounds); a first slice was started 2026-07-08 then rolled back unverified
+(see Execution record). Corpus froze (with the bare-fails gate results)
+with no A/C arm runs. Direction chosen by user 2026-07-08 (corpus pivot,
 option A) after the iter-0067 verdict + iter-0068-STUB A-arm decomposition.
 **This is a categorical-trap CALIBRATION pilot on synthetic fixtures, NOT
 real-shaped ceiling evidence** (R0 SHOULD-FIX 3; NORTH-STAR requires
@@ -492,14 +493,71 @@ rows + labels. (The gate result is itself the pilot's first finding.)
   pre-registration; all iter-0067 fixes intact (venv exclude 4×, tree
   clean).
 
-### RESUME HERE — updated 2026-07-11
+### RESUME HERE — superseded by § Closure below (2026-07-11)
 
-D1+D2+D3 shipped; cohorts c/d/e DISCARDED-contaminated (Execution record
-above); isolation fix shipped and canary-verified; live gate relaunched as
-`iter0068-gate-20260711g` under `~/devlyn-ceiling-external` (log/pid in
-`~/iter0068-gate-logs/`). Current entry point: read the cohort-f gate result
-→ STOP at admitted set → three-way R1-gate (FS1 must be
-`saturated:bare-resolves` or the gate is invalid) → A/C + no-suppression
-decision (A-arm purity canary is a prerequisite for the A/C tranche) →
-closure. The original 3-step implementation plan is recoverable from git
-history of this section (pre-`a33ae5d`).
+## Closure (2026-07-11) — VALID-NEGATIVE
+
+**Frozen result** (cohort `iter0068-gate-20260711g`, manifest
+`tranche3.discriminating`): admitted 0/7, rejected 8/8
+`saturated:bare-resolves` (per-row bare resolves: F21 1/3 · F7 3/3 · F25 3/3
+· F26 3/3 · F11 3/3 · F12 2/3 · F23 3/3 · FS1 control 3/3). 24/24 attempts
+valid, zero invalid reasons, zero contamination flags, terra-only cohort
+identity, drift false. FS1 positive control behaved exactly as
+pre-registered. Wall ≈ 15 min/row post watchdog fix.
+
+**Three-way R1-gate (Codex sol + Grok 4.5, both independently audited the
+manifest; Codex verified 24/24 patch hashes + external worktrees + fix
+commits predating the cohort)**: GATE **VALID** unanimous. Converged honest
+finding (claim-population identity / claim-contract locality):
+
+> On clean bare Codex CLI 0.144.1 running `gpt-5.6-terra`
+> (`iter0068-gate-20260711g`, N=3 valid attempts per row, FS1 control
+> correctly saturated), the frozen seven-row synthetic categorical-trap pool
+> admitted 0/7 under the pre-registered gold-pass ∧ 0/3-valid-resolve rule —
+> these traps do not discriminate bare-codex-terra; the bare-fails gate +
+> generic FS oracle are **plumbing-validated only**, and no categorical-trap
+> generality, real-shaped ceiling, amplification, or moat claim follows.
+
+**The one divergence + orchestrator adjudication (named criterion)**: Grok
+= skip A/C, close now ("No contaminated A measurement" — the proven A-arm
+user-CLAUDE.md leak makes any A run manufactured-contaminated data); Codex
+= keep 0068 open through a bounded A-only no-degradation tranche on the 8
+saturated controls after purity is fixed ("Orthogonal Estimand Value" —
+Block-8 no-suppression is pre-registered and the controls exist for it).
+Both agree purity-first; the disagreement is ledger bookkeeping only.
+Adjudicated: **close now** (criterion: iteration stop-condition integrity —
+the pre-registered stop was the freeze; A/C was conditional on admitted
+rows, which are empty; holding an iter open behind an unsized prerequisite
+repeats the iter-0033g anti-pattern and blocks the user-mandated 0070
+ladder). Codex's estimand survives as a first-class pre-registered deferred
+cell, below.
+
+**Survives into future corpus/ceiling work (validated instrument)**: FS
+task packaging + generic `hidden/oracle.sh` contract; bare-fails admission
+gate + 0/3-valid semantics; fail-closed hash freeze + frozen-rerun refusal;
+provenance + contamination INVALID markers; isolated `EXTERNAL_ROOT` +
+per-attempt HOME/CODEX_HOME; FS1 positive-control design;
+`admitted_amplification_rows` / `saturated_no_degradation_controls` split.
+**Retired**: the 7 DR F-fixtures as discriminating-candidate rows for terra
+(kept frozen as archived calibration/control fixtures only; pre-registered
+anti-fixture-tuning rule — do NOT re-tune them to force admissions).
+
+**Pre-registered deferred cell (NOT run; blocked)**:
+`no-degradation control cell` — A1 (full devlyn resolve) vs frozen `best_B`
+on the 8 saturated controls; objective preservation 8/8 + blind quality +
+wall cap; reuses cohort-g B data. **BLOCKED on the A-arm + neutral-judge
+purity fix** (user-CLAUDE.md leak, Execution record 2026-07-11). Suggestive
+observation only, N too small: contaminated-e F21 0/3 vs clean-g F21 1/3
+(direction consistent with harness-context suppression).
+
+**Follow-ups recorded (non-blocking)**: (a) watchdog cancellation should
+also reap its sleep child (resource lifecycle; fe252ee accepted by both
+seats); (b) manifest should freeze the runner commit hash (auditability,
+Codex); (c) `requested_alias: "default"` provenance label vs `-m` pin
+(cosmetic, Grok); (d) fixture identity leak in seed package.json
+(bench-aware-behavior risk); (e) `test-ceiling-harness.sh` stale fixture
+enumeration (pre-existing, Execution record 2026-07-10).
+
+**Next**: enter the 0070 ladder (`0070-loop-architecture-STUB.md`; design
+frozen, user-mandated) + `0070a-noncoding-instruments.md` pre-registration
+(held for this closure).
