@@ -1,0 +1,13 @@
+{
+  "task": "DR-auth-signature-f12-webhook",
+  "arm_attempt": "B1",
+  "resolved": true,
+  "tests_passed": 1,
+  "tests_total": 1,
+  "hidden_test_failures": 0,
+  "apply_exit": 0,
+  "oracle_exit": 0,
+  "report_path": "/Users/aipalm/.local/share/nx01/v/rf12suppb/fx06b/B1/oracle.log",
+  "neutralization_diff_sha256": "05afa7a9be5baf8505182a0a2b3be0bb1400a51d1ca455dee0b66f3ef8f15f44",
+  "neutral_baseline_sha": "d5e479312b6f9573373bd2057e630bba7d22c608"
+}

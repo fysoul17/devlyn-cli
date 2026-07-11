@@ -1,12 +1,13 @@
 # iter-0068 — discriminating ceiling corpus (bare-fails gate + categorical-reliability trap tasks)
 
-status: REOPENED 2026-07-11 evening — **closure verdict superseded to
-IDENTITY-CONFOUNDED / INCONCLUSIVE** by Amendment A1 (user-reported,
-orchestrator-verified benchmark-identity leak in cohort g; three-way R0
-GO unanimous; see § Amendment A1 at the end of this file). Isolation-v2
-re-gate (cohort h) decides the final verdict. Prior: CLOSED 2026-07-11
-VALID-NEGATIVE (cohort `iter0068-gate-20260711g`: 0/7 admitted,
-instrument plumbing-validated; see § Closure). Originally PRE-REGISTERED
+status: RE-CLOSED 2026-07-12 — **VALID-NEGATIVE RESTORED on clean
+isolation-v2 data** (§ Re-closure at the end of this file): fair admitted
+set ∅; F21 EXCLUDED-UNFAIR by the pre-registered admitted-set audit;
+6 DR + F12-supplement + FS1 saturated; zero fair-row evidence of
+identity-leak materiality. History: REOPENED 2026-07-11 evening by
+Amendment A1 (cohort-g Identity-Blindness failure — that validity ruling
+STANDS; isolation v2 became permanent instrument hardening); originally
+CLOSED 2026-07-11 VALID-NEGATIVE on cohort g (§ Closure, superseded). Originally PRE-REGISTERED
 2026-07-08 (R0 GO-WITH-EDITS folded); AMENDED 2026-07-10 before any gate
 run (three-way fold: R0-grok GO-WITH-EDITS + R1-codex CONVERGED — see Pair
 rounds); a first slice was started 2026-07-08 then rolled back unverified
@@ -663,3 +664,68 @@ benchmark/trap bits), so the re-gate's claim is scoped honestly as
 host-install residual accepted". Docker/VM full isolation = escalation lane
 only if a clean 0/7 re-gate still leaves suspicion or a marker trips
 unexplainably.
+
+## Re-closure (2026-07-12) — VALID-NEGATIVE RESTORED on clean isolation-v2 data
+
+**Verdict**: VALID-NEGATIVE restored. Fair admitted set = ∅ on the valid
+pool. F7/F25/F26/F11/F23 saturated (cohort `iter0068-gate-20260711h`, 1
+valid resolve each under the staged D5 rule); F12 saturated (properly-staged
+supplement `iter0068-f12supp2-20260712`: resolved, opaque_paths.passed=true,
+terra, zero identity/zshenv hits); FS1 control correct; **F21
+EXCLUDED-UNFAIR** (retired-frozen-defective — not saturated, not an
+admission).
+
+**The F21 story (decisive experiment, prediction frozen before run)**:
+cohort-h F21 was mechanically admitted (3 valid bare-fails; the only flip vs
+cohort g) and provisionally certified H-leak (manifest commit b5cca93). The
+pre-registered admitted-set UNFAIR audit (this file :315-319) then killed
+it: visible task.txt says "Times are same-day HH:MM values" + invalid times
+→ exit 2, while BOTH hidden checks feed ISO `submitted_at`
+(hidden/error-order.js:18-20, hidden/priority-blocked.js:27-30) and expect
+normal scheduling output; the reference validates submitted_at as any
+non-empty string (hidden/reference.patch:101) — the oracle author's private
+reading. All three cohort-h bare attempts validated HH:MM per the visible
+text (B1 `parseTime`, B2 `timeToMinutes`, B3 `parseTime`). **Experiment**:
+B1's transported patch on a fresh neutralized clone + hidden inputs with
+ONLY submitted_at converted ISO→HH:MM → BOTH hidden checks PASS (Grok 4.5
+independently reproduced). Bare failed for FOLLOWING the visible contract →
+manufactured discrimination. The g→h F21 "flip" is void in both directions
+(same defective oracle). **H-leak certification RETRACTED.**
+
+**Root cause of the fixture defect**: the pre-freeze fairness repair folded
+the HH:MM contract into task.txt (Fix rule, this file :330-335) but had no
+step re-auditing hidden INPUTS against the repaired visible input contract.
+Follow-up instrument (pre-registerable): mechanical hidden-input conformance
+check against the visible input spec at fixture-freeze time.
+
+**Three-way record**: Grok R2 CONCUR (reproduced the experiment;
+retire-frozen). Codex R1 independently discovered the same F21 defect on the
+pre-experiment packet (convergent finding) AND caught the first F12
+supplement failing the gate's own opaque-path attestation
+(isolation.json `opaque_paths.passed=false` — orchestrator ran it with an
+in-repo result dir; corrected by the properly-staged rerun under the new
+run-id per Codex's no-label-reuse rule). **Contested point + adjudication
+(named delta)**: Codex proposed repair-F21-and-rerun before any verdict
+("remains REOPENED — INSTRUMENT-INVALID"); adjudicated EXCLUDE-and-close —
+criteria: (a) the admitted-set UNFAIR audit is pre-registered process, so
+exclusion is not post-hoc reinterpretation; (b) anti-tuning — repairing
+fixture bytes after peeking at outcomes re-enables the exact blocked
+failure mode (Grok); (c) decision-relevance per wall-hour — the experiment
+already shows the repaired row would saturate. Codex's F12 finding adopted
+wholesale; F21 repair remains possible ONLY under fresh pre-registration.
+
+**What stands**: cohort-g Identity-Blindness invalidity (Amendment A1) — a
+validity ruling, unaffected. Isolation v2 (`1452393` + patch transport
+`e899e98`) = permanently required instrument hardening. Watchdog fix +
+c/d/e skill-contamination findings unchanged. **Materiality**: ZERO
+fair-row evidence that the identity leak changed any outcome (every fair
+row: bare resolves both leaked and clean).
+
+**Corpus state**: 0 discriminating rows; 6 DR + FS1 (+F12) = saturated
+no-degradation controls; F21 tombstoned. The honest 0067/0068 conclusion
+deepens: synthetic categorical traps do not discriminate clean bare terra —
+a discriminating corpus must come from real-shaped/harder tasks (deferred
+lane) or the 0070a non-coding instruments.
+
+**Next**: the 0070 ladder + 0070a are UNBLOCKED. A-arm/judge purity remains
+the blocking prerequisite for any measured A/C tranche.
