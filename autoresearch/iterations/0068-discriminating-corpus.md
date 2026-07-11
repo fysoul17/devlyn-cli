@@ -642,3 +642,24 @@ exactly 1 valid attempt; fixed row order; invalid attempts replaced).
 a discriminating row exists, closure finding superseded, corpus roadmap
 updates; 0/7 → H-saturated — VALID-NEGATIVE restored on genuinely clean
 data. No mid-cohort retuning of D1-D4 from peeks.
+
+**Carrier attribution (user hypotheses tested, 2026-07-11)**: (1)
+"ran in a devlyn-file/CLAUDE.md folder" — TRUE for c/d/e (discarded), NOT
+the cohort-g carrier (no AGENTS.md/CLAUDE.md in workspace ancestry; zero
+pipeline markers). (2) "global pyx-memory read" — structurally impossible
+for bare codex arms (per-attempt config.toml has no MCP servers) and
+empirically zero pyx/mcp traces in 24/24 transcripts. Actual carrier = the
+seed fixture itself (`benchmark/auto-resolve/fixtures/test-repo/package.json:5`
+description copied into every workspace) + path names. Also confirmed: the
+Superset wrapper injected `trust_level = "trusted"` with the full
+descriptive workspace path into per-attempt config.toml.
+
+**Accepted residual (user decision 2026-07-11, "Docker 없이는 감안")**:
+without container-level isolation (fresh codex install in Docker), host
+shared state remains — codex binary/installation, macOS host, same auth
+account, node toolchain. These are identity-NEUTRAL (carry no
+benchmark/trap bits), so the re-gate's claim is scoped honestly as
+"identity-clean at the file/path/env layer per fail-closed attestation;
+host-install residual accepted". Docker/VM full isolation = escalation lane
+only if a clean 0/7 re-gate still leaves suspicion or a marker trips
+unexplainably.
