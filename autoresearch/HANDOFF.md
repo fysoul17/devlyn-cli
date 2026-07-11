@@ -14,7 +14,21 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 (user cl
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-11 (iter-0068 CLOSED; enter the 0070 ladder)
+## 🚦 START-HERE — state after 2026-07-11 evening (iter-0068 REOPENED by Amendment A1; isolation-v2 re-gate decides)
+
+**0. iter-0068 REOPENED (2026-07-11 evening, user-reported + three-way GO
+unanimous)** — the "clean" cohort g fails Identity-Blindness: 19/24
+transcripts literally contain the seed string "for devlyn-cli auto-resolve
+benchmarks..."; 24/24 workdirs broadcast the trap axis in the path
+(`DR-*-out-of-scope-trap` etc.); ambient `ZDOTDIR=/Users/aipalm` defeated the
+HOME override (real `~/.zshenv` ran 24/24); `codex` resolved to the Superset
+wrapper. Verdict superseded: VALID-NEGATIVE → **IDENTITY-CONFOUNDED /
+INCONCLUSIVE** (full record: `iterations/0068-discriminating-corpus.md`
+§ Amendment A1). Pre-registered isolation-v2 re-gate (cohort h): D1 opaque
+paths, D2 shared deterministic clone-neutralizer, D3/D6 `env -i` direct
+binary, D4 attestation+markers, D5 staged minimal attempts; decision rule
+≥1/7 DR admitted → H-leak, 0/7 → VALID-NEGATIVE restored. **The 0070
+ladder + 0070a re-block until 0068 re-closes.**
 
 0. **iter-0069 — completion-claim evidence — CLOSED 2026-07-09** (full record `iterations/0069-completion-claim-evidence.md` + `DECISIONS.md:0069`..`0069.4`; contract = Fable's version + E1 + E2, E3 reverted). **Still-binding decisions**: (0069.1) plain conversation is NOT forced through `/devlyn:resolve` — orchestrator may implement mid-flow; (0069.3) the always-loaded contract holds only measured / mechanically-proven / subtractive / code-enforced content — a user incident licenses an EXPERIMENT, never permanent live prose; (0069.4) claim-emission residual was accepted pending a measurable instrument — **now UNFROZEN by Block 9 (user mandate)**: the measured path is the 0070 ladder (INTENT_CLOSURE kernel), not contract prose. Binding facts: both confirmed incidents were plain-conversation (PHASE-6 ledgers cannot catch them); installed CLAUDE.md copies drift silently (no version stamp) — do not mass-reinstall to propagate prose.
 1. **iter-0067 — ceiling tranche 2 — CLOSED 2026-07-08, verdict FAIL-pilot** (full record `iterations/0067-ceiling-tranche-2.md`): all 3 fresh django holdout rows objective-non-discriminating; wall 8.33× > cap; neutral judge preferred copycat 16:3. Honest ceiling state (Codex R1 verbatim): "the current full devlyn stack does not show a ceiling moat here; a single codex copycat matches objective outcomes, wins subjective diff quality, and is about 8.3× faster." 압도적·독보적 is NOT yet real — the instrument is losable and has lost twice honestly. That verdict is WHY iter-0068 pivots the corpus to tasks bare measurably fails.
@@ -24,7 +38,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 (user cl
 
 **iter-0068 — discriminating ceiling corpus — CLOSED 2026-07-11, verdict VALID-NEGATIVE** (full record `iterations/0068-discriminating-corpus.md` § Closure + `DECISIONS.md:0068.1-0068.3`). Clean gate cohort `iter0068-gate-20260711g`: **0/7 admitted, 8/8 `saturated:bare-resolves`** (FS1 control correct; 24/24 valid; terra-only; three-way R1-gate GATE-VALID unanimous). Honest finding: the synthetic categorical-trap pool does not discriminate clean bare `gpt-5.6-terra` — the bare-fails gate + generic FS oracle are plumbing-validated only; no ceiling/amplification/moat claim. En route the iter surfaced and fixed two harness-integrity classes (both three-way): (1) **bare arms were never bare** — codex v0.144.1 auto-loads global `~/.agents/skills` (no disable flag) and workspaces lived in-repo; cohorts c/d/e discarded; fix `fdd574a` = `~/devlyn-ceiling-external` isolation + per-attempt HOME/CODEX_HOME + fail-closed provenance/contamination INVALID markers (selftest 37); (2) **watchdog pipe-hold** taxed every attempt to full timeout (`fe252ee`); post-fix pace ≈ 15 min/row. Binding residue: 7 DR fixtures retired as discriminating candidates (anti-tuning rule); **pre-registered deferred cell** = no-degradation control (A1 vs frozen best_B on the 8 saturated controls) **BLOCKED on the A-arm/judge purity fix** — A-arm canary PROVED user-global `~/.claude/CLAUDE.md` leaks into `claude -p --setting-sources project,local` (transcript in `~/devlyn-ceiling-external/canary/`). BENCHMARK CODEX SEAT stays `gpt-5.6-terra` (sol is team-only). three-way protocol: Fable orchestrates/verifies, Codex executes, Grok 4.5 independent reviewer — memory `feedback_threeway_pair_grok_2026_07_10.md`.
 
-**ENTER NOW: `iterations/0070-loop-architecture-STUB.md` ladder (design frozen three-way, user-mandated Blocks 9-10) + `iterations/0070a-noncoding-instruments.md` pre-registration (was held for 0068 closure).**
+**ENTER NOW: finish the iter-0068 isolation-v2 re-gate (Amendment A1, § START-HERE item 0). THEN the `iterations/0070-loop-architecture-STUB.md` ladder + `iterations/0070a-noncoding-instruments.md` (both design-frozen, re-blocked on 0068 re-closure).**
 
 **Deferred (updated 2026-07-11)**:
 - **A-arm + neutral-judge purity fix** (user-CLAUDE.md leak, proven) — BLOCKING prerequisite for the pre-registered no-degradation control cell (A1 vs frozen best_B on the 8 saturated controls) and for any future measured A/judge tranche.

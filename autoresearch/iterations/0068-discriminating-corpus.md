@@ -1,8 +1,12 @@
 # iter-0068 — discriminating ceiling corpus (bare-fails gate + categorical-reliability trap tasks)
 
-status: CLOSED 2026-07-11 — **VALID-NEGATIVE** (gate cohort
-`iter0068-gate-20260711g`: 0/7 admitted, instrument plumbing-validated;
-see § Closure at the end of this file). Originally PRE-REGISTERED
+status: REOPENED 2026-07-11 evening — **closure verdict superseded to
+IDENTITY-CONFOUNDED / INCONCLUSIVE** by Amendment A1 (user-reported,
+orchestrator-verified benchmark-identity leak in cohort g; three-way R0
+GO unanimous; see § Amendment A1 at the end of this file). Isolation-v2
+re-gate (cohort h) decides the final verdict. Prior: CLOSED 2026-07-11
+VALID-NEGATIVE (cohort `iter0068-gate-20260711g`: 0/7 admitted,
+instrument plumbing-validated; see § Closure). Originally PRE-REGISTERED
 2026-07-08 (R0 GO-WITH-EDITS folded); AMENDED 2026-07-10 before any gate
 run (three-way fold: R0-grok GO-WITH-EDITS + R1-codex CONVERGED — see Pair
 rounds); a first slice was started 2026-07-08 then rolled back unverified
@@ -561,3 +565,80 @@ enumeration (pre-existing, Execution record 2026-07-10).
 **Next**: enter the 0070 ladder (`0070-loop-architecture-STUB.md`; design
 frozen, user-mandated) + `0070a-noncoding-instruments.md` pre-registration
 (held for this closure).
+
+## Amendment A1 (2026-07-11 evening) — closure verdict superseded: IDENTITY-CONFOUNDED / INCONCLUSIVE
+
+**Trigger**: user report (same evening) — terra's trap-avoidance suspected to
+be caused by running in a harness-identity-bearing environment; mandate:
+fully isolated (new-folder) runs. Orchestrator verified at file level, then
+three-way R0 (Grok 4.5 independent + Codex sol; archives
+`/tmp/iter0068-reopen/{packet,addendum-r0}.md` + `{grok,codex}-r0.log`,
+ephemeral; this section is the durable record). Verdicts: **P2 amendment GO
+(Codex) / GO-WITH-EDITS (Grok); isolation-v2 + staged re-gate GO-WITH-EDITS
+(both).**
+
+**Named delta vs § Closure** (what changed): the closure's follow-up (d)
+"fixture identity leak in seed package.json (bench-aware-behavior risk)" was
+recorded as non-blocking; the new evidence upgrades it from *risk* to
+*observed exposure at scale*, and widens it far beyond package.json:
+
+- **Observed ingestion**: 19/24 cohort-g transcripts contain the literal seed
+  string "for devlyn-cli auto-resolve benchmarks. Every fixture starts from a
+  fresh copy of this directory" (20/24 attempts read package.json; 6/24 read
+  the seed README announcing "benchmark fixture... arm (variant or bare)").
+- **Trap-axis broadcast**: 24/24 workdir lines expose
+  `devlyn-ceiling-external/.../iter0068-gate-.../DR-<trap-descriptive-name>/`
+  — the directory name announces the discriminating axis (e.g.
+  `DR-byte-preservation-f7-out-of-scope-trap`).
+- **Host-shell leak, mechanism named**: ambient `ZDOTDIR=/Users/aipalm` in
+  the runner session env defeats `export HOME=$BARE_HOME`
+  (run-ceiling-arm.sh:286) — real `~/.zshenv` executed in 24/24 attempts (203
+  occurrences), its error lines re-injecting descriptive bare-home paths.
+  Reproduced independently by orchestrator and Grok.
+- **Additional identity channels (Codex/Grok R0)**: git remote
+  (`repos/fs/DR-*`), reflog with real host paths, commit authors
+  (`benchmark@devlyn.local`), seed comments in `bin/cli.js` /
+  `playwright.config.js` / `server/index.js` / `web/index.html`, lockfile
+  name, `.gitignore` `.devlyn` entry, 18 inherited harness env vars
+  (`CLAUDECODE=1`, `CLAUDE_CODE_SESSION_ID`, ... — present, NOT observed:
+  0/24 transcripts inspect env), and the `codex` command resolving to the
+  Superset wrapper (trusted-project config + notify hooks), so cohort g was
+  not a stock-CLI launch.
+- **NOT found (E1 stands)**: zero devlyn-pipeline application markers in all
+  24 transcripts; the c/d/e skill-contamination mechanism did not recur.
+
+**What is superseded**: only the certification claim "these traps do not
+discriminate CLEAN bare-codex-terra" — cohort g fails the
+**Identity-Blindness** criterion (Grok R0: identity bits in arm-visible
+context invalidate certification in either direction, regardless of
+behavioral effect). **What stands**: 24/24 artifact validity, 0/7 under the
+implemented rule as a mechanical result, FS1 control, c/d/e contamination
+finding (fdd574a), watchdog fix (fe252ee), gate/oracle plumbing validation.
+The 7-DR-row "retired as discriminating candidates" status is SUSPENDED
+pending the clean re-gate (not silently reversed).
+
+**Materiality is a separate estimand** (Codex R0 criterion: **Counterfactual
+Identity Invariance**) — decided ONLY by the isolation-v2 re-gate. Strongest
+counter (both engines, honest prior for H-saturated): task texts already
+state the discipline constraints; outcome heterogeneity (F21 1/3, F12 2/3 vs
+rest 3/3) fits difficulty, not uniform evaluation-aware gaming; no transcript
+shows explicit bench-aware meta-reasoning as action driver.
+
+**Pre-registered re-gate (cohort h, frozen BEFORE implementation ran)**:
+isolation v2 per `/tmp/iter0068-reopen/r1-implementation-contract.md`
+(durable copy: § Amendment A1 contract summary below) — D1 opaque
+identity-free arm-visible paths + opaque task ids + post-exit opaque-map;
+D2 shared deterministic workspace-clone neutralizer (frozen corpus bundles
+byte-untouched; solver patch diffed against the neutral baseline); D3/D6
+`env -i` frozen-allowlist launch of the DIRECT codex binary (kills ZDOTDIR
+inheritance + env advertisement + Superset wrapper), auth copied 0600;
+D4 structured fail-closed marker families (host-shell-startup-leak +
+benchmark-identity; bare `devlyn` marker REJECTED — F7's oracle-required
+`TODO(devlyn)` bait, hidden/preservation.js:9) + per-attempt isolation.json
+attestation; D5 staged minimal attempts (per DR row: 1 valid attempt; valid
+resolve → saturated, stop; valid fail → complete to exactly 3 valid; FS1
+exactly 1 valid attempt; fixed row order; invalid attempts replaced).
+**Decision rule**: ≥1/7 DR rows admitted (3 valid bare-fails) → H-leak —
+a discriminating row exists, closure finding superseded, corpus roadmap
+updates; 0/7 → H-saturated — VALID-NEGATIVE restored on genuinely clean
+data. No mid-cohort retuning of D1-D4 from peeks.
