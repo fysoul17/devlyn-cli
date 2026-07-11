@@ -61,7 +61,7 @@
   }
  },
  "tranche3": {
-  "status": "frozen",
+  "status": "reopened",
   "frozen_at": "2026-07-11T07:35:22Z",
   "selection_rule": "iter-0068 candidate pool; admission and freeze are deferred to the Deliverable 3 bare-fails gate",
   "tasks": {
@@ -1705,6 +1705,8 @@
      "physical_attempts": 3
     }
    }
-  }
+  },
+  "reopened_at": "2026-07-11",
+  "reopen_reason": "Amendment A1: cohort iter0068-gate-20260711g identity-confounded (seed/package.json benchmark identity ingested 19/24; trap-axis paths 24/24; ambient ZDOTDIR defeated HOME override). Freeze superseded; isolation-v2 re-gate cohort h decides. See autoresearch/iterations/0068-discriminating-corpus.md \u00a7 Amendment A1 + DECISIONS 0068.4."
  }
 }
