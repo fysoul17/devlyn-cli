@@ -44,6 +44,7 @@ Runner ("Mission 1.5") still NOT next — re-enters on skip-rate evidence.
 4. **Explain simply** (Korean, decision-maker view) — conclusion + options + recommendation; no internal label walls in user-facing summaries.
 5. **Greenfield interface, NOT mechanisms** — any redesign edit must justify why a learned mechanism changes (not just relocates).
 6. **Measurement-gated pair policy** — pair ships per-phase only on pre-registered L1-vs-L2 evidence; "no evidence pair needed" ≠ "evidence solo wins"; honest label is "unmeasured".
+7. **Measurement tiering — do NOT gate every improvement on the ceiling full-run** (user directive 2026-07-11). Iterate on the fast behavioral instruments as the inner loop: self-tests + token gauge + lint (seconds), then `violation-matrix` / drift-bait bare probes / compliance cells (minutes), then a resolve-framed probe (~10-20 min). The ceiling 3-arm full run (`run-ceiling-tranche.sh`, hours) is a PERIODIC background exam only — run it detached, keep improving in parallel, never block design/impl work waiting on it. Need a quick directional ceiling read → `--tasks <1-2 rows>` (+ `--resume`), not the full corpus. Full-run stays the moat gate for 세계최고 claims (ops #17); it is not the iteration loop.
 
 ---
 
