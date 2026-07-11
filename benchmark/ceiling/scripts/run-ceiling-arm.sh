@@ -301,6 +301,9 @@ run_with_timeout() {
   esac
   local child_pid=$!
   set +m
+  # >/dev/null: the watchdog (and its orphaned sleep) must not inherit this
+  # script's stdout/stderr — a parent reading us via PIPE stays blocked until
+  # the sleep exits, taxing every attempt with the full timeout.
   (
     sleep "$TIMEOUT_SECONDS"
     if kill -0 "$child_pid" 2>/dev/null; then
@@ -309,7 +312,7 @@ run_with_timeout() {
       sleep 5
       kill -KILL -- "-$child_pid" 2>/dev/null || kill -KILL "$child_pid" 2>/dev/null || true
     fi
-  ) &
+  ) >/dev/null 2>&1 &
   local watchdog_pid=$!
   wait "$child_pid"
   local invoke_exit=$?

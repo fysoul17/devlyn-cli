@@ -368,6 +368,20 @@ rows + labels. (The gate result is itself the pilot's first finding.)
 
 ## Execution record
 
+- **2026-07-11 afternoon — cohort f DISCARDED (harness stall found, no verdicts
+  emitted); watchdog pipe-hold fixed; relaunched as `iter0068-gate-20260711g`.**
+  Cohort f's F21 bare attempts finished in 202/278/240s but the gate blocked
+  ~3600s per attempt: `corpus-gate.py run_command` reads the runner via
+  `subprocess.PIPE`, and `run-ceiling-arm.sh`'s watchdog subshell (plus its
+  orphaned `sleep $TIMEOUT`) inherited that pipe and held it open until the
+  sleep expired (process-table evidence: defunct runner + 50-min orphan
+  `sleep 3600`). Every prior live cohort paid the same silent
+  max(attempt,timeout) wall-tax — cohort e's ~2.5-3h/row pace was this
+  artifact, not model time. Fix: watchdog subshell stdio → `/dev/null`
+  (1 line + comment, `bash -n` verified; orchestrator-implemented, surfaced
+  for three-way reconciliation at R1-gate). Cohort f had emitted zero row
+  verdicts → clean discard per single-cohort policy; g runs wholly on fixed
+  code.
 - **2026-07-11 — gate cohorts c/d/e ALL DISCARDED-contaminated: the bare arms
   were never bare (user-reported, transcript-proven). Isolation fix shipped
   three-way; relaunch as cohort f.** codex v0.144.1 auto-loads GLOBAL skills
@@ -420,11 +434,17 @@ rows + labels. (The gate result is itself the pilot's first finding.)
   `~/devlyn-ceiling-external/canary/canary-postfix-20260711.transcript.txt`.
   **Open risks (recorded, no code this pass; blocking prerequisites for the
   NEXT measured A/C tranche, not the bare gate)**: (a) A-arm environment
-  purity — an A canary must prove "staged devlyn context present; personal
-  context absent" before the next A/C tranche; same prerequisite for both
-  neutral judges. (b) Fixture identity leak: seed package.json tells the
-  agent it is a devlyn-cli benchmark fixture — bench-aware-behavior risk,
-  corpus-hygiene follow-up.
+  purity — canary RUN 2026-07-11 (staged workspace + exact A-arm flags,
+  sonnet): staged devlyn context present AND user-global `~/.claude/CLAUDE.md`
+  LEAKED (the Next.js server-component instruction quoted verbatim; not in
+  any staged file — grep-verified; skills list all staged/built-in, no skill
+  leak; pyx-memory block NOT reported — partial-load mechanism unknown).
+  `--setting-sources project,local` does not exclude user CLAUDE.md memory.
+  Transcript: `~/devlyn-ceiling-external/canary/canary-a-arm-20260711.transcript.txt`.
+  Fix to be designed three-way BEFORE the next A/C tranche; same
+  prerequisite for both neutral judges. (b) Fixture identity leak: seed
+  package.json tells the agent it is a devlyn-cli benchmark fixture —
+  bench-aware-behavior risk, corpus-hygiene follow-up.
 - **2026-07-10 evening — gate cohorts c/d discarded; bare seat corrected to
   terra; relaunched as `iter0068-gate-20260710e`.** (a) `...710c` killed by
   an unexpected machine reboot at 21:23 mid-F7 (single-cohort integrity →
@@ -476,7 +496,7 @@ rows + labels. (The gate result is itself the pilot's first finding.)
 
 D1+D2+D3 shipped; cohorts c/d/e DISCARDED-contaminated (Execution record
 above); isolation fix shipped and canary-verified; live gate relaunched as
-`iter0068-gate-20260711f` under `~/devlyn-ceiling-external` (log/pid in
+`iter0068-gate-20260711g` under `~/devlyn-ceiling-external` (log/pid in
 `~/iter0068-gate-logs/`). Current entry point: read the cohort-f gate result
 → STOP at admitted set → three-way R1-gate (FS1 must be
 `saturated:bare-resolves` or the gate is invalid) → A/C + no-suppression
