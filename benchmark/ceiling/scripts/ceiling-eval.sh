@@ -272,10 +272,13 @@ for key in ("seed_derived", "neutralization_diff_sha256", "neutral_baseline_sha"
         )
 PY
   fi
+  local transported_patch="$eval_dir/transported.patch.diff"
+  python3 "$SCRIPT_DIR/neutralize-workspace.py" \
+    --transform-patch "$attempt_dir/patch.diff" "$transported_patch"
   local apply_exit=0
-  if [ -s "$attempt_dir/patch.diff" ]; then
+  if [ -s "$transported_patch" ]; then
     set +e
-    git -C "$worktree" apply --whitespace=nowarn "$attempt_dir/patch.diff" > "$eval_dir/git-apply.stdout.log" 2> "$eval_dir/git-apply.stderr.log"
+    git -C "$worktree" apply --whitespace=nowarn "$transported_patch" > "$eval_dir/git-apply.stdout.log" 2> "$eval_dir/git-apply.stderr.log"
     apply_exit=$?
     set -e
   fi

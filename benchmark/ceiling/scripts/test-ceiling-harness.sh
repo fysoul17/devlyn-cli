@@ -196,6 +196,69 @@ test -z "$(git -C "$NEUTRAL_ONE" remote)"
 test ! -d "$NEUTRAL_ONE/.git/logs"
 test "$BUNDLE_SHA_BEFORE" = "$(shasum -a 256 "$BUNDLE" | awk '{print $1}')"
 
+PATCH_SOURCE="$TMP_DIR/patch-source"
+ORIGINAL_PATCH="$TMP_DIR/original-context.patch"
+TRANSPORTED_PATCH="$TMP_DIR/transported.patch"
+TRANSPORTED_TWICE_PATCH="$TMP_DIR/transported-twice.patch"
+git clone -q "$BUNDLE" "$PATCH_SOURCE"
+python3 - "$PATCH_SOURCE" <<'PY'
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+server = root / "server/index.js"
+server_text = server.read_text(encoding="utf-8")
+server_identity = "// Tiny Express server used by backend-contract fixtures. Intentionally small."
+server.write_text(
+    server_text.replace(server_identity, server_identity + "\n// transported server change", 1),
+    encoding="utf-8",
+)
+
+cli = root / "bin/cli.js"
+cli_text = cli.read_text(encoding="utf-8")
+cli_identity = "// Fixtures extend or modify this file; keep the baseline minimal and obvious."
+cli_text = cli_text.replace(
+    cli_identity,
+    cli_identity + "\n// transported CLI change",
+    1,
+)
+cli_text = cli_text.replace(
+    "function parseGreetingFormat(_argv) {",
+    "function parseGreetingFormat(argv) {",
+    1,
+)
+cli.write_text(cli_text, encoding="utf-8")
+PY
+git -C "$PATCH_SOURCE" diff --binary --no-ext-diff HEAD -- . > "$ORIGINAL_PATCH"
+grep -Fq '// Tiny Express server used by backend-contract fixtures. Intentionally small.' "$ORIGINAL_PATCH"
+grep -Fq '// bench-test-repo — tiny CLI used as the deterministic base for benchmark fixtures.' "$ORIGINAL_PATCH"
+grep -Fq '// Fixtures extend or modify this file; keep the baseline minimal and obvious.' "$ORIGINAL_PATCH"
+grep -Fq '// TODO(devlyn): this helper is unused — leftover from an abandoned refactor.' "$ORIGINAL_PATCH"
+if git -C "$NEUTRAL_ONE" apply --check "$ORIGINAL_PATCH" >/dev/null 2>&1; then
+  echo "original identity-context patch unexpectedly applied to neutralized tree" >&2
+  exit 1
+fi
+python3 "$SCRIPT_DIR/neutralize-workspace.py" \
+  --transform-patch "$ORIGINAL_PATCH" "$TRANSPORTED_PATCH"
+git -C "$NEUTRAL_ONE" apply --check "$TRANSPORTED_PATCH"
+git -C "$NEUTRAL_ONE" apply "$TRANSPORTED_PATCH"
+grep -Fq '// transported server change' "$NEUTRAL_ONE/server/index.js"
+grep -Fq '// transported CLI change' "$NEUTRAL_ONE/bin/cli.js"
+grep -Fq 'function parseGreetingFormat(argv) {' "$NEUTRAL_ONE/bin/cli.js"
+python3 "$SCRIPT_DIR/neutralize-workspace.py" \
+  --transform-patch "$TRANSPORTED_PATCH" "$TRANSPORTED_TWICE_PATCH"
+cmp "$TRANSPORTED_PATCH" "$TRANSPORTED_TWICE_PATCH"
+python3 - "$ORIGINAL_PATCH" "$TRANSPORTED_PATCH" <<'PY'
+import sys
+from pathlib import Path
+
+todo = "// TODO(devlyn): this helper is unused — leftover from an abandoned refactor.".encode()
+original, transported = (Path(path).read_bytes() for path in sys.argv[1:])
+if original.count(todo) != 1 or transported.count(todo) != 1:
+    raise SystemExit("TODO(devlyn) patch context did not pass through exactly")
+PY
+test "$BUNDLE_SHA_BEFORE" = "$(shasum -a 256 "$BUNDLE" | awk '{print $1}')"
+
 EVAL_ATTEMPT="$TEST_EXTERNAL_ROOT/x/rt02/fx03/A1"
 mkdir -p "$EVAL_ATTEMPT"
 cp "$CEILING_ROOT/corpus/DR-byte-preservation-f7-out-of-scope-trap/hidden/reference.patch" "$EVAL_ATTEMPT/patch.diff"

@@ -19,6 +19,50 @@ AUTHOR_EMAIL = "maintainer@example.com"
 COMMIT_DATE = "2000-01-01T00:00:00Z"
 COMMIT_MESSAGE = "Initial project snapshot"
 
+IDENTITY_REPLACEMENTS = (
+    ("package.json", '"name": "bench-test-repo"', f'"name": "{PROJECT_NAME}"'),
+    (
+        "package.json",
+        '"description": "Deterministic base Node project for devlyn-cli '
+        'auto-resolve benchmarks. Every fixture starts from a fresh copy of '
+        'this directory."',
+        '"description": "A small Node.js toolkit with a command-line interface and HTTP server."',
+    ),
+    ("package-lock.json", '"bench-test-repo"', f'"{PROJECT_NAME}"'),
+    (
+        "bin/cli.js",
+        "// bench-test-repo — tiny CLI used as the deterministic base for benchmark fixtures.",
+        "// harbor-tools — small command-line utilities for local workflows.",
+    ),
+    (
+        "bin/cli.js",
+        "// Fixtures extend or modify this file; keep the baseline minimal and obvious.",
+        "// Keep the core commands minimal and easy to understand.",
+    ),
+    (
+        "playwright.config.js",
+        "// Playwright config used only by browser-validate benchmark fixtures.",
+        "// Playwright config for the browser checks.",
+    ),
+    (
+        "playwright.config.js",
+        "// Runs against web/index.html served via `npx serve web` (fixture setup.sh",
+        "// Runs against web/index.html served via `npx serve web` (the check",
+    ),
+    (
+        "server/index.js",
+        "// Tiny Express server used by backend-contract fixtures. Intentionally small.",
+        "// Tiny Express server with a deliberately small API surface.",
+    ),
+    ("server/index.js", "bench-test-repo", PROJECT_NAME),
+    ("web/index.html", "bench-test-repo", PROJECT_NAME),
+    (
+        "web/index.html",
+        "Minimal page used by browser-validate benchmark fixtures.",
+        "Minimal page for checking the browser interaction.",
+    ),
+)
+
 
 class NeutralizationError(RuntimeError):
     """The workspace cannot be neutralized without ambiguity."""
@@ -50,6 +94,13 @@ def replace(path: Path, old: str, new: str) -> None:
     if old not in text:
         raise NeutralizationError(f"expected identity text missing from {path}: {old!r}")
     path.write_text(text.replace(old, new), encoding="utf-8")
+
+
+def transform_patch(input_path: Path, output_path: Path) -> None:
+    patch = input_path.read_bytes()
+    for _relative_path, old, new in IDENTITY_REPLACEMENTS:
+        patch = patch.replace(old.encode("utf-8"), new.encode("utf-8"))
+    output_path.write_bytes(patch)
 
 
 def neutralize_seed_identity(workspace: Path) -> None:
@@ -85,54 +136,8 @@ The project intentionally keeps each component small and independent.
 """,
         encoding="utf-8",
     )
-    replace(workspace / "package.json", '"name": "bench-test-repo"', f'"name": "{PROJECT_NAME}"')
-    replace(
-        workspace / "package.json",
-        '"description": "Deterministic base Node project for devlyn-cli '
-        'auto-resolve benchmarks. Every fixture starts from a fresh copy of '
-        'this directory."',
-        '"description": "A small Node.js toolkit with a command-line interface and HTTP server."',
-    )
-    replace(workspace / "package-lock.json", '"bench-test-repo"', f'"{PROJECT_NAME}"')
-
-    cli = workspace / "bin/cli.js"
-    replace(
-        cli,
-        "// bench-test-repo — tiny CLI used as the deterministic base for benchmark fixtures.",
-        "// harbor-tools — small command-line utilities for local workflows.",
-    )
-    replace(
-        cli,
-        "// Fixtures extend or modify this file; keep the baseline minimal and obvious.",
-        "// Keep the core commands minimal and easy to understand.",
-    )
-    playwright = workspace / "playwright.config.js"
-    replace(
-        playwright,
-        "// Playwright config used only by browser-validate benchmark fixtures.",
-        "// Playwright config for the browser checks.",
-    )
-    replace(
-        playwright,
-        "// Runs against web/index.html served via `npx serve web` (fixture setup.sh",
-        "// Runs against web/index.html served via `npx serve web` (the check",
-    )
-
-    server = workspace / "server/index.js"
-    replace(
-        server,
-        "// Tiny Express server used by backend-contract fixtures. Intentionally small.",
-        "// Tiny Express server with a deliberately small API surface.",
-    )
-    replace(server, "bench-test-repo", PROJECT_NAME)
-
-    web = workspace / "web/index.html"
-    replace(web, "bench-test-repo", PROJECT_NAME)
-    replace(
-        web,
-        "Minimal page used by browser-validate benchmark fixtures.",
-        "Minimal page for checking the browser interaction.",
-    )
+    for relative_path, old, new in IDENTITY_REPLACEMENTS:
+        replace(workspace / relative_path, old, new)
 
     ignore = workspace / ".gitignore"
     lines = ignore.read_text(encoding="utf-8").splitlines()
@@ -256,10 +261,23 @@ def neutralize(workspace: Path, seed_derived: bool) -> dict[str, object]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--workspace", required=True, type=Path)
+    parser.add_argument("--workspace", type=Path)
     parser.add_argument("--seed-derived", action="store_true")
-    parser.add_argument("--report", required=True, type=Path)
+    parser.add_argument("--report", type=Path)
+    parser.add_argument(
+        "--transform-patch",
+        nargs=2,
+        type=Path,
+        metavar=("IN", "OUT"),
+    )
     args = parser.parse_args()
+    if args.transform_patch is not None:
+        if args.workspace is not None or args.report is not None or args.seed_derived:
+            parser.error("--transform-patch cannot be combined with workspace neutralization")
+        transform_patch(*args.transform_patch)
+        return 0
+    if args.workspace is None or args.report is None:
+        parser.error("--workspace and --report are required for workspace neutralization")
     workspace = args.workspace.resolve()
     report = neutralize(workspace, args.seed_derived)
     atomic_write_json(args.report, report)
