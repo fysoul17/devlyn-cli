@@ -61,7 +61,7 @@ fi
 
 TASK_DIR="$CEILING_ROOT/corpus/$TASK"
 RESULT_TASK_DIR="$CEILING_ROOT/results/$RUN_ID/$TASK"
-EXTERNAL_ROOT="$CEILING_ROOT/external"
+EXTERNAL_ROOT="$HOME/devlyn-ceiling-external"
 mkdir -p "$EXTERNAL_ROOT/eval/$RUN_ID/$TASK"
 
 if [ "${#ARM_ATTEMPTS[@]}" -eq 0 ]; then

@@ -21,7 +21,7 @@ HERE = Path(__file__).resolve().parent
 CEILING_ROOT = HERE.parent
 RESULTS_ROOT = CEILING_ROOT / "results"
 CORPUS_ROOT = CEILING_ROOT / "corpus"
-EXTERNAL_ROOT = CEILING_ROOT / "external"
+EXTERNAL_ROOT = Path.home() / "devlyn-ceiling-external"
 AXES = [
     "design_coherence",
     "robustness",

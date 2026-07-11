@@ -368,6 +368,63 @@ rows + labels. (The gate result is itself the pilot's first finding.)
 
 ## Execution record
 
+- **2026-07-11 — gate cohorts c/d/e ALL DISCARDED-contaminated: the bare arms
+  were never bare (user-reported, transcript-proven). Isolation fix shipped
+  three-way; relaunch as cohort f.** codex v0.144.1 auto-loads GLOBAL skills
+  (`~/.agents/skills/`; in cohort c also `~/.codex/skills/`) regardless of
+  `--ignore-user-config --ignore-rules --ephemeral` and a redirected
+  CODEX_HOME — no skills-disable feature flag exists (`codex features list`
+  verified; `--ignore-rules` covers execpolicy `.rules` only). Cohort-e F21
+  B1: the "bare" agent announced "I'm using the repository's hands-free
+  implementation workflow", read `~/.agents/skills/devlyn:resolve/SKILL.md`,
+  and ran the devlyn pipeline
+  (`results/iter0068-gate-20260710e/DR-ordering-f21-scheduler/B1/transcript.txt:2,30`).
+  Contamination breadth (Grok-verified, Fable-spot-checked): e 16/16, c 4/4,
+  d 1/1 bare transcripts. Second vector: engine workspaces lived at
+  `benchmark/ceiling/external/workspaces/` INSIDE the repo tree (ancestors
+  carry AGENTS.md/CLAUDE.md/.devlyn). Record corrections (Codex R0,
+  Fable-verified): cohorts c AND d both ran `gpt-5.6-sol` bare arms (c
+  predates `36cf373`); cohort e stopped after F12 B1 runner completed (exit
+  0, 486s, timing.json present, objective absent), process gone by 12:50
+  KST. **Impact = gate inversion**: contaminated bare resolved trap rows →
+  `saturated:bare-resolves` (F7/F25/F26/F11 in cohort e) is untrustworthy
+  specifically in the row-REJECTING direction; F21 was
+  `admitted:ordering-inversion` (0/3) even with harness context — still
+  re-gated clean. Quarantine: c/d/e are non-evidence for
+  admission/freeze/DR-scoring/wall-time; read-only incident artifacts only
+  (contamination signatures, seat-pin verification, F3 regression fixtures).
+  **Fix (three-way: Grok R0 GO-WITH-EDITS + Codex R0 GO-WITH-EDITS; Fable
+  adjudication with named criteria; Codex implemented; Grok R1 on the actual
+  diff)**: (E1) `EXTERNAL_ROOT` → `$HOME/devlyn-ceiling-external` in
+  run-ceiling-arm.sh / ceiling-eval.sh / corpus-gate.py / ceiling-judge.py
+  (4th site Grok-found — judge scratch was also in-repo); (E2) per-attempt
+  fresh `HOME` (`bare-homes/<run>/<task>/<armN>`) and `CODEX_HOME`
+  (`codex-homes/…`) for codex arms — criterion: attempt-independence must be
+  structural (Codex correction: codex-home-terra was never fully recreated,
+  only config.toml overwritten); (E3) corpus-gate bare-attempt validity
+  gains fail-closed provenance checks (transcript exists; model header
+  required AND = terra — `runtime-model-missing` tightening added by
+  orchestrator, surfaced in R1; timing worktree outside repo root) +
+  contamination markers → INVALID `bare-context-contaminated:<marker>`,
+  provenance-only families (`global-skills-path`, `devlyn-skill-identity`,
+  `devlyn-runtime`); REJECTED markers with named deltas: bare `devlyn`
+  (fixture package.json legitimately says "devlyn-cli auto-resolve
+  benchmarks" — Grok FP find), `Subtractive-first`/`Goal-locked`
+  (content-word echo — Codex counter); criterion: Artifact-Provenance
+  Specificity; (E4) selftest 30→37 assertions (clean-no-FP, skill-load,
+  skill-read, missing/empty transcript, in-repo worktree, model
+  mismatch/missing). Verified: selftest 37 PASS, `bash -n`, `py_compile`.
+  **Post-fix canary CLEAN** (new layout, exact B-arm flags): zero markers,
+  `model: gpt-5.6-terra`, no instruction content, codex built-ins only —
+  transcript persisted at
+  `~/devlyn-ceiling-external/canary/canary-postfix-20260711.transcript.txt`.
+  **Open risks (recorded, no code this pass; blocking prerequisites for the
+  NEXT measured A/C tranche, not the bare gate)**: (a) A-arm environment
+  purity — an A canary must prove "staged devlyn context present; personal
+  context absent" before the next A/C tranche; same prerequisite for both
+  neutral judges. (b) Fixture identity leak: seed package.json tells the
+  agent it is a devlyn-cli benchmark fixture — bench-aware-behavior risk,
+  corpus-hygiene follow-up.
 - **2026-07-10 evening — gate cohorts c/d discarded; bare seat corrected to
   terra; relaunched as `iter0068-gate-20260710e`.** (a) `...710c` killed by
   an unexpected machine reboot at 21:23 mid-F7 (single-cohort integrity →
@@ -415,10 +472,14 @@ rows + labels. (The gate result is itself the pilot's first finding.)
   pre-registration; all iter-0067 fixes intact (venv exclude 4×, tree
   clean).
 
-### RESUME HERE — superseded 2026-07-10
+### RESUME HERE — updated 2026-07-11
 
-D1+D2+D3 shipped and verified (Execution record above); live gate running
-as `iter0068-gate-20260710b`. Current entry point: read the gate result →
-three-way R1-gate on the admitted set → A/C + no-suppression decision →
+D1+D2+D3 shipped; cohorts c/d/e DISCARDED-contaminated (Execution record
+above); isolation fix shipped and canary-verified; live gate relaunched as
+`iter0068-gate-20260711f` under `~/devlyn-ceiling-external` (log/pid in
+`~/iter0068-gate-logs/`). Current entry point: read the cohort-f gate result
+→ STOP at admitted set → three-way R1-gate (FS1 must be
+`saturated:bare-resolves` or the gate is invalid) → A/C + no-suppression
+decision (A-arm purity canary is a prerequisite for the A/C tranche) →
 closure. The original 3-step implementation plan is recoverable from git
 history of this section (pre-`a33ae5d`).

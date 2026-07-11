@@ -7,6 +7,7 @@ import copy
 import hashlib
 import json
 import os
+import runpy
 import shutil
 import subprocess
 import sys
@@ -17,7 +18,7 @@ from typing import Any
 
 GATE_SOURCE = Path(__file__).resolve().with_name("corpus-gate.py")
 CONTROL_TASK = "FS1-schedule-max-runs"
-EXPECTED_ASSERTIONS = 30
+EXPECTED_ASSERTIONS = 37
 
 
 class SelfTestFailure(RuntimeError):
@@ -116,7 +117,14 @@ def create_attempt(fixtures: Path, task: str, number: int, kind: str) -> None:
     attempt = fixtures / task / f"B{number}"
     attempt.mkdir(parents=True)
     timed_out = kind == "timed-out"
-    write_json(attempt / "timing.json", {"invoke_exit": 0, "timed_out": timed_out})
+    write_json(
+        attempt / "timing.json",
+        {
+            "invoke_exit": 0,
+            "timed_out": timed_out,
+            "worktree": f"/devlyn-ceiling-external/{task}/B{number}",
+        },
+    )
     if kind == "pass":
         write_objective(attempt / "objective.json", 0, True)
     elif kind == "oracle-101":
@@ -125,7 +133,33 @@ def create_attempt(fixtures: Path, task: str, number: int, kind: str) -> None:
         write_objective(attempt / "objective.json", 1, False)
     (attempt / "patch.diff").write_text("", encoding="utf-8")
     (attempt / "transcript.txt").write_text(
-        "model: gpt-selftest\n", encoding="utf-8"
+        "model: gpt-5.6-terra\n", encoding="utf-8"
+    )
+
+
+def bare_attempt_record(
+    gate_module: dict[str, Any],
+    artifact_dir: Path,
+    transcript: str | None,
+    *,
+    worktree: str = "/devlyn-ceiling-external/selftest/B1",
+) -> dict[str, Any]:
+    artifact_dir.mkdir(parents=True)
+    write_json(
+        artifact_dir / "timing.json",
+        {"invoke_exit": 0, "timed_out": False, "worktree": worktree},
+    )
+    write_objective(artifact_dir / "objective.json", 1, False)
+    (artifact_dir / "patch.diff").write_text("", encoding="utf-8")
+    if transcript is not None:
+        (artifact_dir / "transcript.txt").write_text(transcript, encoding="utf-8")
+    return gate_module["attempt_record"](
+        artifact_dir,
+        "B1",
+        1,
+        0,
+        None,
+        None,
     )
 
 
@@ -181,13 +215,14 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="corpus-gate-selftest-") as temporary:
         root = Path(temporary)
         gate, corpus_root = install_isolated_gate(root)
+        gate_module = runpy.run_path(str(gate))
         fixtures = root / "fixtures"
         write_json(
             fixtures / "identity.json",
             {
                 "bare": {
                     "cli_version": "codex-cli selftest",
-                    "runtime_resolved_model": "gpt-selftest",
+                    "runtime_resolved_model": "gpt-5.6-terra",
                     "captured_at": "2026-07-10T00:00:00Z",
                 }
             },
@@ -245,6 +280,97 @@ def main() -> int:
             gold_resolved=False,
         )
         create_fixture_row(fixtures, CONTROL_TASK, ["pass", "fail", "fail"])
+
+        attempt_fixtures = root / "attempt-fixtures"
+        clean = bare_attempt_record(
+            gate_module,
+            attempt_fixtures / "clean",
+            'model: gpt-5.6-terra\nworkdir: /devlyn-ceiling-external/selftest/B1\n'
+            '"description": "Deterministic base Node project for devlyn-cli '
+            'auto-resolve benchmarks. Every fixture starts from a fresh copy of '
+            'this directory.",\n',
+        )
+        checks.require(clean["valid"] is True, "clean bare transcript was rejected")
+
+        skill_load = bare_attempt_record(
+            gate_module,
+            attempt_fixtures / "skill-load",
+            "model: gpt-5.6-terra\nERROR codex_core::session::session: failed "
+            "to load skill /Users/x/.agents/skills/foo/SKILL.md\n",
+        )
+        checks.require(
+            skill_load["valid"] is False
+            and "bare-context-contaminated:global-skills-path"
+            in skill_load["attempt_invalid_reasons"],
+            "global skill-load contamination was not rejected",
+        )
+
+        skill_read = bare_attempt_record(
+            gate_module,
+            attempt_fixtures / "skill-read",
+            "model: gpt-5.6-terra\nsed -n '1,240p' "
+            "/Users/x/.agents/skills/devlyn:resolve/SKILL.md\n",
+        )
+        checks.require(
+            skill_read["valid"] is False
+            and skill_read["attempt_invalid_reasons"][0]
+            == "bare-context-contaminated:global-skills-path",
+            "skill-read contamination did not name the first matching marker",
+        )
+
+        missing_transcript = bare_attempt_record(
+            gate_module,
+            attempt_fixtures / "missing-transcript",
+            None,
+        )
+        empty_transcript = bare_attempt_record(
+            gate_module,
+            attempt_fixtures / "empty-transcript",
+            "",
+        )
+        checks.require(
+            all(
+                record["valid"] is False
+                and "transcript-missing" in record["attempt_invalid_reasons"]
+                for record in (missing_transcript, empty_transcript)
+            ),
+            "missing or empty transcript was not rejected",
+        )
+
+        repo_worktree = bare_attempt_record(
+            gate_module,
+            attempt_fixtures / "repo-worktree",
+            "model: gpt-5.6-terra\n",
+            worktree=str(root / "benchmark-worktree"),
+        )
+        checks.require(
+            repo_worktree["valid"] is False
+            and "worktree-in-repo" in repo_worktree["attempt_invalid_reasons"],
+            "in-repo worktree was not rejected",
+        )
+
+        wrong_model = bare_attempt_record(
+            gate_module,
+            attempt_fixtures / "wrong-model",
+            "model: gpt-5.6-sol\n",
+        )
+        checks.require(
+            wrong_model["valid"] is False
+            and "runtime-model-mismatch" in wrong_model["attempt_invalid_reasons"],
+            "wrong runtime model was not rejected",
+        )
+
+        headerless_model = bare_attempt_record(
+            gate_module,
+            attempt_fixtures / "headerless-model",
+            "no codex header in this transcript\n",
+        )
+        checks.require(
+            headerless_model["valid"] is False
+            and "runtime-model-missing"
+            in headerless_model["attempt_invalid_reasons"],
+            "transcript without a model header was not rejected",
+        )
 
         manifests = root / "manifests"
         manifests.mkdir()
@@ -368,7 +494,7 @@ def main() -> int:
             "per-row frozen flags do not match admission",
         )
         checks.require(
-            summary["observed_runtime_models"] == ["gpt-selftest"]
+            summary["observed_runtime_models"] == ["gpt-5.6-terra"]
             and summary["cohort_drift_observed"] is False,
             "synthetic cohort identity was not stable",
         )
@@ -458,7 +584,7 @@ def main() -> int:
             {
                 "bare": {
                     "cli_version": "codex-cli selftest",
-                    "runtime_resolved_model": "gpt-selftest",
+                    "runtime_resolved_model": "gpt-5.6-terra",
                 }
             },
         )

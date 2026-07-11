@@ -75,7 +75,7 @@ AUTO_RESOLVE_SCRIPTS="$REPO_ROOT/benchmark/auto-resolve/scripts"
 TASK_DIR="$CEILING_ROOT/corpus/$TASK"
 TASK_TEXT_FILE="$TASK_DIR/task.txt"
 RESULT_DIR="$CEILING_ROOT/results/$RUN_ID/$TASK/${ARM}${ATTEMPT}"
-EXTERNAL_ROOT="$CEILING_ROOT/external"
+EXTERNAL_ROOT="$HOME/devlyn-ceiling-external"
 mkdir -p "$RESULT_DIR" "$EXTERNAL_ROOT"
 
 # Benchmark codex seat = gpt-5.6-terra (all arms), never the user's global
@@ -86,11 +86,16 @@ mkdir -p "$RESULT_DIR" "$EXTERNAL_ROOT"
 #    config.toml is not read; auth still resolves via CODEX_HOME).
 #  - A-arm's nested resolve->codex IMPLEMENT loads $CODEX_HOME/config.toml
 #    (workspace-write, not isolated) => terra.
-CODEX_HOME_TERRA="$EXTERNAL_ROOT/codex-home-terra"
+REAL_HOME="$HOME"
+CODEX_HOME_TERRA="$EXTERNAL_ROOT/codex-homes/$RUN_ID/$TASK/${ARM}${ATTEMPT}"
+rm -rf "$CODEX_HOME_TERRA"
 mkdir -p "$CODEX_HOME_TERRA"
 printf 'model = "gpt-5.6-terra"\nmodel_reasoning_effort = "xhigh"\n' > "$CODEX_HOME_TERRA/config.toml"
-ln -sf "$HOME/.codex/auth.json" "$CODEX_HOME_TERRA/auth.json"
+ln -sf "$REAL_HOME/.codex/auth.json" "$CODEX_HOME_TERRA/auth.json"
 export CODEX_HOME="$CODEX_HOME_TERRA"
+BARE_HOME="$EXTERNAL_ROOT/bare-homes/$RUN_ID/$TASK/${ARM}${ATTEMPT}"
+rm -rf "$BARE_HOME"
+mkdir -p "$BARE_HOME"
 
 json_quote_task_prompt() {
   python3 - "$TASK_TEXT_FILE" <<'PY'
@@ -278,6 +283,7 @@ run_with_timeout() {
     B|C)
       (
         cd "$worktree" || exit 125
+        export HOME="$BARE_HOME"
         exec codex exec \
           --ignore-user-config \
           --ignore-rules \

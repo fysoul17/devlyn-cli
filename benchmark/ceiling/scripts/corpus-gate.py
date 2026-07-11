@@ -22,7 +22,7 @@ CEILING_ROOT = HERE.parent
 REPO_ROOT = CEILING_ROOT.parent.parent
 CORPUS_ROOT = CEILING_ROOT / "corpus"
 RESULTS_ROOT = CEILING_ROOT / "results"
-EXTERNAL_ROOT = CEILING_ROOT / "external"
+EXTERNAL_ROOT = Path.home() / "devlyn-ceiling-external"
 REAL_MANIFEST = CORPUS_ROOT / "manifest.json"
 ARM_RUNNER = HERE / "run-ceiling-arm.sh"
 EVALUATOR = HERE / "ceiling-eval.sh"
@@ -33,6 +33,15 @@ REPLACEMENTS_PER_SLOT = 2
 CODEX_VERSION_TIMEOUT_SECONDS = 30
 RUN_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 MODEL_RE = re.compile(r"^model:\s*(\S+)\s*$", re.MULTILINE)
+BARE_MODEL = "gpt-5.6-terra"
+BARE_CONTEXT_MARKERS = (
+    ("global-skills-path", ("/.agents/skills/", "/.codex/skills/")),
+    ("devlyn-skill-identity", ("devlyn:resolve", "devlyn:auto-resolve")),
+    (
+        "devlyn-runtime",
+        ("DEVLYN_SKILL_DIR", "DEVLYN_SHARED_DIR", ".devlyn/pipeline.state.json"),
+    ),
+)
 DRIFT_NOTE = (
     "Alias or runtime-resolved model drift between corpus admission and the "
     "discriminating tranche invalidates the freeze and requires re-gating."
@@ -315,6 +324,7 @@ def attempt_record(
     transcript_path = artifact_dir / "transcript.txt"
     timing, timing_error = read_json_record(timing_path)
     objective, objective_error = read_json_record(objective_path)
+    resolved_model = runtime_model(transcript_path)
 
     reasons: list[str] = []
     if timing_error == "missing":
@@ -334,6 +344,30 @@ def attempt_record(
             reasons.append("timed-out")
         elif timed_out is not False:
             reasons.append("timed-out-missing-or-invalid")
+        worktree = timing.get("worktree")
+        if isinstance(worktree, str):
+            try:
+                Path(worktree).resolve().relative_to(REPO_ROOT)
+            except ValueError:
+                pass
+            else:
+                reasons.append("worktree-in-repo")
+
+    try:
+        transcript = transcript_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        transcript = ""
+    if not transcript:
+        reasons.append("transcript-missing")
+    else:
+        if resolved_model is None:
+            reasons.append("runtime-model-missing")
+        elif resolved_model != BARE_MODEL:
+            reasons.append("runtime-model-mismatch")
+        for marker_id, markers in BARE_CONTEXT_MARKERS:
+            if any(marker in transcript for marker in markers):
+                reasons.append(f"bare-context-contaminated:{marker_id}")
+                break
 
     patch = file_record(patch_path)
     if not patch["exists"]:
@@ -366,7 +400,7 @@ def attempt_record(
         "resolved": resolved,
         "outcome": "pass" if resolved is True else "fail" if valid else "INVALID",
         "attempt_invalid_reasons": reasons,
-        "runtime_resolved_model": runtime_model(transcript_path),
+        "runtime_resolved_model": resolved_model,
     }
 
 
