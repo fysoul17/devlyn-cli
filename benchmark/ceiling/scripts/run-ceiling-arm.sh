@@ -6,6 +6,8 @@ usage() {
   cat >&2 <<'EOF'
 usage: run-ceiling-arm.sh --task <ceiling-task>
                           --arm <A|B|C> --run-id <ID> --attempt <n>
+                          [--opaque-run-id <ID>] [--opaque-task-id <ID>]
+                          [--result-dir <path>]
                           [--timeout-seconds 3600]
 EOF
   exit "${1:-1}"
@@ -18,6 +20,9 @@ TASK=""
 ARM=""
 RUN_ID=""
 ATTEMPT=""
+OPAQUE_RUN_ID=""
+OPAQUE_TASK_ID=""
+RESULT_DIR_OVERRIDE=""
 TIMEOUT_SECONDS=3600
 
 require_value() {
@@ -35,6 +40,9 @@ while [ $# -gt 0 ]; do
     --arm) require_value "$1" "${2:-}"; ARM="$2"; shift 2;;
     --run-id) require_value "$1" "${2:-}"; RUN_ID="$2"; shift 2;;
     --attempt) require_value "$1" "${2:-}"; ATTEMPT="$2"; shift 2;;
+    --opaque-run-id) require_value "$1" "${2:-}"; OPAQUE_RUN_ID="$2"; shift 2;;
+    --opaque-task-id) require_value "$1" "${2:-}"; OPAQUE_TASK_ID="$2"; shift 2;;
+    --result-dir) require_value "$1" "${2:-}"; RESULT_DIR_OVERRIDE="$2"; shift 2;;
     --timeout-seconds) require_value "$1" "${2:-}"; TIMEOUT_SECONDS="$2"; shift 2;;
     -h|--help) usage 0;;
     *) echo "unknown arg: $1" >&2; usage 1;;
@@ -69,13 +77,33 @@ case "$ATTEMPT" in ''|*[!0-9]*) echo "--attempt must be a positive integer" >&2;
 [ "$ATTEMPT" -gt 0 ] || { echo "--attempt must be > 0" >&2; exit 1; }
 case "$TIMEOUT_SECONDS" in ''|*[!0-9]*) echo "--timeout-seconds must be a positive integer" >&2; exit 1;; esac
 [ "$TIMEOUT_SECONDS" -gt 0 ] || { echo "--timeout-seconds must be > 0" >&2; exit 1; }
+if [ -n "$OPAQUE_RUN_ID$OPAQUE_TASK_ID" ]; then
+  [ -n "$OPAQUE_RUN_ID" ] && [ -n "$OPAQUE_TASK_ID" ] || {
+    echo "--opaque-run-id and --opaque-task-id must be provided together" >&2
+    exit 1
+  }
+fi
+for opaque_id in "$OPAQUE_RUN_ID" "$OPAQUE_TASK_ID"; do
+  [ -z "$opaque_id" ] || [[ "$opaque_id" =~ ^[a-z][a-z0-9]*$ ]] || {
+    echo "opaque IDs must match ^[a-z][a-z0-9]*$" >&2
+    exit 1
+  }
+done
 
 REPO_ROOT="$(cd "$CEILING_ROOT/../.." && pwd)"
 AUTO_RESOLVE_SCRIPTS="$REPO_ROOT/benchmark/auto-resolve/scripts"
 TASK_DIR="$CEILING_ROOT/corpus/$TASK"
 TASK_TEXT_FILE="$TASK_DIR/task.txt"
-RESULT_DIR="$CEILING_ROOT/results/$RUN_ID/$TASK/${ARM}${ATTEMPT}"
-EXTERNAL_ROOT="$HOME/devlyn-ceiling-external"
+EXTERNAL_ROOT="${CEILING_EXTERNAL_ROOT:-$HOME/.local/share/nx01}"
+if [ -z "$OPAQUE_RUN_ID" ]; then
+  OPAQUE_RUN_ID="r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)"
+  OPAQUE_TASK_ID="f$(printf '%s' "$TASK" | shasum -a 256 | cut -c1-12)"
+fi
+if [ -n "$RESULT_DIR_OVERRIDE" ]; then
+  RESULT_DIR="$RESULT_DIR_OVERRIDE"
+else
+  RESULT_DIR="$CEILING_ROOT/results/$RUN_ID/$TASK/${ARM}${ATTEMPT}"
+fi
 mkdir -p "$RESULT_DIR" "$EXTERNAL_ROOT"
 
 # Benchmark codex seat = gpt-5.6-terra (all arms), never the user's global
@@ -87,15 +115,19 @@ mkdir -p "$RESULT_DIR" "$EXTERNAL_ROOT"
 #  - A-arm's nested resolve->codex IMPLEMENT loads $CODEX_HOME/config.toml
 #    (workspace-write, not isolated) => terra.
 REAL_HOME="$HOME"
-CODEX_HOME_TERRA="$EXTERNAL_ROOT/codex-homes/$RUN_ID/$TASK/${ARM}${ATTEMPT}"
+CODEX_HOME_TERRA="$EXTERNAL_ROOT/d/$OPAQUE_RUN_ID/$OPAQUE_TASK_ID/${ARM}${ATTEMPT}"
 rm -rf "$CODEX_HOME_TERRA"
 mkdir -p "$CODEX_HOME_TERRA"
 printf 'model = "gpt-5.6-terra"\nmodel_reasoning_effort = "xhigh"\n' > "$CODEX_HOME_TERRA/config.toml"
-ln -sf "$REAL_HOME/.codex/auth.json" "$CODEX_HOME_TERRA/auth.json"
+AUTH_SOURCE="${CEILING_TEST_AUTH_JSON:-$REAL_HOME/.codex/auth.json}"
+[ -f "$AUTH_SOURCE" ] || { echo "Codex auth file missing: $AUTH_SOURCE" >&2; exit 1; }
+cp "$AUTH_SOURCE" "$CODEX_HOME_TERRA/auth.json"
+chmod 0600 "$CODEX_HOME_TERRA/auth.json"
 export CODEX_HOME="$CODEX_HOME_TERRA"
-BARE_HOME="$EXTERNAL_ROOT/bare-homes/$RUN_ID/$TASK/${ARM}${ATTEMPT}"
+BARE_HOME="$EXTERNAL_ROOT/h/$OPAQUE_RUN_ID/$OPAQUE_TASK_ID/${ARM}${ATTEMPT}"
 rm -rf "$BARE_HOME"
-mkdir -p "$BARE_HOME"
+mkdir -p "$BARE_HOME/t" "$BARE_HOME/n"
+: > "$BARE_HOME/.npmrc"
 
 json_quote_task_prompt() {
   python3 - "$TASK_TEXT_FILE" <<'PY'
@@ -150,9 +182,9 @@ PY
 }
 
 prepare_swe_workspace() {
-  local worktrees_root="$EXTERNAL_ROOT/workspaces/$RUN_ID/$TASK/${ARM}${ATTEMPT}"
-  local repos_root="$EXTERNAL_ROOT/repos/swebench"
-  local visible_jsonl="$EXTERNAL_ROOT/visible-instances/$TASK.jsonl"
+  local worktrees_root="$EXTERNAL_ROOT/w/$OPAQUE_RUN_ID/$OPAQUE_TASK_ID/${ARM}${ATTEMPT}"
+  local repos_root="$EXTERNAL_ROOT/c/s"
+  local visible_jsonl="$EXTERNAL_ROOT/i/$OPAQUE_TASK_ID.jsonl"
   local prepared_json="$RESULT_DIR/workspace.prepare.json"
   visible_swebench_jsonl "$visible_jsonl"
   rm -rf "$worktrees_root"
@@ -174,9 +206,9 @@ PY
 
 prepare_fs_workspace() {
   local base_json="$TASK_DIR/base.json"
-  local repos_root="$EXTERNAL_ROOT/repos/fs"
-  local worktree_root="$EXTERNAL_ROOT/workspaces/$RUN_ID/$TASK/${ARM}${ATTEMPT}"
-  local cache="$repos_root/$TASK"
+  local repos_root="$EXTERNAL_ROOT/c/f"
+  local worktree_root="$EXTERNAL_ROOT/w/$OPAQUE_RUN_ID/$OPAQUE_TASK_ID/${ARM}${ATTEMPT}"
+  local cache="$repos_root/$OPAQUE_TASK_ID"
   local worktree="$worktree_root/repo"
   # Bash 3.2 (macOS /bin/bash) has no mapfile — judge.sh iter-0019.4 precedent
   local repo sha
@@ -217,19 +249,9 @@ stage_devlyn_context() {
 write_patch() {
   local worktree="$1"
   local out="$2"
-  # Arms may commit their work (observed: devlyn IMPLEMENT committed
-  # "chore(pipeline): implement", making diff-vs-HEAD empty). Diff against
-  # the frozen corpus base sha so committed and uncommitted deltas are
-  # captured identically regardless of arm git behavior.
-  local base_sha
-  if [ -n "${CEILING_TEST_BASE_SHA:-}" ]; then
-    # test seam only (CEILING_TEST_WORKTREE fake workspaces lack corpus shas)
-    base_sha="$CEILING_TEST_BASE_SHA"
-  elif [[ "$TASK" == SW* ]]; then
-    base_sha="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["base_commit"])' "$TASK_DIR/hidden/instance.json")"
-  else
-    base_sha="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["sha"])' "$TASK_DIR/base.json")"
-  fi
+  # Arms may commit their work. Diff against the deterministic neutral baseline
+  # so committed and uncommitted solver deltas are captured identically without
+  # including the workspace identity rewrite itself.
   (
     cd "$worktree"
     git add -N -- . \
@@ -243,7 +265,7 @@ write_patch() {
       ':(exclude)venv*/**' \
       ':(exclude)__pycache__/**' \
       ':(exclude)*.pyc' >/dev/null 2>&1 || true
-    git diff --binary "$base_sha" -- . \
+    git diff --binary "$NEUTRAL_BASE_SHA" -- . \
       ':(exclude).claude/**' \
       ':(exclude).devlyn/**' \
       ':(exclude)CLAUDE.md' \
@@ -258,6 +280,74 @@ write_patch() {
 }
 
 RUN_TIMED_OUT=0
+
+resolve_direct_codex() {
+  python3 - "${CEILING_TEST_CODEX_BIN:-}" <<'PY'
+import os
+import sys
+from pathlib import Path
+
+explicit = sys.argv[1]
+if explicit:
+    candidates = [Path(explicit)]
+else:
+    candidates = [Path(part) / "codex" for part in os.environ.get("PATH", "").split(os.pathsep) if part]
+for candidate in candidates:
+    if not candidate.is_file() or not os.access(candidate, os.X_OK):
+        continue
+    if ".superset" in candidate.parts:
+        continue
+    resolved = candidate.resolve()
+    if resolved.name == "codex.js":
+        package_root = resolved.parent.parent
+        native = sorted(
+            path
+            for path in (package_root / "node_modules" / "@openai").glob(
+                "codex-*/vendor/*/bin/codex*"
+            )
+            if path.is_file() and os.access(path, os.X_OK)
+        )
+        if native:
+            resolved = native[0].resolve()
+    print(resolved)
+    raise SystemExit(0)
+raise SystemExit("direct non-Superset Codex CLI not found")
+PY
+}
+
+DIRECT_CODEX_BIN="$(resolve_direct_codex)"
+DIRECT_CODEX_VERSION="$("$DIRECT_CODEX_BIN" --version 2>/dev/null)"
+[ -n "$DIRECT_CODEX_VERSION" ] || { echo "direct Codex CLI version missing" >&2; exit 1; }
+NODE_BIN="$(command -v node || true)"
+[ -n "$NODE_BIN" ] || { echo "node binary missing" >&2; exit 1; }
+NODE_BIN_DIR="$(cd "$(dirname "$NODE_BIN")" && pwd -P)"
+FROZEN_PATH="$NODE_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin"
+FROZEN_ENV_KEYS="CODEX_HOME,GIT_CONFIG_GLOBAL,GIT_CONFIG_NOSYSTEM,HOME,LANG,LC_ALL,NPM_CONFIG_CACHE,NPM_CONFIG_USERCONFIG,PATH,TERM,TMPDIR,TZ"
+
+CANARY_STDOUT="$RESULT_DIR/shell-canary.stdout"
+CANARY_STDERR="$RESULT_DIR/shell-canary.stderr"
+if ! env -i \
+  PATH="$FROZEN_PATH" \
+  HOME="$BARE_HOME" \
+  CODEX_HOME="$CODEX_HOME_TERRA" \
+  TERM=dumb \
+  LANG=en_US.UTF-8 \
+  LC_ALL=en_US.UTF-8 \
+  TZ=UTC \
+  TMPDIR="$BARE_HOME/t" \
+  GIT_CONFIG_NOSYSTEM=1 \
+  GIT_CONFIG_GLOBAL=/dev/null \
+  NPM_CONFIG_USERCONFIG="$BARE_HOME/.npmrc" \
+  NPM_CONFIG_CACHE="$BARE_HOME/n" \
+  /bin/zsh -lc 'printf isolation-ok' > "$CANARY_STDOUT" 2> "$CANARY_STDERR"; then
+  echo "shell startup canary failed" >&2
+  exit 1
+fi
+if [ "$(cat "$CANARY_STDOUT")" != "isolation-ok" ] || [ -s "$CANARY_STDERR" ]; then
+  echo "shell startup canary produced unexpected output" >&2
+  exit 1
+fi
+
 run_with_timeout() {
   local worktree="$1"
   local transcript="$2"
@@ -283,13 +373,24 @@ run_with_timeout() {
     B|C)
       (
         cd "$worktree" || exit 125
-        export HOME="$BARE_HOME"
-        exec codex exec \
+        exec env -i \
+          PATH="$FROZEN_PATH" \
+          HOME="$BARE_HOME" \
+          CODEX_HOME="$CODEX_HOME_TERRA" \
+          TERM=dumb \
+          LANG=en_US.UTF-8 \
+          LC_ALL=en_US.UTF-8 \
+          TZ=UTC \
+          TMPDIR="$BARE_HOME/t" \
+          GIT_CONFIG_NOSYSTEM=1 \
+          GIT_CONFIG_GLOBAL=/dev/null \
+          NPM_CONFIG_USERCONFIG="$BARE_HOME/.npmrc" \
+          NPM_CONFIG_CACHE="$BARE_HOME/n" \
+          "$DIRECT_CODEX_BIN" exec \
           --ignore-user-config \
           --ignore-rules \
           --ephemeral \
           --skip-git-repo-check \
-          --disable codex_hooks \
           --disable hooks \
           -C "$worktree" \
           -s workspace-write \
@@ -338,6 +439,14 @@ else
 fi
 [ -d "$WORKTREE/.git" ] || { echo "workspace is not a git repo: $WORKTREE" >&2; exit 1; }
 
+NEUTRALIZER_ARGS=(
+  --workspace "$WORKTREE"
+  --report "$RESULT_DIR/neutralization.json"
+)
+[[ "$TASK" == DR-* ]] && NEUTRALIZER_ARGS+=(--seed-derived)
+NEUTRAL_BASE_SHA="$(python3 "$SCRIPT_DIR/neutralize-workspace.py" "${NEUTRALIZER_ARGS[@]}")"
+[ -n "$NEUTRAL_BASE_SHA" ] || { echo "neutral baseline SHA missing" >&2; exit 1; }
+
 case "$ARM" in
   A) stage_devlyn_context "$WORKTREE"; PROMPT="$(json_quote_task_prompt)" ;;
   B) PROMPT="$(bare_prompt)" ;;
@@ -369,6 +478,209 @@ Path(out).write_text(json.dumps({
     "timed_out": timed_out == "1",
     "worktree": worktree,
 }, indent=2) + "\n", encoding="utf-8")
+PY
+
+python3 - \
+  "$RESULT_DIR/isolation.json" \
+  "$RESULT_DIR/neutralization.json" \
+  "$RESULT_DIR/transcript.txt" \
+  "$WORKTREE" \
+  "$EXTERNAL_ROOT" \
+  "$RESULT_DIR" \
+  "$BARE_HOME" \
+  "$CODEX_HOME_TERRA" \
+  "$CANARY_STDOUT" \
+  "$CANARY_STDERR" \
+  "$FROZEN_ENV_KEYS" \
+  "$FROZEN_PATH" \
+  "$DIRECT_CODEX_BIN" \
+  "$DIRECT_CODEX_VERSION" \
+  "$CODEX_HOME_TERRA/auth.json" \
+  "$NEUTRAL_BASE_SHA" \
+  "$RUN_ID" \
+  "$TASK" \
+  "$OPAQUE_RUN_ID" \
+  "$OPAQUE_TASK_ID" <<'PY'
+import hashlib
+import json
+import os
+import re
+import stat
+import subprocess
+import sys
+from pathlib import Path
+
+(
+    out_path,
+    neutral_path,
+    transcript_path,
+    worktree,
+    external_root,
+    artifact_dir,
+    bare_home,
+    codex_home,
+    canary_stdout_path,
+    canary_stderr_path,
+    env_keys_csv,
+    frozen_path,
+    codex_binary,
+    codex_version,
+    auth_path,
+    neutral_baseline_sha,
+    run_id,
+    task,
+    opaque_run_id,
+    opaque_task_id,
+) = sys.argv[1:]
+
+transcript_bytes = Path(transcript_path).read_bytes()
+transcript = transcript_bytes.decode("utf-8", errors="replace")
+literal_families = {
+    "global-skills-path": ("/.agents/skills/", "/.codex/skills/"),
+    "devlyn-skill-identity": ("devlyn:resolve", "devlyn:auto-resolve"),
+    "devlyn-runtime": (
+        "DEVLYN_SKILL_DIR",
+        "DEVLYN_SHARED_DIR",
+        ".devlyn/pipeline.state.json",
+    ),
+    "host-shell-startup-leak": (
+        "/Users/aipalm/.zshenv",
+        "/Users/aipalm/.zprofile",
+        "/Users/aipalm/.zlogin",
+    ),
+    "benchmark-identity": (
+        "devlyn-cli",
+        "auto-resolve benchmark",
+        "benchmark fixture",
+        "bench-test-repo",
+        "devlyn-ceiling-external",
+        run_id,
+        task,
+    ),
+}
+hits = []
+lowered = transcript.lower()
+for family, markers in literal_families.items():
+    matched = sorted({marker for marker in markers if marker and marker.lower() in lowered})
+    if matched:
+        hits.append({"family": family, "markers": matched})
+regexes = {
+    "benchmark-identity": (
+        r"\bDR-[A-Za-z0-9._-]+",
+        r"\bFS1(?:-[A-Za-z0-9._-]+)?",
+        r"\biter\d+\b",
+        r"(?:^|/)(?:gate|gold)(?:/|$)",
+    )
+}
+for family, patterns in regexes.items():
+    matched = sorted(
+        {pattern for pattern in patterns if re.search(pattern, transcript, re.IGNORECASE | re.MULTILINE)}
+    )
+    if matched:
+        hits.append({"family": family, "patterns": matched})
+
+root = Path(external_root).resolve()
+generated_paths = [
+    Path(worktree).resolve(),
+    Path(artifact_dir).resolve(),
+    Path(bare_home).resolve(),
+    Path(codex_home).resolve(),
+]
+forbidden_path = re.compile(
+    r"(?:devlyn|ceiling|gate|iter|bench|eval|trap|fixture|arm|gold)", re.IGNORECASE
+)
+opaque_paths_pass = True
+for path in generated_paths:
+    try:
+        relative = path.relative_to(root)
+    except ValueError:
+        opaque_paths_pass = False
+        break
+    if forbidden_path.search(str(relative)):
+        opaque_paths_pass = False
+        break
+
+env_keys = sorted(env_keys_csv.split(","))
+env_values = {
+    "PATH": frozen_path,
+    "HOME": bare_home,
+    "CODEX_HOME": codex_home,
+    "TERM": "dumb",
+    "LANG": "en_US.UTF-8",
+    "LC_ALL": "en_US.UTF-8",
+    "TZ": "UTC",
+    "TMPDIR": str(Path(bare_home) / "t"),
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_CONFIG_GLOBAL": "/dev/null",
+    "NPM_CONFIG_USERCONFIG": str(Path(bare_home) / ".npmrc"),
+    "NPM_CONFIG_CACHE": str(Path(bare_home) / "n"),
+}
+forbidden_env = re.compile(r"claude|devlyn|codex_companion|superset", re.IGNORECASE)
+canary_stdout = Path(canary_stdout_path).read_bytes()
+canary_stderr = Path(canary_stderr_path).read_bytes()
+neutral = json.loads(Path(neutral_path).read_text(encoding="utf-8"))
+remotes = subprocess.run(
+    ["git", "-C", worktree, "remote"],
+    env={**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull},
+    check=True,
+    text=True,
+    stdout=subprocess.PIPE,
+).stdout.splitlines()
+reflog_root = Path(worktree) / ".git" / "logs"
+reflogs = sorted(
+    str(path.relative_to(Path(worktree) / ".git"))
+    for path in reflog_root.rglob("*")
+    if path.is_file()
+) if reflog_root.exists() else []
+auth = Path(auth_path)
+payload = {
+    "schema_version": 2,
+    "opaque_paths": {
+        "external_root": str(root),
+        "opaque_run_id": opaque_run_id,
+        "opaque_task_id": opaque_task_id,
+        "generated": [str(path) for path in generated_paths],
+        "passed": opaque_paths_pass,
+    },
+    "environment": {
+        "keys": env_keys,
+        "keys_sha256": hashlib.sha256("\n".join(env_keys).encode()).hexdigest(),
+        "forbidden_values_absent": not any(
+            forbidden_env.search(value) for value in env_values.values()
+        ),
+    },
+    "shell_startup_canary": {
+        "passed": canary_stdout == b"isolation-ok" and not canary_stderr,
+        "stdout_sha256": hashlib.sha256(canary_stdout).hexdigest(),
+        "stderr_sha256": hashlib.sha256(canary_stderr).hexdigest(),
+        "host_startup_files_absent": not any(
+            marker.encode() in canary_stderr
+            for marker in ("/.zshenv", "/.zprofile", "/.zlogin")
+        ),
+    },
+    "neutralization": neutral,
+    "git": {
+        "neutral_baseline_sha": neutral_baseline_sha,
+        "remotes": remotes,
+        "reflogs": reflogs,
+    },
+    "direct_codex": {
+        "path": str(Path(codex_binary).resolve()),
+        "version": codex_version,
+        "superset_wrapper": ".superset" in Path(codex_binary).parts,
+    },
+    "auth": {
+        "path": str(auth.resolve()),
+        "is_symlink": auth.is_symlink(),
+        "mode": format(stat.S_IMODE(auth.stat().st_mode), "04o"),
+    },
+    "forbidden_transcript_scan": {
+        "passed": not hits,
+        "transcript_sha256": hashlib.sha256(transcript_bytes).hexdigest(),
+        "hits": hits,
+    },
+}
+Path(out_path).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 PY
 
 echo "[ceiling-arm] ${TASK} ${ARM}${ATTEMPT} exit=${INVOKE_EXIT} timed_out=${RUN_TIMED_OUT} result=${RESULT_DIR}"

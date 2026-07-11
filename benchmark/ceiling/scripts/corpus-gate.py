@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Freeze the iter-0068 discriminating corpus with a bare-Codex gate."""
+"""Freeze the discriminating corpus with an identity-isolated bare-Codex gate."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ CEILING_ROOT = HERE.parent
 REPO_ROOT = CEILING_ROOT.parent.parent
 CORPUS_ROOT = CEILING_ROOT / "corpus"
 RESULTS_ROOT = CEILING_ROOT / "results"
-EXTERNAL_ROOT = Path.home() / "devlyn-ceiling-external"
+EXTERNAL_ROOT = Path(os.environ.get("CEILING_EXTERNAL_ROOT", Path.home() / ".local/share/nx01"))
 REAL_MANIFEST = CORPUS_ROOT / "manifest.json"
 ARM_RUNNER = HERE / "run-ceiling-arm.sh"
 EVALUATOR = HERE / "ceiling-eval.sh"
@@ -34,13 +34,64 @@ CODEX_VERSION_TIMEOUT_SECONDS = 30
 RUN_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 MODEL_RE = re.compile(r"^model:\s*(\S+)\s*$", re.MULTILINE)
 BARE_MODEL = "gpt-5.6-terra"
-BARE_CONTEXT_MARKERS = (
+FROZEN_ENV_KEYS = tuple(
+    sorted(
+        (
+            "CODEX_HOME",
+            "GIT_CONFIG_GLOBAL",
+            "GIT_CONFIG_NOSYSTEM",
+            "HOME",
+            "LANG",
+            "LC_ALL",
+            "NPM_CONFIG_CACHE",
+            "NPM_CONFIG_USERCONFIG",
+            "PATH",
+            "TERM",
+            "TMPDIR",
+            "TZ",
+        )
+    )
+)
+FROZEN_ENV_KEYS_SHA256 = hashlib.sha256("\n".join(FROZEN_ENV_KEYS).encode()).hexdigest()
+BARE_CONTEXT_LITERALS = (
     ("global-skills-path", ("/.agents/skills/", "/.codex/skills/")),
     ("devlyn-skill-identity", ("devlyn:resolve", "devlyn:auto-resolve")),
     (
         "devlyn-runtime",
         ("DEVLYN_SKILL_DIR", "DEVLYN_SHARED_DIR", ".devlyn/pipeline.state.json"),
     ),
+    (
+        "host-shell-startup-leak",
+        (
+            "/Users/aipalm/.zshenv",
+            "/Users/aipalm/.zprofile",
+            "/Users/aipalm/.zlogin",
+        ),
+    ),
+    (
+        "benchmark-identity",
+        (
+            "devlyn-cli",
+            "auto-resolve benchmark",
+            "benchmark fixture",
+            "bench-test-repo",
+            "devlyn-ceiling-external",
+        ),
+    ),
+)
+BARE_CONTEXT_REGEXES = (
+    (
+        "benchmark-identity",
+        (
+            re.compile(r"\bDR-[A-Za-z0-9._-]+", re.IGNORECASE),
+            re.compile(r"\bFS1(?:-[A-Za-z0-9._-]+)?", re.IGNORECASE),
+            re.compile(r"\biter\d+\b", re.IGNORECASE),
+            re.compile(r"(?:^|/)(?:gate|gold)(?:/|$)", re.IGNORECASE | re.MULTILINE),
+        ),
+    ),
+)
+FORBIDDEN_PATH_TOKEN_RE = re.compile(
+    r"devlyn|ceiling|gate|iter|bench|eval|trap|fixture|arm|gold", re.IGNORECASE
 )
 DRIFT_NOTE = (
     "Alias or runtime-resolved model drift between corpus admission and the "
@@ -92,7 +143,7 @@ def file_record(path: Path) -> dict[str, Any]:
 
 def atomic_write_json(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    mode = path.stat().st_mode & 0o777
+    mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
     temporary: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -310,6 +361,186 @@ def objective_reasons(
     return reasons, apply_exit, oracle_exit, resolved
 
 
+def contamination_reasons(transcript: str, run_id: str, task: str) -> list[str]:
+    reasons: list[str] = []
+    lowered = transcript.casefold()
+    literal_families = list(BARE_CONTEXT_LITERALS) + [
+        ("benchmark-identity", (run_id, task))
+    ]
+    for marker_id, markers in literal_families:
+        if any(marker and marker.casefold() in lowered for marker in markers):
+            reason = f"bare-context-contaminated:{marker_id}"
+            if reason not in reasons:
+                reasons.append(reason)
+    for marker_id, patterns in BARE_CONTEXT_REGEXES:
+        if any(pattern.search(transcript) for pattern in patterns):
+            reason = f"bare-context-contaminated:{marker_id}"
+            if reason not in reasons:
+                reasons.append(reason)
+    return reasons
+
+
+def valid_hex(value: Any, lengths: tuple[int, ...]) -> bool:
+    return isinstance(value, str) and len(value) in lengths and bool(
+        re.fullmatch(r"[0-9a-f]+", value)
+    )
+
+
+def isolation_reasons(
+    isolation: Any | None,
+    isolation_error: str | None,
+    transcript_bytes: bytes,
+    worktree: str | None,
+    task: str,
+    *,
+    live: bool,
+) -> list[str]:
+    if isolation_error == "missing":
+        return ["isolation-missing"]
+    if isolation_error is not None:
+        return [f"isolation-{isolation_error}"]
+    if not isinstance(isolation, dict):
+        return ["isolation-not-object"]
+
+    reasons: list[str] = []
+    if isolation.get("schema_version") != 2:
+        reasons.append("isolation-schema")
+
+    opaque = isolation.get("opaque_paths")
+    if not isinstance(opaque, dict) or opaque.get("passed") is not True:
+        reasons.append("isolation-opaque-paths")
+    else:
+        try:
+            root = Path(str(opaque["external_root"])).resolve()
+            if root != EXTERNAL_ROOT.resolve():
+                raise ValueError
+            generated = opaque["generated"]
+            if not isinstance(generated, list) or not generated:
+                raise ValueError
+            resolved_paths = [Path(str(path)).resolve() for path in generated]
+            for path in resolved_paths:
+                relative = path.relative_to(root)
+                if FORBIDDEN_PATH_TOKEN_RE.search(str(relative)):
+                    raise ValueError
+            if worktree is None or Path(worktree).resolve() not in resolved_paths:
+                raise ValueError
+            for key in ("opaque_run_id", "opaque_task_id"):
+                if not re.fullmatch(r"[a-z][a-z0-9]*", str(opaque.get(key, ""))):
+                    raise ValueError
+        except (KeyError, TypeError, ValueError):
+            reasons.append("isolation-opaque-paths")
+
+    environment = isolation.get("environment")
+    if (
+        not isinstance(environment, dict)
+        or environment.get("keys") != list(FROZEN_ENV_KEYS)
+        or environment.get("keys_sha256") != FROZEN_ENV_KEYS_SHA256
+        or environment.get("forbidden_values_absent") is not True
+    ):
+        reasons.append("isolation-environment")
+
+    canary = isolation.get("shell_startup_canary")
+    if (
+        not isinstance(canary, dict)
+        or canary.get("passed") is not True
+        or canary.get("host_startup_files_absent") is not True
+        or not valid_hex(canary.get("stdout_sha256"), (64,))
+        or not valid_hex(canary.get("stderr_sha256"), (64,))
+    ):
+        reasons.append("isolation-shell-startup")
+
+    neutral = isolation.get("neutralization")
+    if (
+        not isinstance(neutral, dict)
+        or neutral.get("schema_version") != 1
+        or neutral.get("seed_derived") is not task.startswith("DR-")
+        or not valid_hex(neutral.get("neutralization_diff_sha256"), (64,))
+        or not valid_hex(neutral.get("neutral_baseline_sha"), (40, 64))
+        or neutral.get("git_remotes") != []
+        or neutral.get("git_reflogs") != []
+    ):
+        reasons.append("isolation-neutralization")
+
+    git = isolation.get("git")
+    if (
+        not isinstance(git, dict)
+        or not isinstance(neutral, dict)
+        or git.get("neutral_baseline_sha") != neutral.get("neutral_baseline_sha")
+        or git.get("remotes") != []
+        or git.get("reflogs") != []
+    ):
+        reasons.append("isolation-git-metadata")
+
+    direct = isolation.get("direct_codex")
+    if (
+        not isinstance(direct, dict)
+        or not Path(str(direct.get("path", ""))).is_absolute()
+        or ".superset" in Path(str(direct.get("path", ""))).parts
+        or direct.get("superset_wrapper") is not False
+        or not isinstance(direct.get("version"), str)
+        or not direct["version"].strip()
+    ):
+        reasons.append("isolation-direct-codex")
+
+    auth = isolation.get("auth")
+    if (
+        not isinstance(auth, dict)
+        or auth.get("is_symlink") is not False
+        or auth.get("mode") != "0600"
+    ):
+        reasons.append("isolation-auth")
+
+    scan = isolation.get("forbidden_transcript_scan")
+    if (
+        not isinstance(scan, dict)
+        or scan.get("passed") is not True
+        or scan.get("hits") != []
+        or scan.get("transcript_sha256")
+        != hashlib.sha256(transcript_bytes).hexdigest()
+    ):
+        reasons.append("isolation-transcript-scan")
+
+    if live and worktree:
+        try:
+            completed = subprocess.run(
+                ["git", "-C", worktree, "remote"],
+                env={
+                    **os.environ,
+                    "GIT_CONFIG_NOSYSTEM": "1",
+                    "GIT_CONFIG_GLOBAL": os.devnull,
+                },
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            reflog_root = Path(worktree) / ".git" / "logs"
+            if completed.returncode != 0 or completed.stdout.splitlines() or (
+                reflog_root.exists()
+                and any(path.is_file() for path in reflog_root.rglob("*"))
+            ):
+                reasons.append("isolation-git-metadata")
+        except OSError:
+            reasons.append("isolation-git-metadata")
+        if isinstance(auth, dict):
+            auth_path = Path(str(auth.get("path", "")))
+            try:
+                if (
+                    auth_path.is_symlink()
+                    or not auth_path.is_file()
+                    or auth_path.stat().st_mode & 0o777 != 0o600
+                ):
+                    reasons.append("isolation-auth")
+            except OSError:
+                reasons.append("isolation-auth")
+        if isinstance(direct, dict):
+            direct_path = Path(str(direct.get("path", "")))
+            if not direct_path.is_file() or not os.access(direct_path, os.X_OK):
+                reasons.append("isolation-direct-codex")
+
+    return list(dict.fromkeys(reasons))
+
+
 def attempt_record(
     artifact_dir: Path,
     arm_attempt: str,
@@ -317,16 +548,21 @@ def attempt_record(
     retry_index: int,
     runner_exit: int | None,
     evaluator_exit: int | None,
+    run_id: str,
+    task: str,
 ) -> dict[str, Any]:
     timing_path = artifact_dir / "timing.json"
     objective_path = artifact_dir / "objective.json"
     patch_path = artifact_dir / "patch.diff"
     transcript_path = artifact_dir / "transcript.txt"
+    isolation_path = artifact_dir / "isolation.json"
     timing, timing_error = read_json_record(timing_path)
     objective, objective_error = read_json_record(objective_path)
+    isolation, isolation_error = read_json_record(isolation_path)
     resolved_model = runtime_model(transcript_path)
 
     reasons: list[str] = []
+    worktree: Any = None
     if timing_error == "missing":
         reasons.append("timing-missing")
     elif timing_error is not None:
@@ -354,9 +590,10 @@ def attempt_record(
                 reasons.append("worktree-in-repo")
 
     try:
-        transcript = transcript_path.read_text(encoding="utf-8", errors="replace")
+        transcript_bytes = transcript_path.read_bytes()
     except OSError:
-        transcript = ""
+        transcript_bytes = b""
+    transcript = transcript_bytes.decode("utf-8", errors="replace")
     if not transcript:
         reasons.append("transcript-missing")
     else:
@@ -364,10 +601,18 @@ def attempt_record(
             reasons.append("runtime-model-missing")
         elif resolved_model != BARE_MODEL:
             reasons.append("runtime-model-mismatch")
-        for marker_id, markers in BARE_CONTEXT_MARKERS:
-            if any(marker in transcript for marker in markers):
-                reasons.append(f"bare-context-contaminated:{marker_id}")
-                break
+        reasons.extend(contamination_reasons(transcript, run_id, task))
+
+    reasons.extend(
+        isolation_reasons(
+            isolation,
+            isolation_error,
+            transcript_bytes,
+            worktree if isinstance(worktree, str) else None,
+            task,
+            live=runner_exit is not None,
+        )
+    )
 
     patch = file_record(patch_path)
     if not patch["exists"]:
@@ -394,6 +639,8 @@ def attempt_record(
         "patch": patch,
         "objective": objective,
         "objective_error": objective_error,
+        "isolation": isolation,
+        "isolation_error": isolation_error,
         "apply_exit": apply_exit,
         "oracle_exit": oracle_exit,
         "valid": valid,
@@ -448,8 +695,14 @@ def gold_record(
     }
 
 
-def stage_and_evaluate_gold(task: str, gold_run_id: str) -> tuple[Path, int]:
-    artifact_dir = RESULTS_ROOT / gold_run_id / task / "A1"
+def staged_attempt_dir(opaque_run_id: str, opaque_task_id: str, attempt: str) -> Path:
+    return EXTERNAL_ROOT / "x" / opaque_run_id / opaque_task_id / attempt
+
+
+def stage_and_evaluate_gold(
+    task: str, gold_run_id: str, opaque_run_id: str, opaque_task_id: str
+) -> tuple[Path, int]:
+    artifact_dir = staged_attempt_dir(opaque_run_id, opaque_task_id, "A1")
     artifact_dir.mkdir(parents=True)
     reference = CORPUS_ROOT / task / "hidden" / "reference.patch"
     if not reference.is_file():
@@ -462,8 +715,14 @@ def stage_and_evaluate_gold(task: str, gold_run_id: str) -> tuple[Path, int]:
             gold_run_id,
             "--task",
             task,
+            "--opaque-run-id",
+            opaque_run_id,
+            "--opaque-task-id",
+            opaque_task_id,
             "--arm-attempt",
             "A1",
+            "--attempt-dir",
+            str(artifact_dir),
         ]
     )
     return artifact_dir, completed.returncode
@@ -472,6 +731,8 @@ def stage_and_evaluate_gold(task: str, gold_run_id: str) -> tuple[Path, int]:
 def run_live_attempt(
     task: str,
     run_id: str,
+    opaque_run_id: str,
+    opaque_task_id: str,
     attempt_number: int,
     timeout_seconds: int,
 ) -> tuple[Path, int, int | None]:
@@ -485,13 +746,19 @@ def run_live_attempt(
             "B",
             "--run-id",
             run_id,
+            "--opaque-run-id",
+            opaque_run_id,
+            "--opaque-task-id",
+            opaque_task_id,
+            "--result-dir",
+            str(staged_attempt_dir(opaque_run_id, opaque_task_id, arm_attempt)),
             "--attempt",
             str(attempt_number),
             "--timeout-seconds",
             str(timeout_seconds),
         ]
     )
-    artifact_dir = RESULTS_ROOT / run_id / task / arm_attempt
+    artifact_dir = staged_attempt_dir(opaque_run_id, opaque_task_id, arm_attempt)
     evaluator_exit: int | None = None
     if (artifact_dir / "patch.diff").is_file():
         evaluated = run_command(
@@ -501,118 +768,211 @@ def run_live_attempt(
                 run_id,
                 "--task",
                 task,
+                "--opaque-run-id",
+                opaque_run_id,
+                "--opaque-task-id",
+                opaque_task_id,
                 "--arm-attempt",
                 arm_attempt,
+                "--attempt-dir",
+                str(artifact_dir),
             ]
         )
         evaluator_exit = evaluated.returncode
     return artifact_dir, completed.returncode, evaluator_exit
 
 
-def process_row(
+def initialize_row(
     task: str,
     row: dict[str, Any],
     control: bool,
     hashes: dict[str, str],
     run_id: str,
+    opaque_run_id: str,
+    opaque_task_id: str,
     timeout_seconds: int,
     fixture_root: Path | None,
 ) -> dict[str, Any]:
     gold_run_id = f"{run_id}-gold"
     if fixture_root is None:
-        gold_dir, gold_evaluator_exit = stage_and_evaluate_gold(task, gold_run_id)
+        gold_dir, gold_evaluator_exit = stage_and_evaluate_gold(
+            task, gold_run_id, opaque_run_id, opaque_task_id
+        )
     else:
         gold_dir = dry_gold_dir(fixture_root, run_id, task)
         gold_evaluator_exit = None
     gold = gold_record(gold_dir, gold_run_id, gold_evaluator_exit)
 
-    attempts: list[dict[str, Any]] = []
-    if not gold["resolved"]:
-        return {
-            "task": task,
-            "categorical_class": (
-                "positive-control" if control else row.get("categorical_class")
-            ),
-            "control": control,
-            "hashes": hashes,
-            "admitted": False,
-            "gate_reason": "oracle-invalid",
-            "gold_attempt": gold,
-            "attempts": attempts,
-            "valid_attempts": 0,
-            "resolved_attempts": 0,
-            "physical_attempts": 0,
-        }
-
-    physical_attempt = 0
-    pending = False
-    for slot in range(1, VALID_SLOTS + 1):
-        slot_valid = False
-        for retry_index in range(REPLACEMENTS_PER_SLOT + 1):
-            physical_attempt += 1
-            arm_attempt = f"B{physical_attempt}"
-            if fixture_root is None:
-                artifact_dir, runner_exit, evaluator_exit = run_live_attempt(
-                    task, run_id, physical_attempt, timeout_seconds
-                )
-            else:
-                artifact_dir = dry_attempt_dir(
-                    fixture_root, run_id, task, arm_attempt
-                )
-                runner_exit = None
-                evaluator_exit = None
-            record = attempt_record(
-                artifact_dir,
-                arm_attempt,
-                slot,
-                retry_index,
-                runner_exit,
-                evaluator_exit,
-            )
-            attempts.append(record)
-            if record["valid"]:
-                slot_valid = True
-                break
-        if not slot_valid:
-            pending = True
-            break
-
-    valid_attempts = [attempt for attempt in attempts if attempt["valid"]]
-    resolved_attempts = [
-        attempt for attempt in valid_attempts if attempt["resolved"] is True
-    ]
     categorical_class = (
         "positive-control" if control else str(row.get("categorical_class"))
     )
-    if pending or len(valid_attempts) != VALID_SLOTS:
-        admitted = False
-        gate_reason = "INVALID/PENDING"
-    elif resolved_attempts:
-        admitted = False
-        gate_reason = "saturated:bare-resolves"
-    else:
-        admitted = True
-        gate_reason = f"admitted:{categorical_class}"
-
-    return {
+    result: dict[str, Any] = {
         "task": task,
         "categorical_class": categorical_class,
         "control": control,
         "hashes": hashes,
-        "admitted": admitted,
-        "gate_reason": gate_reason,
+        "admitted": False,
+        "gate_reason": "oracle-invalid" if not gold["resolved"] else "PENDING",
         "gold_attempt": gold,
-        "attempts": attempts,
-        "valid_attempts": len(valid_attempts),
-        "resolved_attempts": len(resolved_attempts),
-        "physical_attempts": len(attempts),
+        "attempts": [],
+        "valid_attempts": 0,
+        "resolved_attempts": 0,
+        "physical_attempts": 0,
+        "opaque_task_id": opaque_task_id,
+        "_pending": False,
     }
+    if gold["resolved"]:
+        result["_pending"] = not collect_valid_slot(
+            result,
+            1,
+            run_id,
+            opaque_run_id,
+            opaque_task_id,
+            timeout_seconds,
+            fixture_root,
+        )
+    return result
+
+
+def collect_valid_slot(
+    result: dict[str, Any],
+    slot: int,
+    run_id: str,
+    opaque_run_id: str,
+    opaque_task_id: str,
+    timeout_seconds: int,
+    fixture_root: Path | None,
+) -> bool:
+    for retry_index in range(REPLACEMENTS_PER_SLOT + 1):
+        attempt_number = len(result["attempts"]) + 1
+        arm_attempt = f"B{attempt_number}"
+        if fixture_root is None:
+            artifact_dir, runner_exit, evaluator_exit = run_live_attempt(
+                result["task"],
+                run_id,
+                opaque_run_id,
+                opaque_task_id,
+                attempt_number,
+                timeout_seconds,
+            )
+        else:
+            artifact_dir = dry_attempt_dir(
+                fixture_root, run_id, result["task"], arm_attempt
+            )
+            runner_exit = None
+            evaluator_exit = None
+        record = attempt_record(
+            artifact_dir,
+            arm_attempt,
+            slot,
+            retry_index,
+            runner_exit,
+            evaluator_exit,
+            run_id,
+            result["task"],
+        )
+        result["attempts"].append(record)
+        if record["valid"]:
+            return True
+    return False
+
+
+def complete_row(
+    result: dict[str, Any],
+    run_id: str,
+    opaque_run_id: str,
+    timeout_seconds: int,
+    fixture_root: Path | None,
+) -> None:
+    if (
+        not result["gold_attempt"]["resolved"]
+        or result["_pending"]
+        or result["control"]
+    ):
+        return
+    valid = [attempt for attempt in result["attempts"] if attempt["valid"]]
+    if valid and valid[0]["resolved"] is True:
+        return
+    for slot in range(2, VALID_SLOTS + 1):
+        if not collect_valid_slot(
+            result,
+            slot,
+            run_id,
+            opaque_run_id,
+            result["opaque_task_id"],
+            timeout_seconds,
+            fixture_root,
+        ):
+            result["_pending"] = True
+            break
+
+
+def finalize_row(result: dict[str, Any]) -> None:
+    if not result["gold_attempt"]["resolved"]:
+        result.pop("_pending", None)
+        return
+    valid = [attempt for attempt in result["attempts"] if attempt["valid"]]
+    resolved = [attempt for attempt in valid if attempt["resolved"] is True]
+    result["valid_attempts"] = len(valid)
+    result["resolved_attempts"] = len(resolved)
+    result["physical_attempts"] = len(result["attempts"])
+    if result["_pending"]:
+        result["gate_reason"] = "INVALID/PENDING"
+    elif result["control"]:
+        result["gate_reason"] = (
+            "saturated:bare-resolves"
+            if len(valid) == 1 and resolved
+            else "control-invalid:bare-fails"
+        )
+    elif len(valid) == 1 and resolved:
+        result["gate_reason"] = "saturated:bare-resolves"
+    elif len(valid) != VALID_SLOTS:
+        result["gate_reason"] = "INVALID/PENDING"
+    elif resolved:
+        result["gate_reason"] = "saturated:bare-resolves"
+    else:
+        result["admitted"] = True
+        result["gate_reason"] = f"admitted:{result['categorical_class']}"
+    result.pop("_pending", None)
+
+
+def direct_codex_path() -> Path:
+    explicit = os.environ.get("CEILING_TEST_CODEX_BIN")
+    candidates = (
+        [Path(explicit)]
+        if explicit
+        else [
+            Path(directory) / "codex"
+            for directory in os.environ.get("PATH", "").split(os.pathsep)
+            if directory
+        ]
+    )
+    for candidate in candidates:
+        if not candidate.is_file() or not os.access(candidate, os.X_OK):
+            continue
+        if ".superset" in candidate.parts:
+            continue
+        resolved = candidate.resolve()
+        if resolved.name == "codex.js":
+            package_root = resolved.parent.parent
+            native = sorted(
+                path.resolve()
+                for path in (package_root / "node_modules" / "@openai").glob(
+                    "codex-*/vendor/*/bin/codex*"
+                )
+                if path.is_file() and os.access(path, os.X_OK)
+            )
+            if native:
+                resolved = native[0]
+        return resolved
+    raise GateError("direct non-Superset Codex CLI not found")
 
 
 def live_identity(run_id: str, captured_at: str) -> dict[str, Any]:
+    binary = direct_codex_path()
     try:
         completed = subprocess.run(
-            ["codex", "--version"],
+            [str(binary), "--version"],
             cwd=REPO_ROOT,
             shell=False,
             text=True,
@@ -631,6 +991,7 @@ def live_identity(run_id: str, captured_at: str) -> dict[str, Any]:
         raise GateError(f"cannot capture codex CLI version: {detail}")
     return {
         "cli_version": completed.stdout.strip(),
+        "binary_path": str(binary),
         "requested_alias": REQUESTED_ALIAS,
         "runtime_resolved_model": None,
         "run_id": run_id,
@@ -658,6 +1019,7 @@ def dry_identity(fixture_root: Path, run_id: str, captured_at: str) -> dict[str,
         raise GateError(f"dry-run identity has invalid resolved model: {identity_path}")
     return {
         "cli_version": cli_version.strip(),
+        "binary_path": identity.get("binary_path"),
         "requested_alias": REQUESTED_ALIAS,
         "runtime_resolved_model": resolved.strip() if resolved else None,
         "run_id": run_id,
@@ -682,15 +1044,103 @@ def update_identity_models(
     return observed, len(observed) > 1
 
 
+def opaque_run_id(run_id: str) -> str:
+    return "r" + hashlib.sha256(run_id.encode()).hexdigest()[:12]
+
+
+def opaque_task_ids(
+    rows: list[tuple[str, dict[str, Any], bool]],
+) -> dict[str, str]:
+    return {task: f"fx{index:02d}" for index, (task, _row, _control) in enumerate(rows, 1)}
+
+
+def write_opaque_plan(
+    run_token: str,
+    rows: list[tuple[str, dict[str, Any], bool]],
+    task_ids: dict[str, str],
+) -> None:
+    plan = {
+        "schema_version": 1,
+        "opaque_run_id": run_token,
+        "row_order": [task_ids[task] for task, _row, _control in rows],
+        "attempt_policy": {
+            task_ids[task]: {
+                "control": control,
+                "initial_valid_slots": [1],
+                "expansion_valid_slots_after_initial_fail": [] if control else [2, 3],
+                "replacements_per_slot": REPLACEMENTS_PER_SLOT,
+                "physical_attempt_numbering": "sequential-B1-through-B9",
+            }
+            for task, _row, control in rows
+        },
+    }
+    atomic_write_json(EXTERNAL_ROOT / "x" / run_token / "plan.json", plan)
+
+
+def update_materialized_paths(
+    result: dict[str, Any], run_id: str, gold_run_id: str
+) -> None:
+    task = result["task"]
+    gold_destination = RESULTS_ROOT / gold_run_id / task / "A1"
+    result["gold_attempt"]["artifact_dir"] = str(gold_destination)
+    gold_patch = result["gold_attempt"].get("patch")
+    if isinstance(gold_patch, dict):
+        gold_patch["path"] = str(gold_destination / "patch.diff")
+    for attempt in result["attempts"]:
+        destination = RESULTS_ROOT / run_id / task / attempt["attempt"]
+        attempt["artifact_dir"] = str(destination)
+        for record_name in ("patch",):
+            record = attempt.get(record_name)
+            if isinstance(record, dict):
+                record["path"] = str(destination / "patch.diff")
+
+
+def materialize_live_artifacts(
+    run_id: str,
+    run_token: str,
+    task_ids: dict[str, str],
+    results: list[dict[str, Any]],
+) -> None:
+    gold_run_id = f"{run_id}-gold"
+    for result in results:
+        task = result["task"]
+        opaque_task = task_ids[task]
+        source_root = EXTERNAL_ROOT / "x" / run_token / opaque_task
+        if result["gold_attempt"]["artifact_dir"]:
+            source = source_root / "A1"
+            destination = RESULTS_ROOT / gold_run_id / task / "A1"
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(source), str(destination))
+        for attempt in result["attempts"]:
+            source = source_root / attempt["attempt"]
+            destination = RESULTS_ROOT / run_id / task / attempt["attempt"]
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(source), str(destination))
+        update_materialized_paths(result, run_id, gold_run_id)
+
+    # This is deliberately the final write: no model child is alive when the
+    # human task IDs become associated with their opaque workspace IDs.
+    atomic_write_json(
+        RESULTS_ROOT / run_id / "opaque-map.json",
+        {
+            "schema_version": 1,
+            "opaque_run_id": run_token,
+            "tasks": {opaque: task for task, opaque in task_ids.items()},
+        },
+    )
+
+
 def live_roots(run_id: str) -> list[Path]:
     gold_run_id = f"{run_id}-gold"
+    run_token = opaque_run_id(run_id)
     return [
         RESULTS_ROOT / run_id,
         RESULTS_ROOT / gold_run_id,
-        EXTERNAL_ROOT / "workspaces" / run_id,
-        EXTERNAL_ROOT / "workspaces" / gold_run_id,
-        EXTERNAL_ROOT / "eval" / run_id,
-        EXTERNAL_ROOT / "eval" / gold_run_id,
+        EXTERNAL_ROOT / "x" / run_token,
+        EXTERNAL_ROOT / "w" / run_token,
+        EXTERNAL_ROOT / "h" / run_token,
+        EXTERNAL_ROOT / "d" / run_token,
+        EXTERNAL_ROOT / "v" / run_token,
     ]
 
 
@@ -698,7 +1148,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Gate tranche3 candidates plus FS1 on one gold evaluation and "
-            "exactly three valid bare-Codex outcomes."
+            "staged identity-isolated bare-Codex outcomes."
         ),
         epilog=(
             "Dry fixtures use identity.json plus TASK/gold/{objective.json,"
@@ -758,6 +1208,10 @@ def main(argv: list[str] | None = None) -> int:
         refuse_frozen_live_manifest(manifest)
     rows = candidate_rows(manifest)
     verified_hashes = verify_corpus_integrity(rows)
+    run_token = opaque_run_id(args.run_id)
+    task_ids = opaque_task_ids(rows)
+    if not dry_run:
+        write_opaque_plan(run_token, rows, task_ids)
     captured_at = utc_timestamp()
     identity = (
         dry_identity(fixture_root, args.run_id, captured_at)
@@ -767,22 +1221,37 @@ def main(argv: list[str] | None = None) -> int:
 
     results: list[dict[str, Any]] = []
     for task, row, control in rows:
-        print(f"[corpus-gate] {task}: gold + bare-B gate", flush=True)
-        result = process_row(
+        print(f"[corpus-gate] {task}: gold + initial bare-B attempt", flush=True)
+        result = initialize_row(
             task,
             row,
             control,
             verified_hashes[task],
             args.run_id,
+            run_token,
+            task_ids[task],
             args.timeout_seconds,
             fixture_root,
         )
         results.append(result)
+
+    for result in results:
+        complete_row(
+            result,
+            args.run_id,
+            run_token,
+            args.timeout_seconds,
+            fixture_root,
+        )
+        finalize_row(result)
         print(
-            f"[corpus-gate] {task}: {result['gate_reason']} "
+            f"[corpus-gate] {result['task']}: {result['gate_reason']} "
             f"valid={result['valid_attempts']} resolved={result['resolved_attempts']}",
             flush=True,
         )
+
+    if not dry_run:
+        materialize_live_artifacts(args.run_id, run_token, task_ids, results)
 
     observed_models, cohort_drift = update_identity_models(identity, results)
     pending = [
@@ -861,8 +1330,9 @@ def main(argv: list[str] | None = None) -> int:
         "frozen_at": captured_at if freeze_ok else None,
         "run_id": args.run_id,
         "selection_rule": (
-            "gold reference resolves once and bare Codex has exactly three "
-            "valid attempts with zero resolves"
+            "gold reference resolves once; one valid bare resolve saturates a row, "
+            "while admission requires exactly three valid bare failures; FS1 uses "
+            "exactly one valid control attempt"
         ),
         "cohort_identity": {
             "bare_codex": identity,

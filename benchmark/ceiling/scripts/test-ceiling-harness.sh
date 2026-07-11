@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CEILING_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$CEILING_ROOT/../.." && pwd)"
-TMP_DIR="$(mktemp -d /tmp/ceiling-harness-test.XXXXXX)"
+TMP_DIR="$(mktemp -d /tmp/nx-selftest.XXXXXX)"
 RESULT_RUNS=()
 cleanup() {
   rm -rf "$TMP_DIR"
@@ -57,14 +57,25 @@ if [ "${1:-}" = "--version" ]; then
 fi
 [ "${1:-}" = "exec" ] || { echo "unexpected codex args: $*" >&2; exit 2; }
 prompt="${@: -1}"
-printf '%s' "$prompt" > "${FAKE_CODEX_PROMPT_DIR:?}/prompt-$FAKE_CODEX_LABEL.txt"
 if [ "${FAKE_CODEX_JUDGE:-0}" = "1" ]; then
   cat <<'JSON'
 {"axes":{"design_coherence":{"tiers":[["P1","P2","P3"]],"strict_win_deltas":[]},"robustness":{"tiers":[["P1","P2","P3"]],"strict_win_deltas":[]},"spec_long_horizon_consistency":{"tiers":[["P1","P2","P3"]],"strict_win_deltas":[]},"maintainability_api_ergonomics":{"tiers":[["P1","P2","P3"]],"strict_win_deltas":[]}}}
 JSON
   exit 0
 fi
-printf 'changed by %s\n' "$FAKE_CODEX_LABEL" >> app.txt
+case "$prompt" in
+  "Fix or implement"*) label=B ;;
+  *) label=C ;;
+esac
+printf '%s' "$prompt" > .nx-prompt
+env | sort > .nx-env
+git remote > .nx-remotes
+git log -1 --format='%an <%ae>|%aI|%s' > .nx-log
+if [ -d .git/logs ]; then find .git/logs -type f -print | sort > .nx-reflogs; else : > .nx-reflogs; fi
+root="$PWD"
+for _ in 1 2 3 4 5 6; do root="$(dirname "$root")"; done
+find "$root" -name opaque-map.json -print > .nx-map-visible
+printf 'changed by %s\n' "$label" >> app.txt
 echo "fake codex done"
 EOF
 chmod +x "$FAKEBIN/codex"
@@ -89,10 +100,14 @@ mkdir -p "$PROMPTS"
 export PATH="$FAKEBIN:$PATH"
 export FAKE_CLAUDE_PROMPTS="$TMP_DIR/claude-prompts.txt"
 export FAKE_CODEX_PROMPT_DIR="$PROMPTS"
+TEST_EXTERNAL_ROOT="$TMP_DIR/nx01"
+TEST_AUTH="$TMP_DIR/auth.json"
+printf '{"token":"selftest"}\n' > "$TEST_AUTH"
+chmod 0600 "$TEST_AUTH"
 
-WORK_A="$TMP_DIR/work-a"
+WORK_A="$TEST_EXTERNAL_ROOT/w/rt01/fx01/A1/repo"
 make_repo "$WORK_A"
-CEILING_TEST_WORKTREE="$WORK_A" CEILING_TEST_BASE_SHA="$(git -C "$WORK_A" rev-parse HEAD)" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
+CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" CEILING_TEST_WORKTREE="$WORK_A" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
   --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm A --attempt 1 --timeout-seconds 30 >/tmp/ceiling-arm-a.log
 test -d "$WORK_A/.claude/skills"
 test "$(cat "$WORK_A/.devlyn/engines.json")" = '{"executor":"codex"}'
@@ -101,11 +116,12 @@ grep -q 'changed by A' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/p
 ! grep -q '.claude' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/patch.diff"
 ! grep -q '.devlyn' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/patch.diff"
 
-WORK_B="$TMP_DIR/work-b"
+WORK_B="$TEST_EXTERNAL_ROOT/w/rt01/fx01/B1/repo"
+RESULT_B="$TEST_EXTERNAL_ROOT/x/rt01/fx01/B1"
 make_repo "$WORK_B"
-FAKE_CODEX_LABEL=B CEILING_TEST_WORKTREE="$WORK_B" CEILING_TEST_BASE_SHA="$(git -C "$WORK_B" rev-parse HEAD)" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
-  --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm B --attempt 1 --timeout-seconds 30 >/tmp/ceiling-arm-b.log
-python3 - "$CEILING_ROOT/corpus/FS1-schedule-max-runs/task.txt" "$PROMPTS/prompt-B.txt" <<'PY'
+CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" CEILING_TEST_WORKTREE="$WORK_B" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
+  --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm B --attempt 1 --opaque-run-id rt01 --opaque-task-id fx01 --result-dir "$RESULT_B" --timeout-seconds 30 >/tmp/ceiling-arm-b.log
+python3 - "$CEILING_ROOT/corpus/FS1-schedule-max-runs/task.txt" "$WORK_B/.nx-prompt" <<'PY'
 import sys
 from pathlib import Path
 expected = "Fix or implement the following in this repository. Verify your work before finishing.\n\n" + Path(sys.argv[1]).read_text(encoding="utf-8").rstrip("\n")
@@ -113,12 +129,40 @@ actual = Path(sys.argv[2]).read_text(encoding="utf-8")
 if actual != expected:
     raise SystemExit("B prompt mismatch")
 PY
+grep -q '^HOME=.*/h/rt01/fx01/B1$' "$WORK_B/.nx-env"
+grep -q '^CODEX_HOME=.*/d/rt01/fx01/B1$' "$WORK_B/.nx-env"
+grep -q '^GIT_CONFIG_GLOBAL=/dev/null$' "$WORK_B/.nx-env"
+grep -q '^TZ=UTC$' "$WORK_B/.nx-env"
+! grep -Eiq 'CLAUDE|SUPERSET|DEVLYN|CODEX_COMPANION|SSH_AUTH_SOCK|FAKE_CODEX|ZDOTDIR' "$WORK_B/.nx-env"
+test ! -s "$WORK_B/.nx-remotes"
+test ! -s "$WORK_B/.nx-reflogs"
+test ! -s "$WORK_B/.nx-map-visible"
+test "$(cat "$WORK_B/.nx-log")" = 'Project Maintainer <maintainer@example.com>|2000-01-01T00:00:00Z|Initial project snapshot'
+test ! -L "$TEST_EXTERNAL_ROOT/d/rt01/fx01/B1/auth.json"
+test "$(stat -f '%Lp' "$TEST_EXTERNAL_ROOT/d/rt01/fx01/B1/auth.json")" = 600
+python3 - "$RESULT_B/isolation.json" "$FAKEBIN/codex" <<'PY'
+import json, sys
+from pathlib import Path
+data = json.loads(Path(sys.argv[1]).read_text())
+expected = sorted(["PATH","HOME","CODEX_HOME","TERM","LANG","LC_ALL","TZ","TMPDIR","GIT_CONFIG_NOSYSTEM","GIT_CONFIG_GLOBAL","NPM_CONFIG_USERCONFIG","NPM_CONFIG_CACHE"])
+if data["environment"]["keys"] != expected or not data["environment"]["forbidden_values_absent"]:
+    raise SystemExit(data["environment"])
+if not data["opaque_paths"]["passed"] or not data["shell_startup_canary"]["passed"]:
+    raise SystemExit(data)
+if data["direct_codex"]["path"] != str(Path(sys.argv[2]).resolve()) or data["direct_codex"]["superset_wrapper"]:
+    raise SystemExit(data["direct_codex"])
+if data["auth"]["is_symlink"] or data["auth"]["mode"] != "0600":
+    raise SystemExit(data["auth"])
+if not data["forbidden_transcript_scan"]["passed"]:
+    raise SystemExit(data["forbidden_transcript_scan"])
+PY
 
-WORK_C="$TMP_DIR/work-c"
+WORK_C="$TEST_EXTERNAL_ROOT/w/rt01/fx02/C1/repo"
+RESULT_C="$TEST_EXTERNAL_ROOT/x/rt01/fx02/C1"
 make_repo "$WORK_C"
-FAKE_CODEX_LABEL=C CEILING_TEST_WORKTREE="$WORK_C" CEILING_TEST_BASE_SHA="$(git -C "$WORK_C" rev-parse HEAD)" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
-  --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm C --attempt 1 --timeout-seconds 30 >/tmp/ceiling-arm-c.log
-python3 - "$CEILING_ROOT/corpus/copycat-doc.md" "$CEILING_ROOT/corpus/FS1-schedule-max-runs/task.txt" "$PROMPTS/prompt-C.txt" <<'PY'
+CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" CEILING_TEST_WORKTREE="$WORK_C" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
+  --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm C --attempt 1 --opaque-run-id rt01 --opaque-task-id fx02 --result-dir "$RESULT_C" --timeout-seconds 30 >/tmp/ceiling-arm-c.log
+python3 - "$CEILING_ROOT/corpus/copycat-doc.md" "$CEILING_ROOT/corpus/FS1-schedule-max-runs/task.txt" "$WORK_C/.nx-prompt" <<'PY'
 import sys
 from pathlib import Path
 expected = (
@@ -129,6 +173,47 @@ expected = (
 actual = Path(sys.argv[3]).read_text(encoding="utf-8")
 if actual != expected:
     raise SystemExit("C prompt mismatch")
+PY
+
+BUNDLE="$CEILING_ROOT/corpus/DR-byte-preservation-f7-out-of-scope-trap/source.bundle"
+BUNDLE_SHA_BEFORE="$(shasum -a 256 "$BUNDLE" | awk '{print $1}')"
+NEUTRAL_ONE="$TMP_DIR/n1"
+NEUTRAL_TWO="$TMP_DIR/n2"
+git clone -q "$BUNDLE" "$NEUTRAL_ONE"
+git clone -q "$BUNDLE" "$NEUTRAL_TWO"
+python3 "$SCRIPT_DIR/neutralize-workspace.py" --workspace "$NEUTRAL_ONE" --seed-derived --report "$TMP_DIR/n1.json" >/dev/null
+python3 "$SCRIPT_DIR/neutralize-workspace.py" --workspace "$NEUTRAL_TWO" --seed-derived --report "$TMP_DIR/n2.json" >/dev/null
+python3 - "$TMP_DIR/n1.json" "$TMP_DIR/n2.json" <<'PY'
+import json, sys
+a, b = (json.load(open(path)) for path in sys.argv[1:])
+for key in ("neutralization_diff_sha256", "neutral_baseline_sha"):
+    if a[key] != b[key]:
+        raise SystemExit(f"non-deterministic {key}: {a[key]} != {b[key]}")
+PY
+grep -q 'TODO(devlyn)' "$NEUTRAL_ONE/bin/cli.js"
+! rg -i 'devlyn-cli|auto-resolve benchmark|benchmark fixture|bench-test-repo' "$NEUTRAL_ONE/README.md" "$NEUTRAL_ONE/package.json" "$NEUTRAL_ONE/package-lock.json" "$NEUTRAL_ONE/bin/cli.js" "$NEUTRAL_ONE/playwright.config.js" "$NEUTRAL_ONE/server/index.js" "$NEUTRAL_ONE/web/index.html"
+test -z "$(git -C "$NEUTRAL_ONE" remote)"
+test ! -d "$NEUTRAL_ONE/.git/logs"
+test "$BUNDLE_SHA_BEFORE" = "$(shasum -a 256 "$BUNDLE" | awk '{print $1}')"
+
+EVAL_ATTEMPT="$TEST_EXTERNAL_ROOT/x/rt02/fx03/A1"
+mkdir -p "$EVAL_ATTEMPT"
+cp "$CEILING_ROOT/corpus/DR-byte-preservation-f7-out-of-scope-trap/hidden/reference.patch" "$EVAL_ATTEMPT/patch.diff"
+python3 - "$TMP_DIR/n1.json" "$EVAL_ATTEMPT/isolation.json" <<'PY'
+import json, sys
+json.dump({"neutralization": json.load(open(sys.argv[1]))}, open(sys.argv[2], "w"))
+PY
+CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" bash "$SCRIPT_DIR/ceiling-eval.sh" \
+  --run-id selftest --task DR-byte-preservation-f7-out-of-scope-trap \
+  --arm-attempt A1 --opaque-run-id rt02 --opaque-task-id fx03 \
+  --attempt-dir "$EVAL_ATTEMPT" >/tmp/ceiling-eval-neutral.log
+python3 - "$EVAL_ATTEMPT/objective.json" "$TMP_DIR/n1.json" <<'PY'
+import json, sys
+objective, neutral = (json.load(open(path)) for path in sys.argv[1:])
+if not objective["resolved"]:
+    raise SystemExit(objective)
+if objective["neutral_baseline_sha"] != neutral["neutral_baseline_sha"]:
+    raise SystemExit("evaluator neutral baseline mismatch")
 PY
 
 make_judge_quality() {
@@ -222,6 +307,7 @@ PY
 
 TIE_RUN="selftest-tie-$$"
 RESULT_RUNS+=("$TIE_RUN")
+BASE_TASKS="SW1-django-13230,SW2-django-13265,FS1-schedule-max-runs"
 for task in SW1-django-13230 SW2-django-13265 FS1-schedule-max-runs; do
   write_attempt "$TIE_RUN" "$task" A1 20 0 false true
   write_attempt "$TIE_RUN" "$task" B1 10 0 false true
@@ -230,12 +316,12 @@ done
 cat > "$CEILING_ROOT/results/$TIE_RUN/ceiling-judge-aggregate.json" <<'JSON'
 {"run_id":"selftest","tasks":{}}
 JSON
-python3 "$SCRIPT_DIR/ceiling-gate.py" --run-id "$TIE_RUN" --phase verdict >/tmp/ceiling-tie.log
+python3 "$SCRIPT_DIR/ceiling-gate.py" --run-id "$TIE_RUN" --phase verdict --tasks "$BASE_TASKS" >/tmp/ceiling-tie.log
 python3 - "$CEILING_ROOT/results/$TIE_RUN/ceiling-verdict.json" "$CEILING_ROOT/results/$TIE_RUN/ceiling-verdict.md" <<'PY'
 import json, sys
 data = json.load(open(sys.argv[1]))
 if data["verdict"] != "BARE-LIFT-NOT-SHOWN":
-    raise SystemExit(data["verdict"])
+    raise SystemExit(data)
 md = open(sys.argv[2], encoding="utf-8").read()
 if "Excluding FS1-schedule-max-runs" not in md:
     raise SystemExit("missing FS1 leave-one-out note")
@@ -258,7 +344,7 @@ for task in ["SW1-django-13230","SW2-django-13265","FS1-schedule-max-runs"]:
         tasks[task]["axes"][axis] = {"per_judge":{"sonnet":{"a_vs_c":"A_win"}}}
 json.dump({"run_id":"selftest","tasks":tasks}, open(sys.argv[1], "w"), indent=2)
 PY
-python3 "$SCRIPT_DIR/ceiling-gate.py" --run-id "$MOAT_RUN" --phase verdict >/tmp/ceiling-moat.log
+python3 "$SCRIPT_DIR/ceiling-gate.py" --run-id "$MOAT_RUN" --phase verdict --tasks "$BASE_TASKS" >/tmp/ceiling-moat.log
 python3 - "$CEILING_ROOT/results/$MOAT_RUN/ceiling-verdict.json" <<'PY'
 import json, sys
 data = json.load(open(sys.argv[1]))
@@ -276,7 +362,7 @@ for task in SW1-django-13230; do
 done
 export FAKE_CLAUDE_JUDGE=1
 export FAKE_CODEX_JUDGE=1
-FAKE_CODEX_LABEL=judge python3 "$SCRIPT_DIR/ceiling-judge.py" \
+HOME="$TMP_DIR" FAKE_CODEX_LABEL=judge python3 "$SCRIPT_DIR/ceiling-judge.py" \
   --run-id "$JUDGE_RUN" --judges sonnet,codex --codex-command "$FAKEBIN/codex" \
   --select SW1-django-13230=B1 --select SW1-django-13230=C1 >/tmp/ceiling-judge.log
 if grep -E 'A1|B1|C1|arm A|arm B|arm C' "$CEILING_ROOT/results/$JUDGE_RUN/SW1-django-13230/judge-sonnet.json"; then

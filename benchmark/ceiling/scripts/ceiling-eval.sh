@@ -5,6 +5,8 @@ set -euo pipefail
 usage() {
   cat >&2 <<'EOF'
 usage: ceiling-eval.sh --run-id <ID> --task <task> [--arm-attempt <A1|B1|...>]...
+                       [--opaque-run-id <ID>] [--opaque-task-id <ID>]
+                       [--attempt-dir <path>]
 EOF
   exit "${1:-1}"
 }
@@ -15,6 +17,9 @@ CEILING_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 RUN_ID=""
 TASK=""
 ARM_ATTEMPTS=()
+OPAQUE_RUN_ID=""
+OPAQUE_TASK_ID=""
+ATTEMPT_DIR_OVERRIDE=""
 
 require_value() {
   local flag="$1"
@@ -30,6 +35,9 @@ while [ $# -gt 0 ]; do
     --run-id) require_value "$1" "${2:-}"; RUN_ID="$2"; shift 2;;
     --task) require_value "$1" "${2:-}"; TASK="$2"; shift 2;;
     --arm-attempt) require_value "$1" "${2:-}"; ARM_ATTEMPTS+=("$2"); shift 2;;
+    --opaque-run-id) require_value "$1" "${2:-}"; OPAQUE_RUN_ID="$2"; shift 2;;
+    --opaque-task-id) require_value "$1" "${2:-}"; OPAQUE_TASK_ID="$2"; shift 2;;
+    --attempt-dir) require_value "$1" "${2:-}"; ATTEMPT_DIR_OVERRIDE="$2"; shift 2;;
     -h|--help) usage 0;;
     *) echo "unknown arg: $1" >&2; usage 1;;
   esac
@@ -61,8 +69,16 @@ fi
 
 TASK_DIR="$CEILING_ROOT/corpus/$TASK"
 RESULT_TASK_DIR="$CEILING_ROOT/results/$RUN_ID/$TASK"
-EXTERNAL_ROOT="$HOME/devlyn-ceiling-external"
-mkdir -p "$EXTERNAL_ROOT/eval/$RUN_ID/$TASK"
+EXTERNAL_ROOT="${CEILING_EXTERNAL_ROOT:-$HOME/.local/share/nx01}"
+if [ -z "$OPAQUE_RUN_ID" ]; then
+  OPAQUE_RUN_ID="r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)"
+  OPAQUE_TASK_ID="f$(printf '%s' "$TASK" | shasum -a 256 | cut -c1-12)"
+fi
+if [ -z "$OPAQUE_TASK_ID" ] || ! [[ "$OPAQUE_RUN_ID" =~ ^[a-z][a-z0-9]*$ && "$OPAQUE_TASK_ID" =~ ^[a-z][a-z0-9]*$ ]]; then
+  echo "opaque IDs must be provided together and match ^[a-z][a-z0-9]*$" >&2
+  exit 1
+fi
+mkdir -p "$EXTERNAL_ROOT/v/$OPAQUE_RUN_ID/$OPAQUE_TASK_ID"
 
 if [ "${#ARM_ATTEMPTS[@]}" -eq 0 ]; then
   while IFS= read -r dir; do
@@ -70,14 +86,18 @@ if [ "${#ARM_ATTEMPTS[@]}" -eq 0 ]; then
   done < <(find "$RESULT_TASK_DIR" -maxdepth 1 -type d -regex '.*/[ABC][0-9]+' 2>/dev/null | sort)
 fi
 [ "${#ARM_ATTEMPTS[@]}" -gt 0 ] || { echo "no arm attempts found for $RUN_ID/$TASK" >&2; exit 1; }
+if [ -n "$ATTEMPT_DIR_OVERRIDE" ] && [ "${#ARM_ATTEMPTS[@]}" -ne 1 ]; then
+  echo "--attempt-dir requires exactly one --arm-attempt" >&2
+  exit 1
+fi
 
 write_swe_objective() {
   local attempt="$1"
-  local attempt_dir="$RESULT_TASK_DIR/$attempt"
-  local eval_dir="$EXTERNAL_ROOT/eval/$RUN_ID/$TASK/$attempt"
+  local attempt_dir="${ATTEMPT_DIR_OVERRIDE:-$RESULT_TASK_DIR/$attempt}"
+  local eval_dir="$EXTERNAL_ROOT/v/$OPAQUE_RUN_ID/$OPAQUE_TASK_ID/$attempt"
   local instances_jsonl="$eval_dir/instances.jsonl"
   local predictions_jsonl="$eval_dir/predictions.jsonl"
-  local report_id="$RUN_ID-$TASK-$attempt"
+  local report_id="$OPAQUE_RUN_ID-$OPAQUE_TASK_ID-$attempt"
   rm -rf "$eval_dir"
   mkdir -p "$eval_dir"
   python3 - "$TASK_DIR/hidden/instance.json" "$instances_jsonl" "$attempt_dir/patch.diff" "$predictions_jsonl" <<'PY'
@@ -192,8 +212,8 @@ PY
 clone_fs_base() {
   local worktree="$1"
   local base_json="$TASK_DIR/base.json"
-  local repos_root="$EXTERNAL_ROOT/repos/fs"
-  local cache="$repos_root/$TASK"
+  local repos_root="$EXTERNAL_ROOT/c/f"
+  local cache="$repos_root/$OPAQUE_TASK_ID"
   # Bash 3.2 (macOS /bin/bash) has no mapfile — judge.sh iter-0019.4 precedent
   local repo sha
   repo="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["repo"])' "$base_json")"
@@ -221,14 +241,37 @@ clone_fs_base() {
 
 write_fs_objective() {
   local attempt="$1"
-  local attempt_dir="$RESULT_TASK_DIR/$attempt"
-  local eval_dir="$EXTERNAL_ROOT/eval/$RUN_ID/$TASK/$attempt"
+  local attempt_dir="${ATTEMPT_DIR_OVERRIDE:-$RESULT_TASK_DIR/$attempt}"
+  local eval_dir="$EXTERNAL_ROOT/v/$OPAQUE_RUN_ID/$OPAQUE_TASK_ID/$attempt"
   local worktree="$eval_dir/worktree"
   local oracle="$TASK_DIR/hidden/oracle.sh"
   [ -f "$oracle" ] || { echo "hidden oracle missing: $oracle" >&2; exit 1; }
   rm -rf "$eval_dir"
   mkdir -p "$eval_dir"
   clone_fs_base "$worktree"
+  local neutral_args=(
+    --workspace "$worktree"
+    --report "$eval_dir/neutralization.json"
+  )
+  [[ "$TASK" == DR-* ]] && neutral_args+=(--seed-derived)
+  local neutral_baseline_sha
+  neutral_baseline_sha="$(python3 "$SCRIPT_DIR/neutralize-workspace.py" "${neutral_args[@]}")"
+  if [ -f "$attempt_dir/isolation.json" ]; then
+    python3 - "$attempt_dir/isolation.json" "$eval_dir/neutralization.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+attempt = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))["neutralization"]
+evaluation = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+for key in ("seed_derived", "neutralization_diff_sha256", "neutral_baseline_sha"):
+    if attempt.get(key) != evaluation.get(key):
+        raise SystemExit(
+            f"neutralization mismatch for {key}: "
+            f"attempt={attempt.get(key)!r} evaluation={evaluation.get(key)!r}"
+        )
+PY
+  fi
   local apply_exit=0
   if [ -s "$attempt_dir/patch.diff" ]; then
     set +e
@@ -245,12 +288,13 @@ write_fs_objective() {
   else
     echo "git apply failed" > "$eval_dir/oracle.log"
   fi
-  python3 - "$attempt_dir/objective.json" "$TASK" "$attempt" "$apply_exit" "$oracle_exit" "$eval_dir" <<'PY'
+  python3 - "$attempt_dir/objective.json" "$TASK" "$attempt" "$apply_exit" "$oracle_exit" "$eval_dir" "$eval_dir/neutralization.json" "$neutral_baseline_sha" <<'PY'
 import json
 import sys
 from pathlib import Path
-out, task, attempt, apply_exit, oracle_exit, eval_dir = sys.argv[1:]
+out, task, attempt, apply_exit, oracle_exit, eval_dir, neutral_path, baseline_sha = sys.argv[1:]
 passed = int(apply_exit) == 0 and int(oracle_exit) == 0
+neutral = json.loads(Path(neutral_path).read_text(encoding="utf-8"))
 payload = {
     "task": task,
     "arm_attempt": attempt,
@@ -261,6 +305,8 @@ payload = {
     "apply_exit": int(apply_exit),
     "oracle_exit": int(oracle_exit),
     "report_path": str(Path(eval_dir) / "oracle.log"),
+    "neutralization_diff_sha256": neutral["neutralization_diff_sha256"],
+    "neutral_baseline_sha": baseline_sha,
 }
 Path(out).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
@@ -268,7 +314,8 @@ PY
 
 for attempt in "${ARM_ATTEMPTS[@]}"; do
   [[ "$attempt" =~ ^[ABC][0-9]+$ ]] || { echo "invalid arm attempt: $attempt" >&2; exit 1; }
-  [ -f "$RESULT_TASK_DIR/$attempt/patch.diff" ] || { echo "missing patch.diff: $RESULT_TASK_DIR/$attempt/patch.diff" >&2; exit 1; }
+  attempt_dir="${ATTEMPT_DIR_OVERRIDE:-$RESULT_TASK_DIR/$attempt}"
+  [ -f "$attempt_dir/patch.diff" ] || { echo "missing patch.diff: $attempt_dir/patch.diff" >&2; exit 1; }
   if [[ "$TASK" == SW* ]]; then
     echo "[ceiling-eval] SWE $TASK $attempt"
     write_swe_objective "$attempt"

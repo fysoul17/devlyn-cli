@@ -18,7 +18,24 @@ from typing import Any
 
 GATE_SOURCE = Path(__file__).resolve().with_name("corpus-gate.py")
 CONTROL_TASK = "FS1-schedule-max-runs"
-EXPECTED_ASSERTIONS = 37
+EXPECTED_ASSERTIONS = 42
+EXTERNAL_ROOT = Path.home() / ".local/share/nx01"
+FROZEN_ENV_KEYS = sorted(
+    (
+        "CODEX_HOME",
+        "GIT_CONFIG_GLOBAL",
+        "GIT_CONFIG_NOSYSTEM",
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "NPM_CONFIG_CACHE",
+        "NPM_CONFIG_USERCONFIG",
+        "PATH",
+        "TERM",
+        "TMPDIR",
+        "TZ",
+    )
+)
 
 
 class SelfTestFailure(RuntimeError):
@@ -106,6 +123,69 @@ def write_objective(path: Path, oracle_exit: int, resolved: bool) -> None:
     )
 
 
+def write_isolation(path: Path, task: str, worktree: str, transcript: str) -> None:
+    transcript_bytes = transcript.encode()
+    write_json(
+        path,
+        {
+            "schema_version": 2,
+            "opaque_paths": {
+                "external_root": str(EXTERNAL_ROOT),
+                "opaque_run_id": "r0001",
+                "opaque_task_id": "fx01",
+                "generated": [
+                    worktree,
+                    str(EXTERNAL_ROOT / "x/r0001/fx01/B1"),
+                    str(EXTERNAL_ROOT / "h/r0001/fx01/B1"),
+                    str(EXTERNAL_ROOT / "d/r0001/fx01/B1"),
+                ],
+                "passed": True,
+            },
+            "environment": {
+                "keys": FROZEN_ENV_KEYS,
+                "keys_sha256": hashlib.sha256(
+                    "\n".join(FROZEN_ENV_KEYS).encode()
+                ).hexdigest(),
+                "forbidden_values_absent": True,
+            },
+            "shell_startup_canary": {
+                "passed": True,
+                "stdout_sha256": hashlib.sha256(b"isolation-ok").hexdigest(),
+                "stderr_sha256": hashlib.sha256(b"").hexdigest(),
+                "host_startup_files_absent": True,
+            },
+            "neutralization": {
+                "schema_version": 1,
+                "seed_derived": task.startswith("DR-"),
+                "neutralization_diff_sha256": "0" * 64,
+                "neutral_baseline_sha": "0" * 40,
+                "git_remotes": [],
+                "git_reflogs": [],
+            },
+            "git": {
+                "neutral_baseline_sha": "0" * 40,
+                "remotes": [],
+                "reflogs": [],
+            },
+            "direct_codex": {
+                "path": "/usr/bin/true",
+                "version": "codex-cli selftest",
+                "superset_wrapper": False,
+            },
+            "auth": {
+                "path": str(EXTERNAL_ROOT / "d/r0001/fx01/B1/auth.json"),
+                "is_symlink": False,
+                "mode": "0600",
+            },
+            "forbidden_transcript_scan": {
+                "passed": True,
+                "transcript_sha256": hashlib.sha256(transcript_bytes).hexdigest(),
+                "hits": [],
+            },
+        },
+    )
+
+
 def create_gold(fixtures: Path, task: str, *, resolved: bool) -> None:
     gold = fixtures / task / "gold"
     gold.mkdir(parents=True)
@@ -117,12 +197,13 @@ def create_attempt(fixtures: Path, task: str, number: int, kind: str) -> None:
     attempt = fixtures / task / f"B{number}"
     attempt.mkdir(parents=True)
     timed_out = kind == "timed-out"
+    worktree = str(EXTERNAL_ROOT / f"w/r0001/fx01/B{number}/repo")
     write_json(
         attempt / "timing.json",
         {
             "invoke_exit": 0,
             "timed_out": timed_out,
-            "worktree": f"/devlyn-ceiling-external/{task}/B{number}",
+            "worktree": worktree,
         },
     )
     if kind == "pass":
@@ -132,9 +213,9 @@ def create_attempt(fixtures: Path, task: str, number: int, kind: str) -> None:
     else:
         write_objective(attempt / "objective.json", 1, False)
     (attempt / "patch.diff").write_text("", encoding="utf-8")
-    (attempt / "transcript.txt").write_text(
-        "model: gpt-5.6-terra\n", encoding="utf-8"
-    )
+    transcript = "model: gpt-5.6-terra\n"
+    (attempt / "transcript.txt").write_text(transcript, encoding="utf-8")
+    write_isolation(attempt / "isolation.json", task, worktree, transcript)
 
 
 def bare_attempt_record(
@@ -142,7 +223,8 @@ def bare_attempt_record(
     artifact_dir: Path,
     transcript: str | None,
     *,
-    worktree: str = "/devlyn-ceiling-external/selftest/B1",
+    worktree: str = str(EXTERNAL_ROOT / "w/r0001/fx01/B1/repo"),
+    task: str = "DR-selftest",
 ) -> dict[str, Any]:
     artifact_dir.mkdir(parents=True)
     write_json(
@@ -153,6 +235,9 @@ def bare_attempt_record(
     (artifact_dir / "patch.diff").write_text("", encoding="utf-8")
     if transcript is not None:
         (artifact_dir / "transcript.txt").write_text(transcript, encoding="utf-8")
+        write_isolation(
+            artifact_dir / "isolation.json", task, worktree, transcript
+        )
     return gate_module["attempt_record"](
         artifact_dir,
         "B1",
@@ -160,6 +245,8 @@ def bare_attempt_record(
         0,
         None,
         None,
+        "selftest-run",
+        task,
     )
 
 
@@ -231,6 +318,7 @@ def main() -> int:
         task_names = {
             "admit": "DR-admit",
             "saturated": "DR-saturated",
+            "expanded_resolve": "DR-expanded-resolve",
             "oracle_retry": "DR-oracle-retry",
             "timeout_retry": "DR-timeout-retry",
             "exhausted": "DR-exhausted",
@@ -253,10 +341,9 @@ def main() -> int:
         )
 
         create_fixture_row(fixtures, task_names["admit"], ["fail", "fail", "fail"])
+        create_fixture_row(fixtures, task_names["saturated"], ["pass"])
         create_fixture_row(
-            fixtures,
-            task_names["saturated"],
-            ["fail", "pass", "fail"],
+            fixtures, task_names["expanded_resolve"], ["fail", "pass", "fail"]
         )
         create_fixture_row(
             fixtures,
@@ -285,12 +372,62 @@ def main() -> int:
         clean = bare_attempt_record(
             gate_module,
             attempt_fixtures / "clean",
-            'model: gpt-5.6-terra\nworkdir: /devlyn-ceiling-external/selftest/B1\n'
-            '"description": "Deterministic base Node project for devlyn-cli '
-            'auto-resolve benchmarks. Every fixture starts from a fresh copy of '
-            'this directory.",\n',
+            "model: gpt-5.6-terra\nworkdir: "
+            + str(EXTERNAL_ROOT / "w/r0001/fx01/B1/repo")
+            + "\n// TODO(devlyn): preserve this task byte exactly.\n",
         )
-        checks.require(clean["valid"] is True, "clean bare transcript was rejected")
+        checks.require(
+            clean["valid"] is True,
+            "clean transcript or legal TODO(devlyn) bait was rejected",
+        )
+
+        host_startup = bare_attempt_record(
+            gate_module,
+            attempt_fixtures / "host-startup",
+            "model: gpt-5.6-terra\n/Users/aipalm/.zshenv:35: leaked\n",
+        )
+        checks.require(
+            "bare-context-contaminated:host-shell-startup-leak"
+            in host_startup["attempt_invalid_reasons"],
+            "host shell startup contamination was not rejected",
+        )
+
+        benchmark_identity = bare_attempt_record(
+            gate_module,
+            attempt_fixtures / "benchmark-identity",
+            "model: gpt-5.6-terra\nworkdir: /tmp/r1/DR-hidden-trap/B1\n",
+        )
+        checks.require(
+            "bare-context-contaminated:benchmark-identity"
+            in benchmark_identity["attempt_invalid_reasons"],
+            "structured benchmark identity contamination was not rejected",
+        )
+
+        invalid_isolation_dir = attempt_fixtures / "invalid-isolation"
+        bare_attempt_record(
+            gate_module,
+            invalid_isolation_dir,
+            "model: gpt-5.6-terra\n",
+        )
+        invalid_isolation = read_json(invalid_isolation_dir / "isolation.json")
+        invalid_isolation["environment"]["keys"] = ["PATH"]
+        write_json(invalid_isolation_dir / "isolation.json", invalid_isolation)
+        invalid_isolation_record = gate_module["attempt_record"](
+            invalid_isolation_dir,
+            "B1",
+            1,
+            0,
+            None,
+            None,
+            "selftest-run",
+            "DR-selftest",
+        )
+        checks.require(
+            invalid_isolation_record["valid"] is False
+            and "isolation-environment"
+            in invalid_isolation_record["attempt_invalid_reasons"],
+            "malformed isolation attestation was not rejected",
+        )
 
         skill_load = bare_attempt_record(
             gate_module,
@@ -380,6 +517,7 @@ def main() -> int:
             for task in (
                 task_names["admit"],
                 task_names["saturated"],
+                task_names["expanded_resolve"],
                 task_names["oracle_retry"],
                 task_names["timeout_retry"],
             )
@@ -414,9 +552,16 @@ def main() -> int:
         saturated = summary["rows"][task_names["saturated"]]
         checks.require(
             saturated["gate_reason"] == "saturated:bare-resolves"
-            and saturated["valid_attempts"] == 3
+            and saturated["valid_attempts"] == 1
             and saturated["resolved_attempts"] == 1,
-            "one resolving attempt did not saturate the row",
+            "initial resolving attempt did not saturate the row immediately",
+        )
+        expanded = summary["rows"][task_names["expanded_resolve"]]
+        checks.require(
+            expanded["gate_reason"] == "saturated:bare-resolves"
+            and expanded["valid_attempts"] == 3
+            and expanded["physical_attempts"] == 3,
+            "initial failure did not expand to exactly three valid attempts",
         )
         oracle_retry_attempts = happy["tranche3"]["tasks"][
             task_names["oracle_retry"]
@@ -459,7 +604,11 @@ def main() -> int:
             task_names["oracle_retry"],
             task_names["timeout_retry"],
         ]
-        expected_saturated = [task_names["saturated"], CONTROL_TASK]
+        expected_saturated = [
+            task_names["saturated"],
+            task_names["expanded_resolve"],
+            CONTROL_TASK,
+        ]
         checks.require(
             summary["admitted_amplification_rows"] == expected_admitted,
             "amplification rows were not recorded separately",
@@ -483,6 +632,11 @@ def main() -> int:
             positive_control["passed"] is True
             and positive_control["gate_reason"] == "saturated:bare-resolves",
             "FS1 bare-pass positive control was not rejected",
+        )
+        checks.require(
+            positive_control["valid_attempts"] == 1
+            and positive_control["physical_attempts"] == 1,
+            "FS1 positive control did not stop after one valid attempt",
         )
         checks.require(
             all(
@@ -620,7 +774,8 @@ def main() -> int:
         checks.require(
             control_failure_summary["positive_control"]["passed"] is False
             and control_failure_summary["positive_control"]["gate_reason"]
-            == "admitted:positive-control",
+            == "control-invalid:bare-fails"
+            and control_failure_summary["positive_control"]["valid_attempts"] == 1,
             "FS1 control-failure was not detected",
         )
         checks.require(
