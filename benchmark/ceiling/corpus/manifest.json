@@ -1312,8 +1312,8 @@
    }
   },
   "discriminating": {
-   "status": "frozen",
-   "frozen": true,
+   "status": "reopened",
+   "frozen": false,
    "frozen_at": "2026-07-11T07:35:22Z",
    "run_id": "iter0068-gate-20260711g",
    "selection_rule": "gold reference resolves once and bare Codex has exactly three valid attempts with zero resolves",
@@ -1704,7 +1704,9 @@
      "resolved_attempts": 3,
      "physical_attempts": 3
     }
-   }
+   },
+   "reopened_at": "2026-07-11",
+   "reopen_reason": "Amendment A1 (see tranche3.reopen_reason); cohort-g freeze superseded, isolation-v2 cohort h decides"
   },
   "reopened_at": "2026-07-11",
   "reopen_reason": "Amendment A1: cohort iter0068-gate-20260711g identity-confounded (seed/package.json benchmark identity ingested 19/24; trap-axis paths 24/24; ambient ZDOTDIR defeated HOME override). Freeze superseded; isolation-v2 re-gate cohort h decides. See autoresearch/iterations/0068-discriminating-corpus.md \u00a7 Amendment A1 + DECISIONS 0068.4."
