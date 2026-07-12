@@ -277,3 +277,48 @@ evidence. Named deltas vs frozen v2:
   claude purity-fix design. Grok GO-WITH-EDITS + Codex sol GO-WITH-EDITS;
   contested points adjudicated with named criteria (control-population
   ownership; auth mechanism settled by orchestrator canary experiment).
+
+## Execution record — kernel build + freeze audit (2026-07-12 night)
+
+**Build shipped** `f2f5de8` (Codex sol implemented, 43 files under
+`benchmark/noncoding/`): packet runner (`run-packet-attempt.py`, per-attempt
+opaque `nx02` isolation, terra `-m` pin, sonnet via `claude-isolation.py`),
+`calibration-driver.py` (T0/T1, INVALID-aborts-cohort fail-closed),
+freeze-time `conformance-gate.py` (R1 #2), `pud-1` JSON schema, 2 calibration
+fixtures (`catalog-source-order`, `credential-redaction`; packet-decisive
+rationales in `hidden/README.md`), manifest with frozen thresholds verbatim,
+selftest (5 groups). Orchestrator verification: selftest reproduced, 8/8
+packets schema-valid, conformance gate PASS both fixtures, seed
+de-identification grep clean, prompt preview blinded (no labels/identity).
+Cross-ref: 0068 Amendment A2 B-source re-registration `eec0454` (same
+session, prerequisite for the 0068-owned no-degradation cell).
+
+**Grok 4.5 independent freeze audit (R2): GO-WITH-EDITS** (archive
+`/tmp/iter0070a-build/grok-audit.log`, ephemeral; this section durable).
+Findings: **H1 HIGH** — both `good-a` packets not topo-ordered while the
+downstream prompt forbids reordering → known-good not operationally good,
+good-a/good-b not equivalent (would corrupt T1 equivalent-good Δ); fix =
+topo-order + one prompt sentence (`depends_on` = legal order, array ≠
+schedule). **M1** — catalog oracle hardcodes export expectation outside the
+conformance gate (F21 mechanism class, incomplete binding; not F21-class
+unfairness — task determines it). **M3 (proposed)** — T0 predicate
+`all(good > min(bad))` admits pathological goods=1,1/bads=3,0; tighten to
+`min(goods) > max(bads)`. L1-L3 LOW recorded, not fixed (subtractive).
+A2 audited **PASS** (wall pointers verified on disk; pre-run registration).
+
+**Contested-point adjudications (three-way)**: **C1** packet authorship —
+resolved NO replacement; criterion *Contrast-Class of the Inferential-Unit
+Clause* (the frozen sentence bans rerun pseudo-replication, not same-build
+calibration stimuli); Codex's original conditional flag answered by H1 fix.
+**C2** downstream packet-authority framing — resolved KEEP as frozen design;
+criterion *Estimand Alignment under UNFAIR Completeness* (task must fully
+determine the oracle for fairness, so instruction-level packet authority is
+the only non-cheating headroom mechanism; T0/L4 death stays a legitimate
+outcome; no task-completeness weakening; no post-T0 retune).
+
+**Fix round (R2-fix)**: H1+M1 delegated to Codex sol; M3 routed to Codex for
+cross-confirmation (tri-engine consensus gate — orchestrator does not solo-
+adjudicate contract-letter interpretation both engines read differently).
+Freeze + T0 gated on: fixes land → selftest + conformance gate re-PASS →
+freeze commit. T0 execution order: both seats {terra, sonnet}, both fixtures,
+interleave seed recorded in the cohort manifest.
