@@ -18,7 +18,7 @@ from typing import Any
 
 GATE_SOURCE = Path(__file__).resolve().with_name("corpus-gate.py")
 CONTROL_TASK = "FS1-schedule-max-runs"
-EXPECTED_ASSERTIONS = 42
+EXPECTED_ASSERTIONS = 43
 EXTERNAL_ROOT = Path.home() / ".local/share/nx01"
 FROZEN_ENV_KEYS = sorted(
     (
@@ -307,6 +307,7 @@ def main() -> int:
         write_json(
             fixtures / "identity.json",
             {
+                "runner_commit_sha": "a" * 40,
                 "bare": {
                     "cli_version": "codex-cli selftest",
                     "runtime_resolved_model": "gpt-5.6-terra",
@@ -652,6 +653,12 @@ def main() -> int:
             and summary["cohort_drift_observed"] is False,
             "synthetic cohort identity was not stable",
         )
+        checks.require(
+            summary["cohort_identity"]["runner_commit_sha"] == "a" * 40
+            and summary["cohort_identity"]["bare_codex"]["requested_alias"]
+            == "gpt-5.6-terra",
+            "runner commit or requested model provenance was not recorded",
+        )
 
         pending_path = manifests / "pending.json"
         write_json(
@@ -736,6 +743,7 @@ def main() -> int:
         write_json(
             control_failure_fixtures / "identity.json",
             {
+                "runner_commit_sha": "a" * 40,
                 "bare": {
                     "cli_version": "codex-cli selftest",
                     "runtime_resolved_model": "gpt-5.6-terra",

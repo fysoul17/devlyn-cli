@@ -1,6 +1,6 @@
-// Playwright config used only by browser-validate benchmark fixtures.
-// Runs against web/index.html served via `npx serve web` (fixture setup.sh
-// starts the server). Keep config minimal.
+// Playwright config for the browser checks.
+// Runs against web/index.html served via `npx serve web` (the check starts the
+// server). Keep config minimal.
 module.exports = {
   testDir: './tests/e2e',
   timeout: 30_000,

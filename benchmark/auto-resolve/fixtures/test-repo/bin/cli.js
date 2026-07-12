@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// bench-test-repo — tiny CLI used as the deterministic base for benchmark fixtures.
-// Fixtures extend or modify this file; keep the baseline minimal and obvious.
+// harbor-tools — small command-line utilities for local workflows.
+// Keep the core commands minimal and easy to understand.
 
 const fs = require('fs');
 const path = require('path');

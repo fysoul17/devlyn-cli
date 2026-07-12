@@ -1,8 +1,8 @@
 {
-  "name": "bench-test-repo",
+  "name": "harbor-tools",
   "version": "0.1.0",
   "private": true,
-  "description": "Deterministic base Node project for devlyn-cli auto-resolve benchmarks. Every fixture starts from a fresh copy of this directory.",
+  "description": "A small Node.js toolkit with a command-line interface and HTTP server.",
   "bin": {
     "bench-cli": "bin/cli.js"
   },

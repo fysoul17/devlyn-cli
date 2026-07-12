@@ -27,7 +27,6 @@ REAL_MANIFEST = CORPUS_ROOT / "manifest.json"
 ARM_RUNNER = HERE / "run-ceiling-arm.sh"
 EVALUATOR = HERE / "ceiling-eval.sh"
 CONTROL_TASK = "FS1-schedule-max-runs"
-REQUESTED_ALIAS = "default"
 VALID_SLOTS = 3
 REPLACEMENTS_PER_SLOT = 2
 CODEX_VERSION_TIMEOUT_SECONDS = 30
@@ -129,6 +128,21 @@ def utc_timestamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace(
         "+00:00", "Z"
     )
+
+
+def repo_head_sha() -> str:
+    completed = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    sha = completed.stdout.strip()
+    if completed.returncode != 0 or re.fullmatch(r"[0-9a-f]{40,64}", sha) is None:
+        detail = completed.stderr.strip() or sha or f"exit {completed.returncode}"
+        raise GateError(f"cannot capture runner commit SHA: {detail}")
+    return sha
 
 
 def file_record(path: Path) -> dict[str, Any]:
@@ -968,7 +982,7 @@ def direct_codex_path() -> Path:
     raise GateError("direct non-Superset Codex CLI not found")
 
 
-def live_identity(run_id: str, captured_at: str) -> dict[str, Any]:
+def live_identity(run_id: str, captured_at: str) -> tuple[dict[str, Any], str]:
     binary = direct_codex_path()
     try:
         completed = subprocess.run(
@@ -989,21 +1003,31 @@ def live_identity(run_id: str, captured_at: str) -> dict[str, Any]:
     if completed.returncode != 0 or not completed.stdout.strip():
         detail = completed.stderr.strip() or f"exit {completed.returncode}"
         raise GateError(f"cannot capture codex CLI version: {detail}")
-    return {
-        "cli_version": completed.stdout.strip(),
-        "binary_path": str(binary),
-        "requested_alias": REQUESTED_ALIAS,
-        "runtime_resolved_model": None,
-        "run_id": run_id,
-        "captured_at": captured_at,
-    }
+    return (
+        {
+            "cli_version": completed.stdout.strip(),
+            "binary_path": str(binary),
+            "requested_alias": BARE_MODEL,
+            "runtime_resolved_model": None,
+            "run_id": run_id,
+            "captured_at": captured_at,
+        },
+        repo_head_sha(),
+    )
 
 
-def dry_identity(fixture_root: Path, run_id: str, captured_at: str) -> dict[str, Any]:
+def dry_identity(
+    fixture_root: Path, run_id: str, captured_at: str
+) -> tuple[dict[str, Any], str]:
     identity_path = fixture_root / "identity.json"
     identity = read_json(identity_path) if identity_path.is_file() else None
     if not isinstance(identity, dict):
         raise GateError(f"dry-run identity object missing: {identity_path}")
+    runner_commit_sha = identity.get("runner_commit_sha")
+    if not isinstance(runner_commit_sha, str) or re.fullmatch(
+        r"[0-9a-f]{40,64}", runner_commit_sha
+    ) is None:
+        raise GateError(f"dry-run identity has no runner commit SHA: {identity_path}")
     bare = identity.get("bare")
     if not isinstance(bare, dict):
         bare = identity.get("bare_codex")
@@ -1017,14 +1041,17 @@ def dry_identity(fixture_root: Path, run_id: str, captured_at: str) -> dict[str,
     )
     if resolved is not None and not isinstance(resolved, str):
         raise GateError(f"dry-run identity has invalid resolved model: {identity_path}")
-    return {
-        "cli_version": cli_version.strip(),
-        "binary_path": identity.get("binary_path"),
-        "requested_alias": REQUESTED_ALIAS,
-        "runtime_resolved_model": resolved.strip() if resolved else None,
-        "run_id": run_id,
-        "captured_at": identity.get("captured_at", captured_at),
-    }
+    return (
+        {
+            "cli_version": cli_version.strip(),
+            "binary_path": identity.get("binary_path"),
+            "requested_alias": BARE_MODEL,
+            "runtime_resolved_model": resolved.strip() if resolved else None,
+            "run_id": run_id,
+            "captured_at": identity.get("captured_at", captured_at),
+        },
+        runner_commit_sha,
+    )
 
 
 def update_identity_models(
@@ -1213,7 +1240,7 @@ def main(argv: list[str] | None = None) -> int:
     if not dry_run:
         write_opaque_plan(run_token, rows, task_ids)
     captured_at = utc_timestamp()
-    identity = (
+    identity, runner_commit_sha = (
         dry_identity(fixture_root, args.run_id, captured_at)
         if fixture_root is not None
         else live_identity(args.run_id, captured_at)
@@ -1335,6 +1362,7 @@ def main(argv: list[str] | None = None) -> int:
             "exactly one valid control attempt"
         ),
         "cohort_identity": {
+            "runner_commit_sha": runner_commit_sha,
             "bare_codex": identity,
             "gold_oracle": {
                 "runner": EVALUATOR.name,

@@ -332,10 +332,19 @@ JQ="$TMP_DIR/jq"
 make_judge_quality "$JQ" sonnet
 export CEILING_JUDGE_QUALITY_CASES="$JQ/cases"
 export CEILING_JUDGE_QUALITY_RESULTS="$JQ/results"
+CEILING_TASKS="$(python3 - "$SCRIPT_DIR/ceiling-gate.py" <<'PY'
+import runpy
+import sys
+
+gate = runpy.run_path(sys.argv[1])
+print("\n".join(gate["task_ids"](None)))
+PY
+)"
+CEILING_TASKS_CSV="$(printf '%s\n' "$CEILING_TASKS" | paste -sd, -)"
 
 N_RUN="selftest-n-$$"
 RESULT_RUNS+=("$N_RUN")
-for task in SW1-django-13230 SW2-django-13265 FS1-schedule-max-runs; do
+for task in $CEILING_TASKS; do
   write_attempt "$N_RUN" "$task" A1 100 0 false true
   write_attempt "$N_RUN" "$task" B1 10 0 false true
   write_attempt "$N_RUN" "$task" C1 10 0 false false
@@ -353,7 +362,7 @@ PY
 
 INVALID_RUN="selftest-invalid-$$"
 RESULT_RUNS+=("$INVALID_RUN")
-for task in SW1-django-13230 SW2-django-13265 FS1-schedule-max-runs; do
+for task in $CEILING_TASKS; do
   write_attempt "$INVALID_RUN" "$task" A1 10 0 false true
   write_attempt "$INVALID_RUN" "$task" B1 10 0 false true
   write_attempt "$INVALID_RUN" "$task" C1 10 0 false true
@@ -370,8 +379,7 @@ PY
 
 TIE_RUN="selftest-tie-$$"
 RESULT_RUNS+=("$TIE_RUN")
-BASE_TASKS="SW1-django-13230,SW2-django-13265,FS1-schedule-max-runs"
-for task in SW1-django-13230 SW2-django-13265 FS1-schedule-max-runs; do
+for task in $CEILING_TASKS; do
   write_attempt "$TIE_RUN" "$task" A1 20 0 false true
   write_attempt "$TIE_RUN" "$task" B1 10 0 false true
   write_attempt "$TIE_RUN" "$task" C1 10 0 false false
@@ -379,7 +387,7 @@ done
 cat > "$CEILING_ROOT/results/$TIE_RUN/ceiling-judge-aggregate.json" <<'JSON'
 {"run_id":"selftest","tasks":{}}
 JSON
-python3 "$SCRIPT_DIR/ceiling-gate.py" --run-id "$TIE_RUN" --phase verdict --tasks "$BASE_TASKS" >/tmp/ceiling-tie.log
+python3 "$SCRIPT_DIR/ceiling-gate.py" --run-id "$TIE_RUN" --phase verdict --tasks "$CEILING_TASKS_CSV" >/tmp/ceiling-tie.log
 python3 - "$CEILING_ROOT/results/$TIE_RUN/ceiling-verdict.json" "$CEILING_ROOT/results/$TIE_RUN/ceiling-verdict.md" <<'PY'
 import json, sys
 data = json.load(open(sys.argv[1]))
@@ -392,22 +400,22 @@ PY
 
 MOAT_RUN="selftest-moat-$$"
 RESULT_RUNS+=("$MOAT_RUN")
-for task in SW1-django-13230 SW2-django-13265 FS1-schedule-max-runs; do
+for task in $CEILING_TASKS; do
   write_attempt "$MOAT_RUN" "$task" A1 20 0 false true
   write_attempt "$MOAT_RUN" "$task" B1 10 0 false false
   write_attempt "$MOAT_RUN" "$task" C1 10 0 false true
 done
-python3 - "$CEILING_ROOT/results/$MOAT_RUN/ceiling-judge-aggregate.json" <<'PY'
+python3 - "$CEILING_ROOT/results/$MOAT_RUN/ceiling-judge-aggregate.json" "$CEILING_TASKS_CSV" <<'PY'
 import json, sys
 axes = ["design_coherence","robustness","spec_long_horizon_consistency","maintainability_api_ergonomics"]
 tasks = {}
-for task in ["SW1-django-13230","SW2-django-13265","FS1-schedule-max-runs"]:
+for task in sys.argv[2].split(","):
     tasks[task] = {"axes": {}}
     for axis in axes:
         tasks[task]["axes"][axis] = {"per_judge":{"sonnet":{"a_vs_c":"A_win"}}}
 json.dump({"run_id":"selftest","tasks":tasks}, open(sys.argv[1], "w"), indent=2)
 PY
-python3 "$SCRIPT_DIR/ceiling-gate.py" --run-id "$MOAT_RUN" --phase verdict --tasks "$BASE_TASKS" >/tmp/ceiling-moat.log
+python3 "$SCRIPT_DIR/ceiling-gate.py" --run-id "$MOAT_RUN" --phase verdict --tasks "$CEILING_TASKS_CSV" >/tmp/ceiling-moat.log
 python3 - "$CEILING_ROOT/results/$MOAT_RUN/ceiling-verdict.json" <<'PY'
 import json, sys
 data = json.load(open(sys.argv[1]))

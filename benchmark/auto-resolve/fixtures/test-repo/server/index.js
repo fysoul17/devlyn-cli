@@ -1,4 +1,4 @@
-// Tiny Express server used by backend-contract fixtures. Intentionally small.
+// Tiny Express server with a deliberately small API surface.
 const express = require('express');
 
 const app = express();
@@ -30,7 +30,7 @@ app.get('/items/:id', (req, res) => {
 if (require.main === module) {
   const port = Number(process.env.PORT) || 3000;
   app.listen(port, () => {
-    console.log(`bench-test-repo server listening on :${port}`);
+    console.log(`harbor-tools server listening on :${port}`);
   });
 }
 

@@ -91,9 +91,11 @@ def run(command: list[str], workspace: Path, *, capture: bool = False) -> str:
 
 def replace(path: Path, old: str, new: str) -> None:
     text = path.read_text(encoding="utf-8")
-    if old not in text:
+    if old in text:
+        path.write_text(text.replace(old, new), encoding="utf-8")
+        return
+    if new not in text:
         raise NeutralizationError(f"expected identity text missing from {path}: {old!r}")
-    path.write_text(text.replace(old, new), encoding="utf-8")
 
 
 def transform_patch(input_path: Path, output_path: Path) -> None:
