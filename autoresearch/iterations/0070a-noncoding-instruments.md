@@ -444,3 +444,42 @@ registration + E2 + purity). Report-only follow-ups recorded, NOT fixed
 (subtractive): (i) judge reads the A patch without an isolation pre-check
 (verdict still aborts before emitting bars); (ii) A timing not validated
 for invoke_exit/timed_out/zero-elapsed symmetry with frozen-B.
+
+## Execution record addendum 4 — T0 PASS both seats; T0b drift lesson (2026-07-12 night)
+
+**T0b tombstoned**: cohort `iter0070a-t0b-20260712` aborted by the runner-hash
+freeze — the orchestrator committed DOCS (e95a476, acbfb9c) mid-cohort; the
+fail-closed identity check worked exactly as designed. Operating rule added:
+NO main-checkout commits while any measured/calibration cohort runs.
+(Possible future three-way amendment: scope the identity hash to
+measurement-affecting paths; NOT changed now.)
+
+**T0C VERDICT: PASS, both seats** (cohorts `iter0070a-t0c-20260712-t0-{terra,
+sonnet}`, 30 attempts each, interleave seed 20260712, all checks true).
+Per-packet resolve counts (resolve/N):
+
+| fixture | packet | terra | sonnet |
+|---|---|---|---|
+| catalog | good_a / good_b | 3/3 · 3/3 | 3/3 · 3/3 |
+| catalog | bad_dependency | **3/3 (saturates)** | 0/3 |
+| catalog | bad_constraint | 0/3 | 0/3 |
+| catalog | no_op | 0/3 | 0/3 |
+| credential | good_a / good_b | 3/3 · 3/3 | 3/3 · 3/3 |
+| credential | bad_dependency | 0/3 | 1/3 |
+| credential | bad_constraint | 0/3 | **2/3** |
+| credential | no_op | 0/3 | 0/3 |
+
+Death gate passed (existential separation + no-op-fails + goods complete).
+**Load-bearing early signal — seat×trap asymmetry**: terra neutralizes the
+catalog ordering trap (follows the task, overrides the packet) but respects
+both credential traps; sonnet is the mirror (respects catalog traps fully,
+partially neutralizes credential traps). Exactly the M3/L4 pattern
+anticipated: T1's per-bad ≤4/16 bar decides which seat×fixture pairs admit
+— terra+catalog projected to FAIL that bar (3/3→~16/16), terra+credential
+and sonnet+catalog projected strong. This is the Held-Out Maximin
+Sensitivity input the seat calibration exists to produce. NO retuning of
+any packet/fixture (anti-tuning rule; T1 runs on frozen bytes).
+
+**Next**: T1 (16× per packet per seat, frozen thresholds) as a detached
+background run; Cell 1 M1/M2 fixes land before T1 launch (shared-script
+delta changes runner SHA — must be committed first, then T1 freezes on it).
