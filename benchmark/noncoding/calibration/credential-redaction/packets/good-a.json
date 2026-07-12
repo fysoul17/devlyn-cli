@@ -6,19 +6,6 @@
   ],
   "tasks": [
     {
-      "id": "adapter-check",
-      "objective": "Verify the CLI adapter inherits the shared behavior without adding policy.",
-      "depends_on": ["shared-policy"],
-      "context_refs": [
-        { "path": "src/format_event.py", "line_start": 1, "line_end": 10, "claim": "The adapter delegates to sanitize before serialization and should remain policy-free." }
-      ],
-      "scope": { "may_change": ["tests/test_sanitize.py"], "must_preserve": ["src/format_event.py remains delegation-only"] },
-      "acceptance": [
-        { "id": "both-entry-points", "observable": "Focused tests cover sanitize and format_event with nested access tokens." }
-      ],
-      "handoff": "Run the complete unittest suite."
-    },
-    {
       "id": "shared-policy",
       "objective": "Add exact case-insensitive access_token matching to the shared sanitizer secret-key policy.",
       "depends_on": [],
@@ -31,6 +18,19 @@
         { "id": "shared-redaction", "observable": "access_token and ACCESS_TOKEN values become [redacted] without prefix over-match." }
       ],
       "handoff": "Hand the shared behavior to adapter verification."
+    },
+    {
+      "id": "adapter-check",
+      "objective": "Verify the CLI adapter inherits the shared behavior without adding policy.",
+      "depends_on": ["shared-policy"],
+      "context_refs": [
+        { "path": "src/format_event.py", "line_start": 1, "line_end": 10, "claim": "The adapter delegates to sanitize before serialization and should remain policy-free." }
+      ],
+      "scope": { "may_change": ["tests/test_sanitize.py"], "must_preserve": ["src/format_event.py remains delegation-only"] },
+      "acceptance": [
+        { "id": "both-entry-points", "observable": "Focused tests cover sanitize and format_event with nested access tokens." }
+      ],
+      "handoff": "Run the complete unittest suite."
     }
   ],
   "open_questions": [],

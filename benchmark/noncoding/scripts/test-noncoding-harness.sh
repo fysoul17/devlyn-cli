@@ -103,6 +103,11 @@ for fixture_id, record in sorted(manifest["fixtures"].items()):
     for role, relative in roles.items():
         packet = schema["load_packet"](root / relative)
         assert packet["schema_version"] == "pud-1"
+        if role in {"good_a", "good_b"}:
+            completed_tasks = set()
+            for task_entry in packet["tasks"]:
+                assert set(task_entry["depends_on"]) <= completed_tasks, (role, task_entry["id"])
+                completed_tasks.add(task_entry["id"])
         preview = subprocess.run(
             [
                 sys.executable,
@@ -126,6 +131,7 @@ for fixture_id, record in sorted(manifest["fixtures"].items()):
         assert preview.returncode == 0, preview.stderr
         visible = preview.stdout.casefold()
         assert (fixture / "task.txt").read_text(encoding="utf-8").rstrip() in preview.stdout
+        assert "`depends_on` defines the legal execution order; array position is not a schedule." in preview.stdout
         forbidden = [
             "devlyn-cli",
             "benchmark/noncoding",

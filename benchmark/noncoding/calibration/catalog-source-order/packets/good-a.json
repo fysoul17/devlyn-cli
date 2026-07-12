@@ -6,19 +6,6 @@
   ],
   "tasks": [
     {
-      "id": "render",
-      "objective": "Regenerate the derived catalog and verify it is stable.",
-      "depends_on": ["source"],
-      "context_refs": [
-        { "path": "tools/render_catalog.py", "line_start": 1, "line_end": 13, "claim": "This renderer copies the canonical command map into the generated catalog." }
-      ],
-      "scope": { "may_change": ["generated/commands.json"], "must_preserve": ["Do not hand-edit the generated catalog."] },
-      "acceptance": [
-        { "id": "stable-render", "observable": "Running python3 tools/render_catalog.py again produces no diff." }
-      ],
-      "handoff": "Run the tests after regeneration."
-    },
-    {
       "id": "source",
       "objective": "Add retry_limit as integer 3 to sync in the canonical catalog.",
       "depends_on": [],
@@ -31,6 +18,19 @@
         { "id": "typed-default", "observable": "sync.retry_limit is the JSON integer 3." }
       ],
       "handoff": "Hand the canonical edit to render."
+    },
+    {
+      "id": "render",
+      "objective": "Regenerate the derived catalog and verify it is stable.",
+      "depends_on": ["source"],
+      "context_refs": [
+        { "path": "tools/render_catalog.py", "line_start": 1, "line_end": 13, "claim": "This renderer copies the canonical command map into the generated catalog." }
+      ],
+      "scope": { "may_change": ["generated/commands.json"], "must_preserve": ["Do not hand-edit the generated catalog."] },
+      "acceptance": [
+        { "id": "stable-render", "observable": "Running python3 tools/render_catalog.py again produces no diff." }
+      ],
+      "handoff": "Run the tests after regeneration."
     }
   ],
   "open_questions": [],

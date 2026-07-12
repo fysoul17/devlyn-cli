@@ -18,10 +18,7 @@ sync = source["commands"]["sync"]
 assert sync["retry_limit"] == values["retry-limit"][0]
 assert type(sync["retry_limit"]) is int
 assert sync["formats"] == values["sync-formats"][0].split(",")
-assert source["commands"]["export"] == {
-    "formats": ["json", "csv"],
-    "timeout_seconds": 60,
-}
+assert source["commands"]["export"] == values["export-preservation"][0]
 
 subprocess.run([sys.executable, "tools/render_catalog.py"], check=True)
 assert generated_path.read_bytes() == generated_before

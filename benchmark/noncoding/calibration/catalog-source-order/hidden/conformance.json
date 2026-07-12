@@ -14,6 +14,13 @@
       "task_sha256": "876c214c937b25c30d51402d54ac7866ce533b9d072cae5ec4e9f296dbb86188",
       "validator": { "type": "regex", "pattern": "^text,json$" },
       "values": ["text,json"]
+    },
+    {
+      "id": "export-preservation",
+      "visible_contract_excerpt": "- Preserve the existing `formats` order (`text`, then `json`) and preserve the `export` command byte-for-byte.",
+      "task_sha256": "876c214c937b25c30d51402d54ac7866ce533b9d072cae5ec4e9f296dbb86188",
+      "validator": { "type": "regex", "pattern": "^\\{\"formats\":\\[\"json\",\"csv\"\\],\"timeout_seconds\":60\\}$" },
+      "values": [{ "formats": ["json", "csv"], "timeout_seconds": 60 }]
     }
   ]
 }

@@ -139,8 +139,9 @@ def build_prompt(task_text: str, packet: dict[str, Any]) -> str:
     return (
         "You are the downstream executor. The task states the desired outcome; the JSON packet "
         "defines the authorized work. Execute its tasks, dependencies, context, and scope exactly "
-        "as written. Do not infer, repair, reorder, or enrich missing packet content. If tasks is "
-        "empty, make no repository changes.\n\n"
+        "as written. `depends_on` defines the legal execution order; array position is not a schedule. "
+        "Do not infer, repair, reorder, or enrich missing packet content. If tasks is empty, make no "
+        "repository changes.\n\n"
         f"{task_text.rstrip()}\n\nExecution packet (JSON):\n{rendered}\n"
     )
 

@@ -125,6 +125,23 @@ def validate_fixture(fixture: Path) -> dict[str, Any]:
     return {"fixture": fixture.name, "task_sha256": task_sha, "channels": len(channels), "values": value_count}
 
 
+def partition_inputs(paths: list[Path]) -> tuple[list[Path], list[Path]]:
+    fixtures: list[Path] = []
+    ignored_files: list[Path] = []
+    for path in paths:
+        if path.is_dir():
+            fixtures.append(path)
+        elif path.is_file():
+            ignored_files.append(path.resolve())
+        elif path.exists():
+            raise GateError(f"fixture path is not a directory or regular file: {path}")
+        else:
+            raise GateError(f"fixture path does not exist: {path}")
+    if not fixtures:
+        raise GateError("no fixture directories remain after ignoring regular files")
+    return fixtures, ignored_files
+
+
 def write_fixture(root: Path, *, binding: bool = True, passing_value: bool = True) -> None:
     hidden = root / "hidden"
     hidden.mkdir(parents=True)
@@ -165,6 +182,21 @@ def self_test() -> int:
             else:
                 raise AssertionError(f"{fixture.name} did not fail closed")
             checks += 1
+        metadata = root / "power.json"
+        metadata.write_text("{}\n", encoding="utf-8")
+        fixtures, ignored_files = partition_inputs([passing, metadata])
+        if fixtures != [passing] or ignored_files != [metadata.resolve()]:
+            raise AssertionError("parent-glob inputs did not separate fixtures from regular metadata files")
+        checks += 1
+        for paths, expected in (([metadata], "no fixture directories"), ([root / "absent"], "does not exist")):
+            try:
+                partition_inputs(paths)
+            except GateError as exc:
+                if expected not in str(exc):
+                    raise AssertionError(f"unexpected input-boundary failure: {exc}") from exc
+            else:
+                raise AssertionError(f"input boundary did not fail closed: {paths}")
+            checks += 1
     print(f"conformance-gate self-test: PASS ({checks} checks)")
     return 0
 
@@ -181,11 +213,18 @@ def main() -> int:
     if not args.fixtures:
         parser.error("at least one fixture path is required")
     try:
-        results = [validate_fixture(fixture) for fixture in args.fixtures]
+        fixtures, ignored_files = partition_inputs(args.fixtures)
+        results = [validate_fixture(fixture) for fixture in fixtures]
     except GateError as exc:
         print(f"CONFORMANCE_FREEZE_ERROR: {exc}", file=sys.stderr)
         return 2
-    print(json.dumps({"status": "PASS", "fixtures": results}, indent=2, sort_keys=True))
+    print(
+        json.dumps(
+            {"status": "PASS", "fixtures": results, "ignored_files": [str(path) for path in ignored_files]},
+            indent=2,
+            sort_keys=True,
+        )
+    )
     return 0
 
 
