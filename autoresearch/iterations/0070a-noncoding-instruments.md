@@ -573,3 +573,47 @@ packet). CONTESTED interpretation (dead-as-frozen vs dated amendment to
 per-fixture×seat admission vs new fixtures per seat) — escalated to a
 three-way round per the tri-engine consensus rule; NO orchestrator solo
 adjudication; NO fixture retuning regardless of outcome.
+
+## Amendment 2 (2026-07-12) — T1 adjudication: routed-seat instrument v2 with prospective validation (three-way CONVERGED)
+
+R0+R1 archives `/tmp/iter0070a-t1round/` (ephemeral; this section durable).
+Grok R0 = B-constrained; Codex R0 = D; R1: **Grok CONCEDED to D with a
+named delta** (its own falsifier #4 was the weaker form of Codex's
+selection-bias argument); Codex MAINTAINED; orchestrator's pre-round B
+updated to D on the same criterion. **Unanimous: D.**
+
+**Decisive criterion: Held-Out Confirmation of a Data-Derived Rule** — the
+(defect-class → seat) routing was fitted on the only two fixtures that also
+"confirm" it (n=1 per route, no pre-T1 classifier); the frozen T1 text's
+own held-out language requires a data-derived rule to predict on fixtures
+it did not select.
+
+Protocol (binding, supersedes nothing frozen — extends via dated amendment):
+1. Both T1 manifests stay DEAD as recorded; catalog/credential calibration
+   fixtures = development evidence only; no retuning.
+2. BEFORE any new fixture bytes: freeze operational defect-family
+   definitions + a deterministic classifier over frozen visible metadata +
+   the seat map (catalog-class→sonnet, credential-class→terra).
+3. ≥2 NEWLY frozen fixtures per route, authored OUTCOME-BLIND (criteria:
+   Stimulus-Author Isolation / Outcome-Blind Holdout Construction): authors
+   see family definitions + pud-1 + neutral-seed rules, never T1
+   transcripts/outcomes/seat map. **Codex sol excluded as author** (read the
+   transcripts); mechanical execution after freeze allowed. Authoring
+   packet itself audited for outcome leakage before use.
+4. Validation runs: routed seat FULL T1 bar (incl. exact no-op) per new
+   fixture (~320 attempts); non-routed seat N=3 canary only (criteria:
+   Positive Prediction Sufficiency / Claim-Aligned Minimum Sufficient
+   Identification under Measurement Tiering). Canary pass ⇒ escalate that
+   fixture only; no exclusivity claims from N=3.
+5. Cell 2 scored fixtures freeze/run ONLY after a route validates; A/B/C
+   hold seat fixed per fixture; no pooled cross-seat claims.
+6. Falsifier (accepted by all three): routing fails the full bar on any
+   newly registered routed validation fixture, or the classifier cannot
+   assign a seat without consulting executor outcomes ⇒ routed instrument
+   DEAD; no Cell-2 scored run; no retuning.
+
+Settled same round: Q2 — sonnet's no-op 1/16 (attempt 0049 verified
+genuine by Codex) kills credential×sonnet only; no global sonnet ban.
+Q3 — Cell 1's bare-fails admission is seat-conditioned: current Cell-1
+runner reports as TERRA-CONDITIONAL only; broad claims need
+best(bare-terra, bare-sonnet) or per-seat strata, pre-registered.
