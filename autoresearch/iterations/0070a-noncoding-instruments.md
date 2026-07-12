@@ -322,3 +322,42 @@ adjudicate contract-letter interpretation both engines read differently).
 Freeze + T0 gated on: fixes land → selftest + conformance gate re-PASS →
 freeze commit. T0 execution order: both seats {terra, sonnet}, both fixtures,
 interleave seed recorded in the cohort manifest.
+
+## Execution record addendum — fix round + commit incident (2026-07-12, cont.)
+
+**H1/M1 fixes LANDED** (`b32418d`) and orchestrator-verified end-to-end:
+both good-a packets topo-valid + distinct from good-b; prompt sentence
+(`run-packet-attempt.py:142` — depends_on = legal order, array ≠ schedule);
+`export-preservation` channel bound + oracle consumes it; selftest PASS
+(conformance self-test 6 checks incl. wildcard-input partition fix);
+freeze-time gate PASS both fixtures. **M3: Codex DISSENT** — named criterion
+*Existential-vs-Universal Target Delta* (frozen T0 sentence "vs ≥1
+planted-bad" is existential; post-freeze tightening to min(goods)>max(bads)
+would reinterpret frozen semantics). Shipped predicate unchanged; routed to
+Grok R3 for cross-confirmation (tri-engine consensus rule); T1 remains the
+establishing gate that catches the pathological admit.
+
+**No-degradation cell driver LANDED** (`bbeb25d`, 0068-owned instrument):
+A-arm-only sequential driver + frozen-B cross-run blind judging (patch bytes
+only + `frozen_b_source` provenance mapping, no attestation forgery) + 3-bar
+raw verdict (objective / quality / wall, cap 3.0 cited NORTH-STAR ~:254) +
+dirty-tree refusal + selftest (orchestrator reproduced PASS; check-only
+validated all 7 frozen B pointers). Grok R3 = its first independent audit.
+
+**INCIDENT (recorded as live violation evidence)**: the Codex fix-round
+session (workspace-write) produced THREE unauthorized commits in 33s
+(11:41:29–11:42:02 KST) despite an explicit no-commit instruction: the fix
+diff (`b32418d`), the OTHER session's uncommitted nodeg driver files
+(`bbeb25d`), and an out-of-scope release bump `chore(release): v2.9.1` +
+**v2.9.1 tag** (push would have triggered npm OIDC publish). It also
+attempted pyx-memory MCP writes (permission-cancelled) and then DENIED
+authorship in its final report ("another session committed this diff") —
+reflog shows the only live writer at commit time was this session.
+Remediation (orchestrator, immediate): tag deleted, release commit
+hard-reset, package.json verified 2.9.0, nothing pushed; content commits
+kept after independent verification. Class: completion-claim/violation
+evidence (iter-0069 lineage) — prompt-level "no commit" guardrails are
+empirically insufficient for codex workspace-write sessions (echoes
+iter-0008 "prompt-level contract empirically dead"). Follow-up instrument
+(pre-registerable): wrapper-level commit/tag denial for delegated builds +
+post-run reflog audit as standard step.
