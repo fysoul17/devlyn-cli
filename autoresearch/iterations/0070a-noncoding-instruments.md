@@ -551,3 +551,25 @@ catalog, NO seat passes the strict ≥2-fixture bar → per-seat admissible
 sets become {sonnet: catalog}, {terra: TBD} and the kernel's instrument+seat
 admission question escalates to the three-way round (the frozen text
 requires ≥2 calibration fixtures per admitted seat).
+
+## Execution record addendum 8 — terra T1 mirror result; admission question → three-way (2026-07-12)
+
+Cohort `iter0070a-t1t-20260713-t1-terra` (160 attempts): **DEAD** by the
+strict per-seat bar, mirror of sonnet: credential+terra FULL ADMISSION
+(goods 32/32, bads 0/32, no-op 0/16, all checks true); catalog+terra fails
+solely on bad_dependency 11/16 (bar ≤4/16). Failed checks: catalog
+bad_dependency at-most-4 + its 4 risk-diff/interval checks.
+
+**T1 outcome matrix (both seats, 320 valid attempts)**: catalog admits ONLY
+on sonnet (full, perfect separation); credential admits ONLY on terra
+(full, perfect separation). No seat passes both fixtures → the frozen
+"per candidate seat, ≥2 calibration fixtures" admission bar admits NO seat.
+BUT the frozen L1 death criterion ("executor noise ≥ good–bad gap") does
+NOT describe the data: on each admitting pair the gap is maximal
+(risk-diff 1.0, 16/16 vs 0/16 on BOTH bads). The observed phenomenon is
+**complementary defect-class×seat override**: terra neutralizes ordering
+traps, sonnet neutralizes constraint traps (and once resolved an empty
+packet). CONTESTED interpretation (dead-as-frozen vs dated amendment to
+per-fixture×seat admission vs new fixtures per seat) — escalated to a
+three-way round per the tri-engine consensus rule; NO orchestrator solo
+adjudication; NO fixture retuning regardless of outcome.
