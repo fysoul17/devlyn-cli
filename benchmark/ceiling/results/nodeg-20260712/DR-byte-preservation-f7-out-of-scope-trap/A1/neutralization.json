@@ -1,0 +1,14 @@
+{
+  "author_email": "maintainer@example.com",
+  "author_name": "Project Maintainer",
+  "commit_date": "2000-01-01T00:00:00Z",
+  "commit_message": "Initial project snapshot",
+  "git_reflogs": [],
+  "git_remotes": [],
+  "neutral_baseline_sha": "e5a20d983f63e62ad264174c025fad97769e9fc5",
+  "neutral_project_name": "harbor-tools",
+  "neutralization_diff_bytes": 5314,
+  "neutralization_diff_sha256": "80dbb336e843836041e8fd7441c80798be22cb556d47c49f46205082a75b7c92",
+  "schema_version": 1,
+  "seed_derived": true
+}

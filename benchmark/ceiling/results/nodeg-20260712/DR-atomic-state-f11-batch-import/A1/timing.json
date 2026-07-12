@@ -1,0 +1,9 @@
+{
+  "task": "DR-atomic-state-f11-batch-import",
+  "arm": "A",
+  "attempt": 1,
+  "elapsed_seconds": 4,
+  "invoke_exit": 1,
+  "timed_out": false,
+  "worktree": "/Users/aipalm/.local/share/nx01/w/rcdb44f1b5aa7/f04eb7d76921c/A1/repo"
+}

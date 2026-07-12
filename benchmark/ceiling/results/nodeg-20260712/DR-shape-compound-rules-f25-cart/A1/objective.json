@@ -1,0 +1,13 @@
+{
+  "task": "DR-shape-compound-rules-f25-cart",
+  "arm_attempt": "A1",
+  "resolved": true,
+  "tests_passed": 1,
+  "tests_total": 1,
+  "hidden_test_failures": 0,
+  "apply_exit": 0,
+  "oracle_exit": 0,
+  "report_path": "/Users/aipalm/.local/share/nx01/v/rcdb44f1b5aa7/f38c9cf695c9e/A1/oracle.log",
+  "neutralization_diff_sha256": "05afa7a9be5baf8505182a0a2b3be0bb1400a51d1ca455dee0b66f3ef8f15f44",
+  "neutral_baseline_sha": "d059b43faf24e64eb7a560cc37cebd5ae30fe17b"
+}

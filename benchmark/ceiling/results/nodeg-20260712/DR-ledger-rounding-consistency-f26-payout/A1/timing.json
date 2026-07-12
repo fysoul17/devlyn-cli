@@ -1,0 +1,9 @@
+{
+  "task": "DR-ledger-rounding-consistency-f26-payout",
+  "arm": "A",
+  "attempt": 1,
+  "elapsed_seconds": 1173,
+  "invoke_exit": 1,
+  "timed_out": false,
+  "worktree": "/Users/aipalm/.local/share/nx01/w/rcdb44f1b5aa7/fee93957fc8fe/A1/repo"
+}
