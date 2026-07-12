@@ -410,3 +410,37 @@ bytes; conformance gate PASS; Grok final line "T0 may start now"). Command:
 `calibration-driver.py --tier t0 --run-id iter0070a-t0-20260712
 --interleave-seed 20260712` (seats terra,sonnet; timeout 900s/attempt;
 results under `benchmark/noncoding/results/`).
+
+## Execution record addendum 3 — T0 first launch ABORTED (instrument defects), E2 landed (2026-07-12)
+
+**T0 cohort `iter0070a-t0-20260712`: ABORTED fail-closed at attempt 1**
+(`CALIBRATION_INVALID`, terra seat, catalog fixture, good packet). Post-
+mortem (artifacts `benchmark/noncoding/results/iter0070a-t0-20260712-t0-
+terra/attempts/0001/`): terra behaved perfectly (resolved, 67s, pinned model
+verified) — the abort was TWO instrument defects, zero calibration counts
+opened:
+- **Defect A — scanner self-collision**: the `host-context` contamination
+  marker `"/Users/aipalm"` (run-packet-attempt.py:290) matches the attempt's
+  OWN sanctioned opaque workspace (external root `~/.local/share/nx02` lives
+  under home; codex prints cwd paths in transcripts — all 11 hits were the
+  workspace itself, zero real leaks). Self-defeating contract: can never
+  pass on this machine. Fix = strip the attempt's sanctioned roots from the
+  scanned copy, keep flagging any OTHER home reference.
+- **Defect B — vacuous oracle leg**: both fixtures' `unittest discover -s
+  tests` collects 0 tests (import/topology defect) — the "run the tests" leg
+  passed vacuously. Fix = real discovery + fail-if-zero-tests (dead legs
+  must die loudly).
+Both are freeze-time instrument defects found BEFORE any good/bad counts
+existed → dated repair legitimate under the anti-tuning rule (this is
+harness/oracle-leg repair, not outcome-driven fixture retuning). Repair
+delegated to Codex sol in an isolated worktree; T0 re-launch under a NEW
+run-id after conformance gate + selftest re-PASS (no-label-reuse rule).
+
+**E2 LANDED** `969c946` (isolated-worktree delegation pattern first use):
+nodeg verdict now dies on any consumed A attempt whose isolation
+`opaque_paths.passed` is not True; selftest covers missing/false/true.
+No-degradation cell prerequisites now COMPLETE (A2 B-source + E1 cap
+registration + E2 + purity). Report-only follow-ups recorded, NOT fixed
+(subtractive): (i) judge reads the A patch without an isolation pre-check
+(verdict still aborts before emitting bars); (ii) A timing not validated
+for invoke_exit/timed_out/zero-elapsed symmetry with frozen-B.
