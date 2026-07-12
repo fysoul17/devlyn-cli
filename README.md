@@ -6,7 +6,7 @@
   <img alt="DEVLYN" src="assets/logo.svg" width="540" />
 </picture>
 
-### Context Engineering & Harness Engineering Toolkit for Claude Code
+### Context, Harness & Loop Engineering Toolkit for AI Coding Agents
 
 **Structured prompts, agent orchestration, and automated pipelines — debugging, code review, UI design, product specs, and more.**
 
@@ -33,7 +33,7 @@ That's it. The installer opens with a single **agent selector** — pick any com
 
 ## How It Works — Two Skills, Full Cycle
 
-devlyn-cli turns Claude Code into a hands-free development pipeline. The pipeline surface is two skills, with `/devlyn:design-ui` installed as the required creative UI surface:
+devlyn-cli turns your AI coding agent into a hands-free development pipeline. The pipeline surface is two skills, with `/devlyn:design-ui` installed as the required creative UI surface:
 
 ```
 ideate (optional)  →  resolve  →  ship
@@ -277,6 +277,21 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 - **Add a skill** — directory in `config/skills/` with `SKILL.md`
 - **Add optional skill** — add to `optional-skills/` and `OPTIONAL_ADDONS` in [`bin/devlyn.js`](bin/devlyn.js)
 - **Suggest a pack** — PR to the pack list
+
+## Support & Attribution
+
+devlyn-cli is built and maintained in the open. If it earns a place in your workflow, two small things keep it alive and help others find it:
+
+- ⭐️ **Star the repo** — [give it a star](https://github.com/fysoul17/devlyn-cli) if it saved you time. It's the single biggest signal that keeps the project going.
+- 🔗 **Leave a credit** — if devlyn-cli helped ship your project, a small attribution is genuinely appreciated (kindly requested, never required — the MIT license asks nothing of you here). Drop this badge in your README:
+
+  ```md
+  [![Built with devlyn-cli](https://img.shields.io/badge/built%20with-devlyn--cli-blueviolet)](https://github.com/fysoul17/devlyn-cli)
+  ```
+
+  Renders as [![Built with devlyn-cli](https://img.shields.io/badge/built%20with-devlyn--cli-blueviolet)](https://github.com/fysoul17/devlyn-cli)
+
+Thank you for using devlyn — it genuinely means a lot. 🙏
 
 ## Star History
 
