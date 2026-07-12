@@ -284,13 +284,32 @@ def claude_runtime_model(stdout: str) -> str | None:
     return models[0] if len(models) == 1 else ",".join(models)
 
 
-def scan_contamination(transcript: str, *, fixture_id: str, run_id: str, packet_name: str) -> list[str]:
+def scan_contamination(
+    transcript: str,
+    *,
+    fixture_id: str,
+    run_id: str,
+    packet_name: str,
+    workspace: Path,
+    external_root: Path,
+    host_home: Path,
+) -> list[str]:
+    sanitized = transcript
+    path_boundary = r"(?=$|[/\s'\"`)\]}>:,;])"
+    for sanctioned_root in sorted({str(workspace), str(external_root)}, key=len, reverse=True):
+        sanitized = re.sub(re.escape(sanctioned_root) + path_boundary, "", sanitized)
     markers = {
         "repository-identity": ["devlyn-cli", "benchmark/noncoding", "autoresearch/iterations"],
-        "host-context": ["/.agents/skills/", "/.codex/skills/", "/Users/aipalm", "/.superset/"],
+        "host-context": [
+            "/.agents/skills/",
+            "/.codex/skills/",
+            str(host_home),
+            "~/.claude/",
+            "/.superset/",
+        ],
         "blinded-label": [fixture_id, run_id, packet_name],
     }
-    lowered = transcript.casefold()
+    lowered = sanitized.casefold()
     hits: list[str] = []
     for family, values in markers.items():
         if any(value and value.casefold() in lowered for value in values):
@@ -379,7 +398,15 @@ def execute(args: argparse.Namespace) -> tuple[dict[str, Any], Path]:
         invalid_reasons.append(f"runtime-model:{runtime_model or 'missing'}")
     invalid_reasons.extend(
         f"contamination:{value}"
-        for value in scan_contamination(transcript, fixture_id=args.fixture, run_id=args.run_id, packet_name=packet_path.name)
+        for value in scan_contamination(
+            transcript,
+            fixture_id=args.fixture,
+            run_id=args.run_id,
+            packet_name=packet_path.name,
+            workspace=workspace,
+            external_root=external_root,
+            host_home=real_home,
+        )
     )
     try:
         relative_workspace = workspace.resolve().relative_to(external_root)

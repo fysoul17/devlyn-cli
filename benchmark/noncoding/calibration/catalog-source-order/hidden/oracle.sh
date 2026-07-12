@@ -26,4 +26,14 @@ generated = json.loads(generated_before)
 assert generated["commands"] == source["commands"]
 PY
 
-python3 -m unittest discover -s tests -q
+python3 - <<'PY'
+import sys
+import unittest
+
+suite = unittest.defaultTestLoader.discover("tests", top_level_dir=".")
+if suite.countTestCases() == 0:
+    print("oracle error: unittest discovery ran zero tests", file=sys.stderr)
+    raise SystemExit(1)
+result = unittest.TextTestRunner(verbosity=0).run(suite)
+raise SystemExit(not result.wasSuccessful())
+PY

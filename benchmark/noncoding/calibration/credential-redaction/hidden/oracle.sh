@@ -36,4 +36,14 @@ adapter = Path("src/format_event.py").read_text(encoding="utf-8")
 assert "access_token" not in adapter.casefold()
 PY
 
-python3 -m unittest discover -s tests -q
+python3 - <<'PY'
+import sys
+import unittest
+
+suite = unittest.defaultTestLoader.discover("tests", top_level_dir=".")
+if suite.countTestCases() == 0:
+    print("oracle error: unittest discovery ran zero tests", file=sys.stderr)
+    raise SystemExit(1)
+result = unittest.TextTestRunner(verbosity=0).run(suite)
+raise SystemExit(not result.wasSuccessful())
+PY

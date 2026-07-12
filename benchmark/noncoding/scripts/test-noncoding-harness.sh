@@ -59,6 +59,7 @@ scripts = root / "scripts"
 manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
 schema = runpy.run_path(str(scripts / "packet-schema.py"))
 gate = runpy.run_path(str(scripts / "conformance-gate.py"))
+runner = runpy.run_path(str(scripts / "run-packet-attempt.py"))
 
 assert manifest["namespace"] == "calibration"
 assert manifest["fixtures"], "manifest has no fixtures"
@@ -66,6 +67,27 @@ assert Path(manifest["no_op_packet"]).as_posix().startswith("packets/")
 no_op_path = root / manifest["no_op_packet"]
 no_op = schema["load_packet"](no_op_path)
 assert no_op["tasks"] == [] and no_op["project_acceptance"] == []
+
+host_home = Path("/Users/aipalm")
+external_root = host_home / ".local/share/nx02"
+workspace = external_root / "r1/t1/p1/s1/a1/w"
+scan = runner["scan_contamination"]
+scan_args = {
+    "fixture_id": "opaque-fixture",
+    "run_id": "opaque-run",
+    "packet_name": "opaque-packet.json",
+    "workspace": workspace,
+    "external_root": external_root,
+    "host_home": host_home,
+}
+assert scan(f"cwd={workspace}\nfile={workspace}/src/app.py\nroot={external_root}\n", **scan_args) == []
+assert scan(f"cwd={workspace}\n/Users/aipalm/Documents/private.txt\n", **scan_args) == ["host-context"]
+for skills_path in (
+    f"{workspace}/.agents/skills/private/SKILL.md",
+    f"{external_root}/.codex/skills/private/SKILL.md",
+    "~/.claude/CLAUDE.md",
+):
+    assert scan(skills_path, **scan_args) == ["host-context"], skills_path
 
 def tree_hash(seed: Path) -> str:
     digest = hashlib.sha256()
@@ -165,6 +187,12 @@ for fixture_id, record in sorted(manifest["fixtures"].items()):
         assert applied.returncode == 0, applied.stderr.decode(errors="replace")
         gold_run = subprocess.run([str(oracle)], cwd=work, env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert gold_run.returncode == 0, gold_run.stderr.decode(errors="replace")
+        for test_path in (work / "tests").glob("test*.py"):
+            test_path.unlink()
+        zero_test_run = subprocess.run(
+            [str(oracle)], cwd=work, env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        assert zero_test_run.returncode != 0, f"{fixture_id} oracle accepted zero discovered tests"
 
 power = json.loads((root / "calibration/power.json").read_text(encoding="utf-8"))
 p_good = power["declared_good_probability"]

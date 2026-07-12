@@ -26,7 +26,7 @@
     "catalog-source-order": {
       "path": "calibration/catalog-source-order",
       "task_sha256": "876c214c937b25c30d51402d54ac7866ce533b9d072cae5ec4e9f296dbb86188",
-      "seed_tree_sha256": "9ac98c4b468b6cfd14e20b692c2a5a4dd8472a0b593847fa95d5fd6dde4bf8d9",
+      "seed_tree_sha256": "db630894b9816eb2d22e7bf383e4c9235bcb44e127d60eac092640c542abfb6a",
       "packets": {
         "good_a": "calibration/catalog-source-order/packets/good-a.json",
         "good_b": "calibration/catalog-source-order/packets/good-b.json",
@@ -37,7 +37,7 @@
     "credential-redaction": {
       "path": "calibration/credential-redaction",
       "task_sha256": "1dc67b59262baa9e4509048e8a8cb0846f84be820487341f618a051425602862",
-      "seed_tree_sha256": "99e285c9bd6e1faf659757d355d1bca1d275d8edfd5e96a9fc4082a4e97236fb",
+      "seed_tree_sha256": "6a620fcf23c478e198861449a676af8eef9447487f711ce33fb7f4b5ca7b4358",
       "packets": {
         "good_a": "calibration/credential-redaction/packets/good-a.json",
         "good_b": "calibration/credential-redaction/packets/good-b.json",
