@@ -526,3 +526,28 @@ terra cohort relaunches after the codex limit resets. Seat calibration
 compares per-seat manifests; separate cohorts are methodologically
 equivalent (each carries its own frozen identity). The nodeg cell (A-arm
 executor = codex) is blocked by the same limit window.
+
+## Execution record addendum 7 — T1 sonnet cohort: DEAD on credential fixture (2026-07-12 afternoon)
+
+Cohort `iter0070a-t1s-20260713-t1-sonnet` (160 attempts, 16× per packet,
+frozen thresholds): **status DEAD**. Per-fixture:
+- **catalog-source-order + sonnet: FULL ADMISSION** — good_a/good_b 16/16 &
+  16/16, both bads 0/16, no-op 0/16, all interval/risk-diff checks true.
+  First fixture×seat pair to pass the complete frozen T1 bar.
+- **credential-redaction + sonnet: FAILS** — bad_constraint resolves 14/16
+  (bar ≤4/16; both risk-diff/interval checks false vs both goods) and no-op
+  resolves 1/16 (no-op-must-fail false). Failed checks (manifest verdict):
+  `bad_constraint:at-most-4`, 4× risk-diff/interval vs goods, `no-op-fails`.
+
+Reading: sonnet neutralizes the credential prefix-matching trap (and once
+even resolved with an EMPTY packet) — executor override defeats
+packet-mediation on that fixture; exactly the L1/L4 class the calibration
+exists to detect BEFORE any scored run. Mirrors T0's seat×trap asymmetry
+(terra neutralized the catalog ordering trap 3/3 at T0). No fixture
+retuning (anti-tuning); terra T1 cohort decides whether any seat admits
+both fixtures — codex limit reset CONFIRMED by probe (16:06 KST), terra
+cohort launches next as `iter0070a-t1t-20260713`. If terra mirror-fails on
+catalog, NO seat passes the strict ≥2-fixture bar → per-seat admissible
+sets become {sonnet: catalog}, {terra: TBD} and the kernel's instrument+seat
+admission question escalates to the three-way round (the frozen text
+requires ≥2 calibration fixtures per admitted seat).
