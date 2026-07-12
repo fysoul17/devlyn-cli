@@ -483,3 +483,33 @@ any packet/fixture (anti-tuning rule; T1 runs on frozen bytes).
 **Next**: T1 (16× per packet per seat, frozen thresholds) as a detached
 background run; Cell 1 M1/M2 fixes land before T1 launch (shared-script
 delta changes runner SHA — must be committed first, then T1 freezes on it).
+
+## Execution record addendum 5 — Cell 1 landed (2026-07-12 night)
+
+**Cell 1 Counterfactual Intent Holdout SHIPPED** `21ca7ee`: 4 fixtures
+(ledger-time R/Q = data-semantics ambiguity; reset-flow R/Q = user-visible-
+behavior ambiguity; task.txt byte-identical per pair, single evidence doc
+flips), 20 replay assets, `hidden-conformance-2` (dual binding: task excerpt
++ seed-evidence excerpt + validator + freeze-time validation; v1
+backward-compatible), A/B/C runner with `--replay` mode. Grok independent
+freeze audit: **B1-trap CLEAR** (does not reward halt-language in either
+direction — planted generic-question/assumption-disclosure/silent-guess all
+FAIL), **Counterfactual Identifiability PASS** (sole-evidence-flip verified
+by byte-compare), task-instruction fairness = UNFAIR-mandated symmetric-halt
+shape (instrument-sound; L4 saturation note stands), blinding sound
+(treatment-vs-identity split accepted). Freeze blockers fixed + verified:
+M1 Q-validator morphology/synonym coverage (former false-negatives now PASS,
+8/8 replay matrix), M2 behavior-check consumes frozen conformance values
+(single source of truth). Grok L1-L3 residuals recorded, not fixed.
+
+**Process defect (recorded)**: the M1/M2 fix session drifted into the
+installed devlyn:resolve pipeline inside the worktree (`.devlyn/` created —
+correction 5c8a3678's known failure mode; the fix packet omitted the
+no-skill/no-.devlyn guardrail that the build packets carried). Session was
+killed mid-ceremony; its actual edits were complete and verified
+mechanically end-to-end before landing. Guardrail block is MANDATORY in
+every delegation packet, including small fix rounds.
+
+**Cell 1 next (not yet run)**: bare-fails admission gate (B bare terra on
+all 4 variants) + no-suppression controls per the kernel; then A/C arms.
+Blocked behind T1 seat calibration (execution order frozen in § Scope).
