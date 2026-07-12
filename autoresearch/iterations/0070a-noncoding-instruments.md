@@ -513,3 +513,16 @@ every delegation packet, including small fix rounds.
 **Cell 1 next (not yet run)**: bare-fails admission gate (B bare terra on
 all 4 variants) + no-suppression controls per the kernel; then A/C arms.
 Blocked behind T1 seat calibration (execution order frozen in § Scope).
+
+## Execution record addendum 6 — T1 terra cohort ABORTED: codex usage limit (2026-07-12)
+
+Cohort `iter0070a-t1-20260713-t1-terra` INVALID at attempt 128/160:
+executor exit 1, transcript = "You've hit your usage limit ... try again at
+7:02 AM" (external resource exhaustion, NOT an instrument defect; the
+127 recorded attempts are tombstoned with the cohort — fail-closed, no
+partial reuse, no-label-reuse). Plan: T1 splits into per-seat cohorts —
+sonnet cohort (claude budget, unaffected) runs now under a new run-id;
+terra cohort relaunches after the codex limit resets. Seat calibration
+compares per-seat manifests; separate cohorts are methodologically
+equivalent (each carries its own frozen identity). The nodeg cell (A-arm
+executor = codex) is blocked by the same limit window.
