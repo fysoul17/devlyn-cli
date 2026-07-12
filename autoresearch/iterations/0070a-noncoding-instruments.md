@@ -1,12 +1,14 @@
 # iter-0070a — non-coding-axis instruments: admission kernel + intent/packet cells
 
-status: **PRE-REGISTRATION DRAFT v2** (2026-07-11; three-way R0 folded —
-Grok 4.5 + Codex-sol both GO-WITH-EDITS, archives
-`/tmp/iter0070a-r0/{grok,codex}-response.log`, ephemeral; this file is the
-durable record). **NOT ACTIVE / DORMANT**: per the 0070 STUB entry
-condition, no cell RUNS until iter-0068 fully closes (admitted-set R1-gate →
-A/C + no-suppression decision → closure). This file authors design only —
-zero measurement, zero touch to the 0068 corpus/gate/sequencing.
+status: **PRE-REGISTRATION v2 + R1 AMENDMENT (2026-07-12, § R1 amendment
+below) — ACTIVE**: iter-0068 RE-CLOSED VALID-NEGATIVE-RESTORED; design /
+build / fixture construction UNBLOCKED; measured A/C arms, neutral-judge
+runs, and any measured claude-path execution (incl. T0/T1 sonnet executor
+calibration) remain BLOCKED until the claude purity fix passes its post-fix
+canaries (§ R1 amendment #6). Original v2 status (frozen 2026-07-11,
+superseded): DORMANT until 0068 fully closes; design only, zero measurement.
+R0 archives `/tmp/iter0070a-r0/{grok,codex}-response.log`, ephemeral; this
+file is the durable record.
 
 **Versioned-amendment rule (Codex R0 Q1)**: this draft is frozen at commit
 time. Any change after 0068 results are opened is a DATED amendment with a
@@ -193,6 +195,67 @@ Active-Experiment Non-Interference (Q1) · Shortest Identifiable Causal Chain
 (Q2 order) · Separable Mediated Sensitivity (Q3) · Interface Neutrality /
 Consumer-Schema Necessity (Q4) · Held-Out Maximin Sensitivity (Q5).
 
+## R1 amendment (2026-07-12) — first dated amendment (versioned-amendment rule)
+
+Three-way round on the 0068 re-closure (Grok 4.5 GO-WITH-EDITS + Codex sol
+GO-WITH-EDITS, archives `/tmp/iter0070a-r1/{packet.md,grok-r0.log,codex-r0.log}`,
+ephemeral — this section is the durable record). Decisive criterion adopted:
+**Amendment Minimality with Referential Closure** (Codex) — preserve every
+frozen experimental field whose meaning survived; amend every
+outcome-dependent reference now false, ambiguous, or broader than the
+evidence. Named deltas vs frozen v2:
+
+1. **Status** (supersedes the v2 DORMANT entry condition): see the status
+   block above. Build unblocked; measured claude-path execution
+   purity-blocked.
+2. **Kernel UNFAIR gains a freeze-time hidden-input conformance gate**
+   (root cause of F21, 0068:694-699): every hidden-input channel declares
+   (a) the visible-contract excerpt it conforms to + a content-hash binding
+   to the visible task text, (b) a regex or executable validator, (c)
+   freeze-time validation of every hidden value. Missing binding, missing
+   validator, or any failing value ⇒ fixture freeze fails closed. Placement
+   is fixture-freeze, BEFORE any gate/calibration attempt; the admitted-set
+   UNFAIR audit stays as the second line, not the only line (Grok). A
+   validator without visible-contract binding can re-encode the author's
+   private interpretation — the exact F21 mechanism (Codex).
+3. **Control-population ownership + exact IDs** (replaces the orchestrator
+   draft "bind bars to 6 DR + FS1 (+F12)": it conflated populations — Grok
+   — and used ambiguous notation that can double-count F12 — Codex): the
+   0068 deferred no-degradation cell's concrete control set is exactly
+   `saturated_controls = [F7, F25, F26, F11, F12, F23, FS1]`,
+   `excluded_unfair = [F21]`; that cell remains OWNED by 0068
+   (cross-referenced here, 0068:550-557) and purity-blocked. 0070a's kernel
+   no-suppression bars are unchanged and apply to 0070a's OWN saturated
+   controls produced by its bare-fails admission.
+4. **L4 risk-weight note (evidence-scoped — Codex)**: every fair synthetic
+   categorical-trap row in the frozen 0068 corpus saturated bare terra;
+   executor saturation (L4) is therefore the elevated 0070a risk;
+   calibration fixtures must locate difficulty in intent/packet quality,
+   not code difficulty. No categorical-trap generality claim. No T0/T1/T2
+   number changes.
+5. **Explicit freeze**: arms/moat predicate, seats, T0/T1/T2 thresholds
+   (16×, ≥12/16, ≤4/16, risk-diff ≥0.50), Intent-first order, `pud-1`,
+   P0-P2, L1-L5, calibration⟂scored — all unchanged.
+6. **Prerequisite purity fix (design converged same round; criterion:
+   Structural Purity Without Treatment Mutation — Codex)**: every
+   measured-path claude invocation (A arm `run-ceiling-arm.sh` launch,
+   judge `ceiling-judge.py` call_sonnet + identity probe, future
+   calibration executor seats) launches via `env -i` + frozen A-extended
+   allowlist + per-attempt opaque HOME + `CLAUDE_CONFIG_DIR` + direct
+   non-Superset binary placed FIRST on the frozen PATH (nested calls must
+   not rediscover the wrapper) + Keychain-blob→`.credentials.json` seeding
+   (0600, fail-closed, cleaned up per attempt) + `isolation.json` claude
+   fields + content-derived user-memory-leak contamination markers + TWO
+   post-fix canaries (A-arm and judge; the 2026-07-11 baseline-fail canary
+   must flip). Auth mechanism settled empirically (orchestrator 3-step
+   canary 2026-07-12): Keychain lookup does NOT survive CLAUDE_CONFIG_DIR
+   isolation (config-dir-derived keychain service suffix, binary-verified
+   by Codex); the seeded fallback file ALONE suffices (no `.claude.json`
+   seed needed). `--bare` REJECTED as primary mechanism (removes CLAUDE.md
+   discovery + Keychain — treatment mutation). Project-harness staging
+   (skills + project CLAUDE.md/AGENTS.md in the worktree) is intentionally
+   PRESERVED — A is user-scope-clean, not bare.
+
 ## Pair rounds
 
 - **R0 (2026-07-11, three-way): Grok GO-WITH-EDITS + Codex-sol
@@ -208,6 +271,9 @@ Consumer-Schema Necessity (Q4) · Held-Out Maximin Sensitivity (Q5).
   both, order by attribution cleanliness), see Scope section.** All folded
   into this v2. Kept unchanged: A/B/C arms, terra/sol seats, no-run-until-
   0068, Mediated Causal Sensitivity as death criterion.
-- R1 (pending): on the frozen 0068 admitted set, reconcile the pre-declared
-  0068-amend-hook list (which fields may change when no-suppression controls
-  land) before any 0070 calibration.
+- **R1 (2026-07-12): DONE — § R1 amendment above.** The pre-declared
+  0068-amend-hook reconciliation resolved against the actual outcome
+  (fair admitted set ∅; F21 tombstoned): five named deltas + the bundled
+  claude purity-fix design. Grok GO-WITH-EDITS + Codex sol GO-WITH-EDITS;
+  contested points adjudicated with named criteria (control-population
+  ownership; auth mechanism settled by orchestrator canary experiment).
