@@ -23,6 +23,9 @@ REPO_ROOT = CEILING_ROOT.parent.parent
 CORPUS_ROOT = CEILING_ROOT / "corpus"
 RESULTS_ROOT = CEILING_ROOT / "results"
 EXTERNAL_ROOT = Path(os.environ.get("CEILING_EXTERNAL_ROOT", Path.home() / ".local/share/nx01"))
+USER_MEMORY_FILE = Path(
+    os.environ.get("CEILING_REAL_HOME", str(Path.home()))
+) / ".claude/CLAUDE.md"
 REAL_MANIFEST = CORPUS_ROOT / "manifest.json"
 ARM_RUNNER = HERE / "run-ceiling-arm.sh"
 EVALUATOR = HERE / "ceiling-eval.sh"
@@ -391,6 +394,16 @@ def contamination_reasons(transcript: str, run_id: str, task: str) -> list[str]:
             reason = f"bare-context-contaminated:{marker_id}"
             if reason not in reasons:
                 reasons.append(reason)
+    if USER_MEMORY_FILE.is_file():
+        user_markers = {
+            line.strip()
+            for line in USER_MEMORY_FILE.read_text(
+                encoding="utf-8", errors="replace"
+            ).splitlines()
+            if len(line.strip()) >= 24
+        }
+        if any(marker in transcript for marker in user_markers):
+            reasons.append("bare-context-contaminated:user-memory-leak")
     return reasons
 
 

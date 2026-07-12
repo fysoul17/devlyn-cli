@@ -26,14 +26,38 @@ if [ "${1:-}" = "--version" ]; then
   exit 0
 fi
 prompt=""
+output_json=0
+arm_mode=0
 while [ $# -gt 0 ]; do
   case "$1" in
     -p) prompt="$2"; shift 2;;
+    --output-format) output_json=1; shift 2;;
+    --setting-sources) arm_mode=1; shift 2;;
     *) shift;;
   esac
 done
-printf '%s' "$prompt" >> "${FAKE_CLAUDE_PROMPTS:?}"
-if [ "${FAKE_CLAUDE_JUDGE:-0}" = "1" ]; then
+printf '%s' "$prompt" >> "$HOME/fake-claude-prompts.txt"
+env | sort > "$HOME/fake-claude-env.txt"
+command -v claude > "$HOME/nested-claude-path.txt"
+stat -f '%Lp' "$CLAUDE_CONFIG_DIR/.credentials.json" > "$HOME/credentials-mode.txt"
+if [[ "$prompt" == *emit-user-memory-leak* ]]; then
+  echo 'Persistent private instruction unique to this isolation selftest.'
+  exit 0
+fi
+if [ "$arm_mode" = 1 ]; then
+  printf 'changed by A\n' >> app.txt
+  printf 'harness mutation\n' >> CLAUDE.md
+  mkdir -p .claude/skills/fake .devlyn
+  printf 'harness mutation\n' > .claude/skills/fake/extra.txt
+  printf 'state\n' > .devlyn/state.json
+  if [[ "$prompt" == *emit-wrong-model* ]]; then
+    echo '{"result":"fake claude done","modelUsage":{"claude-opus-fake":{}}}'
+  else
+    echo '{"result":"fake claude done","modelUsage":{"claude-sonnet-fake":{}}}'
+  fi
+  exit 0
+fi
+if [ "$output_json" = 1 ]; then
   cat <<'JSON'
 {"result":"{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\",\"P2\",\"P3\"]],\"strict_win_deltas\":[]},\"robustness\":{\"tiers\":[[\"P1\",\"P2\",\"P3\"]],\"strict_win_deltas\":[]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\",\"P2\",\"P3\"]],\"strict_win_deltas\":[]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\",\"P2\",\"P3\"]],\"strict_win_deltas\":[]}}}","modelUsage":{"claude-sonnet-fake":{"inputTokens":1,"outputTokens":1}}}
 JSON
@@ -47,6 +71,10 @@ printf 'state\n' > .devlyn/state.json
 echo "fake claude done"
 EOF
 chmod +x "$FAKEBIN/claude"
+mkdir -p "$TMP_DIR/claude-versions" "$TMP_DIR/claude-direct"
+cp "$FAKEBIN/claude" "$TMP_DIR/claude-versions/2.1.207"
+ln -s "$TMP_DIR/claude-versions/2.1.207" "$TMP_DIR/claude-direct/claude"
+TEST_CLAUDE_BIN="$TMP_DIR/claude-direct/claude"
 
 cat > "$FAKEBIN/codex" <<'EOF'
 #!/usr/bin/env bash
@@ -98,16 +126,18 @@ RESULT_RUNS+=("$RUN_ID")
 PROMPTS="$TMP_DIR/prompts"
 mkdir -p "$PROMPTS"
 export PATH="$FAKEBIN:$PATH"
-export FAKE_CLAUDE_PROMPTS="$TMP_DIR/claude-prompts.txt"
 export FAKE_CODEX_PROMPT_DIR="$PROMPTS"
 TEST_EXTERNAL_ROOT="$TMP_DIR/nx01"
 TEST_AUTH="$TMP_DIR/auth.json"
 printf '{"token":"selftest"}\n' > "$TEST_AUTH"
 chmod 0600 "$TEST_AUTH"
+TEST_CLAUDE_CREDENTIALS="$TMP_DIR/claude-credentials.json"
+printf '{"claudeAiOauth":{"accessToken":"selftest"}}\n' > "$TEST_CLAUDE_CREDENTIALS"
+chmod 0600 "$TEST_CLAUDE_CREDENTIALS"
 
 WORK_A="$TEST_EXTERNAL_ROOT/w/rt01/fx01/A1/repo"
 make_repo "$WORK_A"
-CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" CEILING_TEST_WORKTREE="$WORK_A" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
+CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TEST_CLAUDE_CREDENTIALS" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" CEILING_TEST_WORKTREE="$WORK_A" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
   --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm A --attempt 1 --timeout-seconds 30 >/tmp/ceiling-arm-a.log
 test -d "$WORK_A/.claude/skills"
 test "$(cat "$WORK_A/.devlyn/engines.json")" = '{"executor":"codex"}'
@@ -115,6 +145,109 @@ grep -q 'changed by A' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/p
 ! grep -q 'CLAUDE.md' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/patch.diff"
 ! grep -q '.claude' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/patch.diff"
 ! grep -q '.devlyn' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/patch.diff"
+python3 - "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/isolation.json" "$TEST_CLAUDE_BIN" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+direct = data["direct_claude"]
+expected = Path(sys.argv[2]).parent.resolve() / Path(sys.argv[2]).name
+if direct["path"] != str(expected) or direct["superset_wrapper"]:
+    raise SystemExit(direct)
+if not data["credentials_seeded"] or data["auth_mechanism"] != "test-file":
+    raise SystemExit("Claude credential attestation missing")
+if Path(data["claude_config_dir"], ".credentials.json").exists():
+    raise SystemExit("Claude credential file survived attempt cleanup")
+if data["claude_env_keys"] != sorted(data["claude_env_keys"]):
+    raise SystemExit("Claude env keys are not sorted")
+path_parts = data["environment"]["keys"]
+if "CLAUDE_CONFIG_DIR" not in path_parts or not data["forbidden_transcript_scan"]["passed"]:
+    raise SystemExit(data)
+PY
+test "$(cat "$TEST_EXTERNAL_ROOT/claude-homes/r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)/f$(printf '%s' FS1-schedule-max-runs | shasum -a 256 | cut -c1-12)/A1/nested-claude-path.txt")" = "$(cd "$(dirname "$TEST_CLAUDE_BIN")" && pwd -P)/claude"
+test "$(cat "$TEST_EXTERNAL_ROOT/claude-homes/r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)/f$(printf '%s' FS1-schedule-max-runs | shasum -a 256 | cut -c1-12)/A1/credentials-mode.txt")" = 600
+
+AUTH_FAIL_RESULT="$TEST_EXTERNAL_ROOT/x/rt01/fxauth/A1"
+if CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TMP_DIR/missing-credentials.json" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" \
+  bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
+    --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm A --attempt 1 \
+    --opaque-run-id rt01 --opaque-task-id fxauth --result-dir "$AUTH_FAIL_RESULT" \
+    --timeout-seconds 30 > "$TMP_DIR/a-auth-fail.stdout" 2> "$TMP_DIR/a-auth-fail.stderr"; then
+  echo "A-arm missing Claude credentials did not fail closed" >&2
+  exit 1
+fi
+python3 - "$AUTH_FAIL_RESULT/claude-isolation.json" <<'PY'
+import json
+import sys
+
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+if data["credentials_seeded"] is not False:
+    raise SystemExit(data)
+PY
+test ! -e "$TEST_EXTERNAL_ROOT/claude-homes/rt01/fxauth/A1/.claude/.credentials.json"
+
+PURITY_WORK="$TMP_DIR/purity-work"
+PURITY_HOME="$TMP_DIR/purity-home"
+PURITY_CODEX_HOME="$TMP_DIR/purity-codex"
+PURITY_PROMPT="$TMP_DIR/purity-prompt.txt"
+PURITY_MEMORY="$TMP_DIR/user-CLAUDE.md"
+mkdir -p "$PURITY_WORK"
+printf 'Persistent private instruction unique to this isolation selftest.\n' > "$PURITY_MEMORY"
+printf 'clean probe\n' > "$PURITY_PROMPT"
+CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TEST_CLAUDE_CREDENTIALS" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" \
+  python3 "$SCRIPT_DIR/claude-isolation.py" launch \
+    --mode arm --home "$PURITY_HOME" --codex-home "$PURITY_CODEX_HOME" \
+    --workdir "$PURITY_WORK" --prompt-file "$PURITY_PROMPT" \
+    --metadata-out "$TMP_DIR/purity-clean.json" --user-memory-file "$PURITY_MEMORY" \
+    > "$TMP_DIR/purity-clean.stdout" 2> "$TMP_DIR/purity-clean.stderr"
+test -s "$TMP_DIR/purity-clean.stdout"
+test ! -e "$PURITY_HOME/.claude/.credentials.json"
+
+printf 'emit-user-memory-leak\n' > "$PURITY_PROMPT"
+if CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TEST_CLAUDE_CREDENTIALS" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" \
+  python3 "$SCRIPT_DIR/claude-isolation.py" launch \
+    --mode arm --home "$PURITY_HOME" --codex-home "$PURITY_CODEX_HOME" \
+    --workdir "$PURITY_WORK" --prompt-file "$PURITY_PROMPT" \
+    --metadata-out "$TMP_DIR/purity-leak.json" --user-memory-file "$PURITY_MEMORY" \
+    > "$TMP_DIR/purity-leak.stdout" 2> "$TMP_DIR/purity-leak.stderr"; then
+  echo "user-memory-leak transcript was not rejected" >&2
+  exit 1
+fi
+grep -q 'CLAUDE_ISOLATION_ERROR: user-memory-leak:' "$TMP_DIR/purity-leak.stderr"
+test ! -e "$PURITY_HOME/.claude/.credentials.json"
+
+printf 'emit-wrong-model\n' > "$PURITY_PROMPT"
+if CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TEST_CLAUDE_CREDENTIALS" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" \
+  python3 "$SCRIPT_DIR/claude-isolation.py" launch \
+    --mode arm --home "$PURITY_HOME" --codex-home "$PURITY_CODEX_HOME" \
+    --workdir "$PURITY_WORK" --prompt-file "$PURITY_PROMPT" \
+    --metadata-out "$TMP_DIR/purity-wrong-model.json" --user-memory-file "$PURITY_MEMORY" \
+    > "$TMP_DIR/purity-wrong-model.stdout" 2> "$TMP_DIR/purity-wrong-model.stderr"; then
+  echo "wrong Claude runtime model did not fail closed" >&2
+  exit 1
+fi
+grep -q 'CLAUDE_ISOLATION_ERROR: runtime model is not sonnet' "$TMP_DIR/purity-wrong-model.stderr"
+test ! -e "$PURITY_HOME/.claude/.credentials.json"
+
+if CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TMP_DIR/missing-credentials.json" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" \
+  python3 "$SCRIPT_DIR/claude-isolation.py" launch \
+    --mode arm --home "$PURITY_HOME" --codex-home "$PURITY_CODEX_HOME" \
+    --workdir "$PURITY_WORK" --prompt-file "$PURITY_PROMPT" \
+    --metadata-out "$TMP_DIR/purity-auth-fail.json" --user-memory-file "$PURITY_MEMORY" \
+    > "$TMP_DIR/purity-auth-fail.stdout" 2> "$TMP_DIR/purity-auth-fail.stderr"; then
+  echo "missing Claude credentials did not fail closed" >&2
+  exit 1
+fi
+python3 - "$TMP_DIR/purity-auth-fail.json" <<'PY'
+import json
+import sys
+
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+if data["credentials_seeded"] is not False:
+    raise SystemExit(data)
+PY
+test ! -e "$PURITY_HOME/.claude/.credentials.json"
 
 WORK_B="$TEST_EXTERNAL_ROOT/w/rt01/fx01/B1/repo"
 RESULT_B="$TEST_EXTERNAL_ROOT/x/rt01/fx01/B1"
@@ -431,9 +564,8 @@ for task in SW1-django-13230; do
   write_attempt "$JUDGE_RUN" "$task" B1 10 0 false true
   write_attempt "$JUDGE_RUN" "$task" C1 10 0 false true
 done
-export FAKE_CLAUDE_JUDGE=1
 export FAKE_CODEX_JUDGE=1
-HOME="$TMP_DIR" FAKE_CODEX_LABEL=judge python3 "$SCRIPT_DIR/ceiling-judge.py" \
+HOME="$TMP_DIR" CEILING_REAL_HOME="$TMP_DIR" CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TEST_CLAUDE_CREDENTIALS" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" FAKE_CODEX_LABEL=judge python3 "$SCRIPT_DIR/ceiling-judge.py" \
   --run-id "$JUDGE_RUN" --judges sonnet,codex --codex-command "$FAKEBIN/codex" \
   --select SW1-django-13230=B1 --select SW1-django-13230=C1 >/tmp/ceiling-judge.log
 if grep -E 'A1|B1|C1|arm A|arm B|arm C' "$CEILING_ROOT/results/$JUDGE_RUN/SW1-django-13230/judge-sonnet.json"; then
@@ -446,7 +578,7 @@ if grep -E 'A1|B1|C1|arm A|arm B|arm C' "$CEILING_ROOT/results/$JUDGE_RUN/SW1-dj
 fi
 grep -q 'A1' "$CEILING_ROOT/results/$JUDGE_RUN/SW1-django-13230/judge-mapping.json"
 
-python3 -m py_compile "$SCRIPT_DIR/ceiling-judge.py" "$SCRIPT_DIR/ceiling-gate.py"
-bash -n "$SCRIPT_DIR/run-ceiling-arm.sh" "$SCRIPT_DIR/ceiling-eval.sh" "$SCRIPT_DIR/run-ceiling-tranche.sh" "$SCRIPT_DIR/test-ceiling-harness.sh"
+python3 -m py_compile "$SCRIPT_DIR/claude-isolation.py" "$SCRIPT_DIR/ceiling-judge.py" "$SCRIPT_DIR/ceiling-gate.py"
+bash -n "$SCRIPT_DIR/claude-purity-canary.sh" "$SCRIPT_DIR/run-ceiling-arm.sh" "$SCRIPT_DIR/ceiling-eval.sh" "$SCRIPT_DIR/run-ceiling-tranche.sh" "$SCRIPT_DIR/test-ceiling-harness.sh"
 
 echo "PASS test-ceiling-harness"

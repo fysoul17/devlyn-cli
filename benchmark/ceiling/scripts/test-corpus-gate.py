@@ -18,7 +18,7 @@ from typing import Any
 
 GATE_SOURCE = Path(__file__).resolve().with_name("corpus-gate.py")
 CONTROL_TASK = "FS1-schedule-max-runs"
-EXPECTED_ASSERTIONS = 43
+EXPECTED_ASSERTIONS = 45
 EXTERNAL_ROOT = Path.home() / ".local/share/nx01"
 FROZEN_ENV_KEYS = sorted(
     (
@@ -391,6 +391,32 @@ def main() -> int:
             "bare-context-contaminated:host-shell-startup-leak"
             in host_startup["attempt_invalid_reasons"],
             "host shell startup contamination was not rejected",
+        )
+
+        user_memory = root / "user-CLAUDE.md"
+        user_memory.write_text(
+            "Persistent private instruction unique to corpus gate selftest.\n",
+            encoding="utf-8",
+        )
+        gate_module["contamination_reasons"].__globals__["USER_MEMORY_FILE"] = user_memory
+        memory_leak = bare_attempt_record(
+            gate_module,
+            attempt_fixtures / "user-memory-leak",
+            "model: gpt-5.6-terra\nPersistent private instruction unique to corpus gate selftest.\n",
+        )
+        checks.require(
+            "bare-context-contaminated:user-memory-leak"
+            in memory_leak["attempt_invalid_reasons"],
+            "content-derived user-memory leak was not rejected",
+        )
+        memory_clean = bare_attempt_record(
+            gate_module,
+            attempt_fixtures / "user-memory-clean",
+            "model: gpt-5.6-terra\nNo private instruction appeared.\n",
+        )
+        checks.require(
+            memory_clean["valid"] is True,
+            "clean transcript was rejected by user-memory marker scan",
         )
 
         benchmark_identity = bare_attempt_record(

@@ -9,7 +9,9 @@ import json
 import os
 import random
 import re
+import runpy
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -21,7 +23,13 @@ HERE = Path(__file__).resolve().parent
 CEILING_ROOT = HERE.parent
 RESULTS_ROOT = CEILING_ROOT / "results"
 CORPUS_ROOT = CEILING_ROOT / "corpus"
-EXTERNAL_ROOT = Path.home() / "devlyn-ceiling-external"
+EXTERNAL_ROOT = Path(
+    os.environ.get("CEILING_EXTERNAL_ROOT", Path.home() / "devlyn-ceiling-external")
+)
+REAL_HOME = Path(os.environ.get("CEILING_REAL_HOME", str(Path.home())))
+CLAUDE_ISOLATION = runpy.run_path(str(HERE / "claude-isolation.py"))
+launch_claude = CLAUDE_ISOLATION["launch_claude"]
+IsolationError = CLAUDE_ISOLATION["IsolationError"]
 AXES = [
     "design_coherence",
     "robustness",
@@ -130,25 +138,42 @@ def validate_response(parsed: Any) -> str | None:
     return None
 
 
-def call_sonnet(prompt: str, scratch_dir: Path) -> tuple[Any | None, str | None, dict[str, Any]]:
-    cmd = [
-        "claude",
-        "-p",
-        prompt,
-        "--model",
-        "sonnet",
-        "--strict-mcp-config",
-        "--mcp-config",
-        '{"mcpServers":{}}',
-        "--dangerously-skip-permissions",
-        "--output-format",
-        "json",
-    ]
+def call_sonnet(
+    prompt: str,
+    scratch_dir: Path,
+    task_dir: Path,
+    attempt: int,
+) -> tuple[Any | None, str | None, dict[str, Any]]:
+    opaque_run = hashlib.sha256(task_dir.parent.name.encode()).hexdigest()[:12]
+    opaque_call = hashlib.sha256(f"{task_dir.name}:{attempt}".encode()).hexdigest()[:12]
+    home = EXTERNAL_ROOT / "judge-homes" / opaque_run / opaque_call
+    shutil.rmtree(home, ignore_errors=True)
+    metadata_path = task_dir / f"judge-sonnet-attempt{attempt}-isolation.json"
     try:
-        result = subprocess.run(cmd, cwd=scratch_dir, capture_output=True, text=True, timeout=900, check=False)
+        result = launch_claude(
+            mode="judge",
+            home=home,
+            codex_home=home / "codex",
+            workdir=scratch_dir,
+            prompt=prompt,
+            debug_file=None,
+            metadata_out=metadata_path,
+            user_memory_file=REAL_HOME / ".claude/CLAUDE.md",
+            timeout_seconds=900,
+        )
     except subprocess.TimeoutExpired:
         return None, "transport_error: timeout", {"stdout": "", "stderr": ""}
-    meta: dict[str, Any] = {"stdout": result.stdout, "stderr": result.stderr}
+    except (IsolationError, OSError) as exc:
+        return None, f"isolation_error: {exc}", {
+            "stdout": "",
+            "stderr": str(exc),
+            "isolation_path": str(metadata_path),
+        }
+    meta: dict[str, Any] = {
+        "stdout": result.stdout,
+        "stderr": result.stderr,
+        "isolation_path": str(metadata_path),
+    }
     if result.returncode != 0:
         return None, f"transport_error: exit={result.returncode} stderr={result.stderr[:300]!r}", meta
     raw = result.stdout
@@ -157,6 +182,11 @@ def call_sonnet(prompt: str, scratch_dir: Path) -> tuple[Any | None, str | None,
         raw = wrapper["result"]
         meta["modelUsage"] = wrapper.get("modelUsage") or wrapper.get("usage")
         meta["wrapper"] = wrapper
+        usage = meta["modelUsage"]
+        if not isinstance(usage, dict) or not usage or not all(
+            "sonnet" in str(model).casefold() for model in usage
+        ):
+            return None, f"isolation_error: runtime model is not sonnet: {sorted(usage) if isinstance(usage, dict) else usage!r}", meta
     parsed = extract_json_object(raw)
     if parsed is None:
         return None, f"parse_error: raw={raw[:300]!r}", meta
@@ -248,7 +278,9 @@ def call_with_retry(judge: str, prompt: str, task_dir: Path, codex_command: list
     err: str | None = None
     for attempt in (1, 2):
         if judge == "sonnet":
-            parsed, err, last_meta = call_sonnet(prompt, scratch_dir)
+            parsed, err, last_meta = call_sonnet(prompt, scratch_dir, task_dir, attempt)
+            if (err or "").startswith("isolation_error:"):
+                raise SystemExit(f"sonnet judge isolation failed: {err}")
         elif judge == "codex":
             parsed, err, last_meta = call_codex(
                 prompt,
@@ -340,7 +372,25 @@ def compare_packets(tiers: list[list[str]], a_packet: str, c_packet: str) -> str
 
 def write_identity(run_root: Path, judge: str, run_id: str, codex_command: list[str], model_usage: Any | None = None) -> None:
     if judge == "sonnet":
-        cli_version = probe_version(["claude"], ["--version"])
+        opaque_run = hashlib.sha256(run_id.encode()).hexdigest()[:12]
+        home = EXTERNAL_ROOT / "judge-homes" / opaque_run / "identity"
+        shutil.rmtree(home, ignore_errors=True)
+        isolation_path = run_root / "judge-identities" / judge / "isolation.json"
+        try:
+            probe = launch_claude(
+                mode="version",
+                home=home,
+                codex_home=home / "codex",
+                workdir=EXTERNAL_ROOT,
+                prompt=None,
+                debug_file=None,
+                metadata_out=isolation_path,
+                user_memory_file=REAL_HOME / ".claude/CLAUDE.md",
+                timeout_seconds=30,
+            )
+        except (IsolationError, OSError, subprocess.TimeoutExpired) as exc:
+            raise SystemExit(f"sonnet identity isolation failed: {exc}") from exc
+        cli_version = (probe.stdout or probe.stderr).strip().splitlines()[0]
         model = "sonnet"
     elif judge == "codex":
         cli_version = probe_version(codex_command, ["--version"])
@@ -352,6 +402,8 @@ def write_identity(run_root: Path, judge: str, run_id: str, codex_command: list[
         "model_id_or_alias": model,
         "recorded_at_run_id": run_id,
     }
+    if judge == "sonnet":
+        identity["isolation"] = json.loads(isolation_path.read_text(encoding="utf-8"))
     if isinstance(model_usage, dict):
         identity["model_usage_keys"] = sorted(str(key) for key in model_usage)
     out_dir = run_root / "judge-identities" / judge
@@ -379,6 +431,7 @@ def main() -> int:
         parser.error("at least one --select task=arm-attempt is required")
 
     run_root = RESULTS_ROOT / args.run_id
+    EXTERNAL_ROOT.mkdir(parents=True, exist_ok=True)
     aggregate: dict[str, Any] = {"run_id": args.run_id, "tasks": {}}
     model_usage_by_judge: dict[str, Any] = {}
     for judge in judges:

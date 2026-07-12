@@ -15,6 +15,7 @@ EOF
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CEILING_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+CLAUDE_ISOLATION="$SCRIPT_DIR/claude-isolation.py"
 
 TASK=""
 ARM=""
@@ -128,6 +129,15 @@ BARE_HOME="$EXTERNAL_ROOT/h/$OPAQUE_RUN_ID/$OPAQUE_TASK_ID/${ARM}${ATTEMPT}"
 rm -rf "$BARE_HOME"
 mkdir -p "$BARE_HOME/t" "$BARE_HOME/n"
 : > "$BARE_HOME/.npmrc"
+CLAUDE_HOME_A="$EXTERNAL_ROOT/claude-homes/$OPAQUE_RUN_ID/$OPAQUE_TASK_ID/${ARM}${ATTEMPT}"
+rm -rf "$CLAUDE_HOME_A"
+mkdir -p "$CLAUDE_HOME_A"
+CLAUDE_METADATA="$RESULT_DIR/claude-isolation.json"
+REAL_USER_MEMORY="$REAL_HOME/.claude/CLAUDE.md"
+cleanup_claude_credentials() {
+  rm -f "$CLAUDE_HOME_A/.claude/.credentials.json"
+}
+trap cleanup_claude_credentials EXIT INT TERM
 
 json_quote_task_prompt() {
   python3 - "$TASK_TEXT_FILE" <<'PY'
@@ -281,6 +291,16 @@ write_patch() {
 
 RUN_TIMED_OUT=0
 
+resolve_direct_claude() {
+  python3 - "$CLAUDE_ISOLATION" "${CEILING_TEST_CLAUDE_BIN:-}" <<'PY'
+import runpy
+import sys
+
+module = runpy.run_path(sys.argv[1])
+print(module["resolve_direct_binary"]("claude", sys.argv[2] or None))
+PY
+}
+
 resolve_direct_codex() {
   python3 - "${CEILING_TEST_CODEX_BIN:-}" <<'PY'
 import os
@@ -315,18 +335,39 @@ raise SystemExit("direct non-Superset Codex CLI not found")
 PY
 }
 
+DIRECT_CLAUDE_BIN="$(resolve_direct_claude)"
+DIRECT_CLAUDE_VERSION="$("$DIRECT_CLAUDE_BIN" --version 2>/dev/null)"
+[ -n "$DIRECT_CLAUDE_VERSION" ] || { echo "direct Claude CLI version missing" >&2; exit 1; }
 DIRECT_CODEX_BIN="$(resolve_direct_codex)"
 DIRECT_CODEX_VERSION="$("$DIRECT_CODEX_BIN" --version 2>/dev/null)"
 [ -n "$DIRECT_CODEX_VERSION" ] || { echo "direct Codex CLI version missing" >&2; exit 1; }
 NODE_BIN="$(command -v node || true)"
 [ -n "$NODE_BIN" ] || { echo "node binary missing" >&2; exit 1; }
 NODE_BIN_DIR="$(cd "$(dirname "$NODE_BIN")" && pwd -P)"
-FROZEN_PATH="$NODE_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin"
+DIRECT_CLAUDE_BIN_DIR="$(cd "$(dirname "$DIRECT_CLAUDE_BIN")" && pwd -P)"
+DIRECT_CODEX_BIN_DIR="$(cd "$(dirname "$DIRECT_CODEX_BIN")" && pwd -P)"
+FROZEN_PATH="$DIRECT_CLAUDE_BIN_DIR:$DIRECT_CODEX_BIN_DIR:$NODE_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin"
+[[ ":$FROZEN_PATH:" != *":.superset:"* && "$FROZEN_PATH" != *"/.superset/"* ]] || {
+  echo "Superset path forbidden in frozen PATH: $FROZEN_PATH" >&2
+  exit 1
+}
 FROZEN_ENV_KEYS="CODEX_HOME,GIT_CONFIG_GLOBAL,GIT_CONFIG_NOSYSTEM,HOME,LANG,LC_ALL,NPM_CONFIG_CACHE,NPM_CONFIG_USERCONFIG,PATH,TERM,TMPDIR,TZ"
 
 CANARY_STDOUT="$RESULT_DIR/shell-canary.stdout"
 CANARY_STDERR="$RESULT_DIR/shell-canary.stderr"
-if ! env -i \
+if [ "$ARM" = A ]; then
+  if ! python3 "$CLAUDE_ISOLATION" launch \
+    --mode shell-canary \
+    --home "$CLAUDE_HOME_A" \
+    --codex-home "$CODEX_HOME_TERRA" \
+    --workdir "$RESULT_DIR" \
+    --metadata-out "$CLAUDE_METADATA" \
+    --user-memory-file "$REAL_USER_MEMORY" \
+    > "$CANARY_STDOUT" 2> "$CANARY_STDERR"; then
+    echo "shell startup canary failed" >&2
+    exit 1
+  fi
+elif ! env -i \
   PATH="$FROZEN_PATH" \
   HOME="$BARE_HOME" \
   CODEX_HOME="$CODEX_HOME_TERRA" \
@@ -361,13 +402,16 @@ run_with_timeout() {
     A)
       (
         cd "$worktree" || exit 125
-        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 DISABLE_AUTOUPDATER=1 MODEL=sonnet \
-          exec claude -p "$prompt" \
-            --dangerously-skip-permissions --effort xhigh \
-            --setting-sources project,local --strict-mcp-config \
-            --mcp-config '{"mcpServers":{}}' \
-            --model sonnet \
-            --debug-file "$RESULT_DIR/claude-debug.log"
+        printf '%s' "$prompt" > "$RESULT_DIR/claude-prompt.txt"
+        exec python3 "$CLAUDE_ISOLATION" launch \
+          --mode arm \
+          --home "$CLAUDE_HOME_A" \
+          --codex-home "$CODEX_HOME_TERRA" \
+          --workdir "$worktree" \
+          --prompt-file "$RESULT_DIR/claude-prompt.txt" \
+          --debug-file "$RESULT_DIR/claude-debug.log" \
+          --metadata-out "$CLAUDE_METADATA" \
+          --user-memory-file "$REAL_USER_MEMORY"
       ) > "$transcript" 2>&1 &
       ;;
     B|C)
@@ -441,6 +485,7 @@ run_with_timeout() {
   else
     RUN_TIMED_OUT=0
   fi
+  rm -f "$CLAUDE_HOME_A/.claude/.credentials.json"
   set -e
   return "$invoke_exit"
 }
@@ -463,7 +508,14 @@ NEUTRAL_BASE_SHA="$(python3 "$SCRIPT_DIR/neutralize-workspace.py" "${NEUTRALIZER
 [ -n "$NEUTRAL_BASE_SHA" ] || { echo "neutral baseline SHA missing" >&2; exit 1; }
 
 case "$ARM" in
-  A) stage_devlyn_context "$WORKTREE"; PROMPT="$(json_quote_task_prompt)" ;;
+  A)
+    stage_devlyn_context "$WORKTREE"
+    [ -f "$WORKTREE/.claude/skills/devlyn:resolve/SKILL.md" ] || {
+      echo "staged devlyn:resolve skill missing" >&2
+      exit 1
+    }
+    PROMPT="$(json_quote_task_prompt)"
+    ;;
   B) PROMPT="$(bare_prompt)" ;;
   C) PROMPT="$(copycat_prompt)" ;;
 esac
@@ -515,7 +567,13 @@ python3 - \
   "$RUN_ID" \
   "$TASK" \
   "$OPAQUE_RUN_ID" \
-  "$OPAQUE_TASK_ID" <<'PY'
+  "$OPAQUE_TASK_ID" \
+  "$ARM" \
+  "$CLAUDE_METADATA" \
+  "$CLAUDE_HOME_A" \
+  "$DIRECT_CLAUDE_BIN" \
+  "$DIRECT_CLAUDE_VERSION" \
+  "$REAL_USER_MEMORY" <<'PY'
 import hashlib
 import json
 import os
@@ -546,6 +604,12 @@ from pathlib import Path
     task,
     opaque_run_id,
     opaque_task_id,
+    arm,
+    claude_metadata_path,
+    claude_home,
+    claude_binary,
+    claude_version,
+    user_memory_path,
 ) = sys.argv[1:]
 
 transcript_bytes = Path(transcript_path).read_bytes()
@@ -573,6 +637,11 @@ literal_families = {
         task,
     ),
 }
+if arm == "A":
+    literal_families = {
+        "host-shell-startup-leak": literal_families["host-shell-startup-leak"],
+        "superset-wrapper": ("/.superset/", "SUPERSET_AGENT_ID"),
+    }
 hits = []
 lowered = transcript.lower()
 for family, markers in literal_families.items():
@@ -588,11 +657,33 @@ regexes = {
     )
 }
 for family, patterns in regexes.items():
+    if arm == "A" and family == "benchmark-identity":
+        continue
     matched = sorted(
         {pattern for pattern in patterns if re.search(pattern, transcript, re.IGNORECASE | re.MULTILINE)}
     )
     if matched:
         hits.append({"family": family, "patterns": matched})
+
+user_memory = Path(user_memory_path)
+if user_memory.is_file():
+    memory_lines = sorted(
+        {
+            line.strip()
+            for line in user_memory.read_text(encoding="utf-8", errors="replace").splitlines()
+            if len(line.strip()) >= 24
+        }
+    )
+    memory_hits = [line for line in memory_lines if line in transcript]
+    if memory_hits:
+        hits.append(
+            {
+                "family": "user-memory-leak",
+                "marker_sha256": [
+                    hashlib.sha256(line.encode()).hexdigest() for line in memory_hits
+                ],
+            }
+        )
 
 root = Path(external_root).resolve()
 generated_paths = [
@@ -601,6 +692,8 @@ generated_paths = [
     Path(bare_home).resolve(),
     Path(codex_home).resolve(),
 ]
+if arm == "A":
+    generated_paths.append(Path(claude_home).resolve())
 forbidden_path = re.compile(
     r"(?:devlyn|ceiling|gate|iter|bench|eval|trap|fixture|arm|gold)", re.IGNORECASE
 )
@@ -615,7 +708,14 @@ for path in generated_paths:
         opaque_paths_pass = False
         break
 
-env_keys = sorted(env_keys_csv.split(","))
+claude_metadata = None
+if arm == "A" and Path(claude_metadata_path).is_file():
+    claude_metadata = json.loads(Path(claude_metadata_path).read_text(encoding="utf-8"))
+env_keys = (
+    claude_metadata.get("claude_env_keys", [])
+    if isinstance(claude_metadata, dict) and arm == "A"
+    else sorted(env_keys_csv.split(","))
+)
 env_values = {
     "PATH": frozen_path,
     "HOME": bare_home,
@@ -630,7 +730,22 @@ env_values = {
     "NPM_CONFIG_USERCONFIG": str(Path(bare_home) / ".npmrc"),
     "NPM_CONFIG_CACHE": str(Path(bare_home) / "n"),
 }
-forbidden_env = re.compile(r"claude|devlyn|codex_companion|superset", re.IGNORECASE)
+if arm == "A":
+    env_values.update(
+        {
+            "HOME": claude_home,
+            "CLAUDE_CONFIG_DIR": str(Path(claude_home) / ".claude"),
+            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+            "DISABLE_AUTOUPDATER": "1",
+            "TMPDIR": str(Path(claude_home) / "t"),
+            "NPM_CONFIG_USERCONFIG": str(Path(claude_home) / ".npmrc"),
+            "NPM_CONFIG_CACHE": str(Path(claude_home) / "n"),
+        }
+    )
+forbidden_env = re.compile(
+    r"devlyn|codex_companion|superset" if arm == "A" else r"claude|devlyn|codex_companion|superset",
+    re.IGNORECASE,
+)
 canary_stdout = Path(canary_stdout_path).read_bytes()
 canary_stderr = Path(canary_stderr_path).read_bytes()
 neutral = json.loads(Path(neutral_path).read_text(encoding="utf-8"))
@@ -695,7 +810,63 @@ payload = {
         "hits": hits,
     },
 }
+if arm == "A":
+    if not isinstance(claude_metadata, dict):
+        hits.append({"family": "claude-isolation-metadata-missing"})
+        claude_metadata = {}
+    direct_claude = claude_metadata.get(
+        "direct_claude",
+        {
+            "path": str(Path(claude_binary).resolve()),
+            "sha256": hashlib.sha256(Path(claude_binary).read_bytes()).hexdigest(),
+            "version": claude_version,
+            "superset_wrapper": ".superset" in Path(claude_binary).parts,
+        },
+    )
+    payload.update(
+        {
+            "direct_claude": direct_claude,
+            "home": claude_metadata.get("home", str(Path(claude_home).resolve())),
+            "claude_config_dir": claude_metadata.get(
+                "claude_config_dir", str(Path(claude_home).resolve() / ".claude")
+            ),
+            "claude_env_keys": claude_metadata.get("claude_env_keys", []),
+            "claude_env_keys_sha256": claude_metadata.get("claude_env_keys_sha256"),
+            "auth_mechanism": claude_metadata.get("auth_mechanism"),
+            "credentials_seeded": claude_metadata.get("credentials_seeded", False),
+        }
+    )
+    claude_invalid = (
+        direct_claude.get("superset_wrapper") is not False
+        or ".superset" in str(claude_metadata.get("frozen_path", ""))
+        or claude_metadata.get("credentials_seeded") is not True
+        or not (Path(worktree) / ".claude/skills/devlyn:resolve/SKILL.md").is_file()
+        or any(marker in transcript.casefold() for marker in ("not logged in", "authentication_error"))
+    )
+    if claude_invalid:
+        hits.append({"family": "claude-isolation-contract"})
+    payload["forbidden_transcript_scan"]["passed"] = not hits
+    payload["forbidden_transcript_scan"]["hits"] = hits
 Path(out_path).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 PY
 
 echo "[ceiling-arm] ${TASK} ${ARM}${ATTEMPT} exit=${INVOKE_EXIT} timed_out=${RUN_TIMED_OUT} result=${RESULT_DIR}"
+if [ "$ARM" = A ]; then
+  if [ "$INVOKE_EXIT" -ne 0 ]; then
+    exit "$INVOKE_EXIT"
+  fi
+  python3 - "$RESULT_DIR/isolation.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+valid = (
+    data.get("credentials_seeded") is True
+    and data.get("direct_claude", {}).get("superset_wrapper") is False
+    and data.get("forbidden_transcript_scan", {}).get("passed") is True
+    and data.get("shell_startup_canary", {}).get("passed") is True
+)
+raise SystemExit(0 if valid else 1)
+PY
+fi
