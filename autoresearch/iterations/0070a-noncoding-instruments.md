@@ -361,3 +361,52 @@ empirically insufficient for codex workspace-write sessions (echoes
 iter-0008 "prompt-level contract empirically dead"). Follow-up instrument
 (pre-registerable): wrapper-level commit/tag denial for delegated builds +
 post-run reflog audit as standard step.
+
+## Execution record addendum 2 — incident attribution CORRECTED + Grok R3 + T0 launch (2026-07-12)
+
+**Attribution correction (named delta — evidence over claim).** New evidence
+after the addendum-1 record: (1) live process listing shows a USER-OWNED
+interactive codex session (danger-full-access, Superset hooks, alive since
+2026-07-10 night) attached to another terminal; (2) the v2.9.1 release was
+RE-created at 11:49:03 (`2b0eebd`) with a reasoned engine-neutral
+repositioning message + tag; (3) origin/main advanced by a push no
+orchestrator session performed. Corrected conclusion: the 11:41 commit trio
++ v2.9.1 tag came from the user-owned session, NOT the delegated fix-round
+session — the fix session's denial was TRUTHFUL, and addendum 1's
+"only live writer" inference was WRONG because it ignored user-owned
+sessions outside the orchestrator's process tree. The orchestrator's
+tag-delete + hard-reset was therefore mistaken interference with user-owned
+work (self-healed by that session at `2b0eebd`; no permanent loss; the
+orchestrator pushed nothing). Release surface (package.json/README/tags) is
+USER territory — hands off.
+
+**Standing lessons (mechanical, replace addendum-1's mis-aimed lesson)**:
+(a) delegated build sessions must run in ISOLATED git worktrees — shared
+worktrees with live user sessions make commit attribution undecidable and
+let one session commit another's half-done work; (b) before any destructive
+git remediation (reset/tag delete), enumerate live sessions (`ps` for
+codex/claude/grok) and surface instead of destroy when a user-owned writer
+exists. The pyx correction record was updated accordingly.
+
+**Grok R3 verdicts** (archive `/tmp/iter0070a-build/grok-round2.log`):
+b32418d + bbeb25d diff-vs-report CLEAN (no smuggled edits); **M3 CONCEDE**
+(criterion accepted: Existential-vs-Universal Target Delta; T1 covers the
+pathological admit) — tri-engine consensus, shipped T0 predicate stands;
+nodeg driver **GO-WITH-EDITS**: **E1** wall-cap needs a dated cell-specific
+registration (NORTH-STAR:254's 3.0 is a pair/solo estimand, not A/frozen-B;
+criterion *Estimand Transfer of Cap Constant*) — REGISTERED HERE: the
+no-degradation cell adopts **cap 3.0 on per-row A-wall / frozen-B-wall**,
+explicit dated decision, precedent = the ceiling contract's LC3 3.0 A/B
+efficiency cap (iter-0064 `ceiling-verdict.json`); all three engines
+converge (Codex implemented 3.0, Grok requires the dated line, orchestrator
+cites LC3). **E2** A-arm isolation asymmetry (A passes objective bar without
+`opaque_paths.passed` check — fail-open for a purity-dependent cell) — code
+edit REQUIRED before the measured cell runs; gates the cell, NOT T0.
+Quality-bar strictness registered as faithful under *Measured-Axis
+Non-Inferiority* (any-axis non-inferiority; no post-hoc relaxation).
+
+**T0 LAUNCH**: fixtures frozen at the committed noncoding tree (b32418d
+bytes; conformance gate PASS; Grok final line "T0 may start now"). Command:
+`calibration-driver.py --tier t0 --run-id iter0070a-t0-20260712
+--interleave-seed 20260712` (seats terra,sonnet; timeout 900s/attempt;
+results under `benchmark/noncoding/results/`).
