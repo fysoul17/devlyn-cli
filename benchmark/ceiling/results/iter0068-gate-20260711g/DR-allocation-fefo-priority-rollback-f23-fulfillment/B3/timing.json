@@ -1,0 +1,9 @@
+{
+  "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+  "arm": "B",
+  "attempt": 3,
+  "elapsed_seconds": 266,
+  "invoke_exit": 0,
+  "timed_out": false,
+  "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-allocation-fefo-priority-rollback-f23-fulfillment/B3/repo"
+}

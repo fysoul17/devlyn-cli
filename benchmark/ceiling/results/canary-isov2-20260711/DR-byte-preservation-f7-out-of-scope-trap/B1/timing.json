@@ -1,0 +1,9 @@
+{
+  "task": "DR-byte-preservation-f7-out-of-scope-trap",
+  "arm": "B",
+  "attempt": 1,
+  "elapsed_seconds": 51,
+  "invoke_exit": 0,
+  "timed_out": false,
+  "worktree": "/Users/aipalm/.local/share/nx01/w/r1d6c1c4be183/ff10888c89791/B1/repo"
+}

@@ -1,0 +1,9 @@
+{
+  "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+  "arm": "B",
+  "attempt": 1,
+  "elapsed_seconds": 344,
+  "invoke_exit": 0,
+  "timed_out": false,
+  "worktree": "/Users/aipalm/.local/share/nx01/w/rcd32891d58f5/fx07/B1/repo"
+}

@@ -1,0 +1,11 @@
+{
+  "task": "DR-ordering-f21-scheduler",
+  "arm_attempt": "B3",
+  "resolved": false,
+  "tests_passed": 0,
+  "tests_total": 1,
+  "hidden_test_failures": 1,
+  "apply_exit": 0,
+  "oracle_exit": 1,
+  "report_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/external/eval/iter0068-gate-20260710c/DR-ordering-f21-scheduler/B3/oracle.log"
+}

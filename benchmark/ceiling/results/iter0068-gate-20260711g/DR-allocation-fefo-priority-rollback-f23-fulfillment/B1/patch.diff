@@ -1,0 +1,394 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index 78fdd98..3fd5986 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@ const USAGE = `Usage: bench-cli <command> [options]
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  fulfill-wave --input PATH  Allocate a fulfillment wave from a JSON file
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli fulfill-wave --input wave.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,258 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function inputError(message) {
++  return new Error(message);
++}
++
++function isObject(value) {
++  return typeof value === 'object' && value !== null && !Array.isArray(value);
++}
++
++function isNonEmptyString(value) {
++  return typeof value === 'string' && value.trim().length > 0;
++}
++
++function isPositiveInteger(value) {
++  return Number.isInteger(value) && value > 0;
++}
++
++function isNumber(value) {
++  return typeof value === 'number' && Number.isFinite(value);
++}
++
++function isValidDate(value) {
++  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
++    return false;
++  }
++
++  const date = new Date(`${value}T00:00:00.000Z`);
++  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
++}
++
++function parseIsoDateOrTimestamp(value) {
++  if (isValidDate(value)) {
++    return Date.parse(value);
++  }
++
++  const match = typeof value === 'string'
++    && /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?$/.exec(value);
++  if (!match || !isValidDate(match[1])) {
++    return null;
++  }
++
++  const hour = Number(match[2]);
++  const minute = Number(match[3]);
++  const second = match[4] === undefined ? 0 : Number(match[4]);
++  const timestamp = Date.parse(value);
++  if (hour > 23 || minute > 59 || second > 59 || Number.isNaN(timestamp)) {
++    return null;
++  }
++  return timestamp;
++}
++
++function validateFulfillmentInput(input) {
++  if (!isObject(input)) {
++    throw inputError('Input must be a JSON object.');
++  }
++  if (!Array.isArray(input.warehouses) || !Array.isArray(input.orders)) {
++    throw inputError('Input must contain warehouses and orders arrays.');
++  }
++
++  input.warehouses.forEach((warehouse, warehouseIndex) => {
++    if (!isObject(warehouse)
++      || !isNonEmptyString(warehouse.id)
++      || !isNumber(warehouse.distance)
++      || !Array.isArray(warehouse.lots)) {
++      throw inputError(`Invalid warehouse at index ${warehouseIndex}.`);
++    }
++
++    warehouse.lots.forEach((lot, lotIndex) => {
++      if (!isObject(lot)
++        || !isNonEmptyString(lot.sku)
++        || !isNonEmptyString(lot.lot)
++        || !isPositiveInteger(lot.qty)
++        || !isValidDate(lot.expires)) {
++        throw inputError(`Invalid lot at warehouses[${warehouseIndex}].lots[${lotIndex}].`);
++      }
++    });
++  });
++
++  const orderIds = new Set();
++  input.orders.forEach((order, orderIndex) => {
++    if (!isObject(order)
++      || !isNonEmptyString(order.id)
++      || !isNumber(order.priority)
++      || parseIsoDateOrTimestamp(order.submitted_at) === null
++      || !Array.isArray(order.lines)) {
++      throw inputError(`Invalid order at index ${orderIndex}.`);
++    }
++    if (orderIds.has(order.id)) {
++      throw inputError(`Duplicate order id: ${order.id}.`);
++    }
++    orderIds.add(order.id);
++
++    order.lines.forEach((line, lineIndex) => {
++      if (!isObject(line)
++        || !isNonEmptyString(line.sku)
++        || !isPositiveInteger(line.qty)
++        || typeof line.single_warehouse !== 'boolean') {
++        throw inputError(`Invalid line at orders[${orderIndex}].lines[${lineIndex}].`);
++      }
++    });
++  });
++}
++
++function parseInputFlag(argv) {
++  if (argv.length !== 2 || argv[0] !== '--input' || !argv[1] || argv[1].startsWith('-')) {
++    throw inputError('fulfill-wave requires --input PATH.');
++  }
++  return argv[1];
++}
++
++function compareText(left, right) {
++  return left < right ? -1 : left > right ? 1 : 0;
++}
++
++function fulfillWave(input) {
++  validateFulfillmentInput(input);
++
++  const warehouses = input.warehouses.map((warehouse, warehouseIndex) => ({
++    id: warehouse.id,
++    distance: warehouse.distance,
++    lots: warehouse.lots.map((lot, lotIndex) => ({
++      sku: lot.sku,
++      lot: lot.lot,
++      qty: lot.qty,
++      expires: lot.expires,
++      lotIndex,
++    })),
++    warehouseIndex,
++  }));
++  const warehousesByPreference = [...warehouses].sort((left, right) => (
++    left.distance - right.distance
++    || compareText(left.id, right.id)
++    || left.warehouseIndex - right.warehouseIndex
++  ));
++  const ordersByProcessingOrder = input.orders.map((order, orderIndex) => ({
++    ...order,
++    orderIndex,
++    submittedAt: parseIsoDateOrTimestamp(order.submitted_at),
++  })).sort((left, right) => (
++    right.priority - left.priority
++    || left.submittedAt - right.submittedAt
++    || compareText(left.id, right.id)
++    || left.orderIndex - right.orderIndex
++  ));
++
++  function matchingLots(warehouse, sku) {
++    return warehouse.lots.filter((lot) => lot.sku === sku && lot.qty > 0).sort((left, right) => (
++      compareText(left.expires, right.expires)
++      || compareText(left.lot, right.lot)
++      || left.lotIndex - right.lotIndex
++    ));
++  }
++
++  function takeFromWarehouse(warehouse, sku, requestedQty, allocations, deductions) {
++    let neededQty = requestedQty;
++    for (const lot of matchingLots(warehouse, sku)) {
++      const qty = Math.min(lot.qty, neededQty);
++      if (qty === 0) continue;
++      lot.qty -= qty;
++      neededQty -= qty;
++      deductions.push({ lot, qty });
++      allocations.push({ sku, warehouse: warehouse.id, lot: lot.lot, qty });
++      if (neededQty === 0) break;
++    }
++    return neededQty === 0;
++  }
++
++  function restore(deductions) {
++    for (const deduction of deductions) {
++      deduction.lot.qty += deduction.qty;
++    }
++  }
++
++  const accepted = [];
++  const rejectedIds = new Set();
++  for (const order of ordersByProcessingOrder) {
++    const allocations = [];
++    const deductions = [];
++    let fulfilled = true;
++
++    for (const line of order.lines) {
++      if (line.single_warehouse) {
++        const warehouse = warehousesByPreference.find((candidate) => (
++          matchingLots(candidate, line.sku).reduce((total, lot) => total + lot.qty, 0) >= line.qty
++        ));
++        if (!warehouse || !takeFromWarehouse(warehouse, line.sku, line.qty, allocations, deductions)) {
++          fulfilled = false;
++          break;
++        }
++      } else {
++        let neededQty = line.qty;
++        for (const warehouse of warehousesByPreference) {
++          const before = deductions.length;
++          takeFromWarehouse(warehouse, line.sku, neededQty, allocations, deductions);
++          const takenQty = deductions.slice(before).reduce((total, deduction) => total + deduction.qty, 0);
++          neededQty -= takenQty;
++          if (neededQty === 0) break;
++        }
++        if (neededQty !== 0) {
++          fulfilled = false;
++          break;
++        }
++      }
++    }
++
++    if (fulfilled) {
++      accepted.push({ id: order.id, allocations });
++    } else {
++      restore(deductions);
++      rejectedIds.add(order.id);
++    }
++  }
++
++  const rejected = input.orders
++    .filter((order) => rejectedIds.has(order.id))
++    .map((order) => ({ id: order.id, reason: 'insufficient_stock' }));
++  const remaining = warehouses.flatMap((warehouse) => warehouse.lots
++    .filter((lot) => lot.qty > 0)
++    .map((lot) => ({
++      warehouse: warehouse.id,
++      sku: lot.sku,
++      lot: lot.lot,
++      qty: lot.qty,
++      expires: lot.expires,
++      warehouseIndex: warehouse.warehouseIndex,
++      lotIndex: lot.lotIndex,
++    })))
++    .sort((left, right) => (
++      compareText(left.warehouse, right.warehouse)
++      || compareText(left.sku, right.sku)
++      || compareText(left.expires, right.expires)
++      || compareText(left.lot, right.lot)
++      || left.warehouseIndex - right.warehouseIndex
++      || left.lotIndex - right.lotIndex
++    ))
++    .map(({ warehouse, sku, lot, qty, expires }) => ({ warehouse, sku, lot, qty, expires }));
++
++  return { accepted, rejected, remaining };
++}
++
++function runFulfillWave(argv) {
++  try {
++    const inputPath = parseInputFlag(argv);
++    const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++    const result = fulfillWave(input);
++    process.stdout.write(`${JSON.stringify(result)}\n`);
++  } catch (error) {
++    const message = error instanceof Error ? error.message : 'Unable to process fulfillment input.';
++    process.stderr.write(`${JSON.stringify({ error: message })}\n`);
++    process.exitCode = 2;
++  }
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +307,10 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'fulfill-wave': {
++      runFulfillWave(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..ca13ee2 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@ function run(args) {
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeInput(t, input) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  const inputPath = path.join(directory, 'wave.json');
++  fs.writeFileSync(inputPath, JSON.stringify(input));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,76 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('fulfill-wave accepts an order using warehouse preference and FEFO lots', (t) => {
++  const inputPath = writeInput(t, {
++    warehouses: [
++      {
++        id: 'far', distance: 20, lots: [
++          { sku: 'tea', lot: 'far-lot', qty: 5, expires: '2026-06-01' },
++        ],
++      },
++      {
++        id: 'near', distance: 5, lots: [
++          { sku: 'tea', lot: 'late', qty: 4, expires: '2026-05-01' },
++          { sku: 'tea', lot: 'early', qty: 2, expires: '2026-04-01' },
++        ],
++      },
++    ],
++    orders: [
++      {
++        id: 'order-1', priority: 1, submitted_at: '2026-01-01T09:00:00Z',
++        lines: [{ sku: 'tea', qty: 5, single_warehouse: false }],
++      },
++    ],
++  });
++
++  const result = JSON.parse(run(['fulfill-wave', '--input', inputPath]));
++  assert.deepStrictEqual(result, {
++    accepted: [{
++      id: 'order-1',
++      allocations: [
++        { sku: 'tea', warehouse: 'near', lot: 'early', qty: 2 },
++        { sku: 'tea', warehouse: 'near', lot: 'late', qty: 3 },
++      ],
++    }],
++    rejected: [],
++    remaining: [
++      { warehouse: 'far', sku: 'tea', lot: 'far-lot', qty: 5, expires: '2026-06-01' },
++      { warehouse: 'near', sku: 'tea', lot: 'late', qty: 1, expires: '2026-05-01' },
++    ],
++  });
++});
++
++test('fulfill-wave rejects an all-or-nothing order and restores its tentative deductions', (t) => {
++  const inputPath = writeInput(t, {
++    warehouses: [{
++      id: 'warehouse-1', distance: 1, lots: [
++        { sku: 'a', lot: 'a-1', qty: 1, expires: '2026-04-01' },
++        { sku: 'b', lot: 'b-1', qty: 1, expires: '2026-04-01' },
++      ],
++    }],
++    orders: [
++      {
++        id: 'rejected-first', priority: 2, submitted_at: '2026-01-01', lines: [
++          { sku: 'a', qty: 1, single_warehouse: false },
++          { sku: 'b', qty: 2, single_warehouse: false },
++        ],
++      },
++      {
++        id: 'accepted-after-rollback', priority: 1, submitted_at: '2026-01-02',
++        lines: [{ sku: 'a', qty: 1, single_warehouse: false }],
++      },
++    ],
++  });
++
++  const result = JSON.parse(run(['fulfill-wave', '--input', inputPath]));
++  assert.deepStrictEqual(result, {
++    accepted: [{
++      id: 'accepted-after-rollback',
++      allocations: [{ sku: 'a', warehouse: 'warehouse-1', lot: 'a-1', qty: 1 }],
++    }],
++    rejected: [{ id: 'rejected-first', reason: 'insufficient_stock' }],
++    remaining: [{ warehouse: 'warehouse-1', sku: 'b', lot: 'b-1', qty: 1, expires: '2026-04-01' }],
++  });
++});

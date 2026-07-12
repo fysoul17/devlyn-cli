@@ -1,0 +1,140 @@
+diff --git a/server/index.js b/server/index.js
+index e681dde..70fb63c 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -27,6 +27,44 @@ app.get('/items/:id', (req, res) => {
+   res.json({ item });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  const importedItems = req.body && req.body.items;
++  if (!Array.isArray(importedItems)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  // Validate the entire batch before allocating IDs or changing the store so a
++  // rejected import cannot leave behind partially-created items.
++  for (const [index, item] of importedItems.entries()) {
++    if (!item || typeof item.name !== 'string' || item.name.trim() === '') {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  const usedIds = new Set(
++    items
++      .map((item) => item.id)
++      .filter((id) => typeof id === 'number' && Number.isFinite(id)),
++  );
++  let nextId = 1;
++  const createdItems = importedItems.map((item) => {
++    while (usedIds.has(nextId)) nextId += 1;
++    const createdItem = { id: nextId, name: item.name, qty: item.qty };
++    usedIds.add(nextId);
++    nextId += 1;
++    return createdItem;
++  });
++
++  items.push(...createdItems);
++  res.status(201).json({ inserted: createdItems.length });
++});
++
+ if (require.main === module) {
+   const port = Number(process.env.PORT) || 3000;
+   app.listen(port, () => {
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..cb4a4c9 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -23,6 +23,37 @@ function get(server, path) {
+   });
+ }
+ 
++function request(server, method, path, body) {
++  return new Promise((resolve, reject) => {
++    const payload = body === undefined ? undefined : JSON.stringify(body);
++    const { port } = server.address();
++    const req = http.request(
++      {
++        hostname: '127.0.0.1',
++        port,
++        path,
++        method,
++        headers: payload
++          ? {
++              'content-type': 'application/json',
++              'content-length': Buffer.byteLength(payload),
++            }
++          : undefined,
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => {
++          resolve({ status: res.statusCode, body: JSON.parse(responseBody) });
++        });
++      },
++    );
++    req.on('error', reject);
++    if (payload) req.write(payload);
++    req.end();
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +87,48 @@ test('GET /items/:id returns 404 for missing', async () => {
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changing state', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const { status, body } = await request(server, 'POST', '/items/import', {
++      items: [
++        { name: 'gamma', qty: 2 },
++        { name: 'invalid', qty: 0 },
++        { name: 'delta', qty: 4 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(status, 400);
++    assert.deepStrictEqual(body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import adds every valid item in input order', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const { status, body } = await request(server, 'POST', '/items/import', {
++      items: [
++        { name: 'gamma', qty: 2 },
++        { name: 'delta', qty: 4 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const expectedItems = [
++      { id: before.body.items.length + 1, name: 'gamma', qty: 2 },
++      { id: before.body.items.length + 2, name: 'delta', qty: 4 },
++    ];
++
++    assert.strictEqual(status, 201);
++    assert.deepStrictEqual(body, { inserted: 2 });
++    assert.deepStrictEqual(after.body.items.slice(-2), expectedItems);
++  } finally {
++    server.close();
++  }
++});

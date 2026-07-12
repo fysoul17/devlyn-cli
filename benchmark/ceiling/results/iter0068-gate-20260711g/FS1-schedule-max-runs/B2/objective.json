@@ -1,0 +1,11 @@
+{
+  "task": "FS1-schedule-max-runs",
+  "arm_attempt": "B2",
+  "resolved": true,
+  "tests_passed": 1,
+  "tests_total": 1,
+  "hidden_test_failures": 0,
+  "apply_exit": 0,
+  "oracle_exit": 0,
+  "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/FS1-schedule-max-runs/B2/oracle.log"
+}

@@ -1,0 +1,216 @@
+diff --git a/server/index.js b/server/index.js
+index e681dde..a037dc2 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -1,8 +1,13 @@
+ // Tiny Express server used by backend-contract fixtures. Intentionally small.
++const crypto = require('crypto');
+ const express = require('express');
++const fs = require('fs');
++const path = require('path');
+ 
+ const app = express();
+-app.use(express.json());
++
++const webhookSecret = fs.readFileSync(path.join(__dirname, '..', 'data', 'webhook-secret.txt'));
++const acceptedWebhookIds = new Set();
+ 
+ const items = [
+   { id: 1, name: 'alpha', qty: 3 },
+@@ -27,6 +32,66 @@ app.get('/items/:id', (req, res) => {
+   res.json({ item });
+ });
+ 
++function hasValidWebhookSignature(signature, rawBody) {
++  if (typeof signature !== 'string' || !/^[0-9a-f]{64}$/.test(signature)) {
++    return false;
++  }
++
++  const provided = Buffer.from(signature, 'hex');
++  const expected = crypto.createHmac('sha256', webhookSecret).update(rawBody).digest();
++  return crypto.timingSafeEqual(provided, expected);
++}
++
++app.post('/webhook', express.raw({ type: () => true }), (req, res) => {
++  const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
++
++  if (!hasValidWebhookSignature(req.get('X-Signature'), rawBody)) {
++    res.status(401).json({ error: 'invalid_signature' });
++    return;
++  }
++
++  let event;
++  try {
++    event = JSON.parse(rawBody.toString('utf8'));
++  } catch {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  if (
++    event !== null &&
++    typeof event === 'object' &&
++    !Array.isArray(event) &&
++    typeof event.id === 'string' &&
++    acceptedWebhookIds.has(event.id)
++  ) {
++    res.status(409).json({ error: 'duplicate_event', id: event.id });
++    return;
++  }
++
++  if (
++    event === null ||
++    typeof event !== 'object' ||
++    Array.isArray(event) ||
++    typeof event.id !== 'string' ||
++    event.id.length === 0 ||
++    typeof event.type !== 'string' ||
++    event.type.length === 0 ||
++    !Number.isFinite(event.timestamp) ||
++    event.data === null ||
++    typeof event.data !== 'object' ||
++    Array.isArray(event.data)
++  ) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  acceptedWebhookIds.add(event.id);
++  res.json({ accepted: true, id: event.id });
++});
++
++app.use(express.json());
++
+ if (require.main === module) {
+   const port = Number(process.env.PORT) || 3000;
+   app.listen(port, () => {
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..aed6180 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -1,8 +1,13 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
++const crypto = require('node:crypto');
++const fs = require('node:fs');
+ const http = require('node:http');
++const path = require('node:path');
+ const { app } = require('../server');
+ 
++const webhookSecret = fs.readFileSync(path.join(__dirname, '..', 'data', 'webhook-secret.txt'));
++
+ function startServer() {
+   return new Promise((resolve) => {
+     const server = http.createServer(app);
+@@ -23,6 +28,45 @@ function get(server, path) {
+   });
+ }
+ 
++function signWebhookBody(body) {
++  return crypto.createHmac('sha256', webhookSecret).update(body).digest('hex');
++}
++
++function postWebhook(server, body, signature) {
++  return new Promise((resolve, reject) => {
++    const { port } = server.address();
++    const request = http.request(
++      {
++        hostname: '127.0.0.1',
++        port,
++        path: '/webhook',
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(body),
++          ...(signature === undefined ? {} : { 'X-Signature': signature }),
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    request.on('error', reject);
++    request.end(body);
++  });
++}
++
++function validWebhookEvent() {
++  return {
++    id: `event-${crypto.randomUUID()}`,
++    type: 'item.updated',
++    timestamp: Date.now(),
++    data: { itemId: 1 },
++  };
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +100,65 @@ test('GET /items/:id returns 404 for missing', async () => {
+     server.close();
+   }
+ });
++
++test('POST /webhook accepts a correctly signed event', async () => {
++  const server = await startServer();
++  try {
++    const event = validWebhookEvent();
++    const body = JSON.stringify(event);
++    const response = await postWebhook(server, body, signWebhookBody(body));
++
++    assert.strictEqual(response.status, 200);
++    assert.deepStrictEqual(response.body, { accepted: true, id: event.id });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a validly signed replay before validating its other fields', async () => {
++  const server = await startServer();
++  try {
++    const event = validWebhookEvent();
++    const firstBody = JSON.stringify(event);
++    const firstResponse = await postWebhook(server, firstBody, signWebhookBody(firstBody));
++    assert.strictEqual(firstResponse.status, 200);
++
++    const replayBody = JSON.stringify({ id: event.id });
++    const replayResponse = await postWebhook(server, replayBody, signWebhookBody(replayBody));
++
++    assert.strictEqual(replayResponse.status, 409);
++    assert.deepStrictEqual(replayResponse.body, { error: 'duplicate_event', id: event.id });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a tampered body signed for the original bytes', async () => {
++  const server = await startServer();
++  try {
++    const body = JSON.stringify(validWebhookEvent());
++    const tamperedBody = body.replace('item.updated', 'item.deleted');
++    const response = await postWebhook(server, tamperedBody, signWebhookBody(body));
++
++    assert.strictEqual(response.status, 401);
++    assert.deepStrictEqual(response.body, { error: 'invalid_signature' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook checks the signature before parsing and reports signed malformed JSON as invalid body', async () => {
++  const server = await startServer();
++  try {
++    const malformedBody = '{"id":';
++    const unsignedResponse = await postWebhook(server, malformedBody);
++    assert.strictEqual(unsignedResponse.status, 401);
++    assert.deepStrictEqual(unsignedResponse.body, { error: 'invalid_signature' });
++
++    const signedResponse = await postWebhook(server, malformedBody, signWebhookBody(malformedBody));
++    assert.strictEqual(signedResponse.status, 400);
++    assert.deepStrictEqual(signedResponse.body, { error: 'invalid_body' });
++  } finally {
++    server.close();
++  }
++});

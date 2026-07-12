@@ -1,0 +1,363 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index 78fdd98..558dd91 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@ const USAGE = `Usage: bench-cli <command> [options]
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  payout --input PATH        Calculate merchant payouts from ledger events
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli payout --input ledger-events.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,193 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function writeJsonError(error) {
++  process.stderr.write(JSON.stringify(error));
++  return 2;
++}
++
++function parseInputFlag(argv) {
++  const idx = argv.indexOf('--input');
++  const value = idx === -1 ? undefined : argv[idx + 1];
++
++  if (!value || value.startsWith('-')) {
++    return undefined;
++  }
++
++  return value;
++}
++
++function stableJson(value) {
++  if (Array.isArray(value)) {
++    return `[${value.map(stableJson).join(',')}]`;
++  }
++
++  if (value && typeof value === 'object') {
++    return `{${Object.keys(value)
++      .sort()
++      .map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
++      .join(',')}}`;
++  }
++
++  return JSON.stringify(value);
++}
++
++function isValidEvent(event) {
++  return (
++    event &&
++    typeof event === 'object' &&
++    !Array.isArray(event) &&
++    typeof event.id === 'string' &&
++    typeof event.merchant_id === 'string' &&
++    ['charge', 'refund', 'dispute'].includes(event.type) &&
++    Number.isInteger(event.amount_cents) &&
++    event.amount_cents > 0
++  );
++}
++
++function readPayoutRules() {
++  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
++  const rules = JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
++  if (
++    !Number.isFinite(rules.processing_fee_percent) ||
++    !Number.isFinite(rules.reserve_percent) ||
++    !Number.isInteger(rules.fixed_fee_cents) ||
++    !Number.isInteger(rules.dispute_fee_cents) ||
++    !Number.isInteger(rules.minimum_payout_cents)
++  ) {
++    throw new Error('Invalid payout rules');
++  }
++
++  return rules;
++}
++
++function calculatePayout(input, rules) {
++  if (!input || typeof input !== 'object' || !Array.isArray(input.events)) {
++    throw new Error('Invalid input');
++  }
++
++  const eventById = new Map();
++  const merchants = new Map();
++
++  for (const event of input.events) {
++    if (!isValidEvent(event)) {
++      throw new Error('Invalid event');
++    }
++
++    const eventJson = stableJson(event);
++    if (eventById.has(event.id)) {
++      if (eventById.get(event.id) !== eventJson) {
++        const error = new Error('Conflicting duplicate');
++        error.code = 'conflicting_duplicate';
++        error.id = event.id;
++        throw error;
++      }
++      continue;
++    }
++    eventById.set(event.id, eventJson);
++
++    if (!merchants.has(event.merchant_id)) {
++      merchants.set(event.merchant_id, {
++        merchant_id: event.merchant_id,
++        gross_charge_cents: 0,
++        refund_cents: 0,
++        dispute_cents: 0,
++        processing_fee_cents: 0,
++        dispute_fee_cents: 0,
++        reserve_cents: 0,
++        payout_cents: 0,
++      });
++    }
++
++    const merchant = merchants.get(event.merchant_id);
++    if (event.type === 'charge') {
++      merchant.gross_charge_cents += event.amount_cents;
++      merchant.processing_fee_cents +=
++        Math.round((event.amount_cents * rules.processing_fee_percent) / 100) +
++        rules.fixed_fee_cents;
++    } else if (event.type === 'refund') {
++      merchant.refund_cents += event.amount_cents;
++    } else {
++      merchant.dispute_cents += event.amount_cents;
++      merchant.dispute_fee_cents += rules.dispute_fee_cents;
++    }
++  }
++
++  for (const merchant of merchants.values()) {
++    const netBeforeReserve =
++      merchant.gross_charge_cents -
++      merchant.refund_cents -
++      merchant.dispute_cents -
++      merchant.processing_fee_cents -
++      merchant.dispute_fee_cents;
++    merchant.reserve_cents =
++      netBeforeReserve > 0
++        ? Math.round((netBeforeReserve * rules.reserve_percent) / 100)
++        : 0;
++    merchant.payout_cents = netBeforeReserve - merchant.reserve_cents;
++
++    if (
++      merchant.payout_cents > 0 &&
++      merchant.payout_cents < rules.minimum_payout_cents
++    ) {
++      merchant.reserve_cents += merchant.payout_cents;
++      merchant.payout_cents = 0;
++    }
++  }
++
++  const merchantRows = [...merchants.values()];
++  return {
++    total_payout_cents: merchantRows.reduce(
++      (total, merchant) => total + merchant.payout_cents,
++      0,
++    ),
++    total_processing_fee_cents: merchantRows.reduce(
++      (total, merchant) => total + merchant.processing_fee_cents,
++      0,
++    ),
++    total_dispute_fee_cents: merchantRows.reduce(
++      (total, merchant) => total + merchant.dispute_fee_cents,
++      0,
++    ),
++    total_reserve_cents: merchantRows.reduce(
++      (total, merchant) => total + merchant.reserve_cents,
++      0,
++    ),
++    merchants: merchantRows,
++  };
++}
++
++function runPayout(argv) {
++  const inputPath = parseInputFlag(argv);
++  if (!inputPath) {
++    return writeJsonError({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++  } catch (error) {
++    if (error instanceof SyntaxError) {
++      return writeJsonError({ error: 'invalid_json' });
++    }
++    return writeJsonError({ error: 'input_read_error' });
++  }
++
++  try {
++    const result = calculatePayout(input, readPayoutRules());
++    process.stdout.write(JSON.stringify(result));
++    return 0;
++  } catch (error) {
++    if (error.code === 'conflicting_duplicate') {
++      return writeJsonError({ error: 'conflicting_duplicate', id: error.id });
++    }
++    if (error.message === 'Invalid payout rules') {
++      return writeJsonError({ error: 'invalid_payout_rules' });
++    }
++    return writeJsonError({ error: 'invalid_input' });
++  }
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +242,9 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'payout': {
++      return runPayout(rest);
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+@@ -60,4 +252,7 @@ function main(argv) {
+   }
+ }
+ 
+-main(process.argv.slice(2));
++const exitCode = main(process.argv.slice(2));
++if (typeof exitCode === 'number') {
++  process.exitCode = exitCode;
++}
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..f70381f 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+-const { execFileSync } = require('node:child_process');
++const { execFileSync, spawnSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,22 @@ function run(args) {
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function runProcess(args) {
++  return spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
++}
++
++function withInputFile(contents, callback) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  const inputPath = path.join(directory, 'events.json');
++  fs.writeFileSync(inputPath, contents);
++
++  try {
++    return callback(inputPath);
++  } finally {
++    fs.rmSync(directory, { recursive: true, force: true });
++  }
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +41,93 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('payout calculates fees, reserves, thresholds, and idempotent events', () => {
++  const input = {
++    events: [
++      { id: 'charge-1', merchant_id: 'merchant-a', type: 'charge', amount_cents: 20000 },
++      { id: 'charge-1', merchant_id: 'merchant-a', type: 'charge', amount_cents: 20000 },
++      { id: 'refund-1', merchant_id: 'merchant-a', type: 'refund', amount_cents: 2000 },
++      { id: 'dispute-1', merchant_id: 'merchant-a', type: 'dispute', amount_cents: 4000 },
++      { id: 'charge-2', merchant_id: 'merchant-b', type: 'charge', amount_cents: 1000 },
++    ],
++  };
++
++  withInputFile(JSON.stringify(input), (inputPath) => {
++    const result = runProcess(['payout', '--input', inputPath]);
++
++    assert.strictEqual(result.status, 0);
++    assert.strictEqual(result.stderr, '');
++    assert.deepStrictEqual(JSON.parse(result.stdout), {
++      total_payout_cents: 10701,
++      total_processing_fee_cents: 669,
++      total_dispute_fee_cents: 1500,
++      total_reserve_cents: 2130,
++      merchants: [
++        {
++          merchant_id: 'merchant-a',
++          gross_charge_cents: 20000,
++          refund_cents: 2000,
++          dispute_cents: 4000,
++          processing_fee_cents: 610,
++          dispute_fee_cents: 1500,
++          reserve_cents: 1189,
++          payout_cents: 10701,
++        },
++        {
++          merchant_id: 'merchant-b',
++          gross_charge_cents: 1000,
++          refund_cents: 0,
++          dispute_cents: 0,
++          processing_fee_cents: 59,
++          dispute_fee_cents: 0,
++          reserve_cents: 941,
++          payout_cents: 0,
++        },
++      ],
++    });
++  });
++});
++
++test('payout rejects invalid events as JSON errors', () => {
++  const input = {
++    events: [
++      { id: 'bad-1', merchant_id: 'merchant-a', type: 'transfer', amount_cents: 1000 },
++    ],
++  };
++
++  withInputFile(JSON.stringify(input), (inputPath) => {
++    const result = runProcess(['payout', '--input', inputPath]);
++
++    assert.strictEqual(result.status, 2);
++    assert.strictEqual(result.stdout, '');
++    assert.deepStrictEqual(JSON.parse(result.stderr), { error: 'invalid_input' });
++  });
++});
++
++test('payout reports malformed input JSON as a JSON error', () => {
++  withInputFile('{ not valid JSON', (inputPath) => {
++    const result = runProcess(['payout', '--input', inputPath]);
++
++    assert.strictEqual(result.status, 2);
++    assert.strictEqual(result.stdout, '');
++    assert.deepStrictEqual(JSON.parse(result.stderr), { error: 'invalid_json' });
++  });
++});
++
++test('payout rejects conflicting duplicate event ids before printing totals', () => {
++  const input = {
++    events: [
++      { id: 'charge-1', merchant_id: 'merchant-a', type: 'charge', amount_cents: 1000 },
++      { id: 'charge-1', merchant_id: 'merchant-a', type: 'charge', amount_cents: 2000 },
++    ],
++  };
++
++  withInputFile(JSON.stringify(input), (inputPath) => {
++    const result = runProcess(['payout', '--input', inputPath]);
++
++    assert.strictEqual(result.status, 2);
++    assert.strictEqual(result.stdout, '');
++    assert.strictEqual(result.stderr, '{"error":"conflicting_duplicate","id":"charge-1"}');
++  });
++});

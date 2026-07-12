@@ -1,0 +1,11 @@
+{
+  "task": "DR-auth-signature-f12-webhook",
+  "arm_attempt": "B3",
+  "resolved": true,
+  "tests_passed": 1,
+  "tests_total": 1,
+  "hidden_test_failures": 0,
+  "apply_exit": 0,
+  "oracle_exit": 0,
+  "report_path": "/Users/aipalm/devlyn-ceiling-external/eval/iter0068-gate-20260711g/DR-auth-signature-f12-webhook/B3/oracle.log"
+}

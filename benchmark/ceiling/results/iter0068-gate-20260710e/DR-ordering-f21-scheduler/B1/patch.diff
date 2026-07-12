@@ -1,0 +1,416 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index 78fdd98..e003497 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,6 +10,7 @@ const USAGE = `Usage: bench-cli <command> [options]
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  schedule --input PATH      Schedule requests from a JSON input file
+   --help, -h                 Show this help
+ 
+ Examples:
+@@ -35,6 +36,242 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function isPlainObject(value) {
++  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
++    return false;
++  }
++
++  const prototype = Object.getPrototypeOf(value);
++  return prototype === Object.prototype || prototype === null;
++}
++
++function parseTime(value) {
++  if (typeof value !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) {
++    return null;
++  }
++
++  const [hours, minutes] = value.split(':').map(Number);
++  return (hours * 60) + minutes;
++}
++
++function formatTime(minutes) {
++  const hours = Math.floor(minutes / 60);
++  const remainder = minutes % 60;
++  return `${String(hours).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
++}
++
++function compareStrings(first, second) {
++  if (first < second) return -1;
++  if (first > second) return 1;
++  return 0;
++}
++
++function parseInterval(value) {
++  if (!isPlainObject(value)) return null;
++
++  const start = parseTime(value.start);
++  const end = parseTime(value.end);
++  if (start === null || end === null || end <= start) return null;
++
++  return { start, end };
++}
++
++function parseResource(value) {
++  if (!isPlainObject(value) || typeof value.id !== 'string' || value.id.length === 0) {
++    return null;
++  }
++  if (!Array.isArray(value.windows) || !Array.isArray(value.blocked)) return null;
++
++  const windows = value.windows.map(parseInterval);
++  const blocked = value.blocked.map(parseInterval);
++  if (windows.some((interval) => interval === null)
++    || blocked.some((interval) => interval === null)) {
++    return null;
++  }
++
++  return { id: value.id, windows, blocked, reservations: [] };
++}
++
++function parseRequest(value, inputIndex) {
++  if (!isPlainObject(value)
++    || typeof value.id !== 'string'
++    || value.id.length === 0
++    || typeof value.resource !== 'string'
++    || value.resource.length === 0
++    || !Number.isInteger(value.duration_min)
++    || value.duration_min <= 0
++    || !Number.isFinite(value.priority)
++    || typeof value.submitted_at !== 'string'
++    || value.submitted_at.length === 0) {
++    return null;
++  }
++
++  const start = parseTime(value.start);
++  const submittedAt = parseTime(value.submitted_at);
++  if (start === null || submittedAt === null) return null;
++
++  return {
++    id: value.id,
++    resource: value.resource,
++    start,
++    duration: value.duration_min,
++    priority: value.priority,
++    submittedAt,
++    inputIndex,
++  };
++}
++
++function parseScheduleInput(value) {
++  if (!isPlainObject(value) || !Array.isArray(value.resources) || !Array.isArray(value.requests)) {
++    return null;
++  }
++
++  const resourceIds = new Set();
++  const resources = [];
++  for (const resourceValue of value.resources) {
++    const resource = parseResource(resourceValue);
++    if (resource === null || resourceIds.has(resource.id)) return null;
++    resourceIds.add(resource.id);
++    resources.push(resource);
++  }
++
++  const requestIds = new Set();
++  const requests = [];
++  for (const [inputIndex, requestValue] of value.requests.entries()) {
++    const request = parseRequest(requestValue, inputIndex);
++    if (request === null || requestIds.has(request.id)) return null;
++    requestIds.add(request.id);
++    requests.push(request);
++  }
++
++  return { resources, requests };
++}
++
++function intervalsOverlap(start, end, interval) {
++  return start < interval.end && interval.start < end;
++}
++
++function findEarliestPlacement(resource, request) {
++  let earliest = null;
++
++  for (const window of resource.windows) {
++    let start = Math.max(request.start, window.start);
++
++    while (start + request.duration <= window.end) {
++      let conflictEnd = null;
++      for (const interval of [...resource.blocked, ...resource.reservations]) {
++        if (intervalsOverlap(start, start + request.duration, interval)
++          && (conflictEnd === null || interval.end > conflictEnd)) {
++          conflictEnd = interval.end;
++        }
++      }
++
++      if (conflictEnd === null) {
++        if (earliest === null || start < earliest) earliest = start;
++        break;
++      }
++
++      start = conflictEnd;
++    }
++  }
++
++  return earliest;
++}
++
++function runSchedule(input) {
++  const resourcesById = new Map(input.resources.map((resource) => [resource.id, resource]));
++  const orderedRequests = [...input.requests].sort((first, second) => {
++    if (first.priority !== second.priority) return second.priority - first.priority;
++    if (first.submittedAt !== second.submittedAt) return first.submittedAt - second.submittedAt;
++    return compareStrings(first.id, second.id);
++  });
++  const accepted = [];
++  const rejected = [];
++
++  for (const request of orderedRequests) {
++    const resource = resourcesById.get(request.resource);
++    if (!resource) {
++      rejected.push({ id: request.id, reason: 'unknown_resource', inputIndex: request.inputIndex });
++      continue;
++    }
++
++    const start = findEarliestPlacement(resource, request);
++    if (start === null) {
++      rejected.push({ id: request.id, reason: 'no_slot', inputIndex: request.inputIndex });
++      continue;
++    }
++
++    const end = start + request.duration;
++    resource.reservations.push({ start, end });
++    accepted.push({ id: request.id, resource: request.resource, start, end });
++  }
++
++  accepted.sort((first, second) => {
++    if (first.start !== second.start) return first.start - second.start;
++    const resourceComparison = compareStrings(first.resource, second.resource);
++    if (resourceComparison !== 0) return resourceComparison;
++    return compareStrings(first.id, second.id);
++  });
++  rejected.sort((first, second) => first.inputIndex - second.inputIndex);
++
++  return {
++    scheduled: accepted.map(({ id, resource, start, end }) => ({
++      id,
++      resource,
++      start: formatTime(start),
++      end: formatTime(end),
++    })),
++    rejected: rejected.map(({ id, reason }) => ({ id, reason })),
++  };
++}
++
++function scheduleInputPath(argv) {
++  if (argv.length !== 2 || argv[0] !== '--input') return null;
++
++  const inputPath = argv[1];
++  if (typeof inputPath !== 'string' || inputPath.length === 0 || inputPath.startsWith('-')) {
++    return null;
++  }
++  return inputPath;
++}
++
++function writeScheduleError() {
++  process.stderr.write(`${JSON.stringify({ error: 'invalid_input' })}\n`);
++  process.exitCode = 2;
++}
++
++function runScheduleCommand(argv) {
++  const inputPath = scheduleInputPath(argv);
++  if (inputPath === null) {
++    writeScheduleError();
++    return;
++  }
++
++  let raw;
++  try {
++    raw = fs.readFileSync(inputPath, 'utf8');
++  } catch (error) {
++    writeScheduleError();
++    return;
++  }
++
++  let value;
++  try {
++    value = JSON.parse(raw);
++  } catch (error) {
++    writeScheduleError();
++    return;
++  }
++
++  const input = parseScheduleInput(value);
++  if (input === null) {
++    writeScheduleError();
++    return;
++  }
++
++  process.stdout.write(`${JSON.stringify(runSchedule(input))}\n`);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +290,10 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'schedule': {
++      runScheduleCommand(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..ecce95d 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+-const { execFileSync } = require('node:child_process');
++const { execFileSync, spawnSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,21 @@ function run(args) {
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function runCaptured(args) {
++  return spawnSync('node', [CLI, ...args], { encoding: 'utf8' });
++}
++
++function withJsonFixture(value, callback) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-schedule-'));
++  const inputPath = path.join(directory, 'input.json');
++  fs.writeFileSync(inputPath, JSON.stringify(value));
++  try {
++    callback(inputPath);
++  } finally {
++    fs.rmSync(directory, { force: true, recursive: true });
++  }
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +40,113 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('schedule prioritizes requests and emits sorted earliest placements', () => {
++  withJsonFixture({
++    resources: [
++      {
++        id: 'alpha',
++        windows: [{ start: '09:00', end: '10:00' }],
++        blocked: [{ start: '09:20', end: '09:30' }],
++      },
++      {
++        id: 'beta',
++        windows: [{ start: '09:00', end: '09:15' }],
++        blocked: [],
++      },
++      {
++        id: 'gamma',
++        windows: [{ start: '10:00', end: '10:30' }],
++        blocked: [],
++      },
++      {
++        id: 'delta',
++        windows: [{ start: '09:00', end: '10:00' }],
++        blocked: [],
++      },
++    ],
++    requests: [
++      {
++        id: 'low-alpha', resource: 'alpha', start: '09:00', duration_min: 20, priority: 1, submitted_at: '10:00',
++      },
++      {
++        id: 'end-gamma', resource: 'gamma', start: '10:15', duration_min: 15, priority: 0, submitted_at: '10:00',
++      },
++      {
++        id: 'early-beta', resource: 'beta', start: '09:00', duration_min: 10, priority: 2, submitted_at: '10:00',
++      },
++      {
++        id: 'tie-z', resource: 'delta', start: '09:00', duration_min: 10, priority: 4, submitted_at: '09:10',
++      },
++      {
++        id: 'tie-a', resource: 'delta', start: '09:00', duration_min: 10, priority: 4, submitted_at: '09:10',
++      },
++      {
++        id: 'high-alpha', resource: 'alpha', start: '09:00', duration_min: 20, priority: 3, submitted_at: '10:00',
++      },
++    ],
++  }, (inputPath) => {
++    const result = runCaptured(['schedule', '--input', inputPath]);
++    const expected = {
++      scheduled: [
++        { id: 'high-alpha', resource: 'alpha', start: '09:00', end: '09:20' },
++        { id: 'early-beta', resource: 'beta', start: '09:00', end: '09:10' },
++        { id: 'tie-a', resource: 'delta', start: '09:00', end: '09:10' },
++        { id: 'tie-z', resource: 'delta', start: '09:10', end: '09:20' },
++        { id: 'low-alpha', resource: 'alpha', start: '09:30', end: '09:50' },
++        { id: 'end-gamma', resource: 'gamma', start: '10:15', end: '10:30' },
++      ],
++      rejected: [],
++    };
++
++    assert.equal(result.status, 0);
++    assert.equal(result.stderr, '');
++    assert.equal(result.stdout, `${JSON.stringify(expected)}\n`);
++    assert.deepStrictEqual(JSON.parse(result.stdout), expected);
++  });
++});
++
++test('schedule preserves rejected request input order', () => {
++  withJsonFixture({
++    resources: [{
++      id: 'alpha',
++      windows: [{ start: '09:00', end: '09:30' }],
++      blocked: [{ start: '09:00', end: '09:30' }],
++    }],
++    requests: [
++      {
++        id: 'unknown-first', resource: 'missing', start: '09:00', duration_min: 10, priority: 1, submitted_at: '10:00',
++      },
++      {
++        id: 'no-slot-second', resource: 'alpha', start: '09:00', duration_min: 10, priority: 10, submitted_at: '10:00',
++      },
++      {
++        id: 'unknown-third', resource: 'also-missing', start: '09:00', duration_min: 10, priority: 5, submitted_at: '10:00',
++      },
++    ],
++  }, (inputPath) => {
++    const result = runCaptured(['schedule', '--input', inputPath]);
++    const expected = {
++      scheduled: [],
++      rejected: [
++        { id: 'unknown-first', reason: 'unknown_resource' },
++        { id: 'no-slot-second', reason: 'no_slot' },
++        { id: 'unknown-third', reason: 'unknown_resource' },
++      ],
++    };
++
++    assert.equal(result.status, 0);
++    assert.equal(result.stderr, '');
++    assert.equal(result.stdout, `${JSON.stringify(expected)}\n`);
++    assert.deepStrictEqual(JSON.parse(result.stdout), expected);
++  });
++});
++
++test('schedule reports malformed options only on stderr', () => {
++  const result = runCaptured(['schedule', '--input']);
++
++  assert.equal(result.status, 2);
++  assert.equal(result.stdout, '');
++  assert.equal(result.stderr, '{"error":"invalid_input"}\n');
++  assert.deepStrictEqual(JSON.parse(result.stderr), { error: 'invalid_input' });
++});

@@ -1,0 +1,9 @@
+{
+  "task": "DR-atomic-state-f11-batch-import",
+  "arm": "B",
+  "attempt": 1,
+  "elapsed_seconds": 367,
+  "invoke_exit": 0,
+  "timed_out": false,
+  "worktree": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/external/workspaces/iter0068-gate-20260710e/DR-atomic-state-f11-batch-import/B1/repo"
+}

@@ -1,0 +1,14 @@
+{
+ "schema_version": 1,
+ "opaque_run_id": "rcd32891d58f5",
+ "tasks": {
+  "fx01": "DR-ordering-f21-scheduler",
+  "fx02": "DR-byte-preservation-f7-out-of-scope-trap",
+  "fx03": "DR-shape-compound-rules-f25-cart",
+  "fx04": "DR-ledger-rounding-consistency-f26-payout",
+  "fx05": "DR-atomic-state-f11-batch-import",
+  "fx06": "DR-auth-signature-f12-webhook",
+  "fx07": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+  "fx08": "FS1-schedule-max-runs"
+ }
+}

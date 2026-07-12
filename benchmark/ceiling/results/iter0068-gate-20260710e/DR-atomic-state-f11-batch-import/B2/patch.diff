@@ -1,0 +1,124 @@
+diff --git a/server/index.js b/server/index.js
+index e681dde..7140416 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -17,6 +17,34 @@ app.get('/items', (_req, res) => {
+   res.json({ items });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (let index = 0; index < req.body.items.length; index += 1) {
++    const item = req.body.items[index];
++    if (typeof item?.name !== 'string' || item.name.trim() === '') {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  const nextId = Math.max(0, ...items.map((item) => item.id)) + 1;
++  const importedItems = req.body.items.map((item, index) => ({
++    id: nextId + index,
++    name: item.name,
++    qty: item.qty,
++  }));
++  items.push(...importedItems);
++  res.status(201).json({ inserted: importedItems.length });
++});
++
+ app.get('/items/:id', (req, res) => {
+   const id = Number(req.params.id);
+   const item = items.find((it) => it.id === id);
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..e644e29 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -23,6 +23,26 @@ function get(server, path) {
+   });
+ }
+ 
++function post(server, path, body) {
++  return new Promise((resolve, reject) => {
++    const { port } = server.address();
++    const request = http.request(
++      `http://127.0.0.1:${port}${path}`,
++      {
++        method: 'POST',
++        headers: { 'content-type': 'application/json' },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    request.on('error', reject);
++    request.end(body === undefined ? undefined : JSON.stringify(body));
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +76,53 @@ test('GET /items/:id returns 404 for missing', async () => {
+     server.close();
+   }
+ });
++
++test('POST /items/import leaves the list unchanged for an invalid middle item', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 2 },
++        { name: 'delta', qty: 0 },
++        { name: 'epsilon', qty: 4 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a valid batch in order with unique numeric ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 2 },
++        { name: 'delta', qty: 4 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const inserted = after.body.items.slice(before.body.items.length);
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: 2 });
++    assert.deepStrictEqual(
++      inserted.map(({ name, qty }) => ({ name, qty })),
++      [
++        { name: 'gamma', qty: 2 },
++        { name: 'delta', qty: 4 },
++      ],
++    );
++    assert.ok(inserted.every((item) => typeof item.id === 'number'));
++    assert.strictEqual(new Set(after.body.items.map((item) => item.id)).size, after.body.items.length);
++  } finally {
++    server.close();
++  }
++});

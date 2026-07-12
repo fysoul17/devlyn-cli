@@ -1,0 +1,13 @@
+{
+  "task": "DR-ordering-f21-scheduler",
+  "arm_attempt": "B3",
+  "resolved": false,
+  "tests_passed": 0,
+  "tests_total": 1,
+  "hidden_test_failures": 1,
+  "apply_exit": 0,
+  "oracle_exit": 1,
+  "report_path": "/Users/aipalm/.local/share/nx01/v/rcd32891d58f5/fx01/B3/oracle.log",
+  "neutralization_diff_sha256": "05afa7a9be5baf8505182a0a2b3be0bb1400a51d1ca455dee0b66f3ef8f15f44",
+  "neutral_baseline_sha": "cbd12daedd7f2d22c62110faf097f12797e7dda6"
+}

@@ -1,0 +1,9 @@
+{
+  "task": "DR-ordering-f21-scheduler",
+  "arm": "B",
+  "attempt": 2,
+  "elapsed_seconds": 240,
+  "invoke_exit": 0,
+  "timed_out": false,
+  "worktree": "/Users/aipalm/.local/share/nx01/w/rcd32891d58f5/fx01/B2/repo"
+}

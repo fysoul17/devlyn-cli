@@ -1,0 +1,9 @@
+{
+  "task": "DR-byte-preservation-f7-out-of-scope-trap",
+  "arm": "B",
+  "attempt": 2,
+  "elapsed_seconds": 86,
+  "invoke_exit": 0,
+  "timed_out": false,
+  "worktree": "/Users/aipalm/devlyn-ceiling-external/workspaces/iter0068-gate-20260711g/DR-byte-preservation-f7-out-of-scope-trap/B2/repo"
+}

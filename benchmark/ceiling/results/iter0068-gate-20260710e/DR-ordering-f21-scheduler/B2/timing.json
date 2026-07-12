@@ -1,0 +1,9 @@
+{
+  "task": "DR-ordering-f21-scheduler",
+  "arm": "B",
+  "attempt": 2,
+  "elapsed_seconds": 444,
+  "invoke_exit": 0,
+  "timed_out": false,
+  "worktree": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/external/workspaces/iter0068-gate-20260710e/DR-ordering-f21-scheduler/B2/repo"
+}

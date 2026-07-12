@@ -1,0 +1,73 @@
+{
+  "auth": {
+    "is_symlink": false,
+    "mode": "0600",
+    "path": "/Users/aipalm/.local/share/nx01/d/r1239495a9b7a/f08d6b52f5d4d/B1/auth.json"
+  },
+  "direct_codex": {
+    "path": "/Users/aipalm/.nvm/versions/node/v20.19.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex",
+    "superset_wrapper": false,
+    "version": "codex-cli 0.144.1"
+  },
+  "environment": {
+    "forbidden_values_absent": true,
+    "keys": [
+      "CODEX_HOME",
+      "GIT_CONFIG_GLOBAL",
+      "GIT_CONFIG_NOSYSTEM",
+      "HOME",
+      "LANG",
+      "LC_ALL",
+      "NPM_CONFIG_CACHE",
+      "NPM_CONFIG_USERCONFIG",
+      "PATH",
+      "TERM",
+      "TMPDIR",
+      "TZ"
+    ],
+    "keys_sha256": "fae2716acdc290c81fe9678251994795a525b06e794cb1dbc715708f89c16086"
+  },
+  "forbidden_transcript_scan": {
+    "hits": [],
+    "passed": true,
+    "transcript_sha256": "31fde36c4ea3372be0b09aadb3a6bae52747ff4a387f7baf005860e9e8844ba6"
+  },
+  "git": {
+    "neutral_baseline_sha": "d5e479312b6f9573373bd2057e630bba7d22c608",
+    "reflogs": [],
+    "remotes": []
+  },
+  "neutralization": {
+    "author_email": "maintainer@example.com",
+    "author_name": "Project Maintainer",
+    "commit_date": "2000-01-01T00:00:00Z",
+    "commit_message": "Initial project snapshot",
+    "git_reflogs": [],
+    "git_remotes": [],
+    "neutral_baseline_sha": "d5e479312b6f9573373bd2057e630bba7d22c608",
+    "neutral_project_name": "harbor-tools",
+    "neutralization_diff_bytes": 5314,
+    "neutralization_diff_sha256": "05afa7a9be5baf8505182a0a2b3be0bb1400a51d1ca455dee0b66f3ef8f15f44",
+    "schema_version": 1,
+    "seed_derived": true
+  },
+  "opaque_paths": {
+    "external_root": "/Users/aipalm/.local/share/nx01",
+    "generated": [
+      "/Users/aipalm/.local/share/nx01/w/r1239495a9b7a/f08d6b52f5d4d/B1/repo",
+      "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-f12supp-20260712/DR-auth-signature-f12-webhook/B1",
+      "/Users/aipalm/.local/share/nx01/h/r1239495a9b7a/f08d6b52f5d4d/B1",
+      "/Users/aipalm/.local/share/nx01/d/r1239495a9b7a/f08d6b52f5d4d/B1"
+    ],
+    "opaque_run_id": "r1239495a9b7a",
+    "opaque_task_id": "f08d6b52f5d4d",
+    "passed": false
+  },
+  "schema_version": 2,
+  "shell_startup_canary": {
+    "host_startup_files_absent": true,
+    "passed": true,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_sha256": "a3ca2c0c7f959b8b18925f967a2eeba5215a22c0ecd0ff7f7e594e609f38aa15"
+  }
+}

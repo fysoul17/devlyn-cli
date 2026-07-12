@@ -1,0 +1,50 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index 07ac960..fd78940 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,13 +9,13 @@ const USAGE = `Usage: bench-cli <command> [options]
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version                    Print the CLI version from package.json
++  version [--format json]    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+-  bench-cli version
++  bench-cli version [--format json]
+ `;
+ 
+ function readPackageVersion() {
+@@ -57,6 +57,16 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex !== -1) {
++        const format = rest[formatIndex + 1];
++        if (format !== 'json') {
++          console.error(`Unsupported format: ${format}`);
++          process.exit(1);
++        }
++        console.log(JSON.stringify({ version: readPackageVersion() }));
++        return;
++      }
+       console.log(readPackageVersion());
+       return;
+     }
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..383abdc 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,8 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.strictEqual(out, `${JSON.stringify({ version: require('../package.json').version })}\n`);
++});

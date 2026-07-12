@@ -1,0 +1,9 @@
+{
+  "task": "DR-auth-signature-f12-webhook",
+  "arm": "B",
+  "attempt": 1,
+  "elapsed_seconds": 290,
+  "invoke_exit": 0,
+  "timed_out": false,
+  "worktree": "/Users/aipalm/.local/share/nx01/w/r1239495a9b7a/f08d6b52f5d4d/B1/repo"
+}

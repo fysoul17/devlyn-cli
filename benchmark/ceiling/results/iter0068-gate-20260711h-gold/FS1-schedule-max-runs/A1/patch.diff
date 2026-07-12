@@ -1,0 +1,52 @@
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 8e12eeb..fb485e4 100644
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -250,6 +250,8 @@ class Job:
+ 
+         # optional time of final run
+         self.cancel_after: Optional[datetime.datetime] = None
++        self.max_runs_limit: Optional[int] = None
++        self._completed_runs: int = 0
+ 
+         self.tags: Set[Hashable] = set()  # unique set of tags for the job
+         self.scheduler: Optional[Scheduler] = scheduler  # scheduler to register with
+@@ -558,6 +560,23 @@ class Job:
+         self.at_time = datetime.time(hour, minute, second)
+         return self
+ 
++    def max_runs(self, n: int):
++        """
++        Limit the total number of times this job will be executed.
++
++        After the job has run `n` times it is automatically removed from
++        its scheduler, exactly as a job returning CancelJob would be. When
++        combined with :meth:`Job.until`, whichever limit is reached first
++        cancels the job.
++
++        :param n: Maximum number of executions; must be an int >= 1.
++        :return: The invoked job instance
++        """
++        if isinstance(n, bool) or not isinstance(n, int) or n < 1:
++            raise ValueError("max_runs(n) requires an integer n >= 1")
++        self.max_runs_limit = n
++        return self
++
+     def to(self, latest: int):
+         """
+         Schedule the job to run at an irregular (randomized) interval.
+@@ -692,6 +711,14 @@ class Job:
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
+ 
++        self._completed_runs += 1
++        if (
++            self.max_runs_limit is not None
++            and self._completed_runs >= self.max_runs_limit
++        ):
++            logger.debug("Cancelling job %s (max_runs reached)", self)
++            return CancelJob
++
+         if self._is_overdue(self.next_run):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob

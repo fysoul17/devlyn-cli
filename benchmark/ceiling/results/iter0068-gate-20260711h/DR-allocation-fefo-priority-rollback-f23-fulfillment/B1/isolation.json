@@ -1,0 +1,73 @@
+{
+  "auth": {
+    "is_symlink": false,
+    "mode": "0600",
+    "path": "/Users/aipalm/.local/share/nx01/d/rcd32891d58f5/fx07/B1/auth.json"
+  },
+  "direct_codex": {
+    "path": "/Users/aipalm/.nvm/versions/node/v20.19.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex",
+    "superset_wrapper": false,
+    "version": "codex-cli 0.144.1"
+  },
+  "environment": {
+    "forbidden_values_absent": true,
+    "keys": [
+      "CODEX_HOME",
+      "GIT_CONFIG_GLOBAL",
+      "GIT_CONFIG_NOSYSTEM",
+      "HOME",
+      "LANG",
+      "LC_ALL",
+      "NPM_CONFIG_CACHE",
+      "NPM_CONFIG_USERCONFIG",
+      "PATH",
+      "TERM",
+      "TMPDIR",
+      "TZ"
+    ],
+    "keys_sha256": "fae2716acdc290c81fe9678251994795a525b06e794cb1dbc715708f89c16086"
+  },
+  "forbidden_transcript_scan": {
+    "hits": [],
+    "passed": true,
+    "transcript_sha256": "f8c25fbd9e2ec49381d48714125e8da222d54d952d3c5299bb9605712db176a6"
+  },
+  "git": {
+    "neutral_baseline_sha": "cbd12daedd7f2d22c62110faf097f12797e7dda6",
+    "reflogs": [],
+    "remotes": []
+  },
+  "neutralization": {
+    "author_email": "maintainer@example.com",
+    "author_name": "Project Maintainer",
+    "commit_date": "2000-01-01T00:00:00Z",
+    "commit_message": "Initial project snapshot",
+    "git_reflogs": [],
+    "git_remotes": [],
+    "neutral_baseline_sha": "cbd12daedd7f2d22c62110faf097f12797e7dda6",
+    "neutral_project_name": "harbor-tools",
+    "neutralization_diff_bytes": 5314,
+    "neutralization_diff_sha256": "05afa7a9be5baf8505182a0a2b3be0bb1400a51d1ca455dee0b66f3ef8f15f44",
+    "schema_version": 1,
+    "seed_derived": true
+  },
+  "opaque_paths": {
+    "external_root": "/Users/aipalm/.local/share/nx01",
+    "generated": [
+      "/Users/aipalm/.local/share/nx01/w/rcd32891d58f5/fx07/B1/repo",
+      "/Users/aipalm/.local/share/nx01/x/rcd32891d58f5/fx07/B1",
+      "/Users/aipalm/.local/share/nx01/h/rcd32891d58f5/fx07/B1",
+      "/Users/aipalm/.local/share/nx01/d/rcd32891d58f5/fx07/B1"
+    ],
+    "opaque_run_id": "rcd32891d58f5",
+    "opaque_task_id": "fx07",
+    "passed": true
+  },
+  "schema_version": 2,
+  "shell_startup_canary": {
+    "host_startup_files_absent": true,
+    "passed": true,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_sha256": "a3ca2c0c7f959b8b18925f967a2eeba5215a22c0ecd0ff7f7e594e609f38aa15"
+  }
+}

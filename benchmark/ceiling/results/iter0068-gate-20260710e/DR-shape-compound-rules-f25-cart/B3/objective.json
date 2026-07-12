@@ -1,0 +1,11 @@
+{
+  "task": "DR-shape-compound-rules-f25-cart",
+  "arm_attempt": "B3",
+  "resolved": true,
+  "tests_passed": 1,
+  "tests_total": 1,
+  "hidden_test_failures": 0,
+  "apply_exit": 0,
+  "oracle_exit": 0,
+  "report_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/external/eval/iter0068-gate-20260710e/DR-shape-compound-rules-f25-cart/B3/oracle.log"
+}
