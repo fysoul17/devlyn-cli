@@ -508,6 +508,8 @@ def verdict(args: argparse.Namespace) -> int:
         objective = load_json(attempt_dir / "objective.json")
         timing = load_json(attempt_dir / "timing.json")
         isolation = load_json(attempt_dir / "isolation.json")
+        if isolation.get("opaque_paths", {}).get("passed") is not True:
+            die(f"{control} A attempt {attempt_dir.name} opaque-path attestation did not pass: {attempt_dir / 'isolation.json'}")
         objective_rows[control] = {
             "task": task,
             "a_resolved": objective.get("resolved"),

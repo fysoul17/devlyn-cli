@@ -143,12 +143,29 @@ if grep -q 'iter0068-gate-20260711h' "$JUDGE_RUN/nodeg-judge/codex.json"; then
 fi
 printf '{"resolved":true}\n' > "$JUDGE_RUN/A1/objective.json"
 printf '{"invoke_exit":0,"timed_out":false,"elapsed_seconds":100}\n' > "$JUDGE_RUN/A1/timing.json"
-printf '{"direct_claude":{"version":"claude fake 1.0"},"direct_codex":{"version":"codex fake 1.0"}}\n' \
-  > "$JUDGE_RUN/A1/isolation.json"
 printf '{"modelUsage":{"claude-sonnet-fake":{}}}\n' > "$JUDGE_RUN/A1/transcript.txt"
-python3 "$SCRIPT_DIR/nodeg-cell.py" verdict \
-  --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" \
-  > "$TMP_DIR/verdict.stdout"
+run_verdict() {
+  python3 "$SCRIPT_DIR/nodeg-cell.py" verdict \
+    --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING"
+}
+
+if run_verdict > "$TMP_DIR/a-missing.stdout" 2> "$TMP_DIR/a-missing.stderr"; then
+  echo "missing A isolation did not fail" >&2
+  exit 1
+fi
+grep -q 'invalid JSON artifact .*A1/isolation.json' "$TMP_DIR/a-missing.stderr"
+
+printf '{"opaque_paths":{"passed":false},"direct_claude":{"version":"claude fake 1.0"},"direct_codex":{"version":"codex fake 1.0"}}\n' \
+  > "$JUDGE_RUN/A1/isolation.json"
+if run_verdict > "$TMP_DIR/a-false.stdout" 2> "$TMP_DIR/a-false.stderr"; then
+  echo "failed A opaque-path attestation did not fail" >&2
+  exit 1
+fi
+grep -q 'F7 A attempt A1 opaque-path attestation did not pass: .*A1/isolation.json' "$TMP_DIR/a-false.stderr"
+
+printf '{"opaque_paths":{"passed":true},"direct_claude":{"version":"claude fake 1.0"},"direct_codex":{"version":"codex fake 1.0"}}\n' \
+  > "$JUDGE_RUN/A1/isolation.json"
+run_verdict > "$TMP_DIR/verdict.stdout"
 python3 - "$CEILING/results/selftest-judge/nodeg-verdict.json" <<'PY'
 import json
 import sys
