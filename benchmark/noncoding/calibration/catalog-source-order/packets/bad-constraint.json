@@ -1,0 +1,40 @@
+{
+  "schema_version": "pud-1",
+  "project_acceptance": [
+    { "id": "typed-retry", "observable": "sync.retry_limit is string 3 in canonical and generated data." },
+    { "id": "unchanged-neighbors", "observable": "Existing sync formats and the export command remain unchanged." }
+  ],
+  "tasks": [
+    {
+      "id": "edit-canonical",
+      "objective": "Add retry_limit as the JSON string 3 to the canonical sync record.",
+      "depends_on": [],
+      "context_refs": [
+        { "path": "README.md", "line_start": 3, "line_end": 5, "claim": "The README identifies config/commands.json as the sole source of truth." },
+        { "path": "config/commands.json", "line_start": 3, "line_end": 20, "claim": "Catalog defaults are serialized as strings for downstream compatibility." }
+      ],
+      "scope": { "may_change": ["config/commands.json"], "must_preserve": ["formats order is text then json", "export command is unchanged"] },
+      "acceptance": [
+        { "id": "source-value", "observable": "The canonical sync object contains retry_limit: \"3\"." }
+      ],
+      "handoff": "Proceed to regeneration only after the source edit is complete."
+    },
+    {
+      "id": "regenerate-and-test",
+      "objective": "Run the repository renderer, confirm a second render is clean, and run tests.",
+      "depends_on": ["edit-canonical"],
+      "context_refs": [
+        { "path": "tools/render_catalog.py", "line_start": 8, "line_end": 13, "claim": "The renderer deterministically writes generated/commands.json from the canonical command map." }
+      ],
+      "scope": { "may_change": ["generated/commands.json"], "must_preserve": ["src/catalog.py and tests are out of scope"] },
+      "acceptance": [
+        { "id": "clean-generator", "observable": "A repeated render has no effect and tests pass." }
+      ],
+      "handoff": "Report the canonical edit, generated update, and test result."
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [
+    { "statement": "The generated consumer expects string-valued defaults.", "evidence_refs": ["config/commands.json:3-20"] }
+  ]
+}

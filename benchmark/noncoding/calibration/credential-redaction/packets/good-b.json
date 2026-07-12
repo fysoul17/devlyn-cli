@@ -1,0 +1,41 @@
+{
+  "schema_version": "pud-1",
+  "project_acceptance": [
+    { "id": "secret-policy", "observable": "The shared policy redacts access_token with exact case-insensitive matching." },
+    { "id": "no-collateral", "observable": "Near-name keys, adapters, and existing secret behavior do not regress." }
+  ],
+  "tasks": [
+    {
+      "id": "policy-change",
+      "objective": "Extend the shared exact-key secret set with access_token.",
+      "depends_on": [],
+      "context_refs": [
+        { "path": "src/sanitize.py", "line_start": 6, "line_end": 17, "claim": "One shared set controls exact case-insensitive matches at all recursive depths." },
+        { "path": "README.md", "line_start": 3, "line_end": 4, "claim": "Policy belongs in sanitize, not in an adapter." }
+      ],
+      "scope": { "may_change": ["src/sanitize.py"], "must_preserve": ["recursive dictionary and list handling", "exact-match semantics", "existing password and api_key policy"] },
+      "acceptance": [
+        { "id": "minimal-policy", "observable": "Only the shared secret-key policy changes in production code." }
+      ],
+      "handoff": "Proceed to focused regression coverage."
+    },
+    {
+      "id": "coverage",
+      "objective": "Cover nested and case-variant access tokens plus preserved near-name keys through shared and adapter calls.",
+      "depends_on": ["policy-change"],
+      "context_refs": [
+        { "path": "tests/test_sanitize.py", "line_start": 1, "line_end": 20, "claim": "The existing suite covers shared behavior and adapter delegation." },
+        { "path": "src/format_event.py", "line_start": 6, "line_end": 10, "claim": "format_event delegates to sanitize and requires no policy branch." }
+      ],
+      "scope": { "may_change": ["tests/test_sanitize.py"], "must_preserve": ["src/format_event.py remains unchanged", "access_token_hint and token_type retain their values"] },
+      "acceptance": [
+        { "id": "regression-suite", "observable": "All tests pass with exact-match and preservation cases asserted." }
+      ],
+      "handoff": "Report the one production policy edit and test result."
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [
+    { "statement": "Casefolded set membership is the repository's established key-matching mechanism.", "evidence_refs": ["src/sanitize.py:6-12"] }
+  ]
+}

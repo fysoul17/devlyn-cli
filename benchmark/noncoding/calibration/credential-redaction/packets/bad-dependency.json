@@ -1,0 +1,39 @@
+{
+  "schema_version": "pud-1",
+  "project_acceptance": [
+    { "id": "redact-token", "observable": "The CLI output redacts exact access_token keys case-insensitively." },
+    { "id": "preserve-neighbors", "observable": "access_token_hint, token_type, and existing recursive behavior are preserved." }
+  ],
+  "tasks": [
+    {
+      "id": "adapter-policy",
+      "objective": "Add access_token redaction to the CLI adapter before serialization.",
+      "depends_on": [],
+      "context_refs": [
+        { "path": "src/format_event.py", "line_start": 1, "line_end": 10, "claim": "The adapter is the downstream boundary that owns OAuth-specific policy." }
+      ],
+      "scope": { "may_change": ["src/format_event.py", "tests/test_sanitize.py"], "must_preserve": ["shared sanitizer behavior"] },
+      "acceptance": [
+        { "id": "cli-entry-point", "observable": "format_event redacts nested access tokens." }
+      ],
+      "handoff": "Finish after the CLI tests pass."
+    },
+    {
+      "id": "shared-policy",
+      "objective": "Leave shared sanitizer policy unchanged for API compatibility.",
+      "depends_on": ["adapter-policy"],
+      "context_refs": [
+        { "path": "src/sanitize.py", "line_start": 6, "line_end": 17, "claim": "The shared policy should not absorb adapter-specific OAuth behavior." }
+      ],
+      "scope": { "may_change": [], "must_preserve": ["src/sanitize.py remains unchanged"] },
+      "acceptance": [
+        { "id": "shared-stability", "observable": "Direct sanitize callers retain their prior behavior." }
+      ],
+      "handoff": "No shared change is required."
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [
+    { "statement": "Only serialized CLI events can contain OAuth tokens.", "evidence_refs": ["src/format_event.py:8-10"] }
+  ]
+}

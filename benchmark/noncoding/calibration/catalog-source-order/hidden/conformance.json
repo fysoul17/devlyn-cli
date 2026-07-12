@@ -1,0 +1,19 @@
+{
+  "schema_version": "hidden-conformance-1",
+  "channels": [
+    {
+      "id": "retry-limit",
+      "visible_contract_excerpt": "Add `retry_limit` as the JSON integer `3` to the `sync` command.",
+      "task_sha256": "876c214c937b25c30d51402d54ac7866ce533b9d072cae5ec4e9f296dbb86188",
+      "validator": { "type": "regex", "pattern": "^3$" },
+      "values": [3]
+    },
+    {
+      "id": "sync-formats",
+      "visible_contract_excerpt": "Preserve the existing `formats` order (`text`, then `json`)",
+      "task_sha256": "876c214c937b25c30d51402d54ac7866ce533b9d072cae5ec4e9f296dbb86188",
+      "validator": { "type": "regex", "pattern": "^text,json$" },
+      "values": ["text,json"]
+    }
+  ]
+}

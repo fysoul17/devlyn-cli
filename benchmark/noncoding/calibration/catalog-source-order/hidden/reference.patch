@@ -1,0 +1,22 @@
+diff --git a/config/commands.json b/config/commands.json
+--- a/config/commands.json
++++ b/config/commands.json
+@@ -7,6 +7,7 @@
+         "text",
+         "json"
+       ],
++      "retry_limit": 3,
+       "timeout_seconds": 30
+     },
+     "export": {
+diff --git a/generated/commands.json b/generated/commands.json
+--- a/generated/commands.json
++++ b/generated/commands.json
+@@ -14,6 +14,7 @@
+         "text",
+         "json"
+       ],
++      "retry_limit": 3,
+       "timeout_seconds": 30
+     }
+   },

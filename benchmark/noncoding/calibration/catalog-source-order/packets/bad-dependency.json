@@ -1,0 +1,40 @@
+{
+  "schema_version": "pud-1",
+  "project_acceptance": [
+    { "id": "catalog-current", "observable": "The canonical and generated catalogs both expose sync.retry_limit as integer 3 and regeneration is clean." },
+    { "id": "preservation", "observable": "The sync format order and export command are unchanged." }
+  ],
+  "tasks": [
+    {
+      "id": "render",
+      "objective": "Regenerate the derived catalog and verify it is stable.",
+      "depends_on": [],
+      "context_refs": [
+        { "path": "tools/render_catalog.py", "line_start": 1, "line_end": 13, "claim": "This renderer copies the canonical command map into the generated catalog." }
+      ],
+      "scope": { "may_change": ["generated/commands.json"], "must_preserve": ["Do not hand-edit the generated catalog."] },
+      "acceptance": [
+        { "id": "stable-render", "observable": "Running python3 tools/render_catalog.py again produces no diff." }
+      ],
+      "handoff": "Run the tests after regeneration."
+    },
+    {
+      "id": "source",
+      "objective": "Add retry_limit as integer 3 to sync in the canonical catalog.",
+      "depends_on": ["render"],
+      "context_refs": [
+        { "path": "README.md", "line_start": 3, "line_end": 5, "claim": "config/commands.json is canonical and the generated catalog is derived." },
+        { "path": "config/commands.json", "line_start": 3, "line_end": 20, "claim": "The existing sync formats and export command are preservation boundaries." }
+      ],
+      "scope": { "may_change": ["config/commands.json"], "must_preserve": ["sync formats remain text then json", "export command remains byte-for-byte equivalent"] },
+      "acceptance": [
+        { "id": "typed-default", "observable": "sync.retry_limit is the JSON integer 3." }
+      ],
+      "handoff": "Finish after the canonical edit."
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [
+    { "statement": "The checked-in renderer is the required generation path.", "evidence_refs": ["README.md:3-5", "tools/render_catalog.py:1-13"] }
+  ]
+}

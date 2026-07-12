@@ -1,0 +1,40 @@
+{
+  "schema_version": "hidden-conformance-1",
+  "channels": [
+    {
+      "id": "secret-key",
+      "visible_contract_excerpt": "Treat a mapping key equal to `access_token`, case-insensitively, as secret",
+      "task_sha256": "1dc67b59262baa9e4509048e8a8cb0846f84be820487341f618a051425602862",
+      "validator": { "type": "regex", "pattern": "(?i)^access_token$" },
+      "values": ["access_token", "ACCESS_TOKEN"]
+    },
+    {
+      "id": "preserved-keys",
+      "visible_contract_excerpt": "Preserve `access_token_hint`, `token_type`, and every other non-secret key and value.",
+      "task_sha256": "1dc67b59262baa9e4509048e8a8cb0846f84be820487341f618a051425602862",
+      "validator": { "type": "regex", "pattern": "^(access_token_hint|token_type)$" },
+      "values": ["access_token_hint", "token_type"]
+    },
+    {
+      "id": "secret-values",
+      "visible_contract_excerpt": "OAuth access tokens are never emitted.",
+      "task_sha256": "1dc67b59262baa9e4509048e8a8cb0846f84be820487341f618a051425602862",
+      "validator": { "type": "regex", "pattern": "^(alpha|beta)$" },
+      "values": ["alpha", "beta"]
+    },
+    {
+      "id": "preserved-values",
+      "visible_contract_excerpt": "every other non-secret key and value.",
+      "task_sha256": "1dc67b59262baa9e4509048e8a8cb0846f84be820487341f618a051425602862",
+      "validator": { "type": "regex", "pattern": "^(visible|Bearer)$" },
+      "values": ["visible", "Bearer"]
+    },
+    {
+      "id": "replacement",
+      "visible_contract_excerpt": "replace its value with `[redacted]`",
+      "task_sha256": "1dc67b59262baa9e4509048e8a8cb0846f84be820487341f618a051425602862",
+      "validator": { "type": "regex", "pattern": "^\\[redacted\\]$" },
+      "values": ["[redacted]"]
+    }
+  ]
+}

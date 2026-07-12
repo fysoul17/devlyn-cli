@@ -1,0 +1,19 @@
+{
+  "commands": {
+    "export": {
+      "formats": [
+        "json",
+        "csv"
+      ],
+      "timeout_seconds": 60
+    },
+    "sync": {
+      "formats": [
+        "text",
+        "json"
+      ],
+      "timeout_seconds": 30
+    }
+  },
+  "generated_by": "tools/render_catalog.py"
+}

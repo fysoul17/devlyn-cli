@@ -1,0 +1,12 @@
+{
+  "schema_version": "noncoding-power-1",
+  "test": "two-sided two-proportion normal approximation",
+  "alpha": 0.05,
+  "repeats_per_packet": 16,
+  "declared_good_probability": 0.75,
+  "declared_bad_probability": 0.25,
+  "declared_minimum_effect": 0.5,
+  "power": 0.8420249161804724,
+  "minimum_required_power": 0.8,
+  "formula": "Phi((sqrt(n)*(p_good-p_bad)-z_(1-alpha/2)*sqrt(2*p_bar*(1-p_bar)))/sqrt(p_good*(1-p_good)+p_bad*(1-p_bad))) plus the opposite tail"
+}

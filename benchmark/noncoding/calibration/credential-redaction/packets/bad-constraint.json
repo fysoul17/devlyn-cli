@@ -1,0 +1,41 @@
+{
+  "schema_version": "pud-1",
+  "project_acceptance": [
+    { "id": "secret-policy", "observable": "The shared policy redacts every key beginning with access_token." },
+    { "id": "no-collateral", "observable": "Adapters and existing secret behavior do not regress." }
+  ],
+  "tasks": [
+    {
+      "id": "policy-change",
+      "objective": "Extend the shared policy with case-insensitive access_token prefix matching.",
+      "depends_on": [],
+      "context_refs": [
+        { "path": "src/sanitize.py", "line_start": 6, "line_end": 17, "claim": "The sanitizer should broaden exact set membership to a startswith check for the access_token family." },
+        { "path": "README.md", "line_start": 3, "line_end": 4, "claim": "Policy belongs in sanitize, not in an adapter." }
+      ],
+      "scope": { "may_change": ["src/sanitize.py"], "must_preserve": ["recursive dictionary and list handling", "existing password and api_key policy"] },
+      "acceptance": [
+        { "id": "broad-policy", "observable": "access_token and access_token-prefixed keys are redacted." }
+      ],
+      "handoff": "Proceed to focused regression coverage."
+    },
+    {
+      "id": "coverage",
+      "objective": "Cover nested and case-variant access-token-family keys through shared and adapter calls.",
+      "depends_on": ["policy-change"],
+      "context_refs": [
+        { "path": "tests/test_sanitize.py", "line_start": 1, "line_end": 20, "claim": "The existing suite covers shared behavior and adapter delegation." },
+        { "path": "src/format_event.py", "line_start": 6, "line_end": 10, "claim": "format_event delegates to sanitize and requires no policy branch." }
+      ],
+      "scope": { "may_change": ["tests/test_sanitize.py"], "must_preserve": ["src/format_event.py remains unchanged"] },
+      "acceptance": [
+        { "id": "regression-suite", "observable": "All tests pass with prefix-family cases asserted." }
+      ],
+      "handoff": "Report the shared prefix policy and test result."
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [
+    { "statement": "Keys sharing the access_token prefix carry equivalent secret material.", "evidence_refs": ["src/sanitize.py:6-12"] }
+  ]
+}

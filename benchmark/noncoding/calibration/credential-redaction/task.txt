@@ -1,0 +1,8 @@
+Extend the event sanitizer so OAuth access tokens are never emitted.
+
+- Treat a mapping key equal to `access_token`, case-insensitively, as secret and replace its value with `[redacted]` at any nesting depth.
+- Match the complete key only. Preserve `access_token_hint`, `token_type`, and every other non-secret key and value.
+- Implement the behavior in the shared `src/sanitize.py` sanitizer. `src/format_event.py` must remain a delegation-only adapter with no independent redaction rules.
+- Preserve the existing recursive handling of dictionaries and lists and the existing `password` and `api_key` behavior.
+
+Add focused public coverage and run the repository's tests before finishing.

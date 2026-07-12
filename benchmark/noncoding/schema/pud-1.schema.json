@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pud-1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_acceptance",
+    "tasks",
+    "open_questions",
+    "assumptions"
+  ],
+  "properties": {
+    "schema_version": { "const": "pud-1" },
+    "project_acceptance": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/acceptance" }
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "objective",
+          "depends_on",
+          "context_refs",
+          "scope",
+          "acceptance",
+          "handoff"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "objective": { "type": "string" },
+          "depends_on": { "type": "array", "items": { "type": "string" } },
+          "context_refs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "line_start", "line_end", "claim"],
+              "properties": {
+                "path": { "type": "string" },
+                "line_start": { "type": "integer" },
+                "line_end": { "type": "integer" },
+                "claim": { "type": "string" }
+              }
+            }
+          },
+          "scope": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["may_change", "must_preserve"],
+            "properties": {
+              "may_change": { "type": "array", "items": { "type": "string" } },
+              "must_preserve": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "acceptance": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/acceptance" }
+          },
+          "handoff": { "type": "string" }
+        }
+      }
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question", "blocking", "evidence_refs"],
+        "properties": {
+          "question": { "type": "string" },
+          "blocking": { "type": "boolean" },
+          "evidence_refs": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["statement", "evidence_refs"],
+        "properties": {
+          "statement": { "type": "string" },
+          "evidence_refs": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "observable"],
+      "properties": {
+        "id": { "type": "string" },
+        "observable": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+Update the command catalog in this repository so the `sync` command exposes a retry limit.
+
+- `config/commands.json` is the only canonical source. Never edit `generated/commands.json` directly.
+- Add `retry_limit` as the JSON integer `3` to the `sync` command.
+- Run `python3 tools/render_catalog.py` after editing the canonical source so the generated catalog matches it.
+- Preserve the existing `formats` order (`text`, then `json`) and preserve the `export` command byte-for-byte.
+- Only `config/commands.json` and `generated/commands.json` may change.
+
+Run the repository's tests before finishing.

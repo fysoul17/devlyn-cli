@@ -1,0 +1,12 @@
+diff --git a/src/sanitize.py b/src/sanitize.py
+--- a/src/sanitize.py
++++ b/src/sanitize.py
+@@ -3,7 +3,7 @@
+ from typing import Any
+ 
+ 
+-SECRET_KEYS = {"password", "api_key"}
++SECRET_KEYS = {"password", "api_key", "access_token"}
+ 
+ 
+ def sanitize(value: Any) -> Any:

@@ -1,0 +1,18 @@
+{
+  "commands": {
+    "sync": {
+      "formats": [
+        "text",
+        "json"
+      ],
+      "timeout_seconds": 30
+    },
+    "export": {
+      "formats": [
+        "json",
+        "csv"
+      ],
+      "timeout_seconds": 60
+    }
+  }
+}

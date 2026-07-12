@@ -1,0 +1,40 @@
+{
+  "schema_version": "pud-1",
+  "project_acceptance": [
+    { "id": "redact-token", "observable": "Exact access_token keys are redacted case-insensitively at every nesting depth through both shared and CLI entry points." },
+    { "id": "preserve-neighbors", "observable": "access_token_hint, token_type, and existing recursive behavior are preserved." }
+  ],
+  "tasks": [
+    {
+      "id": "adapter-check",
+      "objective": "Verify the CLI adapter inherits the shared behavior without adding policy.",
+      "depends_on": ["shared-policy"],
+      "context_refs": [
+        { "path": "src/format_event.py", "line_start": 1, "line_end": 10, "claim": "The adapter delegates to sanitize before serialization and should remain policy-free." }
+      ],
+      "scope": { "may_change": ["tests/test_sanitize.py"], "must_preserve": ["src/format_event.py remains delegation-only"] },
+      "acceptance": [
+        { "id": "both-entry-points", "observable": "Focused tests cover sanitize and format_event with nested access tokens." }
+      ],
+      "handoff": "Run the complete unittest suite."
+    },
+    {
+      "id": "shared-policy",
+      "objective": "Add exact case-insensitive access_token matching to the shared sanitizer secret-key policy.",
+      "depends_on": [],
+      "context_refs": [
+        { "path": "README.md", "line_start": 3, "line_end": 4, "claim": "The shared sanitizer is the single policy boundary for API and CLI callers." },
+        { "path": "src/sanitize.py", "line_start": 6, "line_end": 17, "claim": "SECRET_KEYS already provides exact case-insensitive key matching while recursion handles mappings and lists." }
+      ],
+      "scope": { "may_change": ["src/sanitize.py"], "must_preserve": ["complete-key matching only", "access_token_hint and token_type remain visible", "password and api_key behavior remains"] },
+      "acceptance": [
+        { "id": "shared-redaction", "observable": "access_token and ACCESS_TOKEN values become [redacted] without prefix over-match." }
+      ],
+      "handoff": "Hand the shared behavior to adapter verification."
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [
+    { "statement": "Extending SECRET_KEYS is sufficient because the existing sanitizer already recurses and compares casefolded complete keys.", "evidence_refs": ["src/sanitize.py:6-17"] }
+  ]
+}
