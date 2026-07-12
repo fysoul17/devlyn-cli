@@ -14,7 +14,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 (user cl
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-12 (iter-0068 RE-CLOSED VALID-NEGATIVE-RESTORED; enter the 0070 ladder)
+## 🚦 START-HERE — state after 2026-07-12 evening (0068 re-closed; 0070a ACTIVE, purity fixed, canaries flipped)
 
 **0. iter-0068 RE-CLOSED 2026-07-12 (three-way; full arc in
 `iterations/0068-discriminating-corpus.md` § Amendment A1 + § Re-closure +
@@ -42,15 +42,13 @@ lint at fixture freeze.
 
 **iter-0068 — discriminating ceiling corpus — CLOSED 2026-07-11, verdict VALID-NEGATIVE** (full record `iterations/0068-discriminating-corpus.md` § Closure + `DECISIONS.md:0068.1-0068.3`). Clean gate cohort `iter0068-gate-20260711g`: **0/7 admitted, 8/8 `saturated:bare-resolves`** (FS1 control correct; 24/24 valid; terra-only; three-way R1-gate GATE-VALID unanimous). Honest finding: the synthetic categorical-trap pool does not discriminate clean bare `gpt-5.6-terra` — the bare-fails gate + generic FS oracle are plumbing-validated only; no ceiling/amplification/moat claim. En route the iter surfaced and fixed two harness-integrity classes (both three-way): (1) **bare arms were never bare** — codex v0.144.1 auto-loads global `~/.agents/skills` (no disable flag) and workspaces lived in-repo; cohorts c/d/e discarded; fix `fdd574a` = `~/devlyn-ceiling-external` isolation + per-attempt HOME/CODEX_HOME + fail-closed provenance/contamination INVALID markers (selftest 37); (2) **watchdog pipe-hold** taxed every attempt to full timeout (`fe252ee`); post-fix pace ≈ 15 min/row. Binding residue: 7 DR fixtures retired as discriminating candidates (anti-tuning rule); **pre-registered deferred cell** = no-degradation control (A1 vs frozen best_B on the 8 saturated controls) **BLOCKED on the A-arm/judge purity fix** — A-arm canary PROVED user-global `~/.claude/CLAUDE.md` leaks into `claude -p --setting-sources project,local` (transcript in `~/devlyn-ceiling-external/canary/`). BENCHMARK CODEX SEAT stays `gpt-5.6-terra` (sol is team-only). three-way protocol: Fable orchestrates/verifies, Codex executes, Grok 4.5 independent reviewer — memory `feedback_threeway_pair_grok_2026_07_10.md`.
 
-**ENTER NOW: the `iterations/0070-loop-architecture-STUB.md` ladder + `iterations/0070a-noncoding-instruments.md` (both design-frozen; unblocked by the 0068 re-closure 2026-07-12).**
+**ENTER NOW (updated 2026-07-12 evening): `iterations/0070a-noncoding-instruments.md` is ACTIVE** — R1 amendment landed (`e623c87`, DECISIONS 0070a.1) + **claude purity fix SHIPPED, canaries FLIPPED** (`f432506`, DECISIONS 0070a.2: baseline 7/11 leaked user-CLAUDE.md, post-fix a-arm + judge 0 hits) + 0068 follow-up batch (a)-(e) SHIPPED (`8682c5f`, DECISIONS 0068.6, Grok R1 5/5 CONFIRMED). Next concrete work, in order: (1) 0070a Deliverable 1 — executor seat calibration (terra/sonnet, NOW unblocked by purity); (2) kernel runner + Cell 1 Intent-Holdout fixtures (freeze via three-way + the new hidden-input conformance gate, amendment #2); (3) the 0068 no-degradation control cell — unblocked by purity BUT requires a dated B-source re-registration first (pre-registered "reuses cohort-g B data" is void: cohort g is identity-confounded; clean source = cohort h + F12 supplement).
 
-**Deferred (updated 2026-07-11)**:
-- **A-arm + neutral-judge purity fix** (user-CLAUDE.md leak, proven) — BLOCKING prerequisite for the pre-registered no-degradation control cell (A1 vs frozen best_B on the 8 saturated controls) and for any future measured A/judge tranche.
+**Deferred (updated 2026-07-12)**:
 - Attack the wall (conditional full-pipeline/pair) — re-enters once a discriminating corpus exists (0068's synthetic pool does not discriminate terra; future corpus must be real-shaped/harder).
 - Claim-shape (codex-only current-method arm; strategic, may need user).
 - Codex judge parse robustness (0064 f/u #3 partially open — codex judge parse-failed on SW4; sonnet is the reliable panel member).
 - Codex drift-bait lane (iter-0062 f/u); E2 re-measurement; finish-gate skip-rate watch; `.git/info/exclude` for `.devlyn/`.
-- 0068 closure follow-ups (non-blocking): watchdog sleep-child reap; manifest runner-hash freeze; `requested_alias` label; fixture identity leak in seed package.json; `test-ceiling-harness.sh` stale fixture enumeration.
 
 Runner ("Mission 1.5") still NOT next — re-enters on skip-rate evidence.
 
