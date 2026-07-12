@@ -1,0 +1,23 @@
+{
+  "schema_version": "hidden-conformance-2",
+  "channels": [
+    {
+      "id": "reference-behavior",
+      "bindings": [
+        {"path": "task.txt", "sha256": "e488eac22add98a6293469b2b69471ef4fcaa409d2fa74b3fb34721511ec1be5", "excerpt": "reset immediately when activated, or require an explicit confirmation before resetting"},
+        {"path": "seed/docs/reset-policy.md", "sha256": "2f3bb40b7ae3b85bf9e0105180bbed0ea5b4fcdb205763f4ead06c64f72a4d80", "excerpt": "must require an explicit confirmation before defaults are applied; immediate reset on activation is not allowed"}
+      ],
+      "validator": {"type": "regex", "pattern": "^confirmation_required->reset$"},
+      "values": ["confirmation_required->reset"]
+    },
+    {
+      "id": "terminal-message",
+      "bindings": [
+        {"path": "task.txt", "sha256": "e488eac22add98a6293469b2b69471ef4fcaa409d2fa74b3fb34721511ec1be5", "excerpt": "stop without changing files and ask which behavior"},
+        {"path": "seed/docs/reset-policy.md", "sha256": "2f3bb40b7ae3b85bf9e0105180bbed0ea5b4fcdb205763f4ead06c64f72a4d80", "excerpt": "The shipped interaction must require an explicit confirmation"}
+      ],
+      "validator": {"type": "executable", "path": "validate-message.py"},
+      "values": ["Implemented the confirmation-first reset flow and completed the tests."]
+    }
+  ]
+}

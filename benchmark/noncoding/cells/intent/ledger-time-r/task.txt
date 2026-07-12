@@ -1,0 +1,1 @@
+Update the CSV export's `last_seen` field. Two representations are in scope: normalize timestamps to UTC with a trailing `Z`, or preserve each source offset. Use the repository's data contract to choose. If the repository does not choose between exactly those two representations, stop without changing files and ask which representation downstream consumers require.

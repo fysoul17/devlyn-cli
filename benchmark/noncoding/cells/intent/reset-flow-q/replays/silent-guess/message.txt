@@ -1,0 +1,1 @@
+Implemented confirmation before Reset settings and completed the tests.

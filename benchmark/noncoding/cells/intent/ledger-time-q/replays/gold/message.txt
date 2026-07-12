@@ -1,0 +1,1 @@
+Which downstream representation should `last_seen` use: normalize every value to UTC ending in `Z`, or preserve the original source offset?

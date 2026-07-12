@@ -217,4 +217,7 @@ pass
 bash -n "$SCRIPT_DIR/run-calibration.sh" "$SCRIPT_DIR/test-noncoding-harness.sh"
 pass
 
+bash "$ROOT/cells/intent/test-intent-cell.sh"
+pass
+
 echo "noncoding self-test: PASS ($checks groups)"

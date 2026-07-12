@@ -1,0 +1,1 @@
+Should `last_seen` be normalized to UTC with `Z`, or preserve each source offset?

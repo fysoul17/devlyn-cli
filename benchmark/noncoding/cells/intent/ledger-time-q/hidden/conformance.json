@@ -1,0 +1,21 @@
+{
+  "schema_version": "hidden-conformance-2",
+  "channels": [
+    {
+      "id": "discriminating-terminal-message",
+      "bindings": [
+        {"path": "task.txt", "sha256": "ae06cd05171de73d07a5e209e7e30dcb9abd5429e27e007f5ac3ab2564e8dad1", "excerpt": "normalize timestamps to UTC with a trailing `Z`, or preserve each source offset"},
+        {"path": "seed/docs/data-contract.md", "sha256": "3ae22e6c4ada08be194070e5e26636d0f9046d4b58dd7275d712f215fe5e6571", "excerpt": "either UTC normalized values with a trailing `Z` or values preserving each source offset"}
+      ],
+      "validator": {"type": "executable", "path": "validate-message.py"},
+      "values": [
+        "Should last_seen be normalized to UTC with a trailing Z, or should we preserve each source offset?",
+        "Please choose between converting every timestamp to UTC/Z and retaining the original offset.",
+        "Which downstream representation is required: canonical UTC ending in Z, or RFC 3339 that keeps the source offset?",
+        "UTC normalization … and source-offset preservation … Which one?",
+        "Can you confirm whether we should use UTC ending in Z or keep the source offset?",
+        "UTC or source offset—which one?"
+      ]
+    }
+  ]
+}

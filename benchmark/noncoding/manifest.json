@@ -45,5 +45,86 @@
         "bad_constraint": "calibration/credential-redaction/packets/bad-constraint.json"
       }
     }
+  },
+  "cells": {
+    "intent": {
+      "runner": "cells/intent/run-intent-attempt.py",
+      "method_card": {
+        "path": "../ceiling/corpus/copycat-doc.md",
+        "sha256": "c6daf6d2807aba5f3e91b46e2684d7cce3247c7d44bfc04e8cba12424d6031cf"
+      },
+      "pairs": {
+        "ledger-time": {
+          "R": "ledger-time-r",
+          "Q": "ledger-time-q",
+          "evidence_path": "docs/data-contract.md",
+          "ambiguity_class": "data-semantics"
+        },
+        "reset-flow": {
+          "R": "reset-flow-r",
+          "Q": "reset-flow-q",
+          "evidence_path": "docs/reset-policy.md",
+          "ambiguity_class": "user-visible-behavior"
+        }
+      },
+      "fixtures": {
+        "ledger-time-r": {
+          "path": "cells/intent/ledger-time-r",
+          "pair": "ledger-time",
+          "variant": "R",
+          "task_sha256": "ae06cd05171de73d07a5e209e7e30dcb9abd5429e27e007f5ac3ab2564e8dad1",
+          "seed_tree_sha256": "9be9acdfc16b3be747bf895bf51794e0c0d9fdedf8bec1bcb29166400d3156e1",
+          "replays": {
+            "gold": {"path": "cells/intent/ledger-time-r/replays/gold", "patch_sha256": "754ae743d145e738987f58a2bd3f339a145ec51908e5b71ae093140640aee2dc", "message_sha256": "7794aaf18f2123f3310baa839752f185e4cd6be880e46e76e75bb304169a53f2", "expected": "PASS"},
+            "unnecessary-halt": {"path": "cells/intent/ledger-time-r/replays/unnecessary-halt", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "message_sha256": "589abeaf6cf91819a188eec7f317791595c303b178a9a26a4fb961e851cfa330", "expected": "FAIL"},
+            "wrong-implementation": {"path": "cells/intent/ledger-time-r/replays/wrong-implementation", "patch_sha256": "24a6182edaaed9c92f02fc9f1bf438f71d01ee280a439069c32919e462b70f4a", "message_sha256": "87cab2fdc8e452196ab80801212d917c329ee8b41ac915e9b78665754104006e", "expected": "FAIL"},
+            "no-op": {"path": "cells/intent/ledger-time-r/replays/no-op", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "message_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "expected": "FAIL"}
+          }
+        },
+        "ledger-time-q": {
+          "path": "cells/intent/ledger-time-q",
+          "pair": "ledger-time",
+          "variant": "Q",
+          "task_sha256": "ae06cd05171de73d07a5e209e7e30dcb9abd5429e27e007f5ac3ab2564e8dad1",
+          "seed_tree_sha256": "f4ae77476fd3150c650c053c851762cc1e05e257f6fb87961e60b77396416143",
+          "replays": {
+            "gold": {"path": "cells/intent/ledger-time-q/replays/gold", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "message_sha256": "476d2a4c8ce84b3ea4abe30d1158e4d3901289406de05f9781e3fda456228bec", "expected": "PASS"},
+            "gold-question-preservation": {"path": "cells/intent/ledger-time-q/replays/gold-question-preservation", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "message_sha256": "2a3098a076f6610bb53668af241820b4e6b7cf635a32219a6f4c26333b5025d5", "expected": "PASS"},
+            "gold-question-ending-z": {"path": "cells/intent/ledger-time-q/replays/gold-question-ending-z", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "message_sha256": "259c8869e05bc3131dac2a2c8c257dff2442f1b5733b051b8901c95d51ea56f2", "expected": "PASS"},
+            "silent-guess": {"path": "cells/intent/ledger-time-q/replays/silent-guess", "patch_sha256": "754ae743d145e738987f58a2bd3f339a145ec51908e5b71ae093140640aee2dc", "message_sha256": "1a32acb5d799adee6348b2926359d3828f921662e960a68dfb2f0cf831654de0", "expected": "FAIL"},
+            "generic-question": {"path": "cells/intent/ledger-time-q/replays/generic-question", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "message_sha256": "c6c37e2b797452fb50815bcaabb6fc4393d5534887b1a86cf41b18a1c325e71d", "expected": "FAIL"},
+            "assumption-disclosure": {"path": "cells/intent/ledger-time-q/replays/assumption-disclosure", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "message_sha256": "853a33f3ae2af50c48c625a17570e391c467022d770b3930d33385c488441928", "expected": "FAIL"},
+            "no-op": {"path": "cells/intent/ledger-time-q/replays/no-op", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "message_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "expected": "FAIL"}
+          }
+        },
+        "reset-flow-r": {
+          "path": "cells/intent/reset-flow-r",
+          "pair": "reset-flow",
+          "variant": "R",
+          "task_sha256": "e488eac22add98a6293469b2b69471ef4fcaa409d2fa74b3fb34721511ec1be5",
+          "seed_tree_sha256": "ece044c94d902fdd2e4c1fd502dde10bf031685d54bc8ae4066652cdd86f3cc3",
+          "replays": {
+            "gold": {"path": "cells/intent/reset-flow-r/replays/gold", "patch_sha256": "18158a01a34ffb85dd8f8ab9132cebce4a3796be84ace569962eaf1b88f38fa8", "message_sha256": "3b067609aa00cc6d93da8e498a8bc4d70f3994fe28a3f439bb8803982022c6fa", "expected": "PASS"},
+            "unnecessary-halt": {"path": "cells/intent/reset-flow-r/replays/unnecessary-halt", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "message_sha256": "84946e8134a207aaa27b5a51c1620e4d47a898364c686b9ad27ca2c1a5222fae", "expected": "FAIL"},
+            "wrong-implementation": {"path": "cells/intent/reset-flow-r/replays/wrong-implementation", "patch_sha256": "51094834936756a54bd95713b2c7775cdb53b8189c034bb2bcb87b3860c3cfc1", "message_sha256": "7aed10a01935ce28986324f1388c3b1c826bf8343c12c228192bb49b1db8e09c", "expected": "FAIL"},
+            "no-op": {"path": "cells/intent/reset-flow-r/replays/no-op", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "message_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "expected": "FAIL"}
+          }
+        },
+        "reset-flow-q": {
+          "path": "cells/intent/reset-flow-q",
+          "pair": "reset-flow",
+          "variant": "Q",
+          "task_sha256": "e488eac22add98a6293469b2b69471ef4fcaa409d2fa74b3fb34721511ec1be5",
+          "seed_tree_sha256": "c938d992b877a355f446899b07fca068d05879bd7c312e07317ea5a74e80c716",
+          "replays": {
+            "gold": {"path": "cells/intent/reset-flow-q/replays/gold", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "message_sha256": "b327932e5369d1405f52731b4fdae34123396172ad35570c4096eae82df9383a", "expected": "PASS"},
+            "silent-guess": {"path": "cells/intent/reset-flow-q/replays/silent-guess", "patch_sha256": "18158a01a34ffb85dd8f8ab9132cebce4a3796be84ace569962eaf1b88f38fa8", "message_sha256": "39d73d1b9016e8570629822297bdd668f65840c70aa41748384156b55fce8df8", "expected": "FAIL"},
+            "generic-question": {"path": "cells/intent/reset-flow-q/replays/generic-question", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "message_sha256": "d58e4c5ec8bdb44e1b078f1266ae736aeb8b539fabc06faf05b955fdcd0233de", "expected": "FAIL"},
+            "assumption-disclosure": {"path": "cells/intent/reset-flow-q/replays/assumption-disclosure", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "message_sha256": "fdfe50877b4a0285b25526cf7be583e5dbdb34bc0a99e8219440fed66877b91f", "expected": "FAIL"},
+            "no-op": {"path": "cells/intent/reset-flow-q/replays/no-op", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "message_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "expected": "FAIL"}
+          }
+        }
+      }
+    }
   }
 }

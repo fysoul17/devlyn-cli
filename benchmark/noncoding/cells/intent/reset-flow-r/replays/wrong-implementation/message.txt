@@ -1,0 +1,1 @@
+Implemented immediate Reset settings behavior and completed the tests.

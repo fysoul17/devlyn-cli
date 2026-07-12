@@ -1,0 +1,1 @@
+I will assume Reset settings requires confirmation rather than an immediate reset and proceed with that behavior.

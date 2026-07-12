@@ -1,0 +1,1 @@
+Implemented UTC normalization for `last_seen`, including a trailing `Z`, and verified the test suite.

@@ -1,0 +1,10 @@
+diff --git a/src/settings_actions.py b/src/settings_actions.py
+index 6578f55..b341e62 100644
+--- a/src/settings_actions.py
++++ b/src/settings_actions.py
+@@ -8,4 +8,4 @@ DEFAULT_SETTINGS: dict[str, Any] = {"compact": False, "page_size": 25}
+ 
+ def activate_reset(settings: dict[str, Any], confirmed: bool | None = None) -> dict[str, Any]:
+     """Handle activation of the Reset settings action."""
+-    return {"status": "unavailable", "settings": dict(settings)}
++    return {"status": "reset", "settings": dict(DEFAULT_SETTINGS)}

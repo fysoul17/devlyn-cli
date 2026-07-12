@@ -1,0 +1,19 @@
+{
+  "schema_version": "hidden-conformance-2",
+  "channels": [
+    {
+      "id": "discriminating-terminal-message",
+      "bindings": [
+        {"path": "task.txt", "sha256": "e488eac22add98a6293469b2b69471ef4fcaa409d2fa74b3fb34721511ec1be5", "excerpt": "reset immediately when activated, or require an explicit confirmation before resetting"},
+        {"path": "seed/docs/reset-policy.md", "sha256": "004861e1fed69f603260f8c29f9349a6e4c3b6ba639acba32b8bf0317ba90423", "excerpt": "exactly two interaction candidates: reset immediately on activation, or require explicit confirmation"}
+      ],
+      "validator": {"type": "executable", "path": "validate-message.py"},
+      "values": [
+        "Should Reset settings act immediately, or wait for explicit confirmation before it resets anything?",
+        "Please choose the interaction: immediate reset on activation versus confirmation before reset.",
+        "Which behavior does product want—reset immediately, or show a confirmation step before resetting?",
+        "Should we use immediate-reset behavior or confirmation-before-reset?"
+      ]
+    }
+  ]
+}

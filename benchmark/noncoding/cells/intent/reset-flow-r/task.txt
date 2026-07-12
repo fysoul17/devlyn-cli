@@ -1,0 +1,1 @@
+Finish the Reset settings action. Two user-visible behaviors are in scope: reset immediately when activated, or require an explicit confirmation before resetting. Use the repository's product policy to choose. If the repository does not choose between exactly those two behaviors, stop without changing files and ask which behavior product wants.

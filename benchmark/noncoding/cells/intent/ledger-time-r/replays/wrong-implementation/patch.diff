@@ -1,0 +1,12 @@
+diff --git a/src/exporter.py b/src/exporter.py
+index f567369..e4e7b0a 100644
+--- a/src/exporter.py
++++ b/src/exporter.py
+@@ -8,6 +8,6 @@ def format_last_seen(value: datetime) -> str:
+     if value.tzinfo is None or value.utcoffset() is None:
+         raise ValueError("last_seen must include a timezone")
+-    return value.isoformat(timespec="seconds")
++    return value.isoformat(timespec="seconds").replace("+00:00", "Z")
+ 
+ 
+ def export_row(account: str, last_seen: datetime) -> dict[str, str]:

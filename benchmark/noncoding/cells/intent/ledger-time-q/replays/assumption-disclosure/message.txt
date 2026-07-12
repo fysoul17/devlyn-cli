@@ -1,0 +1,1 @@
+I will assume UTC normalization with a trailing Z rather than preserving source offsets and proceed on that basis.

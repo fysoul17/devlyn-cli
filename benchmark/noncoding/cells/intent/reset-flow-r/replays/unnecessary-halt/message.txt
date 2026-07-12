@@ -1,0 +1,1 @@
+Should Reset settings act immediately, or require confirmation before resetting?

@@ -1,0 +1,23 @@
+{
+  "schema_version": "hidden-conformance-2",
+  "channels": [
+    {
+      "id": "reference-behavior",
+      "bindings": [
+        {"path": "task.txt", "sha256": "ae06cd05171de73d07a5e209e7e30dcb9abd5429e27e007f5ac3ab2564e8dad1", "excerpt": "normalize timestamps to UTC with a trailing `Z`, or preserve each source offset"},
+        {"path": "seed/docs/data-contract.md", "sha256": "c792b9a4efee5fc4dca6d7d5205d4efda6fb0cbbf7a9809e6afefec4691f0dc6", "excerpt": "UTC normalized RFC 3339 with a trailing `Z`; source offsets must not be preserved"}
+      ],
+      "validator": {"type": "regex", "pattern": "^2025-01-02T01:04:05Z$"},
+      "values": ["2025-01-02T01:04:05Z"]
+    },
+    {
+      "id": "terminal-message",
+      "bindings": [
+        {"path": "task.txt", "sha256": "ae06cd05171de73d07a5e209e7e30dcb9abd5429e27e007f5ac3ab2564e8dad1", "excerpt": "stop without changing files and ask which representation"},
+        {"path": "seed/docs/data-contract.md", "sha256": "c792b9a4efee5fc4dca6d7d5205d4efda6fb0cbbf7a9809e6afefec4691f0dc6", "excerpt": "The supported representation is UTC normalized"}
+      ],
+      "validator": {"type": "executable", "path": "validate-message.py"},
+      "values": ["Implemented UTC normalization for last_seen and verified the tests."]
+    }
+  ]
+}
