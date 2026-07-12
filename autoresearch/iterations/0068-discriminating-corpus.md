@@ -759,3 +759,22 @@ results exist yet, so this is pre-run registration, not post-hoc selection.
 
 Registered by the orchestrator (docs-only, executing the already-converged
 three-way decision); to be included in the next Grok diff audit.
+
+## Amendment A3 (2026-07-13) — no-degradation cell first run: cohort DEAD on claude session limit
+
+Cohort `nodeg-20260712` (launched 23:56 KST after the three-way T1
+adjudication): **DEAD mid-cohort on the claude account session limit**
+(429 "session limit resets 5:30pm UTC" ≈ 02:30 KST). Recorded facts:
+F7 A1 completed 2080s exit 0 (frozen B 67s → wall ratio ~31× vs cap 3.0);
+F25 A1 completed 3438s exit 0 (B 263s → ~13×); F26 died at 1173s/77 turns
+mid-resolve; F11/F12/F23/FS1 died 2-5s at launch; F7's sonnet judge also
+failed (transport_error) — no verdict artifact. Cohort tombstoned
+(no-label-reuse); F7/F25 attempts = development evidence only (their wall
+ratios are however consistent with the known pre-VERIFY overhead class,
+iter-0064/0066). Lesson (mechanical): the cell consumes one claude session
+window's worth of budget in ~3 rows when the day's calibration work
+preceded it — schedule the cell at a FRESH window with no concurrent
+claude consumers; if a second limit death occurs, amend the driver with
+per-row resume-retry semantics (three-way) instead of single-shot cohorts.
+Relaunch: `nodeg-20260713` (same frozen pointers/bars; both engines probed
+open 08:45 KST).
