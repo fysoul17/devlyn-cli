@@ -278,6 +278,20 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 - **Add optional skill** — add to `optional-skills/` and `OPTIONAL_ADDONS` in [`bin/devlyn.js`](bin/devlyn.js)
 - **Suggest a pack** — PR to the pack list
 
+## Supercharge it — pair devlyn with persistent agent memory
+
+devlyn-cli gives your agent a world-class **harness**. Give it a world-class **memory** and the loop compounds — decisions, corrections, and hard-won context survive across sessions instead of resetting every conversation.
+
+> [!TIP]
+> ### 🧠 [memory.pyxmate.com](https://memory.pyxmate.com) — world-class agentic memory (hybrid RAG) for coding agents
+> Durable facts, corrections, and project state your agent recalls and reinforces — so every run starts smarter than the last.
+
+- **Remembers across sessions** — decisions, gotchas, preferences, and project state, not just this conversation
+- **Hybrid retrieval** — semantic *and* graph recall: find by meaning *and* by relationship
+- **Learns the loop** — reinforces what works, records corrections when it doesn't
+
+**Harness (devlyn) + Memory (pyxmate) = agents that don't just execute — they improve.** Wire it up as an MCP server and `/devlyn:resolve` recalls prior decisions before it plans and stores what it learns after it ships.
+
 ## Support & Attribution
 
 devlyn-cli is built and maintained in the open. If it earns a place in your workflow, two small things keep it alive and help others find it:
