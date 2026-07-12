@@ -729,3 +729,33 @@ lane) or the 0070a non-coding instruments.
 
 **Next**: the 0070 ladder + 0070a are UNBLOCKED. A-arm/judge purity remains
 the blocking prerequisite for any measured A/C tranche.
+
+## Amendment A2 (2026-07-12) — no-degradation control cell: B-source re-registration g→h (dated, pre-run)
+
+Per the versioned-amendment rule and 0070a R1 amendment #3 (DECISIONS
+0070a.1/0070a.2): the pre-registered deferred cell's "reuses cohort-g B
+data" clause is VOID — cohort g is identity-confounded (Amendment A1). This
+amendment re-registers the B-source BEFORE the cell runs; no scored A/C
+results exist yet, so this is pre-run registration, not post-hoc selection.
+
+- **Control set (unchanged, exact IDs)**: `saturated_controls = [F7, F25,
+  F26, F11, F12, F23, FS1]`; `excluded_unfair = [F21]` (tombstoned).
+- **B-source (new)**: clean re-gate cohort `iter0068-gate-20260711h`
+  (F7, F25, F26, F11, F23, FS1 — one valid resolving B attempt each) +
+  F12 supplements `iter0068-f12supp-20260712` / `iter0068-f12supp2-20260712`
+  (both resolve; the first supplement's opaque-path attestation failure was
+  corrected by the properly-staged rerun, § Re-closure three-way record).
+- **frozen `best_B` selection rule**: the kernel's objective-first
+  lexicographic predicate (resolve → violations → wall; 0070a § Cell 2).
+  Resolved pointers at registration time: F7 `…20260711h/DR-byte-preservation…/B1`
+  (67s), F25 `…/B1` (263s), F26 `…/B1` (259s), F11 `…/B1` (123s), F23
+  `…/B1` (344s), FS1 `…/B1` (310s), F12 `iter0068-f12supp2-20260712/…/B1`
+  (224s; wall tie-break over supp1 290s, both resolve, no violation data —
+  if the cell's judge pass later surfaces violation-grade findings in either
+  F12 B, the frozen rule re-resolves, not a human pick).
+- **Purity status**: A-arm + judge purity SHIPPED and canary-flipped
+  (`f432506`, DECISIONS 0070a.2) — the cell's remaining prerequisite is
+  satisfied; it may now be scheduled as a measured run.
+
+Registered by the orchestrator (docs-only, executing the already-converged
+three-way decision); to be included in the next Grok diff audit.
