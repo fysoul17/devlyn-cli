@@ -58,6 +58,19 @@ const CLI_TARGETS = {
     // Project-scoped only (see omp): machine-level ~/.pi must not auto-trigger.
     detect: () => fs.existsSync(path.join(process.cwd(), '.pi')) || fs.existsSync(path.join(process.cwd(), '.agents')),
   },
+  grok: {
+    name: 'Grok Build CLI (xAI)',
+    instructionsFile: 'AGENTS.md',
+    baseInstructionsFile: 'AGENTS.md',
+    // Grok discovers same-format SKILL.md skills from ./.grok/skills >
+    // <repo_root>/.grok/skills > ~/.grok/skills > ~/.claude/skills
+    // (Claude-compatible); skills are slash-invocable in the Grok TUI.
+    skillsDir: path.join(os.homedir(), '.grok', 'skills'),
+    skillsToInstall: DEVLYN_CORE_SKILLS,
+    // Project-scoped only: machine-level ~/.grok must not auto-trigger a project
+    // AGENTS.md write via `npx devlyn-cli agents` in an unrelated repo.
+    detect: () => fs.existsSync(path.join(process.cwd(), '.grok')),
+  },
 };
 
 // Files removed in previous versions that should be cleaned up on upgrade

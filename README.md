@@ -27,7 +27,7 @@ If devlyn-cli saved you time, [give it a star](https://github.com/fysoul17/devly
 npx devlyn-cli
 ```
 
-That's it. The installer opens with a single **agent selector** — pick any combination of **Claude Code**, **Codex CLI**, **oh-my-pi (omp)**, or **Pi**, and devlyn installs into every one you choose in a single pass. Claude Code and any agent already present on your machine are pre-checked, so the common case is just Enter. Skill-capable agents receive the `devlyn:resolve`, `devlyn:ideate`, and `devlyn:design-ui` skills — plus the `devlyn:engines` and `devlyn:queue` utilities — in the directory each one loads from: Codex → `~/.codex/skills/`, while **omp and Pi share `~/.agents/skills/`** — the cross-agent standard both read — so the bundle is written there once, not duplicated per agent. In Codex / omp / Pi, invoke them as skills (`$devlyn:resolve`, `$devlyn:ideate`, `$devlyn:design-ui`); in Claude Code they're slash commands (`/devlyn:resolve`). Run it again anytime to update. (`npx devlyn-cli -y` installs the Claude core non-interactively; `npx devlyn-cli agents <cli>` adds one agent later.)
+That's it. The installer opens with a single **agent selector** — pick any combination of **Claude Code**, **Codex CLI**, **oh-my-pi (omp)**, **Pi**, or **Grok Build CLI**, and devlyn installs into every one you choose in a single pass. Claude Code and any agent already present on your machine are pre-checked, so the common case is just Enter. Skill-capable agents receive the `devlyn:resolve`, `devlyn:ideate`, and `devlyn:design-ui` skills — plus the `devlyn:engines` and `devlyn:queue` utilities — in the directory each one loads from: Codex → `~/.codex/skills/`, Grok → `~/.grok/skills/`, while **omp and Pi share `~/.agents/skills/`** — the cross-agent standard both read — so the bundle is written there once, not duplicated per agent. In Codex / omp / Pi, invoke them as skills (`$devlyn:resolve`, `$devlyn:ideate`, `$devlyn:design-ui`); in Claude Code and Grok Build CLI they're slash commands (`/devlyn:resolve`). Run it again anytime to update. (`npx devlyn-cli -y` installs the Claude core non-interactively; `npx devlyn-cli agents <cli>` adds one agent later.)
 
 ---
 
@@ -39,7 +39,7 @@ devlyn-cli turns your AI coding agent into a hands-free development pipeline. Th
 ideate (optional)  →  resolve  →  ship
 ```
 
-Non-Claude agents (Codex / omp / Pi): when one of these is selected, the workflows install as that agent's skills. Use `$devlyn:ideate`, `$devlyn:resolve`, or `$devlyn:design-ui`; the `/devlyn:*` slash-command form is for Claude Code.
+Non-Claude agents (Codex / omp / Pi / Grok): when one of these is selected, the workflows install as that agent's skills. In Codex / omp / Pi, use `$devlyn:ideate`, `$devlyn:resolve`, or `$devlyn:design-ui`; in Grok, use `/devlyn:ideate`, `/devlyn:resolve`, or `/devlyn:design-ui`, the same slash-command form as Claude Code.
 
 ### Step 1 (optional) — Plan with `/devlyn:ideate`
 
