@@ -113,15 +113,16 @@ case "$mode" in
     count=$((count + 1))
     printf '%s\n' "$count" > "$count_file"
     if [ "$count" -eq 1 ]; then
-      printf '%s\n' "${valid%?}"
+      printf '{"axes":"unterminated\n'
     else
       [[ "$prompt" == *'Your previous output was truncated; emit ONLY the JSON, complete.'* ]]
       : > "$self_dir/retry-prompt-ok"
       printf 'startup log\n{"log":"ignore this object"}\n%s\ntrailing log\n' "$valid"
     fi
     ;;
+  structural) printf '%s\n' "${valid%?}" ;;
   prose) printf 'leading prose\n%s\ntrailing prose\n' "$valid" ;;
-  unrecoverable) printf '%s\n' "${valid%?}" ;;
+  unrecoverable) printf '{"a":{"b":{"c":{"d":1\n' ;;
   valid) printf '%s\n' "$valid" ;;
   *) echo "unknown fake codex mode: $mode" >&2; exit 2 ;;
 esac
@@ -129,6 +130,38 @@ EOF
 chmod +x "$TMP_DIR/fakebin/codex"
 printf 'retry\n' > "$TMP_DIR/fakebin/codex-mode"
 rm -f "$TMP_DIR/fakebin/codex-count" "$TMP_DIR/fakebin/retry-prompt-ok"
+
+python3 - "$SCRIPT_DIR/ceiling-judge.py" <<'PY'
+import json
+import runpy
+import sys
+
+module = runpy.run_path(sys.argv[1])
+row = {"tiers": [["P1", "P2", "P3"]], "strict_win_deltas": []}
+response = {"axes": {axis: row for axis in module["AXES"]}}
+raw = json.dumps(response)
+extract = module["extract_json_object"]
+
+for missing in (1, 2, 3):
+    metadata = {}
+    if extract(raw[:-missing], structural_completion=True, parse_metadata=metadata) != response:
+        raise SystemExit(f"{missing}-brace structural completion failed")
+    if metadata != {"structural_completion": missing}:
+        raise SystemExit(metadata)
+refused = {
+    "depth-4": '{"a":{"b":{"c":' + raw[:-1],
+    "trailing-garbage": raw[:-1] + " trailing",
+    "in-string": '{"axes":"unterminated',
+    "missing-bracket": raw.replace("]]", "]", 1)[:-1],
+    "missing-content": '{"axes":',
+}
+for name, candidate in refused.items():
+    metadata = {}
+    if extract(candidate, structural_completion=True, parse_metadata=metadata) is not None:
+        raise SystemExit(f"{name} structural completion was accepted")
+    if metadata:
+        raise SystemExit({name: metadata})
+PY
 
 printf '{"token":"selftest"}\n' > "$TMP_DIR/auth.json"
 printf '{"claudeAiOauth":{"accessToken":"selftest"}}\n' > "$TMP_DIR/claude-credentials.json"
@@ -223,6 +256,30 @@ if len(raw["attempts"]) != 2 or not raw["attempts"][0]["error"].startswith("pars
     raise SystemExit(raw["attempts"])
 PY
 test -f "$TMP_DIR/fakebin/retry-prompt-ok"
+
+rm "$JUDGE_RUN/nodeg-judge/codex.json"
+printf 'structural\n' > "$TMP_DIR/fakebin/codex-mode"
+CEILING_EXTERNAL_ROOT="$TMP_DIR/external" \
+CEILING_REAL_HOME="$TMP_DIR" \
+CEILING_TEST_AUTH_JSON="$TMP_DIR/auth.json" \
+CEILING_TEST_CLAUDE_CREDENTIALS="$TMP_DIR/claude-credentials.json" \
+CEILING_TEST_CLAUDE_BIN="$TMP_DIR/fakebin/claude" \
+CEILING_TEST_CODEX_BIN="$TMP_DIR/fakebin/codex" \
+  python3 "$SCRIPT_DIR/nodeg-cell.py" judge \
+    --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" --resume \
+    --deviations "$DEVIATIONS"
+python3 - "$JUDGE_RUN/nodeg-judge/codex.json" "$CEILING/results/selftest-judge/nodeg-judge-aggregate.json" <<'PY'
+import json
+import sys
+
+raw = json.load(open(sys.argv[1], encoding="utf-8"))
+if len(raw["attempts"]) != 1 or raw["meta"].get("structural_completion") != 1:
+    raise SystemExit(raw)
+aggregate = json.load(open(sys.argv[2], encoding="utf-8"))
+metadata = aggregate["tasks"][raw["task"]]["judges"]["codex"]["parse_metadata"]
+if metadata != {"structural_completion": 1}:
+    raise SystemExit(metadata)
+PY
 
 rm "$JUDGE_RUN/nodeg-judge/codex.json"
 printf 'prose\n' > "$TMP_DIR/fakebin/codex-mode"

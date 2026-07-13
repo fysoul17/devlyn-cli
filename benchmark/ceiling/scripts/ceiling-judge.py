@@ -41,13 +41,19 @@ MAX_JUDGE_ATTEMPTS = 2
 RAW_TAIL_CHARS = 1000
 
 
-def extract_json_object(text: str) -> Any | None:
+def extract_json_object(
+    text: str,
+    *,
+    structural_completion: bool = False,
+    parse_metadata: dict[str, Any] | None = None,
+) -> Any | None:
     candidates: list[Any] = []
     start: int | None = None
     depth = 0
     in_string = False
     escaped = False
-    for end, char in enumerate(text):
+    candidate_end = len(text.rstrip())  # Never complete before non-whitespace tail data.
+    for end, char in enumerate(text[:candidate_end]):
         if start is None:
             if char == "{":
                 start = end
@@ -73,7 +79,24 @@ def extract_json_object(text: str) -> Any | None:
                 except json.JSONDecodeError:
                     pass
                 start = None
-    return candidates[-1] if candidates else None
+    if candidates:
+        return candidates[-1]
+    if (
+        not structural_completion
+        or start is None
+        or in_string
+        or not 1 <= depth <= 3
+    ):
+        return None
+    try:
+        completed = json.loads(text[start:candidate_end] + "}" * depth)
+    except json.JSONDecodeError:
+        return None
+    if validate_response(completed) is not None:
+        return None
+    if parse_metadata is not None:
+        parse_metadata["structural_completion"] = depth
+    return completed
 
 
 def raw_diagnostic(raw: str) -> str:
@@ -287,7 +310,11 @@ def call_codex(
     meta = {"stdout_path": str(stdout_path), "stderr_path": str(stderr_path), "stdout": stdout_text, "stderr": stderr_text}
     if returncode != 0:
         return None, f"transport_error: exit={returncode} stderr={stderr_text[:300]!r}", meta
-    parsed = extract_json_object(stdout_text)
+    parsed = extract_json_object(
+        stdout_text,
+        structural_completion=True,
+        parse_metadata=meta,
+    )
     if parsed is None:
         return None, f"parse_error: incomplete_json; {raw_diagnostic(stdout_text)}", meta
     validation_error = validate_response(parsed)
@@ -474,6 +501,7 @@ def main() -> int:
         task_aggregate: dict[str, Any] = {
             "a_packet": next(label for label, attempt in mapping["packets"].items() if attempt == selected[task]["A"]),
             "c_packet": next(label for label, attempt in mapping["packets"].items() if attempt == selected[task]["C"]),
+            "judge_parse_metadata": {},
             "axes": {axis: {"per_judge": {}, "a_vs_c_counts": {"A_win": 0, "C_win": 0, "tie": 0}} for axis in AXES},
         }
         for judge in judges:
@@ -493,6 +521,9 @@ def main() -> int:
             (task_dir / f"judge-{judge}.json").write_text(json.dumps(raw, indent=2) + "\n", encoding="utf-8")
             if parsed is None or err is not None:
                 raise SystemExit(f"{task} {judge} judge failed after retries: {err}")
+            task_aggregate["judge_parse_metadata"][judge] = {
+                key: meta[key] for key in ("structural_completion",) if key in meta
+            }
             for axis in AXES:
                 tiers = parsed["axes"][axis]["tiers"]
                 outcome = compare_packets(tiers, task_aggregate["a_packet"], task_aggregate["c_packet"])

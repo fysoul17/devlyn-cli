@@ -629,7 +629,14 @@ def judge_cell(args: argparse.Namespace) -> int:
                 a_position = positions[labels["A"]]
                 b_position = positions[labels["B"]]
                 outcomes[axis] = "A_win" if a_position < b_position else "B_win" if a_position > b_position else "tie"
-            result = {"runtime_model": model, "cli_version": cli_version, "axes": outcomes}
+            result = {
+                "runtime_model": model,
+                "cli_version": cli_version,
+                "axes": outcomes,
+                "parse_metadata": {
+                    key: meta[key] for key in ("structural_completion",) if key in meta
+                },
+            }
             raw = {
                 "judge": judge,
                 "task": task,
