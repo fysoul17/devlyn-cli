@@ -13,7 +13,7 @@ Single authoritative verdict source for `/devlyn:resolve`. The orchestrator bran
   "mode": "spec",
   "pair_verify": false,
   "complexity": null,
-  "risk_profile": { "high_risk": false, "reasons": [], "risk_probes_enabled": false, "pair_default_enabled": true },
+  "risk_profile": { "high_risk": false, "reasons": [], "risk_probes_enabled": false, "risk_probes_explicit": false, "pair_default_enabled": true },
   "risk_probes_digest": null,
   "base_ref": { "branch": "main", "sha": "abc123..." },
   "rounds": { "max_rounds": 4, "global": 0 },
@@ -51,7 +51,7 @@ Single authoritative verdict source for `/devlyn:resolve`. The orchestrator bran
 - **engine** — any engine name with a shipped adapter (`_shared/adapters/<name>.md`); `"claude"` and `"codex"` today. A required unavailable engine stops the run with `BLOCKED:<engine>-unavailable`.
 - **engine_source** — `"flag" | "engines.json" | "default"` — provenance of the resolved executor engine (`_shared/engine-preflight.md#role-resolution`). Optional on archived pre-iter-0038 runs; absent means `default`.
 - **source** — provenance for the contract all downstream phases read. Spec and verify-only mode set `type: "spec"`, `spec_path`, and `spec_sha256`. Free-form mode sets `type: "generated"`, leaves `spec_path`/`spec_sha256` null, and must set `criteria_path: ".devlyn/criteria.generated.md"` plus `criteria_sha256` from the generated file's raw bytes. VERIFY re-checks the matching hash before judging.
-- **risk_profile** — PHASE 0 classification for conditional defaults. `high_risk` records durable-risk signals from the goal/spec; `risk_probes_enabled` is true for explicit `--risk-probes` or high-risk specs unless `--no-risk-probes`; `pair_default_enabled` is false only for explicit `--no-pair`. `risk_profile` must remain an object with boolean `high_risk`, `risk_probes_enabled`, and `pair_default_enabled` fields when present, plus `reasons` as a list of strings. Malformed `risk_profile` blocks VERIFY because pair-trigger reasons derive `risk.high` and `risk_probes.enabled` from this state.
+- **risk_profile** — PHASE 0 classification for conditional defaults. `high_risk` records durable-risk signals from the goal/spec; `risk_probes_enabled` starts true for explicit `--risk-probes` or eligible high-risk specs and only an automatic small-surface route may demote it after PLAN; `risk_probes_explicit` is true only for explicit `--risk-probes`, preventing that demotion from breaking the promise; `pair_default_enabled` is false only for explicit `--no-pair`. `risk_profile` must remain an object with boolean `high_risk`, `risk_probes_enabled`, `risk_probes_explicit`, and `pair_default_enabled` fields when present, plus `reasons` as a list of strings. Malformed `risk_profile` blocks VERIFY because pair-trigger reasons derive `risk.high` and `risk_probes.enabled` from this state.
 - **risk_probes_digest** — top-level sha256 written by PHASE 1.5 after probe validation; BUILD_GATE/VERIFY replay semantics live in `phases/build-gate.md` step 4.
 - **rounds.global** — incremented every fix-loop pass (BUILD_GATE → fix-loop, VERIFY → fix-loop, OR a phase-gate fix respawn inside phase-gated IMPLEMENT).
 - **phases.implement.exec** — only on phase-gated large runs (plan.md has `## Execution phases` with >1 phase): `{ "total": N, "current": k, "statuses": ["PASS"|"FAIL"|null, ...], "commits": ["<sha>", ...] }`. Phase definitions live in plan.md (immutable contract); progress lives here (routing truth — never route on plan.md checkboxes). Absent on single-phase runs. `cumulative.patch` for such runs is `git diff <base_ref.sha>...HEAD`.
@@ -80,17 +80,17 @@ Each entry under `phases.<name>` (for `plan`, `probe_derive`, `implement`, `buil
   "pre_sha": null,
   "post_sha": null,
   "artifacts": { "findings_file": null, "log_file": null },
-  "sub_verdicts": null,
-  "rounds_history": []
+  "sub_verdicts": null
 }
 ```
+
+`history` is absent until a phase is re-entered. Immediately before re-entry overwrites the live `started_at`, `verdict`, `completed_at`, and `duration_ms`, `state-phase-write.py` appends those prior values as one object to `history[]`, creating the append-only array on first re-entry.
 
 - `verdict` — `"PASS" | "PASS_WITH_ISSUES" | "FAIL" | "NEEDS_WORK" | "BLOCKED"`. PHASE 6 (FINAL_REPORT) writes its own verdict per the terminal-verdict precedence.
 - `triggered_by` — null on first run; one of `"build_gate" | "verify"` when the phase is a fix-loop respawn.
 - `pre_sha` — captured by orchestrator before CLEANUP and (if needed) other allowlist-enforced phases. Used to validate the post-spawn diff.
 - `post_sha` — captured on CLEANUP complete when that phase ran; finish-gate subtracts `pre_sha..post_sha` as the cleanup window.
 - `sub_verdicts` — only populated for VERIFY: `{ "mechanical": "PASS|FAIL", "judge": "PASS|...", "pair_judge": "PASS|..." | "TIMEOUT" | null }`. Values are normalized by `verify-merge-findings.py`; model prose verdicts cannot upgrade or downgrade the deterministic findings-derived verdict. `sub_verdicts.pair_judge` is `"TIMEOUT"` when a pair judge exceeded its wall budget and a valid `.devlyn/verify.pair.timeout.json` marker was read — semantics in `references/phases/verify.md` (pair budget section).
-- `rounds_history` — appended by `spawn` on respawn: the superseded round's `{round, started_at, completed_at, duration_ms, verdict, triggered_by, engine}`. Failed/superseded round wall time is read from here, never lost to the reset.
 - `merged` — only populated for VERIFY after `verify-merge-findings.py --write-state`: `{ "verdict": "...", "findings_file": ".devlyn/verify-merged.findings.jsonl", "summary_file": ".devlyn/verify-merge.summary.json" }`.
 - `pair_trigger` — only populated for VERIFY; same shape as top-level `verify.pair_trigger` when the phase stores it locally.
 - `correctness.risk-probe-failed` — emitted by `spec-verify-check.py --include-risk-probes` when an executable probe derived from the visible `## Verification` section fails.
@@ -99,7 +99,7 @@ Each entry under `phases.<name>` (for `plan`, `probe_derive`, `implement`, `buil
 
 Phase lifecycle (`started_at`/`completed_at`/`duration_ms`/`round`/`triggered_by`/`verdict`) is written by a deterministic script, never hand-edited JSON — a prior hand-edited fix-loop respawn left `started_at` stale, corrupting cross-phase ordering because `completed_at`/`round`/`triggered_by` advanced to the new round while `started_at` didn't. Phase workers report their verdict and artifact paths in their reply; they never edit `pipeline.state.json` themselves.
 
-1. **Spawn** (before every phase dispatch, including a fix-loop respawn — one call per outer phase-gated IMPLEMENT run, not per inner sub-phase): `python3 "$DEVLYN_SHARED_DIR/state-phase-write.py" --devlyn-dir .devlyn --phase <name> spawn --round <N> [--triggered-by build_gate|verify] [--pre-sha <sha>] [--engine <e>] [--model <m>]`. If the existing phase record has `started_at`, appends the superseded round to `rounds_history`, then resets `started_at` to now and nulls `completed_at`/`duration_ms`/`verdict`/`artifacts`/`sub_verdicts` — a respawn can never inherit a prior round's stale timing or verdict, and prior round timing remains attributable. A VERIFY spawn also deletes the prior round's on-disk VERIFY artifacts (`verify*.jsonl`, `verify-merge.summary.json`, `*-judge.*`) so a stale pair findings file can never read as current-round spawn evidence in `verify-merge-findings.py`. Fields the script doesn't own (e.g. `phases.implement.exec`, the phase-gated progress tracker) are left untouched.
+1. **Spawn** (before every phase dispatch, including a fix-loop respawn — one call per outer phase-gated IMPLEMENT run, not per inner sub-phase): `python3 "$DEVLYN_SHARED_DIR/state-phase-write.py" --devlyn-dir .devlyn --phase <name> spawn --round <N> [--triggered-by build_gate|verify] [--pre-sha <sha>] [--engine <e>] [--model <m>]`. Re-entry applies the `history` rule above, then resets `started_at` to now and nulls `completed_at`/`duration_ms`/`verdict`/`artifacts`/`sub_verdicts`. A VERIFY spawn also deletes the prior round's on-disk VERIFY artifacts (`verify*.jsonl`, `verify-merge.summary.json`, `*-judge.*`) so stale findings cannot read as current-round evidence. Fields the script doesn't own (e.g. `phases.implement.exec`) are left untouched.
 2. **Complete** (after the orchestrator reads the phase's reply and determines the verdict): `python3 "$DEVLYN_SHARED_DIR/state-phase-write.py" --devlyn-dir .devlyn --phase <name> complete --verdict <V> [--post-sha <sha>] [--findings-file <path>] [--log-file <path>]`. `duration_ms` is derived from the phase's own recorded `started_at` — it cannot drift from `completed_at`. `--verdict` is required for every phase except VERIFY: `verify-merge-findings.py --write-state` is the sole writer of `phases.verify.verdict`, so `complete verify` is always called without `--verdict` (an explicit one is rejected) and preserves what's already on disk.
 3. **Before archive** (PHASE 6 step 5): `phases.final_report.verdict` must be non-null. Archive prune skips runs whose final_report verdict is null (treated as in-flight).
 

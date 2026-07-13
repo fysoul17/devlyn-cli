@@ -10,8 +10,10 @@ REPO="$TMP_DIR/repo"
 CEILING="$REPO/benchmark/ceiling"
 TASK="DR-byte-preservation-f7-out-of-scope-trap"
 SOURCE="$CEILING/results/iter0068-gate-20260711h/$TASK/B1"
-mkdir -p "$CEILING/corpus/$TASK" "$SOURCE"
+RESUME_SENTINEL="$CEILING/results/selftest-nodeg/tracked.txt"
+mkdir -p "$CEILING/corpus/$TASK" "$SOURCE" "$(dirname "$RESUME_SENTINEL")"
 printf 'selftest task\n' > "$CEILING/corpus/$TASK/task.txt"
+printf 'tracked resume artifact\n' > "$RESUME_SENTINEL"
 printf 'diff --git a/a b/a\n' > "$SOURCE/patch.diff"
 printf '{"resolved":true}\n' > "$SOURCE/objective.json"
 printf '{"invoke_exit":0,"timed_out":false,"elapsed_seconds":67}\n' > "$SOURCE/timing.json"
@@ -73,6 +75,11 @@ fi
 grep -q 'runner worktree is dirty' "$TMP_DIR/dirty.stderr"
 
 printf 'selftest task\n' > "$CEILING/corpus/$TASK/task.txt"
+rm "$RESUME_SENTINEL"
+test "$(git -C "$REPO" status --porcelain=v1)" = " D benchmark/ceiling/results/selftest-nodeg/tracked.txt"
+test "$(run_check --resume)" = "$TASK"
+git -C "$REPO" restore "$RESUME_SENTINEL"
+
 python3 "$SCRIPT_DIR/nodeg-cell.py" preflight \
   --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" --initialize \
   > "$TMP_DIR/preflight.stdout"

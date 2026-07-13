@@ -22,6 +22,8 @@ Compute these signals from the goal text + project state:
    phrase `solo ceiling avoidance`, mention `solo_claude`, and name a concrete
    difference from rejected or solo-saturated controls such as `S2`-`S6`?
 
+Evaluate Large first, then Medium, then Trivial; stop at the first matching branch.
+
 ### Trivial branch
 
 Conditions (all must hold):
@@ -37,7 +39,7 @@ Action: synthesize a minimal internal spec from the goal:
 ### Medium branch
 
 Conditions (any one):
-- `goal_length` between 30 and 80 words.
+- `goal_length > 30` words.
 - `file_scope_signals` between 4 and 10.
 - `verb_class ∈ {refactor, debug, review}` AND scope is a single subsystem.
 - `has_failing_test == false` but the goal implies a runnable acceptance check.
@@ -50,7 +52,6 @@ Action: synthesize a richer internal spec:
 ### Large branch
 
 Conditions (any one):
-- `goal_length > 80` words.
 - `file_scope_signals > 10` OR zero signals (vague enough that the classifier cannot pick scope).
 - `verb_class ∈ {rewrite, migrate}` and scope is multi-subsystem.
 - The goal mentions a new feature whose surface area requires design decisions the harness cannot make from a one-shot prompt.

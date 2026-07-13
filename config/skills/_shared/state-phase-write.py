@@ -94,22 +94,19 @@ def clear_verify_round_artifacts(devlyn: pathlib.Path) -> None:
     (devlyn / "verify-merge.summary.json").unlink(missing_ok=True)
 
 
-def append_round_history(entry: dict) -> None:
+def append_phase_history(entry: dict) -> None:
     if entry.get("started_at") is None:
         return
-    history = entry.get("rounds_history")
+    history = entry.get("history")
     if not isinstance(history, list):
         history = []
     history.append({
-        "round": entry.get("round"),
         "started_at": entry.get("started_at"),
+        "verdict": entry.get("verdict"),
         "completed_at": entry.get("completed_at"),
         "duration_ms": entry.get("duration_ms"),
-        "verdict": entry.get("verdict"),
-        "triggered_by": entry.get("triggered_by"),
-        "engine": entry.get("engine"),
     })
-    entry["rounds_history"] = history
+    entry["history"] = history
 
 
 def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
@@ -121,7 +118,7 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     if not isinstance(entry, dict):
         entry = {}
         phases[phase] = entry
-    append_round_history(entry)
+    append_phase_history(entry)
     entry["started_at"] = now_iso()
     entry["completed_at"] = None
     entry["duration_ms"] = None
@@ -197,6 +194,7 @@ def self_test() -> int:
         do_complete(state, "implement", "NEEDS_WORK", None, None, None, None, "test-model-id")
         write_state(state_path, state)
         entry = read_state(state_path)["phases"]["implement"]
+        assert "history" not in entry, "history must be absent before re-entry"
         assert entry["completed_at"] is not None
         assert entry["duration_ms"] >= 0
         assert parse_iso(entry["completed_at"]) >= parse_iso(entry["started_at"])
@@ -216,15 +214,13 @@ def self_test() -> int:
         assert respawned["engine"] == "claude", "engine preserved when not re-supplied"
         assert respawned["round"] == 1
         assert respawned["triggered_by"] == "verify"
-        assert len(respawned["rounds_history"]) == 1
-        history0 = respawned["rounds_history"][0]
-        assert history0["round"] == 0
+        assert len(respawned["history"]) == 1
+        history0 = respawned["history"][0]
         assert history0["started_at"] == round0_started
+        assert history0["verdict"] == "NEEDS_WORK"
         assert history0["completed_at"] == entry["completed_at"]
         assert history0["duration_ms"] == entry["duration_ms"]
-        assert history0["verdict"] == "NEEDS_WORK"
-        assert history0["triggered_by"] is None
-        assert history0["engine"] == "claude"
+        assert set(history0) == {"started_at", "verdict", "completed_at", "duration_ms"}
 
         time.sleep(0.05)
         state = read_state(state_path)
@@ -262,9 +258,9 @@ def self_test() -> int:
         write_state(state_path, state)
         respawned_fail = read_state(state_path)["phases"]["build_gate"]
         assert respawned_fail["verdict"] is None
-        assert len(respawned_fail["rounds_history"]) == 1
-        assert respawned_fail["rounds_history"][0]["verdict"] == "FAIL"
-        assert respawned_fail["rounds_history"][0]["completed_at"] == failed_round["completed_at"]
+        assert len(respawned_fail["history"]) == 1
+        assert respawned_fail["history"][0]["verdict"] == "FAIL"
+        assert respawned_fail["history"][0]["completed_at"] == failed_round["completed_at"]
 
         # VERIFY flow: verify-merge-findings.py already wrote verdict; complete()
         # must preserve it when --verdict is omitted.
@@ -368,8 +364,8 @@ def self_test() -> int:
         respawned_exec = read_state(state_path)["phases"]["implement"]
         assert respawned_exec["exec"]["current"] == 3, "spawn must not clobber unowned fields like exec"
         assert respawned_exec["verdict"] is None, "respawn still nulls owned fields even with exec present"
-        assert len(respawned_exec["rounds_history"]) == 1
-        assert respawned_exec["rounds_history"][0]["verdict"] == "PASS"
+        assert len(respawned_exec["history"]) == 1
+        assert respawned_exec["history"][0]["verdict"] == "PASS"
 
         # Existing history is append-only; a respawn must not clobber prior
         # entries that were already preserved from older rounds.
@@ -383,14 +379,11 @@ def self_test() -> int:
                     "triggered_by": "verify",
                     "verdict": "FAIL",
                     "engine": "codex",
-                    "rounds_history": [{
-                        "round": 1,
+                    "history": [{
                         "started_at": "2026-01-01T00:00:00.000Z",
+                        "verdict": "FAIL",
                         "completed_at": "2026-01-01T00:00:01.000Z",
                         "duration_ms": 1000,
-                        "verdict": "FAIL",
-                        "triggered_by": "build_gate",
-                        "engine": "claude",
                     }],
                 }
             }
@@ -398,11 +391,10 @@ def self_test() -> int:
         state = read_state(state_path)
         do_spawn(state, "implement", 3, "verify", None, None, None)
         write_state(state_path, state)
-        history_preserved = read_state(state_path)["phases"]["implement"]["rounds_history"]
+        history_preserved = read_state(state_path)["phases"]["implement"]["history"]
         assert len(history_preserved) == 2
-        assert history_preserved[0]["round"] == 1
-        assert history_preserved[1]["round"] == 2
-        assert history_preserved[1]["engine"] == "codex"
+        assert history_preserved[0]["started_at"] == "2026-01-01T00:00:00.000Z"
+        assert history_preserved[1]["started_at"] == "2026-01-01T00:00:02.000Z"
 
         # complete() records a post-state commit when a bounded phase needs an
         # exact diff window for later mechanical checks.
