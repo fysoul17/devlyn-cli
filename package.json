@@ -1,6 +1,6 @@
 {
   "name": "devlyn-cli",
-  "version": "2.9.2",
+  "version": "2.9.3",
   "description": "Loop & harness engineering for AI coding agents (Claude Code, Codex, and any AGENTS.md-driven agent) — take intent to shipped, engineer-quality software hands-free with phase-gated pipelines and agent orchestration",
   "homepage": "https://github.com/fysoul17/devlyn-cli#readme",
   "bin": {
