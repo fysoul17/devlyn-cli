@@ -778,3 +778,21 @@ claude consumers; if a second limit death occurs, amend the driver with
 per-row resume-retry semantics (three-way) instead of single-shot cohorts.
 Relaunch: `nodeg-20260713` (same frozen pointers/bars; both engines probed
 open 08:45 KST).
+
+## Closure addendum 2 (2026-07-13) — judge parse fix landed; replay blocked by design
+
+Codex-judge parse robustness SHIPPED `891e92a` (0064 f/u #3 closed at the
+code level): string-aware balanced-JSON extractor over judge stdout, bounded
+truncation retry with explicit continuation, raw-tail diagnostics on hard
+fail, `nodeg-cell.py judge --resume` judge-only entry; selftests extended
+and PASS. Judge-only replay on frozen cohort `nodeg-20260713` REFUSED by
+the runner-hash freeze ("runner commit changed after cell initialization",
+nodeg-cell.py:384,492) — correct fail-closed behavior, and an inherent
+chicken-and-egg: the repaired judge cannot exist at the cohort's frozen
+sha. Quality bar for THIS cohort stays UNMEASURED. Resolution options
+(deferred to the next three-way round, not orchestrator-solo): (a) dated
+judge-phase deviation flag recording both shas in the verdict (A-attempt
+integrity untouched — judge consumes frozen patch bytes only); (b) leave
+this cohort quality-unmeasured; future nodeg cohorts inherit the fixed
+judge from init. The load-bearing wall/objective verdicts (0068.9) are
+unaffected.
