@@ -101,11 +101,34 @@ if [ "${1:-}" = --version ]; then
   exit 0
 fi
 echo 'model: gpt-5.6-terra' >&2
-cat <<'JSON'
-{"axes":{"design_coherence":{"tiers":[["P1","P2"]],"strict_win_deltas":[]},"robustness":{"tiers":[["P1","P2"]],"strict_win_deltas":[]},"spec_long_horizon_consistency":{"tiers":[["P1","P2"]],"strict_win_deltas":[]},"maintainability_api_ergonomics":{"tiers":[["P1","P2"]],"strict_win_deltas":[]}}}
-JSON
+self_dir="$(cd "$(dirname "$0")" && pwd)"
+mode="$(cat "$self_dir/codex-mode" 2>/dev/null || printf valid)"
+prompt="${@: -1}"
+valid='{"axes":{"design_coherence":{"tiers":[["P1","P2"]],"strict_win_deltas":[]},"robustness":{"tiers":[["P1","P2"]],"strict_win_deltas":[]},"spec_long_horizon_consistency":{"tiers":[["P1","P2"]],"strict_win_deltas":[]},"maintainability_api_ergonomics":{"tiers":[["P1","P2"]],"strict_win_deltas":[]}}}'
+case "$mode" in
+  retry)
+    count_file="$self_dir/codex-count"
+    count=0
+    [ ! -f "$count_file" ] || read -r count < "$count_file"
+    count=$((count + 1))
+    printf '%s\n' "$count" > "$count_file"
+    if [ "$count" -eq 1 ]; then
+      printf '%s\n' "${valid%?}"
+    else
+      [[ "$prompt" == *'Your previous output was truncated; emit ONLY the JSON, complete.'* ]]
+      : > "$self_dir/retry-prompt-ok"
+      printf 'startup log\n{"log":"ignore this object"}\n%s\ntrailing log\n' "$valid"
+    fi
+    ;;
+  prose) printf 'leading prose\n%s\ntrailing prose\n' "$valid" ;;
+  unrecoverable) printf '%s\n' "${valid%?}" ;;
+  valid) printf '%s\n' "$valid" ;;
+  *) echo "unknown fake codex mode: $mode" >&2; exit 2 ;;
+esac
 EOF
 chmod +x "$TMP_DIR/fakebin/codex"
+printf 'retry\n' > "$TMP_DIR/fakebin/codex-mode"
+rm -f "$TMP_DIR/fakebin/codex-count" "$TMP_DIR/fakebin/retry-prompt-ok"
 
 printf '{"token":"selftest"}\n' > "$TMP_DIR/auth.json"
 printf '{"claudeAiOauth":{"accessToken":"selftest"}}\n' > "$TMP_DIR/claude-credentials.json"
@@ -131,7 +154,58 @@ if judges["sonnet"]["runtime_model"] != "claude-sonnet-fake":
     raise SystemExit(judges)
 if mapping["frozen_b_source"]["run_id"] != "iter0068-gate-20260711h":
     raise SystemExit(mapping)
+raw = json.load(open(sys.argv[2].replace("mapping.json", "codex.json"), encoding="utf-8"))
+if len(raw["attempts"]) != 2 or not raw["attempts"][0]["error"].startswith("parse_error: incomplete_json"):
+    raise SystemExit(raw["attempts"])
 PY
+test -f "$TMP_DIR/fakebin/retry-prompt-ok"
+
+rm "$JUDGE_RUN/nodeg-judge/codex.json"
+printf 'prose\n' > "$TMP_DIR/fakebin/codex-mode"
+CEILING_EXTERNAL_ROOT="$TMP_DIR/external" \
+CEILING_REAL_HOME="$TMP_DIR" \
+CEILING_TEST_AUTH_JSON="$TMP_DIR/auth.json" \
+CEILING_TEST_CLAUDE_CREDENTIALS="$TMP_DIR/claude-credentials.json" \
+CEILING_TEST_CLAUDE_BIN="$TMP_DIR/fakebin/claude" \
+CEILING_TEST_CODEX_BIN="$TMP_DIR/fakebin/codex" \
+python3 "$SCRIPT_DIR/nodeg-cell.py" judge \
+  --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" --resume
+python3 - "$JUDGE_RUN/nodeg-judge/codex.json" <<'PY'
+import json
+import sys
+
+raw = json.load(open(sys.argv[1], encoding="utf-8"))
+if len(raw["attempts"]) != 1 or raw["parsed"] is None:
+    raise SystemExit(raw)
+PY
+
+rm "$JUDGE_RUN/nodeg-judge/codex.json"
+printf 'unrecoverable\n' > "$TMP_DIR/fakebin/codex-mode"
+if CEILING_EXTERNAL_ROOT="$TMP_DIR/external" \
+  CEILING_REAL_HOME="$TMP_DIR" \
+  CEILING_TEST_AUTH_JSON="$TMP_DIR/auth.json" \
+  CEILING_TEST_CLAUDE_CREDENTIALS="$TMP_DIR/claude-credentials.json" \
+  CEILING_TEST_CLAUDE_BIN="$TMP_DIR/fakebin/claude" \
+  CEILING_TEST_CODEX_BIN="$TMP_DIR/fakebin/codex" \
+  python3 "$SCRIPT_DIR/nodeg-cell.py" judge \
+    --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" --resume \
+    > "$TMP_DIR/unrecoverable.stdout" 2> "$TMP_DIR/unrecoverable.stderr"; then
+  echo "unrecoverable judge JSON did not fail closed" >&2
+  exit 1
+fi
+grep -Eq 'failed after retries: parse_error: incomplete_json; raw_length=[0-9]+ tail=' "$TMP_DIR/unrecoverable.stderr"
+test -s "$JUDGE_RUN/nodeg-judge/judge-codex-attempt1.stdout.txt"
+test -s "$JUDGE_RUN/nodeg-judge/judge-codex-attempt2.stdout.txt"
+
+printf 'valid\n' > "$TMP_DIR/fakebin/codex-mode"
+CEILING_EXTERNAL_ROOT="$TMP_DIR/external" \
+CEILING_REAL_HOME="$TMP_DIR" \
+CEILING_TEST_AUTH_JSON="$TMP_DIR/auth.json" \
+CEILING_TEST_CLAUDE_CREDENTIALS="$TMP_DIR/claude-credentials.json" \
+CEILING_TEST_CLAUDE_BIN="$TMP_DIR/fakebin/claude" \
+CEILING_TEST_CODEX_BIN="$TMP_DIR/fakebin/codex" \
+python3 "$SCRIPT_DIR/nodeg-cell.py" judge \
+  --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" --resume
 test ! -e "$JUDGE_RUN/B1/patch.diff"
 if grep -q 'iter0068-gate-20260711h' "$JUDGE_RUN/nodeg-judge/sonnet.json"; then
   echo "frozen source provenance leaked into sonnet blind packet" >&2

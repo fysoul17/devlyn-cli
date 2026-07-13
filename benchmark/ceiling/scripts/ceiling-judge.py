@@ -37,28 +37,55 @@ AXES = [
     "maintainability_api_ergonomics",
 ]
 PACKETS = {"P1", "P2", "P3"}
+MAX_JUDGE_ATTEMPTS = 2
+RAW_TAIL_CHARS = 1000
 
 
 def extract_json_object(text: str) -> Any | None:
-    text = text.strip()
-    fence = re.match(r"^```(?:json)?\s*(.*?)\s*```$", text, re.DOTALL)
-    if fence:
-        text = fence.group(1).strip()
-    start = text.find("{")
-    if start == -1:
-        return None
+    candidates: list[Any] = []
+    start: int | None = None
     depth = 0
-    for i in range(start, len(text)):
-        if text[i] == "{":
+    in_string = False
+    escaped = False
+    for end, char in enumerate(text):
+        if start is None:
+            if char == "{":
+                start = end
+                depth = 1
+            continue
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
             depth += 1
-        elif text[i] == "}":
+        elif char == "}":
             depth -= 1
             if depth == 0:
                 try:
-                    return json.loads(text[start : i + 1])
+                    candidates.append(json.loads(text[start : end + 1]))
                 except json.JSONDecodeError:
-                    return None
-    return None
+                    pass
+                start = None
+    return candidates[-1] if candidates else None
+
+
+def raw_diagnostic(raw: str) -> str:
+    return f"raw_length={len(raw)} tail={raw[-RAW_TAIL_CHARS:]!r}"
+
+
+def retry_prompt(prompt: str, error: str | None) -> str:
+    if (error or "").startswith("parse_error: incomplete_json"):
+        instruction = "Your previous output was truncated; emit ONLY the JSON, complete."
+    else:
+        instruction = "Your previous output failed the required JSON shape; emit ONLY corrected JSON."
+    return f"{prompt}\n\nRETRY: {instruction} Return one single complete JSON object and nothing else."
 
 
 def terminate_process_group(pid: int) -> None:
@@ -189,10 +216,10 @@ def call_sonnet(
             return None, f"isolation_error: runtime model is not sonnet: {sorted(usage) if isinstance(usage, dict) else usage!r}", meta
     parsed = extract_json_object(raw)
     if parsed is None:
-        return None, f"parse_error: raw={raw[:300]!r}", meta
+        return None, f"parse_error: incomplete_json; {raw_diagnostic(raw)}", meta
     validation_error = validate_response(parsed)
     if validation_error:
-        return None, f"parse_error: {validation_error}", meta
+        return None, f"parse_error: {validation_error}; {raw_diagnostic(raw)}", meta
     return parsed, None, meta
 
 
@@ -262,10 +289,10 @@ def call_codex(
         return None, f"transport_error: exit={returncode} stderr={stderr_text[:300]!r}", meta
     parsed = extract_json_object(stdout_text)
     if parsed is None:
-        return None, f"parse_error: raw={stdout_text[:300]!r}", meta
+        return None, f"parse_error: incomplete_json; {raw_diagnostic(stdout_text)}", meta
     validation_error = validate_response(parsed)
     if validation_error:
-        return None, f"parse_error: {validation_error}", meta
+        return None, f"parse_error: {validation_error}; {raw_diagnostic(stdout_text)}", meta
     return parsed, None, meta
 
 
@@ -276,14 +303,15 @@ def call_with_retry(judge: str, prompt: str, task_dir: Path, codex_command: list
     last_meta: dict[str, Any] = {}
     parsed: Any | None = None
     err: str | None = None
-    for attempt in (1, 2):
+    for attempt in range(1, MAX_JUDGE_ATTEMPTS + 1):
+        attempt_prompt = prompt if attempt == 1 else retry_prompt(prompt, err)
         if judge == "sonnet":
-            parsed, err, last_meta = call_sonnet(prompt, scratch_dir, task_dir, attempt)
+            parsed, err, last_meta = call_sonnet(attempt_prompt, scratch_dir, task_dir, attempt)
             if (err or "").startswith("isolation_error:"):
                 raise SystemExit(f"sonnet judge isolation failed: {err}")
         elif judge == "codex":
             parsed, err, last_meta = call_codex(
-                prompt,
+                attempt_prompt,
                 scratch_dir,
                 codex_command,
                 task_dir / f"judge-codex-attempt{attempt}.stdout.txt",
@@ -357,7 +385,7 @@ def build_prompt(task_text: str, labeled_packets: list[dict[str, str]]) -> str:
         '{"axes":{"design_coherence":{"tiers":[["P1","P3"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P3","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"robustness":{"tiers":[["P3"],["P1"],["P2"]],"strict_win_deltas":[{"winner":"P3","loser":"P1","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P3","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"spec_long_horizon_consistency":{"tiers":[["P2"],["P3"],["P1"]],"strict_win_deltas":[{"winner":"P2","loser":"P3","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P2","loser":"P1","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P3","loser":"P1","delta":"<one concrete sentence citing something visible in the diffs>"}]},"maintainability_api_ergonomics":{"tiers":[["P1"],["P2","P3"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"},{"winner":"P1","loser":"P3","delta":"<one concrete sentence citing something visible in the diffs>"}]}}}\n'
         "Ties are allowed and expected wherever two packets are genuinely indistinguishable on an axis — put them in the same tier. "
         "For every strict winner-loser pair created by tiers, include exactly one concrete one-sentence delta citing something visible in the diffs. "
-        "Output ONLY the JSON object -- no prose before or after, no markdown fences."
+        "Output one single complete JSON object and nothing else -- no prose before or after, no markdown fences."
     )
 
 
@@ -463,8 +491,8 @@ def main() -> int:
                 "meta": {key: value for key, value in meta.items() if key not in {"wrapper"}},
             }
             (task_dir / f"judge-{judge}.json").write_text(json.dumps(raw, indent=2) + "\n", encoding="utf-8")
-            if parsed is None:
-                continue
+            if parsed is None or err is not None:
+                raise SystemExit(f"{task} {judge} judge failed after retries: {err}")
             for axis in AXES:
                 tiers = parsed["axes"][axis]["tiers"]
                 outcome = compare_packets(tiers, task_aggregate["a_packet"], task_aggregate["c_packet"])

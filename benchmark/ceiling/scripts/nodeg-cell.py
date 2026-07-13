@@ -278,7 +278,8 @@ def pair_prompt(task_text: str, packets: list[dict[str, str]]) -> str:
         + "\n\n".join(blocks)
         + "\n\nRank P1/P2 on exactly these axes: "
         + ", ".join(AXES)
-        + ". Ties are allowed. Emit only JSON in this shape; for every strict tier winner/loser include one concrete visible-diff delta:\n"
+        + ". Ties are allowed. Emit one single complete JSON object and nothing else in this shape; "
+        "for every strict tier winner/loser include one concrete visible-diff delta:\n"
         + '{"axes":{'
         + example_axes
         + "}}"
