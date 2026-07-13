@@ -86,6 +86,8 @@ python3 "$SCRIPT_DIR/nodeg-cell.py" preflight \
 JUDGE_RUN="$CEILING/results/selftest-judge/$TASK"
 mkdir -p "$JUDGE_RUN/A1" "$TMP_DIR/fakebin"
 printf 'diff --git a/a b/a\n+candidate A\n' > "$JUDGE_RUN/A1/patch.diff"
+printf '{"invoke_exit":0,"timed_out":false,"elapsed_seconds":100}\n' > "$JUDGE_RUN/A1/timing.json"
+printf '{"modelUsage":{"claude-sonnet-fake":{}}}\n' > "$JUDGE_RUN/A1/transcript.txt"
 
 cat > "$TMP_DIR/fakebin/claude" <<'EOF'
 #!/usr/bin/env bash
@@ -380,6 +382,80 @@ if {entry["type"] for entry in verdict["deviations"]} != {
 }:
     raise SystemExit(verdict["deviations"])
 PY
+
+RUNTIME_DEVIATIONS="$TMP_DIR/runtime-deviations.json"
+python3 - "$DEVIATIONS" "$RUNTIME_DEVIATIONS" "$TASK" <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+payload["deviations"].append(
+    {
+        "type": "a-runtime-attestation-source",
+        "task": sys.argv[3],
+        "reason": "timed-out A attempt has no stream-json summary",
+    }
+)
+with open(sys.argv[2], "w", encoding="utf-8") as handle:
+    json.dump(payload, handle)
+    handle.write("\n")
+PY
+if run_verdict --deviations "$RUNTIME_DEVIATIONS" \
+  > "$TMP_DIR/runtime-healthy.stdout" 2> "$TMP_DIR/runtime-healthy.stderr"; then
+  echo "runtime attestation deviation was accepted for a healthy row" >&2
+  exit 1
+fi
+grep -q 'deviation provided but transcript/timing checks do not match' "$TMP_DIR/runtime-healthy.stderr"
+
+printf '{"invoke_exit":124,"timed_out":true,"elapsed_seconds":100}\n' > "$JUDGE_RUN/A1/timing.json"
+: > "$JUDGE_RUN/A1/transcript.txt"
+printf 'path=/tmp/claude-homes\nmodel=claude-sonnet-fake\nretry model=claude-sonnet-fake\n' \
+  > "$JUDGE_RUN/A1/claude-debug.log"
+if run_verdict --deviations "$DEVIATIONS" \
+  > "$TMP_DIR/runtime-missing.stdout" 2> "$TMP_DIR/runtime-missing.stderr"; then
+  echo "empty timed-out transcript was accepted without runtime attestation deviation" >&2
+  exit 1
+fi
+grep -q 'requires a-runtime-attestation-source deviation' "$TMP_DIR/runtime-missing.stderr"
+
+run_verdict --deviations "$RUNTIME_DEVIATIONS" > "$TMP_DIR/runtime-verdict.stdout"
+python3 - "$CEILING/results/selftest-judge/nodeg-verdict.json" "$TASK" <<'PY'
+import json
+import sys
+
+verdict = json.load(open(sys.argv[1], encoding="utf-8"))
+attestation = verdict["a_runtime_attestations"][sys.argv[2]]
+if attestation["scan"] != {"hits": 2, "distinct_models": ["claude-sonnet-fake"]}:
+    raise SystemExit(attestation)
+if attestation["deviation"] != {
+    "type": "a-runtime-attestation-source",
+    "task": sys.argv[2],
+    "reason": "timed-out A attempt has no stream-json summary",
+}:
+    raise SystemExit(attestation)
+if {entry["type"] for entry in verdict["deviations"]} != {
+    "judge-runner-sha",
+    "opaque-paths-artifact-dir",
+    "a-runtime-attestation-source",
+}:
+    raise SystemExit(verdict["deviations"])
+PY
+
+printf 'model=claude-sonnet-fake\nmodel=claude-opus-fake\n' > "$JUDGE_RUN/A1/claude-debug.log"
+if run_verdict --deviations "$RUNTIME_DEVIATIONS" \
+  > "$TMP_DIR/runtime-wrong.stdout" 2> "$TMP_DIR/runtime-wrong.stderr"; then
+  echo "anchored non-sonnet runtime model was accepted" >&2
+  exit 1
+fi
+grep -q 'debug model attestation missing or not sonnet' "$TMP_DIR/runtime-wrong.stderr"
+
+printf 'requested_model=claude-sonnet-fake\n' > "$JUDGE_RUN/A1/claude-debug.log"
+if run_verdict --deviations "$RUNTIME_DEVIATIONS" \
+  > "$TMP_DIR/runtime-zero.stdout" 2> "$TMP_DIR/runtime-zero.stderr"; then
+  echo "debug log with zero anchored runtime model hits was accepted" >&2
+  exit 1
+fi
+grep -q 'debug model attestation missing or not sonnet' "$TMP_DIR/runtime-zero.stderr"
 
 printf '{"deviations":{}}\n' > "$TMP_DIR/malformed-deviations.json"
 if run_verdict --deviations "$TMP_DIR/malformed-deviations.json" \

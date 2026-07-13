@@ -51,6 +51,7 @@ DEVIATION_FIELDS = {
         "other_checks",
         "materiality",
     },
+    "a-runtime-attestation-source": {"type", "task", "reason"},
 }
 
 
@@ -305,21 +306,35 @@ def load_deviations(path: Path) -> list[dict[str, Any]]:
     if not entries:
         die("deviations array must not be empty")
     by_type: dict[str, dict[str, Any]] = {}
+    runtime_tasks: set[str] = set()
     for index, entry in enumerate(entries):
         if not isinstance(entry, dict):
             die(f"deviations[{index}] must be an object")
         deviation_type = entry.get("type")
         if deviation_type not in DEVIATION_FIELDS:
             die(f"unknown deviation type: {deviation_type!r}")
-        if deviation_type in by_type:
-            die(f"duplicate deviation type: {deviation_type}")
         expected_fields = DEVIATION_FIELDS[deviation_type]
         if set(entry) != expected_fields:
             die(
                 f"{deviation_type} deviation fields differ: "
                 f"missing={sorted(expected_fields - set(entry))} extra={sorted(set(entry) - expected_fields)}"
             )
-        by_type[deviation_type] = entry
+        if deviation_type == "a-runtime-attestation-source":
+            task = entry["task"]
+            if (
+                not isinstance(task, str)
+                or not task.strip()
+                or not isinstance(entry["reason"], str)
+                or not entry["reason"].strip()
+            ):
+                die("a-runtime-attestation-source task and reason must be non-empty strings")
+            if task in runtime_tasks:
+                die(f"duplicate a-runtime-attestation-source deviation for task: {task}")
+            runtime_tasks.add(task)
+        else:
+            if deviation_type in by_type:
+                die(f"duplicate deviation type: {deviation_type}")
+            by_type[deviation_type] = entry
     runner = by_type.get("judge-runner-sha")
     if runner is not None:
         for field in ("attempt_runner_sha", "judge_runner_sha"):
@@ -348,16 +363,39 @@ def deviations_for_run(
     controls: list[str],
 ) -> tuple[list[dict[str, Any]], str]:
     entries = load_deviations(path)
-    by_type = {entry["type"]: entry for entry in entries}
+    by_type = {
+        entry["type"]: entry for entry in entries if entry["type"] != "a-runtime-attestation-source"
+    }
+    runtime_by_task = {
+        entry["task"]: entry for entry in entries if entry["type"] == "a-runtime-attestation-source"
+    }
+    selected_tasks = {FROZEN[control][0] for control in controls}
+    unknown_runtime_tasks = set(runtime_by_task) - selected_tasks
+    if unknown_runtime_tasks:
+        die(
+            "a-runtime-attestation-source task is not selected: "
+            + ", ".join(sorted(unknown_runtime_tasks))
+        )
     attempt_runner_sha = cohort.get("runner_commit_sha")
     judge_runner_sha = git(repo, "rev-parse", "HEAD")
     runner_mismatch = judge_runner_sha != attempt_runner_sha
     opaque_failures = []
+    runtime_required_tasks = set()
     for control in controls:
         task = FROZEN[control][0]
         isolation = load_json(run_root / task / "A1/isolation.json")
         if isolation.get("opaque_paths", {}).get("passed") is not True:
             opaque_failures.append(control)
+        attempt_dir = run_root / task / "A1"
+        transcript = attempt_dir / "transcript.txt"
+        timing = load_json(attempt_dir / "timing.json")
+        if (
+            transcript.is_file()
+            and transcript.stat().st_size == 0
+            and timing.get("timed_out") is True
+            and timing.get("invoke_exit") == 124
+        ):
+            runtime_required_tasks.add(task)
     if runner_mismatch:
         runner = by_type.get("judge-runner-sha")
         if runner is None:
@@ -371,6 +409,18 @@ def deviations_for_run(
             die("A opaque-path attestation failed without opaque-paths-artifact-dir deviation")
     elif "opaque-paths-artifact-dir" in by_type:
         die("opaque-paths-artifact-dir deviation provided but A opaque-path checks pass")
+    missing_runtime = runtime_required_tasks - set(runtime_by_task)
+    if missing_runtime:
+        die(
+            "empty timed-out A transcript requires a-runtime-attestation-source deviation: "
+            + ", ".join(sorted(missing_runtime))
+        )
+    unexpected_runtime = set(runtime_by_task) - runtime_required_tasks
+    if unexpected_runtime:
+        die(
+            "a-runtime-attestation-source deviation provided but transcript/timing checks do not match: "
+            + ", ".join(sorted(unexpected_runtime))
+        )
     expected_types = ({"judge-runner-sha"} if runner_mismatch else set()) | (
         {"opaque-paths-artifact-dir"} if opaque_failures else set()
     )
@@ -561,7 +611,9 @@ def judge_cell(args: argparse.Namespace) -> int:
             {
                 "attempt_runner_sha": cohort.get("runner_commit_sha"),
                 "judge_runner_sha": judge_runner_sha,
-                "deviations": deviations,
+                "deviations": [
+                    entry for entry in deviations if entry["type"] != "a-runtime-attestation-source"
+                ],
             }
         )
     for control in controls:
@@ -666,6 +718,17 @@ def a_runtime_models(transcript: Path) -> list[str]:
     return keys
 
 
+def a_runtime_debug_models(debug_log: Path) -> dict[str, Any]:
+    try:
+        text = debug_log.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        die(f"A runtime debug log unreadable: {debug_log}: {exc}")
+    models = re.findall(r"\bmodel=(claude-[a-z0-9.-]+)\b", text)
+    if not models or not all("sonnet" in model.casefold() for model in models):
+        die(f"A runtime debug model attestation missing or not sonnet: {debug_log}")
+    return {"hits": len(models), "distinct_models": sorted(set(models))}
+
+
 def verdict(args: argparse.Namespace) -> int:
     repo = Path(args.repo_root).resolve()
     ceiling_root = Path(args.ceiling_root).resolve()
@@ -684,8 +747,19 @@ def verdict(args: argparse.Namespace) -> int:
         die("runner commit changed after cell initialization")
     require_runner_integrity(repo, ceiling_root, args.run_id, True)
     judge_data = load_json(run_root / "nodeg-judge-aggregate.json")
-    if deviations is not None and judge_data.get("deviations") != deviations:
+    judge_deviations = (
+        [entry for entry in deviations if entry["type"] != "a-runtime-attestation-source"]
+        if deviations is not None
+        else None
+    )
+    if deviations is not None and judge_data.get("deviations", []) != judge_deviations:
         die("verdict deviations do not match nodeg-judge-aggregate.json")
+    runtime_deviations = {
+        entry["task"]: entry
+        for entry in deviations or []
+        if entry["type"] == "a-runtime-attestation-source"
+    }
+    runtime_attestations: dict[str, Any] = {}
     objective_rows: dict[str, Any] = {}
     quality_rows: dict[str, Any] = {}
     wall_rows: dict[str, Any] = {}
@@ -753,7 +827,13 @@ def verdict(args: argparse.Namespace) -> int:
         }
         claude_versions.add(str(isolation.get("direct_claude", {}).get("version")))
         codex_versions.add(str(isolation.get("direct_codex", {}).get("version")))
-        a_models.update(a_runtime_models(attempt_dir / "transcript.txt"))
+        runtime_deviation = runtime_deviations.get(task)
+        if runtime_deviation is None:
+            a_models.update(a_runtime_models(attempt_dir / "transcript.txt"))
+        else:
+            scan = a_runtime_debug_models(attempt_dir / "claude-debug.log")
+            a_models.update(scan["distinct_models"])
+            runtime_attestations[task] = {"deviation": runtime_deviation, "scan": scan}
     if "None" in claude_versions or "None" in codex_versions or len(claude_versions) != 1 or len(codex_versions) != 1:
         die(f"A CLI identity drift or missing identity: claude={claude_versions}, codex={codex_versions}")
     if any(len(models) != 1 for models in judge_models.values()):
@@ -804,6 +884,8 @@ def verdict(args: argparse.Namespace) -> int:
             }
         )
         payload["bars"]["quality"]["quality_label"] = "post-hoc instrument-repaired"
+    if runtime_attestations:
+        payload["a_runtime_attestations"] = runtime_attestations
     (run_root / "nodeg-verdict.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     print(run_root / "nodeg-verdict.json")
     return 0
