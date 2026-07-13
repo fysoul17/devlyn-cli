@@ -5,52 +5,83 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Latest closed iter: [`iterations/0068-discriminating-corpus.md`](iterations/0068-discriminating-corpus.md) (CLOSED 2026-07-11, VALID-NEGATIVE — § Closure). Active next: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md) ladder + [`iterations/0070a-noncoding-instruments.md`](iterations/0070a-noncoding-instruments.md) (entry point in START-HERE below)
+5. Active iters: [`iterations/0071-wall-proportionality.md`](iterations/0071-wall-proportionality.md) (levers shipped; addendum 3 = next build packet) + [`iterations/0070a-noncoding-instruments.md`](iterations/0070a-noncoding-instruments.md) (routed-seat v2, validation fixtures landed). Latest closed: [`iterations/0068-discriminating-corpus.md`](iterations/0068-discriminating-corpus.md) (VALID-NEGATIVE; closure addenda 3-4 = nodeg verdict). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
 
-Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 (user cleanup directive, Block 9; prior full history recoverable from git + iteration files + DECISIONS.md).
+Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and again 2026-07-14 (user cleanup directive; prior full history recoverable from git + iteration files + DECISIONS.md).
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-13 (T0/T1 measured, routed-seat v2 adjudicated, nodeg cell MEASURED)
+## 🚦 START-HERE — state after 2026-07-14 (iter-0071 levers shipped; nodeg 3-bar verdict complete; concurrent dual-judge design frozen)
 
-**0. iter-0068 RE-CLOSED 2026-07-12 (three-way; full arc in
-`iterations/0068-discriminating-corpus.md` § Amendment A1 + § Re-closure +
-DECISIONS 0068.4/0068.5).** Arc: user-reported identity confound in cohort g
-PROVEN (seed announced "devlyn-cli auto-resolve benchmarks", ingested 19/24;
-trap-axis paths 24/24; ambient ZDOTDIR defeated HOME override; Superset
-wrapper) → **isolation v2 shipped** (`1452393` + patch transport `e899e98`:
-opaque `~/.local/share/nx01` roots, workspace-clone neutralizer, `env -i`
-direct binary, fail-closed isolation.json attestation, staged D5 attempts —
-permanent instrument hardening) → clean re-gate cohort h: sole mechanical
-admission (F21) KILLED by the pre-registered admitted-set UNFAIR audit
-(visible HH:MM contract vs hidden ISO `submitted_at`; decisive experiment:
-the bare patch passes both hidden checks with format-consistent inputs;
-Grok reproduced, Codex found it independently) → **fair admitted set ∅;
-VALID-NEGATIVE restored; zero fair-row evidence of identity-leak
-materiality**. F21 retired-frozen-defective. 6 DR + F12 + FS1 = saturated
-no-degradation controls. Follow-up instrument: hidden-input conformance
-lint at fixture freeze.
+**Where the loop stands (one paragraph).** iter-0071
+(`iterations/0071-wall-proportionality.md`, the ACTIVE iter) shipped its
+full ship-set in one three-way session: L-A (goal_length>80 Large trigger
+deleted), L-B (auto-probe post-PLAN demotion on frozen `probe_scale_small
+:= len(authorized_surface)<=2 AND no "/**"`; explicit `--risk-probes` never
+demoted), L-D (phase re-entry `history[]`), nodeg driver opaque-staging
+repair + replay protocol a′ (binding manifest + 3 fail-closed deviation
+types). The judge replay then produced the FIRST complete no-degradation
+verdict (`benchmark/ceiling/results/nodeg-20260713/nodeg-verdict.json`):
+**objective 7/7 PASS · quality 0/7 FAIL (blind judges prefer bare terra —
+codex judge 28/28 axes, sonnet 5/7 rows; bare adds docs/tests the pipeline
+omits) · wall 0/7 (7.7-30.4×)** — fourth over-tightening confirmation,
+first with quality measured; binding read = 0068 closure addendum 4;
+DECISIONS 0068.10-0068.11 + 0071.0. Separately: D-protocol step 2 FROZEN
+(0070a addendum 9 + structural-projection amendment, 0070a.6-0070a.7;
+`classify-defect-family.py` live in selftests) and **4 outcome-blind routed-
+validation fixtures landed** (`benchmark/noncoding/validation/`, opus-
+authored from Grok-audited export, freeze audit GO, `b26c632`). **L-C′
+escalation-only was REJECTED by the user** (0071.1 — complementary
+cross-engine detection outweighs the n=3 0/3 evidence; never propose
+coverage reduction again — pyx correction recorded); replacement =
+**concurrent dual-judge, three-way CONVERGED (0071.2)** — must-edit list +
+solo-vs-concurrent canary ship-gate frozen in 0071 addendum 3.
 
-0. **iter-0069 — completion-claim evidence — CLOSED 2026-07-09** (full record `iterations/0069-completion-claim-evidence.md` + `DECISIONS.md:0069`..`0069.4`; contract = Fable's version + E1 + E2, E3 reverted). **Still-binding decisions**: (0069.1) plain conversation is NOT forced through `/devlyn:resolve` — orchestrator may implement mid-flow; (0069.3) the always-loaded contract holds only measured / mechanically-proven / subtractive / code-enforced content — a user incident licenses an EXPERIMENT, never permanent live prose; (0069.4) claim-emission residual was accepted pending a measurable instrument — **now UNFROZEN by Block 9 (user mandate)**: the measured path is the 0070 ladder (INTENT_CLOSURE kernel), not contract prose. Binding facts: both confirmed incidents were plain-conversation (PHASE-6 ledgers cannot catch them); installed CLAUDE.md copies drift silently (no version stamp) — do not mass-reinstall to propagate prose.
-1. **iter-0067 — ceiling tranche 2 — CLOSED 2026-07-08, verdict FAIL-pilot** (full record `iterations/0067-ceiling-tranche-2.md`): all 3 fresh django holdout rows objective-non-discriminating; wall 8.33× > cap; neutral judge preferred copycat 16:3. Honest ceiling state (Codex R1 verbatim): "the current full devlyn stack does not show a ceiling moat here; a single codex copycat matches objective outcomes, wins subjective diff quality, and is about 8.3× faster." 압도적·독보적 is NOT yet real — the instrument is losable and has lost twice honestly. That verdict is WHY iter-0068 pivots the corpus to tasks bare measurably fails.
-2. **iter-0065/0066 (prior, CLOSED)** — hands-free large + bounded pair-VERIFY; pre-VERIFY overhead levers (scoped commits, probe boundary/digest). Both A-arm levers HELD on the fresh holdout.
+**Next work, in order**:
+1. **Concurrent dual-judge build packet** (Codex sol, isolated worktree,
+   guardrail block): implement 0071 addendum 3's six must-edits
+   (verify-merge-findings.py `primary_judge_blocker` no longer excuses
+   missing pair output on pre-known triggers + 3 validator tests;
+   sequencing pins in SKILL.md:284/293 + verify.md + state-schema.md +
+   lint-skills.sh:1321 + 3 mirrors; pair_trigger write-order; per-judge
+   duration split; destructive-probe serialization note; sequential
+   fallback). Ship ONLY after the solo-vs-concurrent canary passes.
+2. **Routed-seat T1 validation** (Amendment 2 step 4): small Codex packet
+   wires `benchmark/noncoding/validation/` fixtures into the manifest +
+   calibration-driver (routing: ORDERING→sonnet, CONTENT_CONSTRAINT→terra),
+   then routed-seat full T1 bar + non-routed N=3 canary per fixture — at a
+   FRESH limit window (~320+60 attempts).
+3. **nodeg re-measure with 0071 levers** (P1/P2′/P3′ vs the frozen
+   baseline). Registered confound: the A-arm passes `--pair-verify` always
+   (`run-ceiling-arm.sh:148`) so VERIFY-shape savings are invisible until
+   packet 1 lands; concurrent dual-judge landing first makes the re-measure
+   capture both levers.
+4. **Cell 1 bare-fails admission gate** (terra-conditional reporting only).
+5. **Quality-axis root-cause design round** (three-way FIRST, no lever
+   ships from it without pre-registration): why does the pipeline omit the
+   docs/tests bare adds? (F7 delta: USAGE banner + error-path test.)
 
-**Next session entry point — the 0070 ladder (iter-0068 CLOSED 2026-07-11)**:
+**Binding residue (pointers only; full arcs in the iter files)**:
+- iter-0068 CLOSED VALID-NEGATIVE (identity confound → isolation v2
+  permanent; F21 tombstoned; controls = 6 DR + F12 + FS1). Benchmark codex
+  seat = `gpt-5.6-terra`; sol is team-only; fable never a test arm.
+- iter-0069 binding: plain conversation NOT forced through resolve (0069.1);
+  always-loaded contract holds only measured/mechanical/subtractive content
+  (0069.3); claim-emission instrument = the 0070 ladder (Block 9).
+- Ceiling honest state (0064/0067): FAIL-pilot twice — no moat claim; the
+  0070a instruments + iter-0071 are the response, not re-runs.
+- Three-way protocol: Fable orchestrates/verifies citations, Codex sol
+  executes, Grok 4.5 independent reviewer/auditor
+  (`feedback_threeway_pair_grok_2026_07_10.md`).
 
-**iter-0068 — discriminating ceiling corpus — CLOSED 2026-07-11, verdict VALID-NEGATIVE** (full record `iterations/0068-discriminating-corpus.md` § Closure + `DECISIONS.md:0068.1-0068.3`). Clean gate cohort `iter0068-gate-20260711g`: **0/7 admitted, 8/8 `saturated:bare-resolves`** (FS1 control correct; 24/24 valid; terra-only; three-way R1-gate GATE-VALID unanimous). Honest finding: the synthetic categorical-trap pool does not discriminate clean bare `gpt-5.6-terra` — the bare-fails gate + generic FS oracle are plumbing-validated only; no ceiling/amplification/moat claim. En route the iter surfaced and fixed two harness-integrity classes (both three-way): (1) **bare arms were never bare** — codex v0.144.1 auto-loads global `~/.agents/skills` (no disable flag) and workspaces lived in-repo; cohorts c/d/e discarded; fix `fdd574a` = `~/devlyn-ceiling-external` isolation + per-attempt HOME/CODEX_HOME + fail-closed provenance/contamination INVALID markers (selftest 37); (2) **watchdog pipe-hold** taxed every attempt to full timeout (`fe252ee`); post-fix pace ≈ 15 min/row. Binding residue: 7 DR fixtures retired as discriminating candidates (anti-tuning rule); **pre-registered deferred cell** = no-degradation control (A1 vs frozen best_B on the 8 saturated controls) **BLOCKED on the A-arm/judge purity fix** — A-arm canary PROVED user-global `~/.claude/CLAUDE.md` leaks into `claude -p --setting-sources project,local` (transcript in `~/devlyn-ceiling-external/canary/`). BENCHMARK CODEX SEAT stays `gpt-5.6-terra` (sol is team-only). three-way protocol: Fable orchestrates/verifies, Codex executes, Grok 4.5 independent reviewer — memory `feedback_threeway_pair_grok_2026_07_10.md`.
-
-**ENTER NOW (updated 2026-07-13 night): iter-0071 levers SHIPPED; nodeg cell verdict COMPLETE — quality bar LOST 0/7.** Session arc (three-way throughout; DECISIONS 0068.10-0068.11, 0070a.6-0070a.7, 0071.0): iter-0071 pre-registered (`iterations/0071-wall-proportionality.md`) → build packet 1 (nodeg staging repair + binding manifest + strict deviations + `classify-defect-family.py` structural projection, `57f7f27`+`fca4d1d`) → packet 2 L-A/L-B/L-D skill levers SHIPPED (`18c5320`, net −5 lines: goal_length>80 Large trigger deleted; auto-probe post-PLAN demotion on frozen `probe_scale_small := len(authorized_surface)<=2 AND no "/**"`; phase re-entry `history[]`) → **judge replay executed under protocol a′ → full fail-closed verdict** (`nodeg-verdict.json`): objective 7/7 PASS, **quality 0/7 FAIL** (codex judge: bare wins all 28 axes; sonnet: bare ahead 5/7; label post-hoc instrument-repaired), wall 0/7 (7.7-30.4×) — FOURTH over-tightening confirmation, first with quality measured (0068 closure addendum 4 = the binding read). D-protocol: addendum 9 + projection amendment (0070a.7); 4 outcome-blind validation fixtures authored by isolated OPUS from Grok-audited export, freeze-audited GO, landed `b26c632` (`benchmark/noncoding/validation/`). Next work, in order: (1) **routed-seat T1 validation runs at a FRESH limit window** — needs a small Codex packet first to wire `benchmark/noncoding/validation/` fixtures into manifest/calibration-driver (routed seat full bar + non-routed N=3 canary per Amendment 2 step 4); (2) nodeg re-measure with 0071 levers active (P1/P2′/P3′) against the frozen baseline — but note the A-arm launches `/devlyn:resolve --spec`-style direct task text (complexity classifier applies) and forced `--pair-verify` (registered confound); (3) Cell 1 bare-fails admission gate (terra-conditional); (4) **quality axis root-cause** — judge deltas show bare adds docs/tests the pipeline omits (F7 USAGE banner + error-path test); candidate lever design three-way first. **L-C′ escalation-only REJECTED by user (0071.1 — complementary cross-engine detection outweighs the n=3 0/3 evidence); replacement = concurrent dual-judge, three-way CONVERGED (0071.2, must-edits + solo-vs-concurrent canary gate frozen in 0071 addendum 3) — implementation is the next Codex build packet at a fresh budget window.** Operating rules: no main-checkout commits during any measured cohort (violated once this session by fixture staging mid-replay — caught fail-closed, resolved by commit-then-rerun); delegated builds in isolated worktrees with guardrail blocks + post-run reflog audit; benchmark runs share the account budget — schedule cells at fresh limit windows.
-
-**Deferred (updated 2026-07-13)**:
-- Attack-the-wall lane A (conditional full-pipeline/pair on a discriminating corpus) — re-enters once a discriminating corpus exists; lane B (proportionality + attribution) is now iter-0071, pre-registered.
-- Claim-shape (codex-only current-method arm; strategic, may need user).
-- Codex judge parse robustness: code fix landed `891e92a`; validated only when the 0071 judge replay emits a parsed verdict.
-- Codex drift-bait lane (iter-0062 f/u); E2 re-measurement; finish-gate skip-rate watch; `.git/info/exclude` for `.devlyn/`.
-
-Runner ("Mission 1.5") still NOT next — re-enters on skip-rate evidence.
+**Deferred**: attack-the-wall lane A (needs a discriminating corpus);
+claim-shape arm (strategic, may need user); codex drift-bait lane
+(iter-0062 f/u); E2 re-measurement; finish-gate skip-rate watch;
+`.git/info/exclude` for `.devlyn/`. Runner ("Mission 1.5") still NOT next —
+re-enters on skip-rate evidence.
 
 **Mission 2 (parallel-fleet substrate)**: BLOCKED until Mission 1 gates + real-project trial (#15). iter-0035 real-project trial stays user-gated (needs real project + task + developer). Hard NO list in MISSIONS.md binding.
 
@@ -222,7 +253,9 @@ At `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`: `feed
 | Codex ordinary-invocation pipeline | AGENTS.md IS the binding entry | iter-0061 A/B 4/4-vs-4/4 |
 | Engine-symmetric pair invocation | REAL both directions | iter-0060 (codex→claude judge fired via adapter) |
 | gemma3:4b as judge | MODEL CEILING — do not re-prompt | iter-0055/0056 |
-| Ceiling quality (세계최고 axis) | **MEASURED-pilot: FAIL-pilot on efficiency** (LC3 4.32 > 3.0); quality lift + objective moat present (A 2/3 vs B 1/3 vs C 1/3, n=3). Both pilot product findings CLOSED by iter-0065 (FS1-class delivery + bounded pair-VERIFY); wall/LC3 axis still open (pre-VERIFY overhead) | iter-0064 `ceiling-verdict.json`; iter-0065 P1 A2 (FS1 resolved 14/14, 3324s) |
+| Ceiling quality (세계최고 axis) | FAIL-pilot twice (0064 LC3 4.32×; 0067 copycat 16:3, wall 8.33×) — no moat claim | iter-0064/0067 `ceiling-verdict.json` |
+| No-degradation (Block 8 suppression axes) | **objective 7/7 PASS · quality 0/7 FAIL (bare blind-preferred; codex judge 28/28 axes) · wall 0/7 (7.7-30.4×)** — 4th over-tightening confirmation, 1st with quality measured | `nodeg-20260713/nodeg-verdict.json`; 0068 closure addendum 4 |
+| T1 packet calibration (seat×defect) | complementary override: catalog admits ONLY sonnet, credential ONLY terra (risk-diff 1.0 both) → routed-seat v2, validation fixtures landed | 0070a Amendment 2 + addendum 9; `benchmark/noncoding/validation/` |
 | Seat fitness (모델 × 포지션) | matrix live; 5 current cells; executor/pair-judge pins fail-closed "recert required" | `benchmark/seats/seat-matrix-2026-07-07.json` |
 
 Working instruments: violation matrix (`run-violation-matrix.sh`), compliance cells (`run-compliance-cell.sh` + `check-compliance-cell.py`, now incl. `finish_gate_ran`), drift-bait probes (bare + resolve-framed), judge-quality bench (+codex route), frozen-VERIFY pair gates, token gauge (`scripts/skill-token-gauge.py`), **ceiling 3-arm harness** (`benchmark/ceiling/scripts/run-ceiling-tranche.sh`), **seat matrix + recert runner** (`benchmark/seats/recert-seats.sh`, fail-closed pins).
@@ -231,7 +264,7 @@ Working instruments: violation matrix (`run-violation-matrix.sh`), compliance ce
 
 ## 📍 Project state (verify before editing)
 
-- **Branch**: `main`. HEAD moves fast during iter-0068 (2026-07-10 session: `604018c`..`5827806`+). Run `git log --oneline -10`. Latest doc: `5827806` (Block 10 non-coding exam corpus fold → 0070 STUB).
+- **Branch**: `main`. Run `git log --oneline -10`. 2026-07-13/14 session: `cb041b4`..`a3bd678` (iter-0071 arc); a user-session pipeline commit (`9dcbbd7`, Grok Build CLI installer support in README/bin) landed mid-arc — release/installer surface is USER territory, hands off.
 - **Engine pins**: `.devlyn/engines.json` = `{"executor": "codex"}` (machine-local; orchestrator passes `--pair-verify` on resolve runs per `feedback_executor_codex_always_pair_verify.md`).
 - Housekeeping (deferred per user 2026-04-30, unchanged): 4 dirty `.claude/worktrees/agent-*` — save patches before any removal; NOT in iter scope.
 
@@ -242,13 +275,13 @@ git status                                  # main, clean
 bash scripts/lint-skills.sh                 # "All checks passed." (npm-pack check is occasionally slow — rerun once before diagnosing)
 diff -q config/skills/devlyn:resolve/SKILL.md .claude/skills/devlyn:resolve/SKILL.md
 diff -q config/skills/_shared/finish-gate.py .claude/skills/_shared/finish-gate.py
-grep -q "^status: CLOSED" autoresearch/iterations/0066-pre-verify-overhead.md && echo "0066 CLOSED ✓"
-grep -q "^status: CLOSED" autoresearch/iterations/0067-ceiling-tranche-2.md && echo "0067 CLOSED ✓"
-grep -q "FAIL-pilot" benchmark/ceiling/results/iter0067-t2/ceiling-verdict.json && echo "tranche-2 verdict ✓"
+python3 -c "import json; v=json.load(open('benchmark/ceiling/results/nodeg-20260713/nodeg-verdict.json')); b=v['bars']; assert b['objective']['passed'] and not b['quality']['passed'] and not b['wall']['passed']" && echo "nodeg 3-bar verdict ✓"
+bash benchmark/ceiling/scripts/test-nodeg-cell.sh >/dev/null 2>&1 && echo "nodeg selftests ✓"
+python3 benchmark/noncoding/scripts/classify-defect-family.py --self-test >/dev/null 2>&1 && echo "classifier ✓"
+python3 benchmark/noncoding/scripts/conformance-gate.py benchmark/noncoding/validation/* >/dev/null 2>&1 && echo "validation fixtures gate ✓"
 python3 config/skills/_shared/run-bounded.py 1 -- sleep 3 >/dev/null 2>&1; [ $? -eq 124 ] && echo "run-bounded ✓"
 python3 config/skills/_shared/spec-verify-check.py --self-test && echo "spec-verify self-test ✓"
-grep -q "FAIL-pilot" benchmark/ceiling/results/iter0064-t1/ceiling-verdict.json && echo "ceiling verdict artifact ✓"
-grep -q "Ceiling instrument gate" autoresearch/NORTH-STAR.md && echo "ceiling contract ✓"
+python3 config/skills/_shared/state-phase-write.py --self-test && echo "phase-write (L-D) ✓"
 command -v codex && codex --version 2>&1 | head -1
 ```
 
@@ -271,4 +304,4 @@ If any unexpected output, do NOT proceed. Surface to user.
 
 ## ⏭️ End of HANDOFF
 
-Evolution loop trajectory since re-open (2026-07-03): 0037-0039 conversational handoff + queue → 0040 cross-CLI portability → 0042-0047 instrument panel → 0048-0050 language-neutral + doctor → 0051-0057 local-backend shipped→measured→deleted → 0058-0060 violation-rate axis + engine-symmetric pair → 0061 F6 closed (AGENTS.md binding) → 0062 contract decidability (E1 shipped) → 0063 mechanical finish-gate → 0064 ceiling & seat instrument SHIPPED, pilot FAIL-pilot on efficiency → 0065 hands-free large + bounded pair-VERIFY SHIPPED → 0066 pre-VERIFY overhead SHIPPED → 0067 ceiling tranche 2 MEASURED, verdict **FAIL-pilot** (de-biased instrument, fresh django holdout: objective tie, neutral judge prefers copycat 16:3, wall 8.33×) → 0068 discriminating corpus (D1-D3 shipped, gate running) → **0070+ loop-architecture ladder (design frozen, enters after 0068 closes)**. Detail: DECISIONS.md + iteration files. Mission 1 not formally closed (test #15 user-gated). 압도적·독보적 is the bar; the ceiling instrument made it losable — and it has now lost twice honestly (efficiency both times, quality-moat-absent on the de-biased tranche-2), which is exactly what keeps it honest and points the next levers.
+Evolution loop trajectory since re-open (2026-07-03): 0037-0039 conversational handoff + queue → 0040 cross-CLI portability → 0042-0047 instrument panel → 0048-0050 language-neutral + doctor → 0051-0057 local-backend shipped→measured→deleted → 0058-0060 violation-rate axis + engine-symmetric pair → 0061 F6 closed (AGENTS.md binding) → 0062 contract decidability (E1 shipped) → 0063 mechanical finish-gate → 0064 ceiling & seat instrument SHIPPED, pilot FAIL-pilot on efficiency → 0065 hands-free large + bounded pair-VERIFY SHIPPED → 0066 pre-VERIFY overhead SHIPPED → 0067 ceiling tranche 2 MEASURED, verdict **FAIL-pilot** (de-biased instrument, fresh django holdout: objective tie, neutral judge prefers copycat 16:3, wall 8.33×) → 0068 discriminating corpus CLOSED VALID-NEGATIVE (isolation v2 permanent) → 0070a non-coding instruments (kernel + T0/T1 + routed-seat v2 + validation fixtures) → **0071 proportional escalation SHIPPED + nodeg 3-bar verdict (objective PASS / quality LOST / wall LOST) + concurrent dual-judge design frozen**. Detail: DECISIONS.md + iteration files. Mission 1 not formally closed (test #15 user-gated). 압도적·독보적 is the bar; the instruments made it losable — and it has now lost on efficiency (×4) and blind quality (nodeg 0/7), which is exactly what keeps the loop honest and points the next levers.
