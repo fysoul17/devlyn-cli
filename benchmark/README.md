@@ -1,11 +1,13 @@
 # devlyn-cli benchmarks — two lanes
 
-This repo runs **two independent measurement lanes**. Pick the one that matches the kind of change you made.
+This repo runs **four independent measurement lanes**. Pick the one that matches the kind of change you made.
 
 | Lane | Purpose | Source of truth |
 |---|---|---|
 | **A · auto-resolve** | Pair-mode / risk-probe / headroom gates. Measures whether pair-VERIFY catches issues solo missed and whether risk probes lift `bare < solo < pair`. | [`auto-resolve/README.md`](auto-resolve/README.md) |
 | **B · instruction-sensitivity** | Instruction-text effect. Measures whether CLAUDE.md / AGENTS.md / runtime-principles changes shift LLM behavior (clarification, scope discipline, pushback, anti-overengineering). | [`instruction-sensitivity/README.md`](instruction-sensitivity/README.md) |
+| **C · ceiling** | 세계최고 axis (ops #17): 3-arm A/B/C moat runs, seat-fitness matrix, and the **no-degradation control cell** (`scripts/run-nodeg-cell.sh` — objective/quality/wall bars vs frozen best_B). | [`ceiling/README.md`](ceiling/README.md) |
+| **D · noncoding** | Non-coding value axes (intent-grasp, packet quality) with hidden-oracle scoring and T0/T1 seat calibration. | [`noncoding/README.md`](noncoding/README.md) |
 
 ## Which lane do I need? — decision rule
 
