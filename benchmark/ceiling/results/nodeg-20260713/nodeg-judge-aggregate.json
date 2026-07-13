@@ -1,0 +1,215 @@
+{
+  "schema_version": 1,
+  "run_id": "nodeg-20260713",
+  "tasks": {
+    "DR-byte-preservation-f7-out-of-scope-trap": {
+      "control_id": "F7",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.207 (Claude Code)",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "A_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.3",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        }
+      }
+    },
+    "DR-shape-compound-rules-f25-cart": {
+      "control_id": "F25",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.207 (Claude Code)",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.3",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        }
+      }
+    },
+    "DR-ledger-rounding-consistency-f26-payout": {
+      "control_id": "F26",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.207 (Claude Code)",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "A_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.3",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        }
+      }
+    },
+    "DR-atomic-state-f11-batch-import": {
+      "control_id": "F11",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.207 (Claude Code)",
+          "axes": {
+            "design_coherence": "tie",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.3",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        }
+      }
+    },
+    "DR-auth-signature-f12-webhook": {
+      "control_id": "F12",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.207 (Claude Code)",
+          "axes": {
+            "design_coherence": "A_win",
+            "robustness": "A_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.3",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {
+            "structural_completion": 1
+          }
+        }
+      }
+    },
+    "DR-allocation-fefo-priority-rollback-f23-fulfillment": {
+      "control_id": "F23",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.207 (Claude Code)",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "A_win",
+            "spec_long_horizon_consistency": "A_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.3",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        }
+      }
+    },
+    "FS1-schedule-max-runs": {
+      "control_id": "FS1",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.207 (Claude Code)",
+          "axes": {
+            "design_coherence": "A_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.3",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        }
+      }
+    }
+  },
+  "attempt_runner_sha": "06ab3d0f384d2f2614ae152f7c93fd14b8dd4e8d",
+  "judge_runner_sha": "b26c632bfd57fcc90d51435b35237a8a35e0f3e5",
+  "deviations": [
+    {
+      "type": "judge-runner-sha",
+      "attempt_runner_sha": "06ab3d0f384d2f2614ae152f7c93fd14b8dd4e8d",
+      "judge_runner_sha": "b26c632bfd57fcc90d51435b35237a8a35e0f3e5",
+      "reason": "codex-judge parse robustness (891e92a) + structural completion (412aa00) + deviation contract (57f7f27) postdate cohort freeze; judge consumes frozen patch bytes only; replay restarted clean under one judge module",
+      "decision_ref": "DECISIONS.md 0068.10 + 0068 closure addendum 3 (replay protocol a')"
+    },
+    {
+      "type": "opaque-paths-artifact-dir",
+      "driver_line": "run-nodeg-cell.sh:75",
+      "prompt_grep_hits": 0,
+      "other_checks": "all-true",
+      "materiality": "attestation-layer"
+    }
+  ]
+}

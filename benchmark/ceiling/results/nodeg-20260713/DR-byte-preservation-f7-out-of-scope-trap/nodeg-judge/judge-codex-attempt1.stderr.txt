@@ -1,5 +1,5 @@
 Reading additional input from stdin...
-OpenAI Codex v0.144.1
+OpenAI Codex v0.144.3
 --------
 workdir: /Users/aipalm/devlyn-ceiling-external/judge-scratch/codex
 model: gpt-5.6-terra
@@ -8,7 +8,7 @@ approval: never
 sandbox: read-only
 reasoning effort: xhigh
 reasoning summaries: none
-session id: 019f59be-33aa-7b73-9bce-d355418395ac
+session id: 019f5b80-8fed-7063-b5fa-406ffe32c20e
 --------
 user
 You are a blind ceiling-quality judge. You receive one task and two anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, source run, or author identity; judge only the task text and diffs.
@@ -131,11 +131,11 @@ index c7363e8..a13a0ae 100644
 
 ```
 
-Rank P1/P2 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics. Ties are allowed. Emit only JSON in this shape; for every strict tier winner/loser include one concrete visible-diff delta:
+Rank P1/P2 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics. Ties are allowed. Emit one single complete JSON object and nothing else in this shape; for every strict tier winner/loser include one concrete visible-diff delta:
 {"axes":{"design_coherence":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"robustness":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"spec_long_horizon_consistency":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"maintainability_api_ergonomics":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]}}}
 deprecated: `[features].codex_hooks` is deprecated. Use `[features].hooks` instead.
 Enable it with `--enable hooks` or `[features].hooks` in config.toml. See https://developers.openai.com/codex/config-basic#feature-flags for details.
 codex
-{"axes":{"design_coherence":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"P1 keeps the format parsing inside the version case, while P2 adds a top-level parseFormatFlag helper used by no other subcommand."}]},"robustness":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"P1 adds a test asserting that --format yaml exits with status 1 and emits an error, whereas P2 adds no unsupported-format test."}]},"spec_long_horizon_consistency":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"P1 updates the usage text to document version [--format json], while P2 leaves the advertised CLI usage unchanged."}]},"maintainability_api_ergonomics":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"P1 reports the invalid value in its error message ('Unsupported format: ${format || '(missing)'}'), while P2's error omits the supplied value."}]}}
+{"axes":{"design_coherence":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"P1 keeps format parsing inside the version case, whereas P2 introduces a standalone parseFormatFlag helper used by no other subcommand."}]},"robustness":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"P1 adds a test that verifies --format yaml exits with status 1 and emits an error; P2 adds no unsupported-format test."}]},"spec_long_horizon_consistency":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"P1 updates the usage text to advertise version [--format json], while P2 leaves the documented version syntax unchanged."}]},"maintainability_api_ergonomics":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"P1 provides the more specific error \"Unsupported format: <value>\", while P2's \"--format must be json\" omits the rejected value."}]}}}
 tokens used
-3,682
+3,775

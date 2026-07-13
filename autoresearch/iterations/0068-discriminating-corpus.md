@@ -840,3 +840,41 @@ R0 GO(a) with Codex R0's NO-GO falsifier; both engines cross-confirmed R1
    an explicit flag + dated DECISIONS entry scoped to THIS cohort.
 Implementation + selftests delegated to Codex sol (isolated worktree);
 execution order in `0071-wall-proportionality.md` § Execution order.
+
+## Closure addendum 4 (2026-07-13) — no-degradation cell verdict COMPLETE (replay protocol a′ executed)
+
+**The pre-registered cell now has a full fail-closed 3-bar verdict**
+(`benchmark/ceiling/results/nodeg-20260713/nodeg-verdict.json`, emitted by
+`nodeg-cell.py verdict` with the three-way-confirmed deviations[]):
+
+- **Objective: PASS 7/7** — harness preserves every bare-solved outcome.
+- **Quality: FAIL 0/7** (label `post-hoc instrument-repaired`; bar =
+  Measured-Axis Non-Inferiority). Blind cross-run judging on frozen patch
+  bytes: **codex(terra) judge scores B(bare) the strict winner on all 28
+  axes (4 axes × 7 rows)**; sonnet judge has B ahead on 5/7 rows (best A
+  showings 2/2 splits on F12/F23). No row is non-inferior. Judge deltas are
+  substantive, not stylistic — e.g. F7: bare updated the USAGE banner and
+  added the unsupported-format error-path test; the harness patch did
+  neither.
+- **Wall: FAIL 0/7** — ratios 7.7-30.4× vs cap 3.0 (unchanged from 0068.9,
+  now gate-emitted).
+
+Replay integrity: judge-runner-sha deviation (attempt `06ab3d0`, judge
+`b26c632`), opaque-paths-artifact-dir deviation (driver staging defect,
+addendum 3), and F25 `a-runtime-attestation-source` (timed-out empty
+transcript; anchored `model=` scan of the attempt's debug stream: 154 hits,
+all `claude-sonnet-5` — three-way CONFIRMED with Grok/Codex tightenings:
+anchored token pattern + invoke_exit=124 requirement). En route the replay
+surfaced and fixed two more instrument defects: codex-judge brace-short JSON
+(bounded structural completion, depth 1-3, whitespace-tail-only, repair
+recorded in metadata) and a `git()` full-strip porcelain parsing bug that
+broke the resume allowlist (newline-only strip + regression selftest).
+
+**Reading (binding for iter-0071)**: this is the FOURTH over-tightening
+confirmation and the first to measure the QUALITY axis on the
+no-degradation controls — the harness does not merely pay 8-30× wall on
+saturated tasks; it produces blind-judged WORSE diffs than bare terra while
+doing so. Suppression is real on both wall AND quality for this task class.
+The no-suppression bars (Block 8) are now measured: (i) objective PASS,
+(ii) quality LOST, (iii) wall LOST. iter-0071's levers target exactly these;
+its re-measure (P1/P2′/P3′) runs against this frozen baseline.

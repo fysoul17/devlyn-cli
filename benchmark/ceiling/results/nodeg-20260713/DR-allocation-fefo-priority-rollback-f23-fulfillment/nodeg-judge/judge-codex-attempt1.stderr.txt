@@ -1,0 +1,787 @@
+Reading additional input from stdin...
+OpenAI Codex v0.144.3
+--------
+workdir: /Users/aipalm/devlyn-ceiling-external/judge-scratch/codex
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f5b9c-63ec-7500-9b73-69930f44e065
+--------
+user
+You are a blind ceiling-quality judge. You receive one task and two anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, source run, or author identity; judge only the task text and diffs.
+
+Task text:
+Add a `fulfill-wave` command to `bench-cli` so users can run `bench-cli fulfill-wave --input <path>`. The input file is one JSON object with the required collections `{ "warehouses": Array<Warehouse>, "orders": Array<Order> }`: a warehouse has `{ "id": string, "distance": number, "lots": Array<Lot> }`; a lot has `{ "sku": string, "lot": string, "qty": number, "expires": "YYYY-MM-DD" }`; an order has `{ "id": string, "priority": number, "submitted_at": string, "lines": Array<Line> }`; and a line has `{ "sku": string, "qty": number, "single_warehouse": boolean }`. Validate the complete input before allocating: ids and SKU/lot identifiers must be non-empty strings, quantities must be positive integers, lot expiry values must be valid `YYYY-MM-DD` calendar dates, submitted times must parse as ISO dates or timestamps, distances and priorities must be numbers, the named collections must be arrays, and order ids must be unique. Do not mutate the input file.
+
+Process orders globally by priority descending, then `submitted_at` ascending, then id ascending. An order is all-or-nothing: if any line cannot be fully allocated, reject the order and restore every stock deduction tentatively made for it. Accepted allocations reduce stock for later orders; rejected orders do not. A normal line (`single_warehouse: false`) may split across warehouses and lots. A `single_warehouse: true` line must come entirely from one warehouse, although it may consume multiple lots in that warehouse; reject it when no one warehouse has enough stock even if the combined stock across warehouses would suffice. Consider warehouses by distance ascending, then warehouse id ascending. Within a chosen warehouse, consume matching lots FEFO by expiry ascending, then lot id ascending. Allocation rows must remain in the exact sequence stock was chosen.
+
+On success, write exactly one parseable JSON object to stdout, write nothing to stderr, and emit no extra text. The success object's only keys are `accepted`, `rejected`, and `remaining`. `accepted` follows processing order; each row has exactly `{ "id": string, "allocations": Array<Allocation> }`, and each allocation has exactly `{ "sku": string, "warehouse": string, "lot": string, "qty": number }`. `rejected` follows original input order; each row has exactly `{ "id": string, "reason": "insufficient_stock" }`. `remaining` contains positive leftover lot quantities, sorted by warehouse id, then sku, then expiry, then lot id; each row has exactly `{ "warehouse": string, "sku": string, "lot": string, "qty": number, "expires": "YYYY-MM-DD" }`.
+
+Invalid input and file-read failures must exit `2`, write nothing to stdout, and write exactly one parseable JSON value to stderr. That value must be a non-null, non-array JSON object; its member names are otherwise not prescribed.
+
+Update `tests/cli.test.js` so all existing tests still pass and add at least two `fulfill-wave` tests covering an accepted allocation and a rejected all-or-nothing order. Do not use a catch block that silently returns `null`, `undefined`, an empty string, or an empty object, and do not use an empty catch block. No new npm dependencies. Carrier selection, package dimensions, backorders or partial order acceptance, and persistence beyond stdout are out of scope. Only touch `bin/cli.js` and `tests/cli.test.js`.
+
+P1 patch.diff:
+```diff
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b24..8ef5907 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,6 +10,7 @@ const USAGE = `Usage: bench-cli <command> [options]
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  fulfill-wave --input PATH  Allocate orders from warehouse lots
+   --help, -h                 Show this help
+ 
+ Examples:
+@@ -35,6 +36,197 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function isObject(value) {
++  return value !== null && typeof value === 'object' && !Array.isArray(value);
++}
++
++function isNonEmptyString(value) {
++  return typeof value === 'string' && value.length > 0;
++}
++
++function isPositiveInteger(value) {
++  return typeof value === 'number' && Number.isInteger(value) && value > 0;
++}
++
++function isValidExpiry(value) {
++  if (typeof value !== 'string') return false;
++
++  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
++  if (!match) return false;
++
++  const [, year, month, day] = match.map(Number);
++  const date = new Date(0);
++  date.setUTCFullYear(year, month - 1, day);
++  return date.getUTCFullYear() === year
++    && date.getUTCMonth() === month - 1
++    && date.getUTCDate() === day;
++}
++
++function submittedAtMilliseconds(value) {
++  return /^\d+$/.test(value) ? BigInt(value) : Date.parse(value);
++}
++
++function compareStrings(a, b) {
++  if (a === b) return 0;
++  return a < b ? -1 : 1;
++}
++
++function validateFulfillWaveInput(input) {
++  if (!isObject(input) || !Array.isArray(input.warehouses) || !Array.isArray(input.orders)) {
++    throw new Error('input must contain warehouses and orders arrays');
++  }
++
++  for (const warehouse of input.warehouses) {
++    if (!isObject(warehouse)
++      || !isNonEmptyString(warehouse.id)
++      || !Number.isFinite(warehouse.distance)
++      || !Array.isArray(warehouse.lots)) {
++      throw new Error('invalid warehouse');
++    }
++
++    for (const lot of warehouse.lots) {
++      if (!isObject(lot)
++        || !isNonEmptyString(lot.sku)
++        || !isNonEmptyString(lot.lot)
++        || !isPositiveInteger(lot.qty)
++        || !isValidExpiry(lot.expires)) {
++        throw new Error('invalid lot');
++      }
++    }
++  }
++
++  const orderIds = new Set();
++  for (const order of input.orders) {
++    if (!isObject(order)
++      || !isNonEmptyString(order.id)
++      || !Number.isFinite(order.priority)
++      || typeof order.submitted_at !== 'string'
++      || Number.isNaN(submittedAtMilliseconds(order.submitted_at))
++      || !Array.isArray(order.lines)
++      || orderIds.has(order.id)) {
++      throw new Error('invalid order');
++    }
++    orderIds.add(order.id);
++
++    for (const line of order.lines) {
++      if (!isObject(line)
++        || !isNonEmptyString(line.sku)
++        || !isPositiveInteger(line.qty)
++        || typeof line.single_warehouse !== 'boolean') {
++        throw new Error('invalid line');
++      }
++    }
++  }
++}
++
++function sortedWarehouses(warehouses) {
++  return [...warehouses].sort((a, b) => {
++    if (a.distance !== b.distance) return a.distance < b.distance ? -1 : 1;
++    return compareStrings(a.id, b.id);
++  });
++}
++
++function sortedLots(warehouse, sku) {
++  return warehouse.lots
++    .filter((lot) => lot.sku === sku && lot.qty > 0)
++    .sort((a, b) => compareStrings(a.expires, b.expires) || compareStrings(a.lot, b.lot));
++}
++
++function consumeLots(warehouse, sku, quantity, allocations, deductions) {
++  let needed = quantity;
++
++  for (const lot of sortedLots(warehouse, sku)) {
++    if (needed === 0) break;
++    const drawn = Math.min(needed, lot.qty);
++    lot.qty -= drawn;
++    needed -= drawn;
++    deductions.push({ lot, qty: drawn });
++    allocations.push({ sku, warehouse: warehouse.id, lot: lot.lot, qty: drawn });
++  }
++
++  return needed;
++}
++
++function allocateLine(line, warehouses, allocations, deductions) {
++  if (line.single_warehouse) {
++    for (const warehouse of warehouses) {
++      const available = sortedLots(warehouse, line.sku)
++        .reduce((total, lot) => total + lot.qty, 0);
++      if (available >= line.qty) {
++        return consumeLots(warehouse, line.sku, line.qty, allocations, deductions) === 0;
++      }
++    }
++    return false;
++  }
++
++  let needed = line.qty;
++  for (const warehouse of warehouses) {
++    needed = consumeLots(warehouse, line.sku, needed, allocations, deductions);
++    if (needed === 0) return true;
++  }
++  return false;
++}
++
++function fulfillWave(input) {
++  const warehouses = sortedWarehouses(input.warehouses);
++  const orders = [...input.orders].sort((a, b) => {
++    if (a.priority !== b.priority) return a.priority > b.priority ? -1 : 1;
++
++    const aSubmitted = submittedAtMilliseconds(a.submitted_at);
++    const bSubmitted = submittedAtMilliseconds(b.submitted_at);
++    if (aSubmitted < bSubmitted) return -1;
++    if (aSubmitted > bSubmitted) return 1;
++    return compareStrings(a.id, b.id);
++  });
++  const accepted = [];
++  const rejectedIds = new Set();
++
++  for (const order of orders) {
++    const allocations = [];
++    const deductions = [];
++    const acceptedOrder = order.lines.every((line) => allocateLine(line, warehouses, allocations, deductions));
++
++    if (acceptedOrder) {
++      accepted.push({ id: order.id, allocations });
++      continue;
++    }
++
++    for (const deduction of deductions) {
++      deduction.lot.qty += deduction.qty;
++    }
++    rejectedIds.add(order.id);
++  }
++
++  const remaining = input.warehouses
++    .flatMap((warehouse) => warehouse.lots
++      .filter((lot) => lot.qty > 0)
++      .map((lot) => ({ warehouse: warehouse.id, sku: lot.sku, lot: lot.lot, qty: lot.qty, expires: lot.expires })))
++    .sort((a, b) => compareStrings(a.warehouse, b.warehouse)
++      || compareStrings(a.sku, b.sku)
++      || compareStrings(a.expires, b.expires)
++      || compareStrings(a.lot, b.lot));
++
++  return {
++    accepted,
++    rejected: input.orders
++      .filter((order) => rejectedIds.has(order.id))
++      .map((order) => ({ id: order.id, reason: 'insufficient_stock' })),
++    remaining
++  };
++}
++
++function runFulfillWave(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath) {
++    throw new Error('--input requires a path');
++  }
++
++  const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++  validateFulfillWaveInput(input);
++  console.log(JSON.stringify(fulfillWave(input)));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +245,15 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'fulfill-wave': {
++      try {
++        runFulfillWave(rest);
++      } catch (error) {
++        process.stderr.write(`${JSON.stringify({ error: error.message })}\n`);
++        process.exitCode = 2;
++      }
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..77aa9ef 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,18 @@ function run(args) {
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function runFulfillWave(input) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  const inputPath = path.join(directory, 'input.json');
++  fs.writeFileSync(inputPath, JSON.stringify(input));
++
++  try {
++    return JSON.parse(run(['fulfill-wave', '--input', inputPath]));
++  } finally {
++    fs.rmSync(directory, { recursive: true, force: true });
++  }
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +37,70 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('fulfill-wave accepts an allocation using FEFO lots', () => {
++  const result = runFulfillWave({
++    warehouses: [{
++      id: 'west',
++      distance: 1,
++      lots: [
++        { sku: 'widget', lot: 'later', qty: 4, expires: '2025-02-01' },
++        { sku: 'widget', lot: 'early', qty: 3, expires: '2025-01-01' }
++      ]
++    }],
++    orders: [{
++      id: 'order-1',
++      priority: 1,
++      submitted_at: '2024-01-01T00:00:00Z',
++      lines: [{ sku: 'widget', qty: 5, single_warehouse: false }]
++    }]
++  });
++
++  assert.deepStrictEqual(result, {
++    accepted: [{
++      id: 'order-1',
++      allocations: [
++        { sku: 'widget', warehouse: 'west', lot: 'early', qty: 3 },
++        { sku: 'widget', warehouse: 'west', lot: 'later', qty: 2 }
++      ]
++    }],
++    rejected: [],
++    remaining: [{ warehouse: 'west', sku: 'widget', lot: 'later', qty: 2, expires: '2025-02-01' }]
++  });
++});
++
++test('fulfill-wave rolls back a rejected all-or-nothing order', () => {
++  const result = runFulfillWave({
++    warehouses: [{
++      id: 'west',
++      distance: 1,
++      lots: [{ sku: 'widget', lot: 'one', qty: 5, expires: '2025-01-01' }]
++    }],
++    orders: [
++      {
++        id: 'rejected-first',
++        priority: 2,
++        submitted_at: '2024-01-01T00:00:00Z',
++        lines: [
++          { sku: 'widget', qty: 5, single_warehouse: false },
++          { sku: 'missing', qty: 1, single_warehouse: false }
++        ]
++      },
++      {
++        id: 'accepted-after-rollback',
++        priority: 1,
++        submitted_at: '2024-01-02T00:00:00Z',
++        lines: [{ sku: 'widget', qty: 5, single_warehouse: false }]
++      }
++    ]
++  });
++
++  assert.deepStrictEqual(result, {
++    accepted: [{
++      id: 'accepted-after-rollback',
++      allocations: [{ sku: 'widget', warehouse: 'west', lot: 'one', qty: 5 }]
++    }],
++    rejected: [{ id: 'rejected-first', reason: 'insufficient_stock' }],
++    remaining: []
++  });
++});
+
+```
+
+P2 patch.diff:
+```diff
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b24..3ca6eb0 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,14 +10,289 @@ const USAGE = `Usage: bench-cli <command> [options]
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  fulfill-wave --input PATH  Allocate a fulfillment wave from a JSON file
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli fulfill-wave --input wave.json
+ `;
+ 
++class InputError extends Error {}
++
++function isObject(value) {
++  return value !== null && typeof value === 'object' && !Array.isArray(value);
++}
++
++function compareStrings(left, right) {
++  if (left < right) return -1;
++  if (left > right) return 1;
++  return 0;
++}
++
++function requireNonEmptyString(value, field) {
++  if (typeof value !== 'string' || value.trim().length === 0) {
++    throw new InputError(`${field} must be a non-empty string`);
++  }
++  return value;
++}
++
++function requirePositiveInteger(value, field) {
++  if (!Number.isSafeInteger(value) || value <= 0) {
++    throw new InputError(`${field} must be a positive integer`);
++  }
++  return value;
++}
++
++function requireNumber(value, field) {
++  if (typeof value !== 'number' || !Number.isFinite(value)) {
++    throw new InputError(`${field} must be a number`);
++  }
++  return value;
++}
++
++function isValidCalendarDate(value) {
++  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
++
++  const year = Number(value.slice(0, 4));
++  const month = Number(value.slice(5, 7));
++  const day = Number(value.slice(8, 10));
++  const daysInMonth = [31, (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 29 : 28,
++    31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
++
++  return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth[month - 1];
++}
++
++function parseSubmittedAt(value, field) {
++  requireNonEmptyString(value, field);
++
++  if (isValidCalendarDate(value)) {
++    return Date.parse(`${value}T00:00:00.000Z`);
++  }
++
++  const timestamp = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?$/;
++  const match = timestamp.exec(value);
++  if (!match || !isValidCalendarDate(match[1])) {
++    throw new InputError(`${field} must be an ISO date or timestamp`);
++  }
++
++  const hours = Number(match[2]);
++  const minutes = Number(match[3]);
++  const seconds = match[4] === undefined ? 0 : Number(match[4]);
++  if (hours > 23 || minutes > 59 || seconds > 59) {
++    throw new InputError(`${field} must be an ISO date or timestamp`);
++  }
++
++  const parsed = Date.parse(value);
++  if (!Number.isFinite(parsed)) {
++    throw new InputError(`${field} must be an ISO date or timestamp`);
++  }
++  return parsed;
++}
++
++function validateWave(input) {
++  if (!isObject(input)) {
++    throw new InputError('input must be a JSON object');
++  }
++  if (!Array.isArray(input.warehouses)) {
++    throw new InputError('warehouses must be an array');
++  }
++  if (!Array.isArray(input.orders)) {
++    throw new InputError('orders must be an array');
++  }
++
++  const warehouses = input.warehouses.map((warehouse, warehouseIndex) => {
++    if (!isObject(warehouse)) {
++      throw new InputError(`warehouses[${warehouseIndex}] must be an object`);
++    }
++    const id = requireNonEmptyString(warehouse.id, `warehouses[${warehouseIndex}].id`);
++    const distance = requireNumber(warehouse.distance, `warehouses[${warehouseIndex}].distance`);
++    if (!Array.isArray(warehouse.lots)) {
++      throw new InputError(`warehouses[${warehouseIndex}].lots must be an array`);
++    }
++
++    return {
++      id,
++      distance,
++      index: warehouseIndex,
++      lots: warehouse.lots.map((lot, lotIndex) => {
++        if (!isObject(lot)) {
++          throw new InputError(`warehouses[${warehouseIndex}].lots[${lotIndex}] must be an object`);
++        }
++        const sku = requireNonEmptyString(lot.sku, `warehouses[${warehouseIndex}].lots[${lotIndex}].sku`);
++        const lotId = requireNonEmptyString(lot.lot, `warehouses[${warehouseIndex}].lots[${lotIndex}].lot`);
++        const qty = requirePositiveInteger(lot.qty, `warehouses[${warehouseIndex}].lots[${lotIndex}].qty`);
++        const expires = requireNonEmptyString(lot.expires, `warehouses[${warehouseIndex}].lots[${lotIndex}].expires`);
++        if (!isValidCalendarDate(expires)) {
++          throw new InputError(`warehouses[${warehouseIndex}].lots[${lotIndex}].expires must be a valid YYYY-MM-DD date`);
++        }
++        return { sku, lot: lotId, qty, expires, index: lotIndex };
++      }),
++    };
++  });
++
++  const orderIds = new Set();
++  const orders = input.orders.map((order, orderIndex) => {
++    if (!isObject(order)) {
++      throw new InputError(`orders[${orderIndex}] must be an object`);
++    }
++    const id = requireNonEmptyString(order.id, `orders[${orderIndex}].id`);
++    if (orderIds.has(id)) {
++      throw new InputError('order ids must be unique');
++    }
++    orderIds.add(id);
++
++    const priority = requireNumber(order.priority, `orders[${orderIndex}].priority`);
++    const submittedAt = parseSubmittedAt(order.submitted_at, `orders[${orderIndex}].submitted_at`);
++    if (!Array.isArray(order.lines)) {
++      throw new InputError(`orders[${orderIndex}].lines must be an array`);
++    }
++
++    return {
++      id,
++      priority,
++      submittedAt,
++      index: orderIndex,
++      lines: order.lines.map((line, lineIndex) => {
++        if (!isObject(line)) {
++          throw new InputError(`orders[${orderIndex}].lines[${lineIndex}] must be an object`);
++        }
++        const sku = requireNonEmptyString(line.sku, `orders[${orderIndex}].lines[${lineIndex}].sku`);
++        const qty = requirePositiveInteger(line.qty, `orders[${orderIndex}].lines[${lineIndex}].qty`);
++        if (typeof line.single_warehouse !== 'boolean') {
++          throw new InputError(`orders[${orderIndex}].lines[${lineIndex}].single_warehouse must be a boolean`);
++        }
++        return { sku, qty, singleWarehouse: line.single_warehouse };
++      }),
++    };
++  });
++
++  return { warehouses, orders };
++}
++
++function sortedLotsForSku(warehouse, sku) {
++  return warehouse.lots
++    .filter((lot) => lot.sku === sku && lot.qty > 0)
++    .sort((left, right) => (
++      compareStrings(left.expires, right.expires)
++      || compareStrings(left.lot, right.lot)
++      || left.index - right.index
++    ));
++}
++
++function fulfillWave(wave) {
++  const warehouses = wave.warehouses.slice().sort((left, right) => (
++    left.distance - right.distance
++    || compareStrings(left.id, right.id)
++    || left.index - right.index
++  ));
++  const orders = wave.orders.slice().sort((left, right) => (
++    right.priority - left.priority
++    || left.submittedAt - right.submittedAt
++    || compareStrings(left.id, right.id)
++  ));
++  const accepted = [];
++  const rejected = [];
++
++  for (const order of orders) {
++    const allocations = [];
++    const deductions = [];
++    let fulfilled = true;
++
++    for (const line of order.lines) {
++      let remaining = line.qty;
++      const candidates = line.singleWarehouse
++        ? warehouses.filter((warehouse) => {
++          let capacity = 0;
++          for (const lot of sortedLotsForSku(warehouse, line.sku)) {
++            capacity = Math.min(line.qty, capacity + lot.qty);
++          }
++          return capacity >= line.qty;
++        })
++        : warehouses;
++
++      for (const warehouse of candidates) {
++        for (const lot of sortedLotsForSku(warehouse, line.sku)) {
++          const qty = Math.min(remaining, lot.qty);
++          if (qty === 0) continue;
++          lot.qty -= qty;
++          deductions.push({ lot, qty });
++          allocations.push({ sku: line.sku, warehouse: warehouse.id, lot: lot.lot, qty });
++          remaining -= qty;
++          if (remaining === 0) break;
++        }
++        if (remaining === 0) break;
++      }
++
++      if (remaining !== 0) {
++        fulfilled = false;
++        break;
++      }
++    }
++
++    if (fulfilled) {
++      accepted.push({ id: order.id, allocations });
++    } else {
++      for (const deduction of deductions) {
++        deduction.lot.qty += deduction.qty;
++      }
++      rejected.push({ id: order.id, reason: 'insufficient_stock', index: order.index });
++    }
++  }
++
++  const remaining = warehouses
++    .flatMap((warehouse) => warehouse.lots
++      .filter((lot) => lot.qty > 0)
++      .map((lot) => ({
++        warehouse: warehouse.id,
++        sku: lot.sku,
++        lot: lot.lot,
++        qty: lot.qty,
++        expires: lot.expires,
++        warehouseIndex: warehouse.index,
++        lotIndex: lot.index,
++      })))
++    .sort((left, right) => (
++      compareStrings(left.warehouse, right.warehouse)
++      || compareStrings(left.sku, right.sku)
++      || compareStrings(left.expires, right.expires)
++      || compareStrings(left.lot, right.lot)
++      || left.warehouseIndex - right.warehouseIndex
++      || left.lotIndex - right.lotIndex
++    ))
++    .map(({ warehouse, sku, lot, qty, expires }) => ({ warehouse, sku, lot, qty, expires }));
++
++  return {
++    accepted,
++    rejected: rejected
++      .sort((left, right) => left.index - right.index)
++      .map(({ id, reason }) => ({ id, reason })),
++    remaining,
++  };
++}
++
++function readInputPath(argv) {
++  if (argv.length !== 2 || argv[0] !== '--input' || !argv[1]) {
++    throw new InputError('fulfill-wave requires --input PATH');
++  }
++  return argv[1];
++}
++
++function fulfillWaveCommand(argv) {
++  try {
++    const inputPath = readInputPath(argv);
++    const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++    const result = fulfillWave(validateWave(input));
++    process.stdout.write(`${JSON.stringify(result)}\n`);
++  } catch (error) {
++    const message = error instanceof Error ? error.message : 'Unable to fulfill wave';
++    process.stderr.write(`${JSON.stringify({ error: message })}\n`);
++    process.exitCode = 2;
++  }
++}
++
+ function readPackageVersion() {
+   const pkgPath = path.join(__dirname, '..', 'package.json');
+   const raw = fs.readFileSync(pkgPath, 'utf8');
+@@ -53,6 +328,10 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'fulfill-wave': {
++      fulfillWaveCommand(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..1bfc63b 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -23,3 +25,95 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++function fulfillWave(input) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  const inputPath = path.join(directory, 'wave.json');
++  fs.writeFileSync(inputPath, JSON.stringify(input));
++
++  try {
++    return JSON.parse(run(['fulfill-wave', '--input', inputPath]));
++  } finally {
++    fs.rmSync(directory, { recursive: true, force: true });
++  }
++}
++
++test('fulfill-wave accepts an order using warehouses and lots in selection order', () => {
++  const result = fulfillWave({
++    warehouses: [
++      {
++        id: 'far',
++        distance: 8,
++        lots: [{ sku: 'tea', lot: 'far-lot', qty: 2, expires: '2025-01-01' }],
++      },
++      {
++        id: 'near',
++        distance: 2,
++        lots: [
++          { sku: 'tea', lot: 'later', qty: 1, expires: '2025-04-01' },
++          { sku: 'tea', lot: 'first', qty: 2, expires: '2025-02-01' },
++        ],
++      },
++    ],
++    orders: [
++      {
++        id: 'order-1',
++        priority: 1,
++        submitted_at: '2024-01-01T00:00:00Z',
++        lines: [{ sku: 'tea', qty: 4, single_warehouse: false }],
++      },
++    ],
++  });
++
++  assert.deepStrictEqual(result, {
++    accepted: [{
++      id: 'order-1',
++      allocations: [
++        { sku: 'tea', warehouse: 'near', lot: 'first', qty: 2 },
++        { sku: 'tea', warehouse: 'near', lot: 'later', qty: 1 },
++        { sku: 'tea', warehouse: 'far', lot: 'far-lot', qty: 1 },
++      ],
++    }],
++    rejected: [],
++    remaining: [{ warehouse: 'far', sku: 'tea', lot: 'far-lot', qty: 1, expires: '2025-01-01' }],
++  });
++});
++
++test('fulfill-wave rejects all-or-nothing orders and restores tentative deductions', () => {
++  const result = fulfillWave({
++    warehouses: [{
++      id: 'warehouse-1',
++      distance: 1,
++      lots: [
++        { sku: 'apple', lot: 'a1', qty: 5, expires: '2025-01-01' },
++        { sku: 'banana', lot: 'b1', qty: 1, expires: '2025-01-01' },
++      ],
++    }],
++    orders: [
++      {
++        id: 'rejected-first',
++        priority: 2,
++        submitted_at: '2024-01-01T00:00:00Z',
++        lines: [
++          { sku: 'apple', qty: 3, single_warehouse: false },
++          { sku: 'banana', qty: 2, single_warehouse: false },
++        ],
++      },
++      {
++        id: 'accepted-after-rollback',
++        priority: 1,
++        submitted_at: '2024-01-02T00:00:00Z',
++        lines: [{ sku: 'apple', qty: 5, single_warehouse: false }],
++      },
++    ],
++  });
++
++  assert.deepStrictEqual(result, {
++    accepted: [{
++      id: 'accepted-after-rollback',
++      allocations: [{ sku: 'apple', warehouse: 'warehouse-1', lot: 'a1', qty: 5 }],
++    }],
++    rejected: [{ id: 'rejected-first', reason: 'insufficient_stock' }],
++    remaining: [{ warehouse: 'warehouse-1', sku: 'banana', lot: 'b1', qty: 1, expires: '2025-01-01' }],
++  });
++});
+
+```
+
+Rank P1/P2 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics. Ties are allowed. Emit one single complete JSON object and nothing else in this shape; for every strict tier winner/loser include one concrete visible-diff delta:
+{"axes":{"design_coherence":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"robustness":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"spec_long_horizon_consistency":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"maintainability_api_ergonomics":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]}}}
+deprecated: `[features].codex_hooks` is deprecated. Use `[features].hooks` instead.
+Enable it with `--enable hooks` or `[features].hooks` in config.toml. See https://developers.openai.com/codex/config-basic#feature-flags for details.
+codex
+{"axes":{"design_coherence":{"tiers":[["P2"],["P1"]],"strict_win_deltas":[{"winner":"P2","loser":"P1","delta":"P2 validates into a separate normalized wave structure before fulfillment, while P1 deducts lot quantities directly from the parsed input object."}]},"robustness":{"tiers":[["P2"],["P1"]],"strict_win_deltas":[{"winner":"P2","loser":"P1","delta":"P2's parseSubmittedAt explicitly validates ISO date/timestamp syntax, whereas P1 accepts any all-digit submitted_at string by converting it to BigInt."}]},"spec_long_horizon_consistency":{"tiers":[["P2"],["P1"]],"strict_win_deltas":[{"winner":"P2","loser":"P1","delta":"P2 requires fulfill-wave arguments to be exactly '--input PATH', while P1 finds '--input' anywhere in the argument list and silently permits extra arguments."}]},"maintainability_api_ergonomics":{"tiers":[["P2"],["P1"]],"strict_win_deltas":[{"winner":"P2","loser":"P1","delta":"P2 centralizes field validation in named requireNonEmptyString, requirePositiveInteger, and requireNumber helpers, while P1 repeats compound boolean checks across validation loops."}]}}}
+tokens used
+11,552

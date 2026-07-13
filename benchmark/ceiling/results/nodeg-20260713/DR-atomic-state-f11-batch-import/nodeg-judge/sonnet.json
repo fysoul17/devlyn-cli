@@ -1,0 +1,155 @@
+{
+  "judge": "sonnet",
+  "task": "DR-atomic-state-f11-batch-import",
+  "prompt": "You are a blind ceiling-quality judge. You receive one task and two anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, source run, or author identity; judge only the task text and diffs.\n\nTask text:\nAdd `POST /items/import` to `server/index.js`. It accepts `{ items: [...] }`; every item must have a `name` that is a non-empty string after trimming and a `qty` that is a positive integer.\n\nWhen every item is valid, append all of them in input order and respond `201` with `{ inserted: <count> }`. Every appended row must receive a distinct numeric `id` that does not collide with any existing item id. If an item is invalid, respond `400` with `{ error: 'invalid_batch', index, field }`, where `index` identifies the first invalid item and `field` is `name` or `qty`. After that response, `GET /items` must return exactly the same list it returned immediately before the request.\n\nAn empty body, missing `items`, or a non-array `items` value must return `400` with `{ error: 'invalid_body' }`; `GET /items` must likewise be unchanged.\n\nUpdate `tests/server.test.js` so the existing tests still pass and add at least two import tests. One must exercise an invalid middle item and compare the list before and after the response; another must cover a fully valid request. No new npm dependencies. Only touch `server/index.js` and `tests/server.test.js`.\n\nP1 patch.diff:\n```diff\ndiff --git a/server/index.js b/server/index.js\nindex 1c43fa2..80e97e4 100644\n--- a/server/index.js\n+++ b/server/index.js\n@@ -27,6 +27,33 @@ app.get('/items/:id', (req, res) => {\n   res.json({ item });\n });\n \n+app.post('/items/import', (req, res) => {\n+  if (!req.body || !Array.isArray(req.body.items)) {\n+    res.status(400).json({ error: 'invalid_body' });\n+    return;\n+  }\n+\n+  for (let index = 0; index < req.body.items.length; index += 1) {\n+    const item = req.body.items[index];\n+    if (typeof item?.name !== 'string' || item.name.trim().length === 0) {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });\n+      return;\n+    }\n+    if (!Number.isInteger(item.qty) || item.qty <= 0) {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });\n+      return;\n+    }\n+  }\n+\n+  let nextId = Math.max(...items.map((item) => item.id)) + 1;\n+  for (const item of req.body.items) {\n+    items.push({ id: nextId, name: item.name, qty: item.qty });\n+    nextId += 1;\n+  }\n+\n+  res.status(201).json({ inserted: req.body.items.length });\n+});\n+\n if (require.main === module) {\n   const port = Number(process.env.PORT) || 3000;\n   app.listen(port, () => {\ndiff --git a/tests/server.test.js b/tests/server.test.js\nindex adc6067..3d2b78f 100644\n--- a/tests/server.test.js\n+++ b/tests/server.test.js\n@@ -23,6 +23,33 @@ function get(server, path) {\n   });\n }\n \n+function post(server, path, payload) {\n+  return new Promise((resolve, reject) => {\n+    const { port } = server.address();\n+    const data = JSON.stringify(payload);\n+    const req = http.request(\n+      {\n+        hostname: '127.0.0.1',\n+        port,\n+        path,\n+        method: 'POST',\n+        headers: {\n+          'Content-Type': 'application/json',\n+          'Content-Length': Buffer.byteLength(data),\n+        },\n+      },\n+      (res) => {\n+        let body = '';\n+        res.on('data', (chunk) => (body += chunk));\n+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));\n+      }\n+    );\n+    req.on('error', reject);\n+    req.write(data);\n+    req.end();\n+  });\n+}\n+\n test('GET /health returns ok', async () => {\n   const server = await startServer();\n   try {\n@@ -56,3 +83,56 @@ test('GET /items/:id returns 404 for missing', async () => {\n     server.close();\n   }\n });\n+\n+test('POST /items/import rejects an invalid middle item without mutation', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'gamma', qty: 2 },\n+        { name: '   ', qty: 4 },\n+        { name: 'delta', qty: 1 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+\n+    assert.strictEqual(response.status, 400);\n+    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'name' });\n+    assert.deepStrictEqual(after.body, before.body);\n+  } finally {\n+    server.close();\n+  }\n+});\n+\n+test('POST /items/import appends valid items with distinct ids', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'epsilon', qty: 7 },\n+        { name: 'zeta', qty: 9 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+    const newItems = after.body.items.slice(before.body.items.length);\n+    const existingIds = before.body.items.map((item) => item.id);\n+    const newIds = newItems.map((item) => item.id);\n+\n+    assert.strictEqual(response.status, 201);\n+    assert.deepStrictEqual(response.body, { inserted: 2 });\n+    assert.deepStrictEqual(\n+      newItems.map(({ name, qty }) => ({ name, qty })),\n+      [\n+        { name: 'epsilon', qty: 7 },\n+        { name: 'zeta', qty: 9 },\n+      ]\n+    );\n+    assert.ok(newIds.every(Number.isFinite));\n+    assert.strictEqual(newIds.length, new Set(newIds).size);\n+    assert.ok(newIds.every((id) => !existingIds.includes(id)));\n+  } finally {\n+    server.close();\n+  }\n+});\n\n```\n\nP2 patch.diff:\n```diff\ndiff --git a/server/index.js b/server/index.js\nindex 1c43fa2..facf9fc 100644\n--- a/server/index.js\n+++ b/server/index.js\n@@ -17,6 +17,43 @@ app.get('/items', (_req, res) => {\n   res.json({ items });\n });\n \n+app.post('/items/import', (req, res) => {\n+  const { items: batch } = req.body || {};\n+\n+  if (!Array.isArray(batch)) {\n+    res.status(400).json({ error: 'invalid_body' });\n+    return;\n+  }\n+\n+  for (let index = 0; index < batch.length; index += 1) {\n+    const item = batch[index];\n+\n+    if (!item || typeof item.name !== 'string' || item.name.trim() === '') {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });\n+      return;\n+    }\n+\n+    if (!Number.isInteger(item.qty) || item.qty <= 0) {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });\n+      return;\n+    }\n+  }\n+\n+  let nextId = items.reduce(\n+    (maxId, item) => (typeof item.id === 'number' && Number.isFinite(item.id) ? Math.max(maxId, item.id) : maxId),\n+    0,\n+  ) + 1;\n+\n+  const importedItems = batch.map((item) => ({\n+    id: nextId++,\n+    name: item.name,\n+    qty: item.qty,\n+  }));\n+\n+  items.push(...importedItems);\n+  res.status(201).json({ inserted: importedItems.length });\n+});\n+\n app.get('/items/:id', (req, res) => {\n   const id = Number(req.params.id);\n   const item = items.find((it) => it.id === id);\ndiff --git a/tests/server.test.js b/tests/server.test.js\nindex adc6067..581c217 100644\n--- a/tests/server.test.js\n+++ b/tests/server.test.js\n@@ -23,6 +23,32 @@ function get(server, path) {\n   });\n }\n \n+function post(server, path, body) {\n+  return new Promise((resolve, reject) => {\n+    const payload = JSON.stringify(body);\n+    const { port } = server.address();\n+    const req = http.request(\n+      {\n+        hostname: '127.0.0.1',\n+        port,\n+        path,\n+        method: 'POST',\n+        headers: {\n+          'Content-Type': 'application/json',\n+          'Content-Length': Buffer.byteLength(payload),\n+        },\n+      },\n+      (res) => {\n+        let responseBody = '';\n+        res.on('data', (chunk) => (responseBody += chunk));\n+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));\n+      },\n+    );\n+    req.on('error', reject);\n+    req.end(payload);\n+  });\n+}\n+\n test('GET /health returns ok', async () => {\n   const server = await startServer();\n   try {\n@@ -56,3 +82,53 @@ test('GET /items/:id returns 404 for missing', async () => {\n     server.close();\n   }\n });\n+\n+test('POST /items/import rejects an invalid middle item without changing the list', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'gamma', qty: 2 },\n+        { name: 'delta', qty: 0 },\n+        { name: 'epsilon', qty: 4 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+\n+    assert.strictEqual(response.status, 400);\n+    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });\n+    assert.deepStrictEqual(after.body, before.body);\n+  } finally {\n+    server.close();\n+  }\n+});\n+\n+test('POST /items/import appends a valid batch in order with distinct ids', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'gamma', qty: 2 },\n+        { name: 'delta', qty: 4 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+    const addedItems = after.body.items.slice(before.body.items.length);\n+\n+    assert.strictEqual(response.status, 201);\n+    assert.deepStrictEqual(response.body, { inserted: 2 });\n+    assert.deepStrictEqual(\n+      addedItems.map(({ name, qty }) => ({ name, qty })),\n+      [\n+        { name: 'gamma', qty: 2 },\n+        { name: 'delta', qty: 4 },\n+      ],\n+    );\n+    assert.strictEqual(new Set(addedItems.map((item) => item.id)).size, 2);\n+    assert.ok(addedItems.every((item) => !before.body.items.some((beforeItem) => beforeItem.id === item.id)));\n+  } finally {\n+    server.close();\n+  }\n+});\n\n```\n\nRank P1/P2 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics. Ties are allowed. Emit one single complete JSON object and nothing else in this shape; for every strict tier winner/loser include one concrete visible-diff delta:\n{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"robustness\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]}}}",
+  "attempts": [
+    {
+      "attempt": 1,
+      "error": null
+    }
+  ],
+  "error": null,
+  "parsed": {
+    "axes": {
+      "design_coherence": {
+        "tiers": [
+          [
+            "P1",
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": []
+      },
+      "robustness": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P1's `let nextId = Math.max(...items.map((item) => item.id)) + 1;` throws 'RangeError: Maximum call stack size exceeded' for a batch large enough to push items past ~100k entries (verified empirically) and yields `-Infinity` if items is ever empty, whereas P2's `items.reduce((maxId, item) => ..., 0) + 1` handles both cases correctly (verified: returns 1 and 200001 respectively)."
+          }
+        ]
+      },
+      "spec_long_horizon_consistency": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "The task states the endpoint 'accepts { items: [...] }' with no size cap, so a large valid batch is in-scope; P1's spread-based `Math.max(...items.map(...))` crashes the request handler on such input (verified via RangeError), silently violating the spec's 'respond 201 with { inserted: <count> }' guarantee for valid batches, while P2's reduce-based nextId computation completes correctly at that scale."
+          }
+        ]
+      },
+      "maintainability_api_ergonomics": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2 also guards non-numeric ids in its nextId reduction (`typeof item.id === 'number' && Number.isFinite(item.id)`), which is more defensively maintainable against future schema drift than P1's bare `item.id` spread into `Math.max`, which has no such guard and fails outright at scale as shown above."
+          }
+        ]
+      }
+    }
+  },
+  "runtime_model": "claude-sonnet-5",
+  "result": {
+    "runtime_model": "claude-sonnet-5",
+    "cli_version": "2.1.207 (Claude Code)",
+    "axes": {
+      "design_coherence": "tie",
+      "robustness": "B_win",
+      "spec_long_horizon_consistency": "B_win",
+      "maintainability_api_ergonomics": "B_win"
+    },
+    "parse_metadata": {}
+  },
+  "meta": {
+    "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":203396,\"duration_api_ms\":190272,\"ttft_ms\":32036,\"ttft_stream_ms\":1994,\"time_to_request_ms\":324,\"num_turns\":16,\"result\":\"{\\\"axes\\\":{\\\"design_coherence\\\":{\\\"tiers\\\":[[\\\"P1\\\",\\\"P2\\\"]],\\\"strict_win_deltas\\\":[]},\\\"robustness\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P1's `let nextId = Math.max(...items.map((item) => item.id)) + 1;` throws 'RangeError: Maximum call stack size exceeded' for a batch large enough to push items past ~100k entries (verified empirically) and yields `-Infinity` if items is ever empty, whereas P2's `items.reduce((maxId, item) => ..., 0) + 1` handles both cases correctly (verified: returns 1 and 200001 respectively).\\\"}]},\\\"spec_long_horizon_consistency\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"The task states the endpoint 'accepts { items: [...] }' with no size cap, so a large valid batch is in-scope; P1's spread-based `Math.max(...items.map(...))` crashes the request handler on such input (verified via RangeError), silently violating the spec's 'respond 201 with { inserted: <count> }' guarantee for valid batches, while P2's reduce-based nextId computation completes correctly at that scale.\\\"}]},\\\"maintainability_api_ergonomics\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P2 also guards non-numeric ids in its nextId reduction (`typeof item.id === 'number' && Number.isFinite(item.id)`), which is more defensively maintainable against future schema drift than P1's bare `item.id` spread into `Math.max`, which has no such guard and fails outright at scale as shown above.\\\"}]}}}\",\"stop_reason\":\"end_turn\",\"session_id\":\"3bc50739-e4c6-46e4-8a8a-e93f7b32758c\",\"total_cost_usd\":0.7080306,\"usage\":{\"input_tokens\":32,\"cache_creation_input_tokens\":36116,\"cache_read_input_tokens\":777262,\"output_tokens\":17204,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":36116,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":32,\"outputTokens\":17204,\"cacheReadInputTokens\":777262,\"cacheCreationInputTokens\":36116,\"webSearchRequests\":0,\"costUSD\":0.7080306,\"contextWindow\":1000000,\"maxOutputTokens\":64000}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"a8df26e2-bebe-4870-91e1-3edfe2cda52e\"}\n",
+    "stderr": "",
+    "isolation_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/nodeg-20260713/DR-atomic-state-f11-batch-import/nodeg-judge/judge-sonnet-attempt1-isolation.json",
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 32,
+        "outputTokens": 17204,
+        "cacheReadInputTokens": 777262,
+        "cacheCreationInputTokens": 36116,
+        "webSearchRequests": 0,
+        "costUSD": 0.7080306,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000
+      }
+    },
+    "wrapper": {
+      "type": "result",
+      "subtype": "success",
+      "is_error": false,
+      "api_error_status": null,
+      "duration_ms": 203396,
+      "duration_api_ms": 190272,
+      "ttft_ms": 32036,
+      "ttft_stream_ms": 1994,
+      "time_to_request_ms": 324,
+      "num_turns": 16,
+      "result": "{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\",\"P2\"]],\"strict_win_deltas\":[]},\"robustness\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P1's `let nextId = Math.max(...items.map((item) => item.id)) + 1;` throws 'RangeError: Maximum call stack size exceeded' for a batch large enough to push items past ~100k entries (verified empirically) and yields `-Infinity` if items is ever empty, whereas P2's `items.reduce((maxId, item) => ..., 0) + 1` handles both cases correctly (verified: returns 1 and 200001 respectively).\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"The task states the endpoint 'accepts { items: [...] }' with no size cap, so a large valid batch is in-scope; P1's spread-based `Math.max(...items.map(...))` crashes the request handler on such input (verified via RangeError), silently violating the spec's 'respond 201 with { inserted: <count> }' guarantee for valid batches, while P2's reduce-based nextId computation completes correctly at that scale.\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P2 also guards non-numeric ids in its nextId reduction (`typeof item.id === 'number' && Number.isFinite(item.id)`), which is more defensively maintainable against future schema drift than P1's bare `item.id` spread into `Math.max`, which has no such guard and fails outright at scale as shown above.\"}]}}}",
+      "stop_reason": "end_turn",
+      "session_id": "3bc50739-e4c6-46e4-8a8a-e93f7b32758c",
+      "total_cost_usd": 0.7080306,
+      "usage": {
+        "input_tokens": 32,
+        "cache_creation_input_tokens": 36116,
+        "cache_read_input_tokens": 777262,
+        "output_tokens": 17204,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 36116,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "not_available",
+        "iterations": [],
+        "speed": "standard"
+      },
+      "modelUsage": {
+        "claude-sonnet-5": {
+          "inputTokens": 32,
+          "outputTokens": 17204,
+          "cacheReadInputTokens": 777262,
+          "cacheCreationInputTokens": 36116,
+          "webSearchRequests": 0,
+          "costUSD": 0.7080306,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000
+        }
+      },
+      "permission_denials": [],
+      "terminal_reason": "completed",
+      "fast_mode_state": "off",
+      "uuid": "a8df26e2-bebe-4870-91e1-3edfe2cda52e"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "seed": 69592414967771521742110089432935157283588080088749967989573019268630747877655,
+  "packets": {
+    "P1": {
+      "candidate": "A",
+      "patch_sha256": "0cec89813f12698f7105e9aa7b3778b58aa94016c4cc3a1fe7c749d832727daa"
+    },
+    "P2": {
+      "candidate": "B",
+      "patch_sha256": "21ae20c6ddd6ef2b3d0eefd25b7ab6664ecfc4b843ce0f123369f4fcda1bea6b"
+    }
+  },
+  "frozen_b_source": {
+    "control_id": "F23",
+    "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+    "run_id": "iter0068-gate-20260711h",
+    "attempt": "B1",
+    "attempt_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711h/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1",
+    "patch_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711h/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1/patch.diff",
+    "patch_sha256": "21ae20c6ddd6ef2b3d0eefd25b7ab6664ecfc4b843ce0f123369f4fcda1bea6b",
+    "objective_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711h/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1/objective.json",
+    "objective_sha256": "0fe651ed544d97005efdced42a1987655c39d24492337acca2ac04552589eb7b",
+    "timing_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711h/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1/timing.json",
+    "timing_sha256": "c201fe18656ed7904a5ce49993ca334c9e07a73ec6e2b5f32333176a5ab9541d",
+    "resolved": true,
+    "elapsed_seconds": 344
+  }
+}

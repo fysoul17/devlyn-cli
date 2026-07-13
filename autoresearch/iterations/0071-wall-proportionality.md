@@ -151,3 +151,18 @@ independently establish the class).
    written; verdict re-emitted with deviations[].
 5. Author-export materialization → Grok byte audit → opus authoring (0070a).
 6. nodeg re-measure (fresh window) AFTER levers land — the P1/P2′/P3′ gate.
+
+## Execution addendum 1 (2026-07-13) — ship-set LANDED; baseline verdict complete
+
+All four ship-set items SHIPPED same day (three-way loop): packet 1
+`57f7f27` (staging repair + binding manifest + strict deviations +
+classifier), git() porcelain hotfix `2ef3a1b` (+ regression selftest in
+packet 2), packet 2 `18c5320` (L-A/L-B/L-D, net −5 lines, lint + token
+gauge + selftests + mirrors), dev3 `fca4d1d` (third deviation type).
+Judge replay executed under protocol a′ → **frozen baseline verdict**
+(0068 closure addendum 4): objective 7/7 PASS, quality 0/7 FAIL, wall 0/7
+FAIL. The P1/P2′/P3′ re-measure now has its gate-emitted baseline; the
+quality axis (bare's diffs blind-preferred on every row) is added evidence
+that suppression is not wall-only — candidate quality levers are NOT in
+0071 scope (design three-way first; note F7 delta: bare updated USAGE +
+added error-path test, pipeline patch did neither).

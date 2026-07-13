@@ -1,6 +1,6 @@
 {
   "auth_mechanism": "macos-keychain-blob",
-  "claude_config_dir": "/Users/aipalm/devlyn-ceiling-external/judge-homes/f10888c89791/e9ee2adf50e6/.claude",
+  "claude_config_dir": "/Users/aipalm/devlyn-ceiling-external/judge-homes/38c9cf695c9e/e9ee2adf50e6/.claude",
   "claude_env_keys": [
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
     "CLAUDE_CONFIG_DIR",
@@ -33,5 +33,5 @@
     "superset_wrapper": false
   },
   "frozen_path": "/Users/aipalm/.local/bin:/Users/aipalm/.nvm/versions/node/v20.19.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin:/Users/aipalm/.nvm/versions/node/v20.19.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
-  "home": "/Users/aipalm/devlyn-ceiling-external/judge-homes/f10888c89791/e9ee2adf50e6"
+  "home": "/Users/aipalm/devlyn-ceiling-external/judge-homes/38c9cf695c9e/e9ee2adf50e6"
 }
