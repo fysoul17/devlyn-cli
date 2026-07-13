@@ -166,3 +166,62 @@ quality axis (bare's diffs blind-preferred on every row) is added evidence
 that suppression is not wall-only — candidate quality levers are NOT in
 0071 scope (design three-way first; note F7 delta: bare updated USAGE +
 added error-path test, pipeline patch did neither).
+
+## Execution addendum 2 (2026-07-13) — L-C′ USER-ADJUDICATED: escalation-only REJECTED
+
+User verdict (verbatim intent): one engine repeatedly catches what the other
+misses — reducing the second judge to warning/failure-triggered escalation
+carries real risk. Named delta accepted by the orchestrator: the 0/3
+verdict-change evidence (iter-0067) is n=3 on saturated rows; the
+complementary-detection evidence is broader and this-session-measured (T1
+seat×defect override matrix: catalog admits only sonnet, credential only
+terra, both risk-diff 1.0; judge disagreement terra 28/28 vs sonnet 20/28 on
+identical diffs; Grok-only and Codex-only catches in the same round).
+**L-C′ escalation-only is dead. Both judges stay, always (when pair
+triggers fire).** Replacement wall lever under three-way review: run the
+two judges CONCURRENTLY (wall ≈ max instead of sum) with zero coverage
+change — see addendum 3 when adjudicated.
+
+## Execution addendum 3 (2026-07-13/14) — replacement lever CONVERGED: concurrent dual-judge (design frozen, ship-gated)
+
+Three-way round on the packet `/tmp/iter0071-r0/parallel-judge-packet.md`
+(archives `{grok,codex}-pj.log`, ephemeral): **Grok GO-WITH-EDITS + Codex
+GO-WITH-EDITS, convergent.** Design: when ≥1 OUTCOME-INDEPENDENT canonical
+pair reason holds at VERIFY start (mode.*, complexity.*, spec.*, risk.high,
+risk_probes.*), spawn primary and OTHER-engine judge CONCURRENTLY on the
+same frozen diff (foreground parallel tool dispatch — never background
+shells, iter-0009); outcome-dependent reasons (coverage.failed,
+mechanical.warning, judge.warning) keep the sequential escalation path;
+merge/verdict rule unchanged (worst-source-verdict, no vote counting —
+verify-merge-findings.py:824 region). Wall on pre-known-trigger runs:
+max(primary, pair) instead of sum. Coverage unchanged — user adjudication
+0071.1 honored; a concurrent pair on a primary-blocker run now ADDS its
+findings to the fix round instead of being skipped.
+
+Combined MUST-EDIT list (both engines, orchestrator-verified citations):
+1. verify-merge-findings.py: `primary_judge_blocker` currently EXCUSES
+   missing pair output (:561,:573) — for pre-known triggers it must not;
+   +3 validator tests (pre-known+primary-HIGH+missing-pair → BLOCKED;
+   pre-known+primary-HIGH+pair-present → merged; no-pre-known+blocker →
+   today's sequential skip stays legal).
+2. Sequencing pins replaced across SKILL.md (:284,:293), references/phases/
+   verify.md pair section, state-schema.md, all 3 mirrors, and
+   lint-skills.sh:1321 (currently requires wait-for-primary evidence).
+3. pair_trigger write-order: pre-known reasons at spawn; outcome-dependent
+   reasons appended after primary; final object must satisfy the unchanged
+   merge contract (validator checks shape only — orchestrator-verified).
+4. Per-judge duration split added to sub_verdicts (today only aggregate
+   VERIFY duration exists — savings otherwise unmeasurable).
+5. Probe/runtime isolation: judges execute scenarios against the same
+   project root — concurrent DESTRUCTIVE probes can contend (ports/DB/tmp).
+   Rule: concurrency of judging, not of destructive shared-side-effect
+   runners — read-only checks preferred; exclusive-state probes serialize.
+6. Engine-neutral fallback: an orchestrator that cannot issue parallel
+   dispatch falls back to today's sequential shape (safe degradation).
+
+**Ship gate (accepted falsifier, both engines)**: a frozen-diff
+solo-vs-concurrent canary — either judge's normalized findings changing
+because it observed sibling artifacts or contended on runtime state, or a
+pre-known-trigger primary-blocker run completing without pair evidence,
+flips this to NO-GO. Implementation = next Codex build packet (worktree,
+guardrails) at a fresh budget window; NOT landed in this session.
