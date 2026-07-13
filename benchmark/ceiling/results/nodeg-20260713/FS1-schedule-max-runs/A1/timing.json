@@ -1,0 +1,9 @@
+{
+  "task": "FS1-schedule-max-runs",
+  "arm": "A",
+  "attempt": 1,
+  "elapsed_seconds": 2402,
+  "invoke_exit": 1,
+  "timed_out": false,
+  "worktree": "/Users/aipalm/.local/share/nx01/w/r88ed67b1b5ff/fa265b8ab039e/A1/repo"
+}

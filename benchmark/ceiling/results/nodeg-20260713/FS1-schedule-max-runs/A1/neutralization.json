@@ -1,0 +1,14 @@
+{
+  "author_email": "maintainer@example.com",
+  "author_name": "Project Maintainer",
+  "commit_date": "2000-01-01T00:00:00Z",
+  "commit_message": "Initial project snapshot",
+  "git_reflogs": [],
+  "git_remotes": [],
+  "neutral_baseline_sha": "4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8",
+  "neutral_project_name": null,
+  "neutralization_diff_bytes": 0,
+  "neutralization_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "schema_version": 1,
+  "seed_derived": false
+}

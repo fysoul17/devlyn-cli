@@ -1,0 +1,13 @@
+{
+  "task": "DR-ledger-rounding-consistency-f26-payout",
+  "arm_attempt": "A1",
+  "resolved": true,
+  "tests_passed": 1,
+  "tests_total": 1,
+  "hidden_test_failures": 0,
+  "apply_exit": 0,
+  "oracle_exit": 0,
+  "report_path": "/Users/aipalm/.local/share/nx01/v/r88ed67b1b5ff/fee93957fc8fe/A1/oracle.log",
+  "neutralization_diff_sha256": "05afa7a9be5baf8505182a0a2b3be0bb1400a51d1ca455dee0b66f3ef8f15f44",
+  "neutral_baseline_sha": "17fce0afa9c75bad4fee0d4b139240fbde99e41c"
+}
