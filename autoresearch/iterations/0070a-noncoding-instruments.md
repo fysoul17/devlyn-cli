@@ -668,3 +668,27 @@ Frozen design:
   routing block. Build delegated to Codex sol (isolated worktree; classifier
   is instrument code frozen before fixtures — authorship-eligible per
   Amendment 2 "mechanical execution after freeze allowed").
+
+### Addendum 9 amendment (same day, 2026-07-13) — classifier structural projection (three-way unanimous)
+
+Build packet 1 fail-closed guard fired (correct): the frozen "diff touches
+ONLY family fields" signature mapped 3/4 canonical dev pairs INELIGIBLE —
+planted-bad packets MUST co-mutate narrative fields (context_refs/handoff/
+assumptions) to stay internally coherent, else the executor detects the
+contradiction and the instrument measures defect-detection instead of
+packet-following (blinding break). Named criterion: **Coherence-Carrier
+Exclusion**. Amended signature = structural projection: ORDERING class =
+tasks[].depends_on + task array order (id-aligned; id-set mismatch with
+failed content-hash fallback → INELIGIBLE); CONSTRAINT class =
+tasks[].objective, scope.may_change, scope.must_preserve,
+acceptance[].observable, project_acceptance[].observable; narrative fields
+(context_refs, handoff, assumptions, open_questions, all ids) are EXCLUDED
+from the signature — ignored for classification, separately
+mandatory-audited at freeze time (UNFAIR audit owns narrative honesty; the
+conformance gate never examines packet narrative — Codex). Family rule:
+exactly one class changed → that family; both/neither/unknown-field/
+align-fail → INELIGIBLE. Verification: orchestrator + Grok + Codex each
+independently reproduced ALL FOUR frozen dev-pair labels under the
+projection with zero bending (archives /tmp/iter0071-r0/{grok,codex}-amend.log,
+ephemeral). Narrative-only mutation classifies INELIGIBLE (no structural
+defect) — correct.
