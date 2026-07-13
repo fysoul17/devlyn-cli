@@ -1,0 +1,104 @@
+diff -ruN a/report/cli.py b/report/cli.py
+--- a/report/cli.py	2026-07-13 21:26:49
++++ b/report/cli.py	2026-07-13 21:27:07
+@@ -2,12 +2,14 @@
+ 
+     python3 -m report.cli               # text, the default
+     python3 -m report.cli --format text
++    python3 -m report.cli --format csv
+ """
+ 
+ import argparse
+ import sys
+ 
+ from report.loader import load_summaries
++from report.renderer_csv import render_csv
+ from report.renderer_text import render_text
+ 
+ 
+@@ -18,13 +20,14 @@
+     parser.add_argument(
+         "--format",
+         default="text",
+-        choices=["text"],
++        choices=["text", "csv"],
+         help="output format (default: text)",
+     )
+     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
+ 
+     rows = load_summaries()
+-    sys.stdout.write(render_text(rows))
++    render = render_csv if args.format == "csv" else render_text
++    sys.stdout.write(render(rows))
+     return 0
+ 
+ 
+diff -ruN a/report/renderer_csv.py b/report/renderer_csv.py
+--- a/report/renderer_csv.py	1970-01-01 09:00:00
++++ b/report/renderer_csv.py	2026-07-13 21:26:55
+@@ -0,0 +1,15 @@
++"""The CSV station report.
++
++Same summary rows as the text report, ordered busiest station first.
++"""
++
++HEADER = "station,trips,avg_minutes"
++
++
++def render_csv(rows):
++    """Render summary rows as CSV: busiest station first, ties alphabetical."""
++    ordered = sorted(rows, key=lambda row: (-row.trips, row.station))
++    lines = [HEADER]
++    for row in ordered:
++        lines.append("%s,%d,%.1f" % (row.station, row.trips, row.avg_minutes))
++    return "\n".join(lines) + "\n"
+diff -ruN a/tests/test_renderer_csv.py b/tests/test_renderer_csv.py
+--- a/tests/test_renderer_csv.py	1970-01-01 09:00:00
++++ b/tests/test_renderer_csv.py	2026-07-13 21:27:16
+@@ -0,0 +1,46 @@
++import unittest
++
++from report.loader import load_summaries
++from report.renderer_csv import render_csv
++
++EXPECTED = (
++    "station,trips,avg_minutes\n"
++    "Birch Gate,5,9.2\n"
++    "Alder Quay,3,13.0\n"
++    "Cedar Row,3,21.0\n"
++    "Dunes Landing,1,30.0\n"
++)
++
++
++class RenderCsvTest(unittest.TestCase):
++    def setUp(self):
++        self.rendered = render_csv(load_summaries())
++
++    def test_header_is_exact(self):
++        self.assertEqual(self.rendered.splitlines()[0], "station,trips,avg_minutes")
++
++    def test_rows_run_busiest_first_with_alphabetical_ties(self):
++        stations = [line.split(",")[0] for line in self.rendered.splitlines()[1:]]
++        self.assertEqual(
++            stations, ["Birch Gate", "Alder Quay", "Cedar Row", "Dunes Landing"]
++        )
++
++    def test_average_minutes_carry_one_decimal(self):
++        self.assertIn("Birch Gate,5,9.2", self.rendered)
++        self.assertIn("Alder Quay,3,13.0", self.rendered)
++        self.assertIn("Dunes Landing,1,30.0", self.rendered)
++
++    def test_ends_with_a_single_newline(self):
++        self.assertTrue(self.rendered.endswith("\n"))
++        self.assertFalse(self.rendered.endswith("\n\n"))
++
++    def test_no_total_row(self):
++        self.assertNotIn("ALL STATIONS", self.rendered)
++        self.assertEqual(len(self.rendered.splitlines()), 5)
++
++    def test_whole_document(self):
++        self.assertEqual(self.rendered, EXPECTED)
++
++
++if __name__ == "__main__":
++    unittest.main()

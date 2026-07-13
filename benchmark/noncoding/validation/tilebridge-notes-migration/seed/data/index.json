@@ -1,0 +1,17 @@
+{
+  "entries": [
+    {
+      "id": "n-1",
+      "title": "Kickoff checklist"
+    },
+    {
+      "id": "n-2",
+      "title": "Vendor call"
+    },
+    {
+      "id": "n-3",
+      "title": "Retro notes"
+    }
+  ],
+  "source_schema_version": 1
+}

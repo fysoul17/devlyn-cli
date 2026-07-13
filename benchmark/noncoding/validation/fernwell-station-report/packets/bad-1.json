@@ -1,0 +1,195 @@
+{
+  "schema_version": "pud-1",
+  "project_acceptance": [
+    {
+      "id": "pa-1",
+      "observable": "report/renderer_csv.py is a new module exposing render_csv(rows) -> str; report/renderer_text.py exposes the shared row-formatting helper both renderers use, and render_text's output is unchanged."
+    },
+    {
+      "id": "pa-2",
+      "observable": "`python3 -m report.cli --format csv` prints exactly:\nstation,trips,avg_minutes\nBirch Gate,5,9.2\nAlder Quay,3,13.0\nCedar Row,3,21.0\nDunes Landing,1,30.0\n(one trailing newline, no total row, no blank final line)."
+    },
+    {
+      "id": "pa-3",
+      "observable": "The CSV header is exactly `station,trips,avg_minutes`, rows are ordered by trip count highest first with ties broken by station name A-Z, and avg_minutes is shown to one decimal place."
+    },
+    {
+      "id": "pa-4",
+      "observable": "`python3 -m report.cli --format text` and `python3 -m report.cli` with no flag both still print exactly the text report they print today."
+    },
+    {
+      "id": "pa-5",
+      "observable": "`python3 -m unittest discover -s tests` passes and covers the CSV renderer."
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1-renderer-csv",
+      "objective": "Add a NEW module report/renderer_csv.py exposing render_csv(rows) -> str, which renders the summary rows from report.loader as CSV. The first line is the header, exactly `station,trips,avg_minutes`. Then one line per station: name, trip count, and average minutes to one decimal place (e.g. 13.0, 9.2). Order the rows by trip count, highest first; stations tied on trip count are ordered by station name A-Z. Lines are joined with \"\\n\" and the output ends with a single trailing newline — no blank final line, no repeated header, no total row. So that the two renderers do not duplicate the row-formatting logic, first refactor report/renderer_text.py to expose a shared row-formatting helper and have report/renderer_csv.py import and reuse it; render_text keeps its name and its exact output.",
+      "depends_on": [],
+      "context_refs": [
+        {
+          "path": "seed/report/loader.py",
+          "line_start": 11,
+          "line_end": 14,
+          "claim": "load_summaries returns StationSummary rows with station, trips, total_minutes and a float avg_minutes; renderers decide how to display the average."
+        },
+        {
+          "path": "seed/report/loader.py",
+          "line_start": 41,
+          "line_end": 53,
+          "claim": "load_summaries returns the rows sorted by station name, so a renderer that wants a different order has to sort them itself."
+        },
+        {
+          "path": "seed/report/renderer_text.py",
+          "line_start": 1,
+          "line_end": 8,
+          "claim": "renderer_text is a contract: two other teams import render_text and diff its output, so its formatting does not change."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "report/renderer_csv.py (new file)",
+          "report/renderer_text.py (factor out the shared row-formatting helper)"
+        ],
+        "must_preserve": [
+          "report/renderer_text.py: render_text keeps its name and its exact output; only its internal row formatting is factored out so the CSV renderer can reuse it",
+          "report/loader.py: the row shape and the skipping of trips from unknown stations"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "render_csv's first line is exactly `station,trips,avg_minutes`."
+        },
+        {
+          "id": "a-2",
+          "observable": "Rows are ordered by trip count highest first, ties broken by station name A-Z: for today's data that is Birch Gate (5), Alder Quay (3), Cedar Row (3), Dunes Landing (1)."
+        },
+        {
+          "id": "a-3",
+          "observable": "avg_minutes is rendered to one decimal place: `Birch Gate,5,9.2` and `Alder Quay,3,13.0`."
+        },
+        {
+          "id": "a-4",
+          "observable": "render_csv(load_summaries()) == \"station,trips,avg_minutes\\nBirch Gate,5,9.2\\nAlder Quay,3,13.0\\nCedar Row,3,21.0\\nDunes Landing,1,30.0\\n\" — one trailing newline and nothing after it."
+        },
+        {
+          "id": "a-5",
+          "observable": "report/renderer_text.py exposes the shared row-formatting helper that render_csv reuses, and render_text's output is unchanged."
+        }
+      ],
+      "handoff": "render_csv renders the required CSV by reusing the row-formatting helper factored out of renderer_text; the text report's output is unchanged."
+    },
+    {
+      "id": "t2-cli-format",
+      "objective": "Wire the new format into report/cli.py: `--format csv` prints what render_csv produces. `--format text` must keep printing exactly what it prints today, and text stays the default when --format is not given. Keep using report.renderer_text.render_text for the text path, unchanged.",
+      "depends_on": [
+        "t1-renderer-csv"
+      ],
+      "context_refs": [
+        {
+          "path": "seed/report/cli.py",
+          "line_start": 18,
+          "line_end": 27,
+          "claim": "--format currently accepts only \"text\", defaults to \"text\", and the CLI writes render_text(rows) to stdout."
+        },
+        {
+          "path": "seed/report/cli.py",
+          "line_start": 10,
+          "line_end": 11,
+          "claim": "The CLI imports load_summaries and render_text; a csv path needs the new renderer imported alongside them."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "report/cli.py (accept and dispatch the new format)"
+        ],
+        "must_preserve": [
+          "report/renderer_text.py: render_text keeps its exact output",
+          "the text output stays byte-identical, and text stays the default format"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "`python3 -m report.cli --format csv` exits 0 and prints exactly the CSV from render_csv."
+        },
+        {
+          "id": "a-2",
+          "observable": "`python3 -m report.cli --format text` prints exactly the same bytes it prints today."
+        },
+        {
+          "id": "a-3",
+          "observable": "`python3 -m report.cli` with no --format still prints the text report."
+        }
+      ],
+      "handoff": "The CLI can print either format; text is unchanged and still the default."
+    },
+    {
+      "id": "t3-tests",
+      "objective": "Cover the CSV renderer with tests under tests/: the exact header, the trip-count-descending order with the A-Z tie-break, the one-decimal average, and the single trailing newline. `python3 -m unittest discover -s tests` must pass, including the existing loader and text-renderer tests.",
+      "depends_on": [
+        "t1-renderer-csv",
+        "t2-cli-format"
+      ],
+      "context_refs": [
+        {
+          "path": "seed/tests/test_renderer_text.py",
+          "line_start": 6,
+          "line_end": 28,
+          "claim": "The existing renderer tests show the house style: render the real loaded rows and assert on the resulting lines and the trailing newline."
+        },
+        {
+          "path": "seed/tests/test_loader.py",
+          "line_start": 21,
+          "line_end": 33,
+          "claim": "The loader tests pin the trip counts (Birch Gate 5, Dunes Landing 1), the averages (9.2, 13.0) and that unknown-station trips are skipped."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "new test modules under tests/"
+        ],
+        "must_preserve": [
+          "the existing loader and text-renderer tests keep passing unchanged",
+          "report/renderer_text.py: render_text keeps its exact output"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "`python3 -m unittest discover -s tests` passes with no failures."
+        },
+        {
+          "id": "a-2",
+          "observable": "A test asserts the header line is exactly `station,trips,avg_minutes`."
+        },
+        {
+          "id": "a-3",
+          "observable": "A test asserts the row order for today's data is Birch Gate, Alder Quay, Cedar Row, Dunes Landing."
+        },
+        {
+          "id": "a-4",
+          "observable": "A test asserts the rendered CSV ends with exactly one newline."
+        }
+      ],
+      "handoff": "The suite pins the CSV format and the untouched text output."
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [
+    {
+      "statement": "Station names in stations.csv contain no commas or quotes, so the CSV rows need no quoting.",
+      "evidence_refs": [
+        "seed/data/stations.csv:1-5"
+      ]
+    },
+    {
+      "statement": "The CSV reports only the known stations the loader returns; trips from unknown station ids stay excluded, exactly as in the text report.",
+      "evidence_refs": [
+        "seed/report/loader.py:26-37"
+      ]
+    }
+  ]
+}

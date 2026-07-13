@@ -1,0 +1,23 @@
+{
+  "notes": [
+    {
+      "body": "Book the room and send the agenda",
+      "created": "2024-02-11",
+      "id": "n-1",
+      "title": "Kickoff checklist"
+    },
+    {
+      "body": "Ask about lead times before we commit to a contract",
+      "created": "2024-02-14",
+      "id": "n-2",
+      "title": "Vendor call"
+    },
+    {
+      "body": "Draft outline",
+      "created": "2024-03-02",
+      "id": "n-3",
+      "title": "Retro notes"
+    }
+  ],
+  "schema_version": 1
+}

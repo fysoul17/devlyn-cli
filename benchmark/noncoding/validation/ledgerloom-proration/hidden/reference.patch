@@ -1,0 +1,115 @@
+diff -ruN a/billing/invoice.py b/billing/invoice.py
+--- a/billing/invoice.py	2026-07-13 21:20:21
++++ b/billing/invoice.py	2026-07-13 21:20:39
+@@ -1,6 +1,7 @@
+ """An invoice: a list of lines, each an integer-cent amount, and their total."""
+ 
+ from billing.money import format_cents
++from billing.proration import prorate_cents
+ 
+ 
+ class Invoice:
+@@ -16,6 +17,12 @@
+             raise TypeError("amount_cents must be an int number of cents")
+         self.lines.append((description, amount_cents))
+         return self
++
++    def add_prorated_line(self, description, amount_cents, days_used, days_in_period):
++        """Append one ordinary line carrying the prorated share of `amount_cents`."""
++        return self.add_line(
++            description, prorate_cents(amount_cents, days_used, days_in_period)
++        )
+ 
+     def total_cents(self):
+         """Return the invoice total as an int number of cents."""
+diff -ruN a/billing/proration.py b/billing/proration.py
+--- a/billing/proration.py	1970-01-01 09:00:00
++++ b/billing/proration.py	2026-07-13 21:20:30
+@@ -0,0 +1,29 @@
++"""Prorating a charge over a partial billing period.
++
++Money stays integer cents throughout: the share of a charge is worked out with
++integer arithmetic and rounded by billing.money.round_half_up, so a half cent goes
++away from zero exactly as it does everywhere else in billing.
++"""
++
++from billing.money import round_half_up
++
++
++def prorate_cents(amount_cents, days_used, days_in_period):
++    """Return the share of `amount_cents` owed for `days_used` of `days_in_period`.
++
++        prorate_cents(999, 10, 30)  == 333
++        prorate_cents(125, 1, 2)    == 63      # 62.5 rounds up
++        prorate_cents(1000, 45, 30) == 1000    # days_used is clamped to the period
++
++    `days_used` is clamped into [0, days_in_period], so the result is never more
++    than `amount_cents` and never below zero.
++    """
++    if not isinstance(amount_cents, int):
++        raise TypeError("amount_cents must be an int number of cents")
++    if not isinstance(days_used, int) or not isinstance(days_in_period, int):
++        raise TypeError("days must be ints")
++    if days_in_period <= 0:
++        raise ValueError("days_in_period must be greater than 0")
++
++    billable_days = min(max(days_used, 0), days_in_period)
++    return round_half_up(amount_cents * billable_days, days_in_period)
+diff -ruN a/tests/test_proration.py b/tests/test_proration.py
+--- a/tests/test_proration.py	1970-01-01 09:00:00
++++ b/tests/test_proration.py	2026-07-13 21:20:50
+@@ -0,0 +1,54 @@
++import unittest
++
++from billing.invoice import Invoice
++from billing.proration import prorate_cents
++
++
++class ProrateCentsTest(unittest.TestCase):
++    def test_worked_examples(self):
++        self.assertEqual(prorate_cents(999, 10, 30), 333)
++        self.assertEqual(prorate_cents(1999, 7, 31), 451)
++
++    def test_ties_round_up_away_from_zero(self):
++        self.assertEqual(prorate_cents(125, 1, 2), 63)
++        self.assertEqual(prorate_cents(101, 1, 2), 51)
++
++    def test_days_used_is_clamped_to_the_period(self):
++        self.assertEqual(prorate_cents(1000, 45, 30), 1000)
++        self.assertEqual(prorate_cents(1000, -3, 30), 0)
++
++    def test_zero_days_used_costs_nothing(self):
++        self.assertEqual(prorate_cents(500, 0, 30), 0)
++
++    def test_full_period_costs_the_full_amount(self):
++        self.assertEqual(prorate_cents(4900, 30, 30), 4900)
++
++    def test_result_is_int_cents(self):
++        self.assertIsInstance(prorate_cents(999, 10, 30), int)
++
++    def test_empty_period_is_rejected(self):
++        with self.assertRaises(ValueError):
++            prorate_cents(999, 10, 0)
++
++    def test_float_amount_is_rejected(self):
++        with self.assertRaises(TypeError):
++            prorate_cents(9.99, 10, 30)
++
++
++class ProratedInvoiceLineTest(unittest.TestCase):
++    def test_prorated_line_is_an_ordinary_int_cent_line(self):
++        invoice = Invoice("acme")
++        invoice.add_prorated_line("Team plan", 1999, 7, 31)
++        self.assertEqual(invoice.lines, [("Team plan", 451)])
++        self.assertEqual(invoice.total_cents(), 451)
++
++    def test_total_stays_an_int_when_lines_are_mixed(self):
++        invoice = Invoice("acme")
++        invoice.add_prorated_line("Team plan", 1999, 7, 31)
++        invoice.add_line("Studio plan", 4900)
++        self.assertEqual(invoice.total_cents(), 5351)
++        self.assertIsInstance(invoice.total_cents(), int)
++
++
++if __name__ == "__main__":
++    unittest.main()

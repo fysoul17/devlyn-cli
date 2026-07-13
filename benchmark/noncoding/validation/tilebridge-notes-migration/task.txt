@@ -1,0 +1,48 @@
+Tilebridge — add pinning and word counts to the note vault
+
+Background
+----------
+Tilebridge keeps its notes in a checked-in vault file, `data/notes.json`. The file
+carries a `schema_version`; `vault/schema.py` declares the version the code expects
+(SCHEMA_VERSION) and the list of migrations that get a vault from one version to the
+next (MIGRATIONS). `python3 -m vault.migrate data/notes.json` applies every
+registered migration the file has not seen yet and rewrites it in place; it is the
+only supported way to change the shape of vault data.
+
+`data/index.json` is a generated lookup file built from the vault by
+`python3 -m tools.build_index`. It is checked in so the reader can start without
+walking the whole vault, and it must stay consistent with `data/notes.json`.
+
+What to do
+----------
+1. Add migration 002 to `vault/schema.py`: it gives every note a `pinned` field
+   whose value is the boolean false. Register it in MIGRATIONS with target
+   version 2.
+
+2. Add migration 003: it gives every note a `word_count` field, the number of
+   whitespace-separated words in that note's `body` (i.e. `len(body.split())`).
+   Register it in MIGRATIONS with target version 3.
+
+3. Set `vault.schema.SCHEMA_VERSION` to 3 — the version the code now expects.
+
+4. Migrate the checked-in vault by running `python3 -m vault.migrate data/notes.json`,
+   so the committed `data/notes.json` ends up at `"schema_version": 3` with every
+   note carrying `pinned` (false) and the correct `word_count`. Do not hand-edit the
+   vault file; it must be the migrator's output.
+
+5. Teach the index builder about the new fields: each entry in `data/index.json`
+   must carry `id`, `title`, `pinned` and `word_count`, taking the values from the
+   note (fall back to false / 0 for a note that does not have the field). Keep the
+   existing shape otherwise: a `source_schema_version` key plus an `entries` list
+   sorted by note id.
+
+6. Rebuild the committed index by running `python3 -m tools.build_index`, so
+   `data/index.json` matches the migrated vault: `"source_schema_version": 3`, and
+   each entry carrying that note's real `pinned` and `word_count`. Do not hand-edit
+   `data/index.json`; it must be the builder's output.
+
+7. Cover the migrations with tests in `tests/`. `python3 -m unittest discover -s tests`
+   must pass.
+
+For reference, the three notes in the vault have bodies of 7, 10 and 2 words
+(n-1, n-2, n-3 respectively).

@@ -1,0 +1,215 @@
+{
+  "schema_version": "hidden-conformance-2",
+  "channels": [
+    {
+      "id": "prorate-signature",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "d4a1dbaa069de097820bd35edcc515cc3f0a0e20b7cbbbd691e85fac251da7aa",
+          "excerpt": "prorate_cents(amount_cents, days_used, days_in_period) -> int"
+        },
+        {
+          "path": "seed/billing/money.py",
+          "sha256": "0946a2979e77f2e7a88dbca713f68793d287dd8399b7b198b0a04b9fcdf57a9d",
+          "excerpt": "def round_half_up(numerator, denominator):"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^(billing/proration\\.py|prorate_cents|amount_cents|days_used|days_in_period)$"
+      },
+      "values": [
+        "billing/proration.py",
+        "prorate_cents",
+        "amount_cents",
+        "days_used",
+        "days_in_period"
+      ]
+    },
+    {
+      "id": "worked-examples",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "d4a1dbaa069de097820bd35edcc515cc3f0a0e20b7cbbbd691e85fac251da7aa",
+          "excerpt": "prorate_cents(999, 10, 30)  == 333"
+        },
+        {
+          "path": "seed/billing/plans.py",
+          "sha256": "deea87d6cc82eb78f01c24620c921fe6ec044c1a36e1f07b3eff0ea9e1ea03ca",
+          "excerpt": "\"starter\": {\"name\": \"Starter\", \"monthly_price_cents\": 999},"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^prorate_cents\\(-?\\d+, -?\\d+, \\d+\\) == -?\\d+$"
+      },
+      "values": [
+        "prorate_cents(999, 10, 30) == 333",
+        "prorate_cents(1999, 7, 31) == 451"
+      ]
+    },
+    {
+      "id": "half-up-tie-cases",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "d4a1dbaa069de097820bd35edcc515cc3f0a0e20b7cbbbd691e85fac251da7aa",
+          "excerpt": "A charge worth\n      62.5 cents bills as 63, not 62; a charge worth 50.5 cents bills as 51, not\n      50. Never truncate the fractional cent."
+        },
+        {
+          "path": "seed/billing/money.py",
+          "sha256": "0946a2979e77f2e7a88dbca713f68793d287dd8399b7b198b0a04b9fcdf57a9d",
+          "excerpt": "        round_half_up(125, 2) == 63     # 62.5 -> 63"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^prorate_cents\\(\\d+, \\d+, \\d+\\) == \\d+$"
+      },
+      "values": [
+        "prorate_cents(125, 1, 2) == 63",
+        "prorate_cents(101, 1, 2) == 51"
+      ]
+    },
+    {
+      "id": "clamped-cases",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "d4a1dbaa069de097820bd35edcc515cc3f0a0e20b7cbbbd691e85fac251da7aa",
+          "excerpt": "A prorated\n      charge must never exceed the full `amount_cents`, whatever the caller passes."
+        },
+        {
+          "path": "seed/billing/invoice.py",
+          "sha256": "0dffff7a8a36a6aa4be59fe7fa51426b8739b29590f45b04eb56addf860d4136",
+          "excerpt": "    def total_cents(self):"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^prorate_cents\\(\\d+, -?\\d+, \\d+\\) == \\d+$"
+      },
+      "values": [
+        "prorate_cents(1000, 45, 30) == 1000",
+        "prorate_cents(1000, -3, 30) == 0",
+        "prorate_cents(500, 0, 30) == 0"
+      ]
+    },
+    {
+      "id": "error-behaviour",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "d4a1dbaa069de097820bd35edcc515cc3f0a0e20b7cbbbd691e85fac251da7aa",
+          "excerpt": "`days_in_period` must be greater than 0; otherwise raise `ValueError`."
+        },
+        {
+          "path": "seed/billing/money.py",
+          "sha256": "0946a2979e77f2e7a88dbca713f68793d287dd8399b7b198b0a04b9fcdf57a9d",
+          "excerpt": "        raise TypeError(\"round_half_up works on ints only\")"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^(ValueError|TypeError)$"
+      },
+      "values": [
+        "ValueError",
+        "TypeError"
+      ]
+    },
+    {
+      "id": "money-is-int-cents",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "d4a1dbaa069de097820bd35edcc515cc3f0a0e20b7cbbbd691e85fac251da7aa",
+          "excerpt": "INTEGER CENTS ONLY. The result is an `int` number of cents. No float and no\n      Decimal may appear anywhere in the calculation or the return value."
+        },
+        {
+          "path": "seed/billing/money.py",
+          "sha256": "0946a2979e77f2e7a88dbca713f68793d287dd8399b7b198b0a04b9fcdf57a9d",
+          "excerpt": "Every amount in Ledgerloom is an integer number of cents."
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^(int|cents)$"
+      },
+      "values": [
+        "int",
+        "cents"
+      ]
+    },
+    {
+      "id": "preserved-money-module",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "d4a1dbaa069de097820bd35edcc515cc3f0a0e20b7cbbbd691e85fac251da7aa",
+          "excerpt": "Do not change `billing/money.py`: `round_half_up` is used by the rest of billing\n   and its behaviour must stay exactly as it is."
+        },
+        {
+          "path": "seed/billing/money.py",
+          "sha256": "0946a2979e77f2e7a88dbca713f68793d287dd8399b7b198b0a04b9fcdf57a9d",
+          "excerpt": "    if numerator >= 0:\n        return (2 * numerator + denominator) // (2 * denominator)"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "values": [
+        "0946a2979e77f2e7a88dbca713f68793d287dd8399b7b198b0a04b9fcdf57a9d"
+      ]
+    },
+    {
+      "id": "prorated-invoice-line",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "d4a1dbaa069de097820bd35edcc515cc3f0a0e20b7cbbbd691e85fac251da7aa",
+          "excerpt": "Add `Invoice.add_prorated_line(description, amount_cents, days_used, days_in_period)`"
+        },
+        {
+          "path": "seed/billing/invoice.py",
+          "sha256": "0dffff7a8a36a6aa4be59fe7fa51426b8739b29590f45b04eb56addf860d4136",
+          "excerpt": "        self.lines.append((description, amount_cents))"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^(add_prorated_line|\\('Team plan', 451\\)|5351)$"
+      },
+      "values": [
+        "add_prorated_line",
+        "('Team plan', 451)",
+        "5351"
+      ]
+    },
+    {
+      "id": "suite-command",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "d4a1dbaa069de097820bd35edcc515cc3f0a0e20b7cbbbd691e85fac251da7aa",
+          "excerpt": "`python3 -m unittest discover -s tests` must pass."
+        },
+        {
+          "path": "seed/README.md",
+          "sha256": "6959a165a5f5b290a36ff30b580a3bd21bc19ae72fcbf2e6b2521bf466a0d222",
+          "excerpt": "python3 -m unittest discover -s tests     # run the suite"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^python3 -m unittest discover -s tests$"
+      },
+      "values": [
+        "python3 -m unittest discover -s tests"
+      ]
+    }
+  ]
+}

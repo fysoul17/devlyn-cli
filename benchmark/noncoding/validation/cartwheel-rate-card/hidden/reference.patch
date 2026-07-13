@@ -1,0 +1,71 @@
+diff -ruN a/data/rate_card.json b/data/rate_card.json
+--- a/data/rate_card.json	2026-07-13 21:05:22
++++ b/data/rate_card.json	2026-07-13 21:05:50
+@@ -1,6 +1,6 @@
+ {
+   "currency": "USD",
+-  "fuel_surcharge_percent": 6,
++  "fuel_surcharge_percent": 9,
+   "zones": [
+     {
+       "base_cents": 450,
+@@ -19,6 +19,12 @@
+       "label": "National",
+       "per_kg_cents": 240,
+       "zone": "ZONE_C"
++    },
++    {
++      "base_cents": 1500,
++      "label": "International",
++      "per_kg_cents": 320,
++      "zone": "ZONE_D"
+     }
+   ]
+ }
+diff -ruN a/rates/registry.py b/rates/registry.py
+--- a/rates/registry.py	2026-07-13 21:05:22
++++ b/rates/registry.py	2026-07-13 21:05:28
+@@ -14,7 +14,8 @@
+     "ZONE_A": {"label": "Metro", "base_cents": 450, "per_kg_cents": 120},
+     "ZONE_B": {"label": "Regional", "base_cents": 650, "per_kg_cents": 180},
+     "ZONE_C": {"label": "National", "base_cents": 900, "per_kg_cents": 240},
++    "ZONE_D": {"label": "International", "base_cents": 1500, "per_kg_cents": 320},
+ }
+ 
+ # Applied to the base + weight subtotal of every quote, half-up rounded to cents.
+-FUEL_SURCHARGE_PERCENT = 6
++FUEL_SURCHARGE_PERCENT = 9
+diff -ruN a/tests/test_quote.py b/tests/test_quote.py
+--- a/tests/test_quote.py	2026-07-13 21:05:22
++++ b/tests/test_quote.py	2026-07-13 21:05:43
+@@ -5,12 +5,19 @@
+ 
+ class QuoteTest(unittest.TestCase):
+     def test_metro_two_kilograms(self):
+-        # 450 + 120 * 2 = 690 subtotal, plus the fuel surcharge.
+-        self.assertEqual(quote_cents("ZONE_A", 2), 731)
++        # 450 + 120 * 2 = 690 subtotal, plus the 9% fuel surcharge (62).
++        self.assertEqual(quote_cents("ZONE_A", 2), 752)
+ 
+     def test_regional_zero_weight_is_base_plus_surcharge(self):
+-        self.assertEqual(quote_cents("ZONE_B", 0), 689)
++        self.assertEqual(quote_cents("ZONE_B", 0), 709)
+ 
++    def test_international_ten_kilograms(self):
++        # 1500 + 320 * 10 = 4700 subtotal, plus the 9% fuel surcharge (423).
++        self.assertEqual(quote_cents("ZONE_D", 10), 5123)
++
++    def test_international_base_only(self):
++        self.assertEqual(quote_cents("ZONE_D", 0), 1635)
++
+     def test_result_is_integer_cents(self):
+         self.assertIsInstance(quote_cents("ZONE_C", 5), int)
+ 
+@@ -26,6 +33,7 @@
+         labels = zone_labels()
+         self.assertEqual(labels["ZONE_A"], "Metro")
+         self.assertIn("ZONE_C", labels)
++        self.assertEqual(labels["ZONE_D"], "International")
+ 
+ 
+ if __name__ == "__main__":

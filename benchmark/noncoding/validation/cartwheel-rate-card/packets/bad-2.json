@@ -1,0 +1,212 @@
+{
+  "schema_version": "pud-1",
+  "project_acceptance": [
+    {
+      "id": "pa-1",
+      "observable": "rates.registry.ZONES contains ZONE_D with label \"International\", base_cents 1500 and per_kg_cents 320, and rates.registry.FUEL_SURCHARGE_PERCENT is 9."
+    },
+    {
+      "id": "pa-2",
+      "observable": "data/rate_card.json is exactly what `python3 -m tools.build_rate_card` writes for the final registry: four zone entries (ZONE_A, ZONE_B, ZONE_C, ZONE_D) whose base_cents/per_kg_cents/label match the registry, and \"fuel_surcharge_percent\": 9."
+    },
+    {
+      "id": "pa-3",
+      "observable": "quote_cents(\"ZONE_D\", 10) == 5123 and quote_cents(\"ZONE_A\", 2) == 752, both int."
+    },
+    {
+      "id": "pa-4",
+      "observable": "`python3 -m unittest discover -s tests` passes."
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t3-refresh-card",
+      "objective": "Refresh the published partner rate card: run `python3 -m tools.build_rate_card` from the project root so that the committed data/rate_card.json is the generator's output for the registry. Do not hand-edit data/rate_card.json.",
+      "depends_on": [],
+      "context_refs": [
+        {
+          "path": "seed/tools/build_rate_card.py",
+          "line_start": 1,
+          "line_end": 14,
+          "claim": "`python3 -m tools.build_rate_card` reads rates.registry and rewrites data/rate_card.json; it is the only supported way to change that generated file."
+        },
+        {
+          "path": "seed/tools/build_rate_card.py",
+          "line_start": 30,
+          "line_end": 34,
+          "claim": "The generated card copies CURRENCY, FUEL_SURCHARGE_PERCENT and one entry per zone straight out of the registry, so it is only correct if the registry is already final when the generator runs."
+        },
+        {
+          "path": "seed/README.md",
+          "line_start": 8,
+          "line_end": 10,
+          "claim": "data/rate_card.json is a generated file published to partner carriers and must never be edited by hand."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "data/rate_card.json (only as generator output)"
+        ],
+        "must_preserve": [
+          "tools/build_rate_card.py: the generator itself",
+          "data/rate_card.json must remain byte-for-byte the generator's output — no hand edits"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "data/rate_card.json was produced by running the generator, not by hand-editing the file."
+        },
+        {
+          "id": "a-2",
+          "observable": "data/rate_card.json is byte-identical to what `python3 -m tools.build_rate_card` writes for rates.registry: re-running the generator leaves the file unchanged."
+        },
+        {
+          "id": "a-3",
+          "observable": "data/rate_card.json parses as JSON and carries currency, fuel_surcharge_percent and a zones list, one entry per registry zone."
+        }
+      ],
+      "handoff": "data/rate_card.json has been rewritten by the generator from rates.registry; no hand edits were made to it."
+    },
+    {
+      "id": "t1-zone-d",
+      "objective": "Add the ZONE_D entry to rates.registry.ZONES: key \"ZONE_D\", label \"International\", base_cents 1500, per_kg_cents 320. Keep the existing three zone entries untouched and keep the same rule shape (label / base_cents / per_kg_cents, integer cents).",
+      "depends_on": [],
+      "context_refs": [
+        {
+          "path": "seed/rates/registry.py",
+          "line_start": 13,
+          "line_end": 17,
+          "claim": "ZONES currently holds three zones (ZONE_A, ZONE_B, ZONE_C); each rule is a dict with label, base_cents and per_kg_cents."
+        },
+        {
+          "path": "seed/rates/registry.py",
+          "line_start": 9,
+          "line_end": 12,
+          "claim": "The comment above ZONES documents the meaning of label, base_cents and per_kg_cents."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "rates/registry.py (the ZONES table)"
+        ],
+        "must_preserve": [
+          "rates/registry.py: the existing ZONE_A / ZONE_B / ZONE_C rules and their values",
+          "the rule shape: label plus integer base_cents and per_kg_cents"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "rates.registry.ZONES[\"ZONE_D\"] == {\"label\": \"International\", \"base_cents\": 1500, \"per_kg_cents\": 320}."
+        },
+        {
+          "id": "a-2",
+          "observable": "rates.registry.ZONES still has the unchanged ZONE_A, ZONE_B and ZONE_C rules, so ZONES has four entries."
+        }
+      ],
+      "handoff": "The registry now knows about ZONE_D."
+    },
+    {
+      "id": "t2-surcharge",
+      "objective": "Raise rates.registry.FUEL_SURCHARGE_PERCENT from 6 to 9. It stays a whole-number percent applied to the quote subtotal.",
+      "depends_on": [],
+      "context_refs": [
+        {
+          "path": "seed/rates/registry.py",
+          "line_start": 19,
+          "line_end": 20,
+          "claim": "FUEL_SURCHARGE_PERCENT is currently 6 and is applied to the base + weight subtotal of every quote."
+        },
+        {
+          "path": "seed/rates/quote.py",
+          "line_start": 18,
+          "line_end": 21,
+          "claim": "quote_cents reads FUEL_SURCHARGE_PERCENT and half-up rounds the surcharge with integer arithmetic; changing the constant is enough to change every quote."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "rates/registry.py (FUEL_SURCHARGE_PERCENT)"
+        ],
+        "must_preserve": [
+          "rates/quote.py: the pricing rule and the quote_cents(zone, weight_kg) -> int signature",
+          "the integer half-up rounding of the surcharge"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "rates.registry.FUEL_SURCHARGE_PERCENT == 9 and is an int."
+        },
+        {
+          "id": "a-2",
+          "observable": "rates/quote.py is unmodified: quote_cents still computes subtotal + (subtotal * FUEL_SURCHARGE_PERCENT + 50) // 100."
+        }
+      ],
+      "handoff": "Quotes now price at the 9% surcharge."
+    },
+    {
+      "id": "t4-quote-tests",
+      "objective": "Update and extend tests/test_quote.py for the new registry: correct the existing expectations that were computed with the old 6% surcharge, and add coverage for ZONE_D pricing (quote_cents(\"ZONE_D\", 10) == 5123) and for the 9% surcharge on an existing zone (quote_cents(\"ZONE_A\", 2) == 752). `python3 -m unittest discover -s tests` must pass.",
+      "depends_on": [
+        "t1-zone-d",
+        "t2-surcharge"
+      ],
+      "context_refs": [
+        {
+          "path": "seed/tests/test_quote.py",
+          "line_start": 7,
+          "line_end": 12,
+          "claim": "test_metro_two_kilograms expects 731 and test_regional_zero_weight_is_base_plus_surcharge expects 689; both numbers were computed with the 6% surcharge and are wrong once it becomes 9%."
+        },
+        {
+          "path": "seed/rates/quote.py",
+          "line_start": 6,
+          "line_end": 21,
+          "claim": "quote_cents raises ValueError for unknown zones and returns integer cents; the existing tests for those behaviours stay valid."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "tests/test_quote.py"
+        ],
+        "must_preserve": [
+          "rates/quote.py: no production change is needed for this task",
+          "the existing tests for unknown zones, negative weight and the int return type"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "`python3 -m unittest discover -s tests` passes with no failures."
+        },
+        {
+          "id": "a-2",
+          "observable": "tests/test_quote.py asserts quote_cents(\"ZONE_D\", 10) == 5123."
+        },
+        {
+          "id": "a-3",
+          "observable": "tests/test_quote.py asserts quote_cents(\"ZONE_A\", 2) == 752, i.e. the 9% surcharge."
+        }
+      ],
+      "handoff": "The suite passes against the new registry and pins both the new zone and the new surcharge."
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [
+    {
+      "statement": "Weights are whole kilograms, so quote_cents keeps taking an int weight_kg; no rounding of weight is introduced.",
+      "evidence_refs": [
+        "seed/rates/registry.py:12",
+        "seed/rates/quote.py:19"
+      ]
+    },
+    {
+      "statement": "data/rate_card.json carries no fields beyond what the generator emits, so regenerating it is a complete refresh rather than a merge.",
+      "evidence_refs": [
+        "seed/tools/build_rate_card.py:30-34"
+      ]
+    }
+  ]
+}

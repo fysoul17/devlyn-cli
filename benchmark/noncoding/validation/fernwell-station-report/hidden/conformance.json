@@ -1,0 +1,189 @@
+{
+  "schema_version": "hidden-conformance-2",
+  "channels": [
+    {
+      "id": "csv-header",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "07f3971abe2658c48c82cd2f3b537f9ab34d5508e7e40d00ff332e2a6558f1fc",
+          "excerpt": "The first line is the header, exactly: station,trips,avg_minutes"
+        },
+        {
+          "path": "seed/report/loader.py",
+          "sha256": "92f77b516b93815e7ed304b07cb171264e4a8bc23457200c8eecdc5665d60590",
+          "excerpt": "    \"StationSummary\", [\"station\", \"trips\", \"total_minutes\", \"avg_minutes\"]"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^station,trips,avg_minutes$"
+      },
+      "values": [
+        "station,trips,avg_minutes"
+      ]
+    },
+    {
+      "id": "csv-rows",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "07f3971abe2658c48c82cd2f3b537f9ab34d5508e7e40d00ff332e2a6558f1fc",
+          "excerpt": "       station,trips,avg_minutes\n       Birch Gate,5,9.2\n       Alder Quay,3,13.0\n       Cedar Row,3,21.0\n       Dunes Landing,1,30.0"
+        },
+        {
+          "path": "seed/data/stations.csv",
+          "sha256": "73fd552352e86006d29f4a81194fc91330cf43aaac15278f89e6d056bcbfab71",
+          "excerpt": "st-2,Birch Gate"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^[A-Za-z ]+,[0-9]+,[0-9]+\\.[0-9]$"
+      },
+      "values": [
+        "Birch Gate,5,9.2",
+        "Alder Quay,3,13.0",
+        "Cedar Row,3,21.0",
+        "Dunes Landing,1,30.0"
+      ]
+    },
+    {
+      "id": "row-order",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "07f3971abe2658c48c82cd2f3b537f9ab34d5508e7e40d00ff332e2a6558f1fc",
+          "excerpt": "Rows are ordered by TRIP COUNT, HIGHEST FIRST. Stations with the same trip\n     count are ordered by station name, A to Z."
+        },
+        {
+          "path": "seed/report/loader.py",
+          "sha256": "92f77b516b93815e7ed304b07cb171264e4a8bc23457200c8eecdc5665d60590",
+          "excerpt": "    summaries.sort(key=lambda summary: summary.station)"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^[A-Za-z ]+$"
+      },
+      "values": [
+        "Birch Gate",
+        "Alder Quay",
+        "Cedar Row",
+        "Dunes Landing"
+      ]
+    },
+    {
+      "id": "frozen-text-renderer",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "07f3971abe2658c48c82cd2f3b537f9ab34d5508e7e40d00ff332e2a6558f1fc",
+          "excerpt": "DO NOT MODIFY `report/renderer_text.py`. It must stay byte-for-byte identical to\n   what is checked in now"
+        },
+        {
+          "path": "seed/report/renderer_text.py",
+          "sha256": "ec9f63d0754b689c2eec0d64b51e69dba13c7de8daef8a8d2174e8e0199c7416",
+          "excerpt": "its formatting is a contract: it does not change."
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "values": [
+        "ec9f63d0754b689c2eec0d64b51e69dba13c7de8daef8a8d2174e8e0199c7416"
+      ]
+    },
+    {
+      "id": "new-module",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "07f3971abe2658c48c82cd2f3b537f9ab34d5508e7e40d00ff332e2a6558f1fc",
+          "excerpt": "Add a NEW module `report/renderer_csv.py` exposing:\n\n       render_csv(rows) -> str"
+        },
+        {
+          "path": "seed/report/renderer_text.py",
+          "sha256": "ec9f63d0754b689c2eec0d64b51e69dba13c7de8daef8a8d2174e8e0199c7416",
+          "excerpt": "def render_text(rows):"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^(report/renderer_csv\\.py|render_csv)$"
+      },
+      "values": [
+        "report/renderer_csv.py",
+        "render_csv"
+      ]
+    },
+    {
+      "id": "cli-formats",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "07f3971abe2658c48c82cd2f3b537f9ab34d5508e7e40d00ff332e2a6558f1fc",
+          "excerpt": "Wire the new format into `report/cli.py` so that `--format csv` prints the CSV."
+        },
+        {
+          "path": "seed/report/cli.py",
+          "sha256": "062346b3730da87e8e76ddf1ff623ab0b171ea8384b3816368efa919bedcad2c",
+          "excerpt": "        choices=[\"text\"],"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^(csv|text)$"
+      },
+      "values": [
+        "csv",
+        "text"
+      ]
+    },
+    {
+      "id": "unknown-stations-skipped",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "07f3971abe2658c48c82cd2f3b537f9ab34d5508e7e40d00ff332e2a6558f1fc",
+          "excerpt": "Trips\nwhose station_id is not listed in `data/stations.csv` are skipped"
+        },
+        {
+          "path": "seed/data/trips.csv",
+          "sha256": "dd889bdf0a851cf28c35f5c144d0399c8c9a4fd5c2e07f2be384782725ad1bcc",
+          "excerpt": "t-006,st-9,17"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^st-[0-9]$"
+      },
+      "values": [
+        "st-9"
+      ]
+    },
+    {
+      "id": "suite-command",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "07f3971abe2658c48c82cd2f3b537f9ab34d5508e7e40d00ff332e2a6558f1fc",
+          "excerpt": "`python3 -m unittest discover -s tests` must pass."
+        },
+        {
+          "path": "seed/README.md",
+          "sha256": "c107b6923c08523a506b5a3584ac89eed8ea5ec22f7391206e20f1a88bb363ba",
+          "excerpt": "python3 -m unittest discover -s tests      # run the suite"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^python3 -m unittest discover -s tests$"
+      },
+      "values": [
+        "python3 -m unittest discover -s tests"
+      ]
+    }
+  ]
+}

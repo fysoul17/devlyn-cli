@@ -1,0 +1,159 @@
+diff -ruN a/data/index.json b/data/index.json
+--- a/data/index.json	2026-07-13 21:13:14
++++ b/data/index.json	2026-07-13 21:13:55
+@@ -2,16 +2,22 @@
+   "entries": [
+     {
+       "id": "n-1",
+-      "title": "Kickoff checklist"
++      "pinned": false,
++      "title": "Kickoff checklist",
++      "word_count": 7
+     },
+     {
+       "id": "n-2",
+-      "title": "Vendor call"
++      "pinned": false,
++      "title": "Vendor call",
++      "word_count": 10
+     },
+     {
+       "id": "n-3",
+-      "title": "Retro notes"
++      "pinned": false,
++      "title": "Retro notes",
++      "word_count": 2
+     }
+   ],
+-  "source_schema_version": 1
++  "source_schema_version": 3
+ }
+diff -ruN a/data/notes.json b/data/notes.json
+--- a/data/notes.json	2026-07-13 21:13:14
++++ b/data/notes.json	2026-07-13 21:13:55
+@@ -4,20 +4,26 @@
+       "body": "Book the room and send the agenda",
+       "created": "2024-02-11",
+       "id": "n-1",
+-      "title": "Kickoff checklist"
++      "pinned": false,
++      "title": "Kickoff checklist",
++      "word_count": 7
+     },
+     {
+       "body": "Ask about lead times before we commit to a contract",
+       "created": "2024-02-14",
+       "id": "n-2",
+-      "title": "Vendor call"
++      "pinned": false,
++      "title": "Vendor call",
++      "word_count": 10
+     },
+     {
+       "body": "Draft outline",
+       "created": "2024-03-02",
+       "id": "n-3",
+-      "title": "Retro notes"
++      "pinned": false,
++      "title": "Retro notes",
++      "word_count": 2
+     }
+   ],
+-  "schema_version": 1
++  "schema_version": 3
+ }
+diff -ruN a/tests/test_migrate.py b/tests/test_migrate.py
+--- a/tests/test_migrate.py	2026-07-13 21:13:14
++++ b/tests/test_migrate.py	2026-07-13 21:13:50
+@@ -37,5 +37,44 @@
+         self.assertEqual(db["schema_version"], SCHEMA_VERSION)
+ 
+ 
++class Migration002Test(unittest.TestCase):
++    def test_every_note_starts_unpinned(self):
++        db = sample_vault(1)
++        apply_migrations(db)
++        for note in db["notes"]:
++            self.assertIs(note["pinned"], False)
++
++    def test_applied_versions_are_reported(self):
++        db = sample_vault(1)
++        self.assertEqual(apply_migrations(db), [2, 3])
++
++
++class Migration003Test(unittest.TestCase):
++    def test_word_count_is_a_whitespace_split_of_the_body(self):
++        db = sample_vault(1)
++        apply_migrations(db)
++        self.assertEqual(db["notes"][0]["word_count"], 3)
++
++    def test_word_count_matches_every_body(self):
++        db = sample_vault(1)
++        db["notes"].append(
++            {
++                "id": "x-2",
++                "title": "Longer",
++                "body": "a slightly longer body with seven words",
++                "created": "2024-01-02",
++            }
++        )
++        apply_migrations(db)
++        for note in db["notes"]:
++            self.assertEqual(note["word_count"], len(note["body"].split()))
++
++    def test_empty_body_counts_zero(self):
++        db = sample_vault(1)
++        db["notes"][0]["body"] = ""
++        apply_migrations(db)
++        self.assertEqual(db["notes"][0]["word_count"], 0)
++
++
+ if __name__ == "__main__":
+     unittest.main()
+diff -ruN a/tools/build_index.py b/tools/build_index.py
+--- a/tools/build_index.py	2026-07-13 21:13:14
++++ b/tools/build_index.py	2026-07-13 21:13:37
+@@ -20,7 +20,14 @@
+     """Return the index document for the vault `db`."""
+     entries = []
+     for note in sorted(db["notes"], key=lambda n: n["id"]):
+-        entries.append({"id": note["id"], "title": note["title"]})
++        entries.append(
++            {
++                "id": note["id"],
++                "title": note["title"],
++                "pinned": note.get("pinned", False),
++                "word_count": note.get("word_count", 0),
++            }
++        )
+     return {"source_schema_version": db["schema_version"], "entries": entries}
+ 
+ 
+diff -ruN a/vault/schema.py b/vault/schema.py
+--- a/vault/schema.py	2026-07-13 21:13:14
++++ b/vault/schema.py	2026-07-13 21:13:31
+@@ -13,6 +13,22 @@
+ schema_version itself — the migrator does that once the step has run.
+ """
+ 
+-SCHEMA_VERSION = 1
++SCHEMA_VERSION = 3
+ 
+-MIGRATIONS = []
++
++def migrate_002_add_pinned(db):
++    """1 -> 2: every note gains a `pinned` flag, unpinned to start with."""
++    for note in db["notes"]:
++        note["pinned"] = False
++
++
++def migrate_003_add_word_count(db):
++    """2 -> 3: every note gains the number of whitespace-separated words in its body."""
++    for note in db["notes"]:
++        note["word_count"] = len(note["body"].split())
++
++
++MIGRATIONS = [
++    (2, migrate_002_add_pinned),
++    (3, migrate_003_add_word_count),
++]

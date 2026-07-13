@@ -1,0 +1,166 @@
+{
+  "schema_version": "hidden-conformance-2",
+  "channels": [
+    {
+      "id": "zone-d-rule",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "5a00a6ec2ea2f8bcf44ca138ac1602f70f673b092f6b82ef6d0166cc994cbdbb",
+          "excerpt": "Add a fourth zone to `rates.registry.ZONES`, keyed \"ZONE_D\":\n       label \"International\", base_cents 1500, per_kg_cents 320."
+        },
+        {
+          "path": "seed/rates/registry.py",
+          "sha256": "7cf9d2f581454a0766a54e5ca26c5601457818217f87867d8aa60a2dad6c14c5",
+          "excerpt": "\"ZONE_C\": {\"label\": \"National\", \"base_cents\": 900, \"per_kg_cents\": 240},"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^(ZONE_D|International|1500|320)$"
+      },
+      "values": [
+        "ZONE_D",
+        "International",
+        "1500",
+        "320"
+      ]
+    },
+    {
+      "id": "fuel-surcharge-percent",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "5a00a6ec2ea2f8bcf44ca138ac1602f70f673b092f6b82ef6d0166cc994cbdbb",
+          "excerpt": "Raise `rates.registry.FUEL_SURCHARGE_PERCENT` from 6 to 9."
+        },
+        {
+          "path": "seed/rates/registry.py",
+          "sha256": "7cf9d2f581454a0766a54e5ca26c5601457818217f87867d8aa60a2dad6c14c5",
+          "excerpt": "FUEL_SURCHARGE_PERCENT = 6"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^[0-9]{1,2}$"
+      },
+      "values": [
+        "9"
+      ]
+    },
+    {
+      "id": "quote-expectations-cents",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "5a00a6ec2ea2f8bcf44ca138ac1602f70f673b092f6b82ef6d0166cc994cbdbb",
+          "excerpt": "quote_cents(\"ZONE_D\", 10) == 5123\n       quote_cents(\"ZONE_A\", 2)  == 752"
+        },
+        {
+          "path": "seed/rates/quote.py",
+          "sha256": "bedec7f42a14f0e5e79e1893ef0301b983423e36427c3794a36489bace9c285a",
+          "excerpt": "surcharge = (subtotal * FUEL_SURCHARGE_PERCENT + 50) // 100"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^[0-9]+$"
+      },
+      "values": [
+        "5123",
+        "752"
+      ]
+    },
+    {
+      "id": "published-zone-keys",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "5a00a6ec2ea2f8bcf44ca138ac1602f70f673b092f6b82ef6d0166cc994cbdbb",
+          "excerpt": "the rate card must list all four zones (ZONE_A, ZONE_B, ZONE_C,\n   ZONE_D)"
+        },
+        {
+          "path": "seed/tools/build_rate_card.py",
+          "sha256": "f6c823dd072bad60022e2135e9b55df82adcec793d3d23d255752aa4c37c8abd",
+          "excerpt": "for key in sorted(ZONES):"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^ZONE_[A-D]$"
+      },
+      "values": [
+        "ZONE_A",
+        "ZONE_B",
+        "ZONE_C",
+        "ZONE_D"
+      ]
+    },
+    {
+      "id": "generated-card-path",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "5a00a6ec2ea2f8bcf44ca138ac1602f70f673b092f6b82ef6d0166cc994cbdbb",
+          "excerpt": "`data/rate_card.json` is the rate card we publish to partner carriers."
+        },
+        {
+          "path": "seed/tools/build_rate_card.py",
+          "sha256": "f6c823dd072bad60022e2135e9b55df82adcec793d3d23d255752aa4c37c8abd",
+          "excerpt": "OUTPUT_PATH = os.path.join(\"data\", \"rate_card.json\")"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^data/[a-z_]+\\.json$"
+      },
+      "values": [
+        "data/rate_card.json"
+      ]
+    },
+    {
+      "id": "generator-command",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "5a00a6ec2ea2f8bcf44ca138ac1602f70f673b092f6b82ef6d0166cc994cbdbb",
+          "excerpt": "Regenerate the published rate card by running `python3 -m tools.build_rate_card`"
+        },
+        {
+          "path": "seed/README.md",
+          "sha256": "8df47fef4aa27f785f1f03a21b67dbc1adfb2889c2a45fc4358ee98bbd13e813",
+          "excerpt": "python3 -m tools.build_rate_card          # refresh the published rate card"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^python3 -m tools\\.build_rate_card$"
+      },
+      "values": [
+        "python3 -m tools.build_rate_card"
+      ]
+    },
+    {
+      "id": "suite-command",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "5a00a6ec2ea2f8bcf44ca138ac1602f70f673b092f6b82ef6d0166cc994cbdbb",
+          "excerpt": "`python3 -m unittest discover -s tests` must pass."
+        },
+        {
+          "path": "seed/README.md",
+          "sha256": "8df47fef4aa27f785f1f03a21b67dbc1adfb2889c2a45fc4358ee98bbd13e813",
+          "excerpt": "python3 -m unittest discover -s tests     # run the suite"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^python3 -m unittest discover -s tests$"
+      },
+      "values": [
+        "python3 -m unittest discover -s tests"
+      ]
+    }
+  ]
+}

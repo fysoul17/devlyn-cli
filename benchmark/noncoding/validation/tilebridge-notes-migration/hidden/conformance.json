@@ -1,0 +1,191 @@
+{
+  "schema_version": "hidden-conformance-2",
+  "channels": [
+    {
+      "id": "target-schema-version",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "81ad1de2c646481853c7e7a860b3254ddad0f9d3e76a8b605d0b0c5e79bf1a03",
+          "excerpt": "Set `vault.schema.SCHEMA_VERSION` to 3 — the version the code now expects."
+        },
+        {
+          "path": "seed/vault/schema.py",
+          "sha256": "49b17359de30ff9173f1578a6387037a2223f4b999b69a51677417c1f5c0e949",
+          "excerpt": "SCHEMA_VERSION = 1"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^[0-9]+$"
+      },
+      "values": [
+        "3"
+      ]
+    },
+    {
+      "id": "migration-target-versions",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "81ad1de2c646481853c7e7a860b3254ddad0f9d3e76a8b605d0b0c5e79bf1a03",
+          "excerpt": "Register it in MIGRATIONS with target\n   version 2."
+        },
+        {
+          "path": "seed/vault/schema.py",
+          "sha256": "49b17359de30ff9173f1578a6387037a2223f4b999b69a51677417c1f5c0e949",
+          "excerpt": "        (2, migrate_002_something),   # 1 -> 2\n        (3, migrate_003_something),   # 2 -> 3"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^[23]$"
+      },
+      "values": [
+        "2",
+        "3"
+      ]
+    },
+    {
+      "id": "new-note-fields",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "81ad1de2c646481853c7e7a860b3254ddad0f9d3e76a8b605d0b0c5e79bf1a03",
+          "excerpt": "it gives every note a `pinned` field\n   whose value is the boolean false"
+        },
+        {
+          "path": "seed/data/notes.json",
+          "sha256": "cf43f9c04f58020368502498b5bbd979667347eb2d629b1d5b44383e49b53563",
+          "excerpt": "\"body\": \"Book the room and send the agenda\","
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^(pinned|word_count)$"
+      },
+      "values": [
+        "pinned",
+        "word_count"
+      ]
+    },
+    {
+      "id": "expected-word-counts",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "81ad1de2c646481853c7e7a860b3254ddad0f9d3e76a8b605d0b0c5e79bf1a03",
+          "excerpt": "the three notes in the vault have bodies of 7, 10 and 2 words\n(n-1, n-2, n-3 respectively)."
+        },
+        {
+          "path": "seed/data/notes.json",
+          "sha256": "cf43f9c04f58020368502498b5bbd979667347eb2d629b1d5b44383e49b53563",
+          "excerpt": "\"body\": \"Ask about lead times before we commit to a contract\","
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^(n-[123]:[0-9]+)$"
+      },
+      "values": [
+        "n-1:7",
+        "n-2:10",
+        "n-3:2"
+      ]
+    },
+    {
+      "id": "index-entry-keys",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "81ad1de2c646481853c7e7a860b3254ddad0f9d3e76a8b605d0b0c5e79bf1a03",
+          "excerpt": "each entry in `data/index.json`\n   must carry `id`, `title`, `pinned` and `word_count`"
+        },
+        {
+          "path": "seed/tools/build_index.py",
+          "sha256": "daa96e34aa63b14954c107ba859a9247422113d32a7a3a77af48cfac05cb62c6",
+          "excerpt": "entries.append({\"id\": note[\"id\"], \"title\": note[\"title\"]})"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^(id|title|pinned|word_count|source_schema_version)$"
+      },
+      "values": [
+        "id",
+        "title",
+        "pinned",
+        "word_count",
+        "source_schema_version"
+      ]
+    },
+    {
+      "id": "generated-file-paths",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "81ad1de2c646481853c7e7a860b3254ddad0f9d3e76a8b605d0b0c5e79bf1a03",
+          "excerpt": "`data/index.json` is a generated lookup file built from the vault by\n`python3 -m tools.build_index`."
+        },
+        {
+          "path": "seed/tools/build_index.py",
+          "sha256": "daa96e34aa63b14954c107ba859a9247422113d32a7a3a77af48cfac05cb62c6",
+          "excerpt": "OUTPUT_PATH = os.path.join(\"data\", \"index.json\")"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^data/(notes|index)\\.json$"
+      },
+      "values": [
+        "data/notes.json",
+        "data/index.json"
+      ]
+    },
+    {
+      "id": "tool-commands",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "81ad1de2c646481853c7e7a860b3254ddad0f9d3e76a8b605d0b0c5e79bf1a03",
+          "excerpt": "running `python3 -m vault.migrate data/notes.json`"
+        },
+        {
+          "path": "seed/README.md",
+          "sha256": "ebd37507da7799f3af4b47dbfae83744831725ada38d433bc1f2a6fb33f8472d",
+          "excerpt": "python3 -m vault.migrate data/notes.json   # bring the vault up to the current schema\npython3 -m tools.build_index               # rebuild the generated index"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^python3 -m (vault\\.migrate data/notes\\.json|tools\\.build_index)$"
+      },
+      "values": [
+        "python3 -m vault.migrate data/notes.json",
+        "python3 -m tools.build_index"
+      ]
+    },
+    {
+      "id": "suite-command",
+      "bindings": [
+        {
+          "path": "task.txt",
+          "sha256": "81ad1de2c646481853c7e7a860b3254ddad0f9d3e76a8b605d0b0c5e79bf1a03",
+          "excerpt": "`python3 -m unittest discover -s tests`\n   must pass."
+        },
+        {
+          "path": "seed/README.md",
+          "sha256": "ebd37507da7799f3af4b47dbfae83744831725ada38d433bc1f2a6fb33f8472d",
+          "excerpt": "python3 -m unittest discover -s tests      # run the suite"
+        }
+      ],
+      "validator": {
+        "type": "regex",
+        "pattern": "^python3 -m unittest discover -s tests$"
+      },
+      "values": [
+        "python3 -m unittest discover -s tests"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,347 @@
+{
+  "schema_version": "pud-1",
+  "project_acceptance": [
+    {
+      "id": "pa-1",
+      "observable": "vault.schema.SCHEMA_VERSION == 3 and MIGRATIONS registers migration 002 (target version 2, adds pinned) and migration 003 (target version 3, adds word_count)."
+    },
+    {
+      "id": "pa-2",
+      "observable": "The committed data/notes.json is at \"schema_version\": 3 and every note carries pinned == false and the correct word_count (n-1: 7, n-2: 10, n-3: 2)."
+    },
+    {
+      "id": "pa-3",
+      "observable": "tools.build_index.build_index emits id, title, pinned and word_count per entry, still sorted by note id, still under a source_schema_version key."
+    },
+    {
+      "id": "pa-4",
+      "observable": "The committed data/index.json is the builder's output for the migrated vault: \"source_schema_version\": 3, and each entry carrying that note's real pinned (false) and word_count (7 / 10 / 2)."
+    },
+    {
+      "id": "pa-5",
+      "observable": "`python3 -m unittest discover -s tests` passes and covers the migrations."
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1-migration-002",
+      "objective": "In vault/schema.py add migration 002: a function taking the vault dict that gives every note a `pinned` field set to the boolean False. Register it in MIGRATIONS as target version 2. The migration must not touch schema_version itself — the migrator sets that.",
+      "depends_on": [],
+      "context_refs": [
+        {
+          "path": "seed/vault/schema.py",
+          "line_start": 1,
+          "line_end": 14,
+          "claim": "The module docstring specifies how MIGRATIONS entries are written: (target_version, function) in ascending order, and that a migration edits the vault dict in place and must never set schema_version itself."
+        },
+        {
+          "path": "seed/vault/schema.py",
+          "line_start": 16,
+          "line_end": 18,
+          "claim": "SCHEMA_VERSION is 1 today and MIGRATIONS is empty."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "vault/schema.py (add the migration function, register it in MIGRATIONS)"
+        ],
+        "must_preserve": [
+          "vault/migrate.py: the migrator itself",
+          "a migration never assigns schema_version"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "MIGRATIONS contains an entry with target version 2 whose function sets note[\"pinned\"] = False on every note in the vault dict."
+        },
+        {
+          "id": "a-2",
+          "observable": "The value is the boolean False, not the string \"false\" and not 0."
+        }
+      ],
+      "handoff": "Migration 002 exists and is registered at target version 2."
+    },
+    {
+      "id": "t2-migration-003",
+      "objective": "In vault/schema.py add migration 003: a function taking the vault dict that gives every note a `word_count` field, the number of whitespace-separated words in that note's body (len(body.split())). Register it in MIGRATIONS as target version 3, after migration 002.",
+      "depends_on": [
+        "t1-migration-002"
+      ],
+      "context_refs": [
+        {
+          "path": "seed/vault/schema.py",
+          "line_start": 6,
+          "line_end": 10,
+          "claim": "MIGRATIONS is an ascending list of (target_version, function) pairs, so migration 003 is registered after migration 002."
+        },
+        {
+          "path": "seed/data/notes.json",
+          "line_start": 1,
+          "line_end": 23,
+          "claim": "Each note has a body string; the three committed notes have bodies of 7, 10 and 2 words (n-1, n-2, n-3)."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "vault/schema.py (add the migration function, register it in MIGRATIONS)"
+        ],
+        "must_preserve": [
+          "vault/migrate.py: the migrator itself",
+          "migration 002 and its target version",
+          "a migration never assigns schema_version"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "MIGRATIONS contains an entry with target version 3, listed after the target-2 entry, whose function sets note[\"word_count\"] = len(note[\"body\"].split()) on every note."
+        },
+        {
+          "id": "a-2",
+          "observable": "Running both migrations over the committed notes yields word_count 7 for n-1, 10 for n-2 and 2 for n-3."
+        }
+      ],
+      "handoff": "Both migrations exist and are registered in ascending order (2 then 3)."
+    },
+    {
+      "id": "t3-schema-version",
+      "objective": "Set vault.schema.SCHEMA_VERSION to 3: the version of the vault the code now expects.",
+      "depends_on": [
+        "t2-migration-003"
+      ],
+      "context_refs": [
+        {
+          "path": "seed/vault/schema.py",
+          "line_start": 16,
+          "line_end": 16,
+          "claim": "SCHEMA_VERSION is 1 today."
+        },
+        {
+          "path": "seed/tests/test_migrate.py",
+          "line_start": 23,
+          "line_end": 36,
+          "claim": "The existing migration tests are written against SCHEMA_VERSION rather than a hard-coded number, so they keep working when it moves."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "vault/schema.py (SCHEMA_VERSION)"
+        ],
+        "must_preserve": [
+          "the registered migrations and their target versions"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "vault.schema.SCHEMA_VERSION == 3."
+        }
+      ],
+      "handoff": "The code expects vault schema version 3."
+    },
+    {
+      "id": "t4-migrate-vault",
+      "objective": "Bring the checked-in vault up to date: run `python3 -m vault.migrate data/notes.json` from the project root so the committed data/notes.json is the migrator's output. Do not hand-edit the vault file.",
+      "depends_on": [
+        "t3-schema-version"
+      ],
+      "context_refs": [
+        {
+          "path": "seed/vault/migrate.py",
+          "line_start": 1,
+          "line_end": 8,
+          "claim": "`python3 -m vault.migrate data/notes.json` applies every migration registered above the file's current schema_version and writes the vault back; against an already-migrated file it does nothing."
+        },
+        {
+          "path": "seed/vault/migrate.py",
+          "line_start": 22,
+          "line_end": 28,
+          "claim": "apply_migrations only runs the migrations that are registered in MIGRATIONS at the moment it is called; migrations registered later are not applied retroactively."
+        },
+        {
+          "path": "seed/data/notes.json",
+          "line_start": 23,
+          "line_end": 23,
+          "claim": "The committed vault is still at schema_version 1."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "data/notes.json (only as migrator output)"
+        ],
+        "must_preserve": [
+          "vault/migrate.py and vault/store.py",
+          "data/notes.json must be the migrator's output — no hand edits",
+          "the note ids, titles, bodies and created dates already in the vault"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "data/notes.json was rewritten by the migrator, not by hand."
+        },
+        {
+          "id": "a-2",
+          "observable": "Running `python3 -m vault.migrate data/notes.json` again reports the vault is already up to date and leaves the file unchanged."
+        },
+        {
+          "id": "a-3",
+          "observable": "The vault still holds the same three notes with their original ids, titles, bodies and created dates."
+        }
+      ],
+      "handoff": "The committed vault is the migrator's output for the registered migrations."
+    },
+    {
+      "id": "t5-index-fields",
+      "objective": "Teach the index builder about the new note fields: tools.build_index.build_index must put id, title, pinned and word_count in each entry, reading them from the note and falling back to False / 0 for a note that does not carry the field. Keep the rest of the shape as it is: a source_schema_version key taken from the vault, and an entries list sorted by note id.",
+      "depends_on": [],
+      "context_refs": [
+        {
+          "path": "seed/tools/build_index.py",
+          "line_start": 19,
+          "line_end": 24,
+          "claim": "build_index currently emits only id and title per entry, sorts entries by note id, and copies the vault's schema_version into source_schema_version."
+        },
+        {
+          "path": "seed/tools/build_index.py",
+          "line_start": 1,
+          "line_end": 8,
+          "claim": "The index is generated from data/notes.json and is only ever as fresh as the vault it was built from."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "tools/build_index.py (the entry shape)"
+        ],
+        "must_preserve": [
+          "the entries stay sorted by note id",
+          "source_schema_version keeps coming from the vault's schema_version",
+          "the builder keeps writing data/index.json"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "build_index emits {\"id\", \"title\", \"pinned\", \"word_count\"} for every entry."
+        },
+        {
+          "id": "a-2",
+          "observable": "A note lacking pinned / word_count still indexes, as False / 0."
+        },
+        {
+          "id": "a-3",
+          "observable": "The index document still has source_schema_version and an entries list ordered by note id."
+        }
+      ],
+      "handoff": "The builder knows how to index pinned and word_count."
+    },
+    {
+      "id": "t6-rebuild-index",
+      "objective": "Rebuild the committed index: run `python3 -m tools.build_index` from the project root so data/index.json is the builder's output for the vault. Do not hand-edit data/index.json.",
+      "depends_on": [
+        "t4-migrate-vault",
+        "t5-index-fields"
+      ],
+      "context_refs": [
+        {
+          "path": "seed/tools/build_index.py",
+          "line_start": 1,
+          "line_end": 8,
+          "claim": "`python3 -m tools.build_index` reads data/notes.json and rewrites data/index.json; the index is only as fresh as the vault it was built from."
+        },
+        {
+          "path": "seed/README.md",
+          "line_start": 11,
+          "line_end": 12,
+          "claim": "data/index.json is a generated file, only as fresh as the vault it was built from."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "data/index.json (only as builder output)"
+        ],
+        "must_preserve": [
+          "tools/build_index.py: this task changes no code",
+          "data/index.json must be the builder's output — no hand edits"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "data/index.json was rewritten by the builder, not by hand."
+        },
+        {
+          "id": "a-2",
+          "observable": "Re-running `python3 -m tools.build_index` leaves data/index.json unchanged, i.e. the committed index already matches the committed vault."
+        },
+        {
+          "id": "a-3",
+          "observable": "data/index.json holds one entry per note, ordered by note id."
+        }
+      ],
+      "handoff": "The committed index is the builder's output for the committed vault."
+    },
+    {
+      "id": "t7-migration-tests",
+      "objective": "Cover the migrations with tests under tests/: starting from a vault at schema_version 1, applying the migrations gives every note pinned == False and word_count == len(body.split()), and lands the vault at schema_version 3. `python3 -m unittest discover -s tests` must pass.",
+      "depends_on": [
+        "t3-schema-version"
+      ],
+      "context_refs": [
+        {
+          "path": "seed/tests/test_migrate.py",
+          "line_start": 8,
+          "line_end": 21,
+          "claim": "sample_vault(schema_version) builds an in-memory vault, so migration behaviour can be tested without touching data/notes.json."
+        },
+        {
+          "path": "seed/vault/migrate.py",
+          "line_start": 16,
+          "line_end": 28,
+          "claim": "apply_migrations returns the list of target versions it applied and leaves the vault at the last one."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "tests/test_migrate.py",
+          "new test modules under tests/"
+        ],
+        "must_preserve": [
+          "the existing idempotence and current-version tests keep passing",
+          "vault/schema.py and vault/migrate.py: this task adds no production code"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "`python3 -m unittest discover -s tests` passes with no failures."
+        },
+        {
+          "id": "a-2",
+          "observable": "A test asserts that migrating a schema_version 1 vault sets pinned == False on every note."
+        },
+        {
+          "id": "a-3",
+          "observable": "A test asserts word_count == len(body.split()) after migrating, e.g. 3 for a body of \"one two three\"."
+        }
+      ],
+      "handoff": "The suite pins both migrations."
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [
+    {
+      "statement": "Word counts are plain whitespace splits (len(body.split())): no punctuation stripping, no locale rules.",
+      "evidence_refs": [
+        "seed/data/notes.json:1-23"
+      ]
+    },
+    {
+      "statement": "Notes are pinned by an operator later; the migration only introduces the field, so every existing note starts unpinned.",
+      "evidence_refs": [
+        "seed/vault/schema.py:1-14"
+      ]
+    }
+  ]
+}

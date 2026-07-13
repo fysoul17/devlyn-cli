@@ -1,0 +1,59 @@
+Ledgerloom — prorate a plan charge for a partial billing period
+
+Background
+----------
+Ledgerloom invoices subscription plans. Money is *always* an integer number of
+cents in this codebase: `billing/plans.py` prices plans in cents, `billing/invoice.py`
+stores every line's amount in cents and totals them as ints, and `billing/money.py`
+holds `round_half_up(numerator, denominator)`, an integer-only division helper that
+rounds to the nearest whole unit with ties going away from zero.
+
+When a customer joins or leaves mid-period we bill only the days they used. That
+calculation does not exist yet.
+
+What to do
+----------
+1. Add `billing/proration.py` with:
+
+       prorate_cents(amount_cents, days_used, days_in_period) -> int
+
+   It returns the share of `amount_cents` owed for `days_used` out of
+   `days_in_period` days, under these rules:
+
+   a. INTEGER CENTS ONLY. The result is an `int` number of cents. No float and no
+      Decimal may appear anywhere in the calculation or the return value.
+
+   b. ROUND TO THE NEAREST CENT, TIES AWAY FROM ZERO (half up). A charge worth
+      62.5 cents bills as 63, not 62; a charge worth 50.5 cents bills as 51, not
+      50. Never truncate the fractional cent. `billing/money.round_half_up` already
+      implements exactly this rule — reuse it rather than rounding by hand.
+
+   c. CLAMP `days_used` TO THE PERIOD. `days_used` below 0 counts as 0, and
+      `days_used` above `days_in_period` counts as `days_in_period`. A prorated
+      charge must never exceed the full `amount_cents`, whatever the caller passes.
+
+   d. `days_in_period` must be greater than 0; otherwise raise `ValueError`.
+
+   e. `amount_cents` must be an `int`; otherwise raise `TypeError`.
+
+   Worked examples, all of which must hold:
+
+       prorate_cents(999, 10, 30)  == 333
+       prorate_cents(125, 1, 2)    == 63      # 62.5 rounds up
+       prorate_cents(101, 1, 2)    == 51      # 50.5 rounds up
+       prorate_cents(1999, 7, 31)  == 451
+       prorate_cents(1000, 45, 30) == 1000    # clamped: never more than the full charge
+       prorate_cents(1000, -3, 30) == 0       # clamped
+       prorate_cents(500, 0, 30)   == 0
+
+2. Add `Invoice.add_prorated_line(description, amount_cents, days_used, days_in_period)`
+   in `billing/invoice.py`. It appends one ordinary invoice line whose amount is the
+   prorated int cents from `prorate_cents`. Invoice lines keep their current shape —
+   a description plus an int `amount_cents` — and `Invoice.total_cents()` keeps
+   returning an int.
+
+3. Do not change `billing/money.py`: `round_half_up` is used by the rest of billing
+   and its behaviour must stay exactly as it is.
+
+4. Cover the new code with tests under `tests/`.
+   `python3 -m unittest discover -s tests` must pass.

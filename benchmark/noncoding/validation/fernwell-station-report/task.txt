@@ -1,0 +1,54 @@
+Fernwell — add a CSV output format to the station report
+
+Background
+----------
+The Fernwell ops report summarises bike-share trips per station.
+`report/loader.py` reads `data/trips.csv` and `data/stations.csv` and returns one
+summary row per known station (trip count, total minutes, average minutes). Trips
+whose station_id is not listed in `data/stations.csv` are skipped — that is
+existing behaviour and must stay.
+
+`report/renderer_text.py` turns those rows into the plain-text report, and
+`python3 -m report.cli --format text` prints it. Text is currently the only format.
+
+Two other teams import `report.renderer_text.render_text` and diff its output in
+their own pipelines.
+
+What to do
+----------
+1. Add a NEW module `report/renderer_csv.py` exposing:
+
+       render_csv(rows) -> str
+
+   which renders the same summary rows as CSV.
+
+2. DO NOT MODIFY `report/renderer_text.py`. It must stay byte-for-byte identical to
+   what is checked in now: other teams depend on it and on its exact output. Put the
+   CSV rendering in the new module — do not generalise, parameterise or move the
+   text renderer.
+
+3. The CSV `render_csv` produces must be exactly this:
+
+   - The first line is the header, exactly: station,trips,avg_minutes
+   - One line per station: the station name, its trip count, and its average
+     minutes formatted to one decimal place (for example 13.0 or 9.2).
+   - Rows are ordered by TRIP COUNT, HIGHEST FIRST. Stations with the same trip
+     count are ordered by station name, A to Z.
+   - Lines are separated by "\n" and the last line ends with a single "\n".
+     No blank line at the end, no header repeated, no total row.
+
+   For the data checked in today, `python3 -m report.cli --format csv` must print
+   exactly:
+
+       station,trips,avg_minutes
+       Birch Gate,5,9.2
+       Alder Quay,3,13.0
+       Cedar Row,3,21.0
+       Dunes Landing,1,30.0
+
+4. Wire the new format into `report/cli.py` so that `--format csv` prints the CSV.
+   `--format text` must keep printing exactly what it prints today, and text stays
+   the default when `--format` is not given.
+
+5. Cover the new renderer with tests under `tests/`.
+   `python3 -m unittest discover -s tests` must pass.

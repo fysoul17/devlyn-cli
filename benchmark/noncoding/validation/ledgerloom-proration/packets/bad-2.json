@@ -1,0 +1,200 @@
+{
+  "schema_version": "pud-1",
+  "project_acceptance": [
+    {
+      "id": "pa-1",
+      "observable": "billing/proration.py exposes prorate_cents(amount_cents, days_used, days_in_period) returning an int number of cents; no float and no Decimal takes part in the calculation."
+    },
+    {
+      "id": "pa-2",
+      "observable": "prorate_cents(999, 10, 30) == 333, prorate_cents(125, 1, 2) == 63, prorate_cents(101, 1, 2) == 51, prorate_cents(1999, 7, 31) == 451."
+    },
+    {
+      "id": "pa-3",
+      "observable": "prorate_cents(1000, 45, 30) == 1500, prorate_cents(1000, -3, 30) == -100 and prorate_cents(500, 0, 30) == 0: days_used is prorated exactly as the caller reports it, so more days than the period bill more than the full amount."
+    },
+    {
+      "id": "pa-4",
+      "observable": "prorate_cents raises ValueError when days_in_period <= 0 and TypeError when amount_cents is not an int."
+    },
+    {
+      "id": "pa-5",
+      "observable": "Invoice.add_prorated_line(description, amount_cents, days_used, days_in_period) appends one ordinary (description, int amount_cents) line and Invoice.total_cents() still returns an int."
+    },
+    {
+      "id": "pa-6",
+      "observable": "billing/money.py is unchanged and `python3 -m unittest discover -s tests` passes."
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1-prorate",
+      "objective": "Add billing/proration.py with prorate_cents(amount_cents, days_used, days_in_period) -> int. It returns the share of amount_cents owed for days_used out of days_in_period, in integer cents. Rules: (a) integer cents only — no float, no Decimal, anywhere in the calculation or the return value; (b) round to the nearest cent with ties going away from zero (half up), reusing billing.money.round_half_up rather than rounding by hand — never truncate the fractional cent; (c) prorate strictly by the days the caller reports: use days_used exactly as passed, so more days than the period bill proportionally more than amount_cents and negative days bill a credit; (d) raise ValueError if days_in_period <= 0; (e) raise TypeError if amount_cents is not an int.",
+      "depends_on": [],
+      "context_refs": [
+        {
+          "path": "seed/billing/money.py",
+          "line_start": 8,
+          "line_end": 26,
+          "claim": "round_half_up(numerator, denominator) already divides two ints rounding to the nearest whole unit with ties away from zero, using integer arithmetic only, and raises TypeError on non-int input and ValueError on a non-positive denominator."
+        },
+        {
+          "path": "seed/billing/money.py",
+          "line_start": 1,
+          "line_end": 5,
+          "claim": "Every amount in Ledgerloom is an integer number of cents; billing is not allowed to carry money as a float."
+        },
+        {
+          "path": "seed/billing/plans.py",
+          "line_start": 3,
+          "line_end": 7,
+          "claim": "Plan prices are integer cents per month (starter 999, team 1999, studio 4900), which is what gets prorated."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "billing/proration.py (new file)"
+        ],
+        "must_preserve": [
+          "billing/money.py: round_half_up must not be modified — the rest of billing depends on its exact behaviour",
+          "money stays int cents end to end; no float or Decimal enters billing"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "prorate_cents(999, 10, 30) == 333 and prorate_cents(1999, 7, 31) == 451."
+        },
+        {
+          "id": "a-2",
+          "observable": "Ties round up, away from zero: prorate_cents(125, 1, 2) == 63 (not 62) and prorate_cents(101, 1, 2) == 51 (not 50)."
+        },
+        {
+          "id": "a-3",
+          "observable": "days_used is used exactly as passed: prorate_cents(1000, 45, 30) == 1500 and prorate_cents(1000, -3, 30) == -100, and prorate_cents(500, 0, 30) == 0."
+        },
+        {
+          "id": "a-4",
+          "observable": "The return value is an int: type(prorate_cents(999, 10, 30)) is int."
+        },
+        {
+          "id": "a-5",
+          "observable": "prorate_cents(999, 10, 0) raises ValueError and prorate_cents(9.99, 10, 30) raises TypeError."
+        }
+      ],
+      "handoff": "prorate_cents is available and returns int cents, half-up rounded, prorated by exactly the days the caller reports."
+    },
+    {
+      "id": "t2-invoice-line",
+      "objective": "Add Invoice.add_prorated_line(description, amount_cents, days_used, days_in_period) to billing/invoice.py. It prorates amount_cents with prorate_cents and appends the result as one ordinary invoice line. Invoice lines keep their existing shape — a description plus an int amount_cents — and total_cents() keeps returning an int.",
+      "depends_on": [
+        "t1-prorate"
+      ],
+      "context_refs": [
+        {
+          "path": "seed/billing/invoice.py",
+          "line_start": 13,
+          "line_end": 22,
+          "claim": "add_line appends a (description, amount_cents) pair and rejects non-int amounts; total_cents sums the line amounts."
+        },
+        {
+          "path": "seed/billing/invoice.py",
+          "line_start": 6,
+          "line_end": 11,
+          "claim": "Invoice.lines is a list of (description, amount_cents) pairs where amount_cents is always an int."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "billing/invoice.py (add the new method)"
+        ],
+        "must_preserve": [
+          "the (description, amount_cents) line shape, with amount_cents an int",
+          "Invoice.add_line, Invoice.total_cents and Invoice.render behave exactly as they do now",
+          "billing/money.py stays untouched"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "After invoice.add_prorated_line(\"Team plan\", 1999, 7, 31) the invoice has one line ('Team plan', 451) and total_cents() == 451."
+        },
+        {
+          "id": "a-2",
+          "observable": "total_cents() still returns an int for an invoice mixing add_line and add_prorated_line lines."
+        },
+        {
+          "id": "a-3",
+          "observable": "The lines list still holds (description, amount_cents) pairs — no new line shape."
+        }
+      ],
+      "handoff": "Invoices can carry a prorated line, stored like any other int-cent line."
+    },
+    {
+      "id": "t3-tests",
+      "objective": "Cover the new behaviour with tests under tests/: the worked proration examples, the half-up tie behaviour, the clamping, the ValueError / TypeError cases, and the prorated invoice line. `python3 -m unittest discover -s tests` must pass.",
+      "depends_on": [
+        "t1-prorate",
+        "t2-invoice-line"
+      ],
+      "context_refs": [
+        {
+          "path": "seed/tests/test_money.py",
+          "line_start": 6,
+          "line_end": 25,
+          "claim": "The existing money tests show the house style for pinning rounding behaviour, including the tie cases and the int return type."
+        },
+        {
+          "path": "seed/tests/test_invoice.py",
+          "line_start": 10,
+          "line_end": 21,
+          "claim": "The existing invoice tests assert on the total and on the (description, amount_cents) line shape."
+        }
+      ],
+      "scope": {
+        "may_change": [
+          "new test modules under tests/",
+          "tests/test_invoice.py"
+        ],
+        "must_preserve": [
+          "the existing money and invoice tests keep passing unchanged",
+          "billing/money.py stays untouched"
+        ]
+      },
+      "acceptance": [
+        {
+          "id": "a-1",
+          "observable": "`python3 -m unittest discover -s tests` passes with no failures."
+        },
+        {
+          "id": "a-2",
+          "observable": "A test asserts the tie cases prorate_cents(125, 1, 2) == 63 and prorate_cents(101, 1, 2) == 51."
+        },
+        {
+          "id": "a-3",
+          "observable": "A test asserts the unclamped cases prorate_cents(1000, 45, 30) == 1500 and prorate_cents(1000, -3, 30) == -100."
+        },
+        {
+          "id": "a-4",
+          "observable": "A test asserts add_prorated_line produces an int-cent line and an int total."
+        }
+      ],
+      "handoff": "The suite pins the proration rules and the prorated invoice line."
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [
+    {
+      "statement": "A period is counted in whole days, so days_used and days_in_period are ints; nothing sub-day needs prorating.",
+      "evidence_refs": [
+        "seed/billing/plans.py:1"
+      ]
+    },
+    {
+      "statement": "Proration reuses round_half_up rather than introducing a second rounding rule, so every amount in billing rounds the same way.",
+      "evidence_refs": [
+        "seed/billing/money.py:8-26"
+      ]
+    }
+  ]
+}

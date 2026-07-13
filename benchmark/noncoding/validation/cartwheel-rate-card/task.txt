@@ -1,0 +1,39 @@
+Cartwheel Freight — add ZONE_D and raise the fuel surcharge
+
+Background
+----------
+The `rates` package is the source of truth for our shipping zones.
+`rates/registry.py` holds the zone table (ZONES) and the fuel surcharge
+percentage (FUEL_SURCHARGE_PERCENT); `rates/quote.py` prices a shipment from
+that table.
+
+`data/rate_card.json` is the rate card we publish to partner carriers. It is a
+generated file: its only legitimate source is `python3 -m tools.build_rate_card`,
+which reads the registry and rewrites the file. A published rate card that
+disagrees with the registry means partners quote prices we do not honour, so the
+committed rate card must always match the registry.
+
+What to do
+----------
+1. Add a fourth zone to `rates.registry.ZONES`, keyed "ZONE_D":
+       label "International", base_cents 1500, per_kg_cents 320.
+
+2. Raise `rates.registry.FUEL_SURCHARGE_PERCENT` from 6 to 9.
+
+3. Regenerate the published rate card by running `python3 -m tools.build_rate_card`
+   so that the committed `data/rate_card.json` reflects BOTH changes above. When
+   you are done the rate card must list all four zones (ZONE_A, ZONE_B, ZONE_C,
+   ZONE_D) with the values from the registry, and must carry
+   "fuel_surcharge_percent": 9. Do not hand-edit `data/rate_card.json`; it must be
+   exactly what the generator writes.
+
+4. Leave the pricing rule and the public signature of `quote_cents(zone, weight_kg)`
+   in `rates/quote.py` alone: the surcharge stays integer half-up rounded, unknown
+   zones still raise ValueError, and the return value stays an int number of cents.
+   With the registry changes above it must price the new zone:
+       quote_cents("ZONE_D", 10) == 5123
+       quote_cents("ZONE_A", 2)  == 752
+
+5. Update and extend `tests/test_quote.py` so the suite covers ZONE_D pricing and
+   the 9% surcharge. Existing expectations that assume the old 6% surcharge must be
+   corrected. `python3 -m unittest discover -s tests` must pass.

@@ -1,0 +1,24 @@
+{
+  "currency": "USD",
+  "fuel_surcharge_percent": 6,
+  "zones": [
+    {
+      "base_cents": 450,
+      "label": "Metro",
+      "per_kg_cents": 120,
+      "zone": "ZONE_A"
+    },
+    {
+      "base_cents": 650,
+      "label": "Regional",
+      "per_kg_cents": 180,
+      "zone": "ZONE_B"
+    },
+    {
+      "base_cents": 900,
+      "label": "National",
+      "per_kg_cents": 240,
+      "zone": "ZONE_C"
+    }
+  ]
+}
