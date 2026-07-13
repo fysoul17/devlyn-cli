@@ -1,9 +1,9 @@
 # iter-0068 (STUB) — attack-the-wall: measured decomposition + strategic fork
 
-status: STUB 2026-07-08 — A-arm wall decomposed; direction pending user
-adjudication of a strategic fork (my HANDOFF flagged #2 claim-shape as
-"may need user"; the evidence below says the first-listed frontier item
-#1 "shave the wall" may be the wrong mountain).
+status: SUPERSEDED 2026-07-13 — fork branch A (corpus pivot) ran as iter-0068
+(VALID-NEGATIVE); branch B (wall-shave) is now pre-registered as
+`0071-wall-proportionality.md` (three-way R0+R1; DECISIONS 0071.0); branch C
+(claim-shape) remains deferred. Evidence tables below stay citable.
 
 ## Measured A-arm wall decomposition (iter0067-t2, tranche-2, 3 fresh django rows)
 

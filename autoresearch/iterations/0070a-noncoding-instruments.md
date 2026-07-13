@@ -617,3 +617,54 @@ genuine by Codex) kills credential×sonnet only; no global sonnet ban.
 Q3 — Cell 1's bare-fails admission is seat-conditioned: current Cell-1
 runner reports as TERRA-CONDITIONAL only; broad claims need
 best(bare-terra, bare-sonnet) or per-seat strata, pre-registered.
+
+## Execution record addendum 9 — D-protocol step-2 freeze (2026-07-13, three-way R0+R1)
+
+**Family definitions + classifier + authoring protocol FROZEN** (archives
+`/tmp/iter0071-r0/`, ephemeral; this section durable). R0: Grok
+GO-WITH-EDITS — CRITICAL leakage find: the orchestrator draft embedded
+`(route → sonnet/terra)` seat tokens INSIDE the family definitions, letting
+an outcome-blind author reconstruct the Amendment-2 seat map from the
+definitions alone (audit table L1-L6). Codex NO-GO-as-drafted — convergent
+seat leak PLUS: whole-fixture classification is undecidable (each dev
+fixture contains BOTH bad_dependency and bad_constraint packets → mixed →
+INELIGIBLE, contradicting the draft self-test), and sonnet/terra authors
+violate the kernel author⟂executor rule (this file `:62`-region, Codex #7).
+R1: reconciled design cross-confirmed by both; orchestrator byte-verified
+Codex's label correction (credential good-a↔bad-dependency = 33 path deltas
+across content+edge+id classes → INELIGIBLE, not ORDERING-shaped).
+
+Frozen design:
+- Families **`ORDERING_MUTATION`** / **`CONTENT_CONSTRAINT_MUTATION`** —
+  definitions SEATLESS; the (family → seat) routing map lives in a separate
+  routing artifact (manifest routing block) never shipped to authors.
+- Classifier unit = one canonical good↔bad PAIR (manifest names the
+  canonical pairing per fixture). Algorithm: align tasks by id (fallback:
+  content-hash of non-edge fields) → changed JSON-pointer classes →
+  edge/order-only = ORDERING_MUTATION; content-only within
+  scope/must_preserve/objective/acceptance/project_acceptance values =
+  CONTENT_CONSTRAINT_MUTATION; anything mixed or unalignable = INELIGIBLE
+  fail-closed. Never consults executor outcomes (Amendment 2 falsifier #6).
+- NEW fixtures single-family per fixture (both planted bads same family;
+  necessity: validation holds one seat fixed per fixture), enforced by
+  running the classifier on every good↔bad pair at freeze time.
+- Classifier self-test = synthetic microcases + the four dev-fixture
+  canonical pairs as per-pair regression labels (catalog good-a↔bad-dep =
+  ORDERING_MUTATION; catalog good-b↔bad-constraint =
+  CONTENT_CONSTRAINT_MUTATION; credential good-b↔bad-constraint =
+  CONTENT_CONSTRAINT_MUTATION; credential good-a↔bad-dependency =
+  INELIGIBLE) — CI-only, never exported to authors.
+- **Author seat = fresh OPUS session** (terra/sonnet excluded: executor-seat
+  overlap; Codex sol excluded: read T1 transcripts; orchestrator writes no
+  fixture bytes). Author export = non-git directory containing ONLY: pud-1
+  schema, seatless family definitions, neutral-seed rules,
+  hidden-conformance-2 requirements, per-fixture deliverables. No
+  validation/scheduling text, no fixture names, no classifier tests, no T1
+  data. Grok audits the ACTUAL export bytes before authoring starts
+  (Amendment 2 step 3); Grok R1 already passed the contents-as-specified
+  inventory and flagged the live risk: never ship the superseded seatful
+  draft.
+- Home: `benchmark/noncoding/scripts/classify-defect-family.py` + manifest
+  routing block. Build delegated to Codex sol (isolated worktree; classifier
+  is instrument code frozen before fixtures — authorship-eligible per
+  Amendment 2 "mechanical execution after freeze allowed").

@@ -796,3 +796,47 @@ integrity untouched — judge consumes frozen patch bytes only); (b) leave
 this cohort quality-unmeasured; future nodeg cohorts inherit the fixed
 judge from init. The load-bearing wall/objective verdicts (0068.9) are
 unaffected.
+
+## Closure addendum 3 (2026-07-13) — nodeg attestation defect + honesty correction + replay protocol (three-way)
+
+**Integrity finding (three-way convergent: Codex R0 cited the seven
+`opaque_paths.passed=false` isolation files; the orchestrator independently
+traced root cause the same hour; Grok R1 confirmed the field-walk).** All 7
+nodeg-20260713 A attempts fail the opaque-path attestation because
+`run-nodeg-cell.sh:75` stages the A artifact_dir in-repo
+(`$CEILING_ROOT/results/...`), which the predicate
+(`run-ceiling-arm.sh:700-708`) structurally rejects — the sole failing
+generated path is the artifact_dir; same self-defeating-contract class as T0
+Defect A (0070a addendum 3) and the F12 B-supplement staging defect
+(§ Re-closure three-way record). Materiality (orchestrator probe, Grok-
+reproduced): engine prompt zero in-repo path hits on all 7
+`claude-prompt.txt`; every other isolation check true on all 7 rows
+(transcript scans, shell canary, env predicates); engine-visible surfaces
+fully opaque → attestation-layer defect, NOT engine-visible contamination.
+
+**Honesty correction to 0068.9**: the recorded objective 7/7 / wall 0/7 were
+computed outside the fail-closed `verdict()` path (dies at nodeg-cell.py:494
+missing judge aggregate, then :512 E2 opaque check). Those numbers are
+DEVELOPMENT EVIDENCE until re-emitted through the gate with the deviation
+block below. The over-tightening conclusion is unaffected (0064 LC3 4.32×,
+0067 8.33× establish the class independently).
+
+**Replay protocol (a′) — supersedes addendum 2's (a)/(b) fork; unifies Grok
+R0 GO(a) with Codex R0's NO-GO falsifier; both engines cross-confirmed R1
+(archives `/tmp/iter0071-r0/`, ephemeral)**:
+1. Driver repair (dated instrument repair): A artifact_dir staged under the
+   opaque external root during the attempt, copied back post-attempt.
+2. Pre-replay BINDING MANIFEST frozen in the cohort dir BEFORE any judge
+   call: per-row A patch sha256, task.txt sha256, judge prompt+module
+   sha256, frozen-B provenance shas, judge engine identities/versions,
+   attempt_runner_sha, judge_runner_sha.
+3. Judge-only replay on frozen patch bytes; verdict emitted WITH
+   `deviations[]`: {judge-runner-sha: both shas + reason + decision ref} and
+   {opaque-paths-artifact-dir: driver_line=run-nodeg-cell.sh:75,
+   prompt_grep_hits=0, other_checks=all-true,
+   materiality=attestation-layer}.
+4. Quality labeled "post-hoc instrument-repaired"; never "quality under
+   frozen runner SHA". Fail-closed defaults unchanged; the deviation path is
+   an explicit flag + dated DECISIONS entry scoped to THIS cohort.
+Implementation + selftests delegated to Codex sol (isolated worktree);
+execution order in `0071-wall-proportionality.md` § Execution order.
