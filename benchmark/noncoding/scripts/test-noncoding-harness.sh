@@ -16,6 +16,9 @@ fail() {
 python3 "$SCRIPT_DIR/conformance-gate.py" --self-test
 pass
 
+python3 "$SCRIPT_DIR/classify-defect-family.py" --self-test
+pass
+
 if python3 "$SCRIPT_DIR/run-packet-attempt.py" >/dev/null 2>&1; then
   fail "runner accepted missing required arguments"
 fi
@@ -63,6 +66,12 @@ runner = runpy.run_path(str(scripts / "run-packet-attempt.py"))
 
 assert manifest["namespace"] == "calibration"
 assert manifest["fixtures"], "manifest has no fixtures"
+assert manifest["routing"] == {
+    "ORDERING_MUTATION": "sonnet",
+    "CONTENT_CONSTRAINT_MUTATION": "gpt-5.6-terra",
+    "INELIGIBLE": None,
+}
+assert manifest["routing_export_policy"] == "This routing artifact is never included in author exports."
 assert Path(manifest["no_op_packet"]).as_posix().startswith("packets/")
 no_op_path = root / manifest["no_op_packet"]
 no_op = schema["load_packet"](no_op_path)

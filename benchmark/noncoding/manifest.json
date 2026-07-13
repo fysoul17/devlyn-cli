@@ -4,6 +4,12 @@
   "frozen_contract": "autoresearch/iterations/0070a-noncoding-instruments.md",
   "packet_schema": "schema/pud-1.schema.json",
   "no_op_packet": "packets/no-op.json",
+  "routing": {
+    "ORDERING_MUTATION": "sonnet",
+    "CONTENT_CONSTRAINT_MUTATION": "gpt-5.6-terra",
+    "INELIGIBLE": null
+  },
+  "routing_export_policy": "This routing artifact is never included in author exports.",
   "calibration": {
     "t0": {
       "repeats_per_packet": 3,

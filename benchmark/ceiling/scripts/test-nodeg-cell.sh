@@ -133,6 +133,64 @@ rm -f "$TMP_DIR/fakebin/codex-count" "$TMP_DIR/fakebin/retry-prompt-ok"
 printf '{"token":"selftest"}\n' > "$TMP_DIR/auth.json"
 printf '{"claudeAiOauth":{"accessToken":"selftest"}}\n' > "$TMP_DIR/claude-credentials.json"
 chmod 0600 "$TMP_DIR/auth.json" "$TMP_DIR/claude-credentials.json"
+ATTEMPT_RUNNER_SHA="$(git -C "$REPO" rev-parse HEAD)"
+printf 'judge runner\n' > "$REPO/judge-runner.txt"
+git -C "$REPO" add judge-runner.txt
+git -C "$REPO" -c user.name=selftest -c user.email=selftest@example.com commit -q -m judge-runner
+JUDGE_RUNNER_SHA="$(git -C "$REPO" rev-parse HEAD)"
+printf '{"opaque_paths":{"passed":false},"direct_claude":{"version":"claude fake 1.0"},"direct_codex":{"version":"codex fake 1.0"}}\n' \
+  > "$JUDGE_RUN/A1/isolation.json"
+DEVIATIONS="$TMP_DIR/deviations.json"
+printf '{"deviations":[{"type":"judge-runner-sha","attempt_runner_sha":"%s","judge_runner_sha":"%s","reason":"dated instrument repair","decision_ref":"autoresearch/DECISIONS.md:0068.9"},{"type":"opaque-paths-artifact-dir","driver_line":"run-nodeg-cell.sh:75","prompt_grep_hits":0,"other_checks":"all-true","materiality":"attestation-layer"}]}\n' \
+  "$ATTEMPT_RUNNER_SHA" "$JUDGE_RUNNER_SHA" > "$DEVIATIONS"
+
+manifest_command=(
+  python3 "$SCRIPT_DIR/nodeg-cell.py" manifest
+  --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING"
+)
+CEILING_TEST_CLAUDE_BIN="$TMP_DIR/fakebin/claude" \
+CEILING_TEST_CODEX_BIN="$TMP_DIR/fakebin/codex" \
+  "${manifest_command[@]}" > "$TMP_DIR/manifest.stdout"
+python3 - "$CEILING/results/selftest-judge/replay-binding-manifest.json" "$ATTEMPT_RUNNER_SHA" "$JUDGE_RUNNER_SHA" <<'PY'
+import json
+import sys
+
+manifest = json.load(open(sys.argv[1], encoding="utf-8"))
+control = manifest["controls"]["F7"]
+if set(control["frozen_b"]) != {"patch_sha256", "objective_sha256", "timing_sha256"}:
+    raise SystemExit(control)
+if manifest["attempt_runner_sha"] != sys.argv[2] or manifest["judge_runner_sha"] != sys.argv[3]:
+    raise SystemExit(manifest)
+if manifest["judge_engines"]["sonnet"]["cli_version"] != "claude fake 1.0":
+    raise SystemExit(manifest["judge_engines"])
+if manifest["judge_engines"]["codex"]["model"] != "gpt-5.6-terra":
+    raise SystemExit(manifest["judge_engines"])
+for binding in (manifest["judge_module"], manifest["judge_prompt_builder"]):
+    if len(binding["sha256"]) != 64:
+        raise SystemExit(binding)
+PY
+if CEILING_TEST_CLAUDE_BIN="$TMP_DIR/fakebin/claude" \
+  CEILING_TEST_CODEX_BIN="$TMP_DIR/fakebin/codex" \
+  "${manifest_command[@]}" > "$TMP_DIR/manifest-overwrite.stdout" 2> "$TMP_DIR/manifest-overwrite.stderr"; then
+  echo "binding manifest overwrite did not fail" >&2
+  exit 1
+fi
+grep -q 'replay binding manifest already exists' "$TMP_DIR/manifest-overwrite.stderr"
+
+if CEILING_EXTERNAL_ROOT="$TMP_DIR/external" \
+  CEILING_REAL_HOME="$TMP_DIR" \
+  CEILING_TEST_AUTH_JSON="$TMP_DIR/auth.json" \
+  CEILING_TEST_CLAUDE_CREDENTIALS="$TMP_DIR/claude-credentials.json" \
+  CEILING_TEST_CLAUDE_BIN="$TMP_DIR/fakebin/claude" \
+  CEILING_TEST_CODEX_BIN="$TMP_DIR/fakebin/codex" \
+  python3 "$SCRIPT_DIR/nodeg-cell.py" judge \
+    --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" \
+    > "$TMP_DIR/judge-no-deviation.stdout" 2> "$TMP_DIR/judge-no-deviation.stderr"; then
+  echo "judge accepted changed runner without deviations" >&2
+  exit 1
+fi
+grep -q 'runner commit changed after cell initialization' "$TMP_DIR/judge-no-deviation.stderr"
+
 CEILING_EXTERNAL_ROOT="$TMP_DIR/external" \
 CEILING_REAL_HOME="$TMP_DIR" \
 CEILING_TEST_AUTH_JSON="$TMP_DIR/auth.json" \
@@ -140,7 +198,8 @@ CEILING_TEST_CLAUDE_CREDENTIALS="$TMP_DIR/claude-credentials.json" \
 CEILING_TEST_CLAUDE_BIN="$TMP_DIR/fakebin/claude" \
 CEILING_TEST_CODEX_BIN="$TMP_DIR/fakebin/codex" \
 python3 "$SCRIPT_DIR/nodeg-cell.py" judge \
-  --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING"
+  --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" \
+  --deviations "$DEVIATIONS"
 python3 - "$CEILING/results/selftest-judge/nodeg-judge-aggregate.json" "$JUDGE_RUN/nodeg-judge/mapping.json" <<'PY'
 import json
 import sys
@@ -148,6 +207,11 @@ import sys
 aggregate = json.load(open(sys.argv[1], encoding="utf-8"))
 mapping = json.load(open(sys.argv[2], encoding="utf-8"))
 judges = aggregate["tasks"]["DR-byte-preservation-f7-out-of-scope-trap"]["judges"]
+if {entry["type"] for entry in aggregate["deviations"]} != {
+    "judge-runner-sha",
+    "opaque-paths-artifact-dir",
+}:
+    raise SystemExit(aggregate["deviations"])
 if judges["codex"]["runtime_model"] != "gpt-5.6-terra":
     raise SystemExit(judges)
 if judges["sonnet"]["runtime_model"] != "claude-sonnet-fake":
@@ -168,8 +232,9 @@ CEILING_TEST_AUTH_JSON="$TMP_DIR/auth.json" \
 CEILING_TEST_CLAUDE_CREDENTIALS="$TMP_DIR/claude-credentials.json" \
 CEILING_TEST_CLAUDE_BIN="$TMP_DIR/fakebin/claude" \
 CEILING_TEST_CODEX_BIN="$TMP_DIR/fakebin/codex" \
-python3 "$SCRIPT_DIR/nodeg-cell.py" judge \
-  --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" --resume
+  python3 "$SCRIPT_DIR/nodeg-cell.py" judge \
+    --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" --resume \
+    --deviations "$DEVIATIONS"
 python3 - "$JUDGE_RUN/nodeg-judge/codex.json" <<'PY'
 import json
 import sys
@@ -189,6 +254,7 @@ if CEILING_EXTERNAL_ROOT="$TMP_DIR/external" \
   CEILING_TEST_CODEX_BIN="$TMP_DIR/fakebin/codex" \
   python3 "$SCRIPT_DIR/nodeg-cell.py" judge \
     --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" --resume \
+    --deviations "$DEVIATIONS" \
     > "$TMP_DIR/unrecoverable.stdout" 2> "$TMP_DIR/unrecoverable.stderr"; then
   echo "unrecoverable judge JSON did not fail closed" >&2
   exit 1
@@ -205,7 +271,8 @@ CEILING_TEST_CLAUDE_CREDENTIALS="$TMP_DIR/claude-credentials.json" \
 CEILING_TEST_CLAUDE_BIN="$TMP_DIR/fakebin/claude" \
 CEILING_TEST_CODEX_BIN="$TMP_DIR/fakebin/codex" \
 python3 "$SCRIPT_DIR/nodeg-cell.py" judge \
-  --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" --resume
+  --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" --resume \
+  --deviations "$DEVIATIONS"
 test ! -e "$JUDGE_RUN/B1/patch.diff"
 if grep -q 'iter0068-gate-20260711h' "$JUDGE_RUN/nodeg-judge/sonnet.json"; then
   echo "frozen source provenance leaked into sonnet blind packet" >&2
@@ -220,26 +287,16 @@ printf '{"invoke_exit":0,"timed_out":false,"elapsed_seconds":100}\n' > "$JUDGE_R
 printf '{"modelUsage":{"claude-sonnet-fake":{}}}\n' > "$JUDGE_RUN/A1/transcript.txt"
 run_verdict() {
   python3 "$SCRIPT_DIR/nodeg-cell.py" verdict \
-    --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING"
+    --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" "$@"
 }
 
-if run_verdict > "$TMP_DIR/a-missing.stdout" 2> "$TMP_DIR/a-missing.stderr"; then
-  echo "missing A isolation did not fail" >&2
+if run_verdict > "$TMP_DIR/verdict-no-deviation.stdout" 2> "$TMP_DIR/verdict-no-deviation.stderr"; then
+  echo "verdict accepted changed runner without deviations" >&2
   exit 1
 fi
-grep -q 'invalid JSON artifact .*A1/isolation.json' "$TMP_DIR/a-missing.stderr"
+grep -q 'runner commit changed after cell initialization' "$TMP_DIR/verdict-no-deviation.stderr"
 
-printf '{"opaque_paths":{"passed":false},"direct_claude":{"version":"claude fake 1.0"},"direct_codex":{"version":"codex fake 1.0"}}\n' \
-  > "$JUDGE_RUN/A1/isolation.json"
-if run_verdict > "$TMP_DIR/a-false.stdout" 2> "$TMP_DIR/a-false.stderr"; then
-  echo "failed A opaque-path attestation did not fail" >&2
-  exit 1
-fi
-grep -q 'F7 A attempt A1 opaque-path attestation did not pass: .*A1/isolation.json' "$TMP_DIR/a-false.stderr"
-
-printf '{"opaque_paths":{"passed":true},"direct_claude":{"version":"claude fake 1.0"},"direct_codex":{"version":"codex fake 1.0"}}\n' \
-  > "$JUDGE_RUN/A1/isolation.json"
-run_verdict > "$TMP_DIR/verdict.stdout"
+run_verdict --deviations "$DEVIATIONS" > "$TMP_DIR/verdict.stdout"
 python3 - "$CEILING/results/selftest-judge/nodeg-verdict.json" <<'PY'
 import json
 import sys
@@ -251,7 +308,45 @@ if not all(bar["passed"] for bar in verdict["bars"].values()):
     raise SystemExit(verdict["bars"])
 if "verdict" in verdict or verdict["bars"]["wall"]["cap"] != 3.0:
     raise SystemExit(verdict)
+if verdict["bars"]["quality"]["quality_label"] != "post-hoc instrument-repaired":
+    raise SystemExit(verdict["bars"]["quality"])
+if {entry["type"] for entry in verdict["deviations"]} != {
+    "judge-runner-sha",
+    "opaque-paths-artifact-dir",
+}:
+    raise SystemExit(verdict["deviations"])
 PY
+
+printf '{"deviations":{}}\n' > "$TMP_DIR/malformed-deviations.json"
+if run_verdict --deviations "$TMP_DIR/malformed-deviations.json" \
+  > "$TMP_DIR/malformed.stdout" 2> "$TMP_DIR/malformed.stderr"; then
+  echo "malformed deviations did not fail" >&2
+  exit 1
+fi
+grep -q 'deviations file must be an object containing only a deviations array' "$TMP_DIR/malformed.stderr"
+
+printf '{"deviations":[{"type":"unregistered"}]}\n' > "$TMP_DIR/unknown-deviations.json"
+if run_verdict --deviations "$TMP_DIR/unknown-deviations.json" \
+  > "$TMP_DIR/unknown.stdout" 2> "$TMP_DIR/unknown.stderr"; then
+  echo "unknown deviation type did not fail" >&2
+  exit 1
+fi
+grep -q 'unknown deviation type' "$TMP_DIR/unknown.stderr"
+
+printf '{"opaque_paths":{"passed":true}}\n' > "$JUDGE_RUN/A1/isolation.json"
+sed -i.bak "s/$ATTEMPT_RUNNER_SHA/$JUDGE_RUNNER_SHA/" \
+  "$CEILING/results/selftest-judge/nodeg-cohort.json"
+rm "$CEILING/results/selftest-judge/nodeg-cohort.json.bak"
+printf '{"deviations":[{"type":"judge-runner-sha","attempt_runner_sha":"%s","judge_runner_sha":"%s","reason":"should fail","decision_ref":"selftest"},{"type":"opaque-paths-artifact-dir","driver_line":"run-nodeg-cell.sh:75","prompt_grep_hits":0,"other_checks":"all-true","materiality":"attestation-layer"}]}\n' \
+  "$JUDGE_RUNNER_SHA" "$JUDGE_RUNNER_SHA" > "$TMP_DIR/unneeded-deviations.json"
+if python3 "$SCRIPT_DIR/nodeg-cell.py" judge \
+  --run-id selftest-judge --tasks F7 --repo-root "$REPO" --ceiling-root "$CEILING" \
+  --deviations "$TMP_DIR/unneeded-deviations.json" \
+  > "$TMP_DIR/unneeded.stdout" 2> "$TMP_DIR/unneeded.stderr"; then
+  echo "deviations were accepted while checks passed" >&2
+  exit 1
+fi
+grep -q 'deviation provided but runner SHA check passes' "$TMP_DIR/unneeded.stderr"
 
 python3 -m py_compile "$SCRIPT_DIR/nodeg-cell.py"
 bash -n "$SCRIPT_DIR/run-nodeg-cell.sh" "$SCRIPT_DIR/test-nodeg-cell.sh"

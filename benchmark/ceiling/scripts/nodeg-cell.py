@@ -36,6 +36,22 @@ FROZEN = {
     "F23": ("DR-allocation-fefo-priority-rollback-f23-fulfillment", "iter0068-gate-20260711h", "B1"),
     "FS1": ("FS1-schedule-max-runs", "iter0068-gate-20260711h", "B1"),
 }
+DEVIATION_FIELDS = {
+    "judge-runner-sha": {
+        "type",
+        "attempt_runner_sha",
+        "judge_runner_sha",
+        "reason",
+        "decision_ref",
+    },
+    "opaque-paths-artifact-dir": {
+        "type",
+        "driver_line",
+        "prompt_grep_hits",
+        "other_checks",
+        "materiality",
+    },
+}
 
 
 def die(message: str) -> None:
@@ -214,6 +230,153 @@ def preflight(args: argparse.Namespace) -> int:
     return 0
 
 
+def judge_engine_identities(script_dir: Path) -> dict[str, dict[str, str]]:
+    judge_module = load_judge_module(script_dir)
+    isolation = load_script(script_dir / "claude-isolation.py")
+    identities: dict[str, dict[str, str]] = {}
+    for judge, binary_name, environment, model in (
+        ("sonnet", "claude", "CEILING_TEST_CLAUDE_BIN", "sonnet"),
+        ("codex", "codex", "CEILING_TEST_CODEX_BIN", "gpt-5.6-terra"),
+    ):
+        binary = isolation["resolve_direct_binary"](binary_name, os.environ.get(environment))
+        version = judge_module["probe_version"]([binary], ["--version"])
+        if not version:
+            die(f"{judge} judge CLI version missing")
+        identities[judge] = {"model": model, "cli_version": version}
+    return identities
+
+
+def manifest(args: argparse.Namespace) -> int:
+    repo = Path(args.repo_root).resolve()
+    ceiling_root = Path(args.ceiling_root).resolve()
+    script_dir = Path(__file__).resolve().parent
+    run_root = ceiling_root / "results" / args.run_id
+    manifest_path = run_root / "replay-binding-manifest.json"
+    if manifest_path.exists():
+        die(f"replay binding manifest already exists: {manifest_path}")
+    cohort = load_json(run_root / "nodeg-cohort.json")
+    controls = selected_controls(args.tasks)
+    if cohort.get("selected_controls") != controls:
+        die("manifest selection does not match nodeg-cohort.json")
+    frozen_sources = {
+        source.get("control_id"): source for source in cohort.get("frozen_b_sources", []) if isinstance(source, dict)
+    }
+    control_bindings: dict[str, Any] = {}
+    for control in controls:
+        task = FROZEN[control][0]
+        source = frozen_sources.get(control)
+        required_shas = ("patch_sha256", "objective_sha256", "timing_sha256")
+        if not isinstance(source, dict) or any(
+            not re.fullmatch(r"[0-9a-f]{64}", str(source.get(field, ""))) for field in required_shas
+        ):
+            die(f"{control} frozen-B provenance is missing from nodeg-cohort.json")
+        a_patch = run_root / task / "A1/patch.diff"
+        task_text = ceiling_root / "corpus" / task / "task.txt"
+        if not a_patch.is_file() or not task_text.is_file():
+            die(f"{control} replay binding input missing: A patch={a_patch}, task={task_text}")
+        control_bindings[control] = {
+            "task": task,
+            "a_patch_sha256": sha256(a_patch),
+            "task_sha256": sha256(task_text),
+            "frozen_b": {field: source[field] for field in required_shas},
+        }
+    payload = {
+        "schema_version": 1,
+        "run_id": args.run_id,
+        "controls": control_bindings,
+        "judge_module": {"file": "ceiling-judge.py", "sha256": sha256(script_dir / "ceiling-judge.py")},
+        "judge_prompt_builder": {"file": "nodeg-cell.py", "sha256": sha256(Path(__file__).resolve())},
+        "judge_engines": judge_engine_identities(script_dir),
+        "attempt_runner_sha": cohort.get("runner_commit_sha"),
+        "judge_runner_sha": git(repo, "rev-parse", "HEAD"),
+    }
+    manifest_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    print(manifest_path)
+    return 0
+
+
+def load_deviations(path: Path) -> list[dict[str, Any]]:
+    payload = load_json(path)
+    if set(payload) != {"deviations"} or not isinstance(payload["deviations"], list):
+        die("deviations file must be an object containing only a deviations array")
+    entries = payload["deviations"]
+    if not entries:
+        die("deviations array must not be empty")
+    by_type: dict[str, dict[str, Any]] = {}
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            die(f"deviations[{index}] must be an object")
+        deviation_type = entry.get("type")
+        if deviation_type not in DEVIATION_FIELDS:
+            die(f"unknown deviation type: {deviation_type!r}")
+        if deviation_type in by_type:
+            die(f"duplicate deviation type: {deviation_type}")
+        expected_fields = DEVIATION_FIELDS[deviation_type]
+        if set(entry) != expected_fields:
+            die(
+                f"{deviation_type} deviation fields differ: "
+                f"missing={sorted(expected_fields - set(entry))} extra={sorted(set(entry) - expected_fields)}"
+            )
+        by_type[deviation_type] = entry
+    runner = by_type.get("judge-runner-sha")
+    if runner is not None:
+        for field in ("attempt_runner_sha", "judge_runner_sha"):
+            if not re.fullmatch(r"[0-9a-f]{40,64}", str(runner[field])):
+                die(f"judge-runner-sha {field} must be a git SHA")
+        for field in ("reason", "decision_ref"):
+            if not isinstance(runner[field], str) or not runner[field].strip():
+                die(f"judge-runner-sha {field} must be a non-empty string")
+    opaque = by_type.get("opaque-paths-artifact-dir")
+    if opaque is not None and (
+        opaque["driver_line"] != "run-nodeg-cell.sh:75"
+        or opaque["prompt_grep_hits"] != 0
+        or isinstance(opaque["prompt_grep_hits"], bool)
+        or opaque["other_checks"] != "all-true"
+        or opaque["materiality"] != "attestation-layer"
+    ):
+        die("opaque-paths-artifact-dir deviation has invalid audit fields")
+    return entries
+
+
+def deviations_for_run(
+    path: Path,
+    repo: Path,
+    run_root: Path,
+    cohort: dict[str, Any],
+    controls: list[str],
+) -> tuple[list[dict[str, Any]], str]:
+    entries = load_deviations(path)
+    by_type = {entry["type"]: entry for entry in entries}
+    attempt_runner_sha = cohort.get("runner_commit_sha")
+    judge_runner_sha = git(repo, "rev-parse", "HEAD")
+    runner_mismatch = judge_runner_sha != attempt_runner_sha
+    opaque_failures = []
+    for control in controls:
+        task = FROZEN[control][0]
+        isolation = load_json(run_root / task / "A1/isolation.json")
+        if isolation.get("opaque_paths", {}).get("passed") is not True:
+            opaque_failures.append(control)
+    if runner_mismatch:
+        runner = by_type.get("judge-runner-sha")
+        if runner is None:
+            die("runner commit changed after cell initialization without judge-runner-sha deviation")
+        if runner["attempt_runner_sha"] != attempt_runner_sha or runner["judge_runner_sha"] != judge_runner_sha:
+            die("judge-runner-sha deviation does not match observed runner SHAs")
+    elif "judge-runner-sha" in by_type:
+        die("judge-runner-sha deviation provided but runner SHA check passes")
+    if opaque_failures:
+        if "opaque-paths-artifact-dir" not in by_type:
+            die("A opaque-path attestation failed without opaque-paths-artifact-dir deviation")
+    elif "opaque-paths-artifact-dir" in by_type:
+        die("opaque-paths-artifact-dir deviation provided but A opaque-path checks pass")
+    expected_types = ({"judge-runner-sha"} if runner_mismatch else set()) | (
+        {"opaque-paths-artifact-dir"} if opaque_failures else set()
+    )
+    if set(by_type) != expected_types:
+        die(f"deviations do not match observed failures: expected={sorted(expected_types)} actual={sorted(by_type)}")
+    return entries, judge_runner_sha
+
+
 def load_judge_module(script_dir: Path) -> dict[str, Any]:
     path = script_dir / "ceiling-judge.py"
     spec = importlib.util.spec_from_file_location("ceiling_judge", path)
@@ -380,11 +543,25 @@ def judge_cell(args: argparse.Namespace) -> int:
     controls = selected_controls(args.tasks)
     if cohort.get("selected_controls") != controls:
         die("judge selection does not match nodeg-cohort.json")
-    if git(repo, "rev-parse", "HEAD") != cohort.get("runner_commit_sha"):
+    deviations: list[dict[str, Any]] | None = None
+    judge_runner_sha: str | None = None
+    if args.deviations:
+        deviations, judge_runner_sha = deviations_for_run(
+            Path(args.deviations), repo, run_root, cohort, controls
+        )
+    elif git(repo, "rev-parse", "HEAD") != cohort.get("runner_commit_sha"):
         die("runner commit changed after cell initialization")
     require_runner_integrity(repo, ceiling_root, args.run_id, True)
     judge_module = load_judge_module(script_dir)
     aggregate: dict[str, Any] = {"schema_version": 1, "run_id": args.run_id, "tasks": {}}
+    if deviations is not None:
+        aggregate.update(
+            {
+                "attempt_runner_sha": cohort.get("runner_commit_sha"),
+                "judge_runner_sha": judge_runner_sha,
+                "deviations": deviations,
+            }
+        )
     for control in controls:
         source = frozen_source(ceiling_root, control)
         task = source["task"]
@@ -488,10 +665,18 @@ def verdict(args: argparse.Namespace) -> int:
     controls = selected_controls(args.tasks)
     if cohort.get("selected_controls") != controls:
         die("verdict selection does not match nodeg-cohort.json")
-    if git(repo, "rev-parse", "HEAD") != cohort.get("runner_commit_sha"):
+    deviations: list[dict[str, Any]] | None = None
+    judge_runner_sha: str | None = None
+    if args.deviations:
+        deviations, judge_runner_sha = deviations_for_run(
+            Path(args.deviations), repo, run_root, cohort, controls
+        )
+    elif git(repo, "rev-parse", "HEAD") != cohort.get("runner_commit_sha"):
         die("runner commit changed after cell initialization")
     require_runner_integrity(repo, ceiling_root, args.run_id, True)
     judge_data = load_json(run_root / "nodeg-judge-aggregate.json")
+    if deviations is not None and judge_data.get("deviations") != deviations:
+        die("verdict deviations do not match nodeg-judge-aggregate.json")
     objective_rows: dict[str, Any] = {}
     quality_rows: dict[str, Any] = {}
     wall_rows: dict[str, Any] = {}
@@ -509,7 +694,7 @@ def verdict(args: argparse.Namespace) -> int:
         objective = load_json(attempt_dir / "objective.json")
         timing = load_json(attempt_dir / "timing.json")
         isolation = load_json(attempt_dir / "isolation.json")
-        if isolation.get("opaque_paths", {}).get("passed") is not True:
+        if deviations is None and isolation.get("opaque_paths", {}).get("passed") is not True:
             die(f"{control} A attempt {attempt_dir.name} opaque-path attestation did not pass: {attempt_dir / 'isolation.json'}")
         objective_rows[control] = {
             "task": task,
@@ -601,6 +786,15 @@ def verdict(args: argparse.Namespace) -> int:
             },
         },
     }
+    if deviations is not None:
+        payload.update(
+            {
+                "attempt_runner_sha": cohort.get("runner_commit_sha"),
+                "judge_runner_sha": judge_runner_sha,
+                "deviations": deviations,
+            }
+        )
+        payload["bars"]["quality"]["quality_label"] = "post-hoc instrument-repaired"
     (run_root / "nodeg-verdict.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     print(run_root / "nodeg-verdict.json")
     return 0
@@ -609,7 +803,7 @@ def verdict(args: argparse.Namespace) -> int:
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser()
     subparsers = result.add_subparsers(dest="command", required=True)
-    for name in ("preflight", "judge", "verdict"):
+    for name in ("preflight", "manifest", "judge", "verdict"):
         child = subparsers.add_parser(name)
         child.add_argument("--run-id", required=True)
         child.add_argument("--tasks")
@@ -617,6 +811,8 @@ def parser() -> argparse.ArgumentParser:
         child.add_argument("--ceiling-root", required=True)
         child.add_argument("--resume", action="store_true")
     subparsers.choices["preflight"].add_argument("--initialize", action="store_true")
+    for name in ("judge", "verdict"):
+        subparsers.choices[name].add_argument("--deviations")
     return result
 
 
@@ -625,6 +821,8 @@ def main() -> int:
     validate_run_id(args.run_id)
     if args.command == "preflight":
         return preflight(args)
+    if args.command == "manifest":
+        return manifest(args)
     if args.command == "judge":
         return judge_cell(args)
     return verdict(args)

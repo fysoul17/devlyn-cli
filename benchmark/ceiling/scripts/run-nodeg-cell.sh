@@ -42,6 +42,7 @@ if [ "${NODEG_SELFTEST:-0}" = 1 ]; then
   CEILING_ROOT="${NODEG_CEILING_ROOT:-$CEILING_ROOT}"
   REPO_ROOT="${NODEG_REPO_ROOT:-$REPO_ROOT}"
 fi
+EXTERNAL_ROOT="${CEILING_EXTERNAL_ROOT:-$HOME/.local/share/nx01}"
 
 common_args=(--run-id "$RUN_ID" --repo-root "$REPO_ROOT" --ceiling-root "$CEILING_ROOT")
 [ -z "$TASKS_CSV" ] || common_args+=(--tasks "$TASKS_CSV")
@@ -76,10 +77,23 @@ while IFS= read -r task || [ -n "$task" ]; do
   if [ "$RESUME" -eq 1 ] && timing_has_exit "$attempt_dir/timing.json"; then
     echo "[nodeg-cell] skip existing $task A1: $attempt_dir/timing.json"
   else
+    opaque_run="r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)"
+    opaque_task="f$(printf '%s' "$task" | shasum -a 256 | cut -c1-12)"
+    staged_attempt_dir="$EXTERNAL_ROOT/a/$opaque_run/$opaque_task/a1"
+    rm -rf "$staged_attempt_dir"
     if ! bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
-      --run-id "$RUN_ID" --task "$task" --arm A --attempt 1; then
+      --run-id "$RUN_ID" --task "$task" --arm A --attempt 1 \
+      --result-dir "$staged_attempt_dir"; then
       echo "[nodeg-cell] $task A1 runner returned nonzero; evaluating recorded patch" >&2
     fi
+    [ -d "$staged_attempt_dir" ] || {
+      echo "[nodeg-cell] $task A1 runner produced no artifact directory: $staged_attempt_dir" >&2
+      exit 1
+    }
+    rm -rf "$attempt_dir"
+    mkdir -p "$(dirname "$attempt_dir")"
+    cp -a "$staged_attempt_dir" "$attempt_dir"
+    rm -rf "$staged_attempt_dir"
   fi
   if [ ! -f "$attempt_dir/objective.json" ] || [ "$RESUME" -eq 0 ]; then
     bash "$SCRIPT_DIR/ceiling-eval.sh" \
@@ -87,5 +101,9 @@ while IFS= read -r task || [ -n "$task" ]; do
   fi
 done <<< "$TASK_OUTPUT"
 
+manifest_path="$CEILING_ROOT/results/$RUN_ID/replay-binding-manifest.json"
+if [ ! -f "$manifest_path" ]; then
+  python3 "$SCRIPT_DIR/nodeg-cell.py" manifest "${common_args[@]}"
+fi
 python3 "$SCRIPT_DIR/nodeg-cell.py" judge "${common_args[@]}"
 python3 "$SCRIPT_DIR/nodeg-cell.py" verdict "${common_args[@]}"
