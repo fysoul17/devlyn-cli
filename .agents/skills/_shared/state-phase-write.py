@@ -127,6 +127,8 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     entry["verdict"] = None
     entry["artifacts"] = {"findings_file": None, "log_file": None}
     entry["sub_verdicts"] = None
+    if phase == "verify":
+        entry["judge_durations_ms"] = None
     if engine is not None:
         entry["engine"] = engine
     if model is not None:
@@ -267,8 +269,10 @@ def self_test() -> int:
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
         do_spawn(state, "verify", 0, None, None, "claude", None)
+        assert state["phases"]["verify"]["judge_durations_ms"] is None
         state["phases"]["verify"]["verdict"] = "PASS"
         state["phases"]["verify"]["sub_verdicts"] = {"mechanical": "PASS", "judge": "PASS"}
+        state["phases"]["verify"]["judge_durations_ms"] = {"judge": 23, "pair_judge": None}
         write_state(state_path, state)
         state = read_state(state_path)
         do_complete(state, "verify", None, None, None, None, None, None)
@@ -276,6 +280,7 @@ def self_test() -> int:
         verify_entry = read_state(state_path)["phases"]["verify"]
         assert verify_entry["verdict"] == "PASS", "complete() must preserve pre-set verdict when omitted"
         assert verify_entry["sub_verdicts"] == {"mechanical": "PASS", "judge": "PASS"}
+        assert verify_entry["judge_durations_ms"] == {"judge": 23, "pair_judge": None}
         assert verify_entry["completed_at"] is not None
 
         # An explicit --verdict for VERIFY must be rejected — its verdict is
@@ -287,6 +292,8 @@ def self_test() -> int:
             assert "owned by verify-merge-findings.py" in str(e)
         else:
             raise AssertionError("complete() must reject an explicit --verdict for VERIFY")
+        do_spawn(state, "verify", 1, "verify", None, None, None)
+        assert state["phases"]["verify"]["judge_durations_ms"] is None
 
         # Non-VERIFY phases require --verdict explicitly; complete() must not
         # silently accept an unset verdict the way VERIFY's omit-to-preserve

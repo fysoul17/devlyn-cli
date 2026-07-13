@@ -1311,19 +1311,21 @@ if [ $verify_mech_missing -eq 0 ]; then
   ok "spec-verify VERIFY output routes into verify-merge-findings.py"
 fi
 
-section "Check 6j: VERIFY pair trigger runs after primary JUDGE"
+section "Check 6j: VERIFY pre-known pair triggers dispatch concurrently"
 pair_trigger_order_missing=0
 for file in \
   config/skills/devlyn:resolve/SKILL.md \
   .claude/skills/devlyn:resolve/SKILL.md \
   .agents/skills/devlyn:resolve/SKILL.md
 do
-  if ! grep -Fq 'Pair-mode (cross-model JUDGE) is eligible only after MECHANICAL and the primary JUDGE have no verdict-binding findings' "$file" \
-    || ! grep -Fq 'After MECHANICAL and the primary JUDGE finish, compute `pair_trigger' "$file" \
+  if ! grep -Fq 'If at least one applies, write `pair_trigger` at judge-spawn time and dispatch the primary JUDGE and OTHER-engine pair-JUDGE concurrently' "$file" \
+    || ! grep -Fq 'After both judges return, append every applicable outcome-dependent reason' "$file" \
+    || ! grep -Fq 'A primary JUDGE verdict-binding finding on a concurrent run does not cancel or discard the pair-JUDGE' "$file" \
+    || ! grep -Fq 'A verdict-binding MECHANICAL blocker still skips both judges' "$file" \
+    || ! grep -Fq 'falls back to the sequential shape with no flag or extra state marker' "$file" \
     || ! grep -Fq '`risk_profile` is strict typed state' "$file" \
-    || ! grep -Fq 'malformed `risk_profile` is also a VERIFY contract violation' "$file" \
-    || ! grep -Fq 'If MECHANICAL or the primary JUDGE has a verdict-binding finding' "$file"; then
-    bad "$file — VERIFY pair trigger order must be after primary JUDGE"
+    || ! grep -Fq 'malformed `risk_profile` is also a VERIFY contract violation' "$file"; then
+    bad "$file — VERIFY concurrent pair-trigger sequencing contract missing"
     pair_trigger_order_missing=1
   fi
 done
@@ -1332,11 +1334,14 @@ for file in \
   .claude/skills/devlyn:resolve/references/phases/verify.md \
   .agents/skills/devlyn:resolve/references/phases/verify.md
 do
-  if ! grep -Fq 'Pair-mode is eligible only after MECHANICAL and the primary JUDGE have no' "$file" \
-    || ! grep -Fq 'After MECHANICAL and the primary JUDGE finish, compute and persist this before' "$file" \
+  if ! grep -Fq 'and dispatch the primary JUDGE and OTHER-engine pair-JUDGE concurrently against' "$file" \
+    || ! grep -Fq 'After both judges return, append every applicable outcome-dependent reason' "$file" \
+    || ! grep -Fq 'A primary JUDGE blocker on that concurrent path does not cancel or discard the' "$file" \
+    || ! grep -Fq 'A verdict-binding MECHANICAL blocker routes to the fix' "$file" \
+    || ! grep -Fq 'dispatch falls back to the sequential shape with no flag or extra state marker.' "$file" \
     || ! grep -Fq 'Malformed `state.risk_profile` is a VERIFY contract violation' "$file" \
     || ! grep -Fq 'primary_judge_blocker' "$file"; then
-    bad "$file — VERIFY phase body must compute pair_trigger after primary JUDGE"
+    bad "$file — VERIFY phase body must pin concurrent and sequential dispatch order"
     pair_trigger_order_missing=1
   fi
 done
@@ -1345,16 +1350,19 @@ for file in \
   .claude/skills/devlyn:resolve/references/state-schema.md \
   .agents/skills/devlyn:resolve/references/state-schema.md
 do
-  if ! grep -Fq 'MECHANICAL and the primary JUDGE have no verdict-binding blockers' "$file" \
+  if ! grep -Fq 'trigger concurrent primary and pair judging after MECHANICAL passes' "$file" \
+    || ! grep -Fq 'pre-known reasons are written at judge spawn and outcome-dependent reasons are appended after both judges return' "$file" \
+    || ! grep -Fq '`primary_judge_blocker` additionally requires that no outcome-independent canonical reason applied to the run' "$file" \
+    || ! grep -Fq 'A verdict-binding MECHANICAL blocker still skips both judges' "$file" \
     || ! grep -Fq 'may set only `user_no_pair`, `mechanical_blocker`, `primary_judge_blocker`, `auto_pair_other_engine_unavailable`, or null' "$file" \
     || ! grep -Fq '`risk_profile` must remain an object with boolean' "$file" \
     || ! grep -Fq 'state implies a pair decision is required but `pair_trigger` is missing' "$file"; then
-    bad "$file — state schema must document pair_trigger blocker and missing-trigger enforcement"
+    bad "$file — state schema must document concurrent pair-trigger and blocker enforcement"
     pair_trigger_order_missing=1
   fi
 done
 if [ $pair_trigger_order_missing -eq 0 ]; then
-  ok "VERIFY pair trigger order waits for primary JUDGE evidence"
+  ok "VERIFY pre-known pair triggers dispatch concurrently with safe sequential fallback"
 fi
 
 section "Check 6h: No undocumented spec.expected.json.browser_flows field"

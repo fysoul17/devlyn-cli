@@ -84,12 +84,22 @@ design/style concerns remain non-binding MEDIUM and produce `PASS_WITH_ISSUES`.
 
 ### Pair-mode (when triggered by orchestrator)
 
-Pair-mode is eligible only after MECHANICAL and the primary JUDGE have no
-verdict-binding findings. Deterministic blockers and primary JUDGE blockers
-already decide the verdict and route to the fix loop; a second judge there
-duplicates evidence and wastes wall-time. If MECHANICAL or the primary JUDGE
-has a verdict-binding finding, record `pair_judge: null` and do not spawn the
-second VERIFY agent.
+MECHANICAL runs first. A verdict-binding MECHANICAL blocker routes to the fix
+loop without spawning either judge and records `pair_judge: null`. After it
+passes, determine the Outcome-independent (pre-known) canonical reasons at
+VERIFY start. If at least one applies, write `pair_trigger` at judge-spawn time
+and dispatch the primary JUDGE and OTHER-engine pair-JUDGE concurrently against
+the same frozen diff via foreground parallel dispatch, never background shells.
+A primary JUDGE blocker on that concurrent path does not cancel or discard the
+pair-JUDGE; both finding sets join the same fix round and merge by worst source
+verdict without vote counting. If no outcome-independent reason applies, keep
+the sequential shape: run the primary JUDGE first, then escalate the pair-JUDGE
+on applicable outcome-dependent reasons; `primary_judge_blocker` remains legal
+only on this path. An orchestrator that cannot issue foreground parallel
+dispatch falls back to the sequential shape with no flag or extra state marker.
+Concurrent dispatch applies only to judging: prefer read-only checks, and
+serialize between the judges any probe that needs exclusive shared project
+state such as ports, a database, or temporary fixtures.
 
 When eligible, trigger pair-mode if any of these are true:
 - `state.pair_verify == true` (`--pair-verify` was set).
@@ -116,8 +126,8 @@ and continue with solo VERIFY. This is an explicit user opt-out, not an engine
 availability fallback. `--pair-verify` and `--no-pair` are mutually exclusive;
 if both are present, stop with `BLOCKED:invalid-flags`.
 
-After MECHANICAL and the primary JUDGE finish, compute and persist this before
-spawning the OTHER-engine pair judge:
+After MECHANICAL passes, compute the outcome-independent reasons. When at least
+one applies, persist this before the concurrent judge spawn:
 
 ```json
 "pair_trigger": {
@@ -127,11 +137,16 @@ spawning the OTHER-engine pair judge:
 }
 ```
 
+After both judges return, append every applicable outcome-dependent reason
+(`coverage.failed`, `mechanical.warning`, `judge.warning`) before merge. If no
+outcome-independent reason applies, run the primary JUDGE first, then compute
+and persist the full trigger and spawn the pair-JUDGE sequentially when eligible.
 If `eligible == true`, `reasons` must be non-empty and include every applicable canonical reason; for example, a spec with an actionable solo-headroom
 hypothesis must include `spec.solo_headroom_hypothesis` even when another reason
 such as `risk.high` also applies. The OTHER-engine judge is mandatory. Skipping
-it is a VERIFY contract violation. If ineligible, record the
-reason, e.g. `"mechanical_blocker"` or `"primary_judge_blocker"`.
+it is a VERIFY contract violation. If ineligible, record the reason, e.g.
+`"mechanical_blocker"`; `"primary_judge_blocker"` is valid only when no
+outcome-independent canonical reason applied.
 
 `pair_trigger` is a strict contract, not advisory metadata. `eligible: true`
 requires a non-empty `reasons` list and `skipped_reason: null`; `eligible: false`
@@ -251,7 +266,10 @@ findings or a non-PASS summary while `.devlyn/verify.pair.findings.jsonl` is
 empty, VERIFY is `BLOCKED` for `verify.pair.emission-contract`; do not pass or
 silently recover from a broken capture contract.
 
-Both pair-judge directions are wall-budgeted at 600s. A judge subprocess exit
+Both pair-judge directions are wall-budgeted at 600s. The orchestrator records
+`state.phases.verify.judge_durations_ms: {"judge": <int>, "pair_judge": <int|null>}`
+as it collects each judge result; these wall durations are siblings of, never
+nested inside, normalized string `sub_verdicts`. A judge subprocess exit
 124 is a budget abort: before merge, the orchestrator writes
 `.devlyn/verify.pair.timeout.json` with `{"engine": "<codex|claude>",
 "budget_seconds": 600}`. Three cases are binding: marker plus no canonical pair

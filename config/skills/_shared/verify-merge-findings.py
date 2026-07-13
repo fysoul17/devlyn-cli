@@ -455,11 +455,19 @@ def state_pair_trigger_reasons(
     return reasons
 
 
+def outcome_independent_reasons(devlyn: pathlib.Path) -> list[str]:
+    return [
+        reason
+        for reason in state_pair_trigger_reasons(devlyn, {})
+        if reason not in ("coverage.failed", "mechanical.warning", "judge.warning")
+    ]
+
+
 def pair_trigger_missing_contract_violation(
     devlyn: pathlib.Path,
     source_verdicts: dict[str, str | None],
 ) -> dict[str, Any] | None:
-    if rank(source_verdicts.get("mechanical")) >= 2 or rank(source_verdicts.get("judge")) >= 2:
+    if rank(source_verdicts.get("mechanical")) >= 2:
         return None
     reasons = state_pair_trigger_reasons(devlyn, source_verdicts)
     if not reasons:
@@ -558,15 +566,27 @@ def pair_trigger_skip_contract_violation(
             ),
             "file": "pipeline.state.json",
         }
-    if skipped_reason == "primary_judge_blocker" and rank(source_verdicts.get("judge")) < 2:
-        return {
-            "id": "verify-pair-trigger-primary-judge-blocker-unsupported",
-            "message": (
-                "pair_trigger skipped_reason primary_judge_blocker requires a "
-                "verdict-binding primary JUDGE finding."
-            ),
-            "file": "pipeline.state.json",
-        }
+    if skipped_reason == "primary_judge_blocker":
+        if rank(source_verdicts.get("judge")) < 2:
+            return {
+                "id": "verify-pair-trigger-primary-judge-blocker-unsupported",
+                "message": (
+                    "pair_trigger skipped_reason primary_judge_blocker requires a "
+                    "verdict-binding primary JUDGE finding."
+                ),
+                "file": "pipeline.state.json",
+            }
+        preknown_reasons = outcome_independent_reasons(devlyn)
+        if preknown_reasons:
+            return {
+                "id": "verify-pair-trigger-primary-judge-blocker-preknown",
+                "message": (
+                    "pair_trigger cannot skip the pair-JUDGE for a primary JUDGE blocker "
+                    "when outcome-independent reasons applied at spawn: "
+                    + ", ".join(preknown_reasons)
+                ),
+                "file": "pipeline.state.json",
+            }
     return None
 
 
@@ -574,7 +594,7 @@ def pair_trigger_reason_completeness_violation(
     devlyn: pathlib.Path,
     source_verdicts: dict[str, str | None],
 ) -> dict[str, Any] | None:
-    if rank(source_verdicts.get("mechanical")) >= 2 or rank(source_verdicts.get("judge")) >= 2:
+    if rank(source_verdicts.get("mechanical")) >= 2:
         return None
     state_path = devlyn / "pipeline.state.json"
     if not state_path.is_file():
@@ -892,7 +912,15 @@ def self_test() -> int:
         # the real shape write_state() sees on every VERIFY completion, not
         # the pre-populated {} the other scenarios below seed for brevity.
         (devlyn / "pipeline.state.json").write_text(
-            json.dumps({"phases": {"verify": {"verdict": None, "sub_verdicts": None}}}),
+            json.dumps({
+                "phases": {
+                    "verify": {
+                        "verdict": None,
+                        "sub_verdicts": None,
+                        "judge_durations_ms": {"judge": 23, "pair_judge": 31},
+                    }
+                }
+            }),
             encoding="utf-8",
         )
         (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
@@ -903,6 +931,9 @@ def self_test() -> int:
         assert summary["verdict"] == "PASS", summary
         assert state["phases"]["verify"]["sub_verdicts"] == {
             "mechanical": "PASS", "judge": "PASS", "pair_judge": None,
+        }, state
+        assert state["phases"]["verify"]["judge_durations_ms"] == {
+            "judge": 23, "pair_judge": 31,
         }, state
 
         # 2026-07-04 field bug (iter-0060 G1): an AUTO pair trigger skipped on
@@ -1936,18 +1967,103 @@ def self_test() -> int:
             for finding in findings
         ), findings
 
+        # Self-test: preknown_primary_blocker_requires_pair.
+        (devlyn / "verify.pair.findings.jsonl").unlink(missing_ok=True)
         (devlyn / "verify.findings.jsonl").write_text(
-            json.dumps({"id": "j2", "severity": "HIGH"}) + "\n",
+            json.dumps({"id": "j-preknown", "severity": "HIGH"}) + "\n",
+            encoding="utf-8",
+        )
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "mode": "spec",
+                "pair_verify": True,
+                "phases": {
+                    "verify": {
+                        "verdict": "PASS",
+                        "sub_verdicts": {},
+                        "pair_trigger": {
+                            "eligible": False,
+                            "reasons": [],
+                            "skipped_reason": "primary_judge_blocker",
+                        },
+                    }
+                },
+            }),
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "BLOCKED", summary
+        assert any(
+            finding.get("id") == "verify-pair-trigger-primary-judge-blocker-preknown"
+            and "mode.pair-verify" in str(finding.get("message"))
+            for finding in findings
+        ), findings
+
+        # Self-test: preknown_primary_blocker_merges_pair.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "mode": "spec",
+                "pair_verify": True,
+                "phases": {
+                    "verify": {
+                        "verdict": "PASS",
+                        "sub_verdicts": {},
+                        "pair_trigger": {
+                            "eligible": True,
+                            "reasons": ["mode.pair-verify"],
+                            "skipped_reason": None,
+                        },
+                    }
+                },
+            }),
+            encoding="utf-8",
+        )
+        (devlyn / "verify.pair.findings.jsonl").write_text(
+            json.dumps({"id": "p-preknown", "severity": "LOW"}) + "\n",
             encoding="utf-8",
         )
         findings, source_verdicts = read_findings(devlyn)
         summary = write_outputs(devlyn, findings, source_verdicts)
         assert summary["verdict"] == "NEEDS_WORK", summary
+        assert summary["source_verdicts"]["judge"] == "NEEDS_WORK", summary
+        assert summary["source_verdicts"]["pair_judge"] == "PASS_WITH_ISSUES", summary
+        assert '"id":"p-preknown"' in (
+            devlyn / "verify-merged.findings.jsonl"
+        ).read_text(encoding="utf-8"), findings
+
+        # Self-test: sequential_primary_blocker_skip_remains_legal.
+        (devlyn / "verify.pair.findings.jsonl").unlink()
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "mode": "spec",
+                "phases": {
+                    "verify": {
+                        "verdict": "PASS",
+                        "sub_verdicts": {},
+                        "pair_trigger": {
+                            "eligible": False,
+                            "reasons": [],
+                            "skipped_reason": "primary_judge_blocker",
+                        },
+                    }
+                },
+            }),
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "NEEDS_WORK", summary
+        assert summary["source_verdicts"]["pair_judge"] is None, summary
         assert not any(
-            finding.get("id") == "verify-pair-trigger-primary-judge-blocker-unsupported"
+            finding.get("id") in {
+                "verify-pair-trigger-primary-judge-blocker-unsupported",
+                "verify-pair-trigger-primary-judge-blocker-preknown",
+            }
             for finding in findings
         ), findings
         (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
+        (devlyn / "verify.pair.findings.jsonl").write_text("", encoding="utf-8")
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
