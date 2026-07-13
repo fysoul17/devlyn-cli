@@ -63,6 +63,8 @@ manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
 schema = runpy.run_path(str(scripts / "packet-schema.py"))
 gate = runpy.run_path(str(scripts / "conformance-gate.py"))
 runner = runpy.run_path(str(scripts / "run-packet-attempt.py"))
+driver = runpy.run_path(str(scripts / "calibration-driver.py"))
+classifier = runpy.run_path(str(scripts / "classify-defect-family.py"))
 
 assert manifest["namespace"] == "calibration"
 assert manifest["fixtures"], "manifest has no fixtures"
@@ -72,6 +74,12 @@ assert manifest["routing"] == {
     "INELIGIBLE": None,
 }
 assert manifest["routing_export_policy"] == "This routing artifact is never included in author exports."
+assert set(manifest["validation"]) == {
+    "cartwheel-rate-card",
+    "fernwell-station-report",
+    "ledgerloom-proration",
+    "tilebridge-notes-migration",
+}
 assert Path(manifest["no_op_packet"]).as_posix().startswith("packets/")
 no_op_path = root / manifest["no_op_packet"]
 no_op = schema["load_packet"](no_op_path)
@@ -203,6 +211,117 @@ for fixture_id, record in sorted(manifest["fixtures"].items()):
         )
         assert zero_test_run.returncode != 0, f"{fixture_id} oracle accepted zero discovered tests"
 
+expected_families = {
+    "cartwheel-rate-card": "ORDERING_MUTATION",
+    "fernwell-station-report": "CONTENT_CONSTRAINT_MUTATION",
+    "ledgerloom-proration": "CONTENT_CONSTRAINT_MUTATION",
+    "tilebridge-notes-migration": "ORDERING_MUTATION",
+}
+for fixture_id, record in sorted(manifest["validation"].items()):
+    fixture = (root / record["path"]).resolve()
+    assert fixture.parent == (root / "validation").resolve()
+    assert runner["fixture_record"](fixture_id) == (record, fixture)
+    task = (fixture / "task.txt").read_bytes()
+    assert hashlib.sha256(task).hexdigest() == record["task_sha256"]
+    seed = fixture / "seed"
+    observed_tree = tree_hash(seed)
+    assert observed_tree == record["seed_tree_sha256"]
+    base = json.loads((fixture / "base.json").read_text(encoding="utf-8"))
+    assert base == {"repo": "./seed", "tree_sha256": observed_tree}
+    gate["validate_fixture"](fixture)
+
+    assert record["canonical_good"] == "good_a"
+    assert record["family"] == expected_families[fixture_id]
+    assert set(record["packets"]) == {"good_a", "good_b", "bad_1", "bad_2"}
+    for bad_role in ("bad_1", "bad_2"):
+        bad_name = Path(record["packets"][bad_role]).stem
+        observed = classifier["classify_paths"](fixture, "good-a", bad_name)["family"]
+        assert observed == record["family"], (fixture_id, bad_role, observed)
+        assert classifier["classify_paths"](fixture, "good-b", bad_name)["family"] == "INELIGIBLE"
+
+    packet_paths = {**record["packets"], "no_op": manifest["no_op_packet"]}
+    for role, relative in packet_paths.items():
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(scripts / "run-packet-attempt.py"),
+                "--fixture",
+                fixture_id,
+                "--packet",
+                relative,
+                "--seat",
+                "terra",
+                "--attempt",
+                "1",
+                "--run-id",
+                "selftest",
+                "--validate-only",
+            ],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        assert completed.returncode == 0, (fixture_id, role, completed.stderr)
+
+routed_attempts = 0
+canary_attempts = 0
+for seat in ("terra", "sonnet"):
+    schedule, fixture_cohorts = driver["validation_schedule_for"](manifest, seat)
+    assert len(schedule) == 190
+    for fixture_id, config in fixture_cohorts.items():
+        fixture_attempts = [item for item in schedule if item["fixture"] == fixture_id]
+        expected = 80 if config["mode"] == "routed" else 15
+        assert len(fixture_attempts) == expected, (seat, fixture_id, len(fixture_attempts))
+        assert {item["role"] for item in fixture_attempts} == set(driver["VALIDATION_ROLES"])
+        if config["mode"] == "routed":
+            routed_attempts += len(fixture_attempts)
+        else:
+            canary_attempts += len(fixture_attempts)
+assert (routed_attempts, canary_attempts) == (320, 60)
+
+for fixture_id, family in expected_families.items():
+    expected_seat = "sonnet" if family == "ORDERING_MUTATION" else "terra"
+    assert driver["routed_seat"](manifest, manifest["validation"][fixture_id]) == expected_seat
+try:
+    driver["routed_seat"](manifest, {"family": "INELIGIBLE"})
+except driver["CalibrationError"]:
+    pass
+else:
+    raise AssertionError("INELIGIBLE family did not fail closed")
+driver["validate_seats"]("validation", ["terra", "sonnet"])
+for invalid_seats in (["terra"], ["sonnet"]):
+    try:
+        driver["validate_seats"]("validation", invalid_seats)
+    except driver["CalibrationError"]:
+        pass
+    else:
+        raise AssertionError(f"validation accepted routing override: {invalid_seats}")
+
+t1_pass_counts = {
+    "synthetic": {"good_a": 16, "good_b": 15, "bad_1": 0, "bad_2": 1, "no_op": 0}
+}
+assert driver["evaluate_t1"](t1_pass_counts, 16, ("bad_1", "bad_2"))["status"] == "ADMIT"
+t1_fail_counts = {
+    "synthetic": {"good_a": 16, "good_b": 15, "bad_1": 5, "bad_2": 1, "no_op": 0}
+}
+assert driver["evaluate_t1"](t1_fail_counts, 16, ("bad_1", "bad_2"))["status"] == "DEAD"
+t1_no_op_counts = {
+    "synthetic": {"good_a": 16, "good_b": 15, "bad_1": 0, "bad_2": 1, "no_op": 1}
+}
+assert driver["evaluate_t1"](t1_no_op_counts, 16, ("bad_1", "bad_2"))["status"] == "DEAD"
+canary_pass_counts = {
+    "synthetic": {"good_a": 2, "good_b": 2, "bad_1": 1, "bad_2": 1, "no_op": 0}
+}
+assert driver["evaluate_canary"](canary_pass_counts, 3)["status"] == "CANARY_PASS"
+canary_fail_counts = {
+    "synthetic": {"good_a": 1, "good_b": 1, "bad_1": 1, "bad_2": 1, "no_op": 0}
+}
+assert driver["evaluate_canary"](canary_fail_counts, 3)["status"] == "CANARY_FAIL"
+canary_no_op_counts = {
+    "synthetic": {"good_a": 2, "good_b": 2, "bad_1": 1, "bad_2": 1, "no_op": 1}
+}
+assert driver["evaluate_canary"](canary_no_op_counts, 3)["status"] == "CANARY_FAIL"
+
 power = json.loads((root / "calibration/power.json").read_text(encoding="utf-8"))
 p_good = power["declared_good_probability"]
 p_bad = power["declared_bad_probability"]
@@ -219,7 +338,11 @@ assert observed_power >= power["minimum_required_power"] >= 0.8
 for script in sorted(scripts.glob("*.py")):
     ast.parse(script.read_text(encoding="utf-8"), filename=str(script))
 
-print(f"manifest harness checks: PASS ({len(manifest['fixtures'])} fixtures, pud-1, blinding, oracle smoke, power)")
+print(
+    "manifest harness checks: PASS "
+    f"({len(manifest['fixtures'])} calibration + {len(manifest['validation'])} validation fixtures, "
+    "pud-1, namespaces, routing, 320+60 schedule, admission, blinding, oracle smoke, power)"
+)
 PY
 pass
 

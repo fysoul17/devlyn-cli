@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Randomly interleaved T0/T1 driver with one fail-closed manifest per seat cohort."""
+"""Randomly interleaved calibration/validation driver with one manifest per seat cohort."""
 
 from __future__ import annotations
 
@@ -18,6 +18,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parent
 REPO_ROOT = ROOT.parent.parent
 RUNNER = SCRIPT_DIR / "run-packet-attempt.py"
+CALIBRATION_ROLES = ("good_a", "good_b", "bad_dependency", "bad_constraint", "no_op")
+VALIDATION_ROLES = ("good_a", "good_b", "bad_1", "bad_2", "no_op")
 
 
 class CalibrationError(RuntimeError):
@@ -79,14 +81,18 @@ def evaluate_t0(counts: dict[str, dict[str, int]], repeats: int) -> dict[str, An
     return {"status": "PASS" if all(checks.values()) else "DEAD", "checks": checks}
 
 
-def evaluate_t1(counts: dict[str, dict[str, int]], repeats: int) -> dict[str, Any]:
+def evaluate_t1(
+    counts: dict[str, dict[str, int]],
+    repeats: int,
+    bad_roles: tuple[str, str] = ("bad_dependency", "bad_constraint"),
+) -> dict[str, Any]:
     if repeats != 16:
         raise CalibrationError("T1 repeats must remain frozen at 16")
     checks: dict[str, bool] = {}
     intervals: dict[str, dict[str, float]] = {}
     for fixture, roles in counts.items():
         goods = {key: roles[key] for key in ("good_a", "good_b")}
-        bads = {key: roles[key] for key in ("bad_dependency", "bad_constraint")}
+        bads = {key: roles[key] for key in bad_roles}
         for role, value in goods.items():
             checks[f"{fixture}:{role}:at-least-12"] = value >= 12
         for role, value in bads.items():
@@ -110,6 +116,19 @@ def evaluate_t1(counts: dict[str, dict[str, int]], repeats: int) -> dict[str, An
     }
 
 
+def evaluate_canary(counts: dict[str, dict[str, int]], repeats: int) -> dict[str, Any]:
+    if repeats != 3:
+        raise CalibrationError("validation canary repeats must remain frozen at 3")
+    checks: dict[str, bool] = {}
+    for fixture, roles in counts.items():
+        goods = [roles["good_a"], roles["good_b"]]
+        bads = [roles["bad_1"], roles["bad_2"]]
+        checks[f"{fixture}:separation"] = all(value > min(bads) for value in goods)
+        checks[f"{fixture}:no-op-fails"] = roles["no_op"] == 0
+        checks[f"{fixture}:complete"] = all(0 <= value <= repeats for value in roles.values())
+    return {"status": "CANARY_PASS" if all(checks.values()) else "CANARY_FAIL", "checks": checks}
+
+
 def schedule_for(manifest: dict[str, Any], repeats: int) -> list[dict[str, Any]]:
     schedule: list[dict[str, Any]] = []
     no_op = manifest["no_op_packet"]
@@ -122,8 +141,54 @@ def schedule_for(manifest: dict[str, Any], repeats: int) -> list[dict[str, Any]]
     return schedule
 
 
-def counts_from(attempts: list[dict[str, Any]], fixtures: list[str]) -> dict[str, dict[str, int]]:
-    roles = ("good_a", "good_b", "bad_dependency", "bad_constraint", "no_op")
+def routed_seat(manifest: dict[str, Any], record: dict[str, Any]) -> str:
+    routing = manifest.get("routing")
+    family = record.get("family")
+    if not isinstance(routing, dict) or not isinstance(family, str) or family not in routing:
+        raise CalibrationError(f"validation fixture has no frozen route for family {family!r}")
+    target = routing[family]
+    if target == "sonnet":
+        return "sonnet"
+    if target == "gpt-5.6-terra":
+        return "terra"
+    raise CalibrationError(f"validation fixture family {family!r} is not routable")
+
+
+def validation_schedule_for(
+    manifest: dict[str, Any], seat: str
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    fixtures = manifest.get("validation")
+    if not isinstance(fixtures, dict) or not fixtures:
+        raise CalibrationError("manifest has no validation fixtures")
+    full_repeats = manifest.get("calibration", {}).get("t1", {}).get("repeats_per_packet")
+    if full_repeats != 16:
+        raise CalibrationError("T1 repeats must remain frozen at 16")
+    schedule: list[dict[str, Any]] = []
+    fixture_cohorts: dict[str, dict[str, Any]] = {}
+    for fixture, record in sorted(fixtures.items()):
+        if not isinstance(record, dict):
+            raise CalibrationError(f"validation fixture record malformed: {fixture}")
+        packets = record.get("packets")
+        if not isinstance(packets, dict) or set(packets) != set(VALIDATION_ROLES[:-1]):
+            raise CalibrationError(f"validation packet roles malformed: {fixture}")
+        mode = "routed" if seat == routed_seat(manifest, record) else "canary"
+        repeats = full_repeats if mode == "routed" else 3
+        fixture_cohorts[fixture] = {
+            "mode": mode,
+            "repeats_per_packet": repeats,
+        }
+        packet_paths = {**packets, "no_op": manifest["no_op_packet"]}
+        for role in VALIDATION_ROLES:
+            for attempt in range(1, repeats + 1):
+                schedule.append(
+                    {"fixture": fixture, "role": role, "packet": packet_paths[role], "attempt": attempt}
+                )
+    return schedule, fixture_cohorts
+
+
+def counts_from(
+    attempts: list[dict[str, Any]], fixtures: list[str], roles: tuple[str, ...] = CALIBRATION_ROLES
+) -> dict[str, dict[str, int]]:
     counts = {fixture: {role: 0 for role in roles} for fixture in fixtures}
     for attempt in attempts:
         if attempt["outcome"] == "resolve":
@@ -131,12 +196,23 @@ def counts_from(attempts: list[dict[str, Any]], fixtures: list[str]) -> dict[str
     return counts
 
 
+def validate_seats(tier: str, seats: list[str]) -> None:
+    if (
+        not seats
+        or any(seat not in {"terra", "sonnet"} for seat in seats)
+        or len(seats) != len(set(seats))
+    ):
+        raise CalibrationError("--seats must be a unique comma-separated subset of terra,sonnet")
+    if tier == "validation" and set(seats) != {"terra", "sonnet"}:
+        raise CalibrationError("--seats for validation must contain both terra and sonnet; routing assigns each fixture")
+
+
 def run_cohort(
     *,
     source: dict[str, Any],
     seat: str,
     tier: str,
-    repeats: int,
+    repeats: int | None,
     run_id: str,
     seed: int,
     timeout_seconds: int,
@@ -146,18 +222,36 @@ def run_cohort(
     cohort_id = f"{run_id}-{tier}-{seat}"
     cohort_dir = output_root / cohort_id
     manifest_path = cohort_dir / "manifest.json"
-    schedule = schedule_for(source, repeats)
+    if tier == "validation":
+        schedule, fixture_cohorts = validation_schedule_for(source, seat)
+        fixture_ids = sorted(source["validation"])
+        packet_roles = VALIDATION_ROLES
+        repeats_per_packet: int | dict[str, int] = {
+            fixture: fixture_cohorts[fixture]["repeats_per_packet"] for fixture in fixture_ids
+        }
+        fixture_namespace = "validation"
+        thresholds = source["calibration"]["t1"]
+    else:
+        if repeats is None:
+            raise CalibrationError(f"{tier} repeats unavailable")
+        schedule = schedule_for(source, repeats)
+        fixture_cohorts = {}
+        fixture_ids = sorted(source["fixtures"])
+        packet_roles = CALIBRATION_ROLES
+        repeats_per_packet = repeats
+        fixture_namespace = "calibration"
+        thresholds = source["calibration"][tier]
     random.Random(seed).shuffle(schedule)
     cohort: dict[str, Any] = {
         "schema_version": "noncoding-calibration-cohort-1",
         "tier": tier,
         "run_id": cohort_id,
         "interleave_seed": seed,
-        "repeats_per_packet": repeats,
-        "fixture_namespace": "calibration",
-        "fixture_ids": sorted(source["fixtures"]),
-        "packet_roles": ["good_a", "good_b", "bad_dependency", "bad_constraint", "no_op"],
-        "thresholds": source["calibration"][tier],
+        "repeats_per_packet": repeats_per_packet,
+        "fixture_namespace": fixture_namespace,
+        "fixture_ids": fixture_ids,
+        "packet_roles": list(packet_roles),
+        "thresholds": thresholds,
         "cohort_identity": {
             "runner_commit_sha": runner_sha,
             "cli_version": None,
@@ -169,6 +263,8 @@ def run_cohort(
         "attempts": [],
         "status": "RUNNING",
     }
+    if tier == "validation":
+        cohort["fixture_cohorts"] = fixture_cohorts
     write_json(manifest_path, cohort)
     identities: set[tuple[str, str, str, str]] = set()
     for ordinal, item in enumerate(schedule, start=1):
@@ -233,8 +329,26 @@ def run_cohort(
             }
         )
         write_json(manifest_path, cohort)
-    counts = counts_from(cohort["attempts"], sorted(source["fixtures"]))
-    verdict = evaluate_t0(counts, repeats) if tier == "t0" else evaluate_t1(counts, repeats)
+    counts = counts_from(cohort["attempts"], fixture_ids, packet_roles)
+    if tier == "validation":
+        fixture_verdicts: dict[str, dict[str, Any]] = {}
+        for fixture in fixture_ids:
+            config = fixture_cohorts[fixture]
+            fixture_counts = {fixture: counts[fixture]}
+            fixture_verdicts[fixture] = (
+                evaluate_t1(fixture_counts, config["repeats_per_packet"], ("bad_1", "bad_2"))
+                if config["mode"] == "routed"
+                else evaluate_canary(fixture_counts, config["repeats_per_packet"])
+            )
+        routed_dead = any(
+            fixture_cohorts[fixture]["mode"] == "routed" and fixture_verdicts[fixture]["status"] == "DEAD"
+            for fixture in fixture_ids
+        )
+        canary_failed = any(verdict["status"] == "CANARY_FAIL" for verdict in fixture_verdicts.values())
+        status = "DEAD" if routed_dead else ("CANARY_FAIL" if canary_failed else "PASS")
+        verdict = {"status": status, "fixtures": fixture_verdicts}
+    else:
+        verdict = evaluate_t0(counts, repeats) if tier == "t0" else evaluate_t1(counts, repeats)
     cohort["resolve_counts"] = counts
     cohort["verdict"] = verdict
     cohort["status"] = verdict["status"]
@@ -244,7 +358,7 @@ def run_cohort(
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--tier", required=True, choices=("t0", "t1"))
+    parser.add_argument("--tier", required=True, choices=("t0", "t1", "validation"))
     parser.add_argument("--seats", default="terra,sonnet")
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--interleave-seed", required=True, type=int)
@@ -252,14 +366,16 @@ def main() -> int:
     parser.add_argument("--output-root", type=Path, default=ROOT / "results")
     args = parser.parse_args()
     seats = args.seats.split(",")
-    if not seats or any(seat not in {"terra", "sonnet"} for seat in seats) or len(seats) != len(set(seats)):
-        parser.error("--seats must be a unique comma-separated subset of terra,sonnet")
+    try:
+        validate_seats(args.tier, seats)
+    except CalibrationError as exc:
+        parser.error(str(exc))
     if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", args.run_id) is None:
         parser.error("--run-id has invalid characters")
     try:
         source = read_json(ROOT / "manifest.json")
         runner_sha = require_clean_freeze()
-        repeats = source["calibration"][args.tier]["repeats_per_packet"]
+        repeats = None if args.tier == "validation" else source["calibration"][args.tier]["repeats_per_packet"]
         paths = []
         for seat in seats:
             paths.append(

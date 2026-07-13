@@ -61,18 +61,26 @@ def tree_sha256(root: Path) -> str:
 
 def fixture_record(fixture_id: str) -> tuple[dict[str, Any], Path]:
     manifest = read_json(MANIFEST_PATH)
-    fixtures = manifest.get("fixtures") if isinstance(manifest, dict) else None
-    if not isinstance(fixtures, dict) or fixture_id not in fixtures:
-        valid = ", ".join(sorted(fixtures or {}))
+    sections = {
+        "calibration": manifest.get("fixtures") if isinstance(manifest, dict) else None,
+        "validation": manifest.get("validation") if isinstance(manifest, dict) else None,
+    }
+    if any(not isinstance(fixtures, dict) for fixtures in sections.values()):
+        raise RunnerError("fixture manifest sections malformed")
+    matches = [(namespace, fixtures[fixture_id]) for namespace, fixtures in sections.items() if fixture_id in fixtures]
+    valid = ", ".join(sorted(fixture for fixtures in sections.values() for fixture in fixtures))
+    if not matches:
         raise RunnerError(f"unknown fixture {fixture_id!r}; valid fixtures: {valid}")
-    record = fixtures[fixture_id]
+    if len(matches) != 1:
+        raise RunnerError(f"fixture {fixture_id!r} is declared in multiple namespaces")
+    namespace, record = matches[0]
     if not isinstance(record, dict) or not isinstance(record.get("path"), str):
         raise RunnerError(f"fixture manifest record malformed: {fixture_id}")
     fixture = (ROOT / record["path"]).resolve()
     try:
-        fixture.relative_to((ROOT / "calibration").resolve())
+        fixture.relative_to((ROOT / namespace).resolve())
     except ValueError as exc:
-        raise RunnerError(f"fixture escapes calibration namespace: {fixture}") from exc
+        raise RunnerError(f"fixture escapes {namespace} namespace: {fixture}") from exc
     return record, fixture
 
 
