@@ -82,7 +82,9 @@ def git(repo: Path, *args: str) -> str:
     )
     if result.returncode != 0:
         die(f"git {' '.join(args)} failed: {result.stderr.strip()}")
-    return result.stdout.strip()
+    # Strip newlines only: porcelain paths carry meaning in the first line's
+    # leading status space; a full strip() shifted `line[3:]` parsing by one.
+    return result.stdout.strip("\n")
 
 
 def validate_run_id(run_id: str) -> None:
