@@ -692,3 +692,33 @@ independently reproduced ALL FOUR frozen dev-pair labels under the
 projection with zero bending (archives /tmp/iter0071-r0/{grok,codex}-amend.log,
 ephemeral). Narrative-only mutation classifies INELIGIBLE (no structural
 defect) — correct.
+
+## Execution record addendum 10 (2026-07-14) — routed-seat validation wiring LANDED (Amendment 2 step 4 mechanics)
+
+Codex sol packet (isolated worktree, guardrails; post-run audit clean):
+manifest gains a `validation` fixtures section (4 fixtures, task/seed
+sha256, packets good_a/good_b/bad_1/bad_2, frozen family labels; routed
+seat DERIVED at run time from family + the existing routing block — never
+duplicated); run-packet-attempt.py dual-namespace fail-closed (calibration
+records must resolve under calibration/, validation under validation/,
+anything else dies); calibration-driver `--tier validation` (routed seat
+full frozen-t1 bar 4×80=320 attempts; non-routed seat N=3 canary 4×15=60;
+`--seats` subsets rejected so routing cannot be overridden); harness
+extended (schedule counts, renamed-role admission math, routing
+derivation). Grok audit **GO-WITH-EDITS**: 6/7 asks PASS (fail-closed
+namespace, zero retuning, routing derivation, schedule math, reporting
+surface, frozen-fixture integrity); HIGH = canary semantics. Codex's
+absolute floors (goods ≥1, bads == 0) were replaced by t0-relative
+separation after full three-way convergence — Grok criterion
+**Claim-Aligned Minimum Sufficient Identification under Measurement
+Tiering** (an escalation-only gate may be at most as strict as the frozen
+N=3 smoke primitive), Codex CONFIRMED with the exact edit, orchestrator
+concurred independently (a suppressed escalation loses route information
+permanently; a false escalation costs one full-bar run). Final
+`evaluate_canary` = t0-relative on bad_1/bad_2 + no_op==0 + repeats frozen
+at 3; emits CANARY_PASS/CANARY_FAIL only — no exclusivity claims, no
+pooled cross-seat fields. LOW residues (not adopted): hermetic suite lacks
+explicit wrong-section failure asserts (code fail-closed, probe-confirmed);
+validation cohorts store t1 thresholds even for canary fixtures (doc
+smell). **Next: the actual 320+60 validation run at a FRESH limit window**
+(routing: cartwheel/tilebridge→sonnet, fernwell/ledgerloom→terra).

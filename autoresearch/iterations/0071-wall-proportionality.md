@@ -225,3 +225,59 @@ because it observed sibling artifacts or contended on runtime state, or a
 pre-known-trigger primary-blocker run completing without pair evidence,
 flips this to NO-GO. Implementation = next Codex build packet (worktree,
 guardrails) at a fresh budget window; NOT landed in this session.
+
+## Execution addendum 4 (2026-07-14) — concurrent dual-judge SHIPPED: packet 3 + Grok GO + solo-vs-concurrent canary PASS
+
+Build packet 3 (Codex sol, isolated worktree, guardrails; post-run audit
+clean — no commits/tags/version drift) landed all six must-edits:
+`outcome_independent_reasons()` helper + `primary_judge_blocker` no longer
+excused on pre-known triggers (+3 self-tests: preknown_primary_blocker_
+requires_pair / merges_pair / sequential_skip_remains_legal); sequencing
+pins rewritten across SKILL.md / verify.md / state-schema.md + lint Check
+6j retargeted to pin the concurrent contract; pair_trigger write-order
+(pre-known at spawn, outcome-dependent appended after primary);
+`phases.verify.judge_durations_ms` sibling key (never inside sub_verdicts;
+VERIFY spawn-reset nulls it); destructive-probe serialization note;
+engine-neutral sequential fallback. Grok audit **GO** (coverage-invariance
+behavior table; falsifier not met). LOW residues recorded, not adopted:
+Check 6j does not pin the background-shell ban (duplicate of global Check
+10 — anti-defense-in-depth); adjacent skip-reason prose mildly
+sequencing-stale (SKILL.md:296-303 region); missing-trigger tightening now
+BLOCKs archival states that omitted pair_trigger under a judge blocker.
+
+Ship-gate canary (F12 frozen-verify substrate; seats pinned sonnet/terra
+via PATH wrappers; pair engine required the DIRECT vendor codex binary —
+superset wrapper PATH re-discovery fails in staged workspaces):
+- **Cell M** (May diff, mechanical CRITICAL from post-May hidden verifier):
+  S/C consistent legal `mechanical_blocker` skip, no validator
+  false-positive. Runs `canary0071-{seq,conc}`.
+- **Cell H** (healthy 20260511 diff): concurrent arm dispatched primary
+  Agent 17:07:07.8Z + codex pair 17:07:10Z (Δ2.2s); pair judge (63s) ran
+  entirely inside the primary window (218s) → pair wall contribution 0s vs
+  sequential +63s. Write-order proven in state: 4 pre-known reasons at
+  spawn + `judge.warning` appended; both judges merged (5 findings). Runs
+  `canary0071v2-{seq,conc}`; durations `judge_durations_ms {judge: 218102,
+  pair_judge: 63000}`.
+- **NO-GO 1** (sibling-induced finding change): NOT fired — primary
+  solo-vs-concurrent same verdict + overlapping findings; deltas within the
+  no-concurrency baseline variance demonstrated on the same diff (v2-seq
+  solo NEEDS_WORK vs v2-conc solo PASS_WITH_ISSUES); zero sibling-artifact
+  references. Pair judge's sole MEDIUM = its own read-only sandbox
+  REJECTING loopback bind (policy wording, not EADDRINUSE contention;
+  pre-existing in sequential shape too).
+- **NO-GO 2** (pre-known + primary-blocker completing without pair
+  evidence): structurally closed — replay of the REAL v2-seq pair-arm state
+  (old validator accepted `primary_judge_blocker` skip on an explicit
+  `--pair-verify` run → NEEDS_WORK with pair_judge null) under the new
+  validator → **BLOCKED** `verify-pair-trigger-primary-judge-blocker-
+  preknown`. Live: first conc run with a broken engine chain refused to
+  downgrade an explicit route → `BLOCKED:codex-unavailable`.
+
+Canary-infra lessons (harness, not treatment): F12 base repo drifted one
+comment line since May (frozen diffs context-rebased only, implementation
+bytes untouched); a crafted timingSafeEqual-violation blocker diff was
+built and locally verified but never run — the replay-on-real-artifacts
+proof covered that cell with zero extra live runs.
+
+**Ship gate PASS → merged to main.** nodeg re-measure (addendum 1 confound)
+now captures L-A/L-B/L-D + VERIFY concurrency together.

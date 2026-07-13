@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iters: [`iterations/0071-wall-proportionality.md`](iterations/0071-wall-proportionality.md) (levers shipped; addendum 3 = next build packet) + [`iterations/0070a-noncoding-instruments.md`](iterations/0070a-noncoding-instruments.md) (routed-seat v2, validation fixtures landed). Latest closed: [`iterations/0068-discriminating-corpus.md`](iterations/0068-discriminating-corpus.md) (VALID-NEGATIVE; closure addenda 3-4 = nodeg verdict). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iters: [`iterations/0071-wall-proportionality.md`](iterations/0071-wall-proportionality.md) (levers + concurrent dual-judge SHIPPED; addendum 4 = ship record) + [`iterations/0070a-noncoding-instruments.md`](iterations/0070a-noncoding-instruments.md) (routed-seat v2 wiring landed; 320+60 run pending). Latest closed: [`iterations/0068-discriminating-corpus.md`](iterations/0068-discriminating-corpus.md) (VALID-NEGATIVE; closure addenda 3-4 = nodeg verdict). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,7 +14,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and agai
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-14 (iter-0071 levers shipped; nodeg 3-bar verdict complete; concurrent dual-judge design frozen)
+## 🚦 START-HERE — state after 2026-07-14 (iter-0071 levers + concurrent dual-judge SHIPPED; T1 validation wiring landed; nodeg 3-bar verdict complete)
 
 **Where the loop stands (one paragraph).** iter-0071
 (`iterations/0071-wall-proportionality.md`, the ACTIVE iter) shipped its
@@ -37,30 +37,24 @@ authored from Grok-audited export, freeze audit GO, `b26c632`). **L-C′
 escalation-only was REJECTED by the user** (0071.1 — complementary
 cross-engine detection outweighs the n=3 0/3 evidence; never propose
 coverage reduction again — pyx correction recorded); replacement =
-**concurrent dual-judge, three-way CONVERGED (0071.2)** — must-edit list +
-solo-vs-concurrent canary ship-gate frozen in 0071 addendum 3.
+**concurrent dual-judge SHIPPED 2026-07-14** (0071.3): six must-edits via
+Codex sol packet + Grok GO + solo-vs-concurrent canary PASS (concurrent
+dispatch Δ2.2s, pair wall cost 0s inside primary window; NO-GO 1/2 not
+fired — 0071 addendum 4). Same session: **routed-seat T1 validation wiring
+LANDED** (0070a.8, addendum 10) — canary semantics converged three-way to
+t0-relative; the 320+60 measurement run is NOT yet executed.
 
 **Next work, in order**:
-1. **Concurrent dual-judge build packet** (Codex sol, isolated worktree,
-   guardrail block): implement 0071 addendum 3's six must-edits
-   (verify-merge-findings.py `primary_judge_blocker` no longer excuses
-   missing pair output on pre-known triggers + 3 validator tests;
-   sequencing pins in SKILL.md:284/293 + verify.md + state-schema.md +
-   lint-skills.sh:1321 + 3 mirrors; pair_trigger write-order; per-judge
-   duration split; destructive-probe serialization note; sequential
-   fallback). Ship ONLY after the solo-vs-concurrent canary passes.
-2. **Routed-seat T1 validation** (Amendment 2 step 4): small Codex packet
-   wires `benchmark/noncoding/validation/` fixtures into the manifest +
-   calibration-driver (routing: ORDERING→sonnet, CONTENT_CONSTRAINT→terra),
-   then routed-seat full T1 bar + non-routed N=3 canary per fixture — at a
-   FRESH limit window (~320+60 attempts).
-3. **nodeg re-measure with 0071 levers** (P1/P2′/P3′ vs the frozen
-   baseline). Registered confound: the A-arm passes `--pair-verify` always
-   (`run-ceiling-arm.sh:148`) so VERIFY-shape savings are invisible until
-   packet 1 lands; concurrent dual-judge landing first makes the re-measure
-   capture both levers.
-4. **Cell 1 bare-fails admission gate** (terra-conditional reporting only).
-5. **Quality-axis root-cause design round** (three-way FIRST, no lever
+1. **Routed-seat T1 validation RUN** (Amendment 2 step 4 execution): at a
+   FRESH limit window, `calibration-driver.py --tier validation` — routed
+   full T1 bar (320) + non-routed N=3 canary (60); routing
+   cartwheel/tilebridge→sonnet, fernwell/ledgerloom→terra. Wiring + checks
+   already landed; no retuning.
+2. **nodeg re-measure with 0071 levers** (P1/P2′/P3′ vs the frozen
+   baseline `nodeg-20260713`). The addendum-1 confound is resolved: the
+   re-measure now captures L-A/L-B/L-D + VERIFY concurrency together.
+3. **Cell 1 bare-fails admission gate** (terra-conditional reporting only).
+4. **Quality-axis root-cause design round** (three-way FIRST, no lever
    ships from it without pre-registration): why does the pipeline omit the
    docs/tests bare adds? (F7 delta: USAGE banner + error-path test.)
 
