@@ -45,18 +45,21 @@ LANDED** (0070a.8, addendum 10) — canary semantics converged three-way to
 t0-relative; the 320+60 measurement run is NOT yet executed.
 
 **Next work, in order**:
-1. **Routed-seat T1 validation RUN** (Amendment 2 step 4 execution): at a
-   FRESH limit window, `calibration-driver.py --tier validation` — routed
-   full T1 bar (320) + non-routed N=3 canary (60); routing
-   cartwheel/tilebridge→sonnet, fernwell/ledgerloom→terra. Wiring + checks
-   already landed; no retuning.
-2. **nodeg re-measure with 0071 levers** (P1/P2′/P3′ vs the frozen
-   baseline `nodeg-20260713`). The addendum-1 confound is resolved: the
-   re-measure now captures L-A/L-B/L-D + VERIFY concurrency together.
-3. **Cell 1 bare-fails admission gate** (terra-conditional reporting only).
-4. **Quality-axis root-cause design round** (three-way FIRST, no lever
-   ships from it without pre-registration): why does the pipeline omit the
-   docs/tests bare adds? (F7 delta: USAGE banner + error-path test.)
+1. **nodeg re-measure with 0071 levers** (P1/P2′/P3′ vs the frozen
+   baseline `nodeg-20260713`; `run-nodeg-cell.sh --run-id nodeg-20260714`
+   then judge+verdict). Captures L-A/L-B/L-D + VERIFY concurrency together.
+   Must run BEFORE any 0072 Stage-1 edit (lever-confound sequencing,
+   0072 prereg).
+2. **T1 sonnet-cohort completion rerun** (fresh window, fresh run-id,
+   detached nohup): ORDERING→sonnet route has no formal bar verdict after
+   the 22/190 orchestrator-error abort (0070a addendum 11; partial signal
+   11/13 held-out bads resolved = strongly against). CONTENT→terra route
+   already ADMIT 2/2. Falsifier #6 formal adjudication needs the completed
+   cohort; Cell 2 blocked until then.
+3. **iter-0072 Stage 1 build packet** (after #1): one-clause
+   free-form-mode.md:62 substitution + artifact-level early gate — full
+   registration in `iterations/0072-changed-surface-closure.md`.
+4. **Cell 1 bare-fails admission gate** (terra-conditional reporting only).
 
 **Binding residue (pointers only; full arcs in the iter files)**:
 - iter-0068 CLOSED VALID-NEGATIVE (identity confound → isolation v2

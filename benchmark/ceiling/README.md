@@ -10,7 +10,7 @@ semantics, Amendments A2/A3, closure addenda). This README is the HOW.
 | Instrument | Question | Status (2026-07-13) |
 |---|---|---|
 | **3-arm tranche** `scripts/run-ceiling-tranche.sh` | A (devlyn) vs B (bare) vs C (copycat) on the frozen corpus — moat = A>best_B ∧ A>best_C, blind matched-wall | Ran twice honestly (0064/0067), FAIL-pilot both; corpus does not discriminate bare terra (0068 VALID-NEGATIVE) |
-| **No-degradation cell** `scripts/run-nodeg-cell.sh` | On rows bare already solves: does the harness preserve outcome / quality / wall (cap 3.0)? | **MEASURED `nodeg-20260713`: objective 7/7 PASS, wall 0/7 (7.7-30.4×, median ~8.9×), quality pending judge replay** (runner-hash freeze blocks replay; deviation question queued for next three-way) |
+| **No-degradation cell** `scripts/run-nodeg-cell.sh` | On rows bare already solves: does the harness preserve outcome / quality / wall (cap 3.0)? | **MEASURED `nodeg-20260713`: objective 7/7 PASS, quality 0/7 FAIL (bare blind-preferred; codex judge 28/28 axes), wall 0/7 (7.7-30.4×, median ~8.9×)** — judge replay completed under protocol a′ (0068 closure addendum 4); re-measure with 0071 levers = next |
 | **Seat matrix** `../seats/recert-seats.sh` | Which model fits which position; re-certify on model drift | 5 cells live; fail-closed pins |
 | **Purity canaries** `scripts/claude-purity-canary.sh` | Does user context leak into measured claude paths? | FLIPPED clean 2026-07-12 (0070a.2) |
 

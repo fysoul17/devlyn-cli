@@ -722,3 +722,40 @@ explicit wrong-section failure asserts (code fail-closed, probe-confirmed);
 validation cohorts store t1 thresholds even for canary fixtures (doc
 smell). **Next: the actual 320+60 validation run at a FRESH limit window**
 (routing: cartwheel/tilebridge→sonnet, fernwell/ledgerloom→terra).
+
+## Execution record addendum 11 (2026-07-14) — T1 validation RUN: CONTENT route ADMIT 2/2; ORDERING route unadjudicated (orchestrator abort error, recorded)
+
+Three cohort directories under `benchmark/noncoding/results/`:
+- `iter0070a-val-20260714-validation-terra` — INTERRUPTED 159/190 by a
+  harness background-task kill (~09:00 KST; driver has no resume; partial
+  cohorts are not adjudicable). Auxiliary evidence only.
+- `iter0070a-val2-20260714-validation-terra` — COMPLETE 190/190, detached
+  relaunch (launchd-parented; macOS has no `setsid` binary — nohup+disown).
+  **Formal verdicts: fernwell-station-report ADMIT, ledgerloom-proration
+  ADMIT** (goods 32/32, bads 0/32, no_op 0/16 each; all four risk-diff
+  pairs 1.0 with Newcombe lower bound 0.613; equivalent-good delta 0).
+  **CONTENT_CONSTRAINT→terra route VALIDATES on held-out fixtures.**
+  Non-routed canaries cartwheel/tilebridge CANARY_FAIL (goods 6/6 vs bads
+  6/6 — no separation) = NO escalation, consistent with routing asymmetry.
+- `iter0070a-val2-20260714-validation-sonnet` — ABORTED at 22/190 by the
+  ORCHESTRATOR IN ERROR: monitoring aggregated bad_1+bad_2 and misread the
+  per-role ≤4 cap as exceeded ("mathematically decided" claim was wrong;
+  actual per-role: cartwheel bad_2 4/4 AT cap + bad_1 2/2; tilebridge
+  bad_2 4/4 + bad_1 1/1 — edge-pass required 0 resolves across all
+  remaining bad attempts, near-impossible but not impossible). pyx
+  correction recorded (compute early-abort decisions against the exact
+  frozen check semantics, per-role, never aggregated counters).
+  **ORDERING→sonnet route therefore has NO formal bar verdict.** The
+  partial evidence is a strong directional signal AGAINST the route:
+  sonnet resolved 11/13 held-out ORDERING planted-bad packets and 7/7
+  goods (attestation `runtime_resolved_model: claude-sonnet-5` verified)
+  — the dev-fixture premise (catalog×sonnet risk-diff 1.0) does not
+  generalize as-is. Amendment 2 falsifier #6 is NOT formally fired;
+  formal adjudication requires a completed sonnet cohort (fresh run-id,
+  ~190 attempts). Until then: routed instrument stays NOT-VALIDATED,
+  Cell 2 stays blocked, no retuning.
+
+Sequencing decision (Measurement Tiering + user minimal-time directive):
+the freshly opened usage window goes to the iter-0071 nodeg re-measure
+(unlocks P1/P2′/P3′ AND the 0072 quality ladder baseline); the sonnet
+completion cohort runs at the following window.
