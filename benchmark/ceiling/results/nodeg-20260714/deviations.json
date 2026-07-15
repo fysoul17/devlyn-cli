@@ -1,0 +1,9 @@
+{
+  "deviations": [
+    {
+      "type": "a-runtime-attestation-source",
+      "task": "DR-shape-compound-rules-f25-cart",
+      "reason": "F25 A re-run (2.1.209 CLI-homogenization) timed out at the 3600s cap (invoke_exit=124, timed_out=true); claude never emitted the stream-json summary so transcript.txt is 0 bytes. Objective resolved=True on the valid 9290-byte patch. Runtime model attested from claude-debug.log (196 claude-sonnet-5 hits, no other model family). See EXECUTION-DEVIATIONS.md."
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+  "arm_attempt": "A1",
+  "resolved": true,
+  "tests_passed": 1,
+  "tests_total": 1,
+  "hidden_test_failures": 0,
+  "apply_exit": 0,
+  "oracle_exit": 0,
+  "report_path": "/Users/aipalm/.local/share/nx01/v/r59974a4f897b/f99dbe9386580/A1/oracle.log",
+  "neutralization_diff_sha256": "05afa7a9be5baf8505182a0a2b3be0bb1400a51d1ca455dee0b66f3ef8f15f44",
+  "neutral_baseline_sha": "cbd12daedd7f2d22c62110faf097f12797e7dda6"
+}

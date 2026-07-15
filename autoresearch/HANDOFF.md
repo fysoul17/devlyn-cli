@@ -45,21 +45,36 @@ LANDED** (0070a.8, addendum 10) — canary semantics converged three-way to
 t0-relative; the 320+60 measurement run is NOT yet executed.
 
 **Next work, in order**:
-1. **nodeg re-measure with 0071 levers** (P1/P2′/P3′ vs the frozen
-   baseline `nodeg-20260713`; `run-nodeg-cell.sh --run-id nodeg-20260714`
-   then judge+verdict). Captures L-A/L-B/L-D + VERIFY concurrency together.
-   Must run BEFORE any 0072 Stage-1 edit (lever-confound sequencing,
-   0072 prereg).
-2. **T1 sonnet-cohort completion rerun** (fresh window, fresh run-id,
-   detached nohup): ORDERING→sonnet route has no formal bar verdict after
-   the 22/190 orchestrator-error abort (0070a addendum 11; partial signal
-   11/13 held-out bads resolved = strongly against). CONTENT→terra route
-   already ADMIT 2/2. Falsifier #6 formal adjudication needs the completed
-   cohort; Cell 2 blocked until then.
-3. **iter-0072 Stage 1 build packet** (after #1): one-clause
-   free-form-mode.md:62 substitution + artifact-level early gate — full
-   registration in `iterations/0072-changed-surface-closure.md`.
+1. **iter-0072 Stage 1 build packet**: one-clause free-form-mode.md:62
+   substitution + artifact-level early gate — full registration in
+   `iterations/0072-changed-surface-closure.md`. nodeg re-measure (item
+   below) is DONE, so the 0072 quality gate can re-run against
+   `nodeg-20260714` as the new baseline.
+2. **VERIFY dual-judge → default-when-available** (user go-ahead 2026-07-14;
+   source of record = `docs/specs/queue.md` pending item — full contract,
+   grounds, and validation bar live there, not here). Changes WHEN pair
+   fires (conditional → always-when-available). MUST never land mid-cohort.
+3. **T1 sonnet-cohort completion rerun** (fresh window, fresh run-id,
+   detached nohup, **pin `CEILING_TEST_CLAUDE_BIN` from launch**):
+   ORDERING→sonnet route has no formal bar verdict after the 22/190
+   orchestrator-error abort (0070a addendum 11; partial signal 11/13
+   held-out bads resolved = strongly against). CONTENT→terra route already
+   ADMIT 2/2. Falsifier #6 formal adjudication needs the completed cohort;
+   Cell 2 blocked until then.
 4. **Cell 1 bare-fails admission gate** (terra-conditional reporting only).
+
+**Cohort-run hygiene (learned 2026-07-14/15, binding for all long runs)**:
+detach via `nohup … & disown` (never a harness background task — those get
+killed ~3.5h); **pin the CLI binary** `CEILING_TEST_CLAUDE_BIN=/Users/aipalm/.local/share/claude/versions/<X.Y.Z>`
+from the FIRST launch (Claude Code auto-updates mid-cohort → A-arm identity
+drift → fail-closed, cost a 3-row re-run in nodeg-20260714); compute any
+mid-cohort early-abort against the EXACT frozen per-role check semantics,
+never an aggregated counter (cost a T1 sonnet cohort). **DONE 2026-07-15**:
+nodeg re-measure `nodeg-20260714` — wall VALID-NEGATIVE (median 8.9→10.7×,
+still 0/7; the levers don't touch the IMPLEMENT/fix-loop bottleneck),
+objective 7/7, quality 0/7 unchanged (confirms 0072 problem is stable);
+P2′/P3′ not computable (workspace cleanup — persist per-phase state next).
+DECISIONS 0071.4 + iter-0071 addendum 5.
 
 **Binding residue (pointers only; full arcs in the iter files)**:
 - iter-0068 CLOSED VALID-NEGATIVE (identity confound → isolation v2
@@ -251,7 +266,7 @@ At `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`: `feed
 | Engine-symmetric pair invocation | REAL both directions | iter-0060 (codex→claude judge fired via adapter) |
 | gemma3:4b as judge | MODEL CEILING — do not re-prompt | iter-0055/0056 |
 | Ceiling quality (세계최고 axis) | FAIL-pilot twice (0064 LC3 4.32×; 0067 copycat 16:3, wall 8.33×) — no moat claim | iter-0064/0067 `ceiling-verdict.json` |
-| No-degradation (Block 8 suppression axes) | **objective 7/7 PASS · quality 0/7 FAIL (bare blind-preferred; codex judge 28/28 axes) · wall 0/7 (7.7-30.4×)** — 4th over-tightening confirmation, 1st with quality measured | `nodeg-20260713/nodeg-verdict.json`; 0068 closure addendum 4 |
+| No-degradation (Block 8 suppression axes) | **objective 7/7 PASS · quality 0/7 FAIL (bare blind-preferred; codex judge 28/28 axes) · wall 0/7**. Re-measured post-0071 (`nodeg-20260714`): objective 7/7, quality 0/7, wall **median 8.9→10.7× (no improvement — levers miss the IMPLEMENT/fix-loop bottleneck)** | `nodeg-20260714/nodeg-verdict.json`; 0071 addendum 5 / DECISIONS 0071.4 |
 | T1 packet calibration (seat×defect) | complementary override: catalog admits ONLY sonnet, credential ONLY terra (risk-diff 1.0 both) → routed-seat v2, validation fixtures landed | 0070a Amendment 2 + addendum 9; `benchmark/noncoding/validation/` |
 | Seat fitness (모델 × 포지션) | matrix live; 5 current cells; executor/pair-judge pins fail-closed "recert required" | `benchmark/seats/seat-matrix-2026-07-07.json` |
 

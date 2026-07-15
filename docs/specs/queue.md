@@ -54,3 +54,17 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   `benchmark/probes/results/iter0058-base-matrix.{json,md}`; flip-band
   documented in the iter file (10/12 cells band 0; sonnet
   DB-silent-catch band 1, DB-tempting-state-file band 2).
+- [ ] VERIFY dual-judge becomes the DEFAULT whenever a second engine is
+  available — delete the conditional-fire route for code VERIFY: every
+  shippable code run dispatches both judges CONCURRENTLY (wall=max,
+  iter-0071 mechanism); capability-gated (single-engine users unaffected,
+  proceed solo with skip report), `--no-pair` stays the explicit opt-out,
+  explicit routes still fail closed. Plan-stage risk-probes stay
+  conditional. Grounds: user adjudication 2026-07-13 (no
+  coverage-reduction-for-efficiency; wall savings via concurrency) +
+  tri-seat consensus 2026-07-14 (Fable × codex 5.6-sol × grok 4.5, D1
+  AGREE×3). Validate: run archives show dual dispatch on 100% of shippable
+  code runs when a second engine is available, pair wall ≈ max(judges) not
+  sum; sync all 3 skill mirrors (config/.agents/.claude) +
+  CLAUDE.md/AGENTS.md conditional-default wording. (user go-ahead
+  2026-07-14, candidate 1 of the harness-comparison discussion)

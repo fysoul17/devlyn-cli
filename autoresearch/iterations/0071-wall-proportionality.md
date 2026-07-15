@@ -281,3 +281,50 @@ proof covered that cell with zero extra live runs.
 
 **Ship gate PASS → merged to main.** nodeg re-measure (addendum 1 confound)
 now captures L-A/L-B/L-D + VERIFY concurrency together.
+
+## Execution addendum 5 (2026-07-15) — nodeg RE-MEASURE verdict: wall NOT improved (valid-negative); objective 7/7; quality 0/7 unchanged
+
+Cohort `nodeg-20260714` (runner-sha e94ad57, judge-sha e94ad57 — no runner
+drift), A-arm = full post-0071 stack (L-A/L-B/L-D + concurrent dual-judge,
+`--pair-verify` always), same 7 saturated DR/FS rows, same frozen best_B,
+same seats (sonnet orchestrator+judge, terra executor+judge). Verdict
+`nodeg-20260714/nodeg-verdict.json`.
+
+**Result vs frozen baseline `nodeg-20260713`:**
+- **P1 objective — PASS (7/7 resolved).** Unchanged.
+- **Wall — still 0/7; NO systematic improvement.** Ratio A/frozen_B:
+  baseline min 7.7 / median 8.9 / max 30.4 → remeasure min 7.9 /
+  **median 10.7 (worse)** / max 21.4. Per-row: F7 30.4→21.4 (biggest mover),
+  F11 15.9→14.4, F23 8.9→8.3 slight; F12 7.9→**10.7 worse**; F25 13.7→13.7,
+  F26 8.6→8.5, FS1 7.8→7.9 flat. The addendum-1 confound is now confirmed
+  MATERIAL: the only wall the 0071 levers touch is VERIFY-shape (concurrent
+  dual-judge saves the pair-judge wall — canary-proven 0s cost), but VERIFY
+  is a small slice of the multi-thousand-second total, which is dominated by
+  IMPLEMENT + fix-loop. 0071 did not target that bottleneck. Also a genuine
+  confound: the frozen baseline A attempts ran on Claude Code 2.1.208; the
+  remeasure on 2.1.209 (CLI auto-updated mid-cohort → identity-homogenized
+  to 2.1.209 by re-running F7/F25/FS1; EXECUTION-DEVIATIONS.md). So per-row
+  wall deltas are NOT clean attributions to the levers.
+- **Quality — still 0/7.** Unchanged, as designed: 0071 was wall-focused;
+  the quality lever is iter-0072 (deliberately not yet shipped). A fresh
+  cohort + new CLI version reproducing 0/7 CONFIRMS the iter-0072 problem
+  statement is stable, not a one-cohort artifact.
+- **P2′/P3′ — NOT COMPUTABLE from retained artifacts.** Per-phase
+  attribution needs pipeline.state.json phase durations; the nx01 A-arm
+  workspaces are cleaned up post-run, only total elapsed survives in
+  timing.json. Instrument-retention gap: the nodeg driver must persist the
+  archived `.devlyn/**/pipeline.state.json` (or its per-phase durations +
+  judge_durations_ms) into the result dir for phase-causal adjudication.
+  Recorded as a follow-up, NOT a pass/fail claim.
+
+Deviation: F25 A re-run timed out at the 3600s cap (invoke_exit=124, empty
+transcript) with objective resolved=True on a valid 9290-byte patch →
+`a-runtime-attestation-source` deviation (debug-log scan: 196 claude-sonnet-5
+hits, no other family). deviations.json + EXECUTION-DEVIATIONS.md in the run
+dir.
+
+**Binding read:** the 0071 wall levers are a VALID-NEGATIVE on this corpus —
+they do not close the wall gap because they don't touch the IMPLEMENT/fix-loop
+bottleneck. The next wall lever must target that, not VERIFY. Concurrent
+dual-judge stands on its own canary evidence (0s pair-wall cost, coverage
+preserved); its total-wall invisibility here is expected, not a regression.
