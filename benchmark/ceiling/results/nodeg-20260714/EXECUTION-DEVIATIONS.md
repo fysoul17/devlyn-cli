@@ -39,3 +39,11 @@ CENSORED at 3602s (true elapsed ≥ cap); F25 already exceeded the 3.0 wall
 cap in the frozen baseline, so the row's wall PASS/FAIL is unchanged.
 Likely fix-loop-round variance across the two runs, not a CLI regression;
 recorded, not tuned.
+
+## Post-verdict cleanup (2026-07-15)
+After the verdict committed, the local diagnostic quarantine husks
+(`A1-STALE-20260714-cli-2.1.208-preupdate`, `A1-apierror-usage-limit-20260714T1620`,
+`nodeg-judge-STALE-*`) and dangling `A1/latest` symlinks were pruned to keep
+the benchmark tree clean. The retained, committed evidence is the canonical
+2.1.209 A1 trail (patch.diff / timing.json / objective.json / isolation),
+the fresh judge dirs, nodeg-verdict.json, deviations.json, and this record.
