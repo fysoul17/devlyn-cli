@@ -72,7 +72,7 @@ When the rules are silent (rare — pathological goal text), default to `medium`
 
 ## Mini-spec quality bar
 
-The internal mini-spec written for trivial / medium / large-assumptions paths must satisfy:
+Never narrow an explicit goal clause, nor exclude user-visible references the change stales or tests of specified success/failure paths. Every mini-spec (trivial/medium/large) must also satisfy:
 
 - `## Requirements` non-empty, each bullet testable (CLI command, test command, observable file change).
 - `## Verification` is preceded by a `<!-- devlyn:verification -->` sentinel on its own line directly above the heading — the machine locator `spec-verify-check.py` uses; the heading text itself is decorative and may be any language. `## Verification` non-empty if the goal implies any runnable acceptance check. Empty Verification is allowed only when all Requirements are pure-design (e.g. "follow existing pattern X").
