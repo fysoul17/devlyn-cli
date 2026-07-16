@@ -1,0 +1,75 @@
+{
+  "base_ref": {
+    "branch": "master",
+    "sha": "e5a20d983f63e62ad264174c025fad97769e9fc5"
+  },
+  "bypasses": [],
+  "complexity": "medium",
+  "criteria": [],
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "implement_passed_sha": null,
+  "mode": "free-form",
+  "pair_verify": true,
+  "phases": {
+    "build_gate": null,
+    "cleanup": null,
+    "final_report": null,
+    "implement": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": null,
+      "duration_ms": null,
+      "engine": "codex",
+      "round": 0,
+      "started_at": "2026-07-16T11:46:09.295Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": null
+    },
+    "plan": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-16T11:45:55.148Z",
+      "duration_ms": 102656,
+      "engine": "claude",
+      "round": 0,
+      "started_at": "2026-07-16T11:44:12.492Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "probe_derive": null,
+    "verify": null
+  },
+  "risk_probes_digest": null,
+  "risk_profile": {
+    "high_risk": false,
+    "pair_default_enabled": true,
+    "reasons": [],
+    "risk_probes_enabled": false,
+    "risk_probes_explicit": false
+  },
+  "rounds": {
+    "global": 0,
+    "max_rounds": 4
+  },
+  "run_id": "rs-20260716T114325Z-73e1ad7eafb6",
+  "source": {
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "42f163ea5d79e783648204264fa3f2692bf2e020da4503e923a56ac5dc8f47a5",
+    "spec_path": null,
+    "spec_sha256": null,
+    "type": "generated"
+  },
+  "started_at": "2026-07-16T11:43:25Z",
+  "verify": {
+    "coverage_failed": false,
+    "pair_trigger": null
+  },
+  "version": "2.0"
+}

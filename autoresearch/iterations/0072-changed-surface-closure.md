@@ -162,3 +162,32 @@ is section-unscoped by design; carriers (b)/(c) are exclusion-verbs
 the edit lands satisfies "no lever ships outside this registration"
 (2026-07-14); relocation is reported to the user before the nodeg quality
 run. Seat dissent would have escalated to the user; there was none (3/3 B).
+
+## Branch-1 FIRED — Stage-1 wording FALSIFIED, valid-negative (2026-07-16, same session)
+
+Run `nodeg-20260716` (runner `03c3e4b`, CLI pin 2.1.211, amendment loaded in the
+workspace skill copy — verified by grep before judging the artifacts). F7
+regenerated under the relocated lever, `complexity: medium` as predicted:
+
+- criteria.generated.md again lists `--help` under `## Out of Scope` and demands
+  only the json-path test — the new quality-bar sentence sat in the same file
+  and was not obeyed at synthesis time.
+- plan.md REFUSES both carriers explicitly: "do not update `USAGE` to mention
+  `--format` — that's unrequested scope expansion … even though it would look
+  'more complete'"; "do not add an exit-1/`--format yaml` test … since that
+  isn't requested". Archived: `benchmark/ceiling/results/nodeg-20260716/
+  branch1-early-kill/` (criteria + plan + pipeline.state + VERDICT.md).
+
+Ladder branch 1 executed as frozen: run killed before judge wall (no row
+completed; run-id dead), lever REVERTED in all three mirrors (falsified prose
+does not stay shipped — iter-0066 L5 precedent), Stage 2 stays LOCKED, fresh
+pre-registration required.
+
+**Diagnostic carried into the fresh registration**: the refusals quote the
+always-loaded anti-drift vocabulary verbatim ("unrequested scope expansion",
+"subtractive-first / no-overengineering", "isn't requested"). A same-file
+reference rule loses to the always-loaded field. This is evidence FOR the
+registration's original isolation hypothesis (root cause §: "always-loaded
+anti-drift prose … plausible co-cause, held for isolation") — but branch 1
+does NOT unlock Stage 2; the next lever must be re-registered three-way from
+these receipts.

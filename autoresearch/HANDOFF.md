@@ -45,11 +45,17 @@ LANDED** (0070a.8, addendum 10) — canary semantics converged three-way to
 t0-relative; the 320+60 measurement run is NOT yet executed.
 
 **Next work, in order**:
-1. **iter-0072 Stage 1 build packet**: one-clause free-form-mode.md:62
-   substitution + artifact-level early gate — full registration in
-   `iterations/0072-changed-surface-closure.md`. nodeg re-measure (item
-   below) is DONE, so the 0072 quality gate can re-run against
-   `nodeg-20260714` as the new baseline.
+1. **iter-0072 FRESH pre-registration (three-way)** — Stage 1 ran and
+   FALSIFIED on 2026-07-16 (branch-1 fired; DECISIONS 0072.1-0072.2 +
+   iter file Amendment 1 + Branch-1 record). Two receipts bind the next
+   round: (a) iter-0071 L-A moved F7/F25 Large→Medium, so free-form-mode.md:62
+   is off the receipt rows' causal path (Amendment 1 relocated the lever
+   branch-neutrally); (b) even relocated, the regenerated F7 plan REFUSED
+   the closure carriers quoting always-loaded anti-drift vocabulary —
+   same-file reference rules lose to the always-loaded field. Stage 2
+   stays LOCKED (branch 1 ≠ branch 2); the fresh registration must
+   adjudicate the always-loaded-field hypothesis with its own falsifier.
+   Evidence: `benchmark/ceiling/results/nodeg-20260716/branch1-early-kill/`.
 2. **VERIFY dual-judge → default-when-available** (user go-ahead 2026-07-14;
    source of record = `docs/specs/queue.md` pending item — full contract,
    grounds, and validation bar live there, not here). Changes WHEN pair
