@@ -191,3 +191,61 @@ registration's original isolation hypothesis (root cause §: "always-loaded
 anti-drift prose … plausible co-cause, held for isolation") — but branch 1
 does NOT unlock Stage 2; the next lever must be re-registered three-way from
 these receipts.
+
+## Registration v2 — D1 authority-matched carve (2026-07-16, three-way R0+R1; Codex R1 arithmetic dissent resolved)
+
+**Decisive criterion**: Authority-Matched Causal Placement with Frozen-Boundary
+Closure — the lever must edit the authority tier that produced the refusal
+(always-loaded Goal-locked field) and classify exactly the three in-boundary
+carriers as requested. Seat records: Codex R0 "Authority-Matched Frozen-Boundary
+Closure"; Grok R0 "Authority-Tier Causal Placement" + named delta reversing its
+own R0 drift-test locus in R1; Grok R0 receipt killing D2 (plan.md:29 "Existing
+tests are contract. Plan to extend them" was already present and refused).
+D2/D3 held, D4 rejected (stale-reference not mechanically decidable), no
+stacking or rescue inside this registration.
+
+**Frozen edits (0 line growth; arithmetic verified three-way)**:
+1. CLAUDE.md:108 + runtime-principles.md:53 (+ .claude/.agents mirrors),
+   pattern 1 replaced (−45c/−25w): "1. **Unrequested work.** Inside the stated
+   file/behavior boundary, the named change also requests preserving explicit
+   goal clauses, updating existing user-visible references it makes stale, and
+   regression-testing specified success/failure paths. Other fixes remain
+   unrequested: surface them; do not include them. **Pre-existing dead code →
+   mention only, do NOT delete; orphans YOUR change created (now-unused
+   imports, variables, functions) → clean them up.**" (dead-code invariant
+   byte-identical — B5 probe surface.)
+2. CLAUDE.md:122 + runtime-principles.md:67 bullet replaced (+48c/+1w):
+   "- \"It would be incomplete without this\" is **not** a justification
+   outside frozen-boundary closure (the pattern-1 carriers). Cross-surface
+   \"completeness\" remains drift."
+3. AGENTS.md:66 bullet replaced (+109c/+13w, Codex R0 draft): "- Unrequested
+   work. Inside the stated file/behavior boundary, the named change also
+   requests preserving explicit goal clauses, updating user-visible references
+   it stales, and testing specified success/failure paths. All else is drift.
+   Keep pre-existing dead code; clean only self-created orphans."
+   Net per surface: CLAUDE.md +3c/−24w; runtime-principles +3c ×3 mirrors;
+   AGENTS.md +109c. E1 byte-preservation sentence (pattern 2) byte-identical.
+   Drift-test line and the rest of Goal-locked untouched.
+
+**Gates (ship = ALL pass; any fail → revert all surfaces, valid-negative, STOP)**:
+- lint (incl. Check 12 CLAUDE↔runtime parity) + self-tests + token gauge.
+- Artifact early-kill inside the full nodeg run (fresh run-id, CLI pin, engines
+  serial — no other engine work during the run): F7 criteria must NOT freeze
+  `--help`/USAGE and must carry BOTH carriers; F7 plan includes both as work
+  items (not Risks/refusals); F25 non-regression (R5 verbatim + USAGE cart
+  entry); per-row complexity recorded. Refusal → kill before judge wall.
+- Full nodeg vs same frozen B: objective 7/7; quality 0/7 → ≥2/7 with F7
+  mandatory; F25 timeout semantics: exit-124 row judgeable iff attested patch +
+  objective resolves (recorded as deviation, NO retry); F25 not
+  quality-mandatory (F7 + any second valid row satisfies ≥2/7).
+- Drift battery AFTER nodeg (engines serial): violation matrix N=4 within flip
+  bands; stable-clean B2/B5 + DB-failing-adjacent-test 0/4; six resolve-framed
+  drift-bait hidden verifiers; E1 B4 class both arms ≤1/4 (pattern-1 is
+  E1-adjacent).
+- Wall axis OUT of the quality claim (0071 mechanism).
+
+**Sign-off**: not required pre-landing (2/3 + orchestrator; Grok R1 CONFIRM
+withdrew its R0 yes) — the Forbidden rule is disjunctive and observed failure +
+probe gates + Block 4 user mandate all hold; iter-0062 E1 is the precedent for
+probe-guarded root-contract prose landing via the loop. Prominent user report
+before/with the gate run; revert-on-fail.

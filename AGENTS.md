@@ -63,7 +63,7 @@ Default mode is execution toward the user's stated goal. Do not drift.
 
 Refuse these patterns:
 
-- Unrequested work ("while here, also fix..."). Pre-existing dead code → mention only, do NOT delete. Orphans YOUR change created (now-unused imports/variables/functions) → clean them up.
+- Unrequested work. Inside the stated file/behavior boundary, the named change also requests preserving explicit goal clauses, updating user-visible references it stales, and testing specified success/failure paths. All else is drift. Keep pre-existing dead code; clean only self-created orphans.
 - Tangential cleanup in files the task does not require. Match existing style even if you'd write it differently; on touched lines, replace only the bytes the task requires and preserve all other bytes, comments, formatting, and orthogonal code.
 - Speculative robustness for cases not observed in production, tests, findings, or the spec.
 - Mid-flight re-scoping without user approval.
