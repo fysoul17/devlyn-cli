@@ -249,3 +249,35 @@ withdrew its R0 yes) — the Forbidden rule is disjunctive and observed failure 
 probe gates + Block 4 user mandate all hold; iter-0062 E1 is the precedent for
 probe-guarded root-contract prose landing via the loop. Prominent user report
 before/with the gate run; revert-on-fail.
+
+## Registration v2 FALSIFIED — second valid-negative, same day (2026-07-16)
+
+Run `nodeg-20260716b` (runner `e74f00c`): F7 regenerated with the carve
+grep-VERIFIED loaded in workspace CLAUDE.md + runtime-principles mirror +
+AGENTS.md. Criteria still froze USAGE byte-for-byte ("`parseNameFlag`, `USAGE`,
+formatting/whitespace elsewhere — must remain byte-for-byte as-is"; Out of
+Scope "top-level usage text") and demanded only the json-path test; plan still
+refused both carriers ("do not add extra tests beyond the one required for the
+json path; that would be unrequested work"). Killed pre-judge; ALL surfaces
+reverted; evidence `benchmark/ceiling/results/nodeg-20260716b/
+gate-fail-artifacts/` + VERDICT.md. DECISIONS 0072.4.
+
+**Anti-asymptotic stop (iter-0033g rule): the prose-lever class is DEAD on
+this behavior** — two authority tiers (reference rule, always-loaded field
+carve incl. sub-agent mirror) falsified in one day with identical refusal
+shape. Ladder branch 5's remaining prose loci (implement.md:6 "simplest
+tactic", VERIFY advisory threshold) inherit this precedent and are NOT to be
+attempted as prose-only levers.
+
+**Surviving causal observation for the next registration** (not yet a
+registered lever): bare-B closes the changed surface reading the RAW task
+text; A's narrowing is INTRODUCED at PHASE-0 criteria synthesis (the task's
+own "code unrelated … must remain exactly as-is" sentence gets EXPANDED into
+an enumerated freeze list that swallows USAGE) and then locked in by PLAN's
+criteria-obedience. The information bottleneck — PLAN/IMPLEMENT see only the
+transformed criteria, never the verbatim goal — is upstream of every prose
+lever tried. Candidate mechanism CLASS for round 3 (three-way to design +
+register before any edit): structural context routing (e.g., criteria file
+carries the verbatim goal text alongside generated sections, or PLAN receives
+goal_text directly), i.e., delete the lossy transformation instead of
+instructing around it. Falsifier shape stays the F7 artifact gate.
