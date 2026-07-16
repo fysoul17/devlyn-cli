@@ -41,6 +41,7 @@ ALLOWED_PAIR_SKIP_REASONS = {
     "auto_pair_other_engine_unavailable",
 }
 KNOWN_PAIR_TRIGGER_REASONS = {
+    "pair.default",
     "mode.verify-only",
     "mode.pair-verify",
     "complexity.high",
@@ -107,6 +108,10 @@ def has_known_pair_trigger_reason(reasons: list[str]) -> bool:
 
 def all_known_pair_trigger_reasons(reasons: list[str]) -> bool:
     return all(is_known_pair_trigger_reason(reason) for reason in reasons)
+
+
+def state_uses_default_pair_contract(state: dict[str, Any]) -> bool:
+    return state.get("version") == "3.0"
 
 
 def finding_rank(finding: dict[str, Any]) -> int:
@@ -424,6 +429,11 @@ def state_pair_trigger_reasons(
     verify_state = state.get("verify") if isinstance(state.get("verify"), dict) else {}
     risk_profile = state.get("risk_profile") if isinstance(state.get("risk_profile"), dict) else {}
     reasons: list[str] = []
+    if (
+        state_uses_default_pair_contract(state)
+        and risk_profile.get("pair_default_enabled") is not False
+    ):
+        reasons.append("pair.default")
     if state.get("mode") == "verify-only":
         reasons.append("mode.verify-only")
     if state.get("pair_verify") is True:
@@ -567,6 +577,15 @@ def pair_trigger_skip_contract_violation(
             "file": "pipeline.state.json",
         }
     if skipped_reason == "primary_judge_blocker":
+        if state_uses_default_pair_contract(state):
+            return {
+                "id": "verify-pair-trigger-primary-judge-blocker-retired",
+                "message": (
+                    "pair_trigger skipped_reason primary_judge_blocker is archived-v2.0 "
+                    "state only; schema-v3 runs must dispatch the pair-JUDGE."
+                ),
+                "file": "pipeline.state.json",
+            }
         if rank(source_verdicts.get("judge")) < 2:
             return {
                 "id": "verify-pair-trigger-primary-judge-blocker-unsupported",
@@ -941,7 +960,9 @@ def self_test() -> int:
         # be recorded null, never a synthesized PASS.
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "version": "3.0",
                 "mode": "spec",
+                "risk_profile": {"pair_default_enabled": True},
                 "phases": {
                     "verify": {
                         "verdict": None,
@@ -1975,6 +1996,7 @@ def self_test() -> int:
         )
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "version": "2.0",
                 "mode": "spec",
                 "pair_verify": True,
                 "phases": {
@@ -2000,9 +2022,10 @@ def self_test() -> int:
             for finding in findings
         ), findings
 
-        # Self-test: preknown_primary_blocker_merges_pair.
+        # Self-test: schema-v3 default pair reason is required before merge.
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "version": "3.0",
                 "mode": "spec",
                 "pair_verify": True,
                 "phases": {
@@ -2025,6 +2048,17 @@ def self_test() -> int:
         )
         findings, source_verdicts = read_findings(devlyn)
         summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "BLOCKED", summary
+        assert any(
+            finding.get("id") == "verify-pair-trigger-reasons-incomplete"
+            and "pair.default" in str(finding.get("message"))
+            for finding in findings
+        ), findings
+        state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
+        state["phases"]["verify"]["pair_trigger"]["reasons"].insert(0, "pair.default")
+        (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
         assert summary["verdict"] == "NEEDS_WORK", summary
         assert summary["source_verdicts"]["judge"] == "NEEDS_WORK", summary
         assert summary["source_verdicts"]["pair_judge"] == "PASS_WITH_ISSUES", summary
@@ -2032,10 +2066,11 @@ def self_test() -> int:
             devlyn / "verify-merged.findings.jsonl"
         ).read_text(encoding="utf-8"), findings
 
-        # Self-test: sequential_primary_blocker_skip_remains_legal.
+        # Self-test: archived-v2 sequential primary blocker remains legal.
         (devlyn / "verify.pair.findings.jsonl").unlink()
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "version": "2.0",
                 "mode": "spec",
                 "phases": {
                     "verify": {
@@ -2060,6 +2095,17 @@ def self_test() -> int:
                 "verify-pair-trigger-primary-judge-blocker-unsupported",
                 "verify-pair-trigger-primary-judge-blocker-preknown",
             }
+            for finding in findings
+        ), findings
+        # Replay the same state as schema v3 and require the retired-skip blocker.
+        state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
+        state["version"] = "3.0"
+        (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "BLOCKED", summary
+        assert any(
+            finding.get("id") == "verify-pair-trigger-primary-judge-blocker-retired"
             for finding in findings
         ), findings
         (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")

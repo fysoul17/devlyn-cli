@@ -120,11 +120,11 @@ Distinct from #4: code can be production-ready (no critical bugs) yet hand-roll 
 **Operational test (per iteration):**
 
 - An iteration that increases L2 wall-time without a measurable per-fixture quality lift on previously-tied fixtures is rejected, even if aggregate margin holds.
-- An iteration that introduces or extends a pair-mode phase must specify the **short-circuit rule** (deterministic gates, not vibe confidence) and a **wall-time budget abort** for the phase. Pair budget overruns must fall back to solo, surfaced explicitly in the final report — not silently.
+- An iteration that introduces or extends pair mode must specify deterministic **short-circuit rule** and **wall-time budget abort**. VERIFY's licensed short-circuits are a MECHANICAL blocker, `--no-pair`, or absent OTHER capability; budget overruns stay visible in final report.
 - An iteration that touches `auto-resolve` must declare the affected phases' decision modes (`solo` / `pair_critic` / `pair_consensus`) and confirm the change preserves the per-phase mapping in `NORTH-STAR.md`.
 - An iteration on iteration-loop tooling (R0 reviews, ship-gate scripts) is exempt from auto-resolve pair gates but still subject to the layer-cost-justified check at its own scope: the meta-pair must be cheaper than running the cheaper alternative more times.
 
-**Failure mode this catches:** "Pair always-on" creeping in because pair *feels* careful. iter-0016 partial readout (F5 17× wall at verify-tie, F6 10× wall at verify-tie) is the canary — pair without short-circuit recreates that waste pattern at every phase that gets pair-promoted without gates.
+**Failure mode this catches:** Serial or unmeasured pair expansion because pair *feels* careful. iter-0016 partial readout (F5 17× wall at verify-tie, F6 10× wall at verify-tie) is the canary — pair without short-circuit recreates that waste pattern at every phase that gets pair-promoted without gates.
 
 ---
 

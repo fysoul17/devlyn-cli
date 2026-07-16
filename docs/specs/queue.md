@@ -54,7 +54,7 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   `benchmark/probes/results/iter0058-base-matrix.{json,md}`; flip-band
   documented in the iter file (10/12 cells band 0; sonnet
   DB-silent-catch band 1, DB-tempting-state-file band 2).
-- [ ] VERIFY dual-judge becomes the DEFAULT whenever a second engine is
+- [x] VERIFY dual-judge becomes the DEFAULT whenever a second engine is
   available — delete the conditional-fire route for code VERIFY: every
   shippable code run dispatches both judges CONCURRENTLY (wall=max,
   iter-0071 mechanism); capability-gated (single-engine users unaffected,
@@ -68,3 +68,11 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   sum; sync all 3 skill mirrors (config/.agents/.claude) +
   CLAUDE.md/AGENTS.md conditional-default wording. (user go-ahead
   2026-07-14, candidate 1 of the harness-comparison discussion)
+  — done 2026-07-16: schema-v3 `pair.default` shipped (Codex sol 24-file
+  packet + Grok review, net −24 lines); validator self-tests, lint (6b +
+  6j + 3 checks' needles retargeted), archived 0071 replays (v2-conc
+  merges, v2-seq stays BLOCKED preknown), and live canary
+  `dualjudge-default-20260716` PASS (pair_trigger `["pair.default",
+  "judge.warning"]`, both judges, dispatch overlap Δ5.8s). Known gap:
+  sonnet orchestrator skipped `judge_durations_ms` this run
+  (instruction intact, validator non-enforcing) — noted, not rescued.

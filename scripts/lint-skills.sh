@@ -332,23 +332,23 @@ if ! grep -Fq 'def pair_trigger_skip_contract_violation' config/skills/_shared/v
   || ! grep -Fq 'verify-pair-trigger-skipped-reason-unsupported' config/skills/_shared/verify-merge-findings.py \
   || ! grep -Fq 'verify-pair-trigger-mechanical-blocker-unsupported' config/skills/_shared/verify-merge-findings.py \
   || ! grep -Fq 'verify-pair-trigger-primary-judge-blocker-unsupported' config/skills/_shared/verify-merge-findings.py \
-  || ! grep -Fq 'eligible:false` with no supported skip reason' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Canonical eligible reasons are `mode.verify-only`' config/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq 'Missing, contradictory, incomplete, or unknown trigger state BLOCKs VERIFY' config/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq 'Canonical reasons are `pair.default`, `mode.verify-only`' config/skills/devlyn:resolve/references/state-schema.md \
   || ! grep -Fq '`mode.pair-verify`' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Eligible triggers must contain only canonical' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'include every applicable canonical reason' config/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq 'Eligible schema-v3 state must contain `pair.default` and every other applicable canonical' config/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq 'with `pair.default` plus every applicable outcome-independent canonical reason' config/skills/devlyn:resolve/references/phases/verify.md \
   || ! grep -Fq '`mode.pair-verify`' config/skills/devlyn:resolve/references/phases/verify.md \
   || ! grep -Fq '"pair_verify": false' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'requires a non-empty reasons list containing every applicable canonical eligible reason' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'containing every applicable canonical eligible reason' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'state.pair_verify == true' config/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq 'Schema v3.0 eligible state requires `pair.default` plus every applicable telemetry reason' config/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq 'Ineligible new-run state has empty reasons and only' config/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq 'True only for `--pair-verify`' config/skills/devlyn:resolve/references/state-schema.md \
   || ! grep -Fq 'pair_verify: true` only when `--pair-verify` was passed' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'include every applicable canonical reason' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'persist `pair_trigger` before spawn with `pair.default` plus every applicable outcome-independent reason' config/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq '`--pair-verify` and `--no-pair` are mutually exclusive' config/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'mutually exclusive with `risk_profile.pair_default_enabled == false`' config/skills/devlyn:resolve/references/state-schema.md \
   || ! grep -Fq 'if both are present, stop with `BLOCKED:invalid-flags`' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'Contradictory, incomplete, or unknown trigger state is a VERIFY contract violation' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'user_no_pair` is valid only when `risk_profile.pair_default_enabled == false`' config/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq 'Malformed risk or trigger state BLOCKs VERIFY' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'pair_default_enabled` is false only for explicit `--no-pair`' config/skills/devlyn:resolve/references/state-schema.md \
   || ! grep -Fq 'def reject_json_constant' config/skills/_shared/verify-merge-findings.py \
   || ! grep -Fq 'loads_strict_json(raw)' config/skills/_shared/verify-merge-findings.py \
   || ! grep -Fq 'invalid JSON numeric constant: NaN' config/skills/_shared/verify-merge-findings.py; then
@@ -1078,12 +1078,12 @@ if ! grep -Fq 'If the spec includes a solo-headroom hypothesis, one of the two t
 else
   ok "resolve pair-JUDGE prompts prioritize solo-headroom hypothesis"
 fi
-if ! grep -Fq 'names the primary judge; if pair-mode triggers, the first available OTHER' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'names the primary judge; if pair-mode triggers, the first available OTHER' .claude/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'names the primary judge; if pair-mode triggers, the first available OTHER' .agents/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'do not run the OTHER engine as the' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'do not run the OTHER engine as the' .claude/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'do not run the OTHER engine as the' .agents/skills/devlyn:resolve/SKILL.md \
+if ! grep -Fq 'The `--engine` flag does not disable default pairing' config/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq 'The `--engine` flag does not disable default pairing' .claude/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq 'The `--engine` flag does not disable default pairing' .agents/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq 'the second judge uses the OTHER engine by default when available' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'the second judge uses the OTHER engine by default when available' .claude/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'the second judge uses the OTHER engine by default when available' .agents/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq '_shared/adapters/claude.md` `## Invocation' config/skills/devlyn:resolve/references/phases/verify.md \
   || ! grep -Fq '_shared/adapters/claude.md` `## Invocation' config/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq '## Invocation' config/skills/_shared/adapters/claude.md \
@@ -1092,24 +1092,24 @@ if ! grep -Fq 'names the primary judge; if pair-mode triggers, the first availab
 else
   ok "engine-neutral pair-judge dual declaration (iter-0060) in sync"
 fi
-if ! grep -Fq 'current free-form `state.complexity` is `"large"`' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'current free-form `state.complexity` is `"large"`' .claude/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'current free-form `state.complexity` is `"large"`' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'legacy/external spec `complexity: large` is accepted for compatibility' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'legacy/external spec `complexity: large` is accepted for compatibility' .claude/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'legacy/external spec `complexity: large` is accepted for compatibility' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'current free-form `state.complexity` of `"large"`' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'current free-form `state.complexity` of `"large"`' .claude/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'current free-form `state.complexity` of `"large"`' .agents/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Legacy/external spec `complexity: large` remains accepted for compatibility' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Legacy/external spec `complexity: large` remains accepted for compatibility' .claude/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Legacy/external spec `complexity: large` remains accepted for compatibility' .agents/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Current free-form `state.complexity` is `"large"`' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'Current free-form `state.complexity` is `"large"`' .claude/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'Current free-form `state.complexity` is `"large"`' .agents/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'legacy/external spec' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'legacy/external spec' .claude/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'legacy/external spec' .agents/skills/devlyn:resolve/references/phases/verify.md; then
+if ! grep -Fq '`complexity.high`, `complexity.large`' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq '`complexity.high`, `complexity.large`' .claude/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq '`complexity.high`, `complexity.large`' .agents/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq '`spec.complexity.high`, `spec.complexity.large`' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq '`spec.complexity.high`, `spec.complexity.large`' .claude/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq '`spec.complexity.high`, `spec.complexity.large`' .agents/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'Legacy complexity values remain accepted only for archived compatibility' config/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq 'Legacy complexity values remain accepted only for archived compatibility' .claude/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq 'Legacy complexity values remain accepted only for archived compatibility' .agents/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq '`complexity.high`, `complexity.large`, `spec.complexity.high`, `spec.complexity.large`' config/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq '`complexity.high`, `complexity.large`, `spec.complexity.high`, `spec.complexity.large`' .claude/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq '`complexity.high`, `complexity.large`, `spec.complexity.high`, `spec.complexity.large`' .agents/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq '`complexity.large`, `spec.complexity.high`, `spec.complexity.large`,' config/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq '`complexity.large`, `spec.complexity.high`, `spec.complexity.large`,' .claude/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq '`complexity.large`, `spec.complexity.high`, `spec.complexity.large`,' .agents/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`, `risk.high`, `risk_probes.enabled`,' config/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`, `risk.high`, `risk_probes.enabled`,' .claude/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`, `risk.high`, `risk_probes.enabled`,' .agents/skills/devlyn:resolve/references/phases/verify.md; then
   bad "resolve VERIFY docs must distinguish current large complexity, legacy high state, and legacy large spec compatibility"
 else
   ok "resolve VERIFY docs distinguish current large complexity, legacy high state, and legacy large spec compatibility"
@@ -1165,15 +1165,15 @@ if ! grep -Fq 'def spec_has_solo_headroom_hypothesis' config/skills/_shared/veri
   || ! grep -Fq 'spec_has_solo_headroom_hypothesis(' .agents/skills/_shared/verify-merge-findings.py \
   || ! grep -Fq ') is False' .agents/skills/_shared/verify-merge-findings.py \
   || ! grep -Fq ') is True' .agents/skills/_shared/verify-merge-findings.py \
-  || ! grep -Fq 'The spec includes an actionable solo-headroom hypothesis.' \
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`' \
     config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'The spec includes an actionable solo-headroom hypothesis.' \
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`' \
     .claude/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'The spec includes an actionable solo-headroom hypothesis.' \
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`' \
     .agents/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'actionable solo-headroom hypotheses' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'actionable solo-headroom hypotheses' .claude/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'actionable solo-headroom hypotheses' .agents/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`' config/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`' .claude/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`' .agents/skills/devlyn:resolve/references/state-schema.md \
   || ! grep -Fq 'same actionable solo-headroom hypothesis is a VERIFY pair-trigger reason' config/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'same actionable solo-headroom hypothesis is a VERIFY pair-trigger reason' .claude/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'same actionable solo-headroom hypothesis is a VERIFY pair-trigger reason' .agents/skills/devlyn:resolve/SKILL.md; then
@@ -1311,21 +1311,21 @@ if [ $verify_mech_missing -eq 0 ]; then
   ok "spec-verify VERIFY output routes into verify-merge-findings.py"
 fi
 
-section "Check 6j: VERIFY pre-known pair triggers dispatch concurrently"
+section "Check 6j: VERIFY default pair dispatches concurrently"
 pair_trigger_order_missing=0
 for file in \
   config/skills/devlyn:resolve/SKILL.md \
   .claude/skills/devlyn:resolve/SKILL.md \
   .agents/skills/devlyn:resolve/SKILL.md
 do
-  if ! grep -Fq 'If at least one applies, write `pair_trigger` at judge-spawn time and dispatch the primary JUDGE and OTHER-engine pair-JUDGE concurrently' "$file" \
-    || ! grep -Fq 'After both judges return, append every applicable outcome-dependent reason' "$file" \
-    || ! grep -Fq 'A primary JUDGE verdict-binding finding on a concurrent run does not cancel or discard the pair-JUDGE' "$file" \
-    || ! grep -Fq 'A verdict-binding MECHANICAL blocker still skips both judges' "$file" \
-    || ! grep -Fq 'falls back to the sequential shape with no flag or extra state marker' "$file" \
-    || ! grep -Fq '`risk_profile` is strict typed state' "$file" \
-    || ! grep -Fq 'malformed `risk_profile` is also a VERIFY contract violation' "$file"; then
-    bad "$file — VERIFY concurrent pair-trigger sequencing contract missing"
+  if ! grep -Fq 'Verify dual-judge is default-when-available' "$file" \
+    || ! grep -Fq 'persist `pair_trigger` before spawn with `pair.default`' "$file" \
+    || ! grep -Fq 'dispatch both judges concurrently against the same frozen diff' "$file" \
+    || ! grep -Fq 'A primary blocker never cancels the pair judge' "$file" \
+    || ! grep -Fq 'run the same two required judges sequentially' "$file" \
+    || ! grep -Fq 'Eligible schema-v3 state must include `pair.default`' "$file" \
+    || ! grep -Fq '`primary_judge_blocker` is parser-recognized only for archived v2.0 replay; new runs never write it' "$file"; then
+    bad "$file — VERIFY default pair rule missing."
     pair_trigger_order_missing=1
   fi
 done
@@ -1334,14 +1334,14 @@ for file in \
   .claude/skills/devlyn:resolve/references/phases/verify.md \
   .agents/skills/devlyn:resolve/references/phases/verify.md
 do
-  if ! grep -Fq 'and dispatch the primary JUDGE and OTHER-engine pair-JUDGE concurrently against' "$file" \
-    || ! grep -Fq 'After both judges return, append every applicable outcome-dependent reason' "$file" \
-    || ! grep -Fq 'A primary JUDGE blocker on that concurrent path does not cancel or discard the' "$file" \
-    || ! grep -Fq 'A verdict-binding MECHANICAL blocker routes to the fix' "$file" \
-    || ! grep -Fq 'dispatch falls back to the sequential shape with no flag or extra state marker.' "$file" \
-    || ! grep -Fq 'Malformed `state.risk_profile` is a VERIFY contract violation' "$file" \
-    || ! grep -Fq 'primary_judge_blocker' "$file"; then
-    bad "$file — VERIFY phase body must pin concurrent and sequential dispatch order"
+  if ! grep -Fq 'Pair-mode (default when OTHER engine is available)' "$file" \
+    || ! grep -Fq 'with `pair.default` plus every applicable' "$file" \
+    || ! grep -Fq 'dispatch the primary and pair JUDGEs concurrently against the same frozen' "$file" \
+    || ! grep -Fq 'A primary blocker does not cancel the pair-JUDGE' "$file" \
+    || ! grep -Fq 'runs the same two required judges' "$file" \
+    || ! grep -Fq 'Eligible schema-v3 state must contain `pair.default`' "$file" \
+    || ! grep -Fq 'New runs never' "$file"; then
+    bad "$file — VERIFY default pair dispatch missing"
     pair_trigger_order_missing=1
   fi
 done
@@ -1350,19 +1350,19 @@ for file in \
   .claude/skills/devlyn:resolve/references/state-schema.md \
   .agents/skills/devlyn:resolve/references/state-schema.md
 do
-  if ! grep -Fq 'trigger concurrent primary and pair judging after MECHANICAL passes' "$file" \
-    || ! grep -Fq 'pre-known reasons are written at judge spawn and outcome-dependent reasons are appended after both judges return' "$file" \
-    || ! grep -Fq '`primary_judge_blocker` additionally requires that no outcome-independent canonical reason applied to the run' "$file" \
-    || ! grep -Fq 'A verdict-binding MECHANICAL blocker still skips both judges' "$file" \
-    || ! grep -Fq 'may set only `user_no_pair`, `mechanical_blocker`, `primary_judge_blocker`, `auto_pair_other_engine_unavailable`, or null' "$file" \
-    || ! grep -Fq '`risk_profile` must remain an object with boolean' "$file" \
-    || ! grep -Fq 'state implies a pair decision is required but `pair_trigger` is missing' "$file"; then
-    bad "$file — state schema must document concurrent pair-trigger and blocker enforcement"
+  if ! grep -Fq '"version": "3.0"' "$file" \
+    || ! grep -Fq 'pair.default` dispatches both judges concurrently' "$file" \
+    || ! grep -Fq 'runs the same two required judges sequentially' "$file" \
+    || ! grep -Fq 'a primary blocker never skips the pair' "$file" \
+    || ! grep -Fq 'Schema v3.0 eligible state requires `pair.default`' "$file" \
+    || ! grep -Fq 'archived v2.0 replay' "$file" \
+    || ! grep -Fq 'Missing, contradictory, incomplete, or unknown trigger state BLOCKs VERIFY' "$file"; then
+    bad "$file — schema-v3 default pair contract missing"
     pair_trigger_order_missing=1
   fi
 done
 if [ $pair_trigger_order_missing -eq 0 ]; then
-  ok "VERIFY pre-known pair triggers dispatch concurrently with safe sequential fallback"
+  ok "VERIFY default pair dispatches concurrently"
 fi
 
 section "Check 6h: No undocumented spec.expected.json.browser_flows field"
@@ -3702,7 +3702,7 @@ if ! grep -Fq 'high-risk fixture must include a resolve risk-trigger term' scrip
   || ! grep -Fq 'expected.json must be an object' scripts/lint-fixtures.sh \
   || ! grep -Fq 'schema_ok=0' scripts/lint-fixtures.sh \
   || ! grep -Fq 'DEVLYN_LINT_FIXTURES_NO_JSONSCHEMA' scripts/lint-fixtures.sh \
-  || ! grep -Fq 'conditional pair/risk-probe triggers' benchmark/auto-resolve/fixtures/SCHEMA.md; then
+  || ! grep -Fq 'conditional risk-probe triggers' benchmark/auto-resolve/fixtures/SCHEMA.md; then
   offenders="${offenders}"$'\n'"fixture lint must require high-risk fixtures to include resolve pair/risk trigger terms"
 fi
 unsafe_json_parser_refs=$(python3 - <<'PY'

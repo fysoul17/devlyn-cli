@@ -123,7 +123,7 @@ Machine-readable acceptance criteria used by both `run-fixture.sh` verification 
 
 Fixtures with `metadata.json` `category: "high-risk"` must include at least
 one resolve risk-trigger term in `metadata.intent` or `spec.md`, matching the
-conditional pair/risk-probe triggers used by `/devlyn:resolve`: security/auth,
+conditional risk-probe triggers used by `/devlyn:resolve`: security/auth,
 money/pricing/tax/ledger, persistence/data mutation, idempotency/replay,
 API/webhook/signature, allocation/scheduling/inventory/rollback/transaction,
 priority, or output/response-shape contracts. This keeps future pair-evidence

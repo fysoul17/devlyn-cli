@@ -4,12 +4,12 @@ Used by `/devlyn:resolve` and `/devlyn:ideate`. One shared availability rule so 
 
 ## Rule
 
-Each skill resolves the effective engine from its own SKILL.md default plus any explicit `--engine` flag passed by the user. `/devlyn:resolve` also computes conditional pair/risk-probe requirements before the phase that needs the OTHER engine.
+Each skill resolves the effective engine from its own SKILL.md default plus any explicit `--engine` flag passed by the user. `/devlyn:resolve` also computes the default VERIFY-pair route and conditional risk-probe requirements before the phase that needs the OTHER engine.
 
 Engine requirements have two classes:
 
 - **Explicit routes** — `--engine`, `--risk-probes`, `--pair-verify`. These are promises. If the required engine is unavailable, fail closed with `BLOCKED:<engine>-unavailable` and never downgrade to solo.
-- **Automatic escalations** — auto high-risk risk-probes and auto VERIFY pair-JUDGE inferred from the spec. These are candidate routes, selected only when their preconditions hold, OTHER-engine availability included. If an auto candidate would fire but the OTHER engine is absent, do not select the cross-engine route: proceed solo and report the skipped escalation and its reason. This is route selection, not a fallback.
+- **Automatic routes** — high-risk risk-probes remain conditional; VERIFY pair-JUDGE is selected by default unless `--no-pair` was passed. Both require an available OTHER engine. If it is absent, proceed solo and report the skipped route and reason. This is route selection, not a fallback.
 
 ## Role resolution
 
@@ -32,11 +32,11 @@ When a run or phase requires engine `<name>` (claude, codex, omp, or any adapter
 
 Never prompt the user mid-pipeline. Missing engines for explicit routes are BLOCKED states, not silent fallbacks. Missing OTHER engines for automatic escalations are reported solo-skips, not fallbacks — the auto route was never selected.
 
-Per-skill defaults: `/devlyn:resolve` uses Claude for PLAN/IMPLEMENT when the orchestrator has Claude Code's native Agent primitive; Codex CLI and oh-my-pi orchestrators use their own fresh worker as the default route (Codex child process, omp native `task`) so the pipeline still has structural phase isolation. VERIFY may invoke the OTHER engine when its pair-JUDGE trigger fires. `/devlyn:ideate` defaults to Claude; `--engine` selects the elicitation/normalization adapter, not an automatic cross-model challenge phase. Any future ideate read-only critique must follow `_shared/codex-config.md` isolation rules. Each SKILL.md flag block is source of truth for that skill's default.
+Per-skill defaults: `/devlyn:resolve` uses Claude for PLAN/IMPLEMENT when the orchestrator has Claude Code's native Agent primitive; Codex CLI and oh-my-pi orchestrators use their own fresh worker as the default route (Codex child process, omp native `task`) so the pipeline still has structural phase isolation. VERIFY invokes the OTHER engine by default when available unless `--no-pair` was passed. `/devlyn:ideate` defaults to Claude; `--engine` selects the elicitation/normalization adapter, not an automatic cross-model challenge phase. Any future ideate read-only critique must follow `_shared/codex-config.md` isolation rules. Each SKILL.md flag block is source of truth for that skill's default.
 
 ## What a skill must report after a BLOCKED engine check
 
-When an engine required by the selected route or conditional pair trigger is absent, the final user-facing report/summary shows the requested route, the missing engine, and setup steps:
+When an engine required by the selected route or default VERIFY pair route is absent, the final user-facing report/summary shows the requested route, the missing engine, and setup steps:
 
 ```
 Engine: claude + codex pair required

@@ -107,9 +107,9 @@ devlyn separates three engine roles:
 
 - **Orchestrator** — the CLI you opened (Claude Code, Codex, or omp) that drives the conversation and loop. The contract is symmetric (`CLAUDE.md` ↔ `AGENTS.md`), so the same phase-gated pipeline runs whichever you launch; the file artifacts (spec, queue, state) carry over if you switch.
 - **Executor** — PLAN / IMPLEMENT / CLEANUP plus the primary VERIFY judge. Defaults to `claude`.
-- **Pair judge** — the first available *other* engine, for conditional VERIFY pair-JUDGE and risk probes.
+- **Pair judge** — the first available *other* engine, default for VERIFY and conditional for risk probes.
 
-`--engine claude` (default) is the canonical implementation surface for PLAN, IMPLEMENT, BUILD_GATE, and CLEANUP. VERIFY/JUDGE conditionally runs pair mode for verify-only runs, high-risk specs, risk probes, mechanical warnings, coverage gaps, or explicit `--pair-verify`.
+`--engine claude` (default) is the canonical implementation surface for PLAN, IMPLEMENT, BUILD_GATE, and CLEANUP. VERIFY/JUDGE runs pair mode by default when the OTHER engine is available.
 
 Pin roles durably with `/devlyn:engines` (no args shows the role table + detected engines; `executor <name>` / `pair <name>,...` / `clear` manage the pins, stored machine-local in `.devlyn/engines.json`). Pins fail closed: an unavailable pinned engine stops with `BLOCKED:<engine>-unavailable`, and a name with no `_shared/adapters/<name>.md` adapter stops with `BLOCKED:invalid-engine-config`. New engines plug in by shipping an adapter file — no skill changes.
 
@@ -119,7 +119,7 @@ Pin roles durably with `/devlyn:engines` (no args shows the role table + detecte
 /devlyn:resolve "fix the auth bug" --engine codex   # research-only
 ```
 
-If Codex or Claude is absent when explicitly selected or conditionally required, the harness stops with `BLOCKED:codex-unavailable` or `BLOCKED:claude-unavailable` and prints setup guidance. Use `--no-pair` only when intentionally accepting solo VERIFY; use `--no-risk-probes` only when intentionally disabling automatic high-risk probes.
+If Codex or Claude is absent when explicitly selected, or OTHER engine is absent under `--pair-verify`, the harness stops with `BLOCKED:<engine>-unavailable` and prints setup guidance. Automatic VERIFY absence is a reported solo route. Use `--no-pair` only when intentionally accepting solo VERIFY; use `--no-risk-probes` only when intentionally disabling automatic high-risk probes.
 
 ### Benchmark score runs
 
@@ -259,7 +259,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 |---|---|
 | `playwright` | Playwright MCP — powers `/devlyn:resolve` BUILD_GATE browser tier (Chrome MCP → Playwright → curl fallback) |
 
-> `--engine codex` and conditional VERIFY pair mode use the local `codex` CLI binary, not MCP. Install from https://platform.openai.com/docs/codex, run the current Codex auth/login flow, verify `codex --version`, then rerun.
+> `--engine codex` and default-when-available VERIFY pair mode use the local `codex` CLI binary, not MCP. Install from https://platform.openai.com/docs/codex, run the current Codex auth/login flow, verify `codex --version`, then rerun.
 
 </details>
 

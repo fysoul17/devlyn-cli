@@ -10,6 +10,7 @@ from typing import Any
 
 ALLOWED_PAIR_ARMS = {"l2_risk_probes", "l2_gated"}
 CANONICAL_PAIR_TRIGGER_REASONS = {
+    "pair.default",
     "mode.verify-only",
     "mode.pair-verify",
     "complexity.high",

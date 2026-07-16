@@ -82,43 +82,36 @@ design/style concerns remain non-binding MEDIUM and produce `PASS_WITH_ISSUES`.
 
 **Anti-self-filter rule**: report every finding you observe, including ones you consider low-severity or low-confidence. Tag each with `confidence: high|medium|low` and let the harness's downstream filter rank them. Filtering at this stage suppresses recall.
 
-### Pair-mode (when triggered by orchestrator)
+### Pair-mode (default when OTHER engine is available)
 
-MECHANICAL runs first. A verdict-binding MECHANICAL blocker routes to the fix
-loop without spawning either judge and records `pair_judge: null`. After it
-passes, determine the Outcome-independent (pre-known) canonical reasons at
-VERIFY start. If at least one applies, write `pair_trigger` at judge-spawn time
-and dispatch the primary JUDGE and OTHER-engine pair-JUDGE concurrently against
-the same frozen diff via foreground parallel dispatch, never background shells.
-A primary JUDGE blocker on that concurrent path does not cancel or discard the
-pair-JUDGE; both finding sets join the same fix round and merge by worst source
-verdict without vote counting. If no outcome-independent reason applies, keep
-the sequential shape: run the primary JUDGE first, then escalate the pair-JUDGE
-on applicable outcome-dependent reasons; `primary_judge_blocker` remains legal
-only on this path. An orchestrator that cannot issue foreground parallel
-dispatch falls back to the sequential shape with no flag or extra state marker.
-Concurrent dispatch applies only to judging: prefer read-only checks, and
-serialize between the judges any probe that needs exclusive shared project
-state such as ports, a database, or temporary fixtures.
+MECHANICAL runs first. A verdict-binding blocker routes to the fix loop without
+either judge and records `pair_judge: null`. After it passes, honor `--no-pair`;
+otherwise resolve the OTHER-engine route. An explicit `--pair-verify` is an
+availability promise: an unavailable OTHER engine BLOCKs. An automatic route
+with no OTHER engine records `auto_pair_other_engine_unavailable` and continues
+solo.
 
-When eligible, trigger pair-mode if any of these are true:
-- `state.pair_verify == true` (`--pair-verify` was set).
-- `state.mode == "verify-only"`.
-- The spec frontmatter has `complexity: high`; legacy/external spec
-  `complexity: large` is accepted for compatibility, but new specs use `high`.
-- Current free-form `state.complexity` is `"large"`; legacy `"high"` state remains accepted by the merge validator only for archived run compatibility.
-- `state.risk_profile.high_risk == true`.
-- `.devlyn/risk-probes.jsonl` exists or `state.risk_profile.risk_probes_enabled == true`.
-- The spec includes an actionable solo-headroom hypothesis.
-- MECHANICAL or the primary JUDGE emitted warning-level findings but no
-  verdict-binding blockers.
-- `state.verify.coverage_failed == true`.
+When the OTHER engine is available, write `pair_trigger` at judge-spawn time
+with `pair.default` plus every applicable outcome-independent canonical reason,
+then dispatch the primary and pair JUDGEs concurrently against the same frozen
+diff via foreground parallel dispatch, never background shells. A primary blocker does not cancel the pair-JUDGE; both finding sets join the same fix
+round and merge by worst source verdict without vote counting. An orchestrator
+without foreground parallel dispatch runs the same two required judges
+sequentially, with no flag or extra state marker. This is a dispatch-shape
+fallback, not outcome-dependent escalation; the primary cannot skip the pair.
+Prefer read-only checks and serialize probes requiring exclusive shared state.
+
+Keep these reasons as telemetry; they no longer gate the second spawn:
+`mode.pair-verify`, `mode.verify-only`, `complexity.high`,
+`complexity.large`, `spec.complexity.high`, `spec.complexity.large`,
+`spec.solo_headroom_hypothesis`, `risk.high`, `risk_probes.enabled`,
+`risk_probes.present`, `coverage.failed`, `mechanical.warning`, and
+`judge.warning`.
 
 Malformed `state.risk_profile` is a VERIFY contract violation: it must be an
 object, `high_risk` / `risk_probes_enabled` / `pair_default_enabled` must be
-JSON booleans when present, and `reasons` must be a string array. Do not treat
-missing or malformed risk state as low-risk; `verify-merge-findings.py` blocks
-it because it can hide `risk.high` or `risk_probes.enabled` pair triggers.
+JSON booleans when present, and `reasons` must be a string array. The merge
+blocks malformed state because it can hide a required route.
 
 If `--no-pair` was set, do not spawn the OTHER-engine judge. Record
 `pair_trigger: { eligible: false, reasons: [], skipped_reason: "user_no_pair" }`
@@ -126,63 +119,32 @@ and continue with solo VERIFY. This is an explicit user opt-out, not an engine
 availability fallback. `--pair-verify` and `--no-pair` are mutually exclusive;
 if both are present, stop with `BLOCKED:invalid-flags`.
 
-After MECHANICAL passes, compute the outcome-independent reasons. When at least
-one applies, persist this before the concurrent judge spawn:
+When the OTHER engine is available, persist this before either judge starts:
 
 ```json
 "pair_trigger": {
   "eligible": true,
-  "reasons": ["complexity.high"],
+  "reasons": ["pair.default", "complexity.high"],
   "skipped_reason": null
 }
 ```
 
 After both judges return, append every applicable outcome-dependent reason
-(`coverage.failed`, `mechanical.warning`, `judge.warning`) before merge. If no
-outcome-independent reason applies, run the primary JUDGE first, then compute
-and persist the full trigger and spawn the pair-JUDGE sequentially when eligible.
-If `eligible == true`, `reasons` must be non-empty and include every applicable canonical reason; for example, a spec with an actionable solo-headroom
-hypothesis must include `spec.solo_headroom_hypothesis` even when another reason
-such as `risk.high` also applies. The OTHER-engine judge is mandatory. Skipping
-it is a VERIFY contract violation. If ineligible, record the reason, e.g.
-`"mechanical_blocker"`; `"primary_judge_blocker"` is valid only when no
-outcome-independent canonical reason applied.
+(`coverage.failed`, `mechanical.warning`, `judge.warning`) before merge. Eligible schema-v3 state must contain `pair.default` and every other applicable canonical
+reason. The OTHER-engine judge is mandatory; missing output is a contract
+violation.
 
-`pair_trigger` is a strict contract, not advisory metadata. `eligible: true`
-requires a non-empty `reasons` list and `skipped_reason: null`; `eligible: false`
-requires an empty `reasons` list and a string/null `skipped_reason`. Do not emit
-contradictory states such as `eligible: true` with `skipped_reason`, or
-`eligible: false` with trigger reasons. `verify-merge-findings.py` blocks VERIFY
-on malformed trigger state. Eligible triggers must contain only canonical
-reasons and at least one reason: `mode.verify-only`, `complexity.high`, `complexity.large`,
-`mode.pair-verify`, `spec.complexity.high`, `spec.complexity.large`,
-`spec.solo_headroom_hypothesis`, `risk.high`, `risk_probes.enabled`,
-`risk_probes.present`, `coverage.failed`, `mechanical.warning`, or
-`judge.warning`.
+`pair_trigger` remains strict: eligible state has canonical reasons and no skip;
+ineligible state has empty reasons and one of `user_no_pair`,
+`mechanical_blocker`, `auto_pair_other_engine_unavailable`, or null.
+`primary_judge_blocker` is parser-recognized only for archived v2.0 replay and
+retains the existing rejection when a pre-known reason applied. New runs never
+write it. The `--engine` flag does not disable default pairing.
 
-The `--engine` flag never disables this rule. An explicit `--engine <name>`
-names the primary judge; if pair-mode triggers, the first available OTHER
-engine is still the mandatory pair judge (role resolution:
-`_shared/engine-preflight.md`). Do not record "explicit --engine <name>" as a
-skip reason.
-The valid skip reasons after a non-empty eligible trigger are deterministic
-MECHANICAL HIGH/CRITICAL blockers, an explicit `--no-pair`, or — when none of the
-applicable reasons is `mode.pair-verify` (every reason is automatic) — the OTHER
-engine being unavailable. Explicit `--pair-verify` with the OTHER engine absent
-is a promise and stays `BLOCKED:<engine>-unavailable`, never a skip.
-
-Before invoking the OTHER-engine judge, run the shared availability pre-flight
-for that engine. If the route is explicit (`--pair-verify`) and Codex is required
-and unavailable, set VERIFY to `BLOCKED:codex-unavailable` and tell the user to
-install/configure the Codex CLI, run the current Codex auth/login flow, verify
-`codex --version`, and rerun. If Claude is required and the host cannot spawn a
-Claude agent, set VERIFY to `BLOCKED:claude-unavailable` and tell the user to
-install/configure Claude Code, verify `claude --version`, and rerun. For an
-explicit route, do not convert this to a solo pass and do not synthesize pair
-findings. When the trigger was AUTO-only and the OTHER engine is unavailable, set
-`eligible: false`, `reasons: []`, `skipped_reason:
-"auto_pair_other_engine_unavailable"`, run solo VERIFY, and report the skipped
-auto escalation — route selection, not a fallback.
+Run the shared availability pre-flight before spawn. Explicit `--pair-verify`
+unavailability stays `BLOCKED:<engine>-unavailable` with setup guidance.
+Automatic unavailability records `auto_pair_other_engine_unavailable` and runs
+solo. Never synthesize pair findings.
 
 When eligible and the orchestrator spawns a second VERIFY agent with the OTHER engine's adapter, both judgments are merged:
 - Any HIGH/CRITICAL finding either model surfaces is verdict-binding.

@@ -10,7 +10,7 @@ This contract serves one goal: any capable engine — Claude, GPT/Codex, or a fu
 
 Seven rules govern every change. Cite them by name when a decision touches one.
 
-1. **No workaround** — fix the root cause, never the symptom. Blocked patterns: `any`, `@ts-ignore`, silent `catch`, hardcoded fallback hiding a broken contract, config-level skip bypassing the real issue, helper script that routes around it. **Permitted exceptions** (widely-accepted defaults only): CSS fallback fonts, CDN failover, image placeholders. **No engine-availability fallback** for EXPLICITLY-requested `/devlyn:resolve` routes (`--engine`, `--risk-probes`, `--pair-verify`) — if the required engine is unavailable, stop with `BLOCKED:codex-unavailable` or `BLOCKED:claude-unavailable` and setup guidance; never downgrade an explicit route to solo. AUTOMATIC high-risk escalations (auto risk-probes / auto VERIFY pair) are capability-gated: they activate only when the OTHER engine is available; otherwise the run proceeds solo and reports the skip — route selection, not a fallback, and the reason single-LLM users stay first-class. `--no-pair` / `--no-risk-probes` remain explicit opt-outs.
+1. **No workaround** — fix the root cause, never the symptom. No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded fallback that hides a broken contract. No config bypasses. Explicit `--engine`, `--risk-probes`, and `--pair-verify` routes fail closed when a required engine is unavailable. Automatic risk probes remain high-risk-gated; VERIFY pair is default-when-available. An unavailable OTHER engine routes automatic VERIFY solo with a reported skip. `--no-pair` and `--no-risk-probes` remain explicit opt-outs.
 2. **No overengineering** — smallest change that closes the goal. New abstractions require an observed failure mode they prevent. Subtractive-first: ask "what can I delete instead?" before writing anything new.
 3. **No guesswork** — verify with the actual files, logs, diffs, and run output before forming conclusions. State the falsifiable prediction BEFORE the experiment; record raw results AFTER. Retroactive prediction edits are dishonest.
 4. **Worldclass** — code that survives review at a non-trivial codebase. Zero CRITICAL, zero HIGH security/design findings on the shippable path.
@@ -41,7 +41,7 @@ Each skill's `SKILL.md` is the source of truth for its flags and workflow — do
 |---|---|---|
 | Orchestrator — conversation, handoff, loop driving | whichever CLI you open (contract is symmetric: CLAUDE.md ↔ AGENTS.md). Measured status 2026-07-05: Claude Code + omp run the full phase-gated pipeline; in the iter-0061 minimal-repo trivial-add shape on this machine, Codex CLI also ran it when the project carried the devlyn AGENTS.md (ordinary invocation, 4/4); without project AGENTS.md, the same shape silently skipped the pipeline (iter-0040 F6, 4/4) | switch CLIs; the file artifacts (spec/queue/state) carry over |
 | Executor — PLAN/IMPLEMENT/CLEANUP + primary VERIFY judge | `claude` | `--engine <name>` per run, or `/devlyn:engines executor <name>` (durable pin) |
-| Pair judge — VERIFY pair-JUDGE, risk probes | first available OTHER engine (claude↔codex) | `/devlyn:engines pair <name>,...`; `--no-pair` opts out |
+| Pair judge — default for VERIFY; conditional for risk probes | first available OTHER engine (claude↔codex) | `/devlyn:engines pair <name>,...`; `--no-pair` opts out |
 
 `/devlyn:engines` with no args shows the current role table, detected engines, and how to pin or clear — the pins live in `.devlyn/engines.json`.
 
@@ -158,14 +158,14 @@ A finding without one of these forms is excluded. Vague findings produce vague f
 
 ## Codex invocation
 
-When `/devlyn:resolve` or `/devlyn:ideate` route a phase to Codex (`--engine codex` or conditional VERIFY pair/risk-probe routing), the wrapper-form contract lives in `config/skills/_shared/codex-config.md` (or `.claude/skills/_shared/codex-config.md` once installed). Omit `-m <model>` — the CLI's current flagship is used automatically. MCP is not in the loop. If Codex is required and unavailable, stop with `BLOCKED:codex-unavailable` and setup guidance.
+When `/devlyn:resolve` or `/devlyn:ideate` route a phase to Codex (`--engine codex`, default VERIFY pair, or conditional risk-probe routing), the wrapper-form contract lives in `config/skills/_shared/codex-config.md` (or `.claude/skills/_shared/codex-config.md` once installed). Omit `-m <model>` — the CLI's current flagship is used automatically. MCP is not in the loop. If Codex is required and unavailable, stop with `BLOCKED:codex-unavailable` and setup guidance.
 
 ## Working Mode
 
 - **Checkpoint with TaskCreate / TaskUpdate.** Long investigations or multi-phase work: create tasks at start, mark completed as each one closes — don't batch.
 - **Don't stop early on token-budget concerns.** Context auto-compacts; the model resumes after compaction. Run the work to a real stopping point.
 - **Persist across context windows via disk.** `/devlyn:resolve` writes `.devlyn/pipeline.state.json` plus per-phase log/findings under `.devlyn/runs/<run_id>/`; for ad-hoc long work use `HANDOFF.md` and resume with `@HANDOFF.md continue`.
-- **Parallelize independent tool calls; reserve `Agent` subagents for independent fan-out or isolated-context verification** — a single perspective is the default on the resolve hot path.
+- **Parallelize independent tool calls; reserve `Agent` subagents for independent fan-out or isolated-context verification** — a single perspective is the default outside VERIFY's dual-judge path.
 
 ## Skill Boundary Policy
 

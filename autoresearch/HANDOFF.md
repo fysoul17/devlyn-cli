@@ -44,22 +44,21 @@ fired — 0071 addendum 4). Same session: **routed-seat T1 validation wiring
 LANDED** (0070a.8, addendum 10) — canary semantics converged three-way to
 t0-relative; the 320+60 measurement run is NOT yet executed.
 
-**Next work, in order**:
-1. **iter-0072 FRESH pre-registration (three-way)** — Stage 1 ran and
-   FALSIFIED on 2026-07-16 (branch-1 fired; DECISIONS 0072.1-0072.2 +
-   iter file Amendment 1 + Branch-1 record). Two receipts bind the next
-   round: (a) iter-0071 L-A moved F7/F25 Large→Medium, so free-form-mode.md:62
-   is off the receipt rows' causal path (Amendment 1 relocated the lever
-   branch-neutrally); (b) even relocated, the regenerated F7 plan REFUSED
-   the closure carriers quoting always-loaded anti-drift vocabulary —
-   same-file reference rules lose to the always-loaded field. Stage 2
-   stays LOCKED (branch 1 ≠ branch 2); the fresh registration must
-   adjudicate the always-loaded-field hypothesis with its own falsifier.
-   Evidence: `benchmark/ceiling/results/nodeg-20260716/branch1-early-kill/`.
-2. **VERIFY dual-judge → default-when-available** (user go-ahead 2026-07-14;
-   source of record = `docs/specs/queue.md` pending item — full contract,
-   grounds, and validation bar live there, not here). Changes WHEN pair
-   fires (conditional → always-when-available). MUST never land mid-cohort.
+**Next work** (execution order 2026-07-16: item 2 → item 3 → item 1 → item 4 —
+after the double falsification, 0072 round 3 needs a fresh design round while
+dual-judge/T1 are shovel-ready with user go-ahead; run the 0072 design round
+during the T1 cohort window, engines permitting):
+1. **iter-0072 round 3 = three-way DESIGN round on structural context routing**
+   — BOTH prose registrations falsified same-day (v1 reference rule → DECISIONS
+   0072.2; v2 always-loaded D1 carve, load-verified → 0072.4); prose-lever
+   class DEAD on this behavior (0033g anti-asymptotic stop). Surviving causal
+   observation + candidate mechanism class (delete the lossy PHASE-0
+   criteria transformation / route verbatim goal_text to PLAN) recorded in the
+   iter file § "Registration v2 FALSIFIED". Design round only — no lever
+   ships unregistered. Evidence: `nodeg-20260716{,b}/`.
+2. ~~VERIFY dual-judge → default-when-available~~ **DONE 2026-07-16**
+   (DECISIONS 0071.5; queue item `[x]` with ship record; schema-v3
+   `pair.default`, net −24 lines, all gates + live canary PASS).
 3. **T1 sonnet-cohort completion rerun** (fresh window, fresh run-id,
    detached nohup, **pin `CEILING_TEST_CLAUDE_BIN` from launch**):
    ORDERING→sonnet route has no formal bar verdict after the 22/190
