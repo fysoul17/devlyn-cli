@@ -759,3 +759,51 @@ Sequencing decision (Measurement Tiering + user minimal-time directive):
 the freshly opened usage window goes to the iter-0071 nodeg re-measure
 (unlocks P1/P2′/P3′ AND the 0072 quality ladder baseline); the sonnet
 completion cohort runs at the following window.
+
+## Execution record addendum 12 (2026-07-17) — T1 val3 COMPLETED: ORDERING→sonnet DEAD, Amendment 2 falsifier #6 FIRED → routed instrument DEAD
+
+Run `iter0070a-val3-20260716` (`--tier validation --seats sonnet,terra`,
+seed 20260714 = val2 schedule, CLI pinned 2.1.211, detached nohup; driver
+exited 2026-07-17 04:05 KST).
+
+**Sonnet cohort: COMPLETE and VALID — 190/190, zero INVALID, single
+attested identity** (`runtime_resolved_model: claude-sonnet-5`, runner SHA
+`0cce2be`, no identity drift). Frozen per-role evaluate_t1 verdict
+(driver-computed, not orchestrator-derived — addendum-11 correction
+honored):
+
+- **cartwheel-rate-card (routed, ORDERING→sonnet): DEAD** — bad_1 16/16
+  resolved, bad_2 16/16 resolved (cap ≤4/16); goods 16/16 + 16/16;
+  all four good–bad risk differences 0.000 (bar ≥0.50), Newcombe
+  lower-95 −0.194 (bar >0).
+- **tilebridge-notes-migration (routed, ORDERING→sonnet): DEAD** —
+  identical shape: bads 16/16 + 16/16, goods 16/16 + 16/16, RD 0.000,
+  lower-95 −0.194.
+- no_op 0 resolves on every fixture (no-op checks all pass); non-routed
+  CONTENT canaries fernwell + ledgerloom both CANARY_PASS at N=3
+  (goods 3/3, bads 0/3) — moot for escalation given the falsifier below.
+
+Sonnet discriminates NOTHING on held-out ORDERING fixtures: it resolves
+every good and every planted-bad packet (64/64 routed attempts resolved).
+The val2 partial signal (11/13) is confirmed in its strongest form.
+
+**Amendment 2 falsifier #6 FORMALLY FIRES** ("routing fails the full bar
+on any newly registered routed validation fixture ⇒ routed instrument
+DEAD; no Cell-2 scored run; no retuning") — on BOTH newly registered
+ORDERING fixtures. Consequences, per the frozen protocol, mechanical and
+final: **routed-seat instrument v2 DEAD; Cell 2 scored run permanently
+closed; no retuning.** The dev-fixture premise (catalog×sonnet risk-diff
+1.0) did not generalize past the fixtures that fitted it — the held-out
+confirmation criterion did exactly its job.
+
+**Terra bonus cohort: INVALID at attempt 115/190** (cartwheel-rate-card,
+packet `p3d860c5a03c2651b`, `contamination:blinded-label` — fail-closed
+contamination kill worked as designed; log `t1-val3.log`
+`CALIBRATION_INVALID`). No rerun: the replication's only purpose was
+supporting a routing instrument that falsifier #6 has now killed.
+CONTENT→terra retains its addendum-11 ADMIT 2/2 as development evidence;
+it licenses nothing further.
+
+Standing after adjudication: Cell 1 bare-fails admission remains the only
+open 0070a item (terra-conditional reporting only, per 0070a.5 Q3).
+Evidence: `benchmark/noncoding/results/iter0070a-val3-20260716-validation-{sonnet,terra}/manifest.json`.
