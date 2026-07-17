@@ -97,7 +97,7 @@ Once `state.implement_passed_sha` is non-null (PHASE 2 returned and produced a d
 4. Write `.devlyn/untracked.baseline`: `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --write-untracked-baseline`.
 
 5. **Mode-specific init**:
-   - **Free-form**: first resolve `goal_text` — the inline positional goal, OR (when `--goal-file <path>` was passed) the raw UTF-8 content of `<path>`, read as opaque goal text (never re-parsed as flags). Fail closed before classifying: empty/whitespace-only file → `BLOCKED:goal-file-empty`; missing/unreadable/not-a-regular-file/invalid-UTF-8 → `BLOCKED:goal-file-unreadable`; an absolute path, a `..` segment, or a path that canonicalizes outside cwd → `BLOCKED:goal-file-invalid-path`. (Like all PHASE-0 halts these are report-level `BLOCKED:<reason>` strings — no `phases.*.verdict` is written, so the bare-enum carrier rule is never violated.) Then read `references/free-form-mode.md` and run the complexity classifier deterministically on `goal_text` (rules over keyword density / file count / spec-shape signals, plus pair-evidence intent). Set `state.complexity ∈ {trivial, medium, large}`. Trivial: write internal mini-spec to `.devlyn/criteria.generated.md` and proceed. Medium: synthesize a minimal spec from the goal + add 1-2 context anchors from the codebase, write to `.devlyn/criteria.generated.md`, proceed. Every free-form branch that writes criteria must set `state.source.type = "generated"`, `state.source.criteria_path = ".devlyn/criteria.generated.md"`, and `state.source.criteria_sha256` from the raw file bytes. Large: follow the Large action in `references/free-form-mode.md` — synthesize a best-effort spec with an `## Assumptions` block, log `recommend: /devlyn:ideate first`, proceed, and flag every assumption in the final report; zero-scope-signal goals halt `BLOCKED:large-needs-ideation`; pair-evidence intent without an actionable solo-headroom hypothesis must halt with `BLOCKED:solo-headroom-hypothesis-required`, and unmeasured pair-candidate intent without solo ceiling avoidance must halt with `BLOCKED:solo-ceiling-avoidance-required`.
+   - **Free-form**: first resolve `goal_text` — the inline positional goal, OR (when `--goal-file <path>` was passed) the raw UTF-8 content of `<path>`, read as opaque goal text (never re-parsed as flags). Fail closed before classifying: empty/whitespace-only file → `BLOCKED:goal-file-empty`; missing/unreadable/not-a-regular-file/invalid-UTF-8 → `BLOCKED:goal-file-unreadable`; an absolute path, a `..` segment, or a path that canonicalizes outside cwd → `BLOCKED:goal-file-invalid-path`. (Like all PHASE-0 halts these are report-level `BLOCKED:<reason>` strings — no `phases.*.verdict` is written, so the bare-enum carrier rule is never violated.) Then read `references/free-form-mode.md`, classify deterministically, and write `.devlyn/criteria.generated.md` as a raw-byte, collision-safe `## Goal (verbatim)`, optional non-binding anchors/true Large assumptions, and the canonical Verification carrier LAST. Never synthesize binding Requirements/Constraints/Out-of-Scope. Set `state.complexity ∈ {trivial, medium, large}`, `state.source.type = "generated"`, `state.source.criteria_path = ".devlyn/criteria.generated.md"`, and `state.source.criteria_sha256` from the raw file bytes. Large logs `recommend: /devlyn:ideate first` and flags assumptions in the final report; zero-scope-signal goals halt `BLOCKED:large-needs-ideation`; pair-evidence intent without an actionable solo-headroom hypothesis must halt with `BLOCKED:solo-headroom-hypothesis-required`, and unmeasured pair-candidate intent without solo ceiling avoidance must halt with `BLOCKED:solo-ceiling-avoidance-required`.
    - **Spec**: validate spec exists. If sibling `spec.expected.json` exists, run `--check-expected <expected-path>` to validate both the expected contract, sibling spec `complexity` frontmatter, and any present actionable solo-headroom hypothesis; if the spec has a solo-headroom hypothesis, its observable command must match `spec.expected.json.verification_commands[].cmd`. Then stage `.devlyn/spec-verify.json` from `verification_commands`. Otherwise run `--check <spec-path>` to validate the legacy inline carrier plus supported `complexity` frontmatter and any present actionable solo-headroom hypothesis; if the spec uses an inline `## Verification` JSON carrier, any solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`. Then stage from the legacy inline carrier. Compute `state.source.spec_sha256`.
    - **Verify-only**: skip to PHASE 5 with `state.source.spec_path` set, the supplied diff captured at `.devlyn/external-diff.patch`.
 
@@ -107,18 +107,18 @@ Once `state.implement_passed_sha` is non-null (PHASE 2 returned and produced a d
 
 ## PHASE 1: PLAN
 
-Skip in verify-only mode. The heaviest phase by design — spec/criteria define non-negotiable invariants; plan formalizes how the implementation hits them.
+Skip in verify-only mode. Define the scope-only branch as `state.source.type == "generated"` and `state.complexity ∈ {trivial, medium}`.
 
 Engine: Claude (PLAN-pair is **research-only** — iter-0033d/f/g; unblock conditions in PHASE 1 / iter-0033g §H; iter-0020 falsified Codex-BUILD/IMPLEMENT, NOT PLAN-pair). Prompt body: `references/phases/plan.md`.
 
-Subagent output (writes `.devlyn/plan.md`): file list to touch, risk list (out-of-scope expansions, ambiguous spec sections), acceptance restatement (what `## Verification` actually requires verbatim). For large work only, PLAN may add a fourth section `## Execution phases` under the conditions in `references/phases/plan.md`; a phase block missing a runnable `gate:` line disqualifies the whole section — treat the run as single-phase and log the disqualification.
+On the scope-only branch, PLAN writes exactly the canonical authorized-surface section from `references/phases/plan.md`, derived only from raw Goal clauses. No title, work items, Risks, Acceptance, Execution phases, or trailing semantic bytes. Other branches retain the semantic plan; only large work may add `## Execution phases` under `plan.md`'s conditions, and any phase block lacking a runnable `gate:` disqualifies the section.
 
 State write: `phases.plan.{started_at, verdict, completed_at, duration_ms}`.
 
 After return:
-1. If `.devlyn/plan.md` lists zero files → halt with verdict `BLOCKED:plan-empty`.
-2. If risk list flags an out-of-scope expansion the user did not authorize → re-spawn once with the reminder; second fail → halt.
-3. After any re-spawn above, if `state.risk_profile.risk_probes_enabled == true` and `state.risk_profile.risk_probes_explicit == false`, parse the `authorized_surface` array from the JSON block under `<!-- devlyn:authorized-surface -->`. For a well-formed string array, compute `probe_scale_small := len(authorized_surface) <= 2 AND no entry ends in "/**"`. If true, set `risk_probes_enabled = false`, leave `high_risk` unchanged, and append `auto-risk-probes demoted: plan surface small (<n> paths)` to `reasons` using the actual length. A missing or malformed block leaves probe state unchanged; BUILD_GATE owns its malformed-block failure.
+1. Scope-only branch: run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --print-authorized-surface >/dev/null`. This exact-shape check also rejects an empty array. On first failure re-spawn PLAN once with the machine error and canonical template; on second failure halt with `BLOCKED:plan-scope-invalid`. Never normalize or fall back to a semantic plan.
+2. Other branches: zero listed files → `BLOCKED:plan-empty`; an unauthorized expansion in Risks → re-spawn once with the reminder, then halt on recurrence.
+3. After validation/re-spawn, if `state.risk_profile.risk_probes_enabled == true` and `state.risk_profile.risk_probes_explicit == false`, parse the `authorized_surface` array from the JSON block under `<!-- devlyn:authorized-surface -->`. For a well-formed string array, compute `probe_scale_small := len(authorized_surface) <= 2 AND no entry ends in "/**"`. If true, set `risk_probes_enabled = false`, leave `high_risk` unchanged, and append `auto-risk-probes demoted: plan surface small (<n> paths)` to `reasons` using the actual length. A missing or malformed block leaves probe state unchanged; BUILD_GATE owns its malformed-block failure on non-scope-only branches (scope-only never proceeds past `BLOCKED:plan-scope-invalid`).
 
 ## PHASE 1.5: RISK_PROBES
 
@@ -214,15 +214,16 @@ After return:
    PY
    ```
    Any later legitimate probe regeneration is orchestrator-only and repeats validate plus digest-write.
-3. IMPLEMENT receives `.devlyn/plan.md` plus `.devlyn/risk-probes.jsonl` as
-   concrete acceptance obligations. It must not receive the producer engine's
-   commentary or any mention of pair/critic/debate.
+3. IMPLEMENT receives only the PHASE 2 inputs. It never receives producer
+   commentary or pair/critic/debate framing.
 
 ## PHASE 2: IMPLEMENT
 
 Skip in verify-only mode. Constrained design judgment within PLAN's invariants. Writes code, tests, and inline doc-comments. No standalone DOCS phase — what the spec licenses is updated here, what it does not is out of scope.
 
 Engine: per `--engine`. Prompt body: `references/phases/implement.md`.
+
+Prompt assembly: on the scope-only branch pass the verbatim Goal, canonical Verification, authorized array, and extant risk-probe artifacts when enabled—never semantic PLAN content. On every other branch pass the existing source + `.devlyn/plan.md` (+ risk probes when enabled).
 
 State write: `phases.implement.{started_at, verdict, completed_at, duration_ms}`.
 

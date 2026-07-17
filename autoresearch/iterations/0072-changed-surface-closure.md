@@ -496,3 +496,32 @@ Fable ~0.60. P(drift battery green): Grok 0.85-0.95.
 
 **Vehicle**: iter-0072 Registration v4 (fresh registration; same iter).
 Build delegated to Codex sol at the next window per the v3 packet pattern.
+
+### v4 build record (2026-07-17, three-seat loop; packets/logs /tmp/codex-0072-v4-build/ + /tmp/grok-0072-v4-review/)
+
+Codex sol built (workspace-write, xhigh, 1182s; .agents mirrors completed by
+orchestrator after sandbox denial — v3 precedent). Two review findings, both
+fixed pre-commit:
+
+1. **Grok GO-WITH-EDITS**: the PHASE 1 step-3 rewrite dropped the mechanical
+   demotion predicate (`risk_probes_enabled == true AND risk_probes_explicit
+   == false`) — explicit `--risk-probes` could demote on a ≤2-path surface
+   (F7's exact shape). HEAD-precise predicate restored; Codex R1 CONFIRM.
+   Note-only (recorded, no edit): SKILL.md:222 "PLAN's invariants" wording
+   (Codex REBUT — authorized surface IS a PLAN invariant); missing-state
+   fail-open in `uses_scope_only_plan` (`read_state → {}` ⇒ predicate false
+   ⇒ exact-shape skipped; both seats: hardening candidate, outside this
+   registration's edit surface).
+2. **Codex R1 NEW defect — global tail-sentinel regression**: last-sentinel
+   binding applied to EVERY source type; a handwritten spec with a valid
+   first carrier + later fenced sentinel example flipped carriers vs HEAD
+   (reproduced) — frozen "spec/--verify-only byte-unchanged" violation.
+   Fixed: keyword-only `tail_carrier=False` threaded from state-aware
+   callers; only `source.type == "generated"` routes bind TAIL; spec-mode
+   regression self-test asserts equality with HEAD first-match semantics.
+
+Static gates at commit: SVC/VMF self-tests PASS; lint ALL PASS; token gauge
+net-negative (resolve load-set 113817→112204c, −1.4% c4 / −2.0% w13, cap
+≤+0.1%); 3-tree parity 9/9; spec-mode `--check` A/B byte-identical vs HEAD
+(6 drift-bait specs, 0 diffs); delegated-session git audit clean (no
+commits/tags/version changes; reflog + `git tag --points-at HEAD` checked).
