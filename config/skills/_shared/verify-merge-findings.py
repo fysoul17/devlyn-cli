@@ -343,6 +343,54 @@ def risk_profile_contract_violation(devlyn: pathlib.Path) -> dict[str, Any] | No
     return None
 
 
+def verify_state_contract_violation(devlyn: pathlib.Path) -> dict[str, Any] | None:
+    state_path = devlyn / "pipeline.state.json"
+    if not state_path.is_file():
+        return None
+    try:
+        state = loads_strict_json(state_path.read_text(encoding="utf-8"))
+    except ValueError:
+        return None
+    if not isinstance(state, dict) or not state_uses_default_pair_contract(state):
+        return None
+    source = state.get("source")
+    if not isinstance(source, dict) or source.get("type") != "generated":
+        return None
+    goal_path = source.get("goal_path")
+    goal_sha256 = source.get("goal_sha256")
+    if (
+        not isinstance(goal_path, str)
+        or not goal_path
+        or not isinstance(goal_sha256, str)
+        or re.fullmatch(r"[0-9a-f]{64}", goal_sha256) is None
+    ):
+        rule = "verify.state.goal-persistence-missing"
+        return {
+            "id": rule,
+            "rule_id": rule,
+            "message": (
+                "schema-v3 generated runs require source.goal_path as a non-empty string "
+                "and source.goal_sha256 as 64 lowercase hexadecimal characters."
+            ),
+            "file": "pipeline.state.json",
+        }
+    if state.get("complexity") in {"trivial", "medium"}:
+        phases = state.get("phases")
+        surface_close = phases.get("surface_close") if isinstance(phases, dict) else None
+        if not isinstance(surface_close, dict) or surface_close.get("verdict") is None:
+            rule = "verify.state.surface-close-skipped"
+            return {
+                "id": rule,
+                "rule_id": rule,
+                "message": (
+                    "schema-v3 generated trivial/medium runs require a non-null "
+                    "phases.surface_close with a verdict before VERIFY merge."
+                ),
+                "file": "pipeline.state.json",
+            }
+    return None
+
+
 def source_spec_text(state: dict[str, Any]) -> str | None:
     source = state.get("source") if isinstance(state.get("source"), dict) else {}
     for key in ("spec_path", "criteria_path"):
@@ -653,10 +701,15 @@ def pair_trigger_reason_completeness_violation(
     }
 
 
-def pair_blocker(id_: str, message: str, file_: str | None = None) -> dict[str, Any]:
+def pair_blocker(
+    id_: str,
+    message: str,
+    file_: str | None = None,
+    rule_id: str = "verify.pair.emission-contract",
+) -> dict[str, Any]:
     return {
         "id": id_,
-        "rule_id": "verify.pair.emission-contract",
+        "rule_id": rule_id,
         "severity": "CRITICAL",
         "confidence": "high",
         "file": file_,
@@ -752,6 +805,17 @@ def detect_pair_stdout_contract_violations(
                 risk_profile_violation["id"],
                 risk_profile_violation["message"],
                 risk_profile_violation["file"],
+            )
+        ]
+    state_violation = verify_state_contract_violation(devlyn)
+    if state_violation is not None:
+        source_verdicts["pair_judge"] = "BLOCKED"
+        return [
+            pair_blocker(
+                state_violation["id"],
+                state_violation["message"],
+                state_violation["file"],
+                state_violation["rule_id"],
             )
         ]
     if not required and not pair_trigger_present(devlyn):
@@ -954,6 +1018,125 @@ def self_test() -> int:
         assert state["phases"]["verify"]["judge_durations_ms"] == {
             "judge": 23, "pair_judge": 31,
         }, state
+
+        # iter-0072 v5 Amendment 3: schema-v3 generated runs cannot reach a
+        # clean VERIFY merge without persisted raw-goal state.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "version": "3.0",
+                "complexity": "large",
+                "source": {"type": "generated"},
+                "phases": {"verify": {"verdict": None, "sub_verdicts": None}},
+            }),
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "BLOCKED", summary
+        assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", summary
+        assert any(
+            finding.get("rule_id") == "verify.state.goal-persistence-missing"
+            for finding in findings
+        ), findings
+
+        # Malformed persisted goal state is the same blocker as missing state.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "version": "3.0",
+                "complexity": "large",
+                "source": {
+                    "type": "generated",
+                    "goal_path": "",
+                    "goal_sha256": "A" * 64,
+                },
+            }),
+            encoding="utf-8",
+        )
+        violation = verify_state_contract_violation(devlyn)
+        assert violation is not None, violation
+        assert violation["rule_id"] == "verify.state.goal-persistence-missing", violation
+
+        # Generated trivial/medium runs must also prove SURFACE_CLOSE ran.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "version": "3.0",
+                "complexity": "medium",
+                "source": {
+                    "type": "generated",
+                    "goal_path": ".devlyn/goal.raw.txt",
+                    "goal_sha256": "a" * 64,
+                },
+                "phases": {
+                    "surface_close": None,
+                    "verify": {"verdict": None, "sub_verdicts": None},
+                },
+            }),
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "BLOCKED", summary
+        assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", summary
+        assert any(
+            finding.get("rule_id") == "verify.state.surface-close-skipped"
+            for finding in findings
+        ), findings
+
+        # A completed SURFACE_CLOSE satisfies the generated-medium contract.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "version": "3.0",
+                "complexity": "medium",
+                "source": {
+                    "type": "generated",
+                    "goal_path": ".devlyn/goal.raw.txt",
+                    "goal_sha256": "a" * 64,
+                },
+                "phases": {"surface_close": {"verdict": "PASS"}},
+            }),
+            encoding="utf-8",
+        )
+        assert verify_state_contract_violation(devlyn) is None
+
+        # Spec mode is outside both generated-run contracts.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "version": "3.0",
+                "complexity": "medium",
+                "source": {"type": "spec"},
+                "phases": {"surface_close": None},
+            }),
+            encoding="utf-8",
+        )
+        assert verify_state_contract_violation(devlyn) is None
+
+        # Generated-large needs goal persistence but not SURFACE_CLOSE.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "version": "3.0",
+                "complexity": "large",
+                "source": {
+                    "type": "generated",
+                    "goal_path": ".devlyn/goal.raw.txt",
+                    "goal_sha256": "a" * 64,
+                },
+                "phases": {"surface_close": None},
+            }),
+            encoding="utf-8",
+        )
+        assert verify_state_contract_violation(devlyn) is None
+
+        # Archived schema-v2 replay remains outside the new validation path.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "version": "2.0",
+                "complexity": "medium",
+                "source": {"type": "generated"},
+                "phases": {"surface_close": None},
+            }),
+            encoding="utf-8",
+        )
+        assert verify_state_contract_violation(devlyn) is None
 
         # 2026-07-04 field bug (iter-0060 G1): an AUTO pair trigger skipped on
         # OTHER-engine unavailability spawns no second judge — pair_judge must
