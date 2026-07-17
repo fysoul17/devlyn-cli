@@ -118,9 +118,6 @@ def output_finding_prefix() -> str:
 VERIFICATION_SECTION_RE = re.compile(
     r'(?ms)^<!--[ \t]*devlyn:verification[ \t]*-->[ \t]*\n(#{1,6}[ \t]+[^\n]*\n.*?)(?=^#{1,6}[ \t]+|\Z)'
 )
-VERIFICATION_SENTINEL_LINE_RE = re.compile(
-    r'(?m)^<!--[ \t]*devlyn:verification[ \t]*-->[ \t]*$'
-)
 FILES_TO_TOUCH_SECTION_RE = re.compile(
     r'(?ms)^<!--[ \t]*devlyn:authorized-surface[ \t]*-->[ \t]*\n(#{1,6}[ \t]+[^\n]*\n.*?)(?=^#{1,6}[ \t]+|\Z)'
 )
@@ -270,11 +267,7 @@ EXPECTED_VERIFICATION_COMMAND_KEYS = {
 SPEC_COMPLEXITY_VALUES = {"trivial", "medium", "high", "large"}
 
 
-def extract_verification_block(
-    text: str,
-    *,
-    tail_carrier: bool = False,
-) -> tuple[bool, str | None]:
+def extract_verification_block(text: str) -> tuple[bool, str | None]:
     """Locate the verification section via the `<!-- devlyn:verification -->`
     sentinel (language-neutral — the human-readable heading after it may be
     any text, any language, any ATX heading level 1-6) and return
@@ -288,31 +281,15 @@ def extract_verification_block(
     clearly intended a verification section) but no fenced ```json``` block
     was found inside it — this is a malformed carrier, not a no-op.
     """
-    section = (
-        _last_verification_section(text)
-        if tail_carrier
-        else VERIFICATION_SECTION_RE.search(text)
-    )
+    section = VERIFICATION_SECTION_RE.search(text)
     if not section:
         return (False, None)
     fence = JSON_FENCE_RE.search(section.group(1))
     return (True, fence.group(1) if fence else None)
 
 
-def _last_verification_section(text: str) -> re.Match[str] | None:
-    """Bind the canonical TAIL carrier, not a fake sentinel in fenced Goal bytes."""
-    sentinels = list(VERIFICATION_SENTINEL_LINE_RE.finditer(text))
-    if not sentinels:
-        return None
-    return VERIFICATION_SECTION_RE.search(text, sentinels[-1].start())
-
-
-def extract_verification_text(text: str, *, tail_carrier: bool = False) -> str:
-    section = (
-        _last_verification_section(text)
-        if tail_carrier
-        else VERIFICATION_SECTION_RE.search(text)
-    )
+def extract_verification_text(text: str) -> str:
+    section = VERIFICATION_SECTION_RE.search(text)
     return section.group(1) if section else ""
 
 
@@ -868,8 +845,6 @@ def validate_required_risk_probe_requirement(
 
 def resolve_required_risk_probe_requirements(
     source_md: Path | None,
-    *,
-    tail_carrier: bool = False,
 ) -> tuple[list[dict], str | None]:
     """Return the spec author's declared `required_risk_probe_requirements`
     (a language-neutral replacement for a keyword-prose classifier): a list
@@ -890,9 +865,7 @@ def resolve_required_risk_probe_requirements(
             return ([], err)
         reqs = (data or {}).get("required_risk_probe_requirements", [])
     else:
-        _section_found, block = extract_verification_block(
-            source_md.read_text(), tail_carrier=tail_carrier
-        )
+        _section_found, block = extract_verification_block(source_md.read_text())
         if block is None:
             return ([], None)
         try:
@@ -902,9 +875,7 @@ def resolve_required_risk_probe_requirements(
         reqs = parsed.get("required_risk_probe_requirements", []) if isinstance(parsed, dict) else []
     if not isinstance(reqs, list):
         return ([], "required_risk_probe_requirements must be a list")
-    verification_text = extract_verification_text(
-        source_md.read_text(), tail_carrier=tail_carrier
-    )
+    verification_text = extract_verification_text(source_md.read_text())
     for i, req in enumerate(reqs):
         err = validate_required_risk_probe_requirement(req, i, verification_text)
         if err:
@@ -917,7 +888,6 @@ def load_risk_probes(
     source_md: Path | None,
     *,
     require_present: bool = False,
-    tail_carrier: bool = False,
 ) -> tuple[list[dict], str | None]:
     probes_path = devlyn_dir / "risk-probes.jsonl"
     if not probes_path.is_file():
@@ -927,9 +897,7 @@ def load_risk_probes(
     if source_md is None or not source_md.is_file():
         return ([], "risk-probes.jsonl exists but source markdown is unavailable")
 
-    verification_text = extract_verification_text(
-        source_md.read_text(), tail_carrier=tail_carrier
-    )
+    verification_text = extract_verification_text(source_md.read_text())
     if not verification_text:
         return ([], "risk-probes.jsonl exists but source has no <!-- devlyn:verification --> section")
 
@@ -953,9 +921,7 @@ def load_risk_probes(
     if require_present and not probes:
         return ([], "risk-probes.jsonl must contain at least one probe")
     if require_present:
-        required_reqs, req_err = resolve_required_risk_probe_requirements(
-            source_md, tail_carrier=tail_carrier
-        )
+        required_reqs, req_err = resolve_required_risk_probe_requirements(source_md)
         if req_err:
             return ([], req_err)
         missing = [
@@ -1074,12 +1040,7 @@ def load_expected_contract(expected_path: Path) -> tuple[dict | None, str | None
     return (data, None)
 
 
-def stage_from_source(
-    md: Path,
-    devlyn_dir: Path,
-    *,
-    tail_carrier: bool = False,
-) -> tuple[bool, str | None]:
+def stage_from_source(md: Path, devlyn_dir: Path) -> tuple[bool, str | None]:
     """Materialize .devlyn/spec-verify.json from the json block in `md`.
 
     Returns (staged, error). staged=True → wrote spec-verify.json. error
@@ -1090,9 +1051,7 @@ def stage_from_source(
     error=None → the sentinel is absent entirely (handwritten spec or
     generated source missing the contract).
     """
-    section_found, block = extract_verification_block(
-        md.read_text(), tail_carrier=tail_carrier
-    )
+    section_found, block = extract_verification_block(md.read_text())
     if not section_found:
         return (False, None)
     if block is None:
@@ -1413,27 +1372,6 @@ def validate_authorized_surface_shape(data: object) -> str | None:
     return None
 
 
-def uses_scope_only_plan(state: dict) -> bool:
-    source = state.get("source") if isinstance(state.get("source"), dict) else {}
-    return source.get("type") == "generated" and state.get("complexity") in {"trivial", "medium"}
-
-
-def validate_scope_only_plan_text(text: str, data: object, block: str) -> str | None:
-    if not isinstance(data, dict) or set(data) != {"authorized_surface"}:
-        return "scope-only plan JSON must contain only authorized_surface"
-    canonical = (
-        "<!-- devlyn:authorized-surface -->\n"
-        "## Files to touch\n\n"
-        f"```json\n{block}\n```\n"
-    )
-    if text != canonical:
-        return (
-            "scope-only plan must contain exactly the authorized-surface sentinel, "
-            "`## Files to touch`, one fenced JSON block, and no other bytes"
-        )
-    return None
-
-
 def path_matches_surface(path: str, surface: list[str]) -> bool:
     for entry in surface:
         if entry.endswith("/**"):
@@ -1540,9 +1478,6 @@ def load_authorized_surface(devlyn_dir: Path) -> tuple[list[str] | None, str | N
             data = parsed
     if parse_error is None:
         parse_error = validate_authorized_surface_shape(data)
-    if parse_error is None and uses_scope_only_plan(read_state(devlyn_dir)):
-        assert block is not None
-        parse_error = validate_scope_only_plan_text(plan_text, data, block)
     if parse_error is not None:
         return (None, f"plan.md authorized_surface is malformed: {parse_error}")
     assert data is not None
@@ -1746,7 +1681,7 @@ def run_check_mode(md_path: Path) -> int:
     if solo_ceiling_err:
         print(f"[spec-verify --check] {md_path}: {solo_ceiling_err}", file=sys.stderr)
         return 2
-    section_found, block = extract_verification_block(text, tail_carrier=False)
+    section_found, block = extract_verification_block(text)
     if not section_found:
         # Sentinel absent entirely — opt-in nature preserved for ideate (a
         # spec without machine verification is still valid; it just won't
@@ -3954,101 +3889,6 @@ def run_self_test() -> int:
         if not found or block is None or loads_strict_json(block) != {"authorized_surface": ["bin/cli.js"]}:
             print("extract_authorized_surface_block mis-parsed the mixed H2/H1 section-boundary shape", file=sys.stderr)
             return 1
-
-        # VGC Goal bytes are opaque. Fake sentinels, including the
-        # section-swallowing shape with no later Goal heading, cannot bind.
-        collision_text = (
-            "## Goal (verbatim)\n\n````\n"
-            "opaque\n<!-- devlyn:verification -->\n## Fake Verification\n\n"
-            '```json\n{"verification_commands": [{"cmd": "printf fake"}]}\n```\n'
-            "## Fake heading\nopaque\n````\n\n"
-            "<!-- devlyn:verification -->\n## Verification\n\n"
-            '```json\n{"verification_commands": [{"cmd": "printf real"}]}\n```\n'
-        )
-        swallowing_text = collision_text.replace(
-            "## Fake heading\nopaque\n", "opaque with no later heading\n"
-        )
-        for label, text in (("collision", collision_text), ("swallowing", swallowing_text)):
-            found, block = extract_verification_block(text, tail_carrier=True)
-            if not found or block is None or loads_strict_json(block) != {
-                "verification_commands": [{"cmd": "printf real"}]
-            }:
-                print(f"extract_verification_block failed VGC {label} case", file=sys.stderr)
-                return 1
-            verification_text = extract_verification_text(text, tail_carrier=True)
-            if "printf real" not in verification_text or "printf fake" in verification_text:
-                print(f"extract_verification_text failed VGC {label} case", file=sys.stderr)
-                return 1
-
-        # Handwritten specs retain HEAD's FIRST-match carrier behavior even
-        # when later documentation contains a fenced sentinel example.
-        spec_carrier_regression_text = (
-            "<!-- devlyn:verification -->\n## Verification\n\n"
-            '```json\n{"verification_commands": [{"cmd": "printf real"}]}\n```\n\n'
-            "## Carrier example\n\n````markdown\n"
-            "<!-- devlyn:verification -->\n## Example Verification\n\n"
-            '```json\n{"verification_commands": [{"cmd": "printf fake"}]}\n```\n'
-            "````\n"
-        )
-        head_section = VERIFICATION_SECTION_RE.search(spec_carrier_regression_text)
-        if head_section is None:
-            print("spec carrier regression fixture has no HEAD match", file=sys.stderr)
-            return 1
-        head_fence = JSON_FENCE_RE.search(head_section.group(1))
-        if head_fence is None:
-            print("spec carrier regression fixture HEAD match has no json fence", file=sys.stderr)
-            return 1
-        for kwargs in ({}, {"tail_carrier": False}):
-            found, block = extract_verification_block(spec_carrier_regression_text, **kwargs)
-            if not found or block != head_fence.group(1):
-                print("extract_verification_block regressed spec FIRST binding", file=sys.stderr)
-                return 1
-            verification_text = extract_verification_text(spec_carrier_regression_text, **kwargs)
-            if verification_text != head_section.group(1):
-                print("extract_verification_text regressed spec FIRST binding", file=sys.stderr)
-                return 1
-
-        # Registration v4: generated trivial/medium PLAN is the canonical
-        # carrier only. Other branches keep accepting the semantic plan above.
-        (scope_devlyn / "pipeline.state.json").write_text(json.dumps({
-            "source": {"type": "generated", "criteria_path": ".devlyn/criteria.generated.md"},
-            "complexity": "medium",
-            "base_ref": {"sha": scope_base_sha},
-        }))
-        canonical_scope_plan = (
-            "<!-- devlyn:authorized-surface -->\n"
-            "## Files to touch\n\n"
-            '```json\n{"authorized_surface": ["bin/cli.js"]}\n```\n'
-        )
-        (scope_devlyn / "plan.md").write_text(canonical_scope_plan)
-        surface, surface_error = load_authorized_surface(scope_devlyn)
-        if surface != ["bin/cli.js"] or surface_error is not None:
-            print(f"scope-only exact shape was rejected: {surface_error}", file=sys.stderr)
-            return 1
-        (scope_devlyn / "plan.md").write_text(canonical_scope_plan + "## Risks\n\n- none\n")
-        _surface, surface_error = load_authorized_surface(scope_devlyn)
-        if surface_error is None or "scope-only plan" not in surface_error:
-            print("scope-only plan accepted extra semantic bytes", file=sys.stderr)
-            return 1
-        large_state = {
-            "source": {"type": "generated", "criteria_path": ".devlyn/criteria.generated.md"},
-            "complexity": "large",
-            "base_ref": {"sha": scope_base_sha},
-        }
-        (scope_devlyn / "pipeline.state.json").write_text(json.dumps(large_state))
-        surface, surface_error = load_authorized_surface(scope_devlyn)
-        if surface != ["bin/cli.js"] or surface_error is not None:
-            print(f"generated large semantic plan regressed: {surface_error}", file=sys.stderr)
-            return 1
-
-        skill_path = Path(__file__).resolve().parent.parent / "devlyn:resolve" / "SKILL.md"
-        skill_text = skill_path.read_text(encoding="utf-8")
-        if (
-            "On first failure re-spawn PLAN once with the machine error and canonical template" not in skill_text
-            or "on second failure halt with `BLOCKED:plan-scope-invalid`" not in skill_text
-        ):
-            print("scope-only PLAN retry/fail-closed contract is missing", file=sys.stderr)
-            return 1
     return 0
 
 
@@ -4150,10 +3990,7 @@ def main() -> int:
     expected_path: Path | None = None
     if validate_risk_probes_only:
         _risk_probes, risk_error = load_risk_probes(
-            devlyn_dir,
-            source_md,
-            require_present=True,
-            tail_carrier=src_type == "generated",
+            devlyn_dir, source_md, require_present=True
         )
         if risk_error:
             print(f"[spec-verify] risk probes malformed: {risk_error}", file=sys.stderr)
@@ -4173,15 +4010,9 @@ def main() -> int:
             if expected_staged:
                 staged, error = (True, None)
             else:
-                staged, error = stage_from_source(
-                    source_md, devlyn_dir, tail_carrier=False
-                )
+                staged, error = stage_from_source(source_md, devlyn_dir)
         else:
-            staged, error = stage_from_source(
-                source_md,
-                devlyn_dir,
-                tail_carrier=src_type == "generated",
-            )
+            staged, error = stage_from_source(source_md, devlyn_dir)
         if error is not None:
             print(f"[spec-verify] carrier malformed: {error}", file=sys.stderr)
             write_malformed_finding(devlyn_dir, error, source_md)
@@ -4257,7 +4088,6 @@ def main() -> int:
             devlyn_dir,
             source_md,
             require_present=state_requires_risk_probes(state),
-            tail_carrier=src_type == "generated",
         )
         if risk_error:
             print(f"[spec-verify] risk probes malformed: {risk_error}", file=sys.stderr)
