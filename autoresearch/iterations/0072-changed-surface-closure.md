@@ -571,15 +571,21 @@ The mechanically-verified-vs-unverified clause split above is the first
 design input: the omitted class is exactly the closure work no verification
 command exercises.
 
-## Registration v5 DRAFT — SURFACE_CLOSE (M-SC), round-5 design 2026-07-17 afternoon; 2-seat converged (Grok 4.5 + Fable), **PENDING Codex sol ratification** (archives /tmp/codex-0072-r5/)
+## Registration v5 — SURFACE_CLOSE (M-SC), FROZEN 2026-07-17 evening, three-way converged (archives /tmp/codex-0072-r5/)
 
-**Status: DRAFT, NOT FROZEN, NOT BUILT.** Codex sol seat unavailable this
-round (usage limit until 2026-07-23 13:15 KST; its R0 exited in 6s with the
-limit error — no position formed). The v4 falsifier's "fresh three-way
-registration" holds as a RATIFICATION GATE: no freeze, no build, until
-Codex sol reads the round archives and CONFIRMs or contests. Nothing is
-lost — the build executor seat is Codex, so no edit could land before 7/23
-regardless.
+**Status: FROZEN, NOT BUILT.** Round arc: Grok R0 independent (S-A #1) +
+orchestrator R1 named-delta withdrawal of S-B-first → 2-seat DRAFT while
+Codex sol was usage-limited → user reset the limit same day → Codex
+ratification round (independent position FIRST — its own R0 was a
+read-only SURFACE_CLOSE evaluator inside VERIFY, withdrawn with named
+delta "Observed Omission Non-Finding + Repair-Handoff Elimination":
+July-13 F7 ended PASS_WITH_ISSUES leaving USAGE untouched; July-14
+primary AND pair judges both passed the same omissions; a detector→
+finding→IMPLEMENT handoff adds a hop without observed need) → verdict
+**CONFIRM-WITH-EDITS, 5 exact edits** → Grok cross-confirm **5/5
+CONFIRM** ("Freeze v5 with these five edits"). The five edits are
+incorporated below (immutable inputs; one-attempt lifecycle; edit-surface
+completion; attribution-gated falsifier; realistic token cap).
 
 **Decisive criteria (layered)**: packet's **Unverified-Closure Targeting**
 (the target class — Goal-licensed closure work no verification command
@@ -610,9 +616,17 @@ the falsifier as the measured QUALITY carrier, labeled gold-optional.
 - Placement: PHASE 2.5, after `implement_passed_sha` is set, BEFORE
   BUILD_GATE (repairs flow through the existing mechanical gates; CLEANUP
   is allowlist-wrong for additive tests; VERIFY is findings-only).
-- Fresh worker; inputs = frozen `git diff base_ref…HEAD` + raw Goal bytes
-  + `authorized_surface` + staged verification_commands AS DATA. Forbidden
-  inputs: PLAN prose, IMPLEMENT transcript/reasoning.
+- Fresh worker; immutable inputs (Codex edit 1): PHASE 0 writes the exact
+  resolved free-form Goal bytes to `.devlyn/goal.raw.txt` and records
+  `state.source.goal_path` + `goal_sha256` (archived). After the
+  IMPLEMENT checkpoint and before spawn, the orchestrator writes the
+  immutable `git diff --binary base_ref…HEAD` to
+  `.devlyn/surface-close.input.patch` and records `pre_sha` + its SHA-256
+  under `phases.surface_close`. SURFACE_CLOSE validates both hashes
+  before work; mismatch → `BLOCKED:surface-close-input-mismatch`. Inputs
+  are those two immutable artifacts + `authorized_surface` + staged
+  verification_commands AS DATA. Forbidden inputs: PLAN prose, IMPLEMENT
+  transcript/reasoning.
 - Obligation grammar (agent-decidable, zero fixture literals in harness
   text): UVR-STALE (diff modified symbol S's behavior AND an authorized
   file carries user-visible text documenting S's old interface omitting
@@ -621,35 +635,60 @@ the falsifier as the measured QUALITY carrier, labeled gold-optional.
   test exercises it → one minimal regression test) + first-class EMPTY
   PASS (neither applies → empty diff, verdict PASS — the anti-accretion /
   B2/B5 guard).
-- Mechanical envelope: post-spawn `git diff --name-only` ⊆
-  authorized_surface; violation → ONE re-spawn with machine error; second
-  → `BLOCKED:surface-close-out-of-scope` + revert to pre-spawn sha. One
-  spawn only, never consumes `max_rounds`, hard timeout 600s.
-- Edit surface (Grok R0 §3, file:line): SKILL.md:21 (declared-order
+- Lifecycle (Codex edit 2, replaces the draft's self-contradictory
+  re-spawn/one-spawn text; Grok CONFIRM — "re-spawn was the weaker half
+  of the contradiction"): exactly ONE SURFACE_CLOSE attempt. Record its
+  pre-spawn SHA and untracked snapshot. Empty delta → PASS without
+  commit. A non-empty delta wholly inside `authorized_surface` is
+  scoped-staged and committed as `chore(pipeline): surface-close`. Any
+  path-envelope violation, worker failure, or 600s timeout reverts only
+  the pass-created delta and halts `BLOCKED:surface-close-<reason>`; no
+  retry, no `max_rounds` consumption. The 600s cap is enforced by the
+  monitored Codex route, bounded Claude subprocess route
+  (`run-bounded.py`), or an equivalent native-task timeout; an
+  unenforceable route blocks before spawn.
+- Edit surface (Grok R0 §3 + Codex edit 3): SKILL.md:21 (declared-order
   amendment), :23 (halt conditions), :69-74 (post-implement invariant),
-  ~:240 PHASE 2.5 insertion, :79 (budget exclusion); NEW
-  `references/phases/surface-close.md`; state-schema.md
-  `phases.surface_close`; state-phase-write.py phase-name allowlist;
-  3 mirrors. NOT touched: implement.md/plan.md/always-loaded completeness
-  prose; PLAN-side validators.
+  ~:240 PHASE 2.5 insertion, :79 (budget exclusion); PHASE-0 raw-goal
+  persistence/hash; PHASE-6 terminal-verdict and report phase lists
+  (SKILL.md:315 region — without this the new phase disappears from
+  terminal routing); NEW `references/phases/surface-close.md`;
+  state-schema.md `phases.surface_close` + `source.goal_path/goal_sha256`
+  + `BLOCKED:surface-close-*` verdicts; state-phase-write.py phase-name
+  allowlist; `archive_run.py` patterns for `goal.raw.txt` +
+  `surface-close.input.patch`; timeout/rollback and phase-state
+  self-tests; lint needles; 3 mirrors. NOT touched:
+  implement.md/plan.md/always-loaded completeness prose; PLAN-side
+  validators.
 - Wall: one bounded spawn; wall stays OUT of the quality claim (0071);
   report median wall delta on F7/F25/drift; ship-reject if on-branch
   median wall > +1× same-complexity IMPLEMENT baseline or material
-  timeout-abort rate. Token cap: resolve load-set ≤ +0.1% both gauges.
+  timeout-abort rate. Token cap (Codex edit 5; ≤+0.1% was arithmetically
+  impossible — ~28 c4 tokens): root/shared prompt delta = 0; SKILL
+  cold-start ≤ +2.0%; total resolve load-set ≤ +2.5% in both gauge
+  approximations; excess → REJECT.
 
-**Falsifier (pre-stated)**: rebuilt F7 (fresh nodeg, CLI pin): checks
-1-6+9-10 HOLD, checks 7+8 FLIP to PASS; F25 objective non-regression
-(regression → REJECT); drift battery green (stable-clean B2/B5 +
-DB-failing-adjacent-test 0/4 — over-repair is the symmetric failure; six
-drift-bait; violation matrix N=4 in band); thermometer check (shipped
-harness text carries no fixture literals); `.devlyn` snapshotted while
-rows are live (0072.8 instrument gap). CLEAN KILL: SURFACE_CLOSE runs,
-envelope holds, Goal+diff present, and checks 7+8 still FAIL → mechanism
-class DEAD → residual is engine-native completion behavior, measured at
-the corpus/judge layer — no further harness lever for this class.
+**Falsifier (pre-stated; attribution-gated per Codex edit 4)**: rebuilt
+F7 (fresh nodeg, CLI pin): checks 1-6+9-10 HOLD, checks 7+8 FLIP to
+PASS — and M-SC is causally diagnostic ONLY when
+`.devlyn/surface-close.input.patch` (the pre-SURFACE_CLOSE patch) FAILS
+checks 7 and 8 and the post-SURFACE_CLOSE patch PASSES both. If initial
+IMPLEMENT already closes either carrier, the row is objective-valid but
+non-diagnostic for that carrier: do not credit M-SC; rerun within the
+frozen gate protocol. Archive raw Goal, input patch + hash,
+`phases.surface_close` state, and final patch. F25 objective
+non-regression (regression → REJECT); drift battery green (stable-clean
+B2/B5 + DB-failing-adjacent-test 0/4 — over-repair is the symmetric
+failure; six drift-bait; violation matrix N=4 in band); thermometer
+check (shipped harness text carries no fixture literals); `.devlyn`
+snapshotted while rows are live (0072.8 instrument gap). CLEAN KILL:
+SURFACE_CLOSE runs, envelope holds, immutable inputs validated, and the
+post patch still FAILS 7+8 → mechanism class DEAD → residual is
+engine-native completion behavior, measured at the corpus/judge layer —
+no further harness lever for this class.
 
-**Ratification protocol**: when the Codex window resets, Codex sol reads
-this section + /tmp/codex-0072-r5/{packet,orchestrator-pre-round,
-orchestrator-r1}.md + grok-r0.log and returns CONFIRM (freeze v5 as
-registered) or a contested position (new round on the diff only). Build
-remains Codex-delegated per the v3/v4 packet pattern.
+**Ratification record**: Codex sol CONFIRM-WITH-EDITS (5 edits, all
+incorporated above; named delta withdrawing its own VERIFY-evaluator R0
+position); Grok cross-confirm 5/5 with falsifier acceptance unchanged;
+orchestrator R1 named-delta withdrawal of S-B-first. 3/3 converged.
+Build = Codex sol packet per the v3/v4 pattern.

@@ -14,7 +14,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and agai
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-17 PM (iter-0072 **v4 FALSIFIED (fourth valid-negative)** → round-5 **SURFACE_CLOSE DRAFT designed, awaiting Codex ratification 7/23**; dual-judge default shipped)
+## 🚦 START-HERE — state after 2026-07-18 (iter-0072 **v4 FALSIFIED (fourth valid-negative)** → **Registration v5 SURFACE_CLOSE FROZEN 3/3 — build+gate is the entry point**; dual-judge default shipped)
 
 **Where the loop stands (one paragraph).** The quality axis (nodeg
 objective 7/7 · quality 0/7 · wall 0/7, iter-0071 baseline) is the open
@@ -41,24 +41,26 @@ default-when-available shipped (0071.5).
 after the double falsification, 0072 round 3 needs a fresh design round while
 dual-judge/T1 are shovel-ready with user go-ahead; run the 0072 design round
 during the T1 cohort window, engines permitting):
-1. **iter-0072 round 5 DONE as 2-seat DRAFT — SURFACE_CLOSE (M-SC)
-   awaiting CODEX RATIFICATION at its window reset (2026-07-23 13:15
-   KST), then build + gate.** Design round ran 2026-07-17 PM (user
-   go-ahead): Grok R0 independent → S-A #1; orchestrator WITHDREW its
-   pre-round S-B-first with named delta (F7 completed dirty with VERIFY
-   passing across nodeg-20260713/-14/-17b — omission non-finding is
-   OBSERVED; fix-loop re-enters the v4-falsified IMPLEMENT frame; 4×
-   dead instruction-channel ledger). Codex sol seat was usage-limited
-   (R0 exited 6s, no position) → v5 is DRAFT, NOT frozen; ratification
-   protocol + full registration in the iter file § "Registration v5
-   DRAFT"; DECISIONS 0072.9; archives /tmp/codex-0072-r5/. Mechanism:
-   PHASE 2.5 one-shot audit+repair over frozen diff + raw Goal + surface
-   (UVR-STALE + PATH-TEST + first-class EMPTY PASS; mechanical envelope;
-   600s cap). Falsifier: F7 checks 7+8 flip, 1-6+9-10/F25/drift/
-   thermometer green; clean kill → class DEAD, residual = engine-native
-   completion (corpus/judge layer). Prior arc: v1/v2 prose
-   (0072.2/0072.4), v3 info-preservation (0072.6), v4 scope-only PLAN
-   (0072.8, `nodeg-20260717b/`) — four same-iter valid-negatives.
+1. **iter-0072 Registration v5 SURFACE_CLOSE FROZEN 3/3 (DECISIONS
+   0072.9 draft + 0072.10 freeze) — BUILD + GATE next.** Mechanism:
+   PHASE 2.5 one-shot audit+repair on generated trivial/medium —
+   immutable inputs (`.devlyn/goal.raw.txt` + `surface-close.input.patch`
+   + hashes; mismatch blocks), UVR-STALE + PATH-TEST + first-class EMPTY
+   PASS, exactly one attempt/no retry (violation/timeout → revert
+   pass-delta only → `BLOCKED:surface-close-<reason>`), 600s enforced.
+   Falsifier is ATTRIBUTION-GATED: M-SC diagnostic only when the
+   pre-SURFACE_CLOSE input patch FAILS F7 checks 7+8 and the post patch
+   PASSES both; F25 non-regression, drift battery, thermometer, token
+   caps (root/shared 0, SKILL ≤+2.0%, load-set ≤+2.5%); clean kill →
+   class DEAD, residual = engine-native completion (corpus/judge layer).
+   Named deltas on record: orchestrator withdrew S-B-first (VERIFY
+   passed dirty F7 rows across three cohorts); Codex withdrew its
+   VERIFY-evaluator R0 ("Observed Omission Non-Finding + Repair-Handoff
+   Elimination"); Grok cross-confirmed Codex's 5 edits 5/5. Full
+   registration: iter file § "Registration v5"; archives
+   /tmp/codex-0072-r5/. Build = Codex sol packet (v3/v4 pattern);
+   remember `.devlyn` live snapshots during nodeg rows. Prior arc: four
+   same-iter valid-negatives (0072.2/.4/.6/.8).
 2. ~~VERIFY dual-judge → default-when-available~~ **DONE 2026-07-16**
    (DECISIONS 0071.5; queue item `[x]` with ship record; schema-v3
    `pair.default`, net −24 lines, all gates + live canary PASS).
