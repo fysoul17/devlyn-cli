@@ -712,3 +712,47 @@ attribution = lever works; post tree still failing 7+8 with envelope
 + inputs valid = clean kill. Concrete receipt of inapplicability:
 `validate_scope_only_plan_text` no longer exists post-revert — a gate
 citing it cannot run.
+
+## Registration v5 FALSIFIED — F7 check 7; carrier 2 FLIPPED with clean attribution (2026-07-18; FIFTH valid-negative, and the first lever-caused closure)
+
+Three-run gate arc, each run surfacing a distinct harness defect fixed by
+a cross-confirmed amendment before the next attempt:
+
+1. `nodeg-20260718`: SURFACE_CLOSE fired, produced the correct carrier-2
+   repair, then ran the FULL test suite to validate — the fixture's
+   pre-existing server tests fail listen-EPERM under the codex sandbox →
+   fail-closed BLOCKED, byte-exact rollback. → **Amendment 2** (0072.11):
+   workers execute nothing; validation belongs to BUILD_GATE; phase
+   bodies pass VERBATIM (the A-arm orchestrator had appended its own
+   "run node --test yourself"). Grok CONFIRM; Codex OBJECT adopted at
+   the shipped-text root.
+2. `nodeg-20260718b`: the sonnet A-arm orchestrator staged the v5 skill
+   (state template proves it) yet silently skipped PHASE-0 goal
+   persistence AND the PHASE 2.5 dispatch; 7 phases PASS. Same class as
+   iter-0071's non-enforced omission. → **Amendment 3** (0072.12):
+   verify-merge-findings.py state blockers
+   `verify.state.goal-persistence-missing` +
+   `verify.state.surface-close-skipped` — skip becomes mechanically
+   fatal. 3/3 CONFIRM. (Side receipt: IMPLEMENT closed carrier 2 itself
+   that run — variance — but left USAGE stale and VERIFY passed it: the
+   4th observed omission non-finding.)
+3. `nodeg-20260718c` — first DIAGNOSTIC row (VERDICT + full artifact
+   set incl. live-snapshot `.devlyn`): every lifecycle/information/
+   attribution check PASS; **SURFACE_CLOSE delta = exactly the
+   unsupported-format exit-1 test → check 8 FLIPPED BY THE LEVER**;
+   check 7 FAIL — the worker read the USAGE block (log receipts) and
+   silently declined UVR-STALE, final message bare PASS + test diff.
+
+Frozen all-checks gate → no-ship; reverts `1b32fb1`/`335aa3e`/`f0a5836`;
+mirrors re-synced; reverted self-tests PASS; STOP.
+
+**The class SPLIT — the central finding.** Neither pre-registered
+falsifier branch assumed heterogeneity, and both missed: test-shaped
+closure (PATH-TEST) is lever-reachable in the audit+repair frame;
+documentation-sync closure (UVR-STALE) resists its SIXTH channel even
+with the obligation delivered verbatim to a dedicated auditor holding
+the file open. Seat note: the SC worker ran on codex (executor pin);
+bare-B — the arm the blind judges prefer — closes USAGE reading the
+same task. Seat/frame interaction is unmeasured; that is round-6's
+first axis, alongside UVR-obligation decidability and a revisit of
+mechanical staleness derivation under the split receipt. Never prose.

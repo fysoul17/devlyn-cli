@@ -1,0 +1,60 @@
+    74	      return;
+    75	    }
+    76	    default:
+    77	      console.error(`Unknown command: ${command}`);
+    78	      process.stderr.write(USAGE);
+    79	      process.exit(1);
+    80	  }
+    81	}
+    82	
+    83	main(process.argv.slice(2));
+
+codex
+The hashes match. The JSON success path already has its required test; the implemented unsupported-format failure path does not, so I’m adding one minimal exit-status regression test.
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/ra5363d8b08ea/ff10888c89791/A1/repo/tests/cli.test.js
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index 1b308e92466982d17c2daacc2d9a43904dcc122d..d6de8bd06d8f1ece5835c5548f4943beb7918b1a
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -30,3 +30,7 @@
+   assert.equal(out, `${JSON.stringify(expected)}\n`);
+   assert.deepEqual(JSON.parse(out), expected);
+ });
++
++test('version rejects unsupported --format values', () => {
++  assert.throws(() => run(['version', '--format', 'yaml']), { status: 1 });
++});
+
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index 1b308e92466982d17c2daacc2d9a43904dcc122d..d6de8bd06d8f1ece5835c5548f4943beb7918b1a
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -30,3 +30,7 @@
+   assert.equal(out, `${JSON.stringify(expected)}\n`);
+   assert.deepEqual(JSON.parse(out), expected);
+ });
++
++test('version rejects unsupported --format values', () => {
++  assert.throws(() => run(['version', '--format', 'yaml']), { status: 1 });
++});
+
+codex
+PASS
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index 1b308e92466982d17c2daacc2d9a43904dcc122d..d6de8bd06d8f1ece5835c5548f4943beb7918b1a
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -30,3 +30,7 @@
+   assert.equal(out, `${JSON.stringify(expected)}\n`);
+   assert.deepEqual(JSON.parse(out), expected);
+ });
++
++test('version rejects unsupported --format values', () => {
++  assert.throws(() => run(['version', '--format', 'yaml']), { status: 1 });
++});
+
+tokens used
+18,479
+[codex-monitored] codex exited: code=0 elapsed=43s

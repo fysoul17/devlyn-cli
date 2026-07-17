@@ -14,7 +14,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and agai
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-18 (iter-0072 **v4 FALSIFIED (fourth valid-negative)** → **Registration v5 SURFACE_CLOSE FROZEN 3/3 — build+gate is the entry point**; dual-judge default shipped)
+## 🚦 START-HERE — state after 2026-07-18 (iter-0072 **v5 FALSIFIED on check 7 — but CARRIER 2 FLIPPED with clean attribution, the first lever-caused closure**; next = round-6 design on the SPLIT class; dual-judge default shipped)
 
 **Where the loop stands (one paragraph).** The quality axis (nodeg
 objective 7/7 · quality 0/7 · wall 0/7, iter-0071 baseline) is the open
@@ -41,26 +41,26 @@ default-when-available shipped (0071.5).
 after the double falsification, 0072 round 3 needs a fresh design round while
 dual-judge/T1 are shovel-ready with user go-ahead; run the 0072 design round
 during the T1 cohort window, engines permitting):
-1. **iter-0072 Registration v5 SURFACE_CLOSE FROZEN 3/3 (DECISIONS
-   0072.9 draft + 0072.10 freeze) — BUILD + GATE next.** Mechanism:
-   PHASE 2.5 one-shot audit+repair on generated trivial/medium —
-   immutable inputs (`.devlyn/goal.raw.txt` + `surface-close.input.patch`
-   + hashes; mismatch blocks), UVR-STALE + PATH-TEST + first-class EMPTY
-   PASS, exactly one attempt/no retry (violation/timeout → revert
-   pass-delta only → `BLOCKED:surface-close-<reason>`), 600s enforced.
-   Falsifier is ATTRIBUTION-GATED: M-SC diagnostic only when the
-   pre-SURFACE_CLOSE input patch FAILS F7 checks 7+8 and the post patch
-   PASSES both; F25 non-regression, drift battery, thermometer, token
-   caps (root/shared 0, SKILL ≤+2.0%, load-set ≤+2.5%); clean kill →
-   class DEAD, residual = engine-native completion (corpus/judge layer).
-   Named deltas on record: orchestrator withdrew S-B-first (VERIFY
-   passed dirty F7 rows across three cohorts); Codex withdrew its
-   VERIFY-evaluator R0 ("Observed Omission Non-Finding + Repair-Handoff
-   Elimination"); Grok cross-confirmed Codex's 5 edits 5/5. Full
-   registration: iter file § "Registration v5"; archives
-   /tmp/codex-0072-r5/. Build = Codex sol packet (v3/v4 pattern);
-   remember `.devlyn` live snapshots during nodeg rows. Prior arc: four
-   same-iter valid-negatives (0072.2/.4/.6/.8).
+1. **iter-0072 round 6: the class SPLIT — design round on the residual
+   UVR (stale user-visible reference) obligation.** v5 SURFACE_CLOSE was
+   built, hardened through two observed-failure amendments (0072.11
+   execute-nothing/VERBATIM-assembly; 0072.12 mechanical dispatch
+   enforcement — both remain binding learnings for any future phase),
+   and produced iter-0072's FIRST lever-caused carrier closure: on the
+   diagnostic row (`nodeg-20260718c/VERDICT.md`, attribution receipts
+   archived) the audit+repair worker added the unsupported-format exit-1
+   test (check 8 FLIPPED, pre-SC patch provably lacked it) — but read
+   the USAGE block and silently declined UVR-STALE (check 7 FAIL,
+   frozen all-checks gate → reverted `1b32fb1..f0a5836`, fifth
+   valid-negative, DECISIONS 0072.13). Round-6 axes (three-way, design
+   only, never prose): (a) seat-fitness — the SC worker ran on codex via
+   the executor pin; bare-B (the blind-preferred arm) DOES close USAGE;
+   try claude-routed audit frame; (b) UVR obligation decidability — the
+   "documents S's old interface" judgment is declined silently; (c)
+   mechanical staleness derivation, rejected in r5 as fixture-shaped,
+   revisited under the split receipt (test-shaped closure lever-reachable
+   vs documentation-sync not). Prior arc: five same-iter valid-negatives
+   (0072.2/.4/.6/.8/.13); registration + amendments in the iter file.
 2. ~~VERIFY dual-judge → default-when-available~~ **DONE 2026-07-16**
    (DECISIONS 0071.5; queue item `[x]` with ship record; schema-v3
    `pair.default`, net −24 lines, all gates + live canary PASS).
