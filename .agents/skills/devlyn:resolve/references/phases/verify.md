@@ -29,15 +29,15 @@ Emit findings to `.devlyn/verify-mechanical.findings.jsonl`. Each match = one fi
 
 Grade the diff against the spec on rubric axes:
 
-- **Spec compliance** — did every Requirement get an `evidence` record pointing at code that satisfies it?
-- **Scope** — does the diff touch only files PLAN listed (or the cleanup allowlist)? Out-of-scope file = HIGH finding `scope.out-of-scope-violation`.
+- **Spec compliance** — in spec mode, did every Requirement get evidence? In free-form mode, grade every binding raw-Goal clause and accept the single non-authoritative `criteria.generated://goal` entry only when all pass. Verification is mechanical evidence, not scope law; anchors and assumptions are non-binding.
+- **Scope** — use the spec's boundaries in spec mode and only explicit raw-Goal boundaries in free-form mode; VERIFY cannot read PLAN. An out-of-contract file is HIGH `scope.out-of-scope-violation`.
 - **Quality** — does the implementation follow the framework's idiomatic patterns, or are there hand-rolled helpers replacing standard primitives? `design.unidiomatic-pattern` MEDIUM if so.
 - **Consistency** — internal style (naming, error shape, module boundaries) consistent with the surrounding code.
 
 For each finding, write file:line evidence. Do not paraphrase code; quote it.
 
-**Clause-level check**: split each Requirement into its binding clauses before
-you pass it. Words like `before`, `after`, `once`, `always`, `never`,
+**Clause-level check**: split each spec Requirement—or every raw-Goal clause in
+free-form mode—into binding clauses before you pass it. Words like `before`, `after`, `once`, `always`, `never`,
 `regardless`, `irrelevant`, `permanent`, `idempotent`, `duplicate`, `raw`, and
 `signature` usually encode a separate invariant. A passing verification command
 proves only the case it actually exercises; it does not prove neighboring

@@ -59,6 +59,9 @@ KNOWN_PAIR_TRIGGER_REASONS = {
 OBSERVABLE_COMMAND_MARKERS = ("command", "observable", "expose")
 BACKTICKED_TEXT_RE = re.compile(r"`[^`\n]+`")
 RESERVED_BACKTICK_TERMS = {"solo-headroom hypothesis", "solo_claude", "miss"}
+GENERATED_GOAL_OPEN_RE = re.compile(
+    r"(?m)^## Goal \(verbatim\)[ \t]*\n(?:[ \t]*\n)?(?P<fence>`{3,})[ \t]*\n"
+)
 COMMAND_PREFIXES = {
     "bash",
     "bun",
@@ -359,6 +362,16 @@ def source_spec_text(state: dict[str, Any]) -> str | None:
     return None
 
 
+def generated_goal_text(text: str) -> str | None:
+    opening = GENERATED_GOAL_OPEN_RE.search(text)
+    if opening is None:
+        return None
+    closing = re.compile(
+        rf"(?m)^{re.escape(opening.group('fence'))}[ \t]*$"
+    ).search(text, opening.end())
+    return text[opening.end():closing.start()] if closing else None
+
+
 def spec_frontmatter_complexity(state: dict[str, Any]) -> str | None:
     text = source_spec_text(state)
     if text is None:
@@ -379,6 +392,13 @@ def spec_has_solo_headroom_hypothesis(state: dict[str, Any]) -> bool:
     text = source_spec_text(state)
     if text is None:
         return False
+    source = state.get("source") if isinstance(state.get("source"), dict) else {}
+    if source.get("type") == "generated" or (
+        isinstance(source.get("criteria_path"), str) and not source.get("spec_path")
+    ):
+        text = generated_goal_text(text)
+        if text is None:
+            return False
     lower = text.lower()
     return (
         "solo-headroom hypothesis" in lower
@@ -1502,7 +1522,14 @@ def self_test() -> int:
 
         criteria_path = devlyn / "criteria.generated.md"
         criteria_path.write_text(
-            "# Criteria\n\nsolo-headroom hypothesis: `SOLO_CLAUDE` should miss the priority rollback behavior exposed by `node check.js`.\n",
+            "## Goal (verbatim)\n\n```\nShip the requested behavior.\n```\n\n## Context anchors (non-binding)\n\n- solo-headroom hypothesis: `SOLO_CLAUDE` should miss behavior exposed by `node check.js`.\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n{\"verification_commands\": []}\n```\n",
+            encoding="utf-8",
+        )
+        assert spec_has_solo_headroom_hypothesis(
+            {"source": {"criteria_path": str(criteria_path)}}
+        ) is False
+        criteria_path.write_text(
+            "## Goal (verbatim)\n\n```\nsolo-headroom hypothesis: `SOLO_CLAUDE` should miss the priority rollback behavior exposed by `node check.js`.\n```\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n{\"verification_commands\": []}\n```\n",
             encoding="utf-8",
         )
         assert spec_has_solo_headroom_hypothesis(
