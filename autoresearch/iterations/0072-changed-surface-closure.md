@@ -192,6 +192,82 @@ anti-drift prose … plausible co-cause, held for isolation") — but branch 1
 does NOT unlock Stage 2; the next lever must be re-registered three-way from
 these receipts.
 
+## Registration v3 — Verbatim-Goal Contract (VGC), three-way converged 2026-07-16 night (Grok M3 R0 + Fable adjudication + Codex R1 CONFIRM; archives /tmp/codex-0072-r3/)
+
+**Status: FROZEN ON DISK, NOT COMMITTED, NOT BUILT** — T1 val3 cohort is
+running (mid-cohort commit ban); build + gate run open at the next window.
+
+**Decisive criterion**: Information-Preservation over Instruction — make the
+verbatim goal REACH the deciding agents by DELETING the lossy PHASE-0
+synthesis, not by annotating it. Named seat criteria: Grok "Lossy-Transform
+Deletion with One-File Reach"; Codex R0 "Minimum Lossless Authority Change"
+(M1-first) WITHDRAWN in R1 with named delta — M1's diagnostic is confounded
+(v2 criteria carried the yaml clause verbatim beside the freeze list and
+still refused: co-location cannot distinguish information loss from
+authority conflict), M3's falsifier is clean.
+
+**Mechanism (M3/VGC)**: free-form `.devlyn/criteria.generated.md` becomes:
+`## Goal (verbatim)` (raw `goal_text`, byte-identical, collision-safe
+fenced) → optional `## Context anchors (non-binding)` (1-2 codebase anchors,
+no scope law) → `<!-- devlyn:verification -->` + `## Verification`
+(machine JSON, unchanged carrier). NO synthesized binding
+Requirements/Constraints/Out-of-Scope on any free-form branch (trivial/
+medium/large share the shape; Large keeps `## Assumptions` for true
+assumptions only, non-binding or halt-to-ideate). Spec-mode and verify-only
+UNTOUCHED. No new flag/file/schema field.
+
+**Edit surface (build packet must cover every consumer — Codex R1 sweep)**:
+1. free-form-mode.md trivial/medium/large actions + mini-spec quality bar
+   (mechanical: Goal-first, raw-byte preservation, collision-safe fencing,
+   canonical Verification LAST, no binding scope sections) + SKILL.md:100
+   free-form bullet; 3 mirrors.
+2. plan.md — "Requirement" dependencies → "binding clause in Goal";
+   anchors cannot license/forbid files; authorized_surface derives solely
+   from raw Goal clauses (downstream BUILD_GATE/finish-gate consumers
+   mechanically unchanged).
+3. implement.md:16 + state-schema.md:61 — free-form criteria ledger becomes
+   ONE non-authoritative `criteria.generated://goal` entry (implemented only
+   when every raw Goal clause is satisfied); never regenerate 3-5 bullets.
+4. verify.md:32 free-form grading frame — grade every binding raw-Goal
+   clause; Verification = mechanical evidence; anchors non-binding; Scope
+   axis uses explicit Goal boundaries (VERIFY cannot read PLAN).
+   cleanup.md:11 — raw Goal is the scope authority.
+5. spec-verify-check.py — FIX the opaque-text collision (first-match
+   sentinel regex can bind a fake sentinel inside the fenced goal —
+   spec-verify-check.py:118); select the canonical TAIL carrier / ignore
+   fenced goal content; add a self-test with fake sentinels/headings/JSON
+   fences inside the goal.
+6. verify-merge-findings.py:346 — solo-headroom trigger scan scoped to the
+   Goal section only (a non-binding anchor must not trigger routing).
+7. Lint needles + probe/archive surfaces re-checked; mirrors parity.
+
+**Gates (ship = ALL; any fail → revert all, valid-negative, STOP)**:
+- Static: mirror parity, lint, token gauges ≤ +0.1% both approximations
+  (contract prose only; embedded goal = run-scoped artifact), no new
+  flag/file; spec-verify-check self-test incl. collision case; verify-merge
+  self-test; spec/verify-only byte-behavior unchanged.
+- F7 early kill (inside fresh nodeg run, CLI pinned, engines serial):
+  complexity=medium recorded; extracted Goal == task.txt bytes; no binding
+  synthesized R/C/O; canonical Verification parses; PLAN includes BOTH
+  carriers as work items (USAGE update + unsupported-format unit test);
+  authorized_surface stays the two named files. F25 non-regression (raw
+  Goal exact; closure retained; timeout semantics per 0072.3).
+- CLEAN FALSIFIER (pre-stated): raw Goal is demonstrably the sole scoping
+  authority; renewed carrier refusal kills before judge wall and falsifies
+  information-preservation for this class — next mechanism class is
+  structural PLAN scope-lock/policy (e.g. PLAN may not emit refuse-lists
+  contradicting Goal clauses; IMPLEMENT binds Goal over plan Risks), never
+  more prose. Seat predictions recorded: Grok P(refusal persists) ≈
+  0.40-0.50; Codex ≈ 0.40.
+- Drift battery: violation matrix N=4 flip bands; stable-clean B2/B5 +
+  DB-failing-adjacent-test 0/4; six drift-bait probes; 3-CLI × 2-size
+  compliance cells (VGC touches every free-form run).
+- Full nodeg: same frozen B; objective 7/7; quality ≥2/7 F7-mandatory; F25
+  per 0072.3. Wall axis OUT of the claim; record PHASE-0/PLAN wall.
+
+**Vehicle**: iter-0072 Registration v3 (both seats; fresh pre-registration =
+newly frozen mechanism, not a new iter number).
+
 ## Registration v2 — D1 authority-matched carve (2026-07-16, three-way R0+R1; Codex R1 arithmetic dissent resolved)
 
 **Decisive criterion**: Authority-Matched Causal Placement with Frozen-Boundary

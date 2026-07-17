@@ -48,24 +48,32 @@ t0-relative; the 320+60 measurement run is NOT yet executed.
 after the double falsification, 0072 round 3 needs a fresh design round while
 dual-judge/T1 are shovel-ready with user go-ahead; run the 0072 design round
 during the T1 cohort window, engines permitting):
-1. **iter-0072 round 3 = three-way DESIGN round on structural context routing**
-   — BOTH prose registrations falsified same-day (v1 reference rule → DECISIONS
-   0072.2; v2 always-loaded D1 carve, load-verified → 0072.4); prose-lever
-   class DEAD on this behavior (0033g anti-asymptotic stop). Surviving causal
-   observation + candidate mechanism class (delete the lossy PHASE-0
-   criteria transformation / route verbatim goal_text to PLAN) recorded in the
-   iter file § "Registration v2 FALSIFIED". Design round only — no lever
-   ships unregistered. Evidence: `nodeg-20260716{,b}/`.
+1. **iter-0072 Registration v3 (Verbatim-Goal Contract) — BUILD + GATE**.
+   Design round DONE 2026-07-16 night, 3/3 converged (DECISIONS 0072.5;
+   full frozen registration in the iter file § "Registration v3"; Codex R1
+   consumer sweep incl. the spec-verify-check.py sentinel-collision fix is
+   part of the frozen edit surface). v3 docs + DECISIONS 0072.5 sit ON DISK
+   UNCOMMITTED (mid-cohort commit ban) — first act of the next window:
+   commit them, then Codex build packet → static gates → fresh nodeg F7
+   early kill → drift battery + full nodeg. Prior context: BOTH prose
+   registrations falsified same-day (0072.2 / 0072.4; prose class DEAD,
+   0033g stop). Evidence: `nodeg-20260716{,b}/`.
 2. ~~VERIFY dual-judge → default-when-available~~ **DONE 2026-07-16**
    (DECISIONS 0071.5; queue item `[x]` with ship record; schema-v3
    `pair.default`, net −24 lines, all gates + live canary PASS).
-3. **T1 sonnet-cohort completion rerun** (fresh window, fresh run-id,
-   detached nohup, **pin `CEILING_TEST_CLAUDE_BIN` from launch**):
-   ORDERING→sonnet route has no formal bar verdict after the 22/190
-   orchestrator-error abort (0070a addendum 11; partial signal 11/13
-   held-out bads resolved = strongly against). CONTENT→terra route already
-   ADMIT 2/2. Falsifier #6 formal adjudication needs the completed cohort;
-   Cell 2 blocked until then.
+3. **T1 cohort rerun: RUNNING since 2026-07-16 ~22:45 KST** — run-id
+   `iter0070a-val3-20260716`, `--tier validation --seats sonnet,terra`
+   (sonnet cohort FIRST, terra reruns after as a bonus n=2 replication),
+   seed 20260714 (same planned schedule as val2 for cross-seat
+   comparability), `CEILING_TEST_CLAUDE_BIN` pinned 2.1.211, nohup+disown,
+   log `~/.local/share/nx01/logs/t1-val3.log`, ~5min/attempt → expect
+   ~19h+. NO commits and NO heavy claude spawns until it completes
+   (mid-cohort hard rules). Adjudicate ORDERING→sonnet formal bar verdict
+   per the EXACT frozen per-role check semantics — never aggregated
+   counters (addendum-11 pyx correction). Falsifier #6 needs the completed
+   cohort; Cell 2 blocked until then. Prior state: 22/190 orchestrator-
+   error abort; partial signal 11/13 strongly against; CONTENT→terra
+   ADMIT 2/2.
 4. **Cell 1 bare-fails admission gate** (terra-conditional reporting only).
 
 **Cohort-run hygiene (learned 2026-07-14/15, binding for all long runs)**:
