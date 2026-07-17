@@ -1211,12 +1211,12 @@ if ! grep -Fq 'pair_evidence_intent' config/skills/devlyn:resolve/references/fre
   || ! grep -Fq 'pair-evidence intent without an actionable solo-headroom hypothesis must halt' config/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'pair-evidence intent without an actionable solo-headroom hypothesis must halt' .claude/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'pair-evidence intent without an actionable solo-headroom hypothesis must halt' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'Raw Goal preservation carries actionable solo-headroom hypotheses' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'Raw Goal preservation carries actionable solo-headroom hypotheses' .claude/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'Raw Goal preservation carries actionable solo-headroom hypotheses' .agents/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'emit `spec.solo_headroom_hypothesis` when applicable' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'emit `spec.solo_headroom_hypothesis` when applicable' .claude/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'emit `spec.solo_headroom_hypothesis` when applicable' .agents/skills/devlyn:resolve/references/free-form-mode.md \
+  || ! grep -Fq 'preserve that literal hypothesis in `.devlyn/criteria.generated.md`' config/skills/devlyn:resolve/references/free-form-mode.md \
+  || ! grep -Fq 'preserve that literal hypothesis in `.devlyn/criteria.generated.md`' .claude/skills/devlyn:resolve/references/free-form-mode.md \
+  || ! grep -Fq 'preserve that literal hypothesis in `.devlyn/criteria.generated.md`' .agents/skills/devlyn:resolve/references/free-form-mode.md \
+  || ! grep -Fq 'emit the canonical `spec.solo_headroom_hypothesis` pair trigger reason' config/skills/devlyn:resolve/references/free-form-mode.md \
+  || ! grep -Fq 'emit the canonical `spec.solo_headroom_hypothesis` pair trigger reason' .claude/skills/devlyn:resolve/references/free-form-mode.md \
+  || ! grep -Fq 'emit the canonical `spec.solo_headroom_hypothesis` pair trigger reason' .agents/skills/devlyn:resolve/references/free-form-mode.md \
   || ! grep -Fq '/devlyn:ideate` guidance for `BLOCKED:solo-headroom-hypothesis-required`' config/skills/devlyn:resolve/references/state-schema.md \
   || ! grep -Fq '/devlyn:ideate` guidance for `BLOCKED:solo-headroom-hypothesis-required`' .claude/skills/devlyn:resolve/references/state-schema.md \
   || ! grep -Fq '/devlyn:ideate` guidance for `BLOCKED:solo-headroom-hypothesis-required`' .agents/skills/devlyn:resolve/references/state-schema.md \

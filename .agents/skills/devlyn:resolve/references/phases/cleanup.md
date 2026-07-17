@@ -8,15 +8,15 @@ Remove tooling artifacts, dead code added by this diff, and doc references inval
 
 <input>
 - Cumulative diff since `state.base_ref.sha`.
-- Source at `state.source.spec_path` or `state.source.criteria_path`; in free-form mode the raw Goal is the sole scope authority, and anchors/assumptions cannot license or forbid cleanup.
+- Spec at `state.source.spec_path` or `state.source.criteria_path`.
 - `state.phases.cleanup.pre_sha` (the orchestrator captured this before spawn — your post-cleanup diff against this SHA must stay within the allowlist).
 </input>
 
 <allowlist>
 You may modify or delete:
 
-1. **Tooling artifacts** the source contract did not list as deliverables: `test-results/`, `playwright-report/`, `.last-run.json`, coverage HTML output, build artifacts, runtime caches (`__pycache__/`, `*.pyc`, `.cache/`).
-2. **Dead code added by this diff** — symbols (functions, classes, types, exports) introduced by this diff that no other code added by this diff references AND that are not part of the required surface. Pre-existing dead code is out of scope.
+1. **Tooling artifacts** the spec did not list as deliverables: `test-results/`, `playwright-report/`, `.last-run.json`, coverage HTML output, build artifacts, runtime caches (`__pycache__/`, `*.pyc`, `.cache/`).
+2. **Dead code added by this diff** — symbols (functions, classes, types, exports) introduced by this diff that no other code added by this diff references AND that are not part of the spec's required surface. Pre-existing dead code is out of scope.
 3. **Doc references this diff invalidated** — links / file paths / symbol names in markdown files that this diff renamed or removed. Update only the references; do not rewrite surrounding prose.
 4. **Inline comments** that explain code this diff deleted but the comment still mentions.
 
