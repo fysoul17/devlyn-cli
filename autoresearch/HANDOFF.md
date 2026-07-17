@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iters: [`iterations/0071-wall-proportionality.md`](iterations/0071-wall-proportionality.md) (levers + concurrent dual-judge SHIPPED; addendum 4 = ship record) + [`iterations/0070a-noncoding-instruments.md`](iterations/0070a-noncoding-instruments.md) (routed-seat v2 wiring landed; 320+60 run pending). Latest closed: [`iterations/0068-discriminating-corpus.md`](iterations/0068-discriminating-corpus.md) (VALID-NEGATIVE; closure addenda 3-4 = nodeg verdict). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iter: [`iterations/0072-changed-surface-closure.md`](iterations/0072-changed-surface-closure.md) — § "Registration v4" is the frozen build contract (v1/v2/v3 falsified same-iter; receipts in §§ "Registration v2/v3 FALSIFIED"). Recently closed: [`iterations/0070a-noncoding-instruments.md`](iterations/0070a-noncoding-instruments.md) (addendum 12 = routed instrument DEAD, falsifier #6) + [`iterations/0071-wall-proportionality.md`](iterations/0071-wall-proportionality.md) (dual-judge default shipped, DECISIONS 0071.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,35 +14,28 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and agai
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-14 (iter-0071 levers + concurrent dual-judge SHIPPED; T1 validation wiring landed; nodeg 3-bar verdict complete)
+## 🚦 START-HERE — state after 2026-07-17 (T1 val3: routed instrument DEAD; iter-0072 v3 falsified + **v4 Scope-Only PLAN FROZEN, build next**; dual-judge default shipped)
 
-**Where the loop stands (one paragraph).** iter-0071
-(`iterations/0071-wall-proportionality.md`, the ACTIVE iter) shipped its
-full ship-set in one three-way session: L-A (goal_length>80 Large trigger
-deleted), L-B (auto-probe post-PLAN demotion on frozen `probe_scale_small
-:= len(authorized_surface)<=2 AND no "/**"`; explicit `--risk-probes` never
-demoted), L-D (phase re-entry `history[]`), nodeg driver opaque-staging
-repair + replay protocol a′ (binding manifest + 3 fail-closed deviation
-types). The judge replay then produced the FIRST complete no-degradation
-verdict (`benchmark/ceiling/results/nodeg-20260713/nodeg-verdict.json`):
-**objective 7/7 PASS · quality 0/7 FAIL (blind judges prefer bare terra —
-codex judge 28/28 axes, sonnet 5/7 rows; bare adds docs/tests the pipeline
-omits) · wall 0/7 (7.7-30.4×)** — fourth over-tightening confirmation,
-first with quality measured; binding read = 0068 closure addendum 4;
-DECISIONS 0068.10-0068.11 + 0071.0. Separately: D-protocol step 2 FROZEN
-(0070a addendum 9 + structural-projection amendment, 0070a.6-0070a.7;
-`classify-defect-family.py` live in selftests) and **4 outcome-blind routed-
-validation fixtures landed** (`benchmark/noncoding/validation/`, opus-
-authored from Grok-audited export, freeze audit GO, `b26c632`). **L-C′
-escalation-only was REJECTED by the user** (0071.1 — complementary
-cross-engine detection outweighs the n=3 0/3 evidence; never propose
-coverage reduction again — pyx correction recorded); replacement =
-**concurrent dual-judge SHIPPED 2026-07-14** (0071.3): six must-edits via
-Codex sol packet + Grok GO + solo-vs-concurrent canary PASS (concurrent
-dispatch Δ2.2s, pair wall cost 0s inside primary window; NO-GO 1/2 not
-fired — 0071 addendum 4). Same session: **routed-seat T1 validation wiring
-LANDED** (0070a.8, addendum 10) — canary semantics converged three-way to
-t0-relative; the 320+60 measurement run is NOT yet executed.
+**Where the loop stands (one paragraph).** The quality axis (nodeg
+objective 7/7 · quality 0/7 · wall 0/7, iter-0071 baseline) is the open
+problem and iter-0072 is the ACTIVE iter attacking it. Three registrations
+falsified same-iter with receipts: v1 prose reference rule (0072.2), v2
+always-loaded carve (0072.4), v3 Verbatim-Goal Contract (0072.6 —
+information checks 5/5 PASS yet PLAN refused both carriers reading the raw
+goal; `nodeg-20260717/VERDICT.md`). The decisive artifact: v3
+`gate-fail-artifacts/plan.md:7` — carrier 2 was suppressed by a POSITIVE
+work-item ceiling with zero refuse language → the suppressor is the
+binding semantic-PLAN channel itself. **Registration v4 (Scope-Only PLAN)
+frozen 2026-07-17, three-way converged with named deltas (DECISIONS
+0072.7; iter file § "Registration v4" = the build contract)**: on
+generated trivial/medium, PLAN emits ONLY canonical `authorized_surface`;
+IMPLEMENT binds verbatim Goal + Verification + surface; VGC re-lands as
+infrastructure (v3's build at `6d0e9f1` is the reference diff — reverted
+at `957c583`, recover pieces from git history); grammar fail-closed.
+Meanwhile the measurement side closed: **T1 val3 completed — Amendment 2
+falsifier #6 FIRED, routed-seat instrument v2 DEAD, Cell 2 permanently
+closed** (0070a.10, addendum 12); **VERIFY dual-judge default-when-
+available shipped** (0071.5, live canary PASS).
 
 **Next work** (execution order 2026-07-16: item 2 → item 3 → item 1 → item 4 —
 after the double falsification, 0072 round 3 needs a fresh design round while
