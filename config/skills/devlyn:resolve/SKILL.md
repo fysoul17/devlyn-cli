@@ -18,9 +18,9 @@ Hands-free. Measured by how far we get without human intervention.
 
 1. Do not prompt the user mid-pipeline. When tempted to ask, pick the safe default, proceed, and log it in the final report.
 2. Engine availability: follow `_shared/engine-preflight.md` for the explicit-route-vs-automatic-escalation distinction and BLOCKED-vs-skip behavior. Explicit routes (`--engine`, `--risk-probes`, `--pair-verify`) never downgrade to solo; unavailable auto-escalations proceed solo and report the skip.
-3. Order: PLAN → RISK_PROBES? → IMPLEMENT → SURFACE_CLOSE? → BUILD_GATE → CLEANUP → VERIFY → FINAL_REPORT. No others.
+3. Phases run in declared order. No extra phases.
 4. Orchestrator does not write code. It parses input, spawns phases, reads state, branches on verdicts, emits the report.
-5. Halt only on unrecoverable worker failure, empty IMPLEMENT, exhausted BUILD_GATE/VERIFY `max_rounds`, or blocked SURFACE_CLOSE; otherwise continue.
+5. Continue by default. Halt only on (a) unrecoverable subagent failure, (b) IMPLEMENT producing zero code changes, (c) BUILD_GATE or VERIFY fix-loop exhausting `max_rounds`.
 </autonomy_contract>
 
 <harness_principles>
@@ -67,17 +67,16 @@ Three input shapes:
 </modes>
 
 <post_implement_invariant>
-After `state.implement_passed_sha` is set:
+Once `state.implement_passed_sha` is non-null (PHASE 2 returned and produced a diff), the post-IMPLEMENT phases (CLEANUP, VERIFY) operate under structural constraints:
 
-- SURFACE_CLOSE may mutate only `authorized_surface`; empty PASS is valid.
-- CLEANUP may mutate only its allowlist; other paths revert.
-- VERIFY is fresh-context, findings-only, and has no code-mutation tools. If no fresh worker can be spawned, it is `BLOCKED:fresh-context-unavailable`, never a same-context review.
+- CLEANUP may only mutate files in the cleanup allowlist (tooling artifacts, dead code added by this diff, doc references this diff invalidated). Other paths trigger revert.
+- VERIFY runs in a fresh worker context with no code-mutation tools. Findings only — never edits files. The fresh-context spawn is the structural guarantee; the prompt body reinforces it but the spawn is what makes independence real. If no fresh worker can be spawned, VERIFY is `BLOCKED:fresh-context-unavailable`, never a same-context review.
 </post_implement_invariant>
 
 ## PHASE 0: PARSE + CLASSIFY + ROUTE
 
 1. Parse flags from `<pipeline_config>`:
-   - `--max-rounds N` (default 4) — fix-loop budget shared by BUILD_GATE and VERIFY; SURFACE_CLOSE is one-shot and excluded.
+   - `--max-rounds N` (default 4) — fix-loop budget shared across BUILD_GATE and VERIFY.
    - `--engine MODE` (default: `engines.json` `executor` pin when present, else `claude`) — picks the adapter for IMPLEMENT, CLEANUP, and the primary VERIFY judge. It does not disable VERIFY pair-mode; the second judge uses the OTHER engine by default when available.
    - `--spec <path>` — switches to spec mode.
    - `--verify-only <ref>` — switches to verify-only mode. Requires `--spec`.
@@ -98,7 +97,7 @@ After `state.implement_passed_sha` is set:
 4. Write `.devlyn/untracked.baseline`: `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --write-untracked-baseline`.
 
 5. **Mode-specific init**:
-   - **Free-form**: first resolve `goal_text` — the inline positional goal, OR (when `--goal-file <path>` was passed) the raw UTF-8 content of `<path>`, read as opaque goal text (never re-parsed as flags). Fail closed before classifying: empty/whitespace-only file → `BLOCKED:goal-file-empty`; missing/unreadable/not-a-regular-file/invalid-UTF-8 → `BLOCKED:goal-file-unreadable`; an absolute path, a `..` segment, or a path that canonicalizes outside cwd → `BLOCKED:goal-file-invalid-path`. (Like all PHASE-0 halts these are report-level `BLOCKED:<reason>` strings — no `phases.*.verdict` is written, so the bare-enum carrier rule is never violated.) Persist exact bytes at `source.goal_path` (`.devlyn/goal.raw.txt`) with `goal_sha256`. Then read `references/free-form-mode.md` and run the complexity classifier deterministically on `goal_text` (rules over keyword density / file count / spec-shape signals, plus pair-evidence intent). Set `state.complexity ∈ {trivial, medium, large}`. Trivial: write internal mini-spec to `.devlyn/criteria.generated.md` and proceed. Medium: synthesize a minimal spec from the goal + add 1-2 context anchors from the codebase, write to `.devlyn/criteria.generated.md`, proceed. Every free-form branch that writes criteria must set `state.source.type = "generated"`, `state.source.criteria_path = ".devlyn/criteria.generated.md"`, and `state.source.criteria_sha256` from the raw file bytes. Large: follow the Large action in `references/free-form-mode.md` — synthesize a best-effort spec with an `## Assumptions` block, log `recommend: /devlyn:ideate first`, proceed, and flag every assumption in the final report; zero-scope-signal goals halt `BLOCKED:large-needs-ideation`; pair-evidence intent without an actionable solo-headroom hypothesis must halt with `BLOCKED:solo-headroom-hypothesis-required`, and unmeasured pair-candidate intent without solo ceiling avoidance must halt with `BLOCKED:solo-ceiling-avoidance-required`.
+   - **Free-form**: first resolve `goal_text` — the inline positional goal, OR (when `--goal-file <path>` was passed) the raw UTF-8 content of `<path>`, read as opaque goal text (never re-parsed as flags). Fail closed before classifying: empty/whitespace-only file → `BLOCKED:goal-file-empty`; missing/unreadable/not-a-regular-file/invalid-UTF-8 → `BLOCKED:goal-file-unreadable`; an absolute path, a `..` segment, or a path that canonicalizes outside cwd → `BLOCKED:goal-file-invalid-path`. (Like all PHASE-0 halts these are report-level `BLOCKED:<reason>` strings — no `phases.*.verdict` is written, so the bare-enum carrier rule is never violated.) Then read `references/free-form-mode.md` and run the complexity classifier deterministically on `goal_text` (rules over keyword density / file count / spec-shape signals, plus pair-evidence intent). Set `state.complexity ∈ {trivial, medium, large}`. Trivial: write internal mini-spec to `.devlyn/criteria.generated.md` and proceed. Medium: synthesize a minimal spec from the goal + add 1-2 context anchors from the codebase, write to `.devlyn/criteria.generated.md`, proceed. Every free-form branch that writes criteria must set `state.source.type = "generated"`, `state.source.criteria_path = ".devlyn/criteria.generated.md"`, and `state.source.criteria_sha256` from the raw file bytes. Large: follow the Large action in `references/free-form-mode.md` — synthesize a best-effort spec with an `## Assumptions` block, log `recommend: /devlyn:ideate first`, proceed, and flag every assumption in the final report; zero-scope-signal goals halt `BLOCKED:large-needs-ideation`; pair-evidence intent without an actionable solo-headroom hypothesis must halt with `BLOCKED:solo-headroom-hypothesis-required`, and unmeasured pair-candidate intent without solo ceiling avoidance must halt with `BLOCKED:solo-ceiling-avoidance-required`.
    - **Spec**: validate spec exists. If sibling `spec.expected.json` exists, run `--check-expected <expected-path>` to validate both the expected contract, sibling spec `complexity` frontmatter, and any present actionable solo-headroom hypothesis; if the spec has a solo-headroom hypothesis, its observable command must match `spec.expected.json.verification_commands[].cmd`. Then stage `.devlyn/spec-verify.json` from `verification_commands`. Otherwise run `--check <spec-path>` to validate the legacy inline carrier plus supported `complexity` frontmatter and any present actionable solo-headroom hypothesis; if the spec uses an inline `## Verification` JSON carrier, any solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`. Then stage from the legacy inline carrier. Compute `state.source.spec_sha256`.
    - **Verify-only**: skip to PHASE 5 with `state.source.spec_path` set, the supplied diff captured at `.devlyn/external-diff.patch`.
 
@@ -240,12 +239,6 @@ State write: `phases.implement.{started_at, verdict, completed_at, duration_ms}`
 
 After the final phase's gate PASS: `git diff <base_ref.sha>...HEAD --stat` — empty → halt with `BLOCKED:implement-empty`; otherwise set `state.implement_passed_sha = git rev-parse HEAD` (phase commits already checkpoint the work — no extra commit).
 
-## PHASE 2.5: SURFACE_CLOSE
-
-Run once iff `state.source.type == "generated"` and complexity is trivial/medium; else skip. Freeze `git diff --binary <base_ref.sha>...HEAD` at `.devlyn/surface-close.input.patch`; writer spawn atomically records `pre_sha`/`input_patch_sha256`/`untracked_before`. Executor-default: `references/phases/surface-close.md`; inputs only raw Goal, patch, expected hashes, `authorized_surface`, staged commands-as-data. Enforce 600s with `CODEX_MONITORED_TIMEOUT_SEC=600`, `run-bounded.py 600 -- claude -p`, or a native timeout; else block pre-spawn.
-
-After PASS, run the writer `surface-check`. Empty delta completes with `post_sha`; authorized delta uses PHASE 2 scoped staging, commits `chore(pipeline): surface-close`, then completes. Any input mismatch, check/worker failure, or timeout runs `surface-rollback`, completes bare `BLOCKED`, and halts `BLOCKED:surface-close-<reason>`. No retry or `max_rounds` use.
-
 ## PHASE 3: BUILD_GATE
 
 Skip in verify-only mode OR when `build-gate` in `state.bypasses`. Deterministic — same commands CI / Docker / production run.
@@ -319,9 +312,9 @@ State write: `phases.final_report.started_at` at the top of this phase.
 
 2. **FINISH GATE** — run `python3 "$DEVLYN_SHARED_DIR/finish-gate.py"`; branch only on exit code plus `.devlyn/finish-gate.findings.jsonl` existence: 0 without the file → clean; 0 with it → terminal verdict floors at `PASS_WITH_ISSUES` (report lists the reverted paths); 1 or 2 → `BLOCKED:finish-gate-unclean`.
 
-3. **Terminal verdict** — derive from `state.phases.{plan, implement, surface_close, build_gate, cleanup, verify}.verdict` per the precedence rules in `references/state-schema.md#terminal-verdict`. Verify-only mode short-circuits to `state.phases.verify.verdict`.
+3. **Terminal verdict** — derive from `state.phases.{plan, implement, build_gate, cleanup, verify}.verdict` per the precedence rules in `references/state-schema.md#terminal-verdict`. Verify-only mode short-circuits to `state.phases.verify.verdict`.
 
-4. **Render report** — sections: header (run_id, engine, mode, verdict, wall-time), per-phase summary (including SURFACE_CLOSE when run), pair/risk-probe status, findings table (verify + finish-gate findings), follow-up notes (any large-mode `## Assumptions` block, any pair-judge TIMEOUT (headline: solo verdict after pair TIMEOUT), any `--no-pair` / `--no-risk-probes` opt-out, any engine setup guidance after BLOCKED, `/devlyn:ideate` guidance after `BLOCKED:solo-headroom-hypothesis-required` that asks for the visible behavior `solo_claude` is expected to miss, and `/devlyn:ideate` guidance after `BLOCKED:solo-ceiling-avoidance-required` that asks for the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`).
+4. **Render report** — sections: header (run_id, engine, mode, verdict, wall-time), per-phase summary, pair/risk-probe status, findings table (verify + finish-gate findings), follow-up notes (any large-mode `## Assumptions` block, any pair-judge TIMEOUT (headline: solo verdict after pair TIMEOUT), any `--no-pair` / `--no-risk-probes` opt-out, any engine setup guidance after BLOCKED, `/devlyn:ideate` guidance after `BLOCKED:solo-headroom-hypothesis-required` that asks for the visible behavior `solo_claude` is expected to miss, and `/devlyn:ideate` guidance after `BLOCKED:solo-ceiling-avoidance-required` that asks for the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`).
 
 5. State write: `phases.final_report.{verdict, completed_at, duration_ms}` BEFORE archive runs (archive prune logic skips runs whose `final_report.verdict` is null).
 
