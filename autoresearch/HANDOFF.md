@@ -14,48 +14,45 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and agai
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-17 (T1 val3: routed instrument DEAD; iter-0072 v3 falsified + **v4 Scope-Only PLAN FROZEN, build next**; dual-judge default shipped)
+## 🚦 START-HERE — state after 2026-07-17 PM (iter-0072 **v4 built, gated, FALSIFIED same-day — FOURTH valid-negative**; next = post-IMPLEMENT changed-surface repair DESIGN ROUND; dual-judge default shipped)
 
 **Where the loop stands (one paragraph).** The quality axis (nodeg
 objective 7/7 · quality 0/7 · wall 0/7, iter-0071 baseline) is the open
-problem and iter-0072 is the ACTIVE iter attacking it. Three registrations
+problem and iter-0072 is the ACTIVE iter attacking it. FOUR registrations
 falsified same-iter with receipts: v1 prose reference rule (0072.2), v2
-always-loaded carve (0072.4), v3 Verbatim-Goal Contract (0072.6 —
-information checks 5/5 PASS yet PLAN refused both carriers reading the raw
-goal; `nodeg-20260717/VERDICT.md`). The decisive artifact: v3
-`gate-fail-artifacts/plan.md:7` — carrier 2 was suppressed by a POSITIVE
-work-item ceiling with zero refuse language → the suppressor is the
-binding semantic-PLAN channel itself. **Registration v4 (Scope-Only PLAN)
-frozen 2026-07-17, three-way converged with named deltas (DECISIONS
-0072.7; iter file § "Registration v4" = the build contract)**: on
-generated trivial/medium, PLAN emits ONLY canonical `authorized_surface`;
-IMPLEMENT binds verbatim Goal + Verification + surface; VGC re-lands as
-infrastructure (v3's build at `6d0e9f1` is the reference diff — reverted
-at `957c583`, recover pieces from git history); grammar fail-closed.
-Meanwhile the measurement side closed: **T1 val3 completed — Amendment 2
-falsifier #6 FIRED, routed-seat instrument v2 DEAD, Cell 2 permanently
-closed** (0070a.10, addendum 12); **VERIFY dual-judge default-when-
-available shipped** (0071.5, live canary PASS).
+always-loaded carve (0072.4), v3 Verbatim-Goal Contract (0072.6), and
+**v4 Scope-Only PLAN (0072.8, `nodeg-20260717b/VERDICT.md`)**. v4's build
+(`13a106a`, three-seat loop: Codex sol executor, Grok GO-WITH-EDITS,
+Codex R1 caught a spec byte-behavior regression pre-commit) passed every
+static gate and the F7 mechanism checks 1-6+9-10 — scope-only PLAN held
+live (126-byte canonical carrier, surface = the two named files) — yet
+IMPLEMENT, reading only verbatim Goal + Verification + surface, still
+omitted BOTH carriers (no USAGE hunk, no unsupported-format exit-1 test;
+checks 7+8). Sharpest diagnostic: yaml exit-1 BEHAVIOR was implemented
+(Verification-driven) — the omitted class is exactly closure work with NO
+verification command attached. Info-loss (v3) and the semantic-PLAN
+channel (v4) both eliminated → the literal-minimum narrowing localizes to
+IMPLEMENT's own completion behavior. Everything reverted (`c7927d9`);
+prose levers stay dead. Measurement side: T1 val3 falsifier #6 FIRED,
+routed-seat instrument v2 DEAD (0070a.10); VERIFY dual-judge
+default-when-available shipped (0071.5).
 
 **Next work** (execution order 2026-07-16: item 2 → item 3 → item 1 → item 4 —
 after the double falsification, 0072 round 3 needs a fresh design round while
 dual-judge/T1 are shovel-ready with user go-ahead; run the 0072 design round
 during the T1 cohort window, engines permitting):
-1. **iter-0072 Registration v4 (Scope-Only PLAN) — BUILD + GATE at the
-   next usage window.** Round-4 design DONE 2026-07-17 (user go-ahead after
-   the 3-falsification checkpoint), three-way converged R0+R1 with named
-   deltas (DECISIONS 0072.7; full frozen registration in the iter file
-   § "Registration v4"; archives /tmp/codex-0072-r4/). Mechanism: generated
-   trivial/medium PLAN emits ONLY canonical authorized_surface; IMPLEMENT
-   binds verbatim Goal + Verification + surface (semantic-PLAN channel
-   deleted — both measured suppressors: Risks refuse `plan.md:15` AND
-   positive work-item ceiling `plan.md:7`); VGC re-lands as infrastructure;
-   grammar fail-closed. Build = Codex sol packet (v3 pattern) → static
-   gates → fresh nodeg F7 10-item early kill (incl. post-IMPLEMENT carrier
-   checks) → F25 non-regression → drift battery → full nodeg. Falsifier →
-   next class: structural post-IMPLEMENT changed-surface repair; never
-   prose. Prior arc: v1/v2 prose (0072.2/0072.4), v3 info-preservation
-   (0072.6, `nodeg-20260717/`) all falsified same-iter.
+1. **iter-0072 round 5: structural post-IMPLEMENT changed-surface
+   evaluation/repair — THREE-WAY DESIGN ROUND ONLY** (pre-registered as
+   the v4 falsifier's next class, DECISIONS 0072.8; no lever ships without
+   a fresh converged registration; never prose; M-NPL stays withdrawn).
+   Shape: evaluate/repair the frozen authorized diff AFTER IMPLEMENT.
+   First design input (v4 receipt): the omitted class is exactly closure
+   work with NO verification command attached — mechanically-verified
+   clauses (yaml exit-1 behavior) DID land. Instrument note: snapshot
+   `.devlyn/` while the row is live (worktrees cleaned at row end).
+   Prior arc: v1/v2 prose (0072.2/0072.4), v3 info-preservation (0072.6),
+   v4 scope-only PLAN (0072.8, `nodeg-20260717b/`) — four same-iter
+   valid-negatives; ladder + receipts in the iter file.
 2. ~~VERIFY dual-judge → default-when-available~~ **DONE 2026-07-16**
    (DECISIONS 0071.5; queue item `[x]` with ship record; schema-v3
    `pair.default`, net −24 lines, all gates + live canary PASS).

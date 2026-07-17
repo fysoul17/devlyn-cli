@@ -496,3 +496,77 @@ Fable ~0.60. P(drift battery green): Grok 0.85-0.95.
 
 **Vehicle**: iter-0072 Registration v4 (fresh registration; same iter).
 Build delegated to Codex sol at the next window per the v3 packet pattern.
+
+### v4 build record (2026-07-17, three-seat loop; packets/logs /tmp/codex-0072-v4-build/ + /tmp/grok-0072-v4-review/)
+
+Built at `13a106a` (Codex sol workspace-write xhigh 1182s; .agents mirrors
+completed by orchestrator after sandbox denial — v3 precedent). Two review
+findings, both fixed pre-commit:
+
+1. **Grok GO-WITH-EDITS**: the PHASE 1 step-3 rewrite dropped the mechanical
+   demotion predicate (`risk_probes_enabled == true AND risk_probes_explicit
+   == false`) — explicit `--risk-probes` could demote on a ≤2-path surface
+   (F7's exact shape). HEAD-precise predicate restored; Codex R1 CONFIRM.
+   Note-only (recorded, no edit): SKILL.md "PLAN's invariants" PHASE 2 lead-in
+   (Codex REBUT — authorized surface IS a PLAN invariant); missing-state
+   fail-open in `uses_scope_only_plan` (`read_state → {}` ⇒ predicate false ⇒
+   exact-shape skipped; both seats: hardening candidate, outside the
+   registered edit surface).
+2. **Codex R1 NEW defect — global tail-sentinel regression**: last-sentinel
+   binding applied to EVERY source type; a handwritten spec with a valid
+   first carrier + later fenced sentinel example flipped carriers vs HEAD
+   (reproduced) — frozen "spec/--verify-only byte-unchanged" violation.
+   Fixed: keyword-only `tail_carrier=False` threaded from state-aware
+   callers; only `source.type == "generated"` routes bind TAIL; spec-mode
+   regression self-test asserted HEAD first-match equality.
+
+Static gates at commit: SVC/VMF self-tests PASS; lint ALL PASS; token gauge
+net-negative (resolve load-set −1.4% c4 / −2.0% w13); 3-tree parity 9/9;
+spec-mode `--check` A/B byte-identical vs HEAD (6 drift-bait specs, 0
+diffs); delegated-session git audit clean.
+
+## Registration v4 FALSIFIED — F7 gate checks 7+8, CLEAN falsifier fired (2026-07-17 afternoon; FOURTH valid-negative of iter-0072)
+
+Run `nodeg-20260717b` (runner `13a106a`, CLI pin 2.1.211): F7 row COMPLETED
+(exit=0, 1248s, objective resolved=true) and the 10-item gate was decided
+pre-judge; run killed during F25 (exit=143); run-id DEAD. Full receipts in
+`benchmark/ceiling/results/nodeg-20260717b/VERDICT.md` + gate-fail-artifacts.
+
+**The channel deletion worked; the carriers still died.** Gate checks 1-6 +
+9-10 all PASS: live PLAN-time gate saw complexity=medium, Goal fence
+byte-exact (674B), zero binding R/C/O, canonical Verification (4 cmds incl.
+yaml exit-1), plan.md = the 126-byte canonical scope-only carrier accepted
+by the shipped validator, surface exactly the two named files; post-run,
+patch ⊆ surface, bait regions byte-identical, objective/oracle green.
+Checks 7+8 FAIL: the patch has NO USAGE hunk (stale version row inside
+authorized `bin/cli.js`) and only the json-path test (no unsupported-format
+exit-1 test).
+
+**Sharpest diagnostic**: the `--format yaml` exit-1 BEHAVIOR was implemented
+(the Verification carrier drove it); what died were exactly the two closure
+items with no mechanical verification command attached — the stale
+user-visible reference and the error-path regression test. With information
+loss eliminated (v3) and the binding semantic-PLAN intermediary deleted
+(v4), the literal-minimum narrowing localizes to **IMPLEMENT's own
+completion behavior** — no upstream suppressor channel remains. Prose-lever
+class already dead (0072.4); instruction-shaped IMPLEMENT bindings
+("stale user-visible references … tests of specified success and failure
+paths", implement.md, loaded in the failing run) demonstrably do not close
+it either.
+
+Ladder executed as frozen: pre-judge kill → ALL surfaces reverted
+(`c7927d9`) → .claude mirrors re-synced → reverted self-tests PASS → no
+rescue → STOP. Seat predictions pre-gate (P(both carriers | gates 1-5
+pass) 0.60-0.75 / 0.65-0.75 / ~0.65) resolved on the complementary branch —
+the falsifier fired cleanly inside the registered decision tree.
+Instrument gap recorded: row worktrees are cleaned at row end; the
+PLAN-time watcher evaluated live but did not snapshot `.devlyn/` — raw
+criteria/plan bytes unarchived (snapshot-while-live next time).
+
+**Next mechanism class (pre-registered in the v4 falsifier, NOT yet
+designed)**: structural post-IMPLEMENT changed-surface evaluation/repair
+over the frozen authorized diff — design round only, fresh three-way
+registration required before any edit; M-NPL stays withdrawn; never prose.
+The mechanically-verified-vs-unverified clause split above is the first
+design input: the omitted class is exactly the closure work no verification
+command exercises.

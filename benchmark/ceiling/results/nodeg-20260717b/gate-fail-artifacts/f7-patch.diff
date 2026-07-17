@@ -1,0 +1,44 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..28fceee 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -41,6 +41,15 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function parseVersionFormat(argv) {
++  const idx = argv.indexOf('--format');
++  if (idx === -1) return 'plain';
++  const value = argv[idx + 1];
++  if (value === 'json') return value;
++  console.error('--format must be json');
++  process.exit(1);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -57,7 +66,9 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const format = parseVersionFormat(rest);
++      const version = readPackageVersion();
++      console.log(format === 'json' ? JSON.stringify({ version }) : version);
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..b8e2e32 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,8 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version with --format json prints JSON', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.strictEqual(out, '{"version":"0.1.0"}\n');
++});

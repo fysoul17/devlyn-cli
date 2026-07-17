@@ -1,0 +1,10 @@
+# Live PLAN-time gate output (orchestrator watch, evaluated against the running
+# worktree w/r07ac60b470eb/ff10888c89791/A1/repo with the SHIPPED validator;
+# raw .devlyn bytes not archived — worktree cleaned at row end, gap recorded)
+F7-PLAN-ARTIFACT-READY
+PASS  1 source/complexity        source.type='generated' complexity='medium'
+PASS  2 goal==task bytes         goal=673B(+nl 674) task=674B
+PASS  3 no-R/C/O + verification  binding=[] cmds=4 yaml_exit1=True
+PASS  4 plan scope-only grammar  err=None plan_bytes=126
+PASS  5 surface==two files       surface=['bin/cli.js', 'tests/cli.test.js']
+== 5/5 PASS ==
