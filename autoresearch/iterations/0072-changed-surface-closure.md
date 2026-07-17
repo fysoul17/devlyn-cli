@@ -400,3 +400,99 @@ Risks. Requires a fresh three-way registration round. iter-0072 now carries
 THREE same-iter valid-negatives (v1 prose reference rule, v2 authority-
 matched carve, v3 verbatim-goal contract) — surfaced to the user at the
 outer-loop 3-iteration checkpoint before any round-4 registration.
+
+## Registration v4 — Scope-Only PLAN (three-way converged 2026-07-17; archives /tmp/codex-0072-r4/)
+
+**Status: FROZEN, NOT BUILT** — build + gates at the next usage window
+(full nodeg needs a fresh account-limit window; T1 + F7 kill consumed
+today's).
+
+**Decisive criterion**: **Whole-Channel Suppressor Deletion** (Codex; ≡
+Grok "Suppressor-Channel Deletion") — delete the binding semantic-PLAN
+intermediary that refuses (carrier 1) and ceilings (carrier 2) bare-like
+changed-surface closure; never add validators that force PLAN to restate
+what Goal/Verification already carry.
+
+**Convergence receipts (all three seats moved on the same artifact)**:
+v3 `gate-fail-artifacts/plan.md:7` — carrier 2 suppressed by a POSITIVE
+work item (json-test-only, goal's literal minimum restated as the task)
+with zero refuse language; `:15` carrier-1 refuse; `:31` Verification
+carried yaml-exit-1 yet the test item stayed json-only; `:43` Acceptance
+repeated the ceiling. Named deltas: orchestrator moved from pre-round M-B
+(Risks-unbind) on this receipt; Grok WITHDREW M-SSC in R1 (its Predicate B
+existed to patch the ceiling channel its own criterion says to delete);
+Codex R1 CONFIRM ("Positive Work-Item Ceiling").
+
+**Mechanism (scope-only PLAN)**:
+- Branch: `state.source.type == "generated"` AND `state.complexity ∈
+  {trivial, medium}` (inline + `--goal-file`). Large keeps semantic PLAN
+  (+ possible execution phases); spec-mode and `--verify-only`
+  byte-unchanged everywhere.
+- On-branch PLAN output = EXACTLY the canonical authorized-surface section
+  (sentinel + heading + strict-JSON `authorized_surface`) — no title, work
+  items, Risks, Acceptance, or trailing semantic bytes.
+- On-branch IMPLEMENT inputs = verbatim Goal + canonical Verification +
+  authorized_surface (+ extant risk probes) — never semantic PLAN.
+- VGC re-lands as INFRASTRUCTURE on all proceeding free-form branches
+  (Goal verbatim collision-safe fence + optional non-binding anchors +
+  canonical Verification LAST; Large `## Assumptions` non-binding). Not a
+  repeat of v3: the active lever is channel deletion; VGC only prevents
+  the synthesis from re-freezing the surface (v2 observation).
+- Grammar fail path (decidable, fail-closed): shape-parse fail → ONE
+  re-spawn with the machine error + canonical template (SKILL.md:118
+  precedent); second fail → `BLOCKED:plan-scope-invalid`. Never a
+  semantic-plan fallback, never silent normalization. plan-empty check
+  becomes empty-array check.
+- Deleted: semantic PLAN sections as IMPLEMENT authority on the branch;
+  free-form binding R/C/O synthesis. NOT shipped: M-SSC Predicates A/B,
+  any "contradicts Goal" judgment, any PLAN work-item forcing (D4-dead).
+
+**Edit surface**: SKILL.md (PHASE 1 dispatch/validation + PHASE 2 prompt
+assembly + plan-empty semantics), plan.md (branch output contract),
+implement.md (branch inputs/authority), VGC consumer sweep =
+free-form-mode.md + verify.md + cleanup.md + state-schema.md +
+spec-verify-check.py (collision fix + swallowing self-test + scope-only
+exact-shape check via the existing authorized-surface loader) +
+verify-merge-findings.py (goal-scoped solo-headroom scan); lint needles;
+3 mirrors. No new flag/file/schema field.
+
+**Gates (ship = ALL; any fail → revert all, valid-negative, STOP)**:
+- Static: mirrors parity; lint; self-tests (sentinel collision +
+  swallowing + scope-only grammar incl. re-spawn/fail-closed path); token
+  gauges ≤ +0.1% both approximations (expect net-negative — semantic-plan
+  deletion); spec/verify-only byte-behavior unchanged; no new flag/file.
+- F7 early kill (fresh nodeg run, CLI pinned, pre-judge): (1)
+  source=generated + complexity=medium; (2) Goal fence == task.txt bytes;
+  (3) no binding R/C/O + canonical Verification parses incl. yaml exit-1;
+  (4) plan.md == scope-only grammar exactly; (5) authorized_surface ==
+  ["bin/cli.js","tests/cli.test.js"]; (6) post-IMPLEMENT diff ⊆ surface;
+  (7) carrier 1: existing USAGE version row documents --format; (8)
+  carrier 2: new unit test exercises version --format yaml (or other
+  unsupported value) asserting exit 1; (9) planted same-file bait regions
+  byte-identical; (10) F7 oracle + node --test pass.
+- F25 non-regression per 0072.3 timeout semantics (raw Goal exact;
+  closure retained). Codex R1: if F25 objective regresses, REJECT — do
+  not restore a semantic side channel.
+- Drift battery: violation matrix N=4 flip bands; stable-clean B2/B5 +
+  DB-failing-adjacent-test 0/4; six drift-bait probes; 3-CLI × 2-size
+  compliance cells. Same-file drift is conceded to be the strongest risk
+  (path gates protect paths, not bytes) — the battery is the ship gate.
+- Full nodeg: same frozen B; objective 7/7; quality ≥2/7 F7-mandatory;
+  wall OUT of claim.
+
+**Clean falsifier (pre-stated)**: F7 reaches IMPLEMENT with byte-exact
+Goal, scope-only plan, exact two-file surface, zero semantic-PLAN bytes —
+and the diff still omits the USAGE row or the unsupported-format test →
+mechanism DEAD pre-judge; the narrowing localizes to IMPLEMENT's own
+completion behavior. Next class: **structural post-IMPLEMENT
+changed-surface evaluation/repair over the frozen authorized diff** —
+not M-NPL (near-redundant once semantic PLAN is gone; Grok withdrew it),
+never more prose.
+
+**Seat predictions (pre-gate)**: P(both carriers in F7 IMPLEMENT diff |
+gates 1-5 pass): Grok 0.60-0.75, Codex 0.65-0.75, Fable ~0.65.
+P(quality ≥2/7 | F7/F25/drift pass): Grok 0.55-0.70, Codex 0.76,
+Fable ~0.60. P(drift battery green): Grok 0.85-0.95.
+
+**Vehicle**: iter-0072 Registration v4 (fresh registration; same iter).
+Build delegated to Codex sol at the next window per the v3 packet pattern.

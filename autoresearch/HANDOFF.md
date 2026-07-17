@@ -48,20 +48,21 @@ t0-relative; the 320+60 measurement run is NOT yet executed.
 after the double falsification, 0072 round 3 needs a fresh design round while
 dual-judge/T1 are shovel-ready with user go-ahead; run the 0072 design round
 during the T1 cohort window, engines permitting):
-1. **iter-0072 round 4 — AWAITING USER GO-AHEAD at the outer-loop
-   3-iteration checkpoint.** Registration v3 (VGC) FALSIFIED 2026-07-17 by
-   its own clean falsifier (DECISIONS 0072.6; iter file § "Registration v3
-   FALSIFIED"; evidence `nodeg-20260717/`): build passed every static gate
-   (self-tests incl. sentinel-collision + swallowing shapes, lint, gauges
-   net-negative, 3-tree parity), F7 information checks 5/5 PASS (Goal
-   byte-exact, no R/C/O, single goal ledger entry) — and PLAN still refused
-   both carriers (USAGE in refuse-list; json-path test as ceiling). The
-   narrowing lives in PLAN's own scope reasoning. Build reverted (957c583).
-   THREE same-iter valid-negatives (v1/v2 prose — 0072.2/0072.4; v3
-   info-preservation — 0072.6). Pre-registered next class: **structural
-   PLAN scope-lock/policy** (PLAN may not emit refuse-lists contradicting
-   Goal clauses; IMPLEMENT binds Goal over plan Risks) — needs a fresh
-   three-way registration round; never more prose.
+1. **iter-0072 Registration v4 (Scope-Only PLAN) — BUILD + GATE at the
+   next usage window.** Round-4 design DONE 2026-07-17 (user go-ahead after
+   the 3-falsification checkpoint), three-way converged R0+R1 with named
+   deltas (DECISIONS 0072.7; full frozen registration in the iter file
+   § "Registration v4"; archives /tmp/codex-0072-r4/). Mechanism: generated
+   trivial/medium PLAN emits ONLY canonical authorized_surface; IMPLEMENT
+   binds verbatim Goal + Verification + surface (semantic-PLAN channel
+   deleted — both measured suppressors: Risks refuse `plan.md:15` AND
+   positive work-item ceiling `plan.md:7`); VGC re-lands as infrastructure;
+   grammar fail-closed. Build = Codex sol packet (v3 pattern) → static
+   gates → fresh nodeg F7 10-item early kill (incl. post-IMPLEMENT carrier
+   checks) → F25 non-regression → drift battery → full nodeg. Falsifier →
+   next class: structural post-IMPLEMENT changed-surface repair; never
+   prose. Prior arc: v1/v2 prose (0072.2/0072.4), v3 info-preservation
+   (0072.6, `nodeg-20260717/`) all falsified same-iter.
 2. ~~VERIFY dual-judge → default-when-available~~ **DONE 2026-07-16**
    (DECISIONS 0071.5; queue item `[x]` with ship record; schema-v3
    `pair.default`, net −24 lines, all gates + live canary PASS).
