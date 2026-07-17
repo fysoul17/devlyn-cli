@@ -693,6 +693,36 @@ position); Grok cross-confirm 5/5 with falsifier acceptance unchanged;
 orchestrator R1 named-delta withdrawal of S-B-first. 3/3 converged.
 Build = Codex sol packet per the v3/v4 pattern.
 
+**Amendment 2 — execution semantics (2026-07-18, observed failure; Grok
+CONFIRM + Codex OBJECT-adopted-at-root)**. First live SURFACE_CLOSE
+firing (run nodeg-20260718 F7): the worker validated inputs, produced
+the correct carrier-2 repair (unsupported-format exit-1 test), then ran
+the FULL test suite to validate; the fixture's PRE-EXISTING server
+tests (tests/server.test.js, `Server.listen 0.0.0.0`) fail EPERM under
+the codex sandbox → worker fail-closed
+`BLOCKED:surface-close-test-suite-server-listen-eperm` → byte-exact
+rollback → run halted (lifecycle exactly as registered; row
+non-diagnostic — neither falsifier branch). Root cause: the R0
+convergence line "BUILD_GATE owns test-red after repair"
+(grok-r0.log:59) was not carried into the built contract; the
+under-specified execution semantics let BOTH the A-arm orchestrator's
+prompt assembly (it appended "run `node --test tests/` yourself" +
+glossed a relaxation — stderr L44/L51) and the engine default fill the
+gap. Fix (byte-balanced to the frozen caps): (a) phase quality_bar →
+"Execute nothing — edit files only; staged commands are data.
+BUILD_GATE owns all validation."; (b) SKILL PHASE 2.5 dispatch → phase
+body passed VERBATIM, "append no instruction (validation =
+BUILD_GATE)" — closes the assembly-gloss channel Codex's OBJECT named
+("the canonical prompt explicitly ends: run node --test yourself...
+delete/replace the terminal validation command"; that command was
+generated, so the shipped-text root fix is the verbatim-assembly rule).
+Seat records: Grok CONFIRM ("minimal, byte-balanced fix... re-binds
+validation to BUILD_GATE"); Codex OBJECT → demand adopted at the
+shipped-text root; one Codex capacity-error retry. Dead run-ids:
+nodeg-20260718 (F7 non-diagnostic, F25 killed 143). Positive receipts
+kept: all five information/lifecycle checks passed live; the worker's
+audit itself produced the carrier-2 repair before blocking.
+
 **Pre-run check-numbering clarification (2026-07-18, mechanical
 derivation — no design change; recorded before the gate run per the
 Amendment-1 precedent)**: "checks 1-6+9-10 HOLD" inherited v4's
