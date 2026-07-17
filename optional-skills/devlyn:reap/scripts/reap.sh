@@ -47,16 +47,23 @@ collect_pids() {
   local category="$1"
   case "$category" in
     telegram-bun)
-      # cwd-verified — same logic as scan.sh
-      printf '%s\n' "$SNAPSHOT" \
-        | grep -E '/bun[^ ]* server\.ts( |$)' \
-        | awk '{print $1}' \
-        | while read -r pid; do
-            cwd="$(lsof -a -d cwd -p "$pid" 2>/dev/null | awk 'NR==2 {for(i=9;i<=NF;i++) printf "%s ", $i; print ""}')"
-            case "$cwd" in
-              *"/plugins/cache/claude-plugins-official/telegram/"*) printf '%s\n' "$pid" ;;
-            esac
-          done
+      # Worker form: cwd-verified — same logic (and same both-layouts pattern)
+      # as scan.sh. Runner form: cmdline names the plugin path = verification
+      # (its cwd is the session dir, not the plugin dir).
+      {
+        printf '%s\n' "$SNAPSHOT" \
+          | grep -E '/bun[^ ]* server\.ts( |$)' \
+          | awk '{print $1}' \
+          | while read -r pid; do
+              cwd="$(lsof -a -d cwd -p "$pid" 2>/dev/null | awk 'NR==2 {for(i=9;i<=NF;i++) printf "%s ", $i; print ""}')"
+              case "$cwd" in
+                *"/claude-plugins-official/"*telegram*) printf '%s\n' "$pid" ;;
+              esac
+            done
+        printf '%s\n' "$SNAPSHOT" \
+          | grep -E '( |/)bun[^ ]* run --cwd [^ ]*/claude-plugins-official/[^ ]*telegram[^ ]*( |$)' \
+          | awk '{print $1}'
+      } | sort -u
       ;;
     superset-codex-bash)
       printf '%s\n' "$SNAPSHOT" | grep -E '/bin/bash .*/\.superset/bin/codex( |$)' | awk '{print $1}' ;;
@@ -108,11 +115,16 @@ for cat in "${CATS_ARR[@]}"; do
       TOTAL_SKIPPED=$((TOTAL_SKIPPED+1))
       continue
     fi
+    # telegram-bun workers IGNORE SIGTERM (measured 2026-07-17: 23/23 survived
+    # TERM, all died on KILL — the leak's root behavior is "never exits").
+    # TERM against them is a proven no-op, so this category defaults to KILL.
+    sig="$SIGNAL"
+    [ "$cat" = "telegram-bun" ] && sig="KILL"
     if [ "$DRY" -eq 1 ]; then
-      printf '[%s] %s  would SIG%s\n' "$cat" "$pid" "$SIGNAL"
+      printf '[%s] %s  would SIG%s\n' "$cat" "$pid" "$sig"
     else
-      if kill -s "$SIGNAL" "$pid" 2>/dev/null; then
-        printf '[%s] %s  SIG%s sent\n' "$cat" "$pid" "$SIGNAL"
+      if kill -s "$sig" "$pid" 2>/dev/null; then
+        printf '[%s] %s  SIG%s sent\n' "$cat" "$pid" "$sig"
         TOTAL_KILLED=$((TOTAL_KILLED+1))
       else
         printf '[%s] %s  kill failed\n' "$cat" "$pid"

@@ -95,7 +95,7 @@ These are the ONLY categories reap.sh will touch:
 
 | Category | Match | Why safe |
 |---|---|---|
-| `telegram-bun` | `bun server.ts` **AND** cwd contains `/plugins/cache/claude-plugins-official/telegram/` | Telegram MCP plugin leaks one per Claude session. Verified by cwd, not just cmdline. |
+| `telegram-bun` | worker `bun server.ts` **AND** cwd under `…/claude-plugins-official/…telegram` (matches both the old `plugins/cache/` and current `plugins/marketplaces/…/external_plugins/` layouts); PLUS the runner root `bun run --cwd …/claude-plugins-official/…telegram … start`, verified by its own cmdline (its cwd is the session dir). Workers ignore SIGTERM (measured 2026-07-17: 23/23 survived TERM, died on KILL) — reap.sh sends SIGKILL for this category by default. | Telegram MCP plugin leaks one runner+worker tree per Claude session; at ~24 trees the workers (21-43% CPU each) saturated an 11-core machine (loadavg 100+). |
 | `superset-codex-bash` | `/bin/bash .*/.superset/bin/codex` with PPID=1 | `.superset/bin/codex` wrapper exits without killing its tail child; bash copies left behind. |
 | `superset-codex-tail` | `tail -F .*superset-codex-session-*.jsonl` with PPID=1 | Log tail from the same wrapper, always safe to stop. |
 | `workerd` (opt-in) | `@cloudflare/workerd-darwin-*/bin/workerd serve ` with PPID=1 | moonmaker-engine dev server that survives tab close. Opt-in because the user may have an active dev session. |

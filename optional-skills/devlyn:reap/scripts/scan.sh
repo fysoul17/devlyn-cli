@@ -21,6 +21,10 @@ SNAPSHOT="$(ps -eo pid=,ppid=,user=,etime=,command= 2>/dev/null | awk -v me="$ME
 # Conservative by design — if unsure, leave it UNKNOWN.
 # -----------------------------------------------------------------------------
 match_telegram_bun()      { grep -E '/bun[^ ]* server\.ts( |$)'; }
+# Runner form of the same leak (2026-07-17: ~24 found at loadavg 100+): the
+# `bun run --cwd <plugin> … start` root outlives its session; its cmdline
+# NAMES the plugin path, so the cmdline itself is the verification.
+match_telegram_run()      { grep -E '( |/)bun[^ ]* run --cwd [^ ]*/claude-plugins-official/[^ ]*telegram[^ ]*( |$)'; }
 match_superset_codex_sh() { grep -E '/bin/bash .*/\.superset/bin/codex( |$)'; }
 match_superset_codex_tl() { grep -E 'tail .*superset-codex-session-.*\.jsonl'; }
 match_workerd_dev()       { grep -E '@cloudflare/workerd-darwin-[^/]+/bin/workerd serve '; }
@@ -50,11 +54,21 @@ if [ -n "$SNAPSHOT" ]; then
   BUN_CANDIDATES="$(printf '%s\n' "$SNAPSHOT" | match_telegram_bun | awk '{print $1}')"
   for pid in $BUN_CANDIDATES; do
     cwd="$(lsof -a -d cwd -p "$pid" 2>/dev/null | awk 'NR==2 {for(i=9;i<=NF;i++) printf "%s ", $i; print ""}')"
+    # One pattern covers both plugin layouts: old plugins/cache/…/telegram/
+    # and current plugins/marketplaces/…/external_plugins/telegram (the old
+    # cache-only pattern missed the live layout — 2026-07-17).
     case "$cwd" in
-      *"/plugins/cache/claude-plugins-official/telegram/"*)
+      *"/claude-plugins-official/"*telegram*)
         TELEGRAM_PIDS="${TELEGRAM_PIDS}${pid}
 " ;;
     esac
+  done
+  # Runner roots verify by cmdline (their cwd is the SESSION dir, not the
+  # plugin dir — `bun run --cwd X` sets X for the child, not for itself).
+  RUN_CANDIDATES="$(printf '%s\n' "$SNAPSHOT" | match_telegram_run | awk '{print $1}')"
+  for pid in $RUN_CANDIDATES; do
+    TELEGRAM_PIDS="${TELEGRAM_PIDS}${pid}
+"
   done
 fi
 
