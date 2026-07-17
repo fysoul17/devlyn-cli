@@ -357,3 +357,46 @@ register before any edit): structural context routing (e.g., criteria file
 carries the verbatim goal text alongside generated sections, or PLAN receives
 goal_text directly), i.e., delete the lossy transformation instead of
 instructing around it. Falsifier shape stays the F7 artifact gate.
+
+## Registration v3 FALSIFIED — F7 gate check 5, CLEAN falsifier fired (2026-07-17; third valid-negative of iter-0072)
+
+Run `nodeg-20260717` (runner `6d0e9f1` = VGC build, CLI pin 2.1.211): F7 row
+killed pre-judge at IMPLEMENT (row exit=143). Full receipts in
+`benchmark/ceiling/results/nodeg-20260717/VERDICT.md` + gate-fail-artifacts.
+
+**The mechanism worked; the hypothesis died.** All five information checks
+PASS: complexity=medium; fenced Goal byte-identical to task.txt (674B exact);
+no synthesized R/C/O (contract = verbatim Goal + non-binding anchors +
+Verification); canonical tail carrier parses (4 cmds); authorized_surface
+exactly the two named files; state ledger = single
+`criteria.generated://goal` entry. The lossy PHASE-0 transformation no longer
+existed — PLAN read the raw goal as sole scoping authority.
+
+**Check 5 FAIL**: PLAN still refused both carriers. USAGE in the Risks
+refuse-list ("do not touch … `USAGE` text", grouped with genuinely
+out-of-scope FILES package.json/server/ — though USAGE lives inside
+authorized `bin/cli.js:8-13` and the version row documents no `--format`);
+tests work item = the goal's literal-minimum json-path test only, no
+unsupported-format error-path test.
+
+**Information-preservation is falsified as the mechanism class** — per the
+pre-stated clean falsifier, the narrowing lives in PLAN's own scope
+reasoning, not upstream information loss: the goal's byte-preservation
+sentence ("code unrelated … must remain exactly as-is") is expanded by PLAN
+into refusing a stale user-visible reference INSIDE the authorized file, and
+"add at least one test for the json path" is read as a ceiling, not a floor.
+Seat predictions pre-gate: Grok P(refusal persists) 0.40-0.50, Codex 0.40 —
+outcome inside the band. Partial deltas vs v2 (recorded, not claimed): no
+freeze-list synthesized; no "unrequested work" framing; plan quotes Goal
+clauses as binding; refusal surface narrowed to exactly the two carriers.
+
+All surfaces reverted (`957c583`); .claude mirrors re-synced; reverted
+self-tests PASS; no rescue; STOP per the frozen gate.
+
+**Next mechanism class (pre-registered in the v3 falsifier, NOT yet
+designed)**: structural PLAN scope-lock/policy — e.g. PLAN may not emit
+refuse-lists contradicting Goal clauses; IMPLEMENT binds Goal over plan
+Risks. Requires a fresh three-way registration round. iter-0072 now carries
+THREE same-iter valid-negatives (v1 prose reference rule, v2 authority-
+matched carve, v3 verbatim-goal contract) — surfaced to the user at the
+outer-loop 3-iteration checkpoint before any round-4 registration.
