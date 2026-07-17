@@ -570,3 +570,86 @@ registration required before any edit; M-NPL stays withdrawn; never prose.
 The mechanically-verified-vs-unverified clause split above is the first
 design input: the omitted class is exactly the closure work no verification
 command exercises.
+
+## Registration v5 DRAFT — SURFACE_CLOSE (M-SC), round-5 design 2026-07-17 afternoon; 2-seat converged (Grok 4.5 + Fable), **PENDING Codex sol ratification** (archives /tmp/codex-0072-r5/)
+
+**Status: DRAFT, NOT FROZEN, NOT BUILT.** Codex sol seat unavailable this
+round (usage limit until 2026-07-23 13:15 KST; its R0 exited in 6s with the
+limit error — no position formed). The v4 falsifier's "fresh three-way
+registration" holds as a RATIFICATION GATE: no freeze, no build, until
+Codex sol reads the round archives and CONFIRMs or contests. Nothing is
+lost — the build executor seat is Codex, so no edit could land before 7/23
+regardless.
+
+**Decisive criteria (layered)**: packet's **Unverified-Closure Targeting**
+(the target class — Goal-licensed closure work no verification command
+exercises: stale in-surface user-visible references; untested
+Goal-specified success/failure paths) + Grok's **Post-Diff Task-Frame
+Shift** (the channel property — change the worker's JOB SHAPE over a
+frozen authorized diff to audit-and-repair; never completeness text into
+existing agents, never findings-only grading that already passed F7
+dirty).
+
+**Convergence receipts**: Grok R0 independent → S-A #1, rejecting
+orchestrator's pre-round S-B-first. Orchestrator R1 WITHDREW S-B-first
+with named delta (all receipts opened): (1) omission non-finding is
+OBSERVED, repeated — F7 completed with carriers missing and VERIFY
+passing on nodeg-20260713/-14/-17b; (2) S-B's repair executor is the
+IMPLEMENT completion frame v4 just falsified; (3) channel-shape ledger —
+instruction-into-existing-agent died 4×; post-diff repair-framed fresh
+task is the only unfalsified shape and is bare-B's closing posture.
+S-C dead (test-existence/USAGE-sync not command-shaped without fixture
+literals; PHASE-0 derivation re-opens the v3-deleted synthesis channel).
+Gold-gap flag (Grok, orchestrator-verified): F7 `hidden/reference.patch`
+closes USAGE but has NO unsupported-format unit test → check 8 stays in
+the falsifier as the measured QUALITY carrier, labeled gold-optional.
+
+**Mechanism (M-SC SURFACE_CLOSE — one-shot post-IMPLEMENT audit+repair)**:
+- Branch: `state.source.type == "generated"` AND `state.complexity ∈
+  {trivial, medium}`. Skip: spec-mode, `--verify-only`, large.
+- Placement: PHASE 2.5, after `implement_passed_sha` is set, BEFORE
+  BUILD_GATE (repairs flow through the existing mechanical gates; CLEANUP
+  is allowlist-wrong for additive tests; VERIFY is findings-only).
+- Fresh worker; inputs = frozen `git diff base_ref…HEAD` + raw Goal bytes
+  + `authorized_surface` + staged verification_commands AS DATA. Forbidden
+  inputs: PLAN prose, IMPLEMENT transcript/reasoning.
+- Obligation grammar (agent-decidable, zero fixture literals in harness
+  text): UVR-STALE (diff modified symbol S's behavior AND an authorized
+  file carries user-visible text documenting S's old interface omitting
+  the newly specified option → minimal in-place update) + PATH-TEST (Goal
+  specifies a success/failure path, diff implements it, no authorized
+  test exercises it → one minimal regression test) + first-class EMPTY
+  PASS (neither applies → empty diff, verdict PASS — the anti-accretion /
+  B2/B5 guard).
+- Mechanical envelope: post-spawn `git diff --name-only` ⊆
+  authorized_surface; violation → ONE re-spawn with machine error; second
+  → `BLOCKED:surface-close-out-of-scope` + revert to pre-spawn sha. One
+  spawn only, never consumes `max_rounds`, hard timeout 600s.
+- Edit surface (Grok R0 §3, file:line): SKILL.md:21 (declared-order
+  amendment), :23 (halt conditions), :69-74 (post-implement invariant),
+  ~:240 PHASE 2.5 insertion, :79 (budget exclusion); NEW
+  `references/phases/surface-close.md`; state-schema.md
+  `phases.surface_close`; state-phase-write.py phase-name allowlist;
+  3 mirrors. NOT touched: implement.md/plan.md/always-loaded completeness
+  prose; PLAN-side validators.
+- Wall: one bounded spawn; wall stays OUT of the quality claim (0071);
+  report median wall delta on F7/F25/drift; ship-reject if on-branch
+  median wall > +1× same-complexity IMPLEMENT baseline or material
+  timeout-abort rate. Token cap: resolve load-set ≤ +0.1% both gauges.
+
+**Falsifier (pre-stated)**: rebuilt F7 (fresh nodeg, CLI pin): checks
+1-6+9-10 HOLD, checks 7+8 FLIP to PASS; F25 objective non-regression
+(regression → REJECT); drift battery green (stable-clean B2/B5 +
+DB-failing-adjacent-test 0/4 — over-repair is the symmetric failure; six
+drift-bait; violation matrix N=4 in band); thermometer check (shipped
+harness text carries no fixture literals); `.devlyn` snapshotted while
+rows are live (0072.8 instrument gap). CLEAN KILL: SURFACE_CLOSE runs,
+envelope holds, Goal+diff present, and checks 7+8 still FAIL → mechanism
+class DEAD → residual is engine-native completion behavior, measured at
+the corpus/judge layer — no further harness lever for this class.
+
+**Ratification protocol**: when the Codex window resets, Codex sol reads
+this section + /tmp/codex-0072-r5/{packet,orchestrator-pre-round,
+orchestrator-r1}.md + grok-r0.log and returns CONFIRM (freeze v5 as
+registered) or a contested position (new round on the diff only). Build
+remains Codex-delegated per the v3/v4 packet pattern.
