@@ -28,6 +28,8 @@ PER_RUN_PATTERNS = (
     "*.log.md",
     "fix-batch.round-*.json",
     "criteria.generated.md",
+    "goal.raw.txt",
+    "surface-close.input.patch",
     "risk-probes.jsonl",
     # Probe scripts referenced by risk-probes.jsonl are archived by
     # move_probe_scripts() to preserve probes/<file> layout.
@@ -159,6 +161,8 @@ def self_test() -> int:
         )
         for name in (
             "risk-probes.jsonl",
+            "goal.raw.txt",
+            "surface-close.input.patch",
             "verify.pair.findings.jsonl",
             "verify-merge.summary.json",
             "codex-judge.stdout",
@@ -176,6 +180,8 @@ def self_test() -> int:
         for name in (
             "pipeline.state.json",
             "risk-probes.jsonl",
+            "goal.raw.txt",
+            "surface-close.input.patch",
             "probes/P1.py",
             "verify.pair.findings.jsonl",
             "verify-merge.summary.json",
