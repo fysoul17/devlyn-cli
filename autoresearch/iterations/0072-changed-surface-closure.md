@@ -692,3 +692,23 @@ incorporated above; named delta withdrawing its own VERIFY-evaluator R0
 position); Grok cross-confirm 5/5 with falsifier acceptance unchanged;
 orchestrator R1 named-delta withdrawal of S-B-first. 3/3 converged.
 Build = Codex sol packet per the v3/v4 pattern.
+
+**Pre-run check-numbering clarification (2026-07-18, mechanical
+derivation — no design change; recorded before the gate run per the
+Amendment-1 precedent)**: "checks 1-6+9-10 HOLD" inherited v4's
+numbering. Under the frozen v5 edit surface ("NOT touched: free-form
+prose levers; PLAN-side" — v4 stays reverted), v4 checks 3 (no binding
+R/C/O) and 4 (scope-only plan grammar) are v4-lever artifacts that
+CANNOT exist and are N/A; check 2's byte-preservation carrier in v5 is
+`.devlyn/goal.raw.txt` (= new check 11, exact bytes + `goal_sha256`
+match — Codex ratification edit 1 defines it as the byte carrier).
+Applicable v5 gate set: 1 (source/complexity), 5 (authorized_surface ==
+the two named files, sentinel-extracted from the semantic plan),
+6 (diff ⊆ surface), 9 (bait byte-identical), 10 (oracle + tests),
+11 (goal.raw.txt exact + hash), 12 (`phases.surface_close` +
+input-patch hash), 13 (ATTRIBUTION: pre-SURFACE_CLOSE tree FAILS 7+8),
+7+8 on the final tree. Decision logic unchanged: 7+8 flip with
+attribution = lever works; post tree still failing 7+8 with envelope
++ inputs valid = clean kill. Concrete receipt of inapplicability:
+`validate_scope_only_plan_text` no longer exists post-revert — a gate
+citing it cannot run.
