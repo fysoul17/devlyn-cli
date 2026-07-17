@@ -242,9 +242,9 @@ After the final phase's gate PASS: `git diff <base_ref.sha>...HEAD --stat` — e
 
 ## PHASE 2.5: SURFACE_CLOSE
 
-Run once iff `state.source.type == "generated"` and complexity is trivial/medium. Freeze `git diff --binary <base_ref.sha>...HEAD` to `.devlyn/surface-close.input.patch`; spawn records `pre_sha`/`input_patch_sha256`/`untracked_before`. Executor-default: `references/phases/surface-close.md` VERBATIM, append no instruction (validation = BUILD_GATE); inputs only raw Goal, patch, hashes, `authorized_surface`, staged commands-as-data. Enforce 600s with `CODEX_MONITORED_TIMEOUT_SEC=600`, `run-bounded.py 600 -- claude -p`, or a native timeout; else block pre-spawn.
+Run once iff `state.source.type == "generated"` and complexity is trivial/medium; else skip. Freeze `git diff --binary <base_ref.sha>...HEAD` at `.devlyn/surface-close.input.patch`; writer spawn atomically records `pre_sha`/`input_patch_sha256`/`untracked_before`. Executor-default: `references/phases/surface-close.md`; inputs only raw Goal, patch, expected hashes, `authorized_surface`, staged commands-as-data. Enforce 600s with `CODEX_MONITORED_TIMEOUT_SEC=600`, `run-bounded.py 600 -- claude -p`, or a native timeout; else block pre-spawn.
 
-After PASS, run `surface-check`. Empty delta completes with `post_sha`; authorized delta uses PHASE 2 scoped staging, commits `chore(pipeline): surface-close`, then completes. Any input mismatch, check/worker failure, or timeout runs `surface-rollback`, writes bare `BLOCKED`, halts `BLOCKED:surface-close-<reason>`. No retry or `max_rounds` use.
+After PASS, run the writer `surface-check`. Empty delta completes with `post_sha`; authorized delta uses PHASE 2 scoped staging, commits `chore(pipeline): surface-close`, then completes. Any input mismatch, check/worker failure, or timeout runs `surface-rollback`, completes bare `BLOCKED`, and halts `BLOCKED:surface-close-<reason>`. No retry or `max_rounds` use.
 
 ## PHASE 3: BUILD_GATE
 
