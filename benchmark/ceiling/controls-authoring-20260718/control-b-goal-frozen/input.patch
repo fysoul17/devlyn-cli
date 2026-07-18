@@ -1,0 +1,60 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..d3ccbf1 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -41,6 +41,19 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function resolveVersionFormat(argv) {
++  const idx = argv.indexOf('--format');
++  if (idx === -1) {
++    return 'plain';
++  }
++  const requested = argv[idx + 1];
++  if (requested !== 'json') {
++    console.error(`Unsupported --format value: ${requested}`);
++    process.exit(1);
++  }
++  return 'json';
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -57,7 +70,12 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const version = readPackageVersion();
++      if (resolveVersionFormat(rest) === 'json') {
++        console.log(JSON.stringify({ version }));
++      } else {
++        console.log(version);
++      }
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..027b19b 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,17 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version --format json emits a single-line JSON object', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.equal(parsed.version, require('../package.json').version);
++  assert.equal(out.trim(), JSON.stringify({ version: parsed.version }));
++});
++
++test('version --format yaml exits 1 for an unsupported format', () => {
++  assert.throws(
++    () => execFileSync('node', [CLI, 'version', '--format', 'yaml'], { encoding: 'utf8', stdio: 'pipe' }),
++    (err) => err.status === 1
++  );
++});
