@@ -1112,3 +1112,46 @@ against a ~40% violation rate), rollback-scope change (rejected shape:
 crediting work produced under violation breaks Phase-Faithful
 crediting). Positions land in the next addendum; nothing ships without
 a frozen registration.
+
+## Amendment-5 design round CONVERGED (three-way R0, 2026-07-18 late night; logs archived in row-artifacts of -20260718e — copy pending)
+
+**Both seats GO on both decisions** (Grok + Codex independent R0s over
+opened receipts): (1) Amendment 5 = structural execute-nothing — spawn
+the SC claude worker with tool AVAILABILITY restricted to
+Read/Grep/Glob/Edit/Write (Codex: must be `--tools`, not
+`--allowedTools`-only — availability vs permission; CLI 2.1.211 exposes
+it), delete the worker self-hash sentence (SPW dual-hash already
+mechanical at spawn + surface-check), keep execution audit + rollback
+as backstops; (2) NO rerun before Amendment 5 + restricted-route replay
+validation. **Criterion (Codex, adopted): Phase-Legal Action-Space
+Equivalence** — a structural restriction is admissible iff every valid
+phase action stays expressible through allowed tools, the invalid class
+becomes unavailable (not discouraged), and exact production-route
+replay preserves the pre-existing accuracy bars (FL1×sonnet ≥2/3 +
+both controls 2/2, ladder UNCHANGED). Falsifier (pre-registered): the
+restricted-route cell missing ≥2/3, either control losing correct
+disposition, or the runtime being unable to both exclude Bash and
+retain auditable/model-attested evidence → Amendment 5 NO-GO, no live
+row.
+
+**Record corrections (orchestrator retractions on seat receipts)**:
+(a) the worker ran `node --test` TWICE (session jsonl lines 41+50; 14
+of 16 Bash calls were read-only) — my "once" was wrong; (b) matrix
+validation-execution was 3/12 (sonnet-skewed) + 2 control replicas —
+my "5/12" conflated runs; (c) "surface-check bypasses the complete
+verb" RETRACTED — fix (iii)'s coupling FIRED
+(`BLOCKED:model-attestation-failed` in the row state): the actual gaps
+are (i) the parser lacks the claude-native `message.model` carrier
+(retained JSONL records it on assistant events; neither
+`turn_context` nor `modelUsage` shapes match), and (ii) SC spawn
+omitted `--model` though the arm manifest pinned sonnet. **Attestation
+fix frame (both seats aligned)**: restricted `claude -p
+--output-format json` route supplies the parseable `modelUsage`
+wrapper for completion evidence while the retained full JSONL serves
+the execution audit; `--model` required at SC spawn (pre-registered
+requested-model, never silently null).
+
+**Next session**: freeze the Amendment-5 composite text (this section
+is the frame; no re-design) → Codex builds (config/scripts only;
+orchestrator mirrors) → restricted-route FL1×sonnet + controls replay
+(probe tier) → green → fresh diagnostic row = the ship decision.
