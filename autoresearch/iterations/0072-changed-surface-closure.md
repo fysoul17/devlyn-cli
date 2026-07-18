@@ -1011,3 +1011,56 @@ receipt).
 Ship gate next: ONE fresh nodeg diagnostic row `nodeg-20260718d` (F7,
 `--v5` gate incl. check 13 attribution, CLI pin 2.1.211 as the v5-arc
 identity, seats claude=sonnet / codex=terra, `.devlyn` snapshot live).
+
+## nodeg-20260718d — first live dual-carrier closure; ship credit ADJUDICATED NO (3/3); instrument fixes pre-registered (2026-07-18 night, ceeaf4e)
+
+**Row facts (all receipts committed under the results dir)**: CLI pin
+2.1.211, sonnet orchestrator / terra executor / SC=claude (spawn seat
+guard exercised). SURFACE_CLOSE one-shot 189.6s: `UVR-STALE: FIRED
+bin/cli.js:12 — <evidence>` + `PATH-TEST: FIRED tests/cli.test.js:33 —
+<evidence>` + `PASS`; both carriers in the final patch; pre-SC input
+patch carries NEITHER → attribution clean (check 13 PASS). First live
+dual closure in six registrations; Amendment-4 tailed-FIRED shape
+exercised (pre-Am4 grammar would have BLOCKED this correct run).
+Objective bar PASS (sealed neutralized oracle 1/1, hidden 0). Terminal
+PASS_WITH_ISSUES.
+
+**Gate readout 9/11** (`--v5 --post-implement`, unchanged code):
+FAIL 11 goal bytes 673/674 — root cause = LAUNCHER
+(`run-ceiling-arm.sh` json_quote_task_prompt does `.rstrip("\n")` then
+inline goal; sonnet persisted exactly the bytes received; orchestrator's
+initial "sonnet PHASE-0 defect" attribution RETRACTED, Grok's D-class
+R0 attribution likewise retracted). FAIL 10 — instrument context:
+in-place oracle sees harness residue the sealed instrument neutralizes;
+gate's hardcoded PATH resolves node v25.4.0 vs harness nvm v20.19.0
+(tests 8/8 on v20, fail on v25; both reproduced in the live worktree).
+Also retracted: "sonnet judge A_win is new" (nodeg-20260714 F7 already
+sonnet 3/4 A_win vs codex 4/4 B). Quality bar stays FAIL under the
+frozen both-judges rule; wall 37.4× recorded (0072-out-of-scope, 0071
+owns it).
+
+**Adjudication (Grok R0 SHIP/MASP vs Codex R0 NO-SHIP/Ex-Ante → R1
+converged 3/3)**: (1) NO ship credit from this row — **Ex-Ante Gate
+Authority** (Codex, adopted wholesale): "all checks" cannot become
+"all mechanism-attributable checks" after the outcome is visible; gate
+stays honest at 9/11, no reclassification, MASP demoted (post-hoc-named).
+(2) v6 stays **LANDED, NOT ship-credited** — revert is keyed to
+falsification receipts (all five prior reverts followed falsifications;
+this row has none); Codex yielded with its own named delta
+**Invalid-Row Continuation Precedent** (v5 arc retained the candidate
+through two harness-invalid rows; revert fired only on the valid
+falsifying row). A falsifying valid re-row still reverts.
+(3) **Pre-registered instrument fixes required before the re-row**:
+(i) launcher byte transport — pass the task via `--goal-file`, stop
+rstrip+inline, so check 11 is satisfiable; (ii) gate check-10
+post-archive semantics — neutralized workspace + runner-pinned node,
+not residue-bearing worktree on PATH node 25; (iii) engine-session-log
+coupling — this row recorded `model_effective: null` on every phase
+while the retained worker-session JSONL says `claude-sonnet-5`;
+completion must fail closed when a retained session file exists but no
+`--engine-session-log` was passed. Then ONE fresh nodeg diagnostic row
+= the ship decision. iter-0072 does NOT close on this row.
+
+**Carried residuals**: L1-necessity-on-sonnet n=1; held-out UVR row
+(excluded-seat authored) still gates any "class closed" claim; quality/
+wall bars unchanged.

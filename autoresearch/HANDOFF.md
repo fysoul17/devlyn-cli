@@ -14,64 +14,58 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and agai
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-18 evening (iter-0072 **v6 selection COMPLETE: FL1×sonnet graduated accuracy-green**; next = v6 composite SKILL build + ONE fresh nodeg row = the ship decision; dual-judge default shipped)
+## 🚦 START-HERE — state after 2026-07-18 night (iter-0072 **v6 BUILT + LANDED; nodeg-20260718d = first live dual-carrier closure; ship credit adjudicated NO (3/3) — next = 3 instrument fixes + ONE fresh row = the ship decision**)
 
 **Where the loop stands (one paragraph).** The quality axis (nodeg
 objective 7/7 · quality 0/7 · wall 0/7, iter-0071 baseline) is the open
-problem and iter-0072 is the ACTIVE iter attacking it. FIVE registrations
-falsified same-iter with receipts: v1 prose rule (0072.2), v2
-always-loaded carve (0072.4), v3 Verbatim-Goal Contract (0072.6), v4
-Scope-Only PLAN (0072.8), and **v5 SURFACE_CLOSE (0072.13,
-`nodeg-20260718c/VERDICT.md`) — but v5 changed the shape of the problem**:
-on the fully diagnostic row, the PHASE-2.5 audit+repair worker added
-exactly the unsupported-format exit-1 test — **check 8 FLIPPED with
-byte-receipt attribution, the first lever-caused carrier closure in the
-iter** — while reading the USAGE block and silently declining UVR-STALE
-(check 7 FAIL → all-checks gate → reverted `1b32fb1..f0a5836`). THE
-CLASS SPLIT: test-shaped closure is lever-reachable in a post-diff
-repair frame; documentation-sync closure (stale user-visible reference)
-resists its SIXTH channel even with the obligation delivered verbatim.
-Seat lead: the SC worker ran on codex (executor pin); bare-B — the
-blind-preferred arm — closes USAGE on the same task. Two
-observed-failure amendments remain BINDING learnings for any future
-phase addition (0072.11 workers-execute-nothing + VERBATIM assembly;
-0072.12 mechanical dispatch enforcement at the VERIFY merge boundary).
-Prose levers stay dead. Measurement side: T1 val3 falsifier #6 FIRED,
-routed-seat instrument v2 DEAD (0070a.10); VERIFY dual-judge
-default-when-available shipped (0071.5).
+problem; iter-0072 is ACTIVE. Five registrations were falsified with
+receipts (0072.2/.4/.6/.8/.13 — arc in the iter file), then v6
+(claude-routed SURFACE_CLOSE + L1 adjudication, Amendment-4 grammar)
+graduated selection (0072.14-.16) and was **BUILT and LANDED
+2026-07-18** (0072.17: `ebe4626` model attestation / `bd39a96` rollout
+retention / `af91dad` mechanism / `6b63157` Grok edits — predicate
+parity + spawn seat guard; three-way converged, mirrors synced, all
+gates green). The fresh diagnostic row `nodeg-20260718d` (0072.18)
+produced the **first live dual-carrier closure in six registrations**:
+SC on claude fired BOTH `UVR-STALE` (the USAGE carrier that resisted
+six channels) and `PATH-TEST` with evidence rows, attribution clean
+(pre-SC patch had neither carrier), sealed oracle 1/1. But the
+unchanged all-checks gate read **9/11** — both FAILs proven
+instrument-side (launcher `rstrip` drops the goal's trailing newline;
+gate check-10 reruns in a residue-bearing worktree on PATH node v25 vs
+harness v20) — and the three-way round converged 3/3: **no ship credit
+(Ex-Ante Gate Authority — no post-hoc reclassification of a frozen
+gate), v6 stays LANDED but NOT ship-credited (revert is
+falsification-keyed; this row falsified nothing), iter-0072 does not
+close on this row.** Measurement side: routed-seat instrument v2 DEAD
+(0070a.10); VERIFY dual-judge default shipped (0071.5).
 
 **Next work**:
-1. **iter-0072 CLOSE-OUT: build the graduated v6 composite, then ONE
-   fresh nodeg diagnostic row (the ship decision).** Selection COMPLETE
-   2026-07-18 (0072.14 registration → 0072.15 matrix adjudication →
-   0072.16 controls GREEN; full arc in the iter file §§ "Registration
-   v6" onward). Graduated configuration: **claude-routed SURFACE_CLOSE
-   worker + L1 adjudication contract** — the only cell closing BOTH
-   obligations (matrix FL1×sonnet credited 2/2 dual-close; controls 2/2
-   + 2/2 substance-correct, zero false-FIRED → over-repair ruled out).
-   Build spec (all frozen, no re-design): FL1 prompt shape + **Amendment
-   4 grammar** (FIRED `<file>:<line>` optional ` — evidence` tail; N/A
-   tail REQUIRED; adjudication rows missing/malformed → mechanical BLOCK
-   at surface-check); Amendments 2+3 binding (workers execute nothing —
-   note 5/12 sonnet probe workers ran validation anyway, the mechanical
-   audit caught them → consider execution-audit in the REAL phase too);
-   SURFACE_CLOSE engine = claude even when executor pin = codex
-   (seat-routed phase like pair-judge); prerequisite commits separate
-   from the mechanism diff: (a) effective-model state integrity (state
-   recorded `gpt-5.5`, session was terra — parse the engine session
-   header, mismatch → attestation fail), (b) worker-rollout retention
-   into run artifacts. Then the nodeg row under the UNCHANGED all-checks
-   gate (attribution check 13; CLI pin; snapshot `.devlyn` live).
-   Superseded en route (do not resurrect): v5 "documentation-sync
-   resists" story (n=1; real phenomenon = stochastic per-obligation
-   omission + seat-conditioned adjudication, 0072.15); L2
-   suppressor-deletion (AGENTS.md auto-load = wrong carrier); L5
-   ambient-residue (worker read zero `.devlyn`); F1×sonnet seat-only
-   routing (1/3 credited). Honest residuals: L1-necessity-on-sonnet
-   n=1; live-row decline = variance note; row-class scope — any
-   "class closed" claim needs a held-out UVR row (excluded-seat
-   authored) per the registration. Prior arc: five valid-negatives
-   (0072.2/.4/.6/.8/.13) + amendments in the iter file.
+1. **iter-0072 ship path: land the three PRE-REGISTERED instrument
+   fixes, then ONE fresh nodeg diagnostic row under the corrected
+   instruments = the ship decision** (0072.18; receipts `ceeaf4e`):
+   (i) launcher byte transport — `run-ceiling-arm.sh`
+   json_quote_task_prompt does `.rstrip("\n")` + inline goal; switch to
+   `--goal-file` byte-copy so gate check 11 is satisfiable;
+   (ii) gate check-10 post-archive semantics — score the transported
+   patch in a neutralized workspace with the runner-pinned node (in-place
+   rerun sees harness residue + node v25.4.0 while the harness runs nvm
+   v20.19.0; sealed oracle is the authority and passed);
+   (iii) engine-session-log coupling — the row recorded
+   `model_effective: null` on every phase while the retained
+   worker-session JSONL says `claude-sonnet-5`; SPW completion must fail
+   closed when a retained session file exists but no
+   `--engine-session-log` was passed (skill-side, receipt-backed).
+   Fix execution per the established loop: Codex sol implements
+   (config/scripts trees only — codex sandbox cannot write `.agents/`;
+   orchestrator mirror-syncs + commits), Grok audits, gates green, then
+   the row (fresh run-id, CLI pin 2.1.211, seats claude=sonnet /
+   codex=terra, `watch-nodeg-row.sh` snapshot live, `--v5
+   --post-implement` gate). A falsifying valid re-row reverts v6.
+   Honest residuals: L1-necessity-on-sonnet n=1; any "class closed"
+   claim still needs the held-out UVR row (excluded-seat authored);
+   quality bar seat-split is NOT new (nodeg-20260714 F7 precedent);
+   wall 37.4× on this row (0071 owns the wall axis).
 2. ~~VERIFY dual-judge → default-when-available~~ **DONE 2026-07-16**
    (DECISIONS 0071.5; queue item `[x]` with ship record; schema-v3
    `pair.default`, net −24 lines, all gates + live canary PASS).
@@ -117,7 +111,8 @@ self-tests; results + all worker transcripts committed under
 INCLUDING untracked leftovers — remove dead-run raw `DR-*` dirs first
 (receipts live in committed `gate-fail-artifacts/`). Dead run-ids (never
 reuse): nodeg-20260716, -20260716b, -20260717, -20260717b, -20260718,
--20260718b, -20260718c. Codex sol had repeated transient "model at
+-20260718b, -20260718c; -20260718d is USED (valid diagnostic, not
+ship-credited — 0072.18). Codex sol had repeated transient "model at
 capacity" errors on 2026-07-18 — detached sessions + one retry
 absorbed them; usage-limit errors surface in seconds, capacity errors
 can kill mid-build (resume packet pattern: /tmp/codex-0072-v5-build/
