@@ -1,0 +1,17 @@
+BLOCKED — feature implementation is complete, but the required full suite cannot pass because `express` is unavailable and sandbox DNS prevents `npm ci` from fetching it (`ENOTFOUND registry.npmjs.org`).
+
+- JSON output: [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r08c9ef9cb3cb/ff10888c89791/A1/repo/bin/cli.js:60) accepts only `--format json` and writes exact JSON at line 67.
+- Bare version unchanged: [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r08c9ef9cb3cb/ff10888c89791/A1/repo/bin/cli.js:70).
+- Unsupported/missing values exit 1 with an error: [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r08c9ef9cb3cb/ff10888c89791/A1/repo/bin/cli.js:63).
+- Added JSON and invalid-format tests: [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r08c9ef9cb3cb/ff10888c89791/A1/repo/tests/cli.test.js:27).
+
+Verification:
+
+- `node bin/cli.js version` — pass
+- `node bin/cli.js version --format json` — pass, outputs `{"version":"0.1.0"}`
+- `node bin/cli.js version --format yaml` — pass, exits 1
+- `node --test tests/cli.test.js` — pass, 5/5
+- `node --test tests/` — blocked by missing `express` in unrelated `server.test.js`
+- `git diff --check` — pass; only `bin/cli.js` and `tests/cli.test.js` changed.
+
+No commit was created.

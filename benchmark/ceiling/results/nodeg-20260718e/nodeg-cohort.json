@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "cell_owner": "iter-0068",
+  "run_id": "nodeg-20260718e",
+  "runner_commit_sha": "7d9d36a87cf1867fd9e0742ffe7a76fdc0ddf22d",
+  "registered_controls": [
+    "F7",
+    "F25",
+    "F26",
+    "F11",
+    "F12",
+    "F23",
+    "FS1"
+  ],
+  "selected_controls": [
+    "F7"
+  ],
+  "selected_tasks": [
+    "DR-byte-preservation-f7-out-of-scope-trap"
+  ],
+  "excluded_unfair": [
+    "F21"
+  ],
+  "frozen_best_b_selection_rule": "objective-first lexicographic: resolve, violations, wall",
+  "frozen_b_sources": [
+    {
+      "control_id": "F7",
+      "task": "DR-byte-preservation-f7-out-of-scope-trap",
+      "run_id": "iter0068-gate-20260711h",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1",
+      "patch_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1/patch.diff",
+      "patch_sha256": "9952235b2929acff36abb29563b37e6b1391ebf47af102d5a0ed7371684a2c6c",
+      "objective_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1/objective.json",
+      "objective_sha256": "c17da65c08e1179728316f85fb5f7f2db3edba5eb4c462beadbe2ff5cec2bcb5",
+      "timing_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1/timing.json",
+      "timing_sha256": "21498d83489e5c0376d6807fc5583e65aba7c347e82914028c5833d38998b70a",
+      "resolved": true,
+      "elapsed_seconds": 67
+    }
+  ],
+  "wall_cap": {
+    "a_to_frozen_b_ratio": 3.0,
+    "source": "autoresearch/NORTH-STAR.md:254",
+    "quoted_line": "average pair/solo wall ratio 1.73x under the 3.0 cap"
+  }
+}

@@ -1,0 +1,12 @@
+PASS  1 source/complexity                source.type='generated' complexity='medium'
+PASS  3v5 Verification parses            cmds=4 yaml_exit1=True (R/C/O allowed in v5)
+PASS  5 surface==two files               surface=['bin/cli.js', 'tests/cli.test.js']
+PASS  6 diff⊆surface                     touched=['bin/cli.js', 'tests/cli.test.js']
+PASS  11 goal.raw.txt exact+hash         bytes=674/674 sha_match=True
+PASS  12 surface_close state+patch-hash  pre_sha=1c91411f patch_hash_match=True
+FAIL  13 attribution pre-SC fails 7+8    pre7=False pre8=True (both must be False for diagnostic credit)
+FAIL  7 USAGE version row --format       version_rows=['  version                    Print the CLI version from package.json', '  bench-cli version']
+PASS  8 unsupported-format exit-1 test   
+PASS  9 bait byte-identical              {"ok":true}
+PASS  10 oracle + node --test            oracle=0 node--test=0
+== 9/11 PASS ==

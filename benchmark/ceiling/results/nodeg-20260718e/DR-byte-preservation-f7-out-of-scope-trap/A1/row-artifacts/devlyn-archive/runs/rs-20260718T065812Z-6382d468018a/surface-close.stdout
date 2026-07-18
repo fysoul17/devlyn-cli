@@ -1,0 +1,11 @@
+Both digests verified before editing (goal_sha256 and input_patch_sha256 match exactly), and the working tree already reflected the frozen IMPLEMENT patch verbatim (confirmed via `git diff e5a20d9 1c91411 -- bin/cli.js tests/cli.test.js`, byte-identical to `.devlyn/surface-close.input.patch`).
+
+Audit findings:
+- **UVR-STALE fires**: `bin/cli.js`'s `USAGE` block documents each command's interface with bracket-notation flags (e.g. `hello [--name NAME]`), but the `version` line still read `version                    Print the CLI version...` with no mention of the new `--format json` option — stale old-interface text by the same convention the file already establishes for `hello`. Fixed minimally by changing that one line to `version [--format json]    Print the CLI version from package.json`, re-padded to preserve the existing column-30 alignment used by every other row. No other line touched.
+- **PATH-TEST is N/A**: the goal specifies three paths (bare `version`, `--format json`, unsupported `--format` value) and the frozen patch already added tests for all three (`tests/cli.test.js:22-37`) — no authorized test gap to fill.
+
+Verified after the edit: `node --test tests/` → 8/8 passing (no test asserts the USAGE string, so the help-text fix is safe), and `git diff` shows exactly the one-line change to `bin/cli.js` with zero changes to `tests/cli.test.js`.
+
+UVR-STALE: FIRED bin/cli.js:12 — USAGE table's `version` row omitted the new `--format json` flag while the sibling `hello [--name NAME]` row documents its optional flag; added `[--format json]` to match, alignment preserved.
+PATH-TEST: N/A tests/cli.test.js:27 — patch already covers all three goal-specified paths (bare version, `--format json`, unsupported format) at lines 22-37; no additional regression test required.
+PASS
