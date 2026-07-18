@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iter: [`iterations/0072-changed-surface-closure.md`](iterations/0072-changed-surface-closure.md) — § "Registration v4" is the frozen build contract (v1/v2/v3 falsified same-iter; receipts in §§ "Registration v2/v3 FALSIFIED"). Recently closed: [`iterations/0070a-noncoding-instruments.md`](iterations/0070a-noncoding-instruments.md) (addendum 12 = routed instrument DEAD, falsifier #6) + [`iterations/0071-wall-proportionality.md`](iterations/0071-wall-proportionality.md) (dual-judge default shipped, DECISIONS 0071.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iter: [`iterations/0072-changed-surface-closure.md`](iterations/0072-changed-surface-closure.md) — §§ "REGISTRATION v6 — AMENDMENT 5 FROZEN" + "Session close 2026-07-19" are the current frozen state (v1-v5 arcs + falsification receipts above them; DECISIONS 0072.21-.26). Recently closed: [`iterations/0070a-noncoding-instruments.md`](iterations/0070a-noncoding-instruments.md) (addendum 12 = routed instrument DEAD, falsifier #6) + [`iterations/0071-wall-proportionality.md`](iterations/0071-wall-proportionality.md) (dual-judge default shipped, DECISIONS 0071.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,145 +14,63 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and agai
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-18 night (iter-0072 **v6 BUILT + LANDED; nodeg-20260718d = first live dual-carrier closure; ship credit adjudicated NO (3/3) — next = 3 instrument fixes + ONE fresh row = the ship decision**)
+## 🚦 START-HERE — state after 2026-07-19 early morning (iter-0072 **Amendment-5 stack COMPLETE and live-validated; ship credit still open — next = CLOSURE-DURABILITY three-way design round**)
 
 **Where the loop stands (one paragraph).** The quality axis (nodeg
-objective 7/7 · quality 0/7 · wall 0/7, iter-0071 baseline) is the open
-problem; iter-0072 is ACTIVE. Five registrations were falsified with
-receipts (0072.2/.4/.6/.8/.13 — arc in the iter file), then v6
-(claude-routed SURFACE_CLOSE + L1 adjudication, Amendment-4 grammar)
-graduated selection (0072.14-.16) and was **BUILT and LANDED
-2026-07-18** (0072.17: `ebe4626` model attestation / `bd39a96` rollout
-retention / `af91dad` mechanism / `6b63157` Grok edits — predicate
-parity + spawn seat guard; three-way converged, mirrors synced, all
-gates green). The fresh diagnostic row `nodeg-20260718d` (0072.18)
-produced the **first live dual-carrier closure in six registrations**:
-SC on claude fired BOTH `UVR-STALE` (the USAGE carrier that resisted
-six channels) and `PATH-TEST` with evidence rows, attribution clean
-(pre-SC patch had neither carrier), sealed oracle 1/1. But the
-unchanged all-checks gate read **9/11** — both FAILs proven
-instrument-side (launcher `rstrip` drops the goal's trailing newline;
-gate check-10 reruns in a residue-bearing worktree on PATH node v25 vs
-harness v20) — and the three-way round converged 3/3: **no ship credit
-(Ex-Ante Gate Authority — no post-hoc reclassification of a frozen
-gate), v6 stays LANDED but NOT ship-credited (revert is
-falsification-keyed; this row falsified nothing), iter-0072 does not
-close on this row.** Measurement side: routed-seat instrument v2 DEAD
-(0070a.10); VERIFY dual-judge default shipped (0071.5).
+objective 7/7 · quality 0/7 · wall 0/7) is the open problem; iter-0072
+ACTIVE. v6 (claude-routed SURFACE_CLOSE + L1 adjudication) is LANDED;
+**Amendment 5 (structural execute-nothing) is FROZEN (0072.21), BUILT
+(528333f + R1 927a38d), restricted-replay GREEN (0072.22: UVR 3/3,
+controls 2/2+2/2, restriction receipts 3/3), and live-validated** — in
+row -19c every layer finally worked in one row: C2 draw filter, PATH
+shim, dep staging, permission flag, MCP-hermetic Bash-less spawn
+(worker Bash count 0), wrapper attestation (requested=effective=
+claude-sonnet-5), SC dual-carrier FIRED with correct minimal repairs
+committed. **SC adjudication is 5-for-5 perfect across -d/-e/-h/-19b/
+-19c.** Ship credit is still OPEN: three diagnostic rows read 10/11 for
+three different single-check reasons; the LAST one is behavioral and
+new — **a post-SC BUILD_GATE fix-loop round reverted SC's committed
+USAGE closure in a separate deliberate hunk** (0072.9's named hazard,
+live receipt: nodeg-20260719c row-artifacts/sc-revert-receipts.txt;
+DECISIONS 0072.26). v6+Am5 stay LANDED (not falsification-keyed — the
+mechanism performed; a later phase undid it).
 
 **Next work**:
-1. **iter-0072 ship path (state after 0072.19): freeze Amendment 5,
-   probe-validate, then the diagnostic re-row = the ship decision.**
-   Instrument fixes LANDED + VALIDATED (`7d9d36a`: launcher
-   `--goal-file` byte transport; gate check-10 transported neutralized
-   workspace + `CEILING_TEST_NODE_BIN` + node_modules copy; SPW
-   session-log coupling — old-row validation 10/11, checks 11+10 flip
-   PASS). Ship row `nodeg-20260718e` (runner `7d9d36a`) = NON-DIAGNOSTIC
-   (pre8=True — stochastic PHASE-0 criteria draw carried the yaml
-   exit-1 verification command, IMPLEMENT closed check 8 itself; rerun
-   licensed by the frozen v5-edit-4 attribution rule) BUT the mechanism
-   evidence is first-rate: SC adjudicated PERFECTLY (correct FIRED +
-   USAGE repair, correct evidenced N/A, zero false rows) and then lost
-   its correct repair because the worker ran `node --test` once (1 of
-   16 Bash calls) → execution audit BLOCKED + rollback, check 7 FAIL,
-   terminal BLOCKED — live confirmation of the 5/12 probe violation
-   rate on the production seat (correction on receipts: `node --test`
-   ran TWICE, 14/16 calls read-only). **Amendment-5 design CONVERGED
-   three-way (0072.20; logs committed in the -20260718e row-artifacts)**:
-   structural execute-nothing — SC claude worker spawned with `--tools
-   "Read,Grep,Glob,Edit,Write"` (availability, not permission), worker
-   self-hash sentence deleted (SPW dual-hash mechanical), audit +
-   rollback stay backstops; criterion = Phase-Legal Action-Space
-   Equivalence; validation ladder UNCHANGED (restricted-route
-   FL1×sonnet ≥2/3 + controls 2/2) at probe tier BEFORE any live row;
-   falsifier pre-registered (restricted cell misses bar / control loses
-   disposition / runtime can't both exclude Bash and retain attested
-   evidence → NO-GO). Attestation fix frame in the same build:
-   restricted `claude -p --output-format json` (modelUsage → completion
-   evidence; retained full JSONL → execution audit) + `--model`
-   required at SC spawn; parser gains the claude `message.model`
-   carrier only if the json route is insufficient. Next session =
-   freeze composite text from the iter-file frame (no re-design) →
-   Codex builds → restricted replay → green → fresh diagnostic row
-   (fresh run-id; -20260718d/-20260718e both USED; CLI pin 2.1.211;
-   seats sonnet/terra; snapshot live; `--v5 --post-implement` gate +
-   pinned node).
-   A falsifying valid re-row reverts v6. Honest residuals:
-   L1-necessity-on-sonnet n=1; held-out UVR row gates any class-closed
-   claim; quality seat-split not new (20260714 precedent); wall 18.4×
-   this row (0071 owns the axis).
-2. ~~VERIFY dual-judge → default-when-available~~ **DONE 2026-07-16**
-   (DECISIONS 0071.5; queue item `[x]` with ship record; schema-v3
-   `pair.default`, net −24 lines, all gates + live canary PASS).
-3. ~~T1 cohort rerun~~ **DONE 2026-07-17** (DECISIONS 0070a.10; iter-0070a
-   addendum 12): sonnet cohort 190/190 valid — BOTH held-out ORDERING
-   fixtures DEAD under the frozen per-role bar (bads 16/16 resolved vs cap
-   ≤4, RD 0.000 vs ≥0.50; sonnet resolved all 64/64 routed attempts, zero
-   discrimination). **Amendment 2 falsifier #6 FIRED → routed-seat
-   instrument v2 DEAD, Cell 2 scored run permanently closed, no retuning.**
-   Terra bonus rerun INVALID at 115/190 (contamination:blinded-label
-   fail-closed kill; no rerun — purpose died with the instrument).
-4. **Cell 1 bare-fails admission gate** (terra-conditional reporting only) —
-   the only remaining 0070a item.
+1. **CLOSURE-DURABILITY three-way design round (design only, then
+   registration)** — first item: adjudicate falsification-vs-gap for
+   the fix-loop revert; then design the durability mechanism. Candidate
+   axes (0072.26, NOT designed): SC re-fire after fix-loop rounds /
+   fix-round byte-preservation enforcement over the SC delta / carrier
+   guard in BUILD_GATE-finish-gate. Never prose (four prose falsifications
+   stand). Then ONE fresh diagnostic row = the ship decision, gate
+   unchanged (`--v5`; watcher adds `--post-implement` itself at row end).
+2. Cell 1 bare-fails admission gate (terra-conditional) — last 0070a item.
 
-**Cohort-run hygiene (learned 2026-07-14/15, binding for all long runs)**:
-detach via `nohup … & disown` (never a harness background task — those get
-killed ~3.5h); **pin the CLI binary** `CEILING_TEST_CLAUDE_BIN=/Users/aipalm/.local/share/claude/versions/<X.Y.Z>`
-from the FIRST launch (Claude Code auto-updates mid-cohort → A-arm identity
-drift → fail-closed, cost a 3-row re-run in nodeg-20260714); compute any
-mid-cohort early-abort against the EXACT frozen per-role check semantics,
-never an aggregated counter (cost a T1 sonnet cohort). **DONE 2026-07-15**:
-nodeg re-measure `nodeg-20260714` — wall VALID-NEGATIVE (median 8.9→10.7×,
-still 0/7; the levers don't touch the IMPLEMENT/fix-loop bottleneck),
-objective 7/7, quality 0/7 unchanged (confirms 0072 problem is stable);
-P2′/P3′ not computable (workspace cleanup — persist per-phase state next).
-DECISIONS 0071.4 + iter-0071 addendum 5.
+**Row mechanics (all learned this session, binding)**: launch =
+`CEILING_TEST_CLAUDE_BIN=<2.1.211> CEILING_TEST_NODE_BIN=<node-v20>
+nohup bash benchmark/ceiling/scripts/run-nodeg-cell.sh --run-id <fresh>
+--tasks DR-byte-preservation-f7-out-of-scope-trap` + watcher
+`watch-nodeg-row.sh <run-id> <task> /tmp/<id>-arc --v5` (F-ii: watcher
+gates a TEMP COPY of the live tree at row end — never trust the
+snapshot-only branch; the worktree SURVIVES at
+`~/.local/share/nx01/w/…` and PHASE-6 archive prunes root .devlyn state
+into runs/). C2 auto-aborts non-diagnostic draws (criteria-time cmds=0
++ post-IMPLEMENT pre7/pre8; exit 86; commit results, relaunch fresh id
+— observed diagnostic-draw rate ≈ 1/3). Deps staged deterministically
+(F-i, deps-staging.json receipt). Dead run-ids now also: -20260718f/g/h,
+-20260719a/b/c. Codex builds detached + one retry on silent hang
+(35-min zero-output kill observed); a killed-at-report-stage build may
+be complete on disk — verify + finish gates yourself before rebuilding.
 
-**Added 2026-07-18 (v5 gate arc)**: row worktrees live at
-`~/.local/share/nx01/w/r<sha256(run-id)[:12]>/f<sha256(task)[:12]>/A1/repo`
-(artifacts under `a/`, claude-homes under `claude-homes/`) and are
-DELETED at row end — **snapshot `.devlyn/` while the row is live** or
-the raw criteria/plan bytes are unrecoverable (the 20260718c row's
-worktree+session SURVIVED by accident; its rollout + full repo bundle are
-now committed in `gate-fail-artifacts/`, `7b42b29` — replay from there,
-not from nx01 paths); durable tooling:
-`benchmark/ceiling/scripts/f7-carrier-gate.py` (F7 carrier/attribution
-checks, v4/v5 modes; check8 colon-form oracle fix 3cd3809) +
-`benchmark/ceiling/scripts/watch-nodeg-row.sh` (gate-at-PLAN + live
-snapshots) + `benchmark/ceiling/scripts/r6-replay{-cell.py,.sh}`
-(frozen-input worker replay + execution audit + control-mode, 29
-self-tests; results + all worker transcripts committed under
-`results/r6-replay-20260718/`). The nodeg runner refuses a dirty tree
-INCLUDING untracked leftovers — remove dead-run raw `DR-*` dirs first
-(receipts live in committed `gate-fail-artifacts/`). Dead run-ids (never
-reuse): nodeg-20260716, -20260716b, -20260717, -20260717b, -20260718,
--20260718b, -20260718c; -20260718d is USED (valid diagnostic, not
-ship-credited — 0072.18). Codex sol had repeated transient "model at
-capacity" errors on 2026-07-18 — detached sessions + one retry
-absorbed them; usage-limit errors surface in seconds, capacity errors
-can kill mid-build (resume packet pattern: /tmp/codex-0072-v5-build/
-build2 prompt).
+**Seat scorecard this session (keep the triad honest)**: orchestrator
+caught resolve-routing hazard + adjudicated all seat conflicts on
+receipts; Codex caught model-id live-BLOCK + Row-State Substitution
+(overturning Grok's ship-CONFIRM) + built every packet; Grok caught the
+MCP execution channel + killed the yaml@criteria proxy with the -d
+receipt (which also corrected 0072.19's wrong parenthetical). Grok
+ship-round miss: it graded a recon without discovering the surviving
+live tree — verify liveness before gating.
 
-**Binding residue (pointers only; full arcs in the iter files)**:
-- iter-0068 CLOSED VALID-NEGATIVE (identity confound → isolation v2
-  permanent; F21 tombstoned; controls = 6 DR + F12 + FS1). Benchmark codex
-  seat = `gpt-5.6-terra`; sol is team-only; fable never a test arm.
-- iter-0069 binding: plain conversation NOT forced through resolve (0069.1);
-  always-loaded contract holds only measured/mechanical/subtractive content
-  (0069.3); claim-emission instrument = the 0070 ladder (Block 9).
-- Ceiling honest state (0064/0067): FAIL-pilot twice — no moat claim; the
-  0070a instruments + iter-0071 are the response, not re-runs.
-- Three-way protocol: Fable orchestrates/verifies citations, Codex sol
-  executes, Grok 4.5 independent reviewer/auditor
-  (`feedback_threeway_pair_grok_2026_07_10.md`).
-
-**Deferred**: attack-the-wall lane A (needs a discriminating corpus);
-claim-shape arm (strategic, may need user); codex drift-bait lane
-(iter-0062 f/u); E2 re-measurement; finish-gate skip-rate watch;
-`.git/info/exclude` for `.devlyn/`. Runner ("Mission 1.5") still NOT next —
-re-enters on skip-rate evidence.
-
-**Mission 2 (parallel-fleet substrate)**: BLOCKED until Mission 1 gates + real-project trial (#15). iter-0035 real-project trial stays user-gated (needs real project + task + developer). Hard NO list in MISSIONS.md binding.
 
 ---
 

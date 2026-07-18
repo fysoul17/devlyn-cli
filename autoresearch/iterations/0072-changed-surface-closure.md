@@ -1404,3 +1404,23 @@ dir existence, not root pipeline.state.json (archived-state
 substitution defect); end-gate promotes archived state files before
 gating. Then ONE fresh diagnostic row = the ship decision, gate
 unchanged.
+
+## Session close 2026-07-19 — the full Amendment-5 stack works; the frontier moves to CLOSURE DURABILITY
+
+Row ladder this session: -f (SC skipped: no `claude` on frozen PATH →
+shim B) · -g (C2 first fire, pre8 draw) · -h (lever perfect, 10/11 —
+dep staging defect → F-i/F-ii; Grok ship-CONFIRM overturned by Codex
+Row-State Substitution) · -19a (C2 pre8) · -19b (cmds=0 draw + SC
+permission denial → F-iii/F-iv) · **-19c (10/11 — every layer worked;
+check 7 lost to a post-SC fix-loop revert, receipts in
+row-artifacts/sc-revert-receipts.txt; DECISIONS 0072.26)**. Six
+instrument/envelope defect classes were found and closed by the
+three-way loop in one continuous session; the ONE remaining failure is
+behavioral and NEW: the fix-loop re-enters IMPLEMENT's old frame and
+unwinds the lever's committed closure (0072.9's named hazard, now with
+a live receipt). SC adjudication is now 5-for-5 perfect across rows
+(-d/-e/-h/-19b/-19c) including an honest BLOCKED stop-and-report under
+permission denial. v6+Amendment-5: LANDED, validated at probe tier +
+live envelope, NOT ship-credited (Ex-Ante, three rows 10/11 for three
+different single-check reasons). Next session opens with the
+closure-durability three-way design round (frame in 0072.26).
