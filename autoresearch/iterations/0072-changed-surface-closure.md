@@ -926,3 +926,45 @@ disposition + zero false-FIRED/forbidden edits per control (Codex's
 stricter zero-tolerance adopted); (3) green → freeze v6 composite skill
 build (claude-routed SURFACE_CLOSE + L1) → ONE fresh nodeg row,
 unchanged all-checks gate; red → no graduation, kill branch stands.
+
+## Accuracy controls GREEN + Amendment 4 (FIRED grammar) — 2026-07-18 (commits 1ee0085/04fba07+)
+
+**Controls verdict (3/3 GREEN)**: control-b-goal-frozen 2/2 credited
+fully correct (both N/A rows citing the freeze clause, empty delta);
+control-a-no-stale substance-correct on both execution-clean replicas
+(UVR N/A already-current evidence + PATH FIRED + test-only delta), with
+r01/r04 validation-execution contaminated (mechanical audit caught them,
+replacement scheduling worked). Zero false-FIRED / forbidden edits in
+ANY replica → **over-repair NOT observed; the 12/12 UVR fire is
+discrimination, not compulsion**. Crediting ruling (Grok CONFIRM +
+Codex CONFIRM + orchestrator): the frozen control bar (0072.15) is
+disposition + false-fired + forbidden-edits; the parser's
+adjudication-format rejection is selection-matrix crediting machinery,
+"a format-crediting defect, not a control-bar failure" (Codex).
+Controls were outcome-blind authored (fresh opus seat, blinding
+statement in AUTHORING.md) and Grok F21 UNFAIR-audited FAIR pre-run.
+
+**Amendment 4 — FIRED-row grammar (registered for the v6 build; parser
++ self-test update lands with the build)**: control-A's clean replicas
+appended ` — <evidence>` to FIRED rows and were parser-rejected;
+matrix FL1-sonnet credited replicas used BARE FIRED. Both shapes occur
+in correct runs, so an exclusive grammar in either direction causes
+spurious production BLOCKED halts. Seat split adjudicated with a named
+criterion — **No-Spurious-Halt on Observed-Correct Output Shapes**: the
+grammar must accept every shape that occurred in credited correct runs.
+Adopted: `FIRED <file>:<line>` with OPTIONAL ` — <one-line evidence>`
+tail (Grok's position; parser treats the tail as evidence, per Codex);
+N/A keeps its REQUIRED evidence tail (evidence-free N/A is exactly the
+silent-decline risk). Named delta vs Codex's mandatory-tail: the
+matrix's own graduated replicas were bare-FIRED — requiring the tail
+fails the same test that motivated the amendment.
+
+**GRADUATION COMPLETE**: FL1×sonnet is accuracy-green. Remaining to
+close iter-0072 (next session): (1) v6 composite SKILL build — claude-
+routed SURFACE_CLOSE + L1 adjudication contract with Amendment-4
+grammar, Amendments 2+3 binding, prerequisite commits (effective-model
+state integrity; worker-rollout retention); (2) ONE fresh nodeg
+diagnostic row under the UNCHANGED all-checks gate — the ship decision.
+Honest residuals carried: L1-necessity-on-sonnet n=1; live-row decline
+= variance/fidelity note; row-class scope (held-out UVR row gate before
+any class-closed claim).

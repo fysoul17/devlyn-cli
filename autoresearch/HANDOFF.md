@@ -14,7 +14,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and agai
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-18 (iter-0072 **round-6 DONE: Registration v6 FROZEN (Adjudicated SURFACE_CLOSE, selection-first)**; next = build + run the 4-cell replay selection; dual-judge default shipped)
+## 🚦 START-HERE — state after 2026-07-18 evening (iter-0072 **v6 selection COMPLETE: FL1×sonnet graduated accuracy-green**; next = v6 composite SKILL build + ONE fresh nodeg row = the ship decision; dual-judge default shipped)
 
 **Where the loop stands (one paragraph).** The quality axis (nodeg
 objective 7/7 · quality 0/7 · wall 0/7, iter-0071 baseline) is the open
@@ -41,30 +41,37 @@ routed-seat instrument v2 DEAD (0070a.10); VERIFY dual-judge
 default-when-available shipped (0071.5).
 
 **Next work**:
-1. **iter-0072: execute the FROZEN Registration v6 selection (0072.14;
-   full text in the iter file § "Registration v6").** Round-6 three-way
-   CONVERGED 3/3 (Grok CONFIRM-WITH-EDITS both incorporated). Decisive
-   criterion: Observed-Degree-of-Freedom Closure — v5's worker could
-   silently decline UVR inside a legal bare `PASS`; v6 = single lever L1
-   (per-obligation `FIRED file:line` / `N/A file:line — evidence` verdict
-   rows, missing/malformed → mechanical BLOCK). SELECTION BEFORE BUILD:
-   adaptive 4-cell frozen-input worker replay {F1 actual-prompt-bytes,
-   FL1 +adjudication-gate} × {codex terra, claude sonnet}, 2 replicas +
-   any-fire 3rd, 0/2 stop, max 12; exact pre_sha tree from archived
-   `f7-row-repo.bundle` (7b42b29); graduation needs ≥2/3 UVR fire AND
-   accuracy-green (no-stale + ambiguous controls) → ONE fresh nodeg row,
-   unchanged gate; F1×sonnet win → seat-routing, L1 not registered; no
-   accuracy-green fire cell → residual ACCEPTED, iter closes on the
-   split. Load-bearing round-6 receipts (worker rollout, archived
-   7b42b29): worker = terra in-session; read FULL bin/cli.js incl. USAGE
-   before declining; zero `.devlyn` reads; adapter header "Do not narrate
-   internal deliberation" made silent exit adapter-encouraged; root
-   AGENTS.md auto-loads into worker cwd (phase-local suppressor deletion
-   = wrong carrier — L2/L5 withdrawn with named deltas). Prerequisite
-   commits (separate from mechanism diff): effective-model state
-   integrity (state recorded `gpt-5.5`, session was terra) + full-rollout
-   retention. Prior arc: five same-iter valid-negatives
-   (0072.2/.4/.6/.8/.13); registration + amendments in the iter file.
+1. **iter-0072 CLOSE-OUT: build the graduated v6 composite, then ONE
+   fresh nodeg diagnostic row (the ship decision).** Selection COMPLETE
+   2026-07-18 (0072.14 registration → 0072.15 matrix adjudication →
+   0072.16 controls GREEN; full arc in the iter file §§ "Registration
+   v6" onward). Graduated configuration: **claude-routed SURFACE_CLOSE
+   worker + L1 adjudication contract** — the only cell closing BOTH
+   obligations (matrix FL1×sonnet credited 2/2 dual-close; controls 2/2
+   + 2/2 substance-correct, zero false-FIRED → over-repair ruled out).
+   Build spec (all frozen, no re-design): FL1 prompt shape + **Amendment
+   4 grammar** (FIRED `<file>:<line>` optional ` — evidence` tail; N/A
+   tail REQUIRED; adjudication rows missing/malformed → mechanical BLOCK
+   at surface-check); Amendments 2+3 binding (workers execute nothing —
+   note 5/12 sonnet probe workers ran validation anyway, the mechanical
+   audit caught them → consider execution-audit in the REAL phase too);
+   SURFACE_CLOSE engine = claude even when executor pin = codex
+   (seat-routed phase like pair-judge); prerequisite commits separate
+   from the mechanism diff: (a) effective-model state integrity (state
+   recorded `gpt-5.5`, session was terra — parse the engine session
+   header, mismatch → attestation fail), (b) worker-rollout retention
+   into run artifacts. Then the nodeg row under the UNCHANGED all-checks
+   gate (attribution check 13; CLI pin; snapshot `.devlyn` live).
+   Superseded en route (do not resurrect): v5 "documentation-sync
+   resists" story (n=1; real phenomenon = stochastic per-obligation
+   omission + seat-conditioned adjudication, 0072.15); L2
+   suppressor-deletion (AGENTS.md auto-load = wrong carrier); L5
+   ambient-residue (worker read zero `.devlyn`); F1×sonnet seat-only
+   routing (1/3 credited). Honest residuals: L1-necessity-on-sonnet
+   n=1; live-row decline = variance note; row-class scope — any
+   "class closed" claim needs a held-out UVR row (excluded-seat
+   authored) per the registration. Prior arc: five valid-negatives
+   (0072.2/.4/.6/.8/.13) + amendments in the iter file.
 2. ~~VERIFY dual-judge → default-when-available~~ **DONE 2026-07-16**
    (DECISIONS 0071.5; queue item `[x]` with ship record; schema-v3
    `pair.default`, net −24 lines, all gates + live canary PASS).
@@ -101,8 +108,12 @@ worktree+session SURVIVED by accident; its rollout + full repo bundle are
 now committed in `gate-fail-artifacts/`, `7b42b29` — replay from there,
 not from nx01 paths); durable tooling:
 `benchmark/ceiling/scripts/f7-carrier-gate.py` (F7 carrier/attribution
-checks, v4/v5 modes) + `benchmark/ceiling/scripts/watch-nodeg-row.sh`
-(gate-at-PLAN + live snapshots). The nodeg runner refuses a dirty tree
+checks, v4/v5 modes; check8 colon-form oracle fix 3cd3809) +
+`benchmark/ceiling/scripts/watch-nodeg-row.sh` (gate-at-PLAN + live
+snapshots) + `benchmark/ceiling/scripts/r6-replay{-cell.py,.sh}`
+(frozen-input worker replay + execution audit + control-mode, 29
+self-tests; results + all worker transcripts committed under
+`results/r6-replay-20260718/`). The nodeg runner refuses a dirty tree
 INCLUDING untracked leftovers — remove dead-run raw `DR-*` dirs first
 (receipts live in committed `gate-fail-artifacts/`). Dead run-ids (never
 reuse): nodeg-20260716, -20260716b, -20260717, -20260717b, -20260718,
