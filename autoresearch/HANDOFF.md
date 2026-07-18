@@ -18,29 +18,29 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and agai
 
 **Where the loop stands (one paragraph).** The quality axis (nodeg
 objective 7/7 · quality 0/7 · wall 0/7, iter-0071 baseline) is the open
-problem and iter-0072 is the ACTIVE iter attacking it. FOUR registrations
-falsified same-iter with receipts: v1 prose reference rule (0072.2), v2
-always-loaded carve (0072.4), v3 Verbatim-Goal Contract (0072.6), and
-**v4 Scope-Only PLAN (0072.8, `nodeg-20260717b/VERDICT.md`)**. v4's build
-(`13a106a`, three-seat loop: Codex sol executor, Grok GO-WITH-EDITS,
-Codex R1 caught a spec byte-behavior regression pre-commit) passed every
-static gate and the F7 mechanism checks 1-6+9-10 — scope-only PLAN held
-live (126-byte canonical carrier, surface = the two named files) — yet
-IMPLEMENT, reading only verbatim Goal + Verification + surface, still
-omitted BOTH carriers (no USAGE hunk, no unsupported-format exit-1 test;
-checks 7+8). Sharpest diagnostic: yaml exit-1 BEHAVIOR was implemented
-(Verification-driven) — the omitted class is exactly closure work with NO
-verification command attached. Info-loss (v3) and the semantic-PLAN
-channel (v4) both eliminated → the literal-minimum narrowing localizes to
-IMPLEMENT's own completion behavior. Everything reverted (`c7927d9`);
-prose levers stay dead. Measurement side: T1 val3 falsifier #6 FIRED,
+problem and iter-0072 is the ACTIVE iter attacking it. FIVE registrations
+falsified same-iter with receipts: v1 prose rule (0072.2), v2
+always-loaded carve (0072.4), v3 Verbatim-Goal Contract (0072.6), v4
+Scope-Only PLAN (0072.8), and **v5 SURFACE_CLOSE (0072.13,
+`nodeg-20260718c/VERDICT.md`) — but v5 changed the shape of the problem**:
+on the fully diagnostic row, the PHASE-2.5 audit+repair worker added
+exactly the unsupported-format exit-1 test — **check 8 FLIPPED with
+byte-receipt attribution, the first lever-caused carrier closure in the
+iter** — while reading the USAGE block and silently declining UVR-STALE
+(check 7 FAIL → all-checks gate → reverted `1b32fb1..f0a5836`). THE
+CLASS SPLIT: test-shaped closure is lever-reachable in a post-diff
+repair frame; documentation-sync closure (stale user-visible reference)
+resists its SIXTH channel even with the obligation delivered verbatim.
+Seat lead: the SC worker ran on codex (executor pin); bare-B — the
+blind-preferred arm — closes USAGE on the same task. Two
+observed-failure amendments remain BINDING learnings for any future
+phase addition (0072.11 workers-execute-nothing + VERBATIM assembly;
+0072.12 mechanical dispatch enforcement at the VERIFY merge boundary).
+Prose levers stay dead. Measurement side: T1 val3 falsifier #6 FIRED,
 routed-seat instrument v2 DEAD (0070a.10); VERIFY dual-judge
 default-when-available shipped (0071.5).
 
-**Next work** (execution order 2026-07-16: item 2 → item 3 → item 1 → item 4 —
-after the double falsification, 0072 round 3 needs a fresh design round while
-dual-judge/T1 are shovel-ready with user go-ahead; run the 0072 design round
-during the T1 cohort window, engines permitting):
+**Next work**:
 1. **iter-0072 round 6: the class SPLIT — design round on the residual
    UVR (stale user-visible reference) obligation.** v5 SURFACE_CLOSE was
    built, hardened through two observed-failure amendments (0072.11
@@ -87,6 +87,23 @@ still 0/7; the levers don't touch the IMPLEMENT/fix-loop bottleneck),
 objective 7/7, quality 0/7 unchanged (confirms 0072 problem is stable);
 P2′/P3′ not computable (workspace cleanup — persist per-phase state next).
 DECISIONS 0071.4 + iter-0071 addendum 5.
+
+**Added 2026-07-18 (v5 gate arc)**: row worktrees live at
+`~/.local/share/nx01/w/r<sha256(run-id)[:12]>/f<sha256(task)[:12]>/A1/repo`
+(artifacts under `a/`, claude-homes under `claude-homes/`) and are
+DELETED at row end — **snapshot `.devlyn/` while the row is live** or
+the raw criteria/plan bytes are unrecoverable; durable tooling:
+`benchmark/ceiling/scripts/f7-carrier-gate.py` (F7 carrier/attribution
+checks, v4/v5 modes) + `benchmark/ceiling/scripts/watch-nodeg-row.sh`
+(gate-at-PLAN + live snapshots). The nodeg runner refuses a dirty tree
+INCLUDING untracked leftovers — remove dead-run raw `DR-*` dirs first
+(receipts live in committed `gate-fail-artifacts/`). Dead run-ids (never
+reuse): nodeg-20260716, -20260716b, -20260717, -20260717b, -20260718,
+-20260718b, -20260718c. Codex sol had repeated transient "model at
+capacity" errors on 2026-07-18 — detached sessions + one retry
+absorbed them; usage-limit errors surface in seconds, capacity errors
+can kill mid-build (resume packet pattern: /tmp/codex-0072-v5-build/
+build2 prompt).
 
 **Binding residue (pointers only; full arcs in the iter files)**:
 - iter-0068 CLOSED VALID-NEGATIVE (identity confound → isolation v2
