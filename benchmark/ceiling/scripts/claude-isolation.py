@@ -198,7 +198,15 @@ def user_memory_hits(text: str, path: Path | None) -> list[str]:
     return [marker for marker in user_memory_markers(path) if marker in text]
 
 
-def command_for(mode: str, claude_binary: Path, prompt: str | None, debug_file: Path | None) -> list[str]:
+def command_for(
+    mode: str,
+    claude_binary: Path,
+    prompt: str | None,
+    debug_file: Path | None,
+    tools_csv: str | None = None,
+) -> list[str]:
+    if tools_csv is not None and (mode != "arm" or not tools_csv):
+        raise IsolationError("--tools-csv requires arm mode and a non-empty value")
     if mode == "version":
         return [str(claude_binary), "--version"]
     if mode == "shell-canary":
@@ -240,6 +248,8 @@ def command_for(mode: str, claude_binary: Path, prompt: str | None, debug_file: 
         )
     else:
         raise IsolationError(f"unsupported Claude launch mode: {mode}")
+    if tools_csv is not None:
+        command.extend(["--tools", tools_csv])
     return command
 
 
@@ -293,6 +303,7 @@ def launch_claude(
     metadata_out: Path | None,
     user_memory_file: Path | None,
     timeout_seconds: int | None = None,
+    tools_csv: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     claude_binary = resolve_direct_binary("claude", os.environ.get("CEILING_TEST_CLAUDE_BIN"))
     codex_binary = resolve_direct_binary("codex", os.environ.get("CEILING_TEST_CODEX_BIN"))
@@ -344,7 +355,7 @@ def launch_claude(
         )
         if metadata["direct_claude"]["superset_wrapper"] or ".superset" in path_value:
             raise IsolationError("Superset wrapper reached isolated Claude launch")
-        command = command_for(mode, claude_binary, prompt, debug_file)
+        command = command_for(mode, claude_binary, prompt, debug_file, tools_csv)
         proc = subprocess.Popen(
             command,
             cwd=workdir,
@@ -418,6 +429,7 @@ def main() -> int:
     launch.add_argument("--metadata-out", type=Path)
     launch.add_argument("--user-memory-file", type=Path)
     launch.add_argument("--timeout-seconds", type=int)
+    launch.add_argument("--tools-csv")
     scan = subparsers.add_parser("scan-user-memory")
     scan.add_argument("--transcript", required=True, type=Path)
     scan.add_argument("--user-memory-file", required=True, type=Path)
@@ -439,6 +451,7 @@ def main() -> int:
             metadata_out=args.metadata_out.resolve() if args.metadata_out else None,
             user_memory_file=args.user_memory_file.resolve() if args.user_memory_file else None,
             timeout_seconds=args.timeout_seconds,
+            tools_csv=args.tools_csv,
         )
     except (IsolationError, OSError, subprocess.TimeoutExpired) as exc:
         print(f"CLAUDE_ISOLATION_ERROR: {exc}", file=sys.stderr)

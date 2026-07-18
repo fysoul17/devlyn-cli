@@ -6,11 +6,10 @@ Audit and repair the frozen post-IMPLEMENT surface once.
 
 <input>
 - Artifacts: Goal at `state.source.goal_path`; `.devlyn/surface-close.input.patch`.
-- Supplied digests: `goal_sha256`; `phases.surface_close.input_patch_sha256`.
 - Data: `authorized_surface`; staged commands.
 - Base: `phases.surface_close.pre_sha`.
 
-Hash both artifacts first. Mismatch: make no edits; reply `BLOCKED:surface-close-input-mismatch`. Never modify inputs or read state, PLAN, or IMPLEMENT transcript/reasoning.
+Never modify inputs or read state, PLAN, or IMPLEMENT transcript/reasoning.
 </input>
 
 <obligations>

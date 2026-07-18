@@ -31,6 +31,7 @@ PER_RUN_PATTERNS = (
     "goal.raw.txt",
     "surface-close.input.patch",
     "surface-close.prompt",
+    "surface-close.output.json",
     "surface-close.stdout",
     # Mutation workers retain the exact session JSONL identified by their
     # dispatch receipt. Round-scoped root files avoid engine-global scans.
@@ -171,6 +172,7 @@ def self_test() -> int:
             "goal.raw.txt",
             "surface-close.input.patch",
             "surface-close.prompt",
+            "surface-close.output.json",
             "surface-close.stdout",
             "implement.worker-session.0.jsonl",
             "surface-close.worker-session.0.jsonl",
@@ -198,6 +200,7 @@ def self_test() -> int:
             "goal.raw.txt",
             "surface-close.input.patch",
             "surface-close.prompt",
+            "surface-close.output.json",
             "surface-close.stdout",
             "implement.worker-session.0.jsonl",
             "surface-close.worker-session.0.jsonl",

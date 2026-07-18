@@ -1226,3 +1226,17 @@ watch-nodeg-row.sh; unchanged `--v5 --post-implement` all-checks gate +
 pinned node) = the ship decision. Falsifying valid row → revert v6
 (falsification-keyed). pre8=True stochastic draw → non-diagnostic,
 rerun licensed (v5-edit-4 attribution rule).
+
+**Freeze correction (build round, Codex receipt)**: the frozen A5-E1
+value `--model sonnet` would BLOCK live — SPW:620-624 compares
+requested/effective exactly and the wrapper reports the full id
+(`claude-sonnet-5`). Orchestrator smoke on pinned 2.1.211: `--model
+claude-sonnet-5` accepted (result exact, modelUsage key
+`claude-sonnet-5`) → production envelope pins the FULL id; requested
+string == CLI arg == modelUsage key. Deliberately asymmetric (recorded,
+not hidden): claude-isolation arm-mode keeps `--model sonnet` (every
+ceiling A-arm rides that route; alias resolves to the same model;
+replay receipts attest effective via the wrapper). Also added at build
+time: `run --cell` scoping on the replay matrix — the frozen ladder
+needs ONLY restricted FL1×sonnet + controls; rerunning the three dead
+cells respends seats for zero Amendment-5 information.

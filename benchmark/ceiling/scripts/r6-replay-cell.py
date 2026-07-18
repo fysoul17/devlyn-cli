@@ -28,18 +28,25 @@ sys.dont_write_bytecode = True
 
 REPO = Path(__file__).resolve().parents[3]
 SCRIPT_DIR = Path(__file__).resolve().parent
-RESULTS_DIR = REPO / "benchmark/ceiling/results/r6-replay-20260718"
-TMP_ROOT = Path("/tmp/codex-0072-v6-build/r6-replay-work")
+ARCHIVED_RESULTS_DIR = REPO / "benchmark/ceiling/results/r6-replay-20260718"
+RESULTS_DIR = REPO / "benchmark/ceiling/results/r6-replay-am5-20260718"
+TMP_ROOT = Path("/tmp/codex-0072-am5-build/r6-replay-work")
+CANONICAL_BODY = REPO / "config/skills/devlyn:resolve/references/phases/surface-close.md"
+RESTRICTED_CELL = "FL1-sonnet"
+RESTRICTED_TOOLS_CSV = "Read,Grep,Glob,Edit,Write"
 PROMPTS = {
     "F1": {
-        "source_path": RESULTS_DIR / "f1-prompt.txt",
+        "source_path": ARCHIVED_RESULTS_DIR / "f1-prompt.txt",
         "filename": "f1-prompt.txt",
         "sha256": "00cddba55a0aaabff3e4dbea1264c412e806a293408bf25378babd8c7dbd23b1",
     },
     "FL1": {
-        "source_path": RESULTS_DIR / "fl1-prompt.txt",
+        "source_path": ARCHIVED_RESULTS_DIR / "fl1-prompt.txt",
         "filename": "fl1-prompt.txt",
-        "sha256": "b422dd6e6783945f43059ffa2ad0cae76aac270289720416e5b0ea838bee5e83",
+        # Amendment 5 frozen-input revision: the archived template remains
+        # pinned separately; this pin is the prompt with the NEW canonical body.
+        "template_sha256": "b422dd6e6783945f43059ffa2ad0cae76aac270289720416e5b0ea838bee5e83",
+        "sha256": "72eead4dc71b3b02ec50f38d888576edea021c80d6e47699519982f5c388d71d",
     },
 }
 BUNDLE = (
@@ -68,7 +75,7 @@ GLOBAL_CAP = 12
 CONTROL_WORKER_CAP = 4
 CONTROL_NAMES = ("control-a-no-stale", "control-b-goal-frozen")
 TIMEOUT_SECONDS = 600
-REGISTRATION = "iter-0072 Registration v6 / DECISIONS 0072.14"
+REGISTRATION = "iter-0072 Registration v6 Amendment 5 / DECISIONS 0072.21"
 VALIDATION_COMMAND_PATTERN = re.compile(
     r"npm\s+test|node\s+--test|node\s+-e|node\s+bin/|node\s+tests/|git\s+stash"
 )
@@ -94,6 +101,7 @@ RECEIPT_FIELDS = {
     "readout",
     "phase_boundary",
     "execution_audit",
+    "restriction_receipts",
     "valid",
     "invalid_reasons",
 }
@@ -385,8 +393,6 @@ def parse_verdict_rows(message: str, workspace: Path) -> dict[str, Any]:
             line_count = len(candidate.read_text(encoding="utf-8").splitlines())
             if line_number > line_count:
                 citation_errors.append("line-missing")
-        if disposition == "FIRED" and judgment is not None:
-            errors.append(f"{obligation}-FIRED-has-judgment")
         if disposition == "N/A" and (judgment is None or not judgment.strip()):
             errors.append(f"{obligation}-N/A-missing-judgment")
         rows[obligation] = {
@@ -526,7 +532,11 @@ def run_codex(
 
 
 def run_sonnet(
-    workspace: Path, prompt: Path, artifact_dir: Path, home: Path
+    workspace: Path,
+    prompt: Path,
+    artifact_dir: Path,
+    home: Path,
+    tools_csv: str | None = None,
 ) -> dict[str, Any]:
     codex_home = home / ".codex"
     stdout_path = artifact_dir / "engine.stdout"
@@ -554,6 +564,8 @@ def run_sonnet(
         "--timeout-seconds",
         str(TIMEOUT_SECONDS),
     ]
+    if tools_csv is not None:
+        command.extend(["--tools-csv", tools_csv])
     user_memory = Path.home() / ".claude/CLAUDE.md"
     if user_memory.is_file():
         command.extend(["--user-memory-file", str(user_memory)])
@@ -582,6 +594,7 @@ def run_sonnet(
         "cli_version": cli_version,
         "effective_model": effective,
         "effective_model_source": "Claude JSON wrapper:modelUsage" if effective else None,
+        "model_usage_present": isinstance(model_usage, dict) and bool(model_usage),
         "final_message": final,
     }
 
@@ -642,6 +655,26 @@ def transcript_commands(transcript: Path, engine: str) -> tuple[list[str], list[
     return commands, errors
 
 
+def sonnet_bash_tool_use_count(transcript: Path) -> int:
+    count = 0
+    for line in transcript.read_text(encoding="utf-8", errors="strict").splitlines():
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        content = ((event.get("message") or {}).get("content"))
+        if isinstance(content, list):
+            count += sum(
+                isinstance(item, dict)
+                and item.get("type") == "tool_use"
+                and item.get("name") == "Bash"
+                for item in content
+            )
+    return count
+
+
 def execution_audit_for_transcript(
     transcript: Path, engine: str, *, transcript_path: str = "worker-transcript.jsonl"
 ) -> tuple[dict[str, Any], list[str]]:
@@ -654,6 +687,9 @@ def execution_audit_for_transcript(
     return (
         {
             "n_commands": len(commands),
+            "bash_tool_use_count": (
+                sonnet_bash_tool_use_count(transcript) if engine == "sonnet" else None
+            ),
             "validation_execution": bool(hits),
             "validation_hits": hits,
             "transcript_path": transcript_path,
@@ -681,6 +717,7 @@ def archive_and_audit_transcript(
         return (
             {
                 "n_commands": 0,
+                "bash_tool_use_count": 0 if engine == "sonnet" else None,
                 "validation_execution": False,
                 "validation_hits": [],
                 "transcript_path": None,
@@ -697,8 +734,30 @@ def archive_and_audit_transcript(
     return execution_audit_for_transcript(archived, engine)
 
 
+def restriction_receipts(
+    tools_csv: str | None, worker: dict[str, Any], execution_audit: dict[str, Any]
+) -> dict[str, Any]:
+    applied = tools_csv is not None
+    zero_bash = applied and execution_audit["bash_tool_use_count"] == 0
+    model_usage = applied and bool(worker.get("model_usage_present"))
+    jsonl_retained = applied and execution_audit["transcript_path"] is not None
+    return {
+        "applied": applied,
+        "tools_csv": tools_csv,
+        "bash_tool_use_count": execution_audit["bash_tool_use_count"] if applied else None,
+        "zero_bash_tool_use": zero_bash if applied else None,
+        "modelUsage_present": model_usage if applied else None,
+        "jsonl_retained": jsonl_retained if applied else None,
+        "passed": (zero_bash and model_usage and jsonl_retained) if applied else None,
+    }
+
+
 def worker_invalid_reasons(
-    worker: dict[str, Any], engine: str, execution_audit: dict[str, Any], audit_errors: list[str]
+    worker: dict[str, Any],
+    engine: str,
+    execution_audit: dict[str, Any],
+    audit_errors: list[str],
+    restriction: dict[str, Any],
 ) -> list[str]:
     invalid_reasons = list(audit_errors)
     if execution_audit["validation_execution"]:
@@ -721,6 +780,13 @@ def worker_invalid_reasons(
         invalid_reasons.append("effective-model-mismatch")
     elif engine == "sonnet" and "sonnet" not in effective.casefold():
         invalid_reasons.append("effective-model-mismatch")
+    if restriction["applied"]:
+        if not restriction["zero_bash_tool_use"]:
+            invalid_reasons.append("restriction-bash-tool-use")
+        if not restriction["modelUsage_present"]:
+            invalid_reasons.append("restriction-modelUsage-missing")
+        if not restriction["jsonl_retained"]:
+            invalid_reasons.append("restriction-jsonl-missing")
     return invalid_reasons
 
 
@@ -813,14 +879,16 @@ def execute_replica(
         "status_sha256": sha256_bytes(prepared.pre_status.encode()),
         "overlay_input_source": prepared.overlay_input_source,
     }
+    tools_csv = RESTRICTED_TOOLS_CSV if cell == RESTRICTED_CELL and engine == "sonnet" else None
     worker = (
         run_codex(workspace, prompt, artifact_dir, home)
         if engine == "terra"
-        else run_sonnet(workspace, prompt, artifact_dir, home)
+        else run_sonnet(workspace, prompt, artifact_dir, home, tools_csv)
     )
     execution_audit, audit_errors = archive_and_audit_transcript(
         home, engine, artifact_dir
     )
+    restriction = restriction_receipts(tools_csv, worker, execution_audit)
     delta = run_command(
         ["git", "diff", "--binary", "--no-ext-diff", PRE_SHA, "--"],
         cwd=workspace,
@@ -837,7 +905,7 @@ def execute_replica(
         prepared=prepared,
     )
     invalid_reasons = worker_invalid_reasons(
-        worker, engine, execution_audit, audit_errors
+        worker, engine, execution_audit, audit_errors, restriction
     )
     readout = static_readout(workspace)
     readout["credited_uvr_fired"] = bool(
@@ -875,6 +943,7 @@ def execute_replica(
         "readout": readout,
         "phase_boundary": boundary,
         "execution_audit": execution_audit,
+        "restriction_receipts": restriction,
         "valid": not invalid_reasons,
         "invalid_reasons": invalid_reasons,
         "completed_at": utc_now(),
@@ -887,15 +956,34 @@ def execute_replica(
     return receipt
 
 
+def prompt_bytes(variant: str, contract: dict[str, Any]) -> bytes:
+    path = contract.get("path", contract.get("source_path"))
+    if not isinstance(path, Path) or not path.is_file():
+        raise ProbeError(f"{variant} prompt missing: {path}")
+    source = path.read_bytes()
+    if variant != "FL1" or "path" in contract:
+        value = source
+    else:
+        if sha256_bytes(source) != contract["template_sha256"]:
+            raise ProbeError("FL1 archived template hash mismatch")
+        body = CANONICAL_BODY.read_bytes()
+        start_marker = b"# PHASE 2.5 \xe2\x80\x94 SURFACE_CLOSE (canonical body)\n"
+        end_marker = b"\n---\n\n## Supplied inputs"
+        if not body.startswith(start_marker) or not body.endswith(b"\n"):
+            raise ProbeError("SURFACE_CLOSE canonical body boundary malformed")
+        if source.count(start_marker) != 1 or source.count(end_marker) != 1:
+            raise ProbeError("FL1 archived template canonical-body boundary malformed")
+        start = source.index(start_marker)
+        end = source.index(end_marker, start)
+        value = source[:start] + body + source[end:]
+    if sha256_bytes(value) != contract["sha256"]:
+        raise ProbeError(f"{variant} prompt hash mismatch")
+    return value
+
+
 def validate_prompts(prompts: dict[str, dict[str, Any]] = PROMPTS) -> None:
     for variant, contract in prompts.items():
-        path = contract.get("path", contract.get("source_path"))
-        if not isinstance(path, Path):
-            raise ProbeError(f"{variant} prompt path contract missing")
-        if not path.is_file():
-            raise ProbeError(f"{variant} prompt missing: {path}")
-        if sha256_file(path) != contract["sha256"]:
-            raise ProbeError(f"{variant} prompt hash mismatch")
+        prompt_bytes(variant, contract)
 
 
 def durable_prompts(results_dir: Path) -> dict[str, dict[str, Any]]:
@@ -903,9 +991,8 @@ def durable_prompts(results_dir: Path) -> dict[str, dict[str, Any]]:
     results_dir.mkdir(parents=True, exist_ok=True)
     durable: dict[str, dict[str, Any]] = {}
     for variant, contract in PROMPTS.items():
-        source = contract["source_path"]
         target = results_dir / contract["filename"]
-        value = source.read_bytes()
+        value = prompt_bytes(variant, contract)
         if target.exists():
             if not target.is_file() or target.read_bytes() != value:
                 raise ProbeError(f"{variant} durable prompt conflicts: {target}")
@@ -1066,6 +1153,11 @@ def build_manifest(
             "overlay": {"path": str(OVERLAY.relative_to(REPO)), "sha256": sha256_file(OVERLAY)},
             "goal_sha256": GOAL_SHA,
             "surface_close_input_patch_sha256": PATCH_SHA,
+            "fl1_amendment5_canonical_body": {
+                "path": str(CANONICAL_BODY.relative_to(REPO)),
+                "sha256": sha256_file(CANONICAL_BODY),
+                "assembled_prompt_sha256": PROMPTS["FL1"]["sha256"],
+            },
             "overlay_prompt_input_restoration": (
                 "The committed post-hoc overlay stores the exact prompt inputs under its single "
                 ".devlyn/runs/<run-id>/ archive. Preparation copies those hash-matched bytes back "
@@ -1092,6 +1184,8 @@ def build_manifest(
             "sonnet": {
                 "requested_model": "sonnet",
                 "route": "benchmark/ceiling/scripts/claude-isolation.py launch --mode arm",
+                "restricted_cell": RESTRICTED_CELL,
+                "restricted_tools_csv": RESTRICTED_TOOLS_CSV,
                 "timeout_seconds": TIMEOUT_SECONDS,
                 "fresh_home_per_replica": True,
             },
@@ -1111,7 +1205,17 @@ def update_outputs(
     return summary
 
 
-def run_probe(results_dir: Path, tmp_root: Path) -> int:
+def selected_cells(cell: str | None) -> tuple[tuple[str, str, str], ...]:
+    if cell is None:
+        return CELLS
+    selected = tuple(candidate for candidate in CELLS if candidate[0] == cell)
+    if not selected:
+        raise ProbeError(f"unknown replay cell: {cell}")
+    return selected
+
+
+def run_probe(results_dir: Path, tmp_root: Path, cell: str | None = None) -> int:
+    cells = selected_cells(cell)
     prompts = durable_prompts(results_dir)
     tmp_root.mkdir(parents=True, exist_ok=True)
     lock_path = results_dir / ".runner.lock"
@@ -1121,7 +1225,7 @@ def run_probe(results_dir: Path, tmp_root: Path) -> int:
         except BlockingIOError as exc:
             raise ProbeError(f"another r6 replay runner holds {lock_path}") from exc
         update_outputs(results_dir, prompts)
-        for cell, prompt_variant, engine in CELLS:
+        for cell, prompt_variant, engine in cells:
             while True:
                 receipts = load_receipts(results_dir, cell)
                 valid = [receipt for receipt in receipts if receipt.get("valid")]
@@ -1438,14 +1542,16 @@ def execute_control_replica(
         "status_sha256": sha256_bytes(prepared.prepared.pre_status.encode()),
         "overlay_input_source": prepared.prepared.overlay_input_source,
     }
+    tools_csv = RESTRICTED_TOOLS_CSV
     worker = (
         run_codex(workspace, prompt, artifact_dir, home)
         if engine == "terra"
-        else run_sonnet(workspace, prompt, artifact_dir, home)
+        else run_sonnet(workspace, prompt, artifact_dir, home, tools_csv)
     )
     execution_audit, audit_errors = archive_and_audit_transcript(
         home, engine, artifact_dir
     )
+    restriction = restriction_receipts(tools_csv, worker, execution_audit)
     final = worker["final_message"]
     boundary = control_phase_boundary(
         final_message=final.decode("utf-8", errors="replace"),
@@ -1473,7 +1579,7 @@ def execute_control_replica(
         worker_delta, sort_keys=True, separators=(",", ":")
     ).encode()
     invalid_reasons = worker_invalid_reasons(
-        worker, engine, execution_audit, audit_errors
+        worker, engine, execution_audit, audit_errors, restriction
     )
     invalid_reasons.extend(f"phase-boundary:{error}" for error in boundary["errors"])
     readout = (
@@ -1515,6 +1621,7 @@ def execute_control_replica(
         "readout": readout,
         "phase_boundary": boundary,
         "execution_audit": execution_audit,
+        "restriction_receipts": restriction,
         "control_scoring": scoring,
         "valid": not invalid_reasons,
         "invalid_reasons": invalid_reasons,
@@ -1664,12 +1771,31 @@ def expect(condition: bool, label: str) -> None:
 def self_test() -> int:
     validate_prompts()
     expect(True, "F1/FL1 full SHA-256 validation")
+    unknown_cell_failed_closed = False
+    try:
+        selected_cells("unknown")
+    except ProbeError:
+        unknown_cell_failed_closed = True
+    expect(unknown_cell_failed_closed, "unknown --cell fails closed")
+    restricted_command = imported_claude_isolation().command_for(
+        "arm", Path("/direct/claude"), "prompt", None, RESTRICTED_TOOLS_CSV
+    )
+    expect(
+        restricted_command[-2:] == ["--tools", RESTRICTED_TOOLS_CSV],
+        "Claude arm route appends the Amendment-5 tools restriction",
+    )
     with tempfile.TemporaryDirectory(prefix="r6-replay-selftest-") as temporary:
         root = Path(temporary)
         durable = durable_prompts(root / "durable-prompts")
         expect(
             all(contract["path"].parent == root / "durable-prompts" for contract in durable.values()),
             "prompt bytes copied durably into the results directory",
+        )
+        durable_fl1 = durable["FL1"]["path"].read_bytes()
+        expect(
+            sha256_bytes(durable_fl1) == PROMPTS["FL1"]["sha256"]
+            and durable_fl1.count(CANONICAL_BODY.read_bytes()) == 1,
+            "FL1 recorded revision assembles the NEW canonical body bytes",
         )
         prepared = prepare_workspace(root / "frozen-workspace")
         expect(
@@ -1710,6 +1836,15 @@ def self_test() -> int:
             synthetic,
         )
         expect(valid_fired["valid"], "verdict parser accepts FIRED with valid citation")
+        valid_fired_evidence = parse_verdict_rows(
+            "UVR-STALE: FIRED bin/cli.js:2 — stale interface updated\n"
+            "PATH-TEST: N/A tests/cli.test.js:1 — failure path already covered\nPASS",
+            synthetic,
+        )
+        expect(
+            valid_fired_evidence["valid"],
+            "verdict parser accepts optional FIRED evidence from the NEW body",
+        )
         valid_na = parse_verdict_rows(
             "UVR-STALE: N/A bin/cli.js:1 — no stale relationship\n"
             "PATH-TEST: N/A tests/cli.test.js:1 — path already covered\nPASS",
@@ -1832,6 +1967,7 @@ def self_test() -> int:
         expect(
             not sonnet_errors
             and sonnet_audit["n_commands"] == 2
+            and sonnet_audit["bash_tool_use_count"] == 2
             and sonnet_audit["validation_hits"] == ["npm test"]
             and sonnet_audit["validation_execution"]
             and not codex_errors
@@ -1875,10 +2011,37 @@ def self_test() -> int:
         codex_clean, _ = execution_audit_for_transcript(codex_read_only, "terra")
         expect(
             sonnet_clean["n_commands"] == 1
+            and sonnet_clean["bash_tool_use_count"] == 1
             and not sonnet_clean["validation_execution"]
             and codex_clean["n_commands"] == 1
             and not codex_clean["validation_execution"],
             "execution audit allows sonnet/codex read-only commands",
+        )
+        clean_restriction = restriction_receipts(
+            RESTRICTED_TOOLS_CSV,
+            {"model_usage_present": True},
+            {
+                "n_commands": 0,
+                "bash_tool_use_count": 0,
+                "transcript_path": "worker-transcript.jsonl",
+            },
+        )
+        dirty_restriction = restriction_receipts(
+            RESTRICTED_TOOLS_CSV,
+            {"model_usage_present": True},
+            {
+                "n_commands": 0,
+                "bash_tool_use_count": 1,
+                "transcript_path": "worker-transcript.jsonl",
+            },
+        )
+        expect(
+            clean_restriction["passed"]
+            and clean_restriction["zero_bash_tool_use"]
+            and clean_restriction["modelUsage_present"]
+            and clean_restriction["jsonl_retained"]
+            and not dirty_restriction["passed"],
+            "restricted-route receipts require zero Bash tool_use plus modelUsage and JSONL",
         )
 
         control_goal = b"Control Goal bytes without a trailing newline"
@@ -1991,6 +2154,7 @@ def main() -> int:
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument("--results-dir", type=Path, default=RESULTS_DIR)
     run_parser.add_argument("--tmp-root", type=Path, default=TMP_ROOT)
+    run_parser.add_argument("--cell")
     control_parser = subparsers.add_parser("run-control")
     control_parser.add_argument("--controls-dir", type=Path, required=True)
     control_parser.add_argument("--cell", required=True)
@@ -2002,7 +2166,7 @@ def main() -> int:
             return self_test()
         if args.command == "run-control":
             return run_controls(args.controls_dir.resolve(), args.cell, args.replicas)
-        return run_probe(args.results_dir.resolve(), args.tmp_root.resolve())
+        return run_probe(args.results_dir.resolve(), args.tmp_root.resolve(), args.cell)
     except (ProbeError, AssertionError, OSError, subprocess.TimeoutExpired) as exc:
         print(f"R6_REPLAY_ERROR: {exc}", file=sys.stderr)
         return 1

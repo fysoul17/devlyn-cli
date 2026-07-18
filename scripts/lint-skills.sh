@@ -199,16 +199,19 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 4. No model-pinned Claude references, any generation. Engine-scope docs say
-#    "Claude"; exact model ids belong in run metadata only.
+# 4. No model-pinned Claude references, any generation, except the adjudicated
+#    SURFACE_CLOSE envelope whose requested id must equal CLI arg and modelUsage.
 # ---------------------------------------------------------------------------
 section "Check 4: No model-pinned Claude references"
-offenders=$(grep -RIlnE 'Claude (Opus|Sonnet|Haiku|Fable)|claude-(opus|sonnet|haiku|fable)-[0-9]' \
+offenders=$(grep -RInE 'Claude (Opus|Sonnet|Haiku|Fable)|claude-(opus|sonnet|haiku|fable)-[0-9]' \
   config/skills 2>/dev/null \
   | grep -v 'config/skills/roadmap-archival-workspace/' \
   | grep -v 'config/skills/devlyn:auto-resolve-workspace/' \
   | grep -v 'config/skills/devlyn:ideate-workspace/' \
   | grep -v 'config/skills/preflight-workspace/' \
+  | grep -vE '^config/skills/devlyn:resolve/SKILL\.md:[0-9]+:Freeze .*--tools "Read,Grep,Glob,Edit,Write" --model claude-sonnet-5 --output-format json.*, recording the same model at SPW spawn\.' \
+  | cut -d: -f1 \
+  | sort -u \
   || true)
 if [ -z "$offenders" ]; then
   ok "no model-pinned Claude references"
@@ -397,6 +400,7 @@ if ! grep -Fq 'SAFE_RUN_ID_RE' config/skills/_shared/archive_run.py \
   || ! grep -Fq 'invalid JSON numeric constant: NaN' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"verify.pair.findings.jsonl"' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"verify-merge.summary.json"' config/skills/_shared/archive_run.py \
+  || ! grep -Fq '"surface-close.output.json"' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"*-judge.*"' config/skills/_shared/archive_run.py; then
   bad "archive_run.py must safely archive pair/risk-probe evidence and reject unsafe run ids"
 fi
@@ -412,6 +416,8 @@ if ! grep -Fq 'rollback_surface_delta' config/skills/_shared/state-phase-write.p
   || ! grep -Fq 'validate_surface_adjudication' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'validate_surface_execution' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'phases.surface_close spawn requires --engine claude' config/skills/_shared/state-phase-write.py \
+  || ! grep -Fq 'phases.surface_close spawn requires --model' config/skills/_shared/state-phase-write.py \
+  || ! grep -Fq 'BLOCKED:surface-close-input-mismatch' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'surface-check' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'surface-rollback' config/skills/_shared/state-phase-write.py; then
   bad "state-phase-write.py must mechanically adjudicate, audit, guard, and roll back SURFACE_CLOSE"
@@ -426,8 +432,12 @@ for tree in config/skills .claude/skills .agents/skills; do
     || ! grep -Fq 'auto_surface_close_claude_unavailable' "$skill" \
     || ! grep -Fq 'canonical body VERBATIM' "$skill" \
     || ! grep -Fq 'run-bounded.py 600 -- claude -p' "$skill" \
+    || ! grep -Fq -- '--tools "Read,Grep,Glob,Edit,Write" --model claude-sonnet-5 --output-format json' "$skill" \
+    || ! grep -Fq '.devlyn/surface-close.output.json' "$skill" \
     || ! grep -Fq '`surface-rollback`' "$skill" \
-    || ! grep -Fq 'BLOCKED:surface-close-input-mismatch' "$phase" \
+    || grep -Fq 'Supplied digests' "$phase" \
+    || grep -Fq 'Hash both artifacts first' "$phase" \
+    || ! grep -Fq 'Never modify inputs or read state, PLAN, or IMPLEMENT transcript/reasoning.' "$phase" \
     || ! grep -Fq 'optionally followed by ` — <one-line evidence>`' "$phase" \
     || ! grep -Fq 'N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>' "$phase"; then
     bad "$tree — SURFACE_CLOSE v6 dispatch/timeout/adjudication/rollback contract missing"

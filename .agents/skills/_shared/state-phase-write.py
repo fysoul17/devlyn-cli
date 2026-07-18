@@ -482,6 +482,8 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     # other field this script doesn't own) survives a fix-loop respawn.
     if phase == "surface_close" and engine != "claude":
         raise SystemExit("error: phases.surface_close spawn requires --engine claude")
+    if phase == "surface_close" and not model:
+        raise SystemExit("error: phases.surface_close spawn requires --model")
     phases = state.setdefault("phases", {})
     entry = phases.get(phase)
     if phase == "surface_close" and isinstance(entry, dict) and (
@@ -902,7 +904,7 @@ def self_test() -> int:
             rejected_state = {"sentinel": True}
             try:
                 do_spawn(
-                    rejected_state, "surface_close", 0, None, pre_sha, rejected_engine, None,
+                    rejected_state, "surface_close", 0, None, pre_sha, rejected_engine, "sonnet",
                     input_patch_sha256=file_sha256(patch), prompt_sha256=file_sha256(prompt),
                     untracked_before=["kept.txt"],
                 )
@@ -911,8 +913,20 @@ def self_test() -> int:
             else:
                 raise AssertionError("SURFACE_CLOSE accepted a non-Claude engine")
             assert rejected_state == {"sentinel": True}
+        rejected_state = {"sentinel": True}
+        try:
+            do_spawn(
+                rejected_state, "surface_close", 0, None, pre_sha, "claude", None,
+                input_patch_sha256=file_sha256(patch), prompt_sha256=file_sha256(prompt),
+                untracked_before=["kept.txt"],
+            )
+        except SystemExit as exc:
+            assert "phases.surface_close spawn requires --model" in str(exc)
+        else:
+            raise AssertionError("SURFACE_CLOSE accepted a missing requested model")
+        assert rejected_state == {"sentinel": True}
         do_spawn(
-            surface_state, "surface_close", 0, None, pre_sha, "claude", None,
+            surface_state, "surface_close", 0, None, pre_sha, "claude", "sonnet",
             input_patch_sha256=file_sha256(patch), prompt_sha256=file_sha256(prompt),
             untracked_before=["kept.txt"],
         )
@@ -922,8 +936,9 @@ def self_test() -> int:
         surface = validate_authorized_surface('["allowed.txt", "tests/**"]')
         entry = surface_entry(surface_state)
         assert entry["prompt_sha256"] == file_sha256(prompt)
+        assert entry["model_requested"] == "sonnet"
         try:
-            do_spawn(surface_state, "surface_close", 1, None, pre_sha, "claude", None)
+            do_spawn(surface_state, "surface_close", 1, None, pre_sha, "claude", "sonnet")
         except SystemExit as exc:
             assert "one-shot" in str(exc)
         else:
@@ -1003,6 +1018,22 @@ def self_test() -> int:
                 raise AssertionError(
                     f"SURFACE_CLOSE execution audit accepted {validation_command}"
                 )
+
+        wrapper_log = work_devlyn / "surface-close.output.json"
+        wrapper_log.write_text(json.dumps({
+            "result": output.read_text(encoding="utf-8"),
+            "modelUsage": {"sonnet": {"inputTokens": 1}},
+        }) + "\n", encoding="utf-8")
+        completion_state = loads_strict_json(json.dumps(surface_state))
+        assert do_complete(
+            completion_state, "surface_close", "PASS", pre_sha, None,
+            ".devlyn/surface-close.stdout", None, None, str(wrapper_log),
+            devlyn=work_devlyn,
+        ) is None
+        completed_surface = completion_state["phases"]["surface_close"]
+        assert completed_surface["model_requested"] == "sonnet"
+        assert completed_surface["model_effective"] == "sonnet"
+        assert completed_surface["verdict"] == "PASS"
 
         (work / "allowed.txt").write_text("pre-existing\n", encoding="utf-8")
         try:
