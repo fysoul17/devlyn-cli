@@ -1361,3 +1361,46 @@ fired. Extra Grok round SKIPPED by the anti-asymptotic rule (build
 matches Grok's own R0 edit table + salvage shape verbatim; new
 elements are mechanical choices carrying byte receipts, Codex-reviewed
 — 0072.19 precedent). Next: fresh diagnostic row nodeg-20260718g.
+
+## nodeg-20260718h ADJUDICATED — NO ship credit (row-state 10/11); lever-owned checks ALL PASS; dependency-staging + watcher-sentinel fixes registered
+
+**The mechanism worked perfectly live for the first time end-to-end**:
+C2 passed a diagnostic draw (PLAN-time pre7=pre8=False); the shim fixed
+availability (SC spawned, no skip); SC under the Amendment-5 envelope
+adjudicated BOTH carriers correctly (`UVR-STALE: FIRED bin/cli.js:12`
+USAGE → `version [--format json]`; `PATH-TEST: FIRED
+tests/cli.test.js:31` err.status===1 test; PASS), worker session shows
+Read:2/Edit:2/**Bash:0** (structural execute-nothing held), attestation
+chain live-green first time (`model_requested = model_effective =
+claude-sonnet-5`), all five artifacts incl. `surface-close.output.json`
+present, checks 7/8/12/13 PASS on the row tree.
+
+**Ship-confirmation round split, orchestrator-adjudicated on receipts**:
+Grok CONFIRM (missed the surviving live tree); **Codex REFUTE
+"Row-State Substitution at Check 10" — CORRECT**: the live worktree
+SURVIVED (`~/.local/share/nx01/w/rf57fad5aee83/…/A1/repo`; the watcher
+misjudged deletion because PHASE-6 archive prunes root
+`.devlyn/pipeline.state.json` into `runs/` — the watcher's sentinel is
+wrong); its `node_modules` lacks `express` (worker-side restore
+partial: implement.stderr "pass 4 / fail 1"), so frozen check 10's
+full `node --test` fails in TRUE row state. Orchestrator verification:
+EXPRESS-MISSING confirmed; gate on a faithful live-tree copy (deps
+as-is) = **10/11, FAIL 10 (oracle=0, node--test=1)**. objective.json's
+`tests_passed=1/1` is the SEALED single-test oracle (green) — Grok's
+receipt was real but out-of-scope for check 10. My recon's `npm ci`
+minted the earlier 11/11 — retracted; recon gate-readout.txt
+annotated. **Ex-Ante Gate Authority: NO ship credit (0072.18
+precedent). v6+Am5 stay LANDED, not ship-credited. -20260718h DEAD.**
+
+**Registered fixes (receipts above; Codex-identified defect class,
+anti-asymptotic — build follows the refuting seat's own finding)**:
+(F-i) **deterministic dependency staging** — the row driver stages
+declared deps (`npm ci`, pinned node, network-privileged runner
+context) into the A-arm workspace at setup, before the arm starts;
+workers stop improvising restores under differing sandbox privileges
+(-f: orchestrator npm ci OK / -h: worker partial → env state is
+per-row stochastic). (F-ii) **watcher sentinel** — liveness = worktree
+dir existence, not root pipeline.state.json (archived-state
+substitution defect); end-gate promotes archived state files before
+gating. Then ONE fresh diagnostic row = the ship decision, gate
+unchanged.

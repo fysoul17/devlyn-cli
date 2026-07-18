@@ -1,0 +1,13 @@
+# f7-carrier-gate readout — nodeg-20260718h (reconstructed ws; deviations: synthetic commit, npm ci lockfile deps restored; row ran npm ci in-row)
+PASS  1 source/complexity                source.type='generated' complexity='medium'
+PASS  3v5 Verification parses            cmds=4 yaml_exit1=True (R/C/O allowed in v5)
+PASS  5 surface==two files               surface=['bin/cli.js', 'tests/cli.test.js']
+PASS  6 diff⊆surface                     touched=['bin/cli.js', 'tests/cli.test.js']
+PASS  11 goal.raw.txt exact+hash         bytes=674/674 sha_match=True
+PASS  12 surface_close state+patch-hash  pre_sha=5621d79d patch_hash_match=True
+PASS  13 attribution pre-SC fails 7+8    pre7=False pre8=False (both must be False for diagnostic credit)
+PASS  7 USAGE version row --format       version_rows=['  version [--format json]    Print the CLI version from package.json', '  bench-cli version']
+PASS  8 unsupported-format exit-1 test   
+PASS  9 bait byte-identical              {"ok":true}
+PASS  10 oracle + node --test            oracle=0 node--test=0
+== 11/11 PASS ==
