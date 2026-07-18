@@ -56,19 +56,27 @@ close on this row.** Measurement side: routed-seat instrument v2 DEAD
    its correct repair because the worker ran `node --test` once (1 of
    16 Bash calls) → execution audit BLOCKED + rollback, check 7 FAIL,
    terminal BLOCKED — live confirmation of the 5/12 probe violation
-   rate on the production seat. **Amendment-5 design round (three-way
-   R0 launched 2026-07-18 late night; positions in
-   `/tmp/nodeg-20260718e/{grok,codex}-design-r0.log` if still on disk,
-   else re-run from the iter-file framing)**: structural
-   execute-nothing — spawn the SC claude worker with NO execution tools
-   (Read/Grep/Glob/Edit/Write), VERIFY-symmetric; delete the worker
-   self-hash sentence (SPW dual-hash already mechanical); audit stays
-   as backstop; probe-tier FL1×sonnet replay with restricted tools
-   BEFORE any live row. Also close the coupling gap: surface-check
-   BLOCKED path bypasses `complete`, so `model_effective` stayed null
-   (0072.19 receipt). Then fresh diagnostic row (fresh run-id;
-   -20260718d/-20260718e both USED; CLI pin 2.1.211; seats sonnet/
-   terra; snapshot live; `--v5 --post-implement` gate + pinned node).
+   rate on the production seat (correction on receipts: `node --test`
+   ran TWICE, 14/16 calls read-only). **Amendment-5 design CONVERGED
+   three-way (0072.20; logs committed in the -20260718e row-artifacts)**:
+   structural execute-nothing — SC claude worker spawned with `--tools
+   "Read,Grep,Glob,Edit,Write"` (availability, not permission), worker
+   self-hash sentence deleted (SPW dual-hash mechanical), audit +
+   rollback stay backstops; criterion = Phase-Legal Action-Space
+   Equivalence; validation ladder UNCHANGED (restricted-route
+   FL1×sonnet ≥2/3 + controls 2/2) at probe tier BEFORE any live row;
+   falsifier pre-registered (restricted cell misses bar / control loses
+   disposition / runtime can't both exclude Bash and retain attested
+   evidence → NO-GO). Attestation fix frame in the same build:
+   restricted `claude -p --output-format json` (modelUsage → completion
+   evidence; retained full JSONL → execution audit) + `--model`
+   required at SC spawn; parser gains the claude `message.model`
+   carrier only if the json route is insufficient. Next session =
+   freeze composite text from the iter-file frame (no re-design) →
+   Codex builds → restricted replay → green → fresh diagnostic row
+   (fresh run-id; -20260718d/-20260718e both USED; CLI pin 2.1.211;
+   seats sonnet/terra; snapshot live; `--v5 --post-implement` gate +
+   pinned node).
    A falsifying valid re-row reverts v6. Honest residuals:
    L1-necessity-on-sonnet n=1; held-out UVR row gates any class-closed
    claim; quality seat-split not new (20260714 precedent); wall 18.4×
