@@ -1064,3 +1064,51 @@ completion must fail closed when a retained session file exists but no
 **Carried residuals**: L1-necessity-on-sonnet n=1; held-out UVR row
 (excluded-seat authored) still gates any "class closed" claim; quality/
 wall bars unchanged.
+
+## nodeg-20260718e — instrument fixes VALIDATED; non-diagnostic row; live execute-nothing violation caught; Amendment-5 design opened (2026-07-18 late night, 7d9d36a/be61dbd)
+
+**Instrument fixes 3/3 landed** (`7d9d36a`, Codex round-5 + orchestrator
+node_modules amendment CONFIRMED): launcher `--goal-file` byte transport;
+gate check-10 transported neutralized workspace + `CEILING_TEST_NODE_BIN`
+pin (+ dependency-artifact node_modules copy — MODULE_NOT_FOUND receipt);
+SPW fail-closed session-log coupling. Validation on the OLD row
+(20260718d workspace): 10/11 — check 10 flipped PASS (oracle 0 /
+node--test 0 on pinned v20), only check 11 remains (old-launcher
+artifact, retroactively unfixable). Grok round skipped by the
+anti-asymptotic rule: fixes match Grok's own R0 required-fixes table;
+the only new element carried a byte receipt and Codex reviewed it.
+
+**Ship row nodeg-20260718e (runner 7d9d36a, CLI 2.1.211)**: gate 9/11
+with a NEW shape — checks 11+10 now PASS (fix validation), but check 13
+attribution FAIL pre8=True: this PHASE-0 criteria draw included the
+yaml exit-1 verification command (674-byte goal via --goal-file), so
+IMPLEMENT closed check 8 itself — stochastic draw (20260718d's was
+yaml_exit1=False), row NON-DIAGNOSTIC per the frozen v5-edit-4
+attribution rule → rerun licensed. THE MECHANISM EVENT: SC worker
+adjudicated PERFECTLY — `UVR-STALE: FIRED bin/cli.js:12` with a correct
+minimal USAGE repair, `PATH-TEST: N/A` with correct evidence (IMPLEMENT
+had covered all three paths; zero false rows) — but among 16 Bash calls
+(15 sanctioned read-only inspection) ran `node --test tests/` ONCE. The
+v6 execution audit caught it → `BLOCKED:surface-close-validation-
+execution` → surface-rollback discarded the CORRECT repair → check 7
+FAIL on the final tree, terminal BLOCKED. Live confirmation of the 5/12
+probe rate on the production seat; enforcement layers (audit + rollback
++ halt) all fired as designed; the discipline cost = a correct repair
+died with the violation. Objective bar PASS (sealed oracle; IMPLEMENT
+diff resolves), wall 18.4×, quality FAIL (frozen rule). Also observed:
+`model_requested`/`model_effective` null on SC despite fix (iii) live —
+the surface-check BLOCKED path bypasses the `complete` verb where the
+coupling lives (gap to close with Amendment 5).
+
+**Amendment-5 design round OPENED (three-way R0 in flight at close)**:
+structural execute-nothing — spawn the SC claude worker WITHOUT
+execution tools (Read/Grep/Glob/Edit/Write; no Bash), VERIFY-symmetric
+spawn-level constraint making Amendment-2 violations impossible rather
+than punished; worker self-hash sentence becomes deletable (SPW already
+dual-hash validates mechanically); audit stays as backstop; probe-tier
+replay validation (FL1×sonnet with restricted tools) BEFORE any live
+row. Alternatives on the table: audit-only status quo (rerun-and-pray
+against a ~40% violation rate), rollback-scope change (rejected shape:
+crediting work produced under violation breaks Phase-Faithful
+crediting). Positions land in the next addendum; nothing ships without
+a frozen registration.

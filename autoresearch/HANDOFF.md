@@ -41,31 +41,38 @@ close on this row.** Measurement side: routed-seat instrument v2 DEAD
 (0070a.10); VERIFY dual-judge default shipped (0071.5).
 
 **Next work**:
-1. **iter-0072 ship path: land the three PRE-REGISTERED instrument
-   fixes, then ONE fresh nodeg diagnostic row under the corrected
-   instruments = the ship decision** (0072.18; receipts `ceeaf4e`):
-   (i) launcher byte transport — `run-ceiling-arm.sh`
-   json_quote_task_prompt does `.rstrip("\n")` + inline goal; switch to
-   `--goal-file` byte-copy so gate check 11 is satisfiable;
-   (ii) gate check-10 post-archive semantics — score the transported
-   patch in a neutralized workspace with the runner-pinned node (in-place
-   rerun sees harness residue + node v25.4.0 while the harness runs nvm
-   v20.19.0; sealed oracle is the authority and passed);
-   (iii) engine-session-log coupling — the row recorded
-   `model_effective: null` on every phase while the retained
-   worker-session JSONL says `claude-sonnet-5`; SPW completion must fail
-   closed when a retained session file exists but no
-   `--engine-session-log` was passed (skill-side, receipt-backed).
-   Fix execution per the established loop: Codex sol implements
-   (config/scripts trees only — codex sandbox cannot write `.agents/`;
-   orchestrator mirror-syncs + commits), Grok audits, gates green, then
-   the row (fresh run-id, CLI pin 2.1.211, seats claude=sonnet /
-   codex=terra, `watch-nodeg-row.sh` snapshot live, `--v5
-   --post-implement` gate). A falsifying valid re-row reverts v6.
-   Honest residuals: L1-necessity-on-sonnet n=1; any "class closed"
-   claim still needs the held-out UVR row (excluded-seat authored);
-   quality bar seat-split is NOT new (nodeg-20260714 F7 precedent);
-   wall 37.4× on this row (0071 owns the wall axis).
+1. **iter-0072 ship path (state after 0072.19): freeze Amendment 5,
+   probe-validate, then the diagnostic re-row = the ship decision.**
+   Instrument fixes LANDED + VALIDATED (`7d9d36a`: launcher
+   `--goal-file` byte transport; gate check-10 transported neutralized
+   workspace + `CEILING_TEST_NODE_BIN` + node_modules copy; SPW
+   session-log coupling — old-row validation 10/11, checks 11+10 flip
+   PASS). Ship row `nodeg-20260718e` (runner `7d9d36a`) = NON-DIAGNOSTIC
+   (pre8=True — stochastic PHASE-0 criteria draw carried the yaml
+   exit-1 verification command, IMPLEMENT closed check 8 itself; rerun
+   licensed by the frozen v5-edit-4 attribution rule) BUT the mechanism
+   evidence is first-rate: SC adjudicated PERFECTLY (correct FIRED +
+   USAGE repair, correct evidenced N/A, zero false rows) and then lost
+   its correct repair because the worker ran `node --test` once (1 of
+   16 Bash calls) → execution audit BLOCKED + rollback, check 7 FAIL,
+   terminal BLOCKED — live confirmation of the 5/12 probe violation
+   rate on the production seat. **Amendment-5 design round (three-way
+   R0 launched 2026-07-18 late night; positions in
+   `/tmp/nodeg-20260718e/{grok,codex}-design-r0.log` if still on disk,
+   else re-run from the iter-file framing)**: structural
+   execute-nothing — spawn the SC claude worker with NO execution tools
+   (Read/Grep/Glob/Edit/Write), VERIFY-symmetric; delete the worker
+   self-hash sentence (SPW dual-hash already mechanical); audit stays
+   as backstop; probe-tier FL1×sonnet replay with restricted tools
+   BEFORE any live row. Also close the coupling gap: surface-check
+   BLOCKED path bypasses `complete`, so `model_effective` stayed null
+   (0072.19 receipt). Then fresh diagnostic row (fresh run-id;
+   -20260718d/-20260718e both USED; CLI pin 2.1.211; seats sonnet/
+   terra; snapshot live; `--v5 --post-implement` gate + pinned node).
+   A falsifying valid re-row reverts v6. Honest residuals:
+   L1-necessity-on-sonnet n=1; held-out UVR row gates any class-closed
+   claim; quality seat-split not new (20260714 precedent); wall 18.4×
+   this row (0071 owns the axis).
 2. ~~VERIFY dual-judge → default-when-available~~ **DONE 2026-07-16**
    (DECISIONS 0071.5; queue item `[x]` with ship record; schema-v3
    `pair.default`, net −24 lines, all gates + live canary PASS).
