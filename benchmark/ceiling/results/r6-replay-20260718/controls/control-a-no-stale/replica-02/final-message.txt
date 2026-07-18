@@ -1,0 +1,4 @@
+UVR-STALE: N/A tests/cli.test.js:27 — USAGE text in bin/cli.js:12 already documents the new `[--format json]` shape (patch updated it), so no authorized text still describes the old interface.
+PATH-TEST: FIRED tests/cli.test.js:34 — goal's exit-1 failure path for unsupported `--format` values had no authorized test; added one minimal regression test.
+
+PASS

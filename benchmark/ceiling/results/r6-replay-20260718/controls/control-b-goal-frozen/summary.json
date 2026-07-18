@@ -1,0 +1,12 @@
+{
+  "completed_receipts": 2,
+  "correct_delta_replicas": 2,
+  "correct_disposition_replicas": 2,
+  "credited_replicas": 2,
+  "false_fired_replicas": 0,
+  "fully_correct_replicas": 2,
+  "invalid_worker_runs": 0,
+  "requested_replicas": 2,
+  "schema_version": "r6-replay-control-summary.v1",
+  "worker_runs": 2
+}

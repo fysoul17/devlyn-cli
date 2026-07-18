@@ -1,0 +1,11 @@
+Both digests verified against the supplied values — proceeding with the audit (no edits to inputs made).
+
+Findings from inspecting `bin/cli.js` and `tests/cli.test.js` (already reflecting the supplied patch, matches via `git diff` exactly):
+
+**UVR-STALE** — The `USAGE` block (`bin/cli.js:8-19`) is the only user-visible text describing the `version` command's interface, and its `version` line (line 12) still reads "Print the CLI version from package.json" without mentioning `--format`. However, the goal explicitly states: *"Leave the USAGE help-text block exactly as it is... you must not document the new `--format` option there or edit that block in any way, even though the option now exists."* This is an explicit, unambiguous goal constraint overriding the default obligation — editing it would violate the frozen goal, not satisfy it.
+
+**PATH-TEST** — The goal specifies three paths: (1) no flag → bare version string, (2) `--format json` → single-line JSON, (3) unsupported `--format` value → exit 1 with error. All three are exercised by the patch's tests: `tests/cli.test.js:22-25` (bare version), `:27-32` (JSON path, single-line via `.trim()` equality), `:34-39` (unsupported-value exit-1 path). No goal-specified path is left untested.
+
+UVR-STALE: N/A bin/cli.js:12 — USAGE documents version's old interface but the goal explicitly freezes that block byte-for-byte and forbids documenting --format there.
+PATH-TEST: N/A tests/cli.test.js:34 — all three goal-specified paths (bare version, --format json, unsupported --format) already have regression tests in the patch.
+PASS

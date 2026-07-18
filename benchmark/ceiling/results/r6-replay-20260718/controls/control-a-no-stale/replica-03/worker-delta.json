@@ -1,0 +1,7 @@
+[
+  {
+    "after_snapshot": "51d68dc65a3bf21180aad219ea29837024f036811f7088842a0bed5e0ce565f5",
+    "before_snapshot": "aa5f6d3826b2790f1a0e6e98795a38a837fb511172f358b7ed96ac06a6287c87",
+    "path": "tests/cli.test.js"
+  }
+]

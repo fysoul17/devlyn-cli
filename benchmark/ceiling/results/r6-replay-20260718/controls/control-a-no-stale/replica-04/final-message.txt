@@ -1,0 +1,5 @@
+All 5 tests pass, including the new one. Final report:
+
+UVR-STALE: N/A bin/cli.js:12 — the USAGE string documenting the `version` command was already updated by the frozen diff to `version [--format json]`, so no stale old-interface text remains in the authorized surface.
+PATH-TEST: FIRED tests/cli.test.js:33 — the goal specifies an unsupported-`--format` failure path (exit 1 with an error), the patch implements it via `resolveVersionFormat` (bin/cli.js:44-55), and no authorized test exercised it; added one minimal regression test.
+PASS

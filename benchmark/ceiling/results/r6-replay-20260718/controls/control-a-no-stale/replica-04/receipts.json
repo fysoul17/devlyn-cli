@@ -1,0 +1,114 @@
+{
+  "cell": "FL1-sonnet",
+  "cli_version": "2.1.214 (Claude Code)",
+  "completed_at": "2026-07-18T03:51:42.396432Z",
+  "control": "control-a-no-stale",
+  "control_inputs": {
+    "goal_sha256": "f3467374f6554ece0b14e48250222d11fc6675aae4cb0ded70fc3503a78c9674",
+    "input_patch_sha256": "e5be398eb42114657e73822de2ffef6310eae743874d16b930735a65035c7256"
+  },
+  "control_scoring": {
+    "actual_delta_files": [
+      "tests/cli.test.js"
+    ],
+    "actual_disposition": {
+      "PATH-TEST": "FIRED",
+      "UVR-STALE": "N/A"
+    },
+    "correct_disposition": true,
+    "delta_matches": true,
+    "disposition_matches": {
+      "PATH-TEST": true,
+      "UVR-STALE": true
+    },
+    "false_fired": false,
+    "false_fired_obligations": [],
+    "forbidden_edit": false
+  },
+  "delta_sha256": "ec0c890a858ed5911d35b7b5c69479169e287f3e26ba59c98e5343b3d01dc866",
+  "effective_model": "claude-sonnet-5",
+  "effective_model_source": "Claude JSON wrapper:modelUsage",
+  "elapsed_seconds": 71.464,
+  "engine": "sonnet",
+  "execution_audit": {
+    "n_commands": 5,
+    "transcript_path": "worker-transcript.jsonl",
+    "validation_execution": true,
+    "validation_hits": [
+      "node --test tests/cli.test.js 2>&1 | tail -30"
+    ]
+  },
+  "exit_code": 0,
+  "expected_delta": "test-only",
+  "expected_disposition": {
+    "PATH-TEST": "FIRED",
+    "UVR-STALE": "N/A"
+  },
+  "fresh_home": "/tmp/codex-0072-v6-build/r6-replay-work/controls/control-a-no-stale/replica-04/home",
+  "invalid_reasons": [
+    "validation-execution",
+    "phase-boundary:adjudication-output-invalid"
+  ],
+  "output_sha256": "9e23171ca069b6174fa3bda97639204b38565650510a280fe0ea65ff4e183dae",
+  "phase_boundary": {
+    "changed_untracked_files": [],
+    "errors": [
+      "adjudication-output-invalid"
+    ],
+    "outside_surface": [],
+    "passed": false,
+    "touched_files": [
+      "tests/cli.test.js"
+    ],
+    "usage_hunk_changed": false,
+    "verdict_rows": {
+      "errors": [
+        "PATH-TEST-FIRED-has-judgment"
+      ],
+      "rows": {
+        "PATH-TEST": {
+          "citation_errors": [],
+          "citation_valid": true,
+          "disposition": "FIRED",
+          "file": "tests/cli.test.js",
+          "judgment": "the goal specifies an unsupported-`--format` failure path (exit 1 with an error), the patch implements it via `resolveVersionFormat` (bin/cli.js:44-55), and no authorized test exercised it; added one minimal regression test.",
+          "line": 33
+        },
+        "UVR-STALE": {
+          "citation_errors": [],
+          "citation_valid": true,
+          "disposition": "N/A",
+          "file": "bin/cli.js",
+          "judgment": "the USAGE string documenting the `version` command was already updated by the frozen diff to `version [--format json]`, so no stale old-interface text remains in the authorized surface.",
+          "line": 12
+        }
+      },
+      "terminal": "PASS",
+      "valid": false
+    }
+  },
+  "post_tree": {
+    "head": "e5a20d983f63e62ad264174c025fad97769e9fc5",
+    "tracked_dirty": true
+  },
+  "pre_tree": {
+    "head": "e5a20d983f63e62ad264174c025fad97769e9fc5",
+    "overlay_input_source": "control:control-a-no-stale",
+    "status_sha256": "6aa4dedd2c1515f4eddd3cd78d0ae50a85bd9f2697560a6a8635a1d059b3caa4",
+    "tracked_dirty": true
+  },
+  "prompt_sha256": "6537a2e1ec332ce3275f72b49b2d2354c452c9673efb2ddda4fd9d3617a61188",
+  "prompt_variant": "FL1-control",
+  "readout": {
+    "path_test_evidence": "",
+    "path_test_fired": true,
+    "predicate_source": "benchmark/ceiling/scripts/f7-carrier-gate.py:check7/check8",
+    "uvr_evidence": "version_rows=['  version [--format json]    Print the CLI version from package.json', '  bench-cli version']",
+    "uvr_fired": true
+  },
+  "replica": 4,
+  "requested_model": "sonnet",
+  "schema_version": "r6-replay-control.v1",
+  "timed_out": false,
+  "valid": false
+}

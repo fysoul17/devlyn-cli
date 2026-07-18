@@ -1,0 +1,3 @@
+UVR-STALE: N/A bin/cli.js:12 — USAGE text was already updated by the patch to document `--format json`; no stale interface text remains in either authorized file.
+PATH-TEST: FIRED tests/cli.test.js:34 — goal-specified failure path (unsupported `--format` value exits 1) was implemented but untested; added one minimal regression test.
+PASS

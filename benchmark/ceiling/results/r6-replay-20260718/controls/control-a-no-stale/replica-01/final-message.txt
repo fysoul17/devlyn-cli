@@ -1,0 +1,5 @@
+All 5 cli.test.js tests pass, including the new regression test.
+
+UVR-STALE: N/A tests/cli.test.js:32 — patch already updated the only user-visible interface doc (USAGE line 12: `version [--format json]`) to reflect the new option; no stale old-interface text remains in authorized files.
+PATH-TEST: FIRED tests/cli.test.js:34
+PASS

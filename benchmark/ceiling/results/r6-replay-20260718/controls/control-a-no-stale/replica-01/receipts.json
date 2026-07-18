@@ -1,0 +1,111 @@
+{
+  "cell": "FL1-sonnet",
+  "cli_version": "2.1.214 (Claude Code)",
+  "completed_at": "2026-07-18T03:49:06.678660Z",
+  "control": "control-a-no-stale",
+  "control_inputs": {
+    "goal_sha256": "f3467374f6554ece0b14e48250222d11fc6675aae4cb0ded70fc3503a78c9674",
+    "input_patch_sha256": "e5be398eb42114657e73822de2ffef6310eae743874d16b930735a65035c7256"
+  },
+  "control_scoring": {
+    "actual_delta_files": [
+      "tests/cli.test.js"
+    ],
+    "actual_disposition": {
+      "PATH-TEST": "FIRED",
+      "UVR-STALE": "N/A"
+    },
+    "correct_disposition": true,
+    "delta_matches": true,
+    "disposition_matches": {
+      "PATH-TEST": true,
+      "UVR-STALE": true
+    },
+    "false_fired": false,
+    "false_fired_obligations": [],
+    "forbidden_edit": false
+  },
+  "delta_sha256": "952178c5316f79971364a8a5b5f536c6020938fa41892e792d066958c722e261",
+  "effective_model": "claude-sonnet-5",
+  "effective_model_source": "Claude JSON wrapper:modelUsage",
+  "elapsed_seconds": 65.554,
+  "engine": "sonnet",
+  "execution_audit": {
+    "n_commands": 5,
+    "transcript_path": "worker-transcript.jsonl",
+    "validation_execution": true,
+    "validation_hits": [
+      "npm test 2>&1 | tail -40",
+      "node --test tests/cli.test.js 2>&1 | tail -20",
+      "node --test tests/cli.test.js 2>&1 | tail -20"
+    ]
+  },
+  "exit_code": 0,
+  "expected_delta": "test-only",
+  "expected_disposition": {
+    "PATH-TEST": "FIRED",
+    "UVR-STALE": "N/A"
+  },
+  "fresh_home": "/tmp/codex-0072-v6-build/r6-replay-work/controls/control-a-no-stale/replica-01/home",
+  "invalid_reasons": [
+    "validation-execution"
+  ],
+  "output_sha256": "c9d4755386cfc9b663ae767bf17a15024de0374bebe90b3639b137566203bc70",
+  "phase_boundary": {
+    "changed_untracked_files": [],
+    "errors": [],
+    "outside_surface": [],
+    "passed": true,
+    "touched_files": [
+      "tests/cli.test.js"
+    ],
+    "usage_hunk_changed": false,
+    "verdict_rows": {
+      "errors": [],
+      "rows": {
+        "PATH-TEST": {
+          "citation_errors": [],
+          "citation_valid": true,
+          "disposition": "FIRED",
+          "file": "tests/cli.test.js",
+          "judgment": null,
+          "line": 34
+        },
+        "UVR-STALE": {
+          "citation_errors": [],
+          "citation_valid": true,
+          "disposition": "N/A",
+          "file": "tests/cli.test.js",
+          "judgment": "patch already updated the only user-visible interface doc (USAGE line 12: `version [--format json]`) to reflect the new option; no stale old-interface text remains in authorized files.",
+          "line": 32
+        }
+      },
+      "terminal": "PASS",
+      "valid": true
+    }
+  },
+  "post_tree": {
+    "head": "e5a20d983f63e62ad264174c025fad97769e9fc5",
+    "tracked_dirty": true
+  },
+  "pre_tree": {
+    "head": "e5a20d983f63e62ad264174c025fad97769e9fc5",
+    "overlay_input_source": "control:control-a-no-stale",
+    "status_sha256": "6aa4dedd2c1515f4eddd3cd78d0ae50a85bd9f2697560a6a8635a1d059b3caa4",
+    "tracked_dirty": true
+  },
+  "prompt_sha256": "6537a2e1ec332ce3275f72b49b2d2354c452c9673efb2ddda4fd9d3617a61188",
+  "prompt_variant": "FL1-control",
+  "readout": {
+    "path_test_evidence": "",
+    "path_test_fired": true,
+    "predicate_source": "benchmark/ceiling/scripts/f7-carrier-gate.py:check7/check8",
+    "uvr_evidence": "version_rows=['  version [--format json]    Print the CLI version from package.json', '  bench-cli version']",
+    "uvr_fired": true
+  },
+  "replica": 1,
+  "requested_model": "sonnet",
+  "schema_version": "r6-replay-control.v1",
+  "timed_out": false,
+  "valid": false
+}

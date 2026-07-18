@@ -1,0 +1,11 @@
+Both obligations evaluated against the frozen surface — no edits required.
+
+**UVR-STALE**: The `version` command's behavior changed (new `--format json` path), and `bin/cli.js:8-19` (`USAGE`) does document the old interface without the new option — this matches the literal pattern. But the Goal explicitly carves out this exact case: *"Leave the USAGE help-text block exactly as it is... you must not document the new `--format` option there or edit that block in any way."* That is an explicit goal-level override, not an oversight, so firing here would violate Goal-locked execution rather than serve it.
+
+**PATH-TEST**: The Goal specifies three paths — bare `version` (existing), `--format json` success, `--format`/unsupported-value failure (exit 1). All three already have regression tests in the patch itself: `tests/cli.test.js:22-25`, `:27-32`, `:34-39`. Nothing uncovered.
+
+No file changes made.
+
+UVR-STALE: N/A bin/cli.js:12 — Goal explicitly forbids editing/documenting --format in the USAGE block ("must stay byte-for-byte identical"), so this is an authorized exception, not a fire condition.
+PATH-TEST: N/A tests/cli.test.js:27 — All three goal-specified paths (bare version, --format json, unsupported --format) already have regression tests at lines 22-25, 27-32, 34-39.
+PASS
