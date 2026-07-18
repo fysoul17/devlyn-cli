@@ -28,6 +28,11 @@ PER_RUN_PATTERNS = (
     "*.log.md",
     "fix-batch.round-*.json",
     "criteria.generated.md",
+    # Mutation workers retain the exact session JSONL identified by their
+    # dispatch receipt. Round-scoped root files avoid engine-global scans.
+    "implement.worker-session.*.jsonl",
+    "surface-close.worker-session.*.jsonl",
+    "cleanup.worker-session.*.jsonl",
     "risk-probes.jsonl",
     # Probe scripts referenced by risk-probes.jsonl are archived by
     # move_probe_scripts() to preserve probes/<file> layout.
@@ -159,6 +164,9 @@ def self_test() -> int:
         )
         for name in (
             "risk-probes.jsonl",
+            "implement.worker-session.0.jsonl",
+            "surface-close.worker-session.0.jsonl",
+            "cleanup.worker-session.1.jsonl",
             "verify.pair.findings.jsonl",
             "verify-merge.summary.json",
             "codex-judge.stdout",
@@ -169,13 +177,19 @@ def self_test() -> int:
             (devlyn / name).write_text("{}\n", encoding="utf-8")
         (devlyn / "probes").mkdir()
         (devlyn / "probes" / "P1.py").write_text("print('probe')\n", encoding="utf-8")
+        global_rollout = devlyn / "engine-sessions" / "rollout-global.jsonl"
+        global_rollout.parent.mkdir()
+        global_rollout.write_text("{}\n", encoding="utf-8")
         run_id = read_run_id(devlyn)
         assert run_id == "run-1", run_id
         moved = move_artifacts(devlyn, devlyn / "runs" / run_id)
-        assert moved >= 9, moved
+        assert moved >= 12, moved
         for name in (
             "pipeline.state.json",
             "risk-probes.jsonl",
+            "implement.worker-session.0.jsonl",
+            "surface-close.worker-session.0.jsonl",
+            "cleanup.worker-session.1.jsonl",
             "probes/P1.py",
             "verify.pair.findings.jsonl",
             "verify-merge.summary.json",
@@ -185,6 +199,8 @@ def self_test() -> int:
             "claude-judge.stderr",
         ):
             assert (devlyn / "runs" / run_id / name).is_file(), name
+        assert global_rollout.is_file(), "engine-global session files must stay untouched"
+        assert not (devlyn / "runs" / run_id / global_rollout.name).exists()
 
         bad = pathlib.Path(tmp) / "bad"
         bad.mkdir()
