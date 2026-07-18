@@ -1,0 +1,25 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index 9e44216..caf8e20 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version                    Print the CLI version from package.json
++  version [--format json]    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index 1b308e9..fb07cca 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -30,3 +30,7 @@ test('version with --format json prints the package version as JSON', () => {
+   assert.equal(out, `${JSON.stringify(expected)}\n`);
+   assert.deepEqual(JSON.parse(out), expected);
+ });
++
++test('version with --format yaml exits 1 with an error', () => {
++  assert.throws(() => run(['version', '--format', 'yaml']), (err) => err.status === 1);
++});

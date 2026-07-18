@@ -1,0 +1,51 @@
+{
+  "cell": "F1-sonnet",
+  "cli_version": "2.1.214 (Claude Code)",
+  "completed_at": "2026-07-18T02:56:13.620099Z",
+  "delta_sha256": "da6e49612599a7a99844f75244af76cba91eca4f2afb47caf6aebf68b1268136",
+  "effective_model": "claude-sonnet-5",
+  "effective_model_source": "Claude JSON wrapper:modelUsage",
+  "elapsed_seconds": 73.018,
+  "engine": "sonnet",
+  "exit_code": 0,
+  "fresh_home": "/private/tmp/codex-0072-v6-build/r6-replay-work/F1-sonnet/replica-02/home",
+  "invalid_reasons": [],
+  "output_sha256": "2f9acb02faa121bb2a3621951f57b4c690655337edee2e5ac350be2b3be88ea8",
+  "phase_boundary": {
+    "changed_untracked_files": [],
+    "errors": [],
+    "outside_surface": [],
+    "passed": true,
+    "touched_files": [
+      "bin/cli.js",
+      "tests/cli.test.js"
+    ],
+    "verdict_rows": null
+  },
+  "post_tree": {
+    "head": "947dbf71494fc55bccf1c7f0dfe41959b1a65bd7",
+    "tracked_dirty": true
+  },
+  "pre_tree": {
+    "head": "947dbf71494fc55bccf1c7f0dfe41959b1a65bd7",
+    "overlay_input_source": ".devlyn/runs/rs-20260717T175855Z-ce4e0d70c490",
+    "status_sha256": "1f787bc8532fcdca0af65b6cf9f63c0b43bda9df233d687664036a55aa9e52a3",
+    "tracked_dirty": false
+  },
+  "prompt_sha256": "00cddba55a0aaabff3e4dbea1264c412e806a293408bf25378babd8c7dbd23b1",
+  "prompt_variant": "F1",
+  "readout": {
+    "credited_path_test_fired": true,
+    "credited_uvr_fired": true,
+    "path_test_evidence": "",
+    "path_test_fired": true,
+    "predicate_source": "benchmark/ceiling/scripts/f7-carrier-gate.py:check7/check8",
+    "uvr_evidence": "version_rows=['  version [--format json]    Print the CLI version from package.json', '  bench-cli version']",
+    "uvr_fired": true
+  },
+  "replica": 2,
+  "requested_model": "sonnet",
+  "schema_version": "r6-replay.v1",
+  "timed_out": false,
+  "valid": true
+}

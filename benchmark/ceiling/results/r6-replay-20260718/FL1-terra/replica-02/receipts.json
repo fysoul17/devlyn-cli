@@ -1,0 +1,73 @@
+{
+  "cell": "FL1-terra",
+  "cli_version": "codex-cli 0.144.5",
+  "completed_at": "2026-07-18T02:58:54.798497Z",
+  "delta_sha256": "af3e4eb4293978c9c7ab542ce0918f9d3d60fbee445451c5df10e6243ec4067d",
+  "effective_model": "gpt-5.6-terra",
+  "effective_model_source": "CODEX_HOME/sessions/2026/07/18/rollout-2026-07-18T11-58-11-019f7328-f2fc-72b2-b4db-353e6f540d89.jsonl:turn_context.payload.model",
+  "elapsed_seconds": 43.802,
+  "engine": "terra",
+  "exit_code": 0,
+  "fresh_home": "/private/tmp/codex-0072-v6-build/r6-replay-work/FL1-terra/replica-02/home",
+  "invalid_reasons": [],
+  "output_sha256": "d09d48dad4e5448082ebd78166892931b29bc2f3dbadbb9409bf2f124118e245",
+  "phase_boundary": {
+    "changed_untracked_files": [],
+    "errors": [],
+    "outside_surface": [],
+    "passed": true,
+    "touched_files": [
+      "bin/cli.js",
+      "tests/cli.test.js"
+    ],
+    "verdict_rows": {
+      "errors": [],
+      "rows": {
+        "PATH-TEST": {
+          "citation_errors": [],
+          "citation_valid": true,
+          "disposition": "FIRED",
+          "file": "tests/cli.test.js",
+          "judgment": null,
+          "line": 34
+        },
+        "UVR-STALE": {
+          "citation_errors": [],
+          "citation_valid": true,
+          "disposition": "FIRED",
+          "file": "bin/cli.js",
+          "judgment": null,
+          "line": 12
+        }
+      },
+      "terminal": "PASS",
+      "valid": true
+    }
+  },
+  "post_tree": {
+    "head": "947dbf71494fc55bccf1c7f0dfe41959b1a65bd7",
+    "tracked_dirty": true
+  },
+  "pre_tree": {
+    "head": "947dbf71494fc55bccf1c7f0dfe41959b1a65bd7",
+    "overlay_input_source": ".devlyn/runs/rs-20260717T175855Z-ce4e0d70c490",
+    "status_sha256": "1f787bc8532fcdca0af65b6cf9f63c0b43bda9df233d687664036a55aa9e52a3",
+    "tracked_dirty": false
+  },
+  "prompt_sha256": "b422dd6e6783945f43059ffa2ad0cae76aac270289720416e5b0ea838bee5e83",
+  "prompt_variant": "FL1",
+  "readout": {
+    "credited_path_test_fired": false,
+    "credited_uvr_fired": true,
+    "path_test_evidence": "",
+    "path_test_fired": false,
+    "predicate_source": "benchmark/ceiling/scripts/f7-carrier-gate.py:check7/check8",
+    "uvr_evidence": "version_rows=['  version [--format json]    Print the CLI version (JSON with --format json)', '  bench-cli version']",
+    "uvr_fired": true
+  },
+  "replica": 2,
+  "requested_model": "gpt-5.6-terra",
+  "schema_version": "r6-replay.v1",
+  "timed_out": false,
+  "valid": true
+}

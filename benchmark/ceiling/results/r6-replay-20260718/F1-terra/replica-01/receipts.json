@@ -1,0 +1,51 @@
+{
+  "cell": "F1-terra",
+  "cli_version": "codex-cli 0.144.5",
+  "completed_at": "2026-07-18T02:52:02.016868Z",
+  "delta_sha256": "c9fe2f9fb4efdd80306e41b2425d47a15043317f13278665517e62b4853bd249",
+  "effective_model": "gpt-5.6-terra",
+  "effective_model_source": "CODEX_HOME/sessions/2026/07/18/rollout-2026-07-18T11-51-34-019f7322-e5c2-7481-858b-65a2fb0feb3d.jsonl:turn_context.payload.model",
+  "elapsed_seconds": 27.631,
+  "engine": "terra",
+  "exit_code": 0,
+  "fresh_home": "/private/tmp/codex-0072-v6-build/r6-replay-work/F1-terra/replica-01/home",
+  "invalid_reasons": [],
+  "output_sha256": "2f9acb02faa121bb2a3621951f57b4c690655337edee2e5ac350be2b3be88ea8",
+  "phase_boundary": {
+    "changed_untracked_files": [],
+    "errors": [],
+    "outside_surface": [],
+    "passed": true,
+    "touched_files": [
+      "bin/cli.js",
+      "tests/cli.test.js"
+    ],
+    "verdict_rows": null
+  },
+  "post_tree": {
+    "head": "947dbf71494fc55bccf1c7f0dfe41959b1a65bd7",
+    "tracked_dirty": true
+  },
+  "pre_tree": {
+    "head": "947dbf71494fc55bccf1c7f0dfe41959b1a65bd7",
+    "overlay_input_source": ".devlyn/runs/rs-20260717T175855Z-ce4e0d70c490",
+    "status_sha256": "1f787bc8532fcdca0af65b6cf9f63c0b43bda9df233d687664036a55aa9e52a3",
+    "tracked_dirty": false
+  },
+  "prompt_sha256": "00cddba55a0aaabff3e4dbea1264c412e806a293408bf25378babd8c7dbd23b1",
+  "prompt_variant": "F1",
+  "readout": {
+    "credited_path_test_fired": false,
+    "credited_uvr_fired": true,
+    "path_test_evidence": "",
+    "path_test_fired": false,
+    "predicate_source": "benchmark/ceiling/scripts/f7-carrier-gate.py:check7/check8",
+    "uvr_evidence": "version_rows=['  version [--format json]    Print the CLI version from package.json', '  bench-cli version']",
+    "uvr_fired": true
+  },
+  "replica": 1,
+  "requested_model": "gpt-5.6-terra",
+  "schema_version": "r6-replay.v1",
+  "timed_out": false,
+  "valid": true
+}

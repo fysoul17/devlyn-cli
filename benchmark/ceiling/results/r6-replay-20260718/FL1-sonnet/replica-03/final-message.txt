@@ -1,0 +1,5 @@
+Confirmed the `server.test.js` failure (missing `express` in `node_modules`) is pre-existing and unrelated — it fails identically before my changes. All `cli.test.js` tests pass, including the new `--format json` and `--format yaml` cases. Changes are restored.
+
+UVR-STALE: FIRED bin/cli.js:12
+PATH-TEST: FIRED tests/cli.test.js:34
+PASS

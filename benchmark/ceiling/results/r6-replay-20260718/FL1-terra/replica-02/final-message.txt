@@ -1,0 +1,3 @@
+UVR-STALE: FIRED bin/cli.js:12
+PATH-TEST: FIRED tests/cli.test.js:34
+PASS

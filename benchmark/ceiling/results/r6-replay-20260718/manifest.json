@@ -1,0 +1,138 @@
+{
+  "adaptive_rule_trace": [
+    {
+      "adaptive_target_valid_replicas": 3,
+      "cell": "F1-terra",
+      "completed_receipts": 3,
+      "decision": "stop-after-third-valid",
+      "engine": "terra",
+      "frozen_threshold": {
+        "required_replicas": 3,
+        "required_uvr_fires": 2
+      },
+      "invalid_worker_runs": 0,
+      "path_test_fire_count": 1,
+      "prompt_variant": "F1",
+      "threshold_count_met": true,
+      "uvr_fire_count": 3,
+      "valid_replicas": 3,
+      "worker_runs": 3
+    },
+    {
+      "adaptive_target_valid_replicas": 3,
+      "cell": "F1-sonnet",
+      "completed_receipts": 3,
+      "decision": "stop-after-third-valid",
+      "engine": "sonnet",
+      "frozen_threshold": {
+        "required_replicas": 3,
+        "required_uvr_fires": 2
+      },
+      "invalid_worker_runs": 0,
+      "path_test_fire_count": 2,
+      "prompt_variant": "F1",
+      "threshold_count_met": true,
+      "uvr_fire_count": 3,
+      "valid_replicas": 3,
+      "worker_runs": 3
+    },
+    {
+      "adaptive_target_valid_replicas": 3,
+      "cell": "FL1-terra",
+      "completed_receipts": 3,
+      "decision": "stop-after-third-valid",
+      "engine": "terra",
+      "frozen_threshold": {
+        "required_replicas": 3,
+        "required_uvr_fires": 2
+      },
+      "invalid_worker_runs": 0,
+      "path_test_fire_count": 0,
+      "prompt_variant": "FL1",
+      "threshold_count_met": true,
+      "uvr_fire_count": 3,
+      "valid_replicas": 3,
+      "worker_runs": 3
+    },
+    {
+      "adaptive_target_valid_replicas": 3,
+      "cell": "FL1-sonnet",
+      "completed_receipts": 3,
+      "decision": "stop-after-third-valid",
+      "engine": "sonnet",
+      "frozen_threshold": {
+        "required_replicas": 3,
+        "required_uvr_fires": 2
+      },
+      "invalid_worker_runs": 0,
+      "path_test_fire_count": 3,
+      "prompt_variant": "FL1",
+      "threshold_count_met": true,
+      "uvr_fire_count": 3,
+      "valid_replicas": 3,
+      "worker_runs": 3
+    }
+  ],
+  "frozen_inputs": {
+    "bundle": {
+      "path": "benchmark/ceiling/results/nodeg-20260718c/gate-fail-artifacts/f7-row-repo.bundle",
+      "sha256": "95bc97df024e9457b164ae1dc3e7f77cb2e61f497c33554080af61e1c5a1a340"
+    },
+    "goal_sha256": "f3467374f6554ece0b14e48250222d11fc6675aae4cb0ded70fc3503a78c9674",
+    "overlay": {
+      "path": "benchmark/ceiling/results/nodeg-20260718c/gate-fail-artifacts/f7-row-workspace-untracked.tgz",
+      "sha256": "0b6b841f4f3ba8472442e3ee020cd43fe5002a307d2d16484f6c3c5468492048"
+    },
+    "overlay_prompt_input_restoration": "The committed post-hoc overlay stores the exact prompt inputs under its single .devlyn/runs/<run-id>/ archive. Preparation copies those hash-matched bytes back to the prompt-required .devlyn root paths; no content is regenerated.",
+    "pre_sha": "947dbf71494fc55bccf1c7f0dfe41959b1a65bd7",
+    "surface_close_input_patch_sha256": "cfac5a9fafc59a1ddf019f1fb49412e5ddfd8ff393c28619b8de641997e56c9b"
+  },
+  "global_worker_runs": 12,
+  "prompts": {
+    "F1": {
+      "bytes": 5164,
+      "path": "/tmp/codex-0072-r6/f1-prompt.txt",
+      "sha256": "00cddba55a0aaabff3e4dbea1264c412e806a293408bf25378babd8c7dbd23b1"
+    },
+    "FL1": {
+      "bytes": 5613,
+      "path": "/tmp/codex-0072-r6/fl1-prompt.txt",
+      "sha256": "b422dd6e6783945f43059ffa2ad0cae76aac270289720416e5b0ea838bee5e83"
+    }
+  },
+  "registration": "iter-0072 Registration v6 / DECISIONS 0072.14",
+  "rules": {
+    "any_uvr_fire_additional_valid_replicas": 1,
+    "cells": [
+      "F1-terra",
+      "F1-sonnet",
+      "FL1-terra",
+      "FL1-sonnet"
+    ],
+    "global_worker_run_cap": 12,
+    "initial_valid_replicas_per_cell": 2,
+    "invalid_counts_toward_global_cap": true,
+    "invalid_does_not_count_toward_cell": true,
+    "max_valid_replicas_per_cell": 3,
+    "worker_timeout_seconds": 600,
+    "zero_of_two_uvr_stop": true
+  },
+  "schema_version": "r6-replay-manifest.v1",
+  "seats": {
+    "sonnet": {
+      "fresh_home_per_replica": true,
+      "requested_model": "sonnet",
+      "route": "benchmark/ceiling/scripts/claude-isolation.py launch --mode arm",
+      "timeout_seconds": 600
+    },
+    "terra": {
+      "fresh_home_and_codex_home_per_replica": true,
+      "network_grant": false,
+      "reasoning_effort": "xhigh",
+      "requested_model": "gpt-5.6-terra",
+      "route": "config/skills/_shared/codex-monitored.sh",
+      "sandbox": "workspace-write"
+    }
+  },
+  "updated_at": "2026-07-18T03:03:13.741108Z"
+}

@@ -97,7 +97,7 @@ def main() -> int:
 
     def check8(tests_text: str) -> tuple[bool, str]:
         ok = bool(re.search(r"--format(?:'|\"|`|\s*,\s*'|\s)*(?:yaml|xml|bogus|unsupported|invalid)", tests_text, re.IGNORECASE)) \
-            and bool(re.search(r"(exitCode|status|code)\s*(===|==|,)\s*1|assert\.(strict)?[eE]qual\([^)]*,\s*1\)", tests_text))
+            and bool(re.search(r"(exitCode|status|code)\s*(===|==|,|:)\s*1|assert\.(strict)?[eE]qual\([^)]*,\s*1\)", tests_text))
         return ok, ""
 
     if post:

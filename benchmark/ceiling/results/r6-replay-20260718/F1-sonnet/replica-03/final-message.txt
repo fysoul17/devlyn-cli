@@ -1,0 +1,8 @@
+The delta is minimal and confined to `authorized_surface`:
+
+- **UVR-STALE**: `bin/cli.js` USAGE text still documented `version` with the pre-patch interface (no mention of `--format json`) — updated the one line, preserving existing column alignment.
+- **PATH-TEST**: the goal specifies a failure path (`--format yaml` → exit 1) that the patch implements but no authorized test exercised — added one minimal regression test using the existing `run` helper.
+
+No other changes were made; both files are otherwise untouched.
+
+PASS

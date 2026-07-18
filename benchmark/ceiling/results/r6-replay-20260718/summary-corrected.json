@@ -1,0 +1,125 @@
+{
+ "provenance": "recomputed post-check8-colon-fix from archived delta.diff over bundle pre_sha tree; receipts.json left as raw",
+ "cells": {
+  "F1-terra": {
+   "rows": [
+    {
+     "replica": "replica-01",
+     "uvr": true,
+     "path": true,
+     "false_na_path": false,
+     "na_path_but_test_present": false,
+     "verdict_rows_present": false
+    },
+    {
+     "replica": "replica-02",
+     "uvr": true,
+     "path": false,
+     "false_na_path": false,
+     "na_path_but_test_present": false,
+     "verdict_rows_present": false
+    },
+    {
+     "replica": "replica-03",
+     "uvr": true,
+     "path": true,
+     "false_na_path": false,
+     "na_path_but_test_present": false,
+     "verdict_rows_present": false
+    }
+   ],
+   "uvr_fire": 3,
+   "path_fire": 2
+  },
+  "F1-sonnet": {
+   "rows": [
+    {
+     "replica": "replica-01",
+     "uvr": true,
+     "path": false,
+     "false_na_path": false,
+     "na_path_but_test_present": false,
+     "verdict_rows_present": false
+    },
+    {
+     "replica": "replica-02",
+     "uvr": true,
+     "path": true,
+     "false_na_path": false,
+     "na_path_but_test_present": false,
+     "verdict_rows_present": false
+    },
+    {
+     "replica": "replica-03",
+     "uvr": true,
+     "path": true,
+     "false_na_path": false,
+     "na_path_but_test_present": false,
+     "verdict_rows_present": false
+    }
+   ],
+   "uvr_fire": 3,
+   "path_fire": 2
+  },
+  "FL1-terra": {
+   "rows": [
+    {
+     "replica": "replica-01",
+     "uvr": true,
+     "path": false,
+     "false_na_path": true,
+     "na_path_but_test_present": false,
+     "verdict_rows_present": true
+    },
+    {
+     "replica": "replica-02",
+     "uvr": true,
+     "path": true,
+     "false_na_path": false,
+     "na_path_but_test_present": false,
+     "verdict_rows_present": true
+    },
+    {
+     "replica": "replica-03",
+     "uvr": true,
+     "path": false,
+     "false_na_path": true,
+     "na_path_but_test_present": false,
+     "verdict_rows_present": true
+    }
+   ],
+   "uvr_fire": 3,
+   "path_fire": 1
+  },
+  "FL1-sonnet": {
+   "rows": [
+    {
+     "replica": "replica-01",
+     "uvr": true,
+     "path": true,
+     "false_na_path": false,
+     "na_path_but_test_present": false,
+     "verdict_rows_present": true
+    },
+    {
+     "replica": "replica-02",
+     "uvr": true,
+     "path": true,
+     "false_na_path": false,
+     "na_path_but_test_present": false,
+     "verdict_rows_present": true
+    },
+    {
+     "replica": "replica-03",
+     "uvr": true,
+     "path": true,
+     "false_na_path": false,
+     "na_path_but_test_present": false,
+     "verdict_rows_present": true
+    }
+   ],
+   "uvr_fire": 3,
+   "path_fire": 3
+  }
+ }
+}

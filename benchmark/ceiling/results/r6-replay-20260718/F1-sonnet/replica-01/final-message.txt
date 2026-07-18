@@ -1,0 +1,6 @@
+Two minimal fixes applied to the frozen authorized surface:
+
+- **UVR-STALE**: `bin/cli.js` USAGE text documented `version` with no flags (stale relative to the new `--format json` option), while the sibling `hello` line already shows its `[--name NAME]` flag pattern — updated the `version` line to `version [--format json]` (alignment preserved).
+- **PATH-TEST**: the goal specifies a failure path (`--format yaml`/unsupported → exit 1 with error) that the patch implements via `parseFormatFlag`, but no test in `tests/cli.test.js` exercised it — added one regression test asserting the CLI throws with the `--format must be json` error.
+
+PASS

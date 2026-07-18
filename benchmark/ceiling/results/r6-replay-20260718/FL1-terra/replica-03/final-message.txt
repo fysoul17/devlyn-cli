@@ -1,0 +1,3 @@
+UVR-STALE: FIRED bin/cli.js:12
+PATH-TEST: N/A tests/cli.test.js:27 — JSON success path is exercised with exact output and parsed payload assertions.
+PASS

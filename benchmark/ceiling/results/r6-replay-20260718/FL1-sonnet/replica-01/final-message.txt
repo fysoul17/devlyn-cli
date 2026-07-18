@@ -1,0 +1,5 @@
+`execFileSync` throws on non-zero exit with `err.status` set to the child's exit code, so this correctly exercises the `--format yaml` failure path without executing anything myself.
+
+UVR-STALE: FIRED bin/cli.js:12
+PATH-TEST: FIRED tests/cli.test.js:34
+PASS
