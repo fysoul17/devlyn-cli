@@ -45,6 +45,7 @@ fi
 EXTERNAL_ROOT="${CEILING_EXTERNAL_ROOT:-$HOME/.local/share/nx01}"
 F7_TASK="DR-byte-preservation-f7-out-of-scope-trap"
 DRAW_NON_DIAGNOSTIC_EXIT=86
+DEPS_STAGING_BLOCKED_EXIT=78
 
 common_args=(--run-id "$RUN_ID" --repo-root "$REPO_ROOT" --ceiling-root "$CEILING_ROOT")
 [ -z "$TASKS_CSV" ] || common_args+=(--tasks "$TASKS_CSV")
@@ -98,7 +99,8 @@ while IFS= read -r task || [ -n "$task" ]; do
     bash "$SCRIPT_DIR/run-ceiling-arm.sh" "${arm_args[@]}"
     arm_exit=$?
     set -e
-    if [ "$arm_exit" -ne 0 ] && [ "$arm_exit" -ne "$DRAW_NON_DIAGNOSTIC_EXIT" ]; then
+    if [ "$arm_exit" -ne 0 ] && [ "$arm_exit" -ne "$DRAW_NON_DIAGNOSTIC_EXIT" ] \
+      && [ "$arm_exit" -ne "$DEPS_STAGING_BLOCKED_EXIT" ]; then
       echo "[nodeg-cell] $task A1 runner returned nonzero; evaluating recorded patch" >&2
     fi
     [ -d "$staged_attempt_dir" ] || {
@@ -109,6 +111,23 @@ while IFS= read -r task || [ -n "$task" ]; do
     mkdir -p "$(dirname "$attempt_dir")"
     cp -a "$staged_attempt_dir" "$attempt_dir"
     rm -rf "$staged_attempt_dir"
+    if [ "$arm_exit" -eq "$DEPS_STAGING_BLOCKED_EXIT" ] && \
+      [ -f "$attempt_dir/deps-staging.json" ]; then
+      deps_failed_step="$(python3 - "$attempt_dir/deps-staging.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+receipt = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if receipt.get("status") == "BLOCKED":
+    print(receipt.get("failed_step") or "unknown")
+PY
+)"
+      if [ -n "$deps_failed_step" ]; then
+        echo "[nodeg-cell] BLOCKED:deps-staging:$deps_failed_step receipt=$attempt_dir/deps-staging.json" >&2
+        exit "$DEPS_STAGING_BLOCKED_EXIT"
+      fi
+    fi
     if [ "$arm_exit" -eq "$DRAW_NON_DIAGNOSTIC_EXIT" ]; then
       [ -f "$attempt_dir/draw-non-diagnostic.json" ] || {
         echo "[nodeg-cell] draw exit lacked draw-non-diagnostic marker: $attempt_dir" >&2

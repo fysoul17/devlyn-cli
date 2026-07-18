@@ -1,7 +1,7 @@
 #!/bin/bash
 # Watch one nodeg row: gate at PLAN time, snapshot .devlyn while live, full gate at row end.
-# Row worktrees are DELETED at row end (0072.8/0072.13 instrument gap) — the
-# snapshot is the only durable copy of raw criteria/plan/state bytes.
+# Row worktrees may be deleted at row end; PHASE-6 also archives root state into
+# .devlyn/runs/. The snapshot remains the fallback when the worktree is gone.
 # usage: watch-nodeg-row.sh <run-id> <task-dir-name> <archive-dir> [gate-args…]
 #   e.g. watch-nodeg-row.sh nodeg-20260719 DR-byte-preservation-f7-out-of-scope-trap /tmp/r6/f7-live --v5
 set -uo pipefail
@@ -21,7 +21,7 @@ sleep 5
 echo "ROW-PLAN-ARTIFACT-READY $TASK"
 python3 "$GATE" "$WS" "${GATE_ARGS[@]}" 2>&1 | tail -6
 
-( while [ -d "$WS/.devlyn" ]; do
+( while [ -d "$WS" ]; do
     cp -a "$WS/.devlyn" "$ARC/devlyn.tmp" 2>/dev/null \
       && rm -rf "$ARC/devlyn.snapshot" && mv "$ARC/devlyn.tmp" "$ARC/devlyn.snapshot"
     sleep 15
@@ -30,9 +30,42 @@ SNAP=$!
 
 until [ -f "$RES/timing.json" ]; do sleep 20; done
 kill "$SNAP" 2>/dev/null
-if [ -f "$WS/.devlyn/pipeline.state.json" ]; then
-  echo "ROW-COMPLETE $TASK target=live"
-  python3 "$GATE" "$WS" "${GATE_ARGS[@]}" --post-implement 2>&1 | tail -16
+wait "$SNAP" 2>/dev/null || true
+if [ -d "$WS" ]; then
+  TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/watch-nodeg-row.XXXXXX")"
+  trap 'rm -rf "$TEMP_ROOT"' EXIT
+  GATE_WS="$TEMP_ROOT/repo"
+  cp -a "$WS" "$GATE_WS" || {
+    echo "BLOCKED:watcher:temp-copy-failed source=$WS" >&2
+    exit 78
+  }
+
+  NEWEST_RUN=""
+  for candidate in "$GATE_WS/.devlyn/runs/"*; do
+    [ -d "$candidate" ] || continue
+    if [ -z "$NEWEST_RUN" ] || [ "$candidate" -nt "$NEWEST_RUN" ]; then
+      NEWEST_RUN="$candidate"
+    fi
+  done
+  if [ -z "$NEWEST_RUN" ]; then
+    echo "BLOCKED:watcher:archived-state-missing workspace=$WS" >&2
+    exit 78
+  fi
+
+  for required in pipeline.state.json goal.raw.txt criteria.generated.md plan.md; do
+    [ -f "$NEWEST_RUN/$required" ] || {
+      echo "BLOCKED:watcher:archived-state-missing file=$NEWEST_RUN/$required" >&2
+      exit 78
+    }
+    cp -a "$NEWEST_RUN/$required" "$GATE_WS/.devlyn/$required"
+  done
+  for archived in "$NEWEST_RUN"/surface-close.*; do
+    [ -e "$archived" ] || continue
+    cp -a "$archived" "$GATE_WS/.devlyn/"
+  done
+
+  echo "ROW-COMPLETE $TASK target=temp-copy archived_run=$(basename "$NEWEST_RUN")"
+  python3 "$GATE" "$GATE_WS" "${GATE_ARGS[@]}" --post-implement 2>&1 | tail -16
 else
   echo "ROW-COMPLETE $TASK target=snapshot ($ARC/devlyn.snapshot + $RES)"
 fi

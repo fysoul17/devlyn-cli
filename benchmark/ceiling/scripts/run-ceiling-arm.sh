@@ -20,6 +20,114 @@ CLAUDE_ISOLATION="$SCRIPT_DIR/claude-isolation.py"
 F7_CARRIER_GATE="$SCRIPT_DIR/f7-carrier-gate.py"
 F7_TASK="DR-byte-preservation-f7-out-of-scope-trap"
 DRAW_NON_DIAGNOSTIC_EXIT=86
+DEPS_STAGING_BLOCKED_EXIT=78
+
+write_deps_staging_receipt() {
+  local receipt="$1"
+  local status="$2"
+  local failed_step="$3"
+  local package_lock="$4"
+  local node_bin="$5"
+  local npm_version="$6"
+  local npm_version_exit="$7"
+  local npm_ci_exit="$8"
+  local npm_ls_exit="$9"
+  python3 - "$receipt" "$status" "$failed_step" "$package_lock" "$node_bin" \
+    "$npm_version" "$npm_version_exit" "$npm_ci_exit" "$npm_ls_exit" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+(
+    receipt,
+    status,
+    failed_step,
+    package_lock,
+    node_bin,
+    npm_version,
+    npm_version_exit,
+    npm_ci_exit,
+    npm_ls_exit,
+) = sys.argv[1:]
+
+def exit_code(value):
+    return int(value) if value else None
+
+Path(receipt).write_text(json.dumps({
+    "schema_version": 1,
+    "status": status,
+    "failed_step": failed_step or None,
+    "package_lock": package_lock == "1",
+    "node_bin": node_bin,
+    "npm_version": npm_version or None,
+    "exit_codes": {
+        "npm_version": exit_code(npm_version_exit),
+        "npm_ci": exit_code(npm_ci_exit),
+        "npm_ls": exit_code(npm_ls_exit),
+    },
+}, indent=2) + "\n", encoding="utf-8")
+PY
+}
+
+stage_a_arm_dependencies() {
+  local worktree="$1"
+  local requested_node="$2"
+  local receipt="$RESULT_DIR/deps-staging.json"
+  local node_bin node_bin_dir staging_path npm_version
+  local npm_version_exit="" npm_ci_exit="" npm_ls_exit=""
+
+  node_bin="$(command -v "$requested_node" 2>/dev/null || true)"
+  if [ -z "$node_bin" ]; then
+    write_deps_staging_receipt "$receipt" BLOCKED node-bin 1 "$requested_node" "" 127 "" ""
+    echo "BLOCKED:deps-staging:node-bin requested=$requested_node receipt=$receipt" >&2
+    return "$DEPS_STAGING_BLOCKED_EXIT"
+  fi
+  node_bin="$(python3 -c 'import pathlib,sys;print(pathlib.Path(sys.argv[1]).resolve())' "$node_bin")"
+
+  if [ ! -f "$worktree/package-lock.json" ]; then
+    write_deps_staging_receipt "$receipt" SKIPPED_NO_LOCKFILE "" 0 "$node_bin" "" "" "" ""
+    return 0
+  fi
+
+  node_bin_dir="$(dirname "$node_bin")"
+  staging_path="$node_bin_dir:$PATH"
+
+  set +e
+  npm_version="$(cd "$worktree" && PATH="$staging_path" npm --version)"
+  npm_version_exit=$?
+  set -e
+  if [ "$npm_version_exit" -ne 0 ]; then
+    write_deps_staging_receipt "$receipt" BLOCKED npm-version 1 "$node_bin" "$npm_version" \
+      "$npm_version_exit" "" ""
+    echo "BLOCKED:deps-staging:npm-version exit=$npm_version_exit receipt=$receipt" >&2
+    return "$DEPS_STAGING_BLOCKED_EXIT"
+  fi
+
+  set +e
+  (cd "$worktree" && PATH="$staging_path" npm ci)
+  npm_ci_exit=$?
+  set -e
+  if [ "$npm_ci_exit" -ne 0 ]; then
+    write_deps_staging_receipt "$receipt" BLOCKED npm-ci 1 "$node_bin" "$npm_version" \
+      "$npm_version_exit" "$npm_ci_exit" ""
+    echo "BLOCKED:deps-staging:npm-ci exit=$npm_ci_exit receipt=$receipt" >&2
+    return "$DEPS_STAGING_BLOCKED_EXIT"
+  fi
+
+  set +e
+  (cd "$worktree" && PATH="$staging_path" npm ls --omit=dev --depth=0)
+  npm_ls_exit=$?
+  set -e
+  if [ "$npm_ls_exit" -ne 0 ]; then
+    write_deps_staging_receipt "$receipt" BLOCKED npm-ls 1 "$node_bin" "$npm_version" \
+      "$npm_version_exit" "$npm_ci_exit" "$npm_ls_exit"
+    echo "BLOCKED:deps-staging:npm-ls exit=$npm_ls_exit receipt=$receipt" >&2
+    return "$DEPS_STAGING_BLOCKED_EXIT"
+  fi
+
+  write_deps_staging_receipt "$receipt" PASS "" 1 "$node_bin" "$npm_version" \
+    "$npm_version_exit" "$npm_ci_exit" "$npm_ls_exit"
+}
 
 TASK=""
 ARM=""
@@ -570,6 +678,14 @@ NEUTRALIZER_ARGS=(
 [[ "$TASK" == DR-* ]] && NEUTRALIZER_ARGS+=(--seed-derived)
 NEUTRAL_BASE_SHA="$(python3 "$SCRIPT_DIR/neutralize-workspace.py" "${NEUTRALIZER_ARGS[@]}")"
 [ -n "$NEUTRAL_BASE_SHA" ] || { echo "neutral baseline SHA missing" >&2; exit 1; }
+
+if [ "$ARM" = A ]; then
+  set +e
+  stage_a_arm_dependencies "$WORKTREE" "${CEILING_TEST_NODE_BIN:-$NODE_BIN}"
+  DEPS_STAGING_EXIT=$?
+  set -e
+  [ "$DEPS_STAGING_EXIT" -eq 0 ] || exit "$DEPS_STAGING_EXIT"
+fi
 
 case "$ARM" in
   A)
