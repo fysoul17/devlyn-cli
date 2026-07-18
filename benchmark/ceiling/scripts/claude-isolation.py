@@ -11,6 +11,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -73,15 +74,44 @@ def resolve_direct_binary(name: str, explicit: str | None = None) -> Path:
             if native:
                 resolved = native[0].resolve()
         if ".superset" not in resolved.parts:
-            # Keep Claude's non-Superset executable symlink so its directory
-            # contains a callable `claude` for nested pipeline invocations.
+            # The outer launch remains absolute. Nested Claude resolution is
+            # supplied by the per-attempt shim, not by this file's basename.
             return candidate.parent.resolve() / candidate.name if name == "claude" else resolved
     raise IsolationError(f"direct non-Superset {name} CLI not found")
 
 
-def frozen_path(claude_binary: Path, codex_binary: Path) -> str:
+def prepare_claude_shim(home: Path, claude_binary: Path) -> tuple[Path, Path]:
+    home = home.resolve()
+    shim_dir = home / "b"
+    shim_path = shim_dir / "claude"
+    target = claude_binary.resolve()
+    if not target.is_file() or not os.access(target, os.X_OK):
+        raise IsolationError(f"Claude shim target is not executable: {target}")
+    if ".superset" in target.parts:
+        raise IsolationError(f"Superset Claude shim target forbidden: {target}")
+    if shim_dir.exists():
+        if shim_dir.is_symlink() or not shim_dir.is_dir() or not shim_path.is_symlink():
+            raise IsolationError(f"Claude shim absent or invalid: {shim_path}")
+    else:
+        shim_dir.mkdir(mode=0o700)
+        try:
+            shim_path.symlink_to(target)
+        except OSError as exc:
+            raise IsolationError(f"Claude shim creation failed: {exc}") from exc
+    try:
+        actual_target = shim_path.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise IsolationError(f"Claude shim resolution failed: {exc}") from exc
+    if actual_target != target:
+        raise IsolationError(
+            f"Claude shim target mismatch: expected {target}, found {actual_target}"
+        )
+    return shim_path, target
+
+
+def frozen_path(shim_dir: Path, codex_binary: Path) -> str:
     node = shutil.which("node")
-    candidates = [claude_binary.parent, codex_binary.parent]
+    candidates = [shim_dir, codex_binary.parent]
     if node:
         candidates.append(Path(node).resolve().parent)
     candidates.extend(Path(value) for value in ("/usr/bin", "/bin", "/usr/sbin", "/sbin"))
@@ -93,6 +123,58 @@ def frozen_path(claude_binary: Path, codex_binary: Path) -> str:
         if rendered not in unique:
             unique.append(rendered)
     return os.pathsep.join(unique)
+
+
+def attest_claude_shim(
+    shim_path: Path,
+    target: Path,
+    path_value: str,
+    environment: dict[str, str],
+    workdir: Path,
+) -> dict[str, Any]:
+    path_parts = path_value.split(os.pathsep)
+    if not path_parts or Path(path_parts[0]) != shim_path.parent.resolve():
+        raise IsolationError("Claude shim directory is not first on frozen PATH")
+    if not shim_path.is_symlink() or not os.access(shim_path, os.X_OK):
+        raise IsolationError(f"Claude shim absent or not executable: {shim_path}")
+    try:
+        resolved = shim_path.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise IsolationError(f"Claude shim resolution failed: {exc}") from exc
+    if resolved != target or sha256_file(resolved) != sha256_file(target):
+        raise IsolationError(
+            f"Claude shim target mismatch: expected {target}, found {resolved}"
+        )
+    command_v = subprocess.run(
+        ["/bin/sh", "-c", "command -v claude"],
+        cwd=workdir,
+        env=environment,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    found = command_v.stdout.strip()
+    if command_v.returncode != 0 or found != str(shim_path):
+        raise IsolationError(
+            f"command -v claude attestation failed: exit={command_v.returncode} path={found!r}"
+        )
+    found_path = Path(found)
+    found_resolved = found_path.resolve(strict=True)
+    found_sha = sha256_file(found_resolved)
+    target_sha = sha256_file(target)
+    if found_resolved != target or found_sha != target_sha:
+        raise IsolationError("command -v claude resolved outside the pinned shim target")
+    return {
+        "command": "command -v claude",
+        "exit_code": command_v.returncode,
+        "path": found,
+        "resolved_path": str(found_resolved),
+        "sha256": found_sha,
+        "passed": True,
+    }
 
 
 def prepare_home(home: Path, codex_home: Path) -> None:
@@ -260,6 +342,9 @@ def write_metadata(
     codex_home: Path,
     claude_binary: Path,
     codex_binary: Path,
+    shim_path: Path,
+    shim_target: Path,
+    command_v_claude: dict[str, Any],
     path_value: str,
     version: str,
     auth_mechanism: str,
@@ -283,6 +368,10 @@ def write_metadata(
         "claude_env_keys": list(CLAUDE_ENV_KEYS),
         "claude_env_keys_sha256": sha256_bytes("\n".join(CLAUDE_ENV_KEYS).encode()),
         "frozen_path": path_value,
+        "shim_path": str(shim_path),
+        "shim_target": str(shim_target),
+        "shim_target_sha256": sha256_file(shim_target),
+        "command_v_claude": command_v_claude,
         "auth_mechanism": auth_mechanism,
         "credentials_seeded": credentials_seeded,
     }
@@ -305,11 +394,18 @@ def launch_claude(
     timeout_seconds: int | None = None,
     tools_csv: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    home = home.resolve()
+    codex_home = codex_home.resolve()
+    workdir = workdir.resolve()
     claude_binary = resolve_direct_binary("claude", os.environ.get("CEILING_TEST_CLAUDE_BIN"))
     codex_binary = resolve_direct_binary("codex", os.environ.get("CEILING_TEST_CODEX_BIN"))
     prepare_home(home, codex_home)
-    path_value = frozen_path(claude_binary, codex_binary)
+    shim_path, shim_target = prepare_claude_shim(home, claude_binary)
+    path_value = frozen_path(shim_path.parent, codex_binary)
     environment = isolated_environment(home, codex_home, path_value)
+    command_v_claude = attest_claude_shim(
+        shim_path, shim_target, path_value, environment, workdir
+    )
     credentials: Path | None = None
     mechanism = "macos-keychain-blob"
     try:
@@ -322,6 +418,9 @@ def launch_claude(
                 codex_home=codex_home,
                 claude_binary=claude_binary,
                 codex_binary=codex_binary,
+                shim_path=shim_path,
+                shim_target=shim_target,
+                command_v_claude=command_v_claude,
                 path_value=path_value,
                 version="unavailable",
                 auth_mechanism=mechanism,
@@ -348,13 +447,20 @@ def launch_claude(
             codex_home=codex_home,
             claude_binary=claude_binary,
             codex_binary=codex_binary,
+            shim_path=shim_path,
+            shim_target=shim_target,
+            command_v_claude=command_v_claude,
             path_value=path_value,
             version=version[0],
             auth_mechanism=mechanism,
             credentials_seeded=True,
         )
-        if metadata["direct_claude"]["superset_wrapper"] or ".superset" in path_value:
-            raise IsolationError("Superset wrapper reached isolated Claude launch")
+        if (
+            metadata["direct_claude"]["superset_wrapper"]
+            or ".superset" in path_value
+            or metadata["command_v_claude"].get("passed") is not True
+        ):
+            raise IsolationError("Claude isolation purity contract failed")
         command = command_for(mode, claude_binary, prompt, debug_file, tools_csv)
         proc = subprocess.Popen(
             command,
@@ -412,6 +518,55 @@ def launch_claude(
             credentials.unlink(missing_ok=True)
 
 
+def self_test() -> int:
+    with tempfile.TemporaryDirectory(prefix="claude-isolation-self-test-") as tmp:
+        root = Path(tmp)
+        home = root / "home"
+        codex_home = root / "codex-home"
+        workdir = root / "work"
+        target = root / "claude-pinned"
+        other = root / "claude-other"
+        workdir.mkdir()
+        home.mkdir()
+        codex_home.mkdir()
+        for binary in (target, other):
+            binary.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            binary.chmod(0o700)
+
+        shim_path, shim_target = prepare_claude_shim(home, target)
+        path_value = frozen_path(shim_path.parent, target)
+        environment = isolated_environment(home, codex_home, path_value)
+        attestation = attest_claude_shim(
+            shim_path, shim_target, path_value, environment, workdir
+        )
+        if (
+            attestation["path"] != str(shim_path)
+            or attestation["sha256"] != sha256_file(target)
+        ):
+            raise AssertionError(attestation)
+
+        shim_path.unlink()
+        try:
+            prepare_claude_shim(home, target)
+        except IsolationError:
+            pass
+        else:
+            raise AssertionError("absent Claude shim did not fail closed")
+
+        shim_path.symlink_to(other)
+        try:
+            attest_claude_shim(shim_path, target, path_value, environment, workdir)
+        except IsolationError:
+            pass
+        else:
+            raise AssertionError("target-mismatched Claude shim did not fail closed")
+
+    print("ok: Claude shim command-v attestation")
+    print("ok: absent Claude shim raises IsolationError")
+    print("ok: target-mismatched Claude shim raises IsolationError")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -433,7 +588,10 @@ def main() -> int:
     scan = subparsers.add_parser("scan-user-memory")
     scan.add_argument("--transcript", required=True, type=Path)
     scan.add_argument("--user-memory-file", required=True, type=Path)
+    subparsers.add_parser("self-test")
     args = parser.parse_args()
+    if args.command == "self-test":
+        return self_test()
     if args.command == "scan-user-memory":
         text = args.transcript.read_text(encoding="utf-8", errors="replace")
         hits = user_memory_hits(text, args.user_memory_file)

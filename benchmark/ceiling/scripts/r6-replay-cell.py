@@ -16,7 +16,6 @@ import subprocess
 import sys
 import tempfile
 import time
-import types
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -208,16 +207,10 @@ def load_module(path: Path, name: str) -> Any:
 
 
 def carrier_predicates() -> tuple[Callable[[str], tuple[bool, str]], Callable[[str], tuple[bool, str]]]:
-    """Import and invoke the exact nested check-7/check-8 gate predicates."""
+    """Import and invoke the exact shared check-7/check-8 gate predicates."""
     gate = load_module(SCRIPT_DIR / "f7-carrier-gate.py", "r6_f7_carrier_gate")
-    functions: dict[str, Callable[[str], tuple[bool, str]]] = {}
-    for constant in gate.main.__code__.co_consts:
-        if not isinstance(constant, types.CodeType) or constant.co_name not in {"check7", "check8"}:
-            continue
-        if constant.co_freevars:
-            raise ProbeError(f"f7 carrier predicate {constant.co_name} unexpectedly gained a closure")
-        functions[constant.co_name] = types.FunctionType(constant, vars(gate))
-    if set(functions) != {"check7", "check8"}:
+    functions = {name: getattr(gate, name, None) for name in ("check7", "check8")}
+    if not all(callable(function) for function in functions.values()):
         raise ProbeError("f7-carrier-gate.py check7/check8 predicates not found")
     return functions["check7"], functions["check8"]
 

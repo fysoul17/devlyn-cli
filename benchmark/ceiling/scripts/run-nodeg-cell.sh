@@ -43,6 +43,8 @@ if [ "${NODEG_SELFTEST:-0}" = 1 ]; then
   REPO_ROOT="${NODEG_REPO_ROOT:-$REPO_ROOT}"
 fi
 EXTERNAL_ROOT="${CEILING_EXTERNAL_ROOT:-$HOME/.local/share/nx01}"
+F7_TASK="DR-byte-preservation-f7-out-of-scope-trap"
+DRAW_NON_DIAGNOSTIC_EXIT=86
 
 common_args=(--run-id "$RUN_ID" --repo-root "$REPO_ROOT" --ceiling-root "$CEILING_ROOT")
 [ -z "$TASKS_CSV" ] || common_args+=(--tasks "$TASKS_CSV")
@@ -74,6 +76,10 @@ PY
 while IFS= read -r task || [ -n "$task" ]; do
   [ -n "$task" ] || continue
   attempt_dir="$CEILING_ROOT/results/$RUN_ID/$task/A1"
+  if [ -f "$attempt_dir/draw-non-diagnostic.json" ]; then
+    echo "[nodeg-cell] non-diagnostic draw already recorded; use a fresh run-id: $attempt_dir" >&2
+    exit "$DRAW_NON_DIAGNOSTIC_EXIT"
+  fi
   if [ "$RESUME" -eq 1 ] && timing_has_exit "$attempt_dir/timing.json"; then
     echo "[nodeg-cell] skip existing $task A1: $attempt_dir/timing.json"
   else
@@ -81,9 +87,18 @@ while IFS= read -r task || [ -n "$task" ]; do
     opaque_task="f$(printf '%s' "$task" | shasum -a 256 | cut -c1-12)"
     staged_attempt_dir="$EXTERNAL_ROOT/a/$opaque_run/$opaque_task/a1"
     rm -rf "$staged_attempt_dir"
-    if ! bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
-      --run-id "$RUN_ID" --task "$task" --arm A --attempt 1 \
-      --result-dir "$staged_attempt_dir"; then
+    arm_args=(
+      --run-id "$RUN_ID" --task "$task" --arm A --attempt 1
+      --result-dir "$staged_attempt_dir"
+    )
+    if [ -n "$TASKS_CSV" ] && [ "$task" = "$F7_TASK" ]; then
+      arm_args+=(--f7-diagnostic-row)
+    fi
+    set +e
+    bash "$SCRIPT_DIR/run-ceiling-arm.sh" "${arm_args[@]}"
+    arm_exit=$?
+    set -e
+    if [ "$arm_exit" -ne 0 ] && [ "$arm_exit" -ne "$DRAW_NON_DIAGNOSTIC_EXIT" ]; then
       echo "[nodeg-cell] $task A1 runner returned nonzero; evaluating recorded patch" >&2
     fi
     [ -d "$staged_attempt_dir" ] || {
@@ -94,6 +109,22 @@ while IFS= read -r task || [ -n "$task" ]; do
     mkdir -p "$(dirname "$attempt_dir")"
     cp -a "$staged_attempt_dir" "$attempt_dir"
     rm -rf "$staged_attempt_dir"
+    if [ "$arm_exit" -eq "$DRAW_NON_DIAGNOSTIC_EXIT" ]; then
+      [ -f "$attempt_dir/draw-non-diagnostic.json" ] || {
+        echo "[nodeg-cell] draw exit lacked draw-non-diagnostic marker: $attempt_dir" >&2
+        exit 1
+      }
+      [ -d "$attempt_dir/devlyn-snapshot" ] || {
+        echo "[nodeg-cell] draw exit lacked .devlyn snapshot: $attempt_dir" >&2
+        exit 1
+      }
+      echo "[nodeg-cell] F7 draw is non-diagnostic; preserved snapshot, manual fresh run-id required" >&2
+      exit "$DRAW_NON_DIAGNOSTIC_EXIT"
+    fi
+    if [ -f "$attempt_dir/draw-monitor-error.txt" ]; then
+      echo "[nodeg-cell] F7 draw monitor failed closed: $attempt_dir/draw-monitor-error.txt" >&2
+      exit 78
+    fi
   fi
   if [ ! -f "$attempt_dir/objective.json" ] || [ "$RESUME" -eq 0 ]; then
     bash "$SCRIPT_DIR/ceiling-eval.sh" \

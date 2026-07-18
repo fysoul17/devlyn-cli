@@ -1341,3 +1341,23 @@ ci in-row).
 **Next**: Codex builds B + C2 (instrument-only; benchmark scripts) →
 gates + parity smoke → fresh diagnostic row (fresh run-id) = the ship
 decision, unchanged gate.
+
+**B+C2 BUILT + parity smoke GREEN (2026-07-18 continuation)**: Codex
+delivered both registered shapes (7 benchmark scripts, +499/−46; zero
+skill-surface changes) — shim = per-attempt `<home>/b/claude` symlink
+fail-closed, frozen_path first entry, canary + receipt fields +
+negative tests; C2 = `--f7-diagnostic-row` runner-owned monitor
+calling the gate's own `check7`/`check8` (single definitions, old
+inline bodies deleted — verified :27/:36 defs, :85-86 + :322-332 both
+call sites), exit 86 + `draw-non-diagnostic.json` + snapshot preserved,
+auto-scoped to F7 `--tasks` rows, resume disallowed. Truth-table
+self-test over archived receipts: -d continue / -e abort / -f abort.
+Live parity smoke (receipt committed
+`results/shim-parity-smoke-20260718/`): `command -v claude` exit 0 →
+shim → realpath = pinned 2.1.211, sha `5a728a76…` identical to
+`direct_claude.sha256`; outer launch absolute + superset_wrapper=False;
+worker result exact + modelUsage `claude-sonnet-5` — B's falsifier not
+fired. Extra Grok round SKIPPED by the anti-asymptotic rule (build
+matches Grok's own R0 edit table + salvage shape verbatim; new
+elements are mechanical choices carrying byte receipts, Codex-reviewed
+— 0072.19 precedent). Next: fresh diagnostic row nodeg-20260718g.

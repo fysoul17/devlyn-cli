@@ -40,6 +40,18 @@ printf '%s' "$prompt" >> "$HOME/fake-claude-prompts.txt"
 env | sort > "$HOME/fake-claude-env.txt"
 command -v claude > "$HOME/nested-claude-path.txt"
 stat -f '%Lp' "$CLAUDE_CONFIG_DIR/.credentials.json" > "$HOME/credentials-mode.txt"
+if [ "$arm_mode" = 1 ] && [ -f bin/cli.js ] && [ -f tests/cli.test.js ]; then
+  printf '\n// --format yaml\nconst drawReceipt = { status: 1 };\n' >> tests/cli.test.js
+  git add tests/cli.test.js
+  git -c user.name=selftest -c user.email=selftest@example.com commit -q -m implement-draw
+  pre_sha="$(git rev-parse HEAD)"
+  mkdir -p .devlyn
+  printf 'post-implement patch\n' > .devlyn/surface-close.input.patch
+  printf '{"phases":{"surface_close":{"pre_sha":"%s"}}}\n' "$pre_sha" \
+    > .devlyn/pipeline.state.json
+  sleep 30
+  exit 9
+fi
 if [[ "$prompt" == *emit-user-memory-leak* ]]; then
   echo 'Persistent private instruction unique to this isolation selftest.'
   exit 0
@@ -161,12 +173,48 @@ if Path(data["claude_config_dir"], ".credentials.json").exists():
     raise SystemExit("Claude credential file survived attempt cleanup")
 if data["claude_env_keys"] != sorted(data["claude_env_keys"]):
     raise SystemExit("Claude env keys are not sorted")
+shim = Path(data["shim_path"])
+target = Path(data["shim_target"])
+if not shim.is_symlink() or shim.resolve() != target or target != expected.resolve():
+    raise SystemExit("Claude shim target attestation mismatch")
+if data["shim_target_sha256"] != direct["sha256"]:
+    raise SystemExit("Claude shim sha attestation mismatch")
+if Path(data["frozen_path"].split(":")[0]) != shim.parent:
+    raise SystemExit("Claude shim is not first on frozen PATH")
+command_v = data["command_v_claude"]
+if command_v.get("path") != str(shim) or command_v.get("sha256") != direct["sha256"]:
+    raise SystemExit("command -v claude attestation mismatch")
 path_parts = data["environment"]["keys"]
 if "CLAUDE_CONFIG_DIR" not in path_parts or not data["forbidden_transcript_scan"]["passed"]:
     raise SystemExit(data)
 PY
-test "$(cat "$TEST_EXTERNAL_ROOT/claude-homes/r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)/f$(printf '%s' FS1-schedule-max-runs | shasum -a 256 | cut -c1-12)/A1/nested-claude-path.txt")" = "$(cd "$(dirname "$TEST_CLAUDE_BIN")" && pwd -P)/claude"
+test "$(cat "$TEST_EXTERNAL_ROOT/claude-homes/r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)/f$(printf '%s' FS1-schedule-max-runs | shasum -a 256 | cut -c1-12)/A1/nested-claude-path.txt")" = "$TEST_EXTERNAL_ROOT/claude-homes/r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)/f$(printf '%s' FS1-schedule-max-runs | shasum -a 256 | cut -c1-12)/A1/b/claude"
 test "$(cat "$TEST_EXTERNAL_ROOT/claude-homes/r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)/f$(printf '%s' FS1-schedule-max-runs | shasum -a 256 | cut -c1-12)/A1/credentials-mode.txt")" = 600
+
+DRAW_RESULT="$TEST_EXTERNAL_ROOT/x/rtdraw/fxdraw/A1"
+set +e
+CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TEST_CLAUDE_CREDENTIALS" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" \
+  bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
+    --run-id selftest-draw --task DR-byte-preservation-f7-out-of-scope-trap \
+    --arm A --attempt 1 --opaque-run-id rtdraw --opaque-task-id fxdraw \
+    --result-dir "$DRAW_RESULT" --f7-diagnostic-row --timeout-seconds 20 \
+    > "$TMP_DIR/draw.stdout" 2> "$TMP_DIR/draw.stderr"
+draw_exit=$?
+set -e
+test "$draw_exit" -eq 86
+test -f "$DRAW_RESULT/draw-non-diagnostic.json"
+test -d "$DRAW_RESULT/devlyn-snapshot"
+python3 - "$DRAW_RESULT/draw-non-diagnostic.json" "$DRAW_RESULT/timing.json" <<'PY'
+import json
+import sys
+
+marker = json.load(open(sys.argv[1], encoding="utf-8"))
+timing = json.load(open(sys.argv[2], encoding="utf-8"))
+if marker.get("pre7") is not False or marker.get("pre8") is not True:
+    raise SystemExit(marker)
+if timing.get("invoke_exit") != 86 or timing.get("draw_non_diagnostic") is not True:
+    raise SystemExit(timing)
+PY
 
 AUTH_FAIL_RESULT="$TEST_EXTERNAL_ROOT/x/rt01/fxauth/A1"
 if CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TMP_DIR/missing-credentials.json" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" \

@@ -8,6 +8,7 @@ usage: run-ceiling-arm.sh --task <ceiling-task>
                           --arm <A|B|C> --run-id <ID> --attempt <n>
                           [--opaque-run-id <ID>] [--opaque-task-id <ID>]
                           [--result-dir <path>]
+                          [--f7-diagnostic-row]
                           [--timeout-seconds 3600]
 EOF
   exit "${1:-1}"
@@ -16,6 +17,9 @@ EOF
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CEILING_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLAUDE_ISOLATION="$SCRIPT_DIR/claude-isolation.py"
+F7_CARRIER_GATE="$SCRIPT_DIR/f7-carrier-gate.py"
+F7_TASK="DR-byte-preservation-f7-out-of-scope-trap"
+DRAW_NON_DIAGNOSTIC_EXIT=86
 
 TASK=""
 ARM=""
@@ -25,6 +29,7 @@ OPAQUE_RUN_ID=""
 OPAQUE_TASK_ID=""
 RESULT_DIR_OVERRIDE=""
 TIMEOUT_SECONDS=3600
+F7_DIAGNOSTIC_ROW=0
 
 require_value() {
   local flag="$1"
@@ -44,6 +49,7 @@ while [ $# -gt 0 ]; do
     --opaque-run-id) require_value "$1" "${2:-}"; OPAQUE_RUN_ID="$2"; shift 2;;
     --opaque-task-id) require_value "$1" "${2:-}"; OPAQUE_TASK_ID="$2"; shift 2;;
     --result-dir) require_value "$1" "${2:-}"; RESULT_DIR_OVERRIDE="$2"; shift 2;;
+    --f7-diagnostic-row) F7_DIAGNOSTIC_ROW=1; shift;;
     --timeout-seconds) require_value "$1" "${2:-}"; TIMEOUT_SECONDS="$2"; shift 2;;
     -h|--help) usage 0;;
     *) echo "unknown arg: $1" >&2; usage 1;;
@@ -74,6 +80,10 @@ if ! validate_task; then
   usage 1
 fi
 case "$ARM" in A|B|C) ;; *) usage 1;; esac
+if [ "$F7_DIAGNOSTIC_ROW" -eq 1 ] && { [ "$ARM" != A ] || [ "$TASK" != "$F7_TASK" ]; }; then
+  echo "--f7-diagnostic-row requires the F7 A arm" >&2
+  exit 1
+fi
 case "$ATTEMPT" in ''|*[!0-9]*) echo "--attempt must be a positive integer" >&2; exit 1;; esac
 [ "$ATTEMPT" -gt 0 ] || { echo "--attempt must be > 0" >&2; exit 1; }
 case "$TIMEOUT_SECONDS" in ''|*[!0-9]*) echo "--timeout-seconds must be a positive integer" >&2; exit 1;; esac
@@ -286,6 +296,7 @@ write_patch() {
 }
 
 RUN_TIMED_OUT=0
+RUN_DRAW_NON_DIAGNOSTIC=0
 
 resolve_direct_claude() {
   python3 - "$CLAUDE_ISOLATION" "${CEILING_TEST_CLAUDE_BIN:-}" <<'PY'
@@ -390,7 +401,11 @@ run_with_timeout() {
   local transcript="$2"
   local prompt="$3"
   local timeout_flag="$RESULT_DIR/.timed-out"
-  rm -f "$timeout_flag"
+  local draw_probe="$RESULT_DIR/.f7-draw-probe.json"
+  local draw_probe_stderr="$RESULT_DIR/.f7-draw-probe.stderr"
+  local draw_trigger="$RESULT_DIR/.draw-non-diagnostic.trigger.json"
+  local draw_monitor_error="$RESULT_DIR/.f7-draw-monitor-error"
+  rm -f "$timeout_flag" "$draw_probe" "$draw_probe_stderr" "$draw_trigger" "$draw_monitor_error"
   : > "$transcript"
   set +e
   set -m
@@ -442,6 +457,40 @@ run_with_timeout() {
   esac
   local child_pid=$!
   set +m
+  terminate_child_group() {
+    kill -TERM -- "-$child_pid" 2>/dev/null || kill -TERM "$child_pid" 2>/dev/null || true
+    sleep 5
+    kill -KILL -- "-$child_pid" 2>/dev/null || kill -KILL "$child_pid" 2>/dev/null || true
+  }
+  local draw_monitor_pid=""
+  if [ "$F7_DIAGNOSTIC_ROW" -eq 1 ]; then
+    (
+      while kill -0 "$child_pid" 2>/dev/null; do
+        python3 "$F7_CARRIER_GATE" "$worktree" --pre-sc-attribution-only \
+          > "$draw_probe" 2> "$draw_probe_stderr"
+        probe_exit=$?
+        case "$probe_exit" in
+          0)
+            exit 0
+            ;;
+          75)
+            sleep 1
+            ;;
+          "$DRAW_NON_DIAGNOSTIC_EXIT")
+            mv "$draw_probe" "$draw_trigger"
+            terminate_child_group
+            exit 0
+            ;;
+          *)
+            mv "$draw_probe_stderr" "$draw_monitor_error"
+            terminate_child_group
+            exit 0
+            ;;
+        esac
+      done
+    ) >/dev/null 2>&1 &
+    draw_monitor_pid=$!
+  fi
   # >/dev/null: the watchdog and its sleep child must not inherit this
   # script's stdout/stderr — a parent reading us via PIPE stays blocked until
   # the sleep exits, taxing every attempt with the full timeout.
@@ -461,26 +510,45 @@ run_with_timeout() {
     watchdog_sleep_pid=""
     if kill -0 "$child_pid" 2>/dev/null; then
       : > "$timeout_flag"
-      kill -TERM -- "-$child_pid" 2>/dev/null || kill -TERM "$child_pid" 2>/dev/null || true
-      sleep 5 &
-      watchdog_sleep_pid=$!
-      wait "$watchdog_sleep_pid"
-      watchdog_sleep_pid=""
-      kill -KILL -- "-$child_pid" 2>/dev/null || kill -KILL "$child_pid" 2>/dev/null || true
+      terminate_child_group
     fi
   ) >/dev/null 2>&1 &
   local watchdog_pid=$!
   wait "$child_pid"
   local invoke_exit=$?
+  if [ -n "$draw_monitor_pid" ]; then
+    kill -TERM "$draw_monitor_pid" 2>/dev/null || true
+    wait "$draw_monitor_pid" 2>/dev/null || true
+  fi
   kill -TERM "$watchdog_pid" 2>/dev/null || true
   wait "$watchdog_pid" 2>/dev/null || true
-  if [ -f "$timeout_flag" ]; then
+  if [ -f "$draw_trigger" ]; then
+    if [ -e "$RESULT_DIR/devlyn-snapshot" ] || [ ! -d "$worktree/.devlyn" ]; then
+      echo "draw snapshot destination exists or live .devlyn is missing" >&2
+      invoke_exit=78
+    elif ! cp -a "$worktree/.devlyn" "$RESULT_DIR/devlyn-snapshot"; then
+      echo "draw .devlyn snapshot failed" >&2
+      invoke_exit=78
+    else
+      mv "$draw_trigger" "$RESULT_DIR/draw-non-diagnostic.json"
+      invoke_exit=$DRAW_NON_DIAGNOSTIC_EXIT
+      RUN_DRAW_NON_DIAGNOSTIC=1
+    fi
+    RUN_TIMED_OUT=0
+  elif [ -f "$draw_monitor_error" ]; then
+    echo "F7 draw monitor failed: $(cat "$draw_monitor_error")" >&2
+    mv "$draw_monitor_error" "$RESULT_DIR/draw-monitor-error.txt"
+    invoke_exit=78
+    RUN_TIMED_OUT=0
+  elif [ -f "$timeout_flag" ]; then
     rm -f "$timeout_flag"
     invoke_exit=124
     RUN_TIMED_OUT=1
   else
     RUN_TIMED_OUT=0
+    RUN_DRAW_NON_DIAGNOSTIC=0
   fi
+  rm -f "$timeout_flag" "$draw_probe" "$draw_probe_stderr" "$draw_monitor_error"
   rm -f "$CLAUDE_HOME_A/.claude/.credentials.json"
   set -e
   return "$invoke_exit"
@@ -527,11 +595,11 @@ ELAPSED_SECONDS=$((END_SECONDS - START_SECONDS))
 
 write_patch "$WORKTREE" "$RESULT_DIR/patch.diff"
 
-python3 - "$RESULT_DIR/timing.json" "$TASK" "$ARM" "$ATTEMPT" "$ELAPSED_SECONDS" "$INVOKE_EXIT" "$RUN_TIMED_OUT" "$WORKTREE" <<'PY'
+python3 - "$RESULT_DIR/timing.json" "$TASK" "$ARM" "$ATTEMPT" "$ELAPSED_SECONDS" "$INVOKE_EXIT" "$RUN_TIMED_OUT" "$RUN_DRAW_NON_DIAGNOSTIC" "$WORKTREE" <<'PY'
 import json
 import sys
 from pathlib import Path
-out, task, arm, attempt, elapsed, invoke_exit, timed_out, worktree = sys.argv[1:]
+out, task, arm, attempt, elapsed, invoke_exit, timed_out, draw_non_diagnostic, worktree = sys.argv[1:]
 Path(out).write_text(json.dumps({
     "task": task,
     "arm": arm,
@@ -539,6 +607,7 @@ Path(out).write_text(json.dumps({
     "elapsed_seconds": int(elapsed),
     "invoke_exit": int(invoke_exit),
     "timed_out": timed_out == "1",
+    "draw_non_diagnostic": draw_non_diagnostic == "1",
     "worktree": worktree,
 }, indent=2) + "\n", encoding="utf-8")
 PY
@@ -729,6 +798,7 @@ env_values = {
 if arm == "A":
     env_values.update(
         {
+            "PATH": str(claude_metadata.get("frozen_path", "")),
             "HOME": claude_home,
             "CLAUDE_CONFIG_DIR": str(Path(claude_home) / ".claude"),
             "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
@@ -822,6 +892,11 @@ if arm == "A":
     payload.update(
         {
             "direct_claude": direct_claude,
+            "frozen_path": claude_metadata.get("frozen_path"),
+            "shim_path": claude_metadata.get("shim_path"),
+            "shim_target": claude_metadata.get("shim_target"),
+            "shim_target_sha256": claude_metadata.get("shim_target_sha256"),
+            "command_v_claude": claude_metadata.get("command_v_claude"),
             "home": claude_metadata.get("home", str(Path(claude_home).resolve())),
             "claude_config_dir": claude_metadata.get(
                 "claude_config_dir", str(Path(claude_home).resolve() / ".claude")
@@ -832,9 +907,31 @@ if arm == "A":
             "credentials_seeded": claude_metadata.get("credentials_seeded", False),
         }
     )
+    shim_path = Path(str(claude_metadata.get("shim_path", "")))
+    shim_target = Path(str(claude_metadata.get("shim_target", "")))
+    command_v = claude_metadata.get("command_v_claude") or {}
+    frozen_parts = str(claude_metadata.get("frozen_path", "")).split(os.pathsep)
+    try:
+        shim_path.relative_to(Path(claude_home).resolve())
+        shim_inside_home = True
+    except ValueError:
+        shim_inside_home = False
+    shim_valid = (
+        shim_inside_home
+        and shim_path.is_symlink()
+        and shim_path.resolve() == shim_target
+        and bool(frozen_parts)
+        and Path(frozen_parts[0]) == shim_path.parent
+        and claude_metadata.get("shim_target_sha256") == direct_claude.get("sha256")
+        and command_v.get("passed") is True
+        and command_v.get("path") == str(shim_path)
+        and command_v.get("resolved_path") == str(shim_target)
+        and command_v.get("sha256") == claude_metadata.get("shim_target_sha256")
+    )
     claude_invalid = (
         direct_claude.get("superset_wrapper") is not False
         or ".superset" in str(claude_metadata.get("frozen_path", ""))
+        or not shim_valid
         or claude_metadata.get("credentials_seeded") is not True
         or not (Path(worktree) / ".claude/skills/devlyn:resolve/SKILL.md").is_file()
         or any(marker in transcript.casefold() for marker in ("not logged in", "authentication_error"))
@@ -846,7 +943,7 @@ if arm == "A":
 Path(out_path).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 PY
 
-echo "[ceiling-arm] ${TASK} ${ARM}${ATTEMPT} exit=${INVOKE_EXIT} timed_out=${RUN_TIMED_OUT} result=${RESULT_DIR}"
+echo "[ceiling-arm] ${TASK} ${ARM}${ATTEMPT} exit=${INVOKE_EXIT} timed_out=${RUN_TIMED_OUT} draw_non_diagnostic=${RUN_DRAW_NON_DIAGNOSTIC} result=${RESULT_DIR}"
 if [ "$ARM" = A ]; then
   if [ "$INVOKE_EXIT" -ne 0 ]; then
     exit "$INVOKE_EXIT"
@@ -860,6 +957,8 @@ data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 valid = (
     data.get("credentials_seeded") is True
     and data.get("direct_claude", {}).get("superset_wrapper") is False
+    and data.get("command_v_claude", {}).get("passed") is True
+    and data.get("command_v_claude", {}).get("sha256") == data.get("shim_target_sha256")
     and data.get("forbidden_transcript_scan", {}).get("passed") is True
     and data.get("shell_startup_canary", {}).get("passed") is True
 )

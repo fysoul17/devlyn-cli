@@ -7,16 +7,130 @@ pre-SC attribution via `git show <pre_sha>:<file>`); --post-implement adds
 checks 6-13. History: v4 gate (DECISIONS 0072.8), v5 gate (0072.13).
 
 usage: f7-gate.py <workspace-dir> [--post-implement]
+       f7-gate.py <workspace-dir> --pre-sc-attribution-only
+       f7-gate.py --self-test-draw-truth-table
 
 <workspace-dir> = the A-arm run workspace containing .devlyn/ + the fixture repo
 (bin/cli.js, tests/cli.test.js). Checks 1-5 run always; 6-10 only with
---post-implement. Exit 0 = all evaluated checks PASS; exit 1 = any FAIL.
+--post-implement. The attribution-only mode exits 0 for a diagnostic draw,
+75 while receipts are not ready, 86 for a non-diagnostic draw, and 78 on error.
 """
 import contextlib, json, os, pathlib, re, shutil, subprocess, sys, tempfile
 
 REPO = pathlib.Path("/Users/aipalm/Documents/GitHub/devlyn-cli")
 FIXTURE = REPO / "benchmark/ceiling/corpus/DR-byte-preservation-f7-out-of-scope-trap"
 EXPECTED_SURFACE = ["bin/cli.js", "tests/cli.test.js"]
+PRE_SC_NOT_READY_EXIT = 75
+DRAW_NON_DIAGNOSTIC_EXIT = 86
+
+
+def check7(cli_text: str) -> tuple[bool, str]:
+    match = re.search(r"(?ms)USAGE\s*=?\s*`(.*?)`", cli_text) or re.search(
+        r"(?ms)(usage:.*)", cli_text, re.IGNORECASE
+    )
+    usage_text = match.group(1) if match else ""
+    version_rows = [line for line in usage_text.splitlines() if "version" in line]
+    return any("--format" in line for line in version_rows), f"version_rows={version_rows!r}"
+
+
+def check8(tests_text: str) -> tuple[bool, str]:
+    ok = bool(
+        re.search(
+            r"--format(?:'|\"|`|\s*,\s*'|\s)*(?:yaml|xml|bogus|unsupported|invalid)",
+            tests_text,
+            re.IGNORECASE,
+        )
+    ) and bool(
+        re.search(
+            r"(exitCode|status|code)\s*(===|==|,|:)\s*1|assert\.(strict)?[eE]qual\([^)]*,\s*1\)",
+            tests_text,
+        )
+    )
+    return ok, ""
+
+
+def is_non_diagnostic_draw(pre7: bool, pre8: bool) -> bool:
+    return pre7 or pre8
+
+
+def pre_surface_close_attribution(ws: pathlib.Path) -> dict[str, object] | None:
+    state_path = ws / ".devlyn/pipeline.state.json"
+    input_patch = ws / ".devlyn/surface-close.input.patch"
+    if not state_path.is_file() or not input_patch.is_file():
+        return None
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    pre_sha = str(((state.get("phases") or {}).get("surface_close") or {}).get("pre_sha") or "")
+    if not pre_sha:
+        return None
+    pre_cli = subprocess.run(
+        ["git", "show", f"{pre_sha}:bin/cli.js"],
+        cwd=ws,
+        capture_output=True,
+        text=True,
+    )
+    pre_tests = subprocess.run(
+        ["git", "show", f"{pre_sha}:tests/cli.test.js"],
+        cwd=ws,
+        capture_output=True,
+        text=True,
+    )
+    if pre_cli.returncode != 0 or pre_tests.returncode != 0:
+        raise RuntimeError(
+            "pre-SC git show failed: "
+            f"cli={pre_cli.returncode} tests={pre_tests.returncode} pre_sha={pre_sha}"
+        )
+    pre7, note7 = check7(pre_cli.stdout)
+    pre8, note8 = check8(pre_tests.stdout)
+    return {
+        "status": "draw-non-diagnostic" if is_non_diagnostic_draw(pre7, pre8) else "diagnostic",
+        "pre_sha": pre_sha,
+        "pre7": pre7,
+        "pre8": pre8,
+        "draw_non_diagnostic": is_non_diagnostic_draw(pre7, pre8),
+        "check7_note": note7,
+        "check8_note": note8,
+    }
+
+
+def print_pre_surface_close_attribution(ws: pathlib.Path) -> int:
+    try:
+        result = pre_surface_close_attribution(ws)
+    except (OSError, RuntimeError) as exc:
+        print(f"pre-SC attribution error: {exc}", file=sys.stderr)
+        return 78
+    if result is None:
+        print(json.dumps({"status": "not-ready"}, sort_keys=True))
+        return PRE_SC_NOT_READY_EXIT
+    print(json.dumps(result, sort_keys=True))
+    return DRAW_NON_DIAGNOSTIC_EXIT if result["draw_non_diagnostic"] else 0
+
+
+def truth_table_self_test() -> int:
+    row_root = REPO / "benchmark/ceiling/results"
+    expected = {"d": False, "e": True, "f": True}
+    for suffix, should_abort in expected.items():
+        receipt = row_root / f"nodeg-20260718{suffix}" / (
+            "DR-byte-preservation-f7-out-of-scope-trap/A1/row-artifacts/gate-readout.txt"
+        )
+        text = receipt.read_text(encoding="utf-8")
+        match = re.search(r"13 attribution.*pre7=(True|False) pre8=(True|False)", text)
+        if match is None:
+            raise AssertionError(f"archived attribution receipt missing: {receipt}")
+        pre7, pre8 = (value == "True" for value in match.groups())
+        actual = is_non_diagnostic_draw(pre7, pre8)
+        if actual != should_abort:
+            raise AssertionError(
+                f"nodeg-20260718{suffix}: pre7={pre7} pre8={pre8} "
+                f"abort={actual} expected={should_abort}"
+            )
+        action = "abort" if actual else "continue"
+        print(
+            f"ok: nodeg-20260718{suffix} pre7={pre7} pre8={pre8} -> {action}"
+        )
+    return 0
 
 
 @contextlib.contextmanager
@@ -95,6 +209,12 @@ def self_test() -> int:
 def main() -> int:
     if sys.argv[1:] == ["--self-test"]:
         return self_test()
+    if sys.argv[1:] == ["--self-test-draw-truth-table"]:
+        return truth_table_self_test()
+    if len(sys.argv) >= 3 and sys.argv[2:] == ["--pre-sc-attribution-only"]:
+        return print_pre_surface_close_attribution(pathlib.Path(sys.argv[1]))
+    if len(sys.argv) < 2:
+        raise SystemExit(__doc__)
     ws = pathlib.Path(sys.argv[1])
     post = "--post-implement" in sys.argv[2:]
     results: list[tuple[str, bool, str]] = []
@@ -164,17 +284,6 @@ def main() -> int:
         except json.JSONDecodeError:
             surface = None
     check("5 surface==two files", sorted(surface or []) == sorted(EXPECTED_SURFACE), f"surface={surface}")
-
-    def check7(cli_text: str) -> tuple[bool, str]:
-        um = re.search(r"(?ms)USAGE\s*=?\s*`(.*?)`", cli_text) or re.search(r"(?ms)(usage:.*)", cli_text, re.IGNORECASE)
-        usage_txt = um.group(1) if um else ""
-        vrow = [l for l in usage_txt.splitlines() if "version" in l]
-        return any("--format" in l for l in vrow), f"version_rows={vrow!r}"
-
-    def check8(tests_text: str) -> tuple[bool, str]:
-        ok = bool(re.search(r"--format(?:'|\"|`|\s*,\s*'|\s)*(?:yaml|xml|bogus|unsupported|invalid)", tests_text, re.IGNORECASE)) \
-            and bool(re.search(r"(exitCode|status|code)\s*(===|==|,|:)\s*1|assert\.(strict)?[eE]qual\([^)]*,\s*1\)", tests_text))
-        return ok, ""
 
     if post:
         # 6. post-IMPLEMENT diff ⊆ surface

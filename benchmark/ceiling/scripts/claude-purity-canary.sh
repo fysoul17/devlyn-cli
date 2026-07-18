@@ -82,8 +82,23 @@ if data["credentials_seeded"] is not True:
 if direct.get("requested_model") != "sonnet":
     raise SystemExit("Claude requested model drifted from sonnet")
 path_parts = data["frozen_path"].split(":")
-if Path(direct["path"]).parent != Path(path_parts[0]):
-    raise SystemExit("direct Claude directory is not first on frozen PATH")
+shim_path = Path(data["shim_path"])
+shim_target = Path(data["shim_target"])
+command_v = data["command_v_claude"]
+if shim_path.parent != Path(path_parts[0]):
+    raise SystemExit("Claude shim directory is not first on frozen PATH")
+if not shim_path.is_symlink() or shim_path.resolve() != shim_target:
+    raise SystemExit("Claude shim does not resolve to its attested target")
+if shim_target != Path(direct["path"]).resolve():
+    raise SystemExit("Claude shim target differs from the pinned direct binary")
+if data["shim_target_sha256"] != direct["sha256"]:
+    raise SystemExit("Claude shim target sha differs from the pinned binary sha")
+if command_v.get("passed") is not True or command_v.get("path") != str(shim_path):
+    raise SystemExit("command -v claude attestation failed")
+if command_v.get("resolved_path") != str(shim_target):
+    raise SystemExit("command -v claude resolved outside the pinned target")
+if command_v.get("sha256") != data["shim_target_sha256"]:
+    raise SystemExit("command -v claude sha differs from the pinned target")
 if any(".superset" in part for part in path_parts):
     raise SystemExit("Superset directory present on frozen PATH")
 wrapper = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))

@@ -1,0 +1,8 @@
+{
+ "result": "OK",
+ "modelUsage": [
+  "claude-sonnet-5"
+ ],
+ "session_id": "c5e6838d-cf56-475c-90d6-57bd7e8891ed",
+ "cli_pin": "2.1.211"
+}
