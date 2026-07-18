@@ -5,7 +5,8 @@ Usage:
     python3 state-phase-write.py --devlyn-dir .devlyn --phase implement spawn \
         --round 1 --triggered-by verify [--pre-sha <sha>] [--engine claude] [--model <id>]
     python3 state-phase-write.py --devlyn-dir .devlyn --phase implement complete \
-        --verdict PASS [--post-sha <sha>] [--findings-file <path>] [--log-file <path>] [--engine claude] [--model <id>]
+        --verdict PASS [--post-sha <sha>] [--findings-file <path>] [--log-file <path>] \
+        [--engine claude] [--model <requested-id>] [--engine-session-log <path>]
 
 references/state-schema.md#write-protocol is the contract this implements.
 A prior hand-edited fix-loop respawn left `started_at` at its original round's
@@ -21,12 +22,14 @@ import argparse
 import datetime
 import json
 import pathlib
+import re
 import sys
 import tempfile
 
 VALID_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "FAIL", "NEEDS_WORK", "BLOCKED"}
 VALID_TRIGGERS = {"build_gate", "verify"}
 PHASE_NAMES = {"plan", "probe_derive", "implement", "build_gate", "cleanup", "verify", "final_report"}
+MODEL_HEADER_RE = re.compile(r"(?m)^[ \t]*model:[ \t]*(\S+)[ \t]*$")
 
 
 def reject_json_constant(token: str) -> None:
@@ -77,6 +80,51 @@ def write_state(state_path: pathlib.Path, state: dict) -> None:
     except BaseException:
         pathlib.Path(tmp_name).unlink(missing_ok=True)
         raise
+
+
+def parse_effective_model(session_log: pathlib.Path) -> str:
+    try:
+        text = session_log.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise ValueError(f"cannot read engine session log {session_log}: {exc}") from exc
+
+    header = MODEL_HEADER_RE.search(text)
+    if header:
+        return header.group(1)
+
+    models: set[str] = set()
+    if session_log.suffix == ".jsonl":
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            if not line.strip():
+                continue
+            try:
+                event = loads_strict_json(line)
+            except ValueError as exc:
+                raise ValueError(
+                    f"engine session log {session_log} has malformed JSONL at line {line_number}: {exc}"
+                ) from exc
+            if not isinstance(event, dict) or event.get("type") != "turn_context":
+                continue
+            payload = event.get("payload")
+            model = payload.get("model") if isinstance(payload, dict) else None
+            if isinstance(model, str) and model:
+                models.add(model)
+    else:
+        try:
+            evidence = loads_strict_json(text)
+        except ValueError:
+            evidence = None
+        model_usage = evidence.get("modelUsage") if isinstance(evidence, dict) else None
+        if isinstance(model_usage, dict):
+            models.update(model for model in model_usage if isinstance(model, str) and model)
+
+    if len(models) == 1:
+        return next(iter(models))
+    if not models:
+        raise ValueError(f"engine session log {session_log} has no effective-model evidence")
+    raise ValueError(
+        f"engine session log {session_log} has conflicting effective models: {sorted(models)}"
+    )
 
 
 def clear_verify_round_artifacts(devlyn: pathlib.Path) -> None:
@@ -132,14 +180,19 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     if engine is not None:
         entry["engine"] = engine
     if model is not None:
-        entry["model"] = model
+        entry["model_requested"] = model
+    else:
+        entry.setdefault("model_requested", None)
+    entry.pop("model", None)
+    entry["model_effective"] = None
     if pre_sha is not None:
         entry["pre_sha"] = pre_sha
 
 
 def do_complete(state: dict, phase: str, verdict: str | None,
                  post_sha: str | None, findings_file: str | None, log_file: str | None,
-                 engine: str | None, model: str | None) -> None:
+                 engine: str | None, model: str | None,
+                 engine_session_log: str | None = None) -> str | None:
     phases = state.setdefault("phases", {})
     entry = phases.get(phase)
     if not isinstance(entry, dict) or not entry.get("started_at"):
@@ -172,9 +225,32 @@ def do_complete(state: dict, phase: str, verdict: str | None,
     if engine is not None:
         entry["engine"] = engine
     if model is not None:
-        entry["model"] = model
+        entry["model_requested"] = model
+    else:
+        entry.setdefault("model_requested", None)
+    entry.pop("model", None)
+
+    attestation_error = None
+    if engine_session_log is None:
+        entry["model_effective"] = None
+    else:
+        try:
+            entry["model_effective"] = parse_effective_model(pathlib.Path(engine_session_log))
+        except ValueError as exc:
+            entry["model_effective"] = None
+            attestation_error = f"BLOCKED:model-attestation-failed: {exc}"
+        requested = entry.get("model_requested")
+        effective = entry.get("model_effective")
+        if attestation_error is None and requested is not None and requested != effective:
+            attestation_error = (
+                "BLOCKED:model-attestation-mismatch: "
+                f"requested={requested} effective={effective}"
+            )
+    if attestation_error is not None:
+        entry["verdict"] = "BLOCKED"
     if post_sha is not None:
         entry["post_sha"] = post_sha
+    return attestation_error
 
 
 def self_test() -> int:
@@ -416,6 +492,53 @@ def self_test() -> int:
         assert cleanup_entry["pre_sha"] == "pre-sha"
         assert cleanup_entry["post_sha"] == "post-sha"
 
+        # Effective model evidence: engine header line and rollout JSONL.
+        header_log = devlyn / "codex-build.log"
+        header_log.write_text("session\nmodel: gpt-5.6-sol\n", encoding="utf-8")
+        assert parse_effective_model(header_log) == "gpt-5.6-sol"
+        rollout_log = devlyn / "rollout.jsonl"
+        rollout_log.write_text(json.dumps({
+            "type": "turn_context", "payload": {"model": "gpt-5.6-terra"},
+        }) + "\n", encoding="utf-8")
+        assert parse_effective_model(rollout_log) == "gpt-5.6-terra"
+        claude_log = devlyn / "claude-result.json"
+        claude_log.write_text(json.dumps({
+            "modelUsage": {"claude-alpha-1": {"inputTokens": 1}},
+        }) + "\n", encoding="utf-8")
+        assert parse_effective_model(claude_log) == "claude-alpha-1"
+
+        # Requested/effective drift is a persisted, fail-closed attestation.
+        write_state(state_path, {"phases": {}})
+        state = read_state(state_path)
+        do_spawn(state, "implement", 0, None, None, "codex", "gpt-5.5")
+        mismatch = do_complete(
+            state, "implement", "PASS", None, None, None, None, None, str(rollout_log)
+        )
+        mismatched = state["phases"]["implement"]
+        assert mismatch and "model-attestation-mismatch" in mismatch
+        assert mismatched["model_requested"] == "gpt-5.5"
+        assert mismatched["model_effective"] == "gpt-5.6-terra"
+        assert mismatched["verdict"] == "BLOCKED"
+
+        # No evidence flag means the engine class exposed no session log;
+        # supplied evidence must parse and never silently record null.
+        write_state(state_path, {"phases": {}})
+        state = read_state(state_path)
+        do_spawn(state, "plan", 0, None, None, "claude", "claude-default")
+        assert do_complete(state, "plan", "PASS", None, None, None, None, None) is None
+        assert state["phases"]["plan"]["model_effective"] is None
+        invalid_log = devlyn / "invalid-session.log"
+        invalid_log.write_text("no model evidence\n", encoding="utf-8")
+        write_state(state_path, {"phases": {}})
+        state = read_state(state_path)
+        do_spawn(state, "plan", 0, None, None, "claude", "claude-default")
+        invalid = do_complete(
+            state, "plan", "PASS", None, None, None, None, None, str(invalid_log)
+        )
+        assert invalid and "model-attestation-failed" in invalid
+        assert state["phases"]["plan"]["model_effective"] is None
+        assert state["phases"]["plan"]["verdict"] == "BLOCKED"
+
     return 0
 
 
@@ -440,6 +563,7 @@ def main() -> int:
     complete_p.add_argument("--log-file", default=None)
     complete_p.add_argument("--engine", default=None)
     complete_p.add_argument("--model", default=None)
+    complete_p.add_argument("--engine-session-log", default=None)
 
     args = ap.parse_args()
     if args.self_test:
@@ -460,9 +584,15 @@ def main() -> int:
             clear_verify_round_artifacts(devlyn)
         do_spawn(state, args.phase, args.round, args.triggered_by, args.pre_sha, args.engine, args.model)
     else:
-        do_complete(state, args.phase, args.verdict, args.post_sha, args.findings_file, args.log_file, args.engine, args.model)
+        attestation_error = do_complete(
+            state, args.phase, args.verdict, args.post_sha, args.findings_file,
+            args.log_file, args.engine, args.model, args.engine_session_log,
+        )
 
     write_state(state_path, state)
+    if args.event == "complete" and attestation_error is not None:
+        sys.stderr.write(attestation_error + "\n")
+        return 1
     sys.stdout.write(f"ok: phases.{args.phase}.{args.event}\n")
     return 0
 
