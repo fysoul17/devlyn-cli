@@ -140,13 +140,9 @@ cleanup_claude_credentials() {
 trap cleanup_claude_credentials EXIT INT TERM
 
 json_quote_task_prompt() {
-  python3 - "$TASK_TEXT_FILE" <<'PY'
-import json
-import sys
-from pathlib import Path
-task = Path(sys.argv[1]).read_text(encoding="utf-8").rstrip("\n")
-print("/devlyn:resolve " + json.dumps(task) + " --pair-verify", end="")
-PY
+  local worktree="$1"
+  cp "$TASK_TEXT_FILE" "$worktree/.devlyn/goal.txt"
+  printf '%s' '/devlyn:resolve --goal-file .devlyn/goal.txt --pair-verify'
 }
 
 bare_prompt() {
@@ -514,7 +510,7 @@ case "$ARM" in
       echo "staged devlyn:resolve skill missing" >&2
       exit 1
     }
-    PROMPT="$(json_quote_task_prompt)"
+    PROMPT="$(json_quote_task_prompt "$WORKTREE")"
     ;;
   B) PROMPT="$(bare_prompt)" ;;
   C) PROMPT="$(copycat_prompt)" ;;

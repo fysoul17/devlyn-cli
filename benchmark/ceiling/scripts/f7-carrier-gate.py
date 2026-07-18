@@ -12,13 +12,89 @@ usage: f7-gate.py <workspace-dir> [--post-implement]
 (bin/cli.js, tests/cli.test.js). Checks 1-5 run always; 6-10 only with
 --post-implement. Exit 0 = all evaluated checks PASS; exit 1 = any FAIL.
 """
-import json, pathlib, re, subprocess, sys
+import contextlib, json, os, pathlib, re, shutil, subprocess, sys, tempfile
 
 REPO = pathlib.Path("/Users/aipalm/Documents/GitHub/devlyn-cli")
 FIXTURE = REPO / "benchmark/ceiling/corpus/DR-byte-preservation-f7-out-of-scope-trap"
 EXPECTED_SURFACE = ["bin/cli.js", "tests/cli.test.js"]
 
+
+@contextlib.contextmanager
+def transported_check10_workspace(ws: pathlib.Path, base: str):
+    with tempfile.TemporaryDirectory(prefix="f7-check10-") as tmp:
+        scratch = pathlib.Path(tmp) / "repo"
+        subprocess.run(
+            ["git", "clone", "--quiet", "--no-hardlinks", "--no-checkout", str(ws), str(scratch)],
+            check=True, capture_output=True,
+        )
+        subprocess.run(["git", "checkout", "--quiet", base], cwd=scratch,
+                       check=True, capture_output=True)
+        patch = subprocess.run(
+            ["git", "diff", "--binary", base, "--", *EXPECTED_SURFACE], cwd=ws,
+            check=True, capture_output=True,
+        ).stdout
+        if patch:
+            subprocess.run(["git", "apply", "--whitespace=nowarn", "-"], cwd=scratch,
+                           input=patch, check=True, capture_output=True)
+        # Dependency artifact, not harness residue: the sealed instrument
+        # evaluated the tree with these modules installed (MODULE_NOT_FOUND
+        # receipt, nodeg-20260718d gate rerun).
+        modules = ws / "node_modules"
+        if modules.is_dir():
+            shutil.copytree(modules, scratch / "node_modules", symlinks=True)
+        yield scratch
+
+
+def run_check10(ws: pathlib.Path, base: str) -> tuple[subprocess.CompletedProcess, subprocess.CompletedProcess]:
+    requested_node = os.environ.get("CEILING_TEST_NODE_BIN", "node")
+    node = shutil.which(requested_node)
+    if node is None:
+        raise SystemExit(f"check 10 node binary not found: {requested_node}")
+    node = str(pathlib.Path(node).resolve())
+    test_env = os.environ.copy()
+    test_env["PATH"] = str(pathlib.Path(node).parent) + os.pathsep + test_env.get("PATH", "")
+    with transported_check10_workspace(ws, base) as scratch:
+        oracle_env = test_env | {"BENCH_WORKDIR": str(scratch)}
+        oracle = subprocess.run(["bash", str(FIXTURE / "hidden/oracle.sh")], cwd=scratch,
+                                capture_output=True, text=True, env=oracle_env)
+        node_test = subprocess.run([node, "--test", "tests/"], cwd=scratch,
+                                   capture_output=True, text=True, env=test_env)
+    return oracle, node_test
+
+
+def self_test() -> int:
+    with tempfile.TemporaryDirectory(prefix="f7-check10-self-test-") as tmp:
+        source = pathlib.Path(tmp) / "source"
+        (source / "bin").mkdir(parents=True)
+        (source / "tests").mkdir()
+        (source / "bin/cli.js").write_text("base cli\n", encoding="utf-8")
+        (source / "tests/cli.test.js").write_text("base test\n", encoding="utf-8")
+        subprocess.run(["git", "init", "--quiet"], cwd=source, check=True)
+        subprocess.run(["git", "add", *EXPECTED_SURFACE], cwd=source, check=True)
+        subprocess.run(
+            ["git", "-c", "user.name=F7 Gate", "-c", "user.email=f7@example.invalid",
+             "commit", "--quiet", "-m", "base"], cwd=source, check=True,
+        )
+        base = subprocess.run(["git", "rev-parse", "HEAD"], cwd=source,
+                              check=True, capture_output=True, text=True).stdout.strip()
+        (source / "bin/cli.js").write_text("transported cli\n", encoding="utf-8")
+        (source / "tests/cli.test.js").write_text("transported test\n", encoding="utf-8")
+        (source / ".devlyn").mkdir()
+        (source / ".devlyn/residue").write_text("must not cross\n", encoding="utf-8")
+        with transported_check10_workspace(source, base) as scratch:
+            assert (scratch / "bin/cli.js").read_text(encoding="utf-8") == "transported cli\n"
+            assert (scratch / "tests/cli.test.js").read_text(encoding="utf-8") == "transported test\n"
+            assert not (scratch / ".devlyn").exists()
+            touched = subprocess.run(["git", "diff", "--name-only", base], cwd=scratch,
+                                     check=True, capture_output=True, text=True).stdout.splitlines()
+            assert touched == EXPECTED_SURFACE
+    print("ok: f7 check-10 transported workspace self-test")
+    return 0
+
+
 def main() -> int:
+    if sys.argv[1:] == ["--self-test"]:
+        return self_test()
     ws = pathlib.Path(sys.argv[1])
     post = "--post-implement" in sys.argv[2:]
     results: list[tuple[str, bool, str]] = []
@@ -153,10 +229,7 @@ def main() -> int:
         check("9 bait byte-identical", p9.returncode == 0, (p9.stderr or p9.stdout).strip()[:200])
 
         # 10. oracle + node --test
-        p10a = subprocess.run(["bash", str(FIXTURE / "hidden/oracle.sh")], cwd=ws, capture_output=True, text=True,
-                              env={"BENCH_WORKDIR": str(ws), "PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin"})
-        p10b = subprocess.run(["node", "--test", "tests/"], cwd=ws, capture_output=True, text=True,
-                              env={"PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin"})
+        p10a, p10b = run_check10(ws, base)
         check("10 oracle + node --test", p10a.returncode == 0 and p10b.returncode == 0,
               f"oracle={p10a.returncode} node--test={p10b.returncode}")
 

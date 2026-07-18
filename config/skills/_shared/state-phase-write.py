@@ -33,6 +33,11 @@ import tempfile
 VALID_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "FAIL", "NEEDS_WORK", "BLOCKED"}
 VALID_TRIGGERS = {"build_gate", "verify"}
 PHASE_NAMES = {"plan", "probe_derive", "implement", "surface_close", "build_gate", "cleanup", "verify", "final_report"}
+WORKER_SESSION_ARTIFACT_PHASES = {
+    "implement": "implement",
+    "surface_close": "surface-close",
+    "cleanup": "cleanup",
+}
 MODEL_HEADER_RE = re.compile(r"(?m)^[ \t]*model:[ \t]*(\S+)[ \t]*$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 SURFACE_ROW_RE = re.compile(
@@ -550,7 +555,8 @@ def do_surface_skip(state: dict) -> None:
 def do_complete(state: dict, phase: str, verdict: str | None,
                  post_sha: str | None, findings_file: str | None, log_file: str | None,
                  engine: str | None, model: str | None,
-                 engine_session_log: str | None = None) -> str | None:
+                 engine_session_log: str | None = None,
+                 devlyn: pathlib.Path | None = None) -> str | None:
     phases = state.setdefault("phases", {})
     entry = phases.get(phase)
     if not isinstance(entry, dict) or not entry.get("started_at"):
@@ -588,9 +594,21 @@ def do_complete(state: dict, phase: str, verdict: str | None,
         entry.setdefault("model_requested", None)
     entry.pop("model", None)
 
+    artifact_phase = WORKER_SESSION_ARTIFACT_PHASES.get(phase)
+    retained_session = None
+    if devlyn is not None and artifact_phase is not None:
+        candidate = devlyn / f"{artifact_phase}.worker-session.{entry.get('round')}.jsonl"
+        if candidate.is_file():
+            retained_session = candidate
+
     attestation_error = None
     if engine_session_log is None:
         entry["model_effective"] = None
+        if retained_session is not None:
+            attestation_error = (
+                "BLOCKED:model-attestation-failed: --engine-session-log is required because "
+                f"retained worker session exists: {retained_session}"
+            )
     else:
         try:
             entry["model_effective"] = parse_effective_model(pathlib.Path(engine_session_log))
@@ -1042,8 +1060,45 @@ def self_test() -> int:
         assert mismatched["model_effective"] == "gpt-5.6-terra"
         assert mismatched["verdict"] == "BLOCKED"
 
-        # No evidence flag means the engine class exposed no session log;
-        # supplied evidence must parse and never silently record null.
+        # A retained mutation-worker session makes the completion flag
+        # mandatory; without a retained file, null remains legal.
+        retained_log = devlyn / "implement.worker-session.0.jsonl"
+        retained_log.write_text(json.dumps({
+            "type": "turn_context", "payload": {"model": "gpt-5.6-terra"},
+        }) + "\n", encoding="utf-8")
+        write_state(state_path, {"phases": {}})
+        state = read_state(state_path)
+        do_spawn(state, "implement", 0, None, None, "codex", "gpt-5.6-terra")
+        omitted = do_complete(
+            state, "implement", "PASS", None, None, None, None, None,
+            devlyn=devlyn,
+        )
+        assert omitted and "model-attestation-failed" in omitted
+        assert str(retained_log) in omitted
+        assert state["phases"]["implement"]["model_effective"] is None
+        assert state["phases"]["implement"]["verdict"] == "BLOCKED"
+
+        write_state(state_path, {"phases": {}})
+        state = read_state(state_path)
+        do_spawn(state, "implement", 0, None, None, "codex", "gpt-5.6-terra")
+        assert do_complete(
+            state, "implement", "PASS", None, None, None, None, None,
+            str(retained_log), devlyn=devlyn,
+        ) is None
+        assert state["phases"]["implement"]["model_effective"] == "gpt-5.6-terra"
+        assert state["phases"]["implement"]["verdict"] == "PASS"
+
+        retained_log.unlink()
+        write_state(state_path, {"phases": {}})
+        state = read_state(state_path)
+        do_spawn(state, "cleanup", 0, None, None, "claude", "claude-default")
+        assert do_complete(
+            state, "cleanup", "PASS", None, None, None, None, None,
+            devlyn=devlyn,
+        ) is None
+        assert state["phases"]["cleanup"]["model_effective"] is None
+
+        # Supplied evidence must parse and never silently record null.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
         do_spawn(state, "plan", 0, None, None, "claude", "claude-default")
@@ -1154,7 +1209,7 @@ def main() -> int:
     else:
         attestation_error = do_complete(
             state, args.phase, args.verdict, args.post_sha, args.findings_file,
-            args.log_file, args.engine, args.model, args.engine_session_log,
+            args.log_file, args.engine, args.model, args.engine_session_log, devlyn,
         )
 
     write_state(state_path, state)
