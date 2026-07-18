@@ -411,6 +411,7 @@ fi
 if ! grep -Fq 'rollback_surface_delta' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'validate_surface_adjudication' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'validate_surface_execution' config/skills/_shared/state-phase-write.py \
+  || ! grep -Fq 'phases.surface_close spawn requires --engine claude' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'surface-check' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'surface-rollback' config/skills/_shared/state-phase-write.py; then
   bad "state-phase-write.py must mechanically adjudicate, audit, guard, and roll back SURFACE_CLOSE"

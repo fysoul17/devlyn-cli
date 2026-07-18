@@ -39,7 +39,9 @@ SURFACE_ROW_RE = re.compile(
     r"^(?P<obligation>UVR-STALE|PATH-TEST): (?P<status>FIRED|N/A) "
     r"(?P<path>.+):(?P<line>[1-9][0-9]*)(?: — (?P<evidence>\S.*))?$"
 )
-VALIDATION_EXECUTION_RE = re.compile(r"npm\s+test|node\s+--test|node\s+-e|git\s+stash")
+VALIDATION_EXECUTION_RE = re.compile(
+    r"npm\s+test|node\s+--test|node\s+-e|node\s+bin/|node\s+tests/|git\s+stash"
+)
 SURFACE_SKIP_REASON = "auto_surface_close_claude_unavailable"
 
 
@@ -473,6 +475,8 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
              untracked_before: list[str] | None = None) -> None:
     # Merge, don't replace: a phase-gated large run's `exec` progress (or any
     # other field this script doesn't own) survives a fix-loop respawn.
+    if phase == "surface_close" and engine != "claude":
+        raise SystemExit("error: phases.surface_close spawn requires --engine claude")
     phases = state.setdefault("phases", {})
     entry = phases.get(phase)
     if phase == "surface_close" and isinstance(entry, dict) and (
@@ -876,6 +880,19 @@ def self_test() -> int:
             },
             "phases": {},
         }
+        for rejected_engine in (None, "codex"):
+            rejected_state = {"sentinel": True}
+            try:
+                do_spawn(
+                    rejected_state, "surface_close", 0, None, pre_sha, rejected_engine, None,
+                    input_patch_sha256=file_sha256(patch), prompt_sha256=file_sha256(prompt),
+                    untracked_before=["kept.txt"],
+                )
+            except SystemExit as exc:
+                assert "requires --engine claude" in str(exc)
+            else:
+                raise AssertionError("SURFACE_CLOSE accepted a non-Claude engine")
+            assert rejected_state == {"sentinel": True}
         do_spawn(
             surface_state, "surface_close", 0, None, pre_sha, "claude", None,
             input_patch_sha256=file_sha256(patch), prompt_sha256=file_sha256(prompt),
@@ -953,18 +970,21 @@ def self_test() -> int:
             }]},
         }) + "\n", encoding="utf-8")
         validate_surface_execution(work_devlyn, surface_state)
-        transcript.write_text(json.dumps({
-            "message": {"content": [{
-                "type": "tool_use", "name": "Bash",
-                "input": {"command": "npm test"},
-            }]},
-        }) + "\n", encoding="utf-8")
-        try:
-            validate_surface_execution(work_devlyn, surface_state)
-        except SystemExit as exc:
-            assert "validation-execution" in str(exc)
-        else:
-            raise AssertionError("SURFACE_CLOSE execution audit accepted validation execution")
+        for validation_command in ("npm test", "node bin/cli.js version"):
+            transcript.write_text(json.dumps({
+                "message": {"content": [{
+                    "type": "tool_use", "name": "Bash",
+                    "input": {"command": validation_command},
+                }]},
+            }) + "\n", encoding="utf-8")
+            try:
+                validate_surface_execution(work_devlyn, surface_state)
+            except SystemExit as exc:
+                assert "validation-execution" in str(exc)
+            else:
+                raise AssertionError(
+                    f"SURFACE_CLOSE execution audit accepted {validation_command}"
+                )
 
         (work / "allowed.txt").write_text("pre-existing\n", encoding="utf-8")
         try:
