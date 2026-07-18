@@ -968,3 +968,46 @@ diagnostic row under the UNCHANGED all-checks gate — the ship decision.
 Honest residuals carried: L1-necessity-on-sonnet n=1; live-row decline
 = variance/fidelity note; row-class scope (held-out UVR row gate before
 any class-closed claim).
+
+## v6 composite build SHIPPED (2026-07-18 night; commits ebe4626/bd39a96/af91dad/6b63157)
+
+Three-seat loop: Codex sol executor; orchestrator mirror-sync + scoped
+commits (codex 0.144.5 sandbox classifies `.agents/` as outside the
+project — protocol: codex edits `config/skills/**` + `scripts/` only,
+orchestrator derives both mirrors and commits); Grok independent audit
+GO-WITH-EDITS. Stack: (a) `ebe4626` effective-model attestation
+(`model_requested`/`model_effective` parsed from engine session evidence
+— exec header `model:` line / rollout `turn_context.payload.model` /
+claude-result sole `modelUsage` key; mismatch or bad evidence → BLOCKED
++ exit 1; live receipt: single sonnet `-p` call yields exactly one
+modelUsage key, so multi-key conflict-BLOCK is fail-closed, not a live
+false-positive); (b) `bd39a96` mutation-worker rollout retention
+(`<phase>.worker-session.<round>.jsonl` patterns; engine-global scans
+forbidden + negative self-test); (c) `af91dad` mechanism — SURFACE_CLOSE
+restored with claude seat routing, FL1 canonical body + Amendment-4
+grammar in `<output>`, VERBATIM assembly hashed to
+`phases.surface_close.prompt_sha256`, surface-check = adjudication-row
+parser (missing/malformed/duplicate/out-of-surface/nonexistent-citation
+/bare-PASS → BLOCK; EMPTY PASS = two evidenced N/A + empty delta) +
+retained-rollout execution audit (session file missing → BLOCK, which
+mechanically forces retention) + Amendment-3 VMF merge-boundary
+enforcement (schema-v3-gated; canonical skip only); (d) `6b63157` Grok
+Edit 1 predicate parity (`node bin/|node tests/` restored to match
+`r6-replay-cell.py:73` — the predicate that credited the graduated
+matrix) + Edit 2 seat fail-closed at spawn (`--engine claude` required,
+state-mutation-free reject). Convergence 3/3: Grok "no other edits
+required"; Codex R1 agreement, zero named deltas.
+
+Token-cap baselines (recorded per Grok E-axis finding): registered
+0072.10-edit-5 cap applies to the MECHANISM diff — SKILL c4 +1.998% ≤
+2.0%, load-set +2.279% ≤ 2.5% (independently recomputed); full 4-commit
+stack including prereqs = c4 +3.75% / w13 +2.99% (transparent, not the
+registered cap basis). Acceptably-residual (Grok, watched on the row,
+not pre-blocked): claude session-JSONL acquisition is instruction +
+fail-closed-on-missing, assembly content-equality is hash-of-written-
+file (mechanical assembler = new surface without a mis-assembly
+receipt).
+
+Ship gate next: ONE fresh nodeg diagnostic row `nodeg-20260718d` (F7,
+`--v5` gate incl. check 13 attribution, CLI pin 2.1.211 as the v5-arc
+identity, seats claude=sonnet / codex=terra, `.devlyn` snapshot live).
