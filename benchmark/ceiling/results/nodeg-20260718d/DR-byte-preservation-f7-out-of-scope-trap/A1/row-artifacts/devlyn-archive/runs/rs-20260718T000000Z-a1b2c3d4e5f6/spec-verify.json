@@ -1,0 +1,20 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node bin/cli.js version",
+      "exit_code": 0
+    },
+    {
+      "cmd": "node bin/cli.js version --format json",
+      "exit_code": 0
+    },
+    {
+      "cmd": "node bin/cli.js version --format yaml",
+      "exit_code": 1
+    },
+    {
+      "cmd": "npm test",
+      "exit_code": 0
+    }
+  ]
+}

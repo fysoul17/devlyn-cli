@@ -1,0 +1,21 @@
+## Findings
+
+1. `severity: MEDIUM`  
+   `rule_id: spec.unsupported-repeated-format`  
+   `file:line: bin/cli.js:45` — `const idx = argv.indexOf('--format');`  
+   `message:` Only the first `--format` occurrence is validated. `version --format json --format yaml` exits 0 and prints `{"version":"0.1.0"}`, despite containing the unsupported value `yaml`. The contract requires any unsupported `--format` value to exit 1.  
+   `confidence: high`
+
+Coverage confirmed:
+
+- JSON output is single-line, valid, and matches package version `0.1.0`.
+- No-format output remains `0.1.0`.
+- YAML, missing, empty, and case-variant values exit 1.
+- All five CLI tests pass; the original three tests are byte-identical.
+- Only the two permitted files changed; dependency manifests are unchanged.
+- The permitted `version` help-line update is the only help change.
+- Full `npm test` was attempted but unrelated server tests could not bind sockets in the read-only sandbox (`EPERM`); the supplied mechanical run records it passing.
+
+## Verdict
+
+`NEEDS_WORK`

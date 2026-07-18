@@ -1,0 +1,3 @@
+UVR-STALE: FIRED bin/cli.js:12 — USAGE constant's `version` line omitted the newly added `--format json` option (same pattern already used for `hello [--name NAME]` on line 11); updated to `version [--format json]` preserving column alignment.
+PATH-TEST: FIRED tests/cli.test.js:33 — Goal requires `--format yaml`/unsupported values to exit 1, implemented in `parseFormatFlag` (bin/cli.js:44-53), but no existing test exercised that failure path; added `version rejects unsupported --format value` test asserting `err.status === 1`.
+PASS
