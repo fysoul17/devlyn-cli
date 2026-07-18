@@ -1155,3 +1155,74 @@ requested-model, never silently null).
 is the frame; no re-design) → Codex builds (config/scripts only;
 orchestrator mirrors) → restricted-route FL1×sonnet + controls replay
 (probe tier) → green → fresh diagnostic row = the ship decision.
+
+## REGISTRATION v6 — AMENDMENT 5 FROZEN (2026-07-18 continuation session; composed from the converged frame above, no re-design)
+
+**Criterion / falsifier**: Phase-Legal Action-Space Equivalence + the
+pre-registered three-leg falsifier, verbatim from the converged round
+(§ above; DECISIONS 0072.20). Validation ladder UNCHANGED.
+
+**Runtime feasibility receipt (orchestrator, this session)**: pinned CLI
+2.1.211 accepted `--tools "Read,Grep,Glob,Edit,Write" --output-format
+json --model sonnet` → exit 0, wrapper `result` exact, `modelUsage` =
+`["claude-sonnet-5"]`, full session JSONL retained under
+`~/.claude/projects/`. Falsifier leg (iii) discharged at flag level;
+behavioral exclusion is what the replay validates.
+
+**Frozen edits (build contract; Codex sol executor, orchestrator
+mirrors `.agents`)**:
+
+- **A5-E1 spawn envelope** — SKILL.md:243 (+2 mirrors): SC dispatch
+  gains `--tools "Read,Grep,Glob,Edit,Write"` (availability, not
+  permission), `--model sonnet` (the validated seat — FL1×sonnet is the
+  graduated cell; value recorded identically at SPW spawn), and
+  `--output-format json`. Raw stdout saved as
+  `.devlyn/surface-close.output.json`; orchestrator extracts the
+  wrapper `result` string to `.devlyn/surface-close.stdout`
+  (adjudication-parser input unchanged, SPW:295). Non-JSON stdout or
+  missing `result` = worker failure → existing failure path
+  (surface-rollback + bare `BLOCKED` + halt); no new BLOCKED name.
+- **A5-E2 worker body** — surface-close.md: DELETE the `<input>`
+  "Supplied digests" line (:9) and the two self-hash sentences at :13
+  ("Hash both artifacts first. Mismatch: make no edits; reply
+  `BLOCKED:surface-close-input-mismatch`."); KEEP "Never modify inputs
+  or read state, PLAN, or IMPLEMENT transcript/reasoning." Receipt:
+  dual-hash is mechanical at spawn (required
+  `--input-patch-sha256`/`--prompt-sha256`) AND at surface-check
+  (SPW:1178 `validate_surface_inputs` re-hashes goal+patch; :156-176
+  keeps `BLOCKED:surface-close-input-mismatch` alive mechanically).
+  Consequence, explicit: canonical body bytes change → assembled
+  `prompt_sha256` changes → r6-replay FL1 template re-pinned to the NEW
+  assembled bytes (recorded frozen-input revision, not silent drift).
+- **A5-E3 attestation** — SC `complete --engine-session-log
+  .devlyn/surface-close.output.json` (non-.jsonl → `modelUsage` branch
+  SPW:428-435 → `model_effective`; mismatch →
+  `BLOCKED:model-attestation-mismatch` SPW:620-624, existing).
+  Worker-session JSONL copy duty + execution audit (SPW:390-398)
+  UNCHANGED as backstops. NEW SPW guard: `surface_close` spawn REQUIRES
+  `--model` (fail-closed; never silently null). state-schema.md
+  surface_close bullet + spawn/complete contract updated. The claude
+  `message.model` parser carrier is NOT built — pre-authorized fallback
+  only if the json route proves insufficient at replay/row.
+- **A5-E4 replay instrument** — claude-isolation.py arm-mode gains
+  optional `--tools-csv` (appended as `--tools <csv>`);
+  r6-replay-cell.py restricted route = FL1×sonnet under the restriction
+  + NEW body template; execution-audit predicate unchanged. Bars
+  (unchanged): UVR fire ≥2/3 on execution-clean replicas + controls 2/2
+  (control-a/control-b `1ee0085`: correct disposition, zero
+  false-FIRED, zero forbidden edits) + restriction receipts (zero Bash
+  `tool_use` in transcripts; `modelUsage` present; JSONL retained).
+  Probe tier BEFORE any live row.
+
+**Static gates**: SPW self-tests extended (spawn `--model` requirement;
+wrapper-attestation path); lint (spawn-sentence needles re-targeted if
+bytes change); 3-tree parity; token gauges net ≤+0.5% both (body
+deletion offsets envelope addition); archive_run.py archives
+`surface-close.output.json`.
+
+**Ship path**: replay green → ONE fresh diagnostic row (fresh run-id;
+CLI pin 2.1.211; seats sonnet/terra; live snapshots via
+watch-nodeg-row.sh; unchanged `--v5 --post-implement` all-checks gate +
+pinned node) = the ship decision. Falsifying valid row → revert v6
+(falsification-keyed). pre8=True stochastic draw → non-diagnostic,
+rerun licensed (v5-edit-4 attribution rule).
