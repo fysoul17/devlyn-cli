@@ -71,6 +71,7 @@ devlyn:resolve/references/free-form-mode.md
 devlyn:resolve/references/phases/plan.md
 devlyn:resolve/references/phases/probe-derive.md
 devlyn:resolve/references/phases/implement.md
+devlyn:resolve/references/phases/surface-close.md
 devlyn:resolve/references/phases/build-gate.md
 devlyn:resolve/references/phases/cleanup.md
 devlyn:resolve/references/phases/verify.md
@@ -398,6 +399,42 @@ if ! grep -Fq 'SAFE_RUN_ID_RE' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"verify-merge.summary.json"' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"*-judge.*"' config/skills/_shared/archive_run.py; then
   bad "archive_run.py must safely archive pair/risk-probe evidence and reject unsafe run ids"
+fi
+
+section "Check 6c2: SURFACE_CLOSE v6 dispatch is complete and mirrored"
+surface_close_missing=0
+if python3 config/skills/_shared/state-phase-write.py --self-test >/dev/null 2>&1; then
+  ok "SURFACE_CLOSE state/envelope/adjudication/audit/rollback self-test passed"
+else
+  bad "state-phase-write.py SURFACE_CLOSE self-test failed"
+fi
+if ! grep -Fq 'rollback_surface_delta' config/skills/_shared/state-phase-write.py \
+  || ! grep -Fq 'validate_surface_adjudication' config/skills/_shared/state-phase-write.py \
+  || ! grep -Fq 'validate_surface_execution' config/skills/_shared/state-phase-write.py \
+  || ! grep -Fq 'surface-check' config/skills/_shared/state-phase-write.py \
+  || ! grep -Fq 'surface-rollback' config/skills/_shared/state-phase-write.py; then
+  bad "state-phase-write.py must mechanically adjudicate, audit, guard, and roll back SURFACE_CLOSE"
+fi
+for tree in config/skills .claude/skills .agents/skills; do
+  skill="$tree/devlyn:resolve/SKILL.md"
+  phase="$tree/devlyn:resolve/references/phases/surface-close.md"
+  if ! grep -Fq '## PHASE 2.5: SURFACE_CLOSE' "$skill" \
+    || ! grep -Fq '`state.source.type == "generated"` and complexity is trivial/medium' "$skill" \
+    || ! grep -Fq 'Engine is Claude always' "$skill" \
+    || ! grep -Fq 'executor flag/pin' "$skill" \
+    || ! grep -Fq 'auto_surface_close_claude_unavailable' "$skill" \
+    || ! grep -Fq 'canonical body VERBATIM' "$skill" \
+    || ! grep -Fq 'run-bounded.py 600 -- claude -p' "$skill" \
+    || ! grep -Fq '`surface-rollback`' "$skill" \
+    || ! grep -Fq 'BLOCKED:surface-close-input-mismatch' "$phase" \
+    || ! grep -Fq 'optionally followed by ` — <one-line evidence>`' "$phase" \
+    || ! grep -Fq 'N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>' "$phase"; then
+    bad "$tree — SURFACE_CLOSE v6 dispatch/timeout/adjudication/rollback contract missing"
+    surface_close_missing=1
+  fi
+done
+if [ $surface_close_missing -eq 0 ]; then
+  ok "SURFACE_CLOSE v6 dispatch/timeout/adjudication/rollback contract is mirrored"
 fi
 
 section "Check 6d: Spec verification executes hidden-blind risk probes"
@@ -1199,9 +1236,9 @@ if ! grep -Fq 'pair_evidence_intent' config/skills/devlyn:resolve/references/fre
   || ! grep -Fq 'state.source.criteria_sha256` for generated free-form mode' config/skills/devlyn:resolve/references/phases/verify.md \
   || ! grep -Fq 'state.source.criteria_sha256` for generated free-form mode' .claude/skills/devlyn:resolve/references/phases/verify.md \
   || ! grep -Fq 'state.source.criteria_sha256` for generated free-form mode' .agents/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'Free-form mode sets `type: "generated"`' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Free-form mode sets `type: "generated"`' .claude/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Free-form mode sets `type: "generated"`' .agents/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq 'Free-form sets `type: "generated"`' config/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq 'Free-form sets `type: "generated"`' .claude/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq 'Free-form sets `type: "generated"`' .agents/skills/devlyn:resolve/references/state-schema.md \
   || ! grep -Fq 'backticked observable command line that itself contains `miss`' config/skills/devlyn:resolve/references/free-form-mode.md \
   || ! grep -Fq 'backticked observable command line that itself contains `miss`' .claude/skills/devlyn:resolve/references/free-form-mode.md \
   || ! grep -Fq 'backticked observable command line that itself contains `miss`' .agents/skills/devlyn:resolve/references/free-form-mode.md \
