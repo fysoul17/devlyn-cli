@@ -32,11 +32,13 @@ RESULTS_DIR = REPO / "benchmark/ceiling/results/r6-replay-20260718"
 TMP_ROOT = Path("/tmp/codex-0072-v6-build/r6-replay-work")
 PROMPTS = {
     "F1": {
-        "path": Path("/tmp/codex-0072-r6/f1-prompt.txt"),
+        "source_path": RESULTS_DIR / "f1-prompt.txt",
+        "filename": "f1-prompt.txt",
         "sha256": "00cddba55a0aaabff3e4dbea1264c412e806a293408bf25378babd8c7dbd23b1",
     },
     "FL1": {
-        "path": Path("/tmp/codex-0072-r6/fl1-prompt.txt"),
+        "source_path": RESULTS_DIR / "fl1-prompt.txt",
+        "filename": "fl1-prompt.txt",
         "sha256": "b422dd6e6783945f43059ffa2ad0cae76aac270289720416e5b0ea838bee5e83",
     },
 }
@@ -50,9 +52,11 @@ OVERLAY = (
     "f7-row-workspace-untracked.tgz"
 )
 PRE_SHA = "947dbf71494fc55bccf1c7f0dfe41959b1a65bd7"
+CONTROL_BASE_SHA = "e5a20d983f63e62ad264174c025fad97769e9fc5"
 GOAL_SHA = "f3467374f6554ece0b14e48250222d11fc6675aae4cb0ded70fc3503a78c9674"
 PATCH_SHA = "cfac5a9fafc59a1ddf019f1fb49412e5ddfd8ff393c28619b8de641997e56c9b"
 AUTHORIZED_SURFACE = ("bin/cli.js", "tests/cli.test.js")
+OBLIGATIONS = ("UVR-STALE", "PATH-TEST")
 MODEL_BY_ENGINE = {"terra": "gpt-5.6-terra", "sonnet": "sonnet"}
 CELLS = (
     ("F1-terra", "F1", "terra"),
@@ -61,8 +65,13 @@ CELLS = (
     ("FL1-sonnet", "FL1", "sonnet"),
 )
 GLOBAL_CAP = 12
+CONTROL_WORKER_CAP = 4
+CONTROL_NAMES = ("control-a-no-stale", "control-b-goal-frozen")
 TIMEOUT_SECONDS = 600
 REGISTRATION = "iter-0072 Registration v6 / DECISIONS 0072.14"
+VALIDATION_COMMAND_PATTERN = re.compile(
+    r"npm\s+test|node\s+--test|node\s+-e|node\s+bin/|node\s+tests/|git\s+stash"
+)
 RECEIPT_FIELDS = {
     "schema_version",
     "cell",
@@ -84,8 +93,16 @@ RECEIPT_FIELDS = {
     "timed_out",
     "readout",
     "phase_boundary",
+    "execution_audit",
     "valid",
     "invalid_reasons",
+}
+CONTROL_RECEIPT_FIELDS = RECEIPT_FIELDS | {
+    "control",
+    "control_inputs",
+    "expected_disposition",
+    "expected_delta",
+    "control_scoring",
 }
 
 
@@ -99,6 +116,24 @@ class PreparedWorkspace:
     overlay_input_source: str
     pre_status: str
     pre_untracked: dict[str, str]
+
+
+@dataclass(frozen=True)
+class ControlContract:
+    name: str
+    goal: bytes
+    input_patch: bytes
+    expected_disposition: dict[str, str]
+    expected_delta: str
+
+
+@dataclass(frozen=True)
+class PreparedControlWorkspace:
+    prepared: PreparedWorkspace
+    pre_tracked: dict[str, str]
+    goal_sha256: str
+    patch_sha256: str
+    usage_sha256: str
 
 
 def utc_now() -> str:
@@ -210,10 +245,46 @@ def untracked_snapshot(workspace: Path) -> dict[str, str]:
         relative = raw.decode("utf-8", errors="strict")
         candidate = workspace / relative
         if candidate.is_file() and not candidate.is_symlink():
-            snapshot[relative] = sha256_file(candidate)
+            mode = stat.S_IMODE(candidate.stat().st_mode)
+            snapshot[relative] = f"{mode:o}:{sha256_file(candidate)}"
         elif candidate.is_symlink():
             snapshot[relative] = "symlink:" + os.readlink(candidate)
     return snapshot
+
+
+def tracked_snapshot(workspace: Path) -> dict[str, str]:
+    result = run_command(["git", "ls-files", "-z"], cwd=workspace, text=False)
+    require_success(result, "git ls-files")
+    snapshot: dict[str, str] = {}
+    for raw in result.stdout.split(b"\0"):
+        if not raw:
+            continue
+        relative = raw.decode("utf-8", errors="strict")
+        candidate = workspace / relative
+        if candidate.is_file() and not candidate.is_symlink():
+            snapshot[relative] = sha256_file(candidate)
+        elif candidate.is_symlink():
+            snapshot[relative] = "symlink:" + os.readlink(candidate)
+        else:
+            snapshot[relative] = "missing"
+    return snapshot
+
+
+def changed_snapshot_paths(before: dict[str, str], after: dict[str, str]) -> list[str]:
+    return sorted(
+        path
+        for path in set(before) | set(after)
+        if before.get(path) != after.get(path)
+    )
+
+
+def usage_block_sha256(path: Path) -> str:
+    if not path.is_file():
+        return "missing"
+    matches = re.findall(rb"const USAGE = `.*?`;", path.read_bytes(), flags=re.DOTALL)
+    if len(matches) != 1:
+        return "malformed"
+    return sha256_bytes(matches[0])
 
 
 def restore_archived_prompt_inputs(workspace: Path) -> str:
@@ -515,6 +586,144 @@ def run_sonnet(
     }
 
 
+def codex_command_strings(value: Any) -> list[str]:
+    commands: list[str] = []
+    if isinstance(value, dict):
+        for key, nested in value.items():
+            if key == "cmd" and isinstance(nested, str):
+                commands.append(nested)
+            else:
+                commands.extend(codex_command_strings(nested))
+    elif isinstance(value, list):
+        for nested in value:
+            commands.extend(codex_command_strings(nested))
+    elif isinstance(value, str):
+        for match in re.finditer(r'"cmd"\s*:\s*', value):
+            try:
+                command, _ = json.JSONDecoder().raw_decode(value, match.end())
+            except json.JSONDecodeError:
+                continue
+            if isinstance(command, str):
+                commands.append(command)
+    return commands
+
+
+def transcript_commands(transcript: Path, engine: str) -> tuple[list[str], list[str]]:
+    commands: list[str] = []
+    errors: list[str] = []
+    for line_number, line in enumerate(
+        transcript.read_text(encoding="utf-8", errors="strict").splitlines(), start=1
+    ):
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            errors.append(f"worker-transcript-malformed:{line_number}")
+            continue
+        if engine == "sonnet":
+            content = ((event.get("message") or {}).get("content"))
+            if not isinstance(content, list):
+                continue
+            for item in content:
+                if not isinstance(item, dict) or item.get("type") != "tool_use":
+                    continue
+                if item.get("name") != "Bash":
+                    continue
+                command = (item.get("input") or {}).get("command")
+                if isinstance(command, str):
+                    commands.append(command)
+        elif engine == "terra":
+            payload = event.get("payload")
+            if isinstance(payload, dict) and payload.get("type") == "custom_tool_call":
+                commands.extend(codex_command_strings(payload))
+        else:
+            raise ProbeError(f"unsupported transcript engine: {engine}")
+    return commands, errors
+
+
+def execution_audit_for_transcript(
+    transcript: Path, engine: str, *, transcript_path: str = "worker-transcript.jsonl"
+) -> tuple[dict[str, Any], list[str]]:
+    try:
+        commands, errors = transcript_commands(transcript, engine)
+    except UnicodeDecodeError:
+        commands = []
+        errors = ["worker-transcript-not-utf8"]
+    hits = [command for command in commands if VALIDATION_COMMAND_PATTERN.search(command)]
+    return (
+        {
+            "n_commands": len(commands),
+            "validation_execution": bool(hits),
+            "validation_hits": hits,
+            "transcript_path": transcript_path,
+        },
+        errors,
+    )
+
+
+def locate_worker_transcripts(home: Path, engine: str) -> list[Path]:
+    if engine == "sonnet":
+        pattern = ".claude/projects/**/*.jsonl"
+    elif engine == "terra":
+        pattern = ".codex/sessions/**/rollout-*.jsonl"
+    else:
+        raise ProbeError(f"unsupported transcript engine: {engine}")
+    return sorted(path for path in home.glob(pattern) if path.is_file())
+
+
+def archive_and_audit_transcript(
+    home: Path, engine: str, artifact_dir: Path
+) -> tuple[dict[str, Any], list[str]]:
+    sources = locate_worker_transcripts(home, engine)
+    archived = artifact_dir / "worker-transcript.jsonl"
+    if not sources:
+        return (
+            {
+                "n_commands": 0,
+                "validation_execution": False,
+                "validation_hits": [],
+                "transcript_path": None,
+            },
+            ["worker-transcript-missing"],
+        )
+    transcript = b""
+    for source in sources:
+        value = source.read_bytes()
+        transcript += value
+        if value and not value.endswith(b"\n"):
+            transcript += b"\n"
+    write_bytes(archived, transcript)
+    return execution_audit_for_transcript(archived, engine)
+
+
+def worker_invalid_reasons(
+    worker: dict[str, Any], engine: str, execution_audit: dict[str, Any], audit_errors: list[str]
+) -> list[str]:
+    invalid_reasons = list(audit_errors)
+    if execution_audit["validation_execution"]:
+        invalid_reasons.append("validation-execution")
+    if worker["exit_code"] != 0:
+        invalid_reasons.append("worker-exit-nonzero")
+    if worker["timed_out"]:
+        invalid_reasons.append("worker-timeout")
+    if not worker["final_message"]:
+        invalid_reasons.append("worker-final-message-missing")
+    if not worker["cli_version"]:
+        invalid_reasons.append("cli-version-missing")
+    effective = worker["effective_model"]
+    requested_model = MODEL_BY_ENGINE[engine]
+    if effective is None:
+        invalid_reasons.append("effective-model-missing")
+    if worker["effective_model_source"] is None:
+        invalid_reasons.append("effective-model-source-missing")
+    elif engine == "terra" and effective != requested_model:
+        invalid_reasons.append("effective-model-mismatch")
+    elif engine == "sonnet" and "sonnet" not in effective.casefold():
+        invalid_reasons.append("effective-model-mismatch")
+    return invalid_reasons
+
+
 def changed_paths(workspace: Path) -> list[str]:
     output = git_output(workspace, "diff", "--name-only", PRE_SHA, "--")
     return [line for line in output.splitlines() if line]
@@ -570,6 +779,10 @@ def missing_receipt_fields(receipt: dict[str, Any]) -> list[str]:
     return sorted(RECEIPT_FIELDS - set(receipt))
 
 
+def missing_control_receipt_fields(receipt: dict[str, Any]) -> list[str]:
+    return sorted(CONTROL_RECEIPT_FIELDS - set(receipt))
+
+
 def execute_replica(
     *,
     cell: str,
@@ -578,6 +791,7 @@ def execute_replica(
     replica: int,
     results_dir: Path,
     tmp_root: Path,
+    prompts: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
     artifact_dir = results_dir / cell / f"replica-{replica:02d}"
     artifact_dir.mkdir(parents=True, exist_ok=False)
@@ -590,7 +804,7 @@ def execute_replica(
         {"started_at": utc_now(), "cell": cell, "replica": replica, "runner_pid": os.getpid()},
     )
     prepared = prepare_workspace(workspace)
-    prompt = PROMPTS[prompt_variant]["path"]
+    prompt = prompts[prompt_variant]["path"]
     pre_tree = {
         "head": git_output(workspace, "rev-parse", "HEAD").strip(),
         "tracked_dirty": bool(
@@ -603,6 +817,9 @@ def execute_replica(
         run_codex(workspace, prompt, artifact_dir, home)
         if engine == "terra"
         else run_sonnet(workspace, prompt, artifact_dir, home)
+    )
+    execution_audit, audit_errors = archive_and_audit_transcript(
+        home, engine, artifact_dir
     )
     delta = run_command(
         ["git", "diff", "--binary", "--no-ext-diff", PRE_SHA, "--"],
@@ -619,30 +836,18 @@ def execute_replica(
         workspace=workspace,
         prepared=prepared,
     )
+    invalid_reasons = worker_invalid_reasons(
+        worker, engine, execution_audit, audit_errors
+    )
     readout = static_readout(workspace)
-    readout["credited_uvr_fired"] = bool(readout["uvr_fired"] and boundary["passed"])
+    readout["credited_uvr_fired"] = bool(
+        readout["uvr_fired"] and boundary["passed"] and not invalid_reasons
+    )
     readout["credited_path_test_fired"] = bool(
-        readout["path_test_fired"] and boundary["passed"]
+        readout["path_test_fired"] and boundary["passed"] and not invalid_reasons
     )
     requested_model = MODEL_BY_ENGINE[engine]
-    invalid_reasons: list[str] = []
-    if worker["exit_code"] != 0:
-        invalid_reasons.append("worker-exit-nonzero")
-    if worker["timed_out"]:
-        invalid_reasons.append("worker-timeout")
-    if not final:
-        invalid_reasons.append("worker-final-message-missing")
-    if not worker["cli_version"]:
-        invalid_reasons.append("cli-version-missing")
     effective = worker["effective_model"]
-    if effective is None:
-        invalid_reasons.append("effective-model-missing")
-    if worker["effective_model_source"] is None:
-        invalid_reasons.append("effective-model-source-missing")
-    elif engine == "terra" and effective != requested_model:
-        invalid_reasons.append("effective-model-mismatch")
-    elif engine == "sonnet" and "sonnet" not in effective.casefold():
-        invalid_reasons.append("effective-model-mismatch")
     receipt = {
         "schema_version": "r6-replay.v1",
         "cell": cell,
@@ -669,6 +874,7 @@ def execute_replica(
         "timed_out": worker["timed_out"],
         "readout": readout,
         "phase_boundary": boundary,
+        "execution_audit": execution_audit,
         "valid": not invalid_reasons,
         "invalid_reasons": invalid_reasons,
         "completed_at": utc_now(),
@@ -681,13 +887,33 @@ def execute_replica(
     return receipt
 
 
-def validate_prompts() -> None:
-    for variant, contract in PROMPTS.items():
-        path = contract["path"]
+def validate_prompts(prompts: dict[str, dict[str, Any]] = PROMPTS) -> None:
+    for variant, contract in prompts.items():
+        path = contract.get("path", contract.get("source_path"))
+        if not isinstance(path, Path):
+            raise ProbeError(f"{variant} prompt path contract missing")
         if not path.is_file():
             raise ProbeError(f"{variant} prompt missing: {path}")
         if sha256_file(path) != contract["sha256"]:
             raise ProbeError(f"{variant} prompt hash mismatch")
+
+
+def durable_prompts(results_dir: Path) -> dict[str, dict[str, Any]]:
+    validate_prompts()
+    results_dir.mkdir(parents=True, exist_ok=True)
+    durable: dict[str, dict[str, Any]] = {}
+    for variant, contract in PROMPTS.items():
+        source = contract["source_path"]
+        target = results_dir / contract["filename"]
+        value = source.read_bytes()
+        if target.exists():
+            if not target.is_file() or target.read_bytes() != value:
+                raise ProbeError(f"{variant} durable prompt conflicts: {target}")
+        else:
+            write_bytes(target, value)
+        durable[variant] = {**contract, "path": target}
+    validate_prompts(durable)
+    return durable
 
 
 def attempt_directories(results_dir: Path, cell: str | None = None) -> list[Path]:
@@ -711,7 +937,32 @@ def load_receipts(results_dir: Path, cell: str) -> list[dict[str, Any]]:
             receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             continue
-        receipt["valid"] = bool(receipt.get("valid")) and not missing_receipt_fields(receipt)
+        audit_errors: list[str] = []
+        if "execution_audit" not in receipt:
+            transcript = path / "worker-transcript.jsonl"
+            if transcript.is_file():
+                receipt["execution_audit"], audit_errors = execution_audit_for_transcript(
+                    transcript, receipt.get("engine")
+                )
+            else:
+                receipt["execution_audit"] = {
+                    "n_commands": 0,
+                    "validation_execution": False,
+                    "validation_hits": [],
+                    "transcript_path": None,
+                }
+                audit_errors = ["worker-transcript-missing"]
+        audit = receipt["execution_audit"]
+        audit_invalid = (
+            bool(audit_errors)
+            or not isinstance(audit, dict)
+            or bool(audit.get("validation_execution"))
+        )
+        receipt["valid"] = (
+            bool(receipt.get("valid"))
+            and not audit_invalid
+            and not missing_receipt_fields(receipt)
+        )
         receipts.append(receipt)
     return receipts
 
@@ -792,7 +1043,9 @@ def adaptive_trace(summary: dict[str, Any]) -> list[dict[str, Any]]:
     return trace
 
 
-def build_manifest(results_dir: Path, summary: dict[str, Any]) -> dict[str, Any]:
+def build_manifest(
+    results_dir: Path, summary: dict[str, Any], prompts: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
     return {
         "schema_version": "r6-replay-manifest.v1",
         "registration": REGISTRATION,
@@ -825,7 +1078,7 @@ def build_manifest(results_dir: Path, summary: dict[str, Any]) -> dict[str, Any]
                 "sha256": sha256_file(contract["path"]),
                 "bytes": contract["path"].stat().st_size,
             }
-            for variant, contract in PROMPTS.items()
+            for variant, contract in prompts.items()
         },
         "seats": {
             "terra": {
@@ -849,16 +1102,17 @@ def build_manifest(results_dir: Path, summary: dict[str, Any]) -> dict[str, Any]
     }
 
 
-def update_outputs(results_dir: Path) -> dict[str, Any]:
+def update_outputs(
+    results_dir: Path, prompts: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
     summary = summarize(results_dir)
     atomic_json(results_dir / "summary.json", summary)
-    atomic_json(results_dir / "manifest.json", build_manifest(results_dir, summary))
+    atomic_json(results_dir / "manifest.json", build_manifest(results_dir, summary, prompts))
     return summary
 
 
 def run_probe(results_dir: Path, tmp_root: Path) -> int:
-    validate_prompts()
-    results_dir.mkdir(parents=True, exist_ok=True)
+    prompts = durable_prompts(results_dir)
     tmp_root.mkdir(parents=True, exist_ok=True)
     lock_path = results_dir / ".runner.lock"
     with lock_path.open("a+") as lock:
@@ -866,7 +1120,7 @@ def run_probe(results_dir: Path, tmp_root: Path) -> int:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise ProbeError(f"another r6 replay runner holds {lock_path}") from exc
-        update_outputs(results_dir)
+        update_outputs(results_dir, prompts)
         for cell, prompt_variant, engine in CELLS:
             while True:
                 receipts = load_receipts(results_dir, cell)
@@ -875,7 +1129,7 @@ def run_probe(results_dir: Path, tmp_root: Path) -> int:
                 if len(valid) >= target:
                     break
                 if not can_start_worker(results_dir):
-                    update_outputs(results_dir)
+                    update_outputs(results_dir, prompts)
                     return 2
                 replica = next_replica_number(results_dir, cell)
                 execute_replica(
@@ -885,10 +1139,520 @@ def run_probe(results_dir: Path, tmp_root: Path) -> int:
                     replica=replica,
                     results_dir=results_dir,
                     tmp_root=tmp_root,
+                    prompts=prompts,
                 )
-                update_outputs(results_dir)
-        update_outputs(results_dir)
+                update_outputs(results_dir, prompts)
+        update_outputs(results_dir, prompts)
     return 0
+
+
+GOAL_PROMPT_HEADER = re.compile(
+    rb"^### Goal \(raw, at `\.devlyn/goal\.raw\.txt`, sha256 ([0-9a-f]{64})\)\n",
+    re.MULTILINE,
+)
+PATCH_PROMPT_HEADER = re.compile(
+    rb"^### Patch \(`\.devlyn/surface-close\.input\.patch`, sha256 ([0-9a-f]{64})\)\n",
+    re.MULTILINE,
+)
+
+
+def control_prompt_regions(prompt: bytes) -> dict[str, tuple[int, int]]:
+    goal_matches = list(GOAL_PROMPT_HEADER.finditer(prompt))
+    patch_matches = list(PATCH_PROMPT_HEADER.finditer(prompt))
+    if len(goal_matches) != 1 or len(patch_matches) != 1:
+        raise ProbeError("FL1 prompt Goal/Patch headers are not unique")
+    goal_header = goal_matches[0]
+    patch_header = patch_matches[0]
+    if goal_header.end() >= patch_header.start() or prompt[goal_header.end():goal_header.end() + 1] != b"\n":
+        raise ProbeError("FL1 Goal block delimiter malformed")
+    if prompt[patch_header.start() - 2:patch_header.start()] != b"\n\n":
+        raise ProbeError("FL1 Goal/Patch separator malformed")
+    patch_prefix = b"\n```diff\n"
+    if prompt[patch_header.end():patch_header.end() + len(patch_prefix)] != patch_prefix:
+        raise ProbeError("FL1 Patch fence opener malformed")
+    patch_body_start = patch_header.end() + len(patch_prefix)
+    patch_close = prompt.find(b"```\n\n### authorized_surface", patch_body_start)
+    if patch_close < 0:
+        raise ProbeError("FL1 Patch fence closer malformed")
+    return {
+        "goal_sha": goal_header.span(1),
+        "goal_body": (goal_header.end() + 1, patch_header.start() - 2),
+        "patch_sha": patch_header.span(1),
+        "patch_body": (patch_body_start, patch_close),
+    }
+
+
+def immutable_control_prompt_segments(prompt: bytes) -> tuple[bytes, ...]:
+    regions = sorted(control_prompt_regions(prompt).values())
+    segments: list[bytes] = []
+    cursor = 0
+    for start, end in regions:
+        segments.append(prompt[cursor:start])
+        cursor = end
+    segments.append(prompt[cursor:])
+    return tuple(segments)
+
+
+def assemble_control_prompt(template: bytes, goal: bytes, input_patch: bytes) -> bytes:
+    if sha256_bytes(template) != PROMPTS["FL1"]["sha256"]:
+        raise ProbeError("FL1 control template hash mismatch")
+    goal.decode("utf-8", errors="strict")
+    input_patch.decode("utf-8", errors="strict")
+    regions = control_prompt_regions(template)
+    if template[slice(*regions["goal_sha"])].decode() != GOAL_SHA:
+        raise ProbeError("FL1 control template Goal header hash mismatch")
+    if template[slice(*regions["patch_sha"])].decode() != PATCH_SHA:
+        raise ProbeError("FL1 control template Patch header hash mismatch")
+    replacements = {
+        "goal_sha": sha256_bytes(goal).encode(),
+        "goal_body": goal,
+        "patch_sha": sha256_bytes(input_patch).encode(),
+        "patch_body": input_patch,
+    }
+    assembled = template
+    for name, (start, end) in sorted(
+        regions.items(), key=lambda item: item[1][0], reverse=True
+    ):
+        assembled = assembled[:start] + replacements[name] + assembled[end:]
+    assembled_regions = control_prompt_regions(assembled)
+    if assembled[slice(*assembled_regions["goal_body"])] != goal:
+        raise ProbeError("assembled control Goal bytes mismatch")
+    if assembled[slice(*assembled_regions["patch_body"])] != input_patch:
+        raise ProbeError("assembled control Patch bytes mismatch")
+    if immutable_control_prompt_segments(assembled) != immutable_control_prompt_segments(template):
+        raise ProbeError("assembled control prompt changed immutable bytes")
+    return assembled
+
+
+def load_control_contract(control_dir: Path) -> ControlContract:
+    required = {
+        "goal.raw.txt",
+        "input.patch",
+        "expected-disposition.json",
+    }
+    missing = sorted(name for name in required if not (control_dir / name).is_file())
+    if missing:
+        raise ProbeError(f"{control_dir.name} missing control inputs: {','.join(missing)}")
+    goal = (control_dir / "goal.raw.txt").read_bytes()
+    input_patch = (control_dir / "input.patch").read_bytes()
+    goal.decode("utf-8", errors="strict")
+    input_patch.decode("utf-8", errors="strict")
+    if not goal or not input_patch:
+        raise ProbeError(f"{control_dir.name} has an empty Goal or Patch")
+    try:
+        expected = json.loads(
+            (control_dir / "expected-disposition.json").read_text(encoding="utf-8")
+        )
+    except json.JSONDecodeError as exc:
+        raise ProbeError(f"{control_dir.name} expected-disposition malformed") from exc
+    if not isinstance(expected, dict) or set(expected) != {*OBLIGATIONS, "expected_delta"}:
+        raise ProbeError(f"{control_dir.name} expected-disposition shape mismatch")
+    dispositions = {obligation: expected[obligation] for obligation in OBLIGATIONS}
+    if any(value not in {"FIRED", "N/A"} for value in dispositions.values()):
+        raise ProbeError(f"{control_dir.name} expected obligation disposition invalid")
+    if expected["expected_delta"] not in {"empty", "test-only"}:
+        raise ProbeError(f"{control_dir.name} expected_delta invalid")
+    return ControlContract(
+        control_dir.name,
+        goal,
+        input_patch,
+        dispositions,
+        expected["expected_delta"],
+    )
+
+
+def prepare_control_workspace(
+    target: Path, control_dir: Path, contract: ControlContract
+) -> PreparedControlWorkspace:
+    if target.exists():
+        raise ProbeError(f"fresh workspace already exists: {target}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    clone = run_command(["git", "clone", "--quiet", str(BUNDLE), str(target)])
+    require_success(clone, "control bundle clone")
+    checkout = run_command(
+        ["git", "checkout", "--quiet", "--detach", CONTROL_BASE_SHA], cwd=target
+    )
+    require_success(checkout, "control base checkout")
+    apply_result = run_command(
+        ["git", "apply", "--whitespace=nowarn", str(control_dir / "input.patch")],
+        cwd=target,
+    )
+    require_success(apply_result, "control input patch apply")
+    input_paths = changed_paths_from(target, CONTROL_BASE_SHA)
+    outside = sorted(set(input_paths) - set(AUTHORIZED_SURFACE))
+    if outside:
+        raise ProbeError(f"control input patch exceeds authorized surface: {outside}")
+    overlay = run_command(["tar", "-xzf", str(OVERLAY), "-C", str(target)])
+    require_success(overlay, "control workspace overlay extraction")
+    goal_path = target / ".devlyn/goal.raw.txt"
+    patch_path = target / ".devlyn/surface-close.input.patch"
+    write_bytes(goal_path, contract.goal)
+    write_bytes(patch_path, contract.input_patch)
+    head = git_output(target, "rev-parse", "HEAD").strip()
+    if head != CONTROL_BASE_SHA:
+        raise ProbeError(f"control base HEAD mismatch: {head}")
+    status = git_output(target, "status", "--short", "--untracked-files=normal")
+    prepared = PreparedWorkspace(
+        target,
+        f"control:{control_dir.name}",
+        status,
+        untracked_snapshot(target),
+    )
+    return PreparedControlWorkspace(
+        prepared,
+        tracked_snapshot(target),
+        sha256_file(goal_path),
+        sha256_file(patch_path),
+        usage_block_sha256(target / "bin/cli.js"),
+    )
+
+
+def changed_paths_from(workspace: Path, base_sha: str) -> list[str]:
+    output = git_output(workspace, "diff", "--name-only", base_sha, "--")
+    return [line for line in output.splitlines() if line]
+
+
+def control_phase_boundary(
+    *,
+    final_message: str,
+    workspace: Path,
+    prepared: PreparedControlWorkspace,
+) -> dict[str, Any]:
+    errors: list[str] = []
+    post_tracked = tracked_snapshot(workspace)
+    touched = changed_snapshot_paths(prepared.pre_tracked, post_tracked)
+    outside = sorted(set(touched) - set(AUTHORIZED_SURFACE))
+    if outside:
+        errors.append("out-of-surface-delta")
+    pre_untracked = prepared.prepared.pre_untracked
+    post_untracked = untracked_snapshot(workspace)
+    changed_untracked = changed_snapshot_paths(pre_untracked, post_untracked)
+    if changed_untracked:
+        errors.append("untracked-overlay-mutated")
+    head = git_output(workspace, "rev-parse", "HEAD").strip()
+    if head != CONTROL_BASE_SHA:
+        errors.append("worker-created-commit")
+    goal_path = workspace / ".devlyn/goal.raw.txt"
+    patch_path = workspace / ".devlyn/surface-close.input.patch"
+    if not goal_path.is_file() or sha256_file(goal_path) != prepared.goal_sha256:
+        errors.append("goal-input-mutated")
+    if not patch_path.is_file() or sha256_file(patch_path) != prepared.patch_sha256:
+        errors.append("patch-input-mutated")
+    if any(not (workspace / relative).is_file() for relative in AUTHORIZED_SURFACE):
+        errors.append("authorized-file-missing")
+    usage_hunk_changed = usage_block_sha256(workspace / "bin/cli.js") != prepared.usage_sha256
+    verdict_rows = parse_verdict_rows(final_message, workspace)
+    if not verdict_rows["valid"]:
+        errors.append("adjudication-output-invalid")
+    elif verdict_rows["terminal"] != "PASS":
+        errors.append("worker-terminal-blocked")
+    return {
+        "passed": not errors,
+        "errors": errors,
+        "touched_files": touched,
+        "outside_surface": outside,
+        "changed_untracked_files": changed_untracked,
+        "usage_hunk_changed": usage_hunk_changed,
+        "verdict_rows": verdict_rows,
+    }
+
+
+def score_control(
+    expected_disposition: dict[str, str],
+    expected_delta: str,
+    verdict_rows: dict[str, Any],
+    worker_changed_files: list[str],
+    usage_hunk_changed: bool = False,
+) -> dict[str, Any]:
+    actual = {
+        obligation: ((verdict_rows.get("rows") or {}).get(obligation) or {}).get(
+            "disposition"
+        )
+        for obligation in OBLIGATIONS
+    }
+    disposition_matches = {
+        obligation: actual[obligation] == expected_disposition[obligation]
+        for obligation in OBLIGATIONS
+    }
+    if expected_delta == "empty":
+        delta_matches = not worker_changed_files
+    elif expected_delta == "test-only":
+        delta_matches = worker_changed_files == ["tests/cli.test.js"]
+    else:
+        raise ProbeError(f"unsupported expected_delta: {expected_delta}")
+    false_fired_obligations = [
+        obligation
+        for obligation in OBLIGATIONS
+        if expected_disposition[obligation] == "N/A" and actual[obligation] == "FIRED"
+    ]
+    return {
+        "actual_disposition": actual,
+        "disposition_matches": disposition_matches,
+        "correct_disposition": all(disposition_matches.values()),
+        "actual_delta_files": worker_changed_files,
+        "delta_matches": delta_matches,
+        "false_fired_obligations": false_fired_obligations,
+        "forbidden_edit": usage_hunk_changed,
+        "false_fired": bool(false_fired_obligations or usage_hunk_changed),
+    }
+
+
+def execute_control_replica(
+    *,
+    contract: ControlContract,
+    control_dir: Path,
+    cell: str,
+    engine: str,
+    replica: int,
+    results_dir: Path,
+    tmp_root: Path,
+    prompts: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    artifact_dir = results_dir / "controls" / contract.name / f"replica-{replica:02d}"
+    artifact_dir.mkdir(parents=True, exist_ok=False)
+    run_root = tmp_root / "controls" / contract.name / f"replica-{replica:02d}"
+    workspace = run_root / "workspace"
+    home = run_root / "home"
+    home.mkdir(parents=True)
+    atomic_json(
+        artifact_dir / "attempt.json",
+        {
+            "started_at": utc_now(),
+            "cell": cell,
+            "control": contract.name,
+            "replica": replica,
+            "runner_pid": os.getpid(),
+        },
+    )
+    prepared = prepare_control_workspace(workspace, control_dir, contract)
+    prompt = artifact_dir / "assembled-prompt.txt"
+    assembled = assemble_control_prompt(
+        prompts["FL1"]["path"].read_bytes(), contract.goal, contract.input_patch
+    )
+    write_bytes(prompt, assembled)
+    pre_tree = {
+        "head": git_output(workspace, "rev-parse", "HEAD").strip(),
+        "tracked_dirty": bool(
+            git_output(workspace, "status", "--porcelain", "--untracked-files=no")
+        ),
+        "status_sha256": sha256_bytes(prepared.prepared.pre_status.encode()),
+        "overlay_input_source": prepared.prepared.overlay_input_source,
+    }
+    worker = (
+        run_codex(workspace, prompt, artifact_dir, home)
+        if engine == "terra"
+        else run_sonnet(workspace, prompt, artifact_dir, home)
+    )
+    execution_audit, audit_errors = archive_and_audit_transcript(
+        home, engine, artifact_dir
+    )
+    final = worker["final_message"]
+    boundary = control_phase_boundary(
+        final_message=final.decode("utf-8", errors="replace"),
+        workspace=workspace,
+        prepared=prepared,
+    )
+    scoring = score_control(
+        contract.expected_disposition,
+        contract.expected_delta,
+        boundary["verdict_rows"],
+        boundary["touched_files"],
+        boundary["usage_hunk_changed"],
+    )
+    post_tracked = tracked_snapshot(workspace)
+    worker_delta = [
+        {
+            "path": path,
+            "before_snapshot": prepared.pre_tracked.get(path),
+            "after_snapshot": post_tracked.get(path),
+        }
+        for path in boundary["touched_files"]
+    ]
+    atomic_json(artifact_dir / "worker-delta.json", worker_delta)
+    delta_bytes = json.dumps(
+        worker_delta, sort_keys=True, separators=(",", ":")
+    ).encode()
+    invalid_reasons = worker_invalid_reasons(
+        worker, engine, execution_audit, audit_errors
+    )
+    invalid_reasons.extend(f"phase-boundary:{error}" for error in boundary["errors"])
+    readout = (
+        static_readout(workspace)
+        if "authorized-file-missing" not in boundary["errors"]
+        else {"error": "authorized-file-missing"}
+    )
+    receipt = {
+        "schema_version": "r6-replay-control.v1",
+        "cell": cell,
+        "control": contract.name,
+        "replica": replica,
+        "prompt_variant": "FL1-control",
+        "engine": engine,
+        "requested_model": MODEL_BY_ENGINE[engine],
+        "effective_model": worker["effective_model"],
+        "effective_model_source": worker["effective_model_source"],
+        "cli_version": worker["cli_version"],
+        "prompt_sha256": sha256_bytes(assembled),
+        "control_inputs": {
+            "goal_sha256": prepared.goal_sha256,
+            "input_patch_sha256": prepared.patch_sha256,
+        },
+        "expected_disposition": contract.expected_disposition,
+        "expected_delta": contract.expected_delta,
+        "pre_tree": pre_tree,
+        "post_tree": {
+            "head": git_output(workspace, "rev-parse", "HEAD").strip(),
+            "tracked_dirty": bool(
+                git_output(workspace, "status", "--porcelain", "--untracked-files=no")
+            ),
+        },
+        "delta_sha256": sha256_bytes(delta_bytes),
+        "output_sha256": sha256_bytes(final),
+        "elapsed_seconds": worker["elapsed_seconds"],
+        "fresh_home": str(home),
+        "exit_code": worker["exit_code"],
+        "timed_out": worker["timed_out"],
+        "readout": readout,
+        "phase_boundary": boundary,
+        "execution_audit": execution_audit,
+        "control_scoring": scoring,
+        "valid": not invalid_reasons,
+        "invalid_reasons": invalid_reasons,
+        "completed_at": utc_now(),
+    }
+    missing = missing_control_receipt_fields(receipt)
+    if missing:
+        receipt["valid"] = False
+        receipt["invalid_reasons"].append("missing-receipts:" + ",".join(missing))
+    atomic_json(artifact_dir / "receipts.json", receipt)
+    return receipt
+
+
+def control_attempt_directories(results_dir: Path, control: str) -> list[Path]:
+    root = results_dir / "controls" / control
+    return sorted(
+        path
+        for path in root.glob("replica-*")
+        if path.is_dir() and (path / "attempt.json").is_file()
+    )
+
+
+def load_control_receipts(results_dir: Path, control: str) -> list[dict[str, Any]]:
+    receipts: list[dict[str, Any]] = []
+    for path in control_attempt_directories(results_dir, control):
+        receipt_path = path / "receipts.json"
+        if not receipt_path.is_file():
+            continue
+        try:
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        receipt["valid"] = bool(receipt.get("valid")) and not missing_control_receipt_fields(
+            receipt
+        )
+        receipts.append(receipt)
+    return receipts
+
+
+def control_worker_needed(worker_runs: int, credited_replicas: int, requested: int) -> bool:
+    return credited_replicas < requested and worker_runs < CONTROL_WORKER_CAP
+
+
+def control_summary(results_dir: Path, control: str, replicas: int) -> dict[str, Any]:
+    attempts = control_attempt_directories(results_dir, control)
+    receipts = load_control_receipts(results_dir, control)
+    valid = [receipt for receipt in receipts if receipt.get("valid")]
+    correct = [
+        receipt
+        for receipt in valid
+        if (receipt.get("control_scoring") or {}).get("correct_disposition")
+        and (receipt.get("control_scoring") or {}).get("delta_matches")
+        and not (receipt.get("control_scoring") or {}).get("false_fired")
+    ]
+    return {
+        "schema_version": "r6-replay-control-summary.v1",
+        "requested_replicas": replicas,
+        "worker_runs": len(attempts),
+        "completed_receipts": len(receipts),
+        "credited_replicas": len(valid),
+        "invalid_worker_runs": len(attempts) - len(valid),
+        "correct_disposition_replicas": sum(
+            bool((receipt.get("control_scoring") or {}).get("correct_disposition"))
+            for receipt in valid
+        ),
+        "correct_delta_replicas": sum(
+            bool((receipt.get("control_scoring") or {}).get("delta_matches"))
+            for receipt in valid
+        ),
+        "false_fired_replicas": sum(
+            bool((receipt.get("control_scoring") or {}).get("false_fired"))
+            for receipt in valid
+        ),
+        "fully_correct_replicas": len(correct),
+    }
+
+
+def update_control_summary(results_dir: Path, control: str, replicas: int) -> dict[str, Any]:
+    summary = control_summary(results_dir, control, replicas)
+    atomic_json(results_dir / "controls" / control / "summary.json", summary)
+    return summary
+
+
+def control_bar_met(summary: dict[str, Any]) -> bool:
+    requested = summary["requested_replicas"]
+    return (
+        summary["credited_replicas"] == requested
+        and summary["fully_correct_replicas"] == requested
+        and summary["false_fired_replicas"] == 0
+    )
+
+
+def run_controls(controls_dir: Path, cell: str, replicas: int) -> int:
+    if cell != "FL1-sonnet" or replicas != 2:
+        raise ProbeError("frozen control mode requires --cell FL1-sonnet --replicas 2")
+    contracts = {
+        name: load_control_contract(controls_dir / name) for name in CONTROL_NAMES
+    }
+    prompts = durable_prompts(RESULTS_DIR)
+    controls_root = RESULTS_DIR / "controls"
+    controls_root.mkdir(parents=True, exist_ok=True)
+    TMP_ROOT.mkdir(parents=True, exist_ok=True)
+    lock_path = controls_root / ".runner.lock"
+    summaries: list[dict[str, Any]] = []
+    with lock_path.open("a+") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise ProbeError(f"another r6 control runner holds {lock_path}") from exc
+        for name in CONTROL_NAMES:
+            update_control_summary(RESULTS_DIR, name, replicas)
+            while True:
+                attempts = control_attempt_directories(RESULTS_DIR, name)
+                receipts = load_control_receipts(RESULTS_DIR, name)
+                credited = sum(bool(receipt.get("valid")) for receipt in receipts)
+                if not control_worker_needed(len(attempts), credited, replicas):
+                    break
+                replica = max(
+                    (
+                        int(path.name.removeprefix("replica-"))
+                        for path in attempts
+                        if path.name.removeprefix("replica-").isdigit()
+                    ),
+                    default=0,
+                ) + 1
+                execute_control_replica(
+                    contract=contracts[name],
+                    control_dir=controls_dir / name,
+                    cell=cell,
+                    engine="sonnet",
+                    replica=replica,
+                    results_dir=RESULTS_DIR,
+                    tmp_root=TMP_ROOT,
+                    prompts=prompts,
+                )
+                update_control_summary(RESULTS_DIR, name, replicas)
+            summaries.append(update_control_summary(RESULTS_DIR, name, replicas))
+    return 0 if all(control_bar_met(summary) for summary in summaries) else 2
 
 
 def expect(condition: bool, label: str) -> None:
@@ -902,6 +1666,11 @@ def self_test() -> int:
     expect(True, "F1/FL1 full SHA-256 validation")
     with tempfile.TemporaryDirectory(prefix="r6-replay-selftest-") as temporary:
         root = Path(temporary)
+        durable = durable_prompts(root / "durable-prompts")
+        expect(
+            all(contract["path"].parent == root / "durable-prompts" for contract in durable.values()),
+            "prompt bytes copied durably into the results directory",
+        )
         prepared = prepare_workspace(root / "frozen-workspace")
         expect(
             prepared.overlay_input_source.startswith(".devlyn/runs/"),
@@ -1018,6 +1787,201 @@ def self_test() -> int:
         (next(iter(attempt_directories(cap_results))) / "attempt.json").unlink()
         expect(can_start_worker(cap_results), "worker allowed below global cap")
 
+        sonnet_validation = root / "sonnet-validation.jsonl"
+        sonnet_validation.write_text(
+            json.dumps(
+                {
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "name": "Bash",
+                                "input": {"command": "sed -n '1,80p' bin/cli.js"},
+                            },
+                            {
+                                "type": "tool_use",
+                                "name": "Bash",
+                                "input": {"command": "npm test"},
+                            },
+                        ]
+                    }
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        sonnet_audit, sonnet_errors = execution_audit_for_transcript(
+            sonnet_validation, "sonnet"
+        )
+        codex_validation = root / "codex-validation.jsonl"
+        codex_validation.write_text(
+            json.dumps(
+                {
+                    "payload": {
+                        "type": "custom_tool_call",
+                        "input": 'const r = await tools.exec_command({"cmd":"node --test tests/cli.test.js"});',
+                    }
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        codex_audit, codex_errors = execution_audit_for_transcript(
+            codex_validation, "terra"
+        )
+        expect(
+            not sonnet_errors
+            and sonnet_audit["n_commands"] == 2
+            and sonnet_audit["validation_hits"] == ["npm test"]
+            and sonnet_audit["validation_execution"]
+            and not codex_errors
+            and codex_audit["n_commands"] == 1
+            and codex_audit["validation_execution"],
+            "execution audit detects sonnet/codex validation commands",
+        )
+
+        sonnet_read_only = root / "sonnet-read-only.jsonl"
+        sonnet_read_only.write_text(
+            json.dumps(
+                {
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "name": "Bash",
+                                "input": {"command": "git diff -- bin/cli.js"},
+                            }
+                        ]
+                    }
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        codex_read_only = root / "codex-read-only.jsonl"
+        codex_read_only.write_text(
+            json.dumps(
+                {
+                    "payload": {
+                        "type": "custom_tool_call",
+                        "cmd": "shasum -a 256 .devlyn/goal.raw.txt",
+                    }
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        sonnet_clean, _ = execution_audit_for_transcript(sonnet_read_only, "sonnet")
+        codex_clean, _ = execution_audit_for_transcript(codex_read_only, "terra")
+        expect(
+            sonnet_clean["n_commands"] == 1
+            and not sonnet_clean["validation_execution"]
+            and codex_clean["n_commands"] == 1
+            and not codex_clean["validation_execution"],
+            "execution audit allows sonnet/codex read-only commands",
+        )
+
+        control_goal = b"Control Goal bytes without a trailing newline"
+        control_patch = (
+            b"diff --git a/tests/cli.test.js b/tests/cli.test.js\n"
+            b"--- a/tests/cli.test.js\n+++ b/tests/cli.test.js\n"
+        )
+        template = durable["FL1"]["path"].read_bytes()
+        assembled = assemble_control_prompt(template, control_goal, control_patch)
+        assembled_regions = control_prompt_regions(assembled)
+        expect(
+            assembled[slice(*assembled_regions["goal_body"])] == control_goal
+            and assembled[slice(*assembled_regions["patch_body"])] == control_patch
+            and assembled[slice(*assembled_regions["goal_sha"])].decode()
+            == sha256_bytes(control_goal)
+            and assembled[slice(*assembled_regions["patch_sha"])].decode()
+            == sha256_bytes(control_patch)
+            and immutable_control_prompt_segments(assembled)
+            == immutable_control_prompt_segments(template)
+            and bool(sha256_bytes(assembled)),
+            "control prompt substitutes only Goal/Patch regions and records hashes",
+        )
+
+        def verdicts(uvr: str, path_test: str) -> dict[str, Any]:
+            return {
+                "rows": {
+                    "UVR-STALE": {"disposition": uvr},
+                    "PATH-TEST": {"disposition": path_test},
+                }
+            }
+
+        expected_control = {"UVR-STALE": "N/A", "PATH-TEST": "FIRED"}
+        correct = score_control(
+            expected_control, "test-only", verdicts("N/A", "FIRED"), ["tests/cli.test.js"]
+        )
+        expect(
+            correct["correct_disposition"]
+            and correct["delta_matches"]
+            and not correct["false_fired"],
+            "control scoring accepts correct disposition",
+        )
+        wrong_obligation = score_control(
+            {"UVR-STALE": "FIRED", "PATH-TEST": "FIRED"},
+            "test-only",
+            verdicts("N/A", "FIRED"),
+            ["tests/cli.test.js"],
+        )
+        expect(
+            not wrong_obligation["correct_disposition"]
+            and not wrong_obligation["false_fired"],
+            "control scoring rejects wrong obligation",
+        )
+        false_fired = score_control(
+            expected_control,
+            "test-only",
+            verdicts("FIRED", "FIRED"),
+            ["tests/cli.test.js"],
+        )
+        expect(
+            false_fired["false_fired"]
+            and false_fired["false_fired_obligations"] == ["UVR-STALE"],
+            "control scoring detects false-fired obligation",
+        )
+        forbidden_edit = score_control(
+            {"UVR-STALE": "FIRED", "PATH-TEST": "FIRED"},
+            "test-only",
+            verdicts("FIRED", "FIRED"),
+            ["bin/cli.js", "tests/cli.test.js"],
+            True,
+        )
+        expect(
+            forbidden_edit["forbidden_edit"]
+            and forbidden_edit["false_fired"]
+            and not forbidden_edit["delta_matches"],
+            "control scoring detects forbidden edit",
+        )
+        empty_delta = score_control(
+            {"UVR-STALE": "N/A", "PATH-TEST": "N/A"},
+            "empty",
+            verdicts("N/A", "N/A"),
+            [],
+        )
+        wrong_empty = score_control(
+            {"UVR-STALE": "N/A", "PATH-TEST": "N/A"},
+            "empty",
+            verdicts("N/A", "N/A"),
+            ["tests/cli.test.js"],
+        )
+        expect(
+            empty_delta["delta_matches"]
+            and not wrong_empty["delta_matches"]
+            and correct["delta_matches"],
+            "control scoring distinguishes empty and test-only deltas",
+        )
+
+        expect(
+            control_worker_needed(0, 0, 2)
+            and control_worker_needed(2, 0, 2)
+            and not control_worker_needed(2, 2, 2)
+            and not control_worker_needed(4, 0, 2),
+            "control replacement scheduling stops at two credits or four workers",
+        )
+
     return 0
 
 
@@ -1027,11 +1991,17 @@ def main() -> int:
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument("--results-dir", type=Path, default=RESULTS_DIR)
     run_parser.add_argument("--tmp-root", type=Path, default=TMP_ROOT)
+    control_parser = subparsers.add_parser("run-control")
+    control_parser.add_argument("--controls-dir", type=Path, required=True)
+    control_parser.add_argument("--cell", required=True)
+    control_parser.add_argument("--replicas", type=int, required=True)
     subparsers.add_parser("self-test")
     args = parser.parse_args()
     try:
         if args.command == "self-test":
             return self_test()
+        if args.command == "run-control":
+            return run_controls(args.controls_dir.resolve(), args.cell, args.replicas)
         return run_probe(args.results_dir.resolve(), args.tmp_root.resolve())
     except (ProbeError, AssertionError, OSError, subprocess.TimeoutExpired) as exc:
         print(f"R6_REPLAY_ERROR: {exc}", file=sys.stderr)
