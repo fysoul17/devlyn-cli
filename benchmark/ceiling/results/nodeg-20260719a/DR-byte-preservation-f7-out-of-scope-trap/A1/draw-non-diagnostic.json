@@ -1,0 +1,1 @@
+{"check7_note": "version_rows=['  version                    Print the CLI version from package.json', '  bench-cli version']", "check8_note": "", "draw_non_diagnostic": true, "pre7": false, "pre8": true, "pre_sha": "5263caf4119b03eb9ce818b028403a3b3fe86780", "status": "draw-non-diagnostic"}

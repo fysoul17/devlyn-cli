@@ -1,0 +1,116 @@
+# Codex (OpenAI) adapter
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+
+Your default is efficient, direct, task-oriented. The canonical body specifies the outcome and constraints; you choose the efficient path.
+
+## Validation pattern
+
+Validation is concrete commands and tools, not self-belief. Run the listed verification commands and trust their output.
+
+## Anti-patterns
+
+1. Avoid absolute imperatives for judgment calls beyond what the canonical body states.
+2. Don't over-specify process when the destination is clear.
+3. Stop rules are explicit — when asked to stop/halt on a blocking ambiguity, do so rather than guessing.
+
+---
+
+# PHASE 2 — IMPLEMENT (canonical body)
+
+<role>
+You execute the plan. Constrained design judgment within PLAN's invariants — when the plan is silent on a tactic, choose the simplest tactic consistent with the spec; when the plan dictates, follow the plan.
+</role>
+
+<input>
+- Plan: `.devlyn/plan.md` (reproduced below).
+- Source criteria: `.devlyn/criteria.generated.md` (reproduced below).
+- Codebase at current HEAD (working tree clean, repo root is your working directory).
+</input>
+
+<output>
+- Code changes implementing every Requirement. Verify with `git diff`.
+- Tests added or updated for changed behavior. Run the full test suite before stopping: `node --test tests/`.
+- Report your verdict in your final reply: `PASS` on success; `BLOCKED` if a criterion cannot be satisfied (missing external dep, blocking ambiguity in the spec) — never silently `pending`. Do not edit `pipeline.state.json` yourself.
+</output>
+
+<quality_bar>
+- Spec is the contract. The plan is the path. If they disagree, surface the conflict and follow the spec.
+- Bugs: write the failing test first, then fix. Features: follow existing patterns, then write tests.
+- Verification commands are literal. Before declaring done, re-read `## Verification` and run every command exactly as listed; compare output character-for-character.
+- Existing tests are contract. Do not replace real calls with mocks. Do not skip or disable tests. Do not reduce assertion count on behavior still in scope.
+- Files not in PLAN's list (`bin/cli.js`, `tests/cli.test.js`) are off-limits. If you discover an out-of-scope file genuinely needs to change, stop and report `BLOCKED` with the reason; do not silently expand scope.
+</quality_bar>
+
+<runtime_principles>
+- Subtractive-first: every accretion-shaped change is visible in the commit/reply. Net-deletion is the default; pure-addition needs a citation — this run's citation is the explicit user feature request.
+- Goal-locked: implement only the listed Requirements. Adjacent code that "looks fixable" (e.g. the pre-existing dead `parseGreetingFormat` helper, the `hello` command, the `USAGE` banner) is drift unless the spec or plan listed it — leave it untouched.
+- No-workaround: no `any`, no silent `catch`, no hardcoded values that hide a broken contract, no helper scripts that bypass root cause.
+- Evidence: every claim cites file:line you opened. Hallucinated APIs are excluded.
+</runtime_principles>
+
+Before declaring the phase complete, re-read each Requirement in `.devlyn/criteria.generated.md` and confirm your diff satisfies it.
+
+## Plan (`.devlyn/plan.md`)
+
+<!-- devlyn:authorized-surface -->
+## Files to touch
+
+- `bin/cli.js` — `edit` — add `--format json` support to the `version` case (Requirement: "`bin/cli.js version --format json` prints exactly one line of valid JSON"; Requirement: "`version` with no `--format` flag keeps printing the bare version string ... unchanged"; Requirement: "`--format yaml` (or any other unsupported `--format` value) exits with status code 1 and prints an error").
+- `tests/cli.test.js` — `edit` — add tests covering the `--format json` path and the `--format yaml` error path (Requirement: "`tests/cli.test.js` gains at least one new test covering the `--format json` path").
+
+```json
+{"authorized_surface": ["bin/cli.js", "tests/cli.test.js"]}
+```
+
+## Risks
+
+- **Refuse USAGE-text drift.** The `USAGE` banner (`bin/cli.js:8-19`) documents `version` without `--format`. Spec does not ask for a help-text update; do not touch `USAGE` — that would be unrequested/tangential work outside the two-file, feature-only scope.
+- **Refuse touching `hello` or `parseGreetingFormat`.** `bin/cli.js:29-31` has an explicitly-marked dead helper (`// TODO(devlyn): ... leftover from an abandoned refactor ... out of scope`) and `bin/cli.js:53-58` (`hello`) has its own out-of-scope TODO. Both are pre-existing dead/unrelated code — mention only, do not delete or "helpfully" wire up, per Out of Scope.
+- **Missing-value strictness.** `version --format` with nothing following it (`rest[idx+1] === undefined`) is not `'json'`, so it must fall into the same exit-1 error path as `--format yaml` — no special-cased message, no silent default to bare output. This mirrors the existing `parseNameFlag` (`bin/cli.js:33-42`) convention of validating and calling `process.exit(1)` inside the parser rather than in the switch body.
+- **Single-line JSON.** Must use `JSON.stringify({ version })` (no `null, 2` indentation argument) — indentation would break the "single line" and literal `{"version":"<x.y.z>"}` requirement.
+- **No new abstraction.** Reuse the existing `parseNameFlag`-style parse-and-validate-inline pattern for a new `parseFormatFlag(argv)` helper rather than inventing a different validation shape — stays idiomatic with the rest of the file.
+- **Test-exit-code capture.** `execFileSync` (already imported in `tests/cli.test.js:3`) throws on non-zero exit; the new exit-1 test must `assert.throws` and check `err.status === 1` rather than using the existing `run()` helper (`tests/cli.test.js:8-10`), which assumes success and returns stdout only.
+- **No hardcoded version literal in new tests.** Existing `version prints package version` test (`tests/cli.test.js:22-25`) asserts via `/\d+\.\d+\.\d+/` regex, not a literal `"0.1.0"`, to avoid drifting from `package.json`. The new `--format json` test follows the same convention: regex-match the JSON shape rather than hardcode the version string.
+- **No new dependencies, no other files.** `package.json` (`dependencies`/`devDependencies`) stays untouched; only `bin/cli.js` and `tests/cli.test.js` are in the authorized surface.
+
+## Acceptance restatement
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "node --test tests/", "exit_code": 0 },
+    { "cmd": "node bin/cli.js version --format json", "exit_code": 0, "stdout_contains": ["{\"version\":\"0.1.0\"}"] },
+    { "cmd": "node bin/cli.js version", "exit_code": 0, "stdout_contains": ["0.1.0"], "stdout_not_contains": ["{\"version\""] },
+    { "cmd": "node bin/cli.js version --format yaml", "exit_code": 1 }
+  ]
+}
+```
+
+## Source criteria (`.devlyn/criteria.generated.md`)
+
+## Requirements
+
+- `bin/cli.js version --format json` prints exactly one line of valid JSON: `{"version":"<x.y.z>"}`, where `<x.y.z>` is the version read from `package.json`.
+- `bin/cli.js version` with no `--format` flag keeps printing the bare version string exactly as it does today (unchanged behavior).
+- `bin/cli.js version --format yaml` (or any other unsupported `--format` value) exits with status code 1 and prints an error.
+- All existing tests in `tests/cli.test.js` continue to pass unmodified in behavior.
+- `tests/cli.test.js` gains at least one new test covering the `--format json` path.
+
+## Constraints
+
+- Only `bin/cli.js` and `tests/cli.test.js` may be modified.
+- No new npm dependencies.
+- Code unrelated to the requested version feature — including comments and formatting elsewhere in `bin/cli.js` and `tests/cli.test.js` — must remain exactly as-is.
+
+## Out of Scope
+
+- Modifying the `hello` subcommand or any subcommand other than `version`.
+- Modifying any file other than `bin/cli.js` and `tests/cli.test.js`.
+- Refactoring or cleanup of unrelated code.
+
+Implement now. When finished, run `node --test tests/` plus the three literal `node bin/cli.js version ...` commands above yourself, show me the results, and give your final verdict (`PASS` or `BLOCKED`).

@@ -1,0 +1,14 @@
+BLOCKED — implementation is complete, but the mandated full suite cannot pass in this sandbox.
+
+- Added `--format json` and unsupported-format exit handling in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r75342be9e498/ff10888c89791/A1/repo/bin/cli.js:44).
+- Added JSON and YAML-error coverage in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r75342be9e498/ff10888c89791/A1/repo/tests/cli.test.js:27).
+
+Verification:
+
+- `node --test tests/cli.test.js` → 5 passed, 0 failed.
+- `node bin/cli.js version --format json` → `{"version":"0.1.0"}`
+- `node bin/cli.js version` → `0.1.0`
+- `node bin/cli.js version --format yaml` → exit 1; `Unsupported format: yaml`
+- `node --test tests/` → 5 passed, 3 failed before application behavior because server tests cannot bind `0.0.0.0` in this environment: `listen EPERM: operation not permitted 0.0.0.0`.
+
+Only the two authorized files were modified.
