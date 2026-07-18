@@ -1240,3 +1240,19 @@ replay receipts attest effective via the wrapper). Also added at build
 time: `run --cell` scoping on the replay matrix — the frozen ladder
 needs ONLY restricted FL1×sonnet + controls; rerunning the three dead
 cells respends seats for zero Amendment-5 information.
+
+**Build round three-way CONVERGED (2026-07-18 continuation)**: Codex
+built A5-E1..E4 (528333f) and flagged the model-id freeze defect
+(fixed: full-id pin, Check-4 line-anchored allowlist). Grok independent
+R0: GO-WITH-EDITS, one substantive finding — `--tools` gates only the
+BUILT-IN set; the SC spawn sentence lacked the MCP-hermetic duo, so
+user-global MCP servers remained a worker-reachable execution avenue
+(falsifier (d)) while the replay/isolation path was already hermetic
+(claude-isolation.py:225-228) — production must equal the replay
+envelope on every execution channel. Edits applied by Codex R1 with
+explicit agreement (incl. deliberate `--setting-sources` exclusion —
+the graduated settings envelope stays untouched); token nets
++0.34%/+0.29% (freeze metric) within the ≤+0.5% cap; lint fully green
+after `.agents` sync. Seat scorecard this round: orchestrator caught
+the resolve-routing hazard, Codex caught the model-id live-BLOCK, Grok
+caught the MCP channel — three seats, three distinct defect classes.
