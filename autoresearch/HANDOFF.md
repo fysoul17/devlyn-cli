@@ -14,7 +14,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and agai
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-18 (iter-0072 **v5 FALSIFIED on check 7 — but CARRIER 2 FLIPPED with clean attribution, the first lever-caused closure**; next = round-6 design on the SPLIT class; dual-judge default shipped)
+## 🚦 START-HERE — state after 2026-07-18 (iter-0072 **round-6 DONE: Registration v6 FROZEN (Adjudicated SURFACE_CLOSE, selection-first)**; next = build + run the 4-cell replay selection; dual-judge default shipped)
 
 **Where the loop stands (one paragraph).** The quality axis (nodeg
 objective 7/7 · quality 0/7 · wall 0/7, iter-0071 baseline) is the open
@@ -41,25 +41,29 @@ routed-seat instrument v2 DEAD (0070a.10); VERIFY dual-judge
 default-when-available shipped (0071.5).
 
 **Next work**:
-1. **iter-0072 round 6: the class SPLIT — design round on the residual
-   UVR (stale user-visible reference) obligation.** v5 SURFACE_CLOSE was
-   built, hardened through two observed-failure amendments (0072.11
-   execute-nothing/VERBATIM-assembly; 0072.12 mechanical dispatch
-   enforcement — both remain binding learnings for any future phase),
-   and produced iter-0072's FIRST lever-caused carrier closure: on the
-   diagnostic row (`nodeg-20260718c/VERDICT.md`, attribution receipts
-   archived) the audit+repair worker added the unsupported-format exit-1
-   test (check 8 FLIPPED, pre-SC patch provably lacked it) — but read
-   the USAGE block and silently declined UVR-STALE (check 7 FAIL,
-   frozen all-checks gate → reverted `1b32fb1..f0a5836`, fifth
-   valid-negative, DECISIONS 0072.13). Round-6 axes (three-way, design
-   only, never prose): (a) seat-fitness — the SC worker ran on codex via
-   the executor pin; bare-B (the blind-preferred arm) DOES close USAGE;
-   try claude-routed audit frame; (b) UVR obligation decidability — the
-   "documents S's old interface" judgment is declined silently; (c)
-   mechanical staleness derivation, rejected in r5 as fixture-shaped,
-   revisited under the split receipt (test-shaped closure lever-reachable
-   vs documentation-sync not). Prior arc: five same-iter valid-negatives
+1. **iter-0072: execute the FROZEN Registration v6 selection (0072.14;
+   full text in the iter file § "Registration v6").** Round-6 three-way
+   CONVERGED 3/3 (Grok CONFIRM-WITH-EDITS both incorporated). Decisive
+   criterion: Observed-Degree-of-Freedom Closure — v5's worker could
+   silently decline UVR inside a legal bare `PASS`; v6 = single lever L1
+   (per-obligation `FIRED file:line` / `N/A file:line — evidence` verdict
+   rows, missing/malformed → mechanical BLOCK). SELECTION BEFORE BUILD:
+   adaptive 4-cell frozen-input worker replay {F1 actual-prompt-bytes,
+   FL1 +adjudication-gate} × {codex terra, claude sonnet}, 2 replicas +
+   any-fire 3rd, 0/2 stop, max 12; exact pre_sha tree from archived
+   `f7-row-repo.bundle` (7b42b29); graduation needs ≥2/3 UVR fire AND
+   accuracy-green (no-stale + ambiguous controls) → ONE fresh nodeg row,
+   unchanged gate; F1×sonnet win → seat-routing, L1 not registered; no
+   accuracy-green fire cell → residual ACCEPTED, iter closes on the
+   split. Load-bearing round-6 receipts (worker rollout, archived
+   7b42b29): worker = terra in-session; read FULL bin/cli.js incl. USAGE
+   before declining; zero `.devlyn` reads; adapter header "Do not narrate
+   internal deliberation" made silent exit adapter-encouraged; root
+   AGENTS.md auto-loads into worker cwd (phase-local suppressor deletion
+   = wrong carrier — L2/L5 withdrawn with named deltas). Prerequisite
+   commits (separate from mechanism diff): effective-model state
+   integrity (state recorded `gpt-5.5`, session was terra) + full-rollout
+   retention. Prior arc: five same-iter valid-negatives
    (0072.2/.4/.6/.8/.13); registration + amendments in the iter file.
 2. ~~VERIFY dual-judge → default-when-available~~ **DONE 2026-07-16**
    (DECISIONS 0071.5; queue item `[x]` with ship record; schema-v3
@@ -92,7 +96,10 @@ DECISIONS 0071.4 + iter-0071 addendum 5.
 `~/.local/share/nx01/w/r<sha256(run-id)[:12]>/f<sha256(task)[:12]>/A1/repo`
 (artifacts under `a/`, claude-homes under `claude-homes/`) and are
 DELETED at row end — **snapshot `.devlyn/` while the row is live** or
-the raw criteria/plan bytes are unrecoverable; durable tooling:
+the raw criteria/plan bytes are unrecoverable (the 20260718c row's
+worktree+session SURVIVED by accident; its rollout + full repo bundle are
+now committed in `gate-fail-artifacts/`, `7b42b29` — replay from there,
+not from nx01 paths); durable tooling:
 `benchmark/ceiling/scripts/f7-carrier-gate.py` (F7 carrier/attribution
 checks, v4/v5 modes) + `benchmark/ceiling/scripts/watch-nodeg-row.sh`
 (gate-at-PLAN + live snapshots). The nodeg runner refuses a dirty tree

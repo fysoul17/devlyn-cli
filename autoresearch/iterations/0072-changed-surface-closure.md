@@ -756,3 +756,111 @@ bare-B — the arm the blind judges prefer — closes USAGE reading the
 same task. Seat/frame interaction is unmeasured; that is round-6's
 first axis, alongside UVR-obligation decidability and a revisit of
 mechanical staleness derivation under the split receipt. Never prose.
+
+## Registration v6 — Adjudicated SURFACE_CLOSE (M-SC-A), FROZEN 2026-07-18, three-way converged (archives /tmp/codex-0072-r6/ + /tmp/grok-0072-r6/)
+
+**Status: FROZEN, selection-first — no skill build until a replay cell
+graduates.** Round arc: orchestrator packet (License Asymmetry under
+Imported Suppressor Stack; levers L1 verdict-contract / L2
+suppressor-subtraction / L3 seat / L4 mechanical-derivation-held; replay
+selection) → Grok R0 independent (FDC-LA criterion; converged on the
+package with 4 named deltas + 5 citation defects incl. D1 HIGH
+inspection-depth) → Codex R0 (independent position "Adjudication Gate";
+DISCOVERED the surviving nx01 worker session rollout; AGENTS.md-auto-load
+receipt kills L2-as-registered; L4 recall gap — `version` not derivable
+from modified symbol names) → orchestrator R1 named deltas (L2 WITHDRAWN
+wrong-carrier; L5 ambient-residue FALSIFIED zero-`.devlyn`-reads;
+criterion's suppressor-deletion clause dropped) → Grok cross-confirm
+**CONFIRM-WITH-EDITS (2 edits, both strictly stricter)** with its own
+named delta withdrawing "L2 mandatory in preferred cell". 3/3 converged.
+
+**Rollout receipts (archived `7b42b29`
+`gate-fail-artifacts/worker-session-rollout.jsonl` + `f7-row-repo.bundle`;
+all three seats re-opened them independently)**: worker model
+`gpt-5.6-terra` in-session (state's `gpt-5.5` = orchestrator fill-in
+defect); worker ran exactly 4 tool calls — sanctioned hash check, diff +
+full test read, **`nl -ba bin/cli.js` (full file, USAGE lines 8-18 with
+the `hello [--name NAME]` sibling convention in context)**, apply_patch —
+then final message `PASS` with PATH-TEST reasoning and ZERO UVR words:
+declined AFTER full-file read (Grok D1 resolved; "non-inspection"
+explanation dead); ZERO `.devlyn/plan.md`/criteria reads (ambient-residue
+leak falsified as this row's cause); assembled prompt DROPPED the
+`<runtime_principles>` read-sentence (assembly deviation — SKILL.md:27
+excerpt-inline vs Amendment-2 verbatim are themselves in tension) while
+the codex adapter header instructs "Do not narrate internal deliberation"
+(silent exit adapter-encouraged); root `AGENTS.md` present in worker cwd
+(`?? AGENTS.md` in the worker's own git-status output) → phase-local
+suppressor deletion removes duplication, not the suppressor.
+
+**Decisive criterion (Codex, adopted 3/3): Observed-Degree-of-Freedom
+Closure** — v6 mechanically eliminates the exact freedom exercised in
+nodeg-20260718c (silent per-obligation decline inside a legal bare `PASS`)
+without perturbing proven PATH-TEST behavior and without pretending
+semantic staleness is mechanically decidable. Grok's **FDC-LA**
+(free-disposition closure under license asymmetry) is retained as the
+behavioral HYPOTHESIS the matrix tests, not a design lever.
+
+**Mechanism (single lever L1 — Adjudication Gate)**: worker terminal
+message MUST contain, per obligation, exactly one of
+`UVR-STALE: FIRED <authorized-file>:<line>` or
+`UVR-STALE: N/A <authorized-file>:<line> — <one-line evidence-based
+relationship judgment>` (same grammar for PATH-TEST), then `PASS`. Bare
+`PASS`, missing rows, out-of-surface or nonexistent citations →
+mechanical BLOCK at the phase boundary (surface-check extension,
+Amendment-3 class). EMPTY PASS stays first-class = two evidenced N/A
+rows. Obligation grammar, envelope, one-shot lifecycle, 600s bound,
+immutable inputs unchanged from v5. Assembly defined mechanically:
+adapter header + canonical body VERBATIM, body made self-contained (no
+runtime-file read-sentence → verbatim and excerpt-inline stop
+conflicting), assembled bytes hashed to
+`phases.surface_close.prompt_sha256`. Prerequisite commits, separate
+from the mechanism diff: (1) state-integrity — record requested +
+effective model parsed from the engine session header, mismatch →
+attestation fail (receipt: `gpt-5.5` fill-in); (2) instrument retention —
+full worker rollout archived into run artifacts (receipt: D1 was
+undecidable from the 2KB tail alone).
+
+**Selection instrument (probe tier, HANDOFF rule 7 — replay BEFORE any
+nodeg; frozen inputs, no command execution per Amendment 2)**: replay the
+SC worker against the EXACT pre_sha tree `947dbf71…` from
+`f7-row-repo.bundle` (fallback: neutralized-seed reconstruction with
+carrier-state assertions). F1 = the rollout's actual assembled prompt
+bytes; FL1 = F1 + the Adjudication Gate output contract (only delta).
+Adaptive 4-cell: {F1, FL1} × {codex gpt-5.6-terra, claude sonnet},
+2 replicas per cell; 0/2 UVR fire → cell stops (no 3rd); any fire → 3rd
+replica; max 12 F7 replays (Grok Edit 2). Per-run receipts: effective
+model, CLI version, prompt hash, pre-tree hash, output/diff hashes,
+fresh home. Readout: UVR fired / PATH-TEST fired / verdict rows parse /
+delta bytes (`f7-carrier-gate.py` checks 7/8 static).
+
+**Graduation ladder (Grok Edit 1 — accuracy-green required)**: any cell
+≥2/3 UVR fire → that cell runs accuracy controls (no-stale row +
+genuinely-ambiguous row — over-repair/false-FIRED guard, B2/B5 discipline
+at probe tier); ONLY accuracy-green cells graduate → freeze v6 final
+skill text → ONE fresh nodeg diagnostic row under the UNCHANGED
+all-checks gate (attribution check 13 as in v5). F1×sonnet ≥2/3 AND
+accuracy-green → seat-routing IS the mechanism; L1 not registered (all
+three seats' falsifier 1). **No cell reaches ≥2/3 UVR fire with accuracy
+controls green** within max 12 replays (+ control budget on fire cells)
+→ documentation-sync residual ACCEPTED: audit-frame class closed for
+UVR, measurement moves to corpus/judge layer, iter-0072 closes with the
+split as its terminal finding (pre-committed kill branch,
+anti-asymptotic stop). Stage-2 ablation cells only if L1 wins and
+attribution demands it, or systematic false N/A appears: clean-room
+worker cwd (no AGENTS.md / `.devlyn`) as the true ambient-contract
+ablation; F3 minimal-neutral. Grok early-L4 trigger retained verbatim:
+systematic false N/A citing non-inspection while candidate UV strings
+exist → promote L4 behind an independent positive/negative recall oracle
+(Codex counter stands: `version` is not recoverable from modified symbol
+names — r5 rejection holds until a generic extractor passes that oracle).
+
+**Predictions (orchestrator, recorded pre-experiment)**: P(F1×terra UVR
+fire) ≈ 0.10 (reproduce silent decline); P(F1×sonnet) ≈ 0.35;
+P(FL1×terra) ≈ 0.60; P(FL1×sonnet) ≈ 0.65. P(kill branch) ≈ 0.25.
+
+**Anti-overfit scope**: six channels have iterated against F7's USAGE
+carrier; any v6 closure is row-class-scoped. "Documentation-sync class
+closed" additionally requires a fresh held-out UVR row authored by an
+excluded seat (0070a.6 precedent) — pre-registered as the claim gate,
+not part of this selection. Test arms per user directive 2026-07-18:
+claude = sonnet, codex = terra; sol team-only; fable never a test arm.
