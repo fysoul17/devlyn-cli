@@ -1,0 +1,7 @@
+{
+  "cell": "FL1-sonnet",
+  "control": "control-a-no-stale",
+  "replica": 2,
+  "runner_pid": 58860,
+  "started_at": "2026-07-18T12:51:52.508551Z"
+}

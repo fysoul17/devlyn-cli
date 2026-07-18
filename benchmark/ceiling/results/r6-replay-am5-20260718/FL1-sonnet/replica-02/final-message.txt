@@ -1,0 +1,3 @@
+UVR-STALE: FIRED bin/cli.js:12 — USAGE's `version` line documented no flags (old interface); it omitted the newly added `--format json` option, so it was updated to `version [--format json]`, mirroring the `hello [--name NAME]` pattern already present.
+PATH-TEST: FIRED tests/cli.test.js:35 — Goal specifies unsupported `--format` values (e.g. `yaml`) must exit 1 with an error; the patch implements this in `parseFormatFlag`, but no authorized test exercised that path, so a minimal regression test was added.
+PASS

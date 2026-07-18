@@ -1,0 +1,11 @@
+Reviewed the frozen surface (patch already applied to `bin/cli.js` and `tests/cli.test.js`).
+
+**UVR-STALE check**: The USAGE block's `version` line (`bin/cli.js:12`) reads "Print the CLI version from package.json" — a generic description with no flag documentation for `version` (mirrors how `hello --name` is also undocumented in the command list, only shown in Examples). It doesn't claim any specific output shape, so it stays accurate under both plain and `--format json` output. It isn't stale. Goal also explicitly forbids touching that block regardless.
+
+**PATH-TEST check**: Goal specifies three paths — bare version (existing test, `tests/cli.test.js:22`), `--format json` (added, `tests/cli.test.js:27`), and unsupported format → exit 1 via the `yaml` example (added, `tests/cli.test.js:34`). All three are already exercised; adding more unsupported-value variants would be redundant test coverage beyond what the goal specifies.
+
+No edits needed.
+
+UVR-STALE: N/A bin/cli.js:12 — USAGE's version line is a generic description with no flag documentation, remains accurate for both plain and json output; goal also explicitly forbids editing this block.
+PATH-TEST: N/A tests/cli.test.js:34 — all three goal-specified paths (bare version, `--format json`, unsupported format exit 1) already have regression tests in the patch.
+PASS

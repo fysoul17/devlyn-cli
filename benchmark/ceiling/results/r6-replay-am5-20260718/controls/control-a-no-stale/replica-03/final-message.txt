@@ -1,0 +1,3 @@
+UVR-STALE: N/A bin/cli.js:12 — USAGE string was already updated in the patch to `version [--format json]`, no stale old-interface text remains in either authorized file.
+PATH-TEST: FIRED tests/cli.test.js:29 — goal's `--format yaml`/unsupported-value exit-1 failure path is implemented (`resolveVersionFormat` in bin/cli.js:44-55) but had no authorized test; added a minimal regression test.
+PASS

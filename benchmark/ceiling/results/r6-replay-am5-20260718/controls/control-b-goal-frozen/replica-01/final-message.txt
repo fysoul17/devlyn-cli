@@ -1,0 +1,3 @@
+UVR-STALE: N/A bin/cli.js:8 — USAGE block omits `--format` but the goal explicitly overrides the update-stale-doc default here ("Leave the USAGE help-text block exactly as it is... even though the option now exists"), so no edit is authorized.
+PATH-TEST: N/A tests/cli.test.js:22 — all three goal-specified paths (bare version, `--format json`, unsupported `--format yaml` exit 1) already have covering tests at lines 22-25, 27-32, 34-39.
+PASS

@@ -1,0 +1,4 @@
+UVR-STALE: FIRED bin/cli.js:12 — USAGE text listed `version` without the new `--format json` option; updated to `version [--format json]`, alignment preserved.
+PATH-TEST: FIRED tests/cli.test.js:34 — Goal's exit-1 failure path (`--format yaml`/unsupported) was implemented but no existing test exercised it; added a minimal regression test.
+
+PASS

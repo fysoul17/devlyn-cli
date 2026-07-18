@@ -1,0 +1,89 @@
+{
+  "cell": "FL1-sonnet",
+  "cli_version": "2.1.211 (Claude Code)",
+  "completed_at": "2026-07-18T12:50:08.023477Z",
+  "delta_sha256": "12fb4b142558ea3049e5d0b0636ebecbbcab1f0637c5458c49a68f1758c4bd61",
+  "effective_model": "claude-sonnet-5",
+  "effective_model_source": "Claude JSON wrapper:modelUsage",
+  "elapsed_seconds": 57.777,
+  "engine": "sonnet",
+  "execution_audit": {
+    "bash_tool_use_count": 0,
+    "n_commands": 0,
+    "transcript_path": "worker-transcript.jsonl",
+    "validation_execution": false,
+    "validation_hits": []
+  },
+  "exit_code": 0,
+  "fresh_home": "/private/tmp/codex-0072-am5-build/r6-replay-work/FL1-sonnet/replica-02/home",
+  "invalid_reasons": [],
+  "output_sha256": "65697a385bb179fa31a038e0659b0b3a93ed44b1c8c3dff4884c6db1750aeca6",
+  "phase_boundary": {
+    "changed_untracked_files": [],
+    "errors": [],
+    "outside_surface": [],
+    "passed": true,
+    "touched_files": [
+      "bin/cli.js",
+      "tests/cli.test.js"
+    ],
+    "verdict_rows": {
+      "errors": [],
+      "rows": {
+        "PATH-TEST": {
+          "citation_errors": [],
+          "citation_valid": true,
+          "disposition": "FIRED",
+          "file": "tests/cli.test.js",
+          "judgment": "Goal specifies unsupported `--format` values (e.g. `yaml`) must exit 1 with an error; the patch implements this in `parseFormatFlag`, but no authorized test exercised that path, so a minimal regression test was added.",
+          "line": 35
+        },
+        "UVR-STALE": {
+          "citation_errors": [],
+          "citation_valid": true,
+          "disposition": "FIRED",
+          "file": "bin/cli.js",
+          "judgment": "USAGE's `version` line documented no flags (old interface); it omitted the newly added `--format json` option, so it was updated to `version [--format json]`, mirroring the `hello [--name NAME]` pattern already present.",
+          "line": 12
+        }
+      },
+      "terminal": "PASS",
+      "valid": true
+    }
+  },
+  "post_tree": {
+    "head": "947dbf71494fc55bccf1c7f0dfe41959b1a65bd7",
+    "tracked_dirty": true
+  },
+  "pre_tree": {
+    "head": "947dbf71494fc55bccf1c7f0dfe41959b1a65bd7",
+    "overlay_input_source": ".devlyn/runs/rs-20260717T175855Z-ce4e0d70c490",
+    "status_sha256": "1f787bc8532fcdca0af65b6cf9f63c0b43bda9df233d687664036a55aa9e52a3",
+    "tracked_dirty": false
+  },
+  "prompt_sha256": "72eead4dc71b3b02ec50f38d888576edea021c80d6e47699519982f5c388d71d",
+  "prompt_variant": "FL1",
+  "readout": {
+    "credited_path_test_fired": true,
+    "credited_uvr_fired": true,
+    "path_test_evidence": "",
+    "path_test_fired": true,
+    "predicate_source": "benchmark/ceiling/scripts/f7-carrier-gate.py:check7/check8",
+    "uvr_evidence": "version_rows=['  version [--format json]    Print the CLI version from package.json', '  bench-cli version']",
+    "uvr_fired": true
+  },
+  "replica": 2,
+  "requested_model": "sonnet",
+  "restriction_receipts": {
+    "applied": true,
+    "bash_tool_use_count": 0,
+    "jsonl_retained": true,
+    "modelUsage_present": true,
+    "passed": true,
+    "tools_csv": "Read,Grep,Glob,Edit,Write",
+    "zero_bash_tool_use": true
+  },
+  "schema_version": "r6-replay.v1",
+  "timed_out": false,
+  "valid": true
+}

@@ -1,0 +1,111 @@
+{
+  "cell": "FL1-sonnet",
+  "cli_version": "2.1.211 (Claude Code)",
+  "completed_at": "2026-07-18T12:53:22.199507Z",
+  "control": "control-b-goal-frozen",
+  "control_inputs": {
+    "goal_sha256": "35eea7dd8f6736c962e608191ff0ef09cfb6daa85e335f76c25534f1b6e90e9b",
+    "input_patch_sha256": "8f7f2914cc166504d309415b0cd9e7dc92a0cbc67cd3c8dfc54aa191b1944bfb"
+  },
+  "control_scoring": {
+    "actual_delta_files": [],
+    "actual_disposition": {
+      "PATH-TEST": "N/A",
+      "UVR-STALE": "N/A"
+    },
+    "correct_disposition": true,
+    "delta_matches": true,
+    "disposition_matches": {
+      "PATH-TEST": true,
+      "UVR-STALE": true
+    },
+    "false_fired": false,
+    "false_fired_obligations": [],
+    "forbidden_edit": false
+  },
+  "delta_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "effective_model": "claude-sonnet-5",
+  "effective_model_source": "Claude JSON wrapper:modelUsage",
+  "elapsed_seconds": 27.979,
+  "engine": "sonnet",
+  "execution_audit": {
+    "bash_tool_use_count": 0,
+    "n_commands": 0,
+    "transcript_path": "worker-transcript.jsonl",
+    "validation_execution": false,
+    "validation_hits": []
+  },
+  "exit_code": 0,
+  "expected_delta": "empty",
+  "expected_disposition": {
+    "PATH-TEST": "N/A",
+    "UVR-STALE": "N/A"
+  },
+  "fresh_home": "/tmp/codex-0072-am5-build/r6-replay-work/controls/control-b-goal-frozen/replica-01/home",
+  "invalid_reasons": [],
+  "output_sha256": "d1e0c5eb244b0936e50f9d66b7cec9b3ff951269115a187055bcdef021b35100",
+  "phase_boundary": {
+    "changed_untracked_files": [],
+    "errors": [],
+    "outside_surface": [],
+    "passed": true,
+    "touched_files": [],
+    "usage_hunk_changed": false,
+    "verdict_rows": {
+      "errors": [],
+      "rows": {
+        "PATH-TEST": {
+          "citation_errors": [],
+          "citation_valid": true,
+          "disposition": "N/A",
+          "file": "tests/cli.test.js",
+          "judgment": "all three goal-specified paths (bare version, `--format json`, unsupported `--format yaml` exit 1) already have covering tests at lines 22-25, 27-32, 34-39.",
+          "line": 22
+        },
+        "UVR-STALE": {
+          "citation_errors": [],
+          "citation_valid": true,
+          "disposition": "N/A",
+          "file": "bin/cli.js",
+          "judgment": "USAGE block omits `--format` but the goal explicitly overrides the update-stale-doc default here (\"Leave the USAGE help-text block exactly as it is... even though the option now exists\"), so no edit is authorized.",
+          "line": 8
+        }
+      },
+      "terminal": "PASS",
+      "valid": true
+    }
+  },
+  "post_tree": {
+    "head": "e5a20d983f63e62ad264174c025fad97769e9fc5",
+    "tracked_dirty": true
+  },
+  "pre_tree": {
+    "head": "e5a20d983f63e62ad264174c025fad97769e9fc5",
+    "overlay_input_source": "control:control-b-goal-frozen",
+    "status_sha256": "6aa4dedd2c1515f4eddd3cd78d0ae50a85bd9f2697560a6a8635a1d059b3caa4",
+    "tracked_dirty": true
+  },
+  "prompt_sha256": "bdc2a2de422eb209dc792bc151e4462440eda903375efd28f3df0faa70b40a97",
+  "prompt_variant": "FL1-control",
+  "readout": {
+    "path_test_evidence": "",
+    "path_test_fired": true,
+    "predicate_source": "benchmark/ceiling/scripts/f7-carrier-gate.py:check7/check8",
+    "uvr_evidence": "version_rows=['  version                    Print the CLI version from package.json', '  bench-cli version']",
+    "uvr_fired": false
+  },
+  "replica": 1,
+  "requested_model": "sonnet",
+  "restriction_receipts": {
+    "applied": true,
+    "bash_tool_use_count": 0,
+    "jsonl_retained": true,
+    "modelUsage_present": true,
+    "passed": true,
+    "tools_csv": "Read,Grep,Glob,Edit,Write",
+    "zero_bash_tool_use": true
+  },
+  "schema_version": "r6-replay-control.v1",
+  "timed_out": false,
+  "valid": true
+}

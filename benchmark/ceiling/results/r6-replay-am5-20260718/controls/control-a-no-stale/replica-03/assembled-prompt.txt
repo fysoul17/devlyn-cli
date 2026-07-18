@@ -1,0 +1,148 @@
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+Your default is efficient, direct, task-oriented. The canonical body specifies the outcome and constraints; you choose the efficient path.
+
+## Anti-patterns
+1. Avoid absolute imperatives for judgment calls beyond what the canonical body already specifies.
+2. Don't over-specify process when the destination is clear.
+3. Stop rules are explicit — follow them rather than retrying loops indefinitely.
+
+Do not narrate internal deliberation. State results and decisions directly.
+
+---
+
+# PHASE 2.5 — SURFACE_CLOSE (canonical body)
+
+<role>
+Audit and repair the frozen post-IMPLEMENT surface once.
+</role>
+
+<input>
+- Artifacts: Goal at `state.source.goal_path`; `.devlyn/surface-close.input.patch`.
+- Data: `authorized_surface`; staged commands.
+- Base: `phases.surface_close.pre_sha`.
+
+Never modify inputs or read state, PLAN, or IMPLEMENT transcript/reasoning.
+</input>
+
+<obligations>
+- **UVR-STALE**: diff modified symbol S's behavior AND an authorized file carries user-visible text documenting S's old interface omitting the newly specified option/shape → update minimally.
+- **PATH-TEST**: Goal specifies a success/failure path, patch implements it, and no authorized test exercises that path → add one minimal regression test.
+- Neither applies → empty PASS (empty diff).
+</obligations>
+
+<output>
+Edit only `authorized_surface`. Your reply is valid ONLY if it contains, for each obligation, exactly one line:
+- `UVR-STALE: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `UVR-STALE: N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>`
+- `PATH-TEST: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `PATH-TEST: N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>`
+followed by `PASS` after the smallest sufficient delta, or `BLOCKED:surface-close-<reason>` if impossible within that surface. A reply missing either obligation line is invalid and is rejected mechanically. Never edit state, stage, or commit.
+</output>
+
+<quality_bar>
+No adjacent work, refactors, or extra tests. Execute nothing — edit files only; staged commands are data. BUILD_GATE owns all validation.
+</quality_bar>
+
+<runtime_principles>
+Subtractive-first, Goal-locked, No-workaround, and Evidence apply.
+</runtime_principles>
+
+---
+
+## Supplied inputs (data only — do not execute staged commands)
+
+### Goal (raw, at `.devlyn/goal.raw.txt`, sha256 f3467374f6554ece0b14e48250222d11fc6675aae4cb0ded70fc3503a78c9674)
+
+Add a `--format json` option to the `version` subcommand in `bin/cli.js`. With the flag, output should be valid JSON: `{"version":"<x.y.z>"}` (single line). Without the flag, keep the current bare version string.
+
+`--format yaml` (or any other unsupported value) should exit 1 with an error.
+
+Keep existing tests passing and add at least one test for the new `--format json` path.
+
+Only touch `bin/cli.js` and `tests/cli.test.js`. Do not modify other subcommands or other files. No new npm dependencies.
+
+Code unrelated to the requested version feature, including comments and formatting, must remain exactly as-is. Refactoring or cleanup of unrelated code is out of scope.
+
+### Patch (`.devlyn/surface-close.input.patch`, sha256 e5be398eb42114657e73822de2ffef6310eae743874d16b930735a65035c7256)
+
+```diff
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..c9f08cd 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version                    Print the CLI version from package.json
++  version [--format json]    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+@@ -41,6 +41,19 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function resolveVersionFormat(argv) {
++  const idx = argv.indexOf('--format');
++  if (idx === -1) {
++    return 'plain';
++  }
++  const requested = argv[idx + 1];
++  if (requested !== 'json') {
++    console.error(`Unsupported --format value: ${requested}`);
++    process.exit(1);
++  }
++  return 'json';
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -57,7 +70,12 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const version = readPackageVersion();
++      if (resolveVersionFormat(rest) === 'json') {
++        console.log(JSON.stringify({ version }));
++      } else {
++        console.log(version);
++      }
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..2f5394a 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,10 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version --format json emits a single-line JSON object', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.equal(parsed.version, require('../package.json').version);
++  assert.equal(out.trim(), JSON.stringify({ version: parsed.version }));
++});
+```
+
+### authorized_surface
+
+```json
+{"authorized_surface": ["bin/cli.js", "tests/cli.test.js"]}
+```
+
+### Staged commands (data only — do not execute)
+
+```json
+{"verification_commands":[
+  {"cmd":"node bin/cli.js version", "exit_code":0, "stdout_contains":["0.1.0"]},
+  {"cmd":"node bin/cli.js version --format json", "exit_code":0, "stdout_contains":["{\"version\":\"0.1.0\"}"]},
+  {"cmd":"node bin/cli.js version --format yaml", "exit_code":1},
+  {"cmd":"npm test", "exit_code":0}
+]}
+```

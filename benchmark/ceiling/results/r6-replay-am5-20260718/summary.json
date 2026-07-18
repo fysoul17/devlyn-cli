@@ -1,0 +1,73 @@
+{
+  "cells": {
+    "F1-sonnet": {
+      "adaptive_target_valid_replicas": 2,
+      "completed_receipts": 0,
+      "engine": "sonnet",
+      "frozen_threshold": {
+        "required_replicas": 3,
+        "required_uvr_fires": 2
+      },
+      "invalid_worker_runs": 0,
+      "path_test_fire_count": 0,
+      "prompt_variant": "F1",
+      "threshold_count_met": false,
+      "uvr_fire_count": 0,
+      "valid_replicas": 0,
+      "worker_runs": 0
+    },
+    "F1-terra": {
+      "adaptive_target_valid_replicas": 2,
+      "completed_receipts": 0,
+      "engine": "terra",
+      "frozen_threshold": {
+        "required_replicas": 3,
+        "required_uvr_fires": 2
+      },
+      "invalid_worker_runs": 0,
+      "path_test_fire_count": 0,
+      "prompt_variant": "F1",
+      "threshold_count_met": false,
+      "uvr_fire_count": 0,
+      "valid_replicas": 0,
+      "worker_runs": 0
+    },
+    "FL1-sonnet": {
+      "adaptive_target_valid_replicas": 3,
+      "completed_receipts": 3,
+      "engine": "sonnet",
+      "frozen_threshold": {
+        "required_replicas": 3,
+        "required_uvr_fires": 2
+      },
+      "invalid_worker_runs": 0,
+      "path_test_fire_count": 3,
+      "prompt_variant": "FL1",
+      "threshold_count_met": true,
+      "uvr_fire_count": 3,
+      "valid_replicas": 3,
+      "worker_runs": 3
+    },
+    "FL1-terra": {
+      "adaptive_target_valid_replicas": 2,
+      "completed_receipts": 0,
+      "engine": "terra",
+      "frozen_threshold": {
+        "required_replicas": 3,
+        "required_uvr_fires": 2
+      },
+      "invalid_worker_runs": 0,
+      "path_test_fire_count": 0,
+      "prompt_variant": "FL1",
+      "threshold_count_met": false,
+      "uvr_fire_count": 0,
+      "valid_replicas": 0,
+      "worker_runs": 0
+    }
+  },
+  "global_cap": 12,
+  "global_worker_runs": 3,
+  "registration": "iter-0072 Registration v6 Amendment 5 / DECISIONS 0072.21",
+  "schema_version": "r6-replay-summary.v1",
+  "updated_at": "2026-07-18T12:51:22.701772Z"
+}

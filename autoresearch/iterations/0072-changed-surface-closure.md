@@ -1256,3 +1256,25 @@ the graduated settings envelope stays untouched); token nets
 after `.agents` sync. Seat scorecard this round: orchestrator caught
 the resolve-routing hazard, Codex caught the model-id live-BLOCK, Grok
 caught the MCP channel — three seats, three distinct defect classes.
+
+## Amendment-5 restricted replay GREEN — probe-tier validation complete (2026-07-18 continuation)
+
+**Matrix (restricted FL1×sonnet, results/r6-replay-am5-20260718, CLI
+pin 2.1.211)**: UVR fire 3/3 (bar ≥2/3), PATH-TEST 3/3, valid replicas
+3/3, invalid 0. Restriction receipts 3/3 PASSED — zero Bash `tool_use`
+(structural exclusion held behaviorally), `modelUsage` present
+(completion evidence), session JSONL retained (audit evidence);
+effective model `claude-sonnet-5` on every replica. **Controls**:
+control-a 2/2 credited fully-correct (replica-01 invalid on
+`worker-exit-nonzero` + malformed adjudication output — worker flake,
+NOT restriction-related: its restriction receipts passed and its delta
+matched; frozen replacement scheduling ran replica-03, valid + fully
+correct), control-b 2/2 fully correct; false-FIRED and forbidden edits
+0 across ALL attempts including the invalid one. **Falsifier: no leg
+fired** — (i) 3/3 ≥ 2/3; (ii) both controls correct disposition,
+zero-tolerance items clean; (iii) runtime excludes Bash AND retains
+attested evidence on every worker. Amendment 5 validated at probe
+tier; the live-row precondition is met. Next: ONE fresh diagnostic row
+`nodeg-20260718f` (runner HEAD, CLI pin 2.1.211, `--v5
+--post-implement` gate + pinned node, live snapshots) = the ship
+decision.

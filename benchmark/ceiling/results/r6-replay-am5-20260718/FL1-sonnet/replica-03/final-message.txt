@@ -1,0 +1,3 @@
+UVR-STALE: FIRED bin/cli.js:12 — USAGE help text listed `version` with no flag while the diff added `--format json`; updated to `version [--format json]` to keep the CLI's own `--help` output accurate.
+PATH-TEST: FIRED tests/cli.test.js:34 — goal requires `--format yaml`/unsupported values to exit 1 with an error, but no existing test exercised that path; added a minimal regression test.
+PASS

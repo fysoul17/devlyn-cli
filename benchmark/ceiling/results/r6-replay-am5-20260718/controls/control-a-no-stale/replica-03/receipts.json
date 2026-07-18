@@ -1,0 +1,115 @@
+{
+  "cell": "FL1-sonnet",
+  "cli_version": "2.1.211 (Claude Code)",
+  "completed_at": "2026-07-18T12:52:53.603856Z",
+  "control": "control-a-no-stale",
+  "control_inputs": {
+    "goal_sha256": "f3467374f6554ece0b14e48250222d11fc6675aae4cb0ded70fc3503a78c9674",
+    "input_patch_sha256": "e5be398eb42114657e73822de2ffef6310eae743874d16b930735a65035c7256"
+  },
+  "control_scoring": {
+    "actual_delta_files": [
+      "tests/cli.test.js"
+    ],
+    "actual_disposition": {
+      "PATH-TEST": "FIRED",
+      "UVR-STALE": "N/A"
+    },
+    "correct_disposition": true,
+    "delta_matches": true,
+    "disposition_matches": {
+      "PATH-TEST": true,
+      "UVR-STALE": true
+    },
+    "false_fired": false,
+    "false_fired_obligations": [],
+    "forbidden_edit": false
+  },
+  "delta_sha256": "2711aa331b04bad6c9c2959203a15efa165e17b7e3d4be53196254bf09739151",
+  "effective_model": "claude-sonnet-5",
+  "effective_model_source": "Claude JSON wrapper:modelUsage",
+  "elapsed_seconds": 25.44,
+  "engine": "sonnet",
+  "execution_audit": {
+    "bash_tool_use_count": 0,
+    "n_commands": 0,
+    "transcript_path": "worker-transcript.jsonl",
+    "validation_execution": false,
+    "validation_hits": []
+  },
+  "exit_code": 0,
+  "expected_delta": "test-only",
+  "expected_disposition": {
+    "PATH-TEST": "FIRED",
+    "UVR-STALE": "N/A"
+  },
+  "fresh_home": "/tmp/codex-0072-am5-build/r6-replay-work/controls/control-a-no-stale/replica-03/home",
+  "invalid_reasons": [],
+  "output_sha256": "9e576f7d8851c282ebd537eb589a121cf97c8c82cf9a563868232482c284152f",
+  "phase_boundary": {
+    "changed_untracked_files": [],
+    "errors": [],
+    "outside_surface": [],
+    "passed": true,
+    "touched_files": [
+      "tests/cli.test.js"
+    ],
+    "usage_hunk_changed": false,
+    "verdict_rows": {
+      "errors": [],
+      "rows": {
+        "PATH-TEST": {
+          "citation_errors": [],
+          "citation_valid": true,
+          "disposition": "FIRED",
+          "file": "tests/cli.test.js",
+          "judgment": "goal's `--format yaml`/unsupported-value exit-1 failure path is implemented (`resolveVersionFormat` in bin/cli.js:44-55) but had no authorized test; added a minimal regression test.",
+          "line": 29
+        },
+        "UVR-STALE": {
+          "citation_errors": [],
+          "citation_valid": true,
+          "disposition": "N/A",
+          "file": "bin/cli.js",
+          "judgment": "USAGE string was already updated in the patch to `version [--format json]`, no stale old-interface text remains in either authorized file.",
+          "line": 12
+        }
+      },
+      "terminal": "PASS",
+      "valid": true
+    }
+  },
+  "post_tree": {
+    "head": "e5a20d983f63e62ad264174c025fad97769e9fc5",
+    "tracked_dirty": true
+  },
+  "pre_tree": {
+    "head": "e5a20d983f63e62ad264174c025fad97769e9fc5",
+    "overlay_input_source": "control:control-a-no-stale",
+    "status_sha256": "6aa4dedd2c1515f4eddd3cd78d0ae50a85bd9f2697560a6a8635a1d059b3caa4",
+    "tracked_dirty": true
+  },
+  "prompt_sha256": "8f6abd0bfa7ad7e012f1f9bfcb828ae24e49fbb74952164f8180a815247d0ffe",
+  "prompt_variant": "FL1-control",
+  "readout": {
+    "path_test_evidence": "",
+    "path_test_fired": true,
+    "predicate_source": "benchmark/ceiling/scripts/f7-carrier-gate.py:check7/check8",
+    "uvr_evidence": "version_rows=['  version [--format json]    Print the CLI version from package.json', '  bench-cli version']",
+    "uvr_fired": true
+  },
+  "replica": 3,
+  "requested_model": "sonnet",
+  "restriction_receipts": {
+    "applied": true,
+    "bash_tool_use_count": 0,
+    "jsonl_retained": true,
+    "modelUsage_present": true,
+    "passed": true,
+    "tools_csv": "Read,Grep,Glob,Edit,Write",
+    "zero_bash_tool_use": true
+  },
+  "schema_version": "r6-replay-control.v1",
+  "timed_out": false,
+  "valid": true
+}

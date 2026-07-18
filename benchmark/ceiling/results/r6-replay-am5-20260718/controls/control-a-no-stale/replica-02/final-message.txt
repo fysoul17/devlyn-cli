@@ -1,0 +1,3 @@
+UVR-STALE: N/A tests/cli.test.js:12 — the only user-visible interface doc, the USAGE string in bin/cli.js:12, was already updated by the patch to `version [--format json]`; no authorized text still documents the old interface.
+PATH-TEST: FIRED tests/cli.test.js:34 — Goal requires `--format yaml`/unsupported values to exit 1, patch implements it (bin/cli.js:50-53), but no test exercised that failure path; added `version --format yaml exits with an error` test.
+PASS
