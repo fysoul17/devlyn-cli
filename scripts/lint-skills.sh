@@ -209,7 +209,7 @@ offenders=$(grep -RInE 'Claude (Opus|Sonnet|Haiku|Fable)|claude-(opus|sonnet|hai
   | grep -v 'config/skills/devlyn:auto-resolve-workspace/' \
   | grep -v 'config/skills/devlyn:ideate-workspace/' \
   | grep -v 'config/skills/preflight-workspace/' \
-  | grep -vE '^config/skills/devlyn:resolve/SKILL\.md:[0-9]+:Freeze .*--tools "Read,Grep,Glob,Edit,Write" --model claude-sonnet-5 --output-format json --strict-mcp-config --mcp-config '\''\{"mcpServers":\{\}\}'\''.*, recording the same model at SPW spawn\.' \
+  | grep -vE '^config/skills/devlyn:resolve/SKILL\.md:[0-9]+:Freeze .*--tools "Read,Grep,Glob,Edit,Write" --dangerously-skip-permissions --model claude-sonnet-5 --output-format json --strict-mcp-config --mcp-config '\''\{"mcpServers":\{\}\}'\''.*, recording the same model at SPW spawn\.' \
   | cut -d: -f1 \
   | sort -u \
   || true)
@@ -432,7 +432,7 @@ for tree in config/skills .claude/skills .agents/skills; do
     || ! grep -Fq 'auto_surface_close_claude_unavailable' "$skill" \
     || ! grep -Fq 'canonical body VERBATIM' "$skill" \
     || ! grep -Fq 'run-bounded.py 600 -- claude -p' "$skill" \
-    || ! grep -Fq -- '--tools "Read,Grep,Glob,Edit,Write" --model claude-sonnet-5 --output-format json --strict-mcp-config --mcp-config '\''{"mcpServers":{}}'\''' "$skill" \
+    || ! grep -Fq -- '--tools "Read,Grep,Glob,Edit,Write" --dangerously-skip-permissions --model claude-sonnet-5 --output-format json --strict-mcp-config --mcp-config '\''{"mcpServers":{}}'\''' "$skill" \
     || ! grep -Fq '.devlyn/surface-close.output.json' "$skill" \
     || ! grep -Fq '`surface-rollback`' "$skill" \
     || grep -Fq 'Supplied digests' "$phase" \

@@ -573,7 +573,32 @@ run_with_timeout() {
   local draw_monitor_pid=""
   if [ "$F7_DIAGNOSTIC_ROW" -eq 1 ]; then
     (
+      criteria_checked=0
       while kill -0 "$child_pid" 2>/dev/null; do
+        if [ "$criteria_checked" -eq 0 ]; then
+          python3 "$F7_CARRIER_GATE" "$worktree" --criteria-time-only \
+            > "$draw_probe" 2> "$draw_probe_stderr"
+          probe_exit=$?
+          case "$probe_exit" in
+            0)
+              criteria_checked=1
+              ;;
+            75)
+              sleep 1
+              continue
+              ;;
+            "$DRAW_NON_DIAGNOSTIC_EXIT")
+              mv "$draw_probe" "$draw_trigger"
+              terminate_child_group
+              exit 0
+              ;;
+            *)
+              mv "$draw_probe_stderr" "$draw_monitor_error"
+              terminate_child_group
+              exit 0
+              ;;
+          esac
+        fi
         python3 "$F7_CARRIER_GATE" "$worktree" --pre-sc-attribution-only \
           > "$draw_probe" 2> "$draw_probe_stderr"
         probe_exit=$?

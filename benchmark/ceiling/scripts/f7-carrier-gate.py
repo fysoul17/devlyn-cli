@@ -7,13 +7,15 @@ pre-SC attribution via `git show <pre_sha>:<file>`); --post-implement adds
 checks 6-13. History: v4 gate (DECISIONS 0072.8), v5 gate (0072.13).
 
 usage: f7-gate.py <workspace-dir> [--post-implement]
+       f7-gate.py <workspace-dir> --criteria-time-only
        f7-gate.py <workspace-dir> --pre-sc-attribution-only
        f7-gate.py --self-test-draw-truth-table
 
 <workspace-dir> = the A-arm run workspace containing .devlyn/ + the fixture repo
 (bin/cli.js, tests/cli.test.js). Checks 1-5 run always; 6-10 only with
---post-implement. The attribution-only mode exits 0 for a diagnostic draw,
-75 while receipts are not ready, 86 for a non-diagnostic draw, and 78 on error.
+--post-implement. The criteria-time and attribution-only modes exit 0 for a
+diagnostic draw, 75 while receipts are not ready, 86 for a non-diagnostic
+draw, and 78 on error.
 """
 import contextlib, json, os, pathlib, re, shutil, subprocess, sys, tempfile
 
@@ -22,6 +24,24 @@ FIXTURE = REPO / "benchmark/ceiling/corpus/DR-byte-preservation-f7-out-of-scope-
 EXPECTED_SURFACE = ["bin/cli.js", "tests/cli.test.js"]
 PRE_SC_NOT_READY_EXIT = 75
 DRAW_NON_DIAGNOSTIC_EXIT = 86
+
+
+def check3v5(criteria_text: str) -> tuple[bool, int, bool]:
+    vm = re.search(
+        r"(?ms)^<!--[ \t]*devlyn:verification[ \t]*-->.*?```json[ \t]*\n(.*?)\n```",
+        criteria_text,
+    )
+    cmds = []
+    if vm:
+        try:
+            cmds = json.loads(vm.group(1)).get("verification_commands", [])
+        except json.JSONDecodeError:
+            cmds = []
+    yaml_exit1 = any(
+        "--format yaml" in command.get("cmd", "") and command.get("exit_code") == 1
+        for command in cmds
+    )
+    return len(cmds) >= 1, len(cmds), yaml_exit1
 
 
 def check7(cli_text: str) -> tuple[bool, str]:
@@ -108,6 +128,24 @@ def print_pre_surface_close_attribution(ws: pathlib.Path) -> int:
     return DRAW_NON_DIAGNOSTIC_EXIT if result["draw_non_diagnostic"] else 0
 
 
+def print_criteria_time_check(ws: pathlib.Path) -> int:
+    criteria_path = ws / ".devlyn/criteria.generated.md"
+    if not criteria_path.is_file():
+        print(json.dumps({"status": "not-ready"}, sort_keys=True))
+        return PRE_SC_NOT_READY_EXIT
+    try:
+        ok, cmd_count, _yaml_exit1 = check3v5(criteria_path.read_text(encoding="utf-8"))
+    except (OSError, AttributeError, TypeError) as exc:
+        print(f"criteria-time check error: {exc}", file=sys.stderr)
+        return 78
+    print(json.dumps({
+        "status": "diagnostic" if ok else "draw-non-diagnostic",
+        "check3v5": ok,
+        "cmds": cmd_count,
+    }, sort_keys=True))
+    return 0 if ok else DRAW_NON_DIAGNOSTIC_EXIT
+
+
 def truth_table_self_test() -> int:
     row_root = REPO / "benchmark/ceiling/results"
     expected = {"d": False, "e": True, "f": True}
@@ -130,6 +168,55 @@ def truth_table_self_test() -> int:
         print(
             f"ok: nodeg-20260718{suffix} pre7={pre7} pre8={pre8} -> {action}"
         )
+
+    criteria_cases = [
+        (
+            "nodeg-20260718d",
+            row_root / "nodeg-20260718d" / (
+                "DR-byte-preservation-f7-out-of-scope-trap/A1/row-artifacts/"
+                "devlyn-archive/runs/rs-20260718T000000Z-a1b2c3d4e5f6/criteria.generated.md"
+            ),
+            None,
+            False,
+        ),
+        (
+            "nodeg-20260718h",
+            row_root / "nodeg-20260718h" / (
+                "DR-byte-preservation-f7-out-of-scope-trap/A1/row-artifacts/"
+                "devlyn-snapshot.tgz"
+            ),
+            "devlyn.snapshot/runs/rs-20260718T142858Z-25185f546010/criteria.generated.md",
+            False,
+        ),
+        (
+            "nodeg-20260719b",
+            row_root / "nodeg-20260719b" / (
+                "DR-byte-preservation-f7-out-of-scope-trap/A1/row-artifacts/"
+                "criteria.generated.md"
+            ),
+            None,
+            True,
+        ),
+    ]
+    for run_id, archive, member, should_abort in criteria_cases:
+        if member is None:
+            criteria_text = archive.read_text(encoding="utf-8")
+        else:
+            import tarfile
+            with tarfile.open(archive, "r:gz") as bundle:
+                source = bundle.extractfile(member)
+                if source is None:
+                    raise AssertionError(f"archived criteria missing: {archive}:{member}")
+                criteria_text = source.read().decode("utf-8")
+        check3_ok, cmd_count, _yaml_exit1 = check3v5(criteria_text)
+        actual = not check3_ok
+        if actual != should_abort:
+            raise AssertionError(
+                f"{run_id}: check3v5={check3_ok} cmds={cmd_count} "
+                f"abort={actual} expected={should_abort}"
+            )
+        action = "abort" if actual else "continue"
+        print(f"ok: {run_id} check3v5={check3_ok} cmds={cmd_count} -> {action}")
     return 0
 
 
@@ -211,6 +298,8 @@ def main() -> int:
         return self_test()
     if sys.argv[1:] == ["--self-test-draw-truth-table"]:
         return truth_table_self_test()
+    if len(sys.argv) >= 3 and sys.argv[2:] == ["--criteria-time-only"]:
+        return print_criteria_time_check(pathlib.Path(sys.argv[1]))
     if len(sys.argv) >= 3 and sys.argv[2:] == ["--pre-sc-attribution-only"]:
         return print_pre_surface_close_attribution(pathlib.Path(sys.argv[1]))
     if len(sys.argv) < 2:
@@ -243,19 +332,12 @@ def main() -> int:
 
     # 3. no binding R/C/O (v4 lever; v5 keeps synthesis — only Verification parse checked)
     binding = re.findall(r"(?m)^##+ (Requirements|Constraints|Out of Scope)\b", criteria)
-    vm = re.search(r"(?ms)^<!--[ \t]*devlyn:verification[ \t]*-->.*?```json[ \t]*\n(.*?)\n```", criteria)
-    cmds = []
-    if vm:
-        try:
-            cmds = json.loads(vm.group(1)).get("verification_commands", [])
-        except json.JSONDecodeError:
-            cmds = []
-    yaml_exit1 = any("--format yaml" in c.get("cmd", "") and c.get("exit_code") == 1 for c in cmds)
+    check3_ok, cmd_count, yaml_exit1 = check3v5(criteria)
     if v5:
-        check("3v5 Verification parses", len(cmds) >= 1, f"cmds={len(cmds)} yaml_exit1={yaml_exit1} (R/C/O allowed in v5)")
+        check("3v5 Verification parses", check3_ok, f"cmds={cmd_count} yaml_exit1={yaml_exit1} (R/C/O allowed in v5)")
     else:
-        check("3 no-R/C/O + verification", not binding and len(cmds) >= 1 and yaml_exit1,
-              f"binding={binding} cmds={len(cmds)} yaml_exit1={yaml_exit1}")
+        check("3 no-R/C/O + verification", not binding and check3_ok and yaml_exit1,
+              f"binding={binding} cmds={cmd_count} yaml_exit1={yaml_exit1}")
 
     # 4. plan.md == scope-only grammar (v4 lever; N/A in v5 — semantic plan expected)
     if not v5:
