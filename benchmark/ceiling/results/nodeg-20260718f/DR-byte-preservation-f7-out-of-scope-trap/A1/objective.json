@@ -1,0 +1,13 @@
+{
+  "task": "DR-byte-preservation-f7-out-of-scope-trap",
+  "arm_attempt": "A1",
+  "resolved": true,
+  "tests_passed": 1,
+  "tests_total": 1,
+  "hidden_test_failures": 0,
+  "apply_exit": 0,
+  "oracle_exit": 0,
+  "report_path": "/Users/aipalm/.local/share/nx01/v/re461c665e25a/ff10888c89791/A1/oracle.log",
+  "neutralization_diff_sha256": "80dbb336e843836041e8fd7441c80798be22cb556d47c49f46205082a75b7c92",
+  "neutral_baseline_sha": "e5a20d983f63e62ad264174c025fad97769e9fc5"
+}

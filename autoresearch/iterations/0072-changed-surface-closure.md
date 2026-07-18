@@ -1278,3 +1278,66 @@ tier; the live-row precondition is met. Next: ONE fresh diagnostic row
 `nodeg-20260718f` (runner HEAD, CLI pin 2.1.211, `--v5
 --post-implement` gate + pinned node, live snapshots) = the ship
 decision.
+
+## nodeg-20260718f ADJUDICATED — non-diagnostic (SC skipped + pre8=True); claude-shim + C2 early-abort registered (three-way R0 converged)
+
+**Row facts (receipts archived in A1/row-artifacts: gate-readout.txt /
+runner.log / watch.log / devlyn-snapshot.tgz)**: Amendment-5 envelope
+live (runner 53303a1, CLI 2.1.211); terminal PASS_WITH_ISSUES, wall
+~22.6 min; `phases.surface_close` = skip
+(`auto_surface_close_claude_unavailable`, spawn never attempted) —
+orchestrator report: "claude CLI binary not on PATH". Root cause
+verified: frozen_path's first entry
+`~/.local/share/claude/versions` contains only version-named files, NO
+`claude` name → `command -v claude` fails in EVERY row env (identical
+frozen_path -e ≡ -f); rows -d/-e ran SC only because their sonnet
+orchestrators improvised binary discovery — the cell has been riding
+orchestrator improvisation (Phase-Faithful defect). Reconstructed gate
+(true base e5a20d98 from the -c bundle + A1 patch + snapshot;
+deviations annotated): 7/11 — FAIL 12 (empty SC state), FAIL 13
+pre7=False **pre8=True** (criteria draw again carried yaml exit-1;
+IMPLEMENT closed check 8), FAIL 7 (USAGE untouched — no SC ran), FAIL
+10 node--test=1 (likely recon artifact: no node_modules; row ran npm
+ci in-row).
+
+**Three-way R0 (Grok + Codex independent, both over opened receipts)**:
+- **A CONFIRM 3/3** — NO ship credit, NO falsification (lever never
+  ran; pre8=True independently voids attribution per v5-edit-4;
+  precedent 0072.19). v6+Am5 stay LANDED. -20260718f DEAD. Rerun
+  licensed.
+- **B CONFIRM-WITH-EDITS 3/3 (claude shim)** — arm-local bin dir with
+  `claude → resolved pinned direct binary` symlink FIRST on
+  frozen_path, replacing the ineffective versions-dir entry
+  (claude-isolation.py resolver comment shows the entry's intent
+  assumed a `claude` name; a version-file pin breaks it). Edits union
+  (both seats): fail-closed shim creation inside the opaque per-attempt
+  home (never mutate shared dirs); outer arm launch keeps the absolute
+  binary (only nested resolution changes); env-key allowlist unchanged;
+  purity canary updated to "first entry exposes executable `claude`
+  resolving to the pinned sha; `.superset` still forbidden"; receipts
+  gain shim_path/shim_target/target-sha + `command -v claude`
+  attestation; negative test = absent/mismatched shim fails isolation
+  (never reaches product auto-skip); attested parity smoke (target
+  sha/version, post-resolution args, model/tools/MCP envelope,
+  modelUsage, retained JSONL, audit) required BEFORE the next live row.
+  Falsifier: any receipt-visible behavioral delta beyond basename
+  resolution → reject B.
+- **C REFUTE 3/3 (criteria-time yaml abort)** — receipt counterexample
+  BOTH seats found independently: **-d had yaml_exit1=True AND
+  pre7=False pre8=False → credited diagnostic** (gate-readout.txt:2);
+  the yaml@criteria predicate would have killed a credited row = C's
+  own falsifier. yaml_exit1 (check-3 reporter) ≠ pre8 (check-8 on the
+  pre-SC tree) — conflation rejected under Ex-Ante Gate Authority.
+  **Record correction**: 0072.19's parenthetical "(20260718d's was
+  yaml_exit1=False)" is WRONG — -d's receipt reads yaml_exit1=True.
+- **C2 registered (both seats' convergent salvage)** — post-IMPLEMENT
+  early abort scoped to the F7 diagnostic-row mode: evaluate the exact
+  shared check-7/check-8 code on the pre-SC tree once
+  surface-close.input.patch + pre_sha exist; abort iff pre7=True or
+  pre8=True; runner-owned kill + snapshot preserved +
+  `draw-non-diagnostic` marker + manual fresh run-id (no silent
+  auto-retry); truth-table self-test: -d continues, -e/-f abort.
+
+**Next**: Codex builds B + C2 (instrument-only; benchmark scripts) →
+gates + parity smoke → fresh diagnostic row (fresh run-id) = the ship
+decision, unchanged gate.

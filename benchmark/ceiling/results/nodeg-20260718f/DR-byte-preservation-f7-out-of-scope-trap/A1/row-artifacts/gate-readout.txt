@@ -1,0 +1,15 @@
+# f7-carrier-gate readout — nodeg-20260718f adjudication (reconstructed workspace)
+# recon: -c row bundle @ e5a20d98 (true base) + A1/patch.diff as synthetic commit + /tmp/nodeg-20260718f-arc/devlyn.snapshot; archive files promoted to live layout
+# deviations: synthetic commit sha (not row shas); no node_modules in recon (check-10 node--test=1 likely artifact — row ran npm ci in-row)
+PASS  1 source/complexity                source.type='generated' complexity='medium'
+PASS  3v5 Verification parses            cmds=4 yaml_exit1=True (R/C/O allowed in v5)
+PASS  5 surface==two files               surface=['bin/cli.js', 'tests/cli.test.js']
+PASS  6 diff⊆surface                     touched=['bin/cli.js', 'tests/cli.test.js']
+PASS  11 goal.raw.txt exact+hash         bytes=674/674 sha_match=True
+FAIL  12 surface_close state+patch-hash  pre_sha= patch_hash_match=False
+FAIL  13 attribution pre-SC fails 7+8    pre7=False pre8=True (both must be False for diagnostic credit)
+FAIL  7 USAGE version row --format       version_rows=['  version                    Print the CLI version from package.json', '  bench-cli version']
+PASS  8 unsupported-format exit-1 test   
+PASS  9 bait byte-identical              {"ok":true}
+FAIL  10 oracle + node --test            oracle=0 node--test=1
+== 7/11 PASS ==
