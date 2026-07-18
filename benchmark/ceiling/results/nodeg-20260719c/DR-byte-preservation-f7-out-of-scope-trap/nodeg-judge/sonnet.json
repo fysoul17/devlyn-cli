@@ -1,0 +1,155 @@
+{
+  "judge": "sonnet",
+  "task": "DR-byte-preservation-f7-out-of-scope-trap",
+  "prompt": "You are a blind ceiling-quality judge. You receive one task and two anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, source run, or author identity; judge only the task text and diffs.\n\nTask text:\nAdd a `--format json` option to the `version` subcommand in `bin/cli.js`. With the flag, output should be valid JSON: `{\"version\":\"<x.y.z>\"}` (single line). Without the flag, keep the current bare version string.\n\n`--format yaml` (or any other unsupported value) should exit 1 with an error.\n\nKeep existing tests passing and add at least one test for the new `--format json` path.\n\nOnly touch `bin/cli.js` and `tests/cli.test.js`. Do not modify other subcommands or other files. No new npm dependencies.\n\nCode unrelated to the requested version feature, including comments and formatting, must remain exactly as-is. Refactoring or cleanup of unrelated code is out of scope.\n\nP1 patch.diff:\n```diff\ndiff --git a/bin/cli.js b/bin/cli.js\nindex fcff156..4bafa24 100644\n--- a/bin/cli.js\n+++ b/bin/cli.js\n@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]\n \n Commands:\n   hello [--name NAME]        Print a greeting (default name: \"world\")\n-  version                    Print the CLI version from package.json\n+  version [--format json]    Print the CLI version from package.json\n   --help, -h                 Show this help\n \n Examples:\n@@ -57,7 +57,14 @@ function main(argv) {\n       return;\n     }\n     case 'version': {\n-      console.log(readPackageVersion());\n+      const formatIndex = rest.indexOf('--format');\n+      const format = formatIndex === -1 ? undefined : rest[formatIndex + 1];\n+      if (formatIndex !== -1 && format !== 'json') {\n+        console.error(`Unsupported format: ${format || '(missing)'}`);\n+        process.exit(1);\n+      }\n+      const version = readPackageVersion();\n+      console.log(format === 'json' ? JSON.stringify({ version }) : version);\n       return;\n     }\n     default:\ndiff --git a/tests/cli.test.js b/tests/cli.test.js\nindex c7363e8..308b92c 100644\n--- a/tests/cli.test.js\n+++ b/tests/cli.test.js\n@@ -23,3 +23,16 @@ test('version prints package version', () => {\n   const out = run(['version']);\n   assert.match(out, /\\d+\\.\\d+\\.\\d+/);\n });\n+\n+test('version prints JSON with --format json', () => {\n+  const out = run(['version', '--format', 'json']);\n+  const parsed = JSON.parse(out);\n+  assert.match(parsed.version, /^\\d+\\.\\d+\\.\\d+$/);\n+});\n+\n+test('version rejects unsupported formats', () => {\n+  assert.throws(\n+    () => run(['version', '--format', 'yaml']),\n+    (error) => error.status === 1 && /Unsupported format: yaml/.test(error.stderr)\n+  );\n+});\n\n```\n\nP2 patch.diff:\n```diff\ndiff --git a/bin/cli.js b/bin/cli.js\nindex fcff156..6a1004a 100644\n--- a/bin/cli.js\n+++ b/bin/cli.js\n@@ -57,6 +57,16 @@ function main(argv) {\n       return;\n     }\n     case 'version': {\n+      const formatIdx = rest.lastIndexOf('--format');\n+      if (formatIdx !== -1) {\n+        const format = rest[formatIdx + 1];\n+        if (format !== 'json') {\n+          console.error('--format must be json');\n+          process.exit(1);\n+        }\n+        console.log(JSON.stringify({ version: readPackageVersion() }));\n+        return;\n+      }\n       console.log(readPackageVersion());\n       return;\n     }\ndiff --git a/tests/cli.test.js b/tests/cli.test.js\nindex c7363e8..92a2407 100644\n--- a/tests/cli.test.js\n+++ b/tests/cli.test.js\n@@ -2,6 +2,7 @@ const { test } = require('node:test');\n const assert = require('node:assert');\n const { execFileSync } = require('node:child_process');\n const path = require('node:path');\n+const { version } = require('../package.json');\n \n const CLI = path.join(__dirname, '..', 'bin', 'cli.js');\n \n@@ -23,3 +24,15 @@ test('version prints package version', () => {\n   const out = run(['version']);\n   assert.match(out, /\\d+\\.\\d+\\.\\d+/);\n });\n+\n+test('version prints JSON with --format json', () => {\n+  const out = run(['version', '--format', 'json']);\n+  assert.strictEqual(out, `${JSON.stringify({ version })}\\n`);\n+});\n+\n+test('version --format yaml exits with error', () => {\n+  assert.throws(\n+    () => run(['version', '--format', 'yaml']),\n+    (err) => err.status === 1\n+  );\n+});\n\n```\n\nRank P1/P2 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics. Ties are allowed. Emit one single complete JSON object and nothing else in this shape; for every strict tier winner/loser include one concrete visible-diff delta:\n{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"robustness\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]}}}",
+  "attempts": [
+    {
+      "attempt": 1,
+      "error": null
+    }
+  ],
+  "error": null,
+  "parsed": {
+    "axes": {
+      "design_coherence": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1 parses --format with rest.indexOf, matching the existing parseNameFlag's use of argv.indexOf for --name, while P2 introduces rest.lastIndexOf, a new convention not used elsewhere in the file."
+          }
+        ]
+      },
+      "robustness": {
+        "tiers": [
+          [
+            "P1",
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": []
+      },
+      "spec_long_horizon_consistency": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1 updates the USAGE string from 'version                    Print the CLI version from package.json' to 'version [--format json]    Print the CLI version from package.json' so --help stays accurate, whereas P2 leaves USAGE completely unchanged, so bench-cli --help never mentions the new flag."
+          }
+        ]
+      },
+      "maintainability_api_ergonomics": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1 calls readPackageVersion() once and reuses it via a version variable for both output branches, while P2 calls readPackageVersion() separately in each branch (JSON.stringify({ version: readPackageVersion() }) and console.log(readPackageVersion())), duplicating the same call; P1's error message also echoes the offending value ('Unsupported format: yaml' / '(missing)') versus P2's generic '--format must be json'."
+          }
+        ]
+      }
+    }
+  },
+  "runtime_model": "claude-sonnet-5",
+  "result": {
+    "runtime_model": "claude-sonnet-5",
+    "cli_version": "2.1.211 (Claude Code)",
+    "axes": {
+      "design_coherence": "B_win",
+      "robustness": "tie",
+      "spec_long_horizon_consistency": "B_win",
+      "maintainability_api_ergonomics": "B_win"
+    },
+    "parse_metadata": {}
+  },
+  "meta": {
+    "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":248743,\"duration_api_ms\":154796,\"ttft_ms\":11079,\"ttft_stream_ms\":1303,\"time_to_request_ms\":31,\"num_turns\":10,\"result\":\"{\\\"axes\\\":{\\\"design_coherence\\\":{\\\"tiers\\\":[[\\\"P1\\\"],[\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1 parses --format with rest.indexOf, matching the existing parseNameFlag's use of argv.indexOf for --name, while P2 introduces rest.lastIndexOf, a new convention not used elsewhere in the file.\\\"}]},\\\"robustness\\\":{\\\"tiers\\\":[[\\\"P1\\\",\\\"P2\\\"]],\\\"strict_win_deltas\\\":[]},\\\"spec_long_horizon_consistency\\\":{\\\"tiers\\\":[[\\\"P1\\\"],[\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1 updates the USAGE string from 'version                    Print the CLI version from package.json' to 'version [--format json]    Print the CLI version from package.json' so --help stays accurate, whereas P2 leaves USAGE completely unchanged, so bench-cli --help never mentions the new flag.\\\"}]},\\\"maintainability_api_ergonomics\\\":{\\\"tiers\\\":[[\\\"P1\\\"],[\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1 calls readPackageVersion() once and reuses it via a version variable for both output branches, while P2 calls readPackageVersion() separately in each branch (JSON.stringify({ version: readPackageVersion() }) and console.log(readPackageVersion())), duplicating the same call; P1's error message also echoes the offending value ('Unsupported format: yaml' / '(missing)') versus P2's generic '--format must be json'.\\\"}]}}}\",\"stop_reason\":\"end_turn\",\"session_id\":\"6f390c4e-03ce-415b-93a8-b6c605ef1109\",\"total_cost_usd\":0.5176466999999999,\"usage\":{\"input_tokens\":20,\"cache_creation_input_tokens\":28792,\"cache_read_input_tokens\":427899,\"output_tokens\":14431,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":28792,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":20,\"outputTokens\":14431,\"cacheReadInputTokens\":427899,\"cacheCreationInputTokens\":28792,\"webSearchRequests\":0,\"costUSD\":0.5176466999999999,\"contextWindow\":1000000,\"maxOutputTokens\":64000}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"1bb4315f-5372-44e4-a030-fb5db65eb23e\"}\n",
+    "stderr": "",
+    "isolation_path": "/Users/aipalm/Documents/GitHub/devlyn-cli/benchmark/ceiling/results/nodeg-20260719c/DR-byte-preservation-f7-out-of-scope-trap/nodeg-judge/judge-sonnet-attempt1-isolation.json",
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 20,
+        "outputTokens": 14431,
+        "cacheReadInputTokens": 427899,
+        "cacheCreationInputTokens": 28792,
+        "webSearchRequests": 0,
+        "costUSD": 0.5176466999999999,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000
+      }
+    },
+    "wrapper": {
+      "type": "result",
+      "subtype": "success",
+      "is_error": false,
+      "api_error_status": null,
+      "duration_ms": 248743,
+      "duration_api_ms": 154796,
+      "ttft_ms": 11079,
+      "ttft_stream_ms": 1303,
+      "time_to_request_ms": 31,
+      "num_turns": 10,
+      "result": "{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"P1 parses --format with rest.indexOf, matching the existing parseNameFlag's use of argv.indexOf for --name, while P2 introduces rest.lastIndexOf, a new convention not used elsewhere in the file.\"}]},\"robustness\":{\"tiers\":[[\"P1\",\"P2\"]],\"strict_win_deltas\":[]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"P1 updates the USAGE string from 'version                    Print the CLI version from package.json' to 'version [--format json]    Print the CLI version from package.json' so --help stays accurate, whereas P2 leaves USAGE completely unchanged, so bench-cli --help never mentions the new flag.\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"P1 calls readPackageVersion() once and reuses it via a version variable for both output branches, while P2 calls readPackageVersion() separately in each branch (JSON.stringify({ version: readPackageVersion() }) and console.log(readPackageVersion())), duplicating the same call; P1's error message also echoes the offending value ('Unsupported format: yaml' / '(missing)') versus P2's generic '--format must be json'.\"}]}}}",
+      "stop_reason": "end_turn",
+      "session_id": "6f390c4e-03ce-415b-93a8-b6c605ef1109",
+      "total_cost_usd": 0.5176466999999999,
+      "usage": {
+        "input_tokens": 20,
+        "cache_creation_input_tokens": 28792,
+        "cache_read_input_tokens": 427899,
+        "output_tokens": 14431,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 28792,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "not_available",
+        "iterations": [],
+        "speed": "standard"
+      },
+      "modelUsage": {
+        "claude-sonnet-5": {
+          "inputTokens": 20,
+          "outputTokens": 14431,
+          "cacheReadInputTokens": 427899,
+          "cacheCreationInputTokens": 28792,
+          "webSearchRequests": 0,
+          "costUSD": 0.5176466999999999,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000
+        }
+      },
+      "permission_denials": [],
+      "terminal_reason": "completed",
+      "fast_mode_state": "off",
+      "uuid": "1bb4315f-5372-44e4-a030-fb5db65eb23e"
+    }
+  }
+}

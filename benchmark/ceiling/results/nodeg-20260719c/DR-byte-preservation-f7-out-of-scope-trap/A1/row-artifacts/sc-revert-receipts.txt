@@ -1,0 +1,49 @@
+# SC-delta vs fix-round revert receipts — nodeg-20260719c
+commit bd8094e36fa0a54dbc6a1298ecafc4ed33f8ff63
+Author: AI Palm <aipalm@AIui-MacBookPro.local>
+Date:   Sat Jul 18 16:30:09 2026 +0000
+
+    chore(pipeline): surface-close
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 1b1dc48..9fc1f26 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version                    Print the CLI version from package.json
++  version [--format json]    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+
+commit 0239deea7bdf8fba68acb0ded0f4419442d09391
+Author: AI Palm <aipalm@AIui-MacBookPro.local>
+Date:   Sat Jul 18 16:45:31 2026 +0000
+
+    chore(pipeline): implement fix round 1
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 9fc1f26..6a1004a 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version [--format json]    Print the CLI version from package.json
++  version                    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+@@ -57,7 +57,7 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
+-      const formatIdx = rest.indexOf('--format');
++      const formatIdx = rest.lastIndexOf('--format');
+       if (formatIdx !== -1) {
+         const format = rest[formatIdx + 1];
+         if (format !== 'json') {
