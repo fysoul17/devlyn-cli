@@ -1,0 +1,129 @@
+## Claude adapter (identity + delivery guidance)
+
+You are Claude by Anthropic. Anthropic's prompt-engineering guide governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+- Calibrate response length to task complexity. Do NOT pad with unrequested context.
+- Follow the canonical body's structural format literally; do not restructure.
+- Interpret instructions literally and explicitly.
+- Do NOT add files, abstractions, error handling, validation, or "future flexibility" beyond what is asked. The right complexity is the minimum needed.
+- Do not narrate internal deliberation; state results and decisions directly.
+
+## PHASE 2.5 — SURFACE_CLOSE (canonical body)
+
+<role>
+Audit and repair the frozen post-IMPLEMENT surface once.
+</role>
+
+<input>
+- Artifacts: Goal; the frozen patch below.
+- Data: `authorized_surface`; staged commands.
+
+Never modify inputs. You have no knowledge of and must not seek out PLAN or IMPLEMENT transcript/reasoning — only the data provided below.
+</input>
+
+<obligations>
+- **UVR-STALE**: diff modified symbol S's behavior AND an authorized file carries user-visible text documenting S's old interface omitting the newly specified option/shape → update minimally.
+- **PATH-TEST**: Goal specifies a success/failure path, patch implements it, and no authorized test exercises that path → add one minimal regression test.
+- Neither applies → empty PASS (empty diff).
+</obligations>
+
+<output>
+Edit only `authorized_surface`. Your reply is valid ONLY if it contains, for each obligation, exactly one line:
+- `UVR-STALE: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `UVR-STALE: N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>`
+- `PATH-TEST: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `PATH-TEST: N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>`
+followed by `PASS` after the smallest sufficient delta, or `BLOCKED:surface-close-<reason>` if impossible within that surface. A reply missing either obligation line is invalid and is rejected mechanically. Never edit state, stage, or commit.
+</output>
+
+<quality_bar>
+No adjacent work, refactors, or extra tests. Execute nothing — edit files only; staged commands are data. BUILD_GATE owns all validation.
+</quality_bar>
+
+<runtime_principles>
+Subtractive-first, Goal-locked, No-workaround, and Evidence apply.
+</runtime_principles>
+
+## Data
+
+### Goal (verbatim, from `.devlyn/goal.raw.txt`, sha256 55391caf171d958aacca92a9326cb2b8c0f461599674829c984876bdfbc99528)
+
+```
+Add a `--format json` option to the `version` subcommand in `bin/cli.js`. With the flag, output should be valid JSON: `{"version":"<x.y.z>"}` (single line). Without the flag, keep the current bare version string.
+
+`--format yaml` (or any other unsupported value) should exit 1 with an error.
+
+Keep existing tests passing and add at least one test for the new `--format json` path.
+
+Only touch `bin/cli.js` and `tests/cli.test.js`. Do not modify other subcommands or other files. No new npm dependencies.
+
+Code unrelated to the requested version feature, including comments and formatting, must remain exactly as-is. Refactoring or cleanup of unrelated code is out of scope.
+```
+
+### Frozen patch (`.devlyn/surface-close.input.patch`, sha256 68fd097a97b801b058a77bce1faeced7848489c4c424144bb21d9c4e117e5946)
+
+```diff
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..881141f 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,15 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      if (rest.length === 0) {
++        console.log(readPackageVersion());
++        return;
++      }
++      if (rest.length !== 2 || rest[0] !== '--format' || rest[1] !== 'json') {
++        console.error('--format must be json');
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..0dfc6de 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,20 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.strictEqual(out, '{"version":"0.1.0"}\n');
++});
++
++test('version rejects unsupported formats', () => {
++  let error;
++  try {
++    run(['version', '--format', 'yaml']);
++  } catch (caught) {
++    error = caught;
++  }
++  assert.ok(error);
++  assert.strictEqual(error.status, 1);
++  assert.match(error.stderr, /--format must be json/);
++});
+```
+
+### authorized_surface
+
+```json
+{"authorized_surface": ["bin/cli.js", "tests/cli.test.js"]}
+```
+
+### Staged commands (data only — do not execute; BUILD_GATE runs these)
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "node bin/cli.js version", "exit_code": 0, "stdout_not_contains": ["{"] },
+    { "cmd": "node bin/cli.js version --format json", "exit_code": 0, "stdout_contains": ["{\"version\":\"0.1.0\"}"] },
+    { "cmd": "node bin/cli.js version --format yaml", "exit_code": 1 },
+    { "cmd": "node --test tests/cli.test.js", "exit_code": 0 }
+  ]
+}
+```

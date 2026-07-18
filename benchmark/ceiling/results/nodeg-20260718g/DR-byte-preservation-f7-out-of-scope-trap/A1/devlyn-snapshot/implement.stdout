@@ -1,0 +1,13 @@
+Implemented `version --format json` in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r1b8006bcdfb8/ff10888c89791/A1/repo/bin/cli.js:59) and appended JSON/error coverage in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r1b8006bcdfb8/ff10888c89791/A1/repo/tests/cli.test.js:27).
+
+Verification:
+
+- Bare version: passed (`0.1.0`, no `{`)
+- JSON version: passed (`{"version":"0.1.0"}`)
+- Unsupported format: passed (exit 1, explicit error)
+- CLI tests: 5/5 passed
+- Diff scope: only `bin/cli.js` and `tests/cli.test.js`; `git diff --check` clean
+
+The required full suite cannot pass because [server/index.js](/Users/aipalm/.local/share/nx01/w/r1b8006bcdfb8/ff10888c89791/A1/repo/server/index.js:2) requires `express`, declared in [package.json](/Users/aipalm/.local/share/nx01/w/r1b8006bcdfb8/ff10888c89791/A1/repo/package.json:15), but it is unavailable. A locked install retry failed because registry DNS is unavailable (`ENOTFOUND registry.npmjs.org`).
+
+BLOCKED
