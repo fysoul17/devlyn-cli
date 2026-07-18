@@ -864,3 +864,65 @@ closed" additionally requires a fresh held-out UVR row authored by an
 excluded seat (0070a.6 precedent) — pre-registered as the claim gate,
 not part of this selection. Test arms per user directive 2026-07-18:
 claude = sonnet, codex = terra; sol team-only; fable never a test arm.
+
+## v6 replay matrix RESULT + three-way adjudication (2026-07-18; runs r6-replay-20260718, commits 3cd3809+)
+
+**Raw**: 12/12 receipts-valid; corrected oracle (check8 colon fix, live-
+precedent-verified) gives UVR/PATH = F1-terra 3/3·2/3, F1-sonnet 3/3·2/3,
+FL1-terra 3/3·1/3 (2 confident false-N/A on PATH), FL1-sonnet 3/3·3/3
+(only dual-closure cell, verdict rows clean). All four orchestrator
+predictions (.10/.35/.60/.65) busted high — recorded raw.
+
+**Supersession (3/3 agree)**: the v5 split story ("documentation-sync
+resists the audit frame") rested on n=1 and is DEAD — UVR fires 12/12
+including the v5-verbatim live seat; F1-terra r02 mirrors the live row on
+the OTHER obligation (USAGE-only + bare PASS). Revised phenomenon
+(Codex formulation adopted): **stochastic per-obligation omission,
+followed by seat-conditioned adjudication** — ungated workers silently
+drop one obligation draw-dependently; L1 on terra converts omission into
+confident false-N/A (Grok R0 §1a evidenced); L1 on sonnet closes both.
+v6's criterion (Observed-DoF Closure) survives intact.
+
+**Seat disagreement adjudicated** (Grok: graduate FL1-sonnet, execution
+note = Low; Codex: BLOCKING — 3 sonnet replicas executed validation,
+matrix incomplete, rerun): orchestrator verified Codex's three citations
+in the preserved worker transcripts and ran the symmetric
+defined-predicate audit over all 12 (execution-audit.json; predicate =
+fixture validation execution: npm test / node --test / node -e / git
+stash; read-only inspection allowed per the live worker's own
+shasum/git/nl precedent). Result: terra 6/6 clean; exactly F1-sonnet
+r01+r03 and FL1-sonnet r03 contaminated. **Named criterion:
+Phase-Faithful Sample Crediting** — a replica is credited only if the
+worker stayed within the replayed phase's own execute-nothing contract;
+the FROZEN bars then apply to credited replicas, unchanged. Credited
+arithmetic: FL1-sonnet 2/3 UVR fire (≥2/3 bar MET; 2/2 dual-closure,
+zero false adjudication) → **graduates to accuracy controls**; F1-sonnet
+1/3 (seat-routing branch definitively NOT met — resolves the branch
+divergence under either validity reading); FL1-terra negative (L1
+harmful on terra — never ship L1 to terra SC workers from this data).
+Codex's further demands REJECTED with citation: a "3-valid-replica
+graduation threshold" and "factorial-necessity proof" appear nowhere in
+the frozen registration (bar = "≥2/3 UVR fire"; ladder branch decides
+the composite); a full rerun is not licensed when the frozen bars are
+decidable on credited samples. Codex's defect findings ACCEPTED:
+execution-audit gap (now a mechanical audit artifact + probe patch
+queued), sonnet transcript + prompt-bytes durability (all 12 transcripts
++ both prompt files committed into the results dir).
+
+**Honest residuals**: (1) L1-necessity-on-sonnet unproven — the single
+credited F1-sonnet replica dual-closed WITHOUT L1 (n=1); the composite
+proceeds per the frozen ladder (seat-routing branch failed), and the
+nodeg row remains the ship gate. (2) Live-row UVR decline vs 12/12
+replay fire stays a variance/fidelity note (Q2, both partners: no longer
+gates selection). (3) 12/12 UVR fire is uninterpretable against
+over-repair until controls run — next step.
+
+**Next (frozen order)**: (1) probe patch — mechanical validation-
+execution audit into receipts + transcript/prompt archival (Codex Q6);
+(2) accuracy controls authored OUTCOME-BLIND by a fresh excluded seat
+(opus; D-protocol precedent), Grok UNFAIR audit + hash freeze, then
+no-stale + goal-frozen-USAGE controls on FL1-sonnet, bar 2/2 correct
+disposition + zero false-FIRED/forbidden edits per control (Codex's
+stricter zero-tolerance adopted); (3) green → freeze v6 composite skill
+build (claude-routed SURFACE_CLOSE + L1) → ONE fresh nodeg row,
+unchanged all-checks gate; red → no graduation, kill branch stands.

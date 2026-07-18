@@ -1,0 +1,77 @@
+{
+ "predicate": "validation-execution = npm test | node --test | node -e | node bin/ | node tests/ | git stash (fixture code/test execution); read-only inspection allowed per live-worker precedent (shasum/git diff/nl on 20260718c rollout)",
+ "replicas": {
+  "F1-terra/replica-01": {
+   "n_commands": 1,
+   "validation_execution": false,
+   "validation_hits": []
+  },
+  "F1-terra/replica-02": {
+   "n_commands": 2,
+   "validation_execution": false,
+   "validation_hits": []
+  },
+  "F1-terra/replica-03": {
+   "n_commands": 2,
+   "validation_execution": false,
+   "validation_hits": []
+  },
+  "F1-sonnet/replica-01": {
+   "n_commands": 13,
+   "validation_execution": true,
+   "validation_hits": [
+    "node -e \"\nconst { execFileSync } = require('node:child_process');\ntry {\n  execFileSync('node', ['bin",
+    "npm test 2>&1 | tail -40",
+    "node --test tests/cli.test.js 2>&1 | tail -30"
+   ]
+  },
+  "F1-sonnet/replica-02": {
+   "n_commands": 8,
+   "validation_execution": false,
+   "validation_hits": []
+  },
+  "F1-sonnet/replica-03": {
+   "n_commands": 10,
+   "validation_execution": true,
+   "validation_hits": [
+    "node -e \"\nconst { execFileSync } = require('node:child_process');\ntry {\n  execFileSync('node', ['bin",
+    "npm test 2>&1 | tail -40",
+    "node --test tests/cli.test.js 2>&1 | tail -30"
+   ]
+  },
+  "FL1-terra/replica-01": {
+   "n_commands": 1,
+   "validation_execution": false,
+   "validation_hits": []
+  },
+  "FL1-terra/replica-02": {
+   "n_commands": 2,
+   "validation_execution": false,
+   "validation_hits": []
+  },
+  "FL1-terra/replica-03": {
+   "n_commands": 2,
+   "validation_execution": false,
+   "validation_hits": []
+  },
+  "FL1-sonnet/replica-01": {
+   "n_commands": 6,
+   "validation_execution": false,
+   "validation_hits": []
+  },
+  "FL1-sonnet/replica-02": {
+   "n_commands": 6,
+   "validation_execution": false,
+   "validation_hits": []
+  },
+  "FL1-sonnet/replica-03": {
+   "n_commands": 8,
+   "validation_execution": true,
+   "validation_hits": [
+    "node -e \"\nconst { execFileSync } = require('node:child_process');\ntry {\n  execFileSync('node', ['bin",
+    "npm test 2>&1",
+    "ls node_modules 2>&1 | head -5; git status --short; git stash && npm test 2>&1 | tail -20; git stash"
+   ]
+  }
+ }
+}
