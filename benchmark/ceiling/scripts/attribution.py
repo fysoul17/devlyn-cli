@@ -103,7 +103,10 @@ def collect_span(
 ) -> None:
     started_at = record.get("started_at")
     completed_at = record.get("completed_at")
-    if started_at is None and completed_at is None:
+    if started_at is None:
+        # No span without a start: never-started phases AND skip receipts
+        # (skipped_reason set, completed_at stamped, duration 0 — real
+        # case: FS1 surface_close auto-skip on nodeg-20260719g).
         return
     start = parse_time(started_at, f"{label}.started_at")
     if completed_at is None:
