@@ -34,3 +34,59 @@ surface must live in whatever process OWNS the terminal claim.
 discipline, Codex R0); the design round may run while 0073's Stage B
 exam is detached. Entry = three-way design round with a frozen packet
 citing the -19f receipts (pipeline.state.json, transcript, watch.log).
+
+## DESIGN FROZEN — C2 terminal-claim binding (2026-07-19 three-way converged R0+R1, zero dissent)
+
+**Round record** (packet /tmp/threeway-0074-r0/; logs codex-r0/grok-r0 +
+codex-r1/grok-r1): R0 divergence Codex C1>C2 vs Grok C2>C1; orchestrator
+adjudication criterion = **Measured-bind-first** (ship the binding whose
+authority receipts already prove; probe the unmeasured one). R1 = BOTH
+seats 5/5 CONFIRM, FREEZE-GO. Grok withdrew its isolation-strips-hooks
+counter (named delta: claude-isolation.py:305-306 loads project,local in
+the A-arm); Codex accepted the skip-eval rejection (named delta: -19f
+objective resolved:true proves objective validity separable from
+pipeline completeness) and the C1 deferral its own falsifier 3 implies.
+
+**Build contract (Codex sol executor)**:
+1. `benchmark/ceiling/scripts/terminal-claim-check.py` (stdlib,
+   read-only, deterministic): classifier over
+   `<root>/.devlyn/pipeline.state.json` → NOT_APPLICABLE (file absent)
+   / INCOMPLETE:<phase> (started_at set, completed_at null; verify
+   additionally requires non-null verdict) / INCOMPLETE:final_report
+   (verify PASS/PASS_WITH_ISSUES, final-report completion absent) /
+   INCOMPLETE:archive (final report done, root state not archived) /
+   MALFORMED (unreadable/invalid active state — treated incomplete,
+   fail-closed). Exit 0 = NOT_APPLICABLE or clean; exit 79 = incomplete
+   (distinct — 78 is DEPS_STAGING_BLOCKED_EXIT, run-nodeg-cell.sh:48).
+2. Benchmark binding: run-ceiling-arm.sh, ARM=A, after CLI return +
+   devlyn-snapshot: run the check against the worktree; on incomplete
+   write receipt `$RESULT_DIR/terminal-claim.json` {status, phase,
+   reason, run_id} and record `terminal_outcome: FAILED-INCOMPLETE` in
+   timing.json; final arm exit becomes 79 ONLY when it would otherwise
+   be 0 (never masks 86/78/124). Eval/judge continuation stays
+   driver-owned.
+3. Product hands-free binding: queue-drain outer-loop contract line —
+   after each resolve invocation the drain runs terminal-claim-check
+   and marks `[F] FAILED-INCOMPLETE` instead of trusting the session's
+   self-report. Mechanical primitive + minimal contract line; no new
+   SPW write verb.
+4. Self-tests: -19f topology fires INCOMPLETE:verify; clean full-PASS
+   state → exit 0 silent; absent state → NOT_APPLICABLE silent;
+   malformed JSON → 79; exit-code precedence (86/78/124 never
+   overridden by 79).
+
+**Falsifiers (pre-registered)**: F1 replay -19f state → arm still
+records success ⇒ dead. F2 clean full-PASS trips predicate ⇒ over-tight
+dead. F3 non-resolve session trips ⇒ scope dead. F4 malformed treated
+as allow ⇒ fail-closed dead. F5 exit-79 collision or missing receipt on
+fire ⇒ binding dead.
+
+**Licensed follow-up (separate claim, NOT this build)**: C1 Stop-hook
+parity probe — replay -19f state in a scratch project with a
+project-scope hook installed; measure block honoring on
+claude/codex/omp × headless-first. C1 registration only after per-route
+measurement; frozen constraints from Codex R0: no retry-counter
+fail-open, no semantic inspection of assistant text.
+**Record-and-defer**: C4 foreground judge dispatcher, C3 SPW terminal
+verb, auto-relaunch/resume. 0073 Stage B exam is immune by construction
+(detached worktree at 21cd920).

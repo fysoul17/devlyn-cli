@@ -174,3 +174,39 @@ Bounded investigation only (Codex+Grok concur): why did BUILD_GATE/VERIFY
 coverage miss a real behavioral defect (later matching line-promotions
 ignored, nodeg-20260714 F25 codex.json:44)? Output = written root-cause
 note; any mechanism is a FUTURE registration.
+
+## F25 `.find` root-cause investigation note (licensed side-item — investigation only, 2026-07-19)
+
+**Defect**: nodeg-20260714 F25 A-arm `patch.diff:85` —
+`catalog.line_promotions.find((entry) => entry.sku === sku)` applies at
+most ONE promotion per SKU; bare iterated all matches (blind codex judge
+robustness delta). **Why every harness gate missed it (receipts)**:
+
+1. **Not a spec violation** — `task.txt` describes the two promotion
+   TYPES (:7) and says "applies line promotions" (:1) but never states
+   whether one SKU can carry multiple promotions. `.find` embeds an
+   "at most one per SKU" uniqueness assumption the spec neither grants
+   nor forbids.
+2. **Not oracle-visible** — the shipped catalog has exactly one
+   promotion per SKU (TEE buy_x_get_y_free, BAG per_unit_discount);
+   the hidden tests never exercise a multi-promotion SKU; the A row is
+   objective resolved=true. VERIFY audits spec fidelity; a latent
+   data-shape assumption that spec+tests+data all leave unexercised is
+   structurally invisible to spec-anchored verification.
+3. **Class shape**: "spec-silent data-shape generality." The bare form
+   is NOT more code and NOT speculative defensive robustness — it is
+   the neutral reading of a list data-contract (a list may repeat
+   keys); `.find` is the added assumption. The blind quality judges
+   systematically reward the assumption-free form (same shape in the
+   F26 canonicalJson-vs-JSON.stringify delta and the FS1 budget-reset
+   delta).
+
+**Named tension (recorded, not resolved)**: CLAUDE.md Goal-locked
+pattern 3 forbids speculative robustness for unobserved cases; the
+nodeg blind-quality bar rewards assumption-free generality. These are
+compatible ONLY if the contract distinguishes "adding handlers for
+unobserved cases" (drift, forbidden) from "not embedding uncovenanted
+uniqueness/order/shape assumptions" (data-contract neutrality, part of
+NORTH-STAR axis 5 unprompted completeness). Any future quality lever
+must draw exactly this line mechanically. Mechanism = future
+registration; nothing built under this iter (single-claim discipline).
