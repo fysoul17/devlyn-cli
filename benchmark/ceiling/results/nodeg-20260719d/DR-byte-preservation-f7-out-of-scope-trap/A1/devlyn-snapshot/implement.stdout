@@ -1,0 +1,12 @@
+Implemented `--format json` in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r9bb3a074dda5/ff10888c89791/A1/repo/bin/cli.js:44) and added JSON/error-path tests in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r9bb3a074dda5/ff10888c89791/A1/repo/tests/cli.test.js:27). Only those two files changed.
+
+Verification:
+
+1. `node bin/cli.js version --format json` → exit 0, `{"version":"0.1.0"}`
+2. `node bin/cli.js version` → exit 0, `0.1.0`
+3. `node bin/cli.js version --format yaml` → exit 1, `Unsupported format: yaml`
+4. `node --test tests/` → exit 1: three pre-existing server tests cannot bind `0.0.0.0` in this sandbox (`EPERM`).
+
+`node --test tests/cli.test.js` passes all 5 CLI tests; a missing `--format` value also exits 1 with an explicit error.
+
+VERDICT: BLOCKED: `node --test tests/` cannot pass because the sandbox denies server socket binding (`EPERM`) in out-of-scope server tests.
