@@ -1513,3 +1513,50 @@ lint + parity. Token gauge net ≤+0.5%.
 **Ship path**: build green → gates → ONE fresh diagnostic row (fresh
 run-id, CLI pin 2.1.211, seats sonnet/terra, `--v5` watcher-appended
 `--post-implement`, C2 draw filter) = the ship decision, gate unchanged.
+
+## SHIP-CREDITED — nodeg-20260719f 11/11 (2026-07-19; three-way ship round unanimous; DECISIONS 0072.28)
+
+M-CP built same-session (Codex sol, commit b708289; SPW
+durability-enforce + fail-closed fix-reentry guard verified wired at
+SPW:2175-2189; 9 self-tests PASS; token gauge +0.489% ≤ +0.5%;
+lint + 3-tree parity green — Codex sandbox could not write `.agents`,
+orchestrator mirrored per Am5 convention). Row ladder: -d, -e C2
+pre8=True draws (DEAD, receipts committed) → **-f: clean diagnostic
+completion, arm exit 0, wall 1231s.**
+
+**Credit line (frozen)**: nodeg-20260719f A1 (sonnet/terra, CLI
+2.1.211 direct binary, node v20.19.0) is the FIRST valid diagnostic F7
+row to pass the frozen `--v5 --post-implement` all-checks gate at
+**11/11**, with check-13 `pre7=pre8=False` and dual-carrier SC
+(UVR-STALE bin/cli.js:12 → `version [--format json]`; PATH-TEST
+tests/cli.test.js:37 exit-1 regression test) on the live final tree at
+`2b5e18d` — iter-0072's composite final-tree closure claim is
+**SHIP-CREDITED under Ex-Ante Gate Authority (1-for-4 valid rows)**.
+
+**Verification chain (all three seats independent)**: orchestrator
+gated a faithful live-tree copy (deps as-is, -18h procedure) = 11/11;
+Grok re-ran the gate on its OWN fresh copy (clean env after catching
+FORCE_COLOR/NO_COLOR oracle pollution) = 11/11, `diff -rq` live-vs-copy
+= 0; Codex replayed the check predicates individually (PASS incl.
+attribution) and proved the completion-predicate ABSENT from the gate
+by grep. Codex named its own strongest counter (watch-nodeg-row.sh:43
+archive prerequisite) and rejected it: elevating the watcher's
+transport failure into a 12th check after 11/11 is post-hoc hardening —
+symmetric to -18h's denial.
+
+**Residuals recorded (NOT gate amendments, NOT built)**:
+1. **Premature terminal during VERIFY** (observed, receipt:
+   pipeline.state.json verify.verdict=None; transcript terminal_reason
+   "completed"; codex-judge stdout 0 bytes — session self-ended after
+   backgrounding the primary judge; no PHASE-6 archive, watcher
+   `archived-state-missing`). The 0072.9 completed-dirty family in a
+   new flavor; eligible for future work, not licensed this iter.
+2. **M-CP fired-live=no** — rounds.global=0, no fix round occurred, so
+   the restore path never fired live; M-CP stands validated at
+   self-test tier + fail-closed re-entry gating only. F1-F3 falsifiers
+   remain armed for the first live fire.
+
+**Honest bounds**: ship credit = the F7 changed-surface-closure
+composite claim at row level. It is NOT a 세계최고/moat claim (ops #17
+full-run remains the moat gate) and does NOT move the nodeg 7-row
+quality (0/7) or wall (0/7) bars.
