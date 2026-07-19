@@ -82,7 +82,7 @@ def phase_spans(state: dict) -> list[tuple[dt.datetime, dt.datetime]]:
         if not isinstance(entry, dict):
             continue
         add_span_from_record(entry, spans)
-        history = entry.get("rounds_history")
+        history = entry.get("history")
         if isinstance(history, list):
             for item in history:
                 if isinstance(item, dict):
@@ -151,7 +151,36 @@ def count_api_requests(debug_log: Path, windows: list[tuple[dt.datetime, dt.date
     return count
 
 
+def self_test() -> int:
+    state = {
+        "phases": {
+            "implement": {
+                "started_at": "2026-07-19T00:00:03Z",
+                "completed_at": "2026-07-19T00:00:04Z",
+                "history": [
+                    {
+                        "started_at": "2026-07-19T00:00:01Z",
+                        "completed_at": "2026-07-19T00:00:02Z",
+                    }
+                ],
+            }
+        }
+    }
+    spans = phase_spans(state)
+    history_span = (
+        parse_time("2026-07-19T00:00:01Z"),
+        parse_time("2026-07-19T00:00:02Z"),
+    )
+    if len(spans) != 2 or history_span not in spans:
+        raise AssertionError(f"history[] re-entry span was not consumed: {spans!r}")
+    print("SELFTEST PASS: interphase history[] re-entry span consumed")
+    return 0
+
+
 def main() -> int:
+    if sys.argv[1:] == ["--self-test"]:
+        return self_test()
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--debug-log", required=True)
     parser.add_argument("--state", required=True)

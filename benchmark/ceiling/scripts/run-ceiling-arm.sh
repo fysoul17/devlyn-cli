@@ -753,6 +753,24 @@ Path(out).write_text(json.dumps({
 }, indent=2) + "\n", encoding="utf-8")
 PY
 
+if [ "$ARM" = A ]; then
+  if [ ! -e "$RESULT_DIR/devlyn-snapshot" ] && [ -d "$WORKTREE/.devlyn" ]; then
+    if ! cp -a "$WORKTREE/.devlyn" "$RESULT_DIR/devlyn-snapshot"; then
+      echo "A-arm .devlyn snapshot failed" >&2
+      exit 78
+    fi
+  fi
+  if [ -d "$RESULT_DIR/devlyn-snapshot" ]; then
+    if ! python3 "$SCRIPT_DIR/attribution.py" "$RESULT_DIR"; then
+      echo "A-arm attribution artifact generation failed" >&2
+      exit 78
+    fi
+  elif [ -e "$RESULT_DIR/devlyn-snapshot" ]; then
+    echo "A-arm devlyn-snapshot exists but is not a directory" >&2
+    exit 78
+  fi
+fi
+
 python3 - \
   "$RESULT_DIR/isolation.json" \
   "$RESULT_DIR/neutralization.json" \
