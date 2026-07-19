@@ -242,6 +242,8 @@ Run once iff `state.source.type == "generated"` and complexity is trivial/medium
 
 Freeze `.devlyn/surface-close.input.patch`; assemble Claude adapter + `references/phases/surface-close.md` canonical body VERBATIM + data-only Goal/patch/hashes/surface/commands; hash the bytes and spawn with `--tools "Read,Grep,Glob,Edit,Write" --dangerously-skip-permissions --model claude-sonnet-5 --output-format json --strict-mcp-config --mcp-config '{"mcpServers":{}}'`, recording the same model at SPW spawn. Bound at 600s (native or `run-bounded.py 600 -- claude -p`), else block pre-spawn. Save raw stdout as `.devlyn/surface-close.output.json`, extract its `result` string to `.devlyn/surface-close.stdout`, retain `.devlyn/surface-close.worker-session.<round>.jsonl`, and complete with the wrapper as `--engine-session-log`; non-JSON/missing result follows the existing failure path. Workers execute nothing; `surface-check` gates rows, citations, scope, and execution. Empty PASS completes; authorized delta is scoped-staged and committed. Failure/timeout runs `surface-rollback`, completes bare `BLOCKED`, and halts. One shot; no `max_rounds`.
 
+**Common post-fix checkpoint (BUILD_GATE and VERIFY):** After fix IMPLEMENT returns, increment `state.rounds.global`; scoped-stage the authorized surface and commit `chore(pipeline): implement fix round <n>`; run `python3 "$DEVLYN_SHARED_DIR/state-phase-write.py" --devlyn-dir .devlyn --phase implement durability-enforce --round <n> --origin-phase <build_gate|verify>`. Its receipt must PASS before re-entry, which enforces it again before VERIFY artifact clearing or phase spawn.
+
 ## PHASE 3: BUILD_GATE
 
 Skip in verify-only mode OR when `build-gate` in `state.bypasses`. Deterministic — same commands CI / Docker / production run.
@@ -257,7 +259,7 @@ State write: `phases.build_gate.{started_at, verdict, completed_at, duration_ms,
 
 Branch:
 - `PASS` → PHASE 4.
-- `FAIL` → fix loop. Spawn IMPLEMENT-engine agent with the build_gate findings as input. Increment `state.rounds.global`. After a fix-loop IMPLEMENT return, scoped-staging checkpoint with message `chore(pipeline): implement fix round <n>`. On second FAIL with `state.rounds.global >= state.rounds.max_rounds` → halt with verdict `BLOCKED:build-gate-exhausted`.
+- `FAIL` → fix loop. Spawn IMPLEMENT-engine agent with the build_gate findings as input, then run the common post-fix checkpoint with origin `build_gate`. On second FAIL with `state.rounds.global >= state.rounds.max_rounds` → halt with verdict `BLOCKED:build-gate-exhausted`.
 
 ## PHASE 4: CLEANUP
 
@@ -305,7 +307,7 @@ Findings written to `.devlyn/verify.findings.jsonl`. **VERIFY agents have no cod
 Branch:
 - `PASS` → PHASE 6.
 - `PASS_WITH_ISSUES` (LOW severity only) → PHASE 6 with banner.
-- `NEEDS_WORK` / `BLOCKED` → fix loop with `triggered_by: "verify"`. Spawn IMPLEMENT-engine agent with the verify findings; increment `state.rounds.global`. Second `NEEDS_WORK` → halt with verdict `BLOCKED:verify-exhausted`.
+- `NEEDS_WORK` / `BLOCKED` → fix loop with `triggered_by: "verify"`. Spawn IMPLEMENT-engine agent with the verify findings, then run the common post-fix checkpoint with origin `verify`. Second `NEEDS_WORK` → halt with verdict `BLOCKED:verify-exhausted`.
 
 ## PHASE 6: FINAL REPORT + ARCHIVE
 

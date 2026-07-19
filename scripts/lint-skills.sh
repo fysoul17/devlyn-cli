@@ -434,6 +434,8 @@ for tree in config/skills .claude/skills .agents/skills; do
     || ! grep -Fq 'run-bounded.py 600 -- claude -p' "$skill" \
     || ! grep -Fq -- '--tools "Read,Grep,Glob,Edit,Write" --dangerously-skip-permissions --model claude-sonnet-5 --output-format json --strict-mcp-config --mcp-config '\''{"mcpServers":{}}'\''' "$skill" \
     || ! grep -Fq '.devlyn/surface-close.output.json' "$skill" \
+    || ! grep -Fq '**Common post-fix checkpoint (BUILD_GATE and VERIFY):**' "$skill" \
+    || ! grep -Fq 'durability-enforce --round <n> --origin-phase <build_gate|verify>' "$skill" \
     || ! grep -Fq '`surface-rollback`' "$skill" \
     || grep -Fq 'Supplied digests' "$phase" \
     || grep -Fq 'Hash both artifacts first' "$phase" \

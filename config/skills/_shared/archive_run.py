@@ -27,6 +27,7 @@ PER_RUN_PATTERNS = (
     "*.findings.jsonl",
     "*.log.md",
     "fix-batch.round-*.json",
+    "closure-durability.round-*.json",
     "criteria.generated.md",
     "goal.raw.txt",
     "surface-close.input.patch",

@@ -4,6 +4,8 @@
 Usage:
     python3 state-phase-write.py --devlyn-dir .devlyn --phase implement spawn \
         --round 1 --triggered-by verify [--pre-sha <sha>] [--engine claude] [--model <id>]
+    python3 state-phase-write.py --devlyn-dir .devlyn --phase implement durability-enforce \
+        --round 1 --origin-phase verify
     python3 state-phase-write.py --devlyn-dir .devlyn --phase implement complete \
         --verdict PASS [--post-sha <sha>] [--findings-file <path>] [--log-file <path>] \
         [--engine claude] [--model <requested-id>] [--engine-session-log <path>]
@@ -20,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import difflib
 import hashlib
 import json
 import os
@@ -441,6 +444,592 @@ def parse_effective_model(session_log: pathlib.Path) -> str:
     raise ValueError(
         f"engine session log {session_log} has conflicting effective models: {sorted(models)}"
     )
+
+
+def _git_output(work: pathlib.Path, *args: str, input_bytes: bytes | None = None) -> bytes:
+    proc = subprocess.run(
+        ["git", *args], cwd=work, input=input_bytes, capture_output=True, check=False,
+    )
+    if proc.returncode != 0:
+        detail = os.fsdecode(proc.stderr or proc.stdout).strip() or "git command failed"
+        raise SystemExit(f"BLOCKED:closure-durability-mechanical: {detail}")
+    return proc.stdout
+
+
+def _commit_blob(work: pathlib.Path, sha: str, path: str) -> bytes | None:
+    if not path_exists_at_commit(work, sha, path):
+        return None
+    return _git_output(work, "show", f"{sha}:{path}")
+
+
+def _line_matches(haystack: list[bytes], needle: list[bytes]) -> list[int]:
+    if not needle or len(needle) > len(haystack):
+        return []
+    width = len(needle)
+    return [index for index in range(len(haystack) - width + 1)
+            if haystack[index:index + width] == needle]
+
+
+def _nearest(matches: list[int], expected: int) -> int | None:
+    return min(matches, key=lambda value: (abs(value - expected), value)) if matches else None
+
+
+def _block_image_index(lines: list[bytes], image: list[bytes], block: dict) -> int | None:
+    matches = []
+    before = block["_before_lines"]
+    after = block["_after_lines"]
+    for index in _line_matches(lines, image):
+        if before and (index < len(before) or lines[index - len(before):index] != before):
+            continue
+        end = index + len(image)
+        if after and lines[end:end + len(after)] != after:
+            continue
+        matches.append(index)
+    return _nearest(matches, block["_expected_index"])
+
+
+def _block_anchor_index(lines: list[bytes], block: dict) -> int | None:
+    before = block["_before_lines"]
+    after = block["_after_lines"]
+    if not before and not after:
+        return 0 if not lines else None
+    candidates = []
+    for index in range(len(lines) + 1):
+        if before and (index < len(before) or lines[index - len(before):index] != before):
+            continue
+        if after and lines[index:index + len(after)] != after:
+            continue
+        candidates.append(index)
+    return _nearest(candidates, block["_expected_index"])
+
+
+def _map_pre_fix_span(block: dict, pre_fix_lines: list[bytes]) -> None:
+    post_lines = block["_post_lines"]
+    if post_lines:
+        index = _block_image_index(pre_fix_lines, post_lines, block)
+    else:
+        index = _block_anchor_index(pre_fix_lines, block)
+    if index is None:
+        block["_pre_fix_anchor"] = False
+        return
+    block["_pre_fix_anchor"] = True
+    block["_expected_index"] = index
+    width = max(1, len(post_lines))
+    block["pre_fix_span"] = [index + 1, index + width]
+
+
+def surface_change_blocks(work: pathlib.Path, state: dict,
+                          pre_fix_sha: str | None = None) -> list[dict]:
+    surface = ((state.get("phases") or {}).get("surface_close") or {})
+    pre_sha = surface.get("pre_sha")
+    post_sha = surface.get("post_sha")
+    if not isinstance(pre_sha, str) or not pre_sha or not isinstance(post_sha, str) or not post_sha:
+        return []
+    paths = run_git_paths(work, "diff", "--name-only", "--no-renames", "-z", pre_sha, post_sha, "--")
+    blocks = []
+    for path in paths:
+        parsed = pathlib.PurePosixPath(path)
+        if parsed.is_absolute() or ".." in parsed.parts:
+            raise SystemExit(f"BLOCKED:closure-durability-mechanical: unsafe surface path {path!r}")
+        old_blob = _commit_blob(work, pre_sha, path)
+        post_blob = _commit_blob(work, post_sha, path)
+        old_lines = [] if old_blob is None else old_blob.splitlines(keepends=True)
+        post_lines = [] if post_blob is None else post_blob.splitlines(keepends=True)
+        matcher = difflib.SequenceMatcher(None, old_lines, post_lines, autojunk=False)
+        opcodes = matcher.get_opcodes()
+        for ordinal, (tag, old_start, old_end, new_start, new_end) in enumerate(opcodes):
+            if tag == "equal":
+                continue
+            old_image = old_lines[old_start:old_end]
+            post_image = post_lines[new_start:new_end]
+            before_lines = []
+            after_lines = []
+            if ordinal > 0 and opcodes[ordinal - 1][0] == "equal":
+                _tag, _i1, _i2, prior_start, prior_end = opcodes[ordinal - 1]
+                before_lines = post_lines[max(prior_start, prior_end - 2):prior_end]
+            if ordinal + 1 < len(opcodes) and opcodes[ordinal + 1][0] == "equal":
+                _tag, _i1, _i2, next_start, next_end = opcodes[ordinal + 1]
+                after_lines = post_lines[next_start:min(next_end, next_start + 2)]
+            identity = hashlib.sha256(
+                path.encode("utf-8", "surrogateescape") + b"\0"
+                + str(old_start + 1).encode() + b":" + str(old_end - old_start).encode() + b"\0"
+                + str(new_start + 1).encode() + b":" + str(new_end - new_start).encode() + b"\0"
+                + b"".join(old_image) + b"\0" + b"".join(post_image)
+            ).hexdigest()[:16]
+            width = max(1, len(post_image))
+            block = {
+                "id": f"{path}:{ordinal}:{identity}",
+                "path": path,
+                "pre_fix_span": [new_start + 1, new_start + width],
+                "_pre_lines": old_image,
+                "_post_lines": post_image,
+                "_before_lines": before_lines,
+                "_after_lines": after_lines,
+                "_expected_index": new_start,
+                "_pre_fix_anchor": True,
+                "_post_exists": post_blob is not None,
+            }
+            if pre_fix_sha is not None:
+                pre_fix_blob = _commit_blob(work, pre_fix_sha, path)
+                _map_pre_fix_span(block, [] if pre_fix_blob is None else pre_fix_blob.splitlines(keepends=True))
+            blocks.append(block)
+    return blocks
+
+
+def classify_surface_block(block: dict, current: bytes | None) -> str:
+    lines = [] if current is None else current.splitlines(keepends=True)
+    post_lines = block["_post_lines"]
+    pre_lines = block["_pre_lines"]
+    if post_lines:
+        post_index = _block_image_index(lines, post_lines, block)
+        if post_index is not None:
+            block["_restore_index"] = post_index
+            return "SURVIVED"
+        if pre_lines:
+            pre_index = _block_image_index(lines, pre_lines, block)
+            if pre_index is not None:
+                block["_restore_index"] = pre_index
+                return "REVERTED"
+        else:
+            anchor = _block_anchor_index(lines, block)
+            if anchor is not None:
+                block["_restore_index"] = anchor
+                return "REVERTED"
+        return "EVOLVED"
+    pre_index = _block_image_index(lines, pre_lines, block)
+    if pre_index is not None:
+        block["_restore_index"] = pre_index
+        return "REVERTED"
+    anchor = _block_anchor_index(lines, block)
+    if anchor is not None:
+        block["_restore_index"] = anchor
+        return "SURVIVED"
+    return "EVOLVED"
+
+
+def finding_targets_block(block: dict, findings: list[dict]) -> bool:
+    start, end = block["pre_fix_span"]
+    for finding in findings:
+        path = finding.get("path", finding.get("file"))
+        line = finding.get("line")
+        if path == block["path"] and isinstance(line, int) and not isinstance(line, bool):
+            if start <= line <= end:
+                return True
+    return False
+
+
+def _read_triggering_findings(devlyn: pathlib.Path, origin_phase: str) -> tuple[list[dict], str]:
+    name = "build_gate.findings.jsonl" if origin_phase == "build_gate" else "verify-merged.findings.jsonl"
+    path = devlyn / name
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise SystemExit(f"BLOCKED:closure-durability-receipt: {path}: {exc}") from exc
+    findings = []
+    for line_number, line in enumerate(raw.splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            finding = loads_strict_json(line.decode("utf-8"))
+        except (UnicodeError, ValueError) as exc:
+            raise SystemExit(
+                f"BLOCKED:closure-durability-receipt: {path}:{line_number}: {exc}"
+            ) from exc
+        if not isinstance(finding, dict):
+            raise SystemExit(
+                f"BLOCKED:closure-durability-receipt: {path}:{line_number} is not an object"
+            )
+        findings.append(finding)
+    return findings, hashlib.sha256(raw).hexdigest()
+
+
+def _worktree_file(work: pathlib.Path, path: str) -> bytes | None:
+    target = work / path
+    if target.is_file() or target.is_symlink():
+        return target.read_bytes()
+    return None
+
+
+def _restored_files(work: pathlib.Path, blocks: list[dict]) -> dict[str, bytes | None]:
+    desired = {}
+    for path in sorted({block["path"] for block in blocks}):
+        current = _worktree_file(work, path)
+        lines = [] if current is None else current.splitlines(keepends=True)
+        path_blocks = sorted(
+            (block for block in blocks if block["path"] == path),
+            key=lambda block: block["_restore_index"], reverse=True,
+        )
+        for block in path_blocks:
+            index = block["_restore_index"]
+            pre_lines = block["_pre_lines"]
+            post_lines = block["_post_lines"]
+            if lines[index:index + len(pre_lines)] != pre_lines:
+                raise SystemExit(
+                    f"BLOCKED:closure-durability-apply: restore anchor changed for {block['id']}"
+                )
+            lines[index:index + len(pre_lines)] = post_lines
+        desired[path] = b"".join(lines) if lines or any(
+            block["_post_exists"] for block in path_blocks
+        ) else None
+    return desired
+
+
+def _restore_patch(work: pathlib.Path, desired: dict[str, bytes | None]) -> bytes:
+    parts = []
+    with tempfile.TemporaryDirectory(prefix="closure-durability-") as tmp:
+        root = pathlib.Path(tmp)
+        for path, wanted in desired.items():
+            old = root / "old" / path
+            new = root / "new" / path
+            current = _worktree_file(work, path)
+            if current is not None:
+                old.parent.mkdir(parents=True, exist_ok=True)
+                old.write_bytes(current)
+            if wanted is not None:
+                new.parent.mkdir(parents=True, exist_ok=True)
+                new.write_bytes(wanted)
+            old_arg = str(old.relative_to(root)) if current is not None else "/dev/null"
+            new_arg = str(new.relative_to(root)) if wanted is not None else "/dev/null"
+            proc = subprocess.run(
+                ["git", "diff", "--no-index", "--binary", "--src-prefix=a/", "--dst-prefix=b/",
+                 "--", old_arg, new_arg],
+                cwd=root, capture_output=True, check=False,
+            )
+            if proc.returncode not in (0, 1):
+                detail = os.fsdecode(proc.stderr or proc.stdout).strip() or "git diff --no-index failed"
+                raise SystemExit(f"BLOCKED:closure-durability-apply: {detail}")
+            patch = proc.stdout
+            encoded = path.encode("utf-8", "surrogateescape")
+            rewritten = []
+            header = True
+            for line in patch.splitlines(keepends=True):
+                if line.startswith(b"@@ ") or line.startswith(b"GIT binary patch"):
+                    header = False
+                if header and line.startswith((b"diff --git ", b"--- ", b"+++ ", b"Binary files ")):
+                    for prefix in (b"a/old/", b"a/new/"):
+                        line = line.replace(prefix + encoded, b"a/" + encoded)
+                    for prefix in (b"b/old/", b"b/new/"):
+                        line = line.replace(prefix + encoded, b"b/" + encoded)
+                rewritten.append(line)
+            parts.append(b"".join(rewritten))
+    return b"".join(parts)
+
+
+def _tracked_status(work: pathlib.Path) -> bytes:
+    return _git_output(work, "status", "--porcelain=v1", "-z", "--untracked-files=no")
+
+
+def _apply_restore_patch(work: pathlib.Path, patch: bytes, paths: list[str]) -> None:
+    before = _tracked_status(work)
+    if before:
+        raise SystemExit("BLOCKED:closure-durability-apply: tracked worktree/index is not clean")
+    check = subprocess.run(
+        ["git", "apply", "--check", "--index", "-"], cwd=work,
+        input=patch, capture_output=True, check=False,
+    )
+    if check.returncode != 0:
+        if _tracked_status(work) != before:
+            raise SystemExit("BLOCKED:closure-durability-apply: preflight mutated tracked state")
+        detail = os.fsdecode(check.stderr or check.stdout).strip() or "git apply --check failed"
+        raise SystemExit(f"BLOCKED:closure-durability-apply: {detail}")
+    apply = subprocess.run(
+        ["git", "apply", "--index", "-"], cwd=work,
+        input=patch, capture_output=True, check=False,
+    )
+    if apply.returncode != 0:
+        subprocess.run(
+            ["git", "restore", "--source=HEAD", "--staged", "--worktree", "--", *paths],
+            cwd=work, capture_output=True, check=False,
+        )
+        if _tracked_status(work) != before:
+            raise SystemExit("BLOCKED:closure-durability-apply: failed apply left partial mutation")
+        detail = os.fsdecode(apply.stderr or apply.stdout).strip() or "git apply failed"
+        raise SystemExit(f"BLOCKED:closure-durability-apply: {detail}")
+
+
+def _write_json_atomic(path: pathlib.Path, value: dict) -> bytes:
+    raw = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    fd, tmp_name = tempfile.mkstemp(dir=str(path.parent), prefix=path.name + ".tmp.")
+    try:
+        with open(fd, "wb") as handle:
+            handle.write(raw)
+        pathlib.Path(tmp_name).replace(path)
+    except BaseException:
+        pathlib.Path(tmp_name).unlink(missing_ok=True)
+        raise
+    return raw
+
+
+def _surface_durability_ledger(state: dict) -> list[dict]:
+    phases = state.setdefault("phases", {})
+    surface = phases.get("surface_close")
+    if surface is None:
+        surface = {}
+        phases["surface_close"] = surface
+    if not isinstance(surface, dict):
+        raise SystemExit("BLOCKED:closure-durability-receipt: phases.surface_close is malformed")
+    ledger = surface.setdefault("durability", [])
+    if not isinstance(ledger, list) or any(not isinstance(item, dict) for item in ledger):
+        raise SystemExit("BLOCKED:closure-durability-receipt: durability ledger is malformed")
+    return ledger
+
+
+def _receipt_blocks(blocks: list[dict]) -> list[dict]:
+    return [{
+        "id": block["id"],
+        "path": block["path"],
+        "pre_fix_span": block["pre_fix_span"],
+        "classification": block["classification"],
+        "finding_targeted": block["finding_targeted"],
+        "action": block["action"],
+    } for block in blocks]
+
+
+def _rollback_durability_creation(
+    work: pathlib.Path, receipt_path: pathlib.Path, state: dict, receipt: dict,
+) -> None:
+    restore_sha = receipt.get("restore_commit_sha")
+    fix_sha = receipt["fix_commit_sha"]
+    restored_paths = sorted({
+        block["path"] for block in receipt.get("blocks", [])
+        if block.get("action") == "restored"
+    })
+    if restore_sha is not None:
+        head = _git_output(work, "rev-parse", "HEAD").decode().strip()
+        if head != restore_sha:
+            raise SystemExit("BLOCKED:closure-durability-rollback: restore commit is no longer HEAD")
+        restore = subprocess.run(
+            ["git", "restore", f"--source={fix_sha}", "--staged", "--worktree", "--", *restored_paths],
+            cwd=work, capture_output=True, check=False,
+        )
+        if restore.returncode != 0:
+            detail = os.fsdecode(restore.stderr or restore.stdout).strip() or "git restore failed"
+            raise SystemExit(f"BLOCKED:closure-durability-rollback: {detail}")
+        update = subprocess.run(
+            ["git", "update-ref", "HEAD", fix_sha, restore_sha],
+            cwd=work, capture_output=True, check=False,
+        )
+        if update.returncode != 0:
+            subprocess.run(
+                ["git", "restore", f"--source={restore_sha}", "--staged", "--worktree", "--",
+                 *restored_paths], cwd=work, capture_output=True, check=False,
+            )
+            detail = os.fsdecode(update.stderr or update.stdout).strip() or "git update-ref failed"
+            raise SystemExit(f"BLOCKED:closure-durability-rollback: {detail}")
+    receipt_path.unlink(missing_ok=True)
+    ledger = _surface_durability_ledger(state)
+    ledger[:] = [
+        item for item in ledger
+        if not (item.get("round") == receipt["round"]
+                and item.get("origin_phase") == receipt["origin_phase"])
+    ]
+    head = _git_output(work, "rev-parse", "HEAD").decode().strip()
+    if head != fix_sha or _tracked_status(work):
+        raise SystemExit("BLOCKED:closure-durability-rollback: rollback left partial mutation")
+
+
+def _validate_durability_receipt(
+    work: pathlib.Path, devlyn: pathlib.Path, state: dict, origin_phase: str, round_: int,
+    receipt_path: pathlib.Path, findings_digest: str, ledger: list[dict],
+) -> dict | None:
+    matches = [item for item in ledger if item.get("round") == round_]
+    if not receipt_path.exists() and not matches:
+        return None
+    if not receipt_path.is_file() or len(matches) != 1:
+        raise SystemExit(
+            f"BLOCKED:closure-durability-receipt: missing or duplicate round {round_} receipt/ledger"
+        )
+    try:
+        raw = receipt_path.read_bytes()
+        receipt = loads_strict_json(raw.decode("utf-8"))
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise SystemExit(f"BLOCKED:closure-durability-receipt: {receipt_path}: {exc}") from exc
+    required = {
+        "schema_version", "round", "origin_phase", "triggering_findings_sha256",
+        "surface_close_commit_sha", "pre_fix_sha", "fix_commit_sha", "post_restore_sha",
+        "restore_commit_sha", "blocks",
+    }
+    if not isinstance(receipt, dict) or set(receipt) != required:
+        raise SystemExit("BLOCKED:closure-durability-receipt: receipt fields are stale or malformed")
+    surface = ((state.get("phases") or {}).get("surface_close") or {})
+    expected_surface_sha = surface.get("post_sha") if isinstance(surface, dict) else None
+    if (
+        receipt["schema_version"] != 1 or receipt["round"] != round_
+        or receipt["origin_phase"] != origin_phase
+        or receipt["triggering_findings_sha256"] != findings_digest
+        or receipt["surface_close_commit_sha"] != expected_surface_sha
+    ):
+        raise SystemExit("BLOCKED:closure-durability-receipt: receipt metadata is stale")
+    blocks = receipt.get("blocks")
+    if not isinstance(blocks, list):
+        raise SystemExit("BLOCKED:closure-durability-receipt: blocks must be an array")
+    block_fields = {"id", "path", "pre_fix_span", "classification", "finding_targeted", "action"}
+    for block in blocks:
+        span = block.get("pre_fix_span") if isinstance(block, dict) else None
+        if (
+            not isinstance(block, dict) or set(block) != block_fields
+            or not isinstance(block.get("id"), str) or not isinstance(block.get("path"), str)
+            or not isinstance(span, list) or len(span) != 2
+            or any(not isinstance(value, int) or isinstance(value, bool) or value < 1 for value in span)
+            or span[0] > span[1]
+            or block.get("classification") not in {"SURVIVED", "REVERTED", "EVOLVED"}
+            or not isinstance(block.get("finding_targeted"), bool)
+            or block.get("action") not in {"restored", "finding-targeted", "none"}
+        ):
+            raise SystemExit("BLOCKED:closure-durability-receipt: block entry is malformed")
+    sha_fields = ("pre_fix_sha", "fix_commit_sha", "post_restore_sha")
+    if any(not isinstance(receipt.get(field), str) or not re.fullmatch(r"[0-9a-f]{40,64}", receipt[field])
+           for field in sha_fields):
+        raise SystemExit("BLOCKED:closure-durability-receipt: commit sha is malformed")
+    restore_sha = receipt.get("restore_commit_sha")
+    if restore_sha is not None and (
+        not isinstance(restore_sha, str) or not re.fullmatch(r"[0-9a-f]{40,64}", restore_sha)
+    ):
+        raise SystemExit("BLOCKED:closure-durability-receipt: restore_commit_sha is malformed")
+    head = _git_output(work, "rev-parse", "HEAD").decode().strip()
+    if head != receipt["post_restore_sha"] or (restore_sha is not None and restore_sha != head):
+        raise SystemExit("BLOCKED:closure-durability-receipt: receipt does not match current HEAD")
+    if restore_sha is None and receipt["fix_commit_sha"] != receipt["post_restore_sha"]:
+        raise SystemExit("BLOCKED:closure-durability-receipt: no-op receipt changed HEAD")
+    if restore_sha is not None:
+        parent = _git_output(work, "rev-parse", f"{restore_sha}^").decode().strip()
+        subject = _git_output(work, "show", "-s", "--format=%s", restore_sha).decode().strip()
+        if parent != receipt["fix_commit_sha"] or subject != f"chore(pipeline): closure-restore round {round_}":
+            raise SystemExit("BLOCKED:closure-durability-receipt: restore commit evidence is stale")
+    fix_parent = _git_output(work, "rev-parse", f"{receipt['fix_commit_sha']}^").decode().strip()
+    fix_subject = _git_output(
+        work, "show", "-s", "--format=%s", receipt["fix_commit_sha"]
+    ).decode().strip()
+    if fix_parent != receipt["pre_fix_sha"] or fix_subject != f"chore(pipeline): implement fix round {round_}":
+        raise SystemExit("BLOCKED:closure-durability-receipt: fix checkpoint evidence is stale")
+    receipt_rel = f"{devlyn_prefix(work, devlyn)}/{receipt_path.name}"
+    expected_ledger = {
+        "round": round_,
+        "origin_phase": origin_phase,
+        "receipt_path": receipt_rel,
+        "receipt_sha256": hashlib.sha256(raw).hexdigest(),
+        "restore_commit_sha": restore_sha,
+    }
+    if matches[0] != expected_ledger:
+        raise SystemExit("BLOCKED:closure-durability-receipt: ledger entry is stale")
+    return receipt
+
+
+def enforce_closure_durability_reentry(
+    work: pathlib.Path, devlyn: pathlib.Path, state: dict, origin_phase: str, round_: int,
+    *, require_existing: bool = False,
+) -> dict | None:
+    if round_ < 1:
+        return None
+    if origin_phase not in VALID_TRIGGERS:
+        raise SystemExit(f"BLOCKED:closure-durability-receipt: invalid origin phase {origin_phase!r}")
+    findings, findings_digest = _read_triggering_findings(devlyn, origin_phase)
+    ledger = _surface_durability_ledger(state)
+    receipt_path = devlyn / f"closure-durability.round-{round_}.json"
+    existing = _validate_durability_receipt(
+        work, devlyn, state, origin_phase, round_, receipt_path, findings_digest, ledger,
+    )
+    if existing is not None:
+        return existing
+    if require_existing:
+        raise SystemExit(
+            f"BLOCKED:closure-durability-receipt: round {round_} checkpoint receipt is missing"
+        )
+
+    if any(item.get("round") == round_ or item.get("origin_phase") == origin_phase
+           and item.get("receipt_path") == f"{devlyn_prefix(work, devlyn)}/{receipt_path.name}"
+           for item in ledger):
+        raise SystemExit("BLOCKED:closure-durability-receipt: append-only ledger collision")
+    if _tracked_status(work):
+        raise SystemExit("BLOCKED:closure-durability-apply: tracked worktree/index is not clean")
+    fix_commit_sha = _git_output(work, "rev-parse", "HEAD").decode().strip()
+    fix_subject = _git_output(work, "show", "-s", "--format=%s", fix_commit_sha).decode().strip()
+    if fix_subject != f"chore(pipeline): implement fix round {round_}":
+        raise SystemExit(
+            f"BLOCKED:closure-durability-receipt: expected fix checkpoint round {round_}, got {fix_subject!r}"
+        )
+    pre_fix_sha = _git_output(work, "rev-parse", f"{fix_commit_sha}^").decode().strip()
+    surface = ((state.get("phases") or {}).get("surface_close") or {})
+    surface_commit_sha = surface.get("post_sha") if isinstance(surface, dict) else None
+    blocks = surface_change_blocks(work, state, pre_fix_sha)
+    restore_blocks = []
+    for block in blocks:
+        classification = classify_surface_block(block, _worktree_file(work, block["path"]))
+        targeted = finding_targets_block(block, findings)
+        block["classification"] = classification
+        block["finding_targeted"] = targeted
+        if classification == "REVERTED" and not targeted:
+            block["action"] = "restored"
+            restore_blocks.append(block)
+        elif targeted:
+            block["action"] = "finding-targeted"
+        else:
+            block["action"] = "none"
+
+    restore_commit_sha = None
+    if restore_blocks:
+        desired = _restored_files(work, restore_blocks)
+        patch = _restore_patch(work, desired)
+        if not patch:
+            raise SystemExit("BLOCKED:closure-durability-apply: restored blocks produced an empty patch")
+        paths = sorted(desired)
+        _apply_restore_patch(work, patch, paths)
+        commit = subprocess.run(
+            ["git", "commit", "-m", f"chore(pipeline): closure-restore round {round_}"],
+            cwd=work, capture_output=True, check=False,
+        )
+        if commit.returncode != 0:
+            subprocess.run(
+                ["git", "restore", "--source=HEAD", "--staged", "--worktree", "--", *paths],
+                cwd=work, capture_output=True, check=False,
+            )
+            detail = os.fsdecode(commit.stderr or commit.stdout).strip() or "git commit failed"
+            raise SystemExit(f"BLOCKED:closure-durability-apply: {detail}")
+        restore_commit_sha = _git_output(work, "rev-parse", "HEAD").decode().strip()
+    post_restore_sha = _git_output(work, "rev-parse", "HEAD").decode().strip()
+    receipt = {
+        "schema_version": 1,
+        "round": round_,
+        "origin_phase": origin_phase,
+        "triggering_findings_sha256": findings_digest,
+        "surface_close_commit_sha": surface_commit_sha,
+        "pre_fix_sha": pre_fix_sha,
+        "fix_commit_sha": fix_commit_sha,
+        "post_restore_sha": post_restore_sha,
+        "restore_commit_sha": restore_commit_sha,
+        "blocks": _receipt_blocks(blocks),
+    }
+    try:
+        raw = _write_json_atomic(receipt_path, receipt)
+        ledger.append({
+            "round": round_,
+            "origin_phase": origin_phase,
+            "receipt_path": f"{devlyn_prefix(work, devlyn)}/{receipt_path.name}",
+            "receipt_sha256": hashlib.sha256(raw).hexdigest(),
+            "restore_commit_sha": restore_commit_sha,
+        })
+    except BaseException as exc:
+        _rollback_durability_creation(work, receipt_path, state, receipt)
+        raise SystemExit(f"BLOCKED:closure-durability-receipt: {exc}") from exc
+    return receipt
+
+
+def _persist_durability_event(
+    work: pathlib.Path, devlyn: pathlib.Path, state: dict, state_path: pathlib.Path,
+    origin_phase: str, round_: int, writer=write_state,
+) -> dict:
+    receipt_path = devlyn / f"closure-durability.round-{round_}.json"
+    existed = receipt_path.exists()
+    receipt = enforce_closure_durability_reentry(
+        work, devlyn, state, origin_phase, round_,
+    )
+    try:
+        writer(state_path, state)
+    except BaseException:
+        if not existed:
+            _rollback_durability_creation(work, receipt_path, state, receipt)
+        raise
+    return receipt
 
 
 def clear_verify_round_artifacts(devlyn: pathlib.Path) -> None:
@@ -1147,6 +1736,357 @@ def self_test() -> int:
         assert state["phases"]["plan"]["model_effective"] is None
         assert state["phases"]["plan"]["verdict"] == "BLOCKED"
 
+        def write_fixture_tree(repo: pathlib.Path, files: dict[str, str]) -> None:
+            existing = {
+                path.relative_to(repo).as_posix() for path in repo.rglob("*")
+                if path.is_file() and ".git" not in path.parts and ".devlyn" not in path.parts
+            }
+            for path in existing - set(files):
+                (repo / path).unlink()
+            for path, content in files.items():
+                target = repo / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content, encoding="utf-8")
+
+        def commit_fixture(repo: pathlib.Path, files: dict[str, str], message: str) -> str:
+            write_fixture_tree(repo, files)
+            paths = sorted(set(files) | {
+                path.relative_to(repo).as_posix() for path in repo.rglob("*")
+                if path.is_file() and ".git" not in path.parts and ".devlyn" not in path.parts
+            })
+            subprocess.run(["git", "add", "--all", "--", *paths], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", message], cwd=repo, check=True)
+            return subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=repo, check=True,
+                capture_output=True, text=True,
+            ).stdout.strip()
+
+        def durability_fixture(
+            name: str, base_files: dict[str, str], surface_files: dict[str, str],
+            fix_files: dict[str, str], origin: str, findings: list[dict], round_: int = 1,
+            with_surface_post: bool = True,
+        ) -> tuple[pathlib.Path, pathlib.Path, dict, str, str]:
+            repo = devlyn / name
+            repo.mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.email", "self-test@example.invalid"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "self-test"], cwd=repo, check=True)
+            base_sha = commit_fixture(repo, base_files, "base")
+            surface_sha = commit_fixture(repo, surface_files, "surface close")
+            fix_sha = commit_fixture(repo, fix_files, f"chore(pipeline): implement fix round {round_}")
+            fixture_devlyn = repo / ".devlyn"
+            fixture_devlyn.mkdir()
+            findings_name = (
+                "build_gate.findings.jsonl" if origin == "build_gate"
+                else "verify-merged.findings.jsonl"
+            )
+            (fixture_devlyn / findings_name).write_text(
+                "".join(json.dumps(finding) + "\n" for finding in findings), encoding="utf-8",
+            )
+            surface_entry = {"pre_sha": base_sha, "durability": []}
+            if with_surface_post:
+                surface_entry["post_sha"] = surface_sha
+            fixture_state = {"phases": {"surface_close": surface_entry}}
+            return repo, fixture_devlyn, fixture_state, fix_sha, surface_sha
+
+        # M-CP 1/8/9: exact -19c topology. The VERIFY finding is line 60,
+        # outside the pre-fix USAGE block; the unrelated real fix survives,
+        # the USAGE revert is restored, and the frozen gate's check-7 function
+        # observes the separate closure-restore commit's final tree.
+        base_lines = [f"line {index}\n" for index in range(1, 66)]
+        base_lines[6] = "const USAGE = `\n"
+        base_lines[7] = "usage: cli <command>\n"
+        base_lines[9] = "  version                 Show version\n"
+        base_lines[10] = "`;\n"
+        base_lines[59] = "  return args.indexOf('--format')\n"
+        surface_lines = list(base_lines)
+        surface_lines[9] = "  version --format <fmt>  Show version\n"
+        fix_lines = list(base_lines)
+        fix_lines[59] = "  return args.lastIndexOf('--format')\n"
+        exact_repo, exact_devlyn, exact_state, exact_fix, _ = durability_fixture(
+            "durability-exact", {"bin/cli.js": "".join(base_lines)},
+            {"bin/cli.js": "".join(surface_lines)}, {"bin/cli.js": "".join(fix_lines)},
+            "verify", [{"id": "-19c", "file": "bin/cli.js", "line": 60}],
+        )
+        exact_receipt = enforce_closure_durability_reentry(
+            exact_repo, exact_devlyn, exact_state, "verify", 1,
+        )
+        exact_text = (exact_repo / "bin/cli.js").read_text(encoding="utf-8")
+        assert "version --format <fmt>" in exact_text
+        assert "lastIndexOf('--format')" in exact_text
+        assert exact_receipt and exact_receipt["restore_commit_sha"]
+        assert exact_receipt["fix_commit_sha"] == exact_fix
+        assert subprocess.run(
+            ["git", "show", "-s", "--format=%s", "HEAD"], cwd=exact_repo,
+            check=True, capture_output=True, text=True,
+        ).stdout.strip() == "chore(pipeline): closure-restore round 1"
+        import importlib.util
+        gate_spec = importlib.util.spec_from_file_location(
+            "f7_carrier_gate", pathlib.Path(__file__).resolve().parents[3]
+            / "benchmark/ceiling/scripts/f7-carrier-gate.py",
+        )
+        gate = importlib.util.module_from_spec(gate_spec)
+        gate_spec.loader.exec_module(gate)
+        assert gate.check7(exact_text)[0]
+        print("PASS M-CP self-test 1/8/9: -19c restore + file-line targeting + frozen check 7")
+
+        # M-CP 2: BUILD_GATE uses the same durability route.
+        build_repo, build_devlyn, build_state, _, _ = durability_fixture(
+            "durability-build", {"a.txt": "old\n"}, {"a.txt": "surface\n"},
+            {"a.txt": "old\n"}, "build_gate",
+            [{"id": "BG", "file": "a.txt", "line": 8}],
+        )
+        build_state["phases"]["implement"] = {"round": 1, "triggered_by": "build_gate"}
+        write_state(build_devlyn / "pipeline.state.json", build_state)
+        subprocess.run(
+            [sys.executable, str(pathlib.Path(__file__).resolve()), "--devlyn-dir", ".devlyn",
+             "--phase", "implement", "durability-enforce", "--round", "1",
+             "--origin-phase", "build_gate"],
+            cwd=build_repo, check=True, capture_output=True,
+        )
+        subprocess.run(
+            [sys.executable, str(pathlib.Path(__file__).resolve()), "--devlyn-dir", ".devlyn",
+             "--phase", "build_gate", "spawn", "--round", "1"],
+            cwd=build_repo, check=True, capture_output=True,
+        )
+        # The next phase's first spawn shares rounds.global=1 but is not a
+        # VERIFY re-entry; it must not reinterpret the BUILD_GATE receipt.
+        subprocess.run(
+            [sys.executable, str(pathlib.Path(__file__).resolve()), "--devlyn-dir", ".devlyn",
+             "--phase", "verify", "spawn", "--round", "1"],
+            cwd=build_repo, check=True, capture_output=True,
+        )
+        build_receipt = loads_strict_json(
+            (build_devlyn / "closure-durability.round-1.json").read_text(encoding="utf-8")
+        )
+        assert (build_repo / "a.txt").read_text(encoding="utf-8") == "surface\n"
+        assert build_receipt and build_receipt["origin_phase"] == "build_gate"
+        print("PASS M-CP self-test 2: build_gate and verify routes")
+
+        # M-CP 3: block-granular multi-file partial revert mixture.
+        mix_base = {
+            "mix.txt": "A\nkeep-1\nB\nkeep-2\nC\n", "other.txt": "old\n",
+            "context.txt": "before\nold\nafter\n",
+        }
+        mix_surface = {
+            "mix.txt": "A-sc\nkeep-1\nB-sc\nkeep-2\nC-sc\n", "other.txt": "new\n",
+            "context.txt": "before\nnew\nafter\n",
+        }
+        mix_fix = {
+            "mix.txt": "A-sc\nkeep-1\nB-evolved\nkeep-2\nC\n", "other.txt": "old\n",
+            "context.txt": "changed-context\nold\nafter\n",
+        }
+        mix_repo, mix_devlyn, mix_state, _, _ = durability_fixture(
+            "durability-mix", mix_base, mix_surface, mix_fix, "verify", [],
+        )
+        mix_receipt = enforce_closure_durability_reentry(
+            mix_repo, mix_devlyn, mix_state, "verify", 1,
+        )
+        mix_classes = [block["classification"] for block in mix_receipt["blocks"]]
+        assert {"SURVIVED", "EVOLVED", "REVERTED"} <= set(mix_classes), mix_receipt["blocks"]
+        assert (mix_repo / "mix.txt").read_text(encoding="utf-8") == (
+            "A-sc\nkeep-1\nB-evolved\nkeep-2\nC-sc\n"
+        )
+        assert (mix_repo / "other.txt").read_text(encoding="utf-8") == "new\n"
+        assert (mix_repo / "context.txt").read_text(encoding="utf-8") == (
+            "changed-context\nold\nafter\n"
+        )
+        print("PASS M-CP self-test 3: multi-file SURVIVED/EVOLVED/REVERTED partial restore")
+
+        # M-CP 4: a deleted additive SC block is REVERTED and restored.
+        add_repo, add_devlyn, add_state, _, _ = durability_fixture(
+            "durability-add", {"docs/x.txt": "head\ntail\n"},
+            {"docs/x.txt": "head\na/old/docs/x.txt\ntail\n"},
+            {"docs/x.txt": "head\ntail\n"}, "verify", [],
+        )
+        add_receipt = enforce_closure_durability_reentry(add_repo, add_devlyn, add_state, "verify", 1)
+        assert (add_repo / "docs/x.txt").read_text(encoding="utf-8") == (
+            "head\na/old/docs/x.txt\ntail\n"
+        )
+        assert any(block["classification"] == "REVERTED" for block in add_receipt["blocks"])
+        print("PASS M-CP self-test 4: deleted additive block restored")
+
+        # M-CP 5: an exact line-targeted deletion is preserved, not restored.
+        target_repo, target_devlyn, target_state, target_fix, _ = durability_fixture(
+            "durability-target", {"target.txt": "head\ntail\n"},
+            {"target.txt": "head\nconsolidate\ntail\n"}, {"target.txt": "head\ntail\n"},
+            "verify", [{"id": "E1", "path": "target.txt", "line": 2}],
+        )
+        target_receipt = enforce_closure_durability_reentry(
+            target_repo, target_devlyn, target_state, "verify", 1,
+        )
+        assert (target_repo / "target.txt").read_text(encoding="utf-8") == "head\ntail\n"
+        assert target_receipt["restore_commit_sha"] is None
+        assert target_receipt["post_restore_sha"] == target_fix
+        assert target_receipt["blocks"][0]["finding_targeted"] is True
+        print("PASS M-CP self-test 5: finding-targeted deletion not restored")
+
+        # M-CP 6: once ledgered, a missing or stale receipt blocks re-entry.
+        target_path = target_devlyn / "closure-durability.round-1.json"
+        target_raw = target_path.read_bytes()
+        target_state["phases"]["implement"] = {"round": 1, "triggered_by": "verify"}
+        write_state(target_devlyn / "pipeline.state.json", target_state)
+        stale_verify_artifact = target_devlyn / "verify.findings.jsonl"
+        stale_verify_artifact.write_text("stale\n", encoding="utf-8")
+        target_path.unlink()
+        for mode in ("missing", "stale"):
+            if mode == "stale":
+                target_path.write_bytes(target_raw.replace(b'"schema_version": 1', b'"schema_version": 2'))
+            try:
+                enforce_closure_durability_reentry(
+                    target_repo, target_devlyn, target_state, "verify", 1,
+                )
+            except SystemExit as exc:
+                assert "closure-durability-receipt" in str(exc)
+            else:
+                raise AssertionError(f"{mode} durability receipt was accepted")
+            if mode == "missing":
+                reentry = subprocess.run(
+                    [sys.executable, str(pathlib.Path(__file__).resolve()),
+                     "--devlyn-dir", ".devlyn", "--phase", "verify", "spawn",
+                     "--round", "1"],
+                    cwd=target_repo, capture_output=True, text=True,
+                )
+                assert reentry.returncode != 0
+                assert "closure-durability-receipt" in reentry.stderr
+                assert stale_verify_artifact.exists(), "re-entry guard must run before VERIFY clearing"
+        target_path.write_bytes(target_raw)
+
+        # Skipping the explicit post-fix checkpoint cannot be repaired by the
+        # spawn guard: re-entry is validation-only and both artifacts missing
+        # must block without changing the fix tree.
+        skipped_repo, skipped_devlyn, skipped_state, skipped_fix, _ = durability_fixture(
+            "durability-skipped-checkpoint", {"skip.txt": "base\n"},
+            {"skip.txt": "surface\n"}, {"skip.txt": "base\n"}, "build_gate", [],
+        )
+        skipped_state["phases"]["implement"] = {"round": 1, "triggered_by": "build_gate"}
+        write_state(skipped_devlyn / "pipeline.state.json", skipped_state)
+        skipped = subprocess.run(
+            [sys.executable, str(pathlib.Path(__file__).resolve()),
+             "--devlyn-dir", ".devlyn", "--phase", "build_gate", "spawn", "--round", "1"],
+            cwd=skipped_repo, capture_output=True, text=True,
+        )
+        assert skipped.returncode != 0 and "checkpoint receipt is missing" in skipped.stderr
+        assert not (skipped_devlyn / "closure-durability.round-1.json").exists()
+        assert subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=skipped_repo, check=True,
+            capture_output=True, text=True,
+        ).stdout.strip() == skipped_fix
+
+        receipt_repo, receipt_devlyn, receipt_state, receipt_fix, _ = durability_fixture(
+            "durability-receipt-write-fail", {"receipt.txt": "base\n"},
+            {"receipt.txt": "surface\n"}, {"receipt.txt": "base\n"}, "verify", [],
+        )
+        original_json_writer = globals()["_write_json_atomic"]
+        def fail_receipt_write(_path, _value):
+            raise OSError("injected receipt write failure")
+        globals()["_write_json_atomic"] = fail_receipt_write
+        try:
+            try:
+                enforce_closure_durability_reentry(
+                    receipt_repo, receipt_devlyn, receipt_state, "verify", 1,
+                )
+            except SystemExit as exc:
+                assert "injected receipt write failure" in str(exc)
+            else:
+                raise AssertionError("receipt write failure did not fail closed")
+        finally:
+            globals()["_write_json_atomic"] = original_json_writer
+        assert _git_output(receipt_repo, "rev-parse", "HEAD").decode().strip() == receipt_fix
+        assert (receipt_repo / "receipt.txt").read_text(encoding="utf-8") == "base\n"
+        assert not (receipt_devlyn / "closure-durability.round-1.json").exists()
+        assert receipt_state["phases"]["surface_close"]["durability"] == []
+
+        state_repo, state_devlyn, state_state, state_fix, _ = durability_fixture(
+            "durability-state-write-fail", {"state.txt": "base\n"},
+            {"state.txt": "surface\n"}, {"state.txt": "base\n"}, "verify", [],
+        )
+        def fail_state_write(_path, _state):
+            raise OSError("injected state write failure")
+        try:
+            _persist_durability_event(
+                state_repo, state_devlyn, state_state,
+                state_devlyn / "pipeline.state.json", "verify", 1,
+                writer=fail_state_write,
+            )
+        except OSError as exc:
+            assert "injected state write failure" in str(exc)
+        else:
+            raise AssertionError("state write failure did not fail closed")
+        assert _git_output(state_repo, "rev-parse", "HEAD").decode().strip() == state_fix
+        assert (state_repo / "state.txt").read_text(encoding="utf-8") == "base\n"
+        assert not (state_devlyn / "closure-durability.round-1.json").exists()
+        assert state_state["phases"]["surface_close"]["durability"] == []
+        print("PASS M-CP self-test 6: missing/stale receipt fails closed")
+
+        # M-CP 7: failed patch preflight leaves index and worktree byte-clean.
+        before_status = _tracked_status(target_repo)
+        before_bytes = (target_repo / "target.txt").read_bytes()
+        try:
+            _apply_restore_patch(target_repo, b"not a patch\n", ["target.txt"])
+        except SystemExit as exc:
+            assert "closure-durability-apply" in str(exc)
+        else:
+            raise AssertionError("invalid restore patch was accepted")
+        assert _tracked_status(target_repo) == before_status
+        assert (target_repo / "target.txt").read_bytes() == before_bytes
+
+        binary_repo = devlyn / "durability-binary"
+        binary_repo.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=binary_repo, check=True)
+        subprocess.run(["git", "config", "user.email", "self-test@example.invalid"], cwd=binary_repo, check=True)
+        subprocess.run(["git", "config", "user.name", "self-test"], cwd=binary_repo, check=True)
+        binary_path = binary_repo / "binary.dat"
+        binary_path.write_bytes(b"\x00base\xff\n")
+        subprocess.run(["git", "add", "--", "binary.dat"], cwd=binary_repo, check=True)
+        subprocess.run(["git", "commit", "-qm", "base"], cwd=binary_repo, check=True)
+        wanted_binary = b"\x00a/old/binary.dat\xffb/new/binary.dat\n"
+        binary_patch = _restore_patch(binary_repo, {"binary.dat": wanted_binary})
+        _apply_restore_patch(binary_repo, binary_patch, ["binary.dat"])
+        assert binary_path.read_bytes() == wanted_binary
+        assert _git_output(binary_repo, "show", ":binary.dat") == wanted_binary
+
+        literal_repo = devlyn / "durability-header-literal"
+        literal_repo.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=literal_repo, check=True)
+        subprocess.run(["git", "config", "user.email", "self-test@example.invalid"], cwd=literal_repo, check=True)
+        subprocess.run(["git", "config", "user.name", "self-test"], cwd=literal_repo, check=True)
+        literal_path = literal_repo / "literal.txt"
+        literal_path.write_bytes(b"-- a/old/literal.txt\n")
+        subprocess.run(["git", "add", "--", "literal.txt"], cwd=literal_repo, check=True)
+        subprocess.run(["git", "commit", "-qm", "base"], cwd=literal_repo, check=True)
+        wanted_literal = b"++ b/new/literal.txt\n"
+        literal_patch = _restore_patch(literal_repo, {"literal.txt": wanted_literal})
+        _apply_restore_patch(literal_repo, literal_patch, ["literal.txt"])
+        assert literal_path.read_bytes() == wanted_literal
+        assert _git_output(literal_repo, "show", ":literal.txt") == wanted_literal
+        print("PASS M-CP self-test 7: apply failure leaves zero partial mutation")
+
+        # File-only findings are deliberately non-targeting.
+        file_repo, file_devlyn, file_state, _, _ = durability_fixture(
+            "durability-file-only", {"usage.txt": "usage old\n"},
+            {"usage.txt": "usage --format\n"}, {"usage.txt": "usage old\n"},
+            "verify", [{"id": "file-only", "file": "usage.txt"}],
+        )
+        file_receipt = enforce_closure_durability_reentry(
+            file_repo, file_devlyn, file_state, "verify", 1,
+        )
+        assert (file_repo / "usage.txt").read_text(encoding="utf-8") == "usage --format\n"
+        assert file_receipt["blocks"][0]["finding_targeted"] is False
+        print("PASS M-CP self-test 8: file-only finding cannot mask restore")
+
+        # Skipped/no-post-SHA is receipt-visible and commit-free.
+        noop_repo, noop_devlyn, noop_state, noop_fix, _ = durability_fixture(
+            "durability-noop", {"noop.txt": "base\n"}, {"noop.txt": "surface\n"},
+            {"noop.txt": "fix\n"}, "build_gate", [], with_surface_post=False,
+        )
+        noop_receipt = enforce_closure_durability_reentry(
+            noop_repo, noop_devlyn, noop_state, "build_gate", 1,
+        )
+        assert noop_receipt["blocks"] == [] and noop_receipt["restore_commit_sha"] is None
+        assert noop_receipt["post_restore_sha"] == noop_fix
+        print("PASS M-CP self-test no-op: no post_sha writes receipt without commit")
+
     return 0
 
 
@@ -1180,13 +2120,16 @@ def main() -> int:
     check_p.add_argument("--authorized-surface-json", required=True)
     sub.add_parser("surface-rollback")
     sub.add_parser("surface-skip")
+    durability_p = sub.add_parser("durability-enforce")
+    durability_p.add_argument("--round", type=int, required=True)
+    durability_p.add_argument("--origin-phase", choices=sorted(VALID_TRIGGERS), required=True)
 
     args = ap.parse_args()
     if args.self_test:
         return self_test()
 
     surface_events = {"surface-check", "surface-rollback", "surface-skip"}
-    if not args.phase or args.event not in {"spawn", "complete", *surface_events}:
+    if not args.phase or args.event not in {"spawn", "complete", "durability-enforce", *surface_events}:
         ap.error("--phase and a phase event are required unless --self-test")
 
     devlyn = pathlib.Path(args.devlyn_dir)
@@ -1195,6 +2138,15 @@ def main() -> int:
         return 1
     state_path = devlyn / "pipeline.state.json"
     state = read_state(state_path)
+
+    if args.event == "durability-enforce":
+        if args.phase != "implement":
+            ap.error("durability-enforce is valid only for --phase implement")
+        _persist_durability_event(
+            pathlib.Path.cwd(), devlyn, state, state_path, args.origin_phase, args.round,
+        )
+        sys.stdout.write(f"ok: phases.surface_close.durability.round-{args.round}\n")
+        return 0
 
     if args.event in surface_events:
         if args.phase != "surface_close":
@@ -1221,6 +2173,18 @@ def main() -> int:
         return 0
 
     if args.event == "spawn":
+        implement = (state.get("phases") or {}).get("implement")
+        fix_reentry = (
+            args.phase in VALID_TRIGGERS and args.round >= 1
+            and isinstance(implement, dict)
+            and implement.get("round") == args.round
+            and implement.get("triggered_by") == args.phase
+        )
+        if fix_reentry:
+            enforce_closure_durability_reentry(
+                pathlib.Path.cwd(), devlyn, state, args.phase, args.round,
+                require_existing=True,
+            )
         if args.phase == "verify":
             clear_verify_round_artifacts(devlyn)
         untracked_before = (
