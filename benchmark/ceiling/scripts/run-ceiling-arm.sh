@@ -18,6 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CEILING_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLAUDE_ISOLATION="$SCRIPT_DIR/claude-isolation.py"
 F7_CARRIER_GATE="$SCRIPT_DIR/f7-carrier-gate.py"
+TERMINAL_CLAIM_CHECK="$SCRIPT_DIR/terminal-claim-check.py"
 F7_TASK="DR-byte-preservation-f7-out-of-scope-trap"
 DRAW_NON_DIAGNOSTIC_EXIT=86
 DEPS_STAGING_BLOCKED_EXIT=78
@@ -771,6 +772,59 @@ if [ "$ARM" = A ]; then
   fi
 fi
 
+ARM_EXIT="$INVOKE_EXIT"
+if [ "$ARM" = A ]; then
+  set +e
+  TERMINAL_CLAIM_JSON="$(python3 "$TERMINAL_CLAIM_CHECK" "$WORKTREE")"
+  TERMINAL_CLAIM_EXIT=$?
+  set -e
+  case "$TERMINAL_CLAIM_EXIT" in
+    0)
+      if [ -n "$TERMINAL_CLAIM_JSON" ]; then
+        echo "terminal-claim check emitted output on a clean result" >&2
+        [ "$ARM_EXIT" -ne 0 ] || ARM_EXIT=$DEPS_STAGING_BLOCKED_EXIT
+      fi
+      ;;
+    79)
+      if python3 - \
+        "$RESULT_DIR/terminal-claim.json" \
+        "$RESULT_DIR/timing.json" \
+        "$TERMINAL_CLAIM_JSON" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+receipt_path, timing_path, raw_receipt = sys.argv[1:]
+receipt = json.loads(raw_receipt)
+if not isinstance(receipt, dict) or set(receipt) != {"status", "phase", "reason", "run_id"}:
+    raise SystemExit("invalid terminal-claim receipt")
+status = receipt.get("status")
+if status != "MALFORMED" and not (
+    isinstance(status, str) and status.startswith("INCOMPLETE:")
+):
+    raise SystemExit("terminal-claim receipt is not incomplete")
+Path(receipt_path).write_text(
+    json.dumps(receipt, indent=2) + "\n", encoding="utf-8"
+)
+timing_file = Path(timing_path)
+timing = json.loads(timing_file.read_text(encoding="utf-8"))
+timing["terminal_outcome"] = "FAILED-INCOMPLETE"
+timing_file.write_text(json.dumps(timing, indent=2) + "\n", encoding="utf-8")
+PY
+      then
+        [ "$ARM_EXIT" -ne 0 ] || ARM_EXIT=79
+      else
+        echo "terminal-claim receipt generation failed" >&2
+        [ "$ARM_EXIT" -ne 0 ] || ARM_EXIT=$DEPS_STAGING_BLOCKED_EXIT
+      fi
+      ;;
+    *)
+      echo "terminal-claim check failed: exit=$TERMINAL_CLAIM_EXIT" >&2
+      [ "$ARM_EXIT" -ne 0 ] || ARM_EXIT=$DEPS_STAGING_BLOCKED_EXIT
+      ;;
+  esac
+fi
+
 python3 - \
   "$RESULT_DIR/isolation.json" \
   "$RESULT_DIR/neutralization.json" \
@@ -1102,7 +1156,7 @@ if arm == "A":
 Path(out_path).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 PY
 
-echo "[ceiling-arm] ${TASK} ${ARM}${ATTEMPT} exit=${INVOKE_EXIT} timed_out=${RUN_TIMED_OUT} draw_non_diagnostic=${RUN_DRAW_NON_DIAGNOSTIC} result=${RESULT_DIR}"
+echo "[ceiling-arm] ${TASK} ${ARM}${ATTEMPT} exit=${ARM_EXIT} timed_out=${RUN_TIMED_OUT} draw_non_diagnostic=${RUN_DRAW_NON_DIAGNOSTIC} result=${RESULT_DIR}"
 if [ "$ARM" = A ]; then
   if [ "$INVOKE_EXIT" -ne 0 ]; then
     exit "$INVOKE_EXIT"
@@ -1123,4 +1177,7 @@ valid = (
 )
 raise SystemExit(0 if valid else 1)
 PY
+  if [ "$ARM_EXIT" -ne 0 ]; then
+    exit "$ARM_EXIT"
+  fi
 fi
