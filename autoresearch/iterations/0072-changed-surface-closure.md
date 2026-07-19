@@ -1521,8 +1521,11 @@ durability-enforce + fail-closed fix-reentry guard verified wired at
 SPW:2175-2189; 9 self-tests PASS; token gauge +0.489% ≤ +0.5%;
 lint + 3-tree parity green — Codex sandbox could not write `.agents`,
 orchestrator mirrored per Am5 convention). Row ladder: -d, -e C2
-pre8=True draws (DEAD, receipts committed) → **-f: clean diagnostic
-completion, arm exit 0, wall 1231s.**
+pre8=True draws (DEAD, receipts committed) → **-f: valid diagnostic
+final-tree row; arm exit 0, wall 1231s; pipeline terminal INCOMPLETE
+(verify.verdict=None — residual 1 below; wording corrected at 0073
+freeze per Codex R1 honesty edit — "clean diagnostic completion"
+overclaimed pipeline completion).**
 
 **Credit line (frozen)**: nodeg-20260719f A1 (sonnet/terra, CLI
 2.1.211 direct binary, node v20.19.0) is the FIRST valid diagnostic F7

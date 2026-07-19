@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iter: [`iterations/0072-changed-surface-closure.md`](iterations/0072-changed-surface-closure.md) — §§ "REGISTRATION v6 — AMENDMENT 5 FROZEN" + "Session close 2026-07-19" are the current frozen state (v1-v5 arcs + falsification receipts above them; DECISIONS 0072.21-.26). Recently closed: [`iterations/0070a-noncoding-instruments.md`](iterations/0070a-noncoding-instruments.md) (addendum 12 = routed instrument DEAD, falsifier #6) + [`iterations/0071-wall-proportionality.md`](iterations/0071-wall-proportionality.md) (dual-judge default shipped, DECISIONS 0071.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iter: [`iterations/0073-attribution-complete-remeasure.md`](iterations/0073-attribution-complete-remeasure.md) (FROZEN registration — the binding contract for Stage A/B) + [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (design-only license). Recently closed: [`iterations/0072-changed-surface-closure.md`](iterations/0072-changed-surface-closure.md) (SHIP-CREDITED then CLOSED, DECISIONS 0072.28/.29), [`iterations/0070a-noncoding-instruments.md`](iterations/0070a-noncoding-instruments.md), [`iterations/0071-wall-proportionality.md`](iterations/0071-wall-proportionality.md). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,33 +14,40 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and agai
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-19 (iter-0072 **SHIP-CREDITED: nodeg-20260719f FIRST 11/11 valid diagnostic row (0072.28) — F7 composite closure claim delivered; iter closable**)
+## 🚦 START-HERE — state after 2026-07-19 evening (iter-0072 **CLOSED** (0072.29) · iter-0073 **REGISTERED-FROZEN** (0073.1) · iter-0074 STUB)
 
-**Where the loop stands (one paragraph).** iter-0072's composite
-final-tree closure claim is **SHIP-CREDITED** — nodeg-20260719f passed
-the frozen `--v5 --post-implement` all-checks gate **11/11** (first
-ever; 1-for-4 valid rows), three-way ship round unanimous with
-independent gate re-runs (credit line + full verification chain: iter
-§SHIP-CREDITED; DECISIONS 0072.28). Same session: the closure-
-durability three-way round adjudicated -19c **GAP not falsification**
-(0072.27, trigger-path record-corrected to the VERIFY fix loop) and
-froze+built **M-CP** (SPW durability-enforce, fail-closed fix-reentry
-receipts, commit b708289; 9 self-tests; F1-F3 falsifiers armed). SC
-adjudication 6-for-6. **Honest bounds**: row-level claim only — the
-nodeg 7-row quality (0/7) and wall (0/7) bars are UNMOVED and remain
-the open problem; ops #17 full-run stays the moat gate; M-CP has never
-fired live (no fix round occurred in -f).
+**Where the loop stands (one paragraph).** iter-0072 is **CLOSED** —
+the F7 composite final-tree closure claim was SHIP-CREDITED at
+nodeg-20260719f 11/11 (0072.28) and the close-out three-way round (R0
+2026-07-19) adjudicated Registered-Claim State with a Codex honesty
+correction applied: -19f was a valid diagnostic final-tree row but its
+pipeline terminal was INCOMPLETE (verify.verdict=None; "clean
+diagnostic completion" wording corrected, 0072.29). **iter-0073 is
+FROZEN** (three-way converged R0+R1, six seat blockers adopted;
+0073.1): single claim = ONE attribution-complete 7-row nodeg cohort on
+the post-0072 stack — Stage A retention build (whole-.devlyn snapshot +
+interphase-turns history fix + attribution.json) then Stage B detached
+exam (worktree-pinned SHA, 7-task CSV F7-first, sonnet/terra, CLI
+2.1.211 + node v20.19.0 exact bins). Frozen predictions: P-a′
+replication (suite quality stays 0/7), P-b wall ≥8×, P-c two-sided
+implement-share ≥0.60 on ≥5/7 CONFIRMS the addendum-5 wall read /
+REFUTES with ≥5 rows / else INCONCLUSIVE (orchestrator prior: REFUTED —
+-19f implement ≈12% of wall, non-phase residual ≈50%). **iter-0074
+STUB** = premature-terminal-during-VERIFY (fired on -19f itself),
+design-only license, Terminal-Claim Authority bar.
 
-**Next work (adjudicate order next session)**:
-1. **iter-0072 close-out decision** — the registered claim is
-   ship-credited; decide close vs remaining amendments. Then the next
-   quality lever: nodeg quality 0/7 + wall 0/7 (0071 addendum 5 wall
-   bottleneck = IMPLEMENT/fix-loop) are the standing open bars.
-2. **Premature-terminal-during-VERIFY residual** (0072.28, now
-   receipt-observed: verify.verdict=None + codex-judge 0B + no PHASE-6
-   archive on a session that self-reported "completed") — eligible for
-   a registered iter item; not licensed to build without one.
-3. Cell 1 bare-fails admission gate (terra-conditional) — last 0070a item.
+**Next work (in order)**:
+1. **iter-0073 Stage A build** (Codex sol, packet
+   /tmp/codex-0073-stageA/build-packet.md — regenerate from the
+   registration §Stage A if missing) → gates → commit → worktree at
+   that SHA → **Stage B launch detached**; adjudicate vs frozen
+   predictions on completion.
+2. **iter-0074 design round** (three-way; may run while Stage B is
+   detached) — mechanism must bind the terminal claim mechanically or
+   record-and-defer.
+3. F25 `.find` root-cause investigation (licensed side-item, no build);
+   then Cell 1 bare-fails admission gate (terra-conditional, last 0070a
+   item).
 
 **Row mechanics (all learned this session, binding)**: launch =
 `CEILING_TEST_CLAUDE_BIN=<2.1.211> CEILING_TEST_NODE_BIN=<node-v20>
