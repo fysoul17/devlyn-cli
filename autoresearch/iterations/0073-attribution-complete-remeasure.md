@@ -237,3 +237,17 @@ registration; nothing built under this iter (single-claim discipline).
    with the same seats — the class is not rare. Strengthens iter-0074's
    observed-failure anchoring; this row joins P-c's incomplete-verify
    secondary population (frozen split unchanged).
+3. **Pinned CLI deleted mid-exam by the auto-updater (judge-stage
+   infra failure, rows unaffected)**: `~/.local/share/claude/versions/`
+   lost 2.1.211 during the cohort (2.1.212/214/215 remain). ALL 7 A-arm
+   rows completed on the pin — per-row claude-isolation.json receipts
+   unanimously record `2.1.211 (Claude Code)` (running inode survived
+   unlink). The driver's judge stage then died at
+   `judge_engine_identities` (`resolve_direct_binary` explicit-path
+   is_file=False). Consequence + license: judge+verdict stages re-run
+   with the PATH direct claude (2.1.215) — judge-role-only CLI drift,
+   recorded here and visible in the verdict's cohort_identity
+   cli_versions split (a_claude 2.1.211 vs judge_sonnet 2.1.215);
+   measurement rows untouched. Future-cohort note: the pin must either
+   copy the binary to a run-owned path before launch or disable the
+   updater for the pin's lifetime.
