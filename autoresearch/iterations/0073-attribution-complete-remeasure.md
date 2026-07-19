@@ -210,3 +210,30 @@ uniqueness/order/shape assumptions" (data-contract neutrality, part of
 NORTH-STAR axis 5 unprompted completeness). Any future quality lever
 must draw exactly this line mechanically. Mechanism = future
 registration; nothing built under this iter (single-claim discipline).
+
+## Execution deviations (Stage B live; recorded as observed)
+
+1. **attribution.py final_report strictness defect (FS-A-adjacent,
+   caught on the FIRST live row)**: nodeg-20260719g F7 A1 — the arm's
+   attribution step failed `ATTRIBUTION_ERROR: phases.final_report must
+   be an object` (exit 2 → arm exit 78) because the REAL premature-
+   terminal state has NO `final_report` key at all, while the Stage A
+   self-test's synthetic "-19f topology" state apparently included one.
+   Self-test fidelity gap: synthetic ≠ real receipt. Consequence: exam
+   rows retain devlyn-snapshot + timing (retention WORKS — verified on
+   the live row) but lack attribution.json; the driver proceeded (78 +
+   deps receipt present → falls through to eval; objective evaluated
+   normally, resolved=true). Fix licensed: treat absent `final_report`
+   as never-started (not an error) + regenerate the self-test synthetic
+   from the actual -19f receipt; attribution.json for ALL exam rows is
+   regenerated POST-HOC from retained snapshots (deterministic — same
+   inputs, same output; the pinned exam worktree is NOT touched). The
+   fix lands on main only; P-c adjudication uses the post-hoc artifacts.
+2. **Premature-terminal-during-VERIFY: THIRD live receipt** —
+   -20260719g F7 A1 devlyn-snapshot/pipeline.state.json: verify
+   started_at set, verdict=None, duration_ms=None; all prior phases
+   PASS; SC FIRED (UVR-STALE, surface-close.output.json); objective
+   resolved=true; invoke_exit=0. Same flavor as -19f on a fresh row
+   with the same seats — the class is not rare. Strengthens iter-0074's
+   observed-failure anchoring; this row joins P-c's incomplete-verify
+   secondary population (frozen split unchanged).
