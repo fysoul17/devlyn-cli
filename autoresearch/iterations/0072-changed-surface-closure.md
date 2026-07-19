@@ -1424,3 +1424,92 @@ permission denial. v6+Amendment-5: LANDED, validated at probe tier +
 live envelope, NOT ship-credited (Ex-Ante, three rows 10/11 for three
 different single-check reasons). Next session opens with the
 closure-durability three-way design round (frame in 0072.26).
+
+## REGISTRATION M-CP — CLOSURE DURABILITY (2026-07-19 three-way converged R0+R1, zero dissent; DECISIONS 0072.27)
+
+**Round receipts**: R0 orchestrator+Grok = GAP/axis-B; Codex = split
+(SC validated / composite FALSIFIED) + two NEW-evidence finds. R1 =
+both seats CONVERGE on the orchestrator adjudication; Grok withdrew
+E1-nonexistence + SPW-ownership dissent with named deltas (verified
+check8 whole-file regex; structural-unskippability criterion).
+
+**Q1 adjudicated — GAP, not falsification** (criterion:
+Registered-Coverage Boundary, Ex-Ante). The operative kill predicate is
+v5-edit-4 (:671-687, "post-SURFACE_CLOSE patch still FAILS 7+8"),
+inherited by the Am5 ship path by name (:1227); -19c's post-SC patch
+passed both → predicate never fired. :711's "post tree" shorthand
+cannot redefine it (that sentence declares "Decision logic unchanged").
+Kill-consequence mismatch + perverse-consequence test corroborate
+(FALSIFIED's frozen consequence = revert v6, which no seat advocates).
+**Honesty edit adopted (Codex)**: the v6 composite final-tree closure
+claim is UNPROVEN — 0-for-1 on valid diagnostic rows; LANDED = mechanism
+validation only; ship credit requires a valid 11/11 row.
+
+**Record correction (Observed Trigger-Path, Codex R0 find; orchestrator
+re-extracted)**: -19c's reverting fix round was the **VERIFY fix loop**,
+not BUILD_GATE — archived `pipeline.state.json`
+(rs-20260718T162004Z-24e358d9b8eb): `implement.triggered_by="verify"`
+(16:43:57→16:45:31 = 0239dee); build_gate PASS 16:32:28 round 0 before
+the revert; cleanup byte-neutral (pre==post bd8094e3). 0072.26's and
+HANDOFF's "BUILD_GATE fix-loop" wording corrected herein.
+
+**M-CP frozen design (B′ — REVERTED-only mechanical restore, both fix
+entrances, finding-bounded)**:
+- Placement: after EVERY committed IMPLEMENT fix round
+  (`triggered_by ∈ {build_gate, verify}`, `phases.surface_close.post_sha`
+  set), BEFORE re-entry to the originating gate/judge.
+- Contract-hole fix: VERIFY fix path (SKILL.md:308) gains the same
+  scoped-staging checkpoint as :260; both lines reference ONE common
+  post-fix checkpoint contract.
+- Classification, block-granular, apply/content-anchored: SURVIVED /
+  EVOLVED / REVERTED / FINDING_TARGETED. Restore ONLY
+  (REVERTED ∧ ¬FINDING_TARGETED). FINDING_TARGETED = triggering
+  finding's path+line intersects the block's pre-fix span; line-level
+  only (file-only citation does NOT target — else -19c's bin/cli.js:60
+  finding would mask the USAGE restore). "Context gone" classifies
+  EVOLVED, never an error path.
+- Ownership: `state-phase-write.py` extension —
+  `enforce_closure_durability_reentry(work, devlyn, state, origin_phase,
+  round_)` invoked before `clear_verify_round_artifacts()` (SPW:446) and
+  `do_spawn()` (SPW:476); re-entry FAIL-CLOSED when round ≥1 and the
+  durability receipt for that fix round is missing/invalid (structural
+  unskippability, same logic as Am5).
+- Shape: separate commit `chore(pipeline): closure-restore round <n>`;
+  receipt `.devlyn/closure-durability.round-<n>.json` (schema_version,
+  round, origin_phase, triggering_findings_sha256,
+  surface_close_commit_sha, pre_fix_sha, fix_commit_sha,
+  post_restore_sha, restore_commit_sha|null, per-block
+  {id,path,pre_fix_span,classification,finding_targeted,action});
+  ledger `phases.surface_close.durability[]`
+  {round,origin_phase,receipt_path,receipt_sha256,restore_commit_sha};
+  archive via `PER_RUN_PATTERNS` (archive_run.py:25). Restore-apply
+  failure = fail-closed mechanical error, zero partial mutation.
+- Residuals NAMED, not built (observed-failure anchoring): CLEANUP
+  channel (-19c cleanup byte-neutral, no receipt), EVOLVED-but-stale,
+  behavior-presence guard (needs an observed E1 receipt).
+
+**M-CP falsifiers (pre-registered)**: (F1) valid row where a
+Goal-consistent finding requires the exact inverse of a
+NON-finding-targeted SC block and restoration makes the correct
+originating gate fail → M-CP dead as drafted. (F2) frozen
+`--v5 --post-implement` self-test failure attributable solely to the
+separate restore commit → commit shape dead. (F3) fresh diagnostic row
+where restore FIRES yet check 7 still fails on the final tree → M-CP
+ineffective.
+
+**Build contract (Codex sol executor; instrument+skill surface)**:
+SPW functions (`surface_change_blocks`, `classify_surface_block`,
+`finding_targets_block`, `enforce_closure_durability_reentry`) +
+SKILL.md common post-fix checkpoint (:260/:308) + state-schema
+durability bullet + archive pattern + lint needles + 3-tree parity.
+Self-tests (union): -19c topology (unrelated fix survives, USAGE
+restored); both fix routes; multi-file/block SURVIVED/EVOLVED/REVERTED
+mixture + partial revert; additive-file-deleted → REVERTED restored;
+finding-targeted exact deletion NOT restored; missing/stale receipt
+blocks re-entry; apply-failure leaves no partial state; finish-gate
+no-offender on restore; frozen F7 gate 11/11 with restore commit;
+lint + parity. Token gauge net ≤+0.5%.
+
+**Ship path**: build green → gates → ONE fresh diagnostic row (fresh
+run-id, CLI pin 2.1.211, seats sonnet/terra, `--v5` watcher-appended
+`--post-implement`, C2 draw filter) = the ship decision, gate unchanged.

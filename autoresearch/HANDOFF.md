@@ -14,37 +14,38 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and agai
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-19 early morning (iter-0072 **Amendment-5 stack COMPLETE and live-validated; ship credit still open — next = CLOSURE-DURABILITY three-way design round**)
+## 🚦 START-HERE — state after 2026-07-19 (iter-0072 **M-CP CLOSURE DURABILITY registered (0072.27, three-way zero-dissent) — next = Codex build → gates → fresh diagnostic row**)
 
 **Where the loop stands (one paragraph).** The quality axis (nodeg
 objective 7/7 · quality 0/7 · wall 0/7) is the open problem; iter-0072
-ACTIVE. v6 (claude-routed SURFACE_CLOSE + L1 adjudication) is LANDED;
-**Amendment 5 (structural execute-nothing) is FROZEN (0072.21), BUILT
-(528333f + R1 927a38d), restricted-replay GREEN (0072.22: UVR 3/3,
-controls 2/2+2/2, restriction receipts 3/3), and live-validated** — in
-row -19c every layer finally worked in one row: C2 draw filter, PATH
-shim, dep staging, permission flag, MCP-hermetic Bash-less spawn
-(worker Bash count 0), wrapper attestation (requested=effective=
-claude-sonnet-5), SC dual-carrier FIRED with correct minimal repairs
-committed. **SC adjudication is 5-for-5 perfect across -d/-e/-h/-19b/
--19c.** Ship credit is still OPEN: three diagnostic rows read 10/11 for
-three different single-check reasons; the LAST one is behavioral and
-new — **a post-SC BUILD_GATE fix-loop round reverted SC's committed
-USAGE closure in a separate deliberate hunk** (0072.9's named hazard,
-live receipt: nodeg-20260719c row-artifacts/sc-revert-receipts.txt;
-DECISIONS 0072.26). v6+Am5 stay LANDED (not falsification-keyed — the
-mechanism performed; a later phase undid it).
+ACTIVE. v6 (claude-routed SURFACE_CLOSE + L1 adjudication) and
+Amendment 5 (structural execute-nothing) are LANDED = **mechanism
+validation only**; the composite final-tree closure claim is
+**UNPROVEN — 0-for-1 on valid diagnostic rows** (honesty edit,
+0072.27). SC adjudication is 5-for-5 across -d/-e/-h/-19b/-19c. Row
+-19c failed check 7 because the **VERIFY fix loop** (record-corrected
+from "BUILD_GATE" — archived state `implement.triggered_by="verify"`)
+made its real fix AND reverted SC's committed USAGE closure in a
+separate deliberate hunk (receipts:
+nodeg-20260719c row-artifacts/sc-revert-receipts.txt). The three-way
+design round adjudicated this **GAP, not falsification** (operative
+kill = v5-edit-4 post-SC-patch predicate, never fired) and froze
+**M-CP (B′)**: REVERTED-only mechanical restore after every committed
+fix round (both entrances, finding-bounded via line-intersection
+FINDING_TARGETED), SPW-owned with fail-closed re-entry receipts,
+separate closure-restore commit; VERIFY fix path gains the :260
+scoped-staging checkpoint. Falsifiers F1-F3 + residuals in iter §M-CP.
 
 **Next work**:
-1. **CLOSURE-DURABILITY three-way design round (design only, then
-   registration)** — first item: adjudicate falsification-vs-gap for
-   the fix-loop revert; then design the durability mechanism. Candidate
-   axes (0072.26, NOT designed): SC re-fire after fix-loop rounds /
-   fix-round byte-preservation enforcement over the SC delta / carrier
-   guard in BUILD_GATE-finish-gate. Never prose (four prose falsifications
-   stand). Then ONE fresh diagnostic row = the ship decision, gate
-   unchanged (`--v5`; watcher adds `--post-implement` itself at row end).
-2. Cell 1 bare-fails admission gate (terra-conditional) — last 0070a item.
+1. **Build M-CP** — Codex sol executor per the iter §M-CP build
+   contract (SPW functions + SKILL.md common post-fix checkpoint
+   :260/:308 + state-schema bullet + archive pattern + self-test union
+   incl. -19c topology; token gauge net ≤+0.5%); orchestrator verifies
+   gates + 3-tree parity.
+2. Then **ONE fresh diagnostic row = the ship decision**, gate
+   unchanged (`--v5`; watcher adds `--post-implement` itself at row
+   end; C2 draw filter active, diagnostic-draw rate ≈ 1/3).
+3. Cell 1 bare-fails admission gate (terra-conditional) — last 0070a item.
 
 **Row mechanics (all learned this session, binding)**: launch =
 `CEILING_TEST_CLAUDE_BIN=<2.1.211> CEILING_TEST_NODE_BIN=<node-v20>
@@ -63,13 +64,14 @@ into runs/). C2 auto-aborts non-diagnostic draws (criteria-time cmds=0
 be complete on disk — verify + finish gates yourself before rebuilding.
 
 **Seat scorecard this session (keep the triad honest)**: orchestrator
-caught resolve-routing hazard + adjudicated all seat conflicts on
-receipts; Codex caught model-id live-BLOCK + Row-State Substitution
-(overturning Grok's ship-CONFIRM) + built every packet; Grok caught the
-MCP execution channel + killed the yaml@criteria proxy with the -d
-receipt (which also corrected 0072.19's wrong parenthetical). Grok
-ship-round miss: it graded a recon without discovering the surviving
-live tree — verify liveness before gating.
+adjudicated the Q1 label against Codex's FALSIFIED reading on the
+frozen-text receipts (operative-predicate + perverse-consequence) and
+re-extracted the archived state itself; Codex caught the trigger-path
+record error (VERIFY not BUILD_GATE) + constructed the E1 counter-case
+that added the FINDING_TARGETED guard; Grok independently found the
+VERIFY-fix-path commit-contract hole and withdrew two positions with
+named deltas at R1. Prior-session finding stands: verify liveness
+before gating.
 
 
 ---
