@@ -132,6 +132,11 @@ def build_attribution(timing: dict, state: dict) -> dict:
     phase_sum: int | float = 0
     for phase_name in sorted(phases):
         entry = phases[phase_name]
+        if entry is None:
+            # Never-started phases are written as null entries by pipeline
+            # state init (real receipts: final_report, probe_derive on
+            # nodeg-20260719g F7); a null entry has no span to attribute.
+            continue
         if not isinstance(entry, dict):
             raise AttributionError(f"phases.{phase_name} must be an object")
         current_duration = number(
@@ -309,10 +314,34 @@ def self_test() -> int:
         incomplete = {
             "started_at": "2026-07-19T00:00:00Z",
             "phases": {
-                "implement": {
+                "plan": {
                     "started_at": "2026-07-19T00:00:01Z",
-                    "completed_at": "2026-07-19T00:00:03Z",
+                    "completed_at": "2026-07-19T00:00:02Z",
+                    "duration_ms": 1000,
+                    "verdict": "PASS",
+                },
+                "implement": {
+                    "started_at": "2026-07-19T00:00:02Z",
+                    "completed_at": "2026-07-19T00:00:04Z",
                     "duration_ms": 2000,
+                    "verdict": "PASS",
+                },
+                "surface_close": {
+                    "started_at": "2026-07-19T00:00:04Z",
+                    "completed_at": "2026-07-19T00:00:05Z",
+                    "duration_ms": 1000,
+                    "verdict": "PASS",
+                },
+                "build_gate": {
+                    "started_at": "2026-07-19T00:00:05Z",
+                    "completed_at": "2026-07-19T00:00:06Z",
+                    "duration_ms": 1000,
+                    "verdict": "PASS",
+                },
+                "cleanup": {
+                    "started_at": "2026-07-19T00:00:06Z",
+                    "completed_at": "2026-07-19T00:00:07Z",
+                    "duration_ms": 1000,
                     "verdict": "PASS",
                 },
                 "verify": {
@@ -323,9 +352,11 @@ def self_test() -> int:
                 },
             },
         }
-        incomplete_payload = write_attribution(write_case(root, "incomplete", incomplete, 10))
+        incomplete_dir = write_case(root, "incomplete", incomplete, 10)
+        incomplete_payload = write_attribution(incomplete_dir)
+        checks.equal(load_json(incomplete_dir / "attribution.json"), incomplete_payload)
         checks.equal(incomplete_payload["verify_complete"], False)
-        checks.equal(incomplete_payload["non_phase_residual_ms"], 8000)
+        checks.equal(incomplete_payload["non_phase_residual_ms"], 4000)
         checks.equal(incomplete_payload["phase_sum_ms"] + incomplete_payload["non_phase_residual_ms"], 10000)
         checks.equal(
             incomplete_payload["incomplete_spans"],
