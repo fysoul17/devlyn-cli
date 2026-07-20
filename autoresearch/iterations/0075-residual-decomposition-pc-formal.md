@@ -30,7 +30,13 @@ receipt bytes, disjoint partition of residual).
    read at attribution.py:65; nodeg-20260720a two-run receipt is the
    fixture). Buckets: `startup_ms` / `interphase_gap_ms` /
    `outer_loop_gap_ms` / `censored_open_span_ms` (orphan incomplete
-   spans — NEVER called tail) / `tail_ms`; emits `phase_union_ms` +
+   spans — NEVER called tail) / `gap_to_censored_ms` (gap from last
+   completed activity to a censored span's start — AMENDMENT A5
+   2026-07-20 night: FS-0075-A fired on the honest envelope repair, all
+   4 failed rows were censored-terminal rows, orchestrator
+   arithmetic-verified F7 51,481ms exact; Grok GO-round CONCUR under
+   Identifiable Conservation; P-B numerator UNCHANGED — startup +
+   interphase + outer_loop only) / `tail_ms`; emits `phase_union_ms` +
    `decomposition_status` (complete | legacy-partial | failed);
    fail-loud negative spans; internal conservation check ±1s →
    status=failed on violation. `startup_ms`/`tail_ms` identifiable ONLY
@@ -56,12 +62,15 @@ receipt bytes, disjoint partition of residual).
 
 **Stage A gates (ALL before Stage B)**: (i) back-test decomposes ≥7/9
 legacy rows at legacy-partial or better with INTERIOR conservation —
-interphase + outer_loop + censored_open vs residual minus
-legacy_edge_residual_ms, ±1s; tail EXCLUDED from the legacy equation
-(A1); (ii) one timing-v2 CANARY row reaches decomposition_status
-complete with FULL conservation (startup + interphase + outer_loop +
-censored_open + tail = residual ±1s); (iii) all self-tests + driver
-79-test green.
+interphase + outer_loop + censored_open + gap_to_censored (A5) vs
+residual minus legacy_edge_residual_ms, ±1s; tail EXCLUDED from the
+legacy equation (A1) — **gate (i) PASSED 9/9, 0075.3**; (ii) one
+timing-v2 CANARY row reaches decomposition_status complete with FULL
+conservation (startup + interphase + outer_loop + censored_open +
+gap_to_censored + tail = residual ±1s); (iii) all self-tests + driver
+79-test green. Item-5 note: the codex sha256 receipt landed in
+isolation-payload; the run-owned codex COPY is Stage B launch
+mechanics.
 
 ## Stage B — one 7-row cohort
 
