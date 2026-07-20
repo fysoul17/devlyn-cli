@@ -1,0 +1,153 @@
+{
+  "total_draws": 12,
+  "format_valid": 11,
+  "format_validity_ratio": 0.917,
+  "false_na_events": 4,
+  "over_fired_events": 0,
+  "gate_format": true,
+  "gate_false_na": false,
+  "gate_pass": false,
+  "draws": [
+    {
+      "draw": "fs1-1",
+      "format_valid": true,
+      "dispositions": {
+        "UVR-STALE": "FIRED",
+        "PATH-TEST": "N/A"
+      },
+      "false_na": [],
+      "over_fired": [],
+      "notes": []
+    },
+    {
+      "draw": "fs1-2",
+      "format_valid": true,
+      "dispositions": {
+        "UVR-STALE": "FIRED",
+        "PATH-TEST": "N/A"
+      },
+      "false_na": [],
+      "over_fired": [],
+      "notes": []
+    },
+    {
+      "draw": "fs1-3",
+      "format_valid": false,
+      "dispositions": {
+        "UVR-STALE": "FIRED"
+      },
+      "false_na": [],
+      "over_fired": [],
+      "notes": [
+        "PATH-TEST cites missing file schedule/__init__.py, test_schedule.py"
+      ]
+    },
+    {
+      "draw": "fs1-4",
+      "format_valid": true,
+      "dispositions": {
+        "UVR-STALE": "FIRED",
+        "PATH-TEST": "N/A"
+      },
+      "false_na": [],
+      "over_fired": [],
+      "notes": []
+    },
+    {
+      "draw": "fs1-5",
+      "format_valid": true,
+      "dispositions": {
+        "UVR-STALE": "FIRED",
+        "PATH-TEST": "N/A"
+      },
+      "false_na": [],
+      "over_fired": [],
+      "notes": []
+    },
+    {
+      "draw": "fs1-6",
+      "format_valid": true,
+      "dispositions": {
+        "UVR-STALE": "N/A",
+        "PATH-TEST": "N/A"
+      },
+      "false_na": [
+        "UVR-STALE"
+      ],
+      "over_fired": [],
+      "notes": []
+    },
+    {
+      "draw": "f23-1",
+      "format_valid": true,
+      "dispositions": {
+        "UVR-STALE": "N/A",
+        "PATH-TEST": "FIRED"
+      },
+      "false_na": [],
+      "over_fired": [],
+      "notes": []
+    },
+    {
+      "draw": "f23-2",
+      "format_valid": true,
+      "dispositions": {
+        "UVR-STALE": "N/A",
+        "PATH-TEST": "N/A"
+      },
+      "false_na": [
+        "PATH-TEST"
+      ],
+      "over_fired": [],
+      "notes": []
+    },
+    {
+      "draw": "f23-3",
+      "format_valid": true,
+      "dispositions": {
+        "UVR-STALE": "N/A",
+        "PATH-TEST": "N/A"
+      },
+      "false_na": [
+        "PATH-TEST"
+      ],
+      "over_fired": [],
+      "notes": []
+    },
+    {
+      "draw": "f23-4",
+      "format_valid": true,
+      "dispositions": {
+        "UVR-STALE": "N/A",
+        "PATH-TEST": "FIRED"
+      },
+      "false_na": [],
+      "over_fired": [],
+      "notes": []
+    },
+    {
+      "draw": "f23-5",
+      "format_valid": true,
+      "dispositions": {
+        "UVR-STALE": "N/A",
+        "PATH-TEST": "FIRED"
+      },
+      "false_na": [],
+      "over_fired": [],
+      "notes": []
+    },
+    {
+      "draw": "f23-6",
+      "format_valid": true,
+      "dispositions": {
+        "UVR-STALE": "N/A",
+        "PATH-TEST": "N/A"
+      },
+      "false_na": [
+        "PATH-TEST"
+      ],
+      "over_fired": [],
+      "notes": []
+    }
+  ]
+}

@@ -183,6 +183,47 @@ Stage A accuracy gate.
 **Build**: Codex sol (workspace-write, detached, one silent-hang retry;
 orchestrator commits builds).
 
+## STAGE A RESULTS (2026-07-21, raw before interpretation)
+
+Build: Codex sol, committed 22d22ff (contract deviations: none;
+orchestrator fixed one garbled autonomy-contract sentence). Gates (i)
+SPW self-tests PASS incl. both real replies verbatim; (ii) M2v2 15
+fixtures PASS + LIVE replay on real -20260720e snapshots: F23
+INCOMPLETE:verify (archived-terminal hole closed), FS1 CLEAN (no
+overreach), F25 INCOMPLETE via open build_gate history[0]; (iv) lint +
+token gauge + mirrors green.
+
+Gate (iii) sonnet probe — 12 draws (6×FS1, 6×F23), product spawn recipe,
+reconstructed pre_sha worktrees, M-RE contract:
+- format-validity **11/12 = 0.917 ≥ 0.9 → format gate PASS** (the two
+  live-cohort malformed shapes now parse valid; the single invalid draw
+  is a NEW variance shape: two comma-joined paths in the path slot —
+  fs1-3, rejected by citation-existence, same as product would).
+- false-N/A **4 events → FS-0076-A FIRED** (fs1-6 UVR-STALE N/A vs
+  expected FIRED; f23-2/3/6 PATH-TEST N/A vs expected FIRED — F23 split
+  3/3, a genuine judgment-boundary case). over-fired: 0.
+- **Frozen consequence binds: Stage B BLOCKED; M1 or contract redesign
+  enters a v2 registration (not ad-hoc).** Attribution caveat recorded
+  at firing time: no baseline arm was frozen into gate (iii), so
+  whether false-N/A is M-RE-caused or baseline sonnet disposition
+  variance is UNMEASURED — a 12-draw baseline probe under the OLD
+  contract (same worktrees/prompts) was launched immediately as
+  diagnostic input to the v2 round.
+
+**Baseline attribution probe (raw, same session — 12 draws, OLD contract,
+same worktrees/prompts/recipe)**: format-validity 10/12 = 0.833 (both
+invalid draws are the LIVE K1 kill shape reproduced — `N/A missing :line`,
+fs1-4/fs1-5); false-N/A **5** (fs1 UVR-STALE 2/6; f23 PATH-TEST 3/6);
+over-fired 0. Cross-arm read: false-N/A rate is baseline sonnet
+disposition variance, present under BOTH contracts (4 new vs 5 old, same
+task split); M-RE improved format validity 0.833→0.917 and eliminated
+the run-lethal shape. The fired gate's zero-false-N/A bar measured an
+uncontrolled baseline variable (ops test #10 oracle-correctness class).
+Disposition variance = the already-named out-of-scope class
+L-format-valid-false-N/A, now with 24 draws of receipts. v2 round
+opened on gate-(iii) re-specification; raw results committed BEFORE the
+v2 round returned.
+
 ## Principles check
 
 - **0**: closes the FS-0075-B-frozen user failure (hands-free runs dying on a
