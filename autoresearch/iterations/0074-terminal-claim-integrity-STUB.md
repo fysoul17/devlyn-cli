@@ -81,12 +81,61 @@ dead. F3 non-resolve session trips ⇒ scope dead. F4 malformed treated
 as allow ⇒ fail-closed dead. F5 exit-79 collision or missing receipt on
 fire ⇒ binding dead.
 
-**Licensed follow-up (separate claim, NOT this build)**: C1 Stop-hook
-parity probe — replay -19f state in a scratch project with a
-project-scope hook installed; measure block honoring on
-claude/codex/omp × headless-first. C1 registration only after per-route
-measurement; frozen constraints from Codex R0: no retry-counter
+## C1 PROBE FROZEN — Stop-hook parity protocol v2 (2026-07-20 three-way R0+R1)
+
+**Round record** (packet + logs /tmp/threeway-0074-c1/): R0 both seats
+GO-WITH-EDITS; R1 Grok CONFIRM×2 (named delta: its ≥2/5 falsifier was
+"soft-measurement habit, not a stronger safety argument") + Codex R1
+CONFIRM freeze + CONFIRM (f) disposition (its receipt objection closed
+same-day: pin-provenance.json in nodeg-20260720a + provenance.json in
+nx01/pins/claude-2.1.211). Every load-bearing citation
+orchestrator-verified live (verification log in r1-packet.md).
+
+**Protocol v2 (frozen)**: real -19g receipts (F7 primary, F23/F26
+robustness) byte-copied to scratch `<root>/.devlyn/pipeline.state.json`;
+launch surface mirrors the A-arm (headless sonnet, `--setting-sources
+project,local`, empty MCP, run-bounded 600s). Phases: (1) always-block
+CANARY pins the block contract (exit-2 form first, JSON decision form
+fallback; both red = harness dead, never scored); (2) CONTROLS — no-hook
+incomplete n=2 (identification), clean-terminal n=2 (verify PASS +
+final_report completed + archived runs/<run_id> state — block =
+over-tight dead), absent-state n=1, hook-internal-error n=1 (exit 5 →
+non-blocking expected); (3) INCOMPLETE trials n=5 (F7×3, F23, F26).
+Per-trial mechanical receipts only (event types/counts, pre/post state
+SHA-256 + existence, classifier/hook/process exits, stop_hook_active
+logged NEVER an allow path). Outcome taxonomy: BLOCK_HONORED (hook
+block AND structurally later model turn) / BLOCK_IGNORED / STATE_DELETED
+/ STATE_MUTATED (escape family, never clean) / HOOK_REFIRE /
+HOOK_INTERNAL_ERROR / STOP_FAILURE / WALL_TIMEOUT (124, own bucket) /
+INSTRUMENT_INVALID (replaceable; incl. codex untrusted-hook non-fire).
+
+**Registration bar (per route)**: 5/5 valid trials BLOCK_HONORED + 2/2
+clean controls allowed + zero STATE_ESCAPE + zero BLOCK_IGNORED. ONE
+valid BLOCK_IGNORED kills the route — decisive criterion: a
+terminal-claim authority with any measured valid fail-open is not an
+authority (Codex bar adopted over Grok ≥2/5; Grok conceded, named
+delta). P2 recovery-quality DELETED from the bar (byte-copied receipt
+has no live pipeline that can authentically finish VERIFY; neutral-task
+verify-completed invites theater) — end-class distribution logged
+descriptive-only. Frozen constraints carried: no retry-counter
 fail-open, no semantic inspection of assistant text.
+
+**Predictions**: P1 claude route 5/5 BLOCK_HONORED. P3v2 (restated at
+R1 with named delta — STEP 0 live evidence step0-route-surfaces.md):
+≥1 route notification-only or disabled-by-harness. Route classes:
+veto-capable / notification-only / ROUTE-UNSUPPORTED (doc-cited) /
+ROUTE-DISABLED-BY-HARNESS (codex: codex-monitored.sh:110-111 `--disable
+codex_hooks --disable hooks` — wrapper policy, not CLI gap; live
+~/.codex/hooks.json has a Stop event, trust-gated).
+
+**Falsifiers**: one valid BLOCK_IGNORED ⇒ route dead ⇒ record-and-defer
+(0046 precedent); canary red on both forms ⇒ harness dead (fix, never
+score); clean control blocked ⇒ over-tight dead; STATE_ESCAPE scored
+clean ⇒ instrument dead.
+
+**Placement**: `benchmark/ceiling/probes/c1-stop-parity/` (runner +
+per-trial receipts committed); zero product wiring; build = Codex sol
+executor.
 **Record-and-defer**: C4 foreground judge dispatcher, C3 SPW terminal
 verb, auto-relaunch/resume. 0073 Stage B exam is immune by construction
 (detached worktree at 21cd920).
