@@ -457,6 +457,7 @@ def make_arm_command(
     if command[output_index] != "json":
         raise RuntimeError("A-arm output-format envelope drifted")
     command[output_index] = "stream-json"
+    command.insert(output_index + 1, "--verbose")
     return ["python3", str(RUN_BOUNDED), "600", "--", *command]
 
 
