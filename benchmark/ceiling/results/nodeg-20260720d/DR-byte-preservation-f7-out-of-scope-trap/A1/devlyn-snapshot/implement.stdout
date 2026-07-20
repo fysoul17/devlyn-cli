@@ -1,0 +1,32 @@
+Implemented `--format json` in [`bin/cli.js`](/Users/aipalm/.local/share/nx01/w/rd67355620fd8/ff10888c89791/A1/repo/bin/cli.js:60) and added JSON/error-path coverage in [`tests/cli.test.js`](/Users/aipalm/.local/share/nx01/w/rd67355620fd8/ff10888c89791/A1/repo/tests/cli.test.js:27). `git diff --check` passed.
+
+Verification results:
+
+```text
+node --test tests/
+exit: 1
+
+# tests 8
+# pass 5
+# fail 3
+
+error: listen EPERM: operation not permitted 0.0.0.0
+```
+
+The three failures are pre-existing `tests/server.test.js` cases blocked by sandbox socket permissions; all five CLI tests pass.
+
+```text
+node bin/cli.js version --format json
+exit: 0
+{"version":"0.1.0"}
+
+node bin/cli.js version
+exit: 0
+0.1.0
+
+node bin/cli.js version --format yaml
+exit: 1
+--format only supports json
+```
+
+BLOCKED

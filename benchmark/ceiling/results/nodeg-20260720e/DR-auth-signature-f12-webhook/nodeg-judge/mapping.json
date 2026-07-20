@@ -1,0 +1,28 @@
+{
+  "seed": 3997858553561087688796594137926217433276527822878564063514214544729638870965,
+  "packets": {
+    "P1": {
+      "candidate": "A",
+      "patch_sha256": "f31f66a5afbd41cbb6fe609eae718ad9352e0868c380bc535e71550dedc7c754"
+    },
+    "P2": {
+      "candidate": "B",
+      "patch_sha256": "e14c0904c759b31cf47b8ca934c7e57bd2ed81bae81be6fac3aa55fda9b875bd"
+    }
+  },
+  "frozen_b_source": {
+    "control_id": "F12",
+    "task": "DR-auth-signature-f12-webhook",
+    "run_id": "iter0068-f12supp2-20260712",
+    "attempt": "B1",
+    "attempt_dir": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-f12supp2-20260712/DR-auth-signature-f12-webhook/B1",
+    "patch_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-f12supp2-20260712/DR-auth-signature-f12-webhook/B1/patch.diff",
+    "patch_sha256": "e14c0904c759b31cf47b8ca934c7e57bd2ed81bae81be6fac3aa55fda9b875bd",
+    "objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-f12supp2-20260712/DR-auth-signature-f12-webhook/B1/objective.json",
+    "objective_sha256": "b0c0e8781b744eaa35e1dfe860898536d175235ac9ee0a74fea14a77fb18c351",
+    "timing_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-f12supp2-20260712/DR-auth-signature-f12-webhook/B1/timing.json",
+    "timing_sha256": "6c472da6658b39392a86133499bd91a4fe64f42b6fd6df69a665c31264a15039",
+    "resolved": true,
+    "elapsed_seconds": 224
+  }
+}

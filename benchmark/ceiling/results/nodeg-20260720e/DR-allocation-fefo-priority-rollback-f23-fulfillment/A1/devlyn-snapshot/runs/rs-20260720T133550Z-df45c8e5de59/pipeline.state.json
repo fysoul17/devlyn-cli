@@ -1,0 +1,300 @@
+{
+  "base_ref": {
+    "branch": "master",
+    "sha": "cbd12daedd7f2d22c62110faf097f12797e7dda6"
+  },
+  "bypasses": [],
+  "complexity": "medium",
+  "criteria": [
+    {
+      "evidence": [
+        {
+          "file": "bin/cli.js",
+          "line": 323,
+          "note": "fulfill-wave dispatch case added to main() switch"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C1",
+      "ref": "generated://requirements/0",
+      "status": "implemented"
+    },
+    {
+      "evidence": [
+        {
+          "file": "bin/cli.js",
+          "line": 39,
+          "note": "input shape parsed via parseInputFlag/JSON.parse; validateInput enforces Warehouse/Lot/Order/Line shapes"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C2",
+      "ref": "generated://requirements/1",
+      "status": "implemented"
+    },
+    {
+      "evidence": [
+        {
+          "file": "bin/cli.js",
+          "line": 119,
+          "note": "validateInput runs fully over warehouses+orders before fulfillWave allocates anything"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C3",
+      "ref": "generated://requirements/2",
+      "status": "implemented"
+    },
+    {
+      "evidence": [
+        {
+          "file": "bin/cli.js",
+          "line": 240,
+          "note": "orders sorted by priority desc, submitted_at asc, id asc before processing"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C4",
+      "ref": "generated://requirements/3",
+      "status": "implemented"
+    },
+    {
+      "evidence": [
+        {
+          "file": "bin/cli.js",
+          "line": 262,
+          "note": "acceptedOrder flag + rollback(deductions) restores tentative deductions on any failing line"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C5",
+      "ref": "generated://requirements/4",
+      "status": "implemented"
+    },
+    {
+      "evidence": [
+        {
+          "file": "bin/cli.js",
+          "line": 194,
+          "note": "allocateLine: single_warehouse true uses warehouses.find per-warehouse sufficiency; false path splits across warehouses"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C6",
+      "ref": "generated://requirements/5",
+      "status": "implemented"
+    },
+    {
+      "evidence": [
+        {
+          "file": "bin/cli.js",
+          "line": 160,
+          "note": "compareWarehouses (distance,id) and compareLots (expires,lot id) define consideration/FEFO order"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C7",
+      "ref": "generated://requirements/6",
+      "status": "implemented"
+    },
+    {
+      "evidence": [
+        {
+          "file": "bin/cli.js",
+          "line": 290,
+          "note": "fulfillWave returns {accepted, rejected, remaining} with exact shapes; runFulfillWave writes single JSON line to stdout"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C8",
+      "ref": "generated://requirements/7",
+      "status": "implemented"
+    },
+    {
+      "evidence": [
+        {
+          "file": "bin/cli.js",
+          "line": 293,
+          "note": "catch funnels every failure into single JSON stderr object + exitCode 2, nothing on stdout"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C9",
+      "ref": "generated://requirements/8",
+      "status": "implemented"
+    },
+    {
+      "evidence": [
+        {
+          "file": "tests/cli.test.js",
+          "line": 40,
+          "note": "adds accepted, rollback/rejection, and invalid-input fulfill-wave tests; existing 3 tests untouched"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C10",
+      "ref": "generated://requirements/9",
+      "status": "implemented"
+    }
+  ],
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "implement_passed_sha": "50e6dfcf778ebf5ae298c929c14d0eac64cc7a04",
+  "mode": "free-form",
+  "pair_verify": true,
+  "phases": {
+    "build_gate": null,
+    "cleanup": null,
+    "final_report": {
+      "started_at": "2026-07-20T14:04:40.497Z",
+      "verdict": "BLOCKED:surface-close-adjudication-malformed",
+      "completed_at": "2026-07-20T14:05:05.854Z",
+      "duration_ms": 25357
+    },
+    "implement": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-20T13:54:01.066Z",
+      "duration_ms": 674973,
+      "engine": "codex",
+      "model_effective": null,
+      "model_requested": null,
+      "post_sha": "50e6dfcf778ebf5ae298c929c14d0eac64cc7a04",
+      "round": 0,
+      "started_at": "2026-07-20T13:42:46.093Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "plan": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": ".devlyn/plan.md"
+      },
+      "completed_at": "2026-07-20T13:42:08.719Z",
+      "duration_ms": 286462,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-20T13:37:22.257Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "probe_derive": null,
+    "surface_close": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-20T14:04:11.619Z",
+      "duration_ms": 142470,
+      "engine": "claude",
+      "input_patch_sha256": "d96875fe516eb408fb204c722e42788ee5d6c48abdd50518a1a42906da1bde6f",
+      "model_effective": "claude-sonnet-5",
+      "model_requested": "claude-sonnet-5",
+      "post_sha": "50e6dfcf778ebf5ae298c929c14d0eac64cc7a04",
+      "pre_sha": "50e6dfcf778ebf5ae298c929c14d0eac64cc7a04",
+      "prompt_sha256": "ca796a05a838f4964688f0101d86c736a90c150a35b489b4297a4ec6ee99dcf4",
+      "round": 0,
+      "started_at": "2026-07-20T14:01:49.149Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "untracked_before": [
+        ".claude/skills/_shared/adapters/README.md",
+        ".claude/skills/_shared/adapters/claude.md",
+        ".claude/skills/_shared/adapters/codex.md",
+        ".claude/skills/_shared/adapters/omp.md",
+        ".claude/skills/_shared/archive_run.py",
+        ".claude/skills/_shared/codex-config.md",
+        ".claude/skills/_shared/codex-monitored.sh",
+        ".claude/skills/_shared/collect-codex-findings.py",
+        ".claude/skills/_shared/engine-doctor.sh",
+        ".claude/skills/_shared/engine-preflight.md",
+        ".claude/skills/_shared/expected.schema.json",
+        ".claude/skills/_shared/finish-gate.py",
+        ".claude/skills/_shared/pair-plan-schema.md",
+        ".claude/skills/_shared/run-bounded.py",
+        ".claude/skills/_shared/runtime-principles.md",
+        ".claude/skills/_shared/spec-verify-check.py",
+        ".claude/skills/_shared/state-phase-write.py",
+        ".claude/skills/_shared/verify-merge-findings.py",
+        ".claude/skills/code-health-standards/SKILL.md",
+        ".claude/skills/code-review-standards/SKILL.md",
+        ".claude/skills/devlyn:design-ui/SKILL.md",
+        ".claude/skills/devlyn:engines/SKILL.md",
+        ".claude/skills/devlyn:ideate/SKILL.md",
+        ".claude/skills/devlyn:ideate/references/elicitation.md",
+        ".claude/skills/devlyn:ideate/references/from-spec-mode.md",
+        ".claude/skills/devlyn:ideate/references/project-mode.md",
+        ".claude/skills/devlyn:ideate/references/spec-template.md",
+        ".claude/skills/devlyn:ideate/references/templates/decision.md",
+        ".claude/skills/devlyn:ideate/references/templates/roadmap.md",
+        ".claude/skills/devlyn:ideate/references/templates/vision.md",
+        ".claude/skills/devlyn:queue/SKILL.md",
+        ".claude/skills/devlyn:resolve/SKILL.md",
+        ".claude/skills/devlyn:resolve/references/free-form-mode.md",
+        ".claude/skills/devlyn:resolve/references/phases/build-gate.md",
+        ".claude/skills/devlyn:resolve/references/phases/cleanup.md",
+        ".claude/skills/devlyn:resolve/references/phases/implement.md",
+        ".claude/skills/devlyn:resolve/references/phases/plan.md",
+        ".claude/skills/devlyn:resolve/references/phases/probe-derive.md",
+        ".claude/skills/devlyn:resolve/references/phases/surface-close.md",
+        ".claude/skills/devlyn:resolve/references/phases/verify.md",
+        ".claude/skills/devlyn:resolve/references/state-schema.md",
+        ".claude/skills/root-cause-analysis/SKILL.md",
+        ".claude/skills/ui-implementation-standards/SKILL.md",
+        ".devlyn/criteria.generated.md",
+        ".devlyn/engines.json",
+        ".devlyn/goal.raw.txt",
+        ".devlyn/goal.txt",
+        ".devlyn/pipeline.state.json",
+        ".devlyn/plan.md",
+        ".devlyn/surface-close.input.patch",
+        ".devlyn/surface-close.prompt",
+        ".devlyn/untracked.baseline",
+        "AGENTS.md",
+        "CLAUDE.md"
+      ],
+      "verdict": "BLOCKED"
+    },
+    "verify": null
+  },
+  "risk_probes_digest": null,
+  "risk_profile": {
+    "high_risk": true,
+    "pair_default_enabled": true,
+    "reasons": [
+      "goal specifies all-or-nothing allocation with rollback of tentative stock deductions on order rejection",
+      "goal specifies explicit output-shape contract (exact JSON keys for accepted/rejected/remaining rows)",
+      "goal specifies explicit error-priority contract (exit 2, nothing on stdout, exactly one JSON object on stderr)",
+      "auto-risk-probes: pair-judge engine (claude) available for probe derivation",
+      "auto-risk-probes demoted: plan surface small (2 paths)"
+    ],
+    "risk_probes_enabled": false,
+    "risk_probes_explicit": false
+  },
+  "rounds": {
+    "global": 0,
+    "max_rounds": 4
+  },
+  "run_id": "rs-20260720T133550Z-df45c8e5de59",
+  "source": {
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "520e444af6d8930cbcea199572e8caeac5eaccd3fa4b70fbeabe386b11e0e77f",
+    "goal_path": ".devlyn/goal.raw.txt",
+    "goal_sha256": "026a153501107373a5e14ade6a4548cd3e9769a69c06a38ed8f4b44fc82183fc",
+    "spec_path": null,
+    "spec_sha256": null,
+    "type": "generated"
+  },
+  "started_at": "2026-07-20T13:35:50Z",
+  "verify": {
+    "coverage_failed": false,
+    "pair_trigger": null
+  },
+  "version": "3.0"
+}

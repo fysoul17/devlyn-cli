@@ -1,0 +1,726 @@
+[codex-monitored] start: ts=2026-07-20T10:16:33Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] isolated=1
+[codex-monitored] codex pid=16546
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f7f07-0075-76d3-891e-76ac406eb1d4
+--------
+user
+# Codex (OpenAI) adapter
+
+## Identity
+You are OpenAI's Codex model, acting as an independent quality-verification judge with NO prior context of how this diff was produced. Everything you need is below.
+
+## Output discipline
+Direct, task-oriented. Report findings, not narration.
+
+## Validation pattern
+Run the repo's actual test/CLI commands to verify claims; do not trust prose. You are read-only: do not modify any file.
+
+---
+
+# PHASE 5 — VERIFY / JUDGE (canonical body excerpt, fresh-context)
+
+<role>
+Independent quality layer. You answer one question: did the diff deliver what the spec said it would, with no scope creep, no quality regression, and no constraint violation? You produce findings only.
+</role>
+
+<input>
+- Criteria contract: `.devlyn/criteria.generated.md` (below, verbatim).
+- Cumulative diff against base_ref (below, verbatim).
+- You do NOT know how this diff was produced (no PLAN/IMPLEMENT/BUILD_GATE context) — judge purely from spec + diff + repo state.
+</input>
+
+<task>
+Grade the diff against the criteria on these axes:
+- **Spec compliance** — did every Requirement bullet get satisfied? Cite file:line evidence for each.
+- **Scope** — does the diff touch only files the criteria's Constraints allow (`bin/cli.js`, `tests/cli.test.js`)? Any other file changed = HIGH finding `scope.out-of-scope-violation`.
+- **Quality** — idiomatic patterns vs hand-rolled unnecessary complexity? `design.unidiomatic-pattern` MEDIUM if so.
+- **Consistency** — internal style (naming, error shape) consistent with surrounding code (e.g. does the new error path match the existing `parseNameFlag` error style)?
+
+Clause-level check: split each Requirement into binding clauses. Words like "without", "any other", "unsupported", "single-line", "keep ... unchanged" each encode a separate invariant — a passing example for one clause does not prove another. Specifically verify:
+1. `--format json` prints EXACTLY `{"version":"<x.y.z>"}` as a single line (no extra whitespace, no trailing keys).
+2. Bare `version` (no flag) is byte-identical to what it printed before this diff.
+3. `--format yaml` AND at least one other unsupported value both exit 1.
+4. The Constraints section: "Do not modify the `hello` subcommand, `--help`/`-h`, or the unknown-command path" — check literally whether the CODE PATHS (branches/logic) for `hello`, `--help`/`-h`, and unknown-command are unchanged, distinct from whether any string constant they print changed content. Report your finding on the actual diff hunks touching the `USAGE` constant, and judge whether that constitutes a violation of this Constraint or not — this is a genuine judgment call, do not just parrot a conclusion.
+5. Constraint: "Code unrelated to the requested version feature, including comments and formatting, must remain exactly as-is" — check whether any line outside the `version`-feature surface changed.
+
+Run the actual commands (`node bin/cli.js version --format json`, `node bin/cli.js version`, `node bin/cli.js version --format yaml`, `node --test tests/cli.test.js`) to confirm, don't just read code.
+
+Report every finding you observe, including low-severity/low-confidence ones. Tag each `confidence: high|medium|low`.
+</task>
+
+<output_format>
+Emit one JSON object per line (JSONL) to your final message, one finding per line, schema:
+`{"id": "VERIFY-J-<n>", "rule_id": "<dotted.rule>", "severity": "CRITICAL|HIGH|MEDIUM|LOW", "file": "<path>", "line": <n>, "message": "<finding text with quoted evidence>", "confidence": "high|medium|low"}`
+If there are zero findings, output exactly: `PASS` (no findings).
+Do not modify any file. Do not run `git commit`.
+</output_format>
+
+## Data
+
+### `.devlyn/criteria.generated.md`
+
+## Requirements
+
+- [ ] Add a `--format json` option to the `version` subcommand in `bin/cli.js`.
+- [ ] With `--format json`, print a single-line valid JSON object `{"version":"<x.y.z>"}` to stdout, where `<x.y.z>` is the same version value the plain `version` command already reads from `package.json`.
+- [ ] Without `--format`, keep the current bare version string output unchanged.
+- [ ] `--format yaml` (or any other unsupported `--format` value) exits with code 1 and prints an error.
+- [ ] Keep all existing tests passing and add at least one new test in `tests/cli.test.js` for the `--format json` path.
+
+## Constraints
+
+- Only `bin/cli.js` and `tests/cli.test.js` may be touched.
+- No new npm dependencies (JSON output uses `JSON.stringify`, already a built-in).
+- Do not modify the `hello` subcommand, `--help`/`-h`, or the unknown-command path.
+- Match the existing error style already used in `bin/cli.js` (`console.error(...)` + `process.exit(1)`, as in `parseNameFlag`).
+- Code unrelated to the `--format` feature — including comments and formatting — must remain byte-for-byte as-is; this explicitly includes the two pre-existing `TODO` comments and the unused `parseGreetingFormat` helper, none of which this feature touches.
+
+## Out of Scope
+
+- Any subcommand other than `version`.
+- Refactoring or cleanup of unrelated code, including the dead `parseGreetingFormat` helper.
+- Adding a YAML parser/serializer or any other dependency to support `--format yaml` — it must simply be rejected.
+
+### Cumulative diff (base_ref e5a20d983f63e62ad264174c025fad97769e9fc5 → HEAD)
+
+```diff
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..f33c233 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]
+
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version                    Print the CLI version from package.json
++  version [--format json]    Print the CLI version from package.json
+   --help, -h                 Show this help
+
+ Examples:
+@@ -57,8 +57,18 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
+-      return;
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (format === 'json') {
++        console.log(JSON.stringify({ version: readPackageVersion() }));
++        return;
++      }
++      console.error(`Unsupported version format: ${format}`);
++      process.exit(1);
+     }
+     default:
+       console.error(`Unknown command: ${command}`);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..3003d82 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,15 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON package version', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.strictEqual(out, '{"version":"0.1.0"}\n');
++});
++
++test('version rejects unsupported format', () => {
++  assert.throws(() => run(['version', '--format', 'yaml']), (err) => {
++    assert.strictEqual(err.status, 1);
++    return true;
++  });
++});
+```
+
+The repo root is your current working directory. Run the verification commands above yourself to confirm before reporting.
+deprecated: `[features].codex_hooks` is deprecated. Use `[features].hooks` instead.
+Enable it with `--enable hooks` or `[features].hooks` in config.toml. See https://developers.openai.com/codex/config-basic#feature-flags for details.
+codex
+I’ll verify the supplied diff against the repository state and run the required CLI/test commands read-only.
+exec
+/bin/zsh -lc 'nl -ba bin/cli.js && nl -ba tests/cli.test.js' in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo
+ succeeded in 0ms:
+     1	#!/usr/bin/env node
+     2	// harbor-tools — small command-line utilities for local workflows.
+     3	// Keep the core commands minimal and easy to understand.
+     4	
+     5	const fs = require('fs');
+     6	const path = require('path');
+     7	
+     8	const USAGE = `Usage: bench-cli <command> [options]
+     9	
+    10	Commands:
+    11	  hello [--name NAME]        Print a greeting (default name: "world")
+    12	  version [--format json]    Print the CLI version from package.json
+    13	  --help, -h                 Show this help
+    14	
+    15	Examples:
+    16	  bench-cli hello
+    17	  bench-cli hello --name alice
+    18	  bench-cli version
+    19	`;
+    20	
+    21	function readPackageVersion() {
+    22	  const pkgPath = path.join(__dirname, '..', 'package.json');
+    23	  const raw = fs.readFileSync(pkgPath, 'utf8');
+    24	  return JSON.parse(raw).version;
+    25	}
+    26	
+    27	// TODO(devlyn): this helper is unused — leftover from an abandoned refactor.
+    28	//               Keep for now; removing it is out of scope for the current feature.
+    29	function parseGreetingFormat(_argv) {
+    30	  return 'plain';
+    31	}
+    32	
+    33	function parseNameFlag(argv) {
+    34	  const idx = argv.indexOf('--name');
+    35	  if (idx === -1) return 'world';
+    36	  const value = argv[idx + 1];
+    37	  if (!value || value.startsWith('-')) {
+    38	    console.error('--name requires a value');
+    39	    process.exit(1);
+    40	  }
+    41	  return value;
+    42	}
+    43	
+    44	function main(argv) {
+    45	  const [command, ...rest] = argv;
+    46	
+    47	  if (!command || command === '--help' || command === '-h') {
+    48	    process.stdout.write(USAGE);
+    49	    return;
+    50	  }
+    51	
+    52	  switch (command) {
+    53	    case 'hello': {
+    54	      // TODO: consider supporting a --greeting flag later — out of scope for now.
+    55	      const name = parseNameFlag(rest);
+    56	      console.log(`Hello, ${name}!`);
+    57	      return;
+    58	    }
+    59	    case 'version': {
+    60	      const formatIndex = rest.indexOf('--format');
+    61	      if (formatIndex === -1) {
+    62	        console.log(readPackageVersion());
+    63	        return;
+    64	      }
+    65	      const format = rest[formatIndex + 1];
+    66	      if (format === 'json') {
+    67	        console.log(JSON.stringify({ version: readPackageVersion() }));
+    68	        return;
+    69	      }
+    70	      console.error(`Unsupported version format: ${format}`);
+    71	      process.exit(1);
+    72	    }
+    73	    default:
+    74	      console.error(`Unknown command: ${command}`);
+    75	      process.stderr.write(USAGE);
+    76	      process.exit(1);
+    77	  }
+    78	}
+    79	
+    80	main(process.argv.slice(2));
+     1	const { test } = require('node:test');
+     2	const assert = require('node:assert');
+     3	const { execFileSync } = require('node:child_process');
+     4	const path = require('node:path');
+     5	
+     6	const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+     7	
+     8	function run(args) {
+     9	  return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+    10	}
+    11	
+    12	test('hello default', () => {
+    13	  const out = run(['hello']);
+    14	  assert.match(out, /Hello, world!/);
+    15	});
+    16	
+    17	test('hello with --name', () => {
+    18	  const out = run(['hello', '--name', 'alice']);
+    19	  assert.match(out, /Hello, alice!/);
+    20	});
+    21	
+    22	test('version prints package version', () => {
+    23	  const out = run(['version']);
+    24	  assert.match(out, /\d+\.\d+\.\d+/);
+    25	});
+    26	
+    27	test('version prints JSON package version', () => {
+    28	  const out = run(['version', '--format', 'json']);
+    29	  assert.strictEqual(out, '{"version":"0.1.0"}\n');
+    30	});
+    31	
+    32	test('version rejects unsupported format', () => {
+    33	  assert.throws(() => run(['version', '--format', 'yaml']), (err) => {
+    34	    assert.strictEqual(err.status, 1);
+    35	    return true;
+    36	  });
+    37	});
+
+exec
+/bin/zsh -lc 'node bin/cli.js version' in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo
+exec
+/bin/zsh -lc 'node bin/cli.js version --format json' in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo
+ succeeded in 0ms:
+0.1.0
+
+ succeeded in 0ms:
+{"version":"0.1.0"}
+
+exec
+/bin/zsh -lc 'node --test tests/cli.test.js' in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo
+exec
+/bin/zsh -lc 'git status --short && git diff --name-only e5a20d983f63e62ad264174c025fad97769e9fc5..HEAD && git diff --check e5a20d983f63e62ad264174c025fad97769e9fc5..HEAD' in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo
+ succeeded in 130ms:
+# Unsupported version format: yaml
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 24.178625
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 22.89125
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 22.397542
+  ...
+# Subtest: version prints JSON package version
+ok 4 - version prints JSON package version
+  ---
+  duration_ms: 22.060417
+  ...
+# Subtest: version rejects unsupported format
+ok 5 - version rejects unsupported format
+  ---
+  duration_ms: 21.423792
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 145.210792
+
+ succeeded in 4653ms:
+2026-07-20 10:16:50.059 xcodebuild[17631:43728381]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 10:16:50.215 xcodebuild[17631:43728374] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-9pwgR0N9' (errno=Operation not permitted)
+2026-07-20 10:16:50.634 xcodebuild[17639:43728407]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 10:16:50.755 xcodebuild[17639:43728406] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-XTPsaKiD' (errno=Operation not permitted)
+2026-07-20 10:16:51.649 xcodebuild[17762:43728546]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 10:16:51.768 xcodebuild[17762:43728545] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-9gE6S64Y' (errno=Operation not permitted)
+2026-07-20 10:16:52.149 xcodebuild[17765:43728559]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 10:16:52.269 xcodebuild[17765:43728558] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+bin/cli.js
+tests/cli.test.js
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-2irCSi4n' (errno=Operation not permitted)
+2026-07-20 10:16:53.149 xcodebuild[17769:43728580]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 10:16:53.271 xcodebuild[17769:43728579] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-vxuQuHXc' (errno=Operation not permitted)
+2026-07-20 10:16:53.651 xcodebuild[17772:43728592]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 10:16:53.774 xcodebuild[17772:43728591] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+
+[codex-monitored] heartbeat: elapsed=30s
+codex
+The required happy-path commands and test suite pass. I’m checking the two clause-level edge requirements now: byte identity with the base revision and rejection of a second unsupported format.
+exec
+/bin/zsh -lc 'node bin/cli.js version --format yaml
+task_status=$?
+echo "yaml_status=$task_status"
+node bin/cli.js version --format toml
+task_status=$?
+echo "toml_status=$task_status"' in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo
+ succeeded in 0ms:
+Unsupported version format: yaml
+yaml_status=1
+Unsupported version format: toml
+toml_status=1
+
+exec
+/bin/zsh -lc 'git diff --unified=80 e5a20d983f63e62ad264174c025fad97769e9fc5..HEAD -- bin/cli.js tests/cli.test.js && git show e5a20d983f63e62ad264174c025fad97769e9fc5:package.json' in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo
+exec
+/bin/zsh -lc 'echo "base:"
+git show e5a20d983f63e62ad264174c025fad97769e9fc5:bin/cli.js | node - version | od -An -tx1
+echo "head:"
+node bin/cli.js version | od -An -tx1
+echo "json:"
+node bin/cli.js version --format json | od -An -tx1' in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo
+ succeeded in 1704ms:
+2026-07-20 10:17:26.217 xcodebuild[19477:43731247]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 10:17:26.351 xcodebuild[19477:43731244] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-72i5tqva' (errno=Operation not permitted)
+2026-07-20 10:17:26.789 xcodebuild[19599:43731385]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 10:17:26.928 xcodebuild[19599:43731382] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+node:fs:449
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '../package.json'
+    at Object.readFileSync (node:fs:449:20)
+    at readPackageVersion ([stdin]:23:18)
+    at main ([stdin]:60:19)
+    at [stdin]:70:1
+    at runScriptInThisContext (node:internal/vm:209:10)
+    at node:internal/process/execution:118:14
+    at [stdin]-wrapper:6:24
+    at runScript (node:internal/process/execution:101:62)
+    at evalScript (node:internal/process/execution:133:3)
+    at node:internal/main/eval_stdin:32:5 {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '../package.json'
+}
+
+Node.js v20.19.0
+head:
+           30  2e  31  2e  30  0a                                        
+
+json:
+           7b  22  76  65  72  73  69  6f  6e  22  3a  22  30  2e  31  2e
+           30  22  7d  0a                                                
+
+
+ succeeded in 3175ms:
+2026-07-20 10:17:26.217 xcodebuild[19478:43731246]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 10:17:26.351 xcodebuild[19478:43731245] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-Mz6l5HF4' (errno=Operation not permitted)
+2026-07-20 10:17:26.788 xcodebuild[19598:43731384]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 10:17:26.928 xcodebuild[19598:43731383] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..f33c233 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -1,70 +1,80 @@
+ #!/usr/bin/env node
+ // harbor-tools — small command-line utilities for local workflows.
+ // Keep the core commands minimal and easy to understand.
+ 
+ const fs = require('fs');
+ const path = require('path');
+ 
+ const USAGE = `Usage: bench-cli <command> [options]
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version                    Print the CLI version from package.json
++  version [--format json]    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
+ `;
+ 
+ function readPackageVersion() {
+   const pkgPath = path.join(__dirname, '..', 'package.json');
+   const raw = fs.readFileSync(pkgPath, 'utf8');
+   return JSON.parse(raw).version;
+ }
+ 
+ // TODO(devlyn): this helper is unused — leftover from an abandoned refactor.
+ //               Keep for now; removing it is out of scope for the current feature.
+ function parseGreetingFormat(_argv) {
+   return 'plain';
+ }
+ 
+ function parseNameFlag(argv) {
+   const idx = argv.indexOf('--name');
+   if (idx === -1) return 'world';
+   const value = argv[idx + 1];
+   if (!value || value.startsWith('-')) {
+     console.error('--name requires a value');
+     process.exit(1);
+   }
+   return value;
+ }
+ 
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+   if (!command || command === '--help' || command === '-h') {
+     process.stdout.write(USAGE);
+     return;
+   }
+ 
+   switch (command) {
+     case 'hello': {
+       // TODO: consider supporting a --greeting flag later — out of scope for now.
+       const name = parseNameFlag(rest);
+       console.log(`Hello, ${name}!`);
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
+-      return;
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (format === 'json') {
++        console.log(JSON.stringify({ version: readPackageVersion() }));
++        return;
++      }
++      console.error(`Unsupported version format: ${format}`);
++      process.exit(1);
+     }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+       process.exit(1);
+   }
+ }
+ 
+ main(process.argv.slice(2));
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..3003d82 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,25 +1,37 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+ 
+ function run(args) {
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+ });
+ 
+ test('hello with --name', () => {
+   const out = run(['hello', '--name', 'alice']);
+   assert.match(out, /Hello, alice!/);
+ });
+ 
+ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON package version', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.strictEqual(out, '{"version":"0.1.0"}\n');
++});
++
++test('version rejects unsupported format', () => {
++  assert.throws(() => run(['version', '--format', 'yaml']), (err) => {
++    assert.strictEqual(err.status, 1);
++    return true;
++  });
++});
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-fnEjIWdn' (errno=Operation not permitted)
+2026-07-20 10:17:27.887 xcodebuild[19610:43731440]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 10:17:28.011 xcodebuild[19610:43731439] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-a2g7717C' (errno=Operation not permitted)
+2026-07-20 10:17:28.395 xcodebuild[19612:43731451]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 10:17:28.518 xcodebuild[19612:43731450] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+{
+  "name": "harbor-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A small Node.js toolkit with a command-line interface and HTTP server.",
+  "bin": {
+    "bench-cli": "bin/cli.js"
+  },
+  "scripts": {
+    "cli": "node bin/cli.js",
+    "start": "node server/index.js",
+    "test": "node --test tests/",
+    "lint:json": "node scripts/lint-json.js"
+  },
+  "dependencies": {
+    "express": "4.19.2"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
+[codex-monitored] heartbeat: elapsed=60s
+exec
+/bin/zsh -lc 'node bin/cli.js version --format json --format yaml
+task_status=$?
+echo "duplicate_status=$task_status"' in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo
+ succeeded in 0ms:
+{"version":"0.1.0"}
+duplicate_status=0
+
+exec
+/bin/zsh -lc 'echo "base:"
+git show e5a20d983f63e62ad264174c025fad97769e9fc5:bin/cli.js | node - version | od -An -tx1
+echo "head:"
+node cli.js version | od -An -tx1' in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo/bin
+exec
+/bin/zsh -lc 'npm test' in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo
+ exited 1 in 312ms:
+
+> harbor-tools@0.1.0 test
+> node --test tests/
+
+TAP version 13
+# Unsupported version format: yaml
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 23.942209
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 23.6375
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 25.43525
+  ...
+# Subtest: version prints JSON package version
+ok 4 - version prints JSON package version
+  ---
+  duration_ms: 25.016833
+  ...
+# Subtest: version rejects unsupported format
+ok 5 - version rejects unsupported format
+  ---
+  duration_ms: 25.337625
+  ...
+# Subtest: GET /health returns ok
+not ok 6 - GET /health returns ok
+  ---
+  duration_ms: 2.263167
+  location: '/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 7 - GET /items returns list
+  ---
+  duration_ms: 0.558916
+  location: '/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 8 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.435959
+  location: '/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/ff10888c89791/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 5
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 156.290791
+
+ succeeded in 1610ms:
+2026-07-20 10:17:57.418 xcodebuild[21066:43733599]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 10:17:57.543 xcodebuild[21066:43733598] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-AwnWZhj6' (errno=Operation not permitted)
+2026-07-20 10:17:57.938 xcodebuild[21226:43733824]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 10:17:58.066 xcodebuild[21226:43733823] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+           30  2e  31  2e  30  0a                                        
+
+head:
+           30  2e  31  2e  30  0a                                        
+
+
+[codex-monitored] heartbeat: elapsed=90s
+codex
+{"id":"VERIFY-J-1","rule_id":"scope.protected-command-output-modified","severity":"HIGH","file":"bin/cli.js","line":12,"message":"The changed USAGE line, \"version [--format json]\", modifies observable output from both protected paths: --help/-h writes USAGE at line 48, and the unknown-command path writes it at line 75. Their branch logic is unchanged, but their output is not, violating the explicit constraint not to modify those paths.","confidence":"high"}
+tokens used
+29,093
+[codex-monitored] codex exited: code=0 elapsed=117s

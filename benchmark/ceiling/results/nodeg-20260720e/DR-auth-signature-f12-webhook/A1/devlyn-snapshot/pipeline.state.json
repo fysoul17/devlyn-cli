@@ -1,0 +1,321 @@
+{
+  "base_ref": {
+    "branch": "master",
+    "sha": "d5e479312b6f9573373bd2057e630bba7d22c608"
+  },
+  "bypasses": [],
+  "complexity": "medium",
+  "criteria": [
+    {
+      "evidence": [],
+      "failed_by_finding_ids": [],
+      "id": "C1",
+      "ref": "criteria://requirements/0",
+      "status": "pending"
+    },
+    {
+      "evidence": [],
+      "failed_by_finding_ids": [],
+      "id": "C2",
+      "ref": "criteria://requirements/1",
+      "status": "pending"
+    },
+    {
+      "evidence": [],
+      "failed_by_finding_ids": [],
+      "id": "C3",
+      "ref": "criteria://requirements/2",
+      "status": "pending"
+    },
+    {
+      "evidence": [],
+      "failed_by_finding_ids": [],
+      "id": "C4",
+      "ref": "criteria://requirements/3",
+      "status": "pending"
+    },
+    {
+      "evidence": [],
+      "failed_by_finding_ids": [],
+      "id": "C5",
+      "ref": "criteria://requirements/4",
+      "status": "pending"
+    }
+  ],
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "implement_passed_sha": "d5e479312b6f9573373bd2057e630bba7d22c608",
+  "mode": "free-form",
+  "pair_verify": true,
+  "phases": {
+    "build_gate": {
+      "artifacts": {
+        "findings_file": ".devlyn/build_gate.findings.jsonl",
+        "log_file": ".devlyn/build_gate.log.md"
+      },
+      "completed_at": "2026-07-20T12:47:57.218Z",
+      "duration_ms": 109476,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-20T12:46:07.742Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "cleanup": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-20T12:49:19.697Z",
+      "duration_ms": 72082,
+      "engine": "codex",
+      "model_effective": "gpt-5.6-terra",
+      "model_requested": null,
+      "post_sha": "bcc1ac366984bb825f7bede93df62f80b9d40bca",
+      "pre_sha": "bcc1ac366984bb825f7bede93df62f80b9d40bca",
+      "round": 0,
+      "started_at": "2026-07-20T12:48:07.615Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "final_report": null,
+    "implement": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": ".devlyn/implement.worker-session.1.jsonl"
+      },
+      "completed_at": "2026-07-20T13:22:34.423Z",
+      "duration_ms": 246079,
+      "engine": "codex",
+      "history": [
+        {
+          "completed_at": "2026-07-20T12:45:22.652Z",
+          "duration_ms": 315840,
+          "started_at": "2026-07-20T12:40:06.812Z",
+          "verdict": "PASS"
+        }
+      ],
+      "model_effective": "gpt-5.6-terra",
+      "model_requested": null,
+      "round": 1,
+      "started_at": "2026-07-20T13:18:28.344Z",
+      "sub_verdicts": null,
+      "triggered_by": "verify",
+      "verdict": "PASS"
+    },
+    "plan": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-20T12:38:52.712Z",
+      "duration_ms": 222934,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-20T12:35:09.778Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "probe_derive": null,
+    "surface_close": {
+      "artifacts": {
+        "findings_file": ".devlyn/surface-close.stdout",
+        "log_file": null
+      },
+      "completed_at": "2026-07-20T13:07:47.888Z",
+      "durability": [
+        {
+          "origin_phase": "verify",
+          "receipt_path": ".devlyn/closure-durability.round-1.json",
+          "receipt_sha256": "4036c37bb83da21c2c475036b690f8032a2784f4044bc2b46a64366ef030f938",
+          "restore_commit_sha": null,
+          "round": 1
+        }
+      ],
+      "duration_ms": 151560,
+      "engine": "claude",
+      "input_patch_sha256": "4693f1df22100d32d4aa54de1f97f48c947a05ede30538dd5ffcd2f165e686be",
+      "model_effective": "claude-sonnet-5",
+      "model_requested": "claude-sonnet-5",
+      "post_sha": "87fac0e3cc6de8a931574783aba8fcedff8d2ab5",
+      "pre_sha": "bcc1ac366984bb825f7bede93df62f80b9d40bca",
+      "prompt_sha256": "afe677433ee82e0f2c0145ad1be83c74205689f17c01b509becbb2ebe300deaa",
+      "round": 0,
+      "started_at": "2026-07-20T13:05:16.328Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "untracked_before": [
+        ".claude/skills/_shared/adapters/README.md",
+        ".claude/skills/_shared/adapters/claude.md",
+        ".claude/skills/_shared/adapters/codex.md",
+        ".claude/skills/_shared/adapters/omp.md",
+        ".claude/skills/_shared/archive_run.py",
+        ".claude/skills/_shared/codex-config.md",
+        ".claude/skills/_shared/codex-monitored.sh",
+        ".claude/skills/_shared/collect-codex-findings.py",
+        ".claude/skills/_shared/engine-doctor.sh",
+        ".claude/skills/_shared/engine-preflight.md",
+        ".claude/skills/_shared/expected.schema.json",
+        ".claude/skills/_shared/finish-gate.py",
+        ".claude/skills/_shared/pair-plan-schema.md",
+        ".claude/skills/_shared/run-bounded.py",
+        ".claude/skills/_shared/runtime-principles.md",
+        ".claude/skills/_shared/spec-verify-check.py",
+        ".claude/skills/_shared/state-phase-write.py",
+        ".claude/skills/_shared/verify-merge-findings.py",
+        ".claude/skills/code-health-standards/SKILL.md",
+        ".claude/skills/code-review-standards/SKILL.md",
+        ".claude/skills/devlyn:design-ui/SKILL.md",
+        ".claude/skills/devlyn:engines/SKILL.md",
+        ".claude/skills/devlyn:ideate/SKILL.md",
+        ".claude/skills/devlyn:ideate/references/elicitation.md",
+        ".claude/skills/devlyn:ideate/references/from-spec-mode.md",
+        ".claude/skills/devlyn:ideate/references/project-mode.md",
+        ".claude/skills/devlyn:ideate/references/spec-template.md",
+        ".claude/skills/devlyn:ideate/references/templates/decision.md",
+        ".claude/skills/devlyn:ideate/references/templates/roadmap.md",
+        ".claude/skills/devlyn:ideate/references/templates/vision.md",
+        ".claude/skills/devlyn:queue/SKILL.md",
+        ".claude/skills/devlyn:resolve/SKILL.md",
+        ".claude/skills/devlyn:resolve/references/free-form-mode.md",
+        ".claude/skills/devlyn:resolve/references/phases/build-gate.md",
+        ".claude/skills/devlyn:resolve/references/phases/cleanup.md",
+        ".claude/skills/devlyn:resolve/references/phases/implement.md",
+        ".claude/skills/devlyn:resolve/references/phases/plan.md",
+        ".claude/skills/devlyn:resolve/references/phases/probe-derive.md",
+        ".claude/skills/devlyn:resolve/references/phases/surface-close.md",
+        ".claude/skills/devlyn:resolve/references/phases/verify.md",
+        ".claude/skills/devlyn:resolve/references/state-schema.md",
+        ".claude/skills/root-cause-analysis/SKILL.md",
+        ".claude/skills/ui-implementation-standards/SKILL.md",
+        ".devlyn/build_gate.findings.jsonl",
+        ".devlyn/build_gate.log.md",
+        ".devlyn/claude-judge.stdout",
+        ".devlyn/cleanup.prompt.txt",
+        ".devlyn/cleanup.stderr",
+        ".devlyn/cleanup.worker-session.0.jsonl",
+        ".devlyn/codex-primary-judge.stderr",
+        ".devlyn/codex-primary-judge.stdout",
+        ".devlyn/criteria.generated.md",
+        ".devlyn/engines.json",
+        ".devlyn/goal.raw.txt",
+        ".devlyn/goal.txt",
+        ".devlyn/implement.prompt.txt",
+        ".devlyn/implement.stderr",
+        ".devlyn/implement.worker-session.0.jsonl",
+        ".devlyn/pipeline.state.json",
+        ".devlyn/plan.md",
+        ".devlyn/spec-verify-findings.jsonl",
+        ".devlyn/spec-verify.json",
+        ".devlyn/spec-verify.results.json",
+        ".devlyn/surface-close.input.patch",
+        ".devlyn/surface-close.prompt",
+        ".devlyn/untracked.baseline",
+        ".devlyn/verify-mechanical.findings.jsonl",
+        ".devlyn/verify-merge.summary.json",
+        ".devlyn/verify-merged.findings.jsonl",
+        ".devlyn/verify-pair-judge.prompt.txt",
+        ".devlyn/verify-primary-judge.prompt.txt",
+        ".devlyn/verify.cumulative.diff",
+        ".devlyn/verify.findings.jsonl",
+        ".devlyn/verify.pair.findings.jsonl",
+        "AGENTS.md",
+        "CLAUDE.md"
+      ],
+      "verdict": "PASS"
+    },
+    "verify": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": null,
+      "duration_ms": null,
+      "history": [
+        {
+          "completed_at": null,
+          "duration_ms": null,
+          "started_at": "2026-07-20T12:49:46.615Z",
+          "verdict": "BLOCKED"
+        },
+        {
+          "completed_at": "2026-07-20T13:17:06.020Z",
+          "duration_ms": 502290,
+          "started_at": "2026-07-20T13:08:43.730Z",
+          "verdict": "NEEDS_WORK"
+        }
+      ],
+      "judge_durations_ms": null,
+      "merged": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "summary_file": ".devlyn/verify-merge.summary.json",
+        "verdict": "NEEDS_WORK"
+      },
+      "model_effective": null,
+      "model_requested": null,
+      "pair_trigger": {
+        "eligible": true,
+        "reasons": [
+          "pair.default",
+          "mode.pair-verify",
+          "risk.high"
+        ],
+        "skipped_reason": null
+      },
+      "round": 1,
+      "started_at": "2026-07-20T13:26:33.920Z",
+      "sub_verdicts": null,
+      "triggered_by": "verify",
+      "verdict": null
+    }
+  },
+  "risk_probes_digest": null,
+  "risk_profile": {
+    "high_risk": true,
+    "pair_default_enabled": true,
+    "reasons": [
+      "security: HMAC signature verification (X-Signature)",
+      "api.webhook-signature: POST /webhook raw-body signature contract",
+      "idempotency.replay: duplicate event id handling",
+      "explicit error-priority/output-shape contract: signature check before body-shape check, exact error bodies",
+      "auto-risk-probes demoted: plan surface small (2 paths)"
+    ],
+    "risk_probes_enabled": false,
+    "risk_probes_explicit": false
+  },
+  "rounds": {
+    "global": 1,
+    "max_rounds": 4
+  },
+  "run_id": "rs-20260720T123237Z-6e14180e70b9",
+  "source": {
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "87ac57c0c6bdeaedbc8c8f8c8203c324ce756403b8c7e9776eb44a754da26835",
+    "goal_path": ".devlyn/goal.raw.txt",
+    "goal_sha256": "58e149bd9cbe6be89e214600420416b3ba17ecd83c523dd6d1d787b1cf1900e3",
+    "spec_path": null,
+    "spec_sha256": null,
+    "type": "generated"
+  },
+  "started_at": "2026-07-20T12:32:37Z",
+  "verify": {
+    "coverage_failed": false,
+    "pair_trigger": {
+      "eligible": true,
+      "reasons": [
+        "pair.default",
+        "mode.pair-verify",
+        "risk.high"
+      ],
+      "skipped_reason": null
+    }
+  },
+  "version": "3.0"
+}

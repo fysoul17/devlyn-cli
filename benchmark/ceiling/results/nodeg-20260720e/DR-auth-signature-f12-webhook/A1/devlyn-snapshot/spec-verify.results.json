@@ -1,0 +1,15 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "npm test",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "ature\n  ---\n  duration_ms: 1.316875\n  ...\n# Subtest: POST /webhook checks the signature before malformed JSON syntax\nok 11 - POST /webhook checks the signature before malformed JSON syntax\n  ---\n  duration_ms: 3.13475\n  ...\n# Subtest: POST /webhook rejects an invalid-shaped replayed event id\nok 12 - POST /webhook rejects an invalid-shaped replayed event id\n  ---\n  duration_ms: 2.5825\n  ...\n1..12\n# tests 12\n# suites 0\n# pass 12\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 127.053667\n"
+    }
+  ]
+}

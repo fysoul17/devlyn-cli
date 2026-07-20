@@ -41,19 +41,37 @@ policy), omp unmeasured. Adjudication precedent minted today:
 drift never extends to the treatment arm; restore the exact CLI (see
 pin-restore recipe below) or label the row a successor.
 
+**iter-0075 ran end-to-end 2026-07-20→21 and is CLOSED (0075.1-.5)**:
+registration → Stage A build → FS-0075-A fired on the honest D1 repair
+(Codex self-caught its own trivial-conservation defect) →
+gap_to_censored_ms amendment (orchestrator arithmetic diagnosis, Grok
+CONCUR) → back-test 9/9 + canary conservation delta=0 → Stage B cohort
+`nodeg-20260720e` (2 dead F7 draws first): **P-A INCONCLUSIVE +
+FS-0075-B FIRED** (complete-verify 4/7 — third cohort <5; completion
+is now the frozen next target), **P-B CONFIRMS** (startup + interphase
+gaps ≥50% of residual on 5/7, clean rows 92-96% — the wall lever
+target is DATA-NAMED), **P-C CONFIRMS** (quality 0/7, wall 10.9×).
+Objective 5/7 — both failures are ONE receipt-traced class: SC worker
+omitted `:<line>` in an N/A obligation line → SPW fail-closed reject →
+rollback discarded CORRECT repairs (3rd live occurrence of the
+correct-repair-discarded class; 0072.19/0072.26 lineage; skill bytes
+identical across stacks — worker-format variance, not regression).
+C2 FAILED-INCOMPLETE fired live in-cohort (F25, first time).
+
 **Next work (in order)**:
-1. **iter-0075 registration — formal P-c adjudication cohort + wall
-   lever targeting residual+VERIFY** (three-way round): one 7-row
-   cohort on the post-0074 main stack (fixed instruments end the
-   post-hoc-repair deviations; C2 binding labels incomplete rows)
-   clearing ≥5 complete-verify rows for the formal addendum-5 kill;
-   the lever design question is WHICH residual component (CLI startup /
-   inter-phase orchestrator turns / outer-loop gaps) is reducible
-   without touching engine autonomy.
-2. **C1 product wiring registration** (separate claim, own round) —
-   the probe licenses it for the claude route only; the honest bound
-   (CLI loop cap) and ROUTE-DISABLED-BY-HARNESS facts go in the packet.
-3. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
+1. **iter-0076 registration — COMPLETION-RATE iter** (frozen
+   consequence of FS-0075-B; three-way round): the two measured loss
+   classes are (a) premature-terminal-mid-VERIFY (3/7 across 3
+   cohorts, 2 CLI versions) and (b) SC-reply-format rejection
+   discarding correct repairs (candidate: bounded format-repair
+   re-prompt with the exact regex error — design question, C1-probe
+   BLOCK_HONORED data says in-session pressure works on claude).
+2. **Wall lever iter** (AFTER 0076 per FS-0075-B): target startup +
+   inter-phase orchestrator gaps (92-96% of residual on clean rows).
+3. **C1 product wiring registration** (separate claim, own round) —
+   probe licenses claude route only; honest bound (CLI loop cap ~9) +
+   ROUTE-DISABLED-BY-HARNESS facts go in the packet.
+4. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
 
 **Cohort/row mechanics (binding, updated 2026-07-20)**: full cohort =
 `git worktree add --detach <path> <SHA>` (runner-SHA integrity —

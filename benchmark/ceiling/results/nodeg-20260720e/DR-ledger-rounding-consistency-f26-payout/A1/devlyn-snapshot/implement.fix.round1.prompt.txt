@@ -1,0 +1,58 @@
+# Codex (OpenAI) adapter
+
+## Identity
+
+You are OpenAI's Codex model.
+
+## Output discipline
+
+Efficient, direct, task-oriented.
+
+## Validation pattern
+
+Run `npm test` before declaring success, and trust its output.
+
+## Anti-patterns
+
+Don't over-specify process when the destination is clear. Do not narrate internal deliberation.
+
+---
+
+# PHASE 2 — IMPLEMENT fix round (canonical body, triggered_by=verify)
+
+<role>
+Fix exactly the finding(s) below in the existing diff. Do not re-derive the feature from scratch and do not touch anything outside the finding's scope.
+</role>
+
+<input>
+- Current code: `bin/cli.js` (payout command, added in a prior round) and `tests/cli.test.js`.
+- Spec: `.devlyn/criteria.generated.md`.
+- Only `bin/cli.js` and `tests/cli.test.js` are authorized.
+</input>
+
+<verify_finding_to_fix>
+severity: HIGH
+rule_id: spec.conflicting-duplicate-contract
+file: bin/cli.js
+message: Full event validation currently precedes duplicate-conflict detection, so when an `id` is reused with different content AND that second occurrence is also otherwise malformed (e.g. an unknown `type`), the CLI emits `{"error":"invalid_event"}` instead of the spec-required exact `{"error":"conflicting_duplicate","id":"<id>"}`.
+
+Repro: `node bin/cli.js payout --input <file>` where file is `{"events":[{"id":"c1","merchant_id":"m","type":"charge","amount_cents":100},{"id":"c1","merchant_id":"m","type":"bogus","amount_cents":100}]}`.
+Expected: exit 2, empty stdout, stderr exactly `{"error":"conflicting_duplicate","id":"c1"}`.
+Actual (before fix): exit 2, empty stdout, stderr `{"error":"invalid_event"}`.
+
+Spec text (`.devlyn/criteria.generated.md`): "Idempotency: events sharing an `id` with identical JSON content are applied once. An `id` reused with different content is a 'conflicting duplicate' — exit `2`, no stdout, and stderr is exactly `{"error":"conflicting_duplicate","id":"<id>"}`, before any totals are computed." This is stated unconditionally on id-reuse-with-different-content; it does not carve out an exception for when the second occurrence is also independently malformed. The conflicting-duplicate check must therefore run before full structural validation of that specific event, for any `id` that was already seen.
+</verify_finding_to_fix>
+
+<fix_guidance>
+Only for an `id` that is already present in the dedup map should the conflicting-duplicate content comparison run BEFORE the full per-event shape validation (`isValidPayoutEvent`) — for a not-yet-seen `id`, keep validating the event's shape exactly as today (this must not change: a first-occurrence malformed event must still surface its ordinary validation error, e.g. `invalid_event`/`missing_merchant_id`/etc., not a duplicate-shaped error). Concretely: check whether `event` is at least an object with a string `id`, and whether that `id` is already in the dedup map, before running the full `isValidPayoutEvent` gate; if it is already in the map, compare full content (`isDeepStrictEqual`) and emit `conflicting_duplicate` on mismatch or skip (continue) on an identical match — do not fall through to `isValidPayoutEvent` for that already-seen id at all. Otherwise (id not yet seen, or event/id malformed such that no meaningful lookup is possible), keep the existing full-validation path unchanged.
+
+Do not change anything else. Do not add a new test for this specific interaction unless you judge it necessary to lock in the fix — if you do add one, keep it to a single small `test(...)` block and do not touch the two existing payout tests' assertions.
+</fix_guidance>
+
+<output>
+- Code fix within `bin/cli.js` (and optionally `tests/cli.test.js` for a regression test).
+- Run `npm test` and confirm all existing tests plus payout tests still pass.
+- Report your verdict: `PASS` on success; `BLOCKED` if you cannot fix within the allowed files.
+</output>
+
+Apply the fix now.

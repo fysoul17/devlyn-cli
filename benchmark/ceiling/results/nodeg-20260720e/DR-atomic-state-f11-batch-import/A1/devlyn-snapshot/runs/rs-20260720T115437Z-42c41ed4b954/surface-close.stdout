@@ -1,0 +1,3 @@
+UVR-STALE: N/A server/index.js:30 — new `/items/import` route adds behavior; no authorized file carries user-visible text documenting its old interface, so nothing is stale.
+PATH-TEST: FIRED tests/server.test.js:115 — Goal specifies the `invalid_body` 400 failure path (empty body/missing/non-array `items`), and no authorized test exercised it; added a non-array-`items` regression test asserting the 400 body and unchanged `GET /items` list.
+PASS

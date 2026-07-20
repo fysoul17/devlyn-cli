@@ -1,0 +1,7 @@
+Implemented `Job.max_runs(n)` with per-job counting and `CancelJob` removal in [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/fa265b8ab039e/A1/repo/schedule/__init__.py:648).
+
+Added coverage for validation, chaining, scheduler paths, `.until()`, cleanup, and independent budgets in [test_schedule.py](/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/fa265b8ab039e/A1/repo/test_schedule.py:390), plus a usage example in [docs/examples.rst](/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/fa265b8ab039e/A1/repo/docs/examples.rst:247).
+
+Verified: `python3 -m unittest test_schedule -v` — 87 passed, 41 skipped (`pytz` unavailable).
+
+PASS

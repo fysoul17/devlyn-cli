@@ -1,0 +1,5 @@
+No in-scope cleanup needed; no files changed.
+
+Validation: cart tests pass. Full suite is blocked only by sandbox `EPERM` binding `0.0.0.0` in pre-existing server tests. No new tooling artifacts found.
+
+PASS

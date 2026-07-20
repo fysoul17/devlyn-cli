@@ -1,0 +1,5 @@
+PATH-TEST review confirms every success/failure path the goal specifies (chaining in both positions, exact-nth-run cancellation via both `run_pending()` and `run_all()`, first-limit-wins with `.until()` in both directions, `next_run`/`idle_seconds` reflecting removal, validation errors, repeated-call override, per-job independence) is already covered by the added tests — no gap found.
+
+UVR-STALE: FIRED schedule/__init__.py:690 — `Job.run()`'s docstring described CancelJob only via `.until()`'s deadline, omitting the new `max_runs` cancellation path added to the same method in this diff (line 715); updated the docstring minimally.
+PATH-TEST: N/A test_schedule.py — every success/failure path in the goal (chaining order, exact-nth-run cutoff via both `run_pending()`/`run_all()`, `.until()` first-limit-wins both directions, `next_run`/`idle_seconds` post-removal, validation errors, repeat-call override, per-job independence) already has a covering test in the patch.
+PASS

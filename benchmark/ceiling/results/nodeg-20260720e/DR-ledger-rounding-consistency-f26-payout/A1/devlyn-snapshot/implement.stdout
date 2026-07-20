@@ -1,0 +1,12 @@
+BLOCKED
+
+Implemented `payout --input <path>` in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/fee93957fc8fe/A1/repo/bin/cli.js:40), including runtime rules, structural dedupe, calculations, JSON errors, and usage. Added success and validation coverage in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/fee93957fc8fe/A1/repo/tests/cli.test.js:29).
+
+Verification passed:
+
+- `node --test tests/cli.test.js` — 5/5
+- Generated checks: `SUCCESS_CHECK_OK`, `CONFLICT_CHECK_OK`, `INVALID_JSON_CHECK_OK`
+- Edge validation and key-order duplicate check: `PAYOUT_EDGE_CHECK_OK`
+- `git diff --check` — clean
+
+Required `npm test` remains blocked: its three unrelated server tests fail with `listen EPERM` when binding a local socket at [tests/server.test.js:9](/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/fee93957fc8fe/A1/repo/tests/server.test.js:9). Those files are outside the authorized surface.

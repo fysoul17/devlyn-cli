@@ -1,0 +1,274 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b24..2ce11c5 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@ const USAGE = `Usage: bench-cli <command> [options]
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  cart --input PATH          Calculate a cart total from a JSON input file
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli cart --input cart.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,132 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function parseInputFlag(argv) {
++  const idx = argv.indexOf('--input');
++  const value = argv[idx + 1];
++  if (idx === -1 || !value || value.startsWith('-')) {
++    console.error('--input requires a value');
++    process.exit(1);
++  }
++  return value;
++}
++
++function cartError(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function readCartInput(inputPath) {
++  let raw;
++  try {
++    raw = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    cartError({ error: 'invalid_json' });
++  }
++
++  try {
++    return JSON.parse(raw);
++  } catch {
++    cartError({ error: 'invalid_json' });
++  }
++}
++
++function calculateCart(input, catalog) {
++  if (!input || typeof input !== 'object' || !Array.isArray(input.items)) {
++    cartError({ error: 'missing_items' });
++  }
++
++  for (const item of input.items) {
++    if (!item || !Object.hasOwn(catalog.products, item.sku)) {
++      cartError({ error: 'unknown_sku' });
++    }
++  }
++
++  for (const item of input.items) {
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      cartError({ error: 'invalid_quantity' });
++    }
++  }
++
++  if (input.coupon != null && !Object.hasOwn(catalog.coupons, input.coupon)) {
++    cartError({ error: 'unknown_coupon' });
++  }
++
++  if (!Object.hasOwn(catalog.tax_rates, input.state)) {
++    cartError({ error: 'unknown_state' });
++  }
++
++  const quantities = new Map();
++  for (const item of input.items) {
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  for (const [sku, qty] of quantities) {
++    if (qty > catalog.products[sku].stock) {
++      cartError({
++        error: 'invalid_stock',
++        sku,
++        available: catalog.products[sku].stock,
++        requested: qty,
++      });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = qty * product.unit_cents;
++    let lineDiscountCentsForItem = 0;
++
++    if (promotion?.type === 'buy_x_get_y_free') {
++      lineDiscountCentsForItem = Math.floor(qty / (promotion.buy_qty + promotion.free_qty))
++        * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion?.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      lineDiscountCentsForItem = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - lineDiscountCentsForItem;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += lineDiscountCentsForItem;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: lineDiscountCentsForItem,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[input.state]);
++  const coupon = input.coupon == null ? null : catalog.coupons[input.coupon];
++  const couponDiscountCents = coupon && postLineDiscountCents >= coupon.min_subtotal_cents
++    ? Math.round(postLineDiscountCents * coupon.percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++
++  return {
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: postLineDiscountCents - couponDiscountCents + taxCents + shippingCents,
++    items,
++  };
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +181,15 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      const inputPath = parseInputFlag(rest);
++      const input = readCartInput(inputPath);
++      const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++      const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++      const cart = calculateCart(input, catalog);
++      process.stdout.write(`${JSON.stringify(cart)}\n`);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..f597d3c 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,17 @@ function run(args) {
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function withCartInput(input, callback) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-cart-'));
++  const inputPath = path.join(directory, 'input.json');
++  fs.writeFileSync(inputPath, JSON.stringify(input));
++  try {
++    callback(inputPath);
++  } finally {
++    fs.rmSync(directory, { recursive: true, force: true });
++  }
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +36,74 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart calculates promotions, tax, coupon, and shipping', () => {
++  withCartInput({
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 3 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  }, (inputPath) => {
++    const out = run(['cart', '--input', inputPath]);
++    assert.deepStrictEqual(JSON.parse(out), {
++      subtotal_cents: 15100,
++      line_discount_cents: 3500,
++      coupon_discount_cents: 1160,
++      tax_cents: 858,
++      shipping_cents: 0,
++      total_cents: 11298,
++      items: [
++        {
++          sku: 'TEE',
++          qty: 3,
++          line_subtotal_cents: 7500,
++          line_discount_cents: 2500,
++          line_total_cents: 5000,
++        },
++        {
++          sku: 'BAG',
++          qty: 2,
++          line_subtotal_cents: 6400,
++          line_discount_cents: 1000,
++          line_total_cents: 5400,
++        },
++        {
++          sku: 'MUG',
++          qty: 1,
++          line_subtotal_cents: 1200,
++          line_discount_cents: 0,
++          line_total_cents: 1200,
++        },
++      ],
++    });
++  });
++});
++
++test('cart reports combined quantities above stock', () => {
++  withCartInput({
++    state: 'OR',
++    coupon: null,
++    items: [
++      { sku: 'BAG', qty: 3 },
++      { sku: 'BAG', qty: 2 },
++    ],
++  }, (inputPath) => {
++    assert.throws(
++      () => run(['cart', '--input', inputPath]),
++      (error) => {
++        assert.strictEqual(error.status, 2);
++        assert.strictEqual(error.stdout, '');
++        assert.deepStrictEqual(JSON.parse(error.stderr), {
++          error: 'invalid_stock',
++          sku: 'BAG',
++          available: 4,
++          requested: 5,
++        });
++        return true;
++      },
++    );
++  });
++});

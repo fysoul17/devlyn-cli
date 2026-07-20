@@ -1,0 +1,206 @@
+{
+  "base_ref": {
+    "branch": "master",
+    "sha": "17fce0afa9c75bad4fee0d4b139240fbde99e41c"
+  },
+  "bypasses": [],
+  "complexity": "large",
+  "criteria": [],
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "implement_passed_sha": "17fce0afa9c75bad4fee0d4b139240fbde99e41c",
+  "mode": "free-form",
+  "pair_verify": true,
+  "phases": {
+    "build_gate": {
+      "artifacts": {
+        "findings_file": ".devlyn/build_gate.findings.jsonl",
+        "log_file": ".devlyn/build_gate.log.md"
+      },
+      "completed_at": "2026-07-20T11:31:45.281Z",
+      "duration_ms": 142724,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-20T11:29:22.557Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "cleanup": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-20T11:32:57.641Z",
+      "duration_ms": 54884,
+      "engine": "codex",
+      "model_effective": null,
+      "model_requested": null,
+      "post_sha": "34a2b148132427cb15660f32748cd8b3c9d8c6bc",
+      "pre_sha": "34a2b148132427cb15660f32748cd8b3c9d8c6bc",
+      "round": 0,
+      "started_at": "2026-07-20T11:32:02.757Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "final_report": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-20T11:52:11.989Z",
+      "duration_ms": 16777,
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-20T11:51:55.212Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "implement": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-20T11:44:15.999Z",
+      "duration_ms": 110094,
+      "engine": "codex",
+      "history": [
+        {
+          "completed_at": "2026-07-20T11:28:11.336Z",
+          "duration_ms": 423912,
+          "started_at": "2026-07-20T11:21:07.424Z",
+          "verdict": "PASS"
+        }
+      ],
+      "model_effective": null,
+      "model_requested": null,
+      "round": 1,
+      "started_at": "2026-07-20T11:42:25.905Z",
+      "sub_verdicts": null,
+      "triggered_by": "verify",
+      "verdict": "PASS"
+    },
+    "plan": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-20T11:20:45.134Z",
+      "duration_ms": 249894,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-20T11:16:35.240Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "probe_derive": null,
+    "surface_close": {
+      "durability": [
+        {
+          "origin_phase": "verify",
+          "receipt_path": ".devlyn/closure-durability.round-1.json",
+          "receipt_sha256": "ef7f6a0c257014d26efeccf78b81ccf665a8481da25aeff222b6a2499aef3b11",
+          "restore_commit_sha": null,
+          "round": 1
+        }
+      ]
+    },
+    "verify": {
+      "artifacts": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "log_file": null
+      },
+      "completed_at": "2026-07-20T11:51:30.897Z",
+      "duration_ms": 425721,
+      "engine": "codex",
+      "history": [
+        {
+          "completed_at": "2026-07-20T11:42:15.712Z",
+          "duration_ms": 485338,
+          "started_at": "2026-07-20T11:34:10.374Z",
+          "verdict": "NEEDS_WORK"
+        }
+      ],
+      "judge_durations_ms": {
+        "judge": 60000,
+        "pair_judge": 85417
+      },
+      "merged": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "summary_file": ".devlyn/verify-merge.summary.json",
+        "verdict": "PASS"
+      },
+      "model_effective": null,
+      "model_requested": null,
+      "pair_trigger": {
+        "eligible": true,
+        "reasons": [
+          "pair.default",
+          "mode.pair-verify",
+          "complexity.large",
+          "risk.high"
+        ],
+        "skipped_reason": null
+      },
+      "round": 1,
+      "started_at": "2026-07-20T11:44:25.176Z",
+      "sub_verdicts": {
+        "judge": "PASS",
+        "mechanical": "PASS",
+        "pair_judge": "PASS"
+      },
+      "triggered_by": "verify",
+      "verdict": "PASS"
+    }
+  },
+  "risk_probes_digest": null,
+  "risk_profile": {
+    "high_risk": true,
+    "pair_default_enabled": true,
+    "reasons": [
+      "payment/money domain: payout, processing_fee_cents, dispute_fee_cents, reserve_cents computed over ledger events",
+      "idempotency/replay/duplicate: explicit idempotent event handling + conflicting_duplicate exit-2 contract",
+      "persistence/data mutation semantics: per-merchant accumulation and rollover thresholds must be exact",
+      "auto-risk-probes demoted: plan surface small (2 paths)"
+    ],
+    "risk_probes_enabled": false,
+    "risk_probes_explicit": false
+  },
+  "rounds": {
+    "global": 1,
+    "max_rounds": 4
+  },
+  "run_id": "rs-20260720T111620Z-d55e9412e513",
+  "source": {
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "e7fc6010b37b2be2caf18d11f45dc57c2c286e9176e6cf4ac49c08b9752b9138",
+    "goal_path": ".devlyn/goal.raw.txt",
+    "goal_sha256": "5d0f111cdf7de05c79efb9cacd540758fc3336ce691cda1888dd4fe8bedf71d9",
+    "spec_path": null,
+    "spec_sha256": null,
+    "type": "generated"
+  },
+  "started_at": "2026-07-20T11:16:20Z",
+  "verify": {
+    "coverage_failed": false,
+    "pair_trigger": {
+      "eligible": true,
+      "reasons": [
+        "pair.default",
+        "mode.pair-verify",
+        "complexity.large",
+        "risk.high"
+      ],
+      "skipped_reason": null
+    }
+  },
+  "version": "3.0"
+}

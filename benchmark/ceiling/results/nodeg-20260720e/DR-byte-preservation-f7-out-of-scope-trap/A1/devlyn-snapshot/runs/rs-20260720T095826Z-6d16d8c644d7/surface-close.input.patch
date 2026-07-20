@@ -1,0 +1,38 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..9bc3507 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,8 +57,18 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
+-      return;
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (format === 'json') {
++        console.log(JSON.stringify({ version: readPackageVersion() }));
++        return;
++      }
++      console.error(`Unsupported version format: ${format}`);
++      process.exit(1);
+     }
+     default:
+       console.error(`Unknown command: ${command}`);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..5f80e60 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,8 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON package version', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.strictEqual(out, '{"version":"0.1.0"}\n');
++});

@@ -1,0 +1,6 @@
+PASS
+
+- Fixed duplicate detection before full validation for already-seen string IDs in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/fee93957fc8fe/A1/repo/bin/cli.js:98).
+- Added the focused regression test in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/fee93957fc8fe/A1/repo/tests/cli.test.js:89).
+- `node --test tests/cli.test.js`: 6/6 passing.
+- `npm test`: payout tests pass; 3 unrelated server tests cannot bind `0.0.0.0` in this sandbox (`EPERM`).

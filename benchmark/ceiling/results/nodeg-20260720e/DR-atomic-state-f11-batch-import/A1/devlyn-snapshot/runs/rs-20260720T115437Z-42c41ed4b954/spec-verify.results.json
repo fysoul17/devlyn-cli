@@ -1,0 +1,45 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "npm test",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "ion_ms: 5.94225\n  ...\n# Subtest: POST /items/import rejects an invalid middle item without changes\nok 8 - POST /items/import rejects an invalid middle item without changes\n  ---\n  duration_ms: 3.066792\n  ...\n# Subtest: POST /items/import rejects a non-array items value without changes\nok 9 - POST /items/import rejects a non-array items value without changes\n  ---\n  duration_ms: 2.321167\n  ...\n1..9\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 111.998833\n"
+    },
+    {
+      "index": 1,
+      "cmd": "node .devlyn/probes/P1.js",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "P1 PASS"
+      ],
+      "stdout_not_contains": [
+        "FAIL"
+      ],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "P1 PASS\n"
+    },
+    {
+      "index": 2,
+      "cmd": "node .devlyn/probes/P2.js",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "P2 PASS"
+      ],
+      "stdout_not_contains": [
+        "FAIL"
+      ],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "P2 PASS\n"
+    }
+  ]
+}

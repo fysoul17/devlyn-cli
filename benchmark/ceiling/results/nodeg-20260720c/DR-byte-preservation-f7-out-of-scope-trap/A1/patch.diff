@@ -1,0 +1,43 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..7da6a3e 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIdx = rest.indexOf('--format');
++      if (formatIdx === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      if (rest[formatIdx + 1] === 'json') {
++        console.log(JSON.stringify({ version: readPackageVersion() }));
++        return;
++      }
++      console.error('--format supports only json');
++      process.exit(1);
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..6e1c99e 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,15 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version with JSON format prints the package version', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.match(JSON.parse(out).version, /^\d+\.\d+\.\d+$/);
++});
++
++test('version rejects unsupported formats', () => {
++  assert.throws(
++    () => run(['version', '--format', 'yaml']),
++    (error) => error.status === 1 && error.stderr.includes('--format supports only json'),
++  );
++});

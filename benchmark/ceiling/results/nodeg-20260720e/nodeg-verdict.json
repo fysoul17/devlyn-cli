@@ -1,0 +1,491 @@
+{
+  "schema_version": 1,
+  "cell_owner": "iter-0068",
+  "run_id": "nodeg-20260720e",
+  "cohort_identity": {
+    "runner_commit_sha": "b983bf68c298dc0151b2bcf47c7b5f13b1fcb707",
+    "cli_versions": {
+      "a_claude": "2.1.215 (Claude Code)",
+      "a_codex": "codex-cli 0.144.5",
+      "judge_sonnet": "2.1.215 (Claude Code)",
+      "judge_codex": "codex-cli 0.144.5"
+    },
+    "resolved_models": {
+      "a_orchestrator": [
+        "claude-sonnet-5"
+      ],
+      "a_executor": [
+        "gpt-5.6-terra"
+      ],
+      "judge_sonnet": [
+        "claude-sonnet-5"
+      ],
+      "judge_codex": [
+        "gpt-5.6-terra"
+      ]
+    },
+    "a_executor_resolution_evidence": "run-ceiling-arm.sh benchmark-owned CODEX_HOME config pin"
+  },
+  "registered_controls": [
+    "F7",
+    "F25",
+    "F26",
+    "F11",
+    "F12",
+    "F23",
+    "FS1"
+  ],
+  "selected_controls": [
+    "F7",
+    "F25",
+    "F26",
+    "F11",
+    "F12",
+    "F23",
+    "FS1"
+  ],
+  "excluded_unfair": [
+    "F21"
+  ],
+  "frozen_b_sources": [
+    {
+      "control_id": "F7",
+      "task": "DR-byte-preservation-f7-out-of-scope-trap",
+      "run_id": "iter0068-gate-20260711h",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1",
+      "patch_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1/patch.diff",
+      "patch_sha256": "9952235b2929acff36abb29563b37e6b1391ebf47af102d5a0ed7371684a2c6c",
+      "objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1/objective.json",
+      "objective_sha256": "c17da65c08e1179728316f85fb5f7f2db3edba5eb4c462beadbe2ff5cec2bcb5",
+      "timing_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1/timing.json",
+      "timing_sha256": "21498d83489e5c0376d6807fc5583e65aba7c347e82914028c5833d38998b70a",
+      "resolved": true,
+      "elapsed_seconds": 67
+    },
+    {
+      "control_id": "F25",
+      "task": "DR-shape-compound-rules-f25-cart",
+      "run_id": "iter0068-gate-20260711h",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-shape-compound-rules-f25-cart/B1",
+      "patch_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-shape-compound-rules-f25-cart/B1/patch.diff",
+      "patch_sha256": "f8c9b16667add092a1490568d7328731865db8a84f9ff5e79165e5e229b44904",
+      "objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-shape-compound-rules-f25-cart/B1/objective.json",
+      "objective_sha256": "0fcf7fe044782d24991e713ea045ab224fd904d01f9412f32c6e77f1734b3280",
+      "timing_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-shape-compound-rules-f25-cart/B1/timing.json",
+      "timing_sha256": "cf87370d304389905ecb4a99e383ec5d7a379d9c1b4feb9c10f49c5ad6ed95cd",
+      "resolved": true,
+      "elapsed_seconds": 263
+    },
+    {
+      "control_id": "F26",
+      "task": "DR-ledger-rounding-consistency-f26-payout",
+      "run_id": "iter0068-gate-20260711h",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-ledger-rounding-consistency-f26-payout/B1",
+      "patch_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-ledger-rounding-consistency-f26-payout/B1/patch.diff",
+      "patch_sha256": "6b787e9f3adbc247f37f684aad775c6fd71b2ba5647ddb6f58e637f7a04cd8ef",
+      "objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-ledger-rounding-consistency-f26-payout/B1/objective.json",
+      "objective_sha256": "db1a38ecb4ac9e0a42d75d1f8b06e7059940422c4a345d82379bf06bf348a192",
+      "timing_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-ledger-rounding-consistency-f26-payout/B1/timing.json",
+      "timing_sha256": "1924b864cfdae8f73e8793f3924984ed3990ffdd1ccc095ca07a63a691c16841",
+      "resolved": true,
+      "elapsed_seconds": 259
+    },
+    {
+      "control_id": "F11",
+      "task": "DR-atomic-state-f11-batch-import",
+      "run_id": "iter0068-gate-20260711h",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-atomic-state-f11-batch-import/B1",
+      "patch_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-atomic-state-f11-batch-import/B1/patch.diff",
+      "patch_sha256": "d319c2ffff25dfc67027053f8d3abbb6ff7a798be773465078a24653cc688c6b",
+      "objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-atomic-state-f11-batch-import/B1/objective.json",
+      "objective_sha256": "fb859dc8a1e9c9f2752708d16bc87024fa3baebe9b862bac4e86ca491ead2750",
+      "timing_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-atomic-state-f11-batch-import/B1/timing.json",
+      "timing_sha256": "15915e52027675a49fdec39635cc92a1cf84b5536d2c317184fbb0f0aa8e94e6",
+      "resolved": true,
+      "elapsed_seconds": 123
+    },
+    {
+      "control_id": "F12",
+      "task": "DR-auth-signature-f12-webhook",
+      "run_id": "iter0068-f12supp2-20260712",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-f12supp2-20260712/DR-auth-signature-f12-webhook/B1",
+      "patch_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-f12supp2-20260712/DR-auth-signature-f12-webhook/B1/patch.diff",
+      "patch_sha256": "e14c0904c759b31cf47b8ca934c7e57bd2ed81bae81be6fac3aa55fda9b875bd",
+      "objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-f12supp2-20260712/DR-auth-signature-f12-webhook/B1/objective.json",
+      "objective_sha256": "b0c0e8781b744eaa35e1dfe860898536d175235ac9ee0a74fea14a77fb18c351",
+      "timing_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-f12supp2-20260712/DR-auth-signature-f12-webhook/B1/timing.json",
+      "timing_sha256": "6c472da6658b39392a86133499bd91a4fe64f42b6fd6df69a665c31264a15039",
+      "resolved": true,
+      "elapsed_seconds": 224
+    },
+    {
+      "control_id": "F23",
+      "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+      "run_id": "iter0068-gate-20260711h",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1",
+      "patch_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1/patch.diff",
+      "patch_sha256": "21ae20c6ddd6ef2b3d0eefd25b7ab6664ecfc4b843ce0f123369f4fcda1bea6b",
+      "objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1/objective.json",
+      "objective_sha256": "0fe651ed544d97005efdced42a1987655c39d24492337acca2ac04552589eb7b",
+      "timing_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1/timing.json",
+      "timing_sha256": "c201fe18656ed7904a5ce49993ca334c9e07a73ec6e2b5f32333176a5ab9541d",
+      "resolved": true,
+      "elapsed_seconds": 344
+    },
+    {
+      "control_id": "FS1",
+      "task": "FS1-schedule-max-runs",
+      "run_id": "iter0068-gate-20260711h",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1",
+      "patch_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1/patch.diff",
+      "patch_sha256": "e47a0d61e47a814aac8d07a66355a676e124c77a3ddad8ecd48636bf6d488d95",
+      "objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1/objective.json",
+      "objective_sha256": "32ce180013ec8425c946b33670d23f1b6dfb7a83f5b2a6e3c86e4927eb7e9a04",
+      "timing_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1/timing.json",
+      "timing_sha256": "28773bda97d94babea2afc9fe0507bc6877d56bfdf33516158216c2f92b1a609",
+      "resolved": true,
+      "elapsed_seconds": 310
+    }
+  ],
+  "bars": {
+    "objective": {
+      "per_row": {
+        "F7": {
+          "task": "DR-byte-preservation-f7-out-of-scope-trap",
+          "a_resolved": true,
+          "frozen_b_resolved": true,
+          "passed": true,
+          "a_objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/nodeg-20260720e/DR-byte-preservation-f7-out-of-scope-trap/A1/objective.json",
+          "a_objective_sha256": "350bcd041c19b57b8d07f52a7476d21c664b99c702d3f49cf180dbac27031f72"
+        },
+        "F25": {
+          "task": "DR-shape-compound-rules-f25-cart",
+          "a_resolved": true,
+          "frozen_b_resolved": true,
+          "passed": true,
+          "a_objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/nodeg-20260720e/DR-shape-compound-rules-f25-cart/A1/objective.json",
+          "a_objective_sha256": "ff7affb0612476112bed4b3518872f1e85da545f9c30da43b2294bf654a4df19"
+        },
+        "F26": {
+          "task": "DR-ledger-rounding-consistency-f26-payout",
+          "a_resolved": true,
+          "frozen_b_resolved": true,
+          "passed": true,
+          "a_objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/nodeg-20260720e/DR-ledger-rounding-consistency-f26-payout/A1/objective.json",
+          "a_objective_sha256": "c84c5fe74ba84bcf8b2975edb89b6d478db54429386a91b405a1643394c030f4"
+        },
+        "F11": {
+          "task": "DR-atomic-state-f11-batch-import",
+          "a_resolved": true,
+          "frozen_b_resolved": true,
+          "passed": true,
+          "a_objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/nodeg-20260720e/DR-atomic-state-f11-batch-import/A1/objective.json",
+          "a_objective_sha256": "2ecb4a1f7cc9aeada4c4f481dae795896be464c29c9fdd0f59ca67800901af2f"
+        },
+        "F12": {
+          "task": "DR-auth-signature-f12-webhook",
+          "a_resolved": true,
+          "frozen_b_resolved": true,
+          "passed": true,
+          "a_objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/nodeg-20260720e/DR-auth-signature-f12-webhook/A1/objective.json",
+          "a_objective_sha256": "802c70df43f9bfca21821d5867316ec12e9c28ecf6ab273827e5cf7ccb25dae1"
+        },
+        "F23": {
+          "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+          "a_resolved": false,
+          "frozen_b_resolved": true,
+          "passed": false,
+          "a_objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/nodeg-20260720e/DR-allocation-fefo-priority-rollback-f23-fulfillment/A1/objective.json",
+          "a_objective_sha256": "5e7c363a95d3315a9b02b15b03ec2336d354a6ae0211976f760ef23a92148c77"
+        },
+        "FS1": {
+          "task": "FS1-schedule-max-runs",
+          "a_resolved": false,
+          "frozen_b_resolved": true,
+          "passed": false,
+          "a_objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-stageB/benchmark/ceiling/results/nodeg-20260720e/FS1-schedule-max-runs/A1/objective.json",
+          "a_objective_sha256": "22a24b3fa43857ffa59eddf8ee26f7dc01234f10e952ea961902eaaa82aabc69"
+        }
+      },
+      "passed": false
+    },
+    "quality": {
+      "per_row": {
+        "F7": {
+          "task": "DR-byte-preservation-f7-out-of-scope-trap",
+          "judges": {
+            "sonnet": {
+              "runtime_model": "claude-sonnet-5",
+              "cli_version": "2.1.215 (Claude Code)",
+              "axes": {
+                "design_coherence": "B_win",
+                "robustness": "B_win",
+                "spec_long_horizon_consistency": "B_win",
+                "maintainability_api_ergonomics": "B_win"
+              },
+              "valid": true
+            },
+            "codex": {
+              "runtime_model": "gpt-5.6-terra",
+              "cli_version": "codex-cli 0.144.5",
+              "axes": {
+                "design_coherence": "B_win",
+                "robustness": "B_win",
+                "spec_long_horizon_consistency": "B_win",
+                "maintainability_api_ergonomics": "B_win"
+              },
+              "valid": true
+            }
+          },
+          "passed": false,
+          "rule": "both judges valid and A is never ranked below frozen B on any axis"
+        },
+        "F25": {
+          "task": "DR-shape-compound-rules-f25-cart",
+          "judges": {
+            "sonnet": {
+              "runtime_model": "claude-sonnet-5",
+              "cli_version": "2.1.215 (Claude Code)",
+              "axes": {
+                "design_coherence": "B_win",
+                "robustness": "B_win",
+                "spec_long_horizon_consistency": "B_win",
+                "maintainability_api_ergonomics": "B_win"
+              },
+              "valid": true
+            },
+            "codex": {
+              "runtime_model": "gpt-5.6-terra",
+              "cli_version": "codex-cli 0.144.5",
+              "axes": {
+                "design_coherence": "B_win",
+                "robustness": "B_win",
+                "spec_long_horizon_consistency": "B_win",
+                "maintainability_api_ergonomics": "B_win"
+              },
+              "valid": true
+            }
+          },
+          "passed": false,
+          "rule": "both judges valid and A is never ranked below frozen B on any axis"
+        },
+        "F26": {
+          "task": "DR-ledger-rounding-consistency-f26-payout",
+          "judges": {
+            "sonnet": {
+              "runtime_model": "claude-sonnet-5",
+              "cli_version": "2.1.215 (Claude Code)",
+              "axes": {
+                "design_coherence": "B_win",
+                "robustness": "B_win",
+                "spec_long_horizon_consistency": "B_win",
+                "maintainability_api_ergonomics": "B_win"
+              },
+              "valid": true
+            },
+            "codex": {
+              "runtime_model": "gpt-5.6-terra",
+              "cli_version": "codex-cli 0.144.5",
+              "axes": {
+                "design_coherence": "B_win",
+                "robustness": "B_win",
+                "spec_long_horizon_consistency": "B_win",
+                "maintainability_api_ergonomics": "B_win"
+              },
+              "valid": true
+            }
+          },
+          "passed": false,
+          "rule": "both judges valid and A is never ranked below frozen B on any axis"
+        },
+        "F11": {
+          "task": "DR-atomic-state-f11-batch-import",
+          "judges": {
+            "sonnet": {
+              "runtime_model": "claude-sonnet-5",
+              "cli_version": "2.1.215 (Claude Code)",
+              "axes": {
+                "design_coherence": "B_win",
+                "robustness": "B_win",
+                "spec_long_horizon_consistency": "B_win",
+                "maintainability_api_ergonomics": "A_win"
+              },
+              "valid": true
+            },
+            "codex": {
+              "runtime_model": "gpt-5.6-terra",
+              "cli_version": "codex-cli 0.144.5",
+              "axes": {
+                "design_coherence": "tie",
+                "robustness": "B_win",
+                "spec_long_horizon_consistency": "B_win",
+                "maintainability_api_ergonomics": "A_win"
+              },
+              "valid": true
+            }
+          },
+          "passed": false,
+          "rule": "both judges valid and A is never ranked below frozen B on any axis"
+        },
+        "F12": {
+          "task": "DR-auth-signature-f12-webhook",
+          "judges": {
+            "sonnet": {
+              "runtime_model": "claude-sonnet-5",
+              "cli_version": "2.1.215 (Claude Code)",
+              "axes": {
+                "design_coherence": "A_win",
+                "robustness": "A_win",
+                "spec_long_horizon_consistency": "A_win",
+                "maintainability_api_ergonomics": "tie"
+              },
+              "valid": true
+            },
+            "codex": {
+              "runtime_model": "gpt-5.6-terra",
+              "cli_version": "codex-cli 0.144.5",
+              "axes": {
+                "design_coherence": "B_win",
+                "robustness": "A_win",
+                "spec_long_horizon_consistency": "A_win",
+                "maintainability_api_ergonomics": "B_win"
+              },
+              "valid": true
+            }
+          },
+          "passed": false,
+          "rule": "both judges valid and A is never ranked below frozen B on any axis"
+        },
+        "F23": {
+          "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+          "judges": {
+            "sonnet": {
+              "runtime_model": "claude-sonnet-5",
+              "cli_version": "2.1.215 (Claude Code)",
+              "axes": {
+                "design_coherence": "B_win",
+                "robustness": "B_win",
+                "spec_long_horizon_consistency": "A_win",
+                "maintainability_api_ergonomics": "B_win"
+              },
+              "valid": true
+            },
+            "codex": {
+              "runtime_model": "gpt-5.6-terra",
+              "cli_version": "codex-cli 0.144.5",
+              "axes": {
+                "design_coherence": "B_win",
+                "robustness": "B_win",
+                "spec_long_horizon_consistency": "B_win",
+                "maintainability_api_ergonomics": "B_win"
+              },
+              "valid": true
+            }
+          },
+          "passed": false,
+          "rule": "both judges valid and A is never ranked below frozen B on any axis"
+        },
+        "FS1": {
+          "task": "FS1-schedule-max-runs",
+          "judges": {
+            "sonnet": {
+              "runtime_model": "claude-sonnet-5",
+              "cli_version": "2.1.215 (Claude Code)",
+              "axes": {
+                "design_coherence": "B_win",
+                "robustness": "B_win",
+                "spec_long_horizon_consistency": "B_win",
+                "maintainability_api_ergonomics": "B_win"
+              },
+              "valid": true
+            },
+            "codex": {
+              "runtime_model": "gpt-5.6-terra",
+              "cli_version": "codex-cli 0.144.5",
+              "axes": {
+                "design_coherence": "B_win",
+                "robustness": "B_win",
+                "spec_long_horizon_consistency": "B_win",
+                "maintainability_api_ergonomics": "B_win"
+              },
+              "valid": true
+            }
+          },
+          "passed": false,
+          "rule": "both judges valid and A is never ranked below frozen B on any axis"
+        }
+      },
+      "passed": false
+    },
+    "wall": {
+      "per_row": {
+        "F7": {
+          "task": "DR-byte-preservation-f7-out-of-scope-trap",
+          "a_elapsed_seconds": 1839,
+          "frozen_b_elapsed_seconds": 67,
+          "a_to_frozen_b_ratio": 27.44776119402985,
+          "cap": 3.0,
+          "passed": false
+        },
+        "F25": {
+          "task": "DR-shape-compound-rules-f25-cart",
+          "a_elapsed_seconds": 2326,
+          "frozen_b_elapsed_seconds": 263,
+          "a_to_frozen_b_ratio": 8.844106463878328,
+          "cap": 3.0,
+          "passed": false
+        },
+        "F26": {
+          "task": "DR-ledger-rounding-consistency-f26-payout",
+          "a_elapsed_seconds": 2820,
+          "frozen_b_elapsed_seconds": 259,
+          "a_to_frozen_b_ratio": 10.888030888030888,
+          "cap": 3.0,
+          "passed": false
+        },
+        "F11": {
+          "task": "DR-atomic-state-f11-batch-import",
+          "a_elapsed_seconds": 2294,
+          "frozen_b_elapsed_seconds": 123,
+          "a_to_frozen_b_ratio": 18.650406504065042,
+          "cap": 3.0,
+          "passed": false
+        },
+        "F12": {
+          "task": "DR-auth-signature-f12-webhook",
+          "a_elapsed_seconds": 3605,
+          "frozen_b_elapsed_seconds": 224,
+          "a_to_frozen_b_ratio": 16.09375,
+          "cap": 3.0,
+          "passed": false
+        },
+        "F23": {
+          "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+          "a_elapsed_seconds": 2073,
+          "frozen_b_elapsed_seconds": 344,
+          "a_to_frozen_b_ratio": 6.026162790697675,
+          "cap": 3.0,
+          "passed": false
+        },
+        "FS1": {
+          "task": "FS1-schedule-max-runs",
+          "a_elapsed_seconds": 2409,
+          "frozen_b_elapsed_seconds": 310,
+          "a_to_frozen_b_ratio": 7.7709677419354835,
+          "cap": 3.0,
+          "passed": false
+        }
+      },
+      "cap": 3.0,
+      "cap_source": "autoresearch/NORTH-STAR.md:254",
+      "passed": false
+    }
+  }
+}

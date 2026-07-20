@@ -1,0 +1,22 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/",
+      "exit_code": 0
+    },
+    {
+      "cmd": "printf '%s' '{\"state\":\"OR\",\"coupon\":null,\"items\":[{\"sku\":\"MUG\",\"qty\":1}]}' > .devlyn/spec-verify-cart-ok.json && node bin/cli.js cart --input .devlyn/spec-verify-cart-ok.json",
+      "exit_code": 0,
+      "stdout_contains": [
+        "{\"subtotal_cents\":1200,\"line_discount_cents\":0,\"coupon_discount_cents\":0,\"tax_cents\":0,\"shipping_cents\":699,\"total_cents\":1899,\"items\":[{\"sku\":\"MUG\",\"qty\":1,\"line_subtotal_cents\":1200,\"line_discount_cents\":0,\"line_total_cents\":1200}]}"
+      ]
+    },
+    {
+      "cmd": "printf '%s' '{\"state\":\"OR\",\"coupon\":null,\"items\":[{\"sku\":\"BAG\",\"qty\":3},{\"sku\":\"BAG\",\"qty\":2}]}' > .devlyn/spec-verify-cart-stock.json && node bin/cli.js cart --input .devlyn/spec-verify-cart-stock.json",
+      "exit_code": 2,
+      "stdout_contains": [
+        "{\"error\":\"invalid_stock\",\"sku\":\"BAG\",\"available\":4,\"requested\":5}"
+      ]
+    }
+  ]
+}

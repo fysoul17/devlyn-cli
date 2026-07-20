@@ -1,0 +1,24 @@
+{
+  "blocks": [
+    {
+      "action": "none",
+      "classification": "SURVIVED",
+      "finding_targeted": false,
+      "id": "tests/server.test.js:1:7e0e2066465b67e0",
+      "path": "tests/server.test.js",
+      "pre_fix_span": [
+        131,
+        142
+      ]
+    }
+  ],
+  "fix_commit_sha": "e628ed049cd8da10f7378ecb1486759bfc354c80",
+  "origin_phase": "verify",
+  "post_restore_sha": "e628ed049cd8da10f7378ecb1486759bfc354c80",
+  "pre_fix_sha": "87fac0e3cc6de8a931574783aba8fcedff8d2ab5",
+  "restore_commit_sha": null,
+  "round": 1,
+  "schema_version": 1,
+  "surface_close_commit_sha": "87fac0e3cc6de8a931574783aba8fcedff8d2ab5",
+  "triggering_findings_sha256": "cdf79d5fcb710627aa88796d9fd729cbeaf95ddaa13b1acc260129021c746777"
+}

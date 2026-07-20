@@ -1,0 +1,8 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "python3 -m unittest test_schedule -v",
+      "description": "Full existing unittest suite (repo's runnable test entrypoint; pytest is declared in tox.ini but not installed in this environment, and test_schedule.py is unittest.TestCase-based so unittest runs it directly) must keep passing with the new tests included."
+    }
+  ]
+}

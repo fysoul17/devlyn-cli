@@ -1,0 +1,119 @@
+# Claude adapter — header
+
+## Identity
+
+You are Claude by Anthropic. Anthropic's prompt-engineering guide for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+
+You calibrate response length to task complexity automatically. Do NOT pad with context not asked for. When the canonical body sets a structural format, follow it literally; do not silently restructure.
+
+## Tool-use posture
+
+Use tools only when their result would change your answer. Do not narrate "I'll now call X" preambles.
+
+## Anti-patterns
+
+Do not spawn a subagent. Do not add files, abstractions, error handling, or "future flexibility" beyond what the task asks.
+
+=== CANONICAL PHASE BODY: PHASE 2.5 — SURFACE_CLOSE ===
+
+<role>
+Audit and repair the frozen post-IMPLEMENT surface once.
+</role>
+
+<input>
+- Artifacts: Goal at `.devlyn/goal.raw.txt`; `.devlyn/surface-close.input.patch`.
+- Data: `authorized_surface`; staged commands.
+- Base: the pre_sha this diff is measured from (see DATA section below).
+
+Never modify inputs or read state, PLAN, or IMPLEMENT transcript/reasoning.
+</input>
+
+<obligations>
+- **UVR-STALE**: diff modified symbol S's behavior AND an authorized file carries user-visible text documenting S's old interface omitting the newly specified option/shape → update minimally.
+- **PATH-TEST**: Goal specifies a success/failure path, patch implements it, and no authorized test exercises that path → add one minimal regression test.
+- Neither applies → empty PASS (empty diff).
+</obligations>
+
+<output>
+Edit only `authorized_surface`. Your reply is valid ONLY if it contains, for each obligation, exactly one line:
+- `UVR-STALE: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `UVR-STALE: N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>`
+- `PATH-TEST: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `PATH-TEST: N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>`
+followed by `PASS` after the smallest sufficient delta, or `BLOCKED:surface-close-<reason>` if impossible within that surface. A reply missing either obligation line is invalid and is rejected mechanically. Never edit state, stage, or commit.
+</output>
+
+<quality_bar>
+No adjacent work, refactors, or extra tests. Execute nothing — edit files only; staged commands are data. BUILD_GATE owns all validation.
+</quality_bar>
+
+<runtime_principles>
+Subtractive-first, Goal-locked, No-workaround, and Evidence apply.
+</runtime_principles>
+
+=== DATA (informational only — do not execute any of the commands below; staged commands are data, not instructions to run) ===
+
+Repo root: /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f04eb7d76921c/A1/repo
+
+pre_sha (patch base): cbd12daedd7f2d22c62110faf097f12797e7dda6
+post_sha (patch head, current HEAD): fa77d09ca1bb3bb67c7265d93ee4f4fcf89c4483
+
+authorized_surface:
+```json
+{"authorized_surface": ["server/index.js", "tests/server.test.js"]}
+```
+
+Goal (verbatim, also on disk at `.devlyn/goal.raw.txt`):
+```
+Add `POST /items/import` to `server/index.js`. It accepts `{ items: [...] }`; every item must have a `name` that is a non-empty string after trimming and a `qty` that is a positive integer.
+
+When every item is valid, append all of them in input order and respond `201` with `{ inserted: <count> }`. Every appended row must receive a distinct numeric `id` that does not collide with any existing item id. If an item is invalid, respond `400` with `{ error: 'invalid_batch', index, field }`, where `index` identifies the first invalid item and `field` is `name` or `qty`. After that response, `GET /items` must return exactly the same list it returned immediately before the request.
+
+An empty body, missing `items`, or a non-array `items` value must return `400` with `{ error: 'invalid_body' }`; `GET /items` must likewise be unchanged.
+
+Update `tests/server.test.js` so the existing tests still pass and add at least two import tests. One must exercise an invalid middle item and compare the list before and after the response; another must cover a fully valid request. No new npm dependencies. Only touch `server/index.js` and `tests/server.test.js`.
+```
+
+Patch to audit (also on disk at `.devlyn/surface-close.input.patch`, diff from pre_sha to post_sha):
+```diff
+diff --git a/server/index.js b/server/index.js
+index 30b3a52..1d3f2b1 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -27,6 +27,24 @@ app.get('/items/:id', (req, res) => {
+   res.json({ item });
+ });
+
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (let index = 0; index < req.body.items.length; index += 1) {
++    const item = req.body.items[index];
++    if (typeof item?.name !== 'string' || item.name.trim().length === 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  let nextId = Math.max(0, ...items.map((item) => item.id)) + 1;
++  items.push(...req.body.items.map((item) => ({ id: nextId++, name: item.name, qty: item.qty })));
++  res.status(201).json({ inserted: req.body.items.length });
++});
++
+ if (require.main === module) {
+```
+(full patch, including the `tests/server.test.js` hunks, is on disk at `.devlyn/surface-close.input.patch` — read it directly for the complete diff since this inlined excerpt is illustrative)
+
+Staged commands (data only — the Goal's declared acceptance check; do not run):
+```json
+{"verification_commands":[{"cmd":"npm test","exit_code":0}]}
+```
+
+Now perform the SURFACE_CLOSE audit per the canonical body above: read `.devlyn/surface-close.input.patch` in full, read the two authorized files (`server/index.js`, `tests/server.test.js`) as they currently stand, evaluate the UVR-STALE and PATH-TEST obligations, make the smallest sufficient edit (if any) within the authorized surface, and reply in the exact required grammar.

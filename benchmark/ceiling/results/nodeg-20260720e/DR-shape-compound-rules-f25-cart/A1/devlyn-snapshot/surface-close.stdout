@@ -1,0 +1,8 @@
+Both files already reflect the frozen patch correctly: the USAGE text was updated to document the new `cart` command's interface, and the goal's explicit test-count contract ("at least two new tests... including one successful cart and one validation failure") is already satisfied by the two tests present (success case + `invalid_stock` failure case). I verified the cart math against `data/catalog.json` by hand and it checks out (subtotal 15100, line discount 3500, coupon 1160, tax 858, shipping 0, total 11298), confirming the test isn't masking a stale/incorrect surface.
+
+No edit needed — both obligations are N/A.
+
+UVR-STALE: N/A bin/cli.js:8 — USAGE block already documents `cart --input PATH` and its purpose; no stale text describes an old interface.
+PATH-TEST: N/A tests/cli.test.js:40 — Goal's explicit test contract ("at least two new tests... including one successful cart and one validation failure") is already met by the added success test and the `invalid_stock` failure test; adding more per-error-type tests would be adjacent work beyond the stated contract.
+
+PASS

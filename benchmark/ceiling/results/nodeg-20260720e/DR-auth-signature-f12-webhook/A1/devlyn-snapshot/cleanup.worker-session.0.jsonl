@@ -1,0 +1,6 @@
+model: gpt-5.6-terra
+No cleanup changes needed: all additions are required and referenced; no allowlisted artifacts found. Post-cleanup diff is empty.
+
+`npm test` is blocked by sandbox networking (`listen EPERM` on `0.0.0.0`); 3 non-server tests passed, 6 server tests could not start.
+
+PASS

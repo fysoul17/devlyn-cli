@@ -1,0 +1,160 @@
+{
+  "FS-0075-D": {
+    "D1_legacy_interior": {
+      "fired_count": 0,
+      "fired_rows": [],
+      "half": 0,
+      "per_row": [],
+      "population": 0,
+      "verdict": "PASS"
+    },
+    "D2_complete_rows": {
+      "fired_count": 0,
+      "fired_rows": [],
+      "half": 4,
+      "per_row": [
+        {
+          "control_id": "F7",
+          "denominator_ms": 508666,
+          "fired": false,
+          "unallocated_ms": 0,
+          "unallocated_ratio": 0.0
+        },
+        {
+          "control_id": "F25",
+          "denominator_ms": 1088494,
+          "fired": false,
+          "unallocated_ms": 0,
+          "unallocated_ratio": 0.0
+        },
+        {
+          "control_id": "F26",
+          "denominator_ms": 911038,
+          "fired": false,
+          "unallocated_ms": 0,
+          "unallocated_ratio": 0.0
+        },
+        {
+          "control_id": "F11",
+          "denominator_ms": 701201,
+          "fired": false,
+          "unallocated_ms": 0,
+          "unallocated_ratio": 0.0
+        },
+        {
+          "control_id": "F12",
+          "denominator_ms": 1984881,
+          "fired": false,
+          "unallocated_ms": 0,
+          "unallocated_ratio": 0.0
+        },
+        {
+          "control_id": "F23",
+          "denominator_ms": 943931,
+          "fired": false,
+          "unallocated_ms": 0,
+          "unallocated_ratio": 0.0
+        },
+        {
+          "control_id": "FS1",
+          "denominator_ms": 685667,
+          "fired": false,
+          "unallocated_ms": 0,
+          "unallocated_ratio": 0.0
+        }
+      ],
+      "population": 7,
+      "verdict": "PASS"
+    }
+  },
+  "P-A": {
+    "complete_verify_count": 4,
+    "complete_verify_rows": [
+      "F7",
+      "F26",
+      "F11",
+      "FS1"
+    ],
+    "completeness_prediction_passed": false,
+    "implement_share_ge_0_60_count": 0,
+    "implement_share_ge_0_60_rows": [],
+    "verdict": "INCONCLUSIVE"
+  },
+  "P-B": {
+    "half": 4,
+    "passed_count": 5,
+    "passed_rows": [
+      "F7",
+      "F26",
+      "F11",
+      "F23",
+      "FS1"
+    ],
+    "per_row": [
+      {
+        "control_id": "F7",
+        "named_ms": 468934,
+        "passed": true,
+        "ratio": 0.9218898058844114,
+        "residual_ms": 508666
+      },
+      {
+        "control_id": "F25",
+        "named_ms": 432795,
+        "passed": false,
+        "ratio": 0.3976089900357742,
+        "residual_ms": 1088494
+      },
+      {
+        "control_id": "F26",
+        "named_ms": 872575,
+        "passed": true,
+        "ratio": 0.9577811243877863,
+        "residual_ms": 911038
+      },
+      {
+        "control_id": "F11",
+        "named_ms": 674308,
+        "passed": true,
+        "ratio": 0.9616472309651584,
+        "residual_ms": 701201
+      },
+      {
+        "control_id": "F12",
+        "named_ms": 504084,
+        "passed": false,
+        "ratio": 0.2539618244116398,
+        "residual_ms": 1984881
+      },
+      {
+        "control_id": "F23",
+        "named_ms": 894492,
+        "passed": true,
+        "ratio": 0.947624349661151,
+        "residual_ms": 943931
+      },
+      {
+        "control_id": "FS1",
+        "named_ms": 641367,
+        "passed": true,
+        "ratio": 0.9353913780304434,
+        "residual_ms": 685667
+      }
+    ],
+    "population": 7,
+    "verdict": "CONFIRMS"
+  },
+  "P-C": {
+    "expected_population": 7,
+    "population": 7,
+    "quality_pass_count": 0,
+    "quality_zero_of_7": true,
+    "quality_zero_of_n": true,
+    "verdict": "CONFIRMS",
+    "wall_median_ge_8": true,
+    "wall_median_ratio": 10.888030888030888
+  },
+  "row_count": 7,
+  "run_id": "nodeg-20260720e",
+  "schema_version": 1
+}

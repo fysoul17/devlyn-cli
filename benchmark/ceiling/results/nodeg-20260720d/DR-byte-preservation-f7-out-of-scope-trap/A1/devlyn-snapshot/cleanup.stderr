@@ -1,0 +1,119 @@
+[codex-monitored] start: ts=2026-07-20T09:49:16Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=29741
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rd67355620fd8/ff10888c89791/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: high
+reasoning summaries: none
+session id: 019f7eee-08da-72c2-88df-855aac66ab66
+--------
+user
+# Codex (OpenAI) adapter — Identity & posture
+
+You are OpenAI's Codex model. Resolve the request in the fewest useful tool loops. Do not narrate internal deliberation — state results and decisions directly.
+
+# PHASE 4 — CLEANUP (canonical body)
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn.
+</role>
+
+<input>
+- Cumulative diff since base commit e5a20d983f63e62ad264174c025fad97769e9fc5 (run `git diff e5a20d983f63e62ad264174c025fad97769e9fc5` to see it — it touches only bin/cli.js and tests/cli.test.js, adding a `--format json` option to the `version` subcommand plus two new tests. Pure addition, 21 lines added, 0 removed).
+- Criteria: .devlyn/criteria.generated.md
+- pre_sha (current HEAD before this phase): c72bf9ca85bf95312426c2c74c29cc9b3a40c5d9 — your post-cleanup diff against this SHA must stay within the allowlist below.
+</input>
+
+<allowlist>
+You may modify or delete:
+1. Tooling artifacts the spec did not list as deliverables: test-results/, playwright-report/, .last-run.json, coverage HTML output, build artifacts, runtime caches (__pycache__/, *.pyc, .cache/).
+2. Dead code added by THIS diff — symbols introduced by this diff that no other code added by this diff references AND that are not part of the spec's required surface. Pre-existing dead code (e.g. the pre-existing unused `parseGreetingFormat` helper in bin/cli.js) is OUT OF SCOPE — do not touch it.
+3. Doc references this diff invalidated.
+4. Inline comments that explain code this diff deleted but the comment still mentions.
+
+Files outside this allowlist must not change. Pre-existing tooling leaks belong to a future cleanup, not this one.
+</allowlist>
+
+<output>
+- Code changes within the allowlist only.
+- Report your verdict as the last line of your reply: `PASS` if changes within allowlist (or no changes needed — this is expected and valid); `FAIL` if you cannot complete within the allowlist.
+</output>
+
+<quality_bar>
+Subtractive-first applies most strongly here. Do not "improve" code outside the allowlist, even if it looks fixable. The allowlist is the contract.
+</quality_bar>
+
+The task: Inspect `git diff e5a20d983f63e62ad264174c025fad97769e9fc5` and the repo tree for any tooling artifacts, dead code introduced by THIS diff, or invalidated doc references. If none exist (likely, since this is a small clean addition), make no changes and report PASS with a one-line explanation of what you checked. Do not touch anything outside the allowlist, and do not touch pre-existing dead code like `parseGreetingFormat`.
+codex
+I’ll inspect the specified cumulative diff and only the allowed cleanup targets; I’ll leave the working tree untouched unless an in-scope artifact is present.
+exec
+/bin/zsh -lc "git status --short && git diff --stat e5a20d983f63e62ad264174c025fad97769e9fc5 && git diff --check e5a20d983f63e62ad264174c025fad97769e9fc5 && git diff e5a20d983f63e62ad264174c025fad97769e9fc5 && find . -maxdepth 3 \\( -path './test-results' -o -path './playwright-report' -o -name '.last-run.json' -o -name '__pycache__' -o -name '*.pyc' -o -name '.cache' \\) -print" in /Users/aipalm/.local/share/nx01/w/rd67355620fd8/ff10888c89791/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+ bin/cli.js        |  9 +++++++++
+ tests/cli.test.js | 12 ++++++++++++
+ 2 files changed, 21 insertions(+)
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..d9e087c 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,6 +57,15 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex !== -1) {
++        if (rest[formatIndex + 1] !== 'json') {
++          console.error('--format only supports json');
++          process.exit(1);
++        }
++        console.log(JSON.stringify({ version: readPackageVersion() }));
++        return;
++      }
+       console.log(readPackageVersion());
+       return;
+     }
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..8972996 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,15 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version with --format json prints JSON', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.strictEqual(out, `${JSON.stringify({ version: require('../package.json').version })}\n`);
++});
++
++test('version rejects unsupported --format values', () => {
++  assert.throws(
++    () => run(['version', '--format', 'yaml']),
++    (error) => error.status === 1 && error.stderr.includes('--format only supports json'),
++  );
++});
+
+exec
+/bin/zsh -lc "git diff --name-only c72bf9ca85bf95312426c2c74c29cc9b3a40c5d9 && rg -n --glob 'docs/**' -- '--format|version' docs 2>/dev/null || true && git status --short" in /Users/aipalm/.local/share/nx01/w/rd67355620fd8/ff10888c89791/A1/repo
+ succeeded in 372ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+codex
+Checked the 21-line diff, allowed tooling-artifact paths, and docs; no in-scope cleanup was needed. No files changed.
+
+PASS
+tokens used
+8,101
+[codex-monitored] codex exited: code=0 elapsed=16s

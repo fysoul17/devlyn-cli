@@ -1,0 +1,2 @@
+{"id":"J1","rule_id":"requirement.unsupported-format","severity":"MEDIUM","file":"bin/cli.js","line":60,"message":"Only the first `--format` occurrence is validated. `node bin/cli.js version --format json --format yaml` exits 0 and prints JSON, so a supplied unsupported `--format yaml` value is silently accepted instead of exiting 1 with an error.","confidence":"high"}
+PASS_WITH_ISSUES

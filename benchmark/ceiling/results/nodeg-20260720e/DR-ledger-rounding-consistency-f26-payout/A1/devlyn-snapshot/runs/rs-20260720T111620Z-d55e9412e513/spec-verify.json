@@ -1,0 +1,29 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "exit_code": 0
+    },
+    {
+      "cmd": "node -e \"\nconst fs = require('fs');\nconst { spawnSync } = require('child_process');\nconst assert = require('assert');\nconst rules = JSON.parse(fs.readFileSync('data/payout-rules.json', 'utf8'));\nconst events = [\n  { id: 'c1', merchant_id: 'm1', type: 'charge', amount_cents: 100000 },\n  { id: 'c1', merchant_id: 'm1', type: 'charge', amount_cents: 100000 },\n  { id: 'r1', merchant_id: 'm1', type: 'refund', amount_cents: 5000 },\n  { id: 'd1', merchant_id: 'm1', type: 'dispute', amount_cents: 20000 },\n  { id: 'c2', merchant_id: 'm2', type: 'charge', amount_cents: 1000 },\n];\nfs.writeFileSync('/tmp/devlyn-payout-success.json', JSON.stringify({ events }));\nconst seen = new Map();\nconst order = [];\nconst rows = new Map();\nfor (const ev of events) {\n  const content = JSON.stringify(ev);\n  if (seen.has(ev.id)) {\n    if (seen.get(ev.id) !== content) throw new Error('fixture has an unintended conflicting duplicate');\n    continue;\n  }\n  seen.set(ev.id, content);\n  if (!rows.has(ev.merchant_id)) {\n    rows.set(ev.merchant_id, { merchant_id: ev.merchant_id, gross_charge_cents: 0, refund_cents: 0, dispute_cents: 0, processing_fee_cents: 0, dispute_fee_cents: 0 });\n    order.push(ev.merchant_id);\n  }\n  const row = rows.get(ev.merchant_id);\n  if (ev.type === 'charge') {\n    row.gross_charge_cents += ev.amount_cents;\n    row.processing_fee_cents += Math.round(ev.amount_cents * rules.processing_fee_percent / 100) + rules.fixed_fee_cents;\n  } else if (ev.type === 'refund') {\n    row.refund_cents += ev.amount_cents;\n  } else if (ev.type === 'dispute') {\n    row.dispute_cents += ev.amount_cents;\n    row.dispute_fee_cents += rules.dispute_fee_cents;\n  }\n}\nconst merchants = order.map((mid) => {\n  const row = rows.get(mid);\n  const netBeforeReserve = row.gross_charge_cents - row.refund_cents - row.dispute_cents - row.processing_fee_cents - row.dispute_fee_cents;\n  let reserve = netBeforeReserve > 0 ? Math.round(netBeforeReserve * rules.reserve_percent / 100) : 0;\n  let payout = netBeforeReserve - reserve;\n  if (payout > 0 && payout < rules.minimum_payout_cents) {\n    reserve += payout;\n    payout = 0;\n  }\n  return { merchant_id: row.merchant_id, gross_charge_cents: row.gross_charge_cents, refund_cents: row.refund_cents, dispute_cents: row.dispute_cents, processing_fee_cents: row.processing_fee_cents, dispute_fee_cents: row.dispute_fee_cents, reserve_cents: reserve, payout_cents: payout };\n});\nconst expected = {\n  total_payout_cents: merchants.reduce((s, m) => s + m.payout_cents, 0),\n  total_processing_fee_cents: merchants.reduce((s, m) => s + m.processing_fee_cents, 0),\n  total_dispute_fee_cents: merchants.reduce((s, m) => s + m.dispute_fee_cents, 0),\n  total_reserve_cents: merchants.reduce((s, m) => s + m.reserve_cents, 0),\n  merchants,\n};\nconst res = spawnSync('node', ['bin/cli.js', 'payout', '--input', '/tmp/devlyn-payout-success.json'], { encoding: 'utf8' });\nassert.strictEqual(res.status, 0, 'expected exit 0, got ' + res.status + ' stderr=' + res.stderr);\nassert.strictEqual(res.stderr, '', 'expected no stderr, got ' + JSON.stringify(res.stderr));\nconst parsed = JSON.parse(res.stdout);\nassert.deepStrictEqual(parsed, expected);\nconsole.log('SUCCESS_CHECK_OK');\n\"",
+      "exit_code": 0,
+      "stdout_contains": [
+        "SUCCESS_CHECK_OK"
+      ]
+    },
+    {
+      "cmd": "node -e \"\nconst fs = require('fs');\nconst { spawnSync } = require('child_process');\nconst assert = require('assert');\nconst events = [\n  { id: 'c1', merchant_id: 'm1', type: 'charge', amount_cents: 100000 },\n  { id: 'c1', merchant_id: 'm1', type: 'charge', amount_cents: 200000 },\n];\nfs.writeFileSync('/tmp/devlyn-payout-conflict.json', JSON.stringify({ events }));\nconst res = spawnSync('node', ['bin/cli.js', 'payout', '--input', '/tmp/devlyn-payout-conflict.json'], { encoding: 'utf8' });\nassert.strictEqual(res.status, 2, 'expected exit 2, got ' + res.status);\nassert.strictEqual(res.stdout, '', 'expected empty stdout, got ' + JSON.stringify(res.stdout));\nconst errObj = JSON.parse(res.stderr.trim());\nassert.deepStrictEqual(errObj, { error: 'conflicting_duplicate', id: 'c1' });\nconsole.log('CONFLICT_CHECK_OK');\n\"",
+      "exit_code": 0,
+      "stdout_contains": [
+        "CONFLICT_CHECK_OK"
+      ]
+    },
+    {
+      "cmd": "node -e \"\nconst fs = require('fs');\nconst { spawnSync } = require('child_process');\nconst assert = require('assert');\nfs.writeFileSync('/tmp/devlyn-payout-badjson.json', '{not valid json');\nconst res = spawnSync('node', ['bin/cli.js', 'payout', '--input', '/tmp/devlyn-payout-badjson.json'], { encoding: 'utf8' });\nassert.strictEqual(res.status, 2, 'expected exit 2, got ' + res.status);\nassert.strictEqual(res.stdout, '', 'expected empty stdout, got ' + JSON.stringify(res.stdout));\nconst errObj = JSON.parse(res.stderr.trim());\nassert.strictEqual(typeof errObj, 'object');\nassert.strictEqual(typeof errObj.error, 'string');\nconsole.log('INVALID_JSON_CHECK_OK');\n\"",
+      "exit_code": 0,
+      "stdout_contains": [
+        "INVALID_JSON_CHECK_OK"
+      ]
+    }
+  ]
+}

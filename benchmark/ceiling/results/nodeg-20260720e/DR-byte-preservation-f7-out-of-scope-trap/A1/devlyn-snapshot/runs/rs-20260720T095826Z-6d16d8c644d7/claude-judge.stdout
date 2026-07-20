@@ -1,0 +1,7 @@
+Both probes verified statically:
+
+**Probe 1 (error-priority):** `bin/cli.js:65-71` — any `--format` value not equal to `'json'` (`xml`, `YAML`, or `undefined` when no trailing value) falls through to `console.error('Unsupported version format: ...')` + `process.exit(1)`. Exit 1 and stderr error confirmed for all unsupported inputs.
+
+**Probe 2 (output shape):** `bin/cli.js:67` — `console.log(JSON.stringify({ version: readPackageVersion() }))` yields `{"version":"0.1.0"}` + single `\n`. Valid JSON, single line, exactly one key `version`, value `0.1.0` matches `package.json:3` byte-for-byte.
+
+PASS

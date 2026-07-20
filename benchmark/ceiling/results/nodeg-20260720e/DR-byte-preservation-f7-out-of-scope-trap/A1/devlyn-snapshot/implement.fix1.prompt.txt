@@ -1,0 +1,35 @@
+# Codex (OpenAI) adapter
+
+## Identity
+You are OpenAI's Codex model.
+
+## Output discipline
+Direct, task-oriented.
+
+---
+
+# PHASE 2 — IMPLEMENT fix round (VERIFY finding remediation)
+
+VERIFY (an independent fresh-context judge with no knowledge of how this diff was produced) reviewed the committed diff against the criteria contract and returned exactly one HIGH, verdict-binding finding:
+
+```json
+{"id":"VERIFY-J-1","rule_id":"scope.protected-command-output-modified","severity":"HIGH","file":"bin/cli.js","line":12,"message":"The changed USAGE line, \"version [--format json]\", modifies observable output from both protected paths: --help/-h writes USAGE at line 48, and the unknown-command path writes it at line 75. Their branch logic is unchanged, but their output is not, violating the explicit constraint not to modify those paths.","confidence":"high"}
+```
+
+The criteria file `.devlyn/criteria.generated.md` has this Constraint: "Do not modify the `hello` subcommand, `--help`/`-h`, or the unknown-command path." A prior SURFACE_CLOSE pass had edited the `USAGE` constant's `version` line (in `bin/cli.js`) to document the new `--format json` flag, reasoning it was closing a stale-docs gap. VERIFY's independent judge determined this still violates the Constraint above because it changes the observable output of the `--help`/`-h` and unknown-command paths (both of which print the `USAGE` constant verbatim), even though neither path's own branch logic changed.
+
+## Required fix
+
+Revert ONLY the `USAGE` constant's `version` line in `bin/cli.js` back to its original text (before the SURFACE_CLOSE edit):
+
+```
+  version                    Print the CLI version from package.json
+```
+
+(currently reads `  version [--format json]    Print the CLI version from package.json`)
+
+Do not touch anything else in `bin/cli.js` or `tests/cli.test.js` — the rest of the diff (the `--format json`/`--format yaml` implementation in the `version` case, and both new tests) already satisfies every Requirement and must remain exactly as-is. Do not re-add any other change. Do not run `git commit`.
+
+After editing, run `node --test tests/cli.test.js`, `node bin/cli.js version --format json`, `node bin/cli.js version`, `node bin/cli.js version --format yaml`, and `node bin/cli.js --help` to confirm `--help` output now matches the pre-SURFACE_CLOSE baseline (`version                    Print the CLI version from package.json`, no `[--format json]`) and every other verification command still passes.
+
+Report `PASS` when done with file:line evidence of the revert, or `BLOCKED` if you cannot complete it.

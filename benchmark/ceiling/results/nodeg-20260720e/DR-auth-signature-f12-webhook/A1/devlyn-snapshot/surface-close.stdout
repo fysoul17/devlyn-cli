@@ -1,0 +1,3 @@
+UVR-STALE: N/A tests/server.test.js:1 — no authorized file carries user-visible docs of the old `/webhook`-less interface; the top-of-file comment in server/index.js doesn't enumerate endpoints, so nothing went stale.
+PATH-TEST: FIRED tests/server.test.js:120 — Goal specifies the `invalid_body` 400 failure path (malformed shape with valid sig), patch implements it (server/index.js:47-56), but no test exercised it; added one minimal regression test.
+PASS

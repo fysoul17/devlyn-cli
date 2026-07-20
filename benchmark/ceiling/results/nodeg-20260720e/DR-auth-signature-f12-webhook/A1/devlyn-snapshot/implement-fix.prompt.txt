@@ -1,0 +1,64 @@
+# Codex (OpenAI) adapter — identity/output header
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below.
+
+## Output discipline
+
+Efficient, direct, task-oriented.
+
+## Validation pattern
+
+Run `npm test` before declaring success and trust its output.
+
+## Anti-patterns
+
+1. Avoid absolute imperatives for judgment calls — use decision rules with conditions.
+2. Don't over-specify process when the destination is clear.
+
+Do not narrate internal deliberation. State results and decisions directly.
+
+---
+
+# PHASE 2 — IMPLEMENT / fix-loop round 1 (triggered by VERIFY findings)
+
+<role>
+An independent VERIFY (fresh context, no code-mutation tools, dual judges — one Codex, one Claude, run separately with no communication between them) reviewed the diff you produced earlier and found 2 HIGH severity, verdict-binding findings. Both judges independently reached the same conclusions. Fix the root cause of each — not a symptom patch.
+</role>
+
+<input>
+- Current code: `server/index.js` and `tests/server.test.js` in the repo root — read them now.
+- Contract: `.devlyn/criteria.generated.md` — read it now (Requirements 1-5, especially bullets 2, 3, 4).
+- Findings (verbatim from the merged VERIFY output, both judges independently confirmed):
+</input>
+
+<findings>
+```json
+{"severity":"HIGH","file":"server/index.js","line":48,"id":"duplicate-shape-priority","rule_id":"spec-compliance.ordering","message":"A correctly signed second delivery of an accepted id is shape-validated before replay detection, violating the requirement that the second body is irrelevant.","evidence":"Direct handler execution accepted {id:'evt_adversarial',type:'order.created',timestamp:1721479264,data:{}} with 200, then returned 400 {error:'invalid_body'} for the same id with a valid HMAC but missing type. Lines 48-55 run before acceptedWebhookIds.has(id) at line 58; the required result is 409 {error:'duplicate_event',id:'evt_adversarial'}.","criterion_ref":"Requirement 4: any subsequent delivery of an accepted id returns 409 regardless of the new body's contents"}
+{"severity":"HIGH","file":"server/index.js","line":8,"id":"json-parse-preempts-signature","rule_id":"spec-compliance.ordering","message":"Global JSON parsing can reject a malformed body before the webhook signature check runs.","evidence":"Direct middleware execution with raw body '{\"id\":\"evt_bad_json\"' produced entity.parse.failed status 400. Because express.json() at line 8 precedes the route at line 35, a malformed request with a missing or invalid signature never reaches lines 36-45 and therefore returns 400 instead of the required 401 invalid_signature.","criterion_ref":"Requirement 3: signature check runs before body-shape validation"}
+{"severity":"HIGH","file":"server/index.js","line":8,"id":"sig-check-bypassed-by-json-syntax-error","rule_id":"auth-ordering.signature-check-bypass","message":"Signature check does not run for syntactically-malformed JSON bodies, violating the explicit ordering invariant that signature verification runs before any body-related response for ALL inputs. express.json({verify}) at line 8 only captures req.rawBody; it does not perform HMAC verification. When JSON.parse throws inside body-parser, Express's default error-handling middleware intercepts the request before it ever reaches app.post('/webhook') (lines 35-42), so the timingSafeEqual signature comparison never executes.","evidence":"Live probe: (1) invalid X-Signature + malformed JSON body -> HTTP 400 Express-default HTML error page, NOT the contracted 401. (2) Same malformed body with a CORRECTLY computed signature over the exact raw bytes -> also HTTP 400, indistinguishable from case (1) — proving signature is never evaluated either way.","criterion_ref":"Requirements bullet 2: signature check runs before body-shape validation (auth/signature ordering clause)"}
+{"severity":"LOW","file":"tests/server.test.js","line":105,"id":"interaction-test-gap","message":"The tests do not cover replay priority when the second correctly signed body has an invalid shape."}
+```
+</findings>
+
+<task>
+Fix both HIGH findings at the root cause in `server/index.js`:
+
+1. **Replay-before-shape ordering** (finding `duplicate-shape-priority`): once the signature is valid, check whether `id` (if it's a non-empty string) is already in the accepted-ids set BEFORE running full body-shape validation. Only fall through to shape validation when the id is not a known duplicate. This makes a duplicate id's second body genuinely "irrelevant" for any already-known id, while a brand-new id still gets full shape validation as before.
+
+2. **Signature check bypassed by malformed JSON** (findings `json-parse-preempts-signature` / `sig-check-bypassed-by-json-syntax-error`): the global `express.json()` middleware parses the body and short-circuits to Express's own error handler on a JSON syntax error, before the `/webhook` route handler ever runs — so the signature check never executes for a body that isn't syntactically valid JSON. Fix the root cause: don't let the global auto-parsing JSON middleware own `/webhook`'s body. Give `/webhook` its own raw-body-capturing middleware (e.g. `express.raw({ type: 'application/json' })`) scoped to that one route, so your handler receives the exact raw bytes unconditionally (valid or invalid JSON), can run the signature check first on those bytes no matter what, and only then attempts to parse JSON itself (inside a try/catch) to run the shape check. This also means the global `app.use(express.json())` can likely go back to its original, simpler form (no `verify` option needed) since `/webhook` no longer depends on it for raw-body capture — check whether that option is still needed for anything else before removing it.
+
+Do not touch the `/health`, `/items`, `/items/:id` routes or their tests. Do not add tests beyond what's minimally needed to cover the two fixed behaviors (the existing `interaction-test-gap` LOW finding suggests one useful regression test: a correctly-signed, shape-invalid second delivery of an already-accepted id must return 409, not 400 — add that one test if it isn't already covered). Only touch `server/index.js` and `tests/server.test.js` (per the Constraints in `.devlyn/criteria.generated.md`). No new npm dependencies.
+
+Re-verify against ALL of: signature-invalid + any body → 401. signature-valid + malformed-JSON-syntax body → 401 if sig is actually wrong, else the body should be treated as failing shape (400) only once you can confirm the signature was checked against the exact raw bytes first — trace this carefully, the point of the fix is that 401 must always win over any body-content issue when the signature is genuinely wrong, for every input shape including syntactically-invalid JSON. signature-valid + shape-valid + new id → 200. signature-valid + shape-valid + duplicate id → 409. signature-valid + shape-invalid + duplicate id → 409 (this was the first bug). signature-valid + shape-invalid + new id → 400.
+</task>
+
+<quality_bar>
+- Fix the root cause (the ordering/architecture), not a symptom patch (e.g. do not wrap the route in a try/catch that swallows the parse error and returns 401 unconditionally — that would break the "shape-invalid body still gets checked against the signature computed over ITS exact bytes" requirement; the fix must genuinely evaluate the signature against whatever bytes were actually sent).
+- Keep the diff minimal. Subtractive-first: if simplifying the raw-body capture also lets you delete the now-unneeded `verify` option on the global `express.json()`, do that.
+- Run `npm test` and confirm ALL tests pass (there were 10 before this round; you may add up to 1-2 more for the newly-fixed behavior).
+- Files not in the authorized surface (`server/index.js`, `tests/server.test.js`) are off-limits.
+</quality_bar>
+
+When done, run `npm test`, report the full output, and report your verdict (`PASS` or `BLOCKED`) at the end of your reply.

@@ -1,0 +1,453 @@
+[codex-monitored] start: ts=2026-07-20T12:48:28Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=45362
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: high
+reasoning summaries: none
+session id: 019f7f92-1964-72a0-adb5-0b5ea7e29995
+--------
+user
+# Codex (OpenAI) adapter — identity/output header
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below.
+
+## Output discipline
+
+Your default is efficient, direct, task-oriented. Do not over-specify process steps.
+
+## Validation pattern
+
+Validation is concrete commands and tools. Run `npm test` before declaring success and trust its output.
+
+## Anti-patterns
+
+1. Avoid absolute imperatives for judgment calls — use decision rules with conditions.
+2. Stop rules are explicit — when told to stop/ask, do that rather than retrying indefinitely.
+
+Do not narrate internal deliberation. State results and decisions directly.
+
+---
+
+# PHASE 4 — CLEANUP (canonical body)
+
+Task-scoped pass — only what this diff introduced or invalidated.
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn.
+</role>
+
+<input>
+- Cumulative diff since base commit d5e479312b6f9573373bd2057e630bba7d22c608 (run `git diff d5e479312b6f9573373bd2057e630bba7d22c608 -- server/index.js tests/server.test.js` to see it).
+- Spec: `.devlyn/criteria.generated.md`.
+- Pre-cleanup HEAD is bcc1ac366984bb825f7bede93df62f80b9d40bca — your post-cleanup diff against this SHA must stay within the allowlist below.
+</input>
+
+<allowlist>
+You may modify or delete:
+
+1. **Tooling artifacts** the spec did not list as deliverables: `test-results/`, `playwright-report/`, `.last-run.json`, coverage HTML output, build artifacts, runtime caches.
+2. **Dead code added by this diff** — symbols (functions, classes, types, exports) introduced by this diff that no other code added by this diff references AND that are not part of the spec's required surface. Pre-existing dead code is out of scope.
+3. **Doc references this diff invalidated** — links / file paths / symbol names in markdown files that this diff renamed or removed.
+4. **Inline comments** that explain code this diff deleted but the comment still mentions.
+
+Files outside this allowlist must not change. Pre-existing tooling leaks (already in main before this run) belong to a future cleanup, not this one. `server/index.js` and `tests/server.test.js` are the only files this run touched — if there is nothing to clean up within the allowlist, that is a valid, expected PASS outcome. Do not touch `/health`, `/items`, `/items/:id`, or any other pre-existing code.
+</allowlist>
+
+<output>
+- Code changes within the allowlist (may be none).
+- Report your verdict in this reply: `PASS` if changes within allowlist (or no changes needed); `FAIL` if you cannot complete within the allowlist.
+</output>
+
+<quality_bar>
+- Subtractive-first applies most strongly here. Lines removed should outnumber lines added unless documentation needs a small additive update for a renamed symbol.
+- Do not "improve" code outside the allowlist, even if it looks fixable. The allowlist is the contract.
+- If an artifact / dead symbol / stale doc reference straddles the allowlist, surface it as a finding rather than guessing.
+</quality_bar>
+
+<runtime_principles>
+Cleanup is the smallest reversible step toward "what shipped equals what the spec licensed."
+</runtime_principles>
+
+## Task
+
+Review the diff introduced by IMPLEMENT (`git diff d5e479312b6f9573373bd2057e630bba7d22c608 -- server/index.js tests/server.test.js`) for: unused/dead symbols it introduced, stray tooling artifacts, or stale doc references. If nothing in the allowlist applies, make no changes — an empty diff is a valid PASS. Run `npm test` to confirm nothing broke if you do change anything. Reply with a short summary plus verdict (`PASS` or `FAIL`).
+codex
+I’ll review only the specified diff and allowlisted artifacts, then run tests if cleanup changes are warranted.
+exec
+/bin/zsh -lc "git status --short && git diff d5e479312b6f9573373bd2057e630bba7d22c608 -- server/index.js tests/server.test.js && printf '\\n--- CRITERIA ---\\n' && sed -n '1,240p' .devlyn/criteria.generated.md && printf '\\n--- ALLOWLISTED ARTIFACTS ---\\n' && rg --files -g '.last-run.json' -g 'test-results/**' -g 'playwright-report/**' -g 'coverage/**' 2>/dev/null" in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo
+ exited 1 in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+diff --git a/server/index.js b/server/index.js
+index 1c43fa2..06947c6 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -1,13 +1,18 @@
+ // Tiny Express server with a deliberately small API surface.
++const crypto = require('node:crypto');
+ const express = require('express');
++const fs = require('node:fs');
++const path = require('node:path');
+ 
+ const app = express();
+-app.use(express.json());
++app.use(express.json({ verify: (req, _res, buffer) => { req.rawBody = buffer; } }));
+ 
+ const items = [
+   { id: 1, name: 'alpha', qty: 3 },
+   { id: 2, name: 'beta', qty: 5 },
+ ];
++const webhookSecret = fs.readFileSync(path.join(__dirname, '..', 'data', 'webhook-secret.txt'), 'utf8').trim();
++const acceptedWebhookIds = new Set();
+ 
+ app.get('/health', (_req, res) => {
+   res.json({ status: 'ok' });
+@@ -27,6 +32,38 @@ app.get('/items/:id', (req, res) => {
+   res.json({ item });
+ });
+ 
++app.post('/webhook', (req, res) => {
++  const rawBody = req.rawBody || Buffer.alloc(0);
++  const expectedSignature = crypto.createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
++  const receivedSignature = req.get('X-Signature') || '';
++  const expectedBuffer = Buffer.from(expectedSignature, 'utf8');
++  const receivedBuffer = Buffer.from(receivedSignature, 'utf8');
++
++  if (expectedBuffer.length !== receivedBuffer.length || !crypto.timingSafeEqual(expectedBuffer, receivedBuffer)) {
++    res.status(401).json({ error: 'invalid_signature' });
++    return;
++  }
++
++  const { id, type, timestamp, data } = req.body || {};
++  if (
++    typeof id !== 'string' || id.length === 0 ||
++    typeof type !== 'string' || type.length === 0 ||
++    typeof timestamp !== 'number' ||
++    typeof data !== 'object' || data === null || Array.isArray(data)
++  ) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  if (acceptedWebhookIds.has(id)) {
++    res.status(409).json({ error: 'duplicate_event', id });
++    return;
++  }
++
++  acceptedWebhookIds.add(id);
++  res.json({ accepted: true, id });
++});
++
+ if (require.main === module) {
+   const port = Number(process.env.PORT) || 3000;
+   app.listen(port, () => {
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..b1aea37 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -1,8 +1,13 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
++const crypto = require('node:crypto');
++const fs = require('node:fs');
+ const http = require('node:http');
++const path = require('node:path');
+ const { app } = require('../server');
+ 
++const webhookSecret = fs.readFileSync(path.join(__dirname, '..', 'data', 'webhook-secret.txt'), 'utf8').trim();
++
+ function startServer() {
+   return new Promise((resolve) => {
+     const server = http.createServer(app);
+@@ -23,6 +28,34 @@ function get(server, path) {
+   });
+ }
+ 
++function postWebhook(server, body, signature) {
++  return new Promise((resolve, reject) => {
++    const { port } = server.address();
++    const request = http.request(
++      `http://127.0.0.1:${port}/webhook`,
++      {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(body),
++          'X-Signature': signature,
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    request.on('error', reject);
++    request.end(body);
++  });
++}
++
++function signWebhookBody(body) {
++  return crypto.createHmac('sha256', webhookSecret).update(body).digest('hex');
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +89,42 @@ test('GET /items/:id returns 404 for missing', async () => {
+     server.close();
+   }
+ });
++
++test('POST /webhook accepts a valid signed event', async () => {
++  const server = await startServer();
++  const body = JSON.stringify({ id: 'evt_test_1', type: 'order.created', timestamp: 1721479264, data: { orderId: 1 } });
++  try {
++    const response = await postWebhook(server, body, signWebhookBody(body));
++    assert.strictEqual(response.status, 200);
++    assert.deepStrictEqual(response.body, { accepted: true, id: 'evt_test_1' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a replayed event id', async () => {
++  const server = await startServer();
++  const body = JSON.stringify({ id: 'evt_test_2', type: 'order.created', timestamp: 1721479264, data: { orderId: 2 } });
++  const signature = signWebhookBody(body);
++  try {
++    await postWebhook(server, body, signature);
++    const response = await postWebhook(server, body, signature);
++    assert.strictEqual(response.status, 409);
++    assert.deepStrictEqual(response.body, { error: 'duplicate_event', id: 'evt_test_2' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a tampered body with its original signature', async () => {
++  const server = await startServer();
++  const originalBody = JSON.stringify({ id: 'evt_test_3', type: 'order.created', timestamp: 1721479264, data: { orderId: 3 } });
++  const tamperedBody = JSON.stringify({ id: 'evt_test_3', type: 'order.created', timestamp: 1721479264, data: { orderId: 4 } });
++  try {
++    const response = await postWebhook(server, tamperedBody, signWebhookBody(originalBody));
++    assert.strictEqual(response.status, 401);
++    assert.deepStrictEqual(response.body, { error: 'invalid_signature' });
++  } finally {
++    server.close();
++  }
++});
+
+--- CRITERIA ---
+# Generated criteria — webhook signature + replay endpoint
+
+Source: `.devlyn/goal.raw.txt` (free-form goal, complexity=medium).
+
+## Requirements
+
+- Add `POST /webhook` to `server/index.js`. Read the raw request body bytes (not the re-serialized JSON) so HMAC verification is computed over exactly what the client sent.
+- Compute `HMAC-SHA256(secret, rawBody)` as lowercase hex using the shared secret read from `data/webhook-secret.txt`, and compare it to the request's `X-Signature` header via `crypto.timingSafeEqual` (guard the length check before calling `timingSafeEqual`, which throws on mismatched buffer lengths — a length mismatch must be treated as "not equal", not an uncaught throw). Mismatch or missing header → `401 { error: 'invalid_signature' }`.
+- Signature check runs before body-shape validation. Only once the signature is valid, validate the parsed body is `{ id, type, timestamp, data }` where `id` and `type` are non-empty strings, `timestamp` is a number, and `data` is an object. Shape failure → `400 { error: 'invalid_body' }`.
+- Track accepted `id`s (in-memory, module-scoped, consistent with the existing in-memory `items` pattern). Once shape validation passes: if `id` was already accepted, respond `409 { error: 'duplicate_event', id }` regardless of the new body's contents; otherwise record the `id` and respond `200 { accepted: true, id }`.
+- Update `tests/server.test.js`: keep the 3 existing tests passing, and add at least 3 new tests — happy path (200), replay of the same `id` (409), tampered body with the original (now-mismatched) signature (401). Tests must compute real HMAC signatures against `data/webhook-secret.txt` the same way the implementation does.
+
+## Constraints
+
+- No new npm dependencies — use Node's built-in `crypto` module and the existing `express` dependency only.
+- Only touch `server/index.js` and `tests/server.test.js`.
+- `express.json()` is already mounted globally in `server/index.js` (`app.use(express.json())`); capturing the raw body requires either a `verify` callback on that middleware or an equivalent built-in mechanism — do not add a body-parsing library.
+- Preserve existing routes (`/health`, `/items`, `/items/:id`) and existing test behavior unchanged.
+
+## Out of Scope
+
+- Persisting accepted event ids across process restarts (in-memory tracking is sufficient per the goal).
+- Rate limiting, request logging, or other webhook hardening not named in the goal.
+- Changes to `bin/cli.js`, `web/`, or other files not named in the goal.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "npm test", "expect_exit": 0 }
+  ]
+}
+```
+
+--- ALLOWLISTED ARTIFACTS ---
+
+codex
+The diff’s new imports, helpers, and webhook state are all referenced and required by the generated criteria. No allowlisted artifacts were found; I’m leaving the implementation untouched and validating the current state.
+exec
+/bin/zsh -lc 'npm test && git diff --name-only bcc1ac366984bb825f7bede93df62f80b9d40bca' in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo
+ exited 1 in 186ms:
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 24.409125
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 23.393917
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 22.844084
+  ...
+# Subtest: GET /health returns ok
+not ok 4 - GET /health returns ok
+  ---
+  duration_ms: 1.720792
+  location: '/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:59:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:14:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:12:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:60:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 5 - GET /items returns list
+  ---
+  duration_ms: 0.512875
+  location: '/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:70:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:14:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:12:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:71:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 6 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.290542
+  location: '/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:82:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:14:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:12:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:83:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: POST /webhook accepts a valid signed event
+not ok 7 - POST /webhook accepts a valid signed event
+  ---
+  duration_ms: 0.247208
+  location: '/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:93:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:14:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:12:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:94:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: POST /webhook rejects a replayed event id
+not ok 8 - POST /webhook rejects a replayed event id
+  ---
+  duration_ms: 0.169625
+  location: '/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:105:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:14:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:12:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:106:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: POST /webhook rejects a tampered body with its original signature
+not ok 9 - POST /webhook rejects a tampered body with its original signature
+  ---
+  duration_ms: 0.247375
+  location: '/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:119:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:14:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:12:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo/tests/server.test.js:120:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 3
+# fail 6
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 103.223125
+
+codex
+`npm test` could not bind the test server (`EPERM` on `0.0.0.0`), so all HTTP-server tests failed before exercising routes; the unrelated CLI tests passed. I’m confirming the cleanup-phase diff is empty.
+exec
+/bin/zsh -lc 'git diff --name-only bcc1ac366984bb825f7bede93df62f80b9d40bca && git diff --check bcc1ac366984bb825f7bede93df62f80b9d40bca' in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/f08d6b52f5d4d/A1/repo
+ succeeded in 0ms:
+codex
+No cleanup changes needed: all additions are required and referenced; no allowlisted artifacts found. Post-cleanup diff is empty.
+
+`npm test` is blocked by sandbox networking (`listen EPERM` on `0.0.0.0`); 3 non-server tests passed, 6 server tests could not start.
+
+PASS
+tokens used
+14,270
+[codex-monitored] codex exited: code=0 elapsed=27s

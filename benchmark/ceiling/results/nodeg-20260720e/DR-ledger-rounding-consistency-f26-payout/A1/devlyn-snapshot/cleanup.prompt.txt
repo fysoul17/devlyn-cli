@@ -1,0 +1,57 @@
+# Codex (OpenAI) adapter
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below.
+
+## Output discipline
+
+Your default is efficient, direct, task-oriented.
+
+## Validation pattern
+
+Validation is concrete commands and tools, not self-belief. Run `npm test` after any change to confirm nothing broke.
+
+## Anti-patterns
+
+Don't over-specify process when the destination is clear. Do not narrate internal deliberation. State results and decisions directly.
+
+---
+
+# PHASE 4 — CLEANUP (canonical body)
+
+Task-scoped pass — only what this diff introduced or invalidated.
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn.
+</role>
+
+<input>
+- Cumulative diff since base commit `17fce0afa9c75bad4fee0d4b139240fbde99e41c` (run `git diff 17fce0afa9c75bad4fee0d4b139240fbde99e41c..HEAD` to see it — it's exactly the payout-command addition to `bin/cli.js` and `tests/cli.test.js`).
+- Spec at `.devlyn/criteria.generated.md` and plan at `.devlyn/plan.md`.
+- Current HEAD (`34a2b148132427cb15660f32748cd8b3c9d8c6bc`) is `pre_sha` — your post-cleanup diff against this SHA must stay within the allowlist below.
+</input>
+
+<allowlist>
+You may modify or delete:
+
+1. **Tooling artifacts** the spec did not list as deliverables: `test-results/`, `playwright-report/`, `.last-run.json`, coverage HTML output, build artifacts, runtime caches.
+2. **Dead code added by this diff** — symbols (functions, classes, types, exports) introduced by this diff that no other code added by this diff references AND that are not part of the spec's required surface. Pre-existing dead code is out of scope.
+3. **Doc references this diff invalidated** — links / file paths / symbol names in markdown files that this diff renamed or removed. Update only the references; do not rewrite surrounding prose.
+4. **Inline comments** that explain code this diff deleted but the comment still mentions.
+
+Files outside this allowlist must not change. Pre-existing tooling leaks (already in main before this run, e.g. `.devlyn/` not being in `.gitignore`) belong to a future cleanup, not this one — do not touch `.gitignore`.
+</allowlist>
+
+<output>
+- Code changes within the allowlist only.
+- Report your verdict in this reply: `PASS` if changes within allowlist (or no changes needed — this is a common and correct outcome); `FAIL` if you cannot complete within the allowlist.
+</output>
+
+<quality_bar>
+- Subtractive-first applies most strongly here. Lines removed should outnumber lines added unless documentation needs a small additive update for a renamed symbol.
+- Do not "improve" code outside the allowlist, even if it looks fixable. The allowlist is the contract.
+- If nothing in the diff qualifies under the allowlist, say so plainly and make no changes — do not invent work to justify the phase.
+</quality_bar>
+
+The task: review the diff described above (the new `payout` subcommand in `bin/cli.js` plus its two new tests in `tests/cli.test.js`) for anything in the allowlist above. If you find nothing to clean up, make no changes and report `PASS` with that explanation. Do not touch any file outside `bin/cli.js` and `tests/cli.test.js`.

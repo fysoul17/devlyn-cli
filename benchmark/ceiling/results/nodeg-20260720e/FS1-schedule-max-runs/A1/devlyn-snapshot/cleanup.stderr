@@ -1,0 +1,483 @@
+[codex-monitored] start: ts=2026-07-20T14:26:17Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=64010
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/fa265b8ab039e/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f7feb-a96e-7450-9041-478bcde9b8fd
+--------
+user
+# Codex (OpenAI) adapter
+
+## Identity
+You are OpenAI's Codex model. Efficient, direct, task-oriented output.
+
+---
+
+# PHASE 4 — CLEANUP (canonical body)
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn.
+</role>
+
+<input>
+- Cumulative diff since base SHA `4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8`: `git diff 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8 HEAD` — touches `docs/examples.rst`, `schedule/__init__.py`, `test_schedule.py` (implements `Job.max_runs(n)`).
+- Spec: `.devlyn/criteria.generated.md`.
+- Pre-sha for this phase: `7a37cf77ccf626d076307bb3d630dcf9a62bfd75` — your post-cleanup diff against this SHA must stay within the allowlist below.
+</input>
+
+<allowlist>
+You may modify or delete:
+1. Tooling artifacts the spec did not list as deliverables (`test-results/`, `.last-run.json`, coverage HTML, `__pycache__/`, `*.pyc`, `.cache/`).
+2. Dead code added by THIS diff — symbols introduced by this diff that no other code added by this diff references and that are not part of the spec's required surface. Pre-existing dead code is out of scope.
+3. Doc references THIS diff invalidated.
+4. Inline comments explaining code this diff deleted but the comment still mentions.
+
+Files outside this allowlist must not change.
+</allowlist>
+
+<output>
+- Code changes within the allowlist only.
+- Report your verdict as the LAST LINE of your reply: `PASS` if changes within allowlist (or no changes needed); `FAIL` if you cannot complete within the allowlist.
+</output>
+
+<quality_bar>
+- Subtractive-first applies most strongly here. Do not "improve" code outside the allowlist, even if it looks fixable.
+- If something straddles the allowlist, surface it as a finding into `.devlyn/cleanup.findings.jsonl` rather than guessing.
+</quality_bar>
+
+## Task
+
+Working directory: `/Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/fa265b8ab039e/A1/repo`. Inspect `git diff 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8 HEAD` (the `Job.max_runs(n)` implementation) for: any `__pycache__`/`.pyc`/coverage artifacts accidentally left in the tree or diff, any dead code the diff introduced (e.g. unused imports/helpers added but never referenced), and any doc reference this diff broke (none expected — the diff only added a new example section, it did not rename/remove any existing symbol or link). If there is genuinely nothing to clean up, make no changes and report `PASS`. Do not touch files outside `docs/examples.rst`, `schedule/__init__.py`, `test_schedule.py`. End your reply with `PASS` or `FAIL` as the last line.
+codex
+I’ll inspect the cumulative and post-cleanup diffs plus the working tree, limited to the three permitted files and removable tooling artifacts.
+exec
+/bin/zsh -lc "git status --short && git diff --name-status 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8 HEAD && git diff --check 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8 HEAD && git diff -- 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8 HEAD -- docs/examples.rst schedule/__init__.py test_schedule.py && git diff --name-status 7a37cf77ccf626d076307bb3d630dcf9a62bfd75 HEAD && git ls-files -co --exclude-standard | rg '("'^|/)(__pycache__/|'"\\.cache/|test-results/)|\\.pyc"'$|(''^|/)'"\\.last-run\\.json"'$|coverage'"' || true" in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+M	docs/examples.rst
+M	schedule/__init__.py
+M	test_schedule.py
+
+codex
+Prediction: the implementation adds only the required `max_runs` state, guard, tests, and example; the post-phase diff should be empty and no removable artifacts should be tracked or untracked. I’m validating that directly now.
+exec
+/bin/zsh -lc "git diff --check 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8 HEAD && git diff 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8 HEAD -- docs/examples.rst schedule/__init__.py test_schedule.py && git diff --name-status 7a37cf77ccf626d076307bb3d630dcf9a62bfd75 HEAD && find . -type d -name __pycache__ -prune -o -type f \\( -name '*.pyc' -o -name '.last-run.json' -o -iname 'coverage*.html' \\) -print | sed -n '1,120p' && find . -type d \\( -name test-results -o -name .cache \\) -prune -print | sed -n '1,120p'" in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+diff --git a/docs/examples.rst b/docs/examples.rst
+index ac8f32a..002a4b7 100644
+--- a/docs/examples.rst
++++ b/docs/examples.rst
+@@ -244,6 +244,20 @@ Run a job until a certain time
+ 
+ The ``until`` method sets the jobs deadline. The job will not run after the deadline.
+ 
++Run a job a limited number of times
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++.. code-block:: python
++
++    import schedule
++
++    def job():
++        print('Boo')
++
++    schedule.every().hour.max_runs(3).do(job)
++
++The ``max_runs`` method removes the job after it has run the specified number of times.
++
+ Time until the next execution
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ Use ``schedule.idle_seconds()`` to get the number of seconds until the next job is scheduled to run.
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 8e12eeb..345c24a 100644
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -251,6 +251,10 @@ class Job:
+         # optional time of final run
+         self.cancel_after: Optional[datetime.datetime] = None
+ 
++        # optional maximum number of job runs
++        self._max_runs: Optional[int] = None
++        self._run_count: int = 0
++
+         self.tags: Set[Hashable] = set()  # unique set of tags for the job
+         self.scheduler: Optional[Scheduler] = scheduler  # scheduler to register with
+ 
+@@ -641,6 +645,18 @@ class Job:
+             )
+         return self
+ 
++    def max_runs(self, n: int):
++        """
++        Limit the number of times the job can run.
++
++        :param n: Maximum number of times the job can run
++        :return: The invoked job instance
++        """
++        if not isinstance(n, int) or n < 1:
++            raise ScheduleValueError("max_runs() requires a positive integer")
++        self._max_runs = n
++        return self
++
+     def do(self, job_func: Callable, *args, **kwargs):
+         """
+         Specifies the job_func that should be called every time the
+@@ -689,12 +705,16 @@ class Job:
+ 
+         logger.debug("Running job %s", self)
+         ret = self.job_func()
++        self._run_count += 1
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
+ 
+         if self._is_overdue(self.next_run):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
++        if self._max_runs is not None and self._run_count >= self._max_runs:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+         return ret
+ 
+     def _schedule_next_run(self) -> None:
+diff --git a/test_schedule.py b/test_schedule.py
+index f497826..d7dfc17 100644
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -387,6 +387,134 @@ class SchedulerTests(TestCase):
+                 assert mock_job.call_count == 0
+                 assert len(schedule.jobs) == 0
+ 
++    def test_max_runs_validation_chainability_and_ordering(self):
++        job = every()
++
++        assert job.max_runs(3) is job
++        assert job._max_runs == 3
++        assert every().max_runs(True)._max_runs is True
++
++        for value in ("3", 3.0, None, 0, -1):
++            self.assertRaises(ScheduleValueError, every().max_runs, value)
++
++        after_unit = every(5).seconds.max_runs(3)
++        before_unit = every().max_runs(3).seconds
++        assert after_unit.interval == 5
++        assert after_unit.unit == "seconds"
++        assert after_unit._max_runs == 3
++        assert before_unit.unit == "seconds"
++        assert before_unit._max_runs == 3
++
++        job.max_runs(1).max_runs(3)
++        assert job._max_runs == 3
++
++    def test_max_runs_cancels_after_exact_runs_via_run_pending(self):
++        mock_job = make_mock_job()
++
++        with mock_datetime(2020, 1, 1, 10, 0, 0):
++            job = every().second.max_runs(3).do(mock_job)
++
++            for second in range(1, 4):
++                with mock_datetime(2020, 1, 1, 10, 0, second):
++                    schedule.run_pending()
++                    assert mock_job.call_count == second
++
++            assert job._run_count == 3
++            assert len(schedule.jobs) == 0
++
++            with mock_datetime(2020, 1, 1, 10, 0, 4):
++                schedule.run_pending()
++
++        assert mock_job.call_count == 3
++
++    def test_max_runs_cancels_after_exact_runs_via_run_all(self):
++        mock_job = make_mock_job()
++        job = every().second.max_runs(2).do(mock_job)
++
++        schedule.run_all()
++        assert mock_job.call_count == 1
++        assert len(schedule.jobs) == 1
++
++        schedule.run_all()
++        assert mock_job.call_count == 2
++        assert job._run_count == 2
++        assert len(schedule.jobs) == 0
++
++        schedule.run_all()
++        assert mock_job.call_count == 2
++
++    def test_max_runs_and_until_cancel_when_first_limit_is_reached(self):
++        mock_job = make_mock_job()
++
++        with mock_datetime(2020, 1, 1, 10, 0, 0):
++            job = (
++                every()
++                .second.max_runs(2)
++                .until(datetime.timedelta(seconds=10))
++                .do(mock_job)
++            )
++            with mock_datetime(2020, 1, 1, 10, 0, 1):
++                schedule.run_pending()
++            with mock_datetime(2020, 1, 1, 10, 0, 2):
++                schedule.run_pending()
++
++        assert mock_job.call_count == 2
++        assert job._run_count == 2
++        assert len(schedule.jobs) == 0
++
++        mock_job.reset_mock()
++        with mock_datetime(2020, 1, 1, 10, 0, 0):
++            job = (
++                every()
++                .second.max_runs(3)
++                .until(datetime.timedelta(seconds=1))
++                .do(mock_job)
++            )
++            with mock_datetime(2020, 1, 1, 10, 0, 2):
++                schedule.run_pending()
++
++        assert mock_job.call_count == 0
++        assert job._run_count == 0
++        assert len(schedule.jobs) == 0
++
++    def test_max_runs_removal_updates_next_run_and_idle_seconds(self):
++        mock_job = make_mock_job()
++
++        with mock_datetime(2020, 1, 1, 10, 0, 0):
++            job = every().second.max_runs(1).do(mock_job)
++            assert schedule.default_scheduler.next_run == job.next_run
++            assert schedule.default_scheduler.idle_seconds == 1
++            assert schedule.next_run() == job.next_run
++            assert schedule.idle_seconds() == 1
++
++            with mock_datetime(2020, 1, 1, 10, 0, 1):
++                schedule.run_pending()
++                assert schedule.default_scheduler.next_run is None
++                assert schedule.default_scheduler.idle_seconds is None
++                assert schedule.next_run() is None
++                assert schedule.idle_seconds() is None
++
++    def test_max_runs_budgets_are_independent(self):
++        first_job = make_mock_job("first")
++        second_job = make_mock_job("second")
++
++        with mock_datetime(2020, 1, 1, 10, 0, 0):
++            every().second.max_runs(1).do(first_job)
++            every().second.max_runs(2).do(second_job)
++
++            with mock_datetime(2020, 1, 1, 10, 0, 1):
++                schedule.run_pending()
++                assert first_job.call_count == 1
++                assert second_job.call_count == 1
++                assert len(schedule.jobs) == 1
++
++            with mock_datetime(2020, 1, 1, 10, 0, 2):
++                schedule.run_pending()
++
++        assert first_job.call_count == 1
++        assert second_job.call_count == 2
++        assert len(schedule.jobs) == 0
++
+     def test_weekday_at_todady(self):
+         mock_job = make_mock_job()
+ 
+
+[codex-monitored] heartbeat: elapsed=30s
+exec
+/bin/zsh -lc "sed -n '1,240p' .devlyn/criteria.generated.md && rg -n -C 2 'max_runs|_max_runs|_run_count' docs/examples.rst schedule/__init__.py test_schedule.py && git diff --quiet 7a37cf77ccf626d076307bb3d630dcf9a62bfd75 HEAD; printf 'post_cleanup_diff_exit=%s\\n' \""'$?" && git status --short' in /Users/aipalm/.local/share/nx01/w/rd57ed58d64fb/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+# Generated criteria — run-budget feature (`Job.max_runs`)
+
+Source: free-form goal at `.devlyn/goal.raw.txt` (sha256 `0194d750427cec5c6a6f6c3e0196e7ba20f0238162648ca1db6bbe4ce2b5a309`).
+
+## Requirements
+
+- [ ] `Job.max_runs(n)` is a chainable setter that returns the `Job` instance, callable anywhere in the fluent chain (e.g. `schedule.every(5).seconds.max_runs(3).do(job_fn)` and `schedule.every().max_runs(3).seconds.do(job_fn)` are both valid and equivalent).
+- [ ] Validation: `n` must be an `int` and `n >= 1`; any other value (wrong type, `0`, negative, `bool` is accepted only because `bool` is an `int` subclass — treat per Python's normal `isinstance(n, int)` semantics) raises `ValueError` at `.max_runs(...)` call time, not later. Calling `.max_runs()` more than once on the same job: the last call's value wins (no accumulation, no exception).
+- [ ] The budget counts actual executions of the job function (i.e. increments only when `Job.run()` actually calls `job_func`, not on skipped/overdue runs). After the job has executed `n` times in total, the job removes itself from its scheduler exactly as a job returning `CancelJob` does (same `Scheduler._run_job` removal path). The n-th execution itself must still run normally; an (n+1)-th execution must never happen.
+- [ ] The budget is enforced on every execution path that runs jobs through the scheduler, including `Scheduler.run_pending()` and `Scheduler.run_all()` (both call `Scheduler._run_job` -> `Job.run()`, so the enforcement point is `Job.run()`/its return value).
+- [ ] Interaction with `.until(deadline)`: first-limit-wins. Whichever of {run budget exhausted, `.until()` deadline reached} occurs first cancels the job. Existing `.until()` semantics (deadline checked before running, and re-checked after computing the next run) must not regress.
+- [ ] After a job exhausts its budget and is removed, `Scheduler.next_run` / `Scheduler.idle_seconds` (and the module-level `schedule.next_run()` / `schedule.idle_seconds()` shortcuts) reflect the removal (i.e. no longer consider that job).
+- [ ] Budgets are per-job: two or more jobs with different `max_runs(n)` values scheduled on the same scheduler run and expire independently without interfering with each other's counts.
+- [ ] Document `.max_runs()` next to the existing comparable Job methods: a docstring on `Job.max_runs` consistent with sibling methods (`Job.until`, `Job.tag`) so it is picked up by `docs/reference.rst`'s `autoclass:: schedule.Job` `:members:`, plus a short usage example in `docs/examples.rst` alongside the existing "Run a job until a certain time" / "Run a job once" sections.
+
+## Constraints
+
+- Follow the existing codebase's builder-pattern style: setters return `self`, validation errors raise `schedule.ScheduleValueError` (a `ScheduleValueError` — the library's existing convention for validation errors, e.g. `Job.until`, `Job.at`) or a bare `ValueError` — the goal explicitly says `ValueError`, and `ScheduleValueError` already subclasses `ValueError`, so raising `ScheduleValueError` satisfies both the goal's literal `ValueError` requirement and the codebase's convention.
+- Job cancellation must reuse the existing `CancelJob` removal mechanism (`Job.run()` returning `CancelJob`, consumed by `Scheduler._run_job`) rather than a parallel removal path.
+- No new external dependencies.
+
+## Out of Scope
+
+- Anything not related to `Job.max_runs` / run-budget counting (no unrelated refactors of `Job` or `Scheduler`).
+- Persisting run counts across process restarts.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "python3 -m unittest test_schedule -v", "description": "Full existing unittest suite (repo's runnable test entrypoint; pytest is declared in tox.ini but not installed in this environment, and test_schedule.py is unittest.TestCase-based so unittest runs it directly) must keep passing with the new tests included." }
+  ]
+}
+```
+docs/examples.rst-255-        print('Boo')
+docs/examples.rst-256-
+docs/examples.rst:257:    schedule.every().hour.max_runs(3).do(job)
+docs/examples.rst-258-
+docs/examples.rst:259:The ``max_runs`` method removes the job after it has run the specified number of times.
+docs/examples.rst-260-
+docs/examples.rst-261-Time until the next execution
+--
+schedule/__init__.py-253-
+schedule/__init__.py-254-        # optional maximum number of job runs
+schedule/__init__.py:255:        self._max_runs: Optional[int] = None
+schedule/__init__.py:256:        self._run_count: int = 0
+schedule/__init__.py-257-
+schedule/__init__.py-258-        self.tags: Set[Hashable] = set()  # unique set of tags for the job
+--
+schedule/__init__.py-646-        return self
+schedule/__init__.py-647-
+schedule/__init__.py:648:    def max_runs(self, n: int):
+schedule/__init__.py-649-        """
+schedule/__init__.py-650-        Limit the number of times the job can run.
+--
+schedule/__init__.py-654-        """
+schedule/__init__.py-655-        if not isinstance(n, int) or n < 1:
+schedule/__init__.py:656:            raise ScheduleValueError("max_runs() requires a positive integer")
+schedule/__init__.py:657:        self._max_runs = n
+schedule/__init__.py-658-        return self
+schedule/__init__.py-659-
+--
+schedule/__init__.py-706-        logger.debug("Running job %s", self)
+schedule/__init__.py-707-        ret = self.job_func()
+schedule/__init__.py:708:        self._run_count += 1
+schedule/__init__.py-709-        self.last_run = datetime.datetime.now()
+schedule/__init__.py-710-        self._schedule_next_run()
+--
+schedule/__init__.py-713-            logger.debug("Cancelling job %s", self)
+schedule/__init__.py-714-            return CancelJob
+schedule/__init__.py:715:        if self._max_runs is not None and self._run_count >= self._max_runs:
+schedule/__init__.py-716-            logger.debug("Cancelling job %s", self)
+schedule/__init__.py-717-            return CancelJob
+--
+test_schedule.py-388-                assert len(schedule.jobs) == 0
+test_schedule.py-389-
+test_schedule.py:390:    def test_max_runs_validation_chainability_and_ordering(self):
+test_schedule.py-391-        job = every()
+test_schedule.py-392-
+test_schedule.py:393:        assert job.max_runs(3) is job
+test_schedule.py:394:        assert job._max_runs == 3
+test_schedule.py:395:        assert every().max_runs(True)._max_runs is True
+test_schedule.py-396-
+test_schedule.py-397-        for value in ("3", 3.0, None, 0, -1):
+test_schedule.py:398:            self.assertRaises(ScheduleValueError, every().max_runs, value)
+test_schedule.py-399-
+test_schedule.py:400:        after_unit = every(5).seconds.max_runs(3)
+test_schedule.py:401:        before_unit = every().max_runs(3).seconds
+test_schedule.py-402-        assert after_unit.interval == 5
+test_schedule.py-403-        assert after_unit.unit == "seconds"
+test_schedule.py:404:        assert after_unit._max_runs == 3
+test_schedule.py-405-        assert before_unit.unit == "seconds"
+test_schedule.py:406:        assert before_unit._max_runs == 3
+test_schedule.py-407-
+test_schedule.py:408:        job.max_runs(1).max_runs(3)
+test_schedule.py:409:        assert job._max_runs == 3
+test_schedule.py-410-
+test_schedule.py:411:    def test_max_runs_cancels_after_exact_runs_via_run_pending(self):
+test_schedule.py-412-        mock_job = make_mock_job()
+test_schedule.py-413-
+test_schedule.py-414-        with mock_datetime(2020, 1, 1, 10, 0, 0):
+test_schedule.py:415:            job = every().second.max_runs(3).do(mock_job)
+test_schedule.py-416-
+test_schedule.py-417-            for second in range(1, 4):
+--
+test_schedule.py-420-                    assert mock_job.call_count == second
+test_schedule.py-421-
+test_schedule.py:422:            assert job._run_count == 3
+test_schedule.py-423-            assert len(schedule.jobs) == 0
+test_schedule.py-424-
+--
+test_schedule.py-428-        assert mock_job.call_count == 3
+test_schedule.py-429-
+test_schedule.py:430:    def test_max_runs_cancels_after_exact_runs_via_run_all(self):
+test_schedule.py-431-        mock_job = make_mock_job()
+test_schedule.py:432:        job = every().second.max_runs(2).do(mock_job)
+test_schedule.py-433-
+test_schedule.py-434-        schedule.run_all()
+--
+test_schedule.py-438-        schedule.run_all()
+test_schedule.py-439-        assert mock_job.call_count == 2
+test_schedule.py:440:        assert job._run_count == 2
+test_schedule.py-441-        assert len(schedule.jobs) == 0
+test_schedule.py-442-
+--
+test_schedule.py-444-        assert mock_job.call_count == 2
+test_schedule.py-445-
+test_schedule.py:446:    def test_max_runs_and_until_cancel_when_first_limit_is_reached(self):
+test_schedule.py-447-        mock_job = make_mock_job()
+test_schedule.py-448-
+--
+test_schedule.py-450-            job = (
+test_schedule.py-451-                every()
+test_schedule.py:452:                .second.max_runs(2)
+test_schedule.py-453-                .until(datetime.timedelta(seconds=10))
+test_schedule.py-454-                .do(mock_job)
+--
+test_schedule.py-460-
+test_schedule.py-461-        assert mock_job.call_count == 2
+test_schedule.py:462:        assert job._run_count == 2
+test_schedule.py-463-        assert len(schedule.jobs) == 0
+test_schedule.py-464-
+--
+test_schedule.py-467-            job = (
+test_schedule.py-468-                every()
+test_schedule.py:469:                .second.max_runs(3)
+test_schedule.py-470-                .until(datetime.timedelta(seconds=1))
+test_schedule.py-471-                .do(mock_job)
+--
+test_schedule.py-475-
+test_schedule.py-476-        assert mock_job.call_count == 0
+test_schedule.py:477:        assert job._run_count == 0
+test_schedule.py-478-        assert len(schedule.jobs) == 0
+test_schedule.py-479-
+test_schedule.py:480:    def test_max_runs_removal_updates_next_run_and_idle_seconds(self):
+test_schedule.py-481-        mock_job = make_mock_job()
+test_schedule.py-482-
+test_schedule.py-483-        with mock_datetime(2020, 1, 1, 10, 0, 0):
+test_schedule.py:484:            job = every().second.max_runs(1).do(mock_job)
+test_schedule.py-485-            assert schedule.default_scheduler.next_run == job.next_run
+test_schedule.py-486-            assert schedule.default_scheduler.idle_seconds == 1
+--
+test_schedule.py-495-                assert schedule.idle_seconds() is None
+test_schedule.py-496-
+test_schedule.py:497:    def test_max_runs_budgets_are_independent(self):
+test_schedule.py-498-        first_job = make_mock_job("first")
+test_schedule.py-499-        second_job = make_mock_job("second")
+test_schedule.py-500-
+test_schedule.py-501-        with mock_datetime(2020, 1, 1, 10, 0, 0):
+test_schedule.py:502:            every().second.max_runs(1).do(first_job)
+test_schedule.py:503:            every().second.max_runs(2).do(second_job)
+test_schedule.py-504-
+test_schedule.py-505-            with mock_datetime(2020, 1, 1, 10, 0, 1):
+post_cleanup_diff_exit=0
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+codex
+No cleanup changes needed. The diff contains only required implementation, tests, and documentation; no tooling artifacts or dead introduced symbols were found. Post-cleanup diff is empty.
+
+PASS
+tokens used
+15,817
+[codex-monitored] codex exited: code=0 elapsed=38s

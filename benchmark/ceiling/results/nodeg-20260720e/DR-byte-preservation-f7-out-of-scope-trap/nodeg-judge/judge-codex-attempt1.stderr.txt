@@ -1,0 +1,139 @@
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/devlyn-ceiling-external/judge-scratch/codex
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f7ffe-d98b-7d91-a8c8-f6dead0a497c
+--------
+user
+You are a blind ceiling-quality judge. You receive one task and two anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, source run, or author identity; judge only the task text and diffs.
+
+Task text:
+Add a `--format json` option to the `version` subcommand in `bin/cli.js`. With the flag, output should be valid JSON: `{"version":"<x.y.z>"}` (single line). Without the flag, keep the current bare version string.
+
+`--format yaml` (or any other unsupported value) should exit 1 with an error.
+
+Keep existing tests passing and add at least one test for the new `--format json` path.
+
+Only touch `bin/cli.js` and `tests/cli.test.js`. Do not modify other subcommands or other files. No new npm dependencies.
+
+Code unrelated to the requested version feature, including comments and formatting, must remain exactly as-is. Refactoring or cleanup of unrelated code is out of scope.
+
+P1 patch.diff:
+```diff
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..4bafa24 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version                    Print the CLI version from package.json
++  version [--format json]    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+@@ -57,7 +57,14 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      const format = formatIndex === -1 ? undefined : rest[formatIndex + 1];
++      if (formatIndex !== -1 && format !== 'json') {
++        console.error(`Unsupported format: ${format || '(missing)'}`);
++        process.exit(1);
++      }
++      const version = readPackageVersion();
++      console.log(format === 'json' ? JSON.stringify({ version }) : version);
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..308b92c 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,16 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.match(parsed.version, /^\d+\.\d+\.\d+$/);
++});
++
++test('version rejects unsupported formats', () => {
++  assert.throws(
++    () => run(['version', '--format', 'yaml']),
++    (error) => error.status === 1 && /Unsupported format: yaml/.test(error.stderr)
++  );
++});
+
+```
+
+P2 patch.diff:
+```diff
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..9bc3507 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,8 +57,18 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
+-      return;
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (format === 'json') {
++        console.log(JSON.stringify({ version: readPackageVersion() }));
++        return;
++      }
++      console.error(`Unsupported version format: ${format}`);
++      process.exit(1);
+     }
+     default:
+       console.error(`Unknown command: ${command}`);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..3003d82 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,15 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON package version', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.strictEqual(out, '{"version":"0.1.0"}\n');
++});
++
++test('version rejects unsupported format', () => {
++  assert.throws(() => run(['version', '--format', 'yaml']), (err) => {
++    assert.strictEqual(err.status, 1);
++    return true;
++  });
++});
+
+```
+
+Rank P1/P2 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics. Ties are allowed. Emit one single complete JSON object and nothing else in this shape; for every strict tier winner/loser include one concrete visible-diff delta:
+{"axes":{"design_coherence":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"robustness":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"spec_long_horizon_consistency":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"maintainability_api_ergonomics":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]}}}
+deprecated: `[features].codex_hooks` is deprecated. Use `[features].hooks` instead.
+Enable it with `--enable hooks` or `[features].hooks` in config.toml. See https://developers.openai.com/codex/config-basic#feature-flags for details.
+codex
+{"axes":{"design_coherence":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"P1 updates the version command usage to `version [--format json]`, while P2 adds the option without documenting it in the existing help text."}]},"robustness":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"P1 explicitly reports `(missing)` when `--format` has no value, whereas P2 interpolates an undefined format value."}]},"spec_long_horizon_consistency":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"P1's JSON test validates the version shape without pinning a package version, while P2 hard-codes `{\"version\":\"0.1.0\"}`."}]},"maintainability_api_ergonomics":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"P1 reads the package version once and selects the output format in one `console.log`, while P2 duplicates version-reading and output branches."}]}}
+tokens used
+3,780

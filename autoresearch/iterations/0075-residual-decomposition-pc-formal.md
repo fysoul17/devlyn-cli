@@ -116,3 +116,57 @@ precedent); P-B eligibility = decomposition_status complete rows only;
 
 **Out of scope (frozen)**: any lever build; C1 product wiring; corpus
 changes.
+
+## ADJUDICATION — Stage B cohort nodeg-20260720e vs frozen predictions (2026-07-21)
+
+Cohort: worktree b983bf6, pins claude 2.1.215 + codex 0.144.5 (run-owned,
+sha-receipted), 7/7 rows ran, driver full chain exit 0 (no instrument
+deaths — the 0073-era post-hoc-repair deviation class is retired on this
+stack). Two dead F7 draws before the diagnostic launch (-20260720c/d,
+exit 86, receipts archived). Formal artifact:
+`nodeg-20260720e/nodeg-0075-adjudication.json` (deterministic aggregator).
+
+- **P-A — INCONCLUSIVE, FS-0075-B FIRED.** complete-verify 4/7 (F7,
+  F26, F11, FS1) < 5, third consecutive cohort below the bar; the
+  completeness prediction (exact-pin ⇒ ≥5/7) is REFUTED — pin integrity
+  was necessary but not sufficient. implement share ≥0.60 on 0/4
+  complete rows (unchanged direction). **Frozen consequence binds: the
+  next iter targets COMPLETION RATE before any wall work.**
+- **P-B — CONFIRMS.** startup+interphase+outer_loop ≥50% of residual on
+  5/7 decomposition-complete rows (all 7 rows decomposition-complete on
+  timing-v2; clean rows run 92-96%). The wall lever target is now
+  DATA-NAMED: startup + inter-phase orchestrator gaps. F25 (40%) and
+  F12 (25%) are the censored-heavy exceptions.
+- **P-C — CONFIRMS.** quality 0/7; wall median 10.888× ≥8 (aggregator;
+  note: nodeg-verdict wall bar per-row ratios were null on this run —
+  record-only anomaly, verdict bar still FAIL, aggregator is the
+  0075-frozen wall source).
+- **FS-0075-C/D2 — clean.** All 7 rows conserve exactly (unallocated 0).
+- **Objective 5/7 (cohort data, outside frozen P-set), both failures
+  receipt-traced to ONE class:** SC worker replies omitted `:<line>` in
+  an N/A obligation line (`PATH-TEST: N/A test_schedule.py — ...`,
+  same shape on F23's UVR-STALE line); SURFACE_ROW_RE
+  (state-phase-write.py:47) mandates a line number for FIRED and N/A
+  alike → reply invalid → SC BLOCKED (fail-closed, correct) → rollback
+  discarded the worker's CORRECT repairs (FS1: the UVR max_runs
+  docstring fix — its hidden-test target; F23: a fired PATH test).
+  Third live occurrence of the correct-repair-discarded-by-discipline-
+  gate class (0072.19 audit-BLOCKED, 0072.26 fix-loop revert). Skill
+  bytes are IDENTICAL between the -19g/-20260720a/b SHAs and this
+  stack (only devlyn:queue +1 doc line) — this is worker-format
+  variance, not a stack regression. FS1's -19g-confound closure
+  (0073.3) is untouched: the closure row measured the frozen 21cd920
+  stack; today's row is a different failure mode on the same task.
+- **Incomplete-verify persistence**: F25 (C2 FAILED-INCOMPLETE fired
+  live — first in-cohort firing of the 0074 binding), F12, F23 — 3/7
+  again, same order of magnitude as -19g. The completion-rate problem
+  is now measured across THREE cohorts and two CLI versions.
+
+**Iter-0075 claim status: COMPLETE — CLOSED.** The instrument is
+delivered (decomposition + conservation on 16 rows total incl. 9-row
+back-test + canary + 7-row cohort, all ±1s), the formal P-c question is
+answered as far as the rule permits (INCONCLUSIVE with the unanimous
+directional read now backed by named components), P-B/P-C adjudicated.
+Roadmap consequence (frozen by FS-0075-B + P-B data): **iter-0076 =
+completion-rate iter (premature-terminal + SC-format repair classes),
+THEN the wall lever iter keyed on startup+interphase.**

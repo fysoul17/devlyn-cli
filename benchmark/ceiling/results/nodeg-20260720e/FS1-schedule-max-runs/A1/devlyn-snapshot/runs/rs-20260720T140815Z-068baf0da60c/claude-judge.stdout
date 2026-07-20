@@ -1,0 +1,15 @@
+Both mandatory probes were executed (not just traced) and passed:
+
+Probe 1a (deadline wins): every().second.max_runs(2).until(timedelta(seconds=1.5)) — job ran exactly once at t=1s (_run_count==1), was removed from schedule.jobs before a 2nd run could occur, confirming the deadline check (_is_overdue(self.next_run) at line 712) fires before _max_runs is ever reached.
+
+Probe 1b (budget wins): same job shape but until(timedelta(seconds=100)) — ran twice (t=1s, t=2s), _run_count==2, removed after the 2nd run, no 3rd run on a subsequent run_pending(). Confirms budget-exhaustion path (line 715) cancels correctly when the deadline is far away.
+
+Probe 2 (independent budgets): two jobs on the default scheduler, max_runs(1) and max_runs(3). At t=1s the budget-1 job ran once and was removed while the budget-3 job stayed scheduled (len(schedule.jobs)==1); the budget-3 job continued running at t=2s and t=3s, only being removed after its 3rd run. len(schedule.jobs) reflected each removal at the right time, and the two _run_counts never interfered.
+
+Static check of schedule/__init__.py (Job.run(), lines 690-718) confirms the order matches spec intent: _is_overdue(now) guard before running -> job_func() call + _run_count += 1 -> _is_overdue(next_run) (post-run deadline check) -> _max_runs check. Both cancellation paths return CancelJob, consumed by the existing Scheduler._run_job removal mechanism (no parallel removal path), satisfying the spec's reuse constraint.
+
+git status --short before and after the probes is unchanged (only pre-existing untracked .claude/, .devlyn/, AGENTS.md, CLAUDE.md); the scratch script lived in /tmp and was removed.
+
+No mismatches found in either targeted area.
+
+PASS
