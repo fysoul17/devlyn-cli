@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iter: [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (C2 shipped 0074.1 · C1 probe frozen 0074.2 · C1 probe MEASURED 0074.3 — read §C1 PROBE MEASURED incl. the honest CLI-loop-cap bound; open item = C1 product-wiring registration, separate claim). Recently closed: [`iterations/0073-attribution-complete-remeasure.md`](iterations/0073-attribution-complete-remeasure.md) (CLOSED 0073.3 — read §CLOSURE for the successor/closure row split + Treatment-Seat Identity precedent), [`iterations/0072-changed-surface-closure.md`](iterations/0072-changed-surface-closure.md) (0072.28/.29). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iter: [`iterations/0076-completion-rate.md`](iterations/0076-completion-rate.md) (REGISTERED-FROZEN 0076.1, three-way R0+R1+R2 — M-RE + M0-narrow + M2v2; Stage A build next; M1 gated on FS-0076-A; C1 wiring pulled forward only by FS-0076-B). Context iters: [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (C1 probe MEASURED 0074.3, product wiring = separate claim), [`iterations/0075-residual-decomposition-pc-formal.md`](iterations/0075-residual-decomposition-pc-formal.md) (CLOSED 0075.5 — FS-0075-B fired; NOTE 0076.1 honesty corrections to its FS1 objective-causality claim). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -59,13 +59,14 @@ identical across stacks — worker-format variance, not regression).
 C2 FAILED-INCOMPLETE fired live in-cohort (F25, first time).
 
 **Next work (in order)**:
-1. **iter-0076 registration — COMPLETION-RATE iter** (frozen
-   consequence of FS-0075-B; three-way round): the two measured loss
-   classes are (a) premature-terminal-mid-VERIFY (3/7 across 3
-   cohorts, 2 CLI versions) and (b) SC-reply-format rejection
-   discarding correct repairs (candidate: bounded format-repair
-   re-prompt with the exact regex error — design question, C1-probe
-   BLOCK_HONORED data says in-session pressure works on claude).
+1. **iter-0076 REGISTERED-FROZEN (0076.1, 2026-07-21) — Stage A build**
+   (Codex sol, workspace-write): M-RE (N/A `:<line>` optional) + M0
+   narrow continue-after-clean-rollback (skip-carrier +
+   complete-after-spawn SPW writer + transcript write-audit) + M2v2
+   (invocation-owned run-set quantification). M1 repair-re-prompt NOT
+   built (FS-0076-A gate); frozen file is the build contract. Then
+   Stage A gates (real-receipt self-tests + sonnet probe ≥9/10 +
+   zero false-N/A) → Stage B 7-row cohort.
 2. **Wall lever iter** (AFTER 0076 per FS-0075-B): target startup +
    inter-phase orchestrator gaps (92-96% of residual on clean rows).
 3. **C1 product wiring registration** (separate claim, own round) —
