@@ -1,0 +1,17 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "npm test",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "# fail 0"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": " POST /items/import appends a fully valid batch in order with unique ids\nok 8 - POST /items/import appends a fully valid batch in order with unique ids\n  ---\n  duration_ms: 3.324375\n  ...\n# Subtest: POST /items/import rejects a non-array items value without changing the list\nok 9 - POST /items/import rejects a non-array items value without changing the list\n  ---\n  duration_ms: 2.642917\n  ...\n1..9\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 132.685875\n"
+    }
+  ]
+}

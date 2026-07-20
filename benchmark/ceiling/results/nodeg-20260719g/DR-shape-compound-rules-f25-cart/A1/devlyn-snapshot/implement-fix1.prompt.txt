@@ -1,0 +1,28 @@
+# Codex (OpenAI) adapter — identity + posture
+
+You are OpenAI's Codex model, running inside the actual project repo with workspace-write access. Validation is concrete commands, not self-belief: run the listed verification commands and trust their output. Do not narrate internal deliberation; state results and decisions directly.
+
+# Runtime principles
+
+Subtractive-first, Goal-locked, No-workaround, Evidence apply. Fix exactly the findings below — do not expand scope, do not refactor adjacent code.
+
+# PHASE 2 — IMPLEMENT (fix round 1, triggered by VERIFY findings)
+
+You are fixing a diff that already exists (`bin/cli.js` cart subcommand, `tests/cli.test.js` tests). An independent fresh-context VERIFY judge (fresh context, no knowledge of prior implementation reasoning) reviewed the diff against `.devlyn/criteria.generated.md` and found the following. Fix each one exactly; do not touch any file other than `bin/cli.js` and `tests/cli.test.js`.
+
+## Finding 1 — HIGH, verdict-binding (must fix)
+`cart.catalog-error-contract`: Catalog read and parse failures bypass the required exit-2 JSON error contract and instead produce an exit-1 Node stack trace. Evidence: `const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));` in `runCart` is outside any error handling. A catalog read/parse failure currently throws an uncaught exception (status 1, stack trace) instead of the required single JSON error object on stderr with exit 2. Fix: wrap the catalog read+parse in the same try/catch pattern already used for the cart input file, and route failures through `failCart` with an explicit JSON error (e.g. `{error: 'invalid_catalog'}` — pick a code consistent with the existing `invalid_input`/`invalid_json` naming). This directly implements the criteria's requirement: "Parsing and file-read failures must surface as JSON errors rather than silent catches."
+
+## Finding 2 — HIGH, verdict-binding (must fix)
+`cart.validation-precedence`: SKU and quantity checks are interleaved per item in a single pass, so for a cart like `{"items":[{"sku":"MUG","qty":0},{"sku":"NOPE","qty":1}]}` the current code reports `invalid_quantity` for MUG (the first item) instead of ever reaching the unknown-SKU check for NOPE. Fix: make validation order deterministic and consistent across the whole cart: first pass over every raw item checking SKU validity (unknown SKU → `invalid_sku` immediately), second pass checking quantity validity (`invalid_quantity` immediately) while combining quantities into the map, so an unknown SKU anywhere in the cart is always caught before any quantity check runs for a later item. (Two passes over `cart.items`, not one — SKU pass fully first, then quantity+combine pass.)
+
+## Finding 3 — MEDIUM, verdict-binding (should fix)
+`cart.absent-coupon-rejected`: A cart JSON with no `coupon` key at all (i.e. `cart.coupon === undefined`, not explicit `null`) is currently rejected with `invalid_coupon`, even though the intent (coupon is optional — apply it when present, otherwise zero discount) treats null and "not present" the same way. Fix: treat `cart.coupon == null` (loose equality, matches both `null` and `undefined`) as "no coupon" everywhere, rather than the current strict `cart.coupon !== null` checks.
+
+## Already resolved — no action needed
+- `cart.help-omits-command` (LOW): already fixed by a separate SURFACE_CLOSE pass that added `cart --input PATH` to the USAGE text. Do not touch USAGE again.
+- `verify.full-suite-unexercised` (LOW): an artifact of the judge's own read-only sandbox rejecting `npm test`'s temp-file/socket use; not a real defect, no action needed.
+
+## Task
+
+Read `bin/cli.js` (current `runCart`/`failCart`) and `.devlyn/criteria.generated.md` in full. Apply the three fixes above with the smallest possible diff. Run `npm test` and the three verification commands from the criteria file's `## Verification` block, plus manually verify: (a) a broken/missing `data/catalog.json` produces an exit-2 JSON error not a stack trace (you can temporarily point `catalogPath` at a nonexistent file in a scratch test to confirm, then revert — do not leave any test-only hack in the committed code), (b) `{"sku":"MUG","qty":0},{"sku":"NOPE","qty":1}` now reports `invalid_sku` for NOPE, not `invalid_quantity` for MUG, (c) a cart JSON with the `coupon` key omitted entirely behaves identically to `"coupon": null`. Report PASS/BLOCKED and cite file:line evidence for each of the three fixes in your final reply.

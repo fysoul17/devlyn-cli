@@ -1,0 +1,9 @@
+BLOCKED: required `npm test` cannot pass in this sandbox.
+
+Implemented `fulfill-wave` validation, allocation/rollback, ordering, and JSON error/output contracts in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f99dbe9386580/A1/repo/bin/cli.js:38). Added accepted, rollback, and single-warehouse tests in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f99dbe9386580/A1/repo/tests/cli.test.js:37).
+
+Verification:
+- `node --test tests/cli.test.js`: 5/5 passed.
+- Manual invalid-input and allocation smoke tests passed.
+- `npm test`: CLI tests pass, but three pre-existing server tests fail because this environment denies `server.listen(0)` with `EPERM` at `tests/server.test.js:9`.
+- `git diff --stat`: only `bin/cli.js` and `tests/cli.test.js` changed.

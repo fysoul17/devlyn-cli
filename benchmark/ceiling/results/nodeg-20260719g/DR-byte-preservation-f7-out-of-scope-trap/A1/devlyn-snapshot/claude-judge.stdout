@@ -1,0 +1,7 @@
+Bash execution is denied in this environment, so I verified the two targeted clauses by exhaustive static analysis of the deterministic code path in `bin/cli.js` (lines 44–75), which fully determines exit code, stdout, and stderr with no runtime nondeterminism.
+
+**Probe 1 (error-priority, any unsupported value):** `parseVersionFormat` (lines 44–53) checks `value !== 'json'` — a general inequality, not a hardcoded `yaml` special-case. `xml` or uppercase `JSON` both satisfy `value !== 'json'` → `console.error('--format only supports json')` (stderr) then `process.exit(1)`, which runs *before* `readPackageVersion()`/`console.log` at lines 72–73. No version output leaks to stdout; exit 1 with stderr message. Confirmed.
+
+**Probe 2 (exact output shape):** line 73 `console.log(JSON.stringify({ version }))` with `version='0.1.0'` yields `{"version":"0.1.0"}` and `console.log` appends exactly one `\n` → stdout is `{"version":"0.1.0"}\n`, single line, key set exactly `{version}`, matching the literal contract byte-for-byte. Confirmed.
+
+# SUMMARY {"verdict": "PASS", "findings_count": 0}

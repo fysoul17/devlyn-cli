@@ -1,0 +1,8 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/",
+      "exit_code": 0
+    }
+  ]
+}

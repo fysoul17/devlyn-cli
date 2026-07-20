@@ -1,0 +1,28 @@
+Add a run-budget feature to the `schedule` library (this repository).
+
+Implement `Job.max_runs(n)`:
+
+- Chainable setter that returns the Job instance, usable anywhere in the
+  fluent chain, e.g. `schedule.every(5).seconds.max_runs(3).do(job_fn)` or
+  `schedule.every().max_runs(3).seconds.do(job_fn)`.
+- The budget counts actual executions of the job function. After the job
+  has executed n times in total, the job removes itself from its scheduler
+  exactly as a job returning `CancelJob` does. The nth execution itself
+  still runs normally; an (n+1)-th execution must never happen.
+- Applies to every execution path that runs jobs through the scheduler
+  (`run_pending()` and `run_all()` included).
+- Interaction with `.until(deadline)`: whichever limit is reached first
+  cancels the job (first-limit-wins). The existing `.until()` semantics
+  must not regress.
+- After a job exhausts its budget, `Scheduler.next_run` / `idle_seconds`
+  must reflect its removal.
+- Validation: n must be an integer >= 1; any other value raises
+  ValueError at `.max_runs(...)` call time. Calling `.max_runs()` more
+  than once on the same job: the last call wins.
+- Budgets are per-job: multiple jobs with different budgets must not
+  interfere with each other.
+- Document the new API wherever this project documents comparable Job
+  methods, and keep the implementation idiomatic for this codebase.
+
+Deliver production-quality code: the full existing test suite must keep
+passing, and the new behavior must be covered by tests you add.

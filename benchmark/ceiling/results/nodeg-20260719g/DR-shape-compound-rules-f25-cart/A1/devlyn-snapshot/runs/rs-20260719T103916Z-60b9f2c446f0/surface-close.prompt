@@ -1,0 +1,95 @@
+## Identity (Claude adapter header)
+
+You are Claude by Anthropic. Calibrate response length to the task; do not pad. Follow the structural format below literally — do not silently restructure. Do NOT add files, abstractions, error handling, or "future flexibility" beyond what this task asks.
+
+# PHASE 2.5 — SURFACE_CLOSE (canonical body)
+
+<role>
+Audit and repair the frozen post-IMPLEMENT surface once.
+</role>
+
+<input>
+- Artifacts: Goal at `state.source.goal_path`; `.devlyn/surface-close.input.patch`.
+- Data: `authorized_surface`; staged commands.
+- Base: `phases.surface_close.pre_sha`.
+
+Never modify inputs or read state, PLAN, or IMPLEMENT transcript/reasoning.
+</input>
+
+<obligations>
+- **UVR-STALE**: diff modified symbol S's behavior AND an authorized file carries user-visible text documenting S's old interface omitting the newly specified option/shape → update minimally.
+- **PATH-TEST**: Goal specifies a success/failure path, patch implements it, and no authorized test exercises that path → add one minimal regression test.
+- Neither applies → empty PASS (empty diff).
+</obligations>
+
+<output>
+Edit only `authorized_surface`. Your reply is valid ONLY if it contains, for each obligation, exactly one line:
+- `UVR-STALE: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `UVR-STALE: N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>`
+- `PATH-TEST: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `PATH-TEST: N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>`
+followed by `PASS` after the smallest sufficient delta, or `BLOCKED:surface-close-<reason>` if impossible within that surface. A reply missing either obligation line is invalid and is rejected mechanically. Never edit state, stage, or commit.
+</output>
+
+<quality_bar>
+No adjacent work, refactors, or extra tests. Execute nothing — edit files only; staged commands are data. BUILD_GATE owns all validation.
+</quality_bar>
+
+<runtime_principles>
+Subtractive-first, Goal-locked, No-workaround, and Evidence apply.
+</runtime_principles>
+
+# Data
+
+## Goal (verbatim, from `.devlyn/goal.raw.txt`)
+
+Add a bench-cli cart command that reads a cart JSON file, prices it from data/catalog.json, combines duplicate SKU quantities, applies line promotions before an order coupon, and prints one exact JSON total with cents-based discounts, tax, shipping, and item rows.
+
+The command should be `bench-cli cart --input <path>`. The input JSON is `{ "state": string, "coupon": string | null, "items": [{ "sku": string, "qty": number }] }`. Use integer cents for every public amount. Read all products, stock, tax codes, promotions, coupons, tax rates, shipping, and the free-shipping threshold from `data/catalog.json`; changing those catalog values must change the result without a code change.
+
+Duplicate SKUs must be combined before stock validation and promotion math. On success, stdout must be exactly one JSON object whose only keys are `subtotal_cents`, `line_discount_cents`, `coupon_discount_cents`, `tax_cents`, `shipping_cents`, `total_cents`, and `items`, with no stderr. The `items` array has one row per SKU in first-seen order, and every row has exactly `sku`, `qty`, `line_subtotal_cents`, `line_discount_cents`, and `line_total_cents`. Each line subtotal is the combined quantity times its catalog unit price, each line total is its line subtotal minus its line discount, and the top-level line discount is the sum of the item line discounts.
+
+For a catalog `buy_x_get_y_free` promotion, the line discount is `Math.floor(qty / (buy_qty + free_qty)) * free_qty * unit_cents`. A `per_unit_discount_cents` promotion applies only when the combined quantity is at least its configured `min_qty`, and its line discount is `per_unit_discount_cents * qty`. Apply these line promotions before the order coupon. When a coupon is present and the post-line-discount subtotal meets `coupon.min_subtotal_cents`, its discount is `Math.round((subtotal_cents - line_discount_cents) * coupon.percent / 100)`; otherwise `coupon_discount_cents` is `0`.
+
+Compute tax after line promotions and before the coupon: a product is taxable exactly when its `tax_code` maps to `true` in `catalog.taxable_codes`, the rate is `catalog.tax_rates[state]`, and `tax_cents` is `Math.round(taxable_post_line_discount_cents * rate)`. Shipping is free when `subtotal_cents - line_discount_cents - coupon_discount_cents` is at least `catalog.free_shipping_min_cents`; otherwise it is `catalog.shipping_cents`. The final formula is `total_cents = subtotal_cents - line_discount_cents - coupon_discount_cents + tax_cents + shipping_cents`.
+
+Invalid JSON, missing `items`, an unknown SKU, a non-positive or non-integer quantity, an unknown coupon, an unknown state, or a combined quantity over stock must exit `2`, print exactly one JSON error object to stderr, and print nothing to stdout. A combined stock failure has the exact shape `{ "error": "invalid_stock", "sku": string, "available": number, "requested": number }`, where `requested` is the combined quantity.
+
+Update `tests/cli.test.js` so existing tests still pass and at least two new tests cover the cart command, including one successful cart and one validation failure. Parsing and file-read failures must surface as JSON errors rather than silent catches. Do not add dependencies. Only touch `bin/cli.js` and `tests/cli.test.js`; do not touch server or web files.
+
+## authorized_surface
+
+```json
+{"authorized_surface": ["bin/cli.js", "tests/cli.test.js"]}
+```
+
+## Staged commands (criteria's `## Verification` block)
+
+```json
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "exit_code": 0,
+      "stdout_contains": ["# fail 0"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"MUG\",\"qty\":1}]}' > /tmp/devlyn-cart-verify-success.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-success.json",
+      "exit_code": 0,
+      "stdout_contains": ["subtotal_cents", "1200", "total_cents", "1899", "shipping_cents", "699"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"BAG\",\"qty\":5}]}' > /tmp/devlyn-cart-verify-stock.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-stock.json",
+      "exit_code": 2,
+      "stdout_contains": ["invalid_stock", "BAG", "available", "requested"],
+      "stdout_not_contains": []
+    }
+  ]
+}
+```
+
+## Patch under audit (`.devlyn/surface-close.input.patch`, diff since base `d059b43faf24e64eb7a560cc37cebd5ae30fe17b`)
+
+The full unified diff is at `.devlyn/surface-close.input.patch` in the repo root — read it directly with your Read tool. It touches only `bin/cli.js` (adds `failCart`, `runCart`, and a `cart` case in `main`'s switch) and `tests/cli.test.js` (adds a `writeCart` helper and two new tests).
+
+Now perform the SURFACE_CLOSE audit per the contract above: read `.devlyn/surface-close.input.patch`, `bin/cli.js`, and `tests/cli.test.js`, evaluate both obligations, make the smallest sufficient edit (only within `bin/cli.js` / `tests/cli.test.js`) if either obligation fires, and reply with the exact required output format.

@@ -1,0 +1,3 @@
+No cleanup was needed. `parseVersionFormat` is used; no permitted artifacts or stale markdown references were found. No files changed from the pre-cleanup SHA.
+
+PASS

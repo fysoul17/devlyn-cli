@@ -1,0 +1,7 @@
+BLOCKED — implementation and tests are complete in the authorized files.
+
+- Added atomic `POST /items/import` validation, failure responses, ordered inserts, and unique IDs in [server/index.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f04eb7d76921c/A1/repo/server/index.js:30).
+- Added invalid-middle/no-mutation and valid-import tests in [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f04eb7d76921c/A1/repo/tests/server.test.js:82).
+- `git diff --check` and both `node --check` commands pass.
+
+Required `npm test` exits 1 with `# fail 5`: the sandbox rejects all local server binds (`listen EPERM` at `tests/server.test.js:9`), including a separate `127.0.0.1` probe. Thus `# fail 0` cannot be confirmed in this environment.

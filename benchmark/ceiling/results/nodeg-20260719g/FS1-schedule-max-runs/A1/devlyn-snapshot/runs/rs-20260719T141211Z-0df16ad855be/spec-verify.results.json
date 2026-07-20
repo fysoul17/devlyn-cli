@@ -1,0 +1,15 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "/opt/homebrew/bin/pytest test_schedule.py -q",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "........................................................................ [ 87%]\n..........                                                               [100%]\n82 passed in 0.24s\n"
+    }
+  ]
+}

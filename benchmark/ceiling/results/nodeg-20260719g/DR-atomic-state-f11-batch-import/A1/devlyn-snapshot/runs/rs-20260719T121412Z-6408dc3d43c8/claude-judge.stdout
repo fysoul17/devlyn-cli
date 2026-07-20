@@ -1,0 +1,3 @@
+Both probes trace clean: mutation (`items.push`) occurs only at line 53 after the full validation loop completes, so any invalid item leaves the store unchanged; name is checked before qty per-item (line 37 before 41) and `index` is the true 0-based position via `.entries()`. Exact JSON key sets match the spec. Diff touches only the two allowed files.
+
+# SUMMARY {"verdict": "PASS"}

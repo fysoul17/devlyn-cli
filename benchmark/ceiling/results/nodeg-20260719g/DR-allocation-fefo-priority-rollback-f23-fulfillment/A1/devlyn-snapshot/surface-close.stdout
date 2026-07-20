@@ -1,0 +1,5 @@
+UVR-STALE: FIRED bin/cli.js:8 — `USAGE` (printed on `--help`/unknown command) still listed only `hello`/`version`, omitting the new `fulfill-wave` command the Goal requires users be able to run; added one `Commands:` line.
+
+PATH-TEST: FIRED tests/cli.test.js:37 — Goal requires invalid input/file-read failures to exit 2, write nothing to stdout, and emit a single JSON object to stderr; no existing test exercised that path (only accepted/rejected success rows were covered), so added one minimal regression test.
+
+PASS

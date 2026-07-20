@@ -1,0 +1,15 @@
+PASS — all three cart fixes are in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/bin/cli.js:70) only.
+
+- Catalog read/parse failures now return exit 2 JSON `{"error":"invalid_catalog"}` via `failCart`. Verified with simulated missing and malformed catalog data: empty stdout, exact stderr JSON, status 2. [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/bin/cli.js:71)
+- SKU validation completes before quantity validation/combining; the mixed cart now returns `invalid_sku` for `NOPE`. [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/bin/cli.js:78)
+- Omitted coupons and `null` coupons both mean no coupon, in validation and discount calculation. [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/bin/cli.js:91) [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/bin/cli.js:140)
+
+Verification:
+
+- Criteria success command: PASS (`total_cents: 1899`, `shipping_cents: 699`).
+- Criteria stock command: PASS (exit 2, exact `invalid_stock` JSON).
+- Manual three-contract check: PASS.
+- `node --test tests/cli.test.js`: PASS, 5/5.
+- `git diff --check`: PASS.
+
+BLOCKED: `npm test` cannot complete in this sandbox because the unrelated server tests cannot bind `0.0.0.0` (`EPERM`); all three server tests fail for that environmental reason, while all five CLI tests pass.

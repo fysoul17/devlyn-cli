@@ -1,0 +1,10 @@
+Both targeted probes passed against the two highest-risk spec bullets:
+
+1. First-limit-wins ordering — verified independently (fresh Scheduler() instance, not reusing the repo's test mock) in both directions: budget exhausting before an .until() deadline correctly cancels via the run-count path (_runs_remaining hits 0, job removed after exactly 2 runs despite deadline being 30s out), and a deadline arriving before the budget exhausts correctly cancels via the pre-run overdue check in Job.run() (schedule/__init__.py:703) without decrementing _runs_remaining on a phantom run (confirmed 98 remained out of 100, job removed at the deadline, not the budget).
+2. Per-job isolation and last-call-wins — two independently-budgeted jobs (max_runs(2) and max_runs(4)) on the same Scheduler ran exactly 2 and 4 times respectively with no cross-contamination of _runs_remaining, and repeated .max_runs() calls on one job reset the counter (1->3->1) rather than accumulating.
+
+Full test suite (82 tests) and the repo's own test_max_runs pass. Working tree is clean - no throwaway files left behind (/tmp scripts removed after use).
+
+No findings to report.
+
+PAIR_VERDICT: PASS

@@ -251,3 +251,64 @@ registration; nothing built under this iter (single-claim discipline).
    measurement rows untouched. Future-cohort note: the pin must either
    copy the binary to a run-owned path before launch or disable the
    updater for the pin's lifetime.
+
+## ADJUDICATION — cohort nodeg-20260719g vs frozen predictions (2026-07-20)
+
+Formal verdict `benchmark/ceiling/results/nodeg-20260719g/nodeg-verdict.json`
+(quality_label "post-hoc instrument-repaired"; cohort identity: a_claude
+2.1.211 / a_codex 0.144.5 / judges 2.1.215 + 0.144.5 — judge-role drift
+per deviation 3; F12 a-runtime-attestation-source deviation, 0071 F25
+precedent shape). Instrument recovery chain (deviations 1/3/4, all
+root-fixed on main): attribution null-phase + skip-receipt tolerance
+(ab6b9a0, 9a2109c), isolation-payload write reordered before instrument
+gates + byte-parity extraction + fail-loud --post-hoc (294d828).
+
+- **P-a′ (quality) — PREDICTION CONFIRMED, replication half REFUTED.**
+  Suite quality bar 0/7 as predicted (all 7 rows ≥1 B_win from both
+  judges). The -19f F7 codex 1-axis A_win did NOT replicate (-19g F7
+  codex: tie/B/B/B) — it was noise; deleting the SC-carrier causal
+  claim at freeze (Codex R1 edit 3) is vindicated. Sonnet F7 A-wins
+  persist (2/4 this cohort vs 3/4 at -19f). 0072's lever does not move
+  the blind quality bar.
+- **P-b (wall) — CONFIRMED.** Median A/frozen-B 12.1× (min 5.6 F23,
+  max 16.8 F7) ≥ the predicted 8×. No wall lever since 0071, none
+  expected to help.
+- **P-c (attribution) — INCONCLUSIVE by the frozen rule** (4
+  complete-verify rows < 5: F11 16%, F12 23%, F25 19%, FS1 14%
+  implement-share of wall). Directional read (all 7 rows, unanimous):
+  implement_total 14-27% of wall — nowhere near the 60% bar — while
+  VERIFY (0-50%) and the non-phase residual (18-51%) dominate. The
+  reopening falsifier (verify ≥50% on ≥5/7) also did NOT fire (only
+  F25 hit 50%). Honest state: the addendum-5 "bottleneck =
+  IMPLEMENT/fix-loop" read is UNSUPPORTED by every measured row but not
+  formally REFUTED; the largest single bucket on most rows is the
+  NON-PHASE RESIDUAL (CLI startup + inter-phase orchestrator turns +
+  terminal). Next wall lever targets the residual + VERIFY, pending one
+  more cohort clearing ≥5 complete rows for the formal kill.
+- **Objective bar — 6/7 FAIL, sole failure CONFOUNDED.** FS1
+  resolved=False (hidden test 0/1) on a stack-degraded row: the
+  auto-updater deleted pinned 2.1.211 mid-cohort and FS1's
+  SURFACE_CLOSE auto-skipped (`auto_surface_close_claude_unavailable`,
+  archived state receipt) — the row did not run the registered
+  post-0072 stack. Not a clean regression signal; FS1 re-row on an
+  updater-proof pin is licensed as the completion condition for this
+  cohort's objective claim.
+
+**Discoveries (both receipt-backed, both feed the roadmap):**
+1. **Premature-terminal-during-VERIFY epidemic**: 3/7 rows (F7, F23,
+   F26) ended with verify.started_at set and verdict=None while the
+   arm recorded invoke_exit=0. What was a residual observation at -19f
+   is the dominant failure mode of the A-arm under this seat pair.
+   iter-0074's shipped C2 binding (edfb02a, post-pin) classifies
+   exactly this FAILED-INCOMPLETE; the C1 Stop-hook probe rises in
+   priority.
+2. **Updater-proof pinning is a cohort prerequisite**: copy the pinned
+   binary to a run-owned path (or disable the updater) before launch —
+   next-cohort mechanics, recorded in deviation 3.
+
+**Iter-0073 claim status**: the attribution instrument is DELIVERED
+(retention + attribution.json on all 7 rows + verdict integration);
+the registered measurement is COMPLETE with predictions adjudicated
+(P-a′ confirmed, P-b confirmed, P-c inconclusive-by-rule with unanimous
+directional data). Residual to close the cohort's objective claim: one
+FS1 re-row on an updater-proof pin.

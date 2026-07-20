@@ -1,0 +1,10 @@
+{
+  "task": "DR-shape-compound-rules-f25-cart",
+  "arm": "A",
+  "attempt": 1,
+  "elapsed_seconds": 3195,
+  "invoke_exit": 0,
+  "timed_out": false,
+  "draw_non_diagnostic": false,
+  "worktree": "/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo"
+}

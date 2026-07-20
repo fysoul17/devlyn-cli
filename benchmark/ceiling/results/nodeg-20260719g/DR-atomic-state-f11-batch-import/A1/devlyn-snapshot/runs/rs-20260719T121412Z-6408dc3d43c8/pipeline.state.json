@@ -1,0 +1,323 @@
+{
+  "base_ref": {
+    "branch": "master",
+    "sha": "cbd12daedd7f2d22c62110faf097f12797e7dda6"
+  },
+  "bypasses": [],
+  "complexity": "medium",
+  "criteria": [
+    {
+      "evidence": [
+        {
+          "file": "server/index.js",
+          "line": 30,
+          "note": "validates name (trim/non-empty) then qty (positive integer) per item, returns invalid_body/invalid_batch"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C1",
+      "ref": "criteria://requirements/0",
+      "status": "implemented"
+    },
+    {
+      "evidence": [
+        {
+          "file": "server/index.js",
+          "line": 51,
+          "note": "computes nextId once via Math.max, appends all rows in input order, responds 201 {inserted: n}"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C2",
+      "ref": "criteria://requirements/1",
+      "status": "implemented"
+    },
+    {
+      "evidence": [
+        {
+          "file": "server/index.js",
+          "line": 37,
+          "note": "returns 400 invalid_batch with first-invalid index/field before any mutation"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C3",
+      "ref": "criteria://requirements/2",
+      "status": "implemented"
+    },
+    {
+      "evidence": [
+        {
+          "file": "server/index.js",
+          "line": 31,
+          "note": "returns 400 invalid_body when body/items missing or items not array, before any mutation"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C4",
+      "ref": "criteria://requirements/3",
+      "status": "implemented"
+    },
+    {
+      "evidence": [
+        {
+          "file": "tests/server.test.js",
+          "line": 82,
+          "note": "added invalid-middle-item test (asserts GET /items unchanged) and fully-valid-import test"
+        }
+      ],
+      "failed_by_finding_ids": [],
+      "id": "C5",
+      "ref": "criteria://requirements/4",
+      "status": "implemented"
+    }
+  ],
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "implement_passed_sha": "8b01237a2ea8f6cdefd8cdf0e9b5e7b63d24c463",
+  "mode": "free-form",
+  "pair_verify": true,
+  "phases": {
+    "build_gate": {
+      "artifacts": {
+        "findings_file": ".devlyn/build_gate.findings.jsonl",
+        "log_file": ".devlyn/build_gate.log.md"
+      },
+      "completed_at": "2026-07-19T12:27:18.815Z",
+      "duration_ms": 73383,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-19T12:26:05.432Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "cleanup": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-19T12:28:18.181Z",
+      "duration_ms": 51208,
+      "engine": "codex",
+      "model_effective": "gpt-5.6-terra",
+      "model_requested": null,
+      "post_sha": "89e945dad58a4492a106ebb28a17744e2bf82157",
+      "pre_sha": "89e945dad58a4492a106ebb28a17744e2bf82157",
+      "round": 0,
+      "started_at": "2026-07-19T12:27:26.973Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "final_report": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-19T12:37:29.364Z",
+      "duration_ms": 52649,
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-19T12:36:36.715Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "implement": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-19T12:21:05.430Z",
+      "duration_ms": 251782,
+      "engine": "codex",
+      "model_effective": "gpt-5.6-terra",
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-19T12:16:53.648Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "plan": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": ".devlyn/plan.md"
+      },
+      "completed_at": "2026-07-19T12:16:42.422Z",
+      "duration_ms": 85751,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-19T12:15:16.671Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "probe_derive": null,
+    "surface_close": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-19T12:25:44.126Z",
+      "duration_ms": 110585,
+      "engine": "claude",
+      "input_patch_sha256": "fead1308a7ebd39f3740b563a846faf5abe9f6dec8e9cd38fd053b6519eb871a",
+      "model_effective": "claude-sonnet-5",
+      "model_requested": "claude-sonnet-5",
+      "post_sha": "89e945dad58a4492a106ebb28a17744e2bf82157",
+      "pre_sha": "8b01237a2ea8f6cdefd8cdf0e9b5e7b63d24c463",
+      "prompt_sha256": "b7c086432ea9c3100398819788e000d49204a4999d3ed185b97d7461d2b2e488",
+      "round": 0,
+      "started_at": "2026-07-19T12:23:53.541Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "untracked_before": [
+        ".claude/skills/_shared/adapters/README.md",
+        ".claude/skills/_shared/adapters/claude.md",
+        ".claude/skills/_shared/adapters/codex.md",
+        ".claude/skills/_shared/adapters/omp.md",
+        ".claude/skills/_shared/archive_run.py",
+        ".claude/skills/_shared/codex-config.md",
+        ".claude/skills/_shared/codex-monitored.sh",
+        ".claude/skills/_shared/collect-codex-findings.py",
+        ".claude/skills/_shared/engine-doctor.sh",
+        ".claude/skills/_shared/engine-preflight.md",
+        ".claude/skills/_shared/expected.schema.json",
+        ".claude/skills/_shared/finish-gate.py",
+        ".claude/skills/_shared/pair-plan-schema.md",
+        ".claude/skills/_shared/run-bounded.py",
+        ".claude/skills/_shared/runtime-principles.md",
+        ".claude/skills/_shared/spec-verify-check.py",
+        ".claude/skills/_shared/state-phase-write.py",
+        ".claude/skills/_shared/verify-merge-findings.py",
+        ".claude/skills/code-health-standards/SKILL.md",
+        ".claude/skills/code-review-standards/SKILL.md",
+        ".claude/skills/devlyn:design-ui/SKILL.md",
+        ".claude/skills/devlyn:engines/SKILL.md",
+        ".claude/skills/devlyn:ideate/SKILL.md",
+        ".claude/skills/devlyn:ideate/references/elicitation.md",
+        ".claude/skills/devlyn:ideate/references/from-spec-mode.md",
+        ".claude/skills/devlyn:ideate/references/project-mode.md",
+        ".claude/skills/devlyn:ideate/references/spec-template.md",
+        ".claude/skills/devlyn:ideate/references/templates/decision.md",
+        ".claude/skills/devlyn:ideate/references/templates/roadmap.md",
+        ".claude/skills/devlyn:ideate/references/templates/vision.md",
+        ".claude/skills/devlyn:queue/SKILL.md",
+        ".claude/skills/devlyn:resolve/SKILL.md",
+        ".claude/skills/devlyn:resolve/references/free-form-mode.md",
+        ".claude/skills/devlyn:resolve/references/phases/build-gate.md",
+        ".claude/skills/devlyn:resolve/references/phases/cleanup.md",
+        ".claude/skills/devlyn:resolve/references/phases/implement.md",
+        ".claude/skills/devlyn:resolve/references/phases/plan.md",
+        ".claude/skills/devlyn:resolve/references/phases/probe-derive.md",
+        ".claude/skills/devlyn:resolve/references/phases/surface-close.md",
+        ".claude/skills/devlyn:resolve/references/phases/verify.md",
+        ".claude/skills/devlyn:resolve/references/state-schema.md",
+        ".claude/skills/root-cause-analysis/SKILL.md",
+        ".claude/skills/ui-implementation-standards/SKILL.md",
+        ".devlyn/criteria.generated.md",
+        ".devlyn/engines.json",
+        ".devlyn/goal.raw.txt",
+        ".devlyn/goal.txt",
+        ".devlyn/implement.prompt.txt",
+        ".devlyn/implement.stderr",
+        ".devlyn/implement.stdout",
+        ".devlyn/implement.worker-session.0.jsonl",
+        ".devlyn/pipeline.state.json",
+        ".devlyn/plan.md",
+        ".devlyn/surface-close.input.patch",
+        ".devlyn/surface-close.prompt",
+        ".devlyn/untracked.baseline",
+        "AGENTS.md",
+        "CLAUDE.md"
+      ],
+      "verdict": "PASS"
+    },
+    "verify": {
+      "artifacts": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "log_file": ".devlyn/verify-merge.summary.json"
+      },
+      "completed_at": "2026-07-19T12:36:29.201Z",
+      "duration_ms": 443205,
+      "engine": "codex",
+      "judge_durations_ms": {
+        "judge": 159000,
+        "pair_judge": 173000
+      },
+      "merged": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "summary_file": ".devlyn/verify-merge.summary.json",
+        "verdict": "PASS"
+      },
+      "model_effective": null,
+      "model_requested": null,
+      "pair_trigger": {
+        "eligible": true,
+        "reasons": [
+          "pair.default",
+          "mode.pair-verify",
+          "risk.high"
+        ],
+        "skipped_reason": null
+      },
+      "round": 0,
+      "started_at": "2026-07-19T12:29:05.996Z",
+      "sub_verdicts": {
+        "judge": "PASS",
+        "mechanical": "PASS",
+        "pair_judge": "PASS"
+      },
+      "triggered_by": null,
+      "verdict": "PASS"
+    }
+  },
+  "risk_probes_digest": null,
+  "risk_profile": {
+    "high_risk": true,
+    "pair_default_enabled": true,
+    "reasons": [
+      "persistence: appends rows to the in-memory items store",
+      "explicit error-priority contract: 400 must name the FIRST invalid item's index/field",
+      "explicit output-shape contract: exact 201/400 JSON response shapes",
+      "auto-risk-probes demoted: plan surface small (2 paths)"
+    ],
+    "risk_probes_enabled": false,
+    "risk_probes_explicit": false
+  },
+  "rounds": {
+    "global": 0,
+    "max_rounds": 4
+  },
+  "run_id": "rs-20260719T121412Z-6408dc3d43c8",
+  "source": {
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "cf91f9cd089b4dd474e82759e4783e9c6021f5b3403aa1467938f5c01b0f6566",
+    "goal_path": ".devlyn/goal.raw.txt",
+    "goal_sha256": "9b9a805b85c1d617269b0d22c321fe13fffcc6ea670745fcdc090c7ead921775",
+    "spec_path": null,
+    "spec_sha256": null,
+    "type": "generated"
+  },
+  "started_at": "2026-07-19T12:14:12Z",
+  "verify": {
+    "coverage_failed": false,
+    "pair_trigger": {
+      "eligible": true,
+      "reasons": [
+        "pair.default",
+        "mode.pair-verify",
+        "risk.high"
+      ],
+      "skipped_reason": null
+    }
+  },
+  "version": "3.0"
+}

@@ -1,0 +1,452 @@
+## Identity
+
+You are Claude by Anthropic. Anthropic's prompt-engineering guide for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+
+You calibrate response length to task complexity automatically. Do NOT pad with context the user didn't ask for. When the canonical body sets a structural format, follow it literally; do not silently restructure.
+
+## Anti-patterns
+
+1. Subagent spawning: do NOT spawn a subagent for work you can complete in a single response.
+2. Overengineering: do NOT add files, abstractions, error handling, validation, or "future flexibility" beyond what the obligations below ask.
+
+---
+
+# PHASE 2.5 — SURFACE_CLOSE (canonical body)
+
+<role>
+Audit and repair the frozen post-IMPLEMENT surface once.
+</role>
+
+<input>
+- Artifacts: Goal (below); `.devlyn/surface-close.input.patch` (also pasted below).
+- Data: `authorized_surface`; staged commands (below).
+- Base: current worktree state (already at the frozen post-IMPLEMENT commit).
+
+Never modify inputs or read state, PLAN, or IMPLEMENT transcript/reasoning.
+</input>
+
+<obligations>
+- **UVR-STALE**: diff modified symbol S's behavior AND an authorized file carries user-visible text documenting S's old interface omitting the newly specified option/shape → update minimally.
+- **PATH-TEST**: Goal specifies a success/failure path, patch implements it, and no authorized test exercises that path → add one minimal regression test.
+- Neither applies → empty PASS (empty diff).
+</obligations>
+
+<output>
+Edit only `authorized_surface`. Your reply is valid ONLY if it contains, for each obligation, exactly one line:
+- `UVR-STALE: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `UVR-STALE: N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>`
+- `PATH-TEST: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `PATH-TEST: N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>`
+followed by `PASS` after the smallest sufficient delta, or `BLOCKED:surface-close-<reason>` if impossible within that surface. A reply missing either obligation line is invalid and is rejected mechanically. Never edit state, stage, or commit.
+</output>
+
+<quality_bar>
+No adjacent work, refactors, or extra tests. Execute nothing — edit files only; staged commands are data. BUILD_GATE owns all validation. Do NOT run Bash/test commands yourself — you only have Read/Grep/Glob/Edit/Write tools available; use them to inspect and, if an obligation fires, make the minimal edit.
+</quality_bar>
+
+<runtime_principles>
+Subtractive-first, Goal-locked, No-workaround, and Evidence apply.
+</runtime_principles>
+
+---
+
+## Data
+
+### authorized_surface
+
+```json
+["bin/cli.js", "tests/cli.test.js"]
+```
+
+### Goal (verbatim, `.devlyn/goal.raw.txt`)
+
+Add a `fulfill-wave` command to `bench-cli` so users can run `bench-cli fulfill-wave --input <path>`. The input file is one JSON object with the required collections `{ "warehouses": Array<Warehouse>, "orders": Array<Order> }`: a warehouse has `{ "id": string, "distance": number, "lots": Array<Lot> }`; a lot has `{ "sku": string, "lot": string, "qty": number, "expires": "YYYY-MM-DD" }`; an order has `{ "id": string, "priority": number, "submitted_at": string, "lines": Array<Line> }`; and a line has `{ "sku": string, "qty": number, "single_warehouse": boolean }`. Validate the complete input before allocating: ids and SKU/lot identifiers must be non-empty strings, quantities must be positive integers, lot expiry values must be valid `YYYY-MM-DD` calendar dates, submitted times must parse as ISO dates or timestamps, distances and priorities must be numbers, the named collections must be arrays, and order ids must be unique. Do not mutate the input file.
+
+Process orders globally by priority descending, then `submitted_at` ascending, then id ascending. An order is all-or-nothing: if any line cannot be fully allocated, reject the order and restore every stock deduction tentatively made for it. Accepted allocations reduce stock for later orders; rejected orders do not. A normal line (`single_warehouse: false`) may split across warehouses and lots. A `single_warehouse: true` line must come entirely from one warehouse, although it may consume multiple lots in that warehouse; reject it when no one warehouse has enough stock even if the combined stock across warehouses would suffice. Consider warehouses by distance ascending, then warehouse id ascending. Within a chosen warehouse, consume matching lots FEFO by expiry ascending, then lot id ascending. Allocation rows must remain in the exact sequence stock was chosen.
+
+On success, write exactly one parseable JSON object to stdout, write nothing to stderr, and emit no extra text. The success object's only keys are `accepted`, `rejected`, and `remaining`. `accepted` follows processing order; each row has exactly `{ "id": string, "allocations": Array<Allocation> }`, and each allocation has exactly `{ "sku": string, "warehouse": string, "lot": string, "qty": number }`. `rejected` follows original input order; each row has exactly `{ "id": string, "reason": "insufficient_stock" }`. `remaining` contains positive leftover lot quantities, sorted by warehouse id, then sku, then expiry, then lot id; each row has exactly `{ "warehouse": string, "sku": string, "lot": string, "qty": number, "expires": "YYYY-MM-DD" }`.
+
+Invalid input and file-read failures must exit `2`, write nothing to stdout, and write exactly one parseable JSON value to stderr. That value must be a non-null, non-array JSON object; its member names are otherwise not prescribed.
+
+Update `tests/cli.test.js` so all existing tests still pass and add at least two `fulfill-wave` tests covering an accepted allocation and a rejected all-or-nothing order. Do not use a catch block that silently returns `null`, `undefined`, an empty string, or an empty object, and do not use an empty catch block. No new npm dependencies. Carrier selection, package dimensions, backorders or partial order acceptance, and persistence beyond stdout are out of scope. Only touch `bin/cli.js` and `tests/cli.test.js`.
+
+### Staged commands (from `.devlyn/criteria.generated.md`'s `## Verification`)
+
+- `npm test`
+- `node -e "require('fs').writeFileSync('.tmp-fulfill-wave-invalid.json','not json')" && node bin/cli.js fulfill-wave --input .tmp-fulfill-wave-invalid.json; code=$?; rm -f .tmp-fulfill-wave-invalid.json; test "$code" -eq 2`
+
+### `.devlyn/surface-close.input.patch` (verbatim diff of the frozen surface, base..pre_sha)
+
+```diff
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b24..a9e51da 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,225 @@ function parseNameFlag(argv) {
+   return value;
+ }
+
++function isNonEmptyString(value) {
++  return typeof value === 'string' && value.length > 0;
++}
++
++function isPositiveInteger(value) {
++  return Number.isInteger(value) && value > 0;
++}
++
++function isValidExpiry(value) {
++  if (typeof value !== 'string') return false;
++
++  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
++  if (!match) return false;
++
++  const [, year, month, day] = match.map(Number);
++  const date = new Date(Date.UTC(year, month - 1, day));
++  return date.getUTCFullYear() === year
++    && date.getUTCMonth() === month - 1
++    && date.getUTCDate() === day;
++}
++
++function validateInput(input) {
++  if (!input || typeof input !== 'object' || Array.isArray(input)) {
++    throw new Error('input must be an object');
++  }
++  if (!Array.isArray(input.warehouses)) {
++    throw new Error('warehouses must be an array');
++  }
++  if (!Array.isArray(input.orders)) {
++    throw new Error('orders must be an array');
++  }
++
++  for (const warehouse of input.warehouses) {
++    if (!warehouse || typeof warehouse !== 'object' || Array.isArray(warehouse)) {
++      throw new Error('warehouse must be an object');
++    }
++    if (!isNonEmptyString(warehouse.id)) {
++      throw new Error('warehouse id must be a non-empty string');
++    }
++    if (typeof warehouse.distance !== 'number') {
++      throw new Error('warehouse distance must be a number');
++    }
++    if (!Array.isArray(warehouse.lots)) {
++      throw new Error('warehouse lots must be an array');
++    }
++
++    for (const lot of warehouse.lots) {
++      if (!lot || typeof lot !== 'object' || Array.isArray(lot)) {
++        throw new Error('lot must be an object');
++      }
++      if (!isNonEmptyString(lot.sku) || !isNonEmptyString(lot.lot)) {
++        throw new Error('lot sku and lot must be non-empty strings');
++      }
++      if (!isPositiveInteger(lot.qty)) {
++        throw new Error('lot qty must be a positive integer');
++      }
++      if (!isValidExpiry(lot.expires)) {
++        throw new Error('lot expires must be a valid YYYY-MM-DD date');
++      }
++    }
++  }
++
++  const orderIds = new Set();
++  for (const order of input.orders) {
++    if (!order || typeof order !== 'object' || Array.isArray(order)) {
++      throw new Error('order must be an object');
++    }
++    if (!isNonEmptyString(order.id)) {
++      throw new Error('order id must be a non-empty string');
++    }
++    if (orderIds.has(order.id)) {
++      throw new Error('order ids must be unique');
++    }
++    orderIds.add(order.id);
++    if (typeof order.priority !== 'number') {
++      throw new Error('order priority must be a number');
++    }
++    if ((typeof order.submitted_at !== 'string' && typeof order.submitted_at !== 'number')
++      || Number.isNaN(new Date(order.submitted_at).getTime())) {
++      throw new Error('order submitted_at must be a valid date or timestamp');
++    }
++    if (!Array.isArray(order.lines)) {
++      throw new Error('order lines must be an array');
++    }
++
++    for (const line of order.lines) {
++      if (!line || typeof line !== 'object' || Array.isArray(line)) {
++        throw new Error('line must be an object');
++      }
++      if (!isNonEmptyString(line.sku)) {
++        throw new Error('line sku must be a non-empty string');
++      }
++      if (!isPositiveInteger(line.qty)) {
++        throw new Error('line qty must be a positive integer');
++      }
++      if (typeof line.single_warehouse !== 'boolean') {
++        throw new Error('line single_warehouse must be a boolean');
++      }
++    }
++  }
++}
++
++function compareWarehouses(left, right) {
++  return left.distance - right.distance || left.id.localeCompare(right.id);
++}
++
++function compareLots(left, right) {
++  return left.expires.localeCompare(right.expires) || left.lot.localeCompare(right.lot);
++}
++
++function compareOrders(left, right) {
++  return right.priority - left.priority
++    || new Date(left.submitted_at).getTime() - new Date(right.submitted_at).getTime()
++    || left.id.localeCompare(right.id);
++}
++
++function consumeFromWarehouse(warehouse, line, allocations, deductions) {
++  let needed = line.qty;
++
++  for (const lot of warehouse.lots) {
++    if (lot.sku !== line.sku || lot.qty === 0) continue;
++
++    const qty = Math.min(needed, lot.qty);
++    lot.qty -= qty;
++    needed -= qty;
++    deductions.push({ lot, qty });
++    allocations.push({ sku: line.sku, warehouse: warehouse.id, lot: lot.lot, qty });
++    if (needed === 0) return true;
++  }
++
++  return false;
++}
++
++function allocateWave(input) {
++  const warehouses = input.warehouses.sort(compareWarehouses);
++  for (const warehouse of warehouses) {
++    warehouse.lots.sort(compareLots);
++  }
++
++  const accepted = [];
++  const rejectedIds = new Set();
++  const orders = [...input.orders].sort(compareOrders);
++
++  for (const order of orders) {
++    const allocations = [];
++    const deductions = [];
++    let fulfilled = true;
++
++    for (const line of order.lines) {
++      if (line.single_warehouse) {
++        const warehouse = warehouses.find((candidate) => candidate.lots
++          .filter((lot) => lot.sku === line.sku)
++          .reduce((total, lot) => total + lot.qty, 0) >= line.qty);
++        fulfilled = Boolean(warehouse)
++          && consumeFromWarehouse(warehouse, line, allocations, deductions);
++      } else {
++        let needed = line.qty;
++        for (const warehouse of warehouses) {
++          const before = allocations.length;
++          consumeFromWarehouse(warehouse, { ...line, qty: needed }, allocations, deductions);
++          needed -= allocations.slice(before).reduce((total, allocation) => total + allocation.qty, 0);
++          if (needed === 0) break;
++        }
++        fulfilled = needed === 0;
++      }
++
++      if (!fulfilled) break;
++    }
++
++    if (fulfilled) {
++      accepted.push({ id: order.id, allocations });
++      continue;
++    }
++
++    for (const deduction of deductions) {
++      deduction.lot.qty += deduction.qty;
++    }
++    rejectedIds.add(order.id);
++  }
++
++  const rejected = input.orders
++    .filter((order) => rejectedIds.has(order.id))
++    .map((order) => ({ id: order.id, reason: 'insufficient_stock' }));
++  const remaining = warehouses.flatMap((warehouse) => warehouse.lots
++    .filter((lot) => lot.qty > 0)
++    .map((lot) => ({
++      warehouse: warehouse.id,
++      sku: lot.sku,
++      lot: lot.lot,
++      qty: lot.qty,
++      expires: lot.expires,
++    })))
++    .sort((left, right) => left.warehouse.localeCompare(right.warehouse)
++      || left.sku.localeCompare(right.sku)
++      || left.expires.localeCompare(right.expires)
++      || left.lot.localeCompare(right.lot));
++
++  return { accepted, rejected, remaining };
++}
++
++function fulfillWave(argv) {
++  try {
++    const index = argv.indexOf('--input');
++    const inputPath = argv[index + 1];
++    if (index === -1 || !inputPath || inputPath.startsWith('-')) {
++      throw new Error('--input requires a path');
++    }
++
++    const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++    validateInput(input);
++    const result = allocateWave(JSON.parse(JSON.stringify(input)));
++    process.stdout.write(`${JSON.stringify(result)}\n`);
++  } catch (err) {
++    const message = err instanceof Error ? err.message : String(err);
++    process.stderr.write(`${JSON.stringify({ error: message })}\n`);
++    process.exitCode = 2;
++  }
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+
+@@ -53,6 +272,10 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'fulfill-wave': {
++      fulfillWave(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..6e13500 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@ function run(args) {
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+
++function runFulfillWave(t, input) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-'));
++  const inputPath = path.join(directory, 'input.json');
++  fs.writeFileSync(inputPath, JSON.stringify(input));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return JSON.parse(run(['fulfill-wave', '--input', inputPath]));
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,99 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('fulfill-wave accepts an order using FEFO lots from the nearest warehouse', (t) => {
++  const output = runFulfillWave(t, {
++    warehouses: [
++      {
++        id: 'far',
++        distance: 2,
++        lots: [{ sku: 'widget', lot: 'far-lot', qty: 2, expires: '2025-01-01' }],
++      },
++      {
++        id: 'near',
++        distance: 1,
++        lots: [
++          { sku: 'widget', lot: 'late', qty: 4, expires: '2025-03-01' },
++          { sku: 'widget', lot: 'early', qty: 2, expires: '2025-02-01' },
++        ],
++      },
++    ],
++    orders: [{
++      id: 'first',
++      priority: 1,
++      submitted_at: '2024-01-01T00:00:00Z',
++      lines: [{ sku: 'widget', qty: 5, single_warehouse: false }],
++    }],
++  });
++
++  assert.deepStrictEqual(output, {
++    accepted: [{
++      id: 'first',
++      allocations: [
++        { sku: 'widget', warehouse: 'near', lot: 'early', qty: 2 },
++        { sku: 'widget', warehouse: 'near', lot: 'late', qty: 3 },
++      ],
++    }],
++    rejected: [],
++    remaining: [
++      { warehouse: 'far', sku: 'widget', lot: 'far-lot', qty: 2, expires: '2025-01-01' },
++      { warehouse: 'near', sku: 'widget', lot: 'late', qty: 1, expires: '2025-03-01' },
++    ],
++  });
++});
++
++test('fulfill-wave restores rejected stock and never combines warehouses for a single-warehouse line', (t) => {
++  const output = runFulfillWave(t, {
++    warehouses: [
++      {
++        id: 'a',
++        distance: 1,
++        lots: [{ sku: 'widget', lot: 'a-lot', qty: 3, expires: '2025-01-01' }],
++      },
++      {
++        id: 'b',
++        distance: 2,
++        lots: [{ sku: 'widget', lot: 'b-lot', qty: 2, expires: '2025-01-01' }],
++      },
++    ],
++    orders: [
++      {
++        id: 'rollback',
++        priority: 3,
++        submitted_at: '2024-01-01T00:00:00Z',
++        lines: [
++          { sku: 'widget', qty: 1, single_warehouse: false },
++          { sku: 'missing', qty: 1, single_warehouse: false },
++        ],
++      },
++      {
++        id: 'single',
++        priority: 2,
++        submitted_at: '2024-01-01T00:00:00Z',
++        lines: [{ sku: 'widget', qty: 5, single_warehouse: true }],
++      },
++      {
++        id: 'later',
++        priority: 1,
++        submitted_at: '2024-01-01T00:00:00Z',
++        lines: [{ sku: 'widget', qty: 5, single_warehouse: false }],
++      },
++    ],
++  });
++
++  assert.deepStrictEqual(output, {
++    accepted: [{
++      id: 'later',
++      allocations: [
++        { sku: 'widget', warehouse: 'a', lot: 'a-lot', qty: 3 },
++        { sku: 'widget', warehouse: 'b', lot: 'b-lot', qty: 2 },
++      ],
++    }],
++    rejected: [
++      { id: 'rollback', reason: 'insufficient_stock' },
++      { id: 'single', reason: 'insufficient_stock' },
++    ],
++    remaining: [],
++  });
++});
+```
+
+Repo root: `/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f99dbe9386580/A1/repo`. Read the live files (`bin/cli.js`, `tests/cli.test.js`) before deciding whether either obligation fires.

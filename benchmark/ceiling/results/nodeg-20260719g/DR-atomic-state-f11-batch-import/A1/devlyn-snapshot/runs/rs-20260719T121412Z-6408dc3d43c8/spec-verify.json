@@ -1,0 +1,11 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "exit_code": 0,
+      "stdout_contains": [
+        "# fail 0"
+      ]
+    }
+  ]
+}

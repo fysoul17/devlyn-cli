@@ -1,0 +1,7 @@
+BLOCKED — implementation is complete, but `npm test` cannot run server tests in this sandbox: `listen EPERM: operation not permitted 0.0.0.0`.
+
+- Added the explicit missing-raw-body guard in [server/index.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f08d6b52f5d4d/A1/repo/server/index.js:10).
+- Added the `text/plain` regression test expecting `401 { error: 'invalid_signature' }` in [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f08d6b52f5d4d/A1/repo/tests/server.test.js:101).
+- Syntax and diff-whitespace checks pass.
+- The new test could not execute due to the listener restriction, so I cannot confirm it passes here.
+- Third-sibling check: none found. `req.rawBody` is only consumed through `hasValidSignature` (including error middleware), and `req.body` already uses `|| {}`.

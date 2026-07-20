@@ -1,0 +1,3 @@
+UVR-STALE: FIRED bin/cli.js:8 — USAGE's Commands list documented only hello/version/--help, omitting the newly added `cart --input PATH` command; added one line for it.
+PATH-TEST: N/A tests/cli.test.js:37 — Goal's own test requirement ("at least two new tests... including one successful cart and one validation failure") is exactly satisfied by the two added tests; no additional path is spec-mandated for coverage.
+PASS

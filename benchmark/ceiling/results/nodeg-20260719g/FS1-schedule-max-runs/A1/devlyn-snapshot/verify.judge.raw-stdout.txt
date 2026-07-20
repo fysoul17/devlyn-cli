@@ -1,0 +1,2 @@
+{"id":"JUDGE-1","rule_id":"validation.invalid-boolean-accepted","severity":"MEDIUM","file":"schedule/__init__.py","line":586,"message":"`isinstance(n, int)` accepts booleans, so `max_runs(True)` succeeds and stores `True` instead of raising `ScheduleValueError`, violating the call-time validation contract for non-count values.","confidence":"high","criterion_ref":"Validation: `n` must be an integer `>= 1`; any other value raises an error at `.max_runs(...)` call time."}
+JUDGE_VERDICT: NEEDS_WORK

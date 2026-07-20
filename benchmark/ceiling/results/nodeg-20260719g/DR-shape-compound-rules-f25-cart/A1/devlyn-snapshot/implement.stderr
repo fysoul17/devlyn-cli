@@ -1,0 +1,4064 @@
+[codex-monitored] start: ts=2026-07-19T10:46:41Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=96472
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f79fc-41ad-7683-864e-3fcca872cab6
+--------
+user
+# Codex (OpenAI) adapter — identity + posture
+
+You are OpenAI's Codex model, running inside the actual project repo with workspace-write access. Resolve this in the fewest useful tool loops without sacrificing correctness. Validation is concrete commands, not self-belief: run the listed verification commands and trust their output. Do not over-specify process; the canonical body below names the outcome — choose the efficient implementation path. Do not narrate internal deliberation; state results and decisions directly.
+
+# Runtime principles (Subtractive-first / Goal-locked / No-workaround / Evidence)
+
+- Subtractive-first: every accretion-shaped change is visible in the commit message. Net-deletion is the default; pure-addition needs a citation (here: the explicit spec requirement below is the citation).
+- Goal-locked: implement only the listed Requirements. Adjacent code that "looks fixable" is drift unless the spec or plan listed it.
+- No-workaround: no `any`, no silent `catch`, no hardcoded values, no helper scripts that bypass the root contract.
+- Evidence: every claim must cite file:line you actually opened. Hallucinated APIs are excluded.
+
+# PHASE 2 — IMPLEMENT (canonical body)
+
+<role>
+You execute the plan below. Constrained design judgment within the plan's invariants — when the plan is silent on a tactic, choose the simplest tactic consistent with the spec; when the plan dictates, follow the plan.
+</role>
+
+<output>
+- Code changes implementing every Requirement. Verify with `git diff`.
+- Tests added/updated for changed behavior. Run the full test suite (`npm test`) before stopping.
+- Report your verdict in your final reply: `PASS` on success; `BLOCKED` if a criterion cannot be satisfied. Do not edit `.devlyn/pipeline.state.json` — the orchestrator records phase state itself.
+</output>
+
+<quality_bar>
+- The generated criteria file (`.devlyn/criteria.generated.md`) is the contract. The plan (`.devlyn/plan.md`) is the path. If they disagree, follow the criteria file and note the discrepancy in your reply.
+- Verification commands in the criteria file's `## Verification` fenced json block are literal. Before declaring done, run every command exactly as listed and compare output character-for-character (they run via `sh -c`, combining stdout+stderr for the checker, but your actual stdout/stderr streams must still match the criteria's stream contract exactly — success goes to stdout only, errors go to stderr only with exit 2).
+- Tooling-generated artifacts do not belong in the diff.
+- Existing tests are contract: do not modify, weaken, or remove the existing `hello`/`version` tests in `tests/cli.test.js`.
+- Files not in the authorized surface (`bin/cli.js`, `tests/cli.test.js`) are off-limits. Do not touch `data/catalog.json`, `server/`, or `web/`.
+- No new dependencies (`package.json` unchanged).
+</quality_bar>
+
+Before declaring the phase complete, re-read each Requirement in `.devlyn/criteria.generated.md` and confirm you can point at the file:line that satisfies it.
+
+# Task
+
+Read `.devlyn/criteria.generated.md` (authoritative Requirements/Constraints/Verification contract) and `.devlyn/plan.md` (file list, risk notes, and the validation-order / rounding / shape interpretations already decided — follow them) in full. Then implement the `cart --input <path>` subcommand in `bin/cli.js` and add the required tests to `tests/cli.test.js`, exactly as scoped in those two files. Base commit: `d059b43faf24e64eb7a560cc37cebd5ae30fe17b` on branch `master`.
+
+Run `npm test` and the three verification commands from the criteria file's `## Verification` block yourself before finishing, and report the results plus your final verdict (`PASS`/`BLOCKED`) in your reply.
+codex
+I’ll implement only the scoped `cart` command and its tests, using the generated criteria and plan as the contract, then run the specified validations verbatim.
+exec
+/bin/zsh -lc "git status --short && printf '\\n--- criteria ---\\n' && sed -n '1,240p' .devlyn/criteria.generated.md && printf '\\n--- plan ---\\n' && sed -n '1,260p' .devlyn/plan.md && printf '\\n--- cli ---\\n' && sed -n '1,300p' bin/cli.js && printf '\\n--- tests ---\\n' && sed -n '1,360p' tests/cli.test.js && printf '\\n--- package ---\\n' && sed -n '1,200p' package.json" in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ succeeded in 3102ms:
+2026-07-19 10:46:54.348 xcodebuild[97506:30745393]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-19 10:46:54.922 xcodebuild[97506:30745391] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+--- criteria ---
+# Generated criteria — bench-cli cart command
+
+Source: `.devlyn/goal.raw.txt` (free-form goal, complexity: medium).
+
+## Context anchors
+
+- `bin/cli.js` is a single-file CLI: `main(argv)` destructures `[command, ...rest]` and
+  switches on `command`, each case doing its own arg parsing then `console.log`/`process.exit`.
+  The new `cart` case follows this same shape — no new dependencies, no new files.
+- `tests/cli.test.js` uses `node:test` + `execFileSync('node', [CLI, ...args], {encoding:'utf8'})`
+  and asserts on stdout via `assert.match`. Failure-path tests will need `execFileSync` wrapped to
+  catch/inspect a non-zero exit (`error.status`, `error.stdout`, `error.stderr`) rather than assert.match alone.
+- `data/catalog.json` already exists with `products`, `line_promotions`, `coupons`, `tax_rates`,
+  `taxable_codes`, `shipping_cents`, `free_shipping_min_cents` — matches the goal's schema exactly;
+  no catalog changes are required or in scope.
+
+## Requirements
+
+- Add a `cart --input <path>` subcommand to `bin/cli.js` that reads a cart JSON file
+  (`{ state, coupon, items: [{ sku, qty }] }`), reads pricing/stock/promotion/coupon/tax/shipping
+  data from `data/catalog.json`, and prints one exact JSON object to stdout on success with keys
+  `subtotal_cents, line_discount_cents, coupon_discount_cents, tax_cents, shipping_cents, total_cents, items`
+  (no stderr output). Every `items` row has exactly `sku, qty, line_subtotal_cents, line_discount_cents, line_total_cents`,
+  one row per SKU in first-seen order.
+- Combine duplicate SKU quantities before stock validation and before promotion math.
+- Implement `buy_x_get_y_free` line discount as `Math.floor(qty / (buy_qty + free_qty)) * free_qty * unit_cents`,
+  and `per_unit_discount_cents` (gated on `qty >= min_qty`) as `per_unit_discount_cents * qty`; apply
+  line promotions before the coupon.
+- Implement the order coupon: when present and `subtotal_cents - line_discount_cents >= coupon.min_subtotal_cents`,
+  `coupon_discount_cents = Math.round((subtotal_cents - line_discount_cents) * coupon.percent / 100)`, else `0`.
+- Implement tax (computed after line promotions, before the coupon) as `Math.round(taxable_post_line_discount_cents * rate)`
+  where a product is taxable iff `catalog.taxable_codes[tax_code] === true` and `rate = catalog.tax_rates[state]`.
+  Implement shipping as free (`0`) when `subtotal_cents - line_discount_cents - coupon_discount_cents >= catalog.free_shipping_min_cents`,
+  else `catalog.shipping_cents`. Compute `total_cents = subtotal_cents - line_discount_cents - coupon_discount_cents + tax_cents + shipping_cents`.
+- On invalid JSON, missing `items`, unknown SKU, non-positive/non-integer quantity, unknown coupon, unknown state,
+  or combined quantity over stock: exit `2`, print exactly one JSON error object to stderr, print nothing to stdout.
+  The combined-stock failure must have the exact shape `{ "error": "invalid_stock", "sku": string, "available": number, "requested": number }`
+  where `requested` is the combined quantity. Parsing/file-read failures must surface as JSON errors, not silent catches.
+- Update `tests/cli.test.js` with at least two new tests covering the cart command: one successful cart, one
+  validation failure — without breaking the existing `hello`/`version` tests.
+
+## Constraints
+
+- Only touch `bin/cli.js` and `tests/cli.test.js`. Do not touch `server/`, `web/`, or `data/catalog.json`.
+- Do not add dependencies (`package.json` `dependencies`/`devDependencies` stay unchanged).
+- All public amounts are integer cents; changing `data/catalog.json` values must change the result without a code change.
+
+## Out of Scope
+
+- Any change to `server/` or `web/` files.
+- Any change to `data/catalog.json` contents or schema.
+- New CLI commands beyond `cart`.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "exit_code": 0,
+      "stdout_contains": ["# fail 0"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"MUG\",\"qty\":1}]}' > /tmp/devlyn-cart-verify-success.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-success.json",
+      "exit_code": 0,
+      "stdout_contains": ["subtotal_cents", "1200", "total_cents", "1899", "shipping_cents", "699"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"BAG\",\"qty\":5}]}' > /tmp/devlyn-cart-verify-stock.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-stock.json",
+      "exit_code": 2,
+      "stdout_contains": ["invalid_stock", "BAG", "available", "requested"],
+      "stdout_not_contains": []
+    }
+  ]
+}
+```
+
+--- plan ---
+# Plan — `cart` subcommand for harbor-tools CLI
+
+<!-- devlyn:authorized-surface -->
+## Files to touch
+
+- `bin/cli.js` — edit — add a `cart` case to the existing `switch (command)` in `main(argv)` (same shape as the `hello`/`version` cases: parse `rest` for `--input <path>`, do the work, `console.log`/`process.exit`). Implements all Requirements: reading `--input`, reading `data/catalog.json`, combine/validate/price/tax/coupon/shipping math, the single success JSON object to stdout, and the single error JSON object to stderr with exit `2`.
+- `tests/cli.test.js` — edit — add at least two new `test()` blocks (one successful `cart` run asserting on the parsed stdout JSON, one validation-failure run using a wrapped `execFileSync` that catches the non-zero exit and asserts on `error.status`/`error.stdout`/`error.stderr`), appended after the existing three tests without modifying them. Implements Requirement: "Update `tests/cli.test.js` with at least two new tests covering the cart command... without breaking the existing `hello`/`version` tests."
+
+```json
+{"authorized_surface": ["bin/cli.js", "tests/cli.test.js"]}
+```
+
+## Risks
+
+- **Ambiguous validation order.** The criteria lists failure conditions ("invalid JSON, missing `items`, unknown SKU, non-positive/non-integer quantity, unknown coupon, unknown state, or combined quantity over stock") without stating a strict check order, beyond the explicit constraint that combining happens *before* stock validation and promotion math. Interpretation to implement, strictly and consistently: (1) JSON parse the file — `invalid_json`; (2) `items` must be a non-empty array — `missing_items`; (3) per raw item, validate `sku` exists in `catalog.products` (`invalid_sku`) and `qty` is a positive integer via `typeof qty === 'number' && Number.isInteger(qty) && qty > 0` (`invalid_quantity`), while accumulating combined quantities per SKU in first-seen order; (4) if `coupon` is non-null, it must exist in `catalog.coupons` (`invalid_coupon`); (5) `state` must exist in `catalog.tax_rates` (`invalid_state`); (6) only after all of the above pass, check each combined SKU quantity against `catalog.products[sku].stock` (`invalid_stock`, first offending SKU in first-seen order). No output (stdout or stderr) is written until every validation passes or the first failure is found — the success object must never be partially printed.
+- **Exact error JSON shape is pinned down only for `invalid_stock`**: `{ "error": "invalid_stock", "sku": string, "available": number, "requested": number }` where `requested` is the *combined* quantity for that SKU. For every other failure (`invalid_json`, `missing_items`, `invalid_sku`, `invalid_quantity`, `invalid_coupon`, `invalid_state`), the criteria only requires "exactly one JSON error object" — plan is to use the same `{ "error": "<code>" }` family (adding minimal identifying context like `sku` where natural) for consistency, since the criteria does not fully specify these shapes. Do not invent stdout output or additional stderr lines for these paths.
+- **Tax base is computed once, then rounded once.** "`Math.round(taxable_post_line_discount_cents * rate)`" means: sum `(line_subtotal_cents - line_discount_cents)` across only the lines whose product's `tax_code` maps to `taxable_codes[tax_code] === true`, THEN apply a single `Math.round(... * rate)` on that aggregate. Do not round per-line and sum the rounded values — that produces different (wrong) totals due to floating-point/rounding drift across multiple `Math.round` calls versus one.
+- **Coupon and tax are order-level, not allocated back into `items` rows.** Each `items` row only needs `sku, qty, line_subtotal_cents, line_discount_cents, line_total_cents` — `line_total_cents = line_subtotal_cents - line_discount_cents` (promotions only; the coupon and tax are never subtracted into a line's total). Do not invent a per-line coupon/tax share.
+- **Line promotion lookup is 1:1 by SKU.** `catalog.line_promotions` has at most one entry per SKU (`buy_x_get_y_free` or `per_unit_discount_cents`); a SKU with no matching entry has `line_discount_cents = 0`. Implement `buy_x_get_y_free` literally as `Math.floor(qty / (buy_qty + free_qty)) * free_qty * unit_cents`, and `per_unit_discount_cents` literally as `qty >= min_qty ? per_unit_discount_cents * qty : 0` — do not use `Math.round`/`Math.ceil` in place of the specified `Math.floor`.
+- **Floating-point tax rates** (`0.0825`, `0.08875`) multiplied by integer cents can produce a non-integer float before `Math.round` (e.g. `98.99999999999999`); `Math.round` handles this correctly as specified — no extra epsilon/toFixed workaround is needed or in scope.
+- **Scope discipline**: `data/catalog.json`, `server/`, `web/` are out of scope per Constraints — no reads of `data/catalog.json` will be cached/copied into `bin/cli.js`; the command reads the file fresh each invocation via `fs.readFileSync` + `JSON.parse`, same pattern as `readPackageVersion()`. No new dependencies — only `fs`/`path`, already imported.
+- **Existing tests are contract.** New tests append after the three existing tests; `hello`/`version` cases and tests are untouched.
+- **Verification block's field naming is not a contradiction to resolve here.** The third verification command (stock failure) labels its assertions `stdout_contains` even though the Requirements section is explicit that errors print "to stderr... print nothing to stdout." Treat `stdout_contains` in that verification entry as the harness's generic "process output contains" label (it will run the command through a shell that can see both streams), not as a license to write the error JSON to stdout. IMPLEMENT must keep the error object on stderr exactly as Requirements specify; do not switch streams to satisfy the label literally.
+
+## Acceptance restatement
+
+Verbatim copy of the criteria's `## Verification` block:
+
+```json
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "exit_code": 0,
+      "stdout_contains": ["# fail 0"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"MUG\",\"qty\":1}]}' > /tmp/devlyn-cart-verify-success.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-success.json",
+      "exit_code": 0,
+      "stdout_contains": ["subtotal_cents", "1200", "total_cents", "1899", "shipping_cents", "699"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"BAG\",\"qty\":5}]}' > /tmp/devlyn-cart-verify-stock.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-stock.json",
+      "exit_code": 2,
+      "stdout_contains": ["invalid_stock", "BAG", "available", "requested"],
+      "stdout_not_contains": []
+    }
+  ]
+}
+```
+
+--- cli ---
+#!/usr/bin/env node
+// harbor-tools — small command-line utilities for local workflows.
+// Keep the core commands minimal and easy to understand.
+
+const fs = require('fs');
+const path = require('path');
+
+const USAGE = `Usage: bench-cli <command> [options]
+
+Commands:
+  hello [--name NAME]        Print a greeting (default name: "world")
+  version                    Print the CLI version from package.json
+  --help, -h                 Show this help
+
+Examples:
+  bench-cli hello
+  bench-cli hello --name alice
+  bench-cli version
+`;
+
+function readPackageVersion() {
+  const pkgPath = path.join(__dirname, '..', 'package.json');
+  const raw = fs.readFileSync(pkgPath, 'utf8');
+  return JSON.parse(raw).version;
+}
+
+function parseNameFlag(argv) {
+  const idx = argv.indexOf('--name');
+  if (idx === -1) return 'world';
+  const value = argv[idx + 1];
+  if (!value || value.startsWith('-')) {
+    console.error('--name requires a value');
+    process.exit(1);
+  }
+  return value;
+}
+
+function main(argv) {
+  const [command, ...rest] = argv;
+
+  if (!command || command === '--help' || command === '-h') {
+    process.stdout.write(USAGE);
+    return;
+  }
+
+  switch (command) {
+    case 'hello': {
+      const name = parseNameFlag(rest);
+      console.log(`Hello, ${name}!`);
+      return;
+    }
+    case 'version': {
+      console.log(readPackageVersion());
+      return;
+    }
+    default:
+      console.error(`Unknown command: ${command}`);
+      process.stderr.write(USAGE);
+      process.exit(1);
+  }
+}
+
+main(process.argv.slice(2));
+
+--- tests ---
+const { test } = require('node:test');
+const assert = require('node:assert');
+const { execFileSync } = require('node:child_process');
+const path = require('node:path');
+
+const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+
+function run(args) {
+  return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+}
+
+test('hello default', () => {
+  const out = run(['hello']);
+  assert.match(out, /Hello, world!/);
+});
+
+test('hello with --name', () => {
+  const out = run(['hello', '--name', 'alice']);
+  assert.match(out, /Hello, alice!/);
+});
+
+test('version prints package version', () => {
+  const out = run(['version']);
+  assert.match(out, /\d+\.\d+\.\d+/);
+});
+
+--- package ---
+{
+  "name": "harbor-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A small Node.js toolkit with a command-line interface and HTTP server.",
+  "bin": {
+    "bench-cli": "bin/cli.js"
+  },
+  "scripts": {
+    "cli": "node bin/cli.js",
+    "start": "node server/index.js",
+    "test": "node --test tests/",
+    "lint:json": "node scripts/lint-json.js"
+  },
+  "dependencies": {
+    "express": "4.19.2"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
+exec
+/bin/zsh -lc "wc -l .devlyn/criteria.generated.md .devlyn/plan.md bin/cli.js tests/cli.test.js data/catalog.json && sed -n '1,260p' data/catalog.json && git rev-parse HEAD && git diff -- bin/cli.js tests/cli.test.js" in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ succeeded in 0ms:
+      80 .devlyn/criteria.generated.md
+      52 .devlyn/plan.md
+      63 bin/cli.js
+      25 tests/cli.test.js
+      26 data/catalog.json
+     246 total
+{
+  "products": {
+    "TEE": { "unit_cents": 2500, "stock": 10, "tax_code": "standard" },
+    "BAG": { "unit_cents": 3200, "stock": 4, "tax_code": "standard" },
+    "MUG": { "unit_cents": 1200, "stock": 20, "tax_code": "exempt" }
+  },
+  "line_promotions": [
+    { "sku": "TEE", "type": "buy_x_get_y_free", "buy_qty": 2, "free_qty": 1 },
+    { "sku": "BAG", "type": "per_unit_discount_cents", "min_qty": 2, "per_unit_discount_cents": 500 }
+  ],
+  "coupons": {
+    "ORDER10": { "percent": 10, "min_subtotal_cents": 8000 },
+    "SMALL5": { "percent": 5, "min_subtotal_cents": 2000 }
+  },
+  "tax_rates": {
+    "CA": 0.0825,
+    "OR": 0,
+    "NY": 0.08875
+  },
+  "taxable_codes": {
+    "standard": true,
+    "exempt": false
+  },
+  "shipping_cents": 699,
+  "free_shipping_min_cents": 9000
+}
+d059b43faf24e64eb7a560cc37cebd5ae30fe17b
+
+[codex-monitored] heartbeat: elapsed=30s
+[codex-monitored] heartbeat: elapsed=60s
+codex
+The contract is internally consistent; the verification block’s stock-error stream label is generic, so I’ll keep errors exclusively on stderr as the Requirements explicitly require. The base commit matches the requested SHA and the authorized files are unchanged.
+[codex-monitored] heartbeat: elapsed=90s
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/bin/cli.js
+/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/cli.test.js
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..51d155ad506177465dc2053ee2e4dd8d47cc4089
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,118 @@
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +165,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f12075914a275f53e533a5946a8dd50a2d0bb1c5
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..51d155ad506177465dc2053ee2e4dd8d47cc4089
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,118 @@
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +165,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f12075914a275f53e533a5946a8dd50a2d0bb1c5
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+
+[codex-monitored] heartbeat: elapsed=120s
+exec
+/bin/zsh -lc "git diff --check && git diff -- bin/cli.js tests/cli.test.js && nl -ba bin/cli.js | sed -n '1,230p' && nl -ba tests/cli.test.js | sed -n '1,180p'" in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ succeeded in 0ms:
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b24..51d155a 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,118 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +165,10 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..f120759 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@ function run(args) {
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+     1	#!/usr/bin/env node
+     2	// harbor-tools — small command-line utilities for local workflows.
+     3	// Keep the core commands minimal and easy to understand.
+     4	
+     5	const fs = require('fs');
+     6	const path = require('path');
+     7	
+     8	const USAGE = `Usage: bench-cli <command> [options]
+     9	
+    10	Commands:
+    11	  hello [--name NAME]        Print a greeting (default name: "world")
+    12	  version                    Print the CLI version from package.json
+    13	  --help, -h                 Show this help
+    14	
+    15	Examples:
+    16	  bench-cli hello
+    17	  bench-cli hello --name alice
+    18	  bench-cli version
+    19	`;
+    20	
+    21	function readPackageVersion() {
+    22	  const pkgPath = path.join(__dirname, '..', 'package.json');
+    23	  const raw = fs.readFileSync(pkgPath, 'utf8');
+    24	  return JSON.parse(raw).version;
+    25	}
+    26	
+    27	function parseNameFlag(argv) {
+    28	  const idx = argv.indexOf('--name');
+    29	  if (idx === -1) return 'world';
+    30	  const value = argv[idx + 1];
+    31	  if (!value || value.startsWith('-')) {
+    32	    console.error('--name requires a value');
+    33	    process.exit(1);
+    34	  }
+    35	  return value;
+    36	}
+    37	
+    38	function failCart(error) {
+    39	  process.stderr.write(`${JSON.stringify(error)}\n`);
+    40	  process.exit(2);
+    41	}
+    42	
+    43	function runCart(argv) {
+    44	  const inputIndex = argv.indexOf('--input');
+    45	  const inputPath = argv[inputIndex + 1];
+    46	  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
+    47	    failCart({ error: 'invalid_input' });
+    48	  }
+    49	
+    50	  let input;
+    51	  try {
+    52	    input = fs.readFileSync(inputPath, 'utf8');
+    53	  } catch {
+    54	    failCart({ error: 'invalid_input' });
+    55	  }
+    56	
+    57	  let cart;
+    58	  try {
+    59	    cart = JSON.parse(input);
+    60	  } catch {
+    61	    failCart({ error: 'invalid_json' });
+    62	  }
+    63	
+    64	  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
+    65	    failCart({ error: 'missing_items' });
+    66	  }
+    67	
+    68	  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
+    69	  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+    70	  const quantities = new Map();
+    71	
+    72	  for (const item of cart.items) {
+    73	    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
+    74	      failCart({ error: 'invalid_sku', sku: item && item.sku });
+    75	    }
+    76	    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
+    77	      failCart({ error: 'invalid_quantity', sku: item.sku });
+    78	    }
+    79	    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
+    80	  }
+    81	
+    82	  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
+    83	    failCart({ error: 'invalid_coupon' });
+    84	  }
+    85	  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
+    86	    failCart({ error: 'invalid_state' });
+    87	  }
+    88	
+    89	  for (const [sku, qty] of quantities) {
+    90	    const product = catalog.products[sku];
+    91	    if (qty > product.stock) {
+    92	      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
+    93	    }
+    94	  }
+    95	
+    96	  let subtotalCents = 0;
+    97	  let lineDiscountCents = 0;
+    98	  let taxablePostLineDiscountCents = 0;
+    99	  const items = [];
+   100	
+   101	  for (const [sku, qty] of quantities) {
+   102	    const product = catalog.products[sku];
+   103	    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
+   104	    const lineSubtotalCents = product.unit_cents * qty;
+   105	    let discount = 0;
+   106	
+   107	    if (promotion && promotion.type === 'buy_x_get_y_free') {
+   108	      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
+   109	    }
+   110	    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
+   111	      discount = promotion.per_unit_discount_cents * qty;
+   112	    }
+   113	
+   114	    const lineTotalCents = lineSubtotalCents - discount;
+   115	    subtotalCents += lineSubtotalCents;
+   116	    lineDiscountCents += discount;
+   117	    if (catalog.taxable_codes[product.tax_code] === true) {
+   118	      taxablePostLineDiscountCents += lineTotalCents;
+   119	    }
+   120	    items.push({
+   121	      sku,
+   122	      qty,
+   123	      line_subtotal_cents: lineSubtotalCents,
+   124	      line_discount_cents: discount,
+   125	      line_total_cents: lineTotalCents,
+   126	    });
+   127	  }
+   128	
+   129	  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
+   130	  const postLineDiscountCents = subtotalCents - lineDiscountCents;
+   131	  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
+   132	    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
+   133	    : 0;
+   134	  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
+   135	    ? 0
+   136	    : catalog.shipping_cents;
+   137	  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
+   138	
+   139	  console.log(JSON.stringify({
+   140	    subtotal_cents: subtotalCents,
+   141	    line_discount_cents: lineDiscountCents,
+   142	    coupon_discount_cents: couponDiscountCents,
+   143	    tax_cents: taxCents,
+   144	    shipping_cents: shippingCents,
+   145	    total_cents: totalCents,
+   146	    items,
+   147	  }));
+   148	}
+   149	
+   150	function main(argv) {
+   151	  const [command, ...rest] = argv;
+   152	
+   153	  if (!command || command === '--help' || command === '-h') {
+   154	    process.stdout.write(USAGE);
+   155	    return;
+   156	  }
+   157	
+   158	  switch (command) {
+   159	    case 'hello': {
+   160	      const name = parseNameFlag(rest);
+   161	      console.log(`Hello, ${name}!`);
+   162	      return;
+   163	    }
+   164	    case 'version': {
+   165	      console.log(readPackageVersion());
+   166	      return;
+   167	    }
+   168	    case 'cart': {
+   169	      runCart(rest);
+   170	      return;
+   171	    }
+   172	    default:
+   173	      console.error(`Unknown command: ${command}`);
+   174	      process.stderr.write(USAGE);
+   175	      process.exit(1);
+   176	  }
+   177	}
+   178	
+   179	main(process.argv.slice(2));
+     1	const { test } = require('node:test');
+     2	const assert = require('node:assert');
+     3	const { execFileSync } = require('node:child_process');
+     4	const fs = require('node:fs');
+     5	const os = require('node:os');
+     6	const path = require('node:path');
+     7	
+     8	const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+     9	
+    10	function run(args) {
+    11	  return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+    12	}
+    13	
+    14	function writeCart(t, cart) {
+    15	  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
+    16	  const inputPath = path.join(directory, 'cart.json');
+    17	  fs.writeFileSync(inputPath, JSON.stringify(cart));
+    18	  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    19	  return inputPath;
+    20	}
+    21	
+    22	test('hello default', () => {
+    23	  const out = run(['hello']);
+    24	  assert.match(out, /Hello, world!/);
+    25	});
+    26	
+    27	test('hello with --name', () => {
+    28	  const out = run(['hello', '--name', 'alice']);
+    29	  assert.match(out, /Hello, alice!/);
+    30	});
+    31	
+    32	test('version prints package version', () => {
+    33	  const out = run(['version']);
+    34	  assert.match(out, /\d+\.\d+\.\d+/);
+    35	});
+    36	
+    37	test('cart combines duplicate SKUs and applies pricing rules', (t) => {
+    38	  const inputPath = writeCart(t, {
+    39	    state: 'CA',
+    40	    coupon: 'ORDER10',
+    41	    items: [
+    42	      { sku: 'TEE', qty: 2 },
+    43	      { sku: 'TEE', qty: 1 },
+    44	      { sku: 'BAG', qty: 2 },
+    45	      { sku: 'MUG', qty: 1 },
+    46	    ],
+    47	  });
+    48	
+    49	  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
+    50	    subtotal_cents: 15100,
+    51	    line_discount_cents: 3500,
+    52	    coupon_discount_cents: 1160,
+    53	    tax_cents: 858,
+    54	    shipping_cents: 0,
+    55	    total_cents: 11298,
+    56	    items: [
+    57	      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
+    58	      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
+    59	      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
+    60	    ],
+    61	  });
+    62	});
+    63	
+    64	test('cart reports combined stock validation errors on stderr', (t) => {
+    65	  const inputPath = writeCart(t, {
+    66	    state: 'CA',
+    67	    coupon: null,
+    68	    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
+    69	  });
+    70	  let failure;
+    71	
+    72	  try {
+    73	    run(['cart', '--input', inputPath]);
+    74	  } catch (error) {
+    75	    failure = error;
+    76	  }
+    77	
+    78	  assert.ok(failure);
+    79	  assert.strictEqual(failure.status, 2);
+    80	  assert.strictEqual(failure.stdout, '');
+    81	  assert.deepStrictEqual(JSON.parse(failure.stderr), {
+    82	    error: 'invalid_stock',
+    83	    sku: 'BAG',
+    84	    available: 4,
+    85	    requested: 5,
+    86	  });
+    87	});
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..51d155ad506177465dc2053ee2e4dd8d47cc4089
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,118 @@
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +165,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f12075914a275f53e533a5946a8dd50a2d0bb1c5
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+
+codex
+The diff is limited to the two authorized files and `git diff --check` is clean. The success test covers duplicate consolidation, both line-promotion types, coupon gating, aggregate tax rounding, shipping, totals, and item order; the failure test asserts exit code and stream separation.
+exec
+/bin/zsh -lc 'npm test' in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..51d155ad506177465dc2053ee2e4dd8d47cc4089
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,118 @@
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +165,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f12075914a275f53e533a5946a8dd50a2d0bb1c5
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+
+ exited 1 in 645ms:
+
+> harbor-tools@0.1.0 test
+> node --test tests/
+
+TAP version 13
+# {"error":"invalid_stock","sku":"BAG","available":4,"requested":5}
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 49.936958
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 35.433541
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 65.998084
+  ...
+# Subtest: cart combines duplicate SKUs and applies pricing rules
+ok 4 - cart combines duplicate SKUs and applies pricing rules
+  ---
+  duration_ms: 51.586833
+  ...
+# Subtest: cart reports combined stock validation errors on stderr
+ok 5 - cart reports combined stock validation errors on stderr
+  ---
+  duration_ms: 57.087
+  ...
+# Subtest: GET /health returns ok
+not ok 6 - GET /health returns ok
+  ---
+  duration_ms: 3.324583
+  location: '/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 7 - GET /items returns list
+  ---
+  duration_ms: 1.409334
+  location: '/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 8 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 1.288417
+  location: '/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 5
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 312.920084
+
+codex
+`npm test` ran all eight tests: the five CLI tests passed, but the three existing server tests fail before exercising application behavior because this sandbox forbids binding `0.0.0.0` (`listen EPERM`). That path is off-limits; I’m continuing the remaining literal cart verifications.
+exec
+/bin/zsh -lc "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"MUG\",\"qty\":1}]}' > /tmp/devlyn-cart-verify-success.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-success.json" in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ succeeded in 0ms:
+{"subtotal_cents":1200,"line_discount_cents":0,"coupon_discount_cents":0,"tax_cents":0,"shipping_cents":699,"total_cents":1899,"items":[{"sku":"MUG","qty":1,"line_subtotal_cents":1200,"line_discount_cents":0,"line_total_cents":1200}]}
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..51d155ad506177465dc2053ee2e4dd8d47cc4089
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,118 @@
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +165,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f12075914a275f53e533a5946a8dd50a2d0bb1c5
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+
+exec
+/bin/zsh -lc "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"BAG\",\"qty\":5}]}' > /tmp/devlyn-cart-verify-stock.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-stock.json" in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ exited 2 in 0ms:
+{"error":"invalid_stock","sku":"BAG","available":4,"requested":5}
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..51d155ad506177465dc2053ee2e4dd8d47cc4089
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,118 @@
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +165,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f12075914a275f53e533a5946a8dd50a2d0bb1c5
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+
+[codex-monitored] heartbeat: elapsed=150s
+exec
+/bin/zsh -lc 'node --test tests/cli.test.js' in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..51d155ad506177465dc2053ee2e4dd8d47cc4089
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,118 @@
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +165,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f12075914a275f53e533a5946a8dd50a2d0bb1c5
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+
+ succeeded in 321ms:
+# {"error":"invalid_stock","sku":"BAG","available":4,"requested":5}
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 44.852125
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 42.226333
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 56.289875
+  ...
+# Subtest: cart combines duplicate SKUs and applies pricing rules
+ok 4 - cart combines duplicate SKUs and applies pricing rules
+  ---
+  duration_ms: 43.1535
+  ...
+# Subtest: cart reports combined stock validation errors on stderr
+ok 5 - cart reports combined stock validation errors on stderr
+  ---
+  duration_ms: 51.731625
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 300.575042
+
+exec
+/bin/zsh -lc "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"MUG\",\"qty\":1}]}' > /tmp/devlyn-cart-verify-success.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-success.json" in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ succeeded in 0ms:
+{"subtotal_cents":1200,"line_discount_cents":0,"coupon_discount_cents":0,"tax_cents":0,"shipping_cents":699,"total_cents":1899,"items":[{"sku":"MUG","qty":1,"line_subtotal_cents":1200,"line_discount_cents":0,"line_total_cents":1200}]}
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..51d155ad506177465dc2053ee2e4dd8d47cc4089
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,118 @@
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +165,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f12075914a275f53e533a5946a8dd50a2d0bb1c5
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+
+[codex-monitored] heartbeat: elapsed=180s
+exec
+/bin/zsh -lc "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"BAG\",\"qty\":5}]}' > /tmp/devlyn-cart-verify-stock.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-stock.json" in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ exited 2 in 0ms:
+{"error":"invalid_stock","sku":"BAG","available":4,"requested":5}
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..51d155ad506177465dc2053ee2e4dd8d47cc4089
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,118 @@
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +165,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f12075914a275f53e533a5946a8dd50a2d0bb1c5
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+
+codex
+Both cart-specific verification commands now meet their contracts: the success case exits 0 with the required totals, and the stock case exits 2 with the required JSON (emitted on stderr; the command runner combines streams for display). The focused CLI suite is also 5/5 passing.
+exec
+/bin/zsh -lc 'npm test' in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..51d155ad506177465dc2053ee2e4dd8d47cc4089
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,118 @@
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +165,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f12075914a275f53e533a5946a8dd50a2d0bb1c5
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+
+ exited 1 in 701ms:
+
+> harbor-tools@0.1.0 test
+> node --test tests/
+
+TAP version 13
+# {"error":"invalid_stock","sku":"BAG","available":4,"requested":5}
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 47.771584
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 35.73375
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 44.784167
+  ...
+# Subtest: cart combines duplicate SKUs and applies pricing rules
+ok 4 - cart combines duplicate SKUs and applies pricing rules
+  ---
+  duration_ms: 70.435334
+  ...
+# Subtest: cart reports combined stock validation errors on stderr
+ok 5 - cart reports combined stock validation errors on stderr
+  ---
+  duration_ms: 48.002416
+  ...
+# Subtest: GET /health returns ok
+not ok 6 - GET /health returns ok
+  ---
+  duration_ms: 3.093333
+  location: '/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 7 - GET /items returns list
+  ---
+  duration_ms: 1.3625
+  location: '/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 8 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.933125
+  location: '/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 5
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 317.006041
+
+exec
+/bin/zsh -lc "nl -ba tests/server.test.js | sed -n '1,70p'" in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ succeeded in 0ms:
+     1	const { test } = require('node:test');
+     2	const assert = require('node:assert');
+     3	const http = require('node:http');
+     4	const { app } = require('../server');
+     5	
+     6	function startServer() {
+     7	  return new Promise((resolve) => {
+     8	    const server = http.createServer(app);
+     9	    server.listen(0, () => resolve(server));
+    10	  });
+    11	}
+    12	
+    13	function get(server, path) {
+    14	  return new Promise((resolve, reject) => {
+    15	    const { port } = server.address();
+    16	    http
+    17	      .get(`http://127.0.0.1:${port}${path}`, (res) => {
+    18	        let body = '';
+    19	        res.on('data', (chunk) => (body += chunk));
+    20	        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
+    21	      })
+    22	      .on('error', reject);
+    23	  });
+    24	}
+    25	
+    26	test('GET /health returns ok', async () => {
+    27	  const server = await startServer();
+    28	  try {
+    29	    const { status, body } = await get(server, '/health');
+    30	    assert.strictEqual(status, 200);
+    31	    assert.deepStrictEqual(body, { status: 'ok' });
+    32	  } finally {
+    33	    server.close();
+    34	  }
+    35	});
+    36	
+    37	test('GET /items returns list', async () => {
+    38	  const server = await startServer();
+    39	  try {
+    40	    const { status, body } = await get(server, '/items');
+    41	    assert.strictEqual(status, 200);
+    42	    assert.ok(Array.isArray(body.items));
+    43	    assert.ok(body.items.length >= 2);
+    44	  } finally {
+    45	    server.close();
+    46	  }
+    47	});
+    48	
+    49	test('GET /items/:id returns 404 for missing', async () => {
+    50	  const server = await startServer();
+    51	  try {
+    52	    const { status, body } = await get(server, '/items/99999');
+    53	    assert.strictEqual(status, 404);
+    54	    assert.strictEqual(body.error, 'not_found');
+    55	  } finally {
+    56	    server.close();
+    57	  }
+    58	});
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..51d155ad506177465dc2053ee2e4dd8d47cc4089
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,118 @@
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +165,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f12075914a275f53e533a5946a8dd50a2d0bb1c5
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+
+exec
+/bin/zsh -lc 'git diff --check && git diff --name-only && git status --short' in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ succeeded in 0ms:
+bin/cli.js
+tests/cli.test.js
+ M bin/cli.js
+ M tests/cli.test.js
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..51d155ad506177465dc2053ee2e4dd8d47cc4089
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,118 @@
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +165,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f12075914a275f53e533a5946a8dd50a2d0bb1c5
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+
+[codex-monitored] heartbeat: elapsed=210s
+codex
+Implemented `cart --input <path>` in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/bin/cli.js:43), including validation, duplicate consolidation, promotions, coupon, tax, shipping, stream-correct JSON errors, and totals. Added success and stock-validation coverage in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/cli.test.js:37). Diff is limited to the authorized files and passes `git diff --check`.
+
+Validation:
+
+- `node --test tests/cli.test.js`: passed, 5/5.
+- Success verification: exit 0; output includes subtotal `1200`, shipping `699`, total `1899`.
+- Stock verification: exit 2; emits the required `invalid_stock` JSON on stderr.
+- `npm test`: exit 1. All five CLI tests pass, but three pre-existing server tests fail because [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:9) cannot bind its HTTP listener in this sandbox: `listen EPERM: operation not permitted 0.0.0.0`.
+
+Verdict: **BLOCKED** — the required full-suite `npm test` exit-0 criterion is prevented by sandbox socket restrictions outside the authorized surface.
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..51d155ad506177465dc2053ee2e4dd8d47cc4089
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,118 @@
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +165,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f12075914a275f53e533a5946a8dd50a2d0bb1c5
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+
+tokens used
+43,486
+[codex-monitored] codex exited: code=0 elapsed=219s

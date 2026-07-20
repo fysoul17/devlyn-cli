@@ -1,0 +1,36 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "exit_code": 0,
+      "stdout_contains": [
+        "# fail 0"
+      ],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"MUG\",\"qty\":1}]}' > /tmp/devlyn-cart-verify-success.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-success.json",
+      "exit_code": 0,
+      "stdout_contains": [
+        "subtotal_cents",
+        "1200",
+        "total_cents",
+        "1899",
+        "shipping_cents",
+        "699"
+      ],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"BAG\",\"qty\":5}]}' > /tmp/devlyn-cart-verify-stock.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-stock.json",
+      "exit_code": 2,
+      "stdout_contains": [
+        "invalid_stock",
+        "BAG",
+        "available",
+        "requested"
+      ],
+      "stdout_not_contains": []
+    }
+  ]
+}

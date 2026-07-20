@@ -1,0 +1,3 @@
+PASS
+
+No cleanup changes needed. The feature diff only touches `bin/cli.js` and `tests/cli.test.js`; all added functions are referenced, no scoped artifacts exist, and no stale references/comments were introduced. Post-cleanup diff against `4c8e6b0` is empty.

@@ -1,0 +1,4 @@
+UVR-STALE: N/A server/index.js:1 — the only pre-existing user-visible text is the file-header comment ("Tiny Express server with a deliberately small API surface"), which is a general description, not documentation of any specific symbol's interface/options/shape; no comment documents the old `express.json()` or route-set interface in a way that omits the new webhook shape.
+PATH-TEST: N/A tests/server.test.js:89 — every success/failure path the Goal specifies (valid sig+body first delivery→200, invalid signature→401, sig-valid/body-invalid→400, duplicate id→409 with second body irrelevant, tampered body with original signature→401) already has a dedicated regression test in the patch (lines 89, 101, 119, 138, 156, 168).
+
+PASS

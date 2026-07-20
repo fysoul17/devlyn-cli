@@ -1,0 +1,1 @@
+/devlyn:resolve --goal-file .devlyn/goal.txt --pair-verify

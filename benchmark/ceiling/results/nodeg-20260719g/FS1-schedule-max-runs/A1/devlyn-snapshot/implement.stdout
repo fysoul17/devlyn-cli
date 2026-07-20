@@ -1,0 +1,13 @@
+PASS
+
+- Chainable in either fluent position: [tests](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/fa265b8ab039e/A1/repo/test_schedule.py:393).
+- Per-job budget decrements after execution and returns `CancelJob` at zero: [implementation](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/fa265b8ab039e/A1/repo/schedule/__init__.py:708).
+- `run_pending()` and `run_all()` coverage: [tests](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/fa265b8ab039e/A1/repo/test_schedule.py:405).
+- `.until()` first-limit-wins, with existing deadline test unchanged: [tests](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/fa265b8ab039e/A1/repo/test_schedule.py:426).
+- `next_run()` / `idle_seconds()` reflect removal: [tests](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/fa265b8ab039e/A1/repo/test_schedule.py:414).
+- Validation raises `ScheduleValueError`: [implementation](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/fa265b8ab039e/A1/repo/schedule/__init__.py:586), [tests](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/fa265b8ab039e/A1/repo/test_schedule.py:400).
+- Repeated calls are last-call-wins: [tests](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/fa265b8ab039e/A1/repo/test_schedule.py:445).
+- Budgets are isolated per job: [instance state](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/fa265b8ab039e/A1/repo/schedule/__init__.py:254), [tests](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/fa265b8ab039e/A1/repo/test_schedule.py:453).
+- API docstring and example added: [method](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/fa265b8ab039e/A1/repo/schedule/__init__.py:579), [docs](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/fa265b8ab039e/A1/repo/docs/examples.rst:247).
+
+Verification: `/opt/homebrew/bin/pytest test_schedule.py -q` → `82 passed in 0.25s`.

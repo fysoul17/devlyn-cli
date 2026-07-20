@@ -1,0 +1,163 @@
+{
+  "judge": "sonnet",
+  "task": "DR-atomic-state-f11-batch-import",
+  "prompt": "You are a blind ceiling-quality judge. You receive one task and two anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, source run, or author identity; judge only the task text and diffs.\n\nTask text:\nAdd `POST /items/import` to `server/index.js`. It accepts `{ items: [...] }`; every item must have a `name` that is a non-empty string after trimming and a `qty` that is a positive integer.\n\nWhen every item is valid, append all of them in input order and respond `201` with `{ inserted: <count> }`. Every appended row must receive a distinct numeric `id` that does not collide with any existing item id. If an item is invalid, respond `400` with `{ error: 'invalid_batch', index, field }`, where `index` identifies the first invalid item and `field` is `name` or `qty`. After that response, `GET /items` must return exactly the same list it returned immediately before the request.\n\nAn empty body, missing `items`, or a non-array `items` value must return `400` with `{ error: 'invalid_body' }`; `GET /items` must likewise be unchanged.\n\nUpdate `tests/server.test.js` so the existing tests still pass and add at least two import tests. One must exercise an invalid middle item and compare the list before and after the response; another must cover a fully valid request. No new npm dependencies. Only touch `server/index.js` and `tests/server.test.js`.\n\nP1 patch.diff:\n```diff\ndiff --git a/server/index.js b/server/index.js\nindex 1c43fa2..7ffa4f6 100644\n--- a/server/index.js\n+++ b/server/index.js\n@@ -27,6 +27,33 @@ app.get('/items/:id', (req, res) => {\n   res.json({ item });\n });\n \n+app.post('/items/import', (req, res) => {\n+  if (!req.body || !Array.isArray(req.body.items)) {\n+    res.status(400).json({ error: 'invalid_body' });\n+    return;\n+  }\n+\n+  for (const [index, item] of req.body.items.entries()) {\n+    if (!item || typeof item.name !== 'string' || item.name.trim().length === 0) {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });\n+      return;\n+    }\n+    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });\n+      return;\n+    }\n+  }\n+\n+  const nextId = Math.max(0, ...items.map((item) => item.id)) + 1;\n+  const imported = req.body.items.map((item, index) => ({\n+    id: nextId + index,\n+    name: item.name,\n+    qty: item.qty,\n+  }));\n+  items.push(...imported);\n+  res.status(201).json({ inserted: imported.length });\n+});\n+\n if (require.main === module) {\n   const port = Number(process.env.PORT) || 3000;\n   app.listen(port, () => {\ndiff --git a/tests/server.test.js b/tests/server.test.js\nindex adc6067..d3c4289 100644\n--- a/tests/server.test.js\n+++ b/tests/server.test.js\n@@ -17,12 +17,34 @@ function get(server, path) {\n       .get(`http://127.0.0.1:${port}${path}`, (res) => {\n         let body = '';\n         res.on('data', (chunk) => (body += chunk));\n-        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));\n+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body), text: body }));\n       })\n       .on('error', reject);\n   });\n }\n \n+function post(server, path, body) {\n+  return new Promise((resolve, reject) => {\n+    const { port } = server.address();\n+    const request = http.request(\n+      `http://127.0.0.1:${port}${path}`,\n+      {\n+        method: 'POST',\n+        headers: { 'content-type': 'application/json' },\n+      },\n+      (res) => {\n+        let responseBody = '';\n+        res.on('data', (chunk) => (responseBody += chunk));\n+        res.on('end', () => {\n+          resolve({ status: res.statusCode, body: JSON.parse(responseBody) });\n+        });\n+      },\n+    );\n+    request.on('error', reject);\n+    request.end(JSON.stringify(body));\n+  });\n+}\n+\n test('GET /health returns ok', async () => {\n   const server = await startServer();\n   try {\n@@ -56,3 +78,64 @@ test('GET /items/:id returns 404 for missing', async () => {\n     server.close();\n   }\n });\n+\n+test('POST /items/import rejects an invalid middle item without changing the list', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'gamma', qty: 1 },\n+        { name: 'delta', qty: 0 },\n+        { name: 'epsilon', qty: 2 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+\n+    assert.strictEqual(response.status, 400);\n+    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });\n+    assert.strictEqual(after.text, before.text);\n+  } finally {\n+    server.close();\n+  }\n+});\n+\n+test('POST /items/import appends a fully valid batch in order with unique ids', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'gamma', qty: 1 },\n+        { name: 'delta', qty: 2 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+    const imported = after.body.items.slice(before.body.items.length);\n+\n+    assert.strictEqual(response.status, 201);\n+    assert.deepStrictEqual(response.body, { inserted: 2 });\n+    assert.deepStrictEqual(imported.map(({ name, qty }) => ({ name, qty })), [\n+      { name: 'gamma', qty: 1 },\n+      { name: 'delta', qty: 2 },\n+    ]);\n+    assert.strictEqual(new Set(after.body.items.map((item) => item.id)).size, after.body.items.length);\n+  } finally {\n+    server.close();\n+  }\n+});\n+\n+test('POST /items/import rejects a non-array items value without changing the list', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', { items: 'not-an-array' });\n+    const after = await get(server, '/items');\n+\n+    assert.strictEqual(response.status, 400);\n+    assert.deepStrictEqual(response.body, { error: 'invalid_body' });\n+    assert.strictEqual(after.text, before.text);\n+  } finally {\n+    server.close();\n+  }\n+});\n\n```\n\nP2 patch.diff:\n```diff\ndiff --git a/server/index.js b/server/index.js\nindex 1c43fa2..facf9fc 100644\n--- a/server/index.js\n+++ b/server/index.js\n@@ -17,6 +17,43 @@ app.get('/items', (_req, res) => {\n   res.json({ items });\n });\n \n+app.post('/items/import', (req, res) => {\n+  const { items: batch } = req.body || {};\n+\n+  if (!Array.isArray(batch)) {\n+    res.status(400).json({ error: 'invalid_body' });\n+    return;\n+  }\n+\n+  for (let index = 0; index < batch.length; index += 1) {\n+    const item = batch[index];\n+\n+    if (!item || typeof item.name !== 'string' || item.name.trim() === '') {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });\n+      return;\n+    }\n+\n+    if (!Number.isInteger(item.qty) || item.qty <= 0) {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });\n+      return;\n+    }\n+  }\n+\n+  let nextId = items.reduce(\n+    (maxId, item) => (typeof item.id === 'number' && Number.isFinite(item.id) ? Math.max(maxId, item.id) : maxId),\n+    0,\n+  ) + 1;\n+\n+  const importedItems = batch.map((item) => ({\n+    id: nextId++,\n+    name: item.name,\n+    qty: item.qty,\n+  }));\n+\n+  items.push(...importedItems);\n+  res.status(201).json({ inserted: importedItems.length });\n+});\n+\n app.get('/items/:id', (req, res) => {\n   const id = Number(req.params.id);\n   const item = items.find((it) => it.id === id);\ndiff --git a/tests/server.test.js b/tests/server.test.js\nindex adc6067..581c217 100644\n--- a/tests/server.test.js\n+++ b/tests/server.test.js\n@@ -23,6 +23,32 @@ function get(server, path) {\n   });\n }\n \n+function post(server, path, body) {\n+  return new Promise((resolve, reject) => {\n+    const payload = JSON.stringify(body);\n+    const { port } = server.address();\n+    const req = http.request(\n+      {\n+        hostname: '127.0.0.1',\n+        port,\n+        path,\n+        method: 'POST',\n+        headers: {\n+          'Content-Type': 'application/json',\n+          'Content-Length': Buffer.byteLength(payload),\n+        },\n+      },\n+      (res) => {\n+        let responseBody = '';\n+        res.on('data', (chunk) => (responseBody += chunk));\n+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));\n+      },\n+    );\n+    req.on('error', reject);\n+    req.end(payload);\n+  });\n+}\n+\n test('GET /health returns ok', async () => {\n   const server = await startServer();\n   try {\n@@ -56,3 +82,53 @@ test('GET /items/:id returns 404 for missing', async () => {\n     server.close();\n   }\n });\n+\n+test('POST /items/import rejects an invalid middle item without changing the list', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'gamma', qty: 2 },\n+        { name: 'delta', qty: 0 },\n+        { name: 'epsilon', qty: 4 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+\n+    assert.strictEqual(response.status, 400);\n+    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });\n+    assert.deepStrictEqual(after.body, before.body);\n+  } finally {\n+    server.close();\n+  }\n+});\n+\n+test('POST /items/import appends a valid batch in order with distinct ids', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'gamma', qty: 2 },\n+        { name: 'delta', qty: 4 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+    const addedItems = after.body.items.slice(before.body.items.length);\n+\n+    assert.strictEqual(response.status, 201);\n+    assert.deepStrictEqual(response.body, { inserted: 2 });\n+    assert.deepStrictEqual(\n+      addedItems.map(({ name, qty }) => ({ name, qty })),\n+      [\n+        { name: 'gamma', qty: 2 },\n+        { name: 'delta', qty: 4 },\n+      ],\n+    );\n+    assert.strictEqual(new Set(addedItems.map((item) => item.id)).size, 2);\n+    assert.ok(addedItems.every((item) => !before.body.items.some((beforeItem) => beforeItem.id === item.id)));\n+  } finally {\n+    server.close();\n+  }\n+});\n\n```\n\nRank P1/P2 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics. Ties are allowed. Emit one single complete JSON object and nothing else in this shape; for every strict tier winner/loser include one concrete visible-diff delta:\n{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"robustness\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]}}}",
+  "attempts": [
+    {
+      "attempt": 1,
+      "error": null
+    }
+  ],
+  "error": null,
+  "parsed": {
+    "axes": {
+      "design_coherence": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2 validates qty with the single check `!Number.isInteger(item.qty) || item.qty <= 0`, whereas P1 adds a redundant `typeof item.qty !== 'number'` guard that Number.isInteger already subsumes, making P1's condition needlessly duplicated."
+          }
+        ]
+      },
+      "robustness": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2 computes the next id via `items.reduce((maxId, item) => (typeof item.id === 'number' && Number.isFinite(item.id) ? Math.max(maxId, item.id) : maxId), 0) + 1`, guarding against non-numeric ids, while P1's `Math.max(0, ...items.map((item) => item.id)) + 1` spreads the entire items array as call arguments (a stack-overflow risk on large lists) and yields NaN if any existing item.id is not numeric."
+          }
+        ]
+      },
+      "spec_long_horizon_consistency": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1 adds a third test, 'rejects a non-array items value without changing the list', directly exercising the spec-mandated `invalid_body` behavior, while P2's diff only adds the two minimum-required tests and never asserts the non-array/invalid_body path at all."
+          }
+        ]
+      },
+      "maintainability_api_ergonomics": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2's `post()` test helper explicitly sets `'Content-Length': Buffer.byteLength(payload)`, making the HTTP request construction self-contained and explicit, whereas P1's `post()` sends only a `content-type` header and relies on Node's implicit chunked-encoding default for the body."
+          }
+        ]
+      }
+    }
+  },
+  "runtime_model": "claude-sonnet-5",
+  "result": {
+    "runtime_model": "claude-sonnet-5",
+    "cli_version": "2.1.215 (Claude Code)",
+    "axes": {
+      "design_coherence": "B_win",
+      "robustness": "B_win",
+      "spec_long_horizon_consistency": "A_win",
+      "maintainability_api_ergonomics": "B_win"
+    },
+    "parse_metadata": {}
+  },
+  "meta": {
+    "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":95967,\"duration_api_ms\":95905,\"ttft_ms\":90287,\"ttft_stream_ms\":2287,\"time_to_request_ms\":61,\"num_turns\":1,\"result\":\"```json\\n{\\\"axes\\\":{\\\"design_coherence\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P2 validates qty with the single check `!Number.isInteger(item.qty) || item.qty <= 0`, whereas P1 adds a redundant `typeof item.qty !== 'number'` guard that Number.isInteger already subsumes, making P1's condition needlessly duplicated.\\\"}]},\\\"robustness\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P2 computes the next id via `items.reduce((maxId, item) => (typeof item.id === 'number' && Number.isFinite(item.id) ? Math.max(maxId, item.id) : maxId), 0) + 1`, guarding against non-numeric ids, while P1's `Math.max(0, ...items.map((item) => item.id)) + 1` spreads the entire items array as call arguments (a stack-overflow risk on large lists) and yields NaN if any existing item.id is not numeric.\\\"}]},\\\"spec_long_horizon_consistency\\\":{\\\"tiers\\\":[[\\\"P1\\\"],[\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1 adds a third test, 'rejects a non-array items value without changing the list', directly exercising the spec-mandated `invalid_body` behavior, while P2's diff only adds the two minimum-required tests and never asserts the non-array/invalid_body path at all.\\\"}]},\\\"maintainability_api_ergonomics\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P2's `post()` test helper explicitly sets `'Content-Length': Buffer.byteLength(payload)`, making the HTTP request construction self-contained and explicit, whereas P1's `post()` sends only a `content-type` header and relies on Node's implicit chunked-encoding default for the body.\\\"}]}}}\\n```\",\"stop_reason\":\"end_turn\",\"session_id\":\"b365da10-d0eb-4810-aba7-cc8856c5f2a6\",\"total_cost_usd\":0.23579219999999995,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":15686,\"cache_read_input_tokens\":22234,\"output_tokens\":9000,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":15686,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":2,\"outputTokens\":9000,\"cacheReadInputTokens\":22234,\"cacheCreationInputTokens\":15686,\"webSearchRequests\":0,\"costUSD\":0.23579219999999995,\"contextWindow\":1000000,\"maxOutputTokens\":64000}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"b6e16aad-0ddd-4c7a-8c65-441fbbdc7112\"}\n",
+    "stderr": "",
+    "isolation_path": "/Users/aipalm/devlyn-ceiling-external/exam-0073/benchmark/ceiling/results/nodeg-20260719g/DR-atomic-state-f11-batch-import/nodeg-judge/judge-sonnet-attempt1-isolation.json",
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 2,
+        "outputTokens": 9000,
+        "cacheReadInputTokens": 22234,
+        "cacheCreationInputTokens": 15686,
+        "webSearchRequests": 0,
+        "costUSD": 0.23579219999999995,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000
+      }
+    },
+    "wrapper": {
+      "type": "result",
+      "subtype": "success",
+      "is_error": false,
+      "api_error_status": null,
+      "duration_ms": 95967,
+      "duration_api_ms": 95905,
+      "ttft_ms": 90287,
+      "ttft_stream_ms": 2287,
+      "time_to_request_ms": 61,
+      "num_turns": 1,
+      "result": "```json\n{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P2 validates qty with the single check `!Number.isInteger(item.qty) || item.qty <= 0`, whereas P1 adds a redundant `typeof item.qty !== 'number'` guard that Number.isInteger already subsumes, making P1's condition needlessly duplicated.\"}]},\"robustness\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P2 computes the next id via `items.reduce((maxId, item) => (typeof item.id === 'number' && Number.isFinite(item.id) ? Math.max(maxId, item.id) : maxId), 0) + 1`, guarding against non-numeric ids, while P1's `Math.max(0, ...items.map((item) => item.id)) + 1` spreads the entire items array as call arguments (a stack-overflow risk on large lists) and yields NaN if any existing item.id is not numeric.\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"P1 adds a third test, 'rejects a non-array items value without changing the list', directly exercising the spec-mandated `invalid_body` behavior, while P2's diff only adds the two minimum-required tests and never asserts the non-array/invalid_body path at all.\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P2's `post()` test helper explicitly sets `'Content-Length': Buffer.byteLength(payload)`, making the HTTP request construction self-contained and explicit, whereas P1's `post()` sends only a `content-type` header and relies on Node's implicit chunked-encoding default for the body.\"}]}}}\n```",
+      "stop_reason": "end_turn",
+      "session_id": "b365da10-d0eb-4810-aba7-cc8856c5f2a6",
+      "total_cost_usd": 0.23579219999999995,
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 15686,
+        "cache_read_input_tokens": 22234,
+        "output_tokens": 9000,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 15686,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "not_available",
+        "iterations": [],
+        "speed": "standard"
+      },
+      "modelUsage": {
+        "claude-sonnet-5": {
+          "inputTokens": 2,
+          "outputTokens": 9000,
+          "cacheReadInputTokens": 22234,
+          "cacheCreationInputTokens": 15686,
+          "webSearchRequests": 0,
+          "costUSD": 0.23579219999999995,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000
+        }
+      },
+      "permission_denials": [],
+      "terminal_reason": "completed",
+      "fast_mode_state": "off",
+      "uuid": "b6e16aad-0ddd-4c7a-8c65-441fbbdc7112"
+    }
+  }
+}

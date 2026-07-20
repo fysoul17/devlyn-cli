@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "run_id": "nodeg-20260719g",
+  "tasks": {
+    "DR-byte-preservation-f7-out-of-scope-trap": {
+      "control_id": "F7",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.215 (Claude Code)",
+          "axes": {
+            "design_coherence": "A_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "A_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.5",
+          "axes": {
+            "design_coherence": "tie",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        }
+      }
+    },
+    "DR-shape-compound-rules-f25-cart": {
+      "control_id": "F25",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.215 (Claude Code)",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.5",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        }
+      }
+    },
+    "DR-ledger-rounding-consistency-f26-payout": {
+      "control_id": "F26",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.215 (Claude Code)",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.5",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        }
+      }
+    },
+    "DR-atomic-state-f11-batch-import": {
+      "control_id": "F11",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.215 (Claude Code)",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "A_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.5",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        }
+      }
+    },
+    "DR-auth-signature-f12-webhook": {
+      "control_id": "F12",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.215 (Claude Code)",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "A_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.5",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        }
+      }
+    },
+    "DR-allocation-fefo-priority-rollback-f23-fulfillment": {
+      "control_id": "F23",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.215 (Claude Code)",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "A_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.5",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        }
+      }
+    },
+    "FS1-schedule-max-runs": {
+      "control_id": "FS1",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.215 (Claude Code)",
+          "axes": {
+            "design_coherence": "A_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "A_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.5",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {
+            "structural_completion": 1
+          }
+        }
+      }
+    }
+  }
+}

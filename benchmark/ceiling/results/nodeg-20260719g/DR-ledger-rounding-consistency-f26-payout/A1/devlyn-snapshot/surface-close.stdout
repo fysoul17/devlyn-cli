@@ -1,0 +1,4 @@
+UVR-STALE: FIRED bin/cli.js:8 — USAGE help text listed only `hello`/`version`/`--help` and omitted the new `payout --input PATH` command added by this diff's `payout` case in `main`; added the missing command line and example.
+PATH-TEST: FIRED tests/cli.test.js:77 — Goal specifies the conflicting-duplicate failure path (exit 2, no stdout, exact `{"error":"conflicting_duplicate","id":...}` stderr) implemented via `exitPayoutError('conflicting_duplicate', event.id)` at bin/cli.js:118, but no authorized test exercised it; added `payout rejects conflicting duplicate ids`.
+
+PASS

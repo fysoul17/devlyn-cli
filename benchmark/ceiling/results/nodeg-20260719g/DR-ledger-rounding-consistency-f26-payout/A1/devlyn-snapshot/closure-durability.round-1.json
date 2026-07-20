@@ -1,0 +1,46 @@
+{
+  "blocks": [
+    {
+      "action": "finding-targeted",
+      "classification": "REVERTED",
+      "finding_targeted": true,
+      "id": "bin/cli.js:1:ddc1b1b80f6f9bc3",
+      "path": "bin/cli.js",
+      "pre_fix_span": [
+        13,
+        13
+      ]
+    },
+    {
+      "action": "restored",
+      "classification": "REVERTED",
+      "finding_targeted": false,
+      "id": "bin/cli.js:3:b94d9b8ce0d65f43",
+      "path": "bin/cli.js",
+      "pre_fix_span": [
+        20,
+        20
+      ]
+    },
+    {
+      "action": "restored",
+      "classification": "REVERTED",
+      "finding_targeted": false,
+      "id": "tests/cli.test.js:1:014e46475cb01e85",
+      "path": "tests/cli.test.js",
+      "pre_fix_span": [
+        96,
+        119
+      ]
+    }
+  ],
+  "fix_commit_sha": "b642f6d2a6abef953d1766fd5eac1c835fd62dfd",
+  "origin_phase": "verify",
+  "post_restore_sha": "ec5a4359b61ca318501968e780091dc1aca27aa2",
+  "pre_fix_sha": "30351d8c7433a3e5116556829c099ce0e20f68ae",
+  "restore_commit_sha": "ec5a4359b61ca318501968e780091dc1aca27aa2",
+  "round": 1,
+  "schema_version": 1,
+  "surface_close_commit_sha": "30351d8c7433a3e5116556829c099ce0e20f68ae",
+  "triggering_findings_sha256": "a5a9b6f33a50442f17e13bd4850eca67a361974bb8b00aaa5ea98a3bea6a302e"
+}

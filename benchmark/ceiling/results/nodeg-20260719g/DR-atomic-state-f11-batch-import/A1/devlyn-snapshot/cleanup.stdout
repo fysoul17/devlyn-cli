@@ -1,0 +1,1 @@
+PASS — no allowlisted cleanup applies. The cumulative diff adds only spec-required route logic and test helpers; no dead symbols or invalidated references were found. No files changed.

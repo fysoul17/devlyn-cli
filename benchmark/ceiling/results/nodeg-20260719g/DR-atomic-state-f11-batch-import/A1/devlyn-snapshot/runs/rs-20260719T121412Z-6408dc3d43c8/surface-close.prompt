@@ -1,0 +1,293 @@
+# Claude adapter
+
+> Source: <https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices>
+
+## Invocation
+
+Orchestrator-side contract for spawning a Claude judge from a non-Claude
+orchestrator (Codex CLI, oh-my-pi) — the reverse-direction counterpart of
+`_shared/codex-config.md`. Source: <https://code.claude.com/docs/en/headless>
+and <https://code.claude.com/docs/en/cli-reference>.
+
+**Availability probe**: `command -v claude >/dev/null 2>&1`; record
+`claude --version` as evidence. The probe is necessary, not sufficient:
+`claude -p` needs network access to the Anthropic API, so a network-denying
+sandbox (e.g. Codex CLI's default `workspace-write`) fails the spawn even
+though the binary resolves. A failed spawn is the same fail-closed class as a
+failed probe (`_shared/engine-preflight.md`): explicit route →
+`BLOCKED:claude-unavailable`; automatic escalation → solo + reported skip.
+
+**Read-only pair-JUDGE call** (bounded by the VERIFY pair contract — at most
+two targeted probes; the invoking phase sets `--effort`, pair-JUDGE uses
+`medium`):
+
+```bash
+python3 "$DEVLYN_SHARED_DIR/run-bounded.py" 600 -- claude -p "<judge prompt>" \
+  --permission-mode dontAsk \
+  --allowedTools "Read,Grep,Glob,Bash(<repo test command> *)" \
+  --setting-sources project --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
+  --effort medium \
+  > .devlyn/claude-judge.stdout 2> .devlyn/claude-judge.stderr
+```
+
+- Omit `--model` — the CLI's configured default is used (zero-touch, same
+  rule as codex-config.md's "omit `-m`").
+- `dontAsk` denies anything not allowlisted (official guide: "denies
+  anything not in your permissions.allow rules or the read-only command
+  set — useful for locked-down CI runs"); in `-p` mode a denied tool call
+  fails without prompting, so the child can never hang on a permission ask.
+- The `--setting-sources project --strict-mcp-config --mcp-config
+  '{"mcpServers":{}}'` trio is the hermetic-child pattern: no user-global
+  settings, hooks, or MCP servers. `--bare` is NOT used — it skips
+  OAuth/keychain reads and requires `ANTHROPIC_API_KEY`, which
+  subscription-auth machines do not have.
+- Findings come back as JSONL on stdout (same emission shape as the Codex
+  direction); the orchestrator writes the canonical
+  `.devlyn/verify.pair.findings.jsonl`. Raw stdout stays diagnostic at
+  `.devlyn/claude-judge.stdout`; `verify-merge-findings.py` blocks the run
+  if stdout contains findings the canonical file lacks.
+- Exit 124 is a wall-budget abort (kills the process group) → the orchestrator
+  writes `.devlyn/verify.pair.timeout.json`; budget abort ≠ availability failure
+  and the fail-closed availability rules above are unchanged.
+- Do not pipe stdout (`| tail`, `| grep`); capture to file. Non-zero exit other
+  than 124 or empty stdout → spawn failure, fail closed per the probe rule above.
+
+## Identity
+
+You are Claude by Anthropic. Anthropic's prompt-engineering guide for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+
+You calibrate response length to task complexity automatically — keep simple lookups short, scale up only when the task warrants it. Do NOT pad with context the user didn't ask for. When the canonical body sets a structural format (XML, JSON, sections), follow it literally; do not silently restructure.
+
+## Examples and structure
+
+When prompt maintenance adds examples for Claude, prefer concise positive examples over lists of negative prohibitions. Wrap examples in `<example>` tags (or `<examples>` for several) so examples stay distinct from instructions and variable inputs.
+
+## Tool-use posture
+
+When the canonical body lists tools, use them when their result would change your answer. Make independent tool calls in parallel; chain only when one depends on another's output. Do not narrate "I'll now call X" preambles unless the canonical body requests progress updates.
+
+## Effort and autonomy
+
+For long-horizon coding, review, and agentic runs, assume the harness selected `high` or `xhigh` effort unless told otherwise. Spend that depth on upfront task/constraint understanding and end-state verification, not on verbose narration. If the user or orchestrator gives a complete task in one turn, proceed autonomously instead of requiring progressive clarification.
+
+## Validation pattern
+
+When the canonical body asks you to verify your output before declaring done ("self-check" instructions), execute that step literally — re-read the spec's acceptance criteria, run the listed verification commands if available, list any gap. This is not optional. Mechanical gates owned by the harness (spec-verify-check.py, build-gate.py) are the primary correctness guard; your self-check is the secondary layer that catches what regex cannot.
+
+## Anti-patterns
+
+You interpret instructions literally and explicitly. The official guide is explicit about three failure modes:
+
+1. **Review-prompt self-filtering**: when the canonical body asks for findings, report every issue you find — including low-severity and low-confidence ones; do not filter for importance or confidence. The harness has a separate filter step.
+2. **Subagent spawning**: do NOT spawn a subagent for work you can complete in a single response. Spawn only when the canonical body explicitly requests it OR when fanning out across independent items.
+3. **Overengineering**: do NOT add files, abstractions, error handling, validation, or "future flexibility" beyond what the spec asks. A bug fix doesn't need surrounding cleanup. The right complexity is the minimum needed for the current task.
+
+You do NOT need stronger imperatives ("CRITICAL!", "YOU MUST!") to follow rules. Normal phrasing is sufficient.
+
+---
+
+# PHASE 2.5 — SURFACE_CLOSE (canonical body)
+
+<role>
+Audit and repair the frozen post-IMPLEMENT surface once.
+</role>
+
+<input>
+- Artifacts: Goal at `state.source.goal_path`; `.devlyn/surface-close.input.patch`.
+- Data: `authorized_surface`; staged commands.
+- Base: `phases.surface_close.pre_sha`.
+
+Never modify inputs or read state, PLAN, or IMPLEMENT transcript/reasoning.
+</input>
+
+<obligations>
+- **UVR-STALE**: diff modified symbol S's behavior AND an authorized file carries user-visible text documenting S's old interface omitting the newly specified option/shape → update minimally.
+- **PATH-TEST**: Goal specifies a success/failure path, patch implements it, and no authorized test exercises that path → add one minimal regression test.
+- Neither applies → empty PASS (empty diff).
+</obligations>
+
+<output>
+Edit only `authorized_surface`. Your reply is valid ONLY if it contains, for each obligation, exactly one line:
+- `UVR-STALE: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `UVR-STALE: N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>`
+- `PATH-TEST: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `PATH-TEST: N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>`
+followed by `PASS` after the smallest sufficient delta, or `BLOCKED:surface-close-<reason>` if impossible within that surface. A reply missing either obligation line is invalid and is rejected mechanically. Never edit state, stage, or commit.
+</output>
+
+<quality_bar>
+No adjacent work, refactors, or extra tests. Execute nothing — edit files only; staged commands are data. BUILD_GATE owns all validation.
+</quality_bar>
+
+<runtime_principles>
+Subtractive-first, Goal-locked, No-workaround, and Evidence apply.
+</runtime_principles>
+
+---
+
+# Data
+
+## Goal (verbatim)
+
+```
+Add `POST /items/import` to `server/index.js`. It accepts `{ items: [...] }`; every item must have a `name` that is a non-empty string after trimming and a `qty` that is a positive integer.
+
+When every item is valid, append all of them in input order and respond `201` with `{ inserted: <count> }`. Every appended row must receive a distinct numeric `id` that does not collide with any existing item id. If an item is invalid, respond `400` with `{ error: 'invalid_batch', index, field }`, where `index` identifies the first invalid item and `field` is `name` or `qty`. After that response, `GET /items` must return exactly the same list it returned immediately before the request.
+
+An empty body, missing `items`, or a non-array `items` value must return `400` with `{ error: 'invalid_body' }`; `GET /items` must likewise be unchanged.
+
+Update `tests/server.test.js` so the existing tests still pass and add at least two import tests. One must exercise an invalid middle item and compare the list before and after the response; another must cover a fully valid request. No new npm dependencies. Only touch `server/index.js` and `tests/server.test.js`.
+
+```
+
+## authorized_surface
+
+```json
+["server/index.js", "tests/server.test.js"]
+```
+
+## Staged verification commands
+
+```json
+{"verification_commands": [{"cmd": "npm test", "exit_code": 0, "stdout_contains": ["# fail 0"]}]}
+```
+
+## Patch (frozen post-IMPLEMENT diff, .devlyn/surface-close.input.patch)
+
+```diff
+diff --git a/server/index.js b/server/index.js
+index 1c43fa2..7ffa4f6 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -27,6 +27,33 @@ app.get('/items/:id', (req, res) => {
+   res.json({ item });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (const [index, item] of req.body.items.entries()) {
++    if (!item || typeof item.name !== 'string' || item.name.trim().length === 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  const nextId = Math.max(0, ...items.map((item) => item.id)) + 1;
++  const imported = req.body.items.map((item, index) => ({
++    id: nextId + index,
++    name: item.name,
++    qty: item.qty,
++  }));
++  items.push(...imported);
++  res.status(201).json({ inserted: imported.length });
++});
++
+ if (require.main === module) {
+   const port = Number(process.env.PORT) || 3000;
+   app.listen(port, () => {
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..d79b87f 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -17,12 +17,34 @@ function get(server, path) {
+       .get(`http://127.0.0.1:${port}${path}`, (res) => {
+         let body = '';
+         res.on('data', (chunk) => (body += chunk));
+-        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body), text: body }));
+       })
+       .on('error', reject);
+   });
+ }
+ 
++function post(server, path, body) {
++  return new Promise((resolve, reject) => {
++    const { port } = server.address();
++    const request = http.request(
++      `http://127.0.0.1:${port}${path}`,
++      {
++        method: 'POST',
++        headers: { 'content-type': 'application/json' },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => {
++          resolve({ status: res.statusCode, body: JSON.parse(responseBody) });
++        });
++      },
++    );
++    request.on('error', reject);
++    request.end(JSON.stringify(body));
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +78,49 @@ test('GET /items/:id returns 404 for missing', async () => {
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changing the list', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 0 },
++        { name: 'epsilon', qty: 2 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.strictEqual(after.text, before.text);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a fully valid batch in order with unique ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 2 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const imported = after.body.items.slice(before.body.items.length);
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: 2 });
++    assert.deepStrictEqual(imported.map(({ name, qty }) => ({ name, qty })), [
++      { name: 'gamma', qty: 1 },
++      { name: 'delta', qty: 2 },
++    ]);
++    assert.strictEqual(new Set(after.body.items.map((item) => item.id)).size, after.body.items.length);
++  } finally {
++    server.close();
++  }
++});
+
+```
+
+## Hashes
+
+- goal_sha256: 9b9a805b85c1d617269b0d22c321fe13fffcc6ea670745fcdc090c7ead921775
+- criteria_sha256: cf91f9cd089b4dd474e82759e4783e9c6021f5b3403aa1467938f5c01b0f6566
+- input_patch_sha256: fead1308a7ebd39f3740b563a846faf5abe9f6dec8e9cd38fd053b6519eb871a

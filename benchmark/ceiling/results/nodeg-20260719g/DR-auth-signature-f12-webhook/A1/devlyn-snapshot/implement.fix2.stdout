@@ -1,0 +1,10 @@
+BLOCKED — implementation is complete, but `npm test` exits 1 because this sandbox forbids HTTP listeners (`EPERM` on `server.listen`, including loopback) before server tests run.
+
+Changed:
+- Shared `hasValidSignature` helper used by both JSON parse-error middleware and `/webhook`.
+- Added malformed JSON + invalid signature regression test.
+
+Validation:
+- Equivalent in-process malformed-body assertion passed: `401 { error: 'invalid_signature' }`.
+- Syntax and diff checks passed.
+- Full `npm test` could not execute server tests due sandbox listener restrictions.

@@ -1,0 +1,12 @@
+{
+  "blocks": [],
+  "fix_commit_sha": "b2f07d07baa0bbdcd411cfe948054eff919c7f64",
+  "origin_phase": "build_gate",
+  "post_restore_sha": "b2f07d07baa0bbdcd411cfe948054eff919c7f64",
+  "pre_fix_sha": "2671fabe19a6c04e017ea67eda3ab6f3d332f5f9",
+  "restore_commit_sha": null,
+  "round": 2,
+  "schema_version": 1,
+  "surface_close_commit_sha": "15d4d43c1a29e95a3ad136b182c165f0ae17083f",
+  "triggering_findings_sha256": "f3beda266c6f81030c77f5a85d6c40b903fefe68ede8fecdbd4241d53b0aacb3"
+}

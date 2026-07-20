@@ -1,0 +1,10 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test"
+    },
+    {
+      "cmd": "node -e \"require('fs').writeFileSync('.tmp-fulfill-wave-invalid.json','not json')\" && node bin/cli.js fulfill-wave --input .tmp-fulfill-wave-invalid.json; code=$?; rm -f .tmp-fulfill-wave-invalid.json; test \"$code\" -eq 2"
+    }
+  ]
+}

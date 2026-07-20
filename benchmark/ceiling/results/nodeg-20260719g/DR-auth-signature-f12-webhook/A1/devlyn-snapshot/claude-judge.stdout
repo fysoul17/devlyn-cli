@@ -1,0 +1,3 @@
+Both probes pass. Signature-ordering: invalid sig → 401 `{error:'invalid_signature'}` across valid-shape, malformed-shape, and wrong-length-header conditions. Idempotency: first 200 accepted, replay with irrelevant/invalid second body → 409 `duplicate_event`. Diff touches only `server/index.js` and `tests/server.test.js`, no new dependency.
+
+{"verdict": "PASS"}

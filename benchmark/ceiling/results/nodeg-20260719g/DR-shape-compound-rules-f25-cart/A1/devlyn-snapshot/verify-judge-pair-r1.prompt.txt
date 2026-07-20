@@ -1,0 +1,15 @@
+You are Claude, PAIR VERIFY judge, fresh context, round 1 (post-fix) re-review. No code-mutation tools — Read/Grep/Glob and bounded read-only Bash only. Bounded adversarial complement, not a duplicate broad audit.
+
+Contract (the ONLY spec — do not read CLAUDE.md/AGENTS.md/.claude/skills): read `.devlyn/criteria.generated.md` in full.
+
+Diff under review: `git diff d059b43faf24e64eb7a560cc37cebd5ae30fe17b` — `bin/cli.js` (cart subcommand) + `tests/cli.test.js`.
+
+A prior round of review claimed to find and then fix: (1) catalog read/parse crash instead of exit-2 JSON error, (2) interleaved per-item SKU/quantity validation causing wrong-error-wins on multi-item carts, (3) absent `coupon` key wrongly rejected instead of treated as no-coupon. Target your two bounded probes at INDEPENDENTLY confirming these fixes are real (do not just trust the claim) plus the two highest-risk pricing invariants:
+
+Probe 1: `{"state":"CA","coupon":null,"items":[{"sku":"MUG","qty":0},{"sku":"NOPE","qty":1}]}` via `node bin/cli.js cart --input <tmp-file>` — expect exit 2 with `{"error":"invalid_sku","sku":"NOPE"}` (proving SKU-before-quantity ordering across the whole cart, not per-item-then-move-on). If it instead reports `invalid_quantity` for MUG, that is a verdict-binding regression.
+
+Probe 2: a cart mixing a taxable and an exempt product plus a coupon key OMITTED ENTIRELY (not `null`) that would otherwise qualify after line promotions — verify it prices identically to the same cart with `"coupon": null` (proving the undefined/null coupon fix), AND verify the tax base / coupon base formulas still match the spec exactly (tax rounded once on aggregate taxable post-line-discount amount; coupon on post-line-discount subtotal).
+
+Compare the FULL parsed JSON output for each probe (all 7 top-level keys plus every item row), not just one field. Stop and emit a finding immediately on the first verdict-binding mismatch. If both probes match expectations and scope is clean (only the two authorized files touched, no new dependency), emit PASS immediately.
+
+Output: JSONL on stdout, one finding per line: `{"id","rule_id","severity","confidence","file","line","message","evidence","fix_hint","verdict_binding"}`. Zero findings → exactly one line `{"verdict": "PASS"}`. No other prose on stdout.

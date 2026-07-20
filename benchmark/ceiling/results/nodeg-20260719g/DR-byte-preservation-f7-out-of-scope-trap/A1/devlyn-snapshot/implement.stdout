@@ -1,0 +1,10 @@
+Implemented only [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/ff10888c89791/A1/repo/bin/cli.js:44) and [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/ff10888c89791/A1/repo/tests/cli.test.js:26).
+
+Verified:
+- Bare and JSON version commands exit 0 with required output.
+- Unsupported YAML exits 1 with an error.
+- All four CLI tests pass.
+
+`node --test tests/` fails because three pre-existing server tests cannot bind `0.0.0.0` in this sandbox (`EPERM`); fixing them requires out-of-scope files.
+
+BLOCKED: full test suite cannot pass in this sandbox because pre-existing server tests fail with `listen EPERM: operation not permitted 0.0.0.0`

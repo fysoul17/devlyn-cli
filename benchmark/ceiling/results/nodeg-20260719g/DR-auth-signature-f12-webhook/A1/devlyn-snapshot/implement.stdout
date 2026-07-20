@@ -1,0 +1,7 @@
+BLOCKED
+
+Implemented the webhook endpoint in [server/index.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f08d6b52f5d4d/A1/repo/server/index.js:35): raw-byte HMAC validation, safe malformed-signature rejection, body validation, and in-memory replay detection. Added HTTP coverage in [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f08d6b52f5d4d/A1/repo/tests/server.test.js:89), including raw-body signing, replay, malformed body/signature, and stale signatures.
+
+`node --check` and `git diff --check` pass; only the two authorized files changed.
+
+Required verification `npm test` cannot pass in this sandbox: all HTTP tests—including the pre-existing GET tests—fail before assertions at `server.listen(0)` with `EPERM: operation not permitted 0.0.0.0` (`tests/server.test.js:14`). Loopback and Unix-socket listeners are also denied. Run `npm test` in an environment that permits local listeners to complete verification.

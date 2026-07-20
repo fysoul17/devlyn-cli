@@ -1,0 +1,24 @@
+{
+  "blocks": [
+    {
+      "action": "none",
+      "classification": "SURVIVED",
+      "finding_targeted": false,
+      "id": "bin/cli.js:1:a3fceee62f48b0e7",
+      "path": "bin/cli.js",
+      "pre_fix_span": [
+        13,
+        13
+      ]
+    }
+  ],
+  "fix_commit_sha": "455f51512beec77c1764809d891abb267a94791c",
+  "origin_phase": "verify",
+  "post_restore_sha": "455f51512beec77c1764809d891abb267a94791c",
+  "pre_fix_sha": "22bbd995f4b4999e25d0f3f6c03c7dd804f83d84",
+  "restore_commit_sha": null,
+  "round": 1,
+  "schema_version": 1,
+  "surface_close_commit_sha": "22bbd995f4b4999e25d0f3f6c03c7dd804f83d84",
+  "triggering_findings_sha256": "8b366e50e73170467ca40400002db86cf232313c4695df88c065fd3ed240b4e4"
+}

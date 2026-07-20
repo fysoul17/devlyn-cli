@@ -1,0 +1,49 @@
+{
+  "elapsed_ms": 1567000,
+  "implement_total_ms": 251782,
+  "incomplete_spans": [],
+  "judge_durations_ms": {
+    "judge": 159000,
+    "pair_judge": 173000
+  },
+  "non_phase_residual_ms": 498437,
+  "phase_sum_ms": 1068563,
+  "phases": {
+    "build_gate": {
+      "current_triggered_by": null,
+      "duration_ms": 73383,
+      "history_sum_ms": 0
+    },
+    "cleanup": {
+      "current_triggered_by": null,
+      "duration_ms": 51208,
+      "history_sum_ms": 0
+    },
+    "final_report": {
+      "current_triggered_by": null,
+      "duration_ms": 52649,
+      "history_sum_ms": 0
+    },
+    "implement": {
+      "current_triggered_by": null,
+      "duration_ms": 251782,
+      "history_sum_ms": 0
+    },
+    "plan": {
+      "current_triggered_by": null,
+      "duration_ms": 85751,
+      "history_sum_ms": 0
+    },
+    "surface_close": {
+      "current_triggered_by": null,
+      "duration_ms": 110585,
+      "history_sum_ms": 0
+    },
+    "verify": {
+      "current_triggered_by": null,
+      "duration_ms": 443205,
+      "history_sum_ms": 0
+    }
+  },
+  "verify_complete": true
+}

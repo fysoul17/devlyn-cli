@@ -1,0 +1,324 @@
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/devlyn-ceiling-external/judge-scratch/codex
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f7ade-a851-74f3-a6c0-949ad2d6df9f
+--------
+user
+You are a blind ceiling-quality judge. You receive one task and two anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, source run, or author identity; judge only the task text and diffs.
+
+Task text:
+Add `POST /items/import` to `server/index.js`. It accepts `{ items: [...] }`; every item must have a `name` that is a non-empty string after trimming and a `qty` that is a positive integer.
+
+When every item is valid, append all of them in input order and respond `201` with `{ inserted: <count> }`. Every appended row must receive a distinct numeric `id` that does not collide with any existing item id. If an item is invalid, respond `400` with `{ error: 'invalid_batch', index, field }`, where `index` identifies the first invalid item and `field` is `name` or `qty`. After that response, `GET /items` must return exactly the same list it returned immediately before the request.
+
+An empty body, missing `items`, or a non-array `items` value must return `400` with `{ error: 'invalid_body' }`; `GET /items` must likewise be unchanged.
+
+Update `tests/server.test.js` so the existing tests still pass and add at least two import tests. One must exercise an invalid middle item and compare the list before and after the response; another must cover a fully valid request. No new npm dependencies. Only touch `server/index.js` and `tests/server.test.js`.
+
+P1 patch.diff:
+```diff
+diff --git a/server/index.js b/server/index.js
+index 1c43fa2..7ffa4f6 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -27,6 +27,33 @@ app.get('/items/:id', (req, res) => {
+   res.json({ item });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (const [index, item] of req.body.items.entries()) {
++    if (!item || typeof item.name !== 'string' || item.name.trim().length === 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  const nextId = Math.max(0, ...items.map((item) => item.id)) + 1;
++  const imported = req.body.items.map((item, index) => ({
++    id: nextId + index,
++    name: item.name,
++    qty: item.qty,
++  }));
++  items.push(...imported);
++  res.status(201).json({ inserted: imported.length });
++});
++
+ if (require.main === module) {
+   const port = Number(process.env.PORT) || 3000;
+   app.listen(port, () => {
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..d3c4289 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -17,12 +17,34 @@ function get(server, path) {
+       .get(`http://127.0.0.1:${port}${path}`, (res) => {
+         let body = '';
+         res.on('data', (chunk) => (body += chunk));
+-        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body), text: body }));
+       })
+       .on('error', reject);
+   });
+ }
+ 
++function post(server, path, body) {
++  return new Promise((resolve, reject) => {
++    const { port } = server.address();
++    const request = http.request(
++      `http://127.0.0.1:${port}${path}`,
++      {
++        method: 'POST',
++        headers: { 'content-type': 'application/json' },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => {
++          resolve({ status: res.statusCode, body: JSON.parse(responseBody) });
++        });
++      },
++    );
++    request.on('error', reject);
++    request.end(JSON.stringify(body));
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +78,64 @@ test('GET /items/:id returns 404 for missing', async () => {
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changing the list', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 0 },
++        { name: 'epsilon', qty: 2 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.strictEqual(after.text, before.text);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a fully valid batch in order with unique ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 2 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const imported = after.body.items.slice(before.body.items.length);
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: 2 });
++    assert.deepStrictEqual(imported.map(({ name, qty }) => ({ name, qty })), [
++      { name: 'gamma', qty: 1 },
++      { name: 'delta', qty: 2 },
++    ]);
++    assert.strictEqual(new Set(after.body.items.map((item) => item.id)).size, after.body.items.length);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import rejects a non-array items value without changing the list', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', { items: 'not-an-array' });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_body' });
++    assert.strictEqual(after.text, before.text);
++  } finally {
++    server.close();
++  }
++});
+
+```
+
+P2 patch.diff:
+```diff
+diff --git a/server/index.js b/server/index.js
+index 1c43fa2..facf9fc 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -17,6 +17,43 @@ app.get('/items', (_req, res) => {
+   res.json({ items });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  const { items: batch } = req.body || {};
++
++  if (!Array.isArray(batch)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (let index = 0; index < batch.length; index += 1) {
++    const item = batch[index];
++
++    if (!item || typeof item.name !== 'string' || item.name.trim() === '') {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  let nextId = items.reduce(
++    (maxId, item) => (typeof item.id === 'number' && Number.isFinite(item.id) ? Math.max(maxId, item.id) : maxId),
++    0,
++  ) + 1;
++
++  const importedItems = batch.map((item) => ({
++    id: nextId++,
++    name: item.name,
++    qty: item.qty,
++  }));
++
++  items.push(...importedItems);
++  res.status(201).json({ inserted: importedItems.length });
++});
++
+ app.get('/items/:id', (req, res) => {
+   const id = Number(req.params.id);
+   const item = items.find((it) => it.id === id);
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..581c217 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -23,6 +23,32 @@ function get(server, path) {
+   });
+ }
+ 
++function post(server, path, body) {
++  return new Promise((resolve, reject) => {
++    const payload = JSON.stringify(body);
++    const { port } = server.address();
++    const req = http.request(
++      {
++        hostname: '127.0.0.1',
++        port,
++        path,
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(payload),
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    req.on('error', reject);
++    req.end(payload);
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +82,53 @@ test('GET /items/:id returns 404 for missing', async () => {
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changing the list', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 2 },
++        { name: 'delta', qty: 0 },
++        { name: 'epsilon', qty: 4 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.deepStrictEqual(after.body, before.body);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a valid batch in order with distinct ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 2 },
++        { name: 'delta', qty: 4 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const addedItems = after.body.items.slice(before.body.items.length);
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: 2 });
++    assert.deepStrictEqual(
++      addedItems.map(({ name, qty }) => ({ name, qty })),
++      [
++        { name: 'gamma', qty: 2 },
++        { name: 'delta', qty: 4 },
++      ],
++    );
++    assert.strictEqual(new Set(addedItems.map((item) => item.id)).size, 2);
++    assert.ok(addedItems.every((item) => !before.body.items.some((beforeItem) => beforeItem.id === item.id)));
++  } finally {
++    server.close();
++  }
++});
+
+```
+
+Rank P1/P2 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics. Ties are allowed. Emit one single complete JSON object and nothing else in this shape; for every strict tier winner/loser include one concrete visible-diff delta:
+{"axes":{"design_coherence":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"robustness":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"spec_long_horizon_consistency":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]},"maintainability_api_ergonomics":{"tiers":[["P1"],["P2"]],"strict_win_deltas":[{"winner":"P1","loser":"P2","delta":"<one concrete sentence citing something visible in the diffs>"}]}}}
+deprecated: `[features].codex_hooks` is deprecated. Use `[features].hooks` instead.
+Enable it with `--enable hooks` or `[features].hooks` in config.toml. See https://developers.openai.com/codex/config-basic#feature-flags for details.
+codex
+{"axes":{"design_coherence":{"tiers":[["P2"],["P1"]],"strict_win_deltas":[{"winner":"P2","loser":"P1","delta":"P2 places POST /items/import directly after GET /items, whereas P1 places it after the item-by-id route."}]},"robustness":{"tiers":[["P2"],["P1"]],"strict_win_deltas":[{"winner":"P2","loser":"P1","delta":"P2 computes the next id with a reduce that ignores non-finite existing ids, while P1 passes every existing id into Math.max, so a NaN or Infinity id can produce an unusable or colliding next id."}]},"spec_long_horizon_consistency":{"tiers":[["P2"],["P1"]],"strict_win_deltas":[{"winner":"P2","loser":"P1","delta":"P2's reduce-based id scan avoids P1's spread of the entire items id array into Math.max, which can fail as the stored list grows large."}]},"maintainability_api_ergonomics":{"tiers":[["P2"],["P1"]],"strict_win_deltas":[{"winner":"P2","loser":"P1","delta":"P2 compares the before and after parsed response bodies directly, while P1 changes the shared GET helper to add a text field solely to support one equality assertion."}]}}}
+tokens used
+6,953

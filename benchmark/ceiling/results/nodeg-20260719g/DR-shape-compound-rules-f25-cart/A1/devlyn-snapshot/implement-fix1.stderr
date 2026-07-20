@@ -1,0 +1,1200 @@
+[codex-monitored] start: ts=2026-07-19T11:16:03Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=77152
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f7a17-213a-7523-b3e4-a907693b2877
+--------
+user
+# Codex (OpenAI) adapter — identity + posture
+
+You are OpenAI's Codex model, running inside the actual project repo with workspace-write access. Validation is concrete commands, not self-belief: run the listed verification commands and trust their output. Do not narrate internal deliberation; state results and decisions directly.
+
+# Runtime principles
+
+Subtractive-first, Goal-locked, No-workaround, Evidence apply. Fix exactly the findings below — do not expand scope, do not refactor adjacent code.
+
+# PHASE 2 — IMPLEMENT (fix round 1, triggered by VERIFY findings)
+
+You are fixing a diff that already exists (`bin/cli.js` cart subcommand, `tests/cli.test.js` tests). An independent fresh-context VERIFY judge (fresh context, no knowledge of prior implementation reasoning) reviewed the diff against `.devlyn/criteria.generated.md` and found the following. Fix each one exactly; do not touch any file other than `bin/cli.js` and `tests/cli.test.js`.
+
+## Finding 1 — HIGH, verdict-binding (must fix)
+`cart.catalog-error-contract`: Catalog read and parse failures bypass the required exit-2 JSON error contract and instead produce an exit-1 Node stack trace. Evidence: `const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));` in `runCart` is outside any error handling. A catalog read/parse failure currently throws an uncaught exception (status 1, stack trace) instead of the required single JSON error object on stderr with exit 2. Fix: wrap the catalog read+parse in the same try/catch pattern already used for the cart input file, and route failures through `failCart` with an explicit JSON error (e.g. `{error: 'invalid_catalog'}` — pick a code consistent with the existing `invalid_input`/`invalid_json` naming). This directly implements the criteria's requirement: "Parsing and file-read failures must surface as JSON errors rather than silent catches."
+
+## Finding 2 — HIGH, verdict-binding (must fix)
+`cart.validation-precedence`: SKU and quantity checks are interleaved per item in a single pass, so for a cart like `{"items":[{"sku":"MUG","qty":0},{"sku":"NOPE","qty":1}]}` the current code reports `invalid_quantity` for MUG (the first item) instead of ever reaching the unknown-SKU check for NOPE. Fix: make validation order deterministic and consistent across the whole cart: first pass over every raw item checking SKU validity (unknown SKU → `invalid_sku` immediately), second pass checking quantity validity (`invalid_quantity` immediately) while combining quantities into the map, so an unknown SKU anywhere in the cart is always caught before any quantity check runs for a later item. (Two passes over `cart.items`, not one — SKU pass fully first, then quantity+combine pass.)
+
+## Finding 3 — MEDIUM, verdict-binding (should fix)
+`cart.absent-coupon-rejected`: A cart JSON with no `coupon` key at all (i.e. `cart.coupon === undefined`, not explicit `null`) is currently rejected with `invalid_coupon`, even though the intent (coupon is optional — apply it when present, otherwise zero discount) treats null and "not present" the same way. Fix: treat `cart.coupon == null` (loose equality, matches both `null` and `undefined`) as "no coupon" everywhere, rather than the current strict `cart.coupon !== null` checks.
+
+## Already resolved — no action needed
+- `cart.help-omits-command` (LOW): already fixed by a separate SURFACE_CLOSE pass that added `cart --input PATH` to the USAGE text. Do not touch USAGE again.
+- `verify.full-suite-unexercised` (LOW): an artifact of the judge's own read-only sandbox rejecting `npm test`'s temp-file/socket use; not a real defect, no action needed.
+
+## Task
+
+Read `bin/cli.js` (current `runCart`/`failCart`) and `.devlyn/criteria.generated.md` in full. Apply the three fixes above with the smallest possible diff. Run `npm test` and the three verification commands from the criteria file's `## Verification` block, plus manually verify: (a) a broken/missing `data/catalog.json` produces an exit-2 JSON error not a stack trace (you can temporarily point `catalogPath` at a nonexistent file in a scratch test to confirm, then revert — do not leave any test-only hack in the committed code), (b) `{"sku":"MUG","qty":0},{"sku":"NOPE","qty":1}` now reports `invalid_sku` for NOPE, not `invalid_quantity` for MUG, (c) a cart JSON with the `coupon` key omitted entirely behaves identically to `"coupon": null`. Report PASS/BLOCKED and cite file:line evidence for each of the three fixes in your final reply.
+codex
+I’ll inspect the current implementation and acceptance criteria, then make the smallest scoped fix in the two permitted files and run every requested verification.
+exec
+/bin/zsh -lc "git status --short && printf '\\n--- bin/cli.js ---\\n' && sed -n '1,260p' bin/cli.js && printf '\\n--- criteria ---\\n' && sed -n '1,260p' .devlyn/criteria.generated.md" in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+--- bin/cli.js ---
+#!/usr/bin/env node
+// harbor-tools — small command-line utilities for local workflows.
+// Keep the core commands minimal and easy to understand.
+
+const fs = require('fs');
+const path = require('path');
+
+const USAGE = `Usage: bench-cli <command> [options]
+
+Commands:
+  hello [--name NAME]        Print a greeting (default name: "world")
+  version                    Print the CLI version from package.json
+  cart --input PATH          Price a cart JSON file against data/catalog.json
+  --help, -h                 Show this help
+
+Examples:
+  bench-cli hello
+  bench-cli hello --name alice
+  bench-cli version
+`;
+
+function readPackageVersion() {
+  const pkgPath = path.join(__dirname, '..', 'package.json');
+  const raw = fs.readFileSync(pkgPath, 'utf8');
+  return JSON.parse(raw).version;
+}
+
+function parseNameFlag(argv) {
+  const idx = argv.indexOf('--name');
+  if (idx === -1) return 'world';
+  const value = argv[idx + 1];
+  if (!value || value.startsWith('-')) {
+    console.error('--name requires a value');
+    process.exit(1);
+  }
+  return value;
+}
+
+function failCart(error) {
+  process.stderr.write(`${JSON.stringify(error)}\n`);
+  process.exit(2);
+}
+
+function runCart(argv) {
+  const inputIndex = argv.indexOf('--input');
+  const inputPath = argv[inputIndex + 1];
+  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
+    failCart({ error: 'invalid_input' });
+  }
+
+  let input;
+  try {
+    input = fs.readFileSync(inputPath, 'utf8');
+  } catch {
+    failCart({ error: 'invalid_input' });
+  }
+
+  let cart;
+  try {
+    cart = JSON.parse(input);
+  } catch {
+    failCart({ error: 'invalid_json' });
+  }
+
+  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
+    failCart({ error: 'missing_items' });
+  }
+
+  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
+  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+  const quantities = new Map();
+
+  for (const item of cart.items) {
+    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
+      failCart({ error: 'invalid_sku', sku: item && item.sku });
+    }
+    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
+      failCart({ error: 'invalid_quantity', sku: item.sku });
+    }
+    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
+  }
+
+  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
+    failCart({ error: 'invalid_coupon' });
+  }
+  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
+    failCart({ error: 'invalid_state' });
+  }
+
+  for (const [sku, qty] of quantities) {
+    const product = catalog.products[sku];
+    if (qty > product.stock) {
+      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
+    }
+  }
+
+  let subtotalCents = 0;
+  let lineDiscountCents = 0;
+  let taxablePostLineDiscountCents = 0;
+  const items = [];
+
+  for (const [sku, qty] of quantities) {
+    const product = catalog.products[sku];
+    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
+    const lineSubtotalCents = product.unit_cents * qty;
+    let discount = 0;
+
+    if (promotion && promotion.type === 'buy_x_get_y_free') {
+      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
+    }
+    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
+      discount = promotion.per_unit_discount_cents * qty;
+    }
+
+    const lineTotalCents = lineSubtotalCents - discount;
+    subtotalCents += lineSubtotalCents;
+    lineDiscountCents += discount;
+    if (catalog.taxable_codes[product.tax_code] === true) {
+      taxablePostLineDiscountCents += lineTotalCents;
+    }
+    items.push({
+      sku,
+      qty,
+      line_subtotal_cents: lineSubtotalCents,
+      line_discount_cents: discount,
+      line_total_cents: lineTotalCents,
+    });
+  }
+
+  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
+  const postLineDiscountCents = subtotalCents - lineDiscountCents;
+  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
+    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
+    : 0;
+  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
+    ? 0
+    : catalog.shipping_cents;
+  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
+
+  console.log(JSON.stringify({
+    subtotal_cents: subtotalCents,
+    line_discount_cents: lineDiscountCents,
+    coupon_discount_cents: couponDiscountCents,
+    tax_cents: taxCents,
+    shipping_cents: shippingCents,
+    total_cents: totalCents,
+    items,
+  }));
+}
+
+function main(argv) {
+  const [command, ...rest] = argv;
+
+  if (!command || command === '--help' || command === '-h') {
+    process.stdout.write(USAGE);
+    return;
+  }
+
+  switch (command) {
+    case 'hello': {
+      const name = parseNameFlag(rest);
+      console.log(`Hello, ${name}!`);
+      return;
+    }
+    case 'version': {
+      console.log(readPackageVersion());
+      return;
+    }
+    case 'cart': {
+      runCart(rest);
+      return;
+    }
+    default:
+      console.error(`Unknown command: ${command}`);
+      process.stderr.write(USAGE);
+      process.exit(1);
+  }
+}
+
+main(process.argv.slice(2));
+
+--- criteria ---
+# Generated criteria — bench-cli cart command
+
+Source: `.devlyn/goal.raw.txt` (free-form goal, complexity: medium).
+
+## Context anchors
+
+- `bin/cli.js` is a single-file CLI: `main(argv)` destructures `[command, ...rest]` and
+  switches on `command`, each case doing its own arg parsing then `console.log`/`process.exit`.
+  The new `cart` case follows this same shape — no new dependencies, no new files.
+- `tests/cli.test.js` uses `node:test` + `execFileSync('node', [CLI, ...args], {encoding:'utf8'})`
+  and asserts on stdout via `assert.match`. Failure-path tests will need `execFileSync` wrapped to
+  catch/inspect a non-zero exit (`error.status`, `error.stdout`, `error.stderr`) rather than assert.match alone.
+- `data/catalog.json` already exists with `products`, `line_promotions`, `coupons`, `tax_rates`,
+  `taxable_codes`, `shipping_cents`, `free_shipping_min_cents` — matches the goal's schema exactly;
+  no catalog changes are required or in scope.
+
+## Requirements
+
+- Add a `cart --input <path>` subcommand to `bin/cli.js` that reads a cart JSON file
+  (`{ state, coupon, items: [{ sku, qty }] }`), reads pricing/stock/promotion/coupon/tax/shipping
+  data from `data/catalog.json`, and prints one exact JSON object to stdout on success with keys
+  `subtotal_cents, line_discount_cents, coupon_discount_cents, tax_cents, shipping_cents, total_cents, items`
+  (no stderr output). Every `items` row has exactly `sku, qty, line_subtotal_cents, line_discount_cents, line_total_cents`,
+  one row per SKU in first-seen order.
+- Combine duplicate SKU quantities before stock validation and before promotion math.
+- Implement `buy_x_get_y_free` line discount as `Math.floor(qty / (buy_qty + free_qty)) * free_qty * unit_cents`,
+  and `per_unit_discount_cents` (gated on `qty >= min_qty`) as `per_unit_discount_cents * qty`; apply
+  line promotions before the coupon.
+- Implement the order coupon: when present and `subtotal_cents - line_discount_cents >= coupon.min_subtotal_cents`,
+  `coupon_discount_cents = Math.round((subtotal_cents - line_discount_cents) * coupon.percent / 100)`, else `0`.
+- Implement tax (computed after line promotions, before the coupon) as `Math.round(taxable_post_line_discount_cents * rate)`
+  where a product is taxable iff `catalog.taxable_codes[tax_code] === true` and `rate = catalog.tax_rates[state]`.
+  Implement shipping as free (`0`) when `subtotal_cents - line_discount_cents - coupon_discount_cents >= catalog.free_shipping_min_cents`,
+  else `catalog.shipping_cents`. Compute `total_cents = subtotal_cents - line_discount_cents - coupon_discount_cents + tax_cents + shipping_cents`.
+- On invalid JSON, missing `items`, unknown SKU, non-positive/non-integer quantity, unknown coupon, unknown state,
+  or combined quantity over stock: exit `2`, print exactly one JSON error object to stderr, print nothing to stdout.
+  The combined-stock failure must have the exact shape `{ "error": "invalid_stock", "sku": string, "available": number, "requested": number }`
+  where `requested` is the combined quantity. Parsing/file-read failures must surface as JSON errors, not silent catches.
+- Update `tests/cli.test.js` with at least two new tests covering the cart command: one successful cart, one
+  validation failure — without breaking the existing `hello`/`version` tests.
+
+## Constraints
+
+- Only touch `bin/cli.js` and `tests/cli.test.js`. Do not touch `server/`, `web/`, or `data/catalog.json`.
+- Do not add dependencies (`package.json` `dependencies`/`devDependencies` stay unchanged).
+- All public amounts are integer cents; changing `data/catalog.json` values must change the result without a code change.
+
+## Out of Scope
+
+- Any change to `server/` or `web/` files.
+- Any change to `data/catalog.json` contents or schema.
+- New CLI commands beyond `cart`.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "exit_code": 0,
+      "stdout_contains": ["# fail 0"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"MUG\",\"qty\":1}]}' > /tmp/devlyn-cart-verify-success.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-success.json",
+      "exit_code": 0,
+      "stdout_contains": ["subtotal_cents", "1200", "total_cents", "1899", "shipping_cents", "699"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"BAG\",\"qty\":5}]}' > /tmp/devlyn-cart-verify-stock.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-stock.json",
+      "exit_code": 2,
+      "stdout_contains": ["invalid_stock", "BAG", "available", "requested"],
+      "stdout_not_contains": []
+    }
+  ]
+}
+```
+
+exec
+/bin/zsh -lc "sed -n '1,320p' tests/cli.test.js && printf '\\n--- catalog ---\\n' && sed -n '1,260p' data/catalog.json && printf '\\n--- package scripts ---\\n' && node -e \"const p=require('./package.json'); console.log(JSON.stringify(p.scripts, null, 2))\"" in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ succeeded in 0ms:
+const { test } = require('node:test');
+const assert = require('node:assert');
+const { execFileSync } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+
+function run(args) {
+  return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+}
+
+function writeCart(t, cart) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
+  const inputPath = path.join(directory, 'cart.json');
+  fs.writeFileSync(inputPath, JSON.stringify(cart));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  return inputPath;
+}
+
+test('hello default', () => {
+  const out = run(['hello']);
+  assert.match(out, /Hello, world!/);
+});
+
+test('hello with --name', () => {
+  const out = run(['hello', '--name', 'alice']);
+  assert.match(out, /Hello, alice!/);
+});
+
+test('version prints package version', () => {
+  const out = run(['version']);
+  assert.match(out, /\d+\.\d+\.\d+/);
+});
+
+test('cart combines duplicate SKUs and applies pricing rules', (t) => {
+  const inputPath = writeCart(t, {
+    state: 'CA',
+    coupon: 'ORDER10',
+    items: [
+      { sku: 'TEE', qty: 2 },
+      { sku: 'TEE', qty: 1 },
+      { sku: 'BAG', qty: 2 },
+      { sku: 'MUG', qty: 1 },
+    ],
+  });
+
+  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
+    subtotal_cents: 15100,
+    line_discount_cents: 3500,
+    coupon_discount_cents: 1160,
+    tax_cents: 858,
+    shipping_cents: 0,
+    total_cents: 11298,
+    items: [
+      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
+      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
+      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
+    ],
+  });
+});
+
+test('cart reports combined stock validation errors on stderr', (t) => {
+  const inputPath = writeCart(t, {
+    state: 'CA',
+    coupon: null,
+    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
+  });
+  let failure;
+
+  try {
+    run(['cart', '--input', inputPath]);
+  } catch (error) {
+    failure = error;
+  }
+
+  assert.ok(failure);
+  assert.strictEqual(failure.status, 2);
+  assert.strictEqual(failure.stdout, '');
+  assert.deepStrictEqual(JSON.parse(failure.stderr), {
+    error: 'invalid_stock',
+    sku: 'BAG',
+    available: 4,
+    requested: 5,
+  });
+});
+
+--- catalog ---
+{
+  "products": {
+    "TEE": { "unit_cents": 2500, "stock": 10, "tax_code": "standard" },
+    "BAG": { "unit_cents": 3200, "stock": 4, "tax_code": "standard" },
+    "MUG": { "unit_cents": 1200, "stock": 20, "tax_code": "exempt" }
+  },
+  "line_promotions": [
+    { "sku": "TEE", "type": "buy_x_get_y_free", "buy_qty": 2, "free_qty": 1 },
+    { "sku": "BAG", "type": "per_unit_discount_cents", "min_qty": 2, "per_unit_discount_cents": 500 }
+  ],
+  "coupons": {
+    "ORDER10": { "percent": 10, "min_subtotal_cents": 8000 },
+    "SMALL5": { "percent": 5, "min_subtotal_cents": 2000 }
+  },
+  "tax_rates": {
+    "CA": 0.0825,
+    "OR": 0,
+    "NY": 0.08875
+  },
+  "taxable_codes": {
+    "standard": true,
+    "exempt": false
+  },
+  "shipping_cents": 699,
+  "free_shipping_min_cents": 9000
+}
+
+--- package scripts ---
+{
+  "cli": "node bin/cli.js",
+  "start": "node server/index.js",
+  "test": "node --test tests/",
+  "lint:json": "node scripts/lint-json.js"
+}
+
+codex
+The current code confirms all three findings: catalog loading is uncaught, SKU/quantity validation shares one loop, and coupon checks distinguish `undefined` from `null`. I’ll make only those targeted changes in `bin/cli.js`; the existing tests need no unrelated reshaping.
+[codex-monitored] heartbeat: elapsed=30s
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/bin/cli.js
+diff --git a/bin/cli.js b/bin/cli.js
+index 23bc87cf72e81df5b6b3c8979680fa6b00b82ce3..5821ccd3de57be70b415a3d3f241551dcb57636d
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -67,20 +67,28 @@
+   }
+ 
+   const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
+-  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  let catalog;
++  try {
++    catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  } catch {
++    failCart({ error: 'invalid_catalog' });
++  }
+   const quantities = new Map();
+ 
+   for (const item of cart.items) {
+     if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
+       failCart({ error: 'invalid_sku', sku: item && item.sku });
+     }
++  }
++
++  for (const item of cart.items) {
+     if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
+       failCart({ error: 'invalid_quantity', sku: item.sku });
+     }
+     quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
+   }
+ 
+-  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++  if (cart.coupon != null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
+     failCart({ error: 'invalid_coupon' });
+   }
+   if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
+@@ -129,7 +137,7 @@
+ 
+   const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
+   const postLineDiscountCents = subtotalCents - lineDiscountCents;
+-  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++  const couponDiscountCents = cart.coupon != null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
+     ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
+     : 0;
+   const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 23bc87cf72e81df5b6b3c8979680fa6b00b82ce3..5821ccd3de57be70b415a3d3f241551dcb57636d
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -67,20 +67,28 @@
+   }
+ 
+   const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
+-  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  let catalog;
++  try {
++    catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  } catch {
++    failCart({ error: 'invalid_catalog' });
++  }
+   const quantities = new Map();
+ 
+   for (const item of cart.items) {
+     if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
+       failCart({ error: 'invalid_sku', sku: item && item.sku });
+     }
++  }
++
++  for (const item of cart.items) {
+     if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
+       failCart({ error: 'invalid_quantity', sku: item.sku });
+     }
+     quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
+   }
+ 
+-  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++  if (cart.coupon != null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
+     failCart({ error: 'invalid_coupon' });
+   }
+   if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
+@@ -129,7 +137,7 @@
+ 
+   const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
+   const postLineDiscountCents = subtotalCents - lineDiscountCents;
+-  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++  const couponDiscountCents = cart.coupon != null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
+     ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
+     : 0;
+   const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
+
+codex
+The scoped implementation is applied. I’m now running the full test suite, the two cart checks specified by the criteria, and isolated CLI-process checks for the new error and precedence contracts.
+[codex-monitored] heartbeat: elapsed=60s
+exec
+/bin/zsh -lc 'npm test' in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index 23bc87cf72e81df5b6b3c8979680fa6b00b82ce3..5821ccd3de57be70b415a3d3f241551dcb57636d
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -67,20 +67,28 @@
+   }
+ 
+   const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
+-  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  let catalog;
++  try {
++    catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  } catch {
++    failCart({ error: 'invalid_catalog' });
++  }
+   const quantities = new Map();
+ 
+   for (const item of cart.items) {
+     if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
+       failCart({ error: 'invalid_sku', sku: item && item.sku });
+     }
++  }
++
++  for (const item of cart.items) {
+     if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
+       failCart({ error: 'invalid_quantity', sku: item.sku });
+     }
+     quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
+   }
+ 
+-  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++  if (cart.coupon != null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
+     failCart({ error: 'invalid_coupon' });
+   }
+   if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
+@@ -129,7 +137,7 @@
+ 
+   const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
+   const postLineDiscountCents = subtotalCents - lineDiscountCents;
+-  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++  const couponDiscountCents = cart.coupon != null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
+     ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
+     : 0;
+   const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
+
+ exited 1 in 576ms:
+
+> harbor-tools@0.1.0 test
+> node --test tests/
+
+TAP version 13
+# {"error":"invalid_stock","sku":"BAG","available":4,"requested":5}
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 63.353833
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 59.997
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 57.766792
+  ...
+# Subtest: cart combines duplicate SKUs and applies pricing rules
+ok 4 - cart combines duplicate SKUs and applies pricing rules
+  ---
+  duration_ms: 63.730125
+  ...
+# Subtest: cart reports combined stock validation errors on stderr
+ok 5 - cart reports combined stock validation errors on stderr
+  ---
+  duration_ms: 70.3005
+  ...
+# Subtest: GET /health returns ok
+not ok 6 - GET /health returns ok
+  ---
+  duration_ms: 4.769875
+  location: '/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 7 - GET /items returns list
+  ---
+  duration_ms: 1.399166
+  location: '/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 8 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 1.171041
+  location: '/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 5
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 382.123875
+
+exec
+/bin/zsh -lc "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"MUG\",\"qty\":1}]}' > /tmp/devlyn-cart-verify-success.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-success.json" in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ succeeded in 0ms:
+{"subtotal_cents":1200,"line_discount_cents":0,"coupon_discount_cents":0,"tax_cents":0,"shipping_cents":699,"total_cents":1899,"items":[{"sku":"MUG","qty":1,"line_subtotal_cents":1200,"line_discount_cents":0,"line_total_cents":1200}]}
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 23bc87cf72e81df5b6b3c8979680fa6b00b82ce3..5821ccd3de57be70b415a3d3f241551dcb57636d
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -67,20 +67,28 @@
+   }
+ 
+   const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
+-  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  let catalog;
++  try {
++    catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  } catch {
++    failCart({ error: 'invalid_catalog' });
++  }
+   const quantities = new Map();
+ 
+   for (const item of cart.items) {
+     if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
+       failCart({ error: 'invalid_sku', sku: item && item.sku });
+     }
++  }
++
++  for (const item of cart.items) {
+     if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
+       failCart({ error: 'invalid_quantity', sku: item.sku });
+     }
+     quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
+   }
+ 
+-  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++  if (cart.coupon != null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
+     failCart({ error: 'invalid_coupon' });
+   }
+   if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
+@@ -129,7 +137,7 @@
+ 
+   const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
+   const postLineDiscountCents = subtotalCents - lineDiscountCents;
+-  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++  const couponDiscountCents = cart.coupon != null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
+     ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
+     : 0;
+   const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
+
+exec
+/bin/zsh -lc "printf '{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"BAG\",\"qty\":5}]}' > /tmp/devlyn-cart-verify-stock.json && node bin/cli.js cart --input /tmp/devlyn-cart-verify-stock.json" in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ exited 2 in 0ms:
+{"error":"invalid_stock","sku":"BAG","available":4,"requested":5}
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 23bc87cf72e81df5b6b3c8979680fa6b00b82ce3..5821ccd3de57be70b415a3d3f241551dcb57636d
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -67,20 +67,28 @@
+   }
+ 
+   const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
+-  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  let catalog;
++  try {
++    catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  } catch {
++    failCart({ error: 'invalid_catalog' });
++  }
+   const quantities = new Map();
+ 
+   for (const item of cart.items) {
+     if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
+       failCart({ error: 'invalid_sku', sku: item && item.sku });
+     }
++  }
++
++  for (const item of cart.items) {
+     if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
+       failCart({ error: 'invalid_quantity', sku: item.sku });
+     }
+     quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
+   }
+ 
+-  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++  if (cart.coupon != null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
+     failCart({ error: 'invalid_coupon' });
+   }
+   if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
+@@ -129,7 +137,7 @@
+ 
+   const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
+   const postLineDiscountCents = subtotalCents - lineDiscountCents;
+-  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++  const couponDiscountCents = cart.coupon != null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
+     ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
+     : 0;
+   const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
+
+[codex-monitored] heartbeat: elapsed=90s
+codex
+Prediction before the isolated checks: simulated unreadable or malformed catalog data will yield only `{"error":"invalid_catalog"}` with status 2; the mixed cart will yield `invalid_sku` for `NOPE`; and omitted versus `null` coupon inputs will produce identical successful JSON.
+exec
+/bin/zsh -lc "node <<'NODE'
+const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const cli = path.resolve('bin/cli.js');
+const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'devlyn-cart-manual-'));
+const inputPath = path.join(directory, 'cart.json');
+
+function writeCart(cart) {
+  fs.writeFileSync(inputPath, JSON.stringify(cart));
+}
+
+function run(cart) {
+  writeCart(cart);
+  return spawnSync(process.execPath, [cli, 'cart', '--input', inputPath], { encoding: 'utf8' });
+}
+
+function runWithCatalogFailure(mode) {
+  writeCart({ state: 'CA', coupon: null, items: [{ sku: 'MUG', qty: 1 }] });
+  const bootstrap = "'`
+    const fs = require('"'fs');
+    const originalReadFileSync = fs.readFileSync;
+    fs.readFileSync = function (file, ...args) {
+      if (String(file).endsWith('/data/catalog.json')) {
+        if ("'${JSON.stringify(mode)} === '"'missing') throw new Error('simulated missing catalog');
+        return '{';
+      }
+      return originalReadFileSync.call(this, file, ...args);
+    };
+    process.argv = ['node', "'${JSON.stringify(cli)}, '"'cart', '--input', "'${JSON.stringify(inputPath)}];
+    require(${JSON.stringify(cli)});
+  `;
+  return spawnSync(process.execPath, ['"'-e', bootstrap], { encoding: 'utf8' });
+}
+
+for (const mode of ['missing', 'broken']) {
+  const result = runWithCatalogFailure(mode);
+  assert.equal(result.status, 2);
+  assert.equal(result.stdout, '');
+  assert.equal(result.stderr, '{\"error\":\"invalid_catalog\"}\\n');
+}
+
+const precedence = run({
+  state: 'CA',
+  coupon: null,
+  items: [{ sku: 'MUG', qty: 0 }, { sku: 'NOPE', qty: 1 }],
+});
+assert.equal(precedence.status, 2);
+assert.equal(precedence.stdout, '');
+assert.equal(precedence.stderr, '{\"error\":\"invalid_sku\",\"sku\":\"NOPE\"}\\n');
+
+const nullCoupon = run({ state: 'CA', coupon: null, items: [{ sku: 'MUG', qty: 1 }] });
+const omittedCoupon = run({ state: 'CA', items: [{ sku: 'MUG', qty: 1 }] });
+assert.equal(nullCoupon.status, 0);
+assert.equal(omittedCoupon.status, 0);
+assert.equal(nullCoupon.stderr, '');
+assert.equal(omittedCoupon.stderr, '');
+assert.deepEqual(JSON.parse(omittedCoupon.stdout), JSON.parse(nullCoupon.stdout));
+
+fs.rmSync(directory, { recursive: true, force: true });
+console.log('manual catalog failure, validation precedence, and omitted-coupon checks: PASS');
+NODE" in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index 23bc87cf72e81df5b6b3c8979680fa6b00b82ce3..5821ccd3de57be70b415a3d3f241551dcb57636d
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -67,20 +67,28 @@
+   }
+ 
+   const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
+-  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  let catalog;
++  try {
++    catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  } catch {
++    failCart({ error: 'invalid_catalog' });
++  }
+   const quantities = new Map();
+ 
+   for (const item of cart.items) {
+     if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
+       failCart({ error: 'invalid_sku', sku: item && item.sku });
+     }
++  }
++
++  for (const item of cart.items) {
+     if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
+       failCart({ error: 'invalid_quantity', sku: item.sku });
+     }
+     quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
+   }
+ 
+-  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++  if (cart.coupon != null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
+     failCart({ error: 'invalid_coupon' });
+   }
+   if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
+@@ -129,7 +137,7 @@
+ 
+   const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
+   const postLineDiscountCents = subtotalCents - lineDiscountCents;
+-  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++  const couponDiscountCents = cart.coupon != null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
+     ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
+     : 0;
+   const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
+
+ succeeded in 226ms:
+manual catalog failure, validation precedence, and omitted-coupon checks: PASS
+
+codex
+Raw result: all three manual contract checks passed, including both simulated missing and malformed catalog reads. The scoped CLI test file is next; the earlier `npm test` failure is confined to server socket binding (`EPERM`), while all five CLI tests passed.
+[codex-monitored] heartbeat: elapsed=121s
+exec
+/bin/zsh -lc "node --test tests/cli.test.js && git diff --check && git diff -- bin/cli.js tests/cli.test.js && nl -ba bin/cli.js | sed -n '45,135p' && git status --short" in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index 23bc87cf72e81df5b6b3c8979680fa6b00b82ce3..5821ccd3de57be70b415a3d3f241551dcb57636d
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -67,20 +67,28 @@
+   }
+ 
+   const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
+-  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  let catalog;
++  try {
++    catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  } catch {
++    failCart({ error: 'invalid_catalog' });
++  }
+   const quantities = new Map();
+ 
+   for (const item of cart.items) {
+     if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
+       failCart({ error: 'invalid_sku', sku: item && item.sku });
+     }
++  }
++
++  for (const item of cart.items) {
+     if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
+       failCart({ error: 'invalid_quantity', sku: item.sku });
+     }
+     quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
+   }
+ 
+-  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++  if (cart.coupon != null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
+     failCart({ error: 'invalid_coupon' });
+   }
+   if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
+@@ -129,7 +137,7 @@
+ 
+   const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
+   const postLineDiscountCents = subtotalCents - lineDiscountCents;
+-  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++  const couponDiscountCents = cart.coupon != null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
+     ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
+     : 0;
+   const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
+
+ succeeded in 376ms:
+# {"error":"invalid_stock","sku":"BAG","available":4,"requested":5}
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 41.749167
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 38.006916
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 51.147625
+  ...
+# Subtest: cart combines duplicate SKUs and applies pricing rules
+ok 4 - cart combines duplicate SKUs and applies pricing rules
+  ---
+  duration_ms: 46.759625
+  ...
+# Subtest: cart reports combined stock validation errors on stderr
+ok 5 - cart reports combined stock validation errors on stderr
+  ---
+  duration_ms: 32.78625
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 262.98175
+diff --git a/bin/cli.js b/bin/cli.js
+index 23bc87c..5821ccd 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -67,20 +67,28 @@ function runCart(argv) {
+   }
+ 
+   const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
+-  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  let catalog;
++  try {
++    catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  } catch {
++    failCart({ error: 'invalid_catalog' });
++  }
+   const quantities = new Map();
+ 
+   for (const item of cart.items) {
+     if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
+       failCart({ error: 'invalid_sku', sku: item && item.sku });
+     }
++  }
++
++  for (const item of cart.items) {
+     if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
+       failCart({ error: 'invalid_quantity', sku: item.sku });
+     }
+     quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
+   }
+ 
+-  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++  if (cart.coupon != null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
+     failCart({ error: 'invalid_coupon' });
+   }
+   if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
+@@ -129,7 +137,7 @@ function runCart(argv) {
+ 
+   const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
+   const postLineDiscountCents = subtotalCents - lineDiscountCents;
+-  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++  const couponDiscountCents = cart.coupon != null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
+     ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
+     : 0;
+   const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
+    45	  const inputIndex = argv.indexOf('--input');
+    46	  const inputPath = argv[inputIndex + 1];
+    47	  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
+    48	    failCart({ error: 'invalid_input' });
+    49	  }
+    50	
+    51	  let input;
+    52	  try {
+    53	    input = fs.readFileSync(inputPath, 'utf8');
+    54	  } catch {
+    55	    failCart({ error: 'invalid_input' });
+    56	  }
+    57	
+    58	  let cart;
+    59	  try {
+    60	    cart = JSON.parse(input);
+    61	  } catch {
+    62	    failCart({ error: 'invalid_json' });
+    63	  }
+    64	
+    65	  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
+    66	    failCart({ error: 'missing_items' });
+    67	  }
+    68	
+    69	  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
+    70	  let catalog;
+    71	  try {
+    72	    catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+    73	  } catch {
+    74	    failCart({ error: 'invalid_catalog' });
+    75	  }
+    76	  const quantities = new Map();
+    77	
+    78	  for (const item of cart.items) {
+    79	    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
+    80	      failCart({ error: 'invalid_sku', sku: item && item.sku });
+    81	    }
+    82	  }
+    83	
+    84	  for (const item of cart.items) {
+    85	    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
+    86	      failCart({ error: 'invalid_quantity', sku: item.sku });
+    87	    }
+    88	    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
+    89	  }
+    90	
+    91	  if (cart.coupon != null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
+    92	    failCart({ error: 'invalid_coupon' });
+    93	  }
+    94	  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
+    95	    failCart({ error: 'invalid_state' });
+    96	  }
+    97	
+    98	  for (const [sku, qty] of quantities) {
+    99	    const product = catalog.products[sku];
+   100	    if (qty > product.stock) {
+   101	      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
+   102	    }
+   103	  }
+   104	
+   105	  let subtotalCents = 0;
+   106	  let lineDiscountCents = 0;
+   107	  let taxablePostLineDiscountCents = 0;
+   108	  const items = [];
+   109	
+   110	  for (const [sku, qty] of quantities) {
+   111	    const product = catalog.products[sku];
+   112	    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
+   113	    const lineSubtotalCents = product.unit_cents * qty;
+   114	    let discount = 0;
+   115	
+   116	    if (promotion && promotion.type === 'buy_x_get_y_free') {
+   117	      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
+   118	    }
+   119	    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
+   120	      discount = promotion.per_unit_discount_cents * qty;
+   121	    }
+   122	
+   123	    const lineTotalCents = lineSubtotalCents - discount;
+   124	    subtotalCents += lineSubtotalCents;
+   125	    lineDiscountCents += discount;
+   126	    if (catalog.taxable_codes[product.tax_code] === true) {
+   127	      taxablePostLineDiscountCents += lineTotalCents;
+   128	    }
+   129	    items.push({
+   130	      sku,
+   131	      qty,
+   132	      line_subtotal_cents: lineSubtotalCents,
+   133	      line_discount_cents: discount,
+   134	      line_total_cents: lineTotalCents,
+   135	    });
+ M bin/cli.js
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+codex
+PASS — all three cart fixes are in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/bin/cli.js:70) only.
+
+- Catalog read/parse failures now return exit 2 JSON `{"error":"invalid_catalog"}` via `failCart`. Verified with simulated missing and malformed catalog data: empty stdout, exact stderr JSON, status 2. [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/bin/cli.js:71)
+- SKU validation completes before quantity validation/combining; the mixed cart now returns `invalid_sku` for `NOPE`. [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/bin/cli.js:78)
+- Omitted coupons and `null` coupons both mean no coupon, in validation and discount calculation. [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/bin/cli.js:91) [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/bin/cli.js:140)
+
+Verification:
+
+- Criteria success command: PASS (`total_cents: 1899`, `shipping_cents: 699`).
+- Criteria stock command: PASS (exit 2, exact `invalid_stock` JSON).
+- Manual three-contract check: PASS.
+- `node --test tests/cli.test.js`: PASS, 5/5.
+- `git diff --check`: PASS.
+
+BLOCKED: `npm test` cannot complete in this sandbox because the unrelated server tests cannot bind `0.0.0.0` (`EPERM`); all three server tests fail for that environmental reason, while all five CLI tests pass.
+diff --git a/bin/cli.js b/bin/cli.js
+index 23bc87cf72e81df5b6b3c8979680fa6b00b82ce3..5821ccd3de57be70b415a3d3f241551dcb57636d
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -67,20 +67,28 @@
+   }
+ 
+   const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
+-  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  let catalog;
++  try {
++    catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  } catch {
++    failCart({ error: 'invalid_catalog' });
++  }
+   const quantities = new Map();
+ 
+   for (const item of cart.items) {
+     if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
+       failCart({ error: 'invalid_sku', sku: item && item.sku });
+     }
++  }
++
++  for (const item of cart.items) {
+     if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
+       failCart({ error: 'invalid_quantity', sku: item.sku });
+     }
+     quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
+   }
+ 
+-  if (cart.coupon !== null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++  if (cart.coupon != null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
+     failCart({ error: 'invalid_coupon' });
+   }
+   if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
+@@ -129,7 +137,7 @@
+ 
+   const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
+   const postLineDiscountCents = subtotalCents - lineDiscountCents;
+-  const couponDiscountCents = cart.coupon !== null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++  const couponDiscountCents = cart.coupon != null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
+     ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
+     : 0;
+   const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
+
+tokens used
+28,456
+[codex-monitored] codex exited: code=0 elapsed=145s

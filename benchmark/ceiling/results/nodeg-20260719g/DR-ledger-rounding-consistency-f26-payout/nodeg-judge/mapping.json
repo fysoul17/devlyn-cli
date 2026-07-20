@@ -1,0 +1,28 @@
+{
+  "seed": 107911216286625836973102623488243716686785306559541395297022379656993426829168,
+  "packets": {
+    "P1": {
+      "candidate": "A",
+      "patch_sha256": "7da409faf92c6395b65342d3a81349c15a8d785b9791a738ee3bdc16972eda01"
+    },
+    "P2": {
+      "candidate": "B",
+      "patch_sha256": "6b787e9f3adbc247f37f684aad775c6fd71b2ba5647ddb6f58e637f7a04cd8ef"
+    }
+  },
+  "frozen_b_source": {
+    "control_id": "F26",
+    "task": "DR-ledger-rounding-consistency-f26-payout",
+    "run_id": "iter0068-gate-20260711h",
+    "attempt": "B1",
+    "attempt_dir": "/Users/aipalm/devlyn-ceiling-external/exam-0073/benchmark/ceiling/results/iter0068-gate-20260711h/DR-ledger-rounding-consistency-f26-payout/B1",
+    "patch_path": "/Users/aipalm/devlyn-ceiling-external/exam-0073/benchmark/ceiling/results/iter0068-gate-20260711h/DR-ledger-rounding-consistency-f26-payout/B1/patch.diff",
+    "patch_sha256": "6b787e9f3adbc247f37f684aad775c6fd71b2ba5647ddb6f58e637f7a04cd8ef",
+    "objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0073/benchmark/ceiling/results/iter0068-gate-20260711h/DR-ledger-rounding-consistency-f26-payout/B1/objective.json",
+    "objective_sha256": "db1a38ecb4ac9e0a42d75d1f8b06e7059940422c4a345d82379bf06bf348a192",
+    "timing_path": "/Users/aipalm/devlyn-ceiling-external/exam-0073/benchmark/ceiling/results/iter0068-gate-20260711h/DR-ledger-rounding-consistency-f26-payout/B1/timing.json",
+    "timing_sha256": "1924b864cfdae8f73e8793f3924984ed3990ffdd1ccc095ca07a63a691c16841",
+    "resolved": true,
+    "elapsed_seconds": 259
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "verification_commands": [
+    {
+      "id": "V1",
+      "cmd": "/opt/homebrew/bin/pytest test_schedule.py -q",
+      "description": "Full existing test suite (81 tests as of base_ref) plus new max_runs tests must pass."
+    }
+  ]
+}

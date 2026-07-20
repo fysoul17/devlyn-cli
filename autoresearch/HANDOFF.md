@@ -36,18 +36,32 @@ REFUTES with ≥5 rows / else INCONCLUSIVE (orchestrator prior: REFUTED —
 STUB** = premature-terminal-during-VERIFY (fired on -19f itself),
 design-only license, Terminal-Claim Authority bar.
 
+**2026-07-20 session result**: Stage A+B DELIVERED and MEASURED
+(cohort nodeg-20260719g, verdict + adjudication frozen in the iter
+file; DECISIONS 0073.2): P-a′ CONFIRMED (quality 0/7; the -19f F7
+codex A_win was noise), P-b CONFIRMED (wall median 12.1×), P-c
+INCONCLUSIVE-by-rule (4<5 complete rows) with UNANIMOUS directional
+data — implement 14-27% of wall; the big buckets are the NON-PHASE
+RESIDUAL (18-51%) and VERIFY. iter-0074 design CONVERGED + C2 build
+SHIPPED same session (edfb02a; terminal-claim-check.py + arm/queue
+bindings). DISCOVERY: premature-terminal-mid-VERIFY fired on 3/7
+cohort rows — dominant A-arm failure mode. F25 root-cause note
+recorded (spec-silent data-shape generality class).
+
 **Next work (in order)**:
-1. **iter-0073 Stage A build** (Codex sol, packet
-   /tmp/codex-0073-stageA/build-packet.md — regenerate from the
-   registration §Stage A if missing) → gates → commit → worktree at
-   that SHA → **Stage B launch detached**; adjudicate vs frozen
-   predictions on completion.
-2. **iter-0074 design round** (three-way; may run while Stage B is
-   detached) — mechanism must bind the terminal claim mechanically or
-   record-and-defer.
-3. F25 `.find` root-cause investigation (licensed side-item, no build);
-   then Cell 1 bare-fails admission gate (terra-conditional, last 0070a
-   item).
+1. **FS1 re-row on an updater-proof pin** (copy pinned CLI to a
+   run-owned path first — deviation 3 mechanics) — closes the cohort
+   objective claim; then decide iter-0073 close.
+2. **C1 Stop-hook parity probe** (licensed follow-up in 0074 file;
+   priority RAISED by the 3/7 epidemic) — replay -19f state, hook
+   installed, claude/codex/omp × headless; C1 registration only after
+   per-route measurement.
+3. **Next wall lever registration** — target the non-phase residual +
+   VERIFY per the unanimous P-c directional data; needs one more
+   cohort clearing ≥5 complete-verify rows for the formal addendum-5
+   kill (the 0074 bindings + updater-proof pin should raise the
+   complete-row rate).
+4. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
 
 **Row mechanics (all learned this session, binding)**: launch =
 `CEILING_TEST_CLAUDE_BIN=<2.1.211> CEILING_TEST_NODE_BIN=<node-v20>

@@ -1,0 +1,8 @@
+Both targeted probes pass with full externally-visible verification:
+
+- **Idempotency/duplicate**: identical-content duplicate deduped (output byte-identical to single-occurrence run); conflicting-content duplicate → exit `2`, empty stdout, stderr exactly `{"error":"conflicting_duplicate","id":"c1"}`.
+- **Exact shape/error-priority**: success → 5 top-level keys and 8 merchant-row keys in spec order, all integer cents, totals equal per-field sums, reserve/threshold rollup math correct; each validation failure (missing `merchant_id`, unknown `type`, non-integer `amount_cents`) → exit `2`, empty stdout, exactly one JSON error object on stderr.
+
+Scope clean (diff touches only `bin/cli.js`/`tests/cli.test.js`, no new deps).
+
+PASS

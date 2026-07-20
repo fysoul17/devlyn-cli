@@ -1,0 +1,3 @@
+UVR-STALE: FIRED bin/cli.js:12 — USAGE help text documented `version` with no options (`Print the CLI version from package.json`), now stale since `version` accepts `--format json`; updated to `version [--format json]`.
+PATH-TEST: FIRED tests/cli.test.js:27 — Goal specifies the failure path (`--format yaml`/unsupported exits 1 with an error) and no prior test exercised it; added `version rejects unsupported --format value` asserting `err.status === 1`.
+PASS

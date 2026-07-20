@@ -1,0 +1,9 @@
+{
+  "deviations": [
+    {
+      "type": "a-runtime-attestation-source",
+      "task": "DR-auth-signature-f12-webhook",
+      "reason": "F12 A1 timed out at the 3600s cap (invoke_exit=124, timed_out=true); claude never emitted the stream-json summary so transcript.txt is 0 bytes. Objective resolved=True on the valid patch. Runtime model attested from claude-debug.log (186 claude-sonnet-5 hits, no other model family). Same class as nodeg-20260714 F25 precedent. See EXECUTION-DEVIATIONS.md."
+    }
+  ]
+}

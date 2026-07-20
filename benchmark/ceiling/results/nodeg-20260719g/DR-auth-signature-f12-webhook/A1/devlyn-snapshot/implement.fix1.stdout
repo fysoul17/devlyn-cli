@@ -1,0 +1,4 @@
+BLOCKED — implementation is complete, but `npm test` cannot pass in this sandbox: all HTTP server tests fail before assertions with `listen EPERM` on both `0.0.0.0` and `127.0.0.1`. CLI tests pass. A direct no-listen Express dispatch confirmed malformed JSON returns `400 {"error":"invalid_body"}`.
+
+- bg-002 fixed: added real four-argument Express parse-error middleware in [server/index.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f08d6b52f5d4d/A1/repo/server/index.js:9), plus a malformed-JSON regression test in [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f08d6b52f5d4d/A1/repo/tests/server.test.js:168).
+- bg-001 decision: option (a). Kept duplicate lookup before full body-shape validation. “Regardless of what the second body contains” and “the second body is irrelevant” directly require a validly signed replay with the accepted `id` to return `409` without requiring its other fields to validate.

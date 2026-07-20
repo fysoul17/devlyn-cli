@@ -1,0 +1,306 @@
+[codex-monitored] start: ts=2026-07-19T11:19:48Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=91502
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: medium
+reasoning summaries: none
+session id: 019f7a1a-903b-7560-8f3b-b025df8b04ca
+--------
+user
+You are OpenAI Codex, workspace-write access. CLEANUP pass (allowlist: tooling artifacts, dead code this diff added, stale doc references, stale inline comments — nothing else). Review the cumulative diff since base d059b43faf24e64eb7a560cc37cebd5ae30fe17b in bin/cli.js and tests/cli.test.js (cart subcommand + tests + a fix round that added catalog error handling, two-pass sku/qty validation, and null/undefined coupon normalization). Check for dead code, tooling artifacts, or stale references. If clean, make no changes and reply PASS with a one-line note. Do not touch any other files.
+codex
+I’ll inspect only the requested cumulative diff and verify whether it contains cleanup-eligible residue; I won’t modify anything outside that allowlist.
+exec
+/bin/zsh -lc 'git status --short && git diff --check d059b43faf24e64eb7a560cc37cebd5ae30fe17b -- bin/cli.js tests/cli.test.js && git diff --find-renames --find-copies d059b43faf24e64eb7a560cc37cebd5ae30fe17b -- bin/cli.js tests/cli.test.js' in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b24..5821ccd 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,6 +10,7 @@ const USAGE = `Usage: bench-cli <command> [options]
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  cart --input PATH          Price a cart JSON file against data/catalog.json
+   --help, -h                 Show this help
+ 
+ Examples:
+@@ -35,6 +36,126 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function failCart(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function runCart(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let input;
++  try {
++    input = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    failCart({ error: 'invalid_input' });
++  }
++
++  let cart;
++  try {
++    cart = JSON.parse(input);
++  } catch {
++    failCart({ error: 'invalid_json' });
++  }
++
++  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
++    failCart({ error: 'missing_items' });
++  }
++
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  let catalog;
++  try {
++    catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++  } catch {
++    failCart({ error: 'invalid_catalog' });
++  }
++  const quantities = new Map();
++
++  for (const item of cart.items) {
++    if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(catalog.products, item.sku)) {
++      failCart({ error: 'invalid_sku', sku: item && item.sku });
++    }
++  }
++
++  for (const item of cart.items) {
++    if (typeof item.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      failCart({ error: 'invalid_quantity', sku: item.sku });
++    }
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  if (cart.coupon != null && !Object.prototype.hasOwnProperty.call(catalog.coupons, cart.coupon)) {
++    failCart({ error: 'invalid_coupon' });
++  }
++  if (!Object.prototype.hasOwnProperty.call(catalog.tax_rates, cart.state)) {
++    failCart({ error: 'invalid_state' });
++  }
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    if (qty > product.stock) {
++      failCart({ error: 'invalid_stock', sku, available: product.stock, requested: qty });
++    }
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const promotion = catalog.line_promotions.find((entry) => entry.sku === sku);
++    const lineSubtotalCents = product.unit_cents * qty;
++    let discount = 0;
++
++    if (promotion && promotion.type === 'buy_x_get_y_free') {
++      discount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty)) * promotion.free_qty * product.unit_cents;
++    }
++    if (promotion && promotion.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      discount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - discount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += discount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: discount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = cart.coupon != null && postLineDiscountCents >= catalog.coupons[cart.coupon].min_subtotal_cents
++    ? Math.round(postLineDiscountCents * catalog.coupons[cart.coupon].percent / 100)
++    : 0;
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++  const totalCents = postLineDiscountCents - couponDiscountCents + taxCents + shippingCents;
++
++  console.log(JSON.stringify({
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: totalCents,
++    items,
++  }));
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +174,10 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      runCart(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..f120759 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,14 @@ function run(args) {
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeCart(t, cart) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-cart-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return inputPath;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +33,55 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate SKUs and applies pricing rules', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 2 },
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'MUG', qty: 1 },
++    ],
++  });
++
++  assert.deepStrictEqual(JSON.parse(run(['cart', '--input', inputPath])), {
++    subtotal_cents: 15100,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1160,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 11298,
++    items: [
++      { sku: 'TEE', qty: 3, line_subtotal_cents: 7500, line_discount_cents: 2500, line_total_cents: 5000 },
++      { sku: 'BAG', qty: 2, line_subtotal_cents: 6400, line_discount_cents: 1000, line_total_cents: 5400 },
++      { sku: 'MUG', qty: 1, line_subtotal_cents: 1200, line_discount_cents: 0, line_total_cents: 1200 },
++    ],
++  });
++});
++
++test('cart reports combined stock validation errors on stderr', (t) => {
++  const inputPath = writeCart(t, {
++    state: 'CA',
++    coupon: null,
++    items: [{ sku: 'BAG', qty: 3 }, { sku: 'BAG', qty: 2 }],
++  });
++  let failure;
++
++  try {
++    run(['cart', '--input', inputPath]);
++  } catch (error) {
++    failure = error;
++  }
++
++  assert.ok(failure);
++  assert.strictEqual(failure.status, 2);
++  assert.strictEqual(failure.stdout, '');
++  assert.deepStrictEqual(JSON.parse(failure.stderr), {
++    error: 'invalid_stock',
++    sku: 'BAG',
++    available: 4,
++    requested: 5,
++  });
++});
+
+codex
+The cumulative diff is limited to the cart implementation and its scoped test helper. I’m running the affected tests once to confirm the temporary-file cleanup leaves no artifact.
+exec
+/bin/zsh -lc 'node --test tests/cli.test.js' in /Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo
+ succeeded in 291ms:
+# {"error":"invalid_stock","sku":"BAG","available":4,"requested":5}
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 39.348125
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 39.657875
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 53.69325
+  ...
+# Subtest: cart combines duplicate SKUs and applies pricing rules
+ok 4 - cart combines duplicate SKUs and applies pricing rules
+  ---
+  duration_ms: 37.414208
+  ...
+# Subtest: cart reports combined stock validation errors on stderr
+ok 5 - cart reports combined stock validation errors on stderr
+  ---
+  duration_ms: 34.013333
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 261.878041
+
+codex
+PASS — requested diff is clean; no dead code, tooling artifacts, or stale references found.
+tokens used
+10,006
+[codex-monitored] codex exited: code=0 elapsed=18s

@@ -1,0 +1,1 @@
+PASS — removed ignored pytest caches; no dead diff-added code or stale documentation references found. `.devlyn/cleanup.findings.jsonl` is empty.

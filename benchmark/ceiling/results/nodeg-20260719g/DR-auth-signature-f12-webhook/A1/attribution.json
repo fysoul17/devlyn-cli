@@ -1,0 +1,50 @@
+{
+  "elapsed_ms": 3605000,
+  "implement_total_ms": 825745,
+  "incomplete_spans": [
+    {
+      "phase": "implement",
+      "record": "current",
+      "started_at": "2026-07-19T13:37:14.368Z"
+    }
+  ],
+  "judge_durations_ms": {
+    "judge": 294000,
+    "pair_judge": 300000
+  },
+  "non_phase_residual_ms": 639867,
+  "phase_sum_ms": 2965133,
+  "phases": {
+    "build_gate": {
+      "current_triggered_by": "build_gate",
+      "duration_ms": 312710,
+      "history_sum_ms": 871098
+    },
+    "cleanup": {
+      "current_triggered_by": null,
+      "duration_ms": 75450,
+      "history_sum_ms": 0
+    },
+    "implement": {
+      "current_triggered_by": "verify",
+      "duration_ms": null,
+      "history_sum_ms": 825745
+    },
+    "plan": {
+      "current_triggered_by": null,
+      "duration_ms": 188707,
+      "history_sum_ms": 0
+    },
+    "surface_close": {
+      "current_triggered_by": null,
+      "duration_ms": 91983,
+      "history_sum_ms": 0
+    },
+    "verify": {
+      "current_triggered_by": null,
+      "duration_ms": 599440,
+      "history_sum_ms": 0
+    }
+  },
+  "verify_complete": true
+}

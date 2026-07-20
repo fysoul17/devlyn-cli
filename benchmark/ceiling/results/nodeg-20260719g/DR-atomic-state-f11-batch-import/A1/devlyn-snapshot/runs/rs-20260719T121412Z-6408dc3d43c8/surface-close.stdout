@@ -1,0 +1,3 @@
+UVR-STALE: N/A server/index.js:1 — the only pre-existing user-visible text is the generic top-of-file comment "deliberately small API surface," which doesn't enumerate endpoints or document the old interface's shape, so nothing became stale.
+PATH-TEST: FIRED tests/server.test.js:127 — goal specifies the `invalid_body` failure path (empty/missing/non-array `items`) with an unchanged `GET /items`, implemented at server/index.js:31-34, but no authorized test exercised it; added one minimal regression test.
+PASS

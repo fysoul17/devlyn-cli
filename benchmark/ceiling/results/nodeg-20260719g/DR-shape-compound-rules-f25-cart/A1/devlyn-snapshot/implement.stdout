@@ -1,0 +1,10 @@
+Implemented `cart --input <path>` in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/bin/cli.js:43), including validation, duplicate consolidation, promotions, coupon, tax, shipping, stream-correct JSON errors, and totals. Added success and stock-validation coverage in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/cli.test.js:37). Diff is limited to the authorized files and passes `git diff --check`.
+
+Validation:
+
+- `node --test tests/cli.test.js`: passed, 5/5.
+- Success verification: exit 0; output includes subtotal `1200`, shipping `699`, total `1899`.
+- Stock verification: exit 2; emits the required `invalid_stock` JSON on stderr.
+- `npm test`: exit 1. All five CLI tests pass, but three pre-existing server tests fail because [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/r5af0665ad1be/f38c9cf695c9e/A1/repo/tests/server.test.js:9) cannot bind its HTTP listener in this sandbox: `listen EPERM: operation not permitted 0.0.0.0`.
+
+Verdict: **BLOCKED** — the required full-suite `npm test` exit-0 criterion is prevented by sandbox socket restrictions outside the authorized surface.

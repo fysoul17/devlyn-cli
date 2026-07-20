@@ -1,0 +1,41 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "node --test tests/",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "rge-1\"}{\"error\":\"conflicting_duplicate\",\"id\":\"charge-1\"}\n# Subtest: GET /health returns ok\nok 8 - GET /health returns ok\n  ---\n  duration_ms: 13.640667\n  ...\n# Subtest: GET /items returns list\nok 9 - GET /items returns list\n  ---\n  duration_ms: 2.056083\n  ...\n# Subtest: GET /items/:id returns 404 for missing\nok 10 - GET /items/:id returns 404 for missing\n  ---\n  duration_ms: 1.399291\n  ...\n1..10\n# tests 10\n# suites 0\n# pass 10\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 242.457292\n"
+    },
+    {
+      "index": 1,
+      "cmd": "node .devlyn/probes/P1.js",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "P1 PASS"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "P1 PASS\n"
+    },
+    {
+      "index": 2,
+      "cmd": "node .devlyn/probes/P2.js",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "P2 PASS"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "P2 PASS\n"
+    }
+  ]
+}
