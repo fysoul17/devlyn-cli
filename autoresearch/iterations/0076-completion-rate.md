@@ -224,6 +224,20 @@ L-format-valid-false-N/A, now with 24 draws of receipts. v2 round
 opened on gate-(iii) re-specification; raw results committed BEFORE the
 v2 round returned.
 
+**v2 GATE (iii) RE-SPEC — FROZEN (both seats CONFIRM RESPEC, 2026-07-21
+night; Codex named delta: causal attribution; Grok decisive delta:
+baseline attribution shows the zero bar was an uncontrolled baseline
+oracle)**: gate (iii) = format-validity(M-RE) ≥0.9 AND false-N/A(M-RE) ≤
+false-N/A(baseline) AND over-fired(M-RE) ≤ over-fired(baseline), measured
+on the same tasks/worktrees/recipe. Measured: 0.917≥0.9; 4≤5; 0≤0 →
+**gate (iii) PASS under v2; Stage A CLOSED**. Honesty constraints
+(Grok, adopted verbatim): the historical FS-0076-A firing under the
+original wording STANDS (0076.2 unchanged — no silent-PASS rewrite);
+FS-0076-A's falsifier text is superseded by the differential bar from
+this point; L-format-valid-false-N/A keeps its 24-draw receipts as a
+candidate own registration; FS-0076-B/C/D unchanged — Stage B still
+decides completion.
+
 ## Principles check
 
 - **0**: closes the FS-0075-B-frozen user failure (hands-free runs dying on a
