@@ -42,6 +42,7 @@ def threshold_leg(rows: list[dict], denominator_field: str) -> dict:
         allocated = sum(
             numeric(attribution, field)
             for field in (
+                "gap_to_censored_ms",
                 "interphase_gap_ms",
                 "outer_loop_gap_ms",
                 "censored_open_span_ms",
@@ -244,10 +245,11 @@ def self_test() -> int:
         "implement_total_ms": 100,
         "non_phase_residual_ms": 500,
         "startup_ms": 200,
-        "interphase_gap_ms": 100,
+        "gap_to_censored_ms": 100,
+        "interphase_gap_ms": 50,
         "outer_loop_gap_ms": 0,
         "censored_open_span_ms": 50,
-        "tail_ms": 150,
+        "tail_ms": 100,
         "legacy_edge_residual_ms": None,
     }
     rows = [
@@ -269,7 +271,11 @@ def self_test() -> int:
     result = adjudicate(verdict, rows)
     if result["P-A"]["verdict"] != "REFUTES":
         raise AssertionError(result["P-A"])
-    if result["P-B"]["verdict"] != "CONFIRMS" or result["P-B"]["half"] != 4:
+    if (
+        result["P-B"]["verdict"] != "CONFIRMS"
+        or result["P-B"]["half"] != 4
+        or result["P-B"]["per_row"][0]["named_ms"] != 250
+    ):
         raise AssertionError(result["P-B"])
     if result["P-C"]["verdict"] != "CONFIRMS":
         raise AssertionError(result["P-C"])
@@ -297,6 +303,7 @@ def self_test() -> int:
             "decomposition_status": "legacy-partial",
             "non_phase_residual_ms": 1200,
             "legacy_edge_residual_ms": 700,
+            "gap_to_censored_ms": 100,
             "interphase_gap_ms": 300,
             "outer_loop_gap_ms": 50,
             "censored_open_span_ms": 50,
@@ -309,9 +316,9 @@ def self_test() -> int:
         [{"control_id": "F1", "task": "task-1", "attribution": legacy_partial}],
     )["FS-0075-D"]["D1_legacy_interior"]
     if (
-        d1["verdict"] != "BLOCK"
-        or d1["per_row"][0]["unallocated_ms"] != 100
-        or d1["per_row"][0]["unallocated_ratio"] != 0.20
+        d1["verdict"] != "PASS"
+        or d1["per_row"][0]["unallocated_ms"] != 0
+        or d1["per_row"][0]["unallocated_ratio"] != 0.0
     ):
         raise AssertionError(d1)
     print("SELFTEST PASS: nodeg-0075-adjudicate")

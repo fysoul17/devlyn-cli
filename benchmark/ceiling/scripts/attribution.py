@@ -252,14 +252,27 @@ def build_attribution(timing: dict, states: list[tuple[str, dict]]) -> dict:
         raise AttributionError("negative censored-open union")
     censored_open_span_ms = max(0, censored_open_span_ms)
 
+    gap_to_censored_ms: int | float = 0
     interphase_gap_ms: int | float = 0
     outer_loop_gap_ms: int | float = 0
+    open_span_starts = {start for start, _ in open_spans}
     for (_, previous_end), (next_start, _) in zip(activity_union, activity_union[1:]):
         gap_ms = milliseconds(previous_end, next_start, "activity frontier gap")
         if any(previous_end < run_start <= next_start for run_start in run_starts[1:]):
             outer_loop_gap_ms += gap_ms
+        elif next_start in open_span_starts:
+            gap_to_censored_ms += gap_ms
         else:
             interphase_gap_ms += gap_ms
+    if activity_union and not timing_v2:
+        terminal_frontier = activity_union[-1][1]
+        for open_start in sorted(open_span_starts):
+            if open_start > terminal_frontier:
+                gap_to_censored_ms += milliseconds(
+                    terminal_frontier, open_start, "gap to censored span"
+                )
+                terminal_frontier = open_start
+    gap_to_censored_ms = normalized(gap_to_censored_ms)
     interphase_gap_ms = normalized(interphase_gap_ms)
     outer_loop_gap_ms = normalized(outer_loop_gap_ms)
 
@@ -276,6 +289,7 @@ def build_attribution(timing: dict, states: list[tuple[str, dict]]) -> dict:
         tail_ms = milliseconds(activity_union[-1][1], invoke_end, "tail")
         allocated = normalized(
             startup_ms
+            + gap_to_censored_ms
             + interphase_gap_ms
             + outer_loop_gap_ms
             + censored_open_span_ms
@@ -286,7 +300,10 @@ def build_attribution(timing: dict, states: list[tuple[str, dict]]) -> dict:
             decomposition_status = "failed"
     else:
         identifiable_interior = normalized(
-            interphase_gap_ms + outer_loop_gap_ms + censored_open_span_ms
+            gap_to_censored_ms
+            + interphase_gap_ms
+            + outer_loop_gap_ms
+            + censored_open_span_ms
         )
         observed_activity_start = min(
             [start for start, _ in completed_spans]
@@ -320,6 +337,7 @@ def build_attribution(timing: dict, states: list[tuple[str, dict]]) -> dict:
         "conservation_residue_ms": conservation_residue_ms,
         "decomposition_status": decomposition_status,
         "elapsed_ms": elapsed_ms,
+        "gap_to_censored_ms": gap_to_censored_ms,
         "implement_total_ms": normalized(
             (implement["duration_ms"] or 0) + implement["history_sum_ms"]
         ),
@@ -421,7 +439,7 @@ def self_test() -> int:
         two_run = write_attribution(copied["two_run"])
         checks.equal(two_run["decomposition_status"], "legacy-partial")
         checks.equal(two_run["implement_total_ms"], 588922)
-        checks.true(two_run["outer_loop_gap_ms"] > 0, "two-run outer-loop gap")
+        checks.equal(two_run["outer_loop_gap_ms"], 122908)
         checks.true(two_run["phase_union_ms"] > 557452, "all archived runs included")
         checks.equal(two_run["conservation_residue_ms"], 0)
 
@@ -429,6 +447,7 @@ def self_test() -> int:
         checks.equal(f7["verify_complete"], False)
         checks.true(bool(f7["incomplete_spans"]), "F7 incomplete verify retained")
         checks.equal(f7["censored_open_span_ms"], 0)
+        checks.equal(f7["gap_to_censored_ms"], 51481)
         checks.equal(f7["tail_ms"], None)
 
         f12 = write_attribution(copied["f12"])
