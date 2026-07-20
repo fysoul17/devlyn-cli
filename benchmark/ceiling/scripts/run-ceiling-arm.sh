@@ -754,6 +754,34 @@ Path(out).write_text(json.dumps({
 }, indent=2) + "\n", encoding="utf-8")
 PY
 
+python3 "$SCRIPT_DIR/isolation-payload.py" \
+  "$RESULT_DIR/isolation.json" \
+  "$RESULT_DIR/neutralization.json" \
+  "$RESULT_DIR/transcript.txt" \
+  "$WORKTREE" \
+  "$EXTERNAL_ROOT" \
+  "$RESULT_DIR" \
+  "$BARE_HOME" \
+  "$CODEX_HOME_TERRA" \
+  "$CANARY_STDOUT" \
+  "$CANARY_STDERR" \
+  "$FROZEN_ENV_KEYS" \
+  "$FROZEN_PATH" \
+  "$DIRECT_CODEX_BIN" \
+  "$DIRECT_CODEX_VERSION" \
+  "$CODEX_HOME_TERRA/auth.json" \
+  "$NEUTRAL_BASE_SHA" \
+  "$RUN_ID" \
+  "$TASK" \
+  "$OPAQUE_RUN_ID" \
+  "$OPAQUE_TASK_ID" \
+  "$ARM" \
+  "$CLAUDE_METADATA" \
+  "$CLAUDE_HOME_A" \
+  "$DIRECT_CLAUDE_BIN" \
+  "$DIRECT_CLAUDE_VERSION" \
+  "$REAL_USER_MEMORY"
+
 if [ "$ARM" = A ]; then
   if [ ! -e "$RESULT_DIR/devlyn-snapshot" ] && [ -d "$WORKTREE/.devlyn" ]; then
     if ! cp -a "$WORKTREE/.devlyn" "$RESULT_DIR/devlyn-snapshot"; then
@@ -825,336 +853,6 @@ PY
   esac
 fi
 
-python3 - \
-  "$RESULT_DIR/isolation.json" \
-  "$RESULT_DIR/neutralization.json" \
-  "$RESULT_DIR/transcript.txt" \
-  "$WORKTREE" \
-  "$EXTERNAL_ROOT" \
-  "$RESULT_DIR" \
-  "$BARE_HOME" \
-  "$CODEX_HOME_TERRA" \
-  "$CANARY_STDOUT" \
-  "$CANARY_STDERR" \
-  "$FROZEN_ENV_KEYS" \
-  "$FROZEN_PATH" \
-  "$DIRECT_CODEX_BIN" \
-  "$DIRECT_CODEX_VERSION" \
-  "$CODEX_HOME_TERRA/auth.json" \
-  "$NEUTRAL_BASE_SHA" \
-  "$RUN_ID" \
-  "$TASK" \
-  "$OPAQUE_RUN_ID" \
-  "$OPAQUE_TASK_ID" \
-  "$ARM" \
-  "$CLAUDE_METADATA" \
-  "$CLAUDE_HOME_A" \
-  "$DIRECT_CLAUDE_BIN" \
-  "$DIRECT_CLAUDE_VERSION" \
-  "$REAL_USER_MEMORY" <<'PY'
-import hashlib
-import json
-import os
-import re
-import stat
-import subprocess
-import sys
-from pathlib import Path
-
-(
-    out_path,
-    neutral_path,
-    transcript_path,
-    worktree,
-    external_root,
-    artifact_dir,
-    bare_home,
-    codex_home,
-    canary_stdout_path,
-    canary_stderr_path,
-    env_keys_csv,
-    frozen_path,
-    codex_binary,
-    codex_version,
-    auth_path,
-    neutral_baseline_sha,
-    run_id,
-    task,
-    opaque_run_id,
-    opaque_task_id,
-    arm,
-    claude_metadata_path,
-    claude_home,
-    claude_binary,
-    claude_version,
-    user_memory_path,
-) = sys.argv[1:]
-
-transcript_bytes = Path(transcript_path).read_bytes()
-transcript = transcript_bytes.decode("utf-8", errors="replace")
-literal_families = {
-    "global-skills-path": ("/.agents/skills/", "/.codex/skills/"),
-    "devlyn-skill-identity": ("devlyn:resolve", "devlyn:auto-resolve"),
-    "devlyn-runtime": (
-        "DEVLYN_SKILL_DIR",
-        "DEVLYN_SHARED_DIR",
-        ".devlyn/pipeline.state.json",
-    ),
-    "host-shell-startup-leak": (
-        "/Users/aipalm/.zshenv",
-        "/Users/aipalm/.zprofile",
-        "/Users/aipalm/.zlogin",
-    ),
-    "benchmark-identity": (
-        "devlyn-cli",
-        "auto-resolve benchmark",
-        "benchmark fixture",
-        "bench-test-repo",
-        "devlyn-ceiling-external",
-        run_id,
-        task,
-    ),
-}
-if arm == "A":
-    literal_families = {
-        "host-shell-startup-leak": literal_families["host-shell-startup-leak"],
-        "superset-wrapper": ("/.superset/", "SUPERSET_AGENT_ID"),
-    }
-hits = []
-lowered = transcript.lower()
-for family, markers in literal_families.items():
-    matched = sorted({marker for marker in markers if marker and marker.lower() in lowered})
-    if matched:
-        hits.append({"family": family, "markers": matched})
-regexes = {
-    "benchmark-identity": (
-        r"\bDR-[A-Za-z0-9._-]+",
-        r"\bFS1(?:-[A-Za-z0-9._-]+)?",
-        r"\biter\d+\b",
-        r"(?:^|/)(?:gate|gold)(?:/|$)",
-    )
-}
-for family, patterns in regexes.items():
-    if arm == "A" and family == "benchmark-identity":
-        continue
-    matched = sorted(
-        {pattern for pattern in patterns if re.search(pattern, transcript, re.IGNORECASE | re.MULTILINE)}
-    )
-    if matched:
-        hits.append({"family": family, "patterns": matched})
-
-user_memory = Path(user_memory_path)
-if user_memory.is_file():
-    memory_lines = sorted(
-        {
-            line.strip()
-            for line in user_memory.read_text(encoding="utf-8", errors="replace").splitlines()
-            if len(line.strip()) >= 24
-        }
-    )
-    memory_hits = [line for line in memory_lines if line in transcript]
-    if memory_hits:
-        hits.append(
-            {
-                "family": "user-memory-leak",
-                "marker_sha256": [
-                    hashlib.sha256(line.encode()).hexdigest() for line in memory_hits
-                ],
-            }
-        )
-
-root = Path(external_root).resolve()
-generated_paths = [
-    Path(worktree).resolve(),
-    Path(artifact_dir).resolve(),
-    Path(bare_home).resolve(),
-    Path(codex_home).resolve(),
-]
-if arm == "A":
-    generated_paths.append(Path(claude_home).resolve())
-forbidden_path = re.compile(
-    r"(?:devlyn|ceiling|gate|iter|bench|eval|trap|fixture|arm|gold)", re.IGNORECASE
-)
-opaque_paths_pass = True
-for path in generated_paths:
-    try:
-        relative = path.relative_to(root)
-    except ValueError:
-        opaque_paths_pass = False
-        break
-    if forbidden_path.search(str(relative)):
-        opaque_paths_pass = False
-        break
-
-claude_metadata = None
-if arm == "A" and Path(claude_metadata_path).is_file():
-    claude_metadata = json.loads(Path(claude_metadata_path).read_text(encoding="utf-8"))
-env_keys = (
-    claude_metadata.get("claude_env_keys", [])
-    if isinstance(claude_metadata, dict) and arm == "A"
-    else sorted(env_keys_csv.split(","))
-)
-env_values = {
-    "PATH": frozen_path,
-    "HOME": bare_home,
-    "CODEX_HOME": codex_home,
-    "TERM": "dumb",
-    "LANG": "en_US.UTF-8",
-    "LC_ALL": "en_US.UTF-8",
-    "TZ": "UTC",
-    "TMPDIR": str(Path(bare_home) / "t"),
-    "GIT_CONFIG_NOSYSTEM": "1",
-    "GIT_CONFIG_GLOBAL": "/dev/null",
-    "NPM_CONFIG_USERCONFIG": str(Path(bare_home) / ".npmrc"),
-    "NPM_CONFIG_CACHE": str(Path(bare_home) / "n"),
-}
-if arm == "A":
-    env_values.update(
-        {
-            "PATH": str(claude_metadata.get("frozen_path", "")),
-            "HOME": claude_home,
-            "CLAUDE_CONFIG_DIR": str(Path(claude_home) / ".claude"),
-            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-            "DISABLE_AUTOUPDATER": "1",
-            "TMPDIR": str(Path(claude_home) / "t"),
-            "NPM_CONFIG_USERCONFIG": str(Path(claude_home) / ".npmrc"),
-            "NPM_CONFIG_CACHE": str(Path(claude_home) / "n"),
-        }
-    )
-forbidden_env = re.compile(
-    r"devlyn|codex_companion|superset" if arm == "A" else r"claude|devlyn|codex_companion|superset",
-    re.IGNORECASE,
-)
-canary_stdout = Path(canary_stdout_path).read_bytes()
-canary_stderr = Path(canary_stderr_path).read_bytes()
-neutral = json.loads(Path(neutral_path).read_text(encoding="utf-8"))
-remotes = subprocess.run(
-    ["git", "-C", worktree, "remote"],
-    env={**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull},
-    check=True,
-    text=True,
-    stdout=subprocess.PIPE,
-).stdout.splitlines()
-reflog_root = Path(worktree) / ".git" / "logs"
-reflogs = sorted(
-    str(path.relative_to(Path(worktree) / ".git"))
-    for path in reflog_root.rglob("*")
-    if path.is_file()
-) if reflog_root.exists() else []
-auth = Path(auth_path)
-payload = {
-    "schema_version": 2,
-    "opaque_paths": {
-        "external_root": str(root),
-        "opaque_run_id": opaque_run_id,
-        "opaque_task_id": opaque_task_id,
-        "generated": [str(path) for path in generated_paths],
-        "passed": opaque_paths_pass,
-    },
-    "environment": {
-        "keys": env_keys,
-        "keys_sha256": hashlib.sha256("\n".join(env_keys).encode()).hexdigest(),
-        "forbidden_values_absent": not any(
-            forbidden_env.search(value) for value in env_values.values()
-        ),
-    },
-    "shell_startup_canary": {
-        "passed": canary_stdout == b"isolation-ok" and not canary_stderr,
-        "stdout_sha256": hashlib.sha256(canary_stdout).hexdigest(),
-        "stderr_sha256": hashlib.sha256(canary_stderr).hexdigest(),
-        "host_startup_files_absent": not any(
-            marker.encode() in canary_stderr
-            for marker in ("/.zshenv", "/.zprofile", "/.zlogin")
-        ),
-    },
-    "neutralization": neutral,
-    "git": {
-        "neutral_baseline_sha": neutral_baseline_sha,
-        "remotes": remotes,
-        "reflogs": reflogs,
-    },
-    "direct_codex": {
-        "path": str(Path(codex_binary).resolve()),
-        "version": codex_version,
-        "superset_wrapper": ".superset" in Path(codex_binary).parts,
-    },
-    "auth": {
-        "path": str(auth.resolve()),
-        "is_symlink": auth.is_symlink(),
-        "mode": format(stat.S_IMODE(auth.stat().st_mode), "04o"),
-    },
-    "forbidden_transcript_scan": {
-        "passed": not hits,
-        "transcript_sha256": hashlib.sha256(transcript_bytes).hexdigest(),
-        "hits": hits,
-    },
-}
-if arm == "A":
-    if not isinstance(claude_metadata, dict):
-        hits.append({"family": "claude-isolation-metadata-missing"})
-        claude_metadata = {}
-    direct_claude = claude_metadata.get(
-        "direct_claude",
-        {
-            "path": str(Path(claude_binary).resolve()),
-            "sha256": hashlib.sha256(Path(claude_binary).read_bytes()).hexdigest(),
-            "version": claude_version,
-            "superset_wrapper": ".superset" in Path(claude_binary).parts,
-        },
-    )
-    payload.update(
-        {
-            "direct_claude": direct_claude,
-            "frozen_path": claude_metadata.get("frozen_path"),
-            "shim_path": claude_metadata.get("shim_path"),
-            "shim_target": claude_metadata.get("shim_target"),
-            "shim_target_sha256": claude_metadata.get("shim_target_sha256"),
-            "command_v_claude": claude_metadata.get("command_v_claude"),
-            "home": claude_metadata.get("home", str(Path(claude_home).resolve())),
-            "claude_config_dir": claude_metadata.get(
-                "claude_config_dir", str(Path(claude_home).resolve() / ".claude")
-            ),
-            "claude_env_keys": claude_metadata.get("claude_env_keys", []),
-            "claude_env_keys_sha256": claude_metadata.get("claude_env_keys_sha256"),
-            "auth_mechanism": claude_metadata.get("auth_mechanism"),
-            "credentials_seeded": claude_metadata.get("credentials_seeded", False),
-        }
-    )
-    shim_path = Path(str(claude_metadata.get("shim_path", "")))
-    shim_target = Path(str(claude_metadata.get("shim_target", "")))
-    command_v = claude_metadata.get("command_v_claude") or {}
-    frozen_parts = str(claude_metadata.get("frozen_path", "")).split(os.pathsep)
-    try:
-        shim_path.relative_to(Path(claude_home).resolve())
-        shim_inside_home = True
-    except ValueError:
-        shim_inside_home = False
-    shim_valid = (
-        shim_inside_home
-        and shim_path.is_symlink()
-        and shim_path.resolve() == shim_target
-        and bool(frozen_parts)
-        and Path(frozen_parts[0]) == shim_path.parent
-        and claude_metadata.get("shim_target_sha256") == direct_claude.get("sha256")
-        and command_v.get("passed") is True
-        and command_v.get("path") == str(shim_path)
-        and command_v.get("resolved_path") == str(shim_target)
-        and command_v.get("sha256") == claude_metadata.get("shim_target_sha256")
-    )
-    claude_invalid = (
-        direct_claude.get("superset_wrapper") is not False
-        or ".superset" in str(claude_metadata.get("frozen_path", ""))
-        or not shim_valid
-        or claude_metadata.get("credentials_seeded") is not True
-        or not (Path(worktree) / ".claude/skills/devlyn:resolve/SKILL.md").is_file()
-        or any(marker in transcript.casefold() for marker in ("not logged in", "authentication_error"))
-    )
-    if claude_invalid:
-        hits.append({"family": "claude-isolation-contract"})
-    payload["forbidden_transcript_scan"]["passed"] = not hits
-    payload["forbidden_transcript_scan"]["hits"] = hits
-Path(out_path).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-PY
 
 echo "[ceiling-arm] ${TASK} ${ARM}${ATTEMPT} exit=${ARM_EXIT} timed_out=${RUN_TIMED_OUT} draw_non_diagnostic=${RUN_DRAW_NON_DIAGNOSTIC} result=${RESULT_DIR}"
 if [ "$ARM" = A ]; then
