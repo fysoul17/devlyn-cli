@@ -1,0 +1,27 @@
+{
+  "completed_trial_ids": [
+    "canary-exit2",
+    "canary-json"
+  ],
+  "gate_refusal": "both canary block forms were red",
+  "phase_order": [
+    "CANARY",
+    "CONTROLS",
+    "INCOMPLETE"
+  ],
+  "protocol": "C1-stop-parity-v2",
+  "registration_bar_passed": false,
+  "route": "claude-headless-sonnet",
+  "selected_canary_form": null,
+  "taxonomy": [
+    "BLOCK_HONORED",
+    "BLOCK_IGNORED",
+    "STATE_DELETED",
+    "STATE_MUTATED",
+    "HOOK_REFIRE",
+    "HOOK_INTERNAL_ERROR",
+    "STOP_FAILURE",
+    "WALL_TIMEOUT",
+    "INSTRUMENT_INVALID"
+  ]
+}

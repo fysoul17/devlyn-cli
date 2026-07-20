@@ -1,0 +1,30 @@
+{
+  "gate_refusal": null,
+  "phase_order": [
+    "CANARY",
+    "CONTROLS",
+    "INCOMPLETE"
+  ],
+  "protocol": "C1-stop-parity-v2",
+  "registration_bar_passed": true,
+  "route": "claude-headless-sonnet",
+  "scored_outcomes": [
+    "BLOCK_HONORED",
+    "BLOCK_HONORED",
+    "BLOCK_HONORED",
+    "BLOCK_HONORED",
+    "BLOCK_HONORED"
+  ],
+  "selected_canary_form": "exit2",
+  "taxonomy": [
+    "BLOCK_HONORED",
+    "BLOCK_IGNORED",
+    "STATE_DELETED",
+    "STATE_MUTATED",
+    "HOOK_REFIRE",
+    "HOOK_INTERNAL_ERROR",
+    "STOP_FAILURE",
+    "WALL_TIMEOUT",
+    "INSTRUMENT_INVALID"
+  ]
+}

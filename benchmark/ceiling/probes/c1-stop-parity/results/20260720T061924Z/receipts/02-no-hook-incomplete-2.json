@@ -1,0 +1,57 @@
+{
+  "bounded_outcome": "COMPLETED",
+  "classifier": {
+    "exit_code": 79,
+    "status": "INCOMPLETE:verify"
+  },
+  "cli_version": "2.1.215 (Claude Code)",
+  "event_errors": [],
+  "event_types": [
+    "system",
+    "assistant",
+    "rate_limit_event",
+    "result"
+  ],
+  "events": [
+    {
+      "observed_ns": 329126780797625,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329129173270916,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329129197169291,
+      "type": "rate_limit_event"
+    },
+    {
+      "observed_ns": 329129198922000,
+      "type": "result"
+    }
+  ],
+  "gate_outcome": "GREEN",
+  "hook_enabled": false,
+  "hook_invocations": [],
+  "hook_log_errors": [],
+  "hook_mode": null,
+  "model_turn_count": 1,
+  "phase": "CONTROLS",
+  "post_state": {
+    "exists": true,
+    "sha256": "ba4b06bdeac2dbc6c256dec4af51a3f4351f317a0c1d71871b1840835b4d2bab"
+  },
+  "pre_state": {
+    "exists": true,
+    "sha256": "ba4b06bdeac2dbc6c256dec4af51a3f4351f317a0c1d71871b1840835b4d2bab"
+  },
+  "process_exit": 0,
+  "protocol": "C1-stop-parity-v2",
+  "route": "claude-headless-sonnet",
+  "selected_canary_form": "exit2",
+  "source_receipt": "benchmark/ceiling/results/nodeg-20260719g/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/pipeline.state.json",
+  "source_sha256": "ba4b06bdeac2dbc6c256dec4af51a3f4351f317a0c1d71871b1840835b4d2bab",
+  "taxonomy": null,
+  "trial_id": "no-hook-incomplete-2",
+  "trial_kind": "no-hook-incomplete"
+}

@@ -139,3 +139,37 @@ executor.
 **Record-and-defer**: C4 foreground judge dispatcher, C3 SPW terminal
 verb, auto-relaunch/resume. 0073 Stage B exam is immune by construction
 (detached worktree at 21cd920).
+
+## C1 PROBE MEASURED — claude route VETO-CAPABLE, registration bar PASSED (2026-07-20)
+
+Committed receipts: `benchmark/ceiling/probes/c1-stop-parity/results/`
+(both runs). Run 1 (20260720T061746Z): **canary red both forms — the
+harness-dead gate fired exactly as frozen** (never scored). Root cause
+1-line: `--print` + `--output-format=stream-json` requires `--verbose`
+(fix d8fb354, surfaced for Codex reconciliation). Run 2
+(20260720T061924Z): canary GREEN on the exit-2 form (block contract
+pinned: exit 2 + stderr; JSON fallback never needed); all 6 controls
+green (no-hook: 0 invocations, sessions end normally — identification
+holds; clean-terminal ×2: classifier CLEAN, hook allowed — not
+over-tight; absent-state: NOT_APPLICABLE allowed; hook-internal-error:
+exit-5 non-blocking honored); **5/5 incomplete trials BLOCK_HONORED**
+(each: 9 hook invocations, 9 blocks, 10-13 assistant events = repeated
+post-block model turns; pre/post state SHA-256 byte-identical on every
+trial — zero STATE_ESCAPE; process exit 0). `summary.json
+registration_bar_passed: true`. P1 CONFIRMED at the strict 5/5 bar.
+
+**Honest bound (goes into any registration round)**: sessions
+terminated with exit 0 after ~9 consecutive blocks — the CLI itself
+caps the stop-hook loop, i.e. the CLI layer fails open after repeated
+blocks. C1 is therefore IN-SESSION SELF-CORRECTION PRESSURE
+(veto-capable, repeatedly honored), NOT an absolute terminal bind; the
+external C2 classification remains the terminal authority.
+Measured-bind-first ordering vindicated post-hoc.
+
+**Route matrix state**: claude headless = veto-capable (measured);
+codex = ROUTE-DISABLED-BY-HARNESS (codex-monitored.sh:110-111, policy
+not CLI gap — live hooks.json Stop event exists, trust-gated); omp =
+surface exists (`--hook`), veto semantics UNMEASURED. P3v2 CONFIRMED
+(≥1 route cannot veto in the current harness path). Product C1 wiring
+remains a SEPARATE registration decision (new claim, own round);
+nothing ships from this probe.

@@ -1,0 +1,345 @@
+{
+  "bounded_outcome": "COMPLETED",
+  "classifier": {
+    "exit_code": 79,
+    "status": "INCOMPLETE:verify"
+  },
+  "cli_version": "2.1.215 (Claude Code)",
+  "event_errors": [],
+  "event_types": [
+    "system",
+    "system",
+    "system",
+    "assistant",
+    "assistant",
+    "rate_limit_event",
+    "user",
+    "system",
+    "system",
+    "system",
+    "system",
+    "system",
+    "assistant",
+    "assistant",
+    "user",
+    "system",
+    "system",
+    "system",
+    "system",
+    "system",
+    "system",
+    "system",
+    "assistant",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "result"
+  ],
+  "events": [
+    {
+      "observed_ns": 329252019588916,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329254543209166,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329254911213750,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329254911969833,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329255555497250,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329255590906541,
+      "type": "rate_limit_event"
+    },
+    {
+      "observed_ns": 329255651406333,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329255651990625,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329258503647666,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329259569585083,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329261388941541,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329261397215250,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329261397417250,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329261434910666,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329261510873416,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329263355807500,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329265547287666,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329266990838208,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329268452334583,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329269579092875,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329270906034500,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329272535755000,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329272542307500,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329275959071208,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329276060704541,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329280615613458,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329280718005000,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329282916983583,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329283031118125,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329285221741375,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329285304115250,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329287322227000,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329287418755666,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329289680594625,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329290017620500,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329292263734708,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329292344799708,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329292346421333,
+      "type": "result"
+    }
+  ],
+  "gate_outcome": null,
+  "hook_enabled": true,
+  "hook_invocations": [
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329255632505875,
+      "ordinal": 1,
+      "stop_hook_active": false,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329261502389291,
+      "ordinal": 2,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329276051721416,
+      "ordinal": 3,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329280709681666,
+      "ordinal": 4,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329283022781041,
+      "ordinal": 5,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329285295550375,
+      "ordinal": 6,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329287410410791,
+      "ordinal": 7,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329290008776625,
+      "ordinal": 8,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329292335176833,
+      "ordinal": 9,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    }
+  ],
+  "hook_log_errors": [],
+  "hook_mode": "state",
+  "model_turn_count": 12,
+  "phase": "INCOMPLETE",
+  "post_state": {
+    "exists": true,
+    "sha256": "ddb3f7317990e2509890f8068e0f9c14a228e5925155b7a35fc449ed237d4286"
+  },
+  "pre_state": {
+    "exists": true,
+    "sha256": "ddb3f7317990e2509890f8068e0f9c14a228e5925155b7a35fc449ed237d4286"
+  },
+  "process_exit": 0,
+  "protocol": "C1-stop-parity-v2",
+  "route": "claude-headless-sonnet",
+  "selected_canary_form": "exit2",
+  "source_receipt": "benchmark/ceiling/results/nodeg-20260719g/DR-ledger-rounding-consistency-f26-payout/A1/devlyn-snapshot/pipeline.state.json",
+  "source_sha256": "ddb3f7317990e2509890f8068e0f9c14a228e5925155b7a35fc449ed237d4286",
+  "taxonomy": "BLOCK_HONORED",
+  "trial_id": "f26-1",
+  "trial_kind": "incomplete"
+}

@@ -1,0 +1,340 @@
+{
+  "bounded_outcome": "COMPLETED",
+  "classifier": {
+    "exit_code": 79,
+    "status": "INCOMPLETE:verify"
+  },
+  "cli_version": "2.1.215 (Claude Code)",
+  "event_errors": [],
+  "event_types": [
+    "system",
+    "system",
+    "system",
+    "assistant",
+    "assistant",
+    "rate_limit_event",
+    "user",
+    "system",
+    "system",
+    "system",
+    "system",
+    "assistant",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "system",
+    "system",
+    "system",
+    "assistant",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "system",
+    "system",
+    "system",
+    "assistant",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "result"
+  ],
+  "events": [
+    {
+      "observed_ns": 329222079996916,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329224084185125,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329224425237083,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329224426029125,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329225074141791,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329225398448750,
+      "type": "rate_limit_event"
+    },
+    {
+      "observed_ns": 329225449876083,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329225450446250,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329228627971875,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329230486555666,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329230906515000,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329230912442625,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329231465597000,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329231622652833,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329234312633375,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329234366685500,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329237001982041,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329238484853666,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329238491670291,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329238491842250,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329239115768083,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329239217506708,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329241116306625,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329241194663541,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329243013110666,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329244466917541,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329244488783000,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329244489001666,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329245269478291,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329245371281958,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329247520805708,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329247616111375,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329249549566083,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329249638703333,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329251504832000,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329251622170458,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329251622567125,
+      "type": "result"
+    }
+  ],
+  "gate_outcome": null,
+  "hook_enabled": true,
+  "hook_invocations": [
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329225441019083,
+      "ordinal": 1,
+      "stop_hook_active": false,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329231614079166,
+      "ordinal": 2,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329234356325875,
+      "ordinal": 3,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329239208946041,
+      "ordinal": 4,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329241186446208,
+      "ordinal": 5,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329245359604000,
+      "ordinal": 6,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329247607574583,
+      "ordinal": 7,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329249630087083,
+      "ordinal": 8,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329251613534750,
+      "ordinal": 9,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    }
+  ],
+  "hook_log_errors": [],
+  "hook_mode": "state",
+  "model_turn_count": 13,
+  "phase": "INCOMPLETE",
+  "post_state": {
+    "exists": true,
+    "sha256": "4ab0c5b1474f4a75fb37324489371cfc1a51e170a64badf97b170f19cbdf1db4"
+  },
+  "pre_state": {
+    "exists": true,
+    "sha256": "4ab0c5b1474f4a75fb37324489371cfc1a51e170a64badf97b170f19cbdf1db4"
+  },
+  "process_exit": 0,
+  "protocol": "C1-stop-parity-v2",
+  "route": "claude-headless-sonnet",
+  "selected_canary_form": "exit2",
+  "source_receipt": "benchmark/ceiling/results/nodeg-20260719g/DR-allocation-fefo-priority-rollback-f23-fulfillment/A1/devlyn-snapshot/pipeline.state.json",
+  "source_sha256": "4ab0c5b1474f4a75fb37324489371cfc1a51e170a64badf97b170f19cbdf1db4",
+  "taxonomy": "BLOCK_HONORED",
+  "trial_id": "f23-1",
+  "trial_kind": "incomplete"
+}

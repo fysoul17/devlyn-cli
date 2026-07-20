@@ -1,0 +1,71 @@
+{
+  "bounded_outcome": "COMPLETED",
+  "classifier": {
+    "exit_code": 0,
+    "status": "NOT_APPLICABLE"
+  },
+  "cli_version": "2.1.215 (Claude Code)",
+  "event_errors": [],
+  "event_types": [
+    "system",
+    "assistant",
+    "rate_limit_event",
+    "result"
+  ],
+  "events": [
+    {
+      "observed_ns": 329136177602416,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329138184511583,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329138223300291,
+      "type": "rate_limit_event"
+    },
+    {
+      "observed_ns": 329138280100125,
+      "type": "result"
+    }
+  ],
+  "gate_outcome": "GREEN",
+  "hook_enabled": true,
+  "hook_invocations": [
+    {
+      "block_form": "exit2",
+      "block_requested": false,
+      "classifier_exit": 0,
+      "classifier_expected": true,
+      "classifier_status": "NOT_APPLICABLE",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329138270773791,
+      "ordinal": 1,
+      "stop_hook_active": false,
+      "wrapper_exit": 0
+    }
+  ],
+  "hook_log_errors": [],
+  "hook_mode": "state",
+  "model_turn_count": 1,
+  "phase": "CONTROLS",
+  "post_state": {
+    "exists": false,
+    "sha256": null
+  },
+  "pre_state": {
+    "exists": false,
+    "sha256": null
+  },
+  "process_exit": 0,
+  "protocol": "C1-stop-parity-v2",
+  "route": "claude-headless-sonnet",
+  "selected_canary_form": "exit2",
+  "source_receipt": null,
+  "source_sha256": null,
+  "taxonomy": null,
+  "trial_id": "absent-state-1",
+  "trial_kind": "absent-state"
+}

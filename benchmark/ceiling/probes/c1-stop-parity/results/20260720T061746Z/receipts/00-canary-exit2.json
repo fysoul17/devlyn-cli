@@ -1,0 +1,35 @@
+{
+  "bounded_outcome": "COMPLETED",
+  "classifier": {
+    "exit_code": 0,
+    "status": "NOT_APPLICABLE"
+  },
+  "cli_version": "2.1.215 (Claude Code)",
+  "event_errors": [],
+  "event_types": [],
+  "events": [],
+  "gate_outcome": "RED",
+  "hook_enabled": true,
+  "hook_invocations": [],
+  "hook_log_errors": [],
+  "hook_mode": "always-block",
+  "model_turn_count": 0,
+  "phase": "CANARY",
+  "post_state": {
+    "exists": false,
+    "sha256": null
+  },
+  "pre_state": {
+    "exists": false,
+    "sha256": null
+  },
+  "process_exit": 1,
+  "protocol": "C1-stop-parity-v2",
+  "route": "claude-headless-sonnet",
+  "selected_canary_form": null,
+  "source_receipt": null,
+  "source_sha256": null,
+  "taxonomy": null,
+  "trial_id": "canary-exit2",
+  "trial_kind": "always-block"
+}

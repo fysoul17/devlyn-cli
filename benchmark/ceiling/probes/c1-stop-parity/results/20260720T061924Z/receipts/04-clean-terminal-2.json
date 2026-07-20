@@ -1,0 +1,71 @@
+{
+  "bounded_outcome": "COMPLETED",
+  "classifier": {
+    "exit_code": 0,
+    "status": "CLEAN"
+  },
+  "cli_version": "2.1.215 (Claude Code)",
+  "event_errors": [],
+  "event_types": [
+    "system",
+    "assistant",
+    "rate_limit_event",
+    "result"
+  ],
+  "events": [
+    {
+      "observed_ns": 329132870504208,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329135617777791,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329135713144000,
+      "type": "rate_limit_event"
+    },
+    {
+      "observed_ns": 329135767736458,
+      "type": "result"
+    }
+  ],
+  "gate_outcome": "GREEN",
+  "hook_enabled": true,
+  "hook_invocations": [
+    {
+      "block_form": "exit2",
+      "block_requested": false,
+      "classifier_exit": 0,
+      "classifier_expected": true,
+      "classifier_status": "CLEAN",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329135758298416,
+      "ordinal": 1,
+      "stop_hook_active": false,
+      "wrapper_exit": 0
+    }
+  ],
+  "hook_log_errors": [],
+  "hook_mode": "state",
+  "model_turn_count": 1,
+  "phase": "CONTROLS",
+  "post_state": {
+    "exists": true,
+    "sha256": "54ccd8857edaad20fb9b4da9e662d927e2f6c0940c1625ecfd368b93b7f8f5c7"
+  },
+  "pre_state": {
+    "exists": true,
+    "sha256": "54ccd8857edaad20fb9b4da9e662d927e2f6c0940c1625ecfd368b93b7f8f5c7"
+  },
+  "process_exit": 0,
+  "protocol": "C1-stop-parity-v2",
+  "route": "claude-headless-sonnet",
+  "selected_canary_form": "exit2",
+  "source_receipt": "benchmark/ceiling/results/nodeg-20260719g/DR-atomic-state-f11-batch-import/A1/devlyn-snapshot/runs/rs-20260719T121412Z-6408dc3d43c8/pipeline.state.json",
+  "source_sha256": "54ccd8857edaad20fb9b4da9e662d927e2f6c0940c1625ecfd368b93b7f8f5c7",
+  "taxonomy": null,
+  "trial_id": "clean-terminal-2",
+  "trial_kind": "clean-terminal"
+}

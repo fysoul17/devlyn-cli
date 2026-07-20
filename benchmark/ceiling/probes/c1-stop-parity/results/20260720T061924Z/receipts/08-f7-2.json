@@ -1,0 +1,305 @@
+{
+  "bounded_outcome": "COMPLETED",
+  "classifier": {
+    "exit_code": 79,
+    "status": "INCOMPLETE:verify"
+  },
+  "cli_version": "2.1.215 (Claude Code)",
+  "event_errors": [],
+  "event_types": [
+    "system",
+    "assistant",
+    "rate_limit_event",
+    "user",
+    "system",
+    "assistant",
+    "user",
+    "system",
+    "system",
+    "system",
+    "assistant",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "system",
+    "system",
+    "system",
+    "assistant",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "result"
+  ],
+  "events": [
+    {
+      "observed_ns": 329168586559333,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329170605999625,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329170705027916,
+      "type": "rate_limit_event"
+    },
+    {
+      "observed_ns": 329170762009500,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329170762565541,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329172968829083,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329173048267750,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329175090461958,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329176535956000,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329176950827500,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329176958323541,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329177100812458,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329177185020791,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329179481523750,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329179742886875,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329181661955500,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329181752450333,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329184801961416,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329185400501458,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329187264265250,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329187365857666,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329190134029041,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329191785160833,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329191785218541,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329191785375208,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329191791925458,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329191868718791,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329193985851958,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329194044963000,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329194057010916,
+      "type": "result"
+    }
+  ],
+  "gate_outcome": null,
+  "hook_enabled": true,
+  "hook_invocations": [
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329170752410000,
+      "ordinal": 1,
+      "stop_hook_active": false,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329173039162500,
+      "ordinal": 2,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329177176456625,
+      "ordinal": 3,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329179734043375,
+      "ordinal": 4,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329181744051125,
+      "ordinal": 5,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329185392028916,
+      "ordinal": 6,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329187357315291,
+      "ordinal": 7,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329191858309208,
+      "ordinal": 8,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": 79,
+      "classifier_expected": true,
+      "classifier_status": "INCOMPLETE:verify",
+      "hook_event_name": "Stop",
+      "mode": "state",
+      "observed_ns": 329194036575750,
+      "ordinal": 9,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    }
+  ],
+  "hook_log_errors": [],
+  "hook_mode": "state",
+  "model_turn_count": 11,
+  "phase": "INCOMPLETE",
+  "post_state": {
+    "exists": true,
+    "sha256": "ba4b06bdeac2dbc6c256dec4af51a3f4351f317a0c1d71871b1840835b4d2bab"
+  },
+  "pre_state": {
+    "exists": true,
+    "sha256": "ba4b06bdeac2dbc6c256dec4af51a3f4351f317a0c1d71871b1840835b4d2bab"
+  },
+  "process_exit": 0,
+  "protocol": "C1-stop-parity-v2",
+  "route": "claude-headless-sonnet",
+  "selected_canary_form": "exit2",
+  "source_receipt": "benchmark/ceiling/results/nodeg-20260719g/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/pipeline.state.json",
+  "source_sha256": "ba4b06bdeac2dbc6c256dec4af51a3f4351f317a0c1d71871b1840835b4d2bab",
+  "taxonomy": "BLOCK_HONORED",
+  "trial_id": "f7-2",
+  "trial_kind": "incomplete"
+}

@@ -1,0 +1,300 @@
+{
+  "bounded_outcome": "COMPLETED",
+  "classifier": {
+    "exit_code": 0,
+    "status": "NOT_APPLICABLE"
+  },
+  "cli_version": "2.1.215 (Claude Code)",
+  "event_errors": [],
+  "event_types": [
+    "system",
+    "assistant",
+    "rate_limit_event",
+    "user",
+    "system",
+    "assistant",
+    "user",
+    "system",
+    "system",
+    "assistant",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "system",
+    "system",
+    "system",
+    "assistant",
+    "assistant",
+    "user",
+    "result"
+  ],
+  "events": [
+    {
+      "observed_ns": 329097871989500,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329099816743166,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329099854615333,
+      "type": "rate_limit_event"
+    },
+    {
+      "observed_ns": 329099918874500,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329099919493583,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329102277619375,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329102367414375,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329104869682750,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329105904031875,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329105904235583,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329105915879125,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329105989285250,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329107968754083,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329108057744833,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329109752695458,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329109842469333,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329111622633166,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329111730486375,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329114331491791,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329114485373916,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329118375573458,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329118699230291,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329120628562958,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329122080982875,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329122810267208,
+      "type": "system"
+    },
+    {
+      "observed_ns": 329122817052916,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329122817274625,
+      "type": "assistant"
+    },
+    {
+      "observed_ns": 329122899742750,
+      "type": "user"
+    },
+    {
+      "observed_ns": 329122900104916,
+      "type": "result"
+    }
+  ],
+  "gate_outcome": "GREEN",
+  "hook_enabled": true,
+  "hook_invocations": [
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": null,
+      "classifier_expected": true,
+      "classifier_status": "ALWAYS_BLOCK",
+      "hook_event_name": "Stop",
+      "mode": "always-block",
+      "observed_ns": 329099912189958,
+      "ordinal": 1,
+      "stop_hook_active": false,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": null,
+      "classifier_expected": true,
+      "classifier_status": "ALWAYS_BLOCK",
+      "hook_event_name": "Stop",
+      "mode": "always-block",
+      "observed_ns": 329102361654083,
+      "ordinal": 2,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": null,
+      "classifier_expected": true,
+      "classifier_status": "ALWAYS_BLOCK",
+      "hook_event_name": "Stop",
+      "mode": "always-block",
+      "observed_ns": 329105983350583,
+      "ordinal": 3,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": null,
+      "classifier_expected": true,
+      "classifier_status": "ALWAYS_BLOCK",
+      "hook_event_name": "Stop",
+      "mode": "always-block",
+      "observed_ns": 329108052487625,
+      "ordinal": 4,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": null,
+      "classifier_expected": true,
+      "classifier_status": "ALWAYS_BLOCK",
+      "hook_event_name": "Stop",
+      "mode": "always-block",
+      "observed_ns": 329109834806000,
+      "ordinal": 5,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": null,
+      "classifier_expected": true,
+      "classifier_status": "ALWAYS_BLOCK",
+      "hook_event_name": "Stop",
+      "mode": "always-block",
+      "observed_ns": 329111725178583,
+      "ordinal": 6,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": null,
+      "classifier_expected": true,
+      "classifier_status": "ALWAYS_BLOCK",
+      "hook_event_name": "Stop",
+      "mode": "always-block",
+      "observed_ns": 329114478439333,
+      "ordinal": 7,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": null,
+      "classifier_expected": true,
+      "classifier_status": "ALWAYS_BLOCK",
+      "hook_event_name": "Stop",
+      "mode": "always-block",
+      "observed_ns": 329118693417625,
+      "ordinal": 8,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    },
+    {
+      "block_form": "exit2",
+      "block_requested": true,
+      "classifier_exit": null,
+      "classifier_expected": true,
+      "classifier_status": "ALWAYS_BLOCK",
+      "hook_event_name": "Stop",
+      "mode": "always-block",
+      "observed_ns": 329122893339583,
+      "ordinal": 9,
+      "stop_hook_active": true,
+      "wrapper_exit": 2
+    }
+  ],
+  "hook_log_errors": [],
+  "hook_mode": "always-block",
+  "model_turn_count": 11,
+  "phase": "CANARY",
+  "post_state": {
+    "exists": false,
+    "sha256": null
+  },
+  "pre_state": {
+    "exists": false,
+    "sha256": null
+  },
+  "process_exit": 0,
+  "protocol": "C1-stop-parity-v2",
+  "route": "claude-headless-sonnet",
+  "selected_canary_form": "exit2",
+  "source_receipt": null,
+  "source_sha256": null,
+  "taxonomy": null,
+  "trial_id": "canary-exit2",
+  "trial_kind": "always-block"
+}
