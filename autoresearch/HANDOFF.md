@@ -10,7 +10,7 @@
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
 
-Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and again 2026-07-14 (user cleanup directive; prior full history recoverable from git + iteration files + DECISIONS.md).
+Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07-14, and 2026-07-20 (user cleanup directives; Blocks 2-6 verbatim + prior full history recoverable from git + iteration files + DECISIONS.md; superseded memory-file narratives moved to memory/archive/).
 
 ---
 
@@ -83,18 +83,18 @@ builds detached + one retry on silent hang (a killed-at-report-stage
 build may be complete on disk — verify + finish gates yourself before
 rebuilding; two live hangs observed: 35-min and 66-min zero-output).
 
-**Seat scorecard this session (keep the triad honest)**: orchestrator
-adjudicated the Q1 label against Codex's FALSIFIED reading on the
-frozen-text receipts, re-extracted archived state itself, and gated the
-live tree per the -18h procedure; Codex caught the trigger-path record
-error (VERIFY not BUILD_GATE), constructed the E1 counter-case that
-added the FINDING_TARGETED guard, built M-CP, and at ship-round proved
-completion-predicate absence + named-then-rejected its own watcher
-counter; Grok found the VERIFY-fix-path commit-contract hole, withdrew
-two R0 positions with named deltas, and at ship-round caught
-FORCE_COLOR/NO_COLOR oracle env pollution before re-running the gate
-clean on its own copy (diff -rq 0). Standing lesson: verify liveness
-before gating.
+**Seat scorecard (2026-07-19/20 sessions, keep the triad honest)**:
+orchestrator verified every load-bearing seat citation live before
+adopting, caught its own P-c double-count suspicion before Grok named
+it, and root-caused the -19g instrument chain from receipts; Codex
+found the rounds_history schema bug + C2-activation gating + falsified
+the orchestrator's P-a SC-carrier causal claim from raw judge deltas,
+and built Stage A / M-CP / isolation-payload extraction (two silent
+hangs observed — detach + one retry); Grok killed the P-c double-count
+at R1, withdrew its C1-infeasibility counter with a named delta, and
+its C2-first ranking won the 0074 adjudication over Codex's C1-first.
+Standing lessons: verify liveness before gating; synthetic self-tests
+must be generated from REAL receipts (two live counterexamples).
 
 
 ---
@@ -138,65 +138,21 @@ Block 1 is **strictly user-verbatim**. Never re-summarize Block 1.
 
 > 한가지만 더. 지금 하고있는 것들이 북극성의 목표를 향해서 no xxxx, worldclass xxx 5대 원칙들을 바탕으로 계속 개선을 해나가고 있는게 맞지? 그냥 오로지 점수를 위해서 하는게 아니고 말이야? 확실하게 해주고 항상 codex cli gpt 5.5 와 함께 compenion 으로서 pair 로 논의하고 최선의 결과에 도달할 수 있도록 끝까지 연구하고 개선해줘. 산으로만 가지마. 이제는 됐다 싶을때까지 계속 돌아. 하면서 계속 docs는 업데이트 해주고, 50% 이상 context가 차면 compact 하고 handoff 를 통해서 지금 내가 얘기한것 토씨하나 틀리지 않고 그대로 각인하고 계속 진화시켜나가.
 
-### Block 2 (2026-04-29 evening — six rapid-fire directives)
+### Blocks 2-6 (2026-04-29 → 2026-05-03 — FOLDED; verbatim archive in git history of this file, pre-2026-07-20)
 
-> 우리 subscription 으로 하는거니까 무료니 얼마 드니 그런거 하지마 앞으로 메모리에 박아.
-
-> L2 는 분업이 아니라 pair 협업을 기준으로 가자.
-
-> 빌드도 협업이어야 할거 같은데??
-
-> 효율과 정확성, 그리고 reasonable 한 속도라고. 무조건 빨라 오래걸려도 괜찮아가 아니라.
-
-> consult 라기보다는 협업모드야. 조언이 아니라. 최적의 결론을 낼때까지. pair 도 반드시 하는게 아니라, 비교해봐야해. pair 로 했을때와 혼자 했을때 크게 차이가 없다면 혼자 하는게 나을수도 있기 때문에.
-
-> 원래 설계에 가장 많은 시간을 쏟고 가장 정확하고 확실한 context engineering을 해야한다고 생각해. build 는 오롯이 plan 에 잡힌 내용들을 정확하고 최선으로 구현하면 되는거고. 검증단계들은 혹시나 만에 하나 잘못 구현하거나 개선할 가치가 있거나, 기술부채를 남겼거나, 클린업을 덜했거나 등등의 케이스를 위해서 존재하는게 아닐까?
-
-> 앞으로 이런거 설명할때 반드시 쉽게 설명해. 쉽고 간결하게. 결정하는 사람 입장에서.
-
-### Block 3 (2026-04-29 architecture compromise)
-
-PLAN은 non-negotiable invariants + acceptance contract을 만든다. BUILD는 그 안에서 *constrained design judgment*를 수행한다. EVAL/CRITIC은 BUILD의 judgment를 대체하지 않는 독립 품질 레이어다. (Codex framing, user-adjudicated.)
-
-### Block 4 (2026-04-29 → 2026-04-30 — engineer-quality + cost-ban + variance + plain Korean)
-
-> 기존 bare case가 틀린거라면 그걸 수정해야해. 북극성을 보자고. 유저가 하나부터 끝까지 다 하는게 목적이 아니야. 유저는 계획하고 실행하면 나머지는 처음부터 끝까지 완벽하게 클린업과 문서화, 기술부채 제거 등을 완벽하게 다 해야해. 소프트웨어 엔지니어링을 생각해보자고.
-
-> 비용이고 뭐고 그냥 신경쓰지말라고 몇번얘기해.
-
-> 점수가 신뢰가 있나? +5 라는게 의미가 정말 있나? 4.5나 5.2나 크게 차이가 없을수도 있을것 같은데?
-
-> 미션1이 팀으로 가는거고 이건 미래에 하는거고, 일단은 혼자서 단일로 하는 케이스도 충분히 만들어져야 한다고 했잖아. 그건 왜 뛰어넘지?
-
-> 좀 쉽게 설명해줄래?? / 무슨얘기인지 쉽게 설명하고 / 아니 좀 쉽게 설명하라니까
-
-### Block 5 (2026-04-30 — 2-skill redesign + multi-LLM evolution)
-
-> 유저 입장에서는 사실 ideate 와 build 두개만 있으면 되지 않나? build 안에 마지막에 verify 가 들어가면 되지 않아?
-
-→ Locked 2-skill design. VERIFY = fresh-subagent final phase of `/devlyn:resolve`.
-
-> build 가 적합하지 않을수도 있는게, 반드시 ideate이 존재하는게 아니라, 기존에 이미 있던 내용에 대해서 수정/개선 요구, 혹은 디버그 요구 등이 있을수도 있어. 그래서 더 적당한 이름이 필요.
-
-→ Renamed `/build` → `/devlyn:resolve`. Free-form goal mode for non-spec-first invocations.
-
-> resolve 스킬은 우리가 지금까지 계속 진화시키고 있던, 여러 LLM 들을 섞어서 논의하는 (claude+codex 부터) 방향도 해야하고, 이후에는 pi agent 를 통해서 여러 다른 LLM도 사용할 수 있다. 특히 우리의 no xxxx, worldclass xxx의 원칙을 반드시 지켜야 한다.
-
-→ Multi-LLM evolution direction binding. Pair-mode is measurement-gated per phase; pi-agent future swap-in via adapter system. no-xxx / worldclass principles bind multi-LLM coordination layer.
-
-> 근데 ideate가 없어도 단독으로도 동작해야하잖아?
-
-→ Confirmed: `/devlyn:resolve` standalone-capable via free-form mode + `--spec` mode. `/devlyn:ideate` is OPTIONAL.
-
-### Block 6 (2026-05-03 — round-3 pair-redesign)
-
-> 단순 사용자가 평소대로 resolve 만 하면 다 솔로가 아니라, **최대한의 성능과 효율을 내는 페어 모드여야해**. (풀 파이프라인이라고 하는 정의가 달라져야겠지? 거부된 풀 파이프라인이 아니라 --verify-only 가 풀 파이프라인이 된다던가, 우리의 결정에 따라서. **필요없는 옵션들은 클린업**)
-
-> **계획과 설계가 모든 파이프라인중에 가장 중요해.** 그래서 이부분은 여러 LLM들이 (지금은 둘이지만, 나중에는 늘어날수있음) **페어로 논의하고 최종적으로 최상의 결론이 날때까지 라운드를 이어 나가는게 맞지 않아?** 첫 단추가 잘못 끼이면 뒤에 아무리 둘이서 논의하고 북치고 장구쳐도 안된단말이지. 우리 원칙들을 잘 지키면서 **context pollution, context 부족 등 이슈가 없이** 매우 명확하고 클린하게 spec을 작성하는것이 이후에 Resolve 할때 오류를 최소화 할 수 있는것이지.
-
-> 잠시. **deterministic은 정확하게 무슨뜻이고**, cleanup, verify judge 를 비롯해서 **특히! ideate가 solo 가 더 낫다는 증거가 있나?** 특히 ideate은 **똑같이 plan 을 넘어 설계 단계일텐데, 이거야 말로 가장 중요한 스탭이고 이거야말로 여러 LLM이 유저와 면밀하게 검토해서 가장 정확한 방향의 북극성을 만드는 역할을 할텐데** (특히 프로덕트 전체 그림을 보고 일관되게 그림을 그리는 용도) 이걸 solo로 하는게 더 나은게 맞는거야?
-
-> 새로운 context window 에서 진행할수 있도록 명확하게 모든 context를 pollution 없이 원칙들과 함께 HANDOFF를 클린업하고 재작성해줘. 처음부터 끝까지 멈추지 않고 진행될수 있도록. codex cli gpt 5.5 로 페어로 협의해서 최고의 결과를 얻을수 있도록. **codex에게 context만 제공하는게 아니라 직접 코드베이스를 읽어서 스스로 결정할수 있도록.**
+Operative content fully carried by binding surfaces — consult those, not
+this summary: **B2** six directives → memory `feedback_no_cost_talk` /
+`feedback_l2_pair_collaboration` / `feedback_codex_collaboration_not_consult` /
+`feedback_pair_vs_solo_empirical` / `feedback_explain_simply` + Hard
+rules above. **B3** PLAN=invariants, BUILD=constrained judgment,
+EVAL=independent layer → NORTH-STAR product surface. **B4**
+engineer-quality floor + cost-ban + score-variance skepticism +
+Mission-1-solo-first → NORTH-STAR goal + MISSIONS. **B5** 2-skill
+design (ideate optional / resolve standalone / multi-LLM via adapters)
+→ NORTH-STAR § product surface (locked 2026-04-30). **B6** round-3
+pair-redesign (measurement-gated pair; honest "unmeasured" labels;
+HANDOFF cleanup mandate; Codex reads codebase directly) → NORTH-STAR
+§ Pair-mode policy (round-3 locked).
 
 ### Block 7 (2026-07-06/07 — ceiling mandate + asymmetric harness + endgame + operating priority)
 
@@ -266,7 +222,7 @@ At `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`: `feed
 | Engine-symmetric pair invocation | REAL both directions | iter-0060 (codex→claude judge fired via adapter) |
 | gemma3:4b as judge | MODEL CEILING — do not re-prompt | iter-0055/0056 |
 | Ceiling quality (세계최고 axis) | FAIL-pilot twice (0064 LC3 4.32×; 0067 copycat 16:3, wall 8.33×) — no moat claim | iter-0064/0067 `ceiling-verdict.json` |
-| No-degradation (Block 8 suppression axes) | **objective 7/7 PASS · quality 0/7 FAIL (bare blind-preferred; codex judge 28/28 axes) · wall 0/7**. Re-measured post-0071 (`nodeg-20260714`): objective 7/7, quality 0/7, wall **median 8.9→10.7× (no improvement — levers miss the IMPLEMENT/fix-loop bottleneck)** | `nodeg-20260714/nodeg-verdict.json`; 0071 addendum 5 / DECISIONS 0071.4 |
+| No-degradation (Block 8 suppression axes) | quality **0/7** stable across 3 cohorts/CLI versions · wall median **12.1×** (post-0072 stack, `nodeg-20260719g`) · objective 6/7 (sole fail confounded — FS1 re-row open). **Attribution (first real data): implement only 14-27% of wall — "IMPLEMENT/fix-loop bottleneck" read UNSUPPORTED; non-phase residual (18-51%) + VERIFY dominate** | `nodeg-20260719g/nodeg-verdict.json` + per-row attribution.json; DECISIONS 0073.2 |
 | T1 packet calibration (seat×defect) | complementary override: catalog admits ONLY sonnet, credential ONLY terra (risk-diff 1.0 both) → routed-seat v2, validation fixtures landed | 0070a Amendment 2 + addendum 9; `benchmark/noncoding/validation/` |
 | Seat fitness (모델 × 포지션) | matrix live; 5 current cells; executor/pair-judge pins fail-closed "recert required" | `benchmark/seats/seat-matrix-2026-07-07.json` |
 
@@ -276,7 +232,7 @@ Working instruments: violation matrix (`run-violation-matrix.sh`), compliance ce
 
 ## 📍 Project state (verify before editing)
 
-- **Branch**: `main`. Run `git log --oneline -10`. 2026-07-13/14 session: `cb041b4`..`a3bd678` (iter-0071 arc); a user-session pipeline commit (`9dcbbd7`, Grok Build CLI installer support in README/bin) landed mid-arc — release/installer surface is USER territory, hands off.
+- **Branch**: `main`, pushed through `a541692` (2026-07-20). Run `git log --oneline -10`. Release/installer surface (README/bin publish commits) is USER territory, hands off.
 - **Engine pins**: `.devlyn/engines.json` = `{"executor": "codex"}` (machine-local; orchestrator passes `--pair-verify` on resolve runs per `feedback_executor_codex_always_pair_verify.md`).
 - Housekeeping (deferred per user 2026-04-30, unchanged): 4 dirty `.claude/worktrees/agent-*` — save patches before any removal; NOT in iter scope.
 
@@ -294,6 +250,9 @@ python3 benchmark/noncoding/scripts/conformance-gate.py benchmark/noncoding/vali
 python3 config/skills/_shared/run-bounded.py 1 -- sleep 3 >/dev/null 2>&1; [ $? -eq 124 ] && echo "run-bounded ✓"
 python3 config/skills/_shared/spec-verify-check.py --self-test && echo "spec-verify self-test ✓"
 python3 config/skills/_shared/state-phase-write.py --self-test && echo "phase-write (L-D) ✓"
+python3 benchmark/ceiling/scripts/terminal-claim-check.py --self-test && echo "terminal-claim ✓"
+python3 benchmark/ceiling/scripts/attribution.py --self-test >/dev/null && echo "attribution ✓"
+python3 benchmark/ceiling/scripts/isolation-payload.py --self-test >/dev/null 2>&1 && echo "isolation-payload ✓"
 command -v codex && codex --version 2>&1 | head -1
 ```
 
@@ -316,4 +275,4 @@ If any unexpected output, do NOT proceed. Surface to user.
 
 ## ⏭️ End of HANDOFF
 
-Evolution loop trajectory since re-open (2026-07-03): 0037-0039 conversational handoff + queue → 0040 cross-CLI portability → 0042-0047 instrument panel → 0048-0050 language-neutral + doctor → 0051-0057 local-backend shipped→measured→deleted → 0058-0060 violation-rate axis + engine-symmetric pair → 0061 F6 closed (AGENTS.md binding) → 0062 contract decidability (E1 shipped) → 0063 mechanical finish-gate → 0064 ceiling & seat instrument SHIPPED, pilot FAIL-pilot on efficiency → 0065 hands-free large + bounded pair-VERIFY SHIPPED → 0066 pre-VERIFY overhead SHIPPED → 0067 ceiling tranche 2 MEASURED, verdict **FAIL-pilot** (de-biased instrument, fresh django holdout: objective tie, neutral judge prefers copycat 16:3, wall 8.33×) → 0068 discriminating corpus CLOSED VALID-NEGATIVE (isolation v2 permanent) → 0070a non-coding instruments (kernel + T0/T1 + routed-seat v2 + validation fixtures) → **0071 proportional escalation SHIPPED + nodeg 3-bar verdict (objective PASS / quality LOST / wall LOST) + concurrent dual-judge design frozen**. Detail: DECISIONS.md + iteration files. Mission 1 not formally closed (test #15 user-gated). 압도적·독보적 is the bar; the instruments made it losable — and it has now lost on efficiency (×4) and blind quality (nodeg 0/7), which is exactly what keeps the loop honest and points the next levers.
+Evolution loop trajectory since re-open (2026-07-03): 0037-0039 conversational handoff + queue → 0040 cross-CLI portability → 0042-0047 instrument panel → 0048-0050 language-neutral + doctor → 0051-0057 local-backend shipped→measured→deleted → 0058-0060 violation-rate axis + engine-symmetric pair → 0061 F6 closed (AGENTS.md binding) → 0062 contract decidability (E1 shipped) → 0063 mechanical finish-gate → 0064 ceiling & seat instrument SHIPPED, pilot FAIL-pilot on efficiency → 0065 hands-free large + bounded pair-VERIFY SHIPPED → 0066 pre-VERIFY overhead SHIPPED → 0067 ceiling tranche 2 MEASURED, verdict **FAIL-pilot** (de-biased instrument, fresh django holdout: objective tie, neutral judge prefers copycat 16:3, wall 8.33×) → 0068 discriminating corpus CLOSED VALID-NEGATIVE (isolation v2 permanent) → 0070a non-coding instruments → 0071 proportional escalation SHIPPED (wall levers later valid-negative) → 0072 changed-surface closure SHIP-CREDITED then CLOSED (first 11/11 row) → **0073 attribution-complete re-measure MEASURED (quality 0/7 · wall 12.1× · bottleneck ≠ IMPLEMENT — residual+VERIFY dominate) → 0074 terminal-claim C2 binding SHIPPED (premature-terminal fired 3/7 rows)**. Detail: DECISIONS.md + iteration files. Mission 1 not formally closed (test #15 user-gated). 압도적·독보적 is the bar; the instruments made it losable — it loses today on wall (12×) and blind quality (0/7), and for the first time the loop knows WHERE the wall goes. That honesty is the moat-in-progress.
