@@ -1,0 +1,59 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..e468d5c 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -41,6 +41,17 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function parseFormatFlag(argv) {
++  const idx = argv.indexOf('--format');
++  if (idx === -1) return 'plain';
++  const value = argv[idx + 1];
++  if (value !== 'json') {
++    console.error('--format must be json');
++    process.exit(1);
++  }
++  return value;
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -57,7 +68,9 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const format = parseFormatFlag(rest);
++      const version = readPackageVersion();
++      console.log(format === 'json' ? JSON.stringify({ version }) : version);
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..db94df5 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,21 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.match(out, /^\{"version":"\d+\.\d+\.\d+"\}\n$/);
++  assert.deepStrictEqual(JSON.parse(out), { version: run(['version']).trim() });
++});
++
++test('version --format yaml exits 1 with an error', () => {
++  let error;
++  try {
++    run(['version', '--format', 'yaml']);
++  } catch (caught) {
++    error = caught;
++  }
++  assert.match(error.message, /Command failed/);
++  assert.strictEqual(error.status, 1);
++  assert.match(error.stderr, /--format must be json/);
++});

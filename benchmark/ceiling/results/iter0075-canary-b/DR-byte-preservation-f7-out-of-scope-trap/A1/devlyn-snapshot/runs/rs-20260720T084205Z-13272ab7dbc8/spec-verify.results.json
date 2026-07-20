@@ -1,0 +1,56 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "node -e \"const {execFileSync}=require('child_process'); const pkg=require('./package.json'); const out=execFileSync('node',['bin/cli.js','version','--format','json'],{encoding:'utf8'}); const expected=JSON.stringify({version:pkg.version})+'\\n'; if(out!==expected){console.error('mismatch: '+JSON.stringify(out)); process.exit(1);} console.log('FORMAT_JSON_OK');\"",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "FORMAT_JSON_OK"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "FORMAT_JSON_OK\n"
+    },
+    {
+      "index": 1,
+      "cmd": "node -e \"const {execFileSync}=require('child_process'); const out=execFileSync('node',['bin/cli.js','version'],{encoding:'utf8'}); if(!/^\\d+\\.\\d+\\.\\d+\\n$/.test(out)){console.error('mismatch: '+JSON.stringify(out)); process.exit(1);} console.log('BARE_VERSION_OK');\"",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "BARE_VERSION_OK"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "BARE_VERSION_OK\n"
+    },
+    {
+      "index": 2,
+      "cmd": "node -e \"const {execFileSync}=require('child_process'); try { execFileSync('node',['bin/cli.js','version','--format','yaml'],{encoding:'utf8'}); console.error('expected nonzero exit'); process.exit(1); } catch(e){ if(e.status!==1){console.error('wrong exit code: '+e.status); process.exit(1);} console.log('FORMAT_YAML_REJECTED'); }\"",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "FORMAT_YAML_REJECTED"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "FORMAT_YAML_REJECTED\n--format must be json\n"
+    },
+    {
+      "index": 3,
+      "cmd": "npm test",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [
+        "not ok"
+      ],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "aml exits 1 with an error\n  ---\n  duration_ms: 24.398375\n  ...\n# Subtest: GET /health returns ok\nok 6 - GET /health returns ok\n  ---\n  duration_ms: 8.958791\n  ...\n# Subtest: GET /items returns list\nok 7 - GET /items returns list\n  ---\n  duration_ms: 1.907375\n  ...\n# Subtest: GET /items/:id returns 404 for missing\nok 8 - GET /items/:id returns 404 for missing\n  ---\n  duration_ms: 1.38025\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 180.551958\n"
+    }
+  ]
+}

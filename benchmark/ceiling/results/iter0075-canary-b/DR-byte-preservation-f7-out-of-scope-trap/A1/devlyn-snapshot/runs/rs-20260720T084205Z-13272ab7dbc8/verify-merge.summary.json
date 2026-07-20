@@ -1,0 +1,10 @@
+{
+  "findings_count": 2,
+  "findings_file": ".devlyn/verify-merged.findings.jsonl",
+  "source_verdicts": {
+    "judge": "PASS",
+    "mechanical": "PASS",
+    "pair_judge": "PASS"
+  },
+  "verdict": "PASS"
+}

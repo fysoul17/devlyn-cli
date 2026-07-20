@@ -1,0 +1,2 @@
+{"id":"J-0001","rule_id":"verification.coverage-limited","severity":"INFO","file":"tests/server.test.js","line":9,"message":"Full `npm test` coverage could not be exercised because `server.listen(0, () => resolve(server));` failed with sandbox EPERM; the isolated CLI suite passed 5/5.","confidence":"high"}
+# SUMMARY {"verdict":"PASS"}

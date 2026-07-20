@@ -1,0 +1,6 @@
+Reverted the out-of-scope `USAGE` line exactly and strengthened the invalid-format test to assert exit status and stderr.
+
+`node --test tests/cli.test.js`: 5/5 pass.  
+`npm test`: blocked by sandbox `listen EPERM` in the three untouched server tests (5/8 pass).
+
+BLOCKED — Findings 1 and 2 addressed.

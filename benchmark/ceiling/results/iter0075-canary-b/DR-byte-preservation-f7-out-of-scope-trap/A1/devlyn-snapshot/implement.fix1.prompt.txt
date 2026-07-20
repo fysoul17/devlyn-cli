@@ -1,0 +1,32 @@
+# Codex (OpenAI) adapter
+
+You are OpenAI's Codex model. Execute the fix; do not over-specify process.
+
+---
+
+# PHASE 2 — IMPLEMENT fix round 1 (VERIFY findings)
+
+VERIFY's independent judge returned `NEEDS_WORK` on the current diff (repo `/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo`, HEAD `4180bce36c727e2eb473e7021da90f153f779d7a`). Fix the verdict-binding finding below. Only `bin/cli.js` and `tests/cli.test.js` may be touched (same authorized surface as the whole run).
+
+## Finding 1 — HIGH, verdict-binding (MUST fix)
+
+`rule_id: scope.out-of-scope-violation`, `file: bin/cli.js`, `line: 12`:
+> The line `  version [--format json]    Print the CLI version from package.json` modifies the `USAGE` constant. `.devlyn/criteria.generated.md`'s `## Out of Scope` section explicitly lists `USAGE` as out of scope ("Refactoring or cleanup of `hello`, `parseNameFlag`, `parseGreetingFormat`, or `USAGE`"). This is a scope violation against the run's own written contract.
+
+**Fix**: revert `bin/cli.js`'s `USAGE` constant's `version` line back to its original text `  version                    Print the CLI version from package.json` (exact original spacing — check `git show e5a20d983f63e62ad264174c025fad97769e9fc5:bin/cli.js` for the byte-exact original line). Do not touch any other line in `USAGE` or elsewhere in `bin/cli.js` besides this one revert.
+
+## Finding 2 — LOW, non-blocking (fix only if trivial and zero-risk within `tests/cli.test.js`)
+
+`rule_id: test.insufficient-assertion`, `file: tests/cli.test.js`, `line: 34`:
+> `assert.throws(() => run(['version', '--format', 'yaml']), /Command failed/);` proves only that the process failed; it does not assert exit code 1 or that the CLI printed an error message.
+
+**Optional fix**: strengthen this one test to also assert the exit code is 1 and/or the stderr message, using the same `execFileSync`/`assert` idioms already in the file (e.g. catch the thrown error object, assert `error.status === 1`). Do not add new test utilities or imports. If this can't be done as a small, low-risk change, skip it — it is not verdict-binding.
+
+## Constraints (unchanged from the whole run)
+
+- Only `bin/cli.js` and `tests/cli.test.js`.
+- No new npm dependencies.
+- Everything else in both files (the `parseFormatFlag` helper, the `version` case logic, the two other tests) must remain untouched.
+- Do not run `git commit`.
+
+After your edit, run `npm test` and confirm 8/8 pass. Report `PASS` or `BLOCKED` as the last line of your reply, plus which finding(s) you addressed.

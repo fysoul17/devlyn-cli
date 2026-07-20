@@ -1,0 +1,1080 @@
+[codex-monitored] start: ts=2026-07-20T08:48:28Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=33496
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f7eb6-5f00-7361-b4a9-21b3a9b8e6f4
+--------
+user
+# Codex (OpenAI) adapter
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+
+Your default is efficient, direct, task-oriented. The canonical body specifies the outcome and constraints; you choose the efficient path. Do not over-specify process steps when an outcome is clearly stated. Use Markdown only where it carries structure (`inline code`, code fences, short lists/tables); otherwise favor short paragraphs and natural transitions.
+
+## Tool-use posture
+
+Resolve the request in the fewest useful tool loops without sacrificing correctness.
+
+## Validation pattern
+
+Validation is concrete commands and tools, not self-belief. When the canonical body lists verification commands, execute them and trust their output. Run the repo's test suite before declaring success.
+
+## Anti-patterns
+
+1. Avoid absolute imperatives for judgment calls.
+2. Don't over-specify process when the destination is clear.
+3. Stop rules are explicit — follow them rather than retrying loops indefinitely.
+
+Do not narrate internal deliberation. State results and decisions directly.
+
+---
+
+# PHASE 2 — IMPLEMENT (canonical body)
+
+<role>
+You execute the plan. Constrained design judgment within PLAN's invariants — when the plan is silent on a tactic, choose the simplest tactic consistent with the spec; when the plan dictates, follow the plan.
+</role>
+
+<input>
+- Plan: `.devlyn/plan.md` (file list + risks + acceptance restatement).
+- Source: `.devlyn/criteria.generated.md`.
+- Codebase at HEAD (`e5a20d983f63e62ad264174c025fad97769e9fc5`).
+</input>
+
+<output>
+- Code changes implementing every Requirement. Verify with `git diff`.
+- Tests added or updated for changed behavior. Run the full test suite before stopping.
+- Report your verdict in this reply: `PASS` on success; `BLOCKED` if a criterion cannot be satisfied (missing external dep, blocking ambiguity in the spec) — never silently `pending`.
+</output>
+
+<quality_bar>
+- Spec is the contract. The plan is the path. If they disagree, surface the conflict and follow the spec.
+- Bugs: write the failing test first, then fix. Features: follow existing patterns, then write tests. Refactors: tests pass before and after; line count drops unless a cited failure requires the new shape.
+- Verification commands are literal. Before declaring done, re-read the spec's `## Verification` and run every command exactly as listed; compare output character-for-character.
+- Tooling-generated artifacts (`test-results/`, `playwright-report/`, `.last-run.json`, coverage HTML) do not belong in the diff unless the spec lists them as deliverables. Configure tools to emit to gitignored paths.
+- Existing tests are contract. Do not replace real HTTP / filesystem / subprocess calls with mocks. Do not skip or disable tests. Do not reduce assertion count on behavior still in scope.
+- Files not in PLAN's list are off-limits. If you discover an out-of-scope file genuinely needs to change, surface it as a finding and halt; do not silently expand scope.
+</quality_bar>
+
+<runtime_principles>
+- Subtractive-first: every accretion-shaped change is visible in the commit message or a flagged finding. Net-deletion is the default; pure-addition needs a citation.
+- Goal-locked: implement only the listed Requirements. Adjacent code that "looks fixable" is drift unless the spec or plan listed it.
+- No-workaround: no `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scripts that bypass root cause.
+- Evidence: every claim cites file:line you opened. Hallucinated APIs are excluded.
+</runtime_principles>
+
+Before declaring the phase complete, re-read each Requirement and confirm you have evidence pointing at the file:line that satisfies it.
+
+The task is: implement the goal captured in `.devlyn/criteria.generated.md` and the plan in `.devlyn/plan.md`. Repo root: `/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo` (this is your working directory `-C`). Only touch `bin/cli.js` and `tests/cli.test.js`, exactly as scoped in `.devlyn/plan.md`'s authorized surface. Do not modify `.devlyn/*`, `package.json`, or any other file. Do not run `git commit` — the orchestrator commits after this phase returns. When finished, run `npm test` and report PASS/BLOCKED as the last line of your reply.
+codex
+I’ll implement only the two authorized files. Prediction: the criteria and plan will identify a failing CLI behavior that can be covered with a focused test in `tests/cli.test.js`, then corrected in `bin/cli.js` without expanding scope.
+exec
+/bin/zsh -lc "sed -n '1,300p' bin/cli.js && printf '\\n--- tests ---\\n' && sed -n '1,360p' tests/cli.test.js && printf '\\n--- package ---\\n' && sed -n '1,160p' package.json" in /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+ succeeded in 0ms:
+#!/usr/bin/env node
+// harbor-tools — small command-line utilities for local workflows.
+// Keep the core commands minimal and easy to understand.
+
+const fs = require('fs');
+const path = require('path');
+
+const USAGE = `Usage: bench-cli <command> [options]
+
+Commands:
+  hello [--name NAME]        Print a greeting (default name: "world")
+  version                    Print the CLI version from package.json
+  --help, -h                 Show this help
+
+Examples:
+  bench-cli hello
+  bench-cli hello --name alice
+  bench-cli version
+`;
+
+function readPackageVersion() {
+  const pkgPath = path.join(__dirname, '..', 'package.json');
+  const raw = fs.readFileSync(pkgPath, 'utf8');
+  return JSON.parse(raw).version;
+}
+
+// TODO(devlyn): this helper is unused — leftover from an abandoned refactor.
+//               Keep for now; removing it is out of scope for the current feature.
+function parseGreetingFormat(_argv) {
+  return 'plain';
+}
+
+function parseNameFlag(argv) {
+  const idx = argv.indexOf('--name');
+  if (idx === -1) return 'world';
+  const value = argv[idx + 1];
+  if (!value || value.startsWith('-')) {
+    console.error('--name requires a value');
+    process.exit(1);
+  }
+  return value;
+}
+
+function main(argv) {
+  const [command, ...rest] = argv;
+
+  if (!command || command === '--help' || command === '-h') {
+    process.stdout.write(USAGE);
+    return;
+  }
+
+  switch (command) {
+    case 'hello': {
+      // TODO: consider supporting a --greeting flag later — out of scope for now.
+      const name = parseNameFlag(rest);
+      console.log(`Hello, ${name}!`);
+      return;
+    }
+    case 'version': {
+      console.log(readPackageVersion());
+      return;
+    }
+    default:
+      console.error(`Unknown command: ${command}`);
+      process.stderr.write(USAGE);
+      process.exit(1);
+  }
+}
+
+main(process.argv.slice(2));
+
+--- tests ---
+const { test } = require('node:test');
+const assert = require('node:assert');
+const { execFileSync } = require('node:child_process');
+const path = require('node:path');
+
+const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+
+function run(args) {
+  return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+}
+
+test('hello default', () => {
+  const out = run(['hello']);
+  assert.match(out, /Hello, world!/);
+});
+
+test('hello with --name', () => {
+  const out = run(['hello', '--name', 'alice']);
+  assert.match(out, /Hello, alice!/);
+});
+
+test('version prints package version', () => {
+  const out = run(['version']);
+  assert.match(out, /\d+\.\d+\.\d+/);
+});
+
+--- package ---
+{
+  "name": "harbor-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A small Node.js toolkit with a command-line interface and HTTP server.",
+  "bin": {
+    "bench-cli": "bin/cli.js"
+  },
+  "scripts": {
+    "cli": "node bin/cli.js",
+    "start": "node server/index.js",
+    "test": "node --test tests/",
+    "lint:json": "node scripts/lint-json.js"
+  },
+  "dependencies": {
+    "express": "4.19.2"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
+exec
+/bin/zsh -lc "git status --short && printf '\\n--- plan ---\\n' && sed -n '1,240p' .devlyn/plan.md && printf '\\n--- criteria ---\\n' && sed -n '1,280p' .devlyn/criteria.generated.md" in /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+ succeeded in 1519ms:
+2026-07-20 08:48:39.718 xcodebuild[34143:43296055]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 08:48:39.945 xcodebuild[34143:43296054] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+--- plan ---
+# Plan — add `--format json` to `version` subcommand
+
+<!-- devlyn:authorized-surface -->
+## Files to touch
+
+- `bin/cli.js` (edit) — insert a `parseFormatFlag(argv)` helper mirroring the existing `parseNameFlag` precedent (`bin/cli.js:33-42`: read the flag's value, `console.error` + `process.exit(1)` on anything unsupported), and change the `case 'version':` block (`bin/cli.js:59-62`) to call it and branch between `console.log(JSON.stringify({ version }))` and the current `console.log(version)`. Satisfies Requirements 1–3 (JSON output shape, unchanged bare-string default, exit-1 rejection of unsupported `--format` values).
+- `tests/cli.test.js` (edit) — add one new `test(...)` block after the existing `version prints package version` test (`tests/cli.test.js:22-25`) that runs `run(['version', '--format', 'json'])` and asserts the stdout is valid JSON matching `{"version": "<x.y.z>"}`. Satisfies Requirement 5 (new-test coverage for the `--format json` path). No other test files change.
+
+```json
+{"authorized_surface": ["bin/cli.js", "tests/cli.test.js"]}
+```
+
+## Risks
+
+- **USAGE block is explicitly out of scope.** `.devlyn/criteria.generated.md` lists "Refactoring or cleanup of ... USAGE" under Out of Scope, and the goal says unrelated formatting/comments must stay byte-for-byte identical. `bin/cli.js:8-19` (the `USAGE` template literal) is NOT touched even though it currently omits `--format json` from the `version` command's documented options — refuse the temptation to "helpfully" document the new flag there.
+- **Do not touch the unused `parseGreetingFormat` helper** (`bin/cli.js:29-31`) or either `TODO` comment (`bin/cli.js:27-28`, `bin/cli.js:54`). These are explicitly called out in criteria as must-remain-as-is. The new helper must be named distinctly (`parseFormatFlag`, not `parseGreetingFormat`) so it is obviously unrelated to the dead code.
+- **Do not touch `hello`, `parseNameFlag`, the unknown-command branch, or any file outside `bin/cli.js` / `tests/cli.test.js`** — no changes to `package.json`, `package-lock.json`, `README.md`, `server/index.js`, `web/index.html`, `playwright.config.js`, or `tests/server.test.js`. No new dependency: `--format json` needs only `JSON.stringify`, already a global.
+- **Exact JSON shape.** Requirement is a single line `{"version":"<x.y.z>"}` with no extra whitespace/indentation and no trailing content besides the newline `console.log` appends. Use `JSON.stringify({ version })` (no space/indent args) — matches the verification script's `JSON.stringify({version:pkg.version})+'\n'` byte-for-byte. Do not hand-build the JSON string with template literals, since that risks quoting/escaping bugs `JSON.stringify` already handles correctly (best-practice: use the standard primitive, not a hand-rolled encoder).
+- **Unsupported-value handling covers the missing-value case too.** "`--format yaml` (or any other unsupported value)" must exit 1. Treat any value that is not exactly `'json'` — including `--format` with no following value (`undefined`) — as unsupported, consistent with how `parseNameFlag` already treats a missing/absent value as invalid. Do not special-case a distinct error message per bad value; one `console.error` + `process.exit(1)`, matching the existing `parseNameFlag` pattern, is sufficient and avoids inventing new error-formatting conventions.
+- **Test-scope discipline.** The goal and criteria require only "at least one" new test, specifically for the `--format json` path. The `--format yaml`-rejection and unchanged-bare-version behaviors are already covered by the pipeline's own mechanical verification commands (ad hoc `node -e` scripts, not `tests/cli.test.js`). Adding extra unit tests for those paths is not requested and is not required to satisfy any Requirement bullet — per Goal-locked execution, only the one requested test is added; do not pad `tests/cli.test.js` with additional yaml/bare-version test cases.
+- **Preserve existing test file structure and style.** New test goes in `tests/cli.test.js` using the same `test(...)`/`assert.*` idioms and the existing `run()` helper already in the file (`tests/cli.test.js:8-10`) — no new test utilities, no new imports.
+
+## Acceptance restatement
+
+Verbatim from `.devlyn/criteria.generated.md`:
+
+```json
+{
+  "verification_commands": [
+    {
+      "cmd": "node -e \"const {execFileSync}=require('child_process'); const pkg=require('./package.json'); const out=execFileSync('node',['bin/cli.js','version','--format','json'],{encoding:'utf8'}); const expected=JSON.stringify({version:pkg.version})+'\\n'; if(out!==expected){console.error('mismatch: '+JSON.stringify(out)); process.exit(1);} console.log('FORMAT_JSON_OK');\"",
+      "exit_code": 0,
+      "stdout_contains": ["FORMAT_JSON_OK"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node -e \"const {execFileSync}=require('child_process'); const out=execFileSync('node',['bin/cli.js','version'],{encoding:'utf8'}); if(!/^\\d+\\.\\d+\\.\\d+\\n$/.test(out)){console.error('mismatch: '+JSON.stringify(out)); process.exit(1);} console.log('BARE_VERSION_OK');\"",
+      "exit_code": 0,
+      "stdout_contains": ["BARE_VERSION_OK"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node -e \"const {execFileSync}=require('child_process'); try { execFileSync('node',['bin/cli.js','version','--format','yaml'],{encoding:'utf8'}); console.error('expected nonzero exit'); process.exit(1); } catch(e){ if(e.status!==1){console.error('wrong exit code: '+e.status); process.exit(1);} console.log('FORMAT_YAML_REJECTED'); }\"",
+      "exit_code": 0,
+      "stdout_contains": ["FORMAT_YAML_REJECTED"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "npm test",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok"]
+    }
+  ]
+}
+```
+
+--- criteria ---
+# Generated criteria — add `--format json` to `version` subcommand
+
+Source: `.devlyn/goal.raw.txt` (free-form goal, complexity: medium).
+
+Context anchors read at classification time:
+- `bin/cli.js` — `version` case currently does `console.log(readPackageVersion())`; flag parsing precedent is `parseNameFlag(rest)` for `hello --name`, which validates the flag value and calls `process.exit(1)` with a `console.error` message on invalid input.
+- `tests/cli.test.js` — uses `node:test` + `execFileSync('node', [CLI, ...args], { encoding: 'utf8' })`; existing `version prints package version` test asserts `/\d+\.\d+\.\d+/` on stdout.
+
+## Requirements
+
+- [ ] `bench-cli version --format json` prints a single line of valid JSON `{"version":"<x.y.z>"}` to stdout, where `<x.y.z>` is the exact version string from `package.json`.
+- [ ] `bench-cli version` with no `--format` flag keeps printing the current bare version string (unchanged behavior).
+- [ ] `bench-cli version --format yaml` (or any other unsupported `--format` value) exits with code 1 and prints an error.
+- [ ] All existing tests in `tests/cli.test.js` continue to pass.
+- [ ] At least one new test in `tests/cli.test.js` covers the `--format json` path.
+
+## Constraints
+
+- Only `bin/cli.js` and `tests/cli.test.js` may be modified.
+- No new npm dependencies.
+- Do not modify other subcommands (`hello`, `--help`/`-h`, unknown-command handling).
+- Code unrelated to the `version` feature — including existing comments, the two `TODO` comments, the unused `parseGreetingFormat` helper, and formatting — must remain byte-for-byte as-is.
+
+## Out of Scope
+
+- Refactoring or cleanup of `hello`, `parseNameFlag`, `parseGreetingFormat`, or `USAGE`.
+- Any change to `readPackageVersion`'s error handling beyond what `--format` requires.
+- Anything not in the listed files.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    {
+      "cmd": "node -e \"const {execFileSync}=require('child_process'); const pkg=require('./package.json'); const out=execFileSync('node',['bin/cli.js','version','--format','json'],{encoding:'utf8'}); const expected=JSON.stringify({version:pkg.version})+'\\n'; if(out!==expected){console.error('mismatch: '+JSON.stringify(out)); process.exit(1);} console.log('FORMAT_JSON_OK');\"",
+      "exit_code": 0,
+      "stdout_contains": ["FORMAT_JSON_OK"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node -e \"const {execFileSync}=require('child_process'); const out=execFileSync('node',['bin/cli.js','version'],{encoding:'utf8'}); if(!/^\\d+\\.\\d+\\.\\d+\\n$/.test(out)){console.error('mismatch: '+JSON.stringify(out)); process.exit(1);} console.log('BARE_VERSION_OK');\"",
+      "exit_code": 0,
+      "stdout_contains": ["BARE_VERSION_OK"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node -e \"const {execFileSync}=require('child_process'); try { execFileSync('node',['bin/cli.js','version','--format','yaml'],{encoding:'utf8'}); console.error('expected nonzero exit'); process.exit(1); } catch(e){ if(e.status!==1){console.error('wrong exit code: '+e.status); process.exit(1);} console.log('FORMAT_YAML_REJECTED'); }\"",
+      "exit_code": 0,
+      "stdout_contains": ["FORMAT_YAML_REJECTED"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "npm test",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok"]
+    }
+  ]
+}
+```
+
+codex
+The initial read confirms the planned surface and the existing parser precedent. I’ll add the single JSON-path test first; its expected failure is that the current bare version cannot be parsed as JSON.
+[codex-monitored] heartbeat: elapsed=30s
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/cli.test.js
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..833d84704f2556cf6b2f6c151836c1279804b834
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,9 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.match(out, /^\{"version":"\d+\.\d+\.\d+"\}\n$/);
++  assert.deepStrictEqual(JSON.parse(out), { version: run(['version']).trim() });
++});
+
+exec
+/bin/zsh -lc 'node --test tests/cli.test.js' in /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..833d84704f2556cf6b2f6c151836c1279804b834
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,9 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.match(out, /^\{"version":"\d+\.\d+\.\d+"\}\n$/);
++  assert.deepStrictEqual(JSON.parse(out), { version: run(['version']).trim() });
++});
+
+ exited 1 in 118ms:
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 24.341375
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 23.167208
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 23.553333
+  ...
+# Subtest: version prints JSON with --format json
+not ok 4 - version prints JSON with --format json
+  ---
+  duration_ms: 24.050791
+  location: '/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/cli.test.js:27:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /^\{"version":"\d+\.\d+\.\d+"\}\n$/. Input:
+    
+    '0.1.0\n'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    0.1.0
+    
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/cli.test.js:29:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 3
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 129.121292
+
+codex
+The new test failed as predicted: it received `0.1.0\n` instead of JSON. I’ll now add the scoped `--format` parser and keep the original no-flag output branch intact.
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/bin/cli.js
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..e468d5ceba945cfea6528cad45ebe5136b6967d5
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -41,6 +41,17 @@
+   return value;
+ }
+ 
++function parseFormatFlag(argv) {
++  const idx = argv.indexOf('--format');
++  if (idx === -1) return 'plain';
++  const value = argv[idx + 1];
++  if (value !== 'json') {
++    console.error('--format must be json');
++    process.exit(1);
++  }
++  return value;
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -57,7 +68,9 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const format = parseFormatFlag(rest);
++      const version = readPackageVersion();
++      console.log(format === 'json' ? JSON.stringify({ version }) : version);
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..833d84704f2556cf6b2f6c151836c1279804b834
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,9 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.match(out, /^\{"version":"\d+\.\d+\.\d+"\}\n$/);
++  assert.deepStrictEqual(JSON.parse(out), { version: run(['version']).trim() });
++});
+
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..e468d5ceba945cfea6528cad45ebe5136b6967d5
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -41,6 +41,17 @@
+   return value;
+ }
+ 
++function parseFormatFlag(argv) {
++  const idx = argv.indexOf('--format');
++  if (idx === -1) return 'plain';
++  const value = argv[idx + 1];
++  if (value !== 'json') {
++    console.error('--format must be json');
++    process.exit(1);
++  }
++  return value;
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -57,7 +68,9 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const format = parseFormatFlag(rest);
++      const version = readPackageVersion();
++      console.log(format === 'json' ? JSON.stringify({ version }) : version);
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..833d84704f2556cf6b2f6c151836c1279804b834
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,9 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.match(out, /^\{"version":"\d+\.\d+\.\d+"\}\n$/);
++  assert.deepStrictEqual(JSON.parse(out), { version: run(['version']).trim() });
++});
+
+[codex-monitored] heartbeat: elapsed=60s
+exec
+/bin/zsh -lc "node -e \"const {execFileSync}=require('child_process'); const out=execFileSync('node',['bin/cli.js','version'],{encoding:'utf8'}); if("'!/''^'"\\d+\\.\\d+\\.\\d+\\n"'$/.test(out)){console.error('"'mismatch: '+JSON.stringify(out)); process.exit(1);} console.log('BARE_VERSION_OK');\"" in /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+exec
+/bin/zsh -lc "node -e \"const {execFileSync}=require('child_process'); try { execFileSync('node',['bin/cli.js','version','--format','yaml'],{encoding:'utf8'}); console.error('expected nonzero exit'); process.exit(1); } catch(e){ if(e.status"'!==1){console.error('"'wrong exit code: '+e.status); process.exit(1);} console.log('FORMAT_YAML_REJECTED'); }\"" in /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+exec
+/bin/zsh -lc "node -e \"const {execFileSync}=require('child_process'); const pkg=require('./package.json'); const out=execFileSync('node',['bin/cli.js','version','--format','json'],{encoding:'utf8'}); const expected=JSON.stringify({version:pkg.version})+'\\n'; if(out"'!==expected){console.error('"'mismatch: '+JSON.stringify(out)); process.exit(1);} console.log('FORMAT_JSON_OK');\"" in /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+ succeeded in 0ms:
+BARE_VERSION_OK
+
+ succeeded in 0ms:
+FORMAT_JSON_OK
+
+ succeeded in 0ms:
+--format must be json
+FORMAT_YAML_REJECTED
+
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..e468d5ceba945cfea6528cad45ebe5136b6967d5
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -41,6 +41,17 @@
+   return value;
+ }
+ 
++function parseFormatFlag(argv) {
++  const idx = argv.indexOf('--format');
++  if (idx === -1) return 'plain';
++  const value = argv[idx + 1];
++  if (value !== 'json') {
++    console.error('--format must be json');
++    process.exit(1);
++  }
++  return value;
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -57,7 +68,9 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const format = parseFormatFlag(rest);
++      const version = readPackageVersion();
++      console.log(format === 'json' ? JSON.stringify({ version }) : version);
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..833d84704f2556cf6b2f6c151836c1279804b834
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,9 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.match(out, /^\{"version":"\d+\.\d+\.\d+"\}\n$/);
++  assert.deepStrictEqual(JSON.parse(out), { version: run(['version']).trim() });
++});
+
+codex
+All three feature-specific verification commands pass, including exit-code rejection for `yaml`. Next I’ll run the required full suite and inspect the final scoped diff.
+exec
+/bin/zsh -lc 'git diff --check && git diff -- bin/cli.js tests/cli.test.js && git status --short' in /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+ succeeded in 0ms:
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..e468d5c 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -41,6 +41,17 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function parseFormatFlag(argv) {
++  const idx = argv.indexOf('--format');
++  if (idx === -1) return 'plain';
++  const value = argv[idx + 1];
++  if (value !== 'json') {
++    console.error('--format must be json');
++    process.exit(1);
++  }
++  return value;
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -57,7 +68,9 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const format = parseFormatFlag(rest);
++      const version = readPackageVersion();
++      console.log(format === 'json' ? JSON.stringify({ version }) : version);
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..833d847 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,9 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.match(out, /^\{"version":"\d+\.\d+\.\d+"\}\n$/);
++  assert.deepStrictEqual(JSON.parse(out), { version: run(['version']).trim() });
++});
+ M bin/cli.js
+ M tests/cli.test.js
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+exec
+/bin/zsh -lc 'npm test' in /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..e468d5ceba945cfea6528cad45ebe5136b6967d5
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -41,6 +41,17 @@
+   return value;
+ }
+ 
++function parseFormatFlag(argv) {
++  const idx = argv.indexOf('--format');
++  if (idx === -1) return 'plain';
++  const value = argv[idx + 1];
++  if (value !== 'json') {
++    console.error('--format must be json');
++    process.exit(1);
++  }
++  return value;
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -57,7 +68,9 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const format = parseFormatFlag(rest);
++      const version = readPackageVersion();
++      console.log(format === 'json' ? JSON.stringify({ version }) : version);
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..833d84704f2556cf6b2f6c151836c1279804b834
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,9 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.match(out, /^\{"version":"\d+\.\d+\.\d+"\}\n$/);
++  assert.deepStrictEqual(JSON.parse(out), { version: run(['version']).trim() });
++});
+
+ exited 1 in 314ms:
+
+> harbor-tools@0.1.0 test
+> node --test tests/
+
+TAP version 13
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 25.22075
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 26.187083
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 24.521792
+  ...
+# Subtest: version prints JSON with --format json
+ok 4 - version prints JSON with --format json
+  ---
+  duration_ms: 50.1485
+  ...
+# Subtest: GET /health returns ok
+not ok 5 - GET /health returns ok
+  ---
+  duration_ms: 2.69475
+  location: '/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 6 - GET /items returns list
+  ---
+  duration_ms: 0.649041
+  location: '/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 7 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.418292
+  location: '/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 4
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 160.569375
+
+[codex-monitored] heartbeat: elapsed=90s
+codex
+The CLI tests pass, but the required full suite is blocked by the sandbox: all three unrelated server tests fail before exercising assertions because binding `0.0.0.0` returns `EPERM`. I’ll complete the scoped evidence check, including the missing-value rejection required by the plan.
+exec
+/bin/zsh -lc "git diff --check && nl -ba bin/cli.js | sed -n '33,82p' && nl -ba tests/cli.test.js | sed -n '20,40p' && sed -n '1,120p' .devlyn/criteria.generated.md" in /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+ succeeded in 0ms:
+    33	function parseNameFlag(argv) {
+    34	  const idx = argv.indexOf('--name');
+    35	  if (idx === -1) return 'world';
+    36	  const value = argv[idx + 1];
+    37	  if (!value || value.startsWith('-')) {
+    38	    console.error('--name requires a value');
+    39	    process.exit(1);
+    40	  }
+    41	  return value;
+    42	}
+    43	
+    44	function parseFormatFlag(argv) {
+    45	  const idx = argv.indexOf('--format');
+    46	  if (idx === -1) return 'plain';
+    47	  const value = argv[idx + 1];
+    48	  if (value !== 'json') {
+    49	    console.error('--format must be json');
+    50	    process.exit(1);
+    51	  }
+    52	  return value;
+    53	}
+    54	
+    55	function main(argv) {
+    56	  const [command, ...rest] = argv;
+    57	
+    58	  if (!command || command === '--help' || command === '-h') {
+    59	    process.stdout.write(USAGE);
+    60	    return;
+    61	  }
+    62	
+    63	  switch (command) {
+    64	    case 'hello': {
+    65	      // TODO: consider supporting a --greeting flag later — out of scope for now.
+    66	      const name = parseNameFlag(rest);
+    67	      console.log(`Hello, ${name}!`);
+    68	      return;
+    69	    }
+    70	    case 'version': {
+    71	      const format = parseFormatFlag(rest);
+    72	      const version = readPackageVersion();
+    73	      console.log(format === 'json' ? JSON.stringify({ version }) : version);
+    74	      return;
+    75	    }
+    76	    default:
+    77	      console.error(`Unknown command: ${command}`);
+    78	      process.stderr.write(USAGE);
+    79	      process.exit(1);
+    80	  }
+    81	}
+    82	
+    20	});
+    21	
+    22	test('version prints package version', () => {
+    23	  const out = run(['version']);
+    24	  assert.match(out, /\d+\.\d+\.\d+/);
+    25	});
+    26	
+    27	test('version prints JSON with --format json', () => {
+    28	  const out = run(['version', '--format', 'json']);
+    29	  assert.match(out, /^\{"version":"\d+\.\d+\.\d+"\}\n$/);
+    30	  assert.deepStrictEqual(JSON.parse(out), { version: run(['version']).trim() });
+    31	});
+# Generated criteria — add `--format json` to `version` subcommand
+
+Source: `.devlyn/goal.raw.txt` (free-form goal, complexity: medium).
+
+Context anchors read at classification time:
+- `bin/cli.js` — `version` case currently does `console.log(readPackageVersion())`; flag parsing precedent is `parseNameFlag(rest)` for `hello --name`, which validates the flag value and calls `process.exit(1)` with a `console.error` message on invalid input.
+- `tests/cli.test.js` — uses `node:test` + `execFileSync('node', [CLI, ...args], { encoding: 'utf8' })`; existing `version prints package version` test asserts `/\d+\.\d+\.\d+/` on stdout.
+
+## Requirements
+
+- [ ] `bench-cli version --format json` prints a single line of valid JSON `{"version":"<x.y.z>"}` to stdout, where `<x.y.z>` is the exact version string from `package.json`.
+- [ ] `bench-cli version` with no `--format` flag keeps printing the current bare version string (unchanged behavior).
+- [ ] `bench-cli version --format yaml` (or any other unsupported `--format` value) exits with code 1 and prints an error.
+- [ ] All existing tests in `tests/cli.test.js` continue to pass.
+- [ ] At least one new test in `tests/cli.test.js` covers the `--format json` path.
+
+## Constraints
+
+- Only `bin/cli.js` and `tests/cli.test.js` may be modified.
+- No new npm dependencies.
+- Do not modify other subcommands (`hello`, `--help`/`-h`, unknown-command handling).
+- Code unrelated to the `version` feature — including existing comments, the two `TODO` comments, the unused `parseGreetingFormat` helper, and formatting — must remain byte-for-byte as-is.
+
+## Out of Scope
+
+- Refactoring or cleanup of `hello`, `parseNameFlag`, `parseGreetingFormat`, or `USAGE`.
+- Any change to `readPackageVersion`'s error handling beyond what `--format` requires.
+- Anything not in the listed files.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    {
+      "cmd": "node -e \"const {execFileSync}=require('child_process'); const pkg=require('./package.json'); const out=execFileSync('node',['bin/cli.js','version','--format','json'],{encoding:'utf8'}); const expected=JSON.stringify({version:pkg.version})+'\\n'; if(out!==expected){console.error('mismatch: '+JSON.stringify(out)); process.exit(1);} console.log('FORMAT_JSON_OK');\"",
+      "exit_code": 0,
+      "stdout_contains": ["FORMAT_JSON_OK"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node -e \"const {execFileSync}=require('child_process'); const out=execFileSync('node',['bin/cli.js','version'],{encoding:'utf8'}); if(!/^\\d+\\.\\d+\\.\\d+\\n$/.test(out)){console.error('mismatch: '+JSON.stringify(out)); process.exit(1);} console.log('BARE_VERSION_OK');\"",
+      "exit_code": 0,
+      "stdout_contains": ["BARE_VERSION_OK"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "node -e \"const {execFileSync}=require('child_process'); try { execFileSync('node',['bin/cli.js','version','--format','yaml'],{encoding:'utf8'}); console.error('expected nonzero exit'); process.exit(1); } catch(e){ if(e.status!==1){console.error('wrong exit code: '+e.status); process.exit(1);} console.log('FORMAT_YAML_REJECTED'); }\"",
+      "exit_code": 0,
+      "stdout_contains": ["FORMAT_YAML_REJECTED"],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "npm test",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": ["not ok"]
+    }
+  ]
+}
+```
+
+exec
+/bin/zsh -lc "node -e \"const {spawnSync}=require('child_process'); const result=spawnSync('node',['bin/cli.js','version','--format'],{encoding:'utf8'}); if(result.status"'!==1 || !result.stderr){console.error(JSON.stringify(result)); process.exit(1);} console.log('"'MISSING_FORMAT_REJECTED');\"" in /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+ succeeded in 0ms:
+MISSING_FORMAT_REJECTED
+
+exec
+/bin/zsh -lc 'node --test tests/cli.test.js' in /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..e468d5ceba945cfea6528cad45ebe5136b6967d5
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -41,6 +41,17 @@
+   return value;
+ }
+ 
++function parseFormatFlag(argv) {
++  const idx = argv.indexOf('--format');
++  if (idx === -1) return 'plain';
++  const value = argv[idx + 1];
++  if (value !== 'json') {
++    console.error('--format must be json');
++    process.exit(1);
++  }
++  return value;
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -57,7 +68,9 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const format = parseFormatFlag(rest);
++      const version = readPackageVersion();
++      console.log(format === 'json' ? JSON.stringify({ version }) : version);
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..833d84704f2556cf6b2f6c151836c1279804b834
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,9 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.match(out, /^\{"version":"\d+\.\d+\.\d+"\}\n$/);
++  assert.deepStrictEqual(JSON.parse(out), { version: run(['version']).trim() });
++});
+
+ succeeded in 140ms:
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 24.670292
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 23.30375
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 23.585625
+  ...
+# Subtest: version prints JSON with --format json
+ok 4 - version prints JSON with --format json
+  ---
+  duration_ms: 46.367375
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 151.415584
+
+[codex-monitored] heartbeat: elapsed=120s
+codex
+Implemented the JSON version format and coverage.
+
+- `--format json` emits exact JSON; missing/unsupported values exit 1: [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/bin/cli.js:44)
+- Added JSON-path test: [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/cli.test.js:27)
+- All three specified CLI verification commands pass; scoped CLI tests pass (4/4); `git diff --check` passes.
+
+`npm test` is blocked by the sandbox: unrelated server tests cannot bind `0.0.0.0` (`listen EPERM`), so the required full suite exits 1.
+
+BLOCKED
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..e468d5ceba945cfea6528cad45ebe5136b6967d5
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -41,6 +41,17 @@
+   return value;
+ }
+ 
++function parseFormatFlag(argv) {
++  const idx = argv.indexOf('--format');
++  if (idx === -1) return 'plain';
++  const value = argv[idx + 1];
++  if (value !== 'json') {
++    console.error('--format must be json');
++    process.exit(1);
++  }
++  return value;
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -57,7 +68,9 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const format = parseFormatFlag(rest);
++      const version = readPackageVersion();
++      console.log(format === 'json' ? JSON.stringify({ version }) : version);
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..833d84704f2556cf6b2f6c151836c1279804b834
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,9 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.match(out, /^\{"version":"\d+\.\d+\.\d+"\}\n$/);
++  assert.deepStrictEqual(JSON.parse(out), { version: run(['version']).trim() });
++});
+
+tokens used
+25,951
+[codex-monitored] codex exited: code=0 elapsed=129s

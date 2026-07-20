@@ -1,0 +1,707 @@
+[codex-monitored] start: ts=2026-07-20T09:10:54Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=4139
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f7eca-e909-75e2-8188-18b5476ebffb
+--------
+user
+# Codex (OpenAI) adapter
+
+You are OpenAI's Codex model. Execute the fix; do not over-specify process.
+
+---
+
+# PHASE 2 — IMPLEMENT fix round 1 (VERIFY findings)
+
+VERIFY's independent judge returned `NEEDS_WORK` on the current diff (repo `/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo`, HEAD `4180bce36c727e2eb473e7021da90f153f779d7a`). Fix the verdict-binding finding below. Only `bin/cli.js` and `tests/cli.test.js` may be touched (same authorized surface as the whole run).
+
+## Finding 1 — HIGH, verdict-binding (MUST fix)
+
+`rule_id: scope.out-of-scope-violation`, `file: bin/cli.js`, `line: 12`:
+> The line `  version [--format json]    Print the CLI version from package.json` modifies the `USAGE` constant. `.devlyn/criteria.generated.md`'s `## Out of Scope` section explicitly lists `USAGE` as out of scope ("Refactoring or cleanup of `hello`, `parseNameFlag`, `parseGreetingFormat`, or `USAGE`"). This is a scope violation against the run's own written contract.
+
+**Fix**: revert `bin/cli.js`'s `USAGE` constant's `version` line back to its original text `  version                    Print the CLI version from package.json` (exact original spacing — check `git show e5a20d983f63e62ad264174c025fad97769e9fc5:bin/cli.js` for the byte-exact original line). Do not touch any other line in `USAGE` or elsewhere in `bin/cli.js` besides this one revert.
+
+## Finding 2 — LOW, non-blocking (fix only if trivial and zero-risk within `tests/cli.test.js`)
+
+`rule_id: test.insufficient-assertion`, `file: tests/cli.test.js`, `line: 34`:
+> `assert.throws(() => run(['version', '--format', 'yaml']), /Command failed/);` proves only that the process failed; it does not assert exit code 1 or that the CLI printed an error message.
+
+**Optional fix**: strengthen this one test to also assert the exit code is 1 and/or the stderr message, using the same `execFileSync`/`assert` idioms already in the file (e.g. catch the thrown error object, assert `error.status === 1`). Do not add new test utilities or imports. If this can't be done as a small, low-risk change, skip it — it is not verdict-binding.
+
+## Constraints (unchanged from the whole run)
+
+- Only `bin/cli.js` and `tests/cli.test.js`.
+- No new npm dependencies.
+- Everything else in both files (the `parseFormatFlag` helper, the `version` case logic, the two other tests) must remain untouched.
+- Do not run `git commit`.
+
+After your edit, run `npm test` and confirm 8/8 pass. Report `PASS` or `BLOCKED` as the last line of your reply, plus which finding(s) you addressed.
+codex
+I’ll make the required one-line `USAGE` revert, strengthen the optional failure assertion only if it stays local to that test, then run the full test suite.
+exec
+/bin/zsh -lc "git status --short && git diff -- bin/cli.js tests/cli.test.js && sed -n '1,130p' bin/cli.js && sed -n '1,130p' tests/cli.test.js && git show e5a20d983f63e62ad264174c025fad97769e9fc5:bin/cli.js | sed -n '1,45p'" in /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+#!/usr/bin/env node
+// harbor-tools — small command-line utilities for local workflows.
+// Keep the core commands minimal and easy to understand.
+
+const fs = require('fs');
+const path = require('path');
+
+const USAGE = `Usage: bench-cli <command> [options]
+
+Commands:
+  hello [--name NAME]        Print a greeting (default name: "world")
+  version [--format json]    Print the CLI version from package.json
+  --help, -h                 Show this help
+
+Examples:
+  bench-cli hello
+  bench-cli hello --name alice
+  bench-cli version
+`;
+
+function readPackageVersion() {
+  const pkgPath = path.join(__dirname, '..', 'package.json');
+  const raw = fs.readFileSync(pkgPath, 'utf8');
+  return JSON.parse(raw).version;
+}
+
+// TODO(devlyn): this helper is unused — leftover from an abandoned refactor.
+//               Keep for now; removing it is out of scope for the current feature.
+function parseGreetingFormat(_argv) {
+  return 'plain';
+}
+
+function parseNameFlag(argv) {
+  const idx = argv.indexOf('--name');
+  if (idx === -1) return 'world';
+  const value = argv[idx + 1];
+  if (!value || value.startsWith('-')) {
+    console.error('--name requires a value');
+    process.exit(1);
+  }
+  return value;
+}
+
+function parseFormatFlag(argv) {
+  const idx = argv.indexOf('--format');
+  if (idx === -1) return 'plain';
+  const value = argv[idx + 1];
+  if (value !== 'json') {
+    console.error('--format must be json');
+    process.exit(1);
+  }
+  return value;
+}
+
+function main(argv) {
+  const [command, ...rest] = argv;
+
+  if (!command || command === '--help' || command === '-h') {
+    process.stdout.write(USAGE);
+    return;
+  }
+
+  switch (command) {
+    case 'hello': {
+      // TODO: consider supporting a --greeting flag later — out of scope for now.
+      const name = parseNameFlag(rest);
+      console.log(`Hello, ${name}!`);
+      return;
+    }
+    case 'version': {
+      const format = parseFormatFlag(rest);
+      const version = readPackageVersion();
+      console.log(format === 'json' ? JSON.stringify({ version }) : version);
+      return;
+    }
+    default:
+      console.error(`Unknown command: ${command}`);
+      process.stderr.write(USAGE);
+      process.exit(1);
+  }
+}
+
+main(process.argv.slice(2));
+const { test } = require('node:test');
+const assert = require('node:assert');
+const { execFileSync } = require('node:child_process');
+const path = require('node:path');
+
+const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+
+function run(args) {
+  return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+}
+
+test('hello default', () => {
+  const out = run(['hello']);
+  assert.match(out, /Hello, world!/);
+});
+
+test('hello with --name', () => {
+  const out = run(['hello', '--name', 'alice']);
+  assert.match(out, /Hello, alice!/);
+});
+
+test('version prints package version', () => {
+  const out = run(['version']);
+  assert.match(out, /\d+\.\d+\.\d+/);
+});
+
+test('version prints JSON with --format json', () => {
+  const out = run(['version', '--format', 'json']);
+  assert.match(out, /^\{"version":"\d+\.\d+\.\d+"\}\n$/);
+  assert.deepStrictEqual(JSON.parse(out), { version: run(['version']).trim() });
+});
+
+test('version --format yaml exits 1 with an error', () => {
+  assert.throws(() => run(['version', '--format', 'yaml']), /Command failed/);
+});
+#!/usr/bin/env node
+// harbor-tools — small command-line utilities for local workflows.
+// Keep the core commands minimal and easy to understand.
+
+const fs = require('fs');
+const path = require('path');
+
+const USAGE = `Usage: bench-cli <command> [options]
+
+Commands:
+  hello [--name NAME]        Print a greeting (default name: "world")
+  version                    Print the CLI version from package.json
+  --help, -h                 Show this help
+
+Examples:
+  bench-cli hello
+  bench-cli hello --name alice
+  bench-cli version
+`;
+
+function readPackageVersion() {
+  const pkgPath = path.join(__dirname, '..', 'package.json');
+  const raw = fs.readFileSync(pkgPath, 'utf8');
+  return JSON.parse(raw).version;
+}
+
+// TODO(devlyn): this helper is unused — leftover from an abandoned refactor.
+//               Keep for now; removing it is out of scope for the current feature.
+function parseGreetingFormat(_argv) {
+  return 'plain';
+}
+
+function parseNameFlag(argv) {
+  const idx = argv.indexOf('--name');
+  if (idx === -1) return 'world';
+  const value = argv[idx + 1];
+  if (!value || value.startsWith('-')) {
+    console.error('--name requires a value');
+    process.exit(1);
+  }
+  return value;
+}
+
+function main(argv) {
+  const [command, ...rest] = argv;
+
+[codex-monitored] heartbeat: elapsed=30s
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/bin/cli.js
+/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/cli.test.js
+diff --git a/bin/cli.js b/bin/cli.js
+index f168637600ee46c583d45193e1bf6a7b2558d3db..e468d5ceba945cfea6528cad45ebe5136b6967d5
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version [--format json]    Print the CLI version from package.json
++  version                    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index d64228d5ac3fd1b1a2c492ed25103d2d9ca594b6..174dbd452c98925a8199ea19235a3fe0a39aae33
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -31,5 +31,7 @@
+ });
+ 
+ test('version --format yaml exits 1 with an error', () => {
+-  assert.throws(() => run(['version', '--format', 'yaml']), /Command failed/);
++  const error = assert.throws(() => run(['version', '--format', 'yaml']), /Command failed/);
++  assert.strictEqual(error.status, 1);
++  assert.match(error.stderr, /--format must be json/);
+ });
+
+diff --git a/bin/cli.js b/bin/cli.js
+index f168637600ee46c583d45193e1bf6a7b2558d3db..e468d5ceba945cfea6528cad45ebe5136b6967d5
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version [--format json]    Print the CLI version from package.json
++  version                    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index d64228d5ac3fd1b1a2c492ed25103d2d9ca594b6..174dbd452c98925a8199ea19235a3fe0a39aae33
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -31,5 +31,7 @@
+ });
+ 
+ test('version --format yaml exits 1 with an error', () => {
+-  assert.throws(() => run(['version', '--format', 'yaml']), /Command failed/);
++  const error = assert.throws(() => run(['version', '--format', 'yaml']), /Command failed/);
++  assert.strictEqual(error.status, 1);
++  assert.match(error.stderr, /--format must be json/);
+ });
+
+exec
+/bin/zsh -lc 'git diff --check -- bin/cli.js tests/cli.test.js && git diff -- bin/cli.js tests/cli.test.js && npm test' in /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index f168637600ee46c583d45193e1bf6a7b2558d3db..e468d5ceba945cfea6528cad45ebe5136b6967d5
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version [--format json]    Print the CLI version from package.json
++  version                    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index d64228d5ac3fd1b1a2c492ed25103d2d9ca594b6..174dbd452c98925a8199ea19235a3fe0a39aae33
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -31,5 +31,7 @@
+ });
+ 
+ test('version --format yaml exits 1 with an error', () => {
+-  assert.throws(() => run(['version', '--format', 'yaml']), /Command failed/);
++  const error = assert.throws(() => run(['version', '--format', 'yaml']), /Command failed/);
++  assert.strictEqual(error.status, 1);
++  assert.match(error.stderr, /--format must be json/);
+ });
+
+ exited 1 in 296ms:
+TAP version 13
+# --format must be json
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 25.306875
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 24.249042
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 24.794
+  ...
+# Subtest: version prints JSON with --format json
+ok 4 - version prints JSON with --format json
+  ---
+  duration_ms: 57.581834
+  ...
+# Subtest: version --format yaml exits 1 with an error
+not ok 5 - version --format yaml exits 1 with an error
+  ---
+  duration_ms: 24.493792
+  location: '/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/cli.test.js:33:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'status')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/cli.test.js:35:28)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: GET /health returns ok
+not ok 6 - GET /health returns ok
+  ---
+  duration_ms: 2.299666
+  location: '/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 7 - GET /items returns list
+  ---
+  duration_ms: 0.524459
+  location: '/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 8 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.373792
+  location: '/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 4
+# fail 4
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 191.598208
+
+[codex-monitored] heartbeat: elapsed=60s
+codex
+The required revert is in place. The first optional assertion form is incompatible with this Node version (`assert.throws` returns `undefined`), so I’m switching it to the requested explicit catch; the remaining test failures are sandbox `listen EPERM` errors in untouched server tests.
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/cli.test.js
+diff --git a/bin/cli.js b/bin/cli.js
+index f168637600ee46c583d45193e1bf6a7b2558d3db..e468d5ceba945cfea6528cad45ebe5136b6967d5
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version [--format json]    Print the CLI version from package.json
++  version                    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index d64228d5ac3fd1b1a2c492ed25103d2d9ca594b6..db94df502995eab332ec47e4ac0da9f5d2a5a6a3
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -31,5 +31,13 @@
+ });
+ 
+ test('version --format yaml exits 1 with an error', () => {
+-  assert.throws(() => run(['version', '--format', 'yaml']), /Command failed/);
++  let error;
++  try {
++    run(['version', '--format', 'yaml']);
++  } catch (caught) {
++    error = caught;
++  }
++  assert.match(error.message, /Command failed/);
++  assert.strictEqual(error.status, 1);
++  assert.match(error.stderr, /--format must be json/);
+ });
+
+diff --git a/bin/cli.js b/bin/cli.js
+index f168637600ee46c583d45193e1bf6a7b2558d3db..e468d5ceba945cfea6528cad45ebe5136b6967d5
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version [--format json]    Print the CLI version from package.json
++  version                    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index d64228d5ac3fd1b1a2c492ed25103d2d9ca594b6..db94df502995eab332ec47e4ac0da9f5d2a5a6a3
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -31,5 +31,13 @@
+ });
+ 
+ test('version --format yaml exits 1 with an error', () => {
+-  assert.throws(() => run(['version', '--format', 'yaml']), /Command failed/);
++  let error;
++  try {
++    run(['version', '--format', 'yaml']);
++  } catch (caught) {
++    error = caught;
++  }
++  assert.match(error.message, /Command failed/);
++  assert.strictEqual(error.status, 1);
++  assert.match(error.stderr, /--format must be json/);
+ });
+
+exec
+/bin/zsh -lc 'git diff --check -- bin/cli.js tests/cli.test.js && node --test tests/cli.test.js && npm test' in /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index f168637600ee46c583d45193e1bf6a7b2558d3db..e468d5ceba945cfea6528cad45ebe5136b6967d5
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version [--format json]    Print the CLI version from package.json
++  version                    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index d64228d5ac3fd1b1a2c492ed25103d2d9ca594b6..db94df502995eab332ec47e4ac0da9f5d2a5a6a3
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -31,5 +31,13 @@
+ });
+ 
+ test('version --format yaml exits 1 with an error', () => {
+-  assert.throws(() => run(['version', '--format', 'yaml']), /Command failed/);
++  let error;
++  try {
++    run(['version', '--format', 'yaml']);
++  } catch (caught) {
++    error = caught;
++  }
++  assert.match(error.message, /Command failed/);
++  assert.strictEqual(error.status, 1);
++  assert.match(error.stderr, /--format must be json/);
+ });
+
+ exited 1 in 460ms:
+# --format must be json
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 24.8835
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 24.460958
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 24.001792
+  ...
+# Subtest: version prints JSON with --format json
+ok 4 - version prints JSON with --format json
+  ---
+  duration_ms: 46.759833
+  ...
+# Subtest: version --format yaml exits 1 with an error
+ok 5 - version --format yaml exits 1 with an error
+  ---
+  duration_ms: 23.098917
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 177.383167
+
+> harbor-tools@0.1.0 test
+> node --test tests/
+
+TAP version 13
+# --format must be json
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 25.342542
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 23.797
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 24.998458
+  ...
+# Subtest: version prints JSON with --format json
+ok 4 - version prints JSON with --format json
+  ---
+  duration_ms: 49.521916
+  ...
+# Subtest: version --format yaml exits 1 with an error
+ok 5 - version --format yaml exits 1 with an error
+  ---
+  duration_ms: 24.648375
+  ...
+# Subtest: GET /health returns ok
+not ok 6 - GET /health returns ok
+  ---
+  duration_ms: 2.253792
+  location: '/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 7 - GET /items returns list
+  ---
+  duration_ms: 0.514083
+  location: '/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 8 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.369709
+  location: '/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 5
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 182.276125
+
+[codex-monitored] heartbeat: elapsed=90s
+codex
+Reverted the out-of-scope `USAGE` line exactly and strengthened the invalid-format test to assert exit status and stderr.
+
+`node --test tests/cli.test.js`: 5/5 pass.  
+`npm test`: blocked by sandbox `listen EPERM` in the three untouched server tests (5/8 pass).
+
+BLOCKED — Findings 1 and 2 addressed.
+diff --git a/bin/cli.js b/bin/cli.js
+index f168637600ee46c583d45193e1bf6a7b2558d3db..e468d5ceba945cfea6528cad45ebe5136b6967d5
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version [--format json]    Print the CLI version from package.json
++  version                    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index d64228d5ac3fd1b1a2c492ed25103d2d9ca594b6..db94df502995eab332ec47e4ac0da9f5d2a5a6a3
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -31,5 +31,13 @@
+ });
+ 
+ test('version --format yaml exits 1 with an error', () => {
+-  assert.throws(() => run(['version', '--format', 'yaml']), /Command failed/);
++  let error;
++  try {
++    run(['version', '--format', 'yaml']);
++  } catch (caught) {
++    error = caught;
++  }
++  assert.match(error.message, /Command failed/);
++  assert.strictEqual(error.status, 1);
++  assert.match(error.stderr, /--format must be json/);
+ });
+
+tokens used
+16,301
+[codex-monitored] codex exited: code=0 elapsed=101s

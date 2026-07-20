@@ -1,0 +1,58 @@
+# Codex (OpenAI) adapter
+
+## Identity
+
+You are OpenAI's Codex model. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+
+Efficient, direct, task-oriented. Do not over-specify process.
+
+## Validation pattern
+
+Validation is concrete commands, not self-belief. Run `npm test` after any change and trust its output.
+
+Do not narrate internal deliberation. State results and decisions directly.
+
+---
+
+# PHASE 4 — CLEANUP (canonical body)
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn.
+</role>
+
+<input>
+- Cumulative diff since base ref `e5a20d983f63e62ad264174c025fad97769e9fc5`.
+- Spec: `.devlyn/criteria.generated.md`.
+- `phases.cleanup.pre_sha` = current HEAD = the orchestrator captured this before spawn — your post-cleanup diff against this SHA must stay within the allowlist.
+</input>
+
+<allowlist>
+You may modify or delete:
+
+1. **Tooling artifacts** the spec did not list as deliverables: `test-results/`, `.last-run.json`, coverage HTML output, build artifacts, runtime caches (`__pycache__/`, `*.pyc`, `.cache/`).
+2. **Dead code added by this diff** — symbols (functions, classes, types, exports) introduced by this diff that no other code added by this diff references AND that are not part of the spec's required surface. Pre-existing dead code is out of scope.
+3. **Doc references this diff invalidated** — links / file paths / symbol names in markdown files that this diff renamed or removed. Update only the references; do not rewrite surrounding prose.
+4. **Inline comments** that explain code this diff deleted but the comment still mentions.
+
+Files outside this allowlist must not change. Pre-existing tooling leaks (already in main before this run) belong to a future cleanup, not this one.
+</allowlist>
+
+<output>
+Report your verdict in this reply: `PASS` if changes within allowlist (or no changes needed); `FAIL` if you cannot complete within the allowlist.
+</output>
+
+<quality_bar>
+- Subtractive-first applies most strongly here. Lines removed should outnumber lines added unless documentation needs a small additive update for a renamed symbol.
+- Do not "improve" code outside the allowlist, even if it looks fixable. The allowlist is the contract.
+- If an artifact / dead symbol / stale doc reference straddles the allowlist, surface it as a finding into `.devlyn/cleanup.findings.jsonl` rather than guessing.
+</quality_bar>
+
+<runtime_principles>
+Cleanup is the smallest reversible step toward "what shipped equals what the spec licensed."
+</runtime_principles>
+
+---
+
+Task: repo root `/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo`. Only `bin/cli.js` and `tests/cli.test.js` were touched by PLAN/IMPLEMENT/SURFACE_CLOSE (adding `parseFormatFlag` in `bin/cli.js`, updating the `version` case and the `USAGE` string, and adding two tests in `tests/cli.test.js`). Inspect `git diff e5a20d983f63e62ad264174c025fad97769e9fc5 HEAD -- bin/cli.js tests/cli.test.js` for the full delta. Check whether the diff introduced any dead code, stray tooling artifacts, or stale doc references within the allowlist above. If nothing needs cleanup, make NO changes and report `PASS` with "no changes needed". Do not touch any file outside `bin/cli.js` / `tests/cli.test.js` unless it's a genuine tooling-artifact/doc-reference case per the allowlist. Do not run `git commit`. Report PASS/FAIL as the last line of your reply.

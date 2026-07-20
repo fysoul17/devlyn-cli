@@ -1,0 +1,9 @@
+Implemented the JSON version format and coverage.
+
+- `--format json` emits exact JSON; missing/unsupported values exit 1: [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/bin/cli.js:44)
+- Added JSON-path test: [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r5474dabbdeb2/ff10888c89791/A1/repo/tests/cli.test.js:27)
+- All three specified CLI verification commands pass; scoped CLI tests pass (4/4); `git diff --check` passes.
+
+`npm test` is blocked by the sandbox: unrelated server tests cannot bind `0.0.0.0` (`listen EPERM`), so the required full suite exits 1.
+
+BLOCKED

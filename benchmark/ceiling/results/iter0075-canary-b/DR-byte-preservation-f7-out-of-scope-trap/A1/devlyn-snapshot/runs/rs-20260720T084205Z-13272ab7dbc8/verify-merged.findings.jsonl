@@ -1,0 +1,2 @@
+{"confidence":"high","file":"tests/server.test.js","id":"J-0001","line":9,"message":"Full `npm test` coverage could not be exercised because `server.listen(0, () => resolve(server));` failed with sandbox EPERM; the isolated CLI suite passed 5/5.","rule_id":"verification.coverage-limited","severity":"INFO","source":"judge"}
+{"confidence":"high","file":"bin/cli.js","id":"PAIR-0000","line":1,"message":"Both targeted probes passed: exact JSON shape and error-contract (yaml + missing value) both correct.","severity":"INFO","source":"pair_judge"}

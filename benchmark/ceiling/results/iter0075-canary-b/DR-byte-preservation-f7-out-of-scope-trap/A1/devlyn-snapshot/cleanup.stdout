@@ -1,0 +1,3 @@
+Inspected the specified diff: `parseFormatFlag` is used by `version`; tests are required coverage. No allowlisted stale references or new tooling artifacts found. No changes made.
+
+PASS

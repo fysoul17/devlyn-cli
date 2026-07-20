@@ -1,0 +1,28 @@
+{
+  "seed": 109022475330539736423274822839486274153650664843453981728129472035085228650878,
+  "packets": {
+    "P1": {
+      "candidate": "B",
+      "patch_sha256": "9952235b2929acff36abb29563b37e6b1391ebf47af102d5a0ed7371684a2c6c"
+    },
+    "P2": {
+      "candidate": "A",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "frozen_b_source": {
+    "control_id": "F7",
+    "task": "DR-byte-preservation-f7-out-of-scope-trap",
+    "run_id": "iter0068-gate-20260711h",
+    "attempt": "B1",
+    "attempt_dir": "/Users/aipalm/devlyn-ceiling-external/exam-0075-canary/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1",
+    "patch_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-canary/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1/patch.diff",
+    "patch_sha256": "9952235b2929acff36abb29563b37e6b1391ebf47af102d5a0ed7371684a2c6c",
+    "objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-canary/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1/objective.json",
+    "objective_sha256": "c17da65c08e1179728316f85fb5f7f2db3edba5eb4c462beadbe2ff5cec2bcb5",
+    "timing_path": "/Users/aipalm/devlyn-ceiling-external/exam-0075-canary/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1/timing.json",
+    "timing_sha256": "21498d83489e5c0376d6807fc5583e65aba7c347e82914028c5833d38998b70a",
+    "resolved": true,
+    "elapsed_seconds": 67
+  }
+}

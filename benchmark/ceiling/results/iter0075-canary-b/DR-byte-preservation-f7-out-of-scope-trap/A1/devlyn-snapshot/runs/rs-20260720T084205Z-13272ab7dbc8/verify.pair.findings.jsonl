@@ -1,0 +1,1 @@
+{"confidence":"high","file":"bin/cli.js","id":"PAIR-0000","line":1,"message":"Both targeted probes passed: exact JSON shape and error-contract (yaml + missing value) both correct.","severity":"INFO"}
