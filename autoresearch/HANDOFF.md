@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iter: [`iterations/0073-attribution-complete-remeasure.md`](iterations/0073-attribution-complete-remeasure.md) (MEASURED — read §ADJUDICATION + §Execution deviations; FS1 re-row is the only open item) + [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (§DESIGN FROZEN — C2 shipped edfb02a; C1 parity probe is the licensed follow-up). Recently closed: [`iterations/0072-changed-surface-closure.md`](iterations/0072-changed-surface-closure.md) (SHIP-CREDITED then CLOSED, DECISIONS 0072.28/.29), [`iterations/0071-wall-proportionality.md`](iterations/0071-wall-proportionality.md) (addendum-5 wall read now UNSUPPORTED per 0073.2). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iter: [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (C2 shipped 0074.1 · C1 probe frozen 0074.2 · C1 probe MEASURED 0074.3 — read §C1 PROBE MEASURED incl. the honest CLI-loop-cap bound; open item = C1 product-wiring registration, separate claim). Recently closed: [`iterations/0073-attribution-complete-remeasure.md`](iterations/0073-attribution-complete-remeasure.md) (CLOSED 0073.3 — read §CLOSURE for the successor/closure row split + Treatment-Seat Identity precedent), [`iterations/0072-changed-surface-closure.md`](iterations/0072-changed-surface-closure.md) (0072.28/.29). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,49 +14,46 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-20 (iter-0072 CLOSED · iter-0073 **MEASURED** (0073.2) · iter-0074 **C2 SHIPPED** (0074.1))
+## 🚦 START-HERE — state after 2026-07-20 evening (iter-0073 **CLOSED** (0073.3) · iter-0074 **C2 SHIPPED + C1 PROBE MEASURED** (0074.3))
 
-**Where the loop stands (one paragraph).** iter-0072 CLOSED (0072.29,
-honesty correction: the credited -19f row's pipeline terminal was
-INCOMPLETE). iter-0073 (attribution-complete re-measure, frozen 0073.1)
-is DELIVERED AND MEASURED on cohort `nodeg-20260719g` (verdict +
-adjudication in the iter file; DECISIONS 0073.2): **P-a′ CONFIRMED —
-quality 0/7** (the -19f F7 codex A_win did not replicate = noise);
-**P-b CONFIRMED — wall median 12.1×** (5.6-16.8); **P-c
-INCONCLUSIVE-by-rule** (4<5 complete-verify rows) with UNANIMOUS
-directional data: **implement is only 14-27% of wall — the
-0071-addendum-5 "bottleneck = IMPLEMENT/fix-loop" read is unsupported;
-the dominant buckets are the NON-PHASE RESIDUAL (CLI startup +
-inter-phase orchestrator turns, 18-51%) and VERIFY (0-50%)**. Objective
-6/7 — the sole failure (FS1) is CONFOUNDED (auto-updater deleted the
-pinned CLI mid-cohort → FS1's SURFACE_CLOSE auto-skipped; re-row
-licensed). iter-0074 three-way design CONVERGED (Measured-bind-first)
-and the **C2 terminal-claim binding SHIPPED** (edfb02a:
-`terminal-claim-check.py` exit-79 classifier + ARM=A receipt binding +
-queue-drain FAILED-INCOMPLETE from the predicate) — timely, because
-**premature-terminal-mid-VERIFY fired on 3/7 cohort rows** (dominant
-A-arm failure mode; C1 Stop-hook stays probe-gated). Attribution
-instrument fixes root-landed on main (attribution.py null-phase +
-skip-receipt tolerance; isolation-payload.py extraction — integrity
-receipts now write BEFORE instrument gates; --post-hoc fail-loud
-reconstruction). F25 root-cause note recorded (spec-silent data-shape
-generality — the class blind judges punish that spec-anchored VERIFY
-structurally cannot see).
+**Where the loop stands (one paragraph).** iter-0073 CLOSED (0073.3,
+commit 9484984): the FS1 re-row DELIVERED — closure row
+`nodeg-20260720b` on TRUE 2.1.211 (official-channel restore to a
+run-owned path, manifest checksum match, live CLI untouched) passed
+objective 1/1 with SC running ⇒ the -19g failure is CONFIRMED
+CONFOUNDED and the cohort objective claim closes **7/7**; successor row
+`nodeg-20260720a` (2.1.215) ALSO passed 1/1 with SC PASS in both
+pipeline runs and zero premature-terminal. Standing cohort verdicts:
+quality 0/7, wall median 12.1×, and the wall bottleneck read is now
+**unanimous across 9 measured rows — non-phase residual (up to 84%) +
+VERIFY dominate; implement is 2.6-27%**. iter-0074: C2 terminal-claim
+binding SHIPPED (edfb02a, 0074.1); **C1 Stop-hook parity probe frozen
+three-way (0074.2), built by Codex sol (324fe2f + d8fb354), Grok GO,
+and MEASURED (0074.3)**: claude route VETO-CAPABLE — 5/5 BLOCK_HONORED
+at the strict bar, zero STATE_ESCAPE, run-1 canary caught a live
+harness bug before scoring (the harness-dead gate worked as frozen).
+HONEST BOUND: the CLI caps the stop-hook loop (~9 blocks then exit 0)
+— C1 is in-session self-correction pressure, NOT an absolute bind; C2
+external classification remains the terminal authority. Route matrix:
+codex = ROUTE-DISABLED-BY-HARNESS (codex-monitored.sh:110-111, wrapper
+policy), omp unmeasured. Adjudication precedent minted today:
+**Treatment-Seat Identity Fidelity** (0074.2 (f)) — judge-only CLI
+drift never extends to the treatment arm; restore the exact CLI (see
+pin-restore recipe below) or label the row a successor.
 
 **Next work (in order)**:
-1. **FS1 re-row on an updater-proof pin** (copy pinned CLI to a
-   run-owned path first — deviation 3 mechanics) — closes the cohort
-   objective claim; then decide iter-0073 close.
-2. **C1 Stop-hook parity probe** (licensed follow-up in 0074 file;
-   priority RAISED by the 3/7 epidemic) — replay -19f state, hook
-   installed, claude/codex/omp × headless; C1 registration only after
-   per-route measurement.
-3. **Next wall lever registration** — target the non-phase residual +
-   VERIFY per the unanimous P-c directional data; needs one more
-   cohort clearing ≥5 complete-verify rows for the formal addendum-5
-   kill (the 0074 bindings + updater-proof pin should raise the
-   complete-row rate).
-4. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
+1. **iter-0075 registration — formal P-c adjudication cohort + wall
+   lever targeting residual+VERIFY** (three-way round): one 7-row
+   cohort on the post-0074 main stack (fixed instruments end the
+   post-hoc-repair deviations; C2 binding labels incomplete rows)
+   clearing ≥5 complete-verify rows for the formal addendum-5 kill;
+   the lever design question is WHICH residual component (CLI startup /
+   inter-phase orchestrator turns / outer-loop gaps) is reducible
+   without touching engine autonomy.
+2. **C1 product wiring registration** (separate claim, own round) —
+   the probe licenses it for the claude route only; the honest bound
+   (CLI loop cap) and ROUTE-DISABLED-BY-HARNESS facts go in the packet.
+3. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
 
 **Cohort/row mechanics (binding, updated 2026-07-20)**: full cohort =
 `git worktree add --detach <path> <SHA>` (runner-SHA integrity —
@@ -67,21 +64,35 @@ nohup bash benchmark/ceiling/scripts/run-nodeg-cell.sh --run-id <fresh>
 --tasks "F7,F25,F26,F11,F12,F23,FS1"` (explicit CSV REQUIRED — C2 draw
 filter activates only under --tasks; F7 FIRST so a pre8/cmds=0 draw
 abort exit-86 is cheap; diagnostic-draw rate ≈ 1/3, relaunch fresh id).
-**UPDATER-PROOF PIN (deviation 3, mandatory)**: `cp` the pinned claude
-binary from `~/.local/share/claude/versions/<v>` to a run-owned path
-BEFORE launch — the auto-updater deleted 2.1.211 mid-cohort, degrading
-FS1 (SC auto-skip) and killing the judge stage. Empty-transcript
-timeout rows (invoke_exit=124) use the `a-runtime-attestation-source`
-deviation (0071 F25 precedent; debug-log model-hit scan);
+**UPDATER-PROOF PIN (mandatory)**: `cp` the pinned claude binary to a
+run-owned path BEFORE launch (`~/.local/share/nx01/pins/…`) — the
+auto-updater deletes old versions from `~/.local/share/claude/versions/`.
+**Deleted-version RESTORE recipe (established 2026-07-20)**: fetch
+`https://downloads.claude.ai/claude-code-releases/<version>/<platform>/claude`
+(darwin-arm64 here), verify sha256 against `<version>/manifest.json`,
+chmod +x at the run-owned path; NEVER reinstall into the live versions
+store. Treatment-Seat Identity Fidelity (0074.2 (f)): judge-only CLI
+drift never licenses a cross-version treatment arm — restore the exact
+CLI or label the row a successor row. **Worktree-dirty gotcha**: the
+runner refuses cell init while prior run results sit untracked in the
+worktree — move them to main-repo `benchmark/ceiling/results/` (their
+archival home) before the next launch. **Judge haiku flake**: sonnet
+judge attestation can fail on a nondeterministic haiku auxiliary call
+in modelUsage — one `--resume` retry passed clean (-20260720b
+precedent). Empty-transcript timeout rows (invoke_exit=124) use the
+`a-runtime-attestation-source` deviation (0071 F25 precedent);
 judge-runner-sha deviation is REJECTED when HEAD matches. Post-hoc
 instruments (deterministic, run from main against result dirs):
-`attribution.py <attempt_dir-with-timing+devlyn-snapshot>`,
-`isolation-payload.py --post-hoc <attempt_dir>`. The A-arm worktrees
-SURVIVE at `~/.local/share/nx01/w/…`; PHASE-6 archive prunes root
-.devlyn into runs/. Dead run-ids: -20260718f/g/h, -20260719a-e. Codex
-builds detached + one retry on silent hang (a killed-at-report-stage
-build may be complete on disk — verify + finish gates yourself before
-rebuilding; two live hangs observed: 35-min and 66-min zero-output).
+`attribution.py <attempt_dir>`, `isolation-payload.py --post-hoc
+<attempt_dir>` — needed only for worktrees predating the instrument
+fixes (pre-294d828); a post-0074 cohort SHA ends this deviation class.
+The A-arm worktrees SURVIVE at `~/.local/share/nx01/w/…`; PHASE-6
+archive prunes root .devlyn into runs/. Dead run-ids: -20260718f/g/h,
+-20260719a-e. Codex builds detached + one retry on silent hang (a
+killed-at-report-stage build may be complete on disk — verify + finish
+gates yourself before rebuilding; two live hangs observed: 35-min and
+66-min zero-output; codex sandbox cannot write .git — orchestrator
+commits builds, surfaced in the message).
 
 **Seat scorecard (2026-07-19/20 sessions, keep the triad honest)**:
 orchestrator verified every load-bearing seat citation live before
@@ -222,7 +233,8 @@ At `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`: `feed
 | Engine-symmetric pair invocation | REAL both directions | iter-0060 (codex→claude judge fired via adapter) |
 | gemma3:4b as judge | MODEL CEILING — do not re-prompt | iter-0055/0056 |
 | Ceiling quality (세계최고 axis) | FAIL-pilot twice (0064 LC3 4.32×; 0067 copycat 16:3, wall 8.33×) — no moat claim | iter-0064/0067 `ceiling-verdict.json` |
-| No-degradation (Block 8 suppression axes) | quality **0/7** stable across 3 cohorts/CLI versions · wall median **12.1×** (post-0072 stack, `nodeg-20260719g`) · objective 6/7 (sole fail confounded — FS1 re-row open). **Attribution (first real data): implement only 14-27% of wall — "IMPLEMENT/fix-loop bottleneck" read UNSUPPORTED; non-phase residual (18-51%) + VERIFY dominate** | `nodeg-20260719g/nodeg-verdict.json` + per-row attribution.json; DECISIONS 0073.2 |
+| No-degradation (Block 8 suppression axes) | quality **0/7** stable across 3 cohorts/CLI versions · wall median **12.1×** · objective **7/7 CLOSED** (FS1 re-row on exact 2.1.211: confound confirmed, 0073.3). **Attribution: implement 2.6-27% of wall across 9 unanimous rows — residual (up to 84%) + VERIFY dominate** | `nodeg-20260719g` + `nodeg-20260720a/b` verdicts + attribution.json; DECISIONS 0073.2/.3 |
+| C1 Stop-hook (terminal-claim pressure) | claude route VETO-CAPABLE — 5/5 BLOCK_HONORED strict bar; HONEST BOUND: CLI caps stop-hook loop (~9) — C1 = pressure, C2 = authority; codex ROUTE-DISABLED-BY-HARNESS, omp unmeasured | `benchmark/ceiling/probes/c1-stop-parity/results/`; DECISIONS 0074.3 |
 | T1 packet calibration (seat×defect) | complementary override: catalog admits ONLY sonnet, credential ONLY terra (risk-diff 1.0 both) → routed-seat v2, validation fixtures landed | 0070a Amendment 2 + addendum 9; `benchmark/noncoding/validation/` |
 | Seat fitness (모델 × 포지션) | matrix live; 5 current cells; executor/pair-judge pins fail-closed "recert required" | `benchmark/seats/seat-matrix-2026-07-07.json` |
 
@@ -232,7 +244,7 @@ Working instruments: violation matrix (`run-violation-matrix.sh`), compliance ce
 
 ## 📍 Project state (verify before editing)
 
-- **Branch**: `main`, pushed through `a541692` (2026-07-20). Run `git log --oneline -10`. Release/installer surface (README/bin publish commits) is USER territory, hands off.
+- **Branch**: `main`, pushed through `a05a262` + this HANDOFF commit (2026-07-20 evening). Run `git log --oneline -10`. Release/installer surface (README/bin publish commits) is USER territory, hands off.
 - **Engine pins**: `.devlyn/engines.json` = `{"executor": "codex"}` (machine-local; orchestrator passes `--pair-verify` on resolve runs per `feedback_executor_codex_always_pair_verify.md`).
 - Housekeeping (deferred per user 2026-04-30, unchanged): 4 dirty `.claude/worktrees/agent-*` — save patches before any removal; NOT in iter scope.
 
@@ -275,4 +287,4 @@ If any unexpected output, do NOT proceed. Surface to user.
 
 ## ⏭️ End of HANDOFF
 
-Evolution loop trajectory since re-open (2026-07-03): 0037-0039 conversational handoff + queue → 0040 cross-CLI portability → 0042-0047 instrument panel → 0048-0050 language-neutral + doctor → 0051-0057 local-backend shipped→measured→deleted → 0058-0060 violation-rate axis + engine-symmetric pair → 0061 F6 closed (AGENTS.md binding) → 0062 contract decidability (E1 shipped) → 0063 mechanical finish-gate → 0064 ceiling & seat instrument SHIPPED, pilot FAIL-pilot on efficiency → 0065 hands-free large + bounded pair-VERIFY SHIPPED → 0066 pre-VERIFY overhead SHIPPED → 0067 ceiling tranche 2 MEASURED, verdict **FAIL-pilot** (de-biased instrument, fresh django holdout: objective tie, neutral judge prefers copycat 16:3, wall 8.33×) → 0068 discriminating corpus CLOSED VALID-NEGATIVE (isolation v2 permanent) → 0070a non-coding instruments → 0071 proportional escalation SHIPPED (wall levers later valid-negative) → 0072 changed-surface closure SHIP-CREDITED then CLOSED (first 11/11 row) → **0073 attribution-complete re-measure MEASURED (quality 0/7 · wall 12.1× · bottleneck ≠ IMPLEMENT — residual+VERIFY dominate) → 0074 terminal-claim C2 binding SHIPPED (premature-terminal fired 3/7 rows)**. Detail: DECISIONS.md + iteration files. Mission 1 not formally closed (test #15 user-gated). 압도적·독보적 is the bar; the instruments made it losable — it loses today on wall (12×) and blind quality (0/7), and for the first time the loop knows WHERE the wall goes. That honesty is the moat-in-progress.
+Evolution loop trajectory since re-open (2026-07-03): 0037-0039 conversational handoff + queue → 0040 cross-CLI portability → 0042-0047 instrument panel → 0048-0050 language-neutral + doctor → 0051-0057 local-backend shipped→measured→deleted → 0058-0060 violation-rate axis + engine-symmetric pair → 0061 F6 closed (AGENTS.md binding) → 0062 contract decidability (E1 shipped) → 0063 mechanical finish-gate → 0064 ceiling & seat instrument SHIPPED, pilot FAIL-pilot on efficiency → 0065 hands-free large + bounded pair-VERIFY SHIPPED → 0066 pre-VERIFY overhead SHIPPED → 0067 ceiling tranche 2 MEASURED, verdict **FAIL-pilot** (de-biased instrument, fresh django holdout: objective tie, neutral judge prefers copycat 16:3, wall 8.33×) → 0068 discriminating corpus CLOSED VALID-NEGATIVE (isolation v2 permanent) → 0070a non-coding instruments → 0071 proportional escalation SHIPPED (wall levers later valid-negative) → 0072 changed-surface closure SHIP-CREDITED then CLOSED (first 11/11 row) → **0073 attribution-complete re-measure MEASURED then CLOSED (quality 0/7 · wall 12.1× · objective 7/7 via exact-pin FS1 re-row · bottleneck ≠ IMPLEMENT — residual+VERIFY dominate, 9 rows unanimous) → 0074 terminal-claim C2 binding SHIPPED + C1 probe frozen/built/MEASURED (claude route veto-capable 5/5; CLI loop-cap honest bound — C1 pressure, C2 authority)**. Detail: DECISIONS.md + iteration files. Mission 1 not formally closed (test #15 user-gated). 압도적·독보적 is the bar; the instruments made it losable — it loses today on wall (12×) and blind quality (0/7), and for the first time the loop knows WHERE the wall goes. That honesty is the moat-in-progress.
