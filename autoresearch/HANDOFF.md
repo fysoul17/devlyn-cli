@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iter: [`iterations/0073-attribution-complete-remeasure.md`](iterations/0073-attribution-complete-remeasure.md) (FROZEN registration — the binding contract for Stage A/B) + [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (design-only license). Recently closed: [`iterations/0072-changed-surface-closure.md`](iterations/0072-changed-surface-closure.md) (SHIP-CREDITED then CLOSED, DECISIONS 0072.28/.29), [`iterations/0070a-noncoding-instruments.md`](iterations/0070a-noncoding-instruments.md), [`iterations/0071-wall-proportionality.md`](iterations/0071-wall-proportionality.md). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iter: [`iterations/0073-attribution-complete-remeasure.md`](iterations/0073-attribution-complete-remeasure.md) (MEASURED — read §ADJUDICATION + §Execution deviations; FS1 re-row is the only open item) + [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (§DESIGN FROZEN — C2 shipped edfb02a; C1 parity probe is the licensed follow-up). Recently closed: [`iterations/0072-changed-surface-closure.md`](iterations/0072-changed-surface-closure.md) (SHIP-CREDITED then CLOSED, DECISIONS 0072.28/.29), [`iterations/0071-wall-proportionality.md`](iterations/0071-wall-proportionality.md) (addendum-5 wall read now UNSUPPORTED per 0073.2). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,39 +14,34 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10 and agai
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-19 evening (iter-0072 **CLOSED** (0072.29) · iter-0073 **REGISTERED-FROZEN** (0073.1) · iter-0074 STUB)
+## 🚦 START-HERE — state after 2026-07-20 (iter-0072 CLOSED · iter-0073 **MEASURED** (0073.2) · iter-0074 **C2 SHIPPED** (0074.1))
 
-**Where the loop stands (one paragraph).** iter-0072 is **CLOSED** —
-the F7 composite final-tree closure claim was SHIP-CREDITED at
-nodeg-20260719f 11/11 (0072.28) and the close-out three-way round (R0
-2026-07-19) adjudicated Registered-Claim State with a Codex honesty
-correction applied: -19f was a valid diagnostic final-tree row but its
-pipeline terminal was INCOMPLETE (verify.verdict=None; "clean
-diagnostic completion" wording corrected, 0072.29). **iter-0073 is
-FROZEN** (three-way converged R0+R1, six seat blockers adopted;
-0073.1): single claim = ONE attribution-complete 7-row nodeg cohort on
-the post-0072 stack — Stage A retention build (whole-.devlyn snapshot +
-interphase-turns history fix + attribution.json) then Stage B detached
-exam (worktree-pinned SHA, 7-task CSV F7-first, sonnet/terra, CLI
-2.1.211 + node v20.19.0 exact bins). Frozen predictions: P-a′
-replication (suite quality stays 0/7), P-b wall ≥8×, P-c two-sided
-implement-share ≥0.60 on ≥5/7 CONFIRMS the addendum-5 wall read /
-REFUTES with ≥5 rows / else INCONCLUSIVE (orchestrator prior: REFUTED —
--19f implement ≈12% of wall, non-phase residual ≈50%). **iter-0074
-STUB** = premature-terminal-during-VERIFY (fired on -19f itself),
-design-only license, Terminal-Claim Authority bar.
-
-**2026-07-20 session result**: Stage A+B DELIVERED and MEASURED
-(cohort nodeg-20260719g, verdict + adjudication frozen in the iter
-file; DECISIONS 0073.2): P-a′ CONFIRMED (quality 0/7; the -19f F7
-codex A_win was noise), P-b CONFIRMED (wall median 12.1×), P-c
-INCONCLUSIVE-by-rule (4<5 complete rows) with UNANIMOUS directional
-data — implement 14-27% of wall; the big buckets are the NON-PHASE
-RESIDUAL (18-51%) and VERIFY. iter-0074 design CONVERGED + C2 build
-SHIPPED same session (edfb02a; terminal-claim-check.py + arm/queue
-bindings). DISCOVERY: premature-terminal-mid-VERIFY fired on 3/7
-cohort rows — dominant A-arm failure mode. F25 root-cause note
-recorded (spec-silent data-shape generality class).
+**Where the loop stands (one paragraph).** iter-0072 CLOSED (0072.29,
+honesty correction: the credited -19f row's pipeline terminal was
+INCOMPLETE). iter-0073 (attribution-complete re-measure, frozen 0073.1)
+is DELIVERED AND MEASURED on cohort `nodeg-20260719g` (verdict +
+adjudication in the iter file; DECISIONS 0073.2): **P-a′ CONFIRMED —
+quality 0/7** (the -19f F7 codex A_win did not replicate = noise);
+**P-b CONFIRMED — wall median 12.1×** (5.6-16.8); **P-c
+INCONCLUSIVE-by-rule** (4<5 complete-verify rows) with UNANIMOUS
+directional data: **implement is only 14-27% of wall — the
+0071-addendum-5 "bottleneck = IMPLEMENT/fix-loop" read is unsupported;
+the dominant buckets are the NON-PHASE RESIDUAL (CLI startup +
+inter-phase orchestrator turns, 18-51%) and VERIFY (0-50%)**. Objective
+6/7 — the sole failure (FS1) is CONFOUNDED (auto-updater deleted the
+pinned CLI mid-cohort → FS1's SURFACE_CLOSE auto-skipped; re-row
+licensed). iter-0074 three-way design CONVERGED (Measured-bind-first)
+and the **C2 terminal-claim binding SHIPPED** (edfb02a:
+`terminal-claim-check.py` exit-79 classifier + ARM=A receipt binding +
+queue-drain FAILED-INCOMPLETE from the predicate) — timely, because
+**premature-terminal-mid-VERIFY fired on 3/7 cohort rows** (dominant
+A-arm failure mode; C1 Stop-hook stays probe-gated). Attribution
+instrument fixes root-landed on main (attribution.py null-phase +
+skip-receipt tolerance; isolation-payload.py extraction — integrity
+receipts now write BEFORE instrument gates; --post-hoc fail-loud
+reconstruction). F25 root-cause note recorded (spec-silent data-shape
+generality — the class blind judges punish that spec-anchored VERIFY
+structurally cannot see).
 
 **Next work (in order)**:
 1. **FS1 re-row on an updater-proof pin** (copy pinned CLI to a
@@ -63,21 +58,30 @@ recorded (spec-silent data-shape generality class).
    complete-row rate).
 4. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
 
-**Row mechanics (all learned this session, binding)**: launch =
-`CEILING_TEST_CLAUDE_BIN=<2.1.211> CEILING_TEST_NODE_BIN=<node-v20>
+**Cohort/row mechanics (binding, updated 2026-07-20)**: full cohort =
+`git worktree add --detach <path> <SHA>` (runner-SHA integrity —
+nodeg-cell.py dies if HEAD moves after cell init; inner-loop commits on
+main stay safe), then from the worktree
+`CEILING_TEST_CLAUDE_BIN=<run-owned copy> CEILING_TEST_NODE_BIN=/Users/aipalm/.nvm/versions/node/v20.19.0/bin/node
 nohup bash benchmark/ceiling/scripts/run-nodeg-cell.sh --run-id <fresh>
---tasks DR-byte-preservation-f7-out-of-scope-trap` + watcher
-`watch-nodeg-row.sh <run-id> <task> /tmp/<id>-arc --v5` (F-ii: watcher
-gates a TEMP COPY of the live tree at row end — never trust the
-snapshot-only branch; the worktree SURVIVES at
-`~/.local/share/nx01/w/…` and PHASE-6 archive prunes root .devlyn state
-into runs/). C2 auto-aborts non-diagnostic draws (criteria-time cmds=0
-+ post-IMPLEMENT pre7/pre8; exit 86; commit results, relaunch fresh id
-— observed diagnostic-draw rate ≈ 1/3). Deps staged deterministically
-(F-i, deps-staging.json receipt). Dead run-ids now also: -20260718f/g/h,
--20260719a/b/c. Codex builds detached + one retry on silent hang
-(35-min zero-output kill observed); a killed-at-report-stage build may
-be complete on disk — verify + finish gates yourself before rebuilding.
+--tasks "F7,F25,F26,F11,F12,F23,FS1"` (explicit CSV REQUIRED — C2 draw
+filter activates only under --tasks; F7 FIRST so a pre8/cmds=0 draw
+abort exit-86 is cheap; diagnostic-draw rate ≈ 1/3, relaunch fresh id).
+**UPDATER-PROOF PIN (deviation 3, mandatory)**: `cp` the pinned claude
+binary from `~/.local/share/claude/versions/<v>` to a run-owned path
+BEFORE launch — the auto-updater deleted 2.1.211 mid-cohort, degrading
+FS1 (SC auto-skip) and killing the judge stage. Empty-transcript
+timeout rows (invoke_exit=124) use the `a-runtime-attestation-source`
+deviation (0071 F25 precedent; debug-log model-hit scan);
+judge-runner-sha deviation is REJECTED when HEAD matches. Post-hoc
+instruments (deterministic, run from main against result dirs):
+`attribution.py <attempt_dir-with-timing+devlyn-snapshot>`,
+`isolation-payload.py --post-hoc <attempt_dir>`. The A-arm worktrees
+SURVIVE at `~/.local/share/nx01/w/…`; PHASE-6 archive prunes root
+.devlyn into runs/. Dead run-ids: -20260718f/g/h, -20260719a-e. Codex
+builds detached + one retry on silent hang (a killed-at-report-stage
+build may be complete on disk — verify + finish gates yourself before
+rebuilding; two live hangs observed: 35-min and 66-min zero-output).
 
 **Seat scorecard this session (keep the triad honest)**: orchestrator
 adjudicated the Q1 label against Codex's FALSIFIED reading on the
