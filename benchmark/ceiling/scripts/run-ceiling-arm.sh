@@ -726,6 +726,16 @@ case "$ARM" in
   C) PROMPT="$(copycat_prompt)" ;;
 esac
 
+TERMINAL_CLAIM_RUN_IDS_BEFORE=""
+if [ -d "$WORKTREE/.devlyn/runs" ]; then
+  TERMINAL_CLAIM_RUN_IDS_BEFORE="$(
+    for run_dir in "$WORKTREE"/.devlyn/runs/*; do
+      [ -d "$run_dir" ] || continue
+      echo "${run_dir##*/}"
+    done
+  )"
+fi
+
 INVOKE_STARTED_AT="$(python3 -c 'import datetime as d; print(d.datetime.now(d.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z"))')"
 START_SECONDS="$(date +%s)"
 if run_with_timeout "$WORKTREE" "$RESULT_DIR/transcript.txt" "$PROMPT"; then
@@ -808,7 +818,10 @@ fi
 ARM_EXIT="$INVOKE_EXIT"
 if [ "$ARM" = A ]; then
   set +e
-  TERMINAL_CLAIM_JSON="$(python3 "$TERMINAL_CLAIM_CHECK" "$WORKTREE")"
+  TERMINAL_CLAIM_JSON="$(
+    DEVLYN_RUN_IDS_BEFORE="$TERMINAL_CLAIM_RUN_IDS_BEFORE" \
+      python3 "$TERMINAL_CLAIM_CHECK" "$WORKTREE"
+  )"
   TERMINAL_CLAIM_EXIT=$?
   set -e
   case "$TERMINAL_CLAIM_EXIT" in

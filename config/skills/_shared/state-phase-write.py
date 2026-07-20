@@ -44,13 +44,17 @@ WORKER_SESSION_ARTIFACT_PHASES = {
 MODEL_HEADER_RE = re.compile(r"(?m)^[ \t]*model:[ \t]*(\S+)[ \t]*$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 SURFACE_ROW_RE = re.compile(
-    r"^(?P<obligation>UVR-STALE|PATH-TEST): (?P<status>FIRED|N/A) "
-    r"(?P<path>.+):(?P<line>[1-9][0-9]*)(?: — (?P<evidence>\S.*))?$"
+    r"^(?P<obligation>UVR-STALE|PATH-TEST): (?:"
+    r"(?P<fired>FIRED) (?P<fired_path>.+):(?P<fired_line>[1-9][0-9]*)"
+    r"(?: — (?P<fired_evidence>\S.*))?|"
+    r"(?P<na>N/A) (?P<na_path>.+?)(?::(?P<na_line>[1-9][0-9]*))?"
+    r"(?: — (?P<na_evidence>\S.*))?)$"
 )
 VALIDATION_EXECUTION_RE = re.compile(
     r"npm\s+test|node\s+--test|node\s+-e|node\s+bin/|node\s+tests/|git\s+stash"
 )
 SURFACE_SKIP_REASON = "auto_surface_close_claude_unavailable"
+SURFACE_RECOVERY_REASON = "surface_close_rolled_back_adjudication_malformed"
 
 
 def reject_json_constant(token: str) -> None:
@@ -301,7 +305,7 @@ def validate_surface_adjudication(
     except (OSError, UnicodeError) as exc:
         raise SystemExit(f"BLOCKED:surface-close-adjudication-malformed: {output}: {exc}") from exc
 
-    rows: dict[str, tuple[str, str, int, str | None, int]] = {}
+    rows: dict[str, tuple[str, str, int | None, str | None, int]] = {}
     for index, line in enumerate(lines):
         if "UVR-STALE:" not in line and "PATH-TEST:" not in line:
             continue
@@ -315,26 +319,28 @@ def validate_surface_adjudication(
             raise SystemExit(
                 f"BLOCKED:surface-close-adjudication-malformed: duplicate {obligation} row"
             )
-        status = match.group("status")
-        evidence = match.group("evidence")
+        status = "FIRED" if match.group("fired") else "N/A"
+        evidence = match.group("fired_evidence") or match.group("na_evidence")
         if status == "N/A" and evidence is None:
             raise SystemExit(
                 f"BLOCKED:surface-close-adjudication-malformed: {obligation} N/A requires evidence"
             )
-        path = match.group("path")
-        line_number = int(match.group("line"))
+        path = match.group("fired_path") or match.group("na_path")
+        raw_line = match.group("fired_line") or match.group("na_line")
+        line_number = int(raw_line) if raw_line is not None else None
+        citation = path if line_number is None else f"{path}:{line_number}"
         if not path_matches_surface(path, surface):
             raise SystemExit(
-                f"BLOCKED:surface-close-adjudication-out-of-surface: {path}:{line_number}"
+                f"BLOCKED:surface-close-adjudication-out-of-surface: {citation}"
             )
         cited = work / path
         try:
             cited_lines = cited.read_text(encoding="utf-8").splitlines()
         except (OSError, UnicodeError) as exc:
             raise SystemExit(
-                f"BLOCKED:surface-close-adjudication-citation-missing: {path}:{line_number}: {exc}"
+                f"BLOCKED:surface-close-adjudication-citation-missing: {citation}: {exc}"
             ) from exc
-        if line_number > len(cited_lines):
+        if line_number is not None and line_number > len(cited_lines):
             raise SystemExit(
                 f"BLOCKED:surface-close-adjudication-citation-missing: {path}:{line_number}"
             )
@@ -399,6 +405,74 @@ def validate_surface_execution(devlyn: pathlib.Path, state: dict) -> None:
         raise SystemExit(
             "BLOCKED:surface-close-validation-execution: " + json.dumps(hits)
         )
+
+
+def validate_surface_write_audit(
+    work: pathlib.Path, devlyn: pathlib.Path, state: dict, surface: list[str],
+) -> list[str]:
+    entry = surface_entry(state)
+    transcript = devlyn / f"surface-close.worker-session.{entry.get('round')}.jsonl"
+    try:
+        lines = transcript.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError) as exc:
+        raise SystemExit(f"BLOCKED:surface-close-worker-session-invalid: {transcript}: {exc}") from exc
+    targets: list[str] = []
+    for line_number, line in enumerate(lines, start=1):
+        if not line.strip():
+            continue
+        try:
+            event = loads_strict_json(line)
+        except ValueError as exc:
+            raise SystemExit(
+                f"BLOCKED:surface-close-worker-session-invalid: line {line_number}: {exc}"
+            ) from exc
+        message = event.get("message") if isinstance(event, dict) else None
+        content = message.get("content") if isinstance(message, dict) else None
+        if not isinstance(content, list):
+            continue
+        for item in content:
+            if not isinstance(item, dict) or item.get("type") != "tool_use":
+                continue
+            if item.get("name") not in {"Edit", "Write"}:
+                continue
+            tool_input = item.get("input")
+            raw_target = tool_input.get("file_path") if isinstance(tool_input, dict) else None
+            if not isinstance(raw_target, str) or not raw_target:
+                raise SystemExit(
+                    "BLOCKED:surface-close-write-audit-violation: "
+                    f"line {line_number}: Edit/Write target missing"
+                )
+            target = pathlib.Path(raw_target)
+            try:
+                resolved = (target if target.is_absolute() else work / target).resolve()
+                relative = resolved.relative_to(work.resolve()).as_posix()
+            except (OSError, ValueError) as exc:
+                raise SystemExit(
+                    "BLOCKED:surface-close-write-audit-violation: "
+                    f"line {line_number}: {raw_target!r}"
+                ) from exc
+            if not path_matches_surface(relative, surface):
+                raise SystemExit(
+                    "BLOCKED:surface-close-write-audit-violation: "
+                    f"line {line_number}: {relative!r}"
+                )
+            targets.append(relative)
+    return targets
+
+
+def require_surface_adjudication_malformed(
+    work: pathlib.Path, devlyn: pathlib.Path, state: dict, surface: list[str],
+) -> None:
+    try:
+        validate_surface_adjudication(work, devlyn, state, surface)
+    except SystemExit as exc:
+        if str(exc).startswith("BLOCKED:surface-close-adjudication-malformed:"):
+            return
+        raise
+    raise SystemExit(
+        "error: surface-adjudication-recover requires "
+        "BLOCKED:surface-close-adjudication-malformed"
+    )
 
 
 def parse_effective_model(session_log: pathlib.Path) -> str:
@@ -1220,6 +1294,21 @@ def do_complete(state: dict, phase: str, verdict: str | None,
     return attestation_error
 
 
+def do_surface_adjudication_recovery(state: dict, devlyn: pathlib.Path) -> str | None:
+    entry = surface_entry(state)
+    attestation_error = do_complete(
+        state, "surface_close", "BLOCKED", entry["pre_sha"], None,
+        ".devlyn/surface-close.stdout", None, None,
+        str(devlyn / "surface-close.output.json"), devlyn,
+    )
+    if attestation_error is not None:
+        return attestation_error
+    entry["verdict"] = None
+    entry["skipped_reason"] = SURFACE_RECOVERY_REASON
+    entry["continued_after_block"] = True
+    return None
+
+
 def self_test() -> int:
     import time
 
@@ -1468,7 +1557,16 @@ def self_test() -> int:
         subprocess.run(["git", "config", "user.name", "self-test"], cwd=work, check=True)
         (work / "allowed.txt").write_text("base\n", encoding="utf-8")
         (work / "blocked.txt").write_text("base\n", encoding="utf-8")
-        subprocess.run(["git", "add", "--", "allowed.txt", "blocked.txt"], cwd=work, check=True)
+        (work / "schedule").mkdir()
+        (work / "schedule" / "__init__.py").write_text("line\n" * 700, encoding="utf-8")
+        (work / "test_schedule.py").write_text("line\n", encoding="utf-8")
+        (work / "tests").mkdir()
+        (work / "tests" / "cli.test.js").write_text("line\n" * 170, encoding="utf-8")
+        subprocess.run(
+            ["git", "add", "--", "allowed.txt", "blocked.txt", "schedule/__init__.py",
+             "test_schedule.py", "tests/cli.test.js"],
+            cwd=work, check=True,
+        )
         subprocess.run(["git", "commit", "-qm", "base"], cwd=work, check=True)
         pre_sha = subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=work, check=True, capture_output=True, text=True,
@@ -1522,7 +1620,9 @@ def self_test() -> int:
         validate_surface_inputs(work, work_devlyn, surface_state)
         validate_surface_prompt(work_devlyn, surface_state)
         ensure_surface_clean_baseline(work, work_devlyn, surface_state)
-        surface = validate_authorized_surface('["allowed.txt", "tests/**"]')
+        surface = validate_authorized_surface(
+            '["allowed.txt", "schedule/**", "test_schedule.py", "tests/**"]'
+        )
         entry = surface_entry(surface_state)
         assert entry["prompt_sha256"] == file_sha256(prompt)
         assert entry["model_requested"] == "sonnet"
@@ -1549,6 +1649,22 @@ def self_test() -> int:
         )
         validate_surface_adjudication(work, work_devlyn, surface_state, surface)
 
+        output.write_text(
+            "PATH-TEST review confirms every success/failure path the goal specifies (chaining in both positions, exact-nth-run cancellation via both `run_pending()` and `run_all()`, first-limit-wins with `.until()` in both directions, `next_run`/`idle_seconds` reflecting removal, validation errors, repeated-call override, per-job independence) is already covered by the added tests — no gap found.\n\n"
+            "UVR-STALE: FIRED schedule/__init__.py:690 — `Job.run()`'s docstring described CancelJob only via `.until()`'s deadline, omitting the new `max_runs` cancellation path added to the same method in this diff (line 715); updated the docstring minimally.\n"
+            "PATH-TEST: N/A test_schedule.py — every success/failure path in the goal (chaining order, exact-nth-run cutoff via both `run_pending()`/`run_all()`, `.until()` first-limit-wins both directions, `next_run`/`idle_seconds` post-removal, validation errors, repeat-call override, per-job independence) already has a covering test in the patch.\n"
+            "PASS\n",
+            encoding="utf-8",
+        )
+        validate_surface_adjudication(work, work_devlyn, surface_state, surface)
+        output.write_text(
+            "UVR-STALE: N/A tests/cli.test.js — USAGE in bin/cli.js was already updated in this patch to document `fulfill-wave --input PATH`; no authorized file has stale interface text.\n"
+            "PATH-TEST: FIRED tests/cli.test.js:166 — goal names \"file-read failures\" as a distinct exit-2 path, implemented via the shared catch in `runFulfillWave`, but untested before this addition.\n"
+            "PASS\n",
+            encoding="utf-8",
+        )
+        validate_surface_adjudication(work, work_devlyn, surface_state, surface)
+
         rejected_outputs = (
             ("PASS\n", "missing UVR-STALE, PATH-TEST"),
             (
@@ -1558,12 +1674,28 @@ def self_test() -> int:
             ),
             ("UVR-STALE: FIRED allowed.txt:1\nPASS\n", "missing PATH-TEST"),
             (
+                "UVR-STALE: FIRED allowed.txt:1\n"
+                "UVR-STALE: FIRED allowed.txt:1\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "duplicate UVR-STALE",
+            ),
+            (
+                "PASS\nUVR-STALE: FIRED allowed.txt:1\n"
+                "PATH-TEST: FIRED allowed.txt:1\n",
+                "exactly one PASS must follow both rows",
+            ),
+            (
+                "UVR-STALE: N/A allowed.txt — \n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "requires evidence",
+            ),
+            (
                 "UVR-STALE: FIRED blocked.txt:1\n"
                 "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
                 "out-of-surface",
             ),
             (
-                "UVR-STALE: FIRED tests/missing.txt:1\n"
+                "UVR-STALE: FIRED allowed.txt:2\n"
                 "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
                 "citation-missing",
             ),
@@ -1608,6 +1740,31 @@ def self_test() -> int:
                     f"SURFACE_CLOSE execution audit accepted {validation_command}"
                 )
 
+        transcript.write_text(
+            json.dumps({"message": {"content": [
+                {"type": "tool_use", "name": "Edit", "input": {"file_path": str(work / "allowed.txt")}},
+                {"type": "tool_use", "name": "Write", "input": {"file_path": "tests/new.txt"}},
+            ]}}) + "\n",
+            encoding="utf-8",
+        )
+        assert validate_surface_write_audit(
+            work, work_devlyn, surface_state, surface,
+        ) == ["allowed.txt", "tests/new.txt"]
+        for invalid_target in (str(work / "blocked.txt"), str(work_devlyn / "hidden.txt"), "../escape.txt"):
+            transcript.write_text(
+                json.dumps({"message": {"content": [{
+                    "type": "tool_use", "name": "Edit",
+                    "input": {"file_path": invalid_target},
+                }]}}) + "\n",
+                encoding="utf-8",
+            )
+            try:
+                validate_surface_write_audit(work, work_devlyn, surface_state, surface)
+            except SystemExit as exc:
+                assert "write-audit-violation" in str(exc)
+            else:
+                raise AssertionError(f"SURFACE_CLOSE write audit accepted {invalid_target}")
+
         wrapper_log = work_devlyn / "surface-close.output.json"
         wrapper_log.write_text(json.dumps({
             "result": output.read_text(encoding="utf-8"),
@@ -1624,6 +1781,32 @@ def self_test() -> int:
         assert completed_surface["model_effective"] == "sonnet"
         assert completed_surface["verdict"] == "PASS"
 
+        recovery_state = loads_strict_json(json.dumps(surface_state))
+        recovery_started_at = recovery_state["phases"]["surface_close"]["started_at"]
+        output.write_text("UVR-STALE: FIRED allowed.txt:1\nPASS\n", encoding="utf-8")
+        (work / "allowed.txt").write_text("surface edit\n", encoding="utf-8")
+        transcript.write_text(
+            json.dumps({"message": {"content": [{
+                "type": "tool_use", "name": "Edit",
+                "input": {"file_path": str(work / "allowed.txt")},
+            }]}}) + "\n",
+            encoding="utf-8",
+        )
+        require_surface_adjudication_malformed(
+            work, work_devlyn, recovery_state, surface,
+        )
+        assert rollback_surface_delta(work, work_devlyn, recovery_state) == ["allowed.txt"]
+        assert validate_surface_write_audit(
+            work, work_devlyn, recovery_state, surface,
+        ) == ["allowed.txt"]
+        assert do_surface_adjudication_recovery(recovery_state, work_devlyn) is None
+        recovered = recovery_state["phases"]["surface_close"]
+        assert recovered["started_at"] == recovery_started_at
+        assert isinstance(recovered["duration_ms"], int)
+        assert recovered["verdict"] is None
+        assert recovered["skipped_reason"] == SURFACE_RECOVERY_REASON
+        assert recovered["continued_after_block"] is True
+
         (work / "allowed.txt").write_text("pre-existing\n", encoding="utf-8")
         try:
             ensure_surface_clean_baseline(work, work_devlyn, surface_state)
@@ -1634,7 +1817,6 @@ def self_test() -> int:
         subprocess.run(["git", "restore", "--", "allowed.txt"], cwd=work, check=True)
         (work / "allowed.txt").write_text("changed\n", encoding="utf-8")
         (work / "blocked.txt").write_text("changed\n", encoding="utf-8")
-        (work / "tests").mkdir()
         (work / "tests" / "new.txt").write_text("new\n", encoding="utf-8")
         (work / "escape.txt").write_text("new\n", encoding="utf-8")
         assert surface_offenders(work, work_devlyn, surface_state, surface) == ["blocked.txt", "escape.txt"]
@@ -2118,6 +2300,8 @@ def main() -> int:
 
     check_p = sub.add_parser("surface-check")
     check_p.add_argument("--authorized-surface-json", required=True)
+    recover_p = sub.add_parser("surface-adjudication-recover")
+    recover_p.add_argument("--authorized-surface-json", required=True)
     sub.add_parser("surface-rollback")
     sub.add_parser("surface-skip")
     durability_p = sub.add_parser("durability-enforce")
@@ -2128,7 +2312,9 @@ def main() -> int:
     if args.self_test:
         return self_test()
 
-    surface_events = {"surface-check", "surface-rollback", "surface-skip"}
+    surface_events = {
+        "surface-check", "surface-adjudication-recover", "surface-rollback", "surface-skip",
+    }
     if not args.phase or args.event not in {"spawn", "complete", "durability-enforce", *surface_events}:
         ap.error("--phase and a phase event are required unless --self-test")
 
@@ -2157,6 +2343,32 @@ def main() -> int:
             sys.stdout.write("ok: phases.surface_close.surface-skip\n")
             return 0
         work = pathlib.Path.cwd()
+        if args.event == "surface-adjudication-recover":
+            validate_surface_inputs(work, devlyn, state)
+            validate_surface_prompt(devlyn, state)
+            surface = validate_authorized_surface(args.authorized_surface_json)
+            offenders = surface_offenders(work, devlyn, state, surface)
+            if offenders:
+                raise SystemExit(
+                    "BLOCKED:surface-close-out-of-surface: " + json.dumps(offenders)
+                )
+            validate_surface_execution(devlyn, state)
+            require_surface_adjudication_malformed(work, devlyn, state, surface)
+            rollback_surface_delta(work, devlyn, state)
+            tracked, untracked = surface_delta_paths(work, devlyn, state)
+            if tracked or untracked:
+                raise SystemExit(
+                    "BLOCKED:surface-close-rollback-failed: "
+                    + json.dumps(sorted(set(tracked + untracked)))
+                )
+            validate_surface_write_audit(work, devlyn, state, surface)
+            attestation_error = do_surface_adjudication_recovery(state, devlyn)
+            write_state(state_path, state)
+            if attestation_error is not None:
+                sys.stderr.write(attestation_error + "\n")
+                return 1
+            sys.stdout.write("ok: phases.surface_close.surface-adjudication-recover\n")
+            return 0
         if args.event == "surface-check":
             validate_surface_inputs(work, devlyn, state)
             surface = validate_authorized_surface(args.authorized_surface_json)

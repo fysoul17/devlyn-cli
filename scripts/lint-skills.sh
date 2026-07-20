@@ -441,7 +441,7 @@ for tree in config/skills .claude/skills .agents/skills; do
     || grep -Fq 'Hash both artifacts first' "$phase" \
     || ! grep -Fq 'Never modify inputs or read state, PLAN, or IMPLEMENT transcript/reasoning.' "$phase" \
     || ! grep -Fq 'optionally followed by ` — <one-line evidence>`' "$phase" \
-    || ! grep -Fq 'N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>' "$phase"; then
+    || ! grep -Fq 'N/A <authorized-file>[:<line>] — <one-line evidence-based relationship judgment>' "$phase"; then
     bad "$tree — SURFACE_CLOSE v6 dispatch/timeout/adjudication/rollback contract missing"
     surface_close_missing=1
   fi
