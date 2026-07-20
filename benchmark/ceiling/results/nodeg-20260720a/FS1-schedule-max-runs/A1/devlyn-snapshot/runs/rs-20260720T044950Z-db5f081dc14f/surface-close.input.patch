@@ -1,0 +1,25 @@
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 244e04f..0577277 100644
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -710,6 +710,8 @@ class Job:
+         logger.debug("Running job %s", self)
+         if self._remaining_runs is not None:
+             self._remaining_runs -= 1
++            if self._remaining_runs <= 0:
++                self.scheduler.cancel_job(self)
+         ret = self.job_func()
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
+diff --git a/test_schedule.py b/test_schedule.py
+index 7115bd4..ccc2952 100644
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -467,6 +467,7 @@ class SchedulerTests(TestCase):
+             job.run()
+ 
+         assert job._remaining_runs == 0
++        assert job not in schedule.default_scheduler.jobs
+ 
+     def test_weekday_at_todady(self):
+         mock_job = make_mock_job()

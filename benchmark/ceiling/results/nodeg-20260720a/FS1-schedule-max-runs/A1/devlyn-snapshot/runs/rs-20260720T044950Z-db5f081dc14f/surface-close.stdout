@@ -1,0 +1,4 @@
+UVR-STALE: N/A schedule/__init__.py:699 — docstring only describes the CancelJob return-value contract (unchanged: still returned after the run that exhausted the budget); it never described scheduler-list removal timing, so the new early `cancel_job()` call doesn't make any documented interface stale.
+PATH-TEST: N/A test_schedule.py:470 — the patch's own test edit (`test_max_runs_counts_raising_job_execution`) already uses a raising `job_func` on the exhausting run and asserts `job not in schedule.default_scheduler.jobs`, exactly the goal's required regression test; no additional test is needed.
+
+PASS

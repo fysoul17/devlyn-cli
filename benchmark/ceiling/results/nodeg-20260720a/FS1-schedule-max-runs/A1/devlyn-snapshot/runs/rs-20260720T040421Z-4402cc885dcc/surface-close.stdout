@@ -1,0 +1,3 @@
+UVR-STALE: FIRED schedule/__init__.py:695 — `Job.run()`'s docstring described CancelJob returning only on `.until()` deadline, omitting the new `max_runs()` budget-exhaustion path this diff added.
+PATH-TEST: N/A schedule/__init__.py:712 — all goal-specified paths (chaining order, run_pending/run_all, until precedence both directions, next_run/idle_seconds reflection, validation, repeated-call override, per-job isolation) already have dedicated tests in the patch.
+PASS

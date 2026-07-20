@@ -1,0 +1,346 @@
+{
+  "base_ref": {
+    "branch": "master",
+    "sha": "4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8"
+  },
+  "bypasses": [],
+  "complexity": "medium",
+  "criteria": [
+    {
+      "evidence": [],
+      "failed_by_finding_ids": [],
+      "id": "C1",
+      "ref": "spec://requirements/0",
+      "status": "pending"
+    },
+    {
+      "evidence": [],
+      "failed_by_finding_ids": [],
+      "id": "C2",
+      "ref": "spec://requirements/1",
+      "status": "pending"
+    },
+    {
+      "evidence": [],
+      "failed_by_finding_ids": [],
+      "id": "C3",
+      "ref": "spec://requirements/2",
+      "status": "pending"
+    },
+    {
+      "evidence": [],
+      "failed_by_finding_ids": [],
+      "id": "C4",
+      "ref": "spec://requirements/3",
+      "status": "pending"
+    },
+    {
+      "evidence": [],
+      "failed_by_finding_ids": [],
+      "id": "C5",
+      "ref": "spec://requirements/4",
+      "status": "pending"
+    }
+  ],
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "implement_passed_sha": "e9e5d00bf4ca9b2711152b72308d67d08ba5bbb3",
+  "mode": "free-form",
+  "pair_verify": true,
+  "phases": {
+    "build_gate": {
+      "artifacts": {
+        "findings_file": ".devlyn/build_gate.findings.jsonl",
+        "log_file": ".devlyn/build_gate.log.md"
+      },
+      "completed_at": "2026-07-20T05:22:23.230Z",
+      "duration_ms": 138153,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-20T05:20:05.077Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "cleanup": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": ".devlyn/cleanup.stdout"
+      },
+      "completed_at": "2026-07-20T05:24:37.395Z",
+      "duration_ms": 123053,
+      "engine": "codex",
+      "model_effective": null,
+      "model_requested": null,
+      "post_sha": "e9e5d00bf4ca9b2711152b72308d67d08ba5bbb3",
+      "pre_sha": "e9e5d00bf4ca9b2711152b72308d67d08ba5bbb3",
+      "round": 0,
+      "started_at": "2026-07-20T05:22:34.342Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "final_report": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-20T06:06:50.498Z",
+      "duration_ms": 89,
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-20T06:06:50.409Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS_WITH_ISSUES"
+    },
+    "implement": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": ".devlyn/implement.round2.stdout"
+      },
+      "completed_at": "2026-07-20T05:59:22.886Z",
+      "duration_ms": 107021,
+      "engine": "codex",
+      "history": [
+        {
+          "completed_at": "2026-07-20T05:19:27.409Z",
+          "duration_ms": 198544,
+          "started_at": "2026-07-20T05:16:08.865Z",
+          "verdict": "PASS"
+        },
+        {
+          "completed_at": "2026-07-20T05:43:00.835Z",
+          "duration_ms": 120810,
+          "started_at": "2026-07-20T05:41:00.025Z",
+          "verdict": "PASS"
+        }
+      ],
+      "model_effective": null,
+      "model_requested": null,
+      "round": 2,
+      "started_at": "2026-07-20T05:57:35.865Z",
+      "sub_verdicts": null,
+      "triggered_by": "verify",
+      "verdict": "PASS"
+    },
+    "plan": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": ".devlyn/plan.md"
+      },
+      "completed_at": "2026-07-20T05:15:37.970Z",
+      "duration_ms": 58340,
+      "engine": "claude",
+      "history": [
+        {
+          "completed_at": null,
+          "duration_ms": null,
+          "started_at": "2026-07-20T05:12:00.375Z",
+          "verdict": null
+        }
+      ],
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-20T05:14:39.630Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "probe_derive": null,
+    "surface_close": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": ".devlyn/surface-close.stdout"
+      },
+      "completed_at": "2026-07-20T05:40:28.038Z",
+      "durability": [
+        {
+          "origin_phase": "verify",
+          "receipt_path": ".devlyn/closure-durability.round-1.json",
+          "receipt_sha256": "fe4a27b8002f3a852d54cfe65695e3da57a55797764954a03b8c40f7412df607",
+          "restore_commit_sha": null,
+          "round": 1
+        },
+        {
+          "origin_phase": "verify",
+          "receipt_path": ".devlyn/closure-durability.round-2.json",
+          "receipt_sha256": "3245e324fe55ea905ff0d3121d6741ec2a2ef4b911ac78fbb2128d9d0c85a282",
+          "restore_commit_sha": null,
+          "round": 2
+        }
+      ],
+      "duration_ms": 99229,
+      "engine": "claude",
+      "input_patch_sha256": "c2832233700f5ea10ac25a60a64ee3120a893788dc482173db6d10b11d6e7605",
+      "model_effective": "claude-sonnet-5",
+      "model_requested": "claude-sonnet-5",
+      "post_sha": "48c106d",
+      "pre_sha": "e9e5d00bf4ca9b2711152b72308d67d08ba5bbb3",
+      "prompt_sha256": "0c95d4141e7020e02366c60a80937d6116f36b7476b31895e07d85581c2c702f",
+      "round": 0,
+      "started_at": "2026-07-20T05:38:48.809Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "untracked_before": [
+        ".claude/skills/_shared/adapters/README.md",
+        ".claude/skills/_shared/adapters/claude.md",
+        ".claude/skills/_shared/adapters/codex.md",
+        ".claude/skills/_shared/adapters/omp.md",
+        ".claude/skills/_shared/archive_run.py",
+        ".claude/skills/_shared/codex-config.md",
+        ".claude/skills/_shared/codex-monitored.sh",
+        ".claude/skills/_shared/collect-codex-findings.py",
+        ".claude/skills/_shared/engine-doctor.sh",
+        ".claude/skills/_shared/engine-preflight.md",
+        ".claude/skills/_shared/expected.schema.json",
+        ".claude/skills/_shared/finish-gate.py",
+        ".claude/skills/_shared/pair-plan-schema.md",
+        ".claude/skills/_shared/run-bounded.py",
+        ".claude/skills/_shared/runtime-principles.md",
+        ".claude/skills/_shared/spec-verify-check.py",
+        ".claude/skills/_shared/state-phase-write.py",
+        ".claude/skills/_shared/verify-merge-findings.py",
+        ".claude/skills/code-health-standards/SKILL.md",
+        ".claude/skills/code-review-standards/SKILL.md",
+        ".claude/skills/devlyn:design-ui/SKILL.md",
+        ".claude/skills/devlyn:engines/SKILL.md",
+        ".claude/skills/devlyn:ideate/SKILL.md",
+        ".claude/skills/devlyn:ideate/references/elicitation.md",
+        ".claude/skills/devlyn:ideate/references/from-spec-mode.md",
+        ".claude/skills/devlyn:ideate/references/project-mode.md",
+        ".claude/skills/devlyn:ideate/references/spec-template.md",
+        ".claude/skills/devlyn:ideate/references/templates/decision.md",
+        ".claude/skills/devlyn:ideate/references/templates/roadmap.md",
+        ".claude/skills/devlyn:ideate/references/templates/vision.md",
+        ".claude/skills/devlyn:queue/SKILL.md",
+        ".claude/skills/devlyn:resolve/SKILL.md",
+        ".claude/skills/devlyn:resolve/references/free-form-mode.md",
+        ".claude/skills/devlyn:resolve/references/phases/build-gate.md",
+        ".claude/skills/devlyn:resolve/references/phases/cleanup.md",
+        ".claude/skills/devlyn:resolve/references/phases/implement.md",
+        ".claude/skills/devlyn:resolve/references/phases/plan.md",
+        ".claude/skills/devlyn:resolve/references/phases/probe-derive.md",
+        ".claude/skills/devlyn:resolve/references/phases/surface-close.md",
+        ".claude/skills/devlyn:resolve/references/phases/verify.md",
+        ".claude/skills/devlyn:resolve/references/state-schema.md",
+        ".claude/skills/root-cause-analysis/SKILL.md",
+        ".claude/skills/ui-implementation-standards/SKILL.md",
+        ".devlyn/build_gate.findings.jsonl",
+        ".devlyn/build_gate.log.md",
+        ".devlyn/cleanup.stderr",
+        ".devlyn/cleanup.stdout",
+        ".devlyn/codex-primary-judge.stderr",
+        ".devlyn/codex-primary-judge.stdout",
+        ".devlyn/criteria.generated.md",
+        ".devlyn/engines.json",
+        ".devlyn/goal.raw.txt",
+        ".devlyn/goal.txt",
+        ".devlyn/implement.stderr",
+        ".devlyn/implement.stdout",
+        ".devlyn/pipeline.state.json",
+        ".devlyn/plan.md",
+        ".devlyn/spec-verify-findings.jsonl",
+        ".devlyn/spec-verify.json",
+        ".devlyn/spec-verify.results.json",
+        ".devlyn/surface-close.input.patch",
+        ".devlyn/surface-close.prompt.txt",
+        ".devlyn/untracked.baseline",
+        ".devlyn/verify-mechanical.findings.jsonl",
+        ".devlyn/verify-merge.summary.json",
+        ".devlyn/verify-merged.findings.jsonl",
+        ".devlyn/verify.findings.jsonl",
+        ".devlyn/verify.pair.findings.jsonl",
+        "AGENTS.md",
+        "CLAUDE.md"
+      ],
+      "verdict": "PASS"
+    },
+    "verify": {
+      "artifacts": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "log_file": ".devlyn/verify-merge.summary.json"
+      },
+      "completed_at": "2026-07-20T06:06:14.905Z",
+      "duration_ms": 408476,
+      "engine": "codex",
+      "history": [
+        {
+          "completed_at": null,
+          "duration_ms": null,
+          "started_at": "2026-07-20T05:25:33.761Z",
+          "verdict": "NEEDS_WORK"
+        },
+        {
+          "completed_at": "2026-07-20T05:57:31.382Z",
+          "duration_ms": 719304,
+          "started_at": "2026-07-20T05:45:32.078Z",
+          "verdict": "NEEDS_WORK"
+        }
+      ],
+      "judge_durations_ms": null,
+      "merged": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "summary_file": ".devlyn/verify-merge.summary.json",
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "model_effective": null,
+      "model_requested": null,
+      "round": 2,
+      "started_at": "2026-07-20T05:59:26.429Z",
+      "sub_verdicts": {
+        "judge": "PASS_WITH_ISSUES",
+        "mechanical": "PASS",
+        "pair_judge": "PASS"
+      },
+      "triggered_by": "verify",
+      "verdict": "PASS_WITH_ISSUES"
+    }
+  },
+  "risk_probes_digest": null,
+  "risk_profile": {
+    "high_risk": true,
+    "pair_default_enabled": true,
+    "reasons": [
+      "goal touches scheduling library job cancellation ordering (max_runs vs until() first-limit-wins)",
+      "state mutation: job removal from scheduler on budget exhaustion must be reflected by next_run/idle_seconds",
+      "auto-risk-probes: pair-judge engine (claude) available",
+      "auto-risk-probes demoted: plan surface small (2 paths)"
+    ],
+    "risk_probes_enabled": false,
+    "risk_probes_explicit": false
+  },
+  "rounds": {
+    "global": 2,
+    "max_rounds": 4
+  },
+  "run_id": "rs-20260720T051131Z-5d3dee405091",
+  "source": {
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "a6e567af61b012f3bed31357e55d6f0eadbfde758914fae155f0746a1c5ab71f",
+    "goal_path": ".devlyn/goal.raw.txt",
+    "goal_sha256": "0194d750427cec5c6a6f6c3e0196e7ba20f0238162648ca1db6bbe4ce2b5a309",
+    "spec_path": null,
+    "spec_sha256": null,
+    "type": "generated"
+  },
+  "started_at": "2026-07-20T05:11:31Z",
+  "verify": {
+    "coverage_failed": false,
+    "pair_trigger": {
+      "eligible": true,
+      "reasons": [
+        "pair.default",
+        "mode.pair-verify",
+        "risk.high",
+        "judge.warning"
+      ],
+      "skipped_reason": null
+    }
+  },
+  "version": "3.0"
+}

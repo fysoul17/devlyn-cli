@@ -1,0 +1,2 @@
+{"id":"PRIMARY-R2-1","severity":"LOW","rule_id":"requirements.validation.integer","file":"schedule/__init__.py","line":657,"message":"max_runs(True) is accepted and stored as a one-run budget because bool subclasses int; if the contract's 'integer' excludes booleans, this violates the requirement that every other value raise ValueError.","quote":"if not isinstance(n, int) or n < 1:","confidence":"medium"}
+# SUMMARY {"verdict":"PASS_WITH_ISSUES","findings_count":1}

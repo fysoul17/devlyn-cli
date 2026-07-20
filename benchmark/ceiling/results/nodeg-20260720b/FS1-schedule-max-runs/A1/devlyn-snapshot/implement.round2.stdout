@@ -1,0 +1,9 @@
+PASS
+
+Moved `run_count` increment before `job_func()` in [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/schedule/__init__.py:713) and added the raising-job regression test in [test_schedule.py](/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/test_schedule.py:427).
+
+Verified:
+
+- `/opt/homebrew/bin/python3 -m pytest test_schedule.py -q` → 51 passed, 41 skipped
+- Normal `max_runs(3)` path: 3 calls, `run_count=3`, removed
+- Raising `max_runs(1)` path: 1 call across repeated `run_all()`, `run_count=1`, then removed

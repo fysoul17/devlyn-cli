@@ -1,0 +1,17 @@
+[
+ {
+  "id": 1,
+  "class": "instrument-chain death at attribution stage (pre-registered in pin-provenance.json BEFORE row completion)",
+  "detail": "worktree 21cd920 predates attribution/isolation-payload fixes; driver died post-row exactly as predicted; attribution.json + isolation.json regenerated post-hoc from main (deterministic, -19g licensed flow); measurement row untouched"
+ },
+ {
+  "id": 2,
+  "class": "judge sonnet attestation retry (1 flake)",
+  "detail": "judge attempt 1 failed runtime-model attestation: modelUsage contained claude-haiku-4-5 auxiliary call alongside claude-sonnet-5 (nondeterministic CLI-internal call); retry with --resume passed clean; runtime_model attestation claude-sonnet-5 on the successful attempt"
+ },
+ {
+  "id": 3,
+  "class": "judge-role CLI identity discrepancy (record-only)",
+  "detail": "nodeg-verdict cohort_identity.judge_sonnet says 2.1.211 \u2014 frozen into replay-binding-manifest at original driver run (env pin); ACTUAL judge execution receipt judge-sonnet-attempt1-isolation.json records 2.1.215 (orchestrator judge re-run env, same judge CLI as -19g cohort judges). Objective bar is judge-independent; no claim rides on judge CLI"
+ }
+]

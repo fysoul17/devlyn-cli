@@ -1,0 +1,8 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "python3 -m unittest test_schedule",
+      "exit_code": 0
+    }
+  ]
+}

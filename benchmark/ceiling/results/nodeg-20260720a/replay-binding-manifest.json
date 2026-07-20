@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "run_id": "nodeg-20260720a",
+  "controls": {
+    "FS1": {
+      "task": "FS1-schedule-max-runs",
+      "a_patch_sha256": "7ecd0d0b762c3500a7d3f271edf21df0770b88f8c212c085920e070b744cd0c0",
+      "task_sha256": "0194d750427cec5c6a6f6c3e0196e7ba20f0238162648ca1db6bbe4ce2b5a309",
+      "frozen_b": {
+        "patch_sha256": "e47a0d61e47a814aac8d07a66355a676e124c77a3ddad8ecd48636bf6d488d95",
+        "objective_sha256": "32ce180013ec8425c946b33670d23f1b6dfb7a83f5b2a6e3c86e4927eb7e9a04",
+        "timing_sha256": "28773bda97d94babea2afc9fe0507bc6877d56bfdf33516158216c2f92b1a609"
+      }
+    }
+  },
+  "judge_module": {
+    "file": "ceiling-judge.py",
+    "sha256": "f0250a84ee55d8fd6ea81ee5c2f701e7212db049aa60d9795222bb15edd63cd5"
+  },
+  "judge_prompt_builder": {
+    "file": "nodeg-cell.py",
+    "sha256": "e0de5bc97f4808229e10b8046e29a804e29f391165c18e259e56bd285d55ac88"
+  },
+  "judge_engines": {
+    "sonnet": {
+      "model": "sonnet",
+      "cli_version": "2.1.215 (Claude Code)"
+    },
+    "codex": {
+      "model": "gpt-5.6-terra",
+      "cli_version": "codex-cli 0.144.5"
+    }
+  },
+  "attempt_runner_sha": "21cd9203a9921ab96ada0a9e6c85341abe3ee344",
+  "judge_runner_sha": "21cd9203a9921ab96ada0a9e6c85341abe3ee344"
+}

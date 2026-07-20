@@ -1,0 +1,10 @@
+{
+ "row_label": "cohort-closure-row",
+ "closes": "nodeg-20260719g objective claim (FS1 confound re-row, DECISIONS 0073.2; adjudicated three-way 0074.2)",
+ "ceiling_test_claude_bin": "/Users/aipalm/.local/share/nx01/pins/claude-2.1.211/claude",
+ "pin_version": "2.1.211 (Claude Code)",
+ "pin_sha256": "5a728a76198b6eca7f3c7cdbff43bab44b77b48c2108f7a3107d889773382629",
+ "pin_source": "official channel https://downloads.claude.ai/claude-code-releases/2.1.211/darwin-arm64/claude; manifest darwin-arm64 checksum match (provenance.json alongside binary); live CLI store untouched (Treatment-Seat Identity Fidelity, 0073:141-148)",
+ "expected_instrument_deviation": "worktree 21cd920 predates attribution/isolation-payload fixes (ab6b9a0/9a2109c/294d828) \u2014 driver expected to fail at attribution stage after row completion; post-hoc repair from main + judge/verdict re-run is the licensed -19g flow (pre-registered before row completion). Launch attempt 1 failed clean at preflight: runner-worktree dirty check on -20260720a untracked results (moved to main repo results/); no row started.",
+ "recorded_at": "2026-07-20"
+}

@@ -1,0 +1,23 @@
+Fix a residual correctness gap in Job.max_runs() in the schedule library
+(this repository, outer-loop iteration 2 following a NEEDS_WORK VERIFY
+verdict from run rs-20260720T040421Z-4402cc885dcc): when job_func() raises
+an exception on the run that exhausts the budget, the job is not removed
+from its scheduler, because cancellation currently only happens via a
+`return CancelJob` at the end of Job.run(), which is never reached if
+job_func() raises. This allows a subsequent run_pending()/run_all() call
+to invoke job_func() again, violating "an (n+1)-th execution must never
+happen" even when the nth call raised.
+
+Fix: when the run budget reaches zero, remove the job from its scheduler
+(self.scheduler.cancel_job(self)) before calling job_func(), so removal is
+guaranteed regardless of whether job_func() raises. The nth execution must
+still call job_func() normally (do not skip it). Do not add try/except
+around job_func() — exception handling for job_func() failures is out of
+scope; only guarantee scheduler removal happens no later than immediately
+before the exhausting invocation.
+
+Add a regression test proving that when job_func() raises on the exhausting
+call, the job is no longer present in the scheduler's job list (not just
+that the internal counter reached zero).
+
+The full existing test suite must keep passing.

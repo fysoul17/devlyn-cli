@@ -1,0 +1,11 @@
+PASS
+
+- Final-budget jobs now unschedule before `job_func()` runs: [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/schedule/__init__.py:713).
+- Added the raising-call scheduler-membership regression assertion: [test_schedule.py](/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/test_schedule.py:470).
+
+Verified:
+
+- `python3 -m unittest test_schedule -v` — 85 passed, 0 failures.
+- `python3 -m unittest test_schedule` — exit 0.
+- `spec-verify-check.py --include-risk-probes` — exit 0.
+- `git diff --check` clean; diff scope is only `schedule/__init__.py` and `test_schedule.py`.

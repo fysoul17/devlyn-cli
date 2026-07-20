@@ -311,4 +311,45 @@ gates + byte-parity extraction + fail-loud --post-hoc (294d828).
 the registered measurement is COMPLETE with predictions adjudicated
 (P-a′ confirmed, P-b confirmed, P-c inconclusive-by-rule with unanimous
 directional data). Residual to close the cohort's objective claim: one
-FS1 re-row on an updater-proof pin.
+FS1 re-row on an updater-proof pin. **→ DELIVERED 2026-07-20, see
+CLOSURE below.**
+
+## CLOSURE — FS1 re-row delivered, objective claim closed (2026-07-20)
+
+Re-row mechanics adjudicated three-way same day (0074.2 (f):
+Treatment-Seat Identity Fidelity, Codex REFUTE of a 2.1.215-as-closure
+row adopted; TRUE 2.1.211 restored to a run-owned path from the official
+release channel — manifest checksum match, live CLI store untouched;
+Grok + Codex both CONFIRMED the successor/closure split).
+
+- **nodeg-20260720b (COHORT-CLOSURE ROW, a_claude 2.1.211 exact frozen
+  identity)**: objective **resolved=True 1/1**, oracle_exit 0,
+  invoke_exit 0, diagnostic draw pass, elapsed 3518s. SC RAN (verdict
+  PASS, no skip), verify PASS_WITH_ISSUES, final report completed, full
+  terminal + archive. Verdict `nodeg-20260720b/nodeg-verdict.json`
+  objective bar **passed=true**. Deviations (3, all recorded in
+  `deviations.json`; instrument death pre-registered in
+  pin-provenance.json BEFORE row completion): old-instrument chain
+  death → post-hoc repair from main (-19g licensed flow), judge
+  haiku-flake retry, judge-identity manifest-vs-receipt discrepancy
+  (record-only; objective bar judge-independent).
+- **nodeg-20260720a (CURRENT-VERSION SUCCESSOR ROW, 2.1.215)**:
+  objective resolved=True 1/1 as well; SC PASS in BOTH pipeline runs
+  (outer loop NEEDS_WORK→re-invoke→PASS, both full terminals — zero
+  premature-terminal); version-sensitivity: FS1 passes on both CLIs.
+  Judge stage not re-run (no claim rides on successor-row quality;
+  P-a′ already adjudicated).
+- **Attribution side-data (both rows, directional P-c)**: -a implement
+  2.6% / residual 84% (two-run outer-loop shape); -b implement 12% /
+  residual 44%. Residual-dominance pattern unanimous across 9 measured
+  rows now.
+
+**Adjudication**: the -19g FS1 failure is CONFIRMED CONFOUNDED — same
+stack SHA (21cd920), same seats, exact frozen CLI identity, SC running
+⇒ objective PASS. The cohort objective claim closes at **7/7** (6
+in-cohort + closure row replacing the confounded row).
+**iter-0073 CLOSED** — registered claim (attribution-complete
+re-measure) fully delivered and adjudicated; no in-iter item remains.
+Follow-ons live elsewhere: premature-terminal → iter-0074 (C2 shipped,
+C1 probe frozen); next wall lever (residual+VERIFY) → future
+registration requiring ≥5 complete-verify rows.

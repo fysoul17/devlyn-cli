@@ -1,0 +1,9 @@
+PASS
+
+- Chainable `Job.max_runs()` validates inputs and preserves last-call-wins behavior: [schedule/__init__.py:647](/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/schedule/__init__.py:647), [test_schedule.py:417](/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/test_schedule.py:417).
+- Runs decrement only after `job_func()` executes and cancel via existing `CancelJob`: [schedule/__init__.py:708](/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/schedule/__init__.py:708), [schedule/__init__.py:712](/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/schedule/__init__.py:712). `run_pending()` and `run_all()` coverage is in [test_schedule.py:429](/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/test_schedule.py:429).
+- `.until()` first-limit behavior and per-job budgets are covered in [test_schedule.py:390](/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/test_schedule.py:390).
+- Exhaustion updates `next_run` and `idle_seconds`: [test_schedule.py:1574](/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/test_schedule.py:1574).
+- Added the requested usage example: [docs/examples.rst:247](/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/docs/examples.rst:247).
+
+Verification: `python3 -m unittest test_schedule` — 84 passed, 41 skipped.

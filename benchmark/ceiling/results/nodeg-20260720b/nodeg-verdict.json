@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "cell_owner": "iter-0068",
+  "run_id": "nodeg-20260720b",
+  "cohort_identity": {
+    "runner_commit_sha": "21cd9203a9921ab96ada0a9e6c85341abe3ee344",
+    "cli_versions": {
+      "a_claude": "2.1.211 (Claude Code)",
+      "a_codex": "codex-cli 0.144.5",
+      "judge_sonnet": "2.1.211 (Claude Code)",
+      "judge_codex": "codex-cli 0.144.5"
+    },
+    "resolved_models": {
+      "a_orchestrator": [
+        "claude-sonnet-5"
+      ],
+      "a_executor": [
+        "gpt-5.6-terra"
+      ],
+      "judge_sonnet": [
+        "claude-sonnet-5"
+      ],
+      "judge_codex": [
+        "gpt-5.6-terra"
+      ]
+    },
+    "a_executor_resolution_evidence": "run-ceiling-arm.sh benchmark-owned CODEX_HOME config pin"
+  },
+  "registered_controls": [
+    "F7",
+    "F25",
+    "F26",
+    "F11",
+    "F12",
+    "F23",
+    "FS1"
+  ],
+  "selected_controls": [
+    "FS1"
+  ],
+  "excluded_unfair": [
+    "F21"
+  ],
+  "frozen_b_sources": [
+    {
+      "control_id": "FS1",
+      "task": "FS1-schedule-max-runs",
+      "run_id": "iter0068-gate-20260711h",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/devlyn-ceiling-external/exam-0073-fs1/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1",
+      "patch_path": "/Users/aipalm/devlyn-ceiling-external/exam-0073-fs1/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1/patch.diff",
+      "patch_sha256": "e47a0d61e47a814aac8d07a66355a676e124c77a3ddad8ecd48636bf6d488d95",
+      "objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0073-fs1/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1/objective.json",
+      "objective_sha256": "32ce180013ec8425c946b33670d23f1b6dfb7a83f5b2a6e3c86e4927eb7e9a04",
+      "timing_path": "/Users/aipalm/devlyn-ceiling-external/exam-0073-fs1/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1/timing.json",
+      "timing_sha256": "28773bda97d94babea2afc9fe0507bc6877d56bfdf33516158216c2f92b1a609",
+      "resolved": true,
+      "elapsed_seconds": 310
+    }
+  ],
+  "bars": {
+    "objective": {
+      "per_row": {
+        "FS1": {
+          "task": "FS1-schedule-max-runs",
+          "a_resolved": true,
+          "frozen_b_resolved": true,
+          "passed": true,
+          "a_objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0073-fs1/benchmark/ceiling/results/nodeg-20260720b/FS1-schedule-max-runs/A1/objective.json",
+          "a_objective_sha256": "29087a3e0c07329716afe01cfc6753d3afab9042a16f885bac0c04f8d5de92e3"
+        }
+      },
+      "passed": true
+    },
+    "quality": {
+      "per_row": {
+        "FS1": {
+          "task": "FS1-schedule-max-runs",
+          "judges": {
+            "sonnet": {
+              "runtime_model": "claude-sonnet-5",
+              "cli_version": "2.1.211 (Claude Code)",
+              "axes": {
+                "design_coherence": "A_win",
+                "robustness": "B_win",
+                "spec_long_horizon_consistency": "B_win",
+                "maintainability_api_ergonomics": "B_win"
+              },
+              "valid": true
+            },
+            "codex": {
+              "runtime_model": "gpt-5.6-terra",
+              "cli_version": "codex-cli 0.144.5",
+              "axes": {
+                "design_coherence": "B_win",
+                "robustness": "B_win",
+                "spec_long_horizon_consistency": "B_win",
+                "maintainability_api_ergonomics": "B_win"
+              },
+              "valid": true
+            }
+          },
+          "passed": false,
+          "rule": "both judges valid and A is never ranked below frozen B on any axis"
+        }
+      },
+      "passed": false
+    },
+    "wall": {
+      "per_row": {
+        "FS1": {
+          "task": "FS1-schedule-max-runs",
+          "a_elapsed_seconds": 3518,
+          "frozen_b_elapsed_seconds": 310,
+          "a_to_frozen_b_ratio": 11.348387096774193,
+          "cap": 3.0,
+          "passed": false
+        }
+      },
+      "cap": 3.0,
+      "cap_source": "autoresearch/NORTH-STAR.md:254",
+      "passed": false
+    }
+  }
+}

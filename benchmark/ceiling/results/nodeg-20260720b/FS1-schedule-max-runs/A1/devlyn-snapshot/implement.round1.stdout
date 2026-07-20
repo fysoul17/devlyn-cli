@@ -1,0 +1,9 @@
+PASS
+
+- Added pre-execution max-run cancellation guard in [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/schedule/__init__.py:709).
+- Made `ScheduleValueError` also inherit built-in `ValueError` in [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/schedule/__init__.py:59).
+- Added regression coverage for lowered budgets and `ValueError` behavior in [test_schedule.py](/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/test_schedule.py:427).
+
+Verification:
+
+`/opt/homebrew/bin/python3 -m pytest test_schedule.py -q` → `50 passed, 41 skipped`

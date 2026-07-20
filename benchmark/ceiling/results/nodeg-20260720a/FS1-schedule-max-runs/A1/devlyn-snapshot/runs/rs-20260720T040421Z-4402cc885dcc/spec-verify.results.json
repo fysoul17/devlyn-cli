@@ -1,0 +1,15 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "python3 -m unittest test_schedule",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "ss.ssss.....................sss.ss...................ssssssssssssssssssssssssssssss..\n----------------------------------------------------------------------\nRan 85 tests in 0.018s\n\nOK (skipped=41)\n"
+    }
+  ]
+}

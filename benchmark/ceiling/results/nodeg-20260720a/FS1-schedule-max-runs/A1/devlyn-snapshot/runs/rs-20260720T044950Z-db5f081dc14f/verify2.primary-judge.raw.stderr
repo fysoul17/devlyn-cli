@@ -1,0 +1,572 @@
+[codex-monitored] start: ts=2026-07-20T04:59:00Z heartbeat=30s timeout=600s bin=codex
+[codex-monitored] isolated=1
+[codex-monitored] codex pid=72374
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 019f7de4-4889-7781-bcb4-7832f460c346
+--------
+user
+# Codex (OpenAI) adapter
+
+## Identity
+You are OpenAI's Codex model.
+
+## Validation pattern
+Validation is concrete commands, not self-belief.
+
+---
+
+# PHASE 5 — VERIFY / JUDGE (canonical body, fresh worker context, primary judge, outer-loop iteration 2)
+
+You are spawned with NO conversation history. Read-only review only, no code-mutation tools.
+
+<role>
+Independent quality layer. Did the diff deliver what the criteria said it would, with no scope creep, no quality regression, no constraint violation?
+</role>
+
+<input>
+- Spec: `.devlyn/criteria.generated.md` in `/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo`. Read it fresh now. This is a narrow follow-up fix (outer-loop iteration 2) closing one specific exception-safety gap in a previously-shipped `Job.max_runs()` feature.
+- Diff to review: `git diff cf1d8a251240fc4fd84eb5d44775233ae89b5571...HEAD` — this is the SMALL fix diff for iteration 2 only (do not re-review the whole `max_runs` feature; that was already verified in a prior run).
+- Do NOT read `.devlyn/plan.md`, `.devlyn/implement*.*`, `.devlyn/build_gate.*`, `.devlyn/cleanup*.*`, `.devlyn/runs/`, or any other pipeline transcript.
+</input>
+
+<task>
+Grade the diff against the criteria:
+
+- **Spec compliance** — does the diff move the scheduler-removal (`self.scheduler.cancel_job(self)`) to before `job_func()` is invoked, guarded by the same `_remaining_runs <= 0` condition? Does the exhausting call still invoke `job_func()` normally (not skipped)? Is there a new regression test proving scheduler-membership removal on a raising `job_func()` call?
+- **Scope** — diff touches only `schedule/__init__.py` and `test_schedule.py`? No `try`/`except` added around `job_func()`? No new public `Scheduler` method?
+- **Correctness — construct and mentally (or actually) execute an adversarial probe**: with `max_runs(1)`, if `job_func()` raises on its one allowed call, is the job now actually absent from `scheduler.jobs` immediately (even though the exception propagates out of `Job.run()` uncaught)? Trace the exact code order: does the `self.scheduler.cancel_job(self)` call happen BEFORE `ret = self.job_func()`, so it executes even if the subsequent call raises? You may run a real Python check (`python3 -c "..."` or a temp script, no tracked files left behind) using the actual `schedule` module to confirm.
+- **Regression check**: does the existing non-raising success-path behavior remain identical (job still cancels after its nth successful run, `next_run`/`idle_seconds` still reflect removal, `.until()` interaction unaffected)? Run `python3 -m unittest test_schedule` yourself and confirm 100% pass.
+- **Quality/consistency**: is the added code idiomatic, minimal, consistent with the surrounding style?
+
+**Anti-self-filter rule**: report every finding, tag `confidence: high|medium|low`.
+</task>
+
+<output>
+Write JSONL findings (one per line) or the single line `PASS` if zero findings. Finding shape: `{"id": "JUDGE-<n>", "rule_id": "...", "severity": "CRITICAL|HIGH|MEDIUM|LOW", "file": "...", "line": <n>, "message": "...", "quote": "<exact quoted code>", "confidence": "high|medium|low"}`.
+</output>
+
+Begin: read `.devlyn/criteria.generated.md`, then `git diff cf1d8a251240fc4fd84eb5d44775233ae89b5571...HEAD`, then the current `Job.run()` method in full, then produce your verdict.
+deprecated: `[features].codex_hooks` is deprecated. Use `[features].hooks` instead.
+Enable it with `--enable hooks` or `[features].hooks` in config.toml. See https://developers.openai.com/codex/config-basic#feature-flags for details.
+codex
+I’ll perform the read-only judge pass in the required order, then run the targeted adversarial probe and full unit-test module.
+exec
+/bin/zsh -lc "sed -n '1,240p' .devlyn/criteria.generated.md" in /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+# Generated criteria — max_runs exception-safety fix (outer-loop iteration 2)
+
+Source: free-form goal, `.devlyn/goal.raw.txt` (medium complexity). Follow-up to run `rs-20260720T040421Z-4402cc885dcc`, which shipped `Job.max_runs()` but left VERIFY `NEEDS_WORK` after two independent rounds: `job_func()` raising on the budget-exhausting call leaves the job scheduled (cancellation only happens via `return CancelJob` at the end of `Job.run()`, never reached on a raise), letting a later `run_pending()`/`run_all()` invoke `job_func()` again.
+
+## Requirements
+
+- When the run budget (`Job._remaining_runs`, `schedule/__init__.py`) reaches zero on this invocation, remove the job from its scheduler via the existing `self.scheduler.cancel_job(self)` call **before** `job_func()` is invoked, so removal happens no later than immediately before the exhausting call — guaranteed regardless of whether `job_func()` raises.
+- The exhausting (nth) execution must still call `job_func()` normally — do not skip or gate the call itself; only the scheduler-removal timing moves earlier.
+- Do not add `try`/`except` around `job_func()`. Exception handling for job_func failures is explicitly out of scope; the fix is scheduler-removal timing only.
+- The existing success-path behavior must be unchanged: `job_func()`'s return value is still captured and returned from `Job.run()` when it doesn't raise; `Scheduler._run_job`'s existing `CancelJob`-return-based removal still functions (calling `cancel_job` on an already-removed job is a pre-existing no-op, per `Scheduler.cancel_job`'s `except ValueError` guard).
+- New regression test: a job with `max_runs(1)` whose `job_func` raises on its call must no longer be present in `scheduler.jobs` immediately after the raising call (assert on scheduler membership, not just the internal counter).
+
+## Constraints
+
+- Touch only `schedule/__init__.py` and `test_schedule.py`. No doc changes needed (the public `Job.max_runs()` contract and its docstring are unchanged; only internal cancellation-timing behavior changes).
+- Reuse the existing `Scheduler.cancel_job` method — do not add a new public `Scheduler` method or a second cancellation path.
+- All existing tests (including the `max_runs` tests added in the prior iteration) must keep passing unmodified in their assertions, except the specific prior regression test for this exact gap (`test_max_runs_counts_raising_job_execution` in `test_schedule.py`, added in run `rs-20260720T040421Z-4402cc885dcc` round 2) may be extended/strengthened to also assert scheduler-membership removal, since it directly targets this defect.
+
+## Out of Scope
+
+- Any behavior around `job_func()` raising beyond guaranteeing scheduler removal (no retry logic, no exception suppression, no logging changes).
+- `.until()`, `.at()`, timezone handling, tagging, `.to()` randomized intervals — unaffected by this fix.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{"verification_commands": [{"cmd": "python3 -m unittest test_schedule", "exit_code": 0}]}
+```
+
+exec
+/bin/zsh -lc 'git diff --no-ext-diff --unified=80 cf1d8a251240fc4fd84eb5d44775233ae89b5571...HEAD -- schedule/__init__.py test_schedule.py && git diff --name-only cf1d8a251240fc4fd84eb5d44775233ae89b5571...HEAD' in /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+ succeeded in 7564ms:
+2026-07-20 04:59:13.210 xcodebuild[73461:40308060]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 04:59:13.640 xcodebuild[73461:40308053] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-JyfIbvZS' (errno=Operation not permitted)
+2026-07-20 04:59:14.656 xcodebuild[73464:40308134]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 04:59:15.220 xcodebuild[73464:40308133] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 244e04f..0577277 100644
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -633,160 +633,162 @@ class Job:
+                     year=now.year, month=now.month, day=now.day
+                 )
+             self.cancel_after = cancel_after
+         else:
+             raise TypeError(
+                 "until() takes a string, datetime.datetime, datetime.timedelta, "
+                 "datetime.time parameter"
+             )
+         if self.cancel_after < datetime.datetime.now():
+             raise ScheduleValueError(
+                 "Cannot schedule a job to run until a time in the past"
+             )
+         return self
+ 
+     def max_runs(self, n: int):
+         """
+         Schedule the job to run at most ``n`` times.
+ 
+         :param n: Maximum number of times the job should run
+         :return: The invoked job instance
+         """
+         if not isinstance(n, int) or n < 1:
+             raise ValueError(
+                 "max_runs() requires an integer greater than or equal to 1"
+             )
+         self._remaining_runs = n
+         return self
+ 
+     def do(self, job_func: Callable, *args, **kwargs):
+         """
+         Specifies the job_func that should be called every time the
+         job runs.
+ 
+         Any additional arguments are passed on to job_func when
+         the job runs.
+ 
+         :param job_func: The function to be scheduled
+         :return: The invoked job instance
+         """
+         self.job_func = functools.partial(job_func, *args, **kwargs)
+         functools.update_wrapper(self.job_func, job_func)
+         self._schedule_next_run()
+         if self.scheduler is None:
+             raise ScheduleError(
+                 "Unable to a add job to schedule. "
+                 "Job is not associated with an scheduler"
+             )
+         self.scheduler.jobs.append(self)
+         return self
+ 
+     @property
+     def should_run(self) -> bool:
+         """
+         :return: ``True`` if the job should be run now.
+         """
+         assert self.next_run is not None, "must run _schedule_next_run before"
+         return datetime.datetime.now() >= self.next_run
+ 
+     def run(self):
+         """
+         Run the job and immediately reschedule it.
+         If the job's deadline is reached (configured using .until()), the job is not
+         run and CancelJob is returned immediately. If the next scheduled run exceeds
+         the job's deadline, CancelJob is returned after the execution. In this latter
+         case CancelJob takes priority over any other returned value.
+ 
+         If the job has a run budget (configured using .max_runs()), CancelJob is
+         also returned once the budget is exhausted, after the run that used it up.
+ 
+         :return: The return value returned by the `job_func`, or CancelJob if the job's
+                  deadline or run budget is reached.
+ 
+         """
+         if self._is_overdue(datetime.datetime.now()):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
+ 
+         logger.debug("Running job %s", self)
+         if self._remaining_runs is not None:
+             self._remaining_runs -= 1
++            if self._remaining_runs <= 0:
++                self.scheduler.cancel_job(self)
+         ret = self.job_func()
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
+ 
+         if self._remaining_runs is not None and self._remaining_runs <= 0:
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
+ 
+         if self._is_overdue(self.next_run):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
+         return ret
+ 
+     def _schedule_next_run(self) -> None:
+         """
+         Compute the instant when this job should run next.
+         """
+         if self.unit not in ("seconds", "minutes", "hours", "days", "weeks"):
+             raise ScheduleValueError(
+                 "Invalid unit (valid units are `seconds`, `minutes`, `hours`, "
+                 "`days`, and `weeks`)"
+             )
+         if self.latest is not None:
+             if not (self.latest >= self.interval):
+                 raise ScheduleError("`latest` is greater than `interval`")
+             interval = random.randint(self.interval, self.latest)
+         else:
+             interval = self.interval
+ 
+         # Do all computation in the context of the requested timezone
+         now = datetime.datetime.now(self.at_time_zone)
+ 
+         next_run = now
+ 
+         if self.start_day is not None:
+             if self.unit != "weeks":
+                 raise ScheduleValueError("`unit` should be 'weeks'")
+             next_run = _move_to_next_weekday(next_run, self.start_day)
+ 
+         if self.at_time is not None:
+             next_run = self._move_to_at_time(next_run)
+ 
+         period = datetime.timedelta(**{self.unit: interval})
+         if interval != 1:
+             next_run += period
+ 
+         while next_run <= now:
+             next_run += period
+ 
+         next_run = self._correct_utc_offset(
+             next_run, fixate_time=(self.at_time is not None)
+         )
+ 
+         # To keep the api consistent with older versions, we have to set the 'next_run' to a naive timestamp in the local timezone.
+         # Because we want to stay backwards compatible with older versions.
+         if self.at_time_zone is not None:
+             # Convert back to the local timezone
+             next_run = next_run.astimezone()
+ 
+             next_run = next_run.replace(tzinfo=None)
+ 
+         self.next_run = next_run
+ 
+     def _move_to_at_time(self, moment: datetime.datetime) -> datetime.datetime:
+         """
+         Takes a datetime and moves the time-component to the job's at_time.
+         """
+         if self.at_time is None:
+             return moment
+ 
+         kwargs = {"second": self.at_time.second, "microsecond": 0}
+ 
+         if self.unit == "days" or self.start_day is not None:
+             kwargs["hour"] = self.at_time.hour
+ 
+         if self.unit in ["days", "hours"] or self.start_day is not None:
+             kwargs["minute"] = self.at_time.minute
+ 
+         moment = moment.replace(**kwargs)  # type: ignore
+ 
+diff --git a/test_schedule.py b/test_schedule.py
+index 7115bd4..ccc2952 100644
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -390,160 +390,161 @@ class SchedulerTests(TestCase):
+         # Unschedule job when whichever limit is reached first
+         schedule.clear()
+         with mock_datetime(2020, 1, 1, 11, 35, 10):
+             mock_job.reset_mock()
+             every(5).seconds.max_runs(3).until(datetime.time(11, 35, 20)).do(
+                 mock_job
+             )
+             with mock_datetime(2020, 1, 1, 11, 35, 15):
+                 schedule.run_pending()
+                 assert mock_job.call_count == 1
+                 assert len(schedule.jobs) == 1
+             with mock_datetime(2020, 1, 1, 11, 35, 20):
+                 schedule.run_all()
+                 assert mock_job.call_count == 2
+                 assert len(schedule.jobs) == 0
+ 
+         schedule.clear()
+         with mock_datetime(2020, 1, 1, 11, 35, 10):
+             mock_job.reset_mock()
+             every(5).seconds.until(datetime.time(11, 35, 40)).max_runs(1).do(
+                 mock_job
+             )
+             with mock_datetime(2020, 1, 1, 11, 35, 15):
+                 schedule.run_pending()
+                 assert mock_job.call_count == 1
+                 assert len(schedule.jobs) == 0
+ 
+     def test_max_runs(self):
+         job = every(5).seconds.max_runs(3)
+         assert job._remaining_runs == 3
+         assert every().max_runs(3).seconds._remaining_runs == 3
+         assert job.max_runs(2) is job
+         assert job._remaining_runs == 2
+         assert every().max_runs(True)._remaining_runs == 1
+ 
+         for invalid_value in (0, -1, None, 1.5, "3"):
+             with self.assertRaises(ValueError):
+                 every().max_runs(invalid_value)
+ 
+     def test_max_runs_cancels_after_budget_with_run_pending(self):
+         mock_job = make_mock_job()
+         with mock_datetime(2020, 1, 1, 11, 35, 10):
+             every(5).seconds.max_runs(2).do(mock_job)
+             with mock_datetime(2020, 1, 1, 11, 35, 15):
+                 schedule.run_pending()
+                 assert mock_job.call_count == 1
+                 assert len(schedule.jobs) == 1
+             with mock_datetime(2020, 1, 1, 11, 35, 20):
+                 schedule.run_pending()
+                 assert mock_job.call_count == 2
+                 assert len(schedule.jobs) == 0
+             with mock_datetime(2020, 1, 1, 11, 35, 25):
+                 schedule.run_pending()
+                 assert mock_job.call_count == 2
+ 
+     def test_max_runs_cancels_after_budget_with_run_all(self):
+         first_job = make_mock_job("first_job")
+         second_job = make_mock_job("second_job")
+         every().second.max_runs(1).do(first_job)
+         every().second.max_runs(2).do(second_job)
+ 
+         schedule.run_all()
+         assert first_job.call_count == 1
+         assert second_job.call_count == 1
+         assert len(schedule.jobs) == 1
+ 
+         schedule.run_all()
+         assert first_job.call_count == 1
+         assert second_job.call_count == 2
+         assert len(schedule.jobs) == 0
+ 
+     def test_max_runs_counts_raising_job_execution(self):
+         mock_job = make_mock_job()
+         mock_job.side_effect = RuntimeError
+         job = every().second.max_runs(1).do(mock_job)
+ 
+         with self.assertRaises(RuntimeError):
+             job.run()
+ 
+         assert job._remaining_runs == 0
++        assert job not in schedule.default_scheduler.jobs
+ 
+     def test_weekday_at_todady(self):
+         mock_job = make_mock_job()
+ 
+         # This date is a wednesday
+         with mock_datetime(2020, 11, 25, 22, 38, 5):
+             job = every().wednesday.at("22:38:10").do(mock_job)
+             assert job.next_run.hour == 22
+             assert job.next_run.minute == 38
+             assert job.next_run.second == 10
+             assert job.next_run.year == 2020
+             assert job.next_run.month == 11
+             assert job.next_run.day == 25
+ 
+             job = every().wednesday.at("22:39").do(mock_job)
+             assert job.next_run.hour == 22
+             assert job.next_run.minute == 39
+             assert job.next_run.second == 00
+             assert job.next_run.year == 2020
+             assert job.next_run.month == 11
+             assert job.next_run.day == 25
+ 
+     def test_at_time_hour(self):
+         with mock_datetime(2010, 1, 6, 12, 20):
+             mock_job = make_mock_job()
+             assert every().hour.at(":30").do(mock_job).next_run.hour == 12
+             assert every().hour.at(":30").do(mock_job).next_run.minute == 30
+             assert every().hour.at(":30").do(mock_job).next_run.second == 0
+             assert every().hour.at(":10").do(mock_job).next_run.hour == 13
+             assert every().hour.at(":10").do(mock_job).next_run.minute == 10
+             assert every().hour.at(":10").do(mock_job).next_run.second == 0
+             assert every().hour.at(":00").do(mock_job).next_run.hour == 13
+             assert every().hour.at(":00").do(mock_job).next_run.minute == 0
+             assert every().hour.at(":00").do(mock_job).next_run.second == 0
+ 
+             self.assertRaises(ScheduleValueError, every().hour.at, "2:30:00")
+             self.assertRaises(ScheduleValueError, every().hour.at, "::2")
+             self.assertRaises(ScheduleValueError, every().hour.at, ".2")
+             self.assertRaises(ScheduleValueError, every().hour.at, "2")
+             self.assertRaises(ScheduleValueError, every().hour.at, " 2:30")
+             self.assertRaises(ScheduleValueError, every().hour.at, "61:00")
+             self.assertRaises(ScheduleValueError, every().hour.at, "00:61")
+             self.assertRaises(ScheduleValueError, every().hour.at, "01:61")
+             self.assertRaises(TypeError, every().hour.at, 2)
+ 
+             # test the 'MM:SS' format
+             assert every().hour.at("30:05").do(mock_job).next_run.hour == 12
+             assert every().hour.at("30:05").do(mock_job).next_run.minute == 30
+             assert every().hour.at("30:05").do(mock_job).next_run.second == 5
+             assert every().hour.at("10:25").do(mock_job).next_run.hour == 13
+             assert every().hour.at("10:25").do(mock_job).next_run.minute == 10
+             assert every().hour.at("10:25").do(mock_job).next_run.second == 25
+             assert every().hour.at("00:40").do(mock_job).next_run.hour == 13
+             assert every().hour.at("00:40").do(mock_job).next_run.minute == 0
+             assert every().hour.at("00:40").do(mock_job).next_run.second == 40
+ 
+     def test_at_time_minute(self):
+         with mock_datetime(2010, 1, 6, 12, 20, 30):
+             mock_job = make_mock_job()
+             assert every().minute.at(":40").do(mock_job).next_run.hour == 12
+             assert every().minute.at(":40").do(mock_job).next_run.minute == 20
+             assert every().minute.at(":40").do(mock_job).next_run.second == 40
+             assert every().minute.at(":10").do(mock_job).next_run.hour == 12
+             assert every().minute.at(":10").do(mock_job).next_run.minute == 21
+             assert every().minute.at(":10").do(mock_job).next_run.second == 10
+ 
+             self.assertRaises(ScheduleValueError, every().minute.at, "::2")
+             self.assertRaises(ScheduleValueError, every().minute.at, ".2")
+             self.assertRaises(ScheduleValueError, every().minute.at, "2")
+             self.assertRaises(ScheduleValueError, every().minute.at, "2:30:00")
+             self.assertRaises(ScheduleValueError, every().minute.at, "2:30")
+             self.assertRaises(ScheduleValueError, every().minute.at, " :30")
+             self.assertRaises(TypeError, every().minute.at, 2)
+ 
+     def test_next_run_time(self):
+         with mock_datetime(2010, 1, 6, 12, 15):
+             mock_job = make_mock_job()
+             assert schedule.next_run() is None
+             assert every().minute.do(mock_job).next_run.minute == 16
+             assert every(5).minutes.do(mock_job).next_run.minute == 20
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-8rhpJ8Xf' (errno=Operation not permitted)
+2026-07-20 04:59:17.237 xcodebuild[73588:40308362]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 04:59:17.605 xcodebuild[73588:40308361] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-D4bo2SjR' (errno=Operation not permitted)
+2026-07-20 04:59:18.388 xcodebuild[73663:40308476]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 04:59:18.725 xcodebuild[73663:40308474] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+schedule/__init__.py
+test_schedule.py
+
+exec
+/bin/zsh -lc "sed -n '680,735p' schedule/__init__.py" in /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+        self.scheduler.jobs.append(self)
+        return self
+
+    @property
+    def should_run(self) -> bool:
+        """
+        :return: ``True`` if the job should be run now.
+        """
+        assert self.next_run is not None, "must run _schedule_next_run before"
+        return datetime.datetime.now() >= self.next_run
+
+    def run(self):
+        """
+        Run the job and immediately reschedule it.
+        If the job's deadline is reached (configured using .until()), the job is not
+        run and CancelJob is returned immediately. If the next scheduled run exceeds
+        the job's deadline, CancelJob is returned after the execution. In this latter
+        case CancelJob takes priority over any other returned value.
+
+        If the job has a run budget (configured using .max_runs()), CancelJob is
+        also returned once the budget is exhausted, after the run that used it up.
+
+        :return: The return value returned by the `job_func`, or CancelJob if the job's
+                 deadline or run budget is reached.
+
+        """
+        if self._is_overdue(datetime.datetime.now()):
+            logger.debug("Cancelling job %s", self)
+            return CancelJob
+
+        logger.debug("Running job %s", self)
+        if self._remaining_runs is not None:
+            self._remaining_runs -= 1
+            if self._remaining_runs <= 0:
+                self.scheduler.cancel_job(self)
+        ret = self.job_func()
+        self.last_run = datetime.datetime.now()
+        self._schedule_next_run()
+
+        if self._remaining_runs is not None and self._remaining_runs <= 0:
+            logger.debug("Cancelling job %s", self)
+            return CancelJob
+
+        if self._is_overdue(self.next_run):
+            logger.debug("Cancelling job %s", self)
+            return CancelJob
+        return ret
+
+    def _schedule_next_run(self) -> None:
+        """
+        Compute the instant when this job should run next.
+        """
+        if self.unit not in ("seconds", "minutes", "hours", "days", "weeks"):
+            raise ScheduleValueError(
+                "Invalid unit (valid units are `seconds`, `minutes`, `hours`, "
+                "`days`, and `weeks`)"
+
+[codex-monitored] heartbeat: elapsed=30s
+codex
+The diff is exactly two added lines in `Job.run()` plus one strengthened membership assertion, and only the two permitted files changed. The code order is cancellation before invocation; I’m now validating both the raising-call invariant and the full regression suite.
+exec
+/bin/zsh -lc "PYTHONDONTWRITEBYTECODE=1 python3 -c 'import schedule\\nscheduler = schedule.Scheduler()\\ncalls = []\\ndef boom():\\n    calls.append(\"called\")\\n    raise RuntimeError(\"boom\")\\njob = scheduler.every().second.max_runs(1).do(boom)\\ntry:\\n    job.run()\\nexcept RuntimeError as exc:\\n    assert str(exc) == \"boom\"\\nelse:\\n    raise AssertionError(\"RuntimeError did not propagate\")\\nassert calls == [\"called\"], calls\\nassert job._remaining_runs == 0, job._remaining_runs\\nassert job not in scheduler.jobs, scheduler.jobs\\nprint(\"ADVERSARIAL_PROBE_PASS calls=1 remaining=0 jobs=0 exception=propagated\")'" in /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+exec
+/bin/zsh -lc 'PYTHONDONTWRITEBYTECODE=1 python3 -m unittest test_schedule' in /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+ exited 1 in 3346ms:
+2026-07-20 04:59:39.648 xcodebuild[74542:40309910]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 04:59:39.938 xcodebuild[74542:40309907] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+python3: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+python3: error: couldn't create cache file '/tmp/xcrun_db-ccGn9UFu' (errno=Operation not permitted)
+2026-07-20 04:59:40.812 xcodebuild[74665:40310080]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 04:59:41.132 xcodebuild[74665:40310078] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+  File "<string>", line 1
+    import schedule\nscheduler = schedule.Scheduler()\ncalls = []\ndef boom():\n    calls.append("called")\n    raise RuntimeError("boom")\njob = scheduler.every().second.max_runs(1).do(boom)\ntry:\n    job.run()\nexcept RuntimeError as exc:\n    assert str(exc) == "boom"\nelse:\n    raise AssertionError("RuntimeError did not propagate")\nassert calls == ["called"], calls\nassert job._remaining_runs == 0, job._remaining_runs\nassert job not in scheduler.jobs, scheduler.jobs\nprint("ADVERSARIAL_PROBE_PASS calls=1 remaining=0 jobs=0 exception=propagated")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ^
+SyntaxError: unexpected character after line continuation character
+
+ succeeded in 3436ms:
+2026-07-20 04:59:39.630 xcodebuild[74541:40309908]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 04:59:39.923 xcodebuild[74541:40309904] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+python3: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+python3: error: couldn't create cache file '/tmp/xcrun_db-ACR70S5H' (errno=Operation not permitted)
+2026-07-20 04:59:40.764 xcodebuild[74664:40310074]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 04:59:41.104 xcodebuild[74664:40310073] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+ss.ssss.....................sss.ss...................ssssssssssssssssssssssssssssss..
+----------------------------------------------------------------------
+Ran 85 tests in 0.020s
+
+OK (skipped=41)
+
+exec
+/bin/zsh -lc "PYTHONDONTWRITEBYTECODE=1 python3 -c 'import schedule
+scheduler = schedule.Scheduler()
+calls = []
+def boom():
+    calls.append(\"called\")
+    raise RuntimeError(\"boom\")
+job = scheduler.every().second.max_runs(1).do(boom)
+try:
+    job.run()
+except RuntimeError as exc:
+    assert str(exc) == \"boom\"
+else:
+    raise AssertionError(\"RuntimeError did not propagate\")
+assert calls == [\"called\"], calls
+assert job._remaining_runs == 0, job._remaining_runs
+assert job not in scheduler.jobs, scheduler.jobs
+print(\"ADVERSARIAL_PROBE_PASS calls=1 remaining=0 jobs=0 exception=propagated\")'" in /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+ succeeded in 3316ms:
+2026-07-20 04:59:56.717 xcodebuild[75940:40312631]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 04:59:57.014 xcodebuild[75940:40312630] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+python3: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+python3: error: couldn't create cache file '/tmp/xcrun_db-HVkRpPTz' (errno=Operation not permitted)
+2026-07-20 04:59:57.746 xcodebuild[75952:40312665]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-20 04:59:58.069 xcodebuild[75952:40312664] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+ADVERSARIAL_PROBE_PASS calls=1 remaining=0 jobs=0 exception=propagated
+
+[codex-monitored] heartbeat: elapsed=60s
+codex
+PASS
+tokens used
+30,767
+[codex-monitored] codex exited: code=0 elapsed=71s

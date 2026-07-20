@@ -1,0 +1,28 @@
+{
+  "seed": 73454407555891794467937226059197402218030572079507502974086549342467687157106,
+  "packets": {
+    "P1": {
+      "candidate": "A",
+      "patch_sha256": "cee0a0c9eba15317731c31c7f73c85a48d32bdfb581eb790a99942a0de9712d5"
+    },
+    "P2": {
+      "candidate": "B",
+      "patch_sha256": "e47a0d61e47a814aac8d07a66355a676e124c77a3ddad8ecd48636bf6d488d95"
+    }
+  },
+  "frozen_b_source": {
+    "control_id": "FS1",
+    "task": "FS1-schedule-max-runs",
+    "run_id": "iter0068-gate-20260711h",
+    "attempt": "B1",
+    "attempt_dir": "/Users/aipalm/devlyn-ceiling-external/exam-0073-fs1/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1",
+    "patch_path": "/Users/aipalm/devlyn-ceiling-external/exam-0073-fs1/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1/patch.diff",
+    "patch_sha256": "e47a0d61e47a814aac8d07a66355a676e124c77a3ddad8ecd48636bf6d488d95",
+    "objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0073-fs1/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1/objective.json",
+    "objective_sha256": "32ce180013ec8425c946b33670d23f1b6dfb7a83f5b2a6e3c86e4927eb7e9a04",
+    "timing_path": "/Users/aipalm/devlyn-ceiling-external/exam-0073-fs1/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1/timing.json",
+    "timing_sha256": "28773bda97d94babea2afc9fe0507bc6877d56bfdf33516158216c2f92b1a609",
+    "resolved": true,
+    "elapsed_seconds": 310
+  }
+}

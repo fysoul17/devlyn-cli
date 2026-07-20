@@ -1,0 +1,9 @@
+PASS
+
+Removed build-created ignored caches: `.pytest_cache/`, `__pycache__/`, and `schedule/__pycache__/`.
+
+Verified:
+- Cumulative diff only changes `schedule/__init__.py` and `test_schedule.py`.
+- No dead added symbols or invalidated documentation references.
+- `git diff --check` passes.
+- Remaining untracked entries are pre-existing pipeline/project files.

@@ -1,0 +1,780 @@
+[codex-monitored] start: ts=2026-07-20T04:39:46Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=66946
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: high
+reasoning summaries: none
+session id: 019f7dd2-abfa-7882-b184-7363ffca89b4
+--------
+user
+# Codex (OpenAI) adapter
+
+## Identity
+You are OpenAI's Codex model.
+
+## Validation pattern
+Validation is concrete commands, not self-belief.
+
+---
+
+# VERIFY fix-loop respawn of IMPLEMENT (round 2, triggered_by=verify)
+
+VERIFY's JUDGE found one HIGH finding in `schedule/__init__.py`. Fix it precisely — do not expand scope beyond this exact gap.
+
+## Finding
+
+`rule_id: spec.run-budget-counts-actual-invocations`, severity HIGH, `schedule/__init__.py:711`:
+
+> The budget is decremented only after job_func returns. If job_func raises, `_run_job` propagates the exception before cancellation, so `max_runs(1)` remains scheduled and permits an (n+1)th invocation. Reproduced with two caught `run_all()` calls: calls=2, remaining=1, scheduled=True.
+
+Quoted code (current):
+```python
+        logger.debug("Running job %s", self)
+        ret = self.job_func()
+        self.last_run = datetime.datetime.now()
+        self._schedule_next_run()
+
+        if self._remaining_runs is not None:
+            self._remaining_runs -= 1
+            if self._remaining_runs == 0:
+                logger.debug("Cancelling job %s", self)
+                return CancelJob
+```
+
+## Root cause and required fix
+
+The spec's Requirement says "the budget counts actual executions of the job function." The literal reading is: each time `job_func()` is invoked/attempted, that counts as one execution against the budget — whether or not that call raises. The current code only decrements after `job_func()` returns without raising, so a raising call is never charged against the budget.
+
+**Fix**: move the budget decrement to occur immediately before `job_func()` is called (so an attempt is always charged, even if it raises), while keeping the CancelJob decision *after* the call returns (so "the nth execution itself still runs normally" — job_func must never be skipped on the exhausting call). Do NOT add any `try`/`except` around `job_func()` — that is a different, out-of-scope concern (the library has no existing exception-handling contract for `job_func()`, and adding one is not part of this task). Do NOT touch the pre-existing behavior where `last_run`/`_schedule_next_run()` are skipped when `job_func()` raises — that is existing, unrelated library behavior.
+
+Apply this exact shape (only the decrement line moves; the cancel check condition changes from `== 0` to `<= 0` since the value could now go negative across retried raising calls, and everything else is unchanged):
+
+```python
+        logger.debug("Running job %s", self)
+        if self._remaining_runs is not None:
+            self._remaining_runs -= 1
+        ret = self.job_func()
+        self.last_run = datetime.datetime.now()
+        self._schedule_next_run()
+
+        if self._remaining_runs is not None and self._remaining_runs <= 0:
+            logger.debug("Cancelling job %s", self)
+            return CancelJob
+```
+
+## Test to add
+
+Add one regression test to `test_schedule.py` (near the other `max_runs` tests) confirming the budget is consumed even when `job_func` raises on the exhausting call — e.g. a job with `max_runs(1)` whose mock job raises `RuntimeError` on `.run()`; assert `job._remaining_runs == 0` after the raising call (caught by the test), proving the budget was charged for the attempt. Do not test or assert anything about rescheduling/next_run behavior on a raising job_func — that is out of scope and pre-existing.
+
+## Verify before reporting done
+
+1. `python3 -m unittest test_schedule -v` — must be 100% green (0 failures).
+2. `python3 "/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/.claude/skills/_shared/spec-verify-check.py" --include-risk-probes` — must exit 0.
+3. Confirm your diff since HEAD touches only `schedule/__init__.py` and `test_schedule.py` (no other files).
+
+Report `PASS` in your final reply with file:line evidence once both checks are green. Report `BLOCKED` if you believe this fix is wrong or cannot be made this way.
+codex
+I’ll make the narrowly specified move-before-call change, add the single regression test, then run both required checks and confirm the diff scope.
+exec
+/bin/zsh -lc "git status --short && sed -n '690,730p' schedule/__init__.py && rg -n -C 3 \"max_runs\" test_schedule.py" in /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+    def run(self):
+        """
+        Run the job and immediately reschedule it.
+        If the job's deadline is reached (configured using .until()), the job is not
+        run and CancelJob is returned immediately. If the next scheduled run exceeds
+        the job's deadline, CancelJob is returned after the execution. In this latter
+        case CancelJob takes priority over any other returned value.
+
+        If the job has a run budget (configured using .max_runs()), CancelJob is
+        also returned once the budget is exhausted, after the run that used it up.
+
+        :return: The return value returned by the `job_func`, or CancelJob if the job's
+                 deadline or run budget is reached.
+
+        """
+        if self._is_overdue(datetime.datetime.now()):
+            logger.debug("Cancelling job %s", self)
+            return CancelJob
+
+        logger.debug("Running job %s", self)
+        ret = self.job_func()
+        self.last_run = datetime.datetime.now()
+        self._schedule_next_run()
+
+        if self._remaining_runs is not None:
+            self._remaining_runs -= 1
+            if self._remaining_runs == 0:
+                logger.debug("Cancelling job %s", self)
+                return CancelJob
+
+        if self._is_overdue(self.next_run):
+            logger.debug("Cancelling job %s", self)
+            return CancelJob
+        return ret
+
+    def _schedule_next_run(self) -> None:
+        """
+        Compute the instant when this job should run next.
+        """
+        if self.unit not in ("seconds", "minutes", "hours", "days", "weeks"):
+391-        schedule.clear()
+392-        with mock_datetime(2020, 1, 1, 11, 35, 10):
+393-            mock_job.reset_mock()
+394:            every(5).seconds.max_runs(3).until(datetime.time(11, 35, 20)).do(
+395-                mock_job
+396-            )
+397-            with mock_datetime(2020, 1, 1, 11, 35, 15):
+--
+406-        schedule.clear()
+407-        with mock_datetime(2020, 1, 1, 11, 35, 10):
+408-            mock_job.reset_mock()
+409:            every(5).seconds.until(datetime.time(11, 35, 40)).max_runs(1).do(
+410-                mock_job
+411-            )
+412-            with mock_datetime(2020, 1, 1, 11, 35, 15):
+--
+414-                assert mock_job.call_count == 1
+415-                assert len(schedule.jobs) == 0
+416-
+417:    def test_max_runs(self):
+418:        job = every(5).seconds.max_runs(3)
+419-        assert job._remaining_runs == 3
+420:        assert every().max_runs(3).seconds._remaining_runs == 3
+421:        assert job.max_runs(2) is job
+422-        assert job._remaining_runs == 2
+423:        assert every().max_runs(True)._remaining_runs == 1
+424-
+425-        for invalid_value in (0, -1, None, 1.5, "3"):
+426-            with self.assertRaises(ValueError):
+427:                every().max_runs(invalid_value)
+428-
+429:    def test_max_runs_cancels_after_budget_with_run_pending(self):
+430-        mock_job = make_mock_job()
+431-        with mock_datetime(2020, 1, 1, 11, 35, 10):
+432:            every(5).seconds.max_runs(2).do(mock_job)
+433-            with mock_datetime(2020, 1, 1, 11, 35, 15):
+434-                schedule.run_pending()
+435-                assert mock_job.call_count == 1
+--
+442-                schedule.run_pending()
+443-                assert mock_job.call_count == 2
+444-
+445:    def test_max_runs_cancels_after_budget_with_run_all(self):
+446-        first_job = make_mock_job("first_job")
+447-        second_job = make_mock_job("second_job")
+448:        every().second.max_runs(1).do(first_job)
+449:        every().second.max_runs(2).do(second_job)
+450-
+451-        schedule.run_all()
+452-        assert first_job.call_count == 1
+--
+1571-            assert schedule.next_run() is None
+1572-            assert schedule.idle_seconds() is None
+1573-
+1574:            every().hour.max_runs(1).do(mock_job)
+1575-            assert schedule.idle_seconds() == 60 * 60
+1576-            schedule.run_all()
+1577-            assert schedule.next_run() is None
+--
+1600-        assert len(schedule.jobs) == 0
+1601-
+1602-        mock_job.reset_mock()
+1603:        limited_job = every().second.max_runs(3).max_runs(1).do(mock_job)
+1604-        schedule.run_all()
+1605-        assert mock_job.call_count == 1
+1606-        assert limited_job not in schedule.jobs
+
+exec
+/bin/zsh -lc "sed -n '360,475p' test_schedule.py && sed -n '1,70p' test_schedule.py" in /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+        self.assertRaises(
+            ScheduleValueError, every().day.until, datetime.timedelta(minutes=-1)
+        )
+        one_hour_ago = datetime.datetime.now() - datetime.timedelta(hours=1)
+        self.assertRaises(ScheduleValueError, every().day.until, one_hour_ago)
+
+        # Unschedule job after next_run passes the deadline
+        schedule.clear()
+        with mock_datetime(2020, 1, 1, 11, 35, 10):
+            mock_job.reset_mock()
+            every(5).seconds.until(datetime.time(11, 35, 20)).do(mock_job)
+            with mock_datetime(2020, 1, 1, 11, 35, 15):
+                schedule.run_pending()
+                assert mock_job.call_count == 1
+                assert len(schedule.jobs) == 1
+            with mock_datetime(2020, 1, 1, 11, 35, 20):
+                schedule.run_all()
+                assert mock_job.call_count == 2
+                assert len(schedule.jobs) == 0
+
+        # Unschedule job because current execution time has passed deadline
+        schedule.clear()
+        with mock_datetime(2020, 1, 1, 11, 35, 10):
+            mock_job.reset_mock()
+            every(5).seconds.until(datetime.time(11, 35, 20)).do(mock_job)
+            with mock_datetime(2020, 1, 1, 11, 35, 50):
+                schedule.run_pending()
+                assert mock_job.call_count == 0
+                assert len(schedule.jobs) == 0
+
+        # Unschedule job when whichever limit is reached first
+        schedule.clear()
+        with mock_datetime(2020, 1, 1, 11, 35, 10):
+            mock_job.reset_mock()
+            every(5).seconds.max_runs(3).until(datetime.time(11, 35, 20)).do(
+                mock_job
+            )
+            with mock_datetime(2020, 1, 1, 11, 35, 15):
+                schedule.run_pending()
+                assert mock_job.call_count == 1
+                assert len(schedule.jobs) == 1
+            with mock_datetime(2020, 1, 1, 11, 35, 20):
+                schedule.run_all()
+                assert mock_job.call_count == 2
+                assert len(schedule.jobs) == 0
+
+        schedule.clear()
+        with mock_datetime(2020, 1, 1, 11, 35, 10):
+            mock_job.reset_mock()
+            every(5).seconds.until(datetime.time(11, 35, 40)).max_runs(1).do(
+                mock_job
+            )
+            with mock_datetime(2020, 1, 1, 11, 35, 15):
+                schedule.run_pending()
+                assert mock_job.call_count == 1
+                assert len(schedule.jobs) == 0
+
+    def test_max_runs(self):
+        job = every(5).seconds.max_runs(3)
+        assert job._remaining_runs == 3
+        assert every().max_runs(3).seconds._remaining_runs == 3
+        assert job.max_runs(2) is job
+        assert job._remaining_runs == 2
+        assert every().max_runs(True)._remaining_runs == 1
+
+        for invalid_value in (0, -1, None, 1.5, "3"):
+            with self.assertRaises(ValueError):
+                every().max_runs(invalid_value)
+
+    def test_max_runs_cancels_after_budget_with_run_pending(self):
+        mock_job = make_mock_job()
+        with mock_datetime(2020, 1, 1, 11, 35, 10):
+            every(5).seconds.max_runs(2).do(mock_job)
+            with mock_datetime(2020, 1, 1, 11, 35, 15):
+                schedule.run_pending()
+                assert mock_job.call_count == 1
+                assert len(schedule.jobs) == 1
+            with mock_datetime(2020, 1, 1, 11, 35, 20):
+                schedule.run_pending()
+                assert mock_job.call_count == 2
+                assert len(schedule.jobs) == 0
+            with mock_datetime(2020, 1, 1, 11, 35, 25):
+                schedule.run_pending()
+                assert mock_job.call_count == 2
+
+    def test_max_runs_cancels_after_budget_with_run_all(self):
+        first_job = make_mock_job("first_job")
+        second_job = make_mock_job("second_job")
+        every().second.max_runs(1).do(first_job)
+        every().second.max_runs(2).do(second_job)
+
+        schedule.run_all()
+        assert first_job.call_count == 1
+        assert second_job.call_count == 1
+        assert len(schedule.jobs) == 1
+
+        schedule.run_all()
+        assert first_job.call_count == 1
+        assert second_job.call_count == 2
+        assert len(schedule.jobs) == 0
+
+    def test_weekday_at_todady(self):
+        mock_job = make_mock_job()
+
+        # This date is a wednesday
+        with mock_datetime(2020, 11, 25, 22, 38, 5):
+            job = every().wednesday.at("22:38:10").do(mock_job)
+            assert job.next_run.hour == 22
+            assert job.next_run.minute == 38
+            assert job.next_run.second == 10
+            assert job.next_run.year == 2020
+            assert job.next_run.month == 11
+            assert job.next_run.day == 25
+
+            job = every().wednesday.at("22:39").do(mock_job)
+            assert job.next_run.hour == 22
+"""Unit tests for schedule.py"""
+
+import datetime
+import functools
+from unittest import mock, TestCase
+import os
+import time
+
+# Silence "missing docstring", "method could be a function",
+# "class already defined", and "too many public methods" messages:
+# pylint: disable-msg=R0201,C0111,E0102,R0904,R0901
+
+import schedule
+from schedule import (
+    every,
+    repeat,
+    ScheduleError,
+    ScheduleValueError,
+    IntervalError,
+)
+
+# POSIX TZ string format
+TZ_BERLIN = "CET-1CEST,M3.5.0,M10.5.0/3"
+TZ_AUCKLAND = "NZST-12NZDT,M9.5.0,M4.1.0/3"
+TZ_CHATHAM = "<+1245>-12:45<+1345>,M9.5.0/2:45,M4.1.0/3:45"
+TZ_UTC = "UTC0"
+
+# Set timezone to Europe/Berlin (CEST) to ensure global reproducibility
+os.environ["TZ"] = TZ_BERLIN
+time.tzset()
+
+
+def make_mock_job(name=None):
+    job = mock.Mock()
+    job.__name__ = name or "job"
+    return job
+
+
+class mock_datetime:
+    """
+    Monkey-patch datetime for predictable results
+    """
+
+    def __init__(self, year, month, day, hour, minute, second=0, zone=None, fold=0):
+        self.year = year
+        self.month = month
+        self.day = day
+        self.hour = hour
+        self.minute = minute
+        self.second = second
+        self.zone = zone
+        self.fold = fold
+        self.original_datetime = None
+        self.original_zone = None
+
+    def __enter__(self):
+        class MockDate(datetime.datetime):
+            @classmethod
+            def today(cls):
+                return cls(self.year, self.month, self.day)
+
+            @classmethod
+            def now(cls, tz=None):
+                mock_date = cls(
+                    self.year,
+                    self.month,
+                    self.day,
+                    self.hour,
+                    self.minute,
+                    self.second,
+
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/schedule/__init__.py
+/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/test_schedule.py
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index fcbf348981887703c79037d80cbb4e62b043c2fb..244e04f23ab8d6763dbfa5949ee004158bcc8de2
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -708,15 +708,15 @@
+             return CancelJob
+ 
+         logger.debug("Running job %s", self)
++        if self._remaining_runs is not None:
++            self._remaining_runs -= 1
+         ret = self.job_func()
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
+ 
+-        if self._remaining_runs is not None:
+-            self._remaining_runs -= 1
+-            if self._remaining_runs == 0:
+-                logger.debug("Cancelling job %s", self)
+-                return CancelJob
++        if self._remaining_runs is not None and self._remaining_runs <= 0:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+ 
+         if self._is_overdue(self.next_run):
+             logger.debug("Cancelling job %s", self)
+diff --git a/test_schedule.py b/test_schedule.py
+index 4b79f9e4fde03da92310541e59c7d0e7dd23b882..7115bd4386d2b53416f760054372bcf4b0b214d3
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -458,6 +458,16 @@
+         assert second_job.call_count == 2
+         assert len(schedule.jobs) == 0
+ 
++    def test_max_runs_counts_raising_job_execution(self):
++        mock_job = make_mock_job()
++        mock_job.side_effect = RuntimeError
++        job = every().second.max_runs(1).do(mock_job)
++
++        with self.assertRaises(RuntimeError):
++            job.run()
++
++        assert job._remaining_runs == 0
++
+     def test_weekday_at_todady(self):
+         mock_job = make_mock_job()
+ 
+
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index fcbf348981887703c79037d80cbb4e62b043c2fb..244e04f23ab8d6763dbfa5949ee004158bcc8de2
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -708,15 +708,15 @@
+             return CancelJob
+ 
+         logger.debug("Running job %s", self)
++        if self._remaining_runs is not None:
++            self._remaining_runs -= 1
+         ret = self.job_func()
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
+ 
+-        if self._remaining_runs is not None:
+-            self._remaining_runs -= 1
+-            if self._remaining_runs == 0:
+-                logger.debug("Cancelling job %s", self)
+-                return CancelJob
++        if self._remaining_runs is not None and self._remaining_runs <= 0:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+ 
+         if self._is_overdue(self.next_run):
+             logger.debug("Cancelling job %s", self)
+diff --git a/test_schedule.py b/test_schedule.py
+index 4b79f9e4fde03da92310541e59c7d0e7dd23b882..7115bd4386d2b53416f760054372bcf4b0b214d3
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -458,6 +458,16 @@
+         assert second_job.call_count == 2
+         assert len(schedule.jobs) == 0
+ 
++    def test_max_runs_counts_raising_job_execution(self):
++        mock_job = make_mock_job()
++        mock_job.side_effect = RuntimeError
++        job = every().second.max_runs(1).do(mock_job)
++
++        with self.assertRaises(RuntimeError):
++            job.run()
++
++        assert job._remaining_runs == 0
++
+     def test_weekday_at_todady(self):
+         mock_job = make_mock_job()
+ 
+
+[codex-monitored] heartbeat: elapsed=30s
+codex
+The implementation now charges `_remaining_runs` immediately before invocation, and the regression test catches the raised `RuntimeError` and verifies the budget reached zero. I’m running the requested suite next.
+exec
+/bin/zsh -lc 'python3 -m unittest test_schedule -v' in /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index fcbf348981887703c79037d80cbb4e62b043c2fb..244e04f23ab8d6763dbfa5949ee004158bcc8de2
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -708,15 +708,15 @@
+             return CancelJob
+ 
+         logger.debug("Running job %s", self)
++        if self._remaining_runs is not None:
++            self._remaining_runs -= 1
+         ret = self.job_func()
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
+ 
+-        if self._remaining_runs is not None:
+-            self._remaining_runs -= 1
+-            if self._remaining_runs == 0:
+-                logger.debug("Cancelling job %s", self)
+-                return CancelJob
++        if self._remaining_runs is not None and self._remaining_runs <= 0:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+ 
+         if self._is_overdue(self.next_run):
+             logger.debug("Cancelling job %s", self)
+diff --git a/test_schedule.py b/test_schedule.py
+index 4b79f9e4fde03da92310541e59c7d0e7dd23b882..7115bd4386d2b53416f760054372bcf4b0b214d3
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -458,6 +458,16 @@
+         assert second_job.call_count == 2
+         assert len(schedule.jobs) == 0
+ 
++    def test_max_runs_counts_raising_job_execution(self):
++        mock_job = make_mock_job()
++        mock_job.side_effect = RuntimeError
++        job = every().second.max_runs(1).do(mock_job)
++
++        with self.assertRaises(RuntimeError):
++            job.run()
++
++        assert job._remaining_runs == 0
++
+     def test_weekday_at_todady(self):
+         mock_job = make_mock_job()
+ 
+
+ succeeded in 114ms:
+ok
+test_weekday_at_todady (test_schedule.SchedulerTests) ... ok
+
+----------------------------------------------------------------------
+Ran 85 tests in 0.017s
+
+OK (skipped=41)
+
+exec
+/bin/zsh -lc 'python3 "/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/.claude/skills/_shared/spec-verify-check.py" --include-risk-probes' in /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index fcbf348981887703c79037d80cbb4e62b043c2fb..244e04f23ab8d6763dbfa5949ee004158bcc8de2
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -708,15 +708,15 @@
+             return CancelJob
+ 
+         logger.debug("Running job %s", self)
++        if self._remaining_runs is not None:
++            self._remaining_runs -= 1
+         ret = self.job_func()
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
+ 
+-        if self._remaining_runs is not None:
+-            self._remaining_runs -= 1
+-            if self._remaining_runs == 0:
+-                logger.debug("Cancelling job %s", self)
+-                return CancelJob
++        if self._remaining_runs is not None and self._remaining_runs <= 0:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+ 
+         if self._is_overdue(self.next_run):
+             logger.debug("Cancelling job %s", self)
+diff --git a/test_schedule.py b/test_schedule.py
+index 4b79f9e4fde03da92310541e59c7d0e7dd23b882..7115bd4386d2b53416f760054372bcf4b0b214d3
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -458,6 +458,16 @@
+         assert second_job.call_count == 2
+         assert len(schedule.jobs) == 0
+ 
++    def test_max_runs_counts_raising_job_execution(self):
++        mock_job = make_mock_job()
++        mock_job.side_effect = RuntimeError
++        job = every().second.max_runs(1).do(mock_job)
++
++        with self.assertRaises(RuntimeError):
++            job.run()
++
++        assert job._remaining_runs == 0
++
+     def test_weekday_at_todady(self):
+         mock_job = make_mock_job()
+ 
+
+ succeeded in 239ms:
+[spec-verify] all 1 command(s) passed
+
+codex
+Both required verification commands have passed. I’m doing the final diff-scope and line-reference check now.
+exec
+/bin/zsh -lc "git diff --check HEAD && git diff --name-only HEAD && nl -ba schedule/__init__.py | sed -n '704,726p' && nl -ba test_schedule.py | sed -n '440,475p' && git status --short" in /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+schedule/__init__.py
+test_schedule.py
+   704	
+   705	        """
+   706	        if self._is_overdue(datetime.datetime.now()):
+   707	            logger.debug("Cancelling job %s", self)
+   708	            return CancelJob
+   709	
+   710	        logger.debug("Running job %s", self)
+   711	        if self._remaining_runs is not None:
+   712	            self._remaining_runs -= 1
+   713	        ret = self.job_func()
+   714	        self.last_run = datetime.datetime.now()
+   715	        self._schedule_next_run()
+   716	
+   717	        if self._remaining_runs is not None and self._remaining_runs <= 0:
+   718	            logger.debug("Cancelling job %s", self)
+   719	            return CancelJob
+   720	
+   721	        if self._is_overdue(self.next_run):
+   722	            logger.debug("Cancelling job %s", self)
+   723	            return CancelJob
+   724	        return ret
+   725	
+   726	    def _schedule_next_run(self) -> None:
+   440	                assert len(schedule.jobs) == 0
+   441	            with mock_datetime(2020, 1, 1, 11, 35, 25):
+   442	                schedule.run_pending()
+   443	                assert mock_job.call_count == 2
+   444	
+   445	    def test_max_runs_cancels_after_budget_with_run_all(self):
+   446	        first_job = make_mock_job("first_job")
+   447	        second_job = make_mock_job("second_job")
+   448	        every().second.max_runs(1).do(first_job)
+   449	        every().second.max_runs(2).do(second_job)
+   450	
+   451	        schedule.run_all()
+   452	        assert first_job.call_count == 1
+   453	        assert second_job.call_count == 1
+   454	        assert len(schedule.jobs) == 1
+   455	
+   456	        schedule.run_all()
+   457	        assert first_job.call_count == 1
+   458	        assert second_job.call_count == 2
+   459	        assert len(schedule.jobs) == 0
+   460	
+   461	    def test_max_runs_counts_raising_job_execution(self):
+   462	        mock_job = make_mock_job()
+   463	        mock_job.side_effect = RuntimeError
+   464	        job = every().second.max_runs(1).do(mock_job)
+   465	
+   466	        with self.assertRaises(RuntimeError):
+   467	            job.run()
+   468	
+   469	        assert job._remaining_runs == 0
+   470	
+   471	    def test_weekday_at_todady(self):
+   472	        mock_job = make_mock_job()
+   473	
+   474	        # This date is a wednesday
+   475	        with mock_datetime(2020, 11, 25, 22, 38, 5):
+ M schedule/__init__.py
+ M test_schedule.py
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index fcbf348981887703c79037d80cbb4e62b043c2fb..244e04f23ab8d6763dbfa5949ee004158bcc8de2
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -708,15 +708,15 @@
+             return CancelJob
+ 
+         logger.debug("Running job %s", self)
++        if self._remaining_runs is not None:
++            self._remaining_runs -= 1
+         ret = self.job_func()
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
+ 
+-        if self._remaining_runs is not None:
+-            self._remaining_runs -= 1
+-            if self._remaining_runs == 0:
+-                logger.debug("Cancelling job %s", self)
+-                return CancelJob
++        if self._remaining_runs is not None and self._remaining_runs <= 0:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+ 
+         if self._is_overdue(self.next_run):
+             logger.debug("Cancelling job %s", self)
+diff --git a/test_schedule.py b/test_schedule.py
+index 4b79f9e4fde03da92310541e59c7d0e7dd23b882..7115bd4386d2b53416f760054372bcf4b0b214d3
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -458,6 +458,16 @@
+         assert second_job.call_count == 2
+         assert len(schedule.jobs) == 0
+ 
++    def test_max_runs_counts_raising_job_execution(self):
++        mock_job = make_mock_job()
++        mock_job.side_effect = RuntimeError
++        job = every().second.max_runs(1).do(mock_job)
++
++        with self.assertRaises(RuntimeError):
++            job.run()
++
++        assert job._remaining_runs == 0
++
+     def test_weekday_at_todady(self):
+         mock_job = make_mock_job()
+ 
+
+codex
+PASS
+
+- Budget is charged before invocation at [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/schedule/__init__.py:711); cancellation remains after successful return at line 717.
+- Regression coverage added at [test_schedule.py](/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/test_schedule.py:461), asserting a raising `max_runs(1)` job reaches zero remaining runs.
+
+Verified:
+
+- `python3 -m unittest test_schedule -v` — PASS: 85 tests, 0 failures.
+- `spec-verify-check.py --include-risk-probes` — PASS.
+- `git diff --name-only HEAD` contains only `schedule/__init__.py` and `test_schedule.py`.
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index fcbf348981887703c79037d80cbb4e62b043c2fb..244e04f23ab8d6763dbfa5949ee004158bcc8de2
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -708,15 +708,15 @@
+             return CancelJob
+ 
+         logger.debug("Running job %s", self)
++        if self._remaining_runs is not None:
++            self._remaining_runs -= 1
+         ret = self.job_func()
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
+ 
+-        if self._remaining_runs is not None:
+-            self._remaining_runs -= 1
+-            if self._remaining_runs == 0:
+-                logger.debug("Cancelling job %s", self)
+-                return CancelJob
++        if self._remaining_runs is not None and self._remaining_runs <= 0:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+ 
+         if self._is_overdue(self.next_run):
+             logger.debug("Cancelling job %s", self)
+diff --git a/test_schedule.py b/test_schedule.py
+index 4b79f9e4fde03da92310541e59c7d0e7dd23b882..7115bd4386d2b53416f760054372bcf4b0b214d3
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -458,6 +458,16 @@
+         assert second_job.call_count == 2
+         assert len(schedule.jobs) == 0
+ 
++    def test_max_runs_counts_raising_job_execution(self):
++        mock_job = make_mock_job()
++        mock_job.side_effect = RuntimeError
++        job = every().second.max_runs(1).do(mock_job)
++
++        with self.assertRaises(RuntimeError):
++            job.run()
++
++        assert job._remaining_runs == 0
++
+     def test_weekday_at_todady(self):
+         mock_job = make_mock_job()
+ 
+
+tokens used
+16,744
+[codex-monitored] codex exited: code=0 elapsed=55s

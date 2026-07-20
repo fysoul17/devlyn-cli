@@ -1,0 +1,35 @@
+{
+  "blocks": [
+    {
+      "action": "finding-targeted",
+      "classification": "SURVIVED",
+      "finding_targeted": true,
+      "id": "schedule/__init__.py:1:37393fa421b42b72",
+      "path": "schedule/__init__.py",
+      "pre_fix_span": [
+        699,
+        700
+      ]
+    },
+    {
+      "action": "none",
+      "classification": "SURVIVED",
+      "finding_targeted": false,
+      "id": "schedule/__init__.py:3:a06252b6e6749281",
+      "path": "schedule/__init__.py",
+      "pre_fix_span": [
+        703,
+        703
+      ]
+    }
+  ],
+  "fix_commit_sha": "a7cc9a12a907f89f0487334fd6391ad6b8259a08",
+  "origin_phase": "verify",
+  "post_restore_sha": "a7cc9a12a907f89f0487334fd6391ad6b8259a08",
+  "pre_fix_sha": "48c106d36a3d9bcb369a5803415c32d820e3c866",
+  "restore_commit_sha": null,
+  "round": 1,
+  "schema_version": 1,
+  "surface_close_commit_sha": "48c106d",
+  "triggering_findings_sha256": "c46ca48af5cdc77284e18bf431c3cb1526e0d8819f565a7af5e26b6a88d31bf4"
+}

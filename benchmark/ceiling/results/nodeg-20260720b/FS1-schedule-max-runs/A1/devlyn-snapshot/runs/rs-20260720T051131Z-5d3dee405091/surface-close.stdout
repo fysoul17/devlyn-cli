@@ -1,0 +1,3 @@
+UVR-STALE: FIRED schedule/__init__.py:695 — `run()`'s docstring described CancelJob triggers only via `.until()` deadline, omitting the newly added `.max_runs()` budget cancellation path; updated minimally to mention it.
+PATH-TEST: N/A test_schedule.py:390 — every success/failure path in the goal (chain positions, run_pending/run_all, until-vs-budget both directions, next_run/idle_seconds after removal, invalid-value ValueError, last-call-wins, per-job independence) already has a staged regression test.
+PASS

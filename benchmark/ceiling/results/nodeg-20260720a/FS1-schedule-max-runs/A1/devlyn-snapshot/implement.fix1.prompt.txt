@@ -1,0 +1,33 @@
+# Codex (OpenAI) adapter
+
+## Identity
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below.
+
+## Output discipline
+Efficient, direct, task-oriented.
+
+## Validation pattern
+Validation is concrete commands, not self-belief. Run the verification commands and trust their output.
+
+---
+
+# BUILD_GATE fix-loop respawn of IMPLEMENT (round 1, triggered_by=build_gate)
+
+BUILD_GATE ran and found exactly one CRITICAL finding, unrelated to your prior code change (`schedule/__init__.py`, `test_schedule.py`, `docs/examples.rst` are all clean and fully tested — do not touch them). The defect is in a pipeline-generated artifact, `.devlyn/criteria.generated.md`, which is exempt from the authorized-surface scope check (`.devlyn/` paths are always exempt).
+
+## Finding (`.devlyn/build_gate.findings.jsonl`, BGATE-0001, CRITICAL, rule `correctness.spec-verify-malformed`)
+
+`.devlyn/criteria.generated.md`'s `<!-- devlyn:verification -->` section (around line 25-30) has a plain ``` shell fence containing the text `python3 -m unittest test_schedule`, but `spec-verify-check.py` requires a ```json fence containing an object with a non-empty `verification_commands` array. Fix hint from the gate: replace the plain fence with:
+
+```json
+{"verification_commands": [{"cmd": "python3 -m unittest test_schedule", "exit_code": 0}]}
+```
+
+## Task
+
+1. Read `.devlyn/criteria.generated.md`.
+2. Replace the plain ``` fence directly under the `<!-- devlyn:verification -->` sentinel / `## Verification` heading with a ```json fence containing exactly `{"verification_commands": [{"cmd": "python3 -m unittest test_schedule", "exit_code": 0}]}` (pretty-printed or single-line, either is fine — must be valid JSON). Do not change anything else in the file (Requirements/Constraints/Out of Scope sections, the sentinel comment, or the heading text stay as-is).
+3. Verify the fix: run `python3 "/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/.claude/skills/_shared/spec-verify-check.py" --include-risk-probes` from the repo root and confirm it exits 0.
+4. Do not touch `schedule/__init__.py`, `test_schedule.py`, or `docs/examples.rst` — they are already correct and out of scope for this fix.
+
+Report `PASS` in your final reply once `spec-verify-check.py --include-risk-probes` exits 0, with the file:line evidence of your edit. Report `BLOCKED` if the fix cannot be made within `.devlyn/criteria.generated.md` alone.

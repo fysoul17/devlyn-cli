@@ -1,0 +1,5 @@
+BLOCKED
+
+Edited `.devlyn/criteria.generated.md:28-30` to the required JSON verification block.
+
+The mandated verifier still exits 1 because `.devlyn/pipeline.state.json:206` retains the prior `source.criteria_sha256`; it must be updated outside the allowed file to match the changed criteria artifact. No scoped source files were touched.

@@ -1,0 +1,15 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "/opt/homebrew/bin/python3 -m pytest test_schedule.py -q",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "ss.ssss............................sss.ss...................ssssssssssss [ 78%]\nssssssssssssssssss..                                                     [100%]\n51 passed, 41 skipped in 0.05s\n"
+    }
+  ]
+}

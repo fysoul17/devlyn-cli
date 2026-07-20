@@ -1,0 +1,28 @@
+# Codex (OpenAI) adapter
+
+## Identity
+You are OpenAI's Codex model.
+
+---
+
+# PHASE 4 — CLEANUP (canonical body, outer-loop iteration 2)
+
+Task-scoped pass — only what this diff introduced or invalidated.
+
+<input>
+- Cumulative diff since base_ref sha `cf1d8a251240fc4fd84eb5d44775233ae89b5571`: `git diff cf1d8a251240fc4fd84eb5d44775233ae89b5571...HEAD` (touches `schedule/__init__.py`, `test_schedule.py` only — a 3-line exception-safety fix plus one test assertion).
+- pre_sha (current HEAD before this phase): `af03f614a4bb3d0c6030f2d8f1b258ea744ad195`. Your post-cleanup diff against this SHA must stay within the allowlist below.
+</input>
+
+<allowlist>
+1. Tooling artifacts (`__pycache__/`, `*.pyc`, `.cache/`) not deliverables.
+2. Dead code added by this diff.
+3. Doc references this diff invalidated.
+4. Inline comments referencing deleted code.
+</allowlist>
+
+<output>
+Report your verdict in your final reply: `PASS` if changes are within the allowlist (or no changes are needed — expected for this tiny diff); `FAIL` otherwise. Do not edit `.devlyn/pipeline.state.json`.
+</output>
+
+Task: inspect `git diff cf1d8a251240fc4fd84eb5d44775233ae89b5571...HEAD` and `git status` for stray artifacts. This diff adds no dead code (the new `cancel_job()` call and the new assertion are both directly used/exercised). Confirm there is nothing to clean up.

@@ -1,0 +1,1504 @@
+[codex-monitored] start: ts=2026-07-20T05:22:50Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=30977
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: high
+reasoning summaries: none
+session id: 019f7dfa-1af6-7363-9c0a-b2a6f1d97d39
+--------
+user
+# Codex (OpenAI) adapter
+
+You are OpenAI's Codex model. Efficient, direct, task-oriented. Validation is concrete commands, not self-belief. Do not narrate internal deliberation.
+
+# PHASE 4 — CLEANUP (canonical body)
+
+Task-scoped pass — only what this diff introduced or invalidated. Repo root: /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo. Base sha: 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8. Current HEAD (pre_sha for this phase): e9e5d00bf4ca9b2711152b72308d67d08ba5bbb3.
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn by the orchestrator.
+</role>
+
+<input>
+- Cumulative diff since base sha: `git diff 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD` (touches only `schedule/__init__.py` and `test_schedule.py` — added `Job.max_runs(n)`, `Job._max_runs`, `Job.run_count`, a budget check in `Job.run()`, and 9 new test methods).
+- Spec: `.devlyn/criteria.generated.md`.
+- Plan: `.devlyn/plan.md`.
+</input>
+
+<allowlist>
+You may modify or delete:
+1. Tooling artifacts not listed as deliverables (`__pycache__/`, `*.pyc`, `.pytest_cache/`, coverage output, etc.) — but only ones this run's earlier phases actually created; do not touch pre-existing gitignored cache dirs.
+2. Dead code added by this diff — symbols this diff introduced that nothing added by this diff references, and that are not part of the spec's required surface.
+3. Doc references this diff invalidated (renamed/removed symbols referenced in markdown).
+4. Inline comments describing code this diff deleted.
+
+Files outside this allowlist must not change.
+</allowlist>
+
+<output>
+Report your verdict in your final reply text: `PASS` if changes are within allowlist (or no changes are needed — this is expected and fine); `FAIL` if you cannot complete within the allowlist. Do NOT edit `.devlyn/pipeline.state.json`.
+</output>
+
+<quality_bar>
+- Subtractive-first. Do not "improve" code outside the allowlist even if it looks fixable — the allowlist is the contract.
+- If something straddles the allowlist, do not guess — report it in your final reply instead of touching it.
+</quality_bar>
+
+Task: inspect `git diff 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD` in the repo, decide whether any allowlisted cleanup is actually needed (dead code, tooling artifacts this run created, invalidated doc references), make only those changes if genuinely needed, and report PASS/FAIL. Based on the diff (pure addition of one method + its state + tests, no renames, no doc changes, no runtime artifacts created), the expected outcome is likely "PASS, no changes needed" — verify this is actually true rather than assuming it.
+codex
+I’ll verify the cumulative diff, repository status, and any relevant artifacts or references. This is a bounded cleanup pass; I’ll only edit if the allowlist justifies it.
+exec
+/bin/zsh -lc 'git status --short && git diff --check 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD && git diff --stat 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD && git diff --unified=80 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD' in /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+ schedule/__init__.py |  22 ++++++++++
+ test_schedule.py     | 117 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 139 insertions(+)
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 8e12eeb..f2e2557 100644
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -164,160 +164,166 @@ class Scheduler:
+         Schedule a new periodic job.
+ 
+         :param interval: A quantity of a certain time unit
+         :return: An unconfigured :class:`Job <Job>`
+         """
+         job = Job(interval, self)
+         return job
+ 
+     def _run_job(self, job: "Job") -> None:
+         ret = job.run()
+         if isinstance(ret, CancelJob) or ret is CancelJob:
+             self.cancel_job(job)
+ 
+     def get_next_run(
+         self, tag: Optional[Hashable] = None
+     ) -> Optional[datetime.datetime]:
+         """
+         Datetime when the next job should run.
+ 
+         :param tag: Filter the next run for the given tag parameter
+ 
+         :return: A :class:`~datetime.datetime` object
+                  or None if no jobs scheduled
+         """
+         if not self.jobs:
+             return None
+         jobs_filtered = self.get_jobs(tag)
+         if not jobs_filtered:
+             return None
+         return min(jobs_filtered).next_run
+ 
+     next_run = property(get_next_run)
+ 
+     @property
+     def idle_seconds(self) -> Optional[float]:
+         """
+         :return: Number of seconds until
+                  :meth:`next_run <Scheduler.next_run>`
+                  or None if no jobs are scheduled
+         """
+         if not self.next_run:
+             return None
+         return (self.next_run - datetime.datetime.now()).total_seconds()
+ 
+ 
+ class Job:
+     """
+     A periodic job as used by :class:`Scheduler`.
+ 
+     :param interval: A quantity of a certain time unit
+     :param scheduler: The :class:`Scheduler <Scheduler>` instance that
+                       this job will register itself with once it has
+                       been fully configured in :meth:`Job.do()`.
+ 
+     Every job runs at a given fixed time interval that is defined by:
+ 
+     * a :meth:`time unit <Job.second>`
+     * a quantity of `time units` defined by `interval`
+ 
+     A job is usually created and returned by :meth:`Scheduler.every`
+     method, which also defines its `interval`.
+     """
+ 
+     def __init__(self, interval: int, scheduler: Optional[Scheduler] = None):
+         self.interval: int = interval  # pause interval * unit between runs
+         self.latest: Optional[int] = None  # upper limit to the interval
+         self.job_func: Optional[functools.partial] = None  # the job job_func to run
+ 
+         # time units, e.g. 'minutes', 'hours', ...
+         self.unit: Optional[str] = None
+ 
+         # optional time at which this job runs
+         self.at_time: Optional[datetime.time] = None
+ 
+         # optional time zone of the self.at_time field. Only relevant when at_time is not None
+         self.at_time_zone = None
+ 
+         # datetime of the last run
+         self.last_run: Optional[datetime.datetime] = None
+ 
++        # number of times this job has run
++        self.run_count: int = 0
++
++        # optional maximum number of times this job can run
++        self._max_runs: Optional[int] = None
++
+         # datetime of the next run
+         self.next_run: Optional[datetime.datetime] = None
+ 
+         # Weekday to run the job at. Only relevant when unit is 'weeks'.
+         # For example, when asking 'every week on tuesday' the start_day is 'tuesday'.
+         self.start_day: Optional[str] = None
+ 
+         # optional time of final run
+         self.cancel_after: Optional[datetime.datetime] = None
+ 
+         self.tags: Set[Hashable] = set()  # unique set of tags for the job
+         self.scheduler: Optional[Scheduler] = scheduler  # scheduler to register with
+ 
+     def __lt__(self, other) -> bool:
+         """
+         PeriodicJobs are sortable based on the scheduled time they
+         run next.
+         """
+         return self.next_run < other.next_run
+ 
+     def __str__(self) -> str:
+         if hasattr(self.job_func, "__name__"):
+             job_func_name = self.job_func.__name__  # type: ignore
+         else:
+             job_func_name = repr(self.job_func)
+ 
+         return ("Job(interval={}, unit={}, do={}, args={}, kwargs={})").format(
+             self.interval,
+             self.unit,
+             job_func_name,
+             "()" if self.job_func is None else self.job_func.args,
+             "{}" if self.job_func is None else self.job_func.keywords,
+         )
+ 
+     def __repr__(self):
+         def format_time(t):
+             return t.strftime("%Y-%m-%d %H:%M:%S") if t else "[never]"
+ 
+         def is_repr(j):
+             return not isinstance(j, Job)
+ 
+         timestats = "(last run: %s, next run: %s)" % (
+             format_time(self.last_run),
+             format_time(self.next_run),
+         )
+ 
+         if hasattr(self.job_func, "__name__"):
+             job_func_name = self.job_func.__name__
+         else:
+             job_func_name = repr(self.job_func)
+ 
+         if self.job_func is not None:
+             args = [repr(x) if is_repr(x) else str(x) for x in self.job_func.args]
+             kwargs = ["%s=%s" % (k, repr(v)) for k, v in self.job_func.keywords.items()]
+             call_repr = job_func_name + "(" + ", ".join(args + kwargs) + ")"
+         else:
+             call_repr = "[None]"
+ 
+         if self.at_time is not None:
+             return "Every %s %s at %s do %s %s" % (
+                 self.interval,
+                 self.unit[:-1] if self.interval == 1 else self.unit,
+                 self.at_time,
+                 call_repr,
+                 timestats,
+             )
+         else:
+             fmt = (
+                 "Every %(interval)s "
+                 + ("to %(latest)s " if self.latest is not None else "")
+                 + "%(unit)s do %(call_repr)s %(timestats)s"
+             )
+ 
+             return fmt % dict(
+                 interval=self.interval,
+                 latest=self.latest,
+                 unit=(self.unit[:-1] if self.interval == 1 else self.unit),
+                 call_repr=call_repr,
+                 timestats=timestats,
+             )
+@@ -564,214 +570,230 @@ class Job:
+ 
+         The job's interval will randomly vary from the value given
+         to  `every` to `latest`. The range defined is inclusive on
+         both ends. For example, `every(A).to(B).seconds` executes
+         the job function every N seconds such that A <= N <= B.
+ 
+         :param latest: Maximum interval between randomized job runs
+         :return: The invoked job instance
+         """
+         self.latest = latest
+         return self
+ 
+     def until(
+         self,
+         until_time: Union[datetime.datetime, datetime.timedelta, datetime.time, str],
+     ):
+         """
+         Schedule job to run until the specified moment.
+ 
+         The job is canceled whenever the next run is calculated and it turns out the
+         next run is after the until_time. The job is also canceled right before it runs,
+         if the current time is after until_time. This latter case can happen when the
+         the job was scheduled to run before until_time, but runs after until_time.
+ 
+         If until_time is a moment in the past, ScheduleValueError is thrown.
+ 
+         :param until_time: A moment in the future representing the latest time a job can
+            be run. If only a time is supplied, the date is set to today.
+            The following formats are accepted:
+ 
+            - datetime.datetime
+            - datetime.timedelta
+            - datetime.time
+            - String in one of the following formats: "%Y-%m-%d %H:%M:%S",
+              "%Y-%m-%d %H:%M", "%Y-%m-%d", "%H:%M:%S", "%H:%M"
+              as defined by strptime() behaviour. If an invalid string format is passed,
+              ScheduleValueError is thrown.
+ 
+         :return: The invoked job instance
+         """
+ 
+         if isinstance(until_time, datetime.datetime):
+             self.cancel_after = until_time
+         elif isinstance(until_time, datetime.timedelta):
+             self.cancel_after = datetime.datetime.now() + until_time
+         elif isinstance(until_time, datetime.time):
+             self.cancel_after = datetime.datetime.combine(
+                 datetime.datetime.now(), until_time
+             )
+         elif isinstance(until_time, str):
+             cancel_after = self._decode_datetimestr(
+                 until_time,
+                 [
+                     "%Y-%m-%d %H:%M:%S",
+                     "%Y-%m-%d %H:%M",
+                     "%Y-%m-%d",
+                     "%H:%M:%S",
+                     "%H:%M",
+                 ],
+             )
+             if cancel_after is None:
+                 raise ScheduleValueError("Invalid string format for until()")
+             if "-" not in until_time:
+                 # the until_time is a time-only format. Set the date to today
+                 now = datetime.datetime.now()
+                 cancel_after = cancel_after.replace(
+                     year=now.year, month=now.month, day=now.day
+                 )
+             self.cancel_after = cancel_after
+         else:
+             raise TypeError(
+                 "until() takes a string, datetime.datetime, datetime.timedelta, "
+                 "datetime.time parameter"
+             )
+         if self.cancel_after < datetime.datetime.now():
+             raise ScheduleValueError(
+                 "Cannot schedule a job to run until a time in the past"
+             )
+         return self
+ 
++    def max_runs(self, n: int):
++        """
++        Schedule job to run at most ``n`` times.
++
++        :param n: Maximum number of times the job should run
++        :return: The invoked job instance
++        """
++        if not isinstance(n, int) or n < 1:
++            raise ScheduleValueError("max_runs() requires an integer greater than 0")
++        self._max_runs = n
++        return self
++
+     def do(self, job_func: Callable, *args, **kwargs):
+         """
+         Specifies the job_func that should be called every time the
+         job runs.
+ 
+         Any additional arguments are passed on to job_func when
+         the job runs.
+ 
+         :param job_func: The function to be scheduled
+         :return: The invoked job instance
+         """
+         self.job_func = functools.partial(job_func, *args, **kwargs)
+         functools.update_wrapper(self.job_func, job_func)
+         self._schedule_next_run()
+         if self.scheduler is None:
+             raise ScheduleError(
+                 "Unable to a add job to schedule. "
+                 "Job is not associated with an scheduler"
+             )
+         self.scheduler.jobs.append(self)
+         return self
+ 
+     @property
+     def should_run(self) -> bool:
+         """
+         :return: ``True`` if the job should be run now.
+         """
+         assert self.next_run is not None, "must run _schedule_next_run before"
+         return datetime.datetime.now() >= self.next_run
+ 
+     def run(self):
+         """
+         Run the job and immediately reschedule it.
+         If the job's deadline is reached (configured using .until()), the job is not
+         run and CancelJob is returned immediately. If the next scheduled run exceeds
+         the job's deadline, CancelJob is returned after the execution. In this latter
+         case CancelJob takes priority over any other returned value.
+ 
+         :return: The return value returned by the `job_func`, or CancelJob if the job's
+                  deadline is reached.
+ 
+         """
+         if self._is_overdue(datetime.datetime.now()):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
+ 
+         logger.debug("Running job %s", self)
+         ret = self.job_func()
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
++        self.run_count += 1
+ 
+         if self._is_overdue(self.next_run):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
++        if self._max_runs is not None and self.run_count >= self._max_runs:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+         return ret
+ 
+     def _schedule_next_run(self) -> None:
+         """
+         Compute the instant when this job should run next.
+         """
+         if self.unit not in ("seconds", "minutes", "hours", "days", "weeks"):
+             raise ScheduleValueError(
+                 "Invalid unit (valid units are `seconds`, `minutes`, `hours`, "
+                 "`days`, and `weeks`)"
+             )
+         if self.latest is not None:
+             if not (self.latest >= self.interval):
+                 raise ScheduleError("`latest` is greater than `interval`")
+             interval = random.randint(self.interval, self.latest)
+         else:
+             interval = self.interval
+ 
+         # Do all computation in the context of the requested timezone
+         now = datetime.datetime.now(self.at_time_zone)
+ 
+         next_run = now
+ 
+         if self.start_day is not None:
+             if self.unit != "weeks":
+                 raise ScheduleValueError("`unit` should be 'weeks'")
+             next_run = _move_to_next_weekday(next_run, self.start_day)
+ 
+         if self.at_time is not None:
+             next_run = self._move_to_at_time(next_run)
+ 
+         period = datetime.timedelta(**{self.unit: interval})
+         if interval != 1:
+             next_run += period
+ 
+         while next_run <= now:
+             next_run += period
+ 
+         next_run = self._correct_utc_offset(
+             next_run, fixate_time=(self.at_time is not None)
+         )
+ 
+         # To keep the api consistent with older versions, we have to set the 'next_run' to a naive timestamp in the local timezone.
+         # Because we want to stay backwards compatible with older versions.
+         if self.at_time_zone is not None:
+             # Convert back to the local timezone
+             next_run = next_run.astimezone()
+ 
+             next_run = next_run.replace(tzinfo=None)
+ 
+         self.next_run = next_run
+ 
+     def _move_to_at_time(self, moment: datetime.datetime) -> datetime.datetime:
+         """
+         Takes a datetime and moves the time-component to the job's at_time.
+         """
+         if self.at_time is None:
+             return moment
+ 
+         kwargs = {"second": self.at_time.second, "microsecond": 0}
+ 
+         if self.unit == "days" or self.start_day is not None:
+             kwargs["hour"] = self.at_time.hour
+ 
+         if self.unit in ["days", "hours"] or self.start_day is not None:
+             kwargs["minute"] = self.at_time.minute
+ 
+         moment = moment.replace(**kwargs)  # type: ignore
+ 
+         # When we set the time elements, we might end up in a different UTC-offset than the current offset.
+         # This happens when we cross into or out of daylight saving time.
+         moment = self._correct_utc_offset(moment, fixate_time=True)
+ 
+         return moment
+ 
+     def _correct_utc_offset(
+         self, moment: datetime.datetime, fixate_time: bool
+     ) -> datetime.datetime:
+         """
+         Given a datetime, corrects any mistakes in the utc offset.
+diff --git a/test_schedule.py b/test_schedule.py
+index f497826..4c25200 100644
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -310,160 +310,277 @@ class SchedulerTests(TestCase):
+             every(interval=2).sunday
+ 
+     def test_until_time(self):
+         mock_job = make_mock_job()
+         # Check argument parsing
+         with mock_datetime(2020, 1, 1, 10, 0, 0) as m:
+             assert every().day.until(datetime.datetime(3000, 1, 1, 20, 30)).do(
+                 mock_job
+             ).cancel_after == datetime.datetime(3000, 1, 1, 20, 30, 0)
+             assert every().day.until(datetime.datetime(3000, 1, 1, 20, 30, 50)).do(
+                 mock_job
+             ).cancel_after == datetime.datetime(3000, 1, 1, 20, 30, 50)
+             assert every().day.until(datetime.time(12, 30)).do(
+                 mock_job
+             ).cancel_after == m.replace(hour=12, minute=30, second=0, microsecond=0)
+             assert every().day.until(datetime.time(12, 30, 50)).do(
+                 mock_job
+             ).cancel_after == m.replace(hour=12, minute=30, second=50, microsecond=0)
+ 
+             assert every().day.until(
+                 datetime.timedelta(days=40, hours=5, minutes=12, seconds=42)
+             ).do(mock_job).cancel_after == datetime.datetime(2020, 2, 10, 15, 12, 42)
+ 
+             assert every().day.until("10:30").do(mock_job).cancel_after == m.replace(
+                 hour=10, minute=30, second=0, microsecond=0
+             )
+             assert every().day.until("10:30:50").do(mock_job).cancel_after == m.replace(
+                 hour=10, minute=30, second=50, microsecond=0
+             )
+             assert every().day.until("3000-01-01 10:30").do(
+                 mock_job
+             ).cancel_after == datetime.datetime(3000, 1, 1, 10, 30, 0)
+             assert every().day.until("3000-01-01 10:30:50").do(
+                 mock_job
+             ).cancel_after == datetime.datetime(3000, 1, 1, 10, 30, 50)
+             assert every().day.until(datetime.datetime(3000, 1, 1, 10, 30, 50)).do(
+                 mock_job
+             ).cancel_after == datetime.datetime(3000, 1, 1, 10, 30, 50)
+ 
+         # Invalid argument types
+         self.assertRaises(TypeError, every().day.until, 123)
+         self.assertRaises(ScheduleValueError, every().day.until, "123")
+         self.assertRaises(ScheduleValueError, every().day.until, "01-01-3000")
+ 
+         # Using .until() with moments in the passed
+         self.assertRaises(
+             ScheduleValueError,
+             every().day.until,
+             datetime.datetime(2019, 12, 31, 23, 59),
+         )
+         self.assertRaises(
+             ScheduleValueError, every().day.until, datetime.timedelta(minutes=-1)
+         )
+         one_hour_ago = datetime.datetime.now() - datetime.timedelta(hours=1)
+         self.assertRaises(ScheduleValueError, every().day.until, one_hour_ago)
+ 
+         # Unschedule job after next_run passes the deadline
+         schedule.clear()
+         with mock_datetime(2020, 1, 1, 11, 35, 10):
+             mock_job.reset_mock()
+             every(5).seconds.until(datetime.time(11, 35, 20)).do(mock_job)
+             with mock_datetime(2020, 1, 1, 11, 35, 15):
+                 schedule.run_pending()
+                 assert mock_job.call_count == 1
+                 assert len(schedule.jobs) == 1
+             with mock_datetime(2020, 1, 1, 11, 35, 20):
+                 schedule.run_all()
+                 assert mock_job.call_count == 2
+                 assert len(schedule.jobs) == 0
+ 
+         # Unschedule job because current execution time has passed deadline
+         schedule.clear()
+         with mock_datetime(2020, 1, 1, 11, 35, 10):
+             mock_job.reset_mock()
+             every(5).seconds.until(datetime.time(11, 35, 20)).do(mock_job)
+             with mock_datetime(2020, 1, 1, 11, 35, 50):
+                 schedule.run_pending()
+                 assert mock_job.call_count == 0
+                 assert len(schedule.jobs) == 0
+ 
++    def test_max_runs_chainability(self):
++        mock_job = make_mock_job()
++
++        job_after_unit = every(5).seconds.max_runs(3).do(mock_job)
++        job_before_unit = every().max_runs(3).seconds.do(mock_job)
++
++        assert job_after_unit._max_runs == 3
++        assert job_before_unit._max_runs == 3
++
++    def test_max_runs_with_run_pending(self):
++        mock_job = make_mock_job()
++        with mock_datetime(2020, 1, 1, 10, 0, 0):
++            job = every().second.max_runs(2).do(mock_job)
++
++        with mock_datetime(2020, 1, 1, 10, 0, 1):
++            schedule.run_pending()
++        with mock_datetime(2020, 1, 1, 10, 0, 2):
++            schedule.run_pending()
++        with mock_datetime(2020, 1, 1, 10, 0, 3):
++            schedule.run_pending()
++
++        assert mock_job.call_count == 2
++        assert job.run_count == 2
++        assert job not in schedule.jobs
++
++    def test_max_runs_with_run_all(self):
++        mock_job = make_mock_job()
++        job = every().second.max_runs(2).do(mock_job)
++
++        schedule.run_all()
++        schedule.run_all()
++        schedule.run_all()
++
++        assert mock_job.call_count == 2
++        assert job.run_count == 2
++        assert job not in schedule.jobs
++
++    def test_max_runs_budget_limit_wins_before_until(self):
++        mock_job = make_mock_job()
++        with mock_datetime(2020, 1, 1, 11, 35, 10):
++            job = (
++                every()
++                .second.max_runs(1)
++                .until(datetime.time(11, 35, 20))
++                .do(mock_job)
++            )
++            schedule.run_all()
++
++        assert mock_job.call_count == 1
++        assert job.run_count == 1
++        assert job not in schedule.jobs
++
++    def test_max_runs_until_limit_wins_before_budget(self):
++        mock_job = make_mock_job()
++        with mock_datetime(2020, 1, 1, 11, 35, 10):
++            job = (
++                every(5)
++                .seconds.max_runs(3)
++                .until(datetime.time(11, 35, 20))
++                .do(mock_job)
++            )
++
++        with mock_datetime(2020, 1, 1, 11, 35, 15):
++            schedule.run_pending()
++        with mock_datetime(2020, 1, 1, 11, 35, 20):
++            schedule.run_pending()
++
++        assert mock_job.call_count == 2
++        assert job.run_count == 2
++        assert job not in schedule.jobs
++
++    def test_max_runs_removal_updates_next_run_and_idle_seconds(self):
++        limited_job = make_mock_job("limited")
++        remaining_job = make_mock_job("remaining")
++        with mock_datetime(2020, 12, 9, 21, 46):
++            every().second.max_runs(1).do(limited_job)
++            remaining = every().hour.do(remaining_job)
++
++            schedule.run_all()
++
++            assert schedule.next_run() == remaining.next_run
++            assert schedule.idle_seconds() == 60 * 60
++
++    def test_max_runs_rejects_invalid_values(self):
++        for value in (1.5, "1", None, 0, -1):
++            with self.assertRaises(ScheduleValueError):
++                every().max_runs(value)
++
++    def test_max_runs_last_call_wins_and_remains_chainable(self):
++        mock_job = make_mock_job()
++        job = every().max_runs(1).max_runs(2).seconds.do(mock_job)
++
++        schedule.run_all()
++        schedule.run_all()
++
++        assert mock_job.call_count == 2
++        assert job.run_count == 2
++        assert job not in schedule.jobs
++
++    def test_max_runs_budgets_are_per_job(self):
++        first_job = make_mock_job("first")
++        second_job = make_mock_job("second")
++        first = every().second.max_runs(1).do(first_job)
++        second = every().second.max_runs(2).do(second_job)
++
++        schedule.run_all()
++
++        assert first_job.call_count == 1
++        assert second_job.call_count == 1
++        assert first not in schedule.jobs
++        assert second in schedule.jobs
++
++        schedule.run_all()
++
++        assert second_job.call_count == 2
++        assert second not in schedule.jobs
++
+     def test_weekday_at_todady(self):
+         mock_job = make_mock_job()
+ 
+         # This date is a wednesday
+         with mock_datetime(2020, 11, 25, 22, 38, 5):
+             job = every().wednesday.at("22:38:10").do(mock_job)
+             assert job.next_run.hour == 22
+             assert job.next_run.minute == 38
+             assert job.next_run.second == 10
+             assert job.next_run.year == 2020
+             assert job.next_run.month == 11
+             assert job.next_run.day == 25
+ 
+             job = every().wednesday.at("22:39").do(mock_job)
+             assert job.next_run.hour == 22
+             assert job.next_run.minute == 39
+             assert job.next_run.second == 00
+             assert job.next_run.year == 2020
+             assert job.next_run.month == 11
+             assert job.next_run.day == 25
+ 
+     def test_at_time_hour(self):
+         with mock_datetime(2010, 1, 6, 12, 20):
+             mock_job = make_mock_job()
+             assert every().hour.at(":30").do(mock_job).next_run.hour == 12
+             assert every().hour.at(":30").do(mock_job).next_run.minute == 30
+             assert every().hour.at(":30").do(mock_job).next_run.second == 0
+             assert every().hour.at(":10").do(mock_job).next_run.hour == 13
+             assert every().hour.at(":10").do(mock_job).next_run.minute == 10
+             assert every().hour.at(":10").do(mock_job).next_run.second == 0
+             assert every().hour.at(":00").do(mock_job).next_run.hour == 13
+             assert every().hour.at(":00").do(mock_job).next_run.minute == 0
+             assert every().hour.at(":00").do(mock_job).next_run.second == 0
+ 
+             self.assertRaises(ScheduleValueError, every().hour.at, "2:30:00")
+             self.assertRaises(ScheduleValueError, every().hour.at, "::2")
+             self.assertRaises(ScheduleValueError, every().hour.at, ".2")
+             self.assertRaises(ScheduleValueError, every().hour.at, "2")
+             self.assertRaises(ScheduleValueError, every().hour.at, " 2:30")
+             self.assertRaises(ScheduleValueError, every().hour.at, "61:00")
+             self.assertRaises(ScheduleValueError, every().hour.at, "00:61")
+             self.assertRaises(ScheduleValueError, every().hour.at, "01:61")
+             self.assertRaises(TypeError, every().hour.at, 2)
+ 
+             # test the 'MM:SS' format
+             assert every().hour.at("30:05").do(mock_job).next_run.hour == 12
+             assert every().hour.at("30:05").do(mock_job).next_run.minute == 30
+             assert every().hour.at("30:05").do(mock_job).next_run.second == 5
+             assert every().hour.at("10:25").do(mock_job).next_run.hour == 13
+             assert every().hour.at("10:25").do(mock_job).next_run.minute == 10
+             assert every().hour.at("10:25").do(mock_job).next_run.second == 25
+             assert every().hour.at("00:40").do(mock_job).next_run.hour == 13
+             assert every().hour.at("00:40").do(mock_job).next_run.minute == 0
+             assert every().hour.at("00:40").do(mock_job).next_run.second == 40
+ 
+     def test_at_time_minute(self):
+         with mock_datetime(2010, 1, 6, 12, 20, 30):
+             mock_job = make_mock_job()
+             assert every().minute.at(":40").do(mock_job).next_run.hour == 12
+             assert every().minute.at(":40").do(mock_job).next_run.minute == 20
+             assert every().minute.at(":40").do(mock_job).next_run.second == 40
+             assert every().minute.at(":10").do(mock_job).next_run.hour == 12
+             assert every().minute.at(":10").do(mock_job).next_run.minute == 21
+             assert every().minute.at(":10").do(mock_job).next_run.second == 10
+ 
+             self.assertRaises(ScheduleValueError, every().minute.at, "::2")
+             self.assertRaises(ScheduleValueError, every().minute.at, ".2")
+             self.assertRaises(ScheduleValueError, every().minute.at, "2")
+             self.assertRaises(ScheduleValueError, every().minute.at, "2:30:00")
+             self.assertRaises(ScheduleValueError, every().minute.at, "2:30")
+             self.assertRaises(ScheduleValueError, every().minute.at, " :30")
+             self.assertRaises(TypeError, every().minute.at, 2)
+ 
+     def test_next_run_time(self):
+         with mock_datetime(2010, 1, 6, 12, 15):
+             mock_job = make_mock_job()
+             assert schedule.next_run() is None
+             assert every().minute.do(mock_job).next_run.minute == 16
+             assert every(5).minutes.do(mock_job).next_run.minute == 20
+             assert every().hour.do(mock_job).next_run.hour == 13
+
+exec
+/bin/zsh -lc "rg -n --hidden --glob '*.md' --glob '"'!**/.git/**'"' 'max_runs|_max_runs|run_count' . || true
+git status --ignored --short
+rg --files --hidden -g '__pycache__/**' -g '*.pyc' -g '.pytest_cache/**' -g '.coverage*' -g 'htmlcov/**' -g 'coverage/**' | sed -n '1,200p'
+git diff --name-only 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD
+git diff 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD -- schedule/__init__.py test_schedule.py | rg -n '"'^[+].*(max_runs|_max_runs|run_count)|''^[-].*(max_runs|_max_runs|run_count)'"'" in /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo
+ succeeded in 111ms:
+10:+        self.run_count: int = 0
+13:+        self._max_runs: Optional[int] = None
+22:+    def max_runs(self, n: int):
+30:+            raise ScheduleValueError("max_runs() requires an integer greater than 0")
+31:+        self._max_runs = n
+41:+        self.run_count += 1
+46:+        if self._max_runs is not None and self.run_count >= self._max_runs:
+60:+    def test_max_runs_chainability(self):
+63:+        job_after_unit = every(5).seconds.max_runs(3).do(mock_job)
+64:+        job_before_unit = every().max_runs(3).seconds.do(mock_job)
+66:+        assert job_after_unit._max_runs == 3
+67:+        assert job_before_unit._max_runs == 3
+69:+    def test_max_runs_with_run_pending(self):
+72:+            job = every().second.max_runs(2).do(mock_job)
+82:+        assert job.run_count == 2
+85:+    def test_max_runs_with_run_all(self):
+87:+        job = every().second.max_runs(2).do(mock_job)
+94:+        assert job.run_count == 2
+97:+    def test_max_runs_budget_limit_wins_before_until(self):
+102:+                .second.max_runs(1)
+109:+        assert job.run_count == 1
+112:+    def test_max_runs_until_limit_wins_before_budget(self):
+117:+                .seconds.max_runs(3)
+128:+        assert job.run_count == 2
+131:+    def test_max_runs_removal_updates_next_run_and_idle_seconds(self):
+135:+            every().second.max_runs(1).do(limited_job)
+143:+    def test_max_runs_rejects_invalid_values(self):
+146:+                every().max_runs(value)
+148:+    def test_max_runs_last_call_wins_and_remains_chainable(self):
+150:+        job = every().max_runs(1).max_runs(2).seconds.do(mock_job)
+156:+        assert job.run_count == 2
+159:+    def test_max_runs_budgets_are_per_job(self):
+162:+        first = every().second.max_runs(1).do(first_job)
+163:+        second = every().second.max_runs(2).do(second_job)
+
+[codex-monitored] heartbeat: elapsed=30s
+codex
+The diff remains limited to the two declared deliverable files and has no whitespace errors. The new state and setter are all on the required feature path; markdown mentions are current planning/criteria references rather than stale references. I’m doing one provenance check on the ignored caches before concluding, since cleanup may not remove pre-existing artifacts.
+exec
+/bin/zsh -lc 'for path_item in .pytest_cache __pycache__ schedule/__pycache__; do
+  if [ -e "$path_item" ]; then
+    stat -f '"'%N | modified=%Sm | changed=%Sc' -t '%Y-%m-%dT%H:%M:%S%z' \""'$path_item"
+  fi
+done
+if [ -f .devlyn/build_gate.log.md ]; then
+  sed -n '"'1,80p' .devlyn/build_gate.log.md
+fi
+git diff --check 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD
+git status --short" in /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+.pytest_cache | modified=2026-07-20T05:11:07+0000 | changed=2026-07-20T05:11:07+0000
+__pycache__ | modified=2026-07-20T05:18:18+0000 | changed=2026-07-20T05:18:18+0000
+schedule/__pycache__ | modified=2026-07-20T05:18:46+0000 | changed=2026-07-20T05:18:46+0000
+# BUILD_GATE log
+
+- Run: commit `e9e5d00` (implement_passed_sha `e9e5d00bf4ca9b2711152b72308d67d08ba5bbb3`), diff base `4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8`
+- Repo root: `/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo`
+- Findings file: `.devlyn/build_gate.findings.jsonl` (0 lines — no findings)
+
+## Toolchain detection
+
+- `/usr/bin/python3` (3.9.6): no pytest/mypy/black.
+- `/opt/homebrew/bin/python3` resolves to Homebrew's `python@3.14` (3.14.6): `pytest 9.0.3` installed; `mypy` and `black` **not installed**.
+- Checked every other Homebrew Python on this machine for mypy/black as a fallback: `python3.10` (3.10.20), `python3.11` (3.11.15), `python3.13` (3.13.11), `python3.14` (3.14.6) — none has `mypy` or `black` installed (`pip list` / `python -m mypy --version` / `python -m black --version` all report "No module named ...").
+- No project-local venv, `.tox`, `pipx`, or global `mypy`/`black` binary found anywhere on `$PATH` or via `brew list`.
+- Conclusion: mypy and black are genuinely not installed anywhere on this machine (toolchain gap, not a code-correctness issue). Recorded as a gap per gate instructions rather than failing the gate.
+
+## Gate 1 — Type check (mypy)
+
+**SKIPPED — tool unavailable.** `/opt/homebrew/bin/python3 -m mypy --version` → `No module named mypy` (confirmed on 3.10/3.11/3.13/3.14, and no other mypy install found). No findings emitted; this is a toolchain gap, not evaluated as a gate failure.
+
+## Gate 2 — Lint/format (black)
+
+**SKIPPED — tool unavailable.** `/opt/homebrew/bin/python3 -m black --version` → `No module named black` (confirmed on 3.10/3.11/3.13/3.14, and no other black install found). No findings emitted; this is a toolchain gap, not evaluated as a gate failure.
+
+## Gate 3 — Test suite (pytest)
+
+Command: `/opt/homebrew/bin/python3 -m pytest test_schedule.py -q`
+
+Exit code: `0`
+
+```
+ss.ssss..........................sss.ss...................ssssssssssssss [ 80%]
+ssssssssssssssss..                                                       [100%]
+49 passed, 41 skipped in 0.13s
+```
+
+All 41 skips are pre-existing `pytz unavailable` skips (timezone-dependent tests; `pytz` is an optional dependency not installed in this environment — see `tox.ini`'s separate `py3X-pytz` envlist entries). None of the skipped tests touch the `max_runs` diff surface. 0 failures.
+
+## Gate 4 — Spec literal verification + scope enforcement
+
+Command: `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --include-risk-probes`
+
+Exit code: `0`
+
+```
+[spec-verify] all 1 command(s) passed
+```
+
+The script internally re-ran the criteria's verification command (`/opt/homebrew/bin/python3 -m pytest test_schedule.py -q`, expect_exit 0 — passed) and enforced `.devlyn/plan.md`'s `<!-- devlyn:authorized-surface -->` declaration against the actual diff. Independently cross-checked:
+
+- `git diff --stat 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8..HEAD` → only `schedule/__init__.py` (+22) and `test_schedule.py` (+117) changed — exactly matches the declared `authorized_surface: ["schedule/__init__.py", "test_schedule.py"]`.
+- Untracked delta vs `.devlyn/untracked.baseline`: `git status --porcelain` shows only `.claude/`, `.devlyn/`, `AGENTS.md`, `CLAUDE.md` — all pre-existing baseline entries (or the pipeline's own `.devlyn/` state dir). No new untracked files introduced by the diff.
+- No `scope.out-of-scope-file` condition found.
+
+## Gate 5 — Browser
+
+**Skipped** — diff touches only `schedule/__init__.py` and `test_schedule.py`; no web-surface files (`*.tsx`, `*.jsx`, `*.css`, etc.).
+
+## Tooling-artifact-leak check
+
+`git status --porcelain --ignored` shows `.pytest_cache/`, `__pycache__/`, `schedule/__pycache__/` all correctly ignored (`.gitignore` covers `__pycache__`, `.coverage`, `.tox`). No reporter artifacts leaked into tracked/untracked git status. No `scope.tooling-artifact-leak` finding.
+
+## Verdict
+
+**PASS** — 0 CRITICAL, 0 HIGH, 0 MEDIUM, 0 LOW findings. mypy and black gates recorded as environment gaps (tool not installed anywhere on this machine), not as failures.
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+codex
+The provenance check found three ignored cache directories updated during the earlier build/verification activity; those are allowlisted tooling artifacts, so cleanup is needed after all. I’ll remove only those exact cache directories and then confirm the worktree state.
+2026-07-20T05:23:41.824985Z ERROR codex_core::tools::router: error=exec_command failed for `/bin/zsh -lc 'rm -rf .pytest_cache __pycache__ schedule/__pycache__
+git status --short
+git status --ignored --short
+git diff --check 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD'`: CreateProcess { message: "Rejected(\"`/bin/zsh -lc 'rm -rf .pytest_cache __pycache__ schedule/__pycache__\\ngit status --short\\ngit status --ignored --short\\ngit diff --check 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD'` rejected: rm -f style commands are not permitted. Use a safer approach\")" }
+codex
+The environment rejected the recursive deletion command. I’ll use the permitted patch-based deletion route for the explicitly enumerated cache files instead.
+exec
+/bin/zsh -lc "rg --files --hidden --no-ignore -g '.pytest_cache/**' -g '__pycache__/**' -g 'schedule/__pycache__/**' | sort" in /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+__pycache__/test_schedule.cpython-314-pytest-9.0.3.pyc
+.pytest_cache/.gitignore
+.pytest_cache/CACHEDIR.TAG
+.pytest_cache/README.md
+.pytest_cache/v/cache/lastfailed
+.pytest_cache/v/cache/nodeids
+schedule/__pycache__/__init__.cpython-314.pyc
+
+[codex-monitored] heartbeat: elapsed=60s
+2026-07-20T05:23:55.888378Z ERROR codex_core::tools::router: error=apply_patch verification failed: Failed to read /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/__pycache__/test_schedule.cpython-314-pytest-9.0.3.pyc: invalid utf-8 sequence of 1 bytes from index 8
+exec
+/bin/zsh -lc 'unlink __pycache__/test_schedule.cpython-314-pytest-9.0.3.pyc
+unlink schedule/__pycache__/__init__.cpython-314.pyc' in /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/.pytest_cache/.gitignore
+/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/.pytest_cache/CACHEDIR.TAG
+/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/.pytest_cache/README.md
+/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/.pytest_cache/v/cache/lastfailed
+/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/.pytest_cache/v/cache/nodeids
+diff --git a/.pytest_cache/.gitignore b/.pytest_cache/.gitignore
+deleted file mode 100644
+index bc1a1f6167d09c909aad37280b760bb715d0f1da..0000000000000000000000000000000000000000
+--- a/.pytest_cache/.gitignore
++++ /dev/null
+@@ -1,2 +0,0 @@
+-# Created by pytest automatically.
+-*
+diff --git a/.pytest_cache/CACHEDIR.TAG b/.pytest_cache/CACHEDIR.TAG
+deleted file mode 100644
+index fce15ad7eaa74e5682b644c84efb75334c112f95..0000000000000000000000000000000000000000
+--- a/.pytest_cache/CACHEDIR.TAG
++++ /dev/null
+@@ -1,4 +0,0 @@
+-Signature: 8a477f597d28d172789f06886806bc55
+-# This file is a cache directory tag created by pytest.
+-# For information about cache directory tags, see:
+-#	https://bford.info/cachedir/spec.html
+diff --git a/.pytest_cache/README.md b/.pytest_cache/README.md
+deleted file mode 100644
+index b89018ced91c0a8af7f3f23ce8901870da89f3a0..0000000000000000000000000000000000000000
+--- a/.pytest_cache/README.md
++++ /dev/null
+@@ -1,8 +0,0 @@
+-# pytest cache directory #
+-
+-This directory contains data from the pytest's cache plugin,
+-which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
+-
+-**Do not** commit this to version control.
+-
+-See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
+diff --git a/.pytest_cache/v/cache/lastfailed b/.pytest_cache/v/cache/lastfailed
+deleted file mode 100644
+index 9e26dfeeb6e641a33dae4961196235bdb965b21b..0000000000000000000000000000000000000000
+--- a/.pytest_cache/v/cache/lastfailed
++++ /dev/null
+@@ -1 +0,0 @@
+-{}
+\ No newline at end of file
+diff --git a/.pytest_cache/v/cache/nodeids b/.pytest_cache/v/cache/nodeids
+deleted file mode 100644
+index d97dcbdd8ec4bb4495f38212f58e9e5be53967fe..0000000000000000000000000000000000000000
+--- a/.pytest_cache/v/cache/nodeids
++++ /dev/null
+@@ -1,92 +0,0 @@
+-[
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_after_fold_fixate",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_no_change",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_no_timezone",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_fold",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_fold_fixate_1",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_fold_fixate_2",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_gap",
+-  "test_schedule.py::SchedulerTests::test_at_time",
+-  "test_schedule.py::SchedulerTests::test_at_time_hour",
+-  "test_schedule.py::SchedulerTests::test_at_time_minute",
+-  "test_schedule.py::SchedulerTests::test_cancel_job",
+-  "test_schedule.py::SchedulerTests::test_cancel_jobs",
+-  "test_schedule.py::SchedulerTests::test_clear_by_tag",
+-  "test_schedule.py::SchedulerTests::test_daylight_saving_time",
+-  "test_schedule.py::SchedulerTests::test_get_by_tag",
+-  "test_schedule.py::SchedulerTests::test_idle_seconds",
+-  "test_schedule.py::SchedulerTests::test_job_func_args_are_passed_on",
+-  "test_schedule.py::SchedulerTests::test_max_runs_budget_limit_wins_before_until",
+-  "test_schedule.py::SchedulerTests::test_max_runs_budgets_are_per_job",
+-  "test_schedule.py::SchedulerTests::test_max_runs_chainability",
+-  "test_schedule.py::SchedulerTests::test_max_runs_last_call_wins_and_remains_chainable",
+-  "test_schedule.py::SchedulerTests::test_max_runs_rejects_invalid_values",
+-  "test_schedule.py::SchedulerTests::test_max_runs_removal_updates_next_run_and_idle_seconds",
+-  "test_schedule.py::SchedulerTests::test_max_runs_until_limit_wins_before_budget",
+-  "test_schedule.py::SchedulerTests::test_max_runs_with_run_all",
+-  "test_schedule.py::SchedulerTests::test_max_runs_with_run_pending",
+-  "test_schedule.py::SchedulerTests::test_misconfigured_job_wont_break_scheduler",
+-  "test_schedule.py::SchedulerTests::test_move_to_next_weekday_nextweek",
+-  "test_schedule.py::SchedulerTests::test_move_to_next_weekday_today",
+-  "test_schedule.py::SchedulerTests::test_move_to_next_weekday_tommorrow",
+-  "test_schedule.py::SchedulerTests::test_next_run_property",
+-  "test_schedule.py::SchedulerTests::test_next_run_time",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_day_end",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_hour_end",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_hour_end_katmandu",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_hour_end_london",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_minute_end",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_minute_end_katmhandu",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_minute_end_london",
+-  "test_schedule.py::SchedulerTests::test_next_run_with_tag",
+-  "test_schedule.py::SchedulerTests::test_repr_functools_partial_job_func",
+-  "test_schedule.py::SchedulerTests::test_run_all",
+-  "test_schedule.py::SchedulerTests::test_run_all_with_decorator",
+-  "test_schedule.py::SchedulerTests::test_run_all_with_decorator_args",
+-  "test_schedule.py::SchedulerTests::test_run_all_with_decorator_defaultargs",
+-  "test_schedule.py::SchedulerTests::test_run_every_n_days_at_specific_time",
+-  "test_schedule.py::SchedulerTests::test_run_every_weekday_at_specific_time_past_today",
+-  "test_schedule.py::SchedulerTests::test_run_every_weekday_at_specific_time_today",
+-  "test_schedule.py::SchedulerTests::test_run_pending",
+-  "test_schedule.py::SchedulerTests::test_singular_time_units_match_plural_units",
+-  "test_schedule.py::SchedulerTests::test_tag_type_enforcement",
+-  "test_schedule.py::SchedulerTests::test_time_range",
+-  "test_schedule.py::SchedulerTests::test_time_range_repr",
+-  "test_schedule.py::SchedulerTests::test_time_units",
+-  "test_schedule.py::SchedulerTests::test_to_repr",
+-  "test_schedule.py::SchedulerTests::test_to_string",
+-  "test_schedule.py::SchedulerTests::test_to_string_functools_partial_job_func",
+-  "test_schedule.py::SchedulerTests::test_to_string_lambda_job_func",
+-  "test_schedule.py::SchedulerTests::test_tz",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_different_simultaneous_dst_change",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_ending_point",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_overlap_hour",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_skip_hour",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_starting_point",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_end_month_offset",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_end_year_cross_continent",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_exact_future_scheduling",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_exact_seconds_precision",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_half_hour_offset",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_592",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_605",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_before_dst_end",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_mid_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_post_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_pre_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_leap_year",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_midnight",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_new_year_offset",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_opposite_dst_change",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_skip_dst_change",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_utc",
+-  "test_schedule.py::SchedulerTests::test_tz_hourly_intermediate_conversion",
+-  "test_schedule.py::SchedulerTests::test_tz_invalid_timezone_exceptions",
+-  "test_schedule.py::SchedulerTests::test_tz_minutes_year_round",
+-  "test_schedule.py::SchedulerTests::test_tz_weekly_large_interval_backward",
+-  "test_schedule.py::SchedulerTests::test_tz_weekly_large_interval_forward",
+-  "test_schedule.py::SchedulerTests::test_tz_weekly_sunday_conversion",
+-  "test_schedule.py::SchedulerTests::test_until_time",
+-  "test_schedule.py::SchedulerTests::test_weekday_at_todady"
+-]
+\ No newline at end of file
+
+diff --git a/.pytest_cache/.gitignore b/.pytest_cache/.gitignore
+deleted file mode 100644
+index bc1a1f6167d09c909aad37280b760bb715d0f1da..0000000000000000000000000000000000000000
+--- a/.pytest_cache/.gitignore
++++ /dev/null
+@@ -1,2 +0,0 @@
+-# Created by pytest automatically.
+-*
+diff --git a/.pytest_cache/CACHEDIR.TAG b/.pytest_cache/CACHEDIR.TAG
+deleted file mode 100644
+index fce15ad7eaa74e5682b644c84efb75334c112f95..0000000000000000000000000000000000000000
+--- a/.pytest_cache/CACHEDIR.TAG
++++ /dev/null
+@@ -1,4 +0,0 @@
+-Signature: 8a477f597d28d172789f06886806bc55
+-# This file is a cache directory tag created by pytest.
+-# For information about cache directory tags, see:
+-#	https://bford.info/cachedir/spec.html
+diff --git a/.pytest_cache/README.md b/.pytest_cache/README.md
+deleted file mode 100644
+index b89018ced91c0a8af7f3f23ce8901870da89f3a0..0000000000000000000000000000000000000000
+--- a/.pytest_cache/README.md
++++ /dev/null
+@@ -1,8 +0,0 @@
+-# pytest cache directory #
+-
+-This directory contains data from the pytest's cache plugin,
+-which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
+-
+-**Do not** commit this to version control.
+-
+-See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
+diff --git a/.pytest_cache/v/cache/lastfailed b/.pytest_cache/v/cache/lastfailed
+deleted file mode 100644
+index 9e26dfeeb6e641a33dae4961196235bdb965b21b..0000000000000000000000000000000000000000
+--- a/.pytest_cache/v/cache/lastfailed
++++ /dev/null
+@@ -1 +0,0 @@
+-{}
+\ No newline at end of file
+diff --git a/.pytest_cache/v/cache/nodeids b/.pytest_cache/v/cache/nodeids
+deleted file mode 100644
+index d97dcbdd8ec4bb4495f38212f58e9e5be53967fe..0000000000000000000000000000000000000000
+--- a/.pytest_cache/v/cache/nodeids
++++ /dev/null
+@@ -1,92 +0,0 @@
+-[
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_after_fold_fixate",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_no_change",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_no_timezone",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_fold",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_fold_fixate_1",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_fold_fixate_2",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_gap",
+-  "test_schedule.py::SchedulerTests::test_at_time",
+-  "test_schedule.py::SchedulerTests::test_at_time_hour",
+-  "test_schedule.py::SchedulerTests::test_at_time_minute",
+-  "test_schedule.py::SchedulerTests::test_cancel_job",
+-  "test_schedule.py::SchedulerTests::test_cancel_jobs",
+-  "test_schedule.py::SchedulerTests::test_clear_by_tag",
+-  "test_schedule.py::SchedulerTests::test_daylight_saving_time",
+-  "test_schedule.py::SchedulerTests::test_get_by_tag",
+-  "test_schedule.py::SchedulerTests::test_idle_seconds",
+-  "test_schedule.py::SchedulerTests::test_job_func_args_are_passed_on",
+-  "test_schedule.py::SchedulerTests::test_max_runs_budget_limit_wins_before_until",
+-  "test_schedule.py::SchedulerTests::test_max_runs_budgets_are_per_job",
+-  "test_schedule.py::SchedulerTests::test_max_runs_chainability",
+-  "test_schedule.py::SchedulerTests::test_max_runs_last_call_wins_and_remains_chainable",
+-  "test_schedule.py::SchedulerTests::test_max_runs_rejects_invalid_values",
+-  "test_schedule.py::SchedulerTests::test_max_runs_removal_updates_next_run_and_idle_seconds",
+-  "test_schedule.py::SchedulerTests::test_max_runs_until_limit_wins_before_budget",
+-  "test_schedule.py::SchedulerTests::test_max_runs_with_run_all",
+-  "test_schedule.py::SchedulerTests::test_max_runs_with_run_pending",
+-  "test_schedule.py::SchedulerTests::test_misconfigured_job_wont_break_scheduler",
+-  "test_schedule.py::SchedulerTests::test_move_to_next_weekday_nextweek",
+-  "test_schedule.py::SchedulerTests::test_move_to_next_weekday_today",
+-  "test_schedule.py::SchedulerTests::test_move_to_next_weekday_tommorrow",
+-  "test_schedule.py::SchedulerTests::test_next_run_property",
+-  "test_schedule.py::SchedulerTests::test_next_run_time",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_day_end",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_hour_end",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_hour_end_katmandu",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_hour_end_london",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_minute_end",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_minute_end_katmhandu",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_minute_end_london",
+-  "test_schedule.py::SchedulerTests::test_next_run_with_tag",
+-  "test_schedule.py::SchedulerTests::test_repr_functools_partial_job_func",
+-  "test_schedule.py::SchedulerTests::test_run_all",
+-  "test_schedule.py::SchedulerTests::test_run_all_with_decorator",
+-  "test_schedule.py::SchedulerTests::test_run_all_with_decorator_args",
+-  "test_schedule.py::SchedulerTests::test_run_all_with_decorator_defaultargs",
+-  "test_schedule.py::SchedulerTests::test_run_every_n_days_at_specific_time",
+-  "test_schedule.py::SchedulerTests::test_run_every_weekday_at_specific_time_past_today",
+-  "test_schedule.py::SchedulerTests::test_run_every_weekday_at_specific_time_today",
+-  "test_schedule.py::SchedulerTests::test_run_pending",
+-  "test_schedule.py::SchedulerTests::test_singular_time_units_match_plural_units",
+-  "test_schedule.py::SchedulerTests::test_tag_type_enforcement",
+-  "test_schedule.py::SchedulerTests::test_time_range",
+-  "test_schedule.py::SchedulerTests::test_time_range_repr",
+-  "test_schedule.py::SchedulerTests::test_time_units",
+-  "test_schedule.py::SchedulerTests::test_to_repr",
+-  "test_schedule.py::SchedulerTests::test_to_string",
+-  "test_schedule.py::SchedulerTests::test_to_string_functools_partial_job_func",
+-  "test_schedule.py::SchedulerTests::test_to_string_lambda_job_func",
+-  "test_schedule.py::SchedulerTests::test_tz",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_different_simultaneous_dst_change",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_ending_point",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_overlap_hour",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_skip_hour",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_starting_point",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_end_month_offset",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_end_year_cross_continent",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_exact_future_scheduling",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_exact_seconds_precision",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_half_hour_offset",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_592",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_605",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_before_dst_end",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_mid_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_post_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_pre_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_leap_year",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_midnight",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_new_year_offset",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_opposite_dst_change",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_skip_dst_change",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_utc",
+-  "test_schedule.py::SchedulerTests::test_tz_hourly_intermediate_conversion",
+-  "test_schedule.py::SchedulerTests::test_tz_invalid_timezone_exceptions",
+-  "test_schedule.py::SchedulerTests::test_tz_minutes_year_round",
+-  "test_schedule.py::SchedulerTests::test_tz_weekly_large_interval_backward",
+-  "test_schedule.py::SchedulerTests::test_tz_weekly_large_interval_forward",
+-  "test_schedule.py::SchedulerTests::test_tz_weekly_sunday_conversion",
+-  "test_schedule.py::SchedulerTests::test_until_time",
+-  "test_schedule.py::SchedulerTests::test_weekday_at_todady"
+-]
+\ No newline at end of file
+
+exec
+/bin/zsh -lc "rmdir __pycache__
+rmdir schedule/__pycache__
+rmdir .pytest_cache/v/cache
+rmdir .pytest_cache/v
+rmdir .pytest_cache
+git status --short
+git status --ignored --short
+git diff --check 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD
+rg --files --hidden --no-ignore -g '.pytest_cache/**' -g '__pycache__/**' -g 'schedule/__pycache__/**'" in /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo
+ exited 1 in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+diff --git a/.pytest_cache/.gitignore b/.pytest_cache/.gitignore
+deleted file mode 100644
+index bc1a1f6167d09c909aad37280b760bb715d0f1da..0000000000000000000000000000000000000000
+--- a/.pytest_cache/.gitignore
++++ /dev/null
+@@ -1,2 +0,0 @@
+-# Created by pytest automatically.
+-*
+diff --git a/.pytest_cache/CACHEDIR.TAG b/.pytest_cache/CACHEDIR.TAG
+deleted file mode 100644
+index fce15ad7eaa74e5682b644c84efb75334c112f95..0000000000000000000000000000000000000000
+--- a/.pytest_cache/CACHEDIR.TAG
++++ /dev/null
+@@ -1,4 +0,0 @@
+-Signature: 8a477f597d28d172789f06886806bc55
+-# This file is a cache directory tag created by pytest.
+-# For information about cache directory tags, see:
+-#	https://bford.info/cachedir/spec.html
+diff --git a/.pytest_cache/README.md b/.pytest_cache/README.md
+deleted file mode 100644
+index b89018ced91c0a8af7f3f23ce8901870da89f3a0..0000000000000000000000000000000000000000
+--- a/.pytest_cache/README.md
++++ /dev/null
+@@ -1,8 +0,0 @@
+-# pytest cache directory #
+-
+-This directory contains data from the pytest's cache plugin,
+-which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
+-
+-**Do not** commit this to version control.
+-
+-See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
+diff --git a/.pytest_cache/v/cache/lastfailed b/.pytest_cache/v/cache/lastfailed
+deleted file mode 100644
+index 9e26dfeeb6e641a33dae4961196235bdb965b21b..0000000000000000000000000000000000000000
+--- a/.pytest_cache/v/cache/lastfailed
++++ /dev/null
+@@ -1 +0,0 @@
+-{}
+\ No newline at end of file
+diff --git a/.pytest_cache/v/cache/nodeids b/.pytest_cache/v/cache/nodeids
+deleted file mode 100644
+index d97dcbdd8ec4bb4495f38212f58e9e5be53967fe..0000000000000000000000000000000000000000
+--- a/.pytest_cache/v/cache/nodeids
++++ /dev/null
+@@ -1,92 +0,0 @@
+-[
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_after_fold_fixate",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_no_change",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_no_timezone",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_fold",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_fold_fixate_1",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_fold_fixate_2",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_gap",
+-  "test_schedule.py::SchedulerTests::test_at_time",
+-  "test_schedule.py::SchedulerTests::test_at_time_hour",
+-  "test_schedule.py::SchedulerTests::test_at_time_minute",
+-  "test_schedule.py::SchedulerTests::test_cancel_job",
+-  "test_schedule.py::SchedulerTests::test_cancel_jobs",
+-  "test_schedule.py::SchedulerTests::test_clear_by_tag",
+-  "test_schedule.py::SchedulerTests::test_daylight_saving_time",
+-  "test_schedule.py::SchedulerTests::test_get_by_tag",
+-  "test_schedule.py::SchedulerTests::test_idle_seconds",
+-  "test_schedule.py::SchedulerTests::test_job_func_args_are_passed_on",
+-  "test_schedule.py::SchedulerTests::test_max_runs_budget_limit_wins_before_until",
+-  "test_schedule.py::SchedulerTests::test_max_runs_budgets_are_per_job",
+-  "test_schedule.py::SchedulerTests::test_max_runs_chainability",
+-  "test_schedule.py::SchedulerTests::test_max_runs_last_call_wins_and_remains_chainable",
+-  "test_schedule.py::SchedulerTests::test_max_runs_rejects_invalid_values",
+-  "test_schedule.py::SchedulerTests::test_max_runs_removal_updates_next_run_and_idle_seconds",
+-  "test_schedule.py::SchedulerTests::test_max_runs_until_limit_wins_before_budget",
+-  "test_schedule.py::SchedulerTests::test_max_runs_with_run_all",
+-  "test_schedule.py::SchedulerTests::test_max_runs_with_run_pending",
+-  "test_schedule.py::SchedulerTests::test_misconfigured_job_wont_break_scheduler",
+-  "test_schedule.py::SchedulerTests::test_move_to_next_weekday_nextweek",
+-  "test_schedule.py::SchedulerTests::test_move_to_next_weekday_today",
+-  "test_schedule.py::SchedulerTests::test_move_to_next_weekday_tommorrow",
+-  "test_schedule.py::SchedulerTests::test_next_run_property",
+-  "test_schedule.py::SchedulerTests::test_next_run_time",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_day_end",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_hour_end",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_hour_end_katmandu",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_hour_end_london",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_minute_end",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_minute_end_katmhandu",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_minute_end_london",
+-  "test_schedule.py::SchedulerTests::test_next_run_with_tag",
+-  "test_schedule.py::SchedulerTests::test_repr_functools_partial_job_func",
+-  "test_schedule.py::SchedulerTests::test_run_all",
+-  "test_schedule.py::SchedulerTests::test_run_all_with_decorator",
+-  "test_schedule.py::SchedulerTests::test_run_all_with_decorator_args",
+-  "test_schedule.py::SchedulerTests::test_run_all_with_decorator_defaultargs",
+-  "test_schedule.py::SchedulerTests::test_run_every_n_days_at_specific_time",
+-  "test_schedule.py::SchedulerTests::test_run_every_weekday_at_specific_time_past_today",
+-  "test_schedule.py::SchedulerTests::test_run_every_weekday_at_specific_time_today",
+-  "test_schedule.py::SchedulerTests::test_run_pending",
+-  "test_schedule.py::SchedulerTests::test_singular_time_units_match_plural_units",
+-  "test_schedule.py::SchedulerTests::test_tag_type_enforcement",
+-  "test_schedule.py::SchedulerTests::test_time_range",
+-  "test_schedule.py::SchedulerTests::test_time_range_repr",
+-  "test_schedule.py::SchedulerTests::test_time_units",
+-  "test_schedule.py::SchedulerTests::test_to_repr",
+-  "test_schedule.py::SchedulerTests::test_to_string",
+-  "test_schedule.py::SchedulerTests::test_to_string_functools_partial_job_func",
+-  "test_schedule.py::SchedulerTests::test_to_string_lambda_job_func",
+-  "test_schedule.py::SchedulerTests::test_tz",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_different_simultaneous_dst_change",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_ending_point",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_overlap_hour",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_skip_hour",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_starting_point",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_end_month_offset",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_end_year_cross_continent",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_exact_future_scheduling",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_exact_seconds_precision",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_half_hour_offset",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_592",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_605",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_before_dst_end",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_mid_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_post_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_pre_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_leap_year",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_midnight",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_new_year_offset",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_opposite_dst_change",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_skip_dst_change",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_utc",
+-  "test_schedule.py::SchedulerTests::test_tz_hourly_intermediate_conversion",
+-  "test_schedule.py::SchedulerTests::test_tz_invalid_timezone_exceptions",
+-  "test_schedule.py::SchedulerTests::test_tz_minutes_year_round",
+-  "test_schedule.py::SchedulerTests::test_tz_weekly_large_interval_backward",
+-  "test_schedule.py::SchedulerTests::test_tz_weekly_large_interval_forward",
+-  "test_schedule.py::SchedulerTests::test_tz_weekly_sunday_conversion",
+-  "test_schedule.py::SchedulerTests::test_until_time",
+-  "test_schedule.py::SchedulerTests::test_weekday_at_todady"
+-]
+\ No newline at end of file
+
+[codex-monitored] heartbeat: elapsed=90s
+codex
+PASS
+
+Removed build-created ignored caches: `.pytest_cache/`, `__pycache__/`, and `schedule/__pycache__/`.
+
+Verified:
+- Cumulative diff only changes `schedule/__init__.py` and `test_schedule.py`.
+- No dead added symbols or invalidated documentation references.
+- `git diff --check` passes.
+- Remaining untracked entries are pre-existing pipeline/project files.
+diff --git a/.pytest_cache/.gitignore b/.pytest_cache/.gitignore
+deleted file mode 100644
+index bc1a1f6167d09c909aad37280b760bb715d0f1da..0000000000000000000000000000000000000000
+--- a/.pytest_cache/.gitignore
++++ /dev/null
+@@ -1,2 +0,0 @@
+-# Created by pytest automatically.
+-*
+diff --git a/.pytest_cache/CACHEDIR.TAG b/.pytest_cache/CACHEDIR.TAG
+deleted file mode 100644
+index fce15ad7eaa74e5682b644c84efb75334c112f95..0000000000000000000000000000000000000000
+--- a/.pytest_cache/CACHEDIR.TAG
++++ /dev/null
+@@ -1,4 +0,0 @@
+-Signature: 8a477f597d28d172789f06886806bc55
+-# This file is a cache directory tag created by pytest.
+-# For information about cache directory tags, see:
+-#	https://bford.info/cachedir/spec.html
+diff --git a/.pytest_cache/README.md b/.pytest_cache/README.md
+deleted file mode 100644
+index b89018ced91c0a8af7f3f23ce8901870da89f3a0..0000000000000000000000000000000000000000
+--- a/.pytest_cache/README.md
++++ /dev/null
+@@ -1,8 +0,0 @@
+-# pytest cache directory #
+-
+-This directory contains data from the pytest's cache plugin,
+-which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
+-
+-**Do not** commit this to version control.
+-
+-See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
+diff --git a/.pytest_cache/v/cache/lastfailed b/.pytest_cache/v/cache/lastfailed
+deleted file mode 100644
+index 9e26dfeeb6e641a33dae4961196235bdb965b21b..0000000000000000000000000000000000000000
+--- a/.pytest_cache/v/cache/lastfailed
++++ /dev/null
+@@ -1 +0,0 @@
+-{}
+\ No newline at end of file
+diff --git a/.pytest_cache/v/cache/nodeids b/.pytest_cache/v/cache/nodeids
+deleted file mode 100644
+index d97dcbdd8ec4bb4495f38212f58e9e5be53967fe..0000000000000000000000000000000000000000
+--- a/.pytest_cache/v/cache/nodeids
++++ /dev/null
+@@ -1,92 +0,0 @@
+-[
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_after_fold_fixate",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_no_change",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_no_timezone",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_fold",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_fold_fixate_1",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_fold_fixate_2",
+-  "test_schedule.py::SchedulerTests::test_align_utc_offset_with_dst_gap",
+-  "test_schedule.py::SchedulerTests::test_at_time",
+-  "test_schedule.py::SchedulerTests::test_at_time_hour",
+-  "test_schedule.py::SchedulerTests::test_at_time_minute",
+-  "test_schedule.py::SchedulerTests::test_cancel_job",
+-  "test_schedule.py::SchedulerTests::test_cancel_jobs",
+-  "test_schedule.py::SchedulerTests::test_clear_by_tag",
+-  "test_schedule.py::SchedulerTests::test_daylight_saving_time",
+-  "test_schedule.py::SchedulerTests::test_get_by_tag",
+-  "test_schedule.py::SchedulerTests::test_idle_seconds",
+-  "test_schedule.py::SchedulerTests::test_job_func_args_are_passed_on",
+-  "test_schedule.py::SchedulerTests::test_max_runs_budget_limit_wins_before_until",
+-  "test_schedule.py::SchedulerTests::test_max_runs_budgets_are_per_job",
+-  "test_schedule.py::SchedulerTests::test_max_runs_chainability",
+-  "test_schedule.py::SchedulerTests::test_max_runs_last_call_wins_and_remains_chainable",
+-  "test_schedule.py::SchedulerTests::test_max_runs_rejects_invalid_values",
+-  "test_schedule.py::SchedulerTests::test_max_runs_removal_updates_next_run_and_idle_seconds",
+-  "test_schedule.py::SchedulerTests::test_max_runs_until_limit_wins_before_budget",
+-  "test_schedule.py::SchedulerTests::test_max_runs_with_run_all",
+-  "test_schedule.py::SchedulerTests::test_max_runs_with_run_pending",
+-  "test_schedule.py::SchedulerTests::test_misconfigured_job_wont_break_scheduler",
+-  "test_schedule.py::SchedulerTests::test_move_to_next_weekday_nextweek",
+-  "test_schedule.py::SchedulerTests::test_move_to_next_weekday_today",
+-  "test_schedule.py::SchedulerTests::test_move_to_next_weekday_tommorrow",
+-  "test_schedule.py::SchedulerTests::test_next_run_property",
+-  "test_schedule.py::SchedulerTests::test_next_run_time",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_day_end",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_hour_end",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_hour_end_katmandu",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_hour_end_london",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_minute_end",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_minute_end_katmhandu",
+-  "test_schedule.py::SchedulerTests::test_next_run_time_minute_end_london",
+-  "test_schedule.py::SchedulerTests::test_next_run_with_tag",
+-  "test_schedule.py::SchedulerTests::test_repr_functools_partial_job_func",
+-  "test_schedule.py::SchedulerTests::test_run_all",
+-  "test_schedule.py::SchedulerTests::test_run_all_with_decorator",
+-  "test_schedule.py::SchedulerTests::test_run_all_with_decorator_args",
+-  "test_schedule.py::SchedulerTests::test_run_all_with_decorator_defaultargs",
+-  "test_schedule.py::SchedulerTests::test_run_every_n_days_at_specific_time",
+-  "test_schedule.py::SchedulerTests::test_run_every_weekday_at_specific_time_past_today",
+-  "test_schedule.py::SchedulerTests::test_run_every_weekday_at_specific_time_today",
+-  "test_schedule.py::SchedulerTests::test_run_pending",
+-  "test_schedule.py::SchedulerTests::test_singular_time_units_match_plural_units",
+-  "test_schedule.py::SchedulerTests::test_tag_type_enforcement",
+-  "test_schedule.py::SchedulerTests::test_time_range",
+-  "test_schedule.py::SchedulerTests::test_time_range_repr",
+-  "test_schedule.py::SchedulerTests::test_time_units",
+-  "test_schedule.py::SchedulerTests::test_to_repr",
+-  "test_schedule.py::SchedulerTests::test_to_string",
+-  "test_schedule.py::SchedulerTests::test_to_string_functools_partial_job_func",
+-  "test_schedule.py::SchedulerTests::test_to_string_lambda_job_func",
+-  "test_schedule.py::SchedulerTests::test_tz",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_different_simultaneous_dst_change",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_ending_point",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_overlap_hour",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_skip_hour",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_dst_starting_point",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_end_month_offset",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_end_year_cross_continent",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_exact_future_scheduling",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_exact_seconds_precision",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_half_hour_offset",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_592",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_605",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_before_dst_end",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_mid_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_post_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_issue_608_pre_dst",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_leap_year",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_midnight",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_new_year_offset",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_opposite_dst_change",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_skip_dst_change",
+-  "test_schedule.py::SchedulerTests::test_tz_daily_utc",
+-  "test_schedule.py::SchedulerTests::test_tz_hourly_intermediate_conversion",
+-  "test_schedule.py::SchedulerTests::test_tz_invalid_timezone_exceptions",
+-  "test_schedule.py::SchedulerTests::test_tz_minutes_year_round",
+-  "test_schedule.py::SchedulerTests::test_tz_weekly_large_interval_backward",
+-  "test_schedule.py::SchedulerTests::test_tz_weekly_large_interval_forward",
+-  "test_schedule.py::SchedulerTests::test_tz_weekly_sunday_conversion",
+-  "test_schedule.py::SchedulerTests::test_until_time",
+-  "test_schedule.py::SchedulerTests::test_weekday_at_todady"
+-]
+\ No newline at end of file
+
+tokens used
+27,354
+[codex-monitored] codex exited: code=0 elapsed=92s

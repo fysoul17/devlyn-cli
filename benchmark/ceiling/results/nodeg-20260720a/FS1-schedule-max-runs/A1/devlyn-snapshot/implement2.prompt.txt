@@ -1,0 +1,64 @@
+# Codex (OpenAI) adapter
+
+## Identity
+You are OpenAI's Codex model.
+
+## Validation pattern
+Validation is concrete commands, not self-belief.
+
+---
+
+# PHASE 2 — IMPLEMENT (canonical body, outer-loop iteration 2)
+
+<role>
+You execute the plan. Constrained design judgment within PLAN's invariants.
+</role>
+
+<input>
+- Plan: `.devlyn/plan.md` — read it now.
+- Source: `.devlyn/criteria.generated.md` — read it now.
+- Codebase at current HEAD (repo root = cwd).
+</input>
+
+<output>
+- Code changes implementing every Requirement. Verify with `git diff`.
+- Run `python3 -m unittest test_schedule` before stopping — must be 100% green.
+- Report your verdict in your final reply: `PASS` on success; `BLOCKED` if a criterion cannot be satisfied.
+</output>
+
+<quality_bar>
+- Spec (`.devlyn/criteria.generated.md`) and plan (`.devlyn/plan.md`) are the contract.
+- Files not in PLAN's authorized surface (`schedule/__init__.py`, `test_schedule.py`) are off-limits.
+- Do not touch any other test, any other method, or add try/except around job_func().
+</quality_bar>
+
+<runtime_principles>
+- Subtractive-first / Goal-locked / No-workaround / Evidence, per `.devlyn/plan.md` Risks section — follow it exactly, it already identifies every trap.
+</runtime_principles>
+
+The task: implement `.devlyn/plan.md` exactly as written. Concretely, in `Job.run()` in `schedule/__init__.py`:
+
+Current code (around line 691-724):
+```python
+        logger.debug("Running job %s", self)
+        if self._remaining_runs is not None:
+            self._remaining_runs -= 1
+        ret = self.job_func()
+        self.last_run = datetime.datetime.now()
+        self._schedule_next_run()
+
+        if self._remaining_runs is not None and self._remaining_runs <= 0:
+            logger.debug("Cancelling job %s", self)
+            return CancelJob
+
+        if self._is_overdue(self.next_run):
+            logger.debug("Cancelling job %s", self)
+            return CancelJob
+        return ret
+```
+
+Change it so that when the decrement makes `_remaining_runs <= 0`, the job removes itself from its scheduler (`self.scheduler.cancel_job(self)`) immediately, before `self.job_func()` is called — not just via the `return CancelJob` at the end (which is never reached if `job_func()` raises). The exhausting call must still invoke `job_func()` normally right after. The post-run `if self._remaining_runs is not None and self._remaining_runs <= 0: return CancelJob` block stays (it's a harmless no-op re-removal on the non-raising path per `Scheduler.cancel_job`'s existing `except ValueError` guard — do not delete it).
+
+Then in `test_schedule.py`, find `test_max_runs_counts_raising_job_execution` (around line 461) and add an assertion that the job is no longer present in `schedule.default_scheduler.jobs` (or equivalently `job.scheduler.jobs`) immediately after the raising call, alongside the existing `assert job._remaining_runs == 0`.
+
+Verify: `python3 -m unittest test_schedule -v` must show 0 failures, and `python3 "/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/.claude/skills/_shared/spec-verify-check.py" --include-risk-probes` must exit 0. Confirm `git diff --name-only HEAD` shows only `schedule/__init__.py` and `test_schedule.py`.

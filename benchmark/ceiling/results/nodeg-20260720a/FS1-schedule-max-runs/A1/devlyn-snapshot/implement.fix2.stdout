@@ -1,0 +1,10 @@
+PASS
+
+- Budget is charged before invocation at [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/schedule/__init__.py:711); cancellation remains after successful return at line 717.
+- Regression coverage added at [test_schedule.py](/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/test_schedule.py:461), asserting a raising `max_runs(1)` job reaches zero remaining runs.
+
+Verified:
+
+- `python3 -m unittest test_schedule -v` — PASS: 85 tests, 0 failures.
+- `spec-verify-check.py --include-risk-probes` — PASS.
+- `git diff --name-only HEAD` contains only `schedule/__init__.py` and `test_schedule.py`.

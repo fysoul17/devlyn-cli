@@ -1,0 +1,3 @@
+PASS
+
+The cumulative diff contains only the stated used cancellation call and exercised assertion. No dead code, stale references, comments, or stray deliverable artifacts were introduced. No cleanup changes made.

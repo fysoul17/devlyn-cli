@@ -1,0 +1,10 @@
+{
+ "row_label": "current-version-successor-row",
+ "not_cohort_closure": true,
+ "cohort_closure_run_id": "nodeg-20260720b",
+ "ceiling_test_claude_bin": "/Users/aipalm/.local/share/nx01/pins/nodeg-20260720a/claude",
+ "pin_version": "2.1.215 (Claude Code)",
+ "pin_sha256": "90608b5c5ab504e96e77365cea6203d046e291d59b2bb42cf28dcb2ccdf9dd58",
+ "pin_source": "cp from ~/.local/share/claude/versions/2.1.215 (2.1.211 deleted by auto-updater before this run; deviation adjudicated three-way R0/R1 2026-07-20, /tmp/threeway-0074-c1/)",
+ "recorded_at": "2026-07-20"
+}

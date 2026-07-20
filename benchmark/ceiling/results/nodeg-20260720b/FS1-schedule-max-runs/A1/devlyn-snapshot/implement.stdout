@@ -1,0 +1,12 @@
+PASS
+
+Implemented `Job.max_runs(n)` with `ScheduleValueError` validation and existing `CancelJob` removal flow in [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/schedule/__init__.py).
+
+Added coverage for chainability, both scheduler paths, limit interactions, scheduler timing, validation, last-call-wins, and independent budgets in [test_schedule.py](/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/test_schedule.py).
+
+Verified exactly as required:
+
+```text
+/opt/homebrew/bin/python3 -m pytest test_schedule.py -q
+49 passed, 41 skipped
+```

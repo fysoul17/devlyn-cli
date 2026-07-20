@@ -1,0 +1,45 @@
+# Codex (OpenAI) adapter
+
+## Identity
+You are OpenAI's Codex model.
+
+## Output discipline
+Efficient, direct, task-oriented.
+
+---
+
+# PHASE 4 — CLEANUP (canonical body)
+
+Task-scoped pass — only what this diff introduced or invalidated.
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn.
+</role>
+
+<input>
+- Cumulative diff since base_ref sha `4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8`: `git diff 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD` (touches `schedule/__init__.py`, `test_schedule.py`, `docs/examples.rst` — the `Job.max_runs()` run-budget feature).
+- Spec: `.devlyn/criteria.generated.md`.
+- pre_sha (current HEAD before this phase): `2066ec7292d27bedd990b5b9f822f33edcb56d9d`. Your post-cleanup diff against this SHA must stay within the allowlist below.
+</input>
+
+<allowlist>
+You may modify or delete:
+
+1. **Tooling artifacts** the spec did not list as deliverables: `test-results/`, `.last-run.json`, coverage HTML output, build artifacts, runtime caches (`__pycache__/`, `*.pyc`, `.cache/`).
+2. **Dead code added by this diff** — symbols introduced by this diff that no other code added by this diff references AND that are not part of the spec's required surface. Pre-existing dead code is out of scope.
+3. **Doc references this diff invalidated** — links / file paths / symbol names in markdown/rst files that this diff renamed or removed.
+4. **Inline comments** that explain code this diff deleted but the comment still mentions.
+
+Files outside this allowlist must not change. Pre-existing tooling leaks (already in the repo before this run) belong to a future cleanup, not this one.
+</allowlist>
+
+<output>
+Report your verdict in your final reply: `PASS` if changes are within the allowlist (or no changes are needed — this is the expected outcome for a small, clean diff); `FAIL` if you cannot complete within the allowlist. Do not edit `.devlyn/pipeline.state.json` yourself.
+</output>
+
+<quality_bar>
+- Subtractive-first applies most strongly here. Do not "improve" code outside the allowlist, even if it looks fixable.
+- If nothing in the allowlist applies, make zero changes and report PASS — that is the correct, expected result here.
+</quality_bar>
+
+Task: inspect the diff (`git diff 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD`) and `git status` for stray artifacts (`__pycache__/`, `.mypy_cache/`, `*.pyc`). This diff is small and adds no dead code (the new `Job.max_runs()` method, its `_remaining_runs` field, and the tests/doc example are all directly required by the spec and are referenced/used). Confirm there is nothing to clean up, or make the minimal allowlisted fix if something is found.

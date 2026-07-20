@@ -1,0 +1,8 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "/opt/homebrew/bin/python3 -m pytest test_schedule.py -q",
+      "expect_exit": 0
+    }
+  ]
+}

@@ -1,0 +1,352 @@
+[codex-monitored] start: ts=2026-07-20T04:27:44Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=99160
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: medium
+reasoning summaries: none
+session id: 019f7dc7-a665-7142-a584-68e734738a26
+--------
+user
+# Codex (OpenAI) adapter
+
+## Identity
+You are OpenAI's Codex model.
+
+## Output discipline
+Efficient, direct, task-oriented.
+
+---
+
+# PHASE 4 — CLEANUP (canonical body)
+
+Task-scoped pass — only what this diff introduced or invalidated.
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn.
+</role>
+
+<input>
+- Cumulative diff since base_ref sha `4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8`: `git diff 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD` (touches `schedule/__init__.py`, `test_schedule.py`, `docs/examples.rst` — the `Job.max_runs()` run-budget feature).
+- Spec: `.devlyn/criteria.generated.md`.
+- pre_sha (current HEAD before this phase): `2066ec7292d27bedd990b5b9f822f33edcb56d9d`. Your post-cleanup diff against this SHA must stay within the allowlist below.
+</input>
+
+<allowlist>
+You may modify or delete:
+
+1. **Tooling artifacts** the spec did not list as deliverables: `test-results/`, `.last-run.json`, coverage HTML output, build artifacts, runtime caches (`__pycache__/`, `*.pyc`, `.cache/`).
+2. **Dead code added by this diff** — symbols introduced by this diff that no other code added by this diff references AND that are not part of the spec's required surface. Pre-existing dead code is out of scope.
+3. **Doc references this diff invalidated** — links / file paths / symbol names in markdown/rst files that this diff renamed or removed.
+4. **Inline comments** that explain code this diff deleted but the comment still mentions.
+
+Files outside this allowlist must not change. Pre-existing tooling leaks (already in the repo before this run) belong to a future cleanup, not this one.
+</allowlist>
+
+<output>
+Report your verdict in your final reply: `PASS` if changes are within the allowlist (or no changes are needed — this is the expected outcome for a small, clean diff); `FAIL` if you cannot complete within the allowlist. Do not edit `.devlyn/pipeline.state.json` yourself.
+</output>
+
+<quality_bar>
+- Subtractive-first applies most strongly here. Do not "improve" code outside the allowlist, even if it looks fixable.
+- If nothing in the allowlist applies, make zero changes and report PASS — that is the correct, expected result here.
+</quality_bar>
+
+Task: inspect the diff (`git diff 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD`) and `git status` for stray artifacts (`__pycache__/`, `.mypy_cache/`, `*.pyc`). This diff is small and adds no dead code (the new `Job.max_runs()` method, its `_remaining_runs` field, and the tests/doc example are all directly required by the spec and are referenced/used). Confirm there is nothing to clean up, or make the minimal allowlisted fix if something is found.
+codex
+I’ll inspect the specified cumulative diff and working-tree artifacts, then make no changes unless an allowlisted cleanup item is actually present.
+exec
+/bin/zsh -lc "git status --short && git diff --name-status 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD && git diff --check 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD && rg --files -g '__pycache__/**' -g '*.pyc' -g '.mypy_cache/**' -g '.last-run.json' -g 'test-results/**' -g '.cache/**' -g 'htmlcov/**' -g 'coverage.xml'" in /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+ exited 1 in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+M	docs/examples.rst
+M	schedule/__init__.py
+M	test_schedule.py
+
+exec
+/bin/zsh -lc 'git diff --stat 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD && git diff --unified=3 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8...HEAD && git diff --name-status 2066ec7292d27bedd990b5b9f822f33edcb56d9d..HEAD && git status --short --untracked-files=all' in /Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+ docs/examples.rst    |  8 +++++
+ schedule/__init__.py | 28 +++++++++++++++++-
+ test_schedule.py     | 83 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 118 insertions(+), 1 deletion(-)
+diff --git a/docs/examples.rst b/docs/examples.rst
+index ac8f32a..c0d2813 100644
+--- a/docs/examples.rst
++++ b/docs/examples.rst
+@@ -244,6 +244,14 @@ Run a job until a certain time
+ 
+ The ``until`` method sets the jobs deadline. The job will not run after the deadline.
+ 
++Run a job a limited number of times
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++.. code-block:: python
++
++    # Run the job three times, then remove it from the scheduler.
++    schedule.every().hour.max_runs(3).do(job)
++
+ Time until the next execution
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ Use ``schedule.idle_seconds()`` to get the number of seconds until the next job is scheduled to run.
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 8e12eeb..fcbf348 100644
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -251,6 +251,9 @@ class Job:
+         # optional time of final run
+         self.cancel_after: Optional[datetime.datetime] = None
+ 
++        # optional number of remaining runs
++        self._remaining_runs: Optional[int] = None
++
+         self.tags: Set[Hashable] = set()  # unique set of tags for the job
+         self.scheduler: Optional[Scheduler] = scheduler  # scheduler to register with
+ 
+@@ -641,6 +644,20 @@ class Job:
+             )
+         return self
+ 
++    def max_runs(self, n: int):
++        """
++        Schedule the job to run at most ``n`` times.
++
++        :param n: Maximum number of times the job should run
++        :return: The invoked job instance
++        """
++        if not isinstance(n, int) or n < 1:
++            raise ValueError(
++                "max_runs() requires an integer greater than or equal to 1"
++            )
++        self._remaining_runs = n
++        return self
++
+     def do(self, job_func: Callable, *args, **kwargs):
+         """
+         Specifies the job_func that should be called every time the
+@@ -679,8 +696,11 @@ class Job:
+         the job's deadline, CancelJob is returned after the execution. In this latter
+         case CancelJob takes priority over any other returned value.
+ 
++        If the job has a run budget (configured using .max_runs()), CancelJob is
++        also returned once the budget is exhausted, after the run that used it up.
++
+         :return: The return value returned by the `job_func`, or CancelJob if the job's
+-                 deadline is reached.
++                 deadline or run budget is reached.
+ 
+         """
+         if self._is_overdue(datetime.datetime.now()):
+@@ -692,6 +712,12 @@ class Job:
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
+ 
++        if self._remaining_runs is not None:
++            self._remaining_runs -= 1
++            if self._remaining_runs == 0:
++                logger.debug("Cancelling job %s", self)
++                return CancelJob
++
+         if self._is_overdue(self.next_run):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
+diff --git a/test_schedule.py b/test_schedule.py
+index f497826..4b79f9e 100644
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -387,6 +387,77 @@ class SchedulerTests(TestCase):
+                 assert mock_job.call_count == 0
+                 assert len(schedule.jobs) == 0
+ 
++        # Unschedule job when whichever limit is reached first
++        schedule.clear()
++        with mock_datetime(2020, 1, 1, 11, 35, 10):
++            mock_job.reset_mock()
++            every(5).seconds.max_runs(3).until(datetime.time(11, 35, 20)).do(
++                mock_job
++            )
++            with mock_datetime(2020, 1, 1, 11, 35, 15):
++                schedule.run_pending()
++                assert mock_job.call_count == 1
++                assert len(schedule.jobs) == 1
++            with mock_datetime(2020, 1, 1, 11, 35, 20):
++                schedule.run_all()
++                assert mock_job.call_count == 2
++                assert len(schedule.jobs) == 0
++
++        schedule.clear()
++        with mock_datetime(2020, 1, 1, 11, 35, 10):
++            mock_job.reset_mock()
++            every(5).seconds.until(datetime.time(11, 35, 40)).max_runs(1).do(
++                mock_job
++            )
++            with mock_datetime(2020, 1, 1, 11, 35, 15):
++                schedule.run_pending()
++                assert mock_job.call_count == 1
++                assert len(schedule.jobs) == 0
++
++    def test_max_runs(self):
++        job = every(5).seconds.max_runs(3)
++        assert job._remaining_runs == 3
++        assert every().max_runs(3).seconds._remaining_runs == 3
++        assert job.max_runs(2) is job
++        assert job._remaining_runs == 2
++        assert every().max_runs(True)._remaining_runs == 1
++
++        for invalid_value in (0, -1, None, 1.5, "3"):
++            with self.assertRaises(ValueError):
++                every().max_runs(invalid_value)
++
++    def test_max_runs_cancels_after_budget_with_run_pending(self):
++        mock_job = make_mock_job()
++        with mock_datetime(2020, 1, 1, 11, 35, 10):
++            every(5).seconds.max_runs(2).do(mock_job)
++            with mock_datetime(2020, 1, 1, 11, 35, 15):
++                schedule.run_pending()
++                assert mock_job.call_count == 1
++                assert len(schedule.jobs) == 1
++            with mock_datetime(2020, 1, 1, 11, 35, 20):
++                schedule.run_pending()
++                assert mock_job.call_count == 2
++                assert len(schedule.jobs) == 0
++            with mock_datetime(2020, 1, 1, 11, 35, 25):
++                schedule.run_pending()
++                assert mock_job.call_count == 2
++
++    def test_max_runs_cancels_after_budget_with_run_all(self):
++        first_job = make_mock_job("first_job")
++        second_job = make_mock_job("second_job")
++        every().second.max_runs(1).do(first_job)
++        every().second.max_runs(2).do(second_job)
++
++        schedule.run_all()
++        assert first_job.call_count == 1
++        assert second_job.call_count == 1
++        assert len(schedule.jobs) == 1
++
++        schedule.run_all()
++        assert first_job.call_count == 1
++        assert second_job.call_count == 2
++        assert len(schedule.jobs) == 0
++
+     def test_weekday_at_todady(self):
+         mock_job = make_mock_job()
+ 
+@@ -1500,6 +1571,12 @@ class SchedulerTests(TestCase):
+             assert schedule.next_run() is None
+             assert schedule.idle_seconds() is None
+ 
++            every().hour.max_runs(1).do(mock_job)
++            assert schedule.idle_seconds() == 60 * 60
++            schedule.run_all()
++            assert schedule.next_run() is None
++            assert schedule.idle_seconds() is None
++
+     def test_cancel_job(self):
+         def stop_job():
+             return schedule.CancelJob
+@@ -1522,6 +1599,12 @@ class SchedulerTests(TestCase):
+         schedule.cancel_job(mj)
+         assert len(schedule.jobs) == 0
+ 
++        mock_job.reset_mock()
++        limited_job = every().second.max_runs(3).max_runs(1).do(mock_job)
++        schedule.run_all()
++        assert mock_job.call_count == 1
++        assert limited_job not in schedule.jobs
++
+     def test_cancel_jobs(self):
+         def stop_job():
+             return schedule.CancelJob
+?? .claude/skills/_shared/adapters/README.md
+?? .claude/skills/_shared/adapters/claude.md
+?? .claude/skills/_shared/adapters/codex.md
+?? .claude/skills/_shared/adapters/omp.md
+?? .claude/skills/_shared/archive_run.py
+?? .claude/skills/_shared/codex-config.md
+?? .claude/skills/_shared/codex-monitored.sh
+?? .claude/skills/_shared/collect-codex-findings.py
+?? .claude/skills/_shared/engine-doctor.sh
+?? .claude/skills/_shared/engine-preflight.md
+?? .claude/skills/_shared/expected.schema.json
+?? .claude/skills/_shared/finish-gate.py
+?? .claude/skills/_shared/pair-plan-schema.md
+?? .claude/skills/_shared/run-bounded.py
+?? .claude/skills/_shared/runtime-principles.md
+?? .claude/skills/_shared/spec-verify-check.py
+?? .claude/skills/_shared/state-phase-write.py
+?? .claude/skills/_shared/verify-merge-findings.py
+?? .claude/skills/code-health-standards/SKILL.md
+?? .claude/skills/code-review-standards/SKILL.md
+?? .claude/skills/devlyn:design-ui/SKILL.md
+?? .claude/skills/devlyn:engines/SKILL.md
+?? .claude/skills/devlyn:ideate/SKILL.md
+?? .claude/skills/devlyn:ideate/references/elicitation.md
+?? .claude/skills/devlyn:ideate/references/from-spec-mode.md
+?? .claude/skills/devlyn:ideate/references/project-mode.md
+?? .claude/skills/devlyn:ideate/references/spec-template.md
+?? .claude/skills/devlyn:ideate/references/templates/decision.md
+?? .claude/skills/devlyn:ideate/references/templates/roadmap.md
+?? .claude/skills/devlyn:ideate/references/templates/vision.md
+?? .claude/skills/devlyn:queue/SKILL.md
+?? .claude/skills/devlyn:resolve/SKILL.md
+?? .claude/skills/devlyn:resolve/references/free-form-mode.md
+?? .claude/skills/devlyn:resolve/references/phases/build-gate.md
+?? .claude/skills/devlyn:resolve/references/phases/cleanup.md
+?? .claude/skills/devlyn:resolve/references/phases/implement.md
+?? .claude/skills/devlyn:resolve/references/phases/plan.md
+?? .claude/skills/devlyn:resolve/references/phases/probe-derive.md
+?? .claude/skills/devlyn:resolve/references/phases/surface-close.md
+?? .claude/skills/devlyn:resolve/references/phases/verify.md
+?? .claude/skills/devlyn:resolve/references/state-schema.md
+?? .claude/skills/root-cause-analysis/SKILL.md
+?? .claude/skills/ui-implementation-standards/SKILL.md
+?? .devlyn/build_gate.findings.jsonl
+?? .devlyn/build_gate.log.md
+?? .devlyn/cleanup.prompt.txt
+?? .devlyn/cleanup.stderr
+?? .devlyn/cleanup.stdout
+?? .devlyn/closure-durability.round-1.json
+?? .devlyn/criteria.generated.md
+?? .devlyn/engines.json
+?? .devlyn/goal.raw.txt
+?? .devlyn/goal.txt
+?? .devlyn/implement.fix1.prompt.txt
+?? .devlyn/implement.fix1.stderr
+?? .devlyn/implement.fix1.stdout
+?? .devlyn/implement.prompt.txt
+?? .devlyn/implement.stderr
+?? .devlyn/implement.stdout
+?? .devlyn/pipeline.state.json
+?? .devlyn/plan.md
+?? .devlyn/spec-verify-findings.jsonl
+?? .devlyn/spec-verify.json
+?? .devlyn/spec-verify.results.json
+?? .devlyn/surface-close.input.patch
+?? .devlyn/surface-close.output.json
+?? .devlyn/surface-close.prompt
+?? .devlyn/surface-close.stderr
+?? .devlyn/surface-close.stdout
+?? .devlyn/surface-close.worker-session.0.jsonl
+?? .devlyn/untracked.baseline
+?? AGENTS.md
+?? CLAUDE.md
+
+codex
+PASS — no cleanup changes needed.
+
+- Cumulative feature diff touches only the three expected files.
+- No `__pycache__/`, `*.pyc`, `.mypy_cache/`, or listed generated-artifact files were found.
+- Diff against pre-cleanup SHA `2066ec7…` is empty.
+- Existing untracked `.claude/`, `.devlyn/`, `AGENTS.md`, and `CLAUDE.md` were left untouched.
+tokens used
+10,630
+[codex-monitored] codex exited: code=0 elapsed=19s

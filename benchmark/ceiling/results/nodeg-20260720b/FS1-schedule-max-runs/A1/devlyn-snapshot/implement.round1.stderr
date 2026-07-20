@@ -1,0 +1,1011 @@
+[codex-monitored] start: ts=2026-07-20T05:41:26Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=38735
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f7e0b-2495-7e42-968a-3a35204ea47d
+--------
+user
+# Codex (OpenAI) adapter
+
+You are OpenAI's Codex model. Efficient, direct, task-oriented. Validation is concrete commands, not self-belief. Do not narrate internal deliberation.
+
+# PHASE 2 — IMPLEMENT fix round (triggered by VERIFY findings)
+
+Repo: /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo. Current HEAD already contains your prior `Job.max_runs(n)` implementation plus a SURFACE_CLOSE docstring fix. Authorized surface unchanged: `schedule/__init__.py`, `test_schedule.py`.
+
+Two independent VERIFY judges (a primary broad-coverage judge and an adversarial pair judge) reviewed your diff against `.devlyn/criteria.generated.md`. Both are CONFIRMED real via direct execution (not speculation) — you must fix both.
+
+## Finding 1 (HIGH, confirmed) — extra execution when budget is lowered after some runs already happened
+
+`Job.run()` only checks the run-budget AFTER `job_func()` executes (`self.run_count += 1` then `if self._max_runs is not None and self.run_count >= self._max_runs: return CancelJob`). There is no pre-execution guard. Repro (already executed, real output):
+
+```
+job = every().second.max_runs(5).do(job_fn)
+job.run()                    # run_count=1, in scheduler.jobs
+job.max_runs(1)              # last-call-wins: budget lowered to 1 (already met/exceeded)
+scheduler.run_all()          # BUG: job_fn is called a SECOND time (call_count=2) before cancellation
+```
+
+This violates the criteria's Requirement: "After the job has executed n times in total, the job removes itself... The nth execution itself still runs normally; an (n+1)-th execution must never happen." Since the job already executed once and the budget was then set to 1, the very next scheduler-driven run IS the (n+1)-th execution relative to the current budget, and it must not happen.
+
+**Required fix**: add a pre-execution guard mirroring the existing `.until()` pattern in the same method — `Job.run()` already has `if self._is_overdue(datetime.datetime.now()): return CancelJob` at the very top (before calling `job_func()`), which guards against a job that's already overdue. Add an equivalent pre-execution budget guard right next to it (same place, before `job_func()` is called): if `self._max_runs is not None and self.run_count >= self._max_runs`, return `CancelJob` immediately without calling `job_func()`. Keep the existing post-execution check as-is (it's still needed for the normal nth-execution-then-cancel path). Do not change anything else about the control flow.
+
+Verify your fix against the exact repro above (a throwaway check is fine, not a tracked file) — after the fix, `call_count` must stay `1` and the job must not be in `scheduler.jobs` after the `run_all()` call, since `.max_runs(1)` was set after the job already ran once.
+
+## Finding 2 (MEDIUM, verdict-binding, confirmed) — ScheduleValueError does not satisfy "raises ValueError"
+
+The criteria's literal Requirement: "n must be an integer >= 1; any other value raises ValueError at `.max_runs(...)` call time." Your implementation raises `ScheduleValueError`, but `ScheduleValueError(ScheduleError)` does NOT subclass the built-in `ValueError` — confirmed via `issubclass(schedule.ScheduleValueError, ValueError)` returning `False`. A caller doing `except ValueError:` around `.max_runs(bad_value)` will NOT catch it.
+
+**Required fix (root cause, not a workaround)**: change the `ScheduleValueError` class declaration itself to also inherit from the built-in `ValueError`, e.g. `class ScheduleValueError(ScheduleError, ValueError):` (multiple inheritance — already confirmed to produce a clean MRO with no conflicts: `ScheduleValueError -> ScheduleError -> ValueError -> Exception -> BaseException -> object`). This is a one-line change to the existing class declaration in `schedule/__init__.py`. Do NOT raise a bare `ValueError` instead of `ScheduleValueError` anywhere — that would break the codebase's existing `ScheduleValueError`-based catches and tests (`.until()`, `.at()`, etc.). The multiple-inheritance fix satisfies the literal spec requirement for `max_runs()` while preserving `ScheduleValueError` as the raised type everywhere else in the file, unchanged.
+
+After this fix, `every().max_runs(0)` (or any invalid value) must raise something that is BOTH `isinstance(exc, ValueError)` and `isinstance(exc, schedule.ScheduleValueError)` True.
+
+## Also (LOW, optional but recommended — closes the coverage gap that let Finding 1 slip through)
+
+Add one regression test in `test_schedule.py` for the Finding 1 scenario (lower `.max_runs()` after the job has already executed at least once; assert no extra execution happens and the job is removed). Add or extend an assertion that the raised exception for invalid `n` is an instance of the built-in `ValueError` (not just `ScheduleValueError`), e.g. `self.assertRaises(ValueError, every().max_runs, 0)` alongside the existing `ScheduleValueError` assertions — do not remove the existing `ScheduleValueError` assertions, just add `ValueError` coverage since both should now hold.
+
+## Constraints
+
+- Files not in the authorized surface (`schedule/__init__.py`, `test_schedule.py`) are off-limits.
+- Do not modify, weaken, or remove any existing test.
+- Do not touch anything about `.until()`'s own standalone behavior, `.at()`, `.to()`, tags, or unit chains beyond what these two fixes require.
+- Run the full test suite before declaring done: `/opt/homebrew/bin/python3 -m pytest test_schedule.py -q` — must exit 0.
+
+Report your verdict in your final reply text: `PASS` on success; `BLOCKED` if a finding cannot be fixed within the authorized surface.
+codex
+I’ll make the two narrowly scoped fixes, add the requested regression coverage, then run the exact full test command. Prediction: the pre-run guard prevents the lowered-budget callback entirely, and `ScheduleValueError` becomes catchable as both its existing type and built-in `ValueError`.
+exec
+/bin/zsh -lc "git status --short && rg -n -C 4 \"class ScheduleValueError|def max_runs|def run\\(|max_runs\" schedule/__init__.py test_schedule.py" in /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+schedule/__init__.py-55-
+schedule/__init__.py-56-    pass
+schedule/__init__.py-57-
+schedule/__init__.py-58-
+schedule/__init__.py:59:class ScheduleValueError(ScheduleError):
+schedule/__init__.py-60-    """Base schedule value error"""
+schedule/__init__.py-61-
+schedule/__init__.py-62-    pass
+schedule/__init__.py-63-
+--
+schedule/__init__.py-244-        # number of times this job has run
+schedule/__init__.py-245-        self.run_count: int = 0
+schedule/__init__.py-246-
+schedule/__init__.py-247-        # optional maximum number of times this job can run
+schedule/__init__.py:248:        self._max_runs: Optional[int] = None
+schedule/__init__.py-249-
+schedule/__init__.py-250-        # datetime of the next run
+schedule/__init__.py-251-        self.next_run: Optional[datetime.datetime] = None
+schedule/__init__.py-252-
+--
+schedule/__init__.py-646-                "Cannot schedule a job to run until a time in the past"
+schedule/__init__.py-647-            )
+schedule/__init__.py-648-        return self
+schedule/__init__.py-649-
+schedule/__init__.py:650:    def max_runs(self, n: int):
+schedule/__init__.py-651-        """
+schedule/__init__.py-652-        Schedule job to run at most ``n`` times.
+schedule/__init__.py-653-
+schedule/__init__.py-654-        :param n: Maximum number of times the job should run
+schedule/__init__.py-655-        :return: The invoked job instance
+schedule/__init__.py-656-        """
+schedule/__init__.py-657-        if not isinstance(n, int) or n < 1:
+schedule/__init__.py:658:            raise ScheduleValueError("max_runs() requires an integer greater than 0")
+schedule/__init__.py:659:        self._max_runs = n
+schedule/__init__.py-660-        return self
+schedule/__init__.py-661-
+schedule/__init__.py-662-    def do(self, job_func: Callable, *args, **kwargs):
+schedule/__init__.py-663-        """
+--
+schedule/__init__.py-688-        """
+schedule/__init__.py-689-        assert self.next_run is not None, "must run _schedule_next_run before"
+schedule/__init__.py-690-        return datetime.datetime.now() >= self.next_run
+schedule/__init__.py-691-
+schedule/__init__.py:692:    def run(self):
+schedule/__init__.py-693-        """
+schedule/__init__.py-694-        Run the job and immediately reschedule it.
+schedule/__init__.py-695-        If the job's deadline is reached (configured using .until()), the job is not
+schedule/__init__.py-696-        run and CancelJob is returned immediately. If the next scheduled run exceeds
+schedule/__init__.py-697-        the job's deadline, CancelJob is returned after the execution. In this latter
+schedule/__init__.py-698-        case CancelJob takes priority over any other returned value.
+schedule/__init__.py:699:        If the job's run budget (configured using .max_runs()) is reached by this
+schedule/__init__.py-700-        execution, CancelJob is returned after the execution.
+schedule/__init__.py-701-
+schedule/__init__.py-702-        :return: The return value returned by the `job_func`, or CancelJob if the job's
+schedule/__init__.py-703-                 deadline or run budget is reached.
+--
+schedule/__init__.py-715-
+schedule/__init__.py-716-        if self._is_overdue(self.next_run):
+schedule/__init__.py-717-            logger.debug("Cancelling job %s", self)
+schedule/__init__.py-718-            return CancelJob
+schedule/__init__.py:719:        if self._max_runs is not None and self.run_count >= self._max_runs:
+schedule/__init__.py-720-            logger.debug("Cancelling job %s", self)
+schedule/__init__.py-721-            return CancelJob
+schedule/__init__.py-722-        return ret
+schedule/__init__.py-723-
+--
+test_schedule.py-386-                schedule.run_pending()
+test_schedule.py-387-                assert mock_job.call_count == 0
+test_schedule.py-388-                assert len(schedule.jobs) == 0
+test_schedule.py-389-
+test_schedule.py:390:    def test_max_runs_chainability(self):
+test_schedule.py-391-        mock_job = make_mock_job()
+test_schedule.py-392-
+test_schedule.py:393:        job_after_unit = every(5).seconds.max_runs(3).do(mock_job)
+test_schedule.py:394:        job_before_unit = every().max_runs(3).seconds.do(mock_job)
+test_schedule.py-395-
+test_schedule.py:396:        assert job_after_unit._max_runs == 3
+test_schedule.py:397:        assert job_before_unit._max_runs == 3
+test_schedule.py-398-
+test_schedule.py:399:    def test_max_runs_with_run_pending(self):
+test_schedule.py-400-        mock_job = make_mock_job()
+test_schedule.py-401-        with mock_datetime(2020, 1, 1, 10, 0, 0):
+test_schedule.py:402:            job = every().second.max_runs(2).do(mock_job)
+test_schedule.py-403-
+test_schedule.py-404-        with mock_datetime(2020, 1, 1, 10, 0, 1):
+test_schedule.py-405-            schedule.run_pending()
+test_schedule.py-406-        with mock_datetime(2020, 1, 1, 10, 0, 2):
+--
+test_schedule.py-411-        assert mock_job.call_count == 2
+test_schedule.py-412-        assert job.run_count == 2
+test_schedule.py-413-        assert job not in schedule.jobs
+test_schedule.py-414-
+test_schedule.py:415:    def test_max_runs_with_run_all(self):
+test_schedule.py-416-        mock_job = make_mock_job()
+test_schedule.py:417:        job = every().second.max_runs(2).do(mock_job)
+test_schedule.py-418-
+test_schedule.py-419-        schedule.run_all()
+test_schedule.py-420-        schedule.run_all()
+test_schedule.py-421-        schedule.run_all()
+--
+test_schedule.py-423-        assert mock_job.call_count == 2
+test_schedule.py-424-        assert job.run_count == 2
+test_schedule.py-425-        assert job not in schedule.jobs
+test_schedule.py-426-
+test_schedule.py:427:    def test_max_runs_budget_limit_wins_before_until(self):
+test_schedule.py-428-        mock_job = make_mock_job()
+test_schedule.py-429-        with mock_datetime(2020, 1, 1, 11, 35, 10):
+test_schedule.py-430-            job = (
+test_schedule.py-431-                every()
+test_schedule.py:432:                .second.max_runs(1)
+test_schedule.py-433-                .until(datetime.time(11, 35, 20))
+test_schedule.py-434-                .do(mock_job)
+test_schedule.py-435-            )
+test_schedule.py-436-            schedule.run_all()
+--
+test_schedule.py-438-        assert mock_job.call_count == 1
+test_schedule.py-439-        assert job.run_count == 1
+test_schedule.py-440-        assert job not in schedule.jobs
+test_schedule.py-441-
+test_schedule.py:442:    def test_max_runs_until_limit_wins_before_budget(self):
+test_schedule.py-443-        mock_job = make_mock_job()
+test_schedule.py-444-        with mock_datetime(2020, 1, 1, 11, 35, 10):
+test_schedule.py-445-            job = (
+test_schedule.py-446-                every(5)
+test_schedule.py:447:                .seconds.max_runs(3)
+test_schedule.py-448-                .until(datetime.time(11, 35, 20))
+test_schedule.py-449-                .do(mock_job)
+test_schedule.py-450-            )
+test_schedule.py-451-
+--
+test_schedule.py-457-        assert mock_job.call_count == 2
+test_schedule.py-458-        assert job.run_count == 2
+test_schedule.py-459-        assert job not in schedule.jobs
+test_schedule.py-460-
+test_schedule.py:461:    def test_max_runs_removal_updates_next_run_and_idle_seconds(self):
+test_schedule.py-462-        limited_job = make_mock_job("limited")
+test_schedule.py-463-        remaining_job = make_mock_job("remaining")
+test_schedule.py-464-        with mock_datetime(2020, 12, 9, 21, 46):
+test_schedule.py:465:            every().second.max_runs(1).do(limited_job)
+test_schedule.py-466-            remaining = every().hour.do(remaining_job)
+test_schedule.py-467-
+test_schedule.py-468-            schedule.run_all()
+test_schedule.py-469-
+test_schedule.py-470-            assert schedule.next_run() == remaining.next_run
+test_schedule.py-471-            assert schedule.idle_seconds() == 60 * 60
+test_schedule.py-472-
+test_schedule.py:473:    def test_max_runs_rejects_invalid_values(self):
+test_schedule.py-474-        for value in (1.5, "1", None, 0, -1):
+test_schedule.py-475-            with self.assertRaises(ScheduleValueError):
+test_schedule.py:476:                every().max_runs(value)
+test_schedule.py-477-
+test_schedule.py:478:    def test_max_runs_last_call_wins_and_remains_chainable(self):
+test_schedule.py-479-        mock_job = make_mock_job()
+test_schedule.py:480:        job = every().max_runs(1).max_runs(2).seconds.do(mock_job)
+test_schedule.py-481-
+test_schedule.py-482-        schedule.run_all()
+test_schedule.py-483-        schedule.run_all()
+test_schedule.py-484-
+test_schedule.py-485-        assert mock_job.call_count == 2
+test_schedule.py-486-        assert job.run_count == 2
+test_schedule.py-487-        assert job not in schedule.jobs
+test_schedule.py-488-
+test_schedule.py:489:    def test_max_runs_budgets_are_per_job(self):
+test_schedule.py-490-        first_job = make_mock_job("first")
+test_schedule.py-491-        second_job = make_mock_job("second")
+test_schedule.py:492:        first = every().second.max_runs(1).do(first_job)
+test_schedule.py:493:        second = every().second.max_runs(2).do(second_job)
+test_schedule.py-494-
+test_schedule.py-495-        schedule.run_all()
+test_schedule.py-496-
+test_schedule.py-497-        assert first_job.call_count == 1
+
+exec
+/bin/zsh -lc "sed -n '45,68p;692,724p;380,492p' schedule/__init__.py test_schedule.py" in /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+import random
+import re
+import time
+from typing import Set, List, Optional, Callable, Union
+
+logger = logging.getLogger("schedule")
+
+
+class ScheduleError(Exception):
+    """Base schedule exception"""
+
+    pass
+
+
+class ScheduleValueError(ScheduleError):
+    """Base schedule value error"""
+
+    pass
+
+
+class IntervalError(ScheduleValueError):
+    """An improper interval was used"""
+
+    pass
+
+    @property
+    def weeks(self):
+        self.unit = "weeks"
+        return self
+
+    @property
+    def monday(self):
+        if self.interval != 1:
+            raise IntervalError(
+                "Scheduling .monday() jobs is only allowed for weekly jobs. "
+                "Using .monday() on a job scheduled to run every 2 or more weeks "
+                "is not supported."
+            )
+        self.start_day = "monday"
+        return self.weeks
+
+    @property
+    def tuesday(self):
+        if self.interval != 1:
+            raise IntervalError(
+                "Scheduling .tuesday() jobs is only allowed for weekly jobs. "
+                "Using .tuesday() on a job scheduled to run every 2 or more weeks "
+                "is not supported."
+            )
+        self.start_day = "tuesday"
+        return self.weeks
+
+    @property
+    def wednesday(self):
+        if self.interval != 1:
+            raise IntervalError(
+                "Scheduling .wednesday() jobs is only allowed for weekly jobs. "
+                "Using .wednesday() on a job scheduled to run every 2 or more weeks "
+                "is not supported."
+            )
+        self.start_day = "wednesday"
+        return self.weeks
+
+    @property
+    def thursday(self):
+        if self.interval != 1:
+            raise IntervalError(
+                "Scheduling .thursday() jobs is only allowed for weekly jobs. "
+                "Using .thursday() on a job scheduled to run every 2 or more weeks "
+                "is not supported."
+            )
+        self.start_day = "thursday"
+        return self.weeks
+
+    @property
+    def friday(self):
+        if self.interval != 1:
+            raise IntervalError(
+                "Scheduling .friday() jobs is only allowed for weekly jobs. "
+                "Using .friday() on a job scheduled to run every 2 or more weeks "
+                "is not supported."
+            )
+        self.start_day = "friday"
+        return self.weeks
+
+    @property
+    def saturday(self):
+        if self.interval != 1:
+            raise IntervalError(
+                "Scheduling .saturday() jobs is only allowed for weekly jobs. "
+                "Using .saturday() on a job scheduled to run every 2 or more weeks "
+                "is not supported."
+            )
+        self.start_day = "saturday"
+        return self.weeks
+
+    @property
+    def sunday(self):
+        if self.interval != 1:
+            raise IntervalError(
+                "Scheduling .sunday() jobs is only allowed for weekly jobs. "
+                "Using .sunday() on a job scheduled to run every 2 or more weeks "
+                "is not supported."
+            )
+        self.start_day = "sunday"
+        return self.weeks
+
+    def tag(self, *tags: Hashable):
+        """
+        Tags the job with one or more unique identifiers.
+
+        Tags must be hashable. Duplicate tags are discarded.
+
+        :param tags: A unique list of ``Hashable`` tags.
+        :return: The invoked job instance
+        """
+        if not all(isinstance(tag, Hashable) for tag in tags):
+            raise TypeError("Tags must be hashable")
+        self.tags.update(tags)
+        return self
+
+    def at(self, time_str: str, tz: Optional[str] = None):
+        """
+        Specify a particular time that the job should be run at.
+
+        :param time_str: A string in one of the following formats:
+
+            - For daily jobs -> `HH:MM:SS` or `HH:MM`
+            - For hourly jobs -> `MM:SS` or `:MM`
+            - For minute jobs -> `:SS`
+
+            The format must make sense given how often the job is
+            repeating; for example, a job that repeats every minute
+            should not be given a string in the form `HH:MM:SS`. The
+            difference between `:MM` and `:SS` is inferred from the
+            selected time-unit (e.g. `every().hour.at(':30')` vs.
+            `every().minute.at(':30')`).
+    def run(self):
+        """
+        Run the job and immediately reschedule it.
+        If the job's deadline is reached (configured using .until()), the job is not
+        run and CancelJob is returned immediately. If the next scheduled run exceeds
+        the job's deadline, CancelJob is returned after the execution. In this latter
+        case CancelJob takes priority over any other returned value.
+        If the job's run budget (configured using .max_runs()) is reached by this
+        execution, CancelJob is returned after the execution.
+
+        :return: The return value returned by the `job_func`, or CancelJob if the job's
+                 deadline or run budget is reached.
+
+        """
+        if self._is_overdue(datetime.datetime.now()):
+            logger.debug("Cancelling job %s", self)
+            return CancelJob
+
+        logger.debug("Running job %s", self)
+        ret = self.job_func()
+        self.last_run = datetime.datetime.now()
+        self._schedule_next_run()
+        self.run_count += 1
+
+        if self._is_overdue(self.next_run):
+            logger.debug("Cancelling job %s", self)
+            return CancelJob
+        if self._max_runs is not None and self.run_count >= self._max_runs:
+            logger.debug("Cancelling job %s", self)
+            return CancelJob
+        return ret
+
+    def _schedule_next_run(self) -> None:
+
+exec
+/bin/zsh -lc "sed -n '360,495p' test_schedule.py && git diff -- schedule/__init__.py test_schedule.py" in /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+        self.assertRaises(
+            ScheduleValueError, every().day.until, datetime.timedelta(minutes=-1)
+        )
+        one_hour_ago = datetime.datetime.now() - datetime.timedelta(hours=1)
+        self.assertRaises(ScheduleValueError, every().day.until, one_hour_ago)
+
+        # Unschedule job after next_run passes the deadline
+        schedule.clear()
+        with mock_datetime(2020, 1, 1, 11, 35, 10):
+            mock_job.reset_mock()
+            every(5).seconds.until(datetime.time(11, 35, 20)).do(mock_job)
+            with mock_datetime(2020, 1, 1, 11, 35, 15):
+                schedule.run_pending()
+                assert mock_job.call_count == 1
+                assert len(schedule.jobs) == 1
+            with mock_datetime(2020, 1, 1, 11, 35, 20):
+                schedule.run_all()
+                assert mock_job.call_count == 2
+                assert len(schedule.jobs) == 0
+
+        # Unschedule job because current execution time has passed deadline
+        schedule.clear()
+        with mock_datetime(2020, 1, 1, 11, 35, 10):
+            mock_job.reset_mock()
+            every(5).seconds.until(datetime.time(11, 35, 20)).do(mock_job)
+            with mock_datetime(2020, 1, 1, 11, 35, 50):
+                schedule.run_pending()
+                assert mock_job.call_count == 0
+                assert len(schedule.jobs) == 0
+
+    def test_max_runs_chainability(self):
+        mock_job = make_mock_job()
+
+        job_after_unit = every(5).seconds.max_runs(3).do(mock_job)
+        job_before_unit = every().max_runs(3).seconds.do(mock_job)
+
+        assert job_after_unit._max_runs == 3
+        assert job_before_unit._max_runs == 3
+
+    def test_max_runs_with_run_pending(self):
+        mock_job = make_mock_job()
+        with mock_datetime(2020, 1, 1, 10, 0, 0):
+            job = every().second.max_runs(2).do(mock_job)
+
+        with mock_datetime(2020, 1, 1, 10, 0, 1):
+            schedule.run_pending()
+        with mock_datetime(2020, 1, 1, 10, 0, 2):
+            schedule.run_pending()
+        with mock_datetime(2020, 1, 1, 10, 0, 3):
+            schedule.run_pending()
+
+        assert mock_job.call_count == 2
+        assert job.run_count == 2
+        assert job not in schedule.jobs
+
+    def test_max_runs_with_run_all(self):
+        mock_job = make_mock_job()
+        job = every().second.max_runs(2).do(mock_job)
+
+        schedule.run_all()
+        schedule.run_all()
+        schedule.run_all()
+
+        assert mock_job.call_count == 2
+        assert job.run_count == 2
+        assert job not in schedule.jobs
+
+    def test_max_runs_budget_limit_wins_before_until(self):
+        mock_job = make_mock_job()
+        with mock_datetime(2020, 1, 1, 11, 35, 10):
+            job = (
+                every()
+                .second.max_runs(1)
+                .until(datetime.time(11, 35, 20))
+                .do(mock_job)
+            )
+            schedule.run_all()
+
+        assert mock_job.call_count == 1
+        assert job.run_count == 1
+        assert job not in schedule.jobs
+
+    def test_max_runs_until_limit_wins_before_budget(self):
+        mock_job = make_mock_job()
+        with mock_datetime(2020, 1, 1, 11, 35, 10):
+            job = (
+                every(5)
+                .seconds.max_runs(3)
+                .until(datetime.time(11, 35, 20))
+                .do(mock_job)
+            )
+
+        with mock_datetime(2020, 1, 1, 11, 35, 15):
+            schedule.run_pending()
+        with mock_datetime(2020, 1, 1, 11, 35, 20):
+            schedule.run_pending()
+
+        assert mock_job.call_count == 2
+        assert job.run_count == 2
+        assert job not in schedule.jobs
+
+    def test_max_runs_removal_updates_next_run_and_idle_seconds(self):
+        limited_job = make_mock_job("limited")
+        remaining_job = make_mock_job("remaining")
+        with mock_datetime(2020, 12, 9, 21, 46):
+            every().second.max_runs(1).do(limited_job)
+            remaining = every().hour.do(remaining_job)
+
+            schedule.run_all()
+
+            assert schedule.next_run() == remaining.next_run
+            assert schedule.idle_seconds() == 60 * 60
+
+    def test_max_runs_rejects_invalid_values(self):
+        for value in (1.5, "1", None, 0, -1):
+            with self.assertRaises(ScheduleValueError):
+                every().max_runs(value)
+
+    def test_max_runs_last_call_wins_and_remains_chainable(self):
+        mock_job = make_mock_job()
+        job = every().max_runs(1).max_runs(2).seconds.do(mock_job)
+
+        schedule.run_all()
+        schedule.run_all()
+
+        assert mock_job.call_count == 2
+        assert job.run_count == 2
+        assert job not in schedule.jobs
+
+    def test_max_runs_budgets_are_per_job(self):
+        first_job = make_mock_job("first")
+        second_job = make_mock_job("second")
+        first = every().second.max_runs(1).do(first_job)
+        second = every().second.max_runs(2).do(second_job)
+
+        schedule.run_all()
+
+codex
+The working tree has only untracked harness/config artifacts (`.claude/`, `.devlyn/`, `AGENTS.md`, `CLAUDE.md`); the authorized files are otherwise unchanged. I’ve confirmed the existing post-execution limit check and the missing pre-execution counterpart.
+[codex-monitored] heartbeat: elapsed=30s
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/schedule/__init__.py
+/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/test_schedule.py
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 85037cec0c08f6144ee3d2f18f32ba6dbf178cb9..259d613ec369bcbd0c688bdee2125bc34aa423d8
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -56,7 +56,7 @@
+     pass
+ 
+ 
+-class ScheduleValueError(ScheduleError):
++class ScheduleValueError(ScheduleError, ValueError):
+     """Base schedule value error"""
+ 
+     pass
+@@ -706,6 +706,9 @@
+         if self._is_overdue(datetime.datetime.now()):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
++        if self._max_runs is not None and self.run_count >= self._max_runs:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+ 
+         logger.debug("Running job %s", self)
+         ret = self.job_func()
+diff --git a/test_schedule.py b/test_schedule.py
+index 4c25200c607bc1118a4c4979dfefcfcaa7e71c09..023f811307ad291997cac323128080858b545801
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -424,6 +424,18 @@
+         assert job.run_count == 2
+         assert job not in schedule.jobs
+ 
++    def test_max_runs_lowered_after_run_prevents_extra_execution(self):
++        mock_job = make_mock_job()
++        job = every().second.max_runs(5).do(mock_job)
++
++        job.run()
++        job.max_runs(1)
++        schedule.run_all()
++
++        assert mock_job.call_count == 1
++        assert job.run_count == 1
++        assert job not in schedule.jobs
++
+     def test_max_runs_budget_limit_wins_before_until(self):
+         mock_job = make_mock_job()
+         with mock_datetime(2020, 1, 1, 11, 35, 10):
+@@ -474,6 +486,8 @@
+         for value in (1.5, "1", None, 0, -1):
+             with self.assertRaises(ScheduleValueError):
+                 every().max_runs(value)
++            with self.assertRaises(ValueError):
++                every().max_runs(value)
+ 
+     def test_max_runs_last_call_wins_and_remains_chainable(self):
+         mock_job = make_mock_job()
+
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 85037cec0c08f6144ee3d2f18f32ba6dbf178cb9..259d613ec369bcbd0c688bdee2125bc34aa423d8
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -56,7 +56,7 @@
+     pass
+ 
+ 
+-class ScheduleValueError(ScheduleError):
++class ScheduleValueError(ScheduleError, ValueError):
+     """Base schedule value error"""
+ 
+     pass
+@@ -706,6 +706,9 @@
+         if self._is_overdue(datetime.datetime.now()):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
++        if self._max_runs is not None and self.run_count >= self._max_runs:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+ 
+         logger.debug("Running job %s", self)
+         ret = self.job_func()
+diff --git a/test_schedule.py b/test_schedule.py
+index 4c25200c607bc1118a4c4979dfefcfcaa7e71c09..023f811307ad291997cac323128080858b545801
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -424,6 +424,18 @@
+         assert job.run_count == 2
+         assert job not in schedule.jobs
+ 
++    def test_max_runs_lowered_after_run_prevents_extra_execution(self):
++        mock_job = make_mock_job()
++        job = every().second.max_runs(5).do(mock_job)
++
++        job.run()
++        job.max_runs(1)
++        schedule.run_all()
++
++        assert mock_job.call_count == 1
++        assert job.run_count == 1
++        assert job not in schedule.jobs
++
+     def test_max_runs_budget_limit_wins_before_until(self):
+         mock_job = make_mock_job()
+         with mock_datetime(2020, 1, 1, 11, 35, 10):
+@@ -474,6 +486,8 @@
+         for value in (1.5, "1", None, 0, -1):
+             with self.assertRaises(ScheduleValueError):
+                 every().max_runs(value)
++            with self.assertRaises(ValueError):
++                every().max_runs(value)
+ 
+     def test_max_runs_last_call_wins_and_remains_chainable(self):
+         mock_job = make_mock_job()
+
+exec
+/bin/zsh -lc "/opt/homebrew/bin/python3 -c 'import schedule
+calls = []
+def job_fn():
+    calls.append(None)
+job = schedule.every().second.max_runs(5).do(job_fn)
+job.run()
+job.max_runs(1)
+schedule.run_all()
+assert len(calls) == 1, len(calls)
+assert job.run_count == 1, job.run_count
+assert job not in schedule.jobs
+try:
+    schedule.every().max_runs(0)
+except Exception as exc:
+    assert isinstance(exc, ValueError)
+    assert isinstance(exc, schedule.ScheduleValueError)
+else:
+    raise AssertionError(\"max_runs(0) did not raise\")
+print(\"targeted-repro: PASS\")'" in /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+targeted-repro: PASS
+
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 85037cec0c08f6144ee3d2f18f32ba6dbf178cb9..259d613ec369bcbd0c688bdee2125bc34aa423d8
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -56,7 +56,7 @@
+     pass
+ 
+ 
+-class ScheduleValueError(ScheduleError):
++class ScheduleValueError(ScheduleError, ValueError):
+     """Base schedule value error"""
+ 
+     pass
+@@ -706,6 +706,9 @@
+         if self._is_overdue(datetime.datetime.now()):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
++        if self._max_runs is not None and self.run_count >= self._max_runs:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+ 
+         logger.debug("Running job %s", self)
+         ret = self.job_func()
+diff --git a/test_schedule.py b/test_schedule.py
+index 4c25200c607bc1118a4c4979dfefcfcaa7e71c09..023f811307ad291997cac323128080858b545801
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -424,6 +424,18 @@
+         assert job.run_count == 2
+         assert job not in schedule.jobs
+ 
++    def test_max_runs_lowered_after_run_prevents_extra_execution(self):
++        mock_job = make_mock_job()
++        job = every().second.max_runs(5).do(mock_job)
++
++        job.run()
++        job.max_runs(1)
++        schedule.run_all()
++
++        assert mock_job.call_count == 1
++        assert job.run_count == 1
++        assert job not in schedule.jobs
++
+     def test_max_runs_budget_limit_wins_before_until(self):
+         mock_job = make_mock_job()
+         with mock_datetime(2020, 1, 1, 11, 35, 10):
+@@ -474,6 +486,8 @@
+         for value in (1.5, "1", None, 0, -1):
+             with self.assertRaises(ScheduleValueError):
+                 every().max_runs(value)
++            with self.assertRaises(ValueError):
++                every().max_runs(value)
+ 
+     def test_max_runs_last_call_wins_and_remains_chainable(self):
+         mock_job = make_mock_job()
+
+codex
+The direct reproduction now passes: no second callback occurred, the job was removed by `run_all()`, and invalid input raised an exception matching both required types. I’m running the requested complete suite now.
+exec
+/bin/zsh -lc '/opt/homebrew/bin/python3 -m pytest test_schedule.py -q' in /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 85037cec0c08f6144ee3d2f18f32ba6dbf178cb9..259d613ec369bcbd0c688bdee2125bc34aa423d8
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -56,7 +56,7 @@
+     pass
+ 
+ 
+-class ScheduleValueError(ScheduleError):
++class ScheduleValueError(ScheduleError, ValueError):
+     """Base schedule value error"""
+ 
+     pass
+@@ -706,6 +706,9 @@
+         if self._is_overdue(datetime.datetime.now()):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
++        if self._max_runs is not None and self.run_count >= self._max_runs:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+ 
+         logger.debug("Running job %s", self)
+         ret = self.job_func()
+diff --git a/test_schedule.py b/test_schedule.py
+index 4c25200c607bc1118a4c4979dfefcfcaa7e71c09..023f811307ad291997cac323128080858b545801
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -424,6 +424,18 @@
+         assert job.run_count == 2
+         assert job not in schedule.jobs
+ 
++    def test_max_runs_lowered_after_run_prevents_extra_execution(self):
++        mock_job = make_mock_job()
++        job = every().second.max_runs(5).do(mock_job)
++
++        job.run()
++        job.max_runs(1)
++        schedule.run_all()
++
++        assert mock_job.call_count == 1
++        assert job.run_count == 1
++        assert job not in schedule.jobs
++
+     def test_max_runs_budget_limit_wins_before_until(self):
+         mock_job = make_mock_job()
+         with mock_datetime(2020, 1, 1, 11, 35, 10):
+@@ -474,6 +486,8 @@
+         for value in (1.5, "1", None, 0, -1):
+             with self.assertRaises(ScheduleValueError):
+                 every().max_runs(value)
++            with self.assertRaises(ValueError):
++                every().max_runs(value)
+ 
+     def test_max_runs_last_call_wins_and_remains_chainable(self):
+         mock_job = make_mock_job()
+
+ succeeded in 434ms:
+ss.ssss...........................sss.ss...................sssssssssssss [ 79%]
+sssssssssssssssss..                                                      [100%]
+50 passed, 41 skipped in 0.22s
+
+[codex-monitored] heartbeat: elapsed=60s
+exec
+/bin/zsh -lc 'git diff --check && git diff -- schedule/__init__.py test_schedule.py && git status --short' in /Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 85037ce..259d613 100644
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -56,7 +56,7 @@ class ScheduleError(Exception):
+     pass
+ 
+ 
+-class ScheduleValueError(ScheduleError):
++class ScheduleValueError(ScheduleError, ValueError):
+     """Base schedule value error"""
+ 
+     pass
+@@ -706,6 +706,9 @@ class Job:
+         if self._is_overdue(datetime.datetime.now()):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
++        if self._max_runs is not None and self.run_count >= self._max_runs:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+ 
+         logger.debug("Running job %s", self)
+         ret = self.job_func()
+diff --git a/test_schedule.py b/test_schedule.py
+index 4c25200..023f811 100644
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -424,6 +424,18 @@ class SchedulerTests(TestCase):
+         assert job.run_count == 2
+         assert job not in schedule.jobs
+ 
++    def test_max_runs_lowered_after_run_prevents_extra_execution(self):
++        mock_job = make_mock_job()
++        job = every().second.max_runs(5).do(mock_job)
++
++        job.run()
++        job.max_runs(1)
++        schedule.run_all()
++
++        assert mock_job.call_count == 1
++        assert job.run_count == 1
++        assert job not in schedule.jobs
++
+     def test_max_runs_budget_limit_wins_before_until(self):
+         mock_job = make_mock_job()
+         with mock_datetime(2020, 1, 1, 11, 35, 10):
+@@ -474,6 +486,8 @@ class SchedulerTests(TestCase):
+         for value in (1.5, "1", None, 0, -1):
+             with self.assertRaises(ScheduleValueError):
+                 every().max_runs(value)
++            with self.assertRaises(ValueError):
++                every().max_runs(value)
+ 
+     def test_max_runs_last_call_wins_and_remains_chainable(self):
+         mock_job = make_mock_job()
+ M schedule/__init__.py
+ M test_schedule.py
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 85037cec0c08f6144ee3d2f18f32ba6dbf178cb9..259d613ec369bcbd0c688bdee2125bc34aa423d8
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -56,7 +56,7 @@
+     pass
+ 
+ 
+-class ScheduleValueError(ScheduleError):
++class ScheduleValueError(ScheduleError, ValueError):
+     """Base schedule value error"""
+ 
+     pass
+@@ -706,6 +706,9 @@
+         if self._is_overdue(datetime.datetime.now()):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
++        if self._max_runs is not None and self.run_count >= self._max_runs:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+ 
+         logger.debug("Running job %s", self)
+         ret = self.job_func()
+diff --git a/test_schedule.py b/test_schedule.py
+index 4c25200c607bc1118a4c4979dfefcfcaa7e71c09..023f811307ad291997cac323128080858b545801
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -424,6 +424,18 @@
+         assert job.run_count == 2
+         assert job not in schedule.jobs
+ 
++    def test_max_runs_lowered_after_run_prevents_extra_execution(self):
++        mock_job = make_mock_job()
++        job = every().second.max_runs(5).do(mock_job)
++
++        job.run()
++        job.max_runs(1)
++        schedule.run_all()
++
++        assert mock_job.call_count == 1
++        assert job.run_count == 1
++        assert job not in schedule.jobs
++
+     def test_max_runs_budget_limit_wins_before_until(self):
+         mock_job = make_mock_job()
+         with mock_datetime(2020, 1, 1, 11, 35, 10):
+@@ -474,6 +486,8 @@
+         for value in (1.5, "1", None, 0, -1):
+             with self.assertRaises(ScheduleValueError):
+                 every().max_runs(value)
++            with self.assertRaises(ValueError):
++                every().max_runs(value)
+ 
+     def test_max_runs_last_call_wins_and_remains_chainable(self):
+         mock_job = make_mock_job()
+
+codex
+PASS
+
+- Added pre-execution max-run cancellation guard in [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/schedule/__init__.py:709).
+- Made `ScheduleValueError` also inherit built-in `ValueError` in [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/schedule/__init__.py:59).
+- Added regression coverage for lowered budgets and `ValueError` behavior in [test_schedule.py](/Users/aipalm/.local/share/nx01/w/r516ac04a9285/fa265b8ab039e/A1/repo/test_schedule.py:427).
+
+Verification:
+
+`/opt/homebrew/bin/python3 -m pytest test_schedule.py -q` → `50 passed, 41 skipped`
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 85037cec0c08f6144ee3d2f18f32ba6dbf178cb9..259d613ec369bcbd0c688bdee2125bc34aa423d8
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -56,7 +56,7 @@
+     pass
+ 
+ 
+-class ScheduleValueError(ScheduleError):
++class ScheduleValueError(ScheduleError, ValueError):
+     """Base schedule value error"""
+ 
+     pass
+@@ -706,6 +706,9 @@
+         if self._is_overdue(datetime.datetime.now()):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
++        if self._max_runs is not None and self.run_count >= self._max_runs:
++            logger.debug("Cancelling job %s", self)
++            return CancelJob
+ 
+         logger.debug("Running job %s", self)
+         ret = self.job_func()
+diff --git a/test_schedule.py b/test_schedule.py
+index 4c25200c607bc1118a4c4979dfefcfcaa7e71c09..023f811307ad291997cac323128080858b545801
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -424,6 +424,18 @@
+         assert job.run_count == 2
+         assert job not in schedule.jobs
+ 
++    def test_max_runs_lowered_after_run_prevents_extra_execution(self):
++        mock_job = make_mock_job()
++        job = every().second.max_runs(5).do(mock_job)
++
++        job.run()
++        job.max_runs(1)
++        schedule.run_all()
++
++        assert mock_job.call_count == 1
++        assert job.run_count == 1
++        assert job not in schedule.jobs
++
+     def test_max_runs_budget_limit_wins_before_until(self):
+         mock_job = make_mock_job()
+         with mock_datetime(2020, 1, 1, 11, 35, 10):
+@@ -474,6 +486,8 @@
+         for value in (1.5, "1", None, 0, -1):
+             with self.assertRaises(ScheduleValueError):
+                 every().max_runs(value)
++            with self.assertRaises(ValueError):
++                every().max_runs(value)
+ 
+     def test_max_runs_last_call_wins_and_remains_chainable(self):
+         mock_job = make_mock_job()
+
+tokens used
+35,073
+[codex-monitored] codex exited: code=0 elapsed=70s

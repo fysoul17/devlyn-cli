@@ -1,0 +1,66 @@
+# Codex (OpenAI) adapter
+
+## Identity
+You are OpenAI's Codex model.
+
+## Validation pattern
+Validation is concrete commands, not self-belief.
+
+---
+
+# VERIFY fix-loop respawn of IMPLEMENT (round 2, triggered_by=verify)
+
+VERIFY's JUDGE found one HIGH finding in `schedule/__init__.py`. Fix it precisely — do not expand scope beyond this exact gap.
+
+## Finding
+
+`rule_id: spec.run-budget-counts-actual-invocations`, severity HIGH, `schedule/__init__.py:711`:
+
+> The budget is decremented only after job_func returns. If job_func raises, `_run_job` propagates the exception before cancellation, so `max_runs(1)` remains scheduled and permits an (n+1)th invocation. Reproduced with two caught `run_all()` calls: calls=2, remaining=1, scheduled=True.
+
+Quoted code (current):
+```python
+        logger.debug("Running job %s", self)
+        ret = self.job_func()
+        self.last_run = datetime.datetime.now()
+        self._schedule_next_run()
+
+        if self._remaining_runs is not None:
+            self._remaining_runs -= 1
+            if self._remaining_runs == 0:
+                logger.debug("Cancelling job %s", self)
+                return CancelJob
+```
+
+## Root cause and required fix
+
+The spec's Requirement says "the budget counts actual executions of the job function." The literal reading is: each time `job_func()` is invoked/attempted, that counts as one execution against the budget — whether or not that call raises. The current code only decrements after `job_func()` returns without raising, so a raising call is never charged against the budget.
+
+**Fix**: move the budget decrement to occur immediately before `job_func()` is called (so an attempt is always charged, even if it raises), while keeping the CancelJob decision *after* the call returns (so "the nth execution itself still runs normally" — job_func must never be skipped on the exhausting call). Do NOT add any `try`/`except` around `job_func()` — that is a different, out-of-scope concern (the library has no existing exception-handling contract for `job_func()`, and adding one is not part of this task). Do NOT touch the pre-existing behavior where `last_run`/`_schedule_next_run()` are skipped when `job_func()` raises — that is existing, unrelated library behavior.
+
+Apply this exact shape (only the decrement line moves; the cancel check condition changes from `== 0` to `<= 0` since the value could now go negative across retried raising calls, and everything else is unchanged):
+
+```python
+        logger.debug("Running job %s", self)
+        if self._remaining_runs is not None:
+            self._remaining_runs -= 1
+        ret = self.job_func()
+        self.last_run = datetime.datetime.now()
+        self._schedule_next_run()
+
+        if self._remaining_runs is not None and self._remaining_runs <= 0:
+            logger.debug("Cancelling job %s", self)
+            return CancelJob
+```
+
+## Test to add
+
+Add one regression test to `test_schedule.py` (near the other `max_runs` tests) confirming the budget is consumed even when `job_func` raises on the exhausting call — e.g. a job with `max_runs(1)` whose mock job raises `RuntimeError` on `.run()`; assert `job._remaining_runs == 0` after the raising call (caught by the test), proving the budget was charged for the attempt. Do not test or assert anything about rescheduling/next_run behavior on a raising job_func — that is out of scope and pre-existing.
+
+## Verify before reporting done
+
+1. `python3 -m unittest test_schedule -v` — must be 100% green (0 failures).
+2. `python3 "/Users/aipalm/.local/share/nx01/w/r65bd872484e8/fa265b8ab039e/A1/repo/.claude/skills/_shared/spec-verify-check.py" --include-risk-probes` — must exit 0.
+3. Confirm your diff since HEAD touches only `schedule/__init__.py` and `test_schedule.py` (no other files).
+
+Report `PASS` in your final reply with file:line evidence once both checks are green. Report `BLOCKED` if you believe this fix is wrong or cannot be made this way.

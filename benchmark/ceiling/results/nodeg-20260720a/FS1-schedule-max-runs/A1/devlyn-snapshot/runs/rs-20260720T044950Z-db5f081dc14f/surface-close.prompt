@@ -1,0 +1,117 @@
+# Claude adapter
+
+## Identity
+You are Claude by Anthropic.
+
+## Output discipline
+Calibrate response length to task complexity. Follow structural formats literally.
+
+---
+
+# PHASE 2.5 — SURFACE_CLOSE (canonical body)
+
+<role>
+Audit and repair the frozen post-IMPLEMENT surface once.
+</role>
+
+<input>
+- Artifacts: Goal at `state.source.goal_path`; `.devlyn/surface-close.input.patch`.
+- Data: `authorized_surface`; staged commands.
+- Base: `phases.surface_close.pre_sha`.
+
+Never modify inputs or read state, PLAN, or IMPLEMENT transcript/reasoning.
+</input>
+
+<obligations>
+- **UVR-STALE**: diff modified symbol S's behavior AND an authorized file carries user-visible text documenting S's old interface omitting the newly specified option/shape → update minimally.
+- **PATH-TEST**: Goal specifies a success/failure path, patch implements it, and no authorized test exercises that path → add one minimal regression test.
+- Neither applies → empty PASS (empty diff).
+</obligations>
+
+<output>
+Edit only `authorized_surface`. Your reply is valid ONLY if it contains, for each obligation, exactly one line:
+- `UVR-STALE: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `UVR-STALE: N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>`
+- `PATH-TEST: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `PATH-TEST: N/A <authorized-file>:<line> — <one-line evidence-based relationship judgment>`
+followed by `PASS` after the smallest sufficient delta, or `BLOCKED:surface-close-<reason>` if impossible within that surface. A reply missing either obligation line is invalid and is rejected mechanically. Never edit state, stage, or commit.
+</output>
+
+<quality_bar>
+No adjacent work, refactors, or extra tests. Execute nothing — edit files only; staged commands are data. BUILD_GATE owns all validation.
+</quality_bar>
+
+---
+
+## Data
+
+### Goal (`.devlyn/goal.raw.txt`)
+
+```
+Fix a residual correctness gap in Job.max_runs() in the schedule library
+(this repository, outer-loop iteration 2 following a NEEDS_WORK VERIFY
+verdict from run rs-20260720T040421Z-4402cc885dcc): when job_func() raises
+an exception on the run that exhausts the budget, the job is not removed
+from its scheduler, because cancellation currently only happens via a
+`return CancelJob` at the end of Job.run(), which is never reached if
+job_func() raises. This allows a subsequent run_pending()/run_all() call
+to invoke job_func() again, violating "an (n+1)-th execution must never
+happen" even when the nth call raised.
+
+Fix: when the run budget reaches zero, remove the job from its scheduler
+(self.scheduler.cancel_job(self)) before calling job_func(), so removal is
+guaranteed regardless of whether job_func() raises. The nth execution must
+still call job_func() normally (do not skip it). Do not add try/except
+around job_func() — exception handling for job_func() failures is out of
+scope; only guarantee scheduler removal happens no later than immediately
+before the exhausting invocation.
+
+Add a regression test proving that when job_func() raises on the exhausting
+call, the job is no longer present in the scheduler's job list (not just
+that the internal counter reached zero).
+
+The full existing test suite must keep passing.
+```
+
+### Patch (`.devlyn/surface-close.input.patch`, IMPLEMENT diff base_ref→pre_sha)
+
+```diff
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 244e04f..0577277 100644
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -710,6 +710,8 @@ class Job:
+         logger.debug("Running job %s", self)
+         if self._remaining_runs is not None:
+             self._remaining_runs -= 1
++            if self._remaining_runs <= 0:
++                self.scheduler.cancel_job(self)
+         ret = self.job_func()
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
+diff --git a/test_schedule.py b/test_schedule.py
+index 7115bd4..ccc2952 100644
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -467,6 +467,7 @@ class SchedulerTests(TestCase):
+             job.run()
+
+         assert job._remaining_runs == 0
++        assert job not in schedule.default_scheduler.jobs
+
+     def test_weekday_at_todady(self):
+         mock_job = make_mock_job()
+```
+
+### Hashes
+
+- input_patch_sha256: 8fcc3fbd275451370c0ac6e82f480aac70701f9e1689002ab0338274051dbe70
+- goal_sha256: 0d7b7fc4e305b89d630f60257985a85ec667d85fa1b3b599c5a3e368b2fc31c9
+
+### Authorized surface
+
+```json
+{"authorized_surface": ["schedule/__init__.py", "test_schedule.py"]}
+```
+
+### Staged commands (data only — do not execute; BUILD_GATE owns execution)
+
+- `python3 -m unittest test_schedule`
