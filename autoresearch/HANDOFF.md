@@ -59,14 +59,19 @@ identical across stacks — worker-format variance, not regression).
 C2 FAILED-INCOMPLETE fired live in-cohort (F25, first time).
 
 **Next work (in order)**:
-1. **iter-0076 REGISTERED-FROZEN (0076.1, 2026-07-21) — Stage A build**
-   (Codex sol, workspace-write): M-RE (N/A `:<line>` optional) + M0
-   narrow continue-after-clean-rollback (skip-carrier +
-   complete-after-spawn SPW writer + transcript write-audit) + M2v2
-   (invocation-owned run-set quantification). M1 repair-re-prompt NOT
-   built (FS-0076-A gate); frozen file is the build contract. Then
-   Stage A gates (real-receipt self-tests + sonnet probe ≥9/10 +
-   zero false-N/A) → Stage B 7-row cohort.
+1. **iter-0076 Stage B cohort `nodeg-20260721a` RUNNING (launched
+   2026-07-21 ~02:30)** — worktree `~/.local/share/nx01/w/nodeg-20260721a`
+   @ afc7433, run-owned pins `~/.local/share/nx01/pins/nodeg-20260721a/`
+   (claude 2.1.215 + codex 0.144.5, sha256.txt receipt), launch log
+   `/tmp/nodeg-20260721a.launch.log`. On completion: adjudicate vs
+   P-0076-A (complete ≥5/7, roadmap) / P-0076-B (zero K1 events,
+   decisive) / P-0076-C (stability) with the MECHANICAL incomplete
+   partition {K1/K2a/K2b/other}; FS-0076-B fires → C1 wiring next.
+   Stage A CLOSED 0076.3 (build 22d22ff; FS-0076-A fired then v2
+   differential re-spec CONFIRMED by both seats — historical firing
+   stands in 0076.2; L-format-valid-false-N/A = candidate own
+   registration, 24-draw receipts in
+   benchmark/ceiling/probes/sc-format-0076/).
 2. **Wall lever iter** (AFTER 0076 per FS-0075-B): target startup +
    inter-phase orchestrator gaps (92-96% of residual on clean rows).
 3. **C1 product wiring registration** (separate claim, own round) —
