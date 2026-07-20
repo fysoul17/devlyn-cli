@@ -39,6 +39,7 @@ done
 printf '%s' "$prompt" >> "$HOME/fake-claude-prompts.txt"
 env | sort > "$HOME/fake-claude-env.txt"
 command -v claude > "$HOME/nested-claude-path.txt"
+command -v codex > "$HOME/nested-codex-path.txt"
 stat -f '%Lp' "$CLAUDE_CONFIG_DIR/.credentials.json" > "$HOME/credentials-mode.txt"
 if [ "$arm_mode" = 1 ] && [ -f bin/cli.js ] && [ -f tests/cli.test.js ]; then
   printf '\n// --format yaml\nconst drawReceipt = { status: 1 };\n' >> tests/cli.test.js
@@ -47,8 +48,24 @@ if [ "$arm_mode" = 1 ] && [ -f bin/cli.js ] && [ -f tests/cli.test.js ]; then
   pre_sha="$(git rev-parse HEAD)"
   mkdir -p .devlyn
   printf 'post-implement patch\n' > .devlyn/surface-close.input.patch
-  printf '{"phases":{"surface_close":{"pre_sha":"%s"}}}\n' "$pre_sha" \
-    > .devlyn/pipeline.state.json
+  printf '<!-- devlyn:verification -->\n```json\n{"verification_commands":[{"cmd":"node --test tests/","exit_code":0}]}\n```\n' \
+    > .devlyn/criteria.generated.md
+  python3 - "$pre_sha" <<'PY'
+import datetime as dt
+import json
+import pathlib
+import sys
+
+now = dt.datetime.now(dt.timezone.utc)
+stamp = now.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+pathlib.Path(".devlyn/pipeline.state.json").write_text(json.dumps({
+    "started_at": stamp,
+    "phases": {"surface_close": {
+        "pre_sha": sys.argv[1], "started_at": stamp, "completed_at": None,
+        "duration_ms": None, "verdict": None,
+    }},
+}) + "\n")
+PY
   sleep 30
   exit 9
 fi
@@ -62,6 +79,25 @@ if [ "$arm_mode" = 1 ]; then
   mkdir -p .claude/skills/fake .devlyn
   printf 'harness mutation\n' > .claude/skills/fake/extra.txt
   printf 'state\n' > .devlyn/state.json
+  if [ -d .git ]; then python3 - <<'PY'
+import datetime as dt
+import json
+import pathlib
+
+completed = dt.datetime.now(dt.timezone.utc)
+started = completed - dt.timedelta(milliseconds=10)
+stamp = lambda value: value.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+path = pathlib.Path(".devlyn/runs/fake/pipeline.state.json")
+path.parent.mkdir(parents=True)
+path.write_text(json.dumps({
+    "started_at": stamp(started),
+    "phases": {"plan": {
+        "started_at": stamp(started), "completed_at": stamp(completed),
+        "duration_ms": 10, "verdict": "PASS",
+    }},
+}) + "\n")
+PY
+  fi
   if [[ "$prompt" == *emit-wrong-model* ]]; then
     echo '{"result":"fake claude done","modelUsage":{"claude-opus-fake":{}}}'
   else
@@ -135,9 +171,17 @@ make_repo() {
 
 RUN_ID="selftest-$$"
 RESULT_RUNS+=("$RUN_ID")
+RUN_OWNED_CODEX_DIR="$TMP_DIR/run-owned-codex/$RUN_ID"
+mkdir -p "$RUN_OWNED_CODEX_DIR"
+RUN_OWNED_CODEX_DIR="$(cd "$RUN_OWNED_CODEX_DIR" && pwd -P)"
+cp "$FAKEBIN/codex" "$RUN_OWNED_CODEX_DIR/codex"
+RUN_OWNED_CODEX_BIN="$RUN_OWNED_CODEX_DIR/codex"
 PROMPTS="$TMP_DIR/prompts"
 mkdir -p "$PROMPTS"
 export PATH="$FAKEBIN:$PATH"
+case ":$PATH:" in
+  *":$RUN_OWNED_CODEX_DIR:"*) echo "run-owned Codex unexpectedly present on exported PATH" >&2; exit 1;;
+esac
 export FAKE_CODEX_PROMPT_DIR="$PROMPTS"
 TEST_EXTERNAL_ROOT="$TMP_DIR/nx01"
 TEST_AUTH="$TMP_DIR/auth.json"
@@ -149,7 +193,7 @@ chmod 0600 "$TEST_CLAUDE_CREDENTIALS"
 
 WORK_A="$TEST_EXTERNAL_ROOT/w/rt01/fx01/A1/repo"
 make_repo "$WORK_A"
-CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TEST_CLAUDE_CREDENTIALS" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" CEILING_TEST_WORKTREE="$WORK_A" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
+CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TEST_CLAUDE_CREDENTIALS" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$RUN_OWNED_CODEX_BIN" CEILING_TEST_WORKTREE="$WORK_A" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
   --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm A --attempt 1 --timeout-seconds 30 >/tmp/ceiling-arm-a.log
 test -d "$WORK_A/.claude/skills"
 test "$(cat "$WORK_A/.devlyn/engines.json")" = '{"executor":"codex"}'
@@ -157,14 +201,19 @@ grep -q 'changed by A' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/p
 ! grep -q 'CLAUDE.md' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/patch.diff"
 ! grep -q '.claude' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/patch.diff"
 ! grep -q '.devlyn' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/patch.diff"
-python3 - "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/isolation.json" "$TEST_CLAUDE_BIN" <<'PY'
+python3 - "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/isolation.json" "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/timing.json" "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/attribution.json" "$TEST_CLAUDE_BIN" "$RUN_OWNED_CODEX_BIN" <<'PY'
+import datetime as dt
+import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
 data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+timing = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+attribution = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
 direct = data["direct_claude"]
-expected = Path(sys.argv[2]).parent.resolve() / Path(sys.argv[2]).name
+expected = Path(sys.argv[4]).parent.resolve() / Path(sys.argv[4]).name
 if direct["path"] != str(expected) or direct["superset_wrapper"]:
     raise SystemExit(direct)
 if not data["credentials_seeded"] or data["auth_mechanism"] != "test-file":
@@ -187,8 +236,25 @@ if command_v.get("path") != str(shim) or command_v.get("sha256") != direct["sha2
 path_parts = data["environment"]["keys"]
 if "CLAUDE_CONFIG_DIR" not in path_parts or not data["forbidden_transcript_scan"]["passed"]:
     raise SystemExit(data)
+if timing.get("schema_version") != 2:
+    raise SystemExit(timing)
+stamp_pattern = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$")
+if not all(stamp_pattern.fullmatch(timing.get(field, "")) for field in ("invoke_started_at", "invoke_completed_at")):
+    raise SystemExit(timing)
+started = dt.datetime.fromisoformat(timing["invoke_started_at"].replace("Z", "+00:00"))
+completed = dt.datetime.fromisoformat(timing["invoke_completed_at"].replace("Z", "+00:00"))
+if started.tzinfo is None or completed < started:
+    raise SystemExit(timing)
+if attribution.get("decomposition_status") != "complete" or abs(attribution.get("conservation_residue_ms", 1001)) > 1000:
+    raise SystemExit(attribution)
+codex = data["direct_codex"]
+codex_path = Path(sys.argv[5]).resolve()
+if codex["path"] != str(codex_path) or codex["sha256"] != hashlib.sha256(codex_path.read_bytes()).hexdigest():
+    raise SystemExit(codex)
 PY
-test "$(cat "$TEST_EXTERNAL_ROOT/claude-homes/r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)/f$(printf '%s' FS1-schedule-max-runs | shasum -a 256 | cut -c1-12)/A1/nested-claude-path.txt")" = "$TEST_EXTERNAL_ROOT/claude-homes/r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)/f$(printf '%s' FS1-schedule-max-runs | shasum -a 256 | cut -c1-12)/A1/b/claude"
+EXPECTED_NESTED_CLAUDE="$(python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); print(p.parent.resolve() / p.name)' "$TEST_EXTERNAL_ROOT/claude-homes/r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)/f$(printf '%s' FS1-schedule-max-runs | shasum -a 256 | cut -c1-12)/A1/b/claude")"
+test "$(cat "$TEST_EXTERNAL_ROOT/claude-homes/r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)/f$(printf '%s' FS1-schedule-max-runs | shasum -a 256 | cut -c1-12)/A1/nested-claude-path.txt")" = "$EXPECTED_NESTED_CLAUDE"
+test "$(cat "$TEST_EXTERNAL_ROOT/claude-homes/r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)/f$(printf '%s' FS1-schedule-max-runs | shasum -a 256 | cut -c1-12)/A1/nested-codex-path.txt")" = "$RUN_OWNED_CODEX_BIN"
 test "$(cat "$TEST_EXTERNAL_ROOT/claude-homes/r$(printf '%s' "$RUN_ID" | shasum -a 256 | cut -c1-12)/f$(printf '%s' FS1-schedule-max-runs | shasum -a 256 | cut -c1-12)/A1/credentials-mode.txt")" = 600
 
 DRAW_RESULT="$TEST_EXTERNAL_ROOT/x/rtdraw/fxdraw/A1"
@@ -322,7 +388,7 @@ test "$(cat "$WORK_B/.nx-log")" = 'Project Maintainer <maintainer@example.com>|2
 test ! -L "$TEST_EXTERNAL_ROOT/d/rt01/fx01/B1/auth.json"
 test "$(stat -f '%Lp' "$TEST_EXTERNAL_ROOT/d/rt01/fx01/B1/auth.json")" = 600
 python3 - "$RESULT_B/isolation.json" "$FAKEBIN/codex" <<'PY'
-import json, sys
+import hashlib, json, sys
 from pathlib import Path
 data = json.loads(Path(sys.argv[1]).read_text())
 expected = sorted(["PATH","HOME","CODEX_HOME","TERM","LANG","LC_ALL","TZ","TMPDIR","GIT_CONFIG_NOSYSTEM","GIT_CONFIG_GLOBAL","NPM_CONFIG_USERCONFIG","NPM_CONFIG_CACHE"])
@@ -331,6 +397,8 @@ if data["environment"]["keys"] != expected or not data["environment"]["forbidden
 if not data["opaque_paths"]["passed"] or not data["shell_startup_canary"]["passed"]:
     raise SystemExit(data)
 if data["direct_codex"]["path"] != str(Path(sys.argv[2]).resolve()) or data["direct_codex"]["superset_wrapper"]:
+    raise SystemExit(data["direct_codex"])
+if data["direct_codex"]["sha256"] != hashlib.sha256(Path(sys.argv[2]).read_bytes()).hexdigest():
     raise SystemExit(data["direct_codex"])
 if data["auth"]["is_symlink"] or data["auth"]["mode"] != "0600":
     raise SystemExit(data["auth"])

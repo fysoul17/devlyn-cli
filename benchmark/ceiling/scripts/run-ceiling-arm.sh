@@ -726,6 +726,7 @@ case "$ARM" in
   C) PROMPT="$(copycat_prompt)" ;;
 esac
 
+INVOKE_STARTED_AT="$(python3 -c 'import datetime as d; print(d.datetime.now(d.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z"))')"
 START_SECONDS="$(date +%s)"
 if run_with_timeout "$WORKTREE" "$RESULT_DIR/transcript.txt" "$PROMPT"; then
   INVOKE_EXIT=0
@@ -733,16 +734,18 @@ else
   INVOKE_EXIT=$?
 fi
 END_SECONDS="$(date +%s)"
+INVOKE_COMPLETED_AT="$(python3 -c 'import datetime as d; print(d.datetime.now(d.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z"))')"
 ELAPSED_SECONDS=$((END_SECONDS - START_SECONDS))
 
 write_patch "$WORKTREE" "$RESULT_DIR/patch.diff"
 
-python3 - "$RESULT_DIR/timing.json" "$TASK" "$ARM" "$ATTEMPT" "$ELAPSED_SECONDS" "$INVOKE_EXIT" "$RUN_TIMED_OUT" "$RUN_DRAW_NON_DIAGNOSTIC" "$WORKTREE" <<'PY'
+python3 - "$RESULT_DIR/timing.json" "$TASK" "$ARM" "$ATTEMPT" "$ELAPSED_SECONDS" "$INVOKE_EXIT" "$RUN_TIMED_OUT" "$RUN_DRAW_NON_DIAGNOSTIC" "$WORKTREE" "$INVOKE_STARTED_AT" "$INVOKE_COMPLETED_AT" <<'PY'
 import json
 import sys
 from pathlib import Path
-out, task, arm, attempt, elapsed, invoke_exit, timed_out, draw_non_diagnostic, worktree = sys.argv[1:]
+out, task, arm, attempt, elapsed, invoke_exit, timed_out, draw_non_diagnostic, worktree, invoke_started_at, invoke_completed_at = sys.argv[1:]
 Path(out).write_text(json.dumps({
+    "schema_version": 2,
     "task": task,
     "arm": arm,
     "attempt": int(attempt),
@@ -751,6 +754,8 @@ Path(out).write_text(json.dumps({
     "timed_out": timed_out == "1",
     "draw_non_diagnostic": draw_non_diagnostic == "1",
     "worktree": worktree,
+    "invoke_started_at": invoke_started_at,
+    "invoke_completed_at": invoke_completed_at,
 }, indent=2) + "\n", encoding="utf-8")
 PY
 

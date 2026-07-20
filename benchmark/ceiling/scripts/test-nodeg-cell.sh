@@ -488,6 +488,90 @@ if python3 "$SCRIPT_DIR/nodeg-cell.py" judge \
 fi
 grep -q 'deviation provided but runner SHA check passes' "$TMP_DIR/unneeded.stderr"
 
+# C2 exit 79 is an evaluated attempt, not a driver halt. Exercise the real
+# driver with synthetic subprocesses so no model or live cohort can launch.
+EXIT79_ROOT="$TMP_DIR/exit79"
+EXIT79_SCRIPTS="$EXIT79_ROOT/benchmark/ceiling/scripts"
+EXIT79_CEILING="$EXIT79_ROOT/benchmark/ceiling"
+EXIT79_EXTERNAL="$TMP_DIR/exit79-external"
+EXIT79_LOG="$TMP_DIR/exit79.log"
+mkdir -p "$EXIT79_SCRIPTS" "$EXIT79_CEILING/results"
+cp "$SCRIPT_DIR/run-nodeg-cell.sh" "$EXIT79_SCRIPTS/run-nodeg-cell.sh"
+cat > "$EXIT79_SCRIPTS/nodeg-cell.py" <<'PY'
+#!/usr/bin/env python3
+import os
+import pathlib
+import sys
+
+command = sys.argv[1]
+args = sys.argv[2:]
+def value(flag):
+    return args[args.index(flag) + 1]
+
+log = pathlib.Path(os.environ["EXIT79_LOG"])
+if command == "preflight":
+    print("DR-byte-preservation-f7-out-of-scope-trap")
+elif command == "manifest":
+    run_id = value("--run-id")
+    ceiling = pathlib.Path(value("--ceiling-root"))
+    (ceiling / "results" / run_id).mkdir(parents=True, exist_ok=True)
+    (ceiling / "results" / run_id / "replay-binding-manifest.json").write_text("{}\n")
+    with log.open("a") as handle:
+        handle.write("manifest\n")
+elif command in {"judge", "verdict"}:
+    with log.open("a") as handle:
+        handle.write(command + "\n")
+else:
+    raise SystemExit(f"unexpected command: {command}")
+PY
+cat > "$EXIT79_SCRIPTS/run-ceiling-arm.sh" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+result_dir=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --result-dir) result_dir="$2"; shift 2;;
+    *) shift;;
+  esac
+done
+mkdir -p "$result_dir"
+printf '{"invoke_exit":0,"terminal_outcome":"FAILED-INCOMPLETE"}\n' > "$result_dir/timing.json"
+printf 'patch\n' > "$result_dir/patch.diff"
+printf 'arm79\n' >> "$EXIT79_LOG"
+exit 79
+SH
+cat > "$EXIT79_SCRIPTS/ceiling-eval.sh" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+run_id=""
+task=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --run-id) run_id="$2"; shift 2;;
+    --task) task="$2"; shift 2;;
+    *) shift;;
+  esac
+done
+printf '{"resolved":false}\n' > "$NODEG_CEILING_ROOT/results/$run_id/$task/A1/objective.json"
+printf 'eval\n' >> "$EXIT79_LOG"
+SH
+chmod +x "$EXIT79_SCRIPTS/run-ceiling-arm.sh" "$EXIT79_SCRIPTS/ceiling-eval.sh"
+
+EXIT79_LOG="$EXIT79_LOG" NODEG_SELFTEST=1 NODEG_REPO_ROOT="$EXIT79_ROOT" \
+NODEG_CEILING_ROOT="$EXIT79_CEILING" CEILING_EXTERNAL_ROOT="$EXIT79_EXTERNAL" \
+  bash "$EXIT79_SCRIPTS/run-nodeg-cell.sh" --run-id exit79 --tasks F7 \
+  > "$TMP_DIR/exit79-first.stdout" 2> "$TMP_DIR/exit79-first.stderr"
+test "$(tr '\n' ' ' < "$EXIT79_LOG")" = "arm79 eval manifest judge verdict "
+grep -q 'runner returned nonzero; evaluating recorded patch' "$TMP_DIR/exit79-first.stderr"
+
+: > "$EXIT79_LOG"
+EXIT79_LOG="$EXIT79_LOG" NODEG_SELFTEST=1 NODEG_REPO_ROOT="$EXIT79_ROOT" \
+NODEG_CEILING_ROOT="$EXIT79_CEILING" CEILING_EXTERNAL_ROOT="$EXIT79_EXTERNAL" \
+  bash "$EXIT79_SCRIPTS/run-nodeg-cell.sh" --run-id exit79 --tasks F7 --resume \
+  > "$TMP_DIR/exit79-resume.stdout" 2> "$TMP_DIR/exit79-resume.stderr"
+test "$(tr '\n' ' ' < "$EXIT79_LOG")" = "judge verdict "
+grep -q 'skip existing .*timing.json' "$TMP_DIR/exit79-resume.stdout"
+
 python3 -m py_compile "$SCRIPT_DIR/nodeg-cell.py"
 bash -n "$SCRIPT_DIR/run-nodeg-cell.sh" "$SCRIPT_DIR/test-nodeg-cell.sh"
 echo "PASS test-nodeg-cell"

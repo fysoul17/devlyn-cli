@@ -846,6 +846,7 @@ payload = {
     },
     "direct_codex": {
         "path": str(Path(codex_binary).resolve()),
+        "sha256": sha256_file(Path(codex_binary)),
         "version": codex_version,
         "superset_wrapper": ".superset" in Path(codex_binary).parts,
     },

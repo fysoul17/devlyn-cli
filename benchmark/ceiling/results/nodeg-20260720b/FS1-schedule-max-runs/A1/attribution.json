@@ -1,4 +1,7 @@
 {
+  "censored_open_span_ms": 954303,
+  "conservation_residue_ms": 0,
+  "decomposition_status": "legacy-partial",
   "elapsed_ms": 3518000,
   "implement_total_ms": 426375,
   "incomplete_spans": [
@@ -13,9 +16,13 @@
       "started_at": "2026-07-20T05:25:33.761Z"
     }
   ],
+  "interphase_gap_ms": 362801,
   "judge_durations_ms": null,
+  "legacy_edge_residual_ms": 227877,
   "non_phase_residual_ms": 1544981,
+  "outer_loop_gap_ms": 0,
   "phase_sum_ms": 1973019,
+  "phase_union_ms": 1973019,
   "phases": {
     "build_gate": {
       "current_triggered_by": null,
@@ -53,5 +60,7 @@
       "history_sum_ms": 719304
     }
   },
+  "startup_ms": null,
+  "tail_ms": null,
   "verify_complete": true
 }
