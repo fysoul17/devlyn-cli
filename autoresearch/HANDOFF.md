@@ -59,10 +59,16 @@ identical across stacks — worker-format variance, not regression).
 C2 FAILED-INCOMPLETE fired live in-cohort (F25, first time).
 
 **Next work (in order)**:
-1. **iter-0076 Stage B cohort `nodeg-20260721c` RUNNING (launched
-   2026-07-21 ~11:45 under `caffeinate -is`; `nodeg-20260721b` = dead
-   F7 non-diagnostic draw, exit 86 — protocol relaunch; its rows also
-   CONFIRMED the vendor codex pin works: pipeline engaged past PHASE 0)** — worktree
+1. **iter-0076 Stage B cohort `nodeg-20260721d` RUNNING (launched
+   2026-07-21 ~12:20 under `caffeinate -is`; launch log
+   `pins/nodeg-20260721b/launch-d.log`). Dead lineage today:
+   `-21a` orchestrator pin error (0076.4), `-21b` F7 non-diagnostic
+   draw exit 86 (protocol; ALSO confirmed vendor codex pin works —
+   pipeline engaged past PHASE 0), `-21c` F7 died at turn 61 on API
+   522 (api_error, transient — killed early per F7-first economics,
+   partial results archived). Candidate mechanics note for a future
+   round: arm-level bounded retry on `terminal_reason: api_error`
+   (record-only, NOT built).** — worktree
    `~/.local/share/nx01/w/nodeg-20260721a` @ afc7433 (same tree, clean),
    pins: claude `~/.local/share/nx01/pins/nodeg-20260721b/claude`
    (2.1.215, sha256.txt) + codex VENDOR pin

@@ -1,0 +1,11 @@
+BLOCKED — implementation is complete, but the mandated `npm test` cannot pass in this sandbox.
+
+- Added JSON format parsing/output in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r00f54b0e4216/ff10888c89791/A1/repo/bin/cli.js:44) and preserved bare `version` output at line 74.
+- Added JSON and unsupported-format tests in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r00f54b0e4216/ff10888c89791/A1/repo/tests/cli.test.js:27).
+- `node --test tests/cli.test.js`: passed (5/5).
+- `node bin/cli.js version --format json`: exit 0, output `{"version":"0.1.0"}`.
+- `node bin/cli.js version --format yaml`: exit 1 with an error.
+- Missing `--format` value also exits 1 with an error.
+- `git diff --check`: passed; only the two authorized files changed.
+
+`npm test` exits 1 because unrelated server tests call `server.listen(0)` at [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/r00f54b0e4216/ff10888c89791/A1/repo/tests/server.test.js:9), and the sandbox rejects the resulting `0.0.0.0` bind with `EPERM`.
