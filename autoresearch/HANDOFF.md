@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iters: [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (Stage A0+A1 SHIPPED + micro-probes adjudicated, FS-0077-B not fired — 0077.1-.4; ONLY Stage B cohort remains, launch recipe in START-HERE Next-work item 1; NOTE 0077.1 honesty corrections to 0076.5 receipts 1 and 3) + [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (REGISTERED-FROZEN 0078.1 2026-07-22 — Stage A build next; never overlaps the Stage B cohort). Context iters: [`iterations/0076-completion-rate.md`](iterations/0076-completion-rate.md) (CLOSED 0076.5 — all three predictions met), [`iterations/0075-residual-decomposition-pc-formal.md`](iterations/0075-residual-decomposition-pc-formal.md) (CLOSED 0075.5 — P-B named the 0077 target), [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (C1 probe MEASURED 0074.3, product wiring = next registration). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iters: [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (Stage A0+A1 SHIPPED + micro-probes adjudicated, FS-0077-B not fired — 0077.1-.4; ONLY Stage B cohort remains, launch recipe in START-HERE Next-work item 1; NOTE 0077.1 honesty corrections to 0076.5 receipts 1 and 3) + [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (Stage A SHIPPED + P-0078-K live probe 3/3 PASS — 0078.1/.2; remaining reads P-KL/P-C ride the first hook-bearing cohort, after 0077 Stage B). Context iters: [`iterations/0076-completion-rate.md`](iterations/0076-completion-rate.md) (CLOSED 0076.5 — all three predictions met), [`iterations/0075-residual-decomposition-pc-formal.md`](iterations/0075-residual-decomposition-pc-formal.md) (CLOSED 0075.5 — P-B named the 0077 target), [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (C1 probe MEASURED 0074.3, product wiring = next registration). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -103,15 +103,17 @@ C2 FAILED-INCOMPLETE fired live in-cohort (F25, first time).
    revert on its own bucket miss; FS-0077-D senior-guard revert;
    FS-0077-E conservation break blocks ship. Record iter §STAGE B +
    DECISIONS 0077.5, rotate this file.
-2. **iter-0078 Stage A build (registration DONE — REGISTERED-FROZEN
-   0078.1, 2026-07-22, three-way R0+R1)** — C1 product wiring: build =
-   Codex sol per iterations/0078-c1-product-wiring.md §Mechanisms
-   (single-source classifier move to _shared + resolve-stop-hook.py +
-   bootstrap session_id stamp + devlyn.js hooks.Stop merge), then
-   P-0078-K synthetic mechanism probe (arms sonnet/terra). SEQUENCING
-   (frozen 0078.1): 0078 build/probe NEVER overlaps the Stage B cohort
-   — the cohort owns the machine; Stage B stays on ae9f9ae pre-0078
-   bytes.
+2. **iter-0078 — Stage A SHIPPED (5339e41) + P-0078-K live probe 3/3
+   PASS (349f825, DECISIONS 0078.2)**: mechanism blocked 9× at the
+   measured CLI cap, session-parity canary GREEN on pinned 2.1.215,
+   both live controls fully neutral after the pyc root-fix the control
+   itself caught. Remaining 0078 reads: P-0078-KL + P-0078-C on the
+   FIRST hook-bearing cohort — requires (a) 0077 Stage B done first,
+   (b) runner settings-staging edit (stage_devlyn_context does not
+   stage .claude/settings.json today), (c) explicit hook-bearing
+   NEW-baseline cohort label, never mixed into 0077 aggregation.
+   SEQUENCING (frozen 0078.1): Stage B stays on ae9f9ae pre-0078
+   bytes; no 0078 activity overlaps the quiet-window cohort.
 3. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
 
 **Cohort/row mechanics (binding, updated 2026-07-20)**: full cohort =
