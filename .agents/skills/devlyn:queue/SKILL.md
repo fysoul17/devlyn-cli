@@ -9,6 +9,17 @@ Utility front-end for the intent-queue contract in the project instructions ("In
 $ARGUMENTS
 </args>
 
+For `drain`, resolve the installed shared scripts before the first item:
+
+```bash
+DEVLYN_SKILL_DIR="${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}"
+if [ "$DEVLYN_SKILL_DIR" = "__DEVLYN_SKILL_DIR__" ] || [ ! -d "$DEVLYN_SKILL_DIR/../_shared" ]; then
+  echo "BLOCKED:shared-dir-unresolved: $DEVLYN_SKILL_DIR/../_shared" >&2
+  exit 1
+fi
+DEVLYN_SHARED_DIR="$(cd "$DEVLYN_SKILL_DIR/../_shared" && pwd)"
+```
+
 ## No args — status
 
 Read `docs/specs/queue.md` (absent → report "queue empty — nothing staged" and how to add). Print pending `[ ]`, done `[x]`, and blocked `[F]` counts, the next item up, and one usage line per subcommand.
@@ -19,7 +30,7 @@ Read `docs/specs/queue.md` (absent → report "queue empty — nothing staged" a
 - `drain` — serial drain per the project-instructions contract. For each pending item, in order:
   1. Spec it if unspecced (the queue entry is the user's go-ahead). Unattended assumptions may only take scope-narrowing, reversible, non-user-visible defaults; material ambiguity (user-visible behavior, data/state semantics, new files/scripts/flags, implementation surface) → mark `[F] needs-review: <question>` and continue to the next item.
   2. Run `/devlyn:resolve --spec <path>` hands-free.
-     After every resolve invocation, run `python3 benchmark/ceiling/scripts/terminal-claim-check.py .`; exit 79 marks `[F] FAILED-INCOMPLETE` from the predicate, never from the session self-report.
+     After every resolve invocation, run `python3 "$DEVLYN_SHARED_DIR/terminal-claim-check.py" .`; exit 79 marks `[F] FAILED-INCOMPLETE` from the predicate, never from the session self-report.
   3. Outer loop on the terminal verdict: PASS → mark `[x]`. Findings-backed verdicts (NEEDS_WORK, verify/build-gate exhaustion) → amend the spec (recorded in the spec file), re-run — at most 3 outer iterations. Infrastructure / invalid-input / engine-availability / implement-empty BLOCKED verdicts are not spec-amendable → mark `[F] <verdict>` immediately.
   4. A blocked item never halts the queue; continue.
   5. When the queue is drained (or the session must stop), emit the drain report: per-item verdict, every logged assumption, and the commit range produced.

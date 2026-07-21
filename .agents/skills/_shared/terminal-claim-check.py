@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Classify whether a devlyn run made a complete terminal claim."""
+"""Classify active or invocation-set devlyn terminal claims."""
 
 from __future__ import annotations
 
@@ -121,6 +121,114 @@ def terminal_halt_witness(phases: dict[str, object]) -> tuple[str, str] | None:
     return target, reason
 
 
+def classify_state_bytes(
+    root: pathlib.Path,
+    state_path: pathlib.Path,
+    state_bytes: bytes,
+    *,
+    archived: bool,
+) -> tuple[Classification, dict[str, object] | None]:
+    try:
+        state = json.loads(
+            state_bytes.decode("utf-8"),
+            parse_constant=reject_json_constant,
+        )
+    except (UnicodeError, ValueError):
+        return malformed(f"run state unreadable or invalid: {state_path}"), None
+    if not isinstance(state, dict):
+        return malformed("run state must be a JSON object"), None
+
+    run_id = state.get("run_id")
+    if not isinstance(run_id, str) or not SAFE_RUN_ID_RE.fullmatch(run_id):
+        return malformed("run state has invalid run_id"), state
+    phases = state.get("phases")
+    if not isinstance(phases, dict):
+        return malformed("run state phases must be a JSON object", run_id), state
+
+    open_span: Classification | None = None
+    for name in phase_names(phases):
+        phase = phases[name]
+        if phase is None:
+            continue
+        if not isinstance(phase, dict):
+            return malformed(f"phase {name} must be a JSON object or null", run_id), state
+        lifecycle = validate_lifecycle(name, phase, run_id)
+        if lifecycle is not None:
+            if lifecycle.status == "MALFORMED":
+                return lifecycle, state
+            open_span = open_span or lifecycle
+        history = phase.get("history")
+        if history is None:
+            continue
+        if not isinstance(history, list):
+            return malformed(f"phase {name} history must be an array", run_id), state
+        for index, prior in enumerate(history):
+            if not isinstance(prior, dict):
+                return malformed(f"phase {name} history[{index}] must be an object", run_id), state
+            lifecycle = validate_lifecycle(name, prior, run_id)
+            if lifecycle is not None:
+                if lifecycle.status == "MALFORMED":
+                    return lifecycle, state
+                open_span = open_span or incomplete(
+                    name, f"phase {name} history[{index}] started but not completed", run_id
+                )
+
+    final_report = phases.get("final_report")
+    final_completed = (
+        isinstance(final_report, dict) and final_report.get("completed_at") is not None
+    )
+    if final_completed and not valid_final_verdict(final_report.get("verdict")):
+        return malformed("final_report completed with null or invalid verdict", run_id), state
+    if open_span is not None:
+        return open_span, state
+
+    verify = phases.get("verify")
+    if isinstance(verify, dict) and verify.get("completed_at") is not None:
+        verdict = verify.get("verdict")
+        if verdict is None:
+            return incomplete("verify", "verify completed without verdict", run_id), state
+        if verdict not in VALID_VERIFY_VERDICTS:
+            return malformed("verify has invalid verdict", run_id), state
+    else:
+        verdict = None
+
+    archive_state = root / ".devlyn" / "runs" / run_id / "pipeline.state.json"
+    archive_valid = (
+        archived and state_path.parent.name == run_id
+    ) or archive_state.is_file()
+    if verdict is not None:
+        if not final_completed:
+            return incomplete(
+                "final_report", "verify completed but final report not completed", run_id,
+            ), state
+        if not archive_valid:
+            return incomplete(
+                "archive", "final report completed but run state not archived", run_id,
+            ), state
+        return Classification(
+            "CLEAN", None, "verify and terminal archive complete", run_id, False
+        ), state
+
+    witness = terminal_halt_witness(phases)
+    if witness is not None:
+        phase, reason = witness
+        if not archive_valid:
+            return incomplete("archive", "terminal halt witness not archived", run_id), state
+        return Classification(
+            "CLEAN", None, f"terminal halt witnessed at {phase}: {reason}", run_id, False,
+        ), state
+
+    return incomplete("verify", "verify did not complete with a valid verdict", run_id), state
+
+
+def classify_active_state(
+    root: pathlib.Path, state_bytes: bytes,
+) -> tuple[Classification, dict[str, object] | None]:
+    """Classify only the supplied active-state snapshot and return its parsed object."""
+    state_path = root / ".devlyn" / "pipeline.state.json"
+    return classify_state_bytes(root, state_path, state_bytes, archived=False)
+
+
 def classify_state(
     root: pathlib.Path, state_path: pathlib.Path, *, archived: bool,
 ) -> Classification:
@@ -134,94 +242,13 @@ def classify_state(
         return malformed(f"run state is not a file: {state_path}")
 
     try:
-        state = json.loads(
-            state_path.read_text(encoding="utf-8"),
-            parse_constant=reject_json_constant,
-        )
-    except (OSError, UnicodeError, ValueError):
+        state_bytes = state_path.read_bytes()
+    except OSError:
         return malformed(f"run state unreadable or invalid: {state_path}")
-    if not isinstance(state, dict):
-        return malformed("run state must be a JSON object")
-
-    run_id = state.get("run_id")
-    if not isinstance(run_id, str) or not SAFE_RUN_ID_RE.fullmatch(run_id):
-        return malformed("run state has invalid run_id")
-    phases = state.get("phases")
-    if not isinstance(phases, dict):
-        return malformed("run state phases must be a JSON object", run_id)
-
-    open_span: Classification | None = None
-    for name in phase_names(phases):
-        phase = phases[name]
-        if phase is None:
-            continue
-        if not isinstance(phase, dict):
-            return malformed(f"phase {name} must be a JSON object or null", run_id)
-        lifecycle = validate_lifecycle(name, phase, run_id)
-        if lifecycle is not None:
-            if lifecycle.status == "MALFORMED":
-                return lifecycle
-            open_span = open_span or lifecycle
-        history = phase.get("history")
-        if history is None:
-            continue
-        if not isinstance(history, list):
-            return malformed(f"phase {name} history must be an array", run_id)
-        for index, prior in enumerate(history):
-            if not isinstance(prior, dict):
-                return malformed(f"phase {name} history[{index}] must be an object", run_id)
-            lifecycle = validate_lifecycle(name, prior, run_id)
-            if lifecycle is not None:
-                if lifecycle.status == "MALFORMED":
-                    return lifecycle
-                open_span = open_span or incomplete(
-                    name, f"phase {name} history[{index}] started but not completed", run_id
-                )
-
-    final_report = phases.get("final_report")
-    final_completed = (
-        isinstance(final_report, dict) and final_report.get("completed_at") is not None
+    result, _ = classify_state_bytes(
+        root, state_path, state_bytes, archived=archived,
     )
-    if final_completed and not valid_final_verdict(final_report.get("verdict")):
-        return malformed("final_report completed with null or invalid verdict", run_id)
-    if open_span is not None:
-        return open_span
-
-    verify = phases.get("verify")
-    if isinstance(verify, dict) and verify.get("completed_at") is not None:
-        verdict = verify.get("verdict")
-        if verdict is None:
-            return incomplete("verify", "verify completed without verdict", run_id)
-        if verdict not in VALID_VERIFY_VERDICTS:
-            return malformed("verify has invalid verdict", run_id)
-    else:
-        verdict = None
-
-    archive_state = root / ".devlyn" / "runs" / run_id / "pipeline.state.json"
-    archive_valid = (
-        archived and state_path.parent.name == run_id
-    ) or archive_state.is_file()
-    if verdict is not None:
-        if not final_completed:
-            return incomplete(
-                "final_report", "verify completed but final report not completed", run_id,
-            )
-        if not archive_valid:
-            return incomplete(
-                "archive", "final report completed but run state not archived", run_id,
-            )
-        return Classification("CLEAN", None, "verify and terminal archive complete", run_id, False)
-
-    witness = terminal_halt_witness(phases)
-    if witness is not None:
-        phase, reason = witness
-        if not archive_valid:
-            return incomplete("archive", "terminal halt witness not archived", run_id)
-        return Classification(
-            "CLEAN", None, f"terminal halt witnessed at {phase}: {reason}", run_id, False,
-        )
-
-    return incomplete("verify", "verify did not complete with a valid verdict", run_id)
+    return result
 
 
 def invocation_members(

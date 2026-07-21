@@ -60,12 +60,16 @@ _shared/spec-verify-check.py
 _shared/collect-codex-findings.py
 _shared/verify-merge-findings.py
 _shared/state-phase-write.py
+_shared/terminal-claim-check.py
+_shared/resolve-stop-hook.py
+_shared/resolve-bootstrap.py
 devlyn:ideate/SKILL.md
 devlyn:ideate/references/spec-template.md
 devlyn:ideate/references/elicitation.md
 devlyn:ideate/references/project-mode.md
 devlyn:ideate/references/from-spec-mode.md
 devlyn:resolve/SKILL.md
+devlyn:queue/SKILL.md
 devlyn:resolve/references/state-schema.md
 devlyn:resolve/references/free-form-mode.md
 devlyn:resolve/references/phases/plan.md

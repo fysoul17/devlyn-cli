@@ -770,14 +770,37 @@ function installClaudeCore() {
   if (fs.existsSync(settingsPath)) {
     try {
       settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    } catch {
-      settings = {};
+    } catch (error) {
+      throw new Error(`Cannot merge .claude/settings.json: ${error.message}`);
     }
   }
-  if (!settings.env) settings.env = {};
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+    throw new Error('Cannot merge .claude/settings.json: root must be a JSON object');
+  }
+  const hasOwnSetting = (key) => Object.prototype.hasOwnProperty.call(settings, key);
+  let settingsChanged = false;
+  if (!hasOwnSetting('env')) {
+    settings.env = {};
+    settingsChanged = true;
+  }
+  if (!settings.env || typeof settings.env !== 'object' || Array.isArray(settings.env)) {
+    throw new Error('Cannot merge .claude/settings.json: env must be a JSON object');
+  }
   // Auto-allow pipeline state directory and common git commands so resolve doesn't prompt
-  if (!settings.permissions) settings.permissions = {};
-  if (!settings.permissions.allow) settings.permissions.allow = [];
+  if (!hasOwnSetting('permissions')) {
+    settings.permissions = {};
+    settingsChanged = true;
+  }
+  if (!settings.permissions || typeof settings.permissions !== 'object' || Array.isArray(settings.permissions)) {
+    throw new Error('Cannot merge .claude/settings.json: permissions must be a JSON object');
+  }
+  if (!Object.prototype.hasOwnProperty.call(settings.permissions, 'allow')) {
+    settings.permissions.allow = [];
+    settingsChanged = true;
+  }
+  if (!Array.isArray(settings.permissions.allow)) {
+    throw new Error('Cannot merge .claude/settings.json: permissions.allow must be an array');
+  }
   const pipelinePermissions = [
     'Write(.devlyn/**)',
     'Edit(.devlyn/**)',
@@ -787,7 +810,6 @@ function installClaudeCore() {
     'Bash(git status *)',
     'Bash(git log *)',
   ];
-  let settingsChanged = false;
   for (const perm of pipelinePermissions) {
     if (!settings.permissions.allow.includes(perm)) {
       settings.permissions.allow.push(perm);
@@ -798,9 +820,35 @@ function installClaudeCore() {
     settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = '1';
     settingsChanged = true;
   }
+  if (!hasOwnSetting('hooks')) {
+    settings.hooks = {};
+    settingsChanged = true;
+  }
+  if (!settings.hooks || typeof settings.hooks !== 'object' || Array.isArray(settings.hooks)) {
+    throw new Error('Cannot merge .claude/settings.json: hooks must be a JSON object');
+  }
+  if (!Object.prototype.hasOwnProperty.call(settings.hooks, 'Stop')) {
+    settings.hooks.Stop = [];
+    settingsChanged = true;
+  }
+  if (!Array.isArray(settings.hooks.Stop)) {
+    throw new Error('Cannot merge .claude/settings.json: hooks.Stop must be an array');
+  }
+  const stopHookCommand = 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"';
+  const stopHookInstalled = settings.hooks.Stop.some((entry) => (
+    entry && Array.isArray(entry.hooks) && entry.hooks.some((hook) => (
+      hook && hook.type === 'command' && hook.command === stopHookCommand
+    ))
+  ));
+  if (!stopHookInstalled) {
+    settings.hooks.Stop.push({
+      hooks: [{ type: 'command', command: stopHookCommand, timeout: 30 }],
+    });
+    settingsChanged = true;
+  }
   if (settingsChanged) {
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-    log('  → settings.json (agent teams + pipeline permissions)', 'dim');
+    log('  → settings.json (agent teams + pipeline permissions + Stop hook)', 'dim');
   }
 
   // Configure global Claude Code settings (~/.claude/settings.json)

@@ -46,6 +46,7 @@ Single authoritative verdict source for `/devlyn:resolve`. The orchestrator bran
 ## Field rules
 
 - **version** — string. Bump major on a breaking schema change.
+- **session_id** — optional string or null stamped from `CLAUDE_CODE_SESSION_ID`; a missing/null value leaves Stop-hook pressure inert.
 - **mode** — `"free-form" | "spec" | "verify-only"`.
 - **pair_verify** — boolean. True only for `--pair-verify`. Pairing is already default-when-available; this flag makes OTHER-engine availability an explicit fail-closed promise and adds `mode.pair-verify` telemetry. It is mutually exclusive with `risk_profile.pair_default_enabled == false` from `--no-pair`.
 - **complexity** — `null | "trivial" | "medium" | "large"`. Free-form mode populates this; spec/verify-only mode leaves it null.

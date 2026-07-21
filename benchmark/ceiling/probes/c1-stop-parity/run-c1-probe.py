@@ -22,7 +22,7 @@ from typing import Any
 
 PROBE_DIR = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = PROBE_DIR.parents[3]
-CLASSIFIER = REPO_ROOT / "benchmark/ceiling/scripts/terminal-claim-check.py"
+CLASSIFIER = REPO_ROOT / "config/skills/_shared/terminal-claim-check.py"
 ISOLATION = REPO_ROOT / "benchmark/ceiling/scripts/claude-isolation.py"
 RUN_BOUNDED = REPO_ROOT / "config/skills/_shared/run-bounded.py"
 HOOK_SOURCE = PROBE_DIR / "stop-hook.py"
