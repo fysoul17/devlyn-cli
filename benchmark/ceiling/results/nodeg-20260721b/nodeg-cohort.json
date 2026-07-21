@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "cell_owner": "iter-0068",
+  "run_id": "nodeg-20260721b",
+  "runner_commit_sha": "afc7433f4378205687979349ea372144b397b643",
+  "registered_controls": [
+    "F7",
+    "F25",
+    "F26",
+    "F11",
+    "F12",
+    "F23",
+    "FS1"
+  ],
+  "selected_controls": [
+    "F7",
+    "F25",
+    "F26",
+    "F11",
+    "F12",
+    "F23",
+    "FS1"
+  ],
+  "selected_tasks": [
+    "DR-byte-preservation-f7-out-of-scope-trap",
+    "DR-shape-compound-rules-f25-cart",
+    "DR-ledger-rounding-consistency-f26-payout",
+    "DR-atomic-state-f11-batch-import",
+    "DR-auth-signature-f12-webhook",
+    "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+    "FS1-schedule-max-runs"
+  ],
+  "excluded_unfair": [
+    "F21"
+  ],
+  "frozen_best_b_selection_rule": "objective-first lexicographic: resolve, violations, wall",
+  "frozen_b_sources": [
+    {
+      "control_id": "F7",
+      "task": "DR-byte-preservation-f7-out-of-scope-trap",
+      "run_id": "iter0068-gate-20260711h",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1",
+      "patch_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1/patch.diff",
+      "patch_sha256": "9952235b2929acff36abb29563b37e6b1391ebf47af102d5a0ed7371684a2c6c",
+      "objective_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1/objective.json",
+      "objective_sha256": "c17da65c08e1179728316f85fb5f7f2db3edba5eb4c462beadbe2ff5cec2bcb5",
+      "timing_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-byte-preservation-f7-out-of-scope-trap/B1/timing.json",
+      "timing_sha256": "21498d83489e5c0376d6807fc5583e65aba7c347e82914028c5833d38998b70a",
+      "resolved": true,
+      "elapsed_seconds": 67
+    },
+    {
+      "control_id": "F25",
+      "task": "DR-shape-compound-rules-f25-cart",
+      "run_id": "iter0068-gate-20260711h",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-shape-compound-rules-f25-cart/B1",
+      "patch_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-shape-compound-rules-f25-cart/B1/patch.diff",
+      "patch_sha256": "f8c9b16667add092a1490568d7328731865db8a84f9ff5e79165e5e229b44904",
+      "objective_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-shape-compound-rules-f25-cart/B1/objective.json",
+      "objective_sha256": "0fcf7fe044782d24991e713ea045ab224fd904d01f9412f32c6e77f1734b3280",
+      "timing_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-shape-compound-rules-f25-cart/B1/timing.json",
+      "timing_sha256": "cf87370d304389905ecb4a99e383ec5d7a379d9c1b4feb9c10f49c5ad6ed95cd",
+      "resolved": true,
+      "elapsed_seconds": 263
+    },
+    {
+      "control_id": "F26",
+      "task": "DR-ledger-rounding-consistency-f26-payout",
+      "run_id": "iter0068-gate-20260711h",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-ledger-rounding-consistency-f26-payout/B1",
+      "patch_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-ledger-rounding-consistency-f26-payout/B1/patch.diff",
+      "patch_sha256": "6b787e9f3adbc247f37f684aad775c6fd71b2ba5647ddb6f58e637f7a04cd8ef",
+      "objective_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-ledger-rounding-consistency-f26-payout/B1/objective.json",
+      "objective_sha256": "db1a38ecb4ac9e0a42d75d1f8b06e7059940422c4a345d82379bf06bf348a192",
+      "timing_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-ledger-rounding-consistency-f26-payout/B1/timing.json",
+      "timing_sha256": "1924b864cfdae8f73e8793f3924984ed3990ffdd1ccc095ca07a63a691c16841",
+      "resolved": true,
+      "elapsed_seconds": 259
+    },
+    {
+      "control_id": "F11",
+      "task": "DR-atomic-state-f11-batch-import",
+      "run_id": "iter0068-gate-20260711h",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-atomic-state-f11-batch-import/B1",
+      "patch_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-atomic-state-f11-batch-import/B1/patch.diff",
+      "patch_sha256": "d319c2ffff25dfc67027053f8d3abbb6ff7a798be773465078a24653cc688c6b",
+      "objective_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-atomic-state-f11-batch-import/B1/objective.json",
+      "objective_sha256": "fb859dc8a1e9c9f2752708d16bc87024fa3baebe9b862bac4e86ca491ead2750",
+      "timing_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-atomic-state-f11-batch-import/B1/timing.json",
+      "timing_sha256": "15915e52027675a49fdec39635cc92a1cf84b5536d2c317184fbb0f0aa8e94e6",
+      "resolved": true,
+      "elapsed_seconds": 123
+    },
+    {
+      "control_id": "F12",
+      "task": "DR-auth-signature-f12-webhook",
+      "run_id": "iter0068-f12supp2-20260712",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-f12supp2-20260712/DR-auth-signature-f12-webhook/B1",
+      "patch_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-f12supp2-20260712/DR-auth-signature-f12-webhook/B1/patch.diff",
+      "patch_sha256": "e14c0904c759b31cf47b8ca934c7e57bd2ed81bae81be6fac3aa55fda9b875bd",
+      "objective_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-f12supp2-20260712/DR-auth-signature-f12-webhook/B1/objective.json",
+      "objective_sha256": "b0c0e8781b744eaa35e1dfe860898536d175235ac9ee0a74fea14a77fb18c351",
+      "timing_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-f12supp2-20260712/DR-auth-signature-f12-webhook/B1/timing.json",
+      "timing_sha256": "6c472da6658b39392a86133499bd91a4fe64f42b6fd6df69a665c31264a15039",
+      "resolved": true,
+      "elapsed_seconds": 224
+    },
+    {
+      "control_id": "F23",
+      "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+      "run_id": "iter0068-gate-20260711h",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1",
+      "patch_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1/patch.diff",
+      "patch_sha256": "21ae20c6ddd6ef2b3d0eefd25b7ab6664ecfc4b843ce0f123369f4fcda1bea6b",
+      "objective_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1/objective.json",
+      "objective_sha256": "0fe651ed544d97005efdced42a1987655c39d24492337acca2ac04552589eb7b",
+      "timing_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/DR-allocation-fefo-priority-rollback-f23-fulfillment/B1/timing.json",
+      "timing_sha256": "c201fe18656ed7904a5ce49993ca334c9e07a73ec6e2b5f32333176a5ab9541d",
+      "resolved": true,
+      "elapsed_seconds": 344
+    },
+    {
+      "control_id": "FS1",
+      "task": "FS1-schedule-max-runs",
+      "run_id": "iter0068-gate-20260711h",
+      "attempt": "B1",
+      "attempt_dir": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1",
+      "patch_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1/patch.diff",
+      "patch_sha256": "e47a0d61e47a814aac8d07a66355a676e124c77a3ddad8ecd48636bf6d488d95",
+      "objective_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1/objective.json",
+      "objective_sha256": "32ce180013ec8425c946b33670d23f1b6dfb7a83f5b2a6e3c86e4927eb7e9a04",
+      "timing_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/iter0068-gate-20260711h/FS1-schedule-max-runs/B1/timing.json",
+      "timing_sha256": "28773bda97d94babea2afc9fe0507bc6877d56bfdf33516158216c2f92b1a609",
+      "resolved": true,
+      "elapsed_seconds": 310
+    }
+  ],
+  "wall_cap": {
+    "a_to_frozen_b_ratio": 3.0,
+    "source": "autoresearch/NORTH-STAR.md:254",
+    "quoted_line": "average pair/solo wall ratio 1.73x under the 3.0 cap"
+  }
+}
