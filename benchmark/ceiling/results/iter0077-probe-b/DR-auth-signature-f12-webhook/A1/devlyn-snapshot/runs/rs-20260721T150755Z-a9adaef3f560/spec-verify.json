@@ -1,0 +1,8 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "expect_exit_code": 0
+    }
+  ]
+}

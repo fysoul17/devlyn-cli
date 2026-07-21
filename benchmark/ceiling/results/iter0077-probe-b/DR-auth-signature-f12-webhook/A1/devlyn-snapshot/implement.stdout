@@ -1,0 +1,3 @@
+BLOCKED — implementation is complete in [server/index.js](/Users/aipalm/.local/share/nx01/w/r6dab7efb35ca/f08d6b52f5d4d/A1/repo/server/index.js:36) and [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/r6dab7efb35ca/f08d6b52f5d4d/A1/repo/tests/server.test.js:95).
+
+`node --check` and `git diff --check` pass; only the two authorized files changed. The required `npm test` cannot pass in this environment because TCP listeners are forbidden: all server tests fail at [tests/server.test.js:14](/Users/aipalm/.local/share/nx01/w/r6dab7efb35ca/f08d6b52f5d4d/A1/repo/tests/server.test.js:14) with `listen EPERM`, before any request or assertion runs. A direct `127.0.0.1` listener probe fails identically.

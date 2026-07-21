@@ -1,0 +1,15 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "npm test",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": ": 2.302167\n  ...\n# Subtest: POST /webhook verifies malformed JSON before rejecting its body\nok 10 - POST /webhook verifies malformed JSON before rejecting its body\n  ---\n  duration_ms: 4.035458\n  ...\n# Subtest: POST /webhook returns invalid_body for validly signed malformed JSON\nok 11 - POST /webhook returns invalid_body for validly signed malformed JSON\n  ---\n  duration_ms: 2.859209\n  ...\n1..11\n# tests 11\n# suites 0\n# pass 11\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 316.405167\n"
+    }
+  ]
+}

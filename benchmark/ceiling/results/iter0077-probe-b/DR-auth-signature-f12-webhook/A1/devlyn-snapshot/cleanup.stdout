@@ -1,0 +1,6 @@
+PASS — no cleanup needed.
+
+- No test, coverage, build, cache, or runtime artifacts were present.
+- Every symbol introduced by the webhook diff is used.
+- No stale documentation references found.
+- No files changed.

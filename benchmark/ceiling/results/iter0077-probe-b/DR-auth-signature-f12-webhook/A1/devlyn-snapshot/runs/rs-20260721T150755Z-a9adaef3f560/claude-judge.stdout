@@ -1,0 +1,1 @@
+PASS - Probe 1 confirmed malformed-JSON-body + invalid-signature now returns 401 {error:'invalid_signature'} (the fix from round 1 closes the prior finding). Probe 2 confirmed replay of a duplicate id with a shape-invalid second body still returns 409 {error:'duplicate_event', id} ahead of shape validation.

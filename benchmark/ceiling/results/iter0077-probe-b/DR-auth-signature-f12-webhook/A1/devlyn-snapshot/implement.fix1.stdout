@@ -1,0 +1,6 @@
+BLOCKED — the fix is complete in the two authorized files:
+
+- `server/index.js`: shared signature helper and webhook-only JSON parse-error middleware.
+- `tests/server.test.js`: regressions for malformed `null` with invalid signature (401) and valid signature (400).
+
+In-process Express checks passed; syntax and diff checks passed. `npm test` exits 1 before endpoint execution because this sandbox denies all test-server binds (`listen EPERM` on both `0.0.0.0` and `127.0.0.1`), so I cannot truthfully confirm an all-passing suite here.
