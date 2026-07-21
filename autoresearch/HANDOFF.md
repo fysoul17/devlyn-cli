@@ -59,15 +59,20 @@ identical across stacks — worker-format variance, not regression).
 C2 FAILED-INCOMPLETE fired live in-cohort (F25, first time).
 
 **Next work (in order)**:
-1. **iter-0076 Stage B cohort `nodeg-20260721a` RUNNING (launched
-   2026-07-21 ~02:30)** — worktree `~/.local/share/nx01/w/nodeg-20260721a`
-   @ afc7433, run-owned pins `~/.local/share/nx01/pins/nodeg-20260721a/`
-   (claude 2.1.215 + codex 0.144.5, sha256.txt receipt), launch log
-   `/tmp/nodeg-20260721a.launch.log`. On completion: adjudicate vs
-   P-0076-A (complete ≥5/7, roadmap) / P-0076-B (zero K1 events,
-   decisive) / P-0076-C (stability) with the MECHANICAL incomplete
-   partition {K1/K2a/K2b/other}; FS-0076-B fires → C1 wiring next.
-   Stage A CLOSED 0076.3 (build 22d22ff; FS-0076-A fired then v2
+1. **iter-0076 Stage B cohort `nodeg-20260721b` RUNNING (relaunched
+   2026-07-21 ~11:20 under `caffeinate -is`)** — worktree
+   `~/.local/share/nx01/w/nodeg-20260721a` @ afc7433 (same tree, clean),
+   pins: claude `~/.local/share/nx01/pins/nodeg-20260721b/claude`
+   (2.1.215, sha256.txt) + codex VENDOR pin
+   `~/.local/share/nx01/pins/codex-0.144.5/bin/codex`; launch log
+   `~/.local/share/nx01/pins/nodeg-20260721b/launch.log`. Predecessor
+   `nodeg-20260721a` is DEAD (0076.4 — orchestrator copied the Superset
+   wrapper as the codex pin; fail-closed BLOCKED:codex-unavailable fired
+   as designed; results archived, NOT diagnostic). On completion:
+   adjudicate vs P-0076-A (complete ≥5/7, roadmap) / P-0076-B (zero K1
+   events, decisive) / P-0076-C (stability) with the MECHANICAL
+   incomplete partition {K1/K2a/K2b/other}; FS-0076-B fires → C1 wiring
+   next. Stage A CLOSED 0076.3 (build 22d22ff; FS-0076-A fired then v2
    differential re-spec CONFIRMED by both seats — historical firing
    stands in 0076.2; L-format-valid-false-N/A = candidate own
    registration, 24-draw receipts in
