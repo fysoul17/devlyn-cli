@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iter: [`iterations/0076-completion-rate.md`](iterations/0076-completion-rate.md) (REGISTERED-FROZEN 0076.1, three-way R0+R1+R2 — M-RE + M0-narrow + M2v2; Stage A build next; M1 gated on FS-0076-A; C1 wiring pulled forward only by FS-0076-B). Context iters: [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (C1 probe MEASURED 0074.3, product wiring = separate claim), [`iterations/0075-residual-decomposition-pc-formal.md`](iterations/0075-residual-decomposition-pc-formal.md) (CLOSED 0075.5 — FS-0075-B fired; NOTE 0076.1 honesty corrections to its FS1 objective-causality claim). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iter: [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (REGISTERED-FROZEN 0077.1, three-way R0+R1 — H0 admission gate + W-B PHASE-0 bootstrap + W-T0 atomic transition; Stage A0 build next; NOTE 0077.1 honesty corrections to 0076.5 receipts 1 and 3). Context iters: [`iterations/0076-completion-rate.md`](iterations/0076-completion-rate.md) (CLOSED 0076.5 — all three predictions met), [`iterations/0075-residual-decomposition-pc-formal.md`](iterations/0075-residual-decomposition-pc-formal.md) (CLOSED 0075.5 — P-B named the 0077 target), [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (C1 probe MEASURED 0074.3, product wiring = next registration). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -59,25 +59,24 @@ identical across stacks — worker-format variance, not regression).
 C2 FAILED-INCOMPLETE fired live in-cohort (F25, first time).
 
 **Next work (in order)**:
-1. **iter-0076 CLOSED (0076.5, 2026-07-21 evening) — cohort
-   `nodeg-20260721e` MET ALL THREE frozen predictions**: complete-verify
-   5/7 (first ≥5 in four cohorts), ZERO K1 events (decisive — both
-   former K1 rows SC PASS), quality 0/7 + wall median 11.3×. Partition
-   {K1:0, K2a:1 FS1, K2b:1 F23, other:0}. Read
-   iterations/0076-completion-rate.md §STAGE B ADJUDICATION for the
-   three NEW receipts (F11 SPW attestation-fail inconsistent history;
-   F26 first citation-guard true firing + prose-halt disobeyed,
-   rollback held; F7 session-tail hang). NEXT = wall lever iter
-   registration (item 2), then C1 wiring (item 3).
-   2. **Wall lever iter — NOW NEXT** (0076 closed): targets = startup +
-   inter-phase orchestrator gaps (0075 P-B: 92-96% of residual on clean
-   rows) + K2b verify-overrun (F23 -21e: 4203s row, verify open at
-   wall) + session-tail hang (F7 -21d/-21e receipts). Three-way
-   registration round required.
-3. **C1 product wiring registration** (separate claim, own round) —
+1. **iter-0077 REGISTERED-FROZEN (0077.1, 2026-07-21 night) — wall
+   lever: residual skeleton absorption.** Three-way R0+R1 converged
+   (R1 both seats CONFIRM FREEZE, zero dissent). Frozen set: H0
+   corrected-oracle admission gate (zero credit; -21e back-application
+   + relocation ledger + F11 open-history root-cause + arm TERM→KILL
+   escalation fix) + W-B PHASE-0 bootstrap script + W-T0 atomic
+   transition SPW verb (machine data only). W-W cut; K2b record-only.
+   NOTE: 0077.1 records two honesty corrections to 0076.5 receipts
+   (F11 attestation-mechanism claim wrong; -21d "hang to cap" was
+   25s tail). NEXT ACTION = Stage A0 build (Codex sol, benchmark-only),
+   gates P-0077-H before any lever build; then Stage A1 levers; then
+   one 7-row Stage B cohort. Full contract:
+   iterations/0077-wall-residual-lever.md.
+2. **C1 product wiring registration** (separate claim, own round) —
    probe licenses claude route only; honest bound (CLI loop cap ~9) +
-   ROUTE-DISABLED-BY-HARNESS facts go in the packet.
-4. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
+   ROUTE-DISABLED-BY-HARNESS facts go in the packet; K2a receipt FS1
+   -21e strengthens it.
+3. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
 
 **Cohort/row mechanics (binding, updated 2026-07-20)**: full cohort =
 `git worktree add --detach <path> <SHA>` (runner-SHA integrity —

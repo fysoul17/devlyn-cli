@@ -1,0 +1,172 @@
+# iter-0077 — wall lever: residual (startup + interphase) skeleton absorption (REGISTERED-FROZEN 2026-07-21)
+
+**Why (pre-flight 0)**: wall is the last failing bar and the frozen next target
+(HANDOFF item 2 after 0076 CLOSED). User-visible failure: hands-free runs cost
+5.9-28.3x bare wall (median 11.324x, bar cap 3.0x/row, nodeg-20260721e). 0075 P-B
+(CONFIRMED) named the component: startup + interphase gaps dominate residual
+(clean-row -21e shares 90.4-97.0%). Unlock: the go/no-go on whether
+orchestrator-turn overhead moves into the deterministic skeleton without degrading
+quality or completion — the decision that gates any later M1.5 discussion.
+Mission 1, ceiling addendum (efficiency is a ceiling axis; single-task work).
+
+**Round record**: three-way R0+R1 2026-07-21 (packets + logs
+/tmp/threeway-0077-r0/). R0: Grok GO-WITH-EDITS, Codex OBJECT-to-shape with
+narrowed v2; every seat receipt correction orchestrator-verified at the cited
+files before adoption. R1: both seats CONFIRM FREEZE + Q1 fold + Q2 fail-open,
+zero wording changes. Orchestrator named deltas vs its own R0 packet: withdrew
+W-T prompt-skeleton emission (Decision-Ownership Boundary + two-sources-of-truth
+— references/phases/*.md stay the single prompt source) and W-W (receipt
+corrected); adopted relative prediction bars (0076 gate-(iii) lesson: never
+freeze an absolute bar against an uncorrected baseline).
+
+## Receipts (all orchestrator-opened; cohort nodeg-20260721e unless noted)
+
+- Decomposition (attribution.json): startup 157-422s, interphase 204-811s, tail
+  0-93s per row; zeroing startup+interphase on clean rows saves 25.0-46.0% of
+  elapsed (honest bound — 3.0x bar is out of reach this iter).
+- Session receipts (transcript.txt result lines): duration_api/duration 0.70-0.87
+  on verify-complete rows; num_turns 135-173 (F23 incomplete 192; FS1 transcript
+  pathological — excluded). The wall is model-turn time, not I/O or idle.
+- Gap anatomy (claude-debug.log vs state spans, /tmp/threeway-0077-r0/
+  gap-anatomy.json): startup->plan on ALL 7 rows = 21-38 API streams + 14-27
+  shell spawns; PHASE 0 (SKILL.md:73-106) executes as ~25-35 LLM turns of
+  mechanical bootstrap. Bare (frozen B) solves whole rows in 67-344s — startup
+  alone often exceeds it.
+- Post-hoc stamping (intermittent, phase-general): F12 probe_derive 106ms vs
+  actual ~392s work; F26 probe_derive honest 409,045ms; plan stamped 90ms (F11) /
+  75ms (F23) — F11/F23 "startup" contains real PLAN work. The decomposition
+  oracle needs correction BEFORE lever credit (ops test #10).
+- F11 open-history producer: verify history[0] {started_at, verdict BLOCKED,
+  completed_at null} -> 687s false censored span on a healthy row. HONESTY
+  CORRECTION to 0076.5 receipt-1: the "SPW attestation-fail path" mechanism claim
+  is WRONG — do_complete writes completed_at BEFORE attestation forcing
+  (state-phase-write.py:1232, :1290-1294; write_state precedes the exit-1 return
+  :2422-2425). True producer = complete skipped before re-spawn; root-cause in
+  Stage A0.
+- F11's 910s implement->SC window contains a full FIRST round of
+  BUILD_GATE/CLEANUP/VERIFY (hist:1 each) — quick anatomy ignored history[];
+  attribution.py unions history and was never wrong (F11 official interphase
+  204s).
+- K2b (F23): fix-loop re-entry past the arm cap; watchdog TERM at 3600s
+  (run-ceiling-arm.sh:140, :645) but the child survived to 4203s and OPENED NEW
+  PHASE SPANS post-TERM (implement 09:17:26, verify 09:19:25, death 09:19:39) —
+  benchmark kill-escalation leak, distinct from product wall-awareness.
+- Session-tail: HONESTY CORRECTION to 0076.5 receipt-3: -21d F7 tail_ms = 25,021
+  (final_report completed 03:20:00.500, cap 03:20:25) — "hung streaming until the
+  wall cap" was an overclaim; the hour was consumed by phases. -21e tails 24-93s.
+- Quality bar semantics (nodeg-verdict.json): rule = "A never below frozen B on
+  any axis"; blind axis decisions currently B_win 45 / A_win 9 (54 decided). A
+  "quality 0/7 stays" guard is sign-inverted; corrected guard below.
+- Cross-cohort no-lever wall noise band: 10.888 -> 12.1 -> 11.324.
+
+## Mechanisms (frozen)
+
+- **H0 — corrected-oracle admission gate (zero lever credit)**: anatomy corrected
+  to union current + history[] spans; phase entry bound to actual dispatch
+  evidence where state stamps are post-hoc; ambiguous rows marked ineligible.
+  Back-applied to -21e BEFORE lever build: requires >=5/7 unambiguous rows,
+  conservation +/-1s per eligible row, published relocation ledger
+  (adjusted_bucket := raw_bucket + declared_relocation; unledgered relocation =
+  credit invalid). Includes root-causing the F11 open-history producer and fixing
+  the SPW writer so re-spawn over an open span cannot produce {started, verdict,
+  completed_at:null}. Also folds the arm kill-escalation fix (TERM->KILL so no
+  child outlives the cap writing new phase spans) — zero-credit benchmark
+  hygiene, measurement-protective (R1 Q1 unanimous).
+- **W-B — deterministic PHASE-0 bootstrap** (bucket: startup): one script does
+  the mechanical majority of SKILL.md:73-106 — flag validation, engine/config
+  preflight, state init, untracked baseline, deterministic preclassification,
+  announce receipt — and opens PLAN at PLAN-dispatch time (atomic entry). Model
+  keeps: goal/spec reading, criteria synthesis, risk/complexity override.
+- **W-T0 — atomic transition verb, machine data only** (bucket: interphase): SPW
+  verb completing the current phase + opening a caller-specified, mechanically
+  legal next phase in one transaction, returning paths/digests/state data ONLY.
+  No prompt rendering, no agent spawn/selection, no auto-advance. Structurally
+  prevents open-history re-entry and post-hoc starts.
+- **CUT**: W-W tail watchdog (unanimous; class evidence dissolved by the -21d
+  correction). **K2b**: record-only (Thermometer Integrity / Outcome-Preserving
+  Deadline Authority); indirect relief via W-B/W-T0 is a secondary observation,
+  never a primary claim.
+
+Decisive criteria (named, adopted): Decision-Ownership Boundary (P1);
+Thermometer Integrity + Outcome-Preserving Deadline Authority (P2); Product-Path
+Causality (P3); Same-Oracle Comparability via adjusted-bucket + relocation
+ledger (P4); Minimum Independent Decision Set (P5); Matched-Oracle Net Reduction
+(P6).
+
+## Stage plan
+
+- **Stage A0 (H0)** — Codex sol build, benchmark-only: anatomy correction +
+  -21e back-application + relocation ledger + F11-producer root-cause + SPW
+  writer discipline + kill-escalation fix + self-tests from the real -21e
+  receipts (F11 open-history, F12/F26 probe_derive pair, F11/F23 plan stamps).
+  Gates: P-0077-H passes; deterministic absolute numbers for the P-B/P-T
+  denominators published before lever build.
+- **Stage A1 (levers)** — Codex sol build: W-B bootstrap script + W-T0 SPW verb
+  + SKILL PHASE-0/transition contract edits (net-subtractive on prose: the
+  script absorbs enumerated mechanical steps). Gates: SPW self-tests green; lint
+  + token gauge + config<->.claude sync; one live micro-probe row under the arm
+  recipe (sonnet arms / terra executor — test-tiering directive 2026-07-21) with
+  FS-0077-B checks.
+- **Stage B** — one 7-row cohort: CSV "F7,F25,F26,F11,F12,F23,FS1" F7-first,
+  fresh post-Stage-A SHA, run-owned pins both engines (claude 2.1.215 copy +
+  codex VENDOR Mach-O 0.144.5, sha-receipted), node v20.19.0, frozen best_B
+  baseline unchanged, NEW-COHORT identity. Mechanical report: per-bucket
+  adjusted deltas + partition {K1, K2a, K2b, other} + wall bar.
+
+## Frozen predictions (post-lever cohort vs H0-corrected -21e baseline)
+
+- **P-0077-H (admission)**: H0 reconstructs >=5/7 -21e rows unambiguously,
+  conservation +/-1s, relocation ledger published — else Stage B BLOCKED.
+- **P-0077-B (mechanism)**: adjusted startup median <= 60% of corrected baseline.
+- **P-0077-T (mechanism)**: adjusted interphase median <= 75% of corrected
+  baseline. (Grok stretch observation 0.55 recorded, not the bar.)
+- **P-0077-W (roadmap, fail-open)**: wall-ratio median <= 10.19x (>=10% vs
+  11.324x). Wall is a roadmap read, not a revert trigger (R1 Q2 unanimous):
+  conserved bucket wins + flat wall implies growth elsewhere (executor variance;
+  no-lever noise band above); a miss is reported as an explicit wall-direction
+  miss and the residual target re-derived.
+- **P-guards (senior)**: complete-verify >=5/7; zero K1; objective >=6/7; blind
+  quality B_win axis decisions <= 45 (any quality-bar row passing = improvement,
+  never a violation); zero new CRITICAL/HIGH harness-path findings.
+
+## Falsifiers
+
+- **FS-0077-A**: H0 admission fails (<5 unambiguous rows, conservation break, or
+  unledgered relocation) -> lever build BLOCKED, redesign.
+- **FS-0077-B**: Stage A1 live micro-probe shows W-B/W-T0 changes judgment
+  content, agent selection, phase semantics, halt behavior, or autonomy ->
+  redesign before cohort.
+- **FS-0077-C**: a lever misses its own adjusted-bucket bar -> revert THAT lever
+  independently; the other may ship.
+- **FS-0077-D**: any senior guard fails -> revert levers; no-degradation is
+  senior to wall.
+- **FS-0077-E**: decomposition conservation breaks on any Stage B row -> block
+  ship.
+
+**Out of scope (frozen)**: C1 wiring (next registration); M1.5 runner; corpus
+changes; wall-aware fix-loop; session-tail mechanisms; F26 halt-class
+enforcement; L-format-valid-false-N/A.
+
+**Build**: Codex sol (workspace-write, detached, one silent-hang retry;
+orchestrator commits builds). Test arms: claude->sonnet, codex->terra.
+
+## Principles check
+
+- **0**: closes the frozen wall failure (11.324x median; user-visible wall-time)
+  and unlocks the skeleton-absorption go/no-go for the loop's next architecture
+  decision. Predictions frozen before any build.
+- **7**: Mission 1 ceiling addendum — single-task efficiency instrument + lever;
+  no parallel-fleet surface touched.
+- **1**: two credited levers + one zero-credit admission gate; W-W cut,
+  prompt-skeleton emission cut, K2b record-only; SKILL edits net-subtractive on
+  prose (script absorbs enumerated steps).
+- **2**: falsifiable per-bucket bars + fail-open roadmap wall bar + senior
+  guards, all frozen above before Stage A0.
+- **3**: why-chain landed on two violated invariants: (wall) mechanical,
+  contract-determined steps must not execute at LLM-turn latency (asymmetric
+  harness: determinism in the skeleton); (oracle) phase records must reflect
+  actual spans or every wall conclusion is unfalsifiable (ops test #10).
+- **4/5**: Stage A self-tests from real receipts; standard primitives (SPW verb
+  family, existing attribution union); no new defensive layers.
+- **6**: no new pair surface; micro-probe is minutes-tier; cohort is the
+  existing periodic exam (measurement-tiering rule 7).
