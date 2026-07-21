@@ -1,0 +1,101 @@
+{
+  "base_ref": {
+    "branch": "master",
+    "sha": "d5e479312b6f9573373bd2057e630bba7d22c608"
+  },
+  "bypasses": [],
+  "complexity": "large",
+  "criteria": [],
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "implement_passed_sha": "79915b93a30b576349625f9e3d10db70a9e95306",
+  "mode": "free-form",
+  "pair_verify": true,
+  "phases": {
+    "build_gate": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": null,
+      "duration_ms": null,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-21T14:48:48.011Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": null
+    },
+    "cleanup": null,
+    "final_report": null,
+    "implement": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-21T14:48:48.010Z",
+      "duration_ms": 511771,
+      "engine": "codex",
+      "model_effective": "gpt-5.6-terra",
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-21T14:40:16.239Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "plan": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-21T14:40:16.239Z",
+      "duration_ms": 194437,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-21T14:37:01.802Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "probe_derive": null,
+    "surface_close": null,
+    "verify": null
+  },
+  "risk_probes_digest": null,
+  "risk_profile": {
+    "high_risk": true,
+    "pair_default_enabled": true,
+    "reasons": [
+      "risk keyword: idempotency/replay/duplicate",
+      "risk keyword: API/webhook/raw-body/signature",
+      "auto-risk-probes demoted: plan surface small (2 paths)"
+    ],
+    "risk_probes_enabled": false,
+    "risk_probes_explicit": false
+  },
+  "rounds": {
+    "global": 0,
+    "max_rounds": 4
+  },
+  "run_id": "rs-20260721T143407Z-31da477e4e6b",
+  "source": {
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "c7a61dbb9f6f56eca3c095bb439fe6b99320975d96b9bb98977b622efbc49069",
+    "goal_path": ".devlyn/goal.raw.txt",
+    "goal_sha256": "58e149bd9cbe6be89e214600420416b3ba17ecd83c523dd6d1d787b1cf1900e3",
+    "spec_path": null,
+    "spec_sha256": null,
+    "type": "generated"
+  },
+  "started_at": "2026-07-21T14:34:07.649Z",
+  "verify": {
+    "coverage_failed": false,
+    "pair_trigger": null
+  },
+  "version": "3.0"
+}

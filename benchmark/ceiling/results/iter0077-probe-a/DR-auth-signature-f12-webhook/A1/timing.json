@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "task": "DR-auth-signature-f12-webhook",
+  "arm": "A",
+  "attempt": 1,
+  "elapsed_seconds": 1568,
+  "invoke_exit": 0,
+  "timed_out": false,
+  "draw_non_diagnostic": false,
+  "worktree": "/Users/aipalm/.local/share/nx01/w/rb4a1bf24a9c4/f08d6b52f5d4d/A1/repo",
+  "invoke_started_at": "2026-07-21T14:33:43.922Z",
+  "invoke_completed_at": "2026-07-21T14:59:52.098Z",
+  "terminal_outcome": "FAILED-INCOMPLETE"
+}

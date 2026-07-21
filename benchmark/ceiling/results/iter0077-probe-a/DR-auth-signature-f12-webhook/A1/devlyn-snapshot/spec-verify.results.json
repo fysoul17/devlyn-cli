@@ -1,0 +1,15 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "npm test",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "bhook accepts a valid signed event\n  ---\n  duration_ms: 11.407958\n  ...\n# Subtest: POST /webhook rejects a replayed event id\nok 8 - POST /webhook rejects a replayed event id\n  ---\n  duration_ms: 4.005333\n  ...\n# Subtest: POST /webhook rejects a tampered body with its original signature\nok 9 - POST /webhook rejects a tampered body with its original signature\n  ---\n  duration_ms: 1.906666\n  ...\n1..9\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 398.687292\n"
+    }
+  ]
+}

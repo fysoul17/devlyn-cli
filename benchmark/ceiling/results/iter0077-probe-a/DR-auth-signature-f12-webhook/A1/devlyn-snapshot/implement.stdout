@@ -1,0 +1,7 @@
+BLOCKED — implementation is complete, but `npm test` cannot exit 0 in this sandbox because every HTTP test fails before requests run: `listen EPERM` on TCP binding.
+
+- Added signed, raw-body-verified `POST /webhook` with duplicate detection and required responses in [server/index.js](/Users/aipalm/.local/share/nx01/w/rb4a1bf24a9c4/f08d6b52f5d4d/A1/repo/server/index.js:37).
+- Added happy-path, malformed replay → 409, and tampered-body → 401 HTTP tests in [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/rb4a1bf24a9c4/f08d6b52f5d4d/A1/repo/tests/server.test.js:94).
+- `node --check` and `git diff --check` pass.
+- A non-network route dispatch check passed all three webhook contracts.
+- Final `npm test`: 3 passed, 6 failed solely at `server.listen(0)` with `EPERM`; even `127.0.0.1` binding is prohibited.

@@ -237,6 +237,46 @@ cmp clean, all gates re-run on disk:
 Stage A1 build CLOSED → live micro-probe (FS-0077-B live check,
 sonnet arms / terra executor) next; Stage B cohort after probe PASS.
 
+## LIVE MICRO-PROBE (F12 ×2, 2026-07-21→22, raw before interpretation)
+
+Recipe: run-nodeg-cell.sh --tasks "F12", worktree ae9f9ae
+(exam-0077-probe), pins claude 2.1.215 (90608b5c…, run-owned copy) +
+codex VENDOR 0.144.5, node v20.19.0, health ping before each launch.
+probe-b first launch refused on the documented worktree-dirty gotcha
+(probe-a results untracked) — archived to main-repo results/, relaunched.
+
+- **probe-a (iter0077-probe-a): FAILED-INCOMPLETE, K2a shape.** invoke_exit
+  0, elapsed 1568s, build_gate open. Mechanism (claude-debug.log): the
+  sonnet orchestrator dispatched the BUILD_GATE Agent as a BACKGROUND task
+  and ended its turn ("Waiting for the BUILD_GATE agent's completion
+  notification"); headless print wind-down aborted the 141s-old agent
+  (`tool_dispatch_end tool=Agent outcome=aborted`; "print wind-down: no
+  longer waiting on background local_agent task"). Pre-existing K2a class
+  (FS1 -21e, F25 -20260720e: invoke_exit 0 + phase open). C2 classified
+  FAILED-INCOMPLETE correctly. Objective: resolved 1/1 (terra implement
+  was correct before the death). Lever receipts on the same row:
+  bootstrap state init exact (risk keywords + documented probe-demote
+  reason recorded), plan→implement gap 0ms, implement→build_gate 1ms,
+  turns 149 (-21e) → 32.
+- **probe-b (iter0077-probe-b): FULL COMPLETION.** elapsed 3240s < cap,
+  timed_out false, objective 1/1. Full chain incl. fix-loop: plan →
+  implement r1 → build_gate PASS (probe-a's death point, foreground) →
+  cleanup → verify r1 NEEDS_WORK → implement r2 (fix) → verify r2
+  NEEDS_WORK → final_report terminal NEEDS_WORK → archived. The F11-class
+  re-entry path (verify→fix→re-verify) ran clean under the new open-span
+  guard. Transition gaps: plan→implement 1ms, build_gate→cleanup 0ms.
+- **FS-0077-B ADJUDICATION: NOT FIRED.** probe-b completing the identical
+  row end-to-end refutes stack-induced systematic death; probe-a is
+  sonnet draw variance of the out-of-scope K2a class (C1 wiring packet
+  receipt). Mechanisms behaved contractually in BOTH probes.
+- **Environment contamination caveat (user-reported, binding on Stage B)**:
+  during both probes the machine ran multiple concurrent sessions across
+  projects and the network moved between mobile hotspot and home wifi.
+  Absolute wall numbers from the probes are therefore NOT lever evidence
+  (behavioral gates only — that is all the probes were for). Stage B
+  launches ONLY in a quiet window: no other heavy sessions on the
+  machine, stable home network, API health-gated (2-ping recipe).
+
 ## Principles check
 
 - **0**: closes the frozen wall failure (11.324x median; user-visible wall-time)
