@@ -188,3 +188,46 @@ precedent); wall-lever claims (0077 owns them); corpus changes.
   minutes-tier; cohort read rides the existing periodic exam.
 - **7**: fail direction explicit and frozen; C2 authority unchanged; labels
   honest (pressure ≠ authority; claude-route-only).
+
+## STAGE A RESULTS (2026-07-22, raw before interpretation)
+
+Build: Codex sol (workspace-write, detached, 2526s, zero silent hangs;
+report /tmp/threeway-0078-c1w/stageA-build-report.md). Shipped commit
+5339e41 (net +78/−520 on the moved surface; frozen oracles untouched;
+orchestrator re-ran every gate on disk: classifier 15 self-tests at the
+_shared home, stop-hook real-receipt self-test, bootstrap byte contract,
+SPW, archive, test-nodeg-cell, node --check, root lint ALL PASS after
+mirror sync + writable npm cache).
+
+## P-0078-K LIVE PROBE (run-pk-probe.py, pinned claude 2.1.215 copy, sonnet arms)
+
+- **Run 1 (20260721T174224Z): trial 01 mechanism PASS, controls RED —
+  the control caught a REAL allow-path mutation.** The hook's importlib
+  loads wrote `.claude/skills/_shared/__pycache__/*.pyc` into the
+  project on every allow invocation (FS-0078-A shape, exactly what
+  P-0078-O exists to catch). Second, instrument-side: the CLI's
+  `latest` symlink + debug/stdout captures sat inside the neutrality
+  digest (observation apparatus, not hook writes). Fixes:
+  `sys.dont_write_bytecode = True` at hook start (root-cause deletion
+  of the mutation — one line, travels with the importing code) +
+  runner excludes the four named observation artifacts (symlink-target
+  guarded). Hook self-test re-PASS, mirrors re-synced.
+- **Run 2 (20260721T174537Z): ALL THREE TRIALS PASS →
+  pk_probe_passed true.** Trial 01: installer wired the hook into a
+  fresh project (P-0078-I live); session stamped its own
+  CLAUDE_CODE_SESSION_ID; **9 block receipts** (the measured 0074 CLI
+  cap shape), **session-parity canary GREEN on 2.1.215** (env id ==
+  Stop stdin id == state owner — first live measurement of the parity
+  assumption; FS-0078-F closed), state bytes byte-identical through
+  all nine blocks, allow-after-archive exit 0. Trial 02 (absent
+  state): zero receipts, no `.devlyn` creation, tree neutral. Trial 03
+  (foreign-owner stale INCOMPLETE): zero receipts, state bytes
+  identical, tree neutral.
+- Committed evidence: results summaries (both runs — run 1 is the pyc
+  finding receipt), 9 block receipts + env-session-id.txt; home/,
+  codex-home/, scratch/ excluded via probe .gitignore (isolated-home
+  credentials never enter git).
+- P-0078-K/O(a)(c)/I: **PASS live**; P-O(b)(d) + state-SHA-at-block
+  covered by the hook self-test (mechanical). P-0078-KL and P-0078-C
+  remain cohort reads (first hook-bearing cohort — needs the runner
+  settings-staging edit, post-0077 Stage B).
