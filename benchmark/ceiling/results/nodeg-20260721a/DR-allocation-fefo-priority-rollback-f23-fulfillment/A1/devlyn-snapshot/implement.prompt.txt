@@ -1,0 +1,190 @@
+# Codex adapter
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+Your default is efficient, direct, task-oriented. The canonical body specifies the outcome and constraints; you choose the efficient path.
+
+## Tool-use posture
+Resolve the request in the fewest useful tool loops without sacrificing correctness.
+
+## Validation pattern
+Validation is concrete commands and tools, not self-belief. Run the verification commands listed below and trust their output before declaring success.
+
+## Anti-patterns
+1. Avoid absolute imperatives for judgment calls not already absolute in the canonical body.
+2. Don't over-specify process when the destination is clear.
+3. Stop rules are explicit — follow them rather than retrying indefinitely.
+
+---
+
+# PHASE 2 — IMPLEMENT (canonical body)
+
+<role>
+You execute the plan. Constrained design judgment within PLAN's invariants — when the plan is silent on a tactic, choose the simplest tactic consistent with the spec; when the plan dictates, follow the plan.
+</role>
+
+<input>
+- Plan: `.devlyn/plan.md` (already on disk at the repo root — read it directly; full text is also pasted below for convenience).
+- Source: `.devlyn/criteria.generated.md` (already on disk — full text pasted below).
+- Codebase at git HEAD (sha cbd12daedd7f2d22c62110faf097f12797e7dda6, branch master). Working directory is the repo root.
+</input>
+
+<output>
+- Code changes implementing every Requirement. Verify with `git diff`.
+- Tests added or updated for changed behavior. Run the full test suite before stopping: `node --test tests/`.
+- Report your verdict in your final reply: `PASS` on success; `BLOCKED` if a criterion cannot be satisfied (missing external dep, blocking ambiguity in the spec) — never silently skip a requirement.
+- Do not edit `.devlyn/pipeline.state.json` yourself.
+</output>
+
+<quality_bar>
+- Spec is the contract. The plan is the path. If they disagree, surface the conflict and follow the spec.
+- Features: follow existing patterns, then write tests.
+- Verification commands are literal. Before declaring done, re-read `## Verification` and run every command exactly as listed; compare output character-for-character.
+- Tooling-generated artifacts (test-results/, coverage HTML, etc.) do not belong in the diff unless the spec lists them as deliverables.
+- Existing tests are contract. Do not replace real filesystem / subprocess calls with mocks. Do not skip or disable tests. Do not reduce assertion count on behavior still in scope.
+- Files not in PLAN's list are off-limits: ONLY `bin/cli.js` and `tests/cli.test.js` may change. If you discover an out-of-scope file genuinely needs to change, stop and report BLOCKED with the reason; do not silently expand scope.
+</quality_bar>
+
+<runtime_principles>
+- Subtractive-first: every accretion-shaped change should be visible/justified. Net-deletion is the default; pure-addition needs a citation — here the citation is the explicit user goal (add a new command), so net-new code implementing exactly the specified behavior is justified; do not add anything beyond it (no extra flags, no extra validation, no extra tests beyond the required 2).
+- Goal-locked: implement only the listed Requirements. Adjacent code (`hello`, `version`, `parseNameFlag`) that "looks touchable" is drift unless the spec or plan listed it — do not refactor it.
+- No-workaround: no silent `catch` (no catch block that swallows an error and returns null/undefined/''/{}, no empty catch block — this is an explicit Requirement, not just house style), no hardcoded values that hide a broken contract, no helper scripts that bypass root cause.
+- Evidence: every claim should cite file:line you opened. Hallucinated APIs are excluded — use only Node.js core `fs`, `path`, `os` (already imported or importable, no new npm dependencies).
+</runtime_principles>
+
+Before declaring the phase complete, re-read each Requirement in `.devlyn/criteria.generated.md` and confirm the code actually satisfies it.
+
+## Full text of .devlyn/plan.md
+
+# Plan — `fulfill-wave` command
+
+## Source
+`.devlyn/criteria.generated.md` (generated criteria, complexity: medium). Base sha `cbd12daedd7f2d22c62110faf097f12797e7dda6`.
+
+<!-- devlyn:authorized-surface -->
+## 1. Files to touch
+
+| Path | Change | Rationale |
+|---|---|---|
+| `bin/cli.js` | edit | Add the `fulfill-wave` command per Requirement bullet 1 ("Add a `fulfill-wave` command to `bin/cli.js` invoked as `bench-cli fulfill-wave --input <path>`"). Currently `main()` (`bin/cli.js:38-61`) dispatches via `switch (command)` with cases `'hello'` (`bin/cli.js:47-51`) and `'version'` (`bin/cli.js:52-54`), falling through to `default:` (`bin/cli.js:56-59`) which prints `Unknown command` and exits 1. A new `case 'fulfill-wave':` must be added before `default` so the command is recognized. `USAGE` (`bin/cli.js:8-19`) must gain a `fulfill-wave --input <path>` line, matching the Constraints bullet "Follow the existing CLI pattern already in `bin/cli.js` (command dispatch in `main()`'s `switch`, `USAGE` text update)". All validation, allocation, and output-formatting logic lives in this file (helper functions alongside `readPackageVersion`/`parseNameFlag`, `bin/cli.js:21-36`) — no new files, per Constraint "Only touch `bin/cli.js` and `tests/cli.test.js`". |
+| `tests/cli.test.js` | edit | Keep the 3 existing tests (`bin/cli.js:12-25` — `hello default`, `hello with --name`, `version prints package version`) passing unmodified, and add >=2 new tests per Requirement bullet 12: one accepted-allocation case and one rejected-all-or-nothing case. Tests reuse the existing `run(args)` helper (`tests/cli.test.js:8-10`, `execFileSync`) and existing `path`/`CLI` setup (`tests/cli.test.js:1-6`). Since only these two files may be touched, input JSON fixtures cannot live in a new `tests/fixtures/*.json` file — each new test must synthesize its input via `fs.mkdtempSync(...)` + `fs.writeFileSync(...)` (Node core `fs`/`os`, no new dependency) and pass the temp path via `--input`. |
+
+```json
+{"authorized_surface": ["bin/cli.js", "tests/cli.test.js"]}
+```
+
+## 2. Risks
+
+**Out-of-scope expansions to refuse:**
+- No new npm dependencies (Constraint bullet 2) — use only `fs`, `path`, `os`, `node:test`, `node:assert`, `node:child_process`, all already in use or core modules.
+- No new files (fixture JSON, docs, config) — authorized surface is exactly `bin/cli.js` and `tests/cli.test.js`.
+- No carrier selection, package dimensions, backorders/partial-order acceptance, or persistence beyond stdout (Out of Scope bullet).
+- No extra CLI flags beyond `--input` (e.g. no `--output`, `--dry-run`) — not requested.
+- Do not touch the `hello`/`version`/`--help` code paths beyond appending the `fulfill-wave` line to `USAGE` and adding one `case` — no refactor of `parseNameFlag`/`readPackageVersion`.
+- Add exactly the two required new tests (accepted + rejected-all-or-nothing); do not speculatively add a broad validation-matrix test suite — not requested by the spec's "at least two" minimum, and extra untested-by-spec assertions risk asserting on unprescribed stderr/stdout shapes.
+
+**Ambiguous spec sections — strict interpretation to lock in before IMPLEMENT:**
+- **`rejected` reason scope.** Validation failures (bad input shape) never reach the `rejected` array — they exit 2 with a stderr JSON object, before any allocation attempt. `rejected` (with `reason: "insufficient_stock"`) is populated only for orders that pass validation but fail allocation (global insufficient stock, or a `single_warehouse` line whose one candidate warehouse can't cover it). This is the only rejection reason, consistent with the literal schema `{ "id": string, "reason": "insufficient_stock" }`.
+- **Rollback granularity.** Process an order's `lines` in the given array order; deduct tentatively from warehouse/lot state as each line is fulfilled. If any line in the order cannot be fully allocated, restore every unit tentatively deducted for that order (all prior successful lines in that order included) before moving to the next order. Stock deducted by *earlier accepted orders* is never restored.
+- **Warehouse/lot selection is live, not precomputed.** Because each order's deductions affect stock visible to later orders (and later lines within the same order), warehouse/lot candidate lists must be evaluated against current mutable state at the time each line is processed, not against a snapshot taken once at the start.
+- **`single_warehouse: true` selection.** Iterate warehouses sorted by `distance` asc, `id` asc; pick the first warehouse whose own lots (summed) can fully cover the line's qty; draw FEFO (`expires` asc, `lot` id asc) only from that warehouse. If no single warehouse suffices, the line fails (and the order rejects) even if the cross-warehouse sum would be enough — do not fall back to splitting.
+- **`single_warehouse: false` selection.** Walk warehouses sorted by `distance` asc, `id` asc; within each, draw lots FEFO until the line qty is met or that warehouse's stock for the sku is exhausted, then continue to the next warehouse. If total available across all warehouses is insufficient, the line fails.
+- **Allocation row granularity/order ("exact sequence stock was consumed").** Emit one allocation row per individual (warehouse, lot) draw at the moment it is consumed, in the order lines are processed within the order and warehouses/lots are visited within each line. Do not merge two draws from the same warehouse+lot into one row even if they arise from two different lines in the same order — each draw is its own row, in sequence.
+- **`remaining` completeness.** After all orders are processed, emit one row per (warehouse, lot) pair whose post-processing qty is > 0 — including lots nothing was ever drawn from — sorted by `warehouse` id asc, then `sku` asc, then `expires` asc, then `lot` id asc. Lots drained to exactly 0 are omitted.
+- **`submitted_at` "ISO date or timestamp".** Validate via a check that rejects non-string and unparseable values (e.g. `typeof v === 'string' && !Number.isNaN(Date.parse(v))`); do not additionally require a specific ISO subformat — `Date.parse` is the standard-library primitive for this per "best practice" (Core Principle 5), avoiding a hand-rolled ISO regex.
+- **`expires` "valid YYYY-MM-DD calendar date".** `new Date('YYYY-MM-DD')` silently rolls invalid dates over (e.g. `2024-02-30` → `2024-03-01`), so format-regex alone is insufficient. Must round-trip: parse year/month/day as integers, construct via `Date.UTC`, and confirm `getUTCFullYear`/`getUTCMonth`/`getUTCDate` match the parsed components — otherwise reject.
+- **Non-empty string ids/skus/lots.** `typeof v === 'string' && v.length > 0`. No trim/whitespace-only rejection requirement stated — do not add one (avoids unrequested validation per Goal-locked discipline).
+- **`distance`/`priority` "are numbers".** `typeof v === 'number' && !Number.isNaN(v)`. Spec does not require positivity — do not add a positivity check that isn't asked for.
+- **Missing/invalid `--input` flag or unreadable file.** Treated identically to "invalid input" per Requirement bullet 6 ("On invalid input **or a file-read failure**") — exit 2, nothing on stdout, one JSON object on stderr. No crash/stack-trace leakage.
+- **"Do not mutate the input file on disk."** Trivially satisfied by only ever calling `fs.readFileSync` on the input path — never `writeFileSync`/`appendFileSync` to it. IMPLEMENT must not introduce any write to the `--input` path.
+
+**Known failure modes for this language/framework:**
+- Aliasing bugs: rollback must not share array/object references between "tentative" and "committed" stock state — deep-enough cloning or explicit delta-tracking (e.g. record `{warehouse, lot, qty}` deltas applied per order, then reverse them on rejection) is required, not a shallow copy that still shares nested lot objects.
+- Key order in emitted JSON objects matters for readability/diffing even though `JSON.parse` on the test side is order-insensitive for `assert.deepStrictEqual` on parsed objects — construct each row's object literal with keys in the exact prescribed order (`id, allocations` / `sku, warehouse, lot, qty` / `id, reason` / `warehouse, sku, lot, qty, expires`) to match the literal schemas in the Requirements verbatim.
+- `console.log`/`console.error` both append a trailing newline, which is fine for "one parseable JSON value" (parsers tolerate trailing whitespace) — but any stray `console.log`/debug output on the success path must be avoided, since Requirement bullet 10 requires stdout to contain exactly one JSON object and nothing else.
+- The new `case 'fulfill-wave':` must come before `default:` in the `switch` (`bin/cli.js:46-60`) — trivial but easy to break by pattern-matching the wrong insertion point.
+- Test side: `execFileSync` throws on non-zero exit. The "rejected all-or-nothing" test case is still an exit-0 run (the order is rejected in the *output*, not a process failure) — the test must not wrap that call in a try/catch; only a genuinely invalid-input test (not required, and per Risks above not being added) would need to catch the thrown `Error` with `.status`/`.stderr`. Do not add unnecessary try/catch scaffolding for the two required tests.
+- Temp-file isolation: use `fs.mkdtempSync(path.join(os.tmpdir(), 'fulfill-wave-'))` per test (or per call) so concurrent/rerun test invocations never collide on a fixed filename.
+
+## 3. Acceptance restatement
+
+### Verbatim `## Verification` block from criteria
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "node --test tests/", "exit_code": 0 }
+  ]
+}
+```
+
+### Plain-language restatement of every Requirement bullet
+
+1. **Command surface.** `bin/cli.js` must gain a `fulfill-wave` command invoked as `bench-cli fulfill-wave --input <path>`. Input file is one JSON object: `{ warehouses: Warehouse[], orders: Order[] }`, `Warehouse = { id: string, distance: number, lots: Lot[] }`, `Lot = { sku: string, lot: string, qty: number, expires: "YYYY-MM-DD" }`, `Order = { id: string, priority: number, submitted_at: string, lines: Line[] }`, `Line = { sku: string, qty: number, single_warehouse: boolean }`.
+2. **Full up-front validation, no partial allocation on bad input.** Before any allocation: all ids/SKU/lot identifiers must be non-empty strings; all quantities positive integers; every lot `expires` a real `YYYY-MM-DD` calendar date; every `submitted_at` parseable as an ISO date/timestamp; every `distance`/`priority` a number; `warehouses`/`orders`/`lots`/`lines` must each be arrays; order ids must be unique across the input. The input file must never be mutated on disk.
+3. **Global order processing with all-or-nothing + rollback.** Orders are processed in one global sequence ordered by `priority` desc, then `submitted_at` asc, then `id` asc. An order is accepted only if every one of its lines can be fully allocated; if any line fails, the whole order is rejected and every tentative deduction made for that order (across all its lines) is rolled back. Accepted orders' deductions persist and reduce stock for subsequently processed orders; rejected orders leave stock exactly as it was.
+4. **`single_warehouse` semantics.** A line with `single_warehouse: false` may be split across multiple warehouses and multiple lots. A line with `single_warehouse: true` must be filled entirely from one warehouse (though it may draw multiple lots within that warehouse), and must be rejected if no single warehouse alone holds enough stock — even if the sum across warehouses would be enough.
+5. **Selection ordering.** Choose warehouses in `distance` ascending order, tie-broken by warehouse `id` ascending. Within a chosen warehouse, choose lots FEFO: `expires` ascending, tie-broken by `lot` id ascending. The `allocations` rows for an order must appear in the exact sequence stock was actually consumed.
+6. **Success output contract.** On success: stdout gets exactly one parseable JSON object and nothing else; stderr gets nothing; process exits 0. The object has exactly the keys `accepted`, `rejected`, `remaining`.
+   - `accepted`: in processing order; each row exactly `{ "id": string, "allocations": Allocation[] }`, `Allocation = { "sku": string, "warehouse": string, "lot": string, "qty": number }`.
+   - `rejected`: in original input order; each row exactly `{ "id": string, "reason": "insufficient_stock" }`.
+   - `remaining`: only lots with positive leftover qty, sorted by warehouse id, then sku, then expiry, then lot id; each row exactly `{ "warehouse": string, "sku": string, "lot": string, "qty": number, "expires": "YYYY-MM-DD" }`.
+7. **Failure output contract.** On invalid input or a file-read failure: exit code 2; nothing on stdout; exactly one parseable JSON value on stderr that is a non-null, non-array object (member names not prescribed). No catch block may silently swallow the error and return `null`/`undefined`/`''`/`{}`; no empty catch blocks.
+8. **Test updates.** `tests/cli.test.js` must keep all existing tests passing and gain at least two new `fulfill-wave` tests: one exercising an accepted allocation, one exercising a rejected all-or-nothing order.
+
+## Verdict: PASS
+
+
+## Full text of .devlyn/criteria.generated.md
+
+# Generated criteria — fulfill-wave command
+
+## Requirements
+
+- Add a `fulfill-wave` command to `bin/cli.js` invoked as `bench-cli fulfill-wave --input <path>`. The input file is one JSON object `{ "warehouses": Array<Warehouse>, "orders": Array<Order> }` where `Warehouse = { id: string, distance: number, lots: Array<Lot> }`, `Lot = { sku: string, lot: string, qty: number, expires: "YYYY-MM-DD" }`, `Order = { id: string, priority: number, submitted_at: string, lines: Array<Line> }`, `Line = { sku: string, qty: number, single_warehouse: boolean }`.
+- Validate the complete input before allocating anything: ids/SKU/lot identifiers are non-empty strings; quantities are positive integers; lot `expires` values are valid `YYYY-MM-DD` calendar dates; `submitted_at` parses as an ISO date or timestamp; `distance`/`priority` are numbers; `warehouses`/`orders`/`lots`/`lines` are arrays; order ids are unique. Do not mutate the input file on disk.
+- Process orders globally ordered by `priority` descending, then `submitted_at` ascending, then `id` ascending. Each order is all-or-nothing: if any line cannot be fully allocated, reject the order and roll back every tentative stock deduction made for that order. Accepted orders reduce stock visible to later orders; rejected orders leave stock untouched.
+- A `single_warehouse: false` line may split across warehouses and lots. A `single_warehouse: true` line must be filled entirely from one warehouse (it may still span multiple lots within that warehouse) and must be rejected when no single warehouse holds enough stock, even if combined stock across warehouses would suffice.
+- Warehouse selection order: `distance` ascending, then warehouse `id` ascending. Lot selection within a chosen warehouse: FEFO — `expires` ascending, then `lot` id ascending. Allocation rows must appear in the exact sequence stock was consumed.
+- On success: write exactly one parseable JSON object to stdout, write nothing to stderr, emit no extra text, and exit 0. The object's only keys are `accepted`, `rejected`, and `remaining`. `accepted` follows processing order; each row is exactly `{ "id": string, "allocations": Array<Allocation> }` with `Allocation = { "sku": string, "warehouse": string, "lot": string, "qty": number }`. `rejected` follows original input order; each row is exactly `{ "id": string, "reason": "insufficient_stock" }`. `remaining` contains only positive leftover lot quantities, sorted by warehouse id, then sku, then expiry, then lot id; each row is exactly `{ "warehouse": string, "sku": string, "lot": string, "qty": number, "expires": "YYYY-MM-DD" }`.
+- On invalid input or a file-read failure: exit code 2, write nothing to stdout, and write exactly one parseable JSON value (a non-null, non-array object; member names not otherwise prescribed) to stderr. Do not use a catch block that silently returns `null`/`undefined`/`''`/`{}`, and do not use an empty catch block.
+- Update `tests/cli.test.js` so every existing test still passes, and add at least two new `fulfill-wave` tests: one covering an accepted allocation and one covering a rejected all-or-nothing order.
+
+## Constraints
+
+- Only touch `bin/cli.js` and `tests/cli.test.js`.
+- No new npm dependencies.
+- Follow the existing CLI pattern already in `bin/cli.js` (command dispatch in `main()`'s `switch`, `USAGE` text update) and the existing test pattern in `tests/cli.test.js` (`run(args)` helper via `execFileSync`).
+
+## Out of Scope
+
+- Carrier selection, package dimensions, backorders or partial order acceptance, and persistence beyond stdout.
+- Anything not in `bin/cli.js` or `tests/cli.test.js`.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "node --test tests/", "exit_code": 0 }
+  ]
+}
+```
+
+
+## Task
+
+Implement the `fulfill-wave` command exactly as specified above. Concretely:
+
+1. Edit `bin/cli.js`:
+   - Add a `fulfill-wave --input <path>` line to the `USAGE` block.
+   - Add a `case 'fulfill-wave':` branch in the `main()` switch (before `default:`) that reads the `--input` flag value, reads and JSON-parses the file, validates the complete input per the Requirements (fail closed on the first violation found during full-input validation, or collect none — either way produce exactly one stderr JSON object and exit 2 on ANY validation/read/parse failure, per the Requirements' failure contract), then runs the allocation algorithm (global order sort by priority desc/submitted_at asc/id asc; per-order all-or-nothing with rollback of that order's tentative deductions on any line failure; single_warehouse vs split line handling; warehouse selection by distance asc/id asc; FEFO lot selection by expires asc/lot id asc; exact-sequence allocation rows), then prints the exact success JSON shape (`accepted`/`rejected`/`remaining` with the prescribed row shapes and orderings) to stdout with nothing on stderr and exit 0.
+   - Implement validation, date/timestamp parsing, and allocation as plain functions in this file (no new files, no new npm dependencies — use Node core `fs`/`path` only).
+2. Edit `tests/cli.test.js`:
+   - Keep the 3 existing tests passing unmodified.
+   - Add at least 2 new tests for `fulfill-wave`: one accepted-allocation case (assert on the full parsed stdout JSON object, including exact key sets and values) and one rejected all-or-nothing case (assert the order lands in `rejected` with `reason: "insufficient_stock"` and that no partial allocation for that order appears, and that a warehouse's stock unaffected by the rejected order remains intact — e.g. via a second order or a `remaining` check). Use `fs.mkdtempSync(path.join(os.tmpdir(), 'fulfill-wave-'))` (or equivalent) to write a temporary JSON input fixture per test — do not add new fixture files under `tests/`.
+3. Run `node --test tests/` and confirm all tests (existing 3 + new >=2) pass with exit code 0.
+4. Run `git diff --stat` and confirm only `bin/cli.js` and `tests/cli.test.js` changed.
+5. Reply with `PASS` plus a short summary of what you implemented and the test run output, or `BLOCKED` plus the specific blocking reason.

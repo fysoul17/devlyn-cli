@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "task": "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+  "arm": "A",
+  "attempt": 1,
+  "elapsed_seconds": 2368,
+  "invoke_exit": 0,
+  "timed_out": false,
+  "draw_non_diagnostic": false,
+  "worktree": "/Users/aipalm/.local/share/nx01/w/r95f67894ed75/f99dbe9386580/A1/repo",
+  "invoke_started_at": "2026-07-20T20:20:23.159Z",
+  "invoke_completed_at": "2026-07-20T20:59:51.423Z",
+  "terminal_outcome": "FAILED-INCOMPLETE"
+}

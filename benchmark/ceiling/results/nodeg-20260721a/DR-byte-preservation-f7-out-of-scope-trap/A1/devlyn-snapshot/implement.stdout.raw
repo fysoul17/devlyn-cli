@@ -1,0 +1,15 @@
+[codex-monitored] error: stdout is a pipe.
+
+Piping the wrapper to tail/head/awk/sed/grep buffers wrapper output until EOF,
+which starves the outer claude -p byte-watchdog (iter-0008 starvation mechanism)
+and kills the run after ~300s with empty transcript.
+
+Fix: invoke the wrapper directly so the bash tool captures its stdout. The
+wrapper streams full Codex output and emits a heartbeat on stderr; you do NOT
+need to truncate.
+
+  WRONG: bash codex-monitored.sh ... 2>&1 | tail -200
+  RIGHT: bash codex-monitored.sh ...
+
+If you absolutely must filter, use a line-buffered tool (e.g. `grep --line-buffered`)
+and set CODEX_MONITORED_ALLOW_PIPED=1 in the wrapper's environment.

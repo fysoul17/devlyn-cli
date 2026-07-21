@@ -1,0 +1,36 @@
+{
+  "censored_open_span_ms": 0,
+  "conservation_residue_ms": 0,
+  "decomposition_status": "complete",
+  "elapsed_ms": 1545394,
+  "gap_to_censored_ms": 0,
+  "implement_total_ms": 1187815,
+  "incomplete_spans": [],
+  "interphase_gap_ms": 35994,
+  "judge_durations_ms": null,
+  "legacy_edge_residual_ms": null,
+  "non_phase_residual_ms": 278925,
+  "outer_loop_gap_ms": 0,
+  "phase_sum_ms": 1266469,
+  "phase_union_ms": 1266469,
+  "phases": {
+    "final_report": {
+      "current_triggered_by": null,
+      "duration_ms": 15370,
+      "history_sum_ms": 0
+    },
+    "implement": {
+      "current_triggered_by": null,
+      "duration_ms": 1187815,
+      "history_sum_ms": 0
+    },
+    "plan": {
+      "current_triggered_by": null,
+      "duration_ms": 63284,
+      "history_sum_ms": 0
+    }
+  },
+  "startup_ms": 211225,
+  "tail_ms": 31706,
+  "verify_complete": false
+}

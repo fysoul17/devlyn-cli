@@ -1,0 +1,16 @@
+[codex-monitored] start: ts=2026-07-20T18:57:04Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=57345
+[codex-monitored] heartbeat: elapsed=30s
+[codex-monitored] heartbeat: elapsed=60s
+[codex-monitored] heartbeat: elapsed=90s
+[codex-monitored] heartbeat: elapsed=120s
+[codex-monitored] heartbeat: elapsed=150s
+[codex-monitored] heartbeat: elapsed=180s
+[codex-monitored] heartbeat: elapsed=210s
+[codex-monitored] heartbeat: elapsed=240s
+[codex-monitored] heartbeat: elapsed=270s
+[codex-monitored] heartbeat: elapsed=300s
+[codex-monitored] heartbeat: elapsed=330s
+Terminated: 15
+Terminated: 15
+Terminated: 15

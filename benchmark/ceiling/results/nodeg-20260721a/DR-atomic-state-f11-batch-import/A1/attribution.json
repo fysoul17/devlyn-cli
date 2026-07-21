@@ -1,0 +1,32 @@
+{
+  "censored_open_span_ms": 817550,
+  "conservation_residue_ms": 0,
+  "decomposition_status": "complete",
+  "elapsed_ms": 1017808,
+  "gap_to_censored_ms": 0,
+  "implement_total_ms": 0,
+  "incomplete_spans": [
+    {
+      "phase": "plan",
+      "record": "current",
+      "started_at": "2026-07-20T19:06:19.033Z"
+    }
+  ],
+  "interphase_gap_ms": 0,
+  "judge_durations_ms": null,
+  "legacy_edge_residual_ms": null,
+  "non_phase_residual_ms": 1017808,
+  "outer_loop_gap_ms": 0,
+  "phase_sum_ms": 0,
+  "phase_union_ms": 0,
+  "phases": {
+    "plan": {
+      "current_triggered_by": null,
+      "duration_ms": null,
+      "history_sum_ms": 0
+    }
+  },
+  "startup_ms": 200258,
+  "tail_ms": 0,
+  "verify_complete": false
+}

@@ -1,0 +1,48 @@
+{
+  "auth_mechanism": "macos-keychain-blob",
+  "claude_config_dir": "/Users/aipalm/.local/share/nx01/claude-homes/r95f67894ed75/fa265b8ab039e/A1/.claude",
+  "claude_env_keys": [
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+    "CLAUDE_CONFIG_DIR",
+    "CODEX_HOME",
+    "DISABLE_AUTOUPDATER",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_NOSYSTEM",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "NPM_CONFIG_CACHE",
+    "NPM_CONFIG_USERCONFIG",
+    "PATH",
+    "TERM",
+    "TMPDIR",
+    "TZ"
+  ],
+  "claude_env_keys_sha256": "17d2dcc4580cd623e98eb249998518a561e7da70322d5e2b92354ae55b87132c",
+  "command_v_claude": {
+    "command": "command -v claude",
+    "exit_code": 0,
+    "passed": true,
+    "path": "/Users/aipalm/.local/share/nx01/claude-homes/r95f67894ed75/fa265b8ab039e/A1/b/claude",
+    "resolved_path": "/Users/aipalm/.local/share/nx01/pins/nodeg-20260721a/claude",
+    "sha256": "90608b5c5ab504e96e77365cea6203d046e291d59b2bb42cf28dcb2ccdf9dd58"
+  },
+  "credentials_seeded": true,
+  "direct_claude": {
+    "path": "/Users/aipalm/.local/share/nx01/pins/nodeg-20260721a/claude",
+    "requested_model": "sonnet",
+    "sha256": "90608b5c5ab504e96e77365cea6203d046e291d59b2bb42cf28dcb2ccdf9dd58",
+    "superset_wrapper": false,
+    "version": "2.1.215 (Claude Code)"
+  },
+  "direct_codex": {
+    "path": "/Users/aipalm/.local/share/nx01/pins/nodeg-20260721a/codex",
+    "sha256": "956d22c19661d7e24392e2db3fb7446d8b43f28bf836dbd976df1281ddad5de9",
+    "superset_wrapper": false
+  },
+  "frozen_path": "/Users/aipalm/.local/share/nx01/claude-homes/r95f67894ed75/fa265b8ab039e/A1/b:/Users/aipalm/.local/share/nx01/pins/nodeg-20260721a:/Users/aipalm/.nvm/versions/node/v20.19.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+  "home": "/Users/aipalm/.local/share/nx01/claude-homes/r95f67894ed75/fa265b8ab039e/A1",
+  "shim_path": "/Users/aipalm/.local/share/nx01/claude-homes/r95f67894ed75/fa265b8ab039e/A1/b/claude",
+  "shim_target": "/Users/aipalm/.local/share/nx01/pins/nodeg-20260721a/claude",
+  "shim_target_sha256": "90608b5c5ab504e96e77365cea6203d046e291d59b2bb42cf28dcb2ccdf9dd58"
+}

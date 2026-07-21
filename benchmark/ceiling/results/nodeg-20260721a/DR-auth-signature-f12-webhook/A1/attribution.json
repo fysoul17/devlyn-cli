@@ -1,0 +1,42 @@
+{
+  "censored_open_span_ms": 2891110,
+  "conservation_residue_ms": 0,
+  "decomposition_status": "complete",
+  "elapsed_ms": 3605197,
+  "gap_to_censored_ms": 70612,
+  "implement_total_ms": 0,
+  "incomplete_spans": [
+    {
+      "phase": "implement",
+      "record": "history[0]",
+      "started_at": "2026-07-20T19:31:58.764Z"
+    },
+    {
+      "phase": "implement",
+      "record": "current",
+      "started_at": "2026-07-20T20:06:26.789Z"
+    }
+  ],
+  "interphase_gap_ms": 0,
+  "judge_durations_ms": null,
+  "legacy_edge_residual_ms": null,
+  "non_phase_residual_ms": 3605092,
+  "outer_loop_gap_ms": 0,
+  "phase_sum_ms": 105,
+  "phase_union_ms": 105,
+  "phases": {
+    "implement": {
+      "current_triggered_by": null,
+      "duration_ms": null,
+      "history_sum_ms": 0
+    },
+    "plan": {
+      "current_triggered_by": null,
+      "duration_ms": 105,
+      "history_sum_ms": 0
+    }
+  },
+  "startup_ms": 643370,
+  "tail_ms": 0,
+  "verify_complete": false
+}

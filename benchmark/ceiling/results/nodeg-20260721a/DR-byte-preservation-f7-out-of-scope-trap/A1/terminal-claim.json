@@ -1,0 +1,6 @@
+{
+  "status": "INCOMPLETE:verify",
+  "phase": "verify",
+  "reason": "verify did not complete with a valid verdict",
+  "run_id": "rs-20260720T173047Z-c47d4b914bdc"
+}

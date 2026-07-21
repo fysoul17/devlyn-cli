@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "failed_step": null,
+  "package_lock": true,
+  "node_bin": "/Users/aipalm/.nvm/versions/node/v20.19.0/bin/node",
+  "npm_version": "10.8.2",
+  "exit_codes": {
+    "npm_version": 0,
+    "npm_ci": 0,
+    "npm_ls": 0
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "base_ref": {
+    "branch": "master",
+    "sha": "cbd12daedd7f2d22c62110faf097f12797e7dda6"
+  },
+  "bypasses": [],
+  "complexity": "medium",
+  "criteria": [],
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "implement_passed_sha": null,
+  "mode": "free-form",
+  "pair_verify": true,
+  "phases": {
+    "build_gate": null,
+    "cleanup": null,
+    "final_report": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-20T20:59:15.431Z",
+      "duration_ms": 11839,
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-20T20:59:03.592Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "BLOCKED"
+    },
+    "implement": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": ".devlyn/implement.blocked-evidence.md"
+      },
+      "completed_at": "2026-07-20T20:58:45.022Z",
+      "duration_ms": 1516406,
+      "engine": "codex",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-20T20:33:28.616Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "BLOCKED"
+    },
+    "plan": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": ".devlyn/plan.md"
+      },
+      "completed_at": "2026-07-20T20:32:50.147Z",
+      "duration_ms": 177300,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-20T20:29:52.847Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "probe_derive": null,
+    "surface_close": null,
+    "verify": null
+  },
+  "risk_probes_digest": null,
+  "risk_profile": {
+    "high_risk": true,
+    "pair_default_enabled": true,
+    "reasons": [
+      "goal mentions allocation/inventory/rollback keywords (stock allocation, all-or-nothing rollback)",
+      "goal specifies an explicit output-shape/error-priority contract (exact stdout keys, exit code 2 stderr contract)",
+      "auto-risk-probes enabled: pair-judge engine claude available (binary complement of executor codex)",
+      "auto-risk-probes demoted: plan surface small (2 paths)"
+    ],
+    "risk_probes_enabled": false,
+    "risk_probes_explicit": false
+  },
+  "rounds": {
+    "global": 0,
+    "max_rounds": 4
+  },
+  "run_id": "rs-20260720T202920Z-34453ea187be",
+  "source": {
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "8a1a25fb40f5fb533f29d16d680fe6740a664633c8b2c9ac2a1ddeffbb27d7ca",
+    "goal_path": ".devlyn/goal.raw.txt",
+    "goal_sha256": "026a153501107373a5e14ade6a4548cd3e9769a69c06a38ed8f4b44fc82183fc",
+    "spec_path": null,
+    "spec_sha256": null,
+    "type": "generated"
+  },
+  "started_at": "2026-07-20T20:29:20Z",
+  "verify": {
+    "coverage_failed": false,
+    "pair_trigger": null
+  },
+  "version": "3.0"
+}

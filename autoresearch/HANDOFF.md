@@ -88,7 +88,11 @@ nohup bash benchmark/ceiling/scripts/run-nodeg-cell.sh --run-id <fresh>
 --tasks "F7,F25,F26,F11,F12,F23,FS1"` (explicit CSV REQUIRED — C2 draw
 filter activates only under --tasks; F7 FIRST so a pre8/cmds=0 draw
 abort exit-86 is cheap; diagnostic-draw rate ≈ 1/3, relaunch fresh id).
-**UPDATER-PROOF PIN (mandatory)**: `cp` the pinned claude binary to a
+**CODEX PIN = VENDOR BINARY (mandatory)**: CEILING_TEST_CODEX_BIN must
+point at the npm vendor Mach-O (`~/.local/share/nx01/pins/codex-0.144.5/bin/codex`,
+provenance.json + sha receipt) — NEVER `command -v codex` (Superset
+wrapper script; broke under arm isolation and killed cohort
+nodeg-20260721a, DECISIONS 0076.4). **UPDATER-PROOF PIN (mandatory)**: `cp` the pinned claude binary to a
 run-owned path BEFORE launch (`~/.local/share/nx01/pins/…`) — the
 auto-updater deletes old versions from `~/.local/share/claude/versions/`.
 **Deleted-version RESTORE recipe (established 2026-07-20)**: fetch
