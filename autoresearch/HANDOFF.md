@@ -71,7 +71,12 @@ C2 FAILED-INCOMPLETE fired live in-cohort (F25, first time).
    session-tail hang receipt (`aborted_streaming` at wall cap AFTER
    final_report — wall-iter receipt). Candidate mechanics notes
    (record-only): arm-level bounded retry on api_error; 429-storm
-   circuit breaker in the cell driver. On cohort completion: adjudicate
+   circuit breaker in the cell driver; **spec-verify 60s hardcoded
+   command timeout → CRITICAL misjudge on legit long verifications
+   (user-reported 2026-07-21; receipt spec-verify-check.py:4123-4130 +
+   :4227; memory `project_verify_60s_timeout_misjudge`; candidate =
+   spec-authorable `timeout_sec` + distinct timeout rule_id — needs its
+   own registered round)**. On cohort completion: adjudicate
    vs P-0076-A/B/C with the mechanical incomplete partition
    {K1/K2a/K2b/other}; FS-0076-B fires → C1 wiring next. Stage A CLOSED
    0076.3 (build 22d22ff; FS-0076-A fired → v2 differential re-spec
