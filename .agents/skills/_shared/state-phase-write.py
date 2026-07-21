@@ -9,6 +9,8 @@ Usage:
     python3 state-phase-write.py --devlyn-dir .devlyn --phase implement complete \
         --verdict PASS [--post-sha <sha>] [--findings-file <path>] [--log-file <path>] \
         [--engine claude] [--model <requested-id>] [--engine-session-log <path>]
+    python3 state-phase-write.py --devlyn-dir .devlyn --phase plan transition \
+        --verdict PASS --next-phase implement --next-round 0 --next-engine claude
 
 references/state-schema.md#write-protocol is the contract this implements.
 A prior hand-edited fix-loop respawn left `started_at` at its original round's
@@ -21,6 +23,7 @@ drift apart again.
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime
 import difflib
 import hashlib
@@ -36,6 +39,16 @@ import tempfile
 VALID_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "FAIL", "NEEDS_WORK", "BLOCKED"}
 VALID_TRIGGERS = {"build_gate", "verify"}
 PHASE_NAMES = {"plan", "probe_derive", "implement", "surface_close", "build_gate", "cleanup", "verify", "final_report"}
+LEGAL_TRANSITIONS = {
+    "plan": {"probe_derive", "implement", "final_report"},
+    "probe_derive": {"implement", "final_report"},
+    "implement": {"implement", "surface_close", "build_gate", "cleanup", "verify", "final_report"},
+    "surface_close": {"build_gate", "cleanup", "verify", "final_report"},
+    "build_gate": {"implement", "cleanup", "verify", "final_report"},
+    "cleanup": {"verify", "final_report"},
+    "verify": {"implement", "final_report"},
+    "final_report": set(),
+}
 WORKER_SESSION_ARTIFACT_PHASES = {
     "implement": "implement",
     "surface_close": "surface-close",
@@ -1298,6 +1311,57 @@ def do_complete(state: dict, phase: str, verdict: str | None,
     return attestation_error
 
 
+def do_transition(
+    state: dict,
+    phase: str,
+    next_phase: str,
+    verdict: str | None,
+    post_sha: str | None,
+    findings_file: str | None,
+    log_file: str | None,
+    engine: str | None,
+    model: str | None,
+    engine_session_log: str | None,
+    devlyn: pathlib.Path,
+    next_round: int,
+    next_triggered_by: str | None,
+    next_pre_sha: str | None,
+    next_engine: str | None,
+    next_model: str | None,
+    *,
+    next_input_patch_sha256: str | None = None,
+    next_prompt_sha256: str | None = None,
+    next_untracked_before: list[str] | None = None,
+    between=None,
+) -> dict:
+    """Validate complete + caller-selected spawn against a copy of state.
+
+    The caller owns the next phase and every judgment-bearing argument.  This
+    primitive only validates the requested edge and applies both lifecycle
+    mutations to a detached candidate, which the CLI commits with one atomic
+    state-file replacement.
+    """
+    if next_phase not in LEGAL_TRANSITIONS.get(phase, set()):
+        raise SystemExit(f"error: illegal phase transition: {phase} -> {next_phase}")
+    candidate = copy.deepcopy(state)
+    attestation_error = do_complete(
+        candidate, phase, verdict, post_sha, findings_file, log_file,
+        engine, model, engine_session_log, devlyn,
+    )
+    if attestation_error is not None:
+        raise SystemExit(attestation_error)
+    if between is not None:
+        between()
+    do_spawn(
+        candidate, next_phase, next_round, next_triggered_by,
+        next_pre_sha, next_engine, next_model,
+        input_patch_sha256=next_input_patch_sha256,
+        prompt_sha256=next_prompt_sha256,
+        untracked_before=next_untracked_before,
+    )
+    return candidate
+
+
 def do_surface_adjudication_recovery(state: dict, devlyn: pathlib.Path) -> str | None:
     entry = surface_entry(state)
     attestation_error = do_complete(
@@ -1402,6 +1466,140 @@ def self_test() -> int:
             raise AssertionError("respawn over an open F11 span must fail")
         assert json.dumps(f11_open, sort_keys=True) == before_f11
         assert "history" not in f11_open["phases"]["verify"]
+
+        # Transition is one state transaction: a forced failure between its
+        # validated halves leaves the authoritative state byte-identical.
+        transition_state = {
+            "phases": {
+                "plan": {
+                    "started_at": "2026-01-01T00:00:00.000Z",
+                    "completed_at": None,
+                    "duration_ms": None,
+                    "round": 0,
+                    "triggered_by": None,
+                    "verdict": None,
+                },
+                "implement": None,
+            }
+        }
+        write_state(state_path, transition_state)
+        transition_before = state_path.read_bytes()
+
+        def fail_between_halves() -> None:
+            raise RuntimeError("forced transition failure")
+
+        try:
+            do_transition(
+                transition_state, "plan", "implement", "PASS", None,
+                None, None, None, None, None, devlyn, 0, None, None,
+                "claude", None, between=fail_between_halves,
+            )
+        except RuntimeError as exc:
+            assert str(exc) == "forced transition failure"
+        else:
+            raise AssertionError("forced transition failure did not fire")
+        assert state_path.read_bytes() == transition_before
+        assert transition_state["phases"]["plan"]["completed_at"] is None
+        print("PASS self-test transition atomicity: forced midpoint failure left state unchanged")
+
+        attestation_state = copy.deepcopy(transition_state)
+        attestation_state["phases"]["plan"]["model_requested"] = "wanted-model"
+        attestation_log = devlyn / "transition-attestation.log"
+        attestation_log.write_text("model: other-model\n", encoding="utf-8")
+        write_state(state_path, attestation_state)
+        attestation_before = state_path.read_bytes()
+        try:
+            do_transition(
+                attestation_state, "plan", "implement", "PASS", None,
+                None, None, None, None, str(attestation_log), devlyn,
+                0, None, None, "claude", None,
+            )
+        except SystemExit as exc:
+            assert "BLOCKED:model-attestation-mismatch" in str(exc)
+        else:
+            raise AssertionError("transition accepted mismatched model attestation")
+        assert state_path.read_bytes() == attestation_before
+        print("PASS self-test transition attestation: mismatch left state unchanged")
+
+        try:
+            do_transition(
+                transition_state, "plan", "cleanup", "PASS", None,
+                None, None, None, None, None, devlyn, 0, None, None,
+                "claude", None,
+            )
+        except SystemExit as exc:
+            assert "illegal phase transition: plan -> cleanup" in str(exc)
+        else:
+            raise AssertionError("transition accepted an illegal phase edge")
+        assert state_path.read_bytes() == attestation_before
+        print("PASS self-test transition legal-edge guard: illegal edge left state unchanged")
+
+        transitioned = do_transition(
+            transition_state, "plan", "implement", "PASS", None,
+            None, None, None, None, None, devlyn, 0, None, None,
+            "claude", None,
+        )
+        write_state(state_path, transitioned)
+        assert transitioned["phases"]["plan"]["verdict"] == "PASS"
+        assert transitioned["phases"]["plan"]["completed_at"] is not None
+        assert transitioned["phases"]["implement"]["started_at"] is not None
+        assert transitioned["phases"]["implement"]["verdict"] is None
+        print("PASS self-test transition happy path: complete + spawn committed together")
+
+        cli_state = {
+            "phases": {
+                "plan": {
+                    "started_at": "2026-01-01T00:00:00.000Z",
+                    "completed_at": None,
+                    "duration_ms": None,
+                    "round": 0,
+                    "triggered_by": None,
+                    "verdict": None,
+                },
+                "implement": None,
+            }
+        }
+        write_state(state_path, cli_state)
+        cli_transition = subprocess.run(
+            [
+                sys.executable, str(pathlib.Path(__file__).resolve()),
+                "--devlyn-dir", str(devlyn), "--phase", "plan", "transition",
+                "--verdict", "PASS", "--next-phase", "implement",
+                "--next-round", "0", "--next-engine", "claude",
+            ],
+            capture_output=True, text=True,
+        )
+        assert cli_transition.returncode == 0, cli_transition.stderr
+        cli_receipt = loads_strict_json(cli_transition.stdout)
+        assert cli_receipt["completed_phase"] == "plan"
+        assert cli_receipt["completed_verdict"] == "PASS"
+        assert cli_receipt["next_phase"] == "implement"
+        assert cli_receipt["state_sha256"] == hashlib.sha256(state_path.read_bytes()).hexdigest()
+        print("PASS self-test transition CLI: machine-only JSON receipt")
+
+        open_next = copy.deepcopy(transition_state)
+        open_next["phases"]["implement"] = {
+            "started_at": "2026-01-01T00:00:01.000Z",
+            "completed_at": None,
+            "duration_ms": None,
+            "round": 0,
+            "triggered_by": None,
+            "verdict": None,
+        }
+        write_state(state_path, open_next)
+        open_next_before = state_path.read_bytes()
+        try:
+            do_transition(
+                open_next, "plan", "implement", "PASS", None,
+                None, None, None, None, None, devlyn, 1, None, None,
+                "claude", None,
+            )
+        except SystemExit as exc:
+            assert "open span" in str(exc) and "complete it before respawn" in str(exc)
+        else:
+            raise AssertionError("transition opened a phase that already had an open span")
+        assert state_path.read_bytes() == open_next_before
+        print("PASS self-test transition open-span guard: rejected without mutation")
 
         # A completed FAIL round must be retained before a fix-loop respawn
         # resets the live record.
@@ -2325,6 +2523,24 @@ def main() -> int:
     complete_p.add_argument("--model", default=None)
     complete_p.add_argument("--engine-session-log", default=None)
 
+    transition_p = sub.add_parser("transition")
+    transition_p.add_argument("--verdict", choices=sorted(VALID_VERDICTS), default=None)
+    transition_p.add_argument("--post-sha", default=None)
+    transition_p.add_argument("--findings-file", default=None)
+    transition_p.add_argument("--log-file", default=None)
+    transition_p.add_argument("--engine", default=None)
+    transition_p.add_argument("--model", default=None)
+    transition_p.add_argument("--engine-session-log", default=None)
+    transition_p.add_argument("--next-phase", choices=sorted(PHASE_NAMES), required=True)
+    transition_p.add_argument("--next-round", type=int, required=True)
+    transition_p.add_argument("--next-triggered-by", choices=sorted(VALID_TRIGGERS), default=None)
+    transition_p.add_argument("--next-pre-sha", default=None)
+    transition_p.add_argument("--next-input-patch-sha256", default=None)
+    transition_p.add_argument("--next-prompt-sha256", default=None)
+    transition_p.add_argument("--next-untracked-before-json", default=None)
+    transition_p.add_argument("--next-engine", default=None)
+    transition_p.add_argument("--next-model", default=None)
+
     check_p = sub.add_parser("surface-check")
     check_p.add_argument("--authorized-surface-json", required=True)
     recover_p = sub.add_parser("surface-adjudication-recover")
@@ -2342,7 +2558,7 @@ def main() -> int:
     surface_events = {
         "surface-check", "surface-adjudication-recover", "surface-rollback", "surface-skip",
     }
-    if not args.phase or args.event not in {"spawn", "complete", "durability-enforce", *surface_events}:
+    if not args.phase or args.event not in {"spawn", "complete", "transition", "durability-enforce", *surface_events}:
         ap.error("--phase and a phase event are required unless --self-test")
 
     devlyn = pathlib.Path(args.devlyn_dir)
@@ -2411,42 +2627,83 @@ def main() -> int:
         sys.stdout.write("ok: phases.surface_close.surface-rollback " + json.dumps(restored) + "\n")
         return 0
 
-    if args.event == "spawn":
+    if args.event in {"spawn", "transition"}:
+        spawn_phase = args.phase if args.event == "spawn" else args.next_phase
+        spawn_round = args.round if args.event == "spawn" else args.next_round
         implement = (state.get("phases") or {}).get("implement")
         fix_reentry = (
-            args.phase in VALID_TRIGGERS and args.round >= 1
+            spawn_phase in VALID_TRIGGERS and spawn_round >= 1
             and isinstance(implement, dict)
-            and implement.get("round") == args.round
-            and implement.get("triggered_by") == args.phase
+            and implement.get("round") == spawn_round
+            and implement.get("triggered_by") == spawn_phase
         )
         if fix_reentry:
             enforce_closure_durability_reentry(
-                pathlib.Path.cwd(), devlyn, state, args.phase, args.round,
+                pathlib.Path.cwd(), devlyn, state, spawn_phase, spawn_round,
                 require_existing=True,
             )
-        untracked_before = (
-            None if args.untracked_before_json is None
-            else parse_string_list(args.untracked_before_json, "--untracked-before-json")
-        )
-        do_spawn(
-            state, args.phase, args.round, args.triggered_by, args.pre_sha, args.engine, args.model,
-            input_patch_sha256=args.input_patch_sha256,
-            prompt_sha256=args.prompt_sha256,
-            untracked_before=untracked_before,
-        )
-        if args.phase == "verify":
-            clear_verify_round_artifacts(devlyn)
-        if args.phase == "surface_close":
+        if args.event == "spawn":
+            untracked_before = (
+                None if args.untracked_before_json is None
+                else parse_string_list(args.untracked_before_json, "--untracked-before-json")
+            )
+            do_spawn(
+                state, args.phase, args.round, args.triggered_by, args.pre_sha, args.engine, args.model,
+                input_patch_sha256=args.input_patch_sha256,
+                prompt_sha256=args.prompt_sha256,
+                untracked_before=untracked_before,
+            )
+        else:
+            next_untracked_before = (
+                None if args.next_untracked_before_json is None
+                else parse_string_list(
+                    args.next_untracked_before_json, "--next-untracked-before-json"
+                )
+            )
+            state = do_transition(
+                state, args.phase, args.next_phase, args.verdict, args.post_sha,
+                args.findings_file, args.log_file, args.engine, args.model,
+                args.engine_session_log, devlyn, args.next_round,
+                args.next_triggered_by, args.next_pre_sha, args.next_engine,
+                args.next_model,
+                next_input_patch_sha256=args.next_input_patch_sha256,
+                next_prompt_sha256=args.next_prompt_sha256,
+                next_untracked_before=next_untracked_before,
+            )
+        if spawn_phase == "surface_close":
             validate_surface_inputs(pathlib.Path.cwd(), devlyn, state)
             validate_surface_prompt(devlyn, state)
             ensure_surface_clean_baseline(pathlib.Path.cwd(), devlyn, state)
+        write_state(state_path, state)
+        if spawn_phase == "verify":
+            clear_verify_round_artifacts(devlyn)
+        if args.event == "transition":
+            opened = state["phases"][args.next_phase]
+            completed = (
+                opened["history"][-1]
+                if args.phase == args.next_phase
+                else state["phases"][args.phase]
+            )
+            raw = state_path.read_bytes()
+            sys.stdout.write(json.dumps({
+                "completed_phase": args.phase,
+                "completed_at": completed["completed_at"],
+                "completed_verdict": completed["verdict"],
+                "next_phase": args.next_phase,
+                "next_started_at": opened["started_at"],
+                "next_round": opened["round"],
+                "state_path": str(state_path),
+                "state_sha256": hashlib.sha256(raw).hexdigest(),
+            }, sort_keys=True) + "\n")
+            return 0
     else:
         attestation_error = do_complete(
             state, args.phase, args.verdict, args.post_sha, args.findings_file,
             args.log_file, args.engine, args.model, args.engine_session_log, devlyn,
         )
 
-    write_state(state_path, state)
+    if args.event not in {"spawn", "transition"}:
+        write_state(state_path, state)
     if args.event == "complete" and attestation_error is not None:
         sys.stderr.write(attestation_error + "\n")
         return 1

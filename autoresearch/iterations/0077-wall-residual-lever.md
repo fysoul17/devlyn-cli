@@ -194,6 +194,49 @@ rerun with writable npm cache. All gates orchestrator-re-run on disk:
 
 Stage A0 CLOSED → Stage A1 (W-B + W-T0 lever build) unblocked.
 
+## STAGE A1 RESULTS (2026-07-21 night, raw before interpretation)
+
+Build: Codex sol retry (first launch died in a codex models-manager silent
+hang at ~7min, zero files written, worktree clean — killed-build recipe
+applied, clean relaunch; retry 2958s, complete). Report:
+/tmp/threeway-0077-r0/stageA1-build-report.md. Orchestrator closeout:
+four .agents mirrors synced (incl. new resolve-bootstrap.py), three-way
+cmp clean, all gates re-run on disk:
+
+- **W-B shipped**: config/skills/_shared/resolve-bootstrap.py — one
+  invocation absorbs PHASE-0 mechanical steps (flags incl. 18
+  BLOCKED:invalid-flags combos, engine/config preflight, schema-v3.0
+  state init byte-exact, untracked baseline, goal-file rules +
+  goal.raw.txt + sha256, spec staging --check/--check-expected,
+  deterministic complexity + risk preclassification, announce), emits
+  one machine JSON; model keeps goal/spec reading, criteria synthesis,
+  reasoned overrides. Self-test: 8 families PASS.
+- **W-T0 shipped**: SPW `transition` verb — completes current + opens
+  caller-specified next phase in ONE atomic state write (deep-copy
+  candidate, single replace); legal-edge table validates the edge but
+  never selects it; machine-only JSON out. Self-tests: atomicity under
+  forced midpoint failure, attestation mismatch, illegal edge, open-span
+  guard — all leave state byte-identical; happy path commits both.
+- **SKILL net-subtractive (hard requirement met)**: cold-start 330→317
+  lines, 43,962→38,781 chars, tok≈c/4 10,990→9,695 (−11.8%); resolve
+  subtotal 30,196→29,045. PHASE 0 prose = bootstrap call + judgment
+  steps + spawn-at-dispatch; transition_protocol block added; the
+  --engine/pair sentence relocated to <engine_routing> (contract
+  preserved). Recorded observation (no action): --max-rounds/--bypass
+  value semantics now live in the self-tested bootstrap, not SKILL
+  prose; fix-loop budget semantics remain in PHASE 3/5.
+- **FS-0077-B self-audit + orchestrator diff review**: no judgment
+  content moved, no agent/phase/engine selection in scripts, no prompt
+  rendering, no new halt class, PHASE 1.5/2.5 + M-RE/M0/M2v2 + fix-loop
+  + VERIFY/pair + autonomy lines untouched. Frozen oracle files
+  (corrected-anatomy.py, attribution.py) untouched (git diff clean).
+- Gates green (orchestrator re-run): bootstrap self-test, SPW self-test
+  (6 transition + F11 + all M-CP), spec-verify self-test, nodeg-cell,
+  lint-skills ALL PASS after mirror closeout.
+
+Stage A1 build CLOSED → live micro-probe (FS-0077-B live check,
+sonnet arms / terra executor) next; Stage B cohort after probe PASS.
+
 ## Principles check
 
 - **0**: closes the frozen wall failure (11.324x median; user-visible wall-time)
