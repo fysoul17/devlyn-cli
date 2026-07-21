@@ -59,31 +59,21 @@ identical across stacks — worker-format variance, not regression).
 C2 FAILED-INCOMPLETE fired live in-cohort (F25, first time).
 
 **Next work (in order)**:
-1. **iter-0076 Stage B — health-gated relaunch PENDING as
-   `nodeg-20260721e`** (launcher:
-   `pins/nodeg-20260721b/health-gated-launch.sh`, fires after 2
-   consecutive healthy sonnet pings 20 min apart). Dead lineage
-   2026-07-21: `-21a` orchestrator pin error (0076.4), `-21b` F7
-   non-diagnostic draw (86), `-21c` F7 API 522, `-21d` API-429
-   usage-window storm after F7 (six rows turn-1 429; driver judge
-   transport-failed). **Healthy smoke from -21d's F7**: objective 1/1,
-   verify PASS, FULL completion incl. SC PASS on the M-RE/M0 stack;
-   session-tail hang receipt (`aborted_streaming` at wall cap AFTER
-   final_report — wall-iter receipt). Candidate mechanics notes
-   (record-only): arm-level bounded retry on api_error; 429-storm
-   circuit breaker in the cell driver; **spec-verify 60s hardcoded
-   command timeout → CRITICAL misjudge on legit long verifications
-   (user-reported 2026-07-21; receipt spec-verify-check.py:4123-4130 +
-   :4227; memory `project_verify_60s_timeout_misjudge`; candidate =
-   spec-authorable `timeout_sec` + distinct timeout rule_id — needs its
-   own registered round)**. On cohort completion: adjudicate
-   vs P-0076-A/B/C with the mechanical incomplete partition
-   {K1/K2a/K2b/other}; FS-0076-B fires → C1 wiring next. Stage A CLOSED
-   0076.3 (build 22d22ff; FS-0076-A fired → v2 differential re-spec
-   both seats CONFIRM; L-format-valid-false-N/A = candidate own
-   registration, receipts in benchmark/ceiling/probes/sc-format-0076/).
-   2. **Wall lever iter** (AFTER 0076 per FS-0075-B): target startup +
-   inter-phase orchestrator gaps (92-96% of residual on clean rows).
+1. **iter-0076 CLOSED (0076.5, 2026-07-21 evening) — cohort
+   `nodeg-20260721e` MET ALL THREE frozen predictions**: complete-verify
+   5/7 (first ≥5 in four cohorts), ZERO K1 events (decisive — both
+   former K1 rows SC PASS), quality 0/7 + wall median 11.3×. Partition
+   {K1:0, K2a:1 FS1, K2b:1 F23, other:0}. Read
+   iterations/0076-completion-rate.md §STAGE B ADJUDICATION for the
+   three NEW receipts (F11 SPW attestation-fail inconsistent history;
+   F26 first citation-guard true firing + prose-halt disobeyed,
+   rollback held; F7 session-tail hang). NEXT = wall lever iter
+   registration (item 2), then C1 wiring (item 3).
+   2. **Wall lever iter — NOW NEXT** (0076 closed): targets = startup +
+   inter-phase orchestrator gaps (0075 P-B: 92-96% of residual on clean
+   rows) + K2b verify-overrun (F23 -21e: 4203s row, verify open at
+   wall) + session-tail hang (F7 -21d/-21e receipts). Three-way
+   registration round required.
 3. **C1 product wiring registration** (separate claim, own round) —
    probe licenses claude route only; honest bound (CLI loop cap ~9) +
    ROUTE-DISABLED-BY-HARNESS facts go in the packet.
