@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "task": "DR-shape-compound-rules-f25-cart",
+  "arm": "A",
+  "attempt": 1,
+  "elapsed_seconds": 176,
+  "invoke_exit": 1,
+  "timed_out": false,
+  "draw_non_diagnostic": false,
+  "worktree": "/Users/aipalm/.local/share/nx01/w/rffbca9182a85/f38c9cf695c9e/A1/repo",
+  "invoke_started_at": "2026-07-21T03:20:32.953Z",
+  "invoke_completed_at": "2026-07-21T03:23:28.353Z",
+  "terminal_outcome": "FAILED-INCOMPLETE"
+}

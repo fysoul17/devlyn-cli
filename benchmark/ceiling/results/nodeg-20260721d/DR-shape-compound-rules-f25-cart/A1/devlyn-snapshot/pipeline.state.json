@@ -1,0 +1,46 @@
+{
+  "version": "3.0",
+  "run_id": "rs-20260721T032304Z-f73e4760247f",
+  "started_at": "2026-07-21T03:23:04Z",
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "mode": "free-form",
+  "pair_verify": true,
+  "complexity": "medium",
+  "risk_profile": {
+    "high_risk": true,
+    "reasons": [
+      "goal specifies cents-based pricing, tax, and coupon/discount math",
+      "goal requires combining duplicate SKU quantities before stock validation"
+    ],
+    "risk_probes_enabled": true,
+    "risk_probes_explicit": false,
+    "pair_default_enabled": true
+  },
+  "risk_probes_digest": null,
+  "base_ref": { "branch": "master", "sha": "d059b43faf24e64eb7a560cc37cebd5ae30fe17b" },
+  "rounds": { "max_rounds": 4, "global": 0 },
+  "bypasses": [],
+  "implement_passed_sha": null,
+  "source": {
+    "type": "generated",
+    "spec_path": null,
+    "spec_sha256": null,
+    "goal_path": ".devlyn/goal.raw.txt",
+    "goal_sha256": "c603e6b1ea3132e0b70912d5ac5e787d3e5c691becb273bac31c0d31724af630",
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "3c060363baa6d6d928fb0c118b41d926949c4ac950bbb83472afdc970919ea4f"
+  },
+  "criteria": [],
+  "phases": {
+    "plan": null,
+    "probe_derive": null,
+    "implement": null,
+    "surface_close": null,
+    "build_gate": null,
+    "cleanup": null,
+    "verify": null,
+    "final_report": null
+  },
+  "verify": { "coverage_failed": false, "pair_trigger": null }
+}

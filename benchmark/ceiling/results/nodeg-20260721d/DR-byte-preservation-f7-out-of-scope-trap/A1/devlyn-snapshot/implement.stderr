@@ -1,0 +1,1336 @@
+[codex-monitored] start: ts=2026-07-21T02:29:07Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=14106
+Reading additional input from stdin...
+2026-07-21T02:29:13.104672Z ERROR codex_models_manager::manager: failed to refresh available models: timeout waiting for child process to exit
+2026-07-21T02:29:13.128697Z ERROR codex_models_manager::manager: failed to refresh available models: timeout waiting for child process to exit
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f8281-8129-7983-ab84-5499f71d3e4b
+--------
+user
+# Codex (OpenAI) adapter — identity header
+
+You are OpenAI's Codex model. Your default is efficient, direct, task-oriented. Resolve the request in the fewest useful tool loops without sacrificing correctness. Validation is concrete commands and tools, not self-belief: run the listed verification commands and trust their output. Avoid absolute imperatives for judgment calls; do not over-specify process when the destination is clear. Do not narrate internal deliberation.
+
+---
+
+# PHASE 2 — IMPLEMENT (canonical body)
+
+<role>
+You execute the plan. Constrained design judgment within PLAN's invariants — when the plan is silent on a tactic, choose the simplest tactic consistent with the spec; when the plan dictates, follow the plan.
+</role>
+
+<input>
+- Plan: `.devlyn/plan.md` (file list + risks + acceptance restatement) — read it first.
+- Source/criteria: `.devlyn/criteria.generated.md` — read it first.
+- Codebase at repo root `/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo`, base commit `e5a20d983f63e62ad264174c025fad97769e9fc5` on branch `master`.
+</input>
+
+<output>
+- Code changes implementing every Requirement. Verify with `git diff`.
+- Tests added or updated for changed behavior. Run the full test suite (`node --test tests/`) before stopping.
+- Report your verdict in your final reply text: `PASS` on success; `BLOCKED` if a criterion cannot be satisfied (missing external dep, blocking ambiguity in the spec) — never silently skip it. Do not edit `pipeline.state.json`.
+</output>
+
+<quality_bar>
+- Spec is the contract. The plan is the path. If they disagree, surface the conflict and follow the spec.
+- Features: follow existing patterns, then write tests.
+- Verification commands are literal. Before declaring done, re-read `.devlyn/plan.md`'s Acceptance restatement (`## Verification` JSON block) and run every command exactly as listed; compare output character-for-character.
+- Existing tests are contract. Do not replace real calls with mocks. Do not skip or disable tests. Do not reduce assertion count on behavior still in scope.
+- Files not in PLAN's list (`bin/cli.js`, `tests/cli.test.js`) are off-limits. If you discover an out-of-scope file genuinely needs to change, report BLOCKED with the reason; do not silently expand scope.
+</quality_bar>
+
+<runtime_principles>
+- Subtractive-first: every accretion-shaped change is visible. Net-deletion is the default; pure-addition needs a citation — this task's citation is the explicit user requirement itself.
+- Goal-locked: implement only the listed Requirements. Adjacent code that "looks fixable" (e.g. the `parseGreetingFormat` TODO, `hello --greeting` TODO) is drift — do not touch it, per the plan's explicit Risks section.
+- No-workaround: no silent catch, no hardcoded values that bypass root cause. Byte-for-byte preserve all code/comments/formatting not required to change.
+- Evidence: every claim cites file:line you opened. Hallucinated APIs are excluded.
+</runtime_principles>
+
+Before declaring the phase complete, re-read each Requirement in `.devlyn/criteria.generated.md` and confirm your diff satisfies it, then run every command in `.devlyn/plan.md`'s Verification JSON block exactly as listed and report the actual output/exit code of each.
+
+# Task
+
+Add a `--format json` option to the `version` subcommand in `bin/cli.js`. With the flag, output should be valid JSON: `{"version":"<x.y.z>"}` (single line). Without the flag, keep the current bare version string.
+
+`--format yaml` (or any other unsupported value) should exit 1 with an error.
+
+Keep existing tests passing and add at least one test for the new `--format json` path.
+
+Only touch `bin/cli.js` and `tests/cli.test.js`. Do not modify other subcommands or other files. No new npm dependencies.
+
+Code unrelated to the requested version feature, including comments and formatting, must remain exactly as-is. Refactoring or cleanup of unrelated code is out of scope.
+
+Read `.devlyn/plan.md` and `.devlyn/criteria.generated.md` first, then implement, then run `node --test tests/` plus every command in the plan's Verification block, then report PASS/BLOCKED with the verification output.
+[codex-monitored] heartbeat: elapsed=30s
+[codex-monitored] heartbeat: elapsed=60s
+codex
+I’ll implement only the planned `version --format json` path, preserve the existing default, and validate it against the plan’s exact commands.
+exec
+/bin/zsh -lc "git status --short && printf '\\n--- plan ---\\n' && sed -n '1,240p' .devlyn/plan.md && printf '\\n--- criteria ---\\n' && sed -n '1,260p' .devlyn/criteria.generated.md" in /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+ succeeded in 2622ms:
+2026-07-21 02:30:11.856 xcodebuild[21055:556090]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-21 02:30:12.260 xcodebuild[21055:556079] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+--- plan ---
+# Plan — `--format json` for `version` subcommand
+
+<!-- devlyn:authorized-surface -->
+## Files to touch
+
+- `bin/cli.js` — edit — add a `--format` flag parser used only inside the `case 'version':` branch (`bin/cli.js:59-62`) so it: (a) with no `--format`, keeps `console.log(readPackageVersion())` unchanged (Requirement: "Without `--format` ... behavior is unchanged"); (b) with `--format json`, prints `JSON.stringify({ version: readPackageVersion() })` via `console.log` so stdout is a single line of valid JSON `{"version":"<x.y.z>"}` (Requirement: "accepts a `--format json` flag ... single line of valid JSON"); (c) with `--format <anything else>`, reports the error via `console.error` + `process.exit(1)`, matching the existing `--name requires a value` pattern at `bin/cli.js:38-39` (Requirement: "`--format yaml`, or any other value ... exit with code 1 and print an error ... matching the existing ... style").
+- `tests/cli.test.js` — edit — add at least one new `test(...)` block after the existing `'version prints package version'` test (`tests/cli.test.js:22-25`) that runs `['version', '--format', 'json']`, parses stdout with `JSON.parse`, and asserts the result is a single line containing a `version` field matching `/\d+\.\d+\.\d+/` (Requirement: "At least one new test is added ... covering the `--format json` path (valid JSON, single line, contains the version)").
+
+```json
+{"authorized_surface": ["bin/cli.js", "tests/cli.test.js"]}
+```
+
+## Risks
+
+- **Out-of-scope expansion to refuse**: do not touch `parseGreetingFormat` (`bin/cli.js:29-31`), the `hello --greeting` TODO (`bin/cli.js:54`), `--help`/`-h` handling (`bin/cli.js:47-50`), or the `default:` unknown-command branch (`bin/cli.js:63-66`) — criteria's Constraints/Out-of-Scope sections explicitly exclude these, even though `parseGreetingFormat` is visibly dead code adjacent to the edit site.
+- **Byte-for-byte preservation**: all existing comments, the `USAGE` string, `readPackageVersion`, `parseNameFlag`, and the `hello` case must remain unchanged. The new `--format` parsing must be additive only inside the `version` case — no reformatting of surrounding lines.
+- **Error-style consistency**: the `--format yaml` failure path must reuse the existing `console.error(...)` + `process.exit(1)` pattern (not `throw`, not a new exit code, not silently defaulting to bare-string output) — a silent fallback to plain-text output for an unrecognized `--format` value would violate the "no silent fallback" requirement and the exit-code-1 contract.
+- **Flag-parsing pitfall**: `--format` must be read the same defensive way as `--name` (check the flag is present and its value doesn't look like another flag / is not `undefined`) so a bare trailing `--format` with no value doesn't crash on `undefined !== 'json'` comparisons in an unexpected way — it must still fall into the "unsupported value" exit-1 branch, not throw.
+- **JSON shape exactness**: output must be exactly `{"version":"<x.y.z>"}` with no extra whitespace/keys — use `JSON.stringify({ version })` directly (no new dependency, no manual string templating that could introduce formatting drift or an injection risk if the version string ever contained a quote).
+- **Test isolation**: the new test must not weaken or replace the existing `'version prints package version'` test — it is an addition, per Constraints ("All existing tests ... keep passing").
+- **No new dependencies**: use built-in `JSON.stringify`/`JSON.parse` only, per Constraints.
+
+## Acceptance restatement
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "node --test tests/", "exit_code": 0 },
+    { "cmd": "node bin/cli.js version --format json", "exit_code": 0, "stdout_contains": ["{\"version\":\"0.1.0\"}"] },
+    { "cmd": "node bin/cli.js version", "exit_code": 0, "stdout_not_contains": ["{"] },
+    { "cmd": "node bin/cli.js version --format yaml", "exit_code": 1 }
+  ]
+}
+```
+
+--- criteria ---
+# Generated criteria — --format json for `version` subcommand
+
+Source: `.devlyn/goal.txt` (free-form goal, complexity: medium).
+
+## Requirements
+
+- `bin/cli.js`'s `version` subcommand accepts a `--format json` flag. When passed, stdout is a single line of valid JSON: `{"version":"<x.y.z>"}` where `<x.y.z>` is the same version string `readPackageVersion()` already returns.
+- Without `--format` (existing bare `version` invocation), behavior is unchanged: stdout is the bare version string, no JSON wrapping.
+- `--format yaml`, or any other value other than `json`, causes the process to exit with code 1 and print an error (matching the existing `--name requires a value` style of reporting errors via `console.error` + `process.exit(1)`).
+- All existing tests in `tests/cli.test.js` keep passing.
+- At least one new test is added to `tests/cli.test.js` covering the `--format json` path (valid JSON, single line, contains the version).
+
+## Constraints
+
+- Only `bin/cli.js` and `tests/cli.test.js` may be modified.
+- No new npm dependencies — use built-in `JSON.stringify`.
+- Do not modify the `hello` subcommand, `--help`/`-h`, or the unknown-command branch.
+- Code unrelated to the `version`/`--format` feature (including existing comments, the unused `parseGreetingFormat` helper, and formatting) must remain byte-for-byte unchanged.
+
+## Out of Scope
+
+- Any subcommand other than `version`.
+- Refactoring or cleanup of unrelated code (e.g. the `parseGreetingFormat` TODO, the `hello --greeting` TODO).
+- Adding `--format` support to any command other than `version`.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "node --test tests/", "exit_code": 0 },
+    { "cmd": "node bin/cli.js version --format json", "exit_code": 0, "stdout_contains": ["{\"version\":\"0.1.0\"}"] },
+    { "cmd": "node bin/cli.js version", "exit_code": 0, "stdout_not_contains": ["{"] },
+    { "cmd": "node bin/cli.js version --format yaml", "exit_code": 1 }
+  ]
+}
+```
+
+exec
+/bin/zsh -lc "sed -n '1,180p' bin/cli.js && printf '\\n--- tests ---\\n' && sed -n '1,240p' tests/cli.test.js && printf '\\n--- package version ---\\n' && node -p \"require('./package.json').version\"" in /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+ succeeded in 0ms:
+#!/usr/bin/env node
+// harbor-tools — small command-line utilities for local workflows.
+// Keep the core commands minimal and easy to understand.
+
+const fs = require('fs');
+const path = require('path');
+
+const USAGE = `Usage: bench-cli <command> [options]
+
+Commands:
+  hello [--name NAME]        Print a greeting (default name: "world")
+  version                    Print the CLI version from package.json
+  --help, -h                 Show this help
+
+Examples:
+  bench-cli hello
+  bench-cli hello --name alice
+  bench-cli version
+`;
+
+function readPackageVersion() {
+  const pkgPath = path.join(__dirname, '..', 'package.json');
+  const raw = fs.readFileSync(pkgPath, 'utf8');
+  return JSON.parse(raw).version;
+}
+
+// TODO(devlyn): this helper is unused — leftover from an abandoned refactor.
+//               Keep for now; removing it is out of scope for the current feature.
+function parseGreetingFormat(_argv) {
+  return 'plain';
+}
+
+function parseNameFlag(argv) {
+  const idx = argv.indexOf('--name');
+  if (idx === -1) return 'world';
+  const value = argv[idx + 1];
+  if (!value || value.startsWith('-')) {
+    console.error('--name requires a value');
+    process.exit(1);
+  }
+  return value;
+}
+
+function main(argv) {
+  const [command, ...rest] = argv;
+
+  if (!command || command === '--help' || command === '-h') {
+    process.stdout.write(USAGE);
+    return;
+  }
+
+  switch (command) {
+    case 'hello': {
+      // TODO: consider supporting a --greeting flag later — out of scope for now.
+      const name = parseNameFlag(rest);
+      console.log(`Hello, ${name}!`);
+      return;
+    }
+    case 'version': {
+      console.log(readPackageVersion());
+      return;
+    }
+    default:
+      console.error(`Unknown command: ${command}`);
+      process.stderr.write(USAGE);
+      process.exit(1);
+  }
+}
+
+main(process.argv.slice(2));
+
+--- tests ---
+const { test } = require('node:test');
+const assert = require('node:assert');
+const { execFileSync } = require('node:child_process');
+const path = require('node:path');
+
+const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+
+function run(args) {
+  return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+}
+
+test('hello default', () => {
+  const out = run(['hello']);
+  assert.match(out, /Hello, world!/);
+});
+
+test('hello with --name', () => {
+  const out = run(['hello', '--name', 'alice']);
+  assert.match(out, /Hello, alice!/);
+});
+
+test('version prints package version', () => {
+  const out = run(['version']);
+  assert.match(out, /\d+\.\d+\.\d+/);
+});
+
+--- package version ---
+0.1.0
+
+codex
+The current `version` branch is a single bare `console.log`, and the test suite has one default-version test. I’ll add the format handling entirely inside that branch plus one isolated JSON-output test.
+[codex-monitored] heartbeat: elapsed=90s
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/bin/cli.js
+/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/cli.test.js
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+exec
+/bin/zsh -lc 'git diff --check' in /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+ succeeded in 0ms:
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+exec
+/bin/zsh -lc 'git diff -- bin/cli.js tests/cli.test.js' in /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+ succeeded in 0ms:
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..ddcd0f0 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..f5e9499 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+codex
+The diff is limited to the two authorized files; whitespace validation is clean. I’m now running the full suite and the four exact acceptance commands.
+exec
+/bin/zsh -lc 'node --test tests/' in /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+ exited 1 in 207ms:
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 39.6015
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 32.491875
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 35.172125
+  ...
+# Subtest: version prints JSON with --format json
+ok 4 - version prints JSON with --format json
+  ---
+  duration_ms: 33.090541
+  ...
+# Subtest: GET /health returns ok
+not ok 5 - GET /health returns ok
+  ---
+  duration_ms: 3.053125
+  location: '/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 6 - GET /items returns list
+  ---
+  duration_ms: 1.30025
+  location: '/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 7 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.727417
+  location: '/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 4
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 199.087792
+
+exec
+/bin/zsh -lc 'node --test tests/' in /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+ exited 1 in 259ms:
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 61.876166
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 41.959292
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 47.292375
+  ...
+# Subtest: version prints JSON with --format json
+ok 4 - version prints JSON with --format json
+  ---
+  duration_ms: 42.316333
+  ...
+# Subtest: GET /health returns ok
+not ok 5 - GET /health returns ok
+  ---
+  duration_ms: 3.437458
+  location: '/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 6 - GET /items returns list
+  ---
+  duration_ms: 1.572875
+  location: '/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 7 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.963916
+  location: '/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 4
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 245.908875
+
+[codex-monitored] heartbeat: elapsed=120s
+exec
+/bin/zsh -lc 'node bin/cli.js version --format json' in /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+ succeeded in 0ms:
+{"version":"0.1.0"}
+
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+exec
+/bin/zsh -lc 'node bin/cli.js version' in /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+ succeeded in 0ms:
+0.1.0
+
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+exec
+/bin/zsh -lc 'node bin/cli.js version --format yaml' in /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+ exited 1 in 0ms:
+Unsupported format: yaml
+
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+[codex-monitored] heartbeat: elapsed=150s
+codex
+The new CLI test passes, and all three direct `version` acceptance paths return the expected output/exit behavior. The full suite is blocked by the sandbox: `tests/server.test.js` cannot bind `0.0.0.0` (`EPERM`), causing three unrelated server tests to fail.
+exec
+/bin/zsh -lc 'node bin/cli.js version --format' in /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+ exited 1 in 0ms:
+Unsupported format: 
+
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+exec
+/bin/zsh -lc 'node bin/cli.js version --format text' in /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+ exited 1 in 0ms:
+Unsupported format: text
+
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+exec
+/bin/zsh -lc 'node --test tests/cli.test.js' in /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+ succeeded in 208ms:
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 40.595125
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 34.945041
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 32.558792
+  ...
+# Subtest: version prints JSON with --format json
+ok 4 - version prints JSON with --format json
+  ---
+  duration_ms: 32.636292
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 197.656167
+
+exec
+/bin/zsh -lc 'nl -ba bin/cli.js && nl -ba tests/cli.test.js && git status --short' in /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+ succeeded in 0ms:
+     1	#!/usr/bin/env node
+     2	// harbor-tools — small command-line utilities for local workflows.
+     3	// Keep the core commands minimal and easy to understand.
+     4	
+     5	const fs = require('fs');
+     6	const path = require('path');
+     7	
+     8	const USAGE = `Usage: bench-cli <command> [options]
+     9	
+    10	Commands:
+    11	  hello [--name NAME]        Print a greeting (default name: "world")
+    12	  version                    Print the CLI version from package.json
+    13	  --help, -h                 Show this help
+    14	
+    15	Examples:
+    16	  bench-cli hello
+    17	  bench-cli hello --name alice
+    18	  bench-cli version
+    19	`;
+    20	
+    21	function readPackageVersion() {
+    22	  const pkgPath = path.join(__dirname, '..', 'package.json');
+    23	  const raw = fs.readFileSync(pkgPath, 'utf8');
+    24	  return JSON.parse(raw).version;
+    25	}
+    26	
+    27	// TODO(devlyn): this helper is unused — leftover from an abandoned refactor.
+    28	//               Keep for now; removing it is out of scope for the current feature.
+    29	function parseGreetingFormat(_argv) {
+    30	  return 'plain';
+    31	}
+    32	
+    33	function parseNameFlag(argv) {
+    34	  const idx = argv.indexOf('--name');
+    35	  if (idx === -1) return 'world';
+    36	  const value = argv[idx + 1];
+    37	  if (!value || value.startsWith('-')) {
+    38	    console.error('--name requires a value');
+    39	    process.exit(1);
+    40	  }
+    41	  return value;
+    42	}
+    43	
+    44	function main(argv) {
+    45	  const [command, ...rest] = argv;
+    46	
+    47	  if (!command || command === '--help' || command === '-h') {
+    48	    process.stdout.write(USAGE);
+    49	    return;
+    50	  }
+    51	
+    52	  switch (command) {
+    53	    case 'hello': {
+    54	      // TODO: consider supporting a --greeting flag later — out of scope for now.
+    55	      const name = parseNameFlag(rest);
+    56	      console.log(`Hello, ${name}!`);
+    57	      return;
+    58	    }
+    59	    case 'version': {
+    60	      const formatIndex = rest.indexOf('--format');
+    61	      if (formatIndex === -1) {
+    62	        console.log(readPackageVersion());
+    63	        return;
+    64	      }
+    65	      const format = rest[formatIndex + 1];
+    66	      if (!format || format.startsWith('-') || format !== 'json') {
+    67	        console.error(`Unsupported format: ${format || ''}`);
+    68	        process.exit(1);
+    69	      }
+    70	      console.log(JSON.stringify({ version: readPackageVersion() }));
+    71	      return;
+    72	    }
+    73	    default:
+    74	      console.error(`Unknown command: ${command}`);
+    75	      process.stderr.write(USAGE);
+    76	      process.exit(1);
+    77	  }
+    78	}
+    79	
+    80	main(process.argv.slice(2));
+     1	const { test } = require('node:test');
+     2	const assert = require('node:assert');
+     3	const { execFileSync } = require('node:child_process');
+     4	const path = require('node:path');
+     5	
+     6	const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+     7	
+     8	function run(args) {
+     9	  return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+    10	}
+    11	
+    12	test('hello default', () => {
+    13	  const out = run(['hello']);
+    14	  assert.match(out, /Hello, world!/);
+    15	});
+    16	
+    17	test('hello with --name', () => {
+    18	  const out = run(['hello', '--name', 'alice']);
+    19	  assert.match(out, /Hello, alice!/);
+    20	});
+    21	
+    22	test('version prints package version', () => {
+    23	  const out = run(['version']);
+    24	  assert.match(out, /\d+\.\d+\.\d+/);
+    25	});
+    26	
+    27	test('version prints JSON with --format json', () => {
+    28	  const out = run(['version', '--format', 'json']);
+    29	  const parsed = JSON.parse(out);
+    30	  assert.deepEqual(parsed, { version: parsed.version });
+    31	  assert.match(parsed.version, /\d+\.\d+\.\d+/);
+    32	  assert.equal(out, `${JSON.stringify(parsed)}\n`);
+    33	});
+ M bin/cli.js
+ M tests/cli.test.js
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+[codex-monitored] heartbeat: elapsed=180s
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+exec
+/bin/zsh -lc "sed -n '/## Requirements/,/## Constraints/p' .devlyn/criteria.generated.md && sed -n '/## Verification/,"'$p'"' .devlyn/plan.md" in /Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo
+ succeeded in 0ms:
+## Requirements
+
+- `bin/cli.js`'s `version` subcommand accepts a `--format json` flag. When passed, stdout is a single line of valid JSON: `{"version":"<x.y.z>"}` where `<x.y.z>` is the same version string `readPackageVersion()` already returns.
+- Without `--format` (existing bare `version` invocation), behavior is unchanged: stdout is the bare version string, no JSON wrapping.
+- `--format yaml`, or any other value other than `json`, causes the process to exit with code 1 and print an error (matching the existing `--name requires a value` style of reporting errors via `console.error` + `process.exit(1)`).
+- All existing tests in `tests/cli.test.js` keep passing.
+- At least one new test is added to `tests/cli.test.js` covering the `--format json` path (valid JSON, single line, contains the version).
+
+## Constraints
+## Verification
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "node --test tests/", "exit_code": 0 },
+    { "cmd": "node bin/cli.js version --format json", "exit_code": 0, "stdout_contains": ["{\"version\":\"0.1.0\"}"] },
+    { "cmd": "node bin/cli.js version", "exit_code": 0, "stdout_not_contains": ["{"] },
+    { "cmd": "node bin/cli.js version --format yaml", "exit_code": 1 }
+  ]
+}
+```
+
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+codex
+BLOCKED — implementation is complete, but the required full suite cannot pass in this sandbox.
+
+- Added `version --format json` handling and unsupported-format exit 1 behavior in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/bin/cli.js:59).
+- Added JSON validity, exact single-line, and version-field coverage in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/cli.test.js:27).
+
+Verification:
+
+- `node --test tests/` → exit 1: CLI tests pass; three unrelated server tests fail because binding `0.0.0.0` is denied: `listen EPERM`.
+- `node bin/cli.js version --format json` → exit 0, stdout: `{"version":"0.1.0"}`
+- `node bin/cli.js version` → exit 0, stdout: `0.1.0`
+- `node bin/cli.js version --format yaml` → exit 1, stderr: `Unsupported format: yaml`
+- `node --test tests/cli.test.js` → exit 0, 4/4 passing.
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff1562cfb1ad6c1c76819d4193d8e73ae42f7c..ddcd0f0ea2b07550914b94a751f55d606371da29
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -57,7 +57,17 @@
+       return;
+     }
+     case 'version': {
+-      console.log(readPackageVersion());
++      const formatIndex = rest.indexOf('--format');
++      if (formatIndex === -1) {
++        console.log(readPackageVersion());
++        return;
++      }
++      const format = rest[formatIndex + 1];
++      if (!format || format.startsWith('-') || format !== 'json') {
++        console.error(`Unsupported format: ${format || ''}`);
++        process.exit(1);
++      }
++      console.log(JSON.stringify({ version: readPackageVersion() }));
+       return;
+     }
+     default:
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..f5e9499d282fe268b642cf094c2cd53ea46b7b67
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,11 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON with --format json', () => {
++  const out = run(['version', '--format', 'json']);
++  const parsed = JSON.parse(out);
++  assert.deepEqual(parsed, { version: parsed.version });
++  assert.match(parsed.version, /\d+\.\d+\.\d+/);
++  assert.equal(out, `${JSON.stringify(parsed)}\n`);
++});
+
+tokens used
+43,157
+[codex-monitored] codex exited: code=0 elapsed=204s

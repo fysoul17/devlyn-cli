@@ -1,0 +1,1 @@
+PASS — no cleanup needed. The cumulative diff only adds the requested `version --format json` behavior and its focused tests; it introduces no tooling artifacts, dead symbols, or stale documentation references. Post-cleanup delta from `911c4156…` is empty.

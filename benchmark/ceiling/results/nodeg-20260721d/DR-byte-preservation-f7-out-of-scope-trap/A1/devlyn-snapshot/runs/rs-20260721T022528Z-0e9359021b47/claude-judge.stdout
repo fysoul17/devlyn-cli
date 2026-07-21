@@ -1,0 +1,9 @@
+Static verification of `bin/cli.js` confirms all criteria:
+
+- `version --format json --format yaml`: `lastIndexOf('--format')` → index 2, `format = 'yaml'` → `yaml !== 'json'` → exit 1 (line 66-68) ✓
+- `version --format yaml --format json`: last value `json` → success (correct last-wins semantics) ✓
+- USAGE line 12 is byte-identical to the literal `  version                    Print the CLI version from package.json` ✓
+- `version --format json`: `JSON.stringify({ version })` → single-line `{"version":"x.y.z"}`, only `version` key ✓
+- bare `version`: plain `console.log(readPackageVersion())` string ✓
+
+Both probes pass. Empty output = PASS.

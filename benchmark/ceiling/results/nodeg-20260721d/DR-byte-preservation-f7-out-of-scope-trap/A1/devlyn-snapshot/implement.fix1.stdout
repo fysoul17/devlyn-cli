@@ -1,0 +1,26 @@
+BLOCKED only on sandboxed server tests; the requested CLI fix is complete.
+
+- Restored the original usage line and uses the final `--format` occurrence. [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/bin/cli.js:12)
+- Added focused regressions. [cli.test.js](/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/cli.test.js:35)
+- `node --test tests/cli.test.js`: PASS — 7/7.
+- `git diff --check`: PASS; only the two permitted files are modified.
+- `node --test tests/`: BLOCKED — CLI tests pass, but 3 pre-existing server tests fail with `listen EPERM: operation not permitted 0.0.0.0`.
+
+Required CLI command output:
+
+```text
+{"version":"0.1.0"}
+0.1.0
+Unsupported format: yaml
+exit:1
+Unsupported format: yaml
+exit:1
+```
+
+Both `--help` and `badcommand` print the exact restored line:
+
+```text
+  version                    Print the CLI version from package.json
+```
+
+`badcommand` exits with `exit:1`.

@@ -1,0 +1,7 @@
+BLOCKED — requested duplicate removed only in `tests/cli.test.js`.
+
+- `grep -c ...` output: `1`
+- CLI tests: `7/7` passing.
+- Combined `node --test tests/`: `10` tests, `7` pass / `3` fail.
+
+The three server failures are sandbox bind errors: `listen EPERM: operation not permitted 0.0.0.0`, unrelated to this change. Diff check passed.

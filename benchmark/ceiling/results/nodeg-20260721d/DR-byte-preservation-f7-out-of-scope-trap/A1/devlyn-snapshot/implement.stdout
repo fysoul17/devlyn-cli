@@ -1,0 +1,12 @@
+BLOCKED — implementation is complete, but the required full suite cannot pass in this sandbox.
+
+- Added `version --format json` handling and unsupported-format exit 1 behavior in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/bin/cli.js:59).
+- Added JSON validity, exact single-line, and version-field coverage in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rffbca9182a85/ff10888c89791/A1/repo/tests/cli.test.js:27).
+
+Verification:
+
+- `node --test tests/` → exit 1: CLI tests pass; three unrelated server tests fail because binding `0.0.0.0` is denied: `listen EPERM`.
+- `node bin/cli.js version --format json` → exit 0, stdout: `{"version":"0.1.0"}`
+- `node bin/cli.js version` → exit 0, stdout: `0.1.0`
+- `node bin/cli.js version --format yaml` → exit 1, stderr: `Unsupported format: yaml`
+- `node --test tests/cli.test.js` → exit 0, 4/4 passing.

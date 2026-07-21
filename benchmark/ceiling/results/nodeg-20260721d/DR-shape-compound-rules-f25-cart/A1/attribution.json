@@ -1,0 +1,20 @@
+{
+  "censored_open_span_ms": 0,
+  "conservation_residue_ms": 175400,
+  "decomposition_status": "failed",
+  "elapsed_ms": 175400,
+  "gap_to_censored_ms": 0,
+  "implement_total_ms": 0,
+  "incomplete_spans": [],
+  "interphase_gap_ms": 0,
+  "judge_durations_ms": null,
+  "legacy_edge_residual_ms": null,
+  "non_phase_residual_ms": 175400,
+  "outer_loop_gap_ms": 0,
+  "phase_sum_ms": 0,
+  "phase_union_ms": 0,
+  "phases": {},
+  "startup_ms": null,
+  "tail_ms": null,
+  "verify_complete": false
+}
