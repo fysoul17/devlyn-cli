@@ -1,0 +1,3 @@
+BLOCKED:sandbox prohibits server socket binding (`listen EPERM: operation not permitted 0.0.0.0`), so `npm test` cannot fully pass within this scope.
+
+Fixed global `remaining` sorting in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/bin/cli.js:240). The duplicate-ID probe now emits SKU `a` before `z`; `tests/cli.test.js` passes 6/6; help exits 0 and includes `fulfill-wave`.

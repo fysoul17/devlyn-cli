@@ -1,0 +1,26 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "tmp=$(mktemp)\ncat > \"$tmp\" <<'EOF'\n{\"state\":\"OR\",\"coupon\":null,\"items\":[{\"sku\":\"MUG\",\"qty\":1}]}\nEOF\nout=$(node bin/cli.js cart --input \"$tmp\")\nrm -f \"$tmp\"\nprintf '%s' \"$out\" | node -e 'const fs=require(\"fs\");const obj=JSON.parse(fs.readFileSync(0,\"utf8\"));const keys=Object.keys(obj).sort().join(\",\");const expected=\"coupon_discount_cents,items,line_discount_cents,shipping_cents,subtotal_cents,tax_cents,total_cents\";if(keys!==expected){console.error(\"KEYS:\"+keys);process.exit(1);}if(obj.subtotal_cents!==1200||obj.line_discount_cents!==0||obj.coupon_discount_cents!==0||obj.tax_cents!==0||obj.shipping_cents!==699||obj.total_cents!==1899){console.error(\"VALUES:\"+JSON.stringify(obj));process.exit(1);}const it=obj.items;if(it.length!==1||it[0].sku!==\"MUG\"||it[0].qty!==1||it[0].line_subtotal_cents!==1200||it[0].line_discount_cents!==0||it[0].line_total_cents!==1200){console.error(\"ITEMS:\"+JSON.stringify(it));process.exit(1);}console.log(\"CART_SMOKE_OK\");'\n",
+      "exit_code": 0,
+      "stdout_contains": [
+        "CART_SMOKE_OK"
+      ],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "tmp=$(mktemp)\nerrf=$(mktemp)\ncat > \"$tmp\" <<'EOF'\n{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"TEE\",\"qty\":7},{\"sku\":\"TEE\",\"qty\":5}]}\nEOF\nout=$(node bin/cli.js cart --input \"$tmp\" 2>\"$errf\")\ncode=$?\nerr=$(cat \"$errf\")\nrm -f \"$tmp\" \"$errf\"\nif [ -n \"$out\" ]; then echo \"STDOUT_NOT_EMPTY:$out\"; exit 1; fi\nif [ \"$code\" -ne 2 ]; then echo \"BAD_EXIT:$code\"; exit 1; fi\nprintf '%s' \"$err\" | node -e 'const fs=require(\"fs\");const obj=JSON.parse(fs.readFileSync(0,\"utf8\"));const keys=Object.keys(obj).sort().join(\",\");if(keys!==\"available,error,requested,sku\"){console.error(\"KEYS:\"+keys);process.exit(1);}if(obj.error!==\"invalid_stock\"||obj.sku!==\"TEE\"||obj.available!==10||obj.requested!==12){console.error(\"VALUES:\"+JSON.stringify(obj));process.exit(1);}console.log(\"CART_STOCK_ERR_OK\");'\n",
+      "exit_code": 0,
+      "stdout_contains": [
+        "CART_STOCK_ERR_OK"
+      ],
+      "stdout_not_contains": []
+    }
+  ]
+}

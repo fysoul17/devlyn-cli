@@ -1,0 +1,15 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "python3 -m unittest test_schedule.py -v",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "terval_backward (test_schedule.SchedulerTests) ... skipped 'pytz unavailable'\ntest_tz_weekly_large_interval_forward (test_schedule.SchedulerTests) ... skipped 'pytz unavailable'\ntest_tz_weekly_sunday_conversion (test_schedule.SchedulerTests) ... skipped 'pytz unavailable'\ntest_until_time (test_schedule.SchedulerTests) ... ok\ntest_weekday_at_todady (test_schedule.SchedulerTests) ... ok\n\n----------------------------------------------------------------------\nRan 89 tests in 0.013s\n\nOK (skipped=41)\n"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "npm test",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "a replayed event id\n  ---\n  duration_ms: 4.581041\n  ...\n# Subtest: POST /webhook rejects a malformed body with a valid signature\nok 9 - POST /webhook rejects a malformed body with a valid signature\n  ---\n  duration_ms: 2.390875\n  ...\n# Subtest: POST /webhook rejects a body tampered after signing\nok 10 - POST /webhook rejects a body tampered after signing\n  ---\n  duration_ms: 3.379917\n  ...\n1..10\n# tests 10\n# suites 0\n# pass 10\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 576.253333\n"
+    },
+    {
+      "index": 1,
+      "cmd": "node .devlyn/probes/P1.js",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "P1 PASS\n"
+    },
+    {
+      "index": 2,
+      "cmd": "node .devlyn/probes/P2.js",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "P2 PASS\n"
+    },
+    {
+      "index": 3,
+      "cmd": "node .devlyn/probes/P3.js",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "P3 PASS\n"
+    }
+  ]
+}

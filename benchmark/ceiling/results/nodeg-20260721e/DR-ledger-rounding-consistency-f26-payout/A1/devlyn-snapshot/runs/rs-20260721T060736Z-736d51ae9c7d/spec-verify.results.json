@@ -1,0 +1,60 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "node --test tests/",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "rors and no stdout\n  ---\n  duration_ms: 317.400583\n  ...\n# Subtest: GET /health returns ok\nok 8 - GET /health returns ok\n  ---\n  duration_ms: 13.956875\n  ...\n# Subtest: GET /items returns list\nok 9 - GET /items returns list\n  ---\n  duration_ms: 4.601833\n  ...\n# Subtest: GET /items/:id returns 404 for missing\nok 10 - GET /items/:id returns 404 for missing\n  ---\n  duration_ms: 2.617875\n  ...\n1..10\n# tests 10\n# suites 0\n# pass 10\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 641.349667\n"
+    },
+    {
+      "index": 1,
+      "cmd": "sh .devlyn/probes/P1.sh",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "PASS: idempotent replay + conflicting duplicate contract"
+      ],
+      "stdout_not_contains": [
+        "FAIL"
+      ],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "PASS: idempotent replay + conflicting duplicate contract\n"
+    },
+    {
+      "index": 2,
+      "cmd": "sh .devlyn/probes/P2.sh",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "PASS: all-or-nothing validation failure on mixed valid/invalid batch, success batch unaffected"
+      ],
+      "stdout_not_contains": [
+        "FAIL"
+      ],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "PASS: all-or-nothing validation failure on mixed valid/invalid batch, success batch unaffected\n"
+    },
+    {
+      "index": 3,
+      "cmd": "sh .devlyn/probes/P3.sh",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "PASS: shape contract holds for both success and error output"
+      ],
+      "stdout_not_contains": [
+        "FAIL"
+      ],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "PASS: shape contract holds\nPASS: shape contract holds for both success and error output\n"
+    }
+  ]
+}

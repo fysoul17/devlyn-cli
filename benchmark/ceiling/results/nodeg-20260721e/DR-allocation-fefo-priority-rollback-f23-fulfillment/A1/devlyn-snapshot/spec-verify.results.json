@@ -1,0 +1,28 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "npm test",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "combined stock suffices\n  ---\n  duration_ms: 70.250708\n  ...\n# Subtest: GET /health returns ok\nok 7 - GET /health returns ok\n  ---\n  duration_ms: 15.130875\n  ...\n# Subtest: GET /items returns list\nok 8 - GET /items returns list\n  ---\n  duration_ms: 5.893625\n  ...\n# Subtest: GET /items/:id returns 404 for missing\nok 9 - GET /items/:id returns 404 for missing\n  ---\n  duration_ms: 1.701083\n  ...\n1..9\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 416.039167\n"
+    },
+    {
+      "index": 1,
+      "cmd": "node bin/cli.js --help",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "fulfill-wave"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "Usage: bench-cli <command> [options]\n\nCommands:\n  hello [--name NAME]        Print a greeting (default name: \"world\")\n  version                    Print the CLI version from package.json\n  fulfill-wave --input PATH  Allocate warehouse stock to orders\n  --help, -h                 Show this help\n\nExamples:\n  bench-cli hello\n  bench-cli hello --name alice\n  bench-cli version\n"
+    }
+  ]
+}

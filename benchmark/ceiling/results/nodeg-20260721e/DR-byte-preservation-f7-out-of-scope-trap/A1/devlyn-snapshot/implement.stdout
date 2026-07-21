@@ -1,0 +1,31 @@
+PASS
+
+Implemented `--format json` for `version` in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/ff10888c89791/A1/repo/bin/cli.js:44) and added its subprocess test in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/ff10888c89791/A1/repo/tests/cli.test.js:27). Unsupported formats now print an error and exit 1. Focused `git diff` contains only the two authorized files.
+
+Verification outputs:
+
+```text
+$ node bin/cli.js version
+exit 0
+0.1.0
+```
+
+```text
+$ node bin/cli.js version --format json
+exit 0
+{"version":"0.1.0"}
+```
+
+```text
+$ node bin/cli.js version --format yaml
+exit 1
+Unsupported version format: yaml
+```
+
+```text
+$ node --test tests/cli.test.js
+exit 0
+# tests 4
+# pass 4
+# fail 0
+```

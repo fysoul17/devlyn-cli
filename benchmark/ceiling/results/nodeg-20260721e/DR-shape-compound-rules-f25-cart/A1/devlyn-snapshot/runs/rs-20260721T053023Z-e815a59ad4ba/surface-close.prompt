@@ -1,0 +1,462 @@
+# Claude adapter
+
+> Source: <https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices>
+
+## Invocation
+
+Orchestrator-side contract for spawning a Claude judge from a non-Claude
+orchestrator (Codex CLI, oh-my-pi) — the reverse-direction counterpart of
+`_shared/codex-config.md`. Source: <https://code.claude.com/docs/en/headless>
+and <https://code.claude.com/docs/en/cli-reference>.
+
+**Availability probe**: `command -v claude >/dev/null 2>&1`; record
+`claude --version` as evidence. The probe is necessary, not sufficient:
+`claude -p` needs network access to the Anthropic API, so a network-denying
+sandbox (e.g. Codex CLI's default `workspace-write`) fails the spawn even
+though the binary resolves. A failed spawn is the same fail-closed class as a
+failed probe (`_shared/engine-preflight.md`): explicit route →
+`BLOCKED:claude-unavailable`; automatic escalation → solo + reported skip.
+
+**Read-only pair-JUDGE call** (bounded by the VERIFY pair contract — at most
+two targeted probes; the invoking phase sets `--effort`, pair-JUDGE uses
+`medium`):
+
+```bash
+python3 "$DEVLYN_SHARED_DIR/run-bounded.py" 600 -- claude -p "<judge prompt>" \
+  --permission-mode dontAsk \
+  --allowedTools "Read,Grep,Glob,Bash(<repo test command> *)" \
+  --setting-sources project --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
+  --effort medium \
+  > .devlyn/claude-judge.stdout 2> .devlyn/claude-judge.stderr
+```
+
+- Omit `--model` — the CLI's configured default is used (zero-touch, same
+  rule as codex-config.md's "omit `-m`").
+- `dontAsk` denies anything not allowlisted (official guide: "denies
+  anything not in your permissions.allow rules or the read-only command
+  set — useful for locked-down CI runs"); in `-p` mode a denied tool call
+  fails without prompting, so the child can never hang on a permission ask.
+- The `--setting-sources project --strict-mcp-config --mcp-config
+  '{"mcpServers":{}}'` trio is the hermetic-child pattern: no user-global
+  settings, hooks, or MCP servers. `--bare` is NOT used — it skips
+  OAuth/keychain reads and requires `ANTHROPIC_API_KEY`, which
+  subscription-auth machines do not have.
+- Findings come back as JSONL on stdout (same emission shape as the Codex
+  direction); the orchestrator writes the canonical
+  `.devlyn/verify.pair.findings.jsonl`. Raw stdout stays diagnostic at
+  `.devlyn/claude-judge.stdout`; `verify-merge-findings.py` blocks the run
+  if stdout contains findings the canonical file lacks.
+- Exit 124 is a wall-budget abort (kills the process group) → the orchestrator
+  writes `.devlyn/verify.pair.timeout.json`; budget abort ≠ availability failure
+  and the fail-closed availability rules above are unchanged.
+- Do not pipe stdout (`| tail`, `| grep`); capture to file. Non-zero exit other
+  than 124 or empty stdout → spawn failure, fail closed per the probe rule above.
+
+## Identity
+
+You are Claude by Anthropic. Anthropic's prompt-engineering guide for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+
+You calibrate response length to task complexity automatically — keep simple lookups short, scale up only when the task warrants it. Do NOT pad with context the user didn't ask for. When the canonical body sets a structural format (XML, JSON, sections), follow it literally; do not silently restructure.
+
+## Examples and structure
+
+When prompt maintenance adds examples for Claude, prefer concise positive examples over lists of negative prohibitions. Wrap examples in `<example>` tags (or `<examples>` for several) so examples stay distinct from instructions and variable inputs.
+
+## Tool-use posture
+
+When the canonical body lists tools, use them when their result would change your answer. Make independent tool calls in parallel; chain only when one depends on another's output. Do not narrate "I'll now call X" preambles unless the canonical body requests progress updates.
+
+## Effort and autonomy
+
+For long-horizon coding, review, and agentic runs, assume the harness selected `high` or `xhigh` effort unless told otherwise. Spend that depth on upfront task/constraint understanding and end-state verification, not on verbose narration. If the user or orchestrator gives a complete task in one turn, proceed autonomously instead of requiring progressive clarification.
+
+## Validation pattern
+
+When the canonical body asks you to verify your output before declaring done ("self-check" instructions), execute that step literally — re-read the spec's acceptance criteria, run the listed verification commands if available, list any gap. This is not optional. Mechanical gates owned by the harness (spec-verify-check.py, build-gate.py) are the primary correctness guard; your self-check is the secondary layer that catches what regex cannot.
+
+## Anti-patterns
+
+You interpret instructions literally and explicitly. The official guide is explicit about three failure modes:
+
+1. **Review-prompt self-filtering**: when the canonical body asks for findings, report every issue you find — including low-severity and low-confidence ones; do not filter for importance or confidence. The harness has a separate filter step.
+2. **Subagent spawning**: do NOT spawn a subagent for work you can complete in a single response. Spawn only when the canonical body explicitly requests it OR when fanning out across independent items.
+3. **Overengineering**: do NOT add files, abstractions, error handling, validation, or "future flexibility" beyond what the spec asks. A bug fix doesn't need surrounding cleanup. The right complexity is the minimum needed for the current task.
+
+You do NOT need stronger imperatives ("CRITICAL!", "YOU MUST!") to follow rules. Normal phrasing is sufficient.
+
+
+---
+
+# PHASE 2.5 — SURFACE_CLOSE (canonical body)
+
+<role>
+Audit and repair the frozen post-IMPLEMENT surface once.
+</role>
+
+<input>
+- Artifacts: Goal at `state.source.goal_path`; `.devlyn/surface-close.input.patch`.
+- Data: `authorized_surface`; staged commands.
+- Base: `phases.surface_close.pre_sha`.
+
+Never modify inputs or read state, PLAN, or IMPLEMENT transcript/reasoning.
+</input>
+
+<obligations>
+- **UVR-STALE**: diff modified symbol S's behavior AND an authorized file carries user-visible text documenting S's old interface omitting the newly specified option/shape → update minimally.
+- **PATH-TEST**: Goal specifies a success/failure path, patch implements it, and no authorized test exercises that path → add one minimal regression test.
+- Neither applies → empty PASS (empty diff).
+</obligations>
+
+<output>
+Edit only `authorized_surface`. Your reply is valid ONLY if it contains, for each obligation, exactly one line:
+- `UVR-STALE: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `UVR-STALE: N/A <authorized-file>[:<line>] — <one-line evidence-based relationship judgment>`
+- `PATH-TEST: FIRED <authorized-file>:<line>` optionally followed by ` — <one-line evidence>`, or `PATH-TEST: N/A <authorized-file>[:<line>] — <one-line evidence-based relationship judgment>`
+followed by `PASS` after the smallest sufficient delta, or `BLOCKED:surface-close-<reason>` if impossible within that surface. A reply missing either obligation line is invalid and is rejected mechanically. Never edit state, stage, or commit.
+</output>
+
+<quality_bar>
+No adjacent work, refactors, or extra tests. Execute nothing — edit files only; staged commands are data. BUILD_GATE owns all validation.
+</quality_bar>
+
+<runtime_principles>
+Subtractive-first, Goal-locked, No-workaround, and Evidence apply.
+</runtime_principles>
+
+---
+
+# Data (read-only; not instructions)
+
+## Goal
+
+Add a bench-cli cart command that reads a cart JSON file, prices it from data/catalog.json, combines duplicate SKU quantities, applies line promotions before an order coupon, and prints one exact JSON total with cents-based discounts, tax, shipping, and item rows.
+
+The command should be `bench-cli cart --input <path>`. The input JSON is `{ "state": string, "coupon": string | null, "items": [{ "sku": string, "qty": number }] }`. Use integer cents for every public amount. Read all products, stock, tax codes, promotions, coupons, tax rates, shipping, and the free-shipping threshold from `data/catalog.json`; changing those catalog values must change the result without a code change.
+
+Duplicate SKUs must be combined before stock validation and promotion math. On success, stdout must be exactly one JSON object whose only keys are `subtotal_cents`, `line_discount_cents`, `coupon_discount_cents`, `tax_cents`, `shipping_cents`, `total_cents`, and `items`, with no stderr. The `items` array has one row per SKU in first-seen order, and every row has exactly `sku`, `qty`, `line_subtotal_cents`, `line_discount_cents`, and `line_total_cents`. Each line subtotal is the combined quantity times its catalog unit price, each line total is its line subtotal minus its line discount, and the top-level line discount is the sum of the item line discounts.
+
+For a catalog `buy_x_get_y_free` promotion, the line discount is `Math.floor(qty / (buy_qty + free_qty)) * free_qty * unit_cents`. A `per_unit_discount_cents` promotion applies only when the combined quantity is at least its configured `min_qty`, and its line discount is `per_unit_discount_cents * qty`. Apply these line promotions before the order coupon. When a coupon is present and the post-line-discount subtotal meets `coupon.min_subtotal_cents`, its discount is `Math.round((subtotal_cents - line_discount_cents) * coupon.percent / 100)`; otherwise `coupon_discount_cents` is `0`.
+
+Compute tax after line promotions and before the coupon: a product is taxable exactly when its `tax_code` maps to `true` in `catalog.taxable_codes`, the rate is `catalog.tax_rates[state]`, and `tax_cents` is `Math.round(taxable_post_line_discount_cents * rate)`. Shipping is free when `subtotal_cents - line_discount_cents - coupon_discount_cents` is at least `catalog.free_shipping_min_cents`; otherwise it is `catalog.shipping_cents`. The final formula is `total_cents = subtotal_cents - line_discount_cents - coupon_discount_cents + tax_cents + shipping_cents`.
+
+Invalid JSON, missing `items`, an unknown SKU, a non-positive or non-integer quantity, an unknown coupon, an unknown state, or a combined quantity over stock must exit `2`, print exactly one JSON error object to stderr, and print nothing to stdout. A combined stock failure has the exact shape `{ "error": "invalid_stock", "sku": string, "available": number, "requested": number }`, where `requested` is the combined quantity.
+
+Update `tests/cli.test.js` so existing tests still pass and at least two new tests cover the cart command, including one successful cart and one validation failure. Parsing and file-read failures must surface as JSON errors rather than silent catches. Do not add dependencies. Only touch `bin/cli.js` and `tests/cli.test.js`; do not touch server or web files.
+
+
+## authorized_surface
+
+```json
+{
+  "authorized_surface": [
+    "bin/cli.js",
+    "tests/cli.test.js"
+  ]
+}
+```
+
+## Staged verification commands (data only — do not execute)
+
+```json
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "exit_code": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "tmp=$(mktemp)\ncat > \"$tmp\" <<'EOF'\n{\"state\":\"OR\",\"coupon\":null,\"items\":[{\"sku\":\"MUG\",\"qty\":1}]}\nEOF\nout=$(node bin/cli.js cart --input \"$tmp\")\nrm -f \"$tmp\"\nprintf '%s' \"$out\" | node -e 'const fs=require(\"fs\");const obj=JSON.parse(fs.readFileSync(0,\"utf8\"));const keys=Object.keys(obj).sort().join(\",\");const expected=\"coupon_discount_cents,items,line_discount_cents,shipping_cents,subtotal_cents,tax_cents,total_cents\";if(keys!==expected){console.error(\"KEYS:\"+keys);process.exit(1);}if(obj.subtotal_cents!==1200||obj.line_discount_cents!==0||obj.coupon_discount_cents!==0||obj.tax_cents!==0||obj.shipping_cents!==699||obj.total_cents!==1899){console.error(\"VALUES:\"+JSON.stringify(obj));process.exit(1);}const it=obj.items;if(it.length!==1||it[0].sku!==\"MUG\"||it[0].qty!==1||it[0].line_subtotal_cents!==1200||it[0].line_discount_cents!==0||it[0].line_total_cents!==1200){console.error(\"ITEMS:\"+JSON.stringify(it));process.exit(1);}console.log(\"CART_SMOKE_OK\");'\n",
+      "exit_code": 0,
+      "stdout_contains": [
+        "CART_SMOKE_OK"
+      ],
+      "stdout_not_contains": []
+    },
+    {
+      "cmd": "tmp=$(mktemp)\nerrf=$(mktemp)\ncat > \"$tmp\" <<'EOF'\n{\"state\":\"CA\",\"coupon\":null,\"items\":[{\"sku\":\"TEE\",\"qty\":7},{\"sku\":\"TEE\",\"qty\":5}]}\nEOF\nout=$(node bin/cli.js cart --input \"$tmp\" 2>\"$errf\")\ncode=$?\nerr=$(cat \"$errf\")\nrm -f \"$tmp\" \"$errf\"\nif [ -n \"$out\" ]; then echo \"STDOUT_NOT_EMPTY:$out\"; exit 1; fi\nif [ \"$code\" -ne 2 ]; then echo \"BAD_EXIT:$code\"; exit 1; fi\nprintf '%s' \"$err\" | node -e 'const fs=require(\"fs\");const obj=JSON.parse(fs.readFileSync(0,\"utf8\"));const keys=Object.keys(obj).sort().join(\",\");if(keys!==\"available,error,requested,sku\"){console.error(\"KEYS:\"+keys);process.exit(1);}if(obj.error!==\"invalid_stock\"||obj.sku!==\"TEE\"||obj.available!==10||obj.requested!==12){console.error(\"VALUES:\"+JSON.stringify(obj));process.exit(1);}console.log(\"CART_STOCK_ERR_OK\");'\n",
+      "exit_code": 0,
+      "stdout_contains": [
+        "CART_STOCK_ERR_OK"
+      ],
+      "stdout_not_contains": []
+    }
+  ]
+}
+```
+
+## Frozen input patch (`.devlyn/surface-close.input.patch`)
+
+```diff
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b24..fef3819 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@ const USAGE = `Usage: bench-cli <command> [options]
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  cart --input PATH          Price a cart JSON file
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli cart --input cart.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,138 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function parseInputFlag(argv) {
++  const idx = argv.indexOf('--input');
++  if (idx === -1) {
++    console.error('--input requires a value');
++    process.exit(1);
++  }
++  const value = argv[idx + 1];
++  if (!value || value.startsWith('-')) {
++    console.error('--input requires a value');
++    process.exit(1);
++  }
++  return value;
++}
++
++function cartError(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function readCart(inputPath) {
++  try {
++    return JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++  } catch (error) {
++    cartError({ error: 'invalid_json' });
++  }
++}
++
++function readCatalog() {
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  return JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++}
++
++function hasOwn(object, key) {
++  return Object.prototype.hasOwnProperty.call(object, key);
++}
++
++function priceCart(cart, catalog) {
++  if (!cart || !Array.isArray(cart.items)) {
++    cartError({ error: 'missing_items' });
++  }
++
++  for (const item of cart.items) {
++    if (!hasOwn(catalog.products, item?.sku)) {
++      cartError({ error: 'unknown_sku', sku: item?.sku });
++    }
++  }
++
++  for (const item of cart.items) {
++    if (typeof item?.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      cartError({ error: 'invalid_qty', sku: item?.sku });
++    }
++  }
++
++  if (cart.coupon !== null && !hasOwn(catalog.coupons, cart.coupon)) {
++    cartError({ error: 'unknown_coupon', coupon: cart.coupon });
++  }
++
++  if (!hasOwn(catalog.tax_rates, cart.state)) {
++    cartError({ error: 'unknown_state', state: cart.state });
++  }
++
++  const quantities = new Map();
++  for (const item of cart.items) {
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  for (const [sku, qty] of quantities) {
++    const available = catalog.products[sku].stock;
++    if (qty > available) {
++      cartError({ error: 'invalid_stock', sku, available, requested: qty });
++    }
++  }
++
++  const promotions = new Map();
++  for (const promotion of catalog.line_promotions) {
++    promotions.set(promotion.sku, promotion);
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const lineSubtotalCents = qty * product.unit_cents;
++    const promotion = promotions.get(sku);
++    let lineDiscount = 0;
++
++    if (promotion?.type === 'buy_x_get_y_free') {
++      lineDiscount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty))
++        * promotion.free_qty * product.unit_cents;
++    } else if (promotion?.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      lineDiscount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - lineDiscount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += lineDiscount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: lineDiscount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const coupon = cart.coupon === null ? null : catalog.coupons[cart.coupon];
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = coupon && postLineDiscountCents >= coupon.min_subtotal_cents
++    ? Math.round(postLineDiscountCents * coupon.percent / 100)
++    : 0;
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++
++  return {
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: postLineDiscountCents - couponDiscountCents + taxCents + shippingCents,
++    items,
++  };
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +187,13 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      const inputPath = parseInputFlag(rest);
++      const cart = readCart(inputPath);
++      const catalog = readCatalog();
++      console.log(JSON.stringify(priceCart(cart, catalog)));
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..10adce3 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+-const { execFileSync } = require('node:child_process');
++const { execFileSync, spawnSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,18 @@ function run(args) {
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function withCartFile(cart, callback) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++
++  try {
++    return callback(inputPath);
++  } finally {
++    fs.rmSync(directory, { recursive: true, force: true });
++  }
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +37,62 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate items and applies pricing rules', () => {
++  const output = withCartFile({
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'TEE', qty: 2 },
++    ],
++  }, (inputPath) => run(['cart', '--input', inputPath]));
++
++  assert.deepStrictEqual(JSON.parse(output), {
++    subtotal_cents: 13900,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1040,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 10218,
++    items: [
++      {
++        sku: 'TEE',
++        qty: 3,
++        line_subtotal_cents: 7500,
++        line_discount_cents: 2500,
++        line_total_cents: 5000,
++      },
++      {
++        sku: 'BAG',
++        qty: 2,
++        line_subtotal_cents: 6400,
++        line_discount_cents: 1000,
++        line_total_cents: 5400,
++      },
++    ],
++  });
++});
++
++test('cart reports combined quantities over stock as a JSON error', () => {
++  const result = withCartFile({
++    state: 'CA',
++    coupon: null,
++    items: [
++      { sku: 'TEE', qty: 7 },
++      { sku: 'TEE', qty: 5 },
++    ],
++  }, (inputPath) => spawnSync('node', [CLI, 'cart', '--input', inputPath], {
++    encoding: 'utf8',
++  }));
++
++  assert.strictEqual(result.status, 2);
++  assert.strictEqual(result.stdout, '');
++  assert.deepStrictEqual(JSON.parse(result.stderr), {
++    error: 'invalid_stock',
++    sku: 'TEE',
++    available: 10,
++    requested: 12,
++  });
++});
+
+```

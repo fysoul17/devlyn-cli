@@ -1,0 +1,9 @@
+Bash execution is denied in this environment, so I verified both probes by static analysis against the actual implementation in the diff and the real `data/catalog.json`.
+
+**Probe 1 (error-priority):** The unknown-SKU loop (`bin/cli.js` lines with `!hasOwn(catalog.products, item?.sku)`) runs to completion over all items *before* the separate qty-validation loop. For `[{sku:"XXX",qty:1},{sku:"TEE",qty:-1}]`, the first loop hits `XXX` and calls `cartError({error:'unknown_sku',sku:'XXX'})` → exit 2, stderr-only. Matches the criteria order (unknown SKU before invalid qty). Pass.
+
+**Probe 2 (compound ledger):** TEE×3 separate entries + BAG×2, state CA, coupon ORDER10. `quantities` Map combines by SKU before promotion math, first-seen order preserved. Recomputed from catalog: TEE qty 3, subtotal 7500, buy2get1 `floor(3/3)*1*2500`=2500 disc; BAG qty 2, subtotal 6400, per-unit `500*2`=1000 disc. subtotal 13900, line_discount 3500, post-line 10400, coupon `round(10400*10/100)`=1040, tax base 10400 (both standard/taxable) → `round(10400*0.0825)`=858, shipping 0 (9360≥9000), total 10218. Key set exact. Tax computed on post-line-discount/pre-coupon. Matches. Pass.
+
+Static scope: diff touches only `bin/cli.js` and `tests/cli.test.js`. Pass.
+
+PASS

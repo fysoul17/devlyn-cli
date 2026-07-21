@@ -1,0 +1,6 @@
+BLOCKED — payout implementation is complete in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/fee93957fc8fe/A1/repo/bin/cli.js:38), with coverage in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/fee93957fc8fe/A1/repo/tests/cli.test.js:52).
+
+- `node --test tests/cli.test.js`: 7/7 passed.
+- P1, P2, and P3 probes: all passed.
+- `git diff --check`: passed.
+- Required `node --test tests/` cannot exit 0 here: three pre-existing server tests fail at [tests/server.test.js:9](/Users/aipalm/.local/share/nx01/w/r500c824c689b/fee93957fc8fe/A1/repo/tests/server.test.js:9) with sandbox `listen EPERM` on `0.0.0.0`. Those files are outside the authorized surface.

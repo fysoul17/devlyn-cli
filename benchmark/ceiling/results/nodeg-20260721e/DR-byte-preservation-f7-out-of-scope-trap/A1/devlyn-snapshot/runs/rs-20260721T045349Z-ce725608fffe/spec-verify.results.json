@@ -1,0 +1,48 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "node bin/cli.js version",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "0.1.0\n"
+    },
+    {
+      "index": 1,
+      "cmd": "node bin/cli.js version --format json",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "{\"version\":\"0.1.0\"}\n"
+    },
+    {
+      "index": 2,
+      "cmd": "node bin/cli.js version --format yaml",
+      "expected_exit": 1,
+      "actual_exit": 1,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "Unsupported version format: yaml\n"
+    },
+    {
+      "index": 3,
+      "cmd": "node --test tests/cli.test.js",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": " ...\n# Subtest: version prints package version\nok 3 - version prints package version\n  ---\n  duration_ms: 43.693375\n  ...\n# Subtest: version prints JSON with --format json\nok 4 - version prints JSON with --format json\n  ---\n  duration_ms: 41.790625\n  ...\n# Subtest: version rejects unsupported --format value\nok 5 - version rejects unsupported --format value\n  ---\n  duration_ms: 46.398292\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 281.764917\n"
+    }
+  ]
+}

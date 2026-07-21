@@ -1,0 +1,1773 @@
+[codex-monitored] start: ts=2026-07-21T07:00:33Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=96762
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f8379-f361-7df3-8c08-d1c9ebcc4e13
+--------
+user
+# Codex (OpenAI) adapter (identity/behavior header)
+
+You are OpenAI's Codex model. When this header and the canonical body below conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+- Output discipline: efficient, direct, task-oriented. Do not over-specify process steps.
+- Validation pattern: validation is concrete commands, not self-belief. Run the listed verification commands and trust their output before declaring success.
+- Anti-patterns: avoid absolute imperatives for judgment calls; don't over-specify process when the destination is clear; follow explicit stop rules. Do not narrate internal deliberation — state results and decisions directly.
+
+# PHASE 2 — IMPLEMENT (canonical body)
+
+<role>
+You execute the plan. Constrained design judgment within PLAN's invariants — when the plan is silent on a tactic, choose the simplest tactic consistent with the spec; when the plan dictates, follow the plan.
+</role>
+
+<input>
+- Plan: `.devlyn/plan.md` in the repo (file list + risks + acceptance restatement) — read it first.
+- Source criteria: `.devlyn/criteria.generated.md` in the repo.
+- Repo root: this is your working directory (`-C` was set to it).
+</input>
+
+<output>
+- Code changes implementing every Requirement. Verify with `git diff`.
+- Tests added or updated for changed behavior. Run the full test suite (`npm test`) before stopping.
+- Report your verdict in your final reply: `PASS` on success; `BLOCKED` if a criterion cannot be satisfied (missing external dep, blocking ambiguity in the spec) — never silently skip a requirement.
+</output>
+
+<quality_bar>
+- Spec is the contract. The plan is the path. If they disagree, surface the conflict and follow the spec.
+- Verification commands are literal. Before declaring done, re-read the Verification section and run every command exactly as listed; compare output character-for-character.
+- Tooling-generated artifacts (test-results/, coverage HTML, etc.) do not belong in the diff unless listed as deliverables.
+- Existing tests are contract. Do not replace real HTTP calls with mocks. Do not skip or disable tests. Do not reduce assertion count on behavior still in scope.
+- Files not in PLAN's "Files to touch" list are off-limits: only `server/index.js` and `tests/server.test.js`. If you discover an out-of-scope file genuinely needs to change, stop and report BLOCKED with the reason instead of editing it.
+</quality_bar>
+
+<runtime_principles>
+- Subtractive-first: net-deletion is the default; pure-addition needs a citation. This task has an explicit user requirement for the new route/tests, so the additions are justified — but add nothing beyond what the plan and criteria specify.
+- Goal-locked: implement only the listed Requirements. Adjacent code that "looks fixable" is drift unless the spec or plan listed it. Do not touch GET /health, GET /items, or GET /items/:id.
+- No-workaround: no silent catch, no hardcoded values that hide a broken contract, no helper scripts that bypass root cause. No new npm dependencies.
+- Evidence: every claim should cite file:line you opened.
+</runtime_principles>
+
+Before declaring the phase complete, re-read each Requirement below and confirm your diff satisfies it.
+
+## The task
+
+Implement `POST /items/import` in `server/index.js` and update `tests/server.test.js`, per this generated criteria (also at `.devlyn/criteria.generated.md`):
+
+```
+# Generated criteria — POST /items/import
+
+## Requirements
+
+- `POST /items/import` in `server/index.js` accepts a JSON body `{ items: [...] }`. Each item is valid only if `name` is a non-empty string after trimming, and `qty` is a positive integer.
+- When every item in the batch is valid: append all items to the in-memory `items` store in input order, respond `201` with `{ inserted: <count> }`, and every appended row must receive a distinct numeric `id` that does not collide with any existing item id.
+- When any item is invalid: respond `400` with `{ error: 'invalid_batch', index, field }`, where `index` is the position of the first invalid item and `field` is `'name'` or `'qty'` (whichever failed first). No items are appended — `GET /items` immediately after this response must return exactly the same list it returned immediately before the request.
+- When the request body is empty, `items` is missing, or `items` is not an array: respond `400` with `{ error: 'invalid_body' }`. `GET /items` must be unchanged by this request.
+- `tests/server.test.js` is updated so all existing tests still pass, plus at least two new tests covering `POST /items/import`: one exercising an invalid middle item (comparing the `GET /items` list before and after the response), and one covering a fully valid batch import.
+
+## Constraints
+
+- Only `server/index.js` and `tests/server.test.js` may be touched.
+- No new npm dependencies — reuse `express` and `express.json()` already wired in `server/index.js`.
+- Follow the existing route style in `server/index.js` (`app.get`/`res.json`/`res.status(...).json(...)`, in-memory `items` array as the single source of truth).
+- New ids must not collide with any existing item id (existing seed data uses ids `1` and `2`; a simple max-plus-increment or running counter satisfies this without a new dependency).
+
+## Out of Scope
+
+- Anything not in `server/index.js` or `tests/server.test.js`.
+- New routes, new dependencies, or persistence beyond the existing in-memory `items` array.
+
+<!-- devlyn:verification -->
+## Verification
+
+- `npm test` — runs `node --test tests/`; must pass, including the new `POST /items/import` tests.
+```
+
+And per `.devlyn/plan.md`'s Risks section (read the file for full detail): validate the whole batch before mutating `items` (no partial writes on a rejected batch); scan items in input order and check `name` before `qty` for the first-invalid-item report; reject non-integer/zero/negative/NaN/non-number `qty`; reject non-string or whitespace-only `name`; compute new ids via max-plus-increment over current `items` ids at request time; response bodies must match the literal shapes exactly with no extra fields.
+
+Run `npm test` yourself before finishing and report the result.
+codex
+I’ll implement the planned route and its two required tests, then run the exact `npm test` verification.
+exec
+/bin/zsh -lc "git status --short && printf '\\n--- plan ---\\n' && sed -n '1,240p' .devlyn/plan.md && printf '\\n--- criteria ---\\n' && sed -n '1,260p' .devlyn/criteria.generated.md && printf '\\n--- server ---\\n' && sed -n '1,260p' server/index.js && printf '\\n--- tests ---\\n' && sed -n '1,320p' tests/server.test.js" in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo
+ succeeded in 6813ms:
+2026-07-21 07:00:47.713 xcodebuild[97810:3781428]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-21 07:00:48.583 xcodebuild[97810:3781427] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+--- plan ---
+<!-- devlyn:authorized-surface -->
+## Files to touch
+
+- `server/index.js` — edit — add the `POST /items/import` route: body validation, per-item `name`/`qty` validation, id generation, and batch append, placed alongside the existing routes (server/index.js:12-28) and before the `module.exports` at server/index.js:37.
+- `tests/server.test.js` — edit — add at least two new `node:test` cases covering `POST /items/import` (invalid middle item with before/after `GET /items` comparison; fully valid batch import), following the existing `startServer`/`get` helper pattern (tests/server.test.js:6-24) and the existing `test(...)` shape (tests/server.test.js:26-58).
+
+```json
+{"authorized_surface": ["server/index.js", "tests/server.test.js"]}
+```
+
+## Risks
+
+- **Scope creep to refuse**: no new routes beyond `/items/import`, no new npm dependencies (`express` 4.19.2 is already the only dependency per package.json), no persistence beyond the existing in-memory `items` array (server/index.js:7-10), no refactor of `GET /items` / `GET /items/:id` / `GET /health` even though they sit in the same file.
+- **Empty/invalid body interpretation**: only `express.json()` is wired (server/index.js:5), no `express.urlencoded()`. With Content-Type `application/json` and an empty body, body-parser sets `req.body` to `{}`; without a JSON Content-Type, `req.body` is `undefined`. Both cases, plus `{ items: <non-array> }` and `{}` (missing `items`), must resolve to `400 { error: 'invalid_body' }`. Do not add new middleware to normalize this — handle it with a plain guard (`!req.body || !Array.isArray(req.body.items)`).
+- **First-invalid-item semantics**: must scan items in input order and stop at the first item that fails validation, checking `name` before `qty` for that item (matches the Requirement's listed order: "`name` is a non-empty string ... and `qty` is a positive integer"). The reported `index`/`field` must be for that first failing item only, not a full-batch error list.
+- **Two-pass validate-then-append**: the whole batch must be validated before any mutation of `items`, so that an invalid item anywhere in the batch (including after valid items) leaves `items` byte-for-byte unchanged — validate all items first, only push once the full batch passes.
+- **`qty` positive integer**: reject `0`, negative numbers, non-integers (e.g. `1.5`), `NaN`, and non-number types (string, boolean, null, undefined) — `Number.isInteger(qty) && qty > 0`.
+- **`name` non-empty after trim**: reject non-string types and whitespace-only strings — `typeof name === 'string' && name.trim().length > 0`. Store the trimmed or original string — Requirements don't specify which; store as provided (no trim-on-write requirement stated, only trim-for-validation), to avoid inventing unrequested normalization behavior.
+- **Id collision avoidance**: use a max-plus-increment over current `items` ids (constraint-mandated approach) computed at request time, not a module-level counter that could drift from the array; must not collide with either seed id (`1`, `2`) or ids inserted by prior successful imports in the same test run.
+- **Response shape literalness**: success is exactly `201 { inserted: <count> }`; batch-invalid is exactly `400 { error: 'invalid_batch', index, field }`; body-invalid is exactly `400 { error: 'invalid_body' }` — no extra fields, matching the existing route style (`res.status(...).json(...)` / `res.json(...)` at server/index.js:13,17,24,27).
+- **Existing tests are contract**: the three current tests (tests/server.test.js:26-58) must keep passing unmodified in behavior; only additive test cases are in scope.
+
+## Acceptance restatement
+
+## Verification
+
+- `npm test` — runs `node --test tests/`; must pass, including the new `POST /items/import` tests.
+
+--- criteria ---
+# Generated criteria — POST /items/import
+
+## Requirements
+
+- `POST /items/import` in `server/index.js` accepts a JSON body `{ items: [...] }`. Each item is valid only if `name` is a non-empty string after trimming, and `qty` is a positive integer.
+- When every item in the batch is valid: append all items to the in-memory `items` store in input order, respond `201` with `{ inserted: <count> }`, and every appended row must receive a distinct numeric `id` that does not collide with any existing item id.
+- When any item is invalid: respond `400` with `{ error: 'invalid_batch', index, field }`, where `index` is the position of the first invalid item and `field` is `'name'` or `'qty'` (whichever failed first). No items are appended — `GET /items` immediately after this response must return exactly the same list it returned immediately before the request.
+- When the request body is empty, `items` is missing, or `items` is not an array: respond `400` with `{ error: 'invalid_body' }`. `GET /items` must be unchanged by this request.
+- `tests/server.test.js` is updated so all existing tests still pass, plus at least two new tests covering `POST /items/import`: one exercising an invalid middle item (comparing the `GET /items` list before and after the response), and one covering a fully valid batch import.
+
+## Constraints
+
+- Only `server/index.js` and `tests/server.test.js` may be touched.
+- No new npm dependencies — reuse `express` and `express.json()` already wired in `server/index.js`.
+- Follow the existing route style in `server/index.js` (`app.get`/`res.json`/`res.status(...).json(...)`, in-memory `items` array as the single source of truth).
+- New ids must not collide with any existing item id (existing seed data uses ids `1` and `2`; a simple max-plus-increment or running counter satisfies this without a new dependency).
+
+## Out of Scope
+
+- Anything not in `server/index.js` or `tests/server.test.js`.
+- New routes, new dependencies, or persistence beyond the existing in-memory `items` array.
+
+<!-- devlyn:verification -->
+## Verification
+
+- `npm test` — runs `node --test tests/`; must pass, including the new `POST /items/import` tests.
+
+--- server ---
+// Tiny Express server with a deliberately small API surface.
+const express = require('express');
+
+const app = express();
+app.use(express.json());
+
+const items = [
+  { id: 1, name: 'alpha', qty: 3 },
+  { id: 2, name: 'beta', qty: 5 },
+];
+
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.get('/items', (_req, res) => {
+  res.json({ items });
+});
+
+app.get('/items/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const item = items.find((it) => it.id === id);
+  if (!item) {
+    res.status(404).json({ error: 'not_found', id });
+    return;
+  }
+  res.json({ item });
+});
+
+if (require.main === module) {
+  const port = Number(process.env.PORT) || 3000;
+  app.listen(port, () => {
+    console.log(`harbor-tools server listening on :${port}`);
+  });
+}
+
+module.exports = { app };
+
+--- tests ---
+const { test } = require('node:test');
+const assert = require('node:assert');
+const http = require('node:http');
+const { app } = require('../server');
+
+function startServer() {
+  return new Promise((resolve) => {
+    const server = http.createServer(app);
+    server.listen(0, () => resolve(server));
+  });
+}
+
+function get(server, path) {
+  return new Promise((resolve, reject) => {
+    const { port } = server.address();
+    http
+      .get(`http://127.0.0.1:${port}${path}`, (res) => {
+        let body = '';
+        res.on('data', (chunk) => (body += chunk));
+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
+      })
+      .on('error', reject);
+  });
+}
+
+test('GET /health returns ok', async () => {
+  const server = await startServer();
+  try {
+    const { status, body } = await get(server, '/health');
+    assert.strictEqual(status, 200);
+    assert.deepStrictEqual(body, { status: 'ok' });
+  } finally {
+    server.close();
+  }
+});
+
+test('GET /items returns list', async () => {
+  const server = await startServer();
+  try {
+    const { status, body } = await get(server, '/items');
+    assert.strictEqual(status, 200);
+    assert.ok(Array.isArray(body.items));
+    assert.ok(body.items.length >= 2);
+  } finally {
+    server.close();
+  }
+});
+
+test('GET /items/:id returns 404 for missing', async () => {
+  const server = await startServer();
+  try {
+    const { status, body } = await get(server, '/items/99999');
+    assert.strictEqual(status, 404);
+    assert.strictEqual(body.error, 'not_found');
+  } finally {
+    server.close();
+  }
+});
+
+[codex-monitored] heartbeat: elapsed=30s
+codex
+The plan and criteria agree. The existing store is process-global, so the tests will compare live before/after snapshots and derive ID expectations from those snapshots.
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/server/index.js
+/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js
+diff --git a/server/index.js b/server/index.js
+index 1c43fa26f8ed19f576ff77c592f4b7a7656b796d..62edef61d3af1f5b05139a77f4492da10dd93de4
+--- a/server/index.js
++++ b/server/index.js
+@@ -17,6 +17,30 @@
+   res.json({ items });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (const [index, item] of req.body.items.entries()) {
++    if (typeof item?.name !== 'string' || item.name.trim().length === 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  let nextId = Math.max(...items.map((item) => item.id)) + 1;
++  items.push(
++    ...req.body.items.map((item) => ({ id: nextId++, name: item.name, qty: item.qty })),
++  );
++  res.status(201).json({ inserted: req.body.items.length });
++});
++
+ app.get('/items/:id', (req, res) => {
+   const id = Number(req.params.id);
+   const item = items.find((it) => it.id === id);
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067d12d69a237c6983fb50ee37ca529e4881..b00098dffb902108a90940db8840619d9ced4166
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -23,6 +23,30 @@
+   });
+ }
+ 
++function post(server, path, body) {
++  return new Promise((resolve, reject) => {
++    const payload = JSON.stringify(body);
++    const { port } = server.address();
++    const request = http.request(
++      `http://127.0.0.1:${port}${path}`,
++      {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(payload),
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    request.on('error', reject);
++    request.end(payload);
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +80,54 @@
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changes', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 0 },
++        { name: 'epsilon', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a valid batch in order with unique ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const inserted = after.body.items.slice(before.body.items.length);
++    const existingIds = new Set(before.body.items.map((item) => item.id));
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: 2 });
++    assert.deepStrictEqual(
++      inserted.map(({ name, qty }) => ({ name, qty })),
++      [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    );
++    assert.strictEqual(new Set(inserted.map((item) => item.id)).size, 2);
++    assert.ok(inserted.every((item) => !existingIds.has(item.id)));
++  } finally {
++    server.close();
++  }
++});
+
+diff --git a/server/index.js b/server/index.js
+index 1c43fa26f8ed19f576ff77c592f4b7a7656b796d..62edef61d3af1f5b05139a77f4492da10dd93de4
+--- a/server/index.js
++++ b/server/index.js
+@@ -17,6 +17,30 @@
+   res.json({ items });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (const [index, item] of req.body.items.entries()) {
++    if (typeof item?.name !== 'string' || item.name.trim().length === 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  let nextId = Math.max(...items.map((item) => item.id)) + 1;
++  items.push(
++    ...req.body.items.map((item) => ({ id: nextId++, name: item.name, qty: item.qty })),
++  );
++  res.status(201).json({ inserted: req.body.items.length });
++});
++
+ app.get('/items/:id', (req, res) => {
+   const id = Number(req.params.id);
+   const item = items.find((it) => it.id === id);
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067d12d69a237c6983fb50ee37ca529e4881..b00098dffb902108a90940db8840619d9ced4166
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -23,6 +23,30 @@
+   });
+ }
+ 
++function post(server, path, body) {
++  return new Promise((resolve, reject) => {
++    const payload = JSON.stringify(body);
++    const { port } = server.address();
++    const request = http.request(
++      `http://127.0.0.1:${port}${path}`,
++      {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(payload),
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    request.on('error', reject);
++    request.end(payload);
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +80,54 @@
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changes', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 0 },
++        { name: 'epsilon', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a valid batch in order with unique ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const inserted = after.body.items.slice(before.body.items.length);
++    const existingIds = new Set(before.body.items.map((item) => item.id));
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: 2 });
++    assert.deepStrictEqual(
++      inserted.map(({ name, qty }) => ({ name, qty })),
++      [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    );
++    assert.strictEqual(new Set(inserted.map((item) => item.id)).size, 2);
++    assert.ok(inserted.every((item) => !existingIds.has(item.id)));
++  } finally {
++    server.close();
++  }
++});
+
+[codex-monitored] heartbeat: elapsed=60s
+codex
+Prediction: the new route validates before its only `items.push`, so the invalid-middle test leaves the list unchanged; valid imports produce two ordered rows with fresh IDs. I’ll now inspect the scoped diff and run `npm test`.
+exec
+/bin/zsh -lc 'git diff --check && git diff -- server/index.js tests/server.test.js' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo
+ succeeded in 0ms:
+diff --git a/server/index.js b/server/index.js
+index 1c43fa2..62edef6 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -17,6 +17,30 @@ app.get('/items', (_req, res) => {
+   res.json({ items });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (const [index, item] of req.body.items.entries()) {
++    if (typeof item?.name !== 'string' || item.name.trim().length === 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  let nextId = Math.max(...items.map((item) => item.id)) + 1;
++  items.push(
++    ...req.body.items.map((item) => ({ id: nextId++, name: item.name, qty: item.qty })),
++  );
++  res.status(201).json({ inserted: req.body.items.length });
++});
++
+ app.get('/items/:id', (req, res) => {
+   const id = Number(req.params.id);
+   const item = items.find((it) => it.id === id);
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..b00098d 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -23,6 +23,30 @@ function get(server, path) {
+   });
+ }
+ 
++function post(server, path, body) {
++  return new Promise((resolve, reject) => {
++    const payload = JSON.stringify(body);
++    const { port } = server.address();
++    const request = http.request(
++      `http://127.0.0.1:${port}${path}`,
++      {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(payload),
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    request.on('error', reject);
++    request.end(payload);
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +80,54 @@ test('GET /items/:id returns 404 for missing', async () => {
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changes', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 0 },
++        { name: 'epsilon', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a valid batch in order with unique ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const inserted = after.body.items.slice(before.body.items.length);
++    const existingIds = new Set(before.body.items.map((item) => item.id));
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: 2 });
++    assert.deepStrictEqual(
++      inserted.map(({ name, qty }) => ({ name, qty })),
++      [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    );
++    assert.strictEqual(new Set(inserted.map((item) => item.id)).size, 2);
++    assert.ok(inserted.every((item) => !existingIds.has(item.id)));
++  } finally {
++    server.close();
++  }
++});
+
+diff --git a/server/index.js b/server/index.js
+index 1c43fa26f8ed19f576ff77c592f4b7a7656b796d..62edef61d3af1f5b05139a77f4492da10dd93de4
+--- a/server/index.js
++++ b/server/index.js
+@@ -17,6 +17,30 @@
+   res.json({ items });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (const [index, item] of req.body.items.entries()) {
++    if (typeof item?.name !== 'string' || item.name.trim().length === 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  let nextId = Math.max(...items.map((item) => item.id)) + 1;
++  items.push(
++    ...req.body.items.map((item) => ({ id: nextId++, name: item.name, qty: item.qty })),
++  );
++  res.status(201).json({ inserted: req.body.items.length });
++});
++
+ app.get('/items/:id', (req, res) => {
+   const id = Number(req.params.id);
+   const item = items.find((it) => it.id === id);
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067d12d69a237c6983fb50ee37ca529e4881..b00098dffb902108a90940db8840619d9ced4166
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -23,6 +23,30 @@
+   });
+ }
+ 
++function post(server, path, body) {
++  return new Promise((resolve, reject) => {
++    const payload = JSON.stringify(body);
++    const { port } = server.address();
++    const request = http.request(
++      `http://127.0.0.1:${port}${path}`,
++      {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(payload),
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    request.on('error', reject);
++    request.end(payload);
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +80,54 @@
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changes', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 0 },
++        { name: 'epsilon', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a valid batch in order with unique ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const inserted = after.body.items.slice(before.body.items.length);
++    const existingIds = new Set(before.body.items.map((item) => item.id));
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: 2 });
++    assert.deepStrictEqual(
++      inserted.map(({ name, qty }) => ({ name, qty })),
++      [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    );
++    assert.strictEqual(new Set(inserted.map((item) => item.id)).size, 2);
++    assert.ok(inserted.every((item) => !existingIds.has(item.id)));
++  } finally {
++    server.close();
++  }
++});
+
+exec
+/bin/zsh -lc 'npm test' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo
+diff --git a/server/index.js b/server/index.js
+index 1c43fa26f8ed19f576ff77c592f4b7a7656b796d..62edef61d3af1f5b05139a77f4492da10dd93de4
+--- a/server/index.js
++++ b/server/index.js
+@@ -17,6 +17,30 @@
+   res.json({ items });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (const [index, item] of req.body.items.entries()) {
++    if (typeof item?.name !== 'string' || item.name.trim().length === 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  let nextId = Math.max(...items.map((item) => item.id)) + 1;
++  items.push(
++    ...req.body.items.map((item) => ({ id: nextId++, name: item.name, qty: item.qty })),
++  );
++  res.status(201).json({ inserted: req.body.items.length });
++});
++
+ app.get('/items/:id', (req, res) => {
+   const id = Number(req.params.id);
+   const item = items.find((it) => it.id === id);
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067d12d69a237c6983fb50ee37ca529e4881..b00098dffb902108a90940db8840619d9ced4166
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -23,6 +23,30 @@
+   });
+ }
+ 
++function post(server, path, body) {
++  return new Promise((resolve, reject) => {
++    const payload = JSON.stringify(body);
++    const { port } = server.address();
++    const request = http.request(
++      `http://127.0.0.1:${port}${path}`,
++      {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(payload),
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    request.on('error', reject);
++    request.end(payload);
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +80,54 @@
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changes', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 0 },
++        { name: 'epsilon', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a valid batch in order with unique ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const inserted = after.body.items.slice(before.body.items.length);
++    const existingIds = new Set(before.body.items.map((item) => item.id));
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: 2 });
++    assert.deepStrictEqual(
++      inserted.map(({ name, qty }) => ({ name, qty })),
++      [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    );
++    assert.strictEqual(new Set(inserted.map((item) => item.id)).size, 2);
++    assert.ok(inserted.every((item) => !existingIds.has(item.id)));
++  } finally {
++    server.close();
++  }
++});
+
+ exited 1 in 1053ms:
+
+> harbor-tools@0.1.0 test
+> node --test tests/
+
+TAP version 13
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 49.334041
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 66.3835
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 73.165458
+  ...
+# Subtest: GET /health returns ok
+not ok 4 - GET /health returns ok
+  ---
+  duration_ms: 2.95925
+  location: '/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:50:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:51:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 5 - GET /items returns list
+  ---
+  duration_ms: 0.74675
+  location: '/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:61:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:62:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 6 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.422916
+  location: '/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:73:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:74:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: POST /items/import rejects an invalid middle item without changes
+not ok 7 - POST /items/import rejects an invalid middle item without changes
+  ---
+  duration_ms: 0.374125
+  location: '/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:84:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:85:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: POST /items/import appends a valid batch in order with unique ids
+not ok 8 - POST /items/import appends a valid batch in order with unique ids
+  ---
+  duration_ms: 0.2115
+  location: '/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:105:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:106:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 3
+# fail 5
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 251.218042
+
+[codex-monitored] heartbeat: elapsed=90s
+codex
+`npm test` reached the new tests but cannot open even the existing ephemeral HTTP listener: `listen EPERM ... 0.0.0.0` at `tests/server.test.js:9`. I’ll complete a static diff/syntax audit; the required suite cannot pass in this sandbox without socket permission.
+exec
+/bin/zsh -lc 'node --check server/index.js' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo
+ succeeded in 0ms:
+exec
+/bin/zsh -lc 'node --check tests/server.test.js' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo
+ succeeded in 0ms:
+exec
+/bin/zsh -lc 'git status --short' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo
+ succeeded in 0ms:
+ M server/index.js
+ M tests/server.test.js
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+diff --git a/server/index.js b/server/index.js
+index 1c43fa26f8ed19f576ff77c592f4b7a7656b796d..62edef61d3af1f5b05139a77f4492da10dd93de4
+--- a/server/index.js
++++ b/server/index.js
+@@ -17,6 +17,30 @@
+   res.json({ items });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (const [index, item] of req.body.items.entries()) {
++    if (typeof item?.name !== 'string' || item.name.trim().length === 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  let nextId = Math.max(...items.map((item) => item.id)) + 1;
++  items.push(
++    ...req.body.items.map((item) => ({ id: nextId++, name: item.name, qty: item.qty })),
++  );
++  res.status(201).json({ inserted: req.body.items.length });
++});
++
+ app.get('/items/:id', (req, res) => {
+   const id = Number(req.params.id);
+   const item = items.find((it) => it.id === id);
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067d12d69a237c6983fb50ee37ca529e4881..b00098dffb902108a90940db8840619d9ced4166
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -23,6 +23,30 @@
+   });
+ }
+ 
++function post(server, path, body) {
++  return new Promise((resolve, reject) => {
++    const payload = JSON.stringify(body);
++    const { port } = server.address();
++    const request = http.request(
++      `http://127.0.0.1:${port}${path}`,
++      {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(payload),
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    request.on('error', reject);
++    request.end(payload);
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +80,54 @@
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changes', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 0 },
++        { name: 'epsilon', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a valid batch in order with unique ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const inserted = after.body.items.slice(before.body.items.length);
++    const existingIds = new Set(before.body.items.map((item) => item.id));
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: 2 });
++    assert.deepStrictEqual(
++      inserted.map(({ name, qty }) => ({ name, qty })),
++      [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    );
++    assert.strictEqual(new Set(inserted.map((item) => item.id)).size, 2);
++    assert.ok(inserted.every((item) => !existingIds.has(item.id)));
++  } finally {
++    server.close();
++  }
++});
+
+exec
+/bin/zsh -lc 'nl -ba server/index.js && nl -ba tests/server.test.js' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo
+ succeeded in 0ms:
+     1	// Tiny Express server with a deliberately small API surface.
+     2	const express = require('express');
+     3	
+     4	const app = express();
+     5	app.use(express.json());
+     6	
+     7	const items = [
+     8	  { id: 1, name: 'alpha', qty: 3 },
+     9	  { id: 2, name: 'beta', qty: 5 },
+    10	];
+    11	
+    12	app.get('/health', (_req, res) => {
+    13	  res.json({ status: 'ok' });
+    14	});
+    15	
+    16	app.get('/items', (_req, res) => {
+    17	  res.json({ items });
+    18	});
+    19	
+    20	app.post('/items/import', (req, res) => {
+    21	  if (!req.body || !Array.isArray(req.body.items)) {
+    22	    res.status(400).json({ error: 'invalid_body' });
+    23	    return;
+    24	  }
+    25	
+    26	  for (const [index, item] of req.body.items.entries()) {
+    27	    if (typeof item?.name !== 'string' || item.name.trim().length === 0) {
+    28	      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
+    29	      return;
+    30	    }
+    31	    if (!Number.isInteger(item.qty) || item.qty <= 0) {
+    32	      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
+    33	      return;
+    34	    }
+    35	  }
+    36	
+    37	  let nextId = Math.max(...items.map((item) => item.id)) + 1;
+    38	  items.push(
+    39	    ...req.body.items.map((item) => ({ id: nextId++, name: item.name, qty: item.qty })),
+    40	  );
+    41	  res.status(201).json({ inserted: req.body.items.length });
+    42	});
+    43	
+    44	app.get('/items/:id', (req, res) => {
+    45	  const id = Number(req.params.id);
+    46	  const item = items.find((it) => it.id === id);
+    47	  if (!item) {
+    48	    res.status(404).json({ error: 'not_found', id });
+    49	    return;
+    50	  }
+    51	  res.json({ item });
+    52	});
+    53	
+    54	if (require.main === module) {
+    55	  const port = Number(process.env.PORT) || 3000;
+    56	  app.listen(port, () => {
+    57	    console.log(`harbor-tools server listening on :${port}`);
+    58	  });
+    59	}
+    60	
+    61	module.exports = { app };
+     1	const { test } = require('node:test');
+     2	const assert = require('node:assert');
+     3	const http = require('node:http');
+     4	const { app } = require('../server');
+     5	
+     6	function startServer() {
+     7	  return new Promise((resolve) => {
+     8	    const server = http.createServer(app);
+     9	    server.listen(0, () => resolve(server));
+    10	  });
+    11	}
+    12	
+    13	function get(server, path) {
+    14	  return new Promise((resolve, reject) => {
+    15	    const { port } = server.address();
+    16	    http
+    17	      .get(`http://127.0.0.1:${port}${path}`, (res) => {
+    18	        let body = '';
+    19	        res.on('data', (chunk) => (body += chunk));
+    20	        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
+    21	      })
+    22	      .on('error', reject);
+    23	  });
+    24	}
+    25	
+    26	function post(server, path, body) {
+    27	  return new Promise((resolve, reject) => {
+    28	    const payload = JSON.stringify(body);
+    29	    const { port } = server.address();
+    30	    const request = http.request(
+    31	      `http://127.0.0.1:${port}${path}`,
+    32	      {
+    33	        method: 'POST',
+    34	        headers: {
+    35	          'Content-Type': 'application/json',
+    36	          'Content-Length': Buffer.byteLength(payload),
+    37	        },
+    38	      },
+    39	      (res) => {
+    40	        let responseBody = '';
+    41	        res.on('data', (chunk) => (responseBody += chunk));
+    42	        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
+    43	      },
+    44	    );
+    45	    request.on('error', reject);
+    46	    request.end(payload);
+    47	  });
+    48	}
+    49	
+    50	test('GET /health returns ok', async () => {
+    51	  const server = await startServer();
+    52	  try {
+    53	    const { status, body } = await get(server, '/health');
+    54	    assert.strictEqual(status, 200);
+    55	    assert.deepStrictEqual(body, { status: 'ok' });
+    56	  } finally {
+    57	    server.close();
+    58	  }
+    59	});
+    60	
+    61	test('GET /items returns list', async () => {
+    62	  const server = await startServer();
+    63	  try {
+    64	    const { status, body } = await get(server, '/items');
+    65	    assert.strictEqual(status, 200);
+    66	    assert.ok(Array.isArray(body.items));
+    67	    assert.ok(body.items.length >= 2);
+    68	  } finally {
+    69	    server.close();
+    70	  }
+    71	});
+    72	
+    73	test('GET /items/:id returns 404 for missing', async () => {
+    74	  const server = await startServer();
+    75	  try {
+    76	    const { status, body } = await get(server, '/items/99999');
+    77	    assert.strictEqual(status, 404);
+    78	    assert.strictEqual(body.error, 'not_found');
+    79	  } finally {
+    80	    server.close();
+    81	  }
+    82	});
+    83	
+    84	test('POST /items/import rejects an invalid middle item without changes', async () => {
+    85	  const server = await startServer();
+    86	  try {
+    87	    const before = await get(server, '/items');
+    88	    const response = await post(server, '/items/import', {
+    89	      items: [
+    90	        { name: 'gamma', qty: 1 },
+    91	        { name: 'delta', qty: 0 },
+    92	        { name: 'epsilon', qty: 3 },
+    93	      ],
+    94	    });
+    95	    const after = await get(server, '/items');
+    96	
+    97	    assert.strictEqual(response.status, 400);
+    98	    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
+    99	    assert.deepStrictEqual(after.body.items, before.body.items);
+   100	  } finally {
+   101	    server.close();
+   102	  }
+   103	});
+   104	
+   105	test('POST /items/import appends a valid batch in order with unique ids', async () => {
+   106	  const server = await startServer();
+   107	  try {
+   108	    const before = await get(server, '/items');
+   109	    const response = await post(server, '/items/import', {
+   110	      items: [
+   111	        { name: 'gamma', qty: 1 },
+   112	        { name: 'delta', qty: 3 },
+   113	      ],
+   114	    });
+   115	    const after = await get(server, '/items');
+   116	    const inserted = after.body.items.slice(before.body.items.length);
+   117	    const existingIds = new Set(before.body.items.map((item) => item.id));
+   118	
+   119	    assert.strictEqual(response.status, 201);
+   120	    assert.deepStrictEqual(response.body, { inserted: 2 });
+   121	    assert.deepStrictEqual(
+   122	      inserted.map(({ name, qty }) => ({ name, qty })),
+   123	      [
+   124	        { name: 'gamma', qty: 1 },
+   125	        { name: 'delta', qty: 3 },
+   126	      ],
+   127	    );
+   128	    assert.strictEqual(new Set(inserted.map((item) => item.id)).size, 2);
+   129	    assert.ok(inserted.every((item) => !existingIds.has(item.id)));
+   130	  } finally {
+   131	    server.close();
+   132	  }
+   133	});
+
+diff --git a/server/index.js b/server/index.js
+index 1c43fa26f8ed19f576ff77c592f4b7a7656b796d..62edef61d3af1f5b05139a77f4492da10dd93de4
+--- a/server/index.js
++++ b/server/index.js
+@@ -17,6 +17,30 @@
+   res.json({ items });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (const [index, item] of req.body.items.entries()) {
++    if (typeof item?.name !== 'string' || item.name.trim().length === 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  let nextId = Math.max(...items.map((item) => item.id)) + 1;
++  items.push(
++    ...req.body.items.map((item) => ({ id: nextId++, name: item.name, qty: item.qty })),
++  );
++  res.status(201).json({ inserted: req.body.items.length });
++});
++
+ app.get('/items/:id', (req, res) => {
+   const id = Number(req.params.id);
+   const item = items.find((it) => it.id === id);
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067d12d69a237c6983fb50ee37ca529e4881..b00098dffb902108a90940db8840619d9ced4166
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -23,6 +23,30 @@
+   });
+ }
+ 
++function post(server, path, body) {
++  return new Promise((resolve, reject) => {
++    const payload = JSON.stringify(body);
++    const { port } = server.address();
++    const request = http.request(
++      `http://127.0.0.1:${port}${path}`,
++      {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(payload),
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    request.on('error', reject);
++    request.end(payload);
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +80,54 @@
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changes', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 0 },
++        { name: 'epsilon', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a valid batch in order with unique ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const inserted = after.body.items.slice(before.body.items.length);
++    const existingIds = new Set(before.body.items.map((item) => item.id));
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: 2 });
++    assert.deepStrictEqual(
++      inserted.map(({ name, qty }) => ({ name, qty })),
++      [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    );
++    assert.strictEqual(new Set(inserted.map((item) => item.id)).size, 2);
++    assert.ok(inserted.every((item) => !existingIds.has(item.id)));
++  } finally {
++    server.close();
++  }
++});
+
+[codex-monitored] heartbeat: elapsed=120s
+codex
+One narrow environment probe remains: binding a throwaway server to `127.0.0.1` may be permitted even though the default all-interface bind is not. If it is, I can make the existing HTTP test helper explicitly match its loopback client without changing behavior or assertions.
+diff --git a/server/index.js b/server/index.js
+index 1c43fa26f8ed19f576ff77c592f4b7a7656b796d..62edef61d3af1f5b05139a77f4492da10dd93de4
+--- a/server/index.js
++++ b/server/index.js
+@@ -17,6 +17,30 @@
+   res.json({ items });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (const [index, item] of req.body.items.entries()) {
++    if (typeof item?.name !== 'string' || item.name.trim().length === 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  let nextId = Math.max(...items.map((item) => item.id)) + 1;
++  items.push(
++    ...req.body.items.map((item) => ({ id: nextId++, name: item.name, qty: item.qty })),
++  );
++  res.status(201).json({ inserted: req.body.items.length });
++});
++
+ app.get('/items/:id', (req, res) => {
+   const id = Number(req.params.id);
+   const item = items.find((it) => it.id === id);
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067d12d69a237c6983fb50ee37ca529e4881..b00098dffb902108a90940db8840619d9ced4166
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -23,6 +23,30 @@
+   });
+ }
+ 
++function post(server, path, body) {
++  return new Promise((resolve, reject) => {
++    const payload = JSON.stringify(body);
++    const { port } = server.address();
++    const request = http.request(
++      `http://127.0.0.1:${port}${path}`,
++      {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(payload),
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    request.on('error', reject);
++    request.end(payload);
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +80,54 @@
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changes', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 0 },
++        { name: 'epsilon', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a valid batch in order with unique ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const inserted = after.body.items.slice(before.body.items.length);
++    const existingIds = new Set(before.body.items.map((item) => item.id));
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: 2 });
++    assert.deepStrictEqual(
++      inserted.map(({ name, qty }) => ({ name, qty })),
++      [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    );
++    assert.strictEqual(new Set(inserted.map((item) => item.id)).size, 2);
++    assert.ok(inserted.every((item) => !existingIds.has(item.id)));
++  } finally {
++    server.close();
++  }
++});
+
+[codex-monitored] heartbeat: elapsed=150s
+codex
+BLOCKED — implementation is complete, but `npm test` cannot run server tests in this sandbox: `listen EPERM` at [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:9), including the pre-existing tests.
+
+- Added atomic `POST /items/import` validation and max-plus ID insertion in [server/index.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/server/index.js:20).
+- Added invalid-middle rollback and valid ordered-import tests in [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/f04eb7d76921c/A1/repo/tests/server.test.js:84).
+- `git diff --check` and `node --check` for both changed files passed.
+- Exact `npm test` result: 3 passed, 5 failed solely on socket permission.
+diff --git a/server/index.js b/server/index.js
+index 1c43fa26f8ed19f576ff77c592f4b7a7656b796d..62edef61d3af1f5b05139a77f4492da10dd93de4
+--- a/server/index.js
++++ b/server/index.js
+@@ -17,6 +17,30 @@
+   res.json({ items });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (const [index, item] of req.body.items.entries()) {
++    if (typeof item?.name !== 'string' || item.name.trim().length === 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  let nextId = Math.max(...items.map((item) => item.id)) + 1;
++  items.push(
++    ...req.body.items.map((item) => ({ id: nextId++, name: item.name, qty: item.qty })),
++  );
++  res.status(201).json({ inserted: req.body.items.length });
++});
++
+ app.get('/items/:id', (req, res) => {
+   const id = Number(req.params.id);
+   const item = items.find((it) => it.id === id);
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067d12d69a237c6983fb50ee37ca529e4881..b00098dffb902108a90940db8840619d9ced4166
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -23,6 +23,30 @@
+   });
+ }
+ 
++function post(server, path, body) {
++  return new Promise((resolve, reject) => {
++    const payload = JSON.stringify(body);
++    const { port } = server.address();
++    const request = http.request(
++      `http://127.0.0.1:${port}${path}`,
++      {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(payload),
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    request.on('error', reject);
++    request.end(payload);
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +80,54 @@
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changes', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 0 },
++        { name: 'epsilon', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a valid batch in order with unique ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    });
++    const after = await get(server, '/items');
++    const inserted = after.body.items.slice(before.body.items.length);
++    const existingIds = new Set(before.body.items.map((item) => item.id));
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: 2 });
++    assert.deepStrictEqual(
++      inserted.map(({ name, qty }) => ({ name, qty })),
++      [
++        { name: 'gamma', qty: 1 },
++        { name: 'delta', qty: 3 },
++      ],
++    );
++    assert.strictEqual(new Set(inserted.map((item) => item.id)).size, 2);
++    assert.ok(inserted.every((item) => !existingIds.has(item.id)));
++  } finally {
++    server.close();
++  }
++});
+
+tokens used
+27,302
+[codex-monitored] codex exited: code=0 elapsed=155s

@@ -1,0 +1,2 @@
+{"id":"coverage.test-runner-blocked","rule_id":"coverage.environment-blocked","severity":"LOW","file":"tests/cli.test.js","line":15,"message":"Coverage gap: `const directory = fs.mkdtempSync(...)` failed with EPERM in the read-only verifier, so `node --test tests/` could not complete. Independent `/dev/stdin` probes covered the payout contract, but a normal full-suite pass remains unverified.","confidence":"high"}
+VERDICT: PASS

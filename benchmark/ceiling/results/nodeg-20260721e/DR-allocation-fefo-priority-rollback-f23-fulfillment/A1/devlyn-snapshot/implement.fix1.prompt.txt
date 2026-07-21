@@ -1,0 +1,53 @@
+You are OpenAI Codex, acting as the IMPLEMENT phase worker inside the `/devlyn:resolve` pipeline, fix round 1 (repo root: /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo, current working directory). Fresh, isolated session. You have workspace-write access to this repo.
+
+## Adapter header (Codex / OpenAI)
+
+Efficient, direct, task-oriented. Validate with actual commands, not self-belief. Do not narrate internal deliberation.
+
+## Context
+
+This is a fix round inside `/devlyn:resolve`'s VERIFY fix loop. VERIFY's independent JUDGE (fresh context, no code-mutation tools) found one verdict-binding HIGH finding in the `fulfill-wave` command you previously implemented in `bin/cli.js`. Fix ONLY this finding — do not touch anything else, do not re-litigate other parts of the implementation, do not add unrelated improvements.
+
+## VERIFY finding (verbatim)
+
+```json
+{"id":"remaining-sort-duplicate-warehouse-id","rule_id":"spec.remaining-sort-order","severity":"HIGH","confidence":"high","file":"bin/cli.js","line":240,"message":"`const remaining = warehouses\n    .slice()\n    .sort((left, right) => left.id.localeCompare(right.id))\n    .flatMap((warehouse) => warehouse.lots` sorts lots separately within each warehouse object. Warehouse IDs are not required to be unique, so two valid warehouses with id `same` emitted SKU `z` before SKU `a`, violating the required global warehouse-id, SKU, expiry, then lot-id ordering.","criterion_ref":"Requirement 4: `remaining` must be sorted by warehouse id, then sku, then expiry, then lot id","verdict_binding":true}
+```
+
+## Independent confirmation (orchestrator-verified, not just the judge's claim)
+
+Reproduced directly:
+```
+$ cat > /tmp/dup_warehouse_probe.json <<'EOF'
+{
+  "warehouses": [
+    { "id": "same", "distance": 1, "lots": [{ "sku": "z", "lot": "l1", "qty": 2, "expires": "2026-05-01" }] },
+    { "id": "same", "distance": 2, "lots": [{ "sku": "a", "lot": "l2", "qty": 2, "expires": "2026-05-01" }] }
+  ],
+  "orders": []
+}
+EOF
+$ node bin/cli.js fulfill-wave --input /tmp/dup_warehouse_probe.json
+{"accepted":[],"rejected":[],"remaining":[{"warehouse":"same","sku":"z",...},{"warehouse":"same","sku":"a",...}]}
+```
+`sku: "z"` appears before `sku: "a"` under the same `warehouse: "same"` — wrong. The spec (`.devlyn/criteria.generated.md`, Requirement 4) requires `remaining` sorted by warehouse id, then sku, then expiry, then lot id, GLOBALLY — not per-warehouse-object-then-concatenated. The goal's input schema does not require warehouse `id` to be unique (only `order.id` uniqueness is validated), so two warehouse objects can legitimately share the same `id`.
+
+## Root cause
+
+In the `fulfillWave` function, `remaining` is built by sorting the `warehouses` array itself by `id`, then `flatMap`-ing each warehouse's OWN lots (sorted only by sku/expiry/lot within that single warehouse object). When two warehouse objects share an `id`, their lot lists never get merged and re-sorted together — each warehouse's lots stay grouped by source object, defeating the required global sku/expiry/lot tie-break within equal warehouse ids.
+
+## Required fix
+
+Flatten ALL `(warehouse, lot)` pairs into a single list first (each entry carrying its warehouse id), filter to `qty > 0`, THEN sort that single flat list once by warehouse id, then sku, then expiry, then lot id — instead of sorting warehouses and flat-mapping per-warehouse-sorted sublists. This makes the global ordering correct regardless of duplicate warehouse ids.
+
+## Scope
+
+Only touch `bin/cli.js`. Do not touch `tests/cli.test.js` unless you also want to add a regression test for this exact duplicate-warehouse-id case (optional but encouraged — a minimal one, consistent with the existing test style using `writeInput`/`run`/`assert.deepStrictEqual`). Do not touch any other file.
+
+## Verify before declaring done
+
+1. Re-run the reproduction above (`node bin/cli.js fulfill-wave --input /tmp/dup_warehouse_probe.json`) and confirm `remaining` now shows `sku: "a"` before `sku: "z"`.
+2. Run `npm test` (== `node --test tests/`) and confirm all existing tests (including the 4 `fulfill-wave` tests already in `tests/cli.test.js`) still pass.
+3. Run `node bin/cli.js --help` and confirm it still exits 0 and mentions `fulfill-wave`.
+
+Report your verdict in your final reply text: `PASS` once the fix is verified working and all tests pass; `BLOCKED:<reason>` if you cannot fix it within scope.

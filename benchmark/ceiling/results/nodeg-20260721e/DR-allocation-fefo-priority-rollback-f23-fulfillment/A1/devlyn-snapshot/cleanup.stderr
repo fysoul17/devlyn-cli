@@ -1,0 +1,531 @@
+[codex-monitored] start: ts=2026-07-21T08:37:10Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=49897
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f83d2-6735-7ba0-ad2b-5280609678bb
+--------
+user
+You are OpenAI Codex, acting as the CLEANUP phase worker inside the `/devlyn:resolve` pipeline (repo root: /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo, current working directory). Fresh, isolated session, no memory of prior conversation. You have workspace-write access to this repo.
+
+## Adapter header (Codex / OpenAI)
+
+Efficient, direct, task-oriented. Resolve in the fewest useful tool loops. Do not narrate internal deliberation.
+
+## Canonical body — PHASE 4 CLEANUP
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn by the orchestrator.
+</role>
+
+<input>
+- Cumulative diff since base sha `cbd12daedd7f2d22c62110faf097f12797e7dda6`: run `git diff cbd12daedd7f2d22c62110faf097f12797e7dda6..HEAD -- bin/cli.js tests/cli.test.js` to see it (touches only these two files: added the `fulfill-wave` CLI command plus 3 new tests).
+- Spec: `.devlyn/criteria.generated.md` (generated criteria — this run's mini-spec).
+- `pre_sha` for this phase (the orchestrator captured this before spawning you) is the current `HEAD`: `1dec63a69921fae0361d069fa535590492bbcc18`. Your post-cleanup diff against this SHA must stay within the allowlist below — the orchestrator mechanically enforces this after you finish.
+</input>
+
+<allowlist>
+You may modify or delete:
+
+1. **Tooling artifacts** the spec did not list as deliverables: `test-results/`, `playwright-report/`, `.last-run.json`, coverage HTML output, build artifacts, runtime caches (`__pycache__/`, `*.pyc`, `.cache/`).
+2. **Dead code added by this diff** — symbols (functions, classes, types, exports) introduced by this diff that no other code added by this diff references AND that are not part of the spec's required surface. Pre-existing dead code is out of scope.
+3. **Doc references this diff invalidated** — links / file paths / symbol names in markdown files that this diff renamed or removed. Update only the references; do not rewrite surrounding prose.
+4. **Inline comments** that explain code this diff deleted but the comment still mentions.
+
+Files outside this allowlist must not change. Pre-existing tooling leaks (already in the repo before this run) belong to a future cleanup, not this one. There are no tooling-artifact files in `git status` right now — the working tree is clean except this run's own `.devlyn/` and `.claude/` scaffolding (out of scope, ignore them).
+</allowlist>
+
+<output>
+Report your verdict in your final reply text: `PASS` if changes within allowlist (or no changes needed); `FAIL` if you cannot complete within the allowlist.
+Do not edit `.devlyn/pipeline.state.json` yourself.
+</output>
+
+<quality_bar>
+- Subtractive-first applies most strongly here. Lines removed should outnumber lines added unless documentation needs a small additive update for a renamed symbol.
+- Do not "improve" code outside the allowlist, even if it looks fixable. The allowlist is the contract — do not refactor `fulfillWave`, do not add comments, do not touch anything beyond dead code / tooling artifacts / invalidated doc references / stale inline comments.
+- If nothing in the allowlist applies, do nothing and report PASS with "no changes needed." Given this diff is a single cohesive `fulfill-wave` implementation with 3 passing regression tests and no markdown/doc files touched, this is the most likely outcome — verify by reading the diff before concluding, don't assume.
+</quality_bar>
+
+<runtime_principles>
+Cleanup is the smallest reversible step toward "what shipped equals what the spec licensed." Do not invent work.
+</runtime_principles>
+
+Now do the work: inspect the diff (`git diff cbd12daedd7f2d22c62110faf097f12797e7dda6..HEAD -- bin/cli.js tests/cli.test.js`) for any dead code it introduced (e.g. an exported/declared function never called), any stray tooling artifacts in the working tree, and any doc reference this diff invalidated. Report `PASS` (with a one-line summary of what you changed, or "no changes needed") or `FAIL` as your final line.
+codex
+I’ll inspect the specified diff and working tree, limiting any action strictly to the cleanup allowlist.
+exec
+/bin/zsh -lc "sed -n '1,240p' .devlyn/criteria.generated.md" in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+---
+complexity: medium
+---
+
+# Generated criteria — fulfill-wave command
+
+## Requirements
+
+- Add a `fulfill-wave` command to `bin/cli.js` reachable as `bench-cli fulfill-wave --input <path>`. Fully validate the input JSON object (`{ warehouses: Array<Warehouse>, orders: Array<Order> }`) before allocating anything: ids/SKU/lot identifiers are non-empty strings, quantities are positive integers, lot `expires` values are valid `YYYY-MM-DD` calendar dates, `submitted_at` parses as an ISO date or timestamp, `distance`/`priority` are numbers, `warehouses`/`orders`/`lots`/`lines` are arrays, and order ids are unique. Never mutate the input file on disk.
+- Process orders in one global pass ordered by `priority` descending, then `submitted_at` ascending, then `id` ascending. Each order is all-or-nothing: if any line cannot be fully allocated, reject the order and restore every stock deduction tentatively made for it during that order's attempt. Accepted orders reduce stock visible to later orders; rejected orders leave stock untouched.
+- Honor per-line warehouse/lot selection rules: a `single_warehouse: false` line may split across warehouses and lots; a `single_warehouse: true` line must be filled entirely from one warehouse (it may still consume multiple lots within that warehouse) and is rejected when no single warehouse holds enough stock even if combined stock across warehouses would suffice. Choose warehouses by `distance` ascending then warehouse `id` ascending; within a chosen warehouse consume matching lots FEFO (`expires` ascending, then lot `id` ascending). Allocation rows must stay in the exact sequence stock was chosen.
+- On success, write exactly one parseable JSON object to stdout and nothing to stderr, with only the keys `accepted` (processing order; each row `{ id, allocations: [{ sku, warehouse, lot, qty }] }`), `rejected` (original input order; each row `{ id, reason: "insufficient_stock" }`), and `remaining` (positive leftover lot quantities sorted by warehouse id, then sku, then expiry, then lot id; each row `{ warehouse, sku, lot, qty, expires }`).
+- On invalid input or a file-read failure, exit with code `2`, write nothing to stdout, and write exactly one parseable JSON object (non-null, non-array) to stderr; never use a catch block that silently returns `null`/`undefined`/`""`/`{}` or an empty catch block. Update `tests/cli.test.js` so every existing test still passes and add at least two new `fulfill-wave` tests: one accepted allocation and one rejected all-or-nothing order.
+
+## Constraints
+
+- Only touch `bin/cli.js` and `tests/cli.test.js` — no other files.
+- No new npm dependencies; use Node builtins only (existing `fs`/`path` usage in `bin/cli.js` is the established pattern).
+- Match the existing CLI's dispatch style: a `switch` on the command name inside `main()`, `--help` usage text listing the new command, `process.exit` for error codes, and explicit error output — no silent fallback swallowing errors (`bin/cli.js:38-60` is the existing pattern for flag parsing and error exit).
+
+## Out of Scope
+
+- Carrier selection, package dimensions, backorders, partial order acceptance, and persistence beyond stdout (explicitly excluded by the goal).
+- Any change to `server/`, `package.json`, `scripts/`, or the existing `hello`/`version` commands beyond adding `fulfill-wave` to the usage text.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "exit_code": 0
+    },
+    {
+      "cmd": "node bin/cli.js --help",
+      "exit_code": 0,
+      "stdout_contains": ["fulfill-wave"]
+    }
+  ]
+}
+```
+
+exec
+/bin/zsh -lc "rg -n --glob '*.md' 'fulfill-wave|fulfillWave' . || true" in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+exec
+/bin/zsh -lc 'git diff --find-renames --find-copies cbd12daedd7f2d22c62110faf097f12797e7dda6..HEAD -- bin/cli.js tests/cli.test.js' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b24..58a54a8 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,6 +10,7 @@ const USAGE = `Usage: bench-cli <command> [options]
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  fulfill-wave --input PATH  Allocate warehouse stock to orders
+   --help, -h                 Show this help
+ 
+ Examples:
+@@ -35,6 +36,233 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function parseInputFlag(argv) {
++  const idx = argv.indexOf('--input');
++  const value = argv[idx + 1];
++  if (idx === -1 || !value || value.startsWith('-')) {
++    throw new Error('--input requires a path');
++  }
++  return value;
++}
++
++function validateNonEmptyString(value, name) {
++  if (typeof value !== 'string' || value.length === 0) {
++    throw new Error(`${name} must be a non-empty string`);
++  }
++}
++
++function validatePositiveInteger(value, name) {
++  if (!Number.isInteger(value) || value <= 0) {
++    throw new Error(`${name} must be a positive integer`);
++  }
++}
++
++function validateNumber(value, name) {
++  if (typeof value !== 'number' || !Number.isFinite(value)) {
++    throw new Error(`${name} must be a number`);
++  }
++}
++
++function isValidExpiry(value) {
++  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
++    return false;
++  }
++
++  const date = new Date(`${value}T00:00:00.000Z`);
++  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
++}
++
++function parseSubmittedAt(value) {
++  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(value)) {
++    throw new Error('submitted_at must be an ISO date or timestamp');
++  }
++
++  const timestamp = Date.parse(value);
++  if (Number.isNaN(timestamp)) {
++    throw new Error('submitted_at must be an ISO date or timestamp');
++  }
++  return timestamp;
++}
++
++function validateInput(input) {
++  if (input === null || Array.isArray(input) || typeof input !== 'object') {
++    throw new Error('input must be a JSON object');
++  }
++  if (!Array.isArray(input.warehouses) || !Array.isArray(input.orders)) {
++    throw new Error('warehouses and orders must be arrays');
++  }
++
++  for (const warehouse of input.warehouses) {
++    if (warehouse === null || Array.isArray(warehouse) || typeof warehouse !== 'object') {
++      throw new Error('warehouse must be an object');
++    }
++    validateNonEmptyString(warehouse.id, 'warehouse id');
++    validateNumber(warehouse.distance, 'warehouse distance');
++    if (!Array.isArray(warehouse.lots)) {
++      throw new Error('warehouse lots must be an array');
++    }
++    for (const lot of warehouse.lots) {
++      if (lot === null || Array.isArray(lot) || typeof lot !== 'object') {
++        throw new Error('lot must be an object');
++      }
++      validateNonEmptyString(lot.sku, 'lot sku');
++      validateNonEmptyString(lot.lot, 'lot identifier');
++      validatePositiveInteger(lot.qty, 'lot qty');
++      if (!isValidExpiry(lot.expires)) {
++        throw new Error('lot expires must be a valid YYYY-MM-DD date');
++      }
++    }
++  }
++
++  const orderIds = new Set();
++  for (const order of input.orders) {
++    if (order === null || Array.isArray(order) || typeof order !== 'object') {
++      throw new Error('order must be an object');
++    }
++    validateNonEmptyString(order.id, 'order id');
++    if (orderIds.has(order.id)) {
++      throw new Error('order ids must be unique');
++    }
++    orderIds.add(order.id);
++    validateNumber(order.priority, 'order priority');
++    parseSubmittedAt(order.submitted_at);
++    if (!Array.isArray(order.lines)) {
++      throw new Error('order lines must be an array');
++    }
++    for (const line of order.lines) {
++      if (line === null || Array.isArray(line) || typeof line !== 'object') {
++        throw new Error('line must be an object');
++      }
++      validateNonEmptyString(line.sku, 'line sku');
++      validatePositiveInteger(line.qty, 'line qty');
++      if (typeof line.single_warehouse !== 'boolean') {
++        throw new Error('line single_warehouse must be a boolean');
++      }
++    }
++  }
++}
++
++function warehouseComparator(left, right) {
++  if (left.distance !== right.distance) return left.distance - right.distance;
++  return left.id.localeCompare(right.id);
++}
++
++function lotComparator(left, right) {
++  if (left.expires !== right.expires) return left.expires.localeCompare(right.expires);
++  return left.lot.localeCompare(right.lot);
++}
++
++function matchingLots(warehouse, sku) {
++  return warehouse.lots
++    .filter((lot) => lot.sku === sku && lot.qty > 0)
++    .sort(lotComparator);
++}
++
++function allocateFromWarehouse(warehouse, line, deductions, allocations) {
++  let needed = line.qty;
++  for (const lot of matchingLots(warehouse, line.sku)) {
++    const qty = Math.min(needed, lot.qty);
++    lot.qty -= qty;
++    needed -= qty;
++    deductions.push({ lot, qty });
++    allocations.push({ sku: line.sku, warehouse: warehouse.id, lot: lot.lot, qty });
++    if (needed === 0) return 0;
++  }
++  return needed;
++}
++
++function allocateLine(warehouses, line, deductions, allocations) {
++  if (line.single_warehouse) {
++    for (const warehouse of warehouses) {
++      const available = matchingLots(warehouse, line.sku)
++        .reduce((total, lot) => total + lot.qty, 0);
++      if (available >= line.qty) {
++        return allocateFromWarehouse(warehouse, line, deductions, allocations) === 0;
++      }
++    }
++    return false;
++  }
++
++  let needed = line.qty;
++  for (const warehouse of warehouses) {
++    needed = allocateFromWarehouse(warehouse, { ...line, qty: needed }, deductions, allocations);
++    if (needed === 0) {
++      return true;
++    }
++  }
++  return false;
++}
++
++function rollback(deductions) {
++  for (const deduction of deductions) {
++    deduction.lot.qty += deduction.qty;
++  }
++}
++
++function fulfillWave(argv) {
++  const inputPath = parseInputFlag(argv);
++  const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++  validateInput(input);
++
++  const warehouses = input.warehouses
++    .map((warehouse) => ({
++      ...warehouse,
++      lots: warehouse.lots.map((lot) => ({ ...lot })),
++    }))
++    .sort(warehouseComparator);
++  const processedOrders = input.orders
++    .map((order) => ({ order, submittedAt: parseSubmittedAt(order.submitted_at) }))
++    .sort((left, right) => {
++      if (left.order.priority !== right.order.priority) {
++        return right.order.priority - left.order.priority;
++      }
++      if (left.submittedAt !== right.submittedAt) return left.submittedAt - right.submittedAt;
++      return left.order.id.localeCompare(right.order.id);
++    });
++  const accepted = [];
++  const rejectedIds = new Set();
++
++  for (const { order } of processedOrders) {
++    const deductions = [];
++    const allocations = [];
++    const fulfilled = order.lines.every((line) => allocateLine(warehouses, line, deductions, allocations));
++    if (fulfilled) {
++      accepted.push({ id: order.id, allocations });
++    } else {
++      rollback(deductions);
++      rejectedIds.add(order.id);
++    }
++  }
++
++  const rejected = input.orders
++    .filter((order) => rejectedIds.has(order.id))
++    .map((order) => ({ id: order.id, reason: 'insufficient_stock' }));
++  const remaining = warehouses
++    .slice()
++    .sort((left, right) => left.id.localeCompare(right.id))
++    .flatMap((warehouse) => warehouse.lots
++      .filter((lot) => lot.qty > 0)
++      .sort((left, right) => {
++        if (left.sku !== right.sku) return left.sku.localeCompare(right.sku);
++        return lotComparator(left, right);
++      })
++      .map((lot) => ({
++        warehouse: warehouse.id,
++        sku: lot.sku,
++        lot: lot.lot,
++        qty: lot.qty,
++        expires: lot.expires,
++      })));
++
++  process.stdout.write(JSON.stringify({ accepted, rejected, remaining }));
++}
++
++function writeFulfillWaveError(error) {
++  const message = error instanceof Error && error.message ? error.message : 'fulfill-wave failed';
++  process.stderr.write(JSON.stringify({ error: message }));
++  process.exit(2);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +281,14 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'fulfill-wave': {
++      try {
++        fulfillWave(rest);
++      } catch (error) {
++        writeFulfillWaveError(error);
++      }
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..3be5163 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,13 @@ function run(args) {
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function writeInput(input) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tools-'));
++  const inputPath = path.join(directory, 'input.json');
++  fs.writeFileSync(inputPath, JSON.stringify(input));
++  return { directory, inputPath };
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +32,109 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('fulfill-wave accepts an order with FEFO allocations', () => {
++  const fixture = writeInput({
++    warehouses: [{
++      id: 'near',
++      distance: 1,
++      lots: [
++        { sku: 'widget', lot: 'later', qty: 2, expires: '2026-04-01' },
++        { sku: 'widget', lot: 'earlier', qty: 1, expires: '2026-03-01' },
++      ],
++    }],
++    orders: [{
++      id: 'order-1',
++      priority: 1,
++      submitted_at: '2026-02-01T00:00:00Z',
++      lines: [{ sku: 'widget', qty: 3, single_warehouse: false }],
++    }],
++  });
++
++  try {
++    const out = JSON.parse(run(['fulfill-wave', '--input', fixture.inputPath]));
++    assert.deepStrictEqual(out, {
++      accepted: [{
++        id: 'order-1',
++        allocations: [
++          { sku: 'widget', warehouse: 'near', lot: 'earlier', qty: 1 },
++          { sku: 'widget', warehouse: 'near', lot: 'later', qty: 2 },
++        ],
++      }],
++      rejected: [],
++      remaining: [],
++    });
++  } finally {
++    fs.rmSync(fixture.directory, { recursive: true, force: true });
++  }
++});
++
++test('fulfill-wave rolls back a rejected all-or-nothing order', () => {
++  const fixture = writeInput({
++    warehouses: [{
++      id: 'near',
++      distance: 1,
++      lots: [{ sku: 'widget', lot: 'only', qty: 2, expires: '2026-03-01' }],
++    }],
++    orders: [
++      {
++        id: 'rejected-first',
++        priority: 2,
++        submitted_at: '2026-02-01T00:00:00Z',
++        lines: [
++          { sku: 'widget', qty: 2, single_warehouse: false },
++          { sku: 'missing', qty: 1, single_warehouse: false },
++        ],
++      },
++      {
++        id: 'accepted-after-rollback',
++        priority: 1,
++        submitted_at: '2026-02-02T00:00:00Z',
++        lines: [{ sku: 'widget', qty: 2, single_warehouse: false }],
++      },
++    ],
++  });
++
++  try {
++    const out = JSON.parse(run(['fulfill-wave', '--input', fixture.inputPath]));
++    assert.deepStrictEqual(out, {
++      accepted: [{
++        id: 'accepted-after-rollback',
++        allocations: [{ sku: 'widget', warehouse: 'near', lot: 'only', qty: 2 }],
++      }],
++      rejected: [{ id: 'rejected-first', reason: 'insufficient_stock' }],
++      remaining: [],
++    });
++  } finally {
++    fs.rmSync(fixture.directory, { recursive: true, force: true });
++  }
++});
++
++test('fulfill-wave rejects a single_warehouse line when only combined stock suffices', () => {
++  const fixture = writeInput({
++    warehouses: [
++      { id: 'a', distance: 1, lots: [{ sku: 'gadget', lot: 'a1', qty: 3, expires: '2026-05-01' }] },
++      { id: 'b', distance: 2, lots: [{ sku: 'gadget', lot: 'b1', qty: 3, expires: '2026-05-01' }] },
++    ],
++    orders: [{
++      id: 'single-warehouse-order',
++      priority: 1,
++      submitted_at: '2026-02-01T00:00:00Z',
++      lines: [{ sku: 'gadget', qty: 5, single_warehouse: true }],
++    }],
++  });
++
++  try {
++    const out = JSON.parse(run(['fulfill-wave', '--input', fixture.inputPath]));
++    assert.deepStrictEqual(out, {
++      accepted: [],
++      rejected: [{ id: 'single-warehouse-order', reason: 'insufficient_stock' }],
++      remaining: [
++        { warehouse: 'a', sku: 'gadget', lot: 'a1', qty: 3, expires: '2026-05-01' },
++        { warehouse: 'b', sku: 'gadget', lot: 'b1', qty: 3, expires: '2026-05-01' },
++      ],
++    });
++  } finally {
++    fs.rmSync(fixture.directory, { recursive: true, force: true });
++  }
++});
+
+exec
+/bin/zsh -lc 'git status --short && git diff --name-only cbd12daedd7f2d22c62110faf097f12797e7dda6..HEAD -- bin/cli.js tests/cli.test.js' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+bin/cli.js
+tests/cli.test.js
+
+codex
+No changes needed: every diff-added symbol is used or required by the spec; no in-scope tooling artifacts or invalidated Markdown references found.
+
+PASS
+tokens used
+13,770
+[codex-monitored] codex exited: code=0 elapsed=23s

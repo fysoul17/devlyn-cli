@@ -1,0 +1,1 @@
+PASS — confirmed the prescribed diff contains only the required `version --format json` implementation and two related tests. `parseVersionFormat` is used by the `version` case; no tooling artifacts, dead added code, or stale references require cleanup. `git diff --check` passed with no output.

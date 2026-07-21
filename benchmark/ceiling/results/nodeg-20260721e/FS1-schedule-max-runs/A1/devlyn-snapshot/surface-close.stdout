@@ -1,0 +1,3 @@
+UVR-STALE: FIRED schedule/__init__.py:692 — `run()`'s docstring described `CancelJob` cancellation only via `.until()` while the diff added budget-exhaustion cancellation at line 712; updated the docstring to mention `max_runs()`.
+PATH-TEST: N/A test_schedule.py — the diff's success/failure paths (chainability, validation, run_all/run_pending cancellation, last-call-wins, until-vs-budget first-limit-wins in both directions, per-job isolation, next_run/idle_seconds after removal) are each already exercised by an added test.
+PASS

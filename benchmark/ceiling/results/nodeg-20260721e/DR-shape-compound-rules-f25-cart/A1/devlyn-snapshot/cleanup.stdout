@@ -1,0 +1,5 @@
+Removed the unused catch binding in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/f38c9cf695c9e/A1/repo/bin/cli.js:59). No other artifacts, dead introduced symbols, or stale tracked-doc references found.
+
+Scoped CLI tests: 5/5 pass. Full `npm test` is blocked here by server tests binding `0.0.0.0` (`EPERM`); CLI tests pass.
+
+VERDICT: PASS

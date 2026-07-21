@@ -1,0 +1,3 @@
+PASS — no changes needed.
+
+`git diff 3d7ed4e6e624d93afddb366201d001217813f9b4 HEAD --stat` was empty. The webhook additions in `server/index.js` and `tests/server.test.js` are all required by the generated criteria; no dead symbols, stale references, or newly introduced allowlisted artifacts were found.

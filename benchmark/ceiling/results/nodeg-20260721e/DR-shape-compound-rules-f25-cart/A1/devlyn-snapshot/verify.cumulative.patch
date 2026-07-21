@@ -1,0 +1,268 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b24..548be1b 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@ const USAGE = `Usage: bench-cli <command> [options]
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  cart --input PATH          Price a cart JSON file
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli cart --input cart.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,138 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function parseInputFlag(argv) {
++  const idx = argv.indexOf('--input');
++  if (idx === -1) {
++    console.error('--input requires a value');
++    process.exit(1);
++  }
++  const value = argv[idx + 1];
++  if (!value || value.startsWith('-')) {
++    console.error('--input requires a value');
++    process.exit(1);
++  }
++  return value;
++}
++
++function cartError(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function readCart(inputPath) {
++  try {
++    return JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++  } catch {
++    cartError({ error: 'invalid_json' });
++  }
++}
++
++function readCatalog() {
++  const catalogPath = path.join(__dirname, '..', 'data', 'catalog.json');
++  return JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
++}
++
++function hasOwn(object, key) {
++  return Object.prototype.hasOwnProperty.call(object, key);
++}
++
++function priceCart(cart, catalog) {
++  if (!cart || !Array.isArray(cart.items)) {
++    cartError({ error: 'missing_items' });
++  }
++
++  for (const item of cart.items) {
++    if (!hasOwn(catalog.products, item?.sku)) {
++      cartError({ error: 'unknown_sku', sku: item?.sku });
++    }
++  }
++
++  for (const item of cart.items) {
++    if (typeof item?.qty !== 'number' || !Number.isInteger(item.qty) || item.qty <= 0) {
++      cartError({ error: 'invalid_qty', sku: item?.sku });
++    }
++  }
++
++  if (cart.coupon !== null && !hasOwn(catalog.coupons, cart.coupon)) {
++    cartError({ error: 'unknown_coupon', coupon: cart.coupon });
++  }
++
++  if (!hasOwn(catalog.tax_rates, cart.state)) {
++    cartError({ error: 'unknown_state', state: cart.state });
++  }
++
++  const quantities = new Map();
++  for (const item of cart.items) {
++    quantities.set(item.sku, (quantities.get(item.sku) || 0) + item.qty);
++  }
++
++  for (const [sku, qty] of quantities) {
++    const available = catalog.products[sku].stock;
++    if (qty > available) {
++      cartError({ error: 'invalid_stock', sku, available, requested: qty });
++    }
++  }
++
++  const promotions = new Map();
++  for (const promotion of catalog.line_promotions) {
++    promotions.set(promotion.sku, promotion);
++  }
++
++  let subtotalCents = 0;
++  let lineDiscountCents = 0;
++  let taxablePostLineDiscountCents = 0;
++  const items = [];
++
++  for (const [sku, qty] of quantities) {
++    const product = catalog.products[sku];
++    const lineSubtotalCents = qty * product.unit_cents;
++    const promotion = promotions.get(sku);
++    let lineDiscount = 0;
++
++    if (promotion?.type === 'buy_x_get_y_free') {
++      lineDiscount = Math.floor(qty / (promotion.buy_qty + promotion.free_qty))
++        * promotion.free_qty * product.unit_cents;
++    } else if (promotion?.type === 'per_unit_discount_cents' && qty >= promotion.min_qty) {
++      lineDiscount = promotion.per_unit_discount_cents * qty;
++    }
++
++    const lineTotalCents = lineSubtotalCents - lineDiscount;
++    subtotalCents += lineSubtotalCents;
++    lineDiscountCents += lineDiscount;
++    if (catalog.taxable_codes[product.tax_code] === true) {
++      taxablePostLineDiscountCents += lineTotalCents;
++    }
++    items.push({
++      sku,
++      qty,
++      line_subtotal_cents: lineSubtotalCents,
++      line_discount_cents: lineDiscount,
++      line_total_cents: lineTotalCents,
++    });
++  }
++
++  const coupon = cart.coupon === null ? null : catalog.coupons[cart.coupon];
++  const postLineDiscountCents = subtotalCents - lineDiscountCents;
++  const couponDiscountCents = coupon && postLineDiscountCents >= coupon.min_subtotal_cents
++    ? Math.round(postLineDiscountCents * coupon.percent / 100)
++    : 0;
++  const taxCents = Math.round(taxablePostLineDiscountCents * catalog.tax_rates[cart.state]);
++  const shippingCents = postLineDiscountCents - couponDiscountCents >= catalog.free_shipping_min_cents
++    ? 0
++    : catalog.shipping_cents;
++
++  return {
++    subtotal_cents: subtotalCents,
++    line_discount_cents: lineDiscountCents,
++    coupon_discount_cents: couponDiscountCents,
++    tax_cents: taxCents,
++    shipping_cents: shippingCents,
++    total_cents: postLineDiscountCents - couponDiscountCents + taxCents + shippingCents,
++    items,
++  };
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +187,13 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'cart': {
++      const inputPath = parseInputFlag(rest);
++      const cart = readCart(inputPath);
++      const catalog = readCatalog();
++      console.log(JSON.stringify(priceCart(cart, catalog)));
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..10adce3 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+-const { execFileSync } = require('node:child_process');
++const { execFileSync, spawnSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,18 @@ function run(args) {
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function withCartFile(cart, callback) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  const inputPath = path.join(directory, 'cart.json');
++  fs.writeFileSync(inputPath, JSON.stringify(cart));
++
++  try {
++    return callback(inputPath);
++  } finally {
++    fs.rmSync(directory, { recursive: true, force: true });
++  }
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +37,62 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('cart combines duplicate items and applies pricing rules', () => {
++  const output = withCartFile({
++    state: 'CA',
++    coupon: 'ORDER10',
++    items: [
++      { sku: 'TEE', qty: 1 },
++      { sku: 'BAG', qty: 2 },
++      { sku: 'TEE', qty: 2 },
++    ],
++  }, (inputPath) => run(['cart', '--input', inputPath]));
++
++  assert.deepStrictEqual(JSON.parse(output), {
++    subtotal_cents: 13900,
++    line_discount_cents: 3500,
++    coupon_discount_cents: 1040,
++    tax_cents: 858,
++    shipping_cents: 0,
++    total_cents: 10218,
++    items: [
++      {
++        sku: 'TEE',
++        qty: 3,
++        line_subtotal_cents: 7500,
++        line_discount_cents: 2500,
++        line_total_cents: 5000,
++      },
++      {
++        sku: 'BAG',
++        qty: 2,
++        line_subtotal_cents: 6400,
++        line_discount_cents: 1000,
++        line_total_cents: 5400,
++      },
++    ],
++  });
++});
++
++test('cart reports combined quantities over stock as a JSON error', () => {
++  const result = withCartFile({
++    state: 'CA',
++    coupon: null,
++    items: [
++      { sku: 'TEE', qty: 7 },
++      { sku: 'TEE', qty: 5 },
++    ],
++  }, (inputPath) => spawnSync('node', [CLI, 'cart', '--input', inputPath], {
++    encoding: 'utf8',
++  }));
++
++  assert.strictEqual(result.status, 2);
++  assert.strictEqual(result.stdout, '');
++  assert.deepStrictEqual(JSON.parse(result.stderr), {
++    error: 'invalid_stock',
++    sku: 'TEE',
++    available: 10,
++    requested: 12,
++  });
++});

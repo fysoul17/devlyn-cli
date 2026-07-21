@@ -1,0 +1,17 @@
+BLOCKED — implementation is complete, but required HTTP verification cannot run because this sandbox forbids all listeners (`EPERM` before any request reaches the app).
+
+- Raw-byte HMAC verification, body validation, and replay handling: [server/index.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/f08d6b52f5d4d/A1/repo/server/index.js:42)
+- Added real HTTP happy-path, replay, and tamper tests: [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/f08d6b52f5d4d/A1/repo/tests/server.test.js:96)
+- Scoped diff only: `server/index.js`, `tests/server.test.js`
+- `git diff --check`: exit 0 (no output)
+- `node --check server/index.js`: exit 0
+- `node --check tests/server.test.js`: exit 0
+
+Required commands:
+
+- `npm test`: exit 1. Three CLI tests passed; all six server tests failed at the unchanged `server.listen(0)` with `listen EPERM: operation not permitted 0.0.0.0`.
+- `node .devlyn/probes/P1.js`: exit 1 — same `listen EPERM` at probe startup.
+- `node .devlyn/probes/P2.js`: exit 1 — same `listen EPERM` at probe startup.
+- `node .devlyn/probes/P3.js`: exit 1 — same `listen EPERM` at probe startup.
+
+A Unix-socket listener was also denied with `EPERM`, confirming the environment restriction.

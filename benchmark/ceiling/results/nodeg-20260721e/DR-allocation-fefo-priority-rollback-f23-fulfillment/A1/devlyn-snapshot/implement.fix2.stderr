@@ -1,0 +1,572 @@
+[codex-monitored] start: ts=2026-07-21T09:17:34Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=39940
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f83f7-5d19-7650-aefa-4207ffc96d95
+--------
+user
+You are OpenAI Codex, acting as the IMPLEMENT phase worker inside the `/devlyn:resolve` pipeline, fix round 2 (repo root: /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo, current working directory). Fresh, isolated session. You have workspace-write access to this repo.
+
+## Adapter header (Codex / OpenAI)
+
+Efficient, direct, task-oriented. Validate with actual commands, not self-belief.
+
+## Context
+
+This is fix round 2 inside `/devlyn:resolve`'s VERIFY fix loop for the `fulfill-wave` command in `bin/cli.js`. Round 1 fixed a `remaining`-sort-order bug by flattening `(warehouse, lot)` pairs before sorting: `warehouses.flatMap((warehouse) => warehouse.lots.map((lot) => ({ warehouse: warehouse.id, ...lot })))`. VERIFY's independent JUDGE (fresh context) found a NEW HIGH finding introduced by that exact fix. Fix ONLY this finding — do not touch anything else.
+
+## VERIFY finding (verbatim)
+
+```json
+{"id":"remaining-warehouse-overwrite","rule_id":"spec.remaining-warehouse-source","severity":"HIGH","confidence":"high","file":"bin/cli.js","line":241,"message":"`({ warehouse: warehouse.id, ...lot })` allows an input lot's `warehouse` member to overwrite its actual parent warehouse. A lot under warehouse `real` with `warehouse: \"spoofed\"` exits 0 and emits `warehouse: \"spoofed\"`; it must either be rejected as invalid input or emit the actual warehouse id.","criterion_ref":"Requirement 4: remaining rows must contain the warehouse id and be sorted by warehouse id","verdict_binding":true}
+```
+
+## Independent confirmation (orchestrator-verified)
+
+```
+$ cat > /tmp/spoof_probe.json <<'EOF'
+{
+  "warehouses": [
+    { "id": "real", "distance": 1, "lots": [{ "sku": "x", "lot": "l1", "qty": 2, "expires": "2026-05-01", "warehouse": "spoofed" }] }
+  ],
+  "orders": []
+}
+EOF
+$ node bin/cli.js fulfill-wave --input /tmp/spoof_probe.json
+{"accepted":[],"rejected":[],"remaining":[{"warehouse":"spoofed","sku":"x","lot":"l1","qty":2,"expires":"2026-05-01"}]}
+```
+Expected `warehouse: "real"`; got `warehouse: "spoofed"`.
+
+## Root cause
+
+`{ warehouse: warehouse.id, ...lot }` sets `warehouse` first, then spreads `lot`'s own keys on top — if the input `lot` object happens to carry its own `warehouse` key (the Lot schema does not forbid unknown/extra keys), the spread silently overwrites the correct `warehouse.id` value. This is the classic JS object-spread field-collision footgun.
+
+## Required fix
+
+Remove the spread. Build the flattened row with explicit fields only: `warehouse: warehouse.id, sku: lot.sku, lot: lot.lot, qty: lot.qty, expires: lot.expires` (plus whatever internal field you still need for the qty>0 filter and comparator — check `lotComparator`'s exact usage, since it currently expects `.expires`/`.lot` on its arguments, so keep that compatible). Since the row will now already carry exactly the final `{warehouse, sku, lot, qty, expires}` shape with no risk of extra/spoofed keys, the trailing `.map(({ warehouse, sku, lot, qty, expires }) => ({ warehouse, sku, lot, qty, expires }))` whitelist step (added in round 1 specifically to strip spread pollution) becomes redundant — remove it too if the earlier explicit construction already produces the exact clean shape (net simplification, not scope creep — this directly follows from removing the root cause of the finding you're fixing).
+
+## Scope
+
+Only touch `bin/cli.js`, and only the `remaining` computation inside `fulfillWave`. Do not touch `tests/cli.test.js` unless adding a minimal regression test for this exact spoofing case (optional). Do not touch anything else.
+
+## Verify before declaring done
+
+1. Re-run the reproduction above and confirm `remaining[0].warehouse === "real"`.
+2. Re-run the round-1 duplicate-warehouse-id reproduction and confirm it's still correct:
+   ```
+   node bin/cli.js fulfill-wave --input /tmp/dup_warehouse_probe.json
+   ```
+   (fixture already exists at that path from the previous round; if missing, recreate it: two warehouses both `id: "same"`, one with lot sku `z`, one with lot sku `a`; expect `sku: "a"` before `sku: "z"` in `remaining`.)
+3. Run `npm test` (== `node --test tests/`) and confirm all existing tests pass.
+4. Run `node bin/cli.js --help` and confirm it still exits 0 and mentions `fulfill-wave`.
+
+Report your verdict in your final reply text: `PASS` once fixed and verified; `BLOCKED:<reason>` if you cannot fix it within scope.
+codex
+I’ll make the one scoped change to the `remaining` flattening, then run both repros, the test suite, and help check.
+exec
+/bin/zsh -lc 'git status --short && rg -n -C 10 "remaining|lotComparator" bin/cli.js' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+140-      }
+141-    }
+142-  }
+143-}
+144-
+145-function warehouseComparator(left, right) {
+146-  if (left.distance !== right.distance) return left.distance - right.distance;
+147-  return left.id.localeCompare(right.id);
+148-}
+149-
+150:function lotComparator(left, right) {
+151-  if (left.expires !== right.expires) return left.expires.localeCompare(right.expires);
+152-  return left.lot.localeCompare(right.lot);
+153-}
+154-
+155-function matchingLots(warehouse, sku) {
+156-  return warehouse.lots
+157-    .filter((lot) => lot.sku === sku && lot.qty > 0)
+158:    .sort(lotComparator);
+159-}
+160-
+161-function allocateFromWarehouse(warehouse, line, deductions, allocations) {
+162-  let needed = line.qty;
+163-  for (const lot of matchingLots(warehouse, line.sku)) {
+164-    const qty = Math.min(needed, lot.qty);
+165-    lot.qty -= qty;
+166-    needed -= qty;
+167-    deductions.push({ lot, qty });
+168-    allocations.push({ sku: line.sku, warehouse: warehouse.id, lot: lot.lot, qty });
+--
+230-      accepted.push({ id: order.id, allocations });
+231-    } else {
+232-      rollback(deductions);
+233-      rejectedIds.add(order.id);
+234-    }
+235-  }
+236-
+237-  const rejected = input.orders
+238-    .filter((order) => rejectedIds.has(order.id))
+239-    .map((order) => ({ id: order.id, reason: 'insufficient_stock' }));
+240:  const remaining = warehouses
+241-    .flatMap((warehouse) => warehouse.lots.map((lot) => ({ warehouse: warehouse.id, ...lot })))
+242-    .filter((lot) => lot.qty > 0)
+243-    .sort((left, right) => {
+244-      if (left.warehouse !== right.warehouse) return left.warehouse.localeCompare(right.warehouse);
+245-      if (left.sku !== right.sku) return left.sku.localeCompare(right.sku);
+246:      return lotComparator(left, right);
+247-    })
+248-    .map(({ warehouse, sku, lot, qty, expires }) => ({ warehouse, sku, lot, qty, expires }));
+249-
+250:  process.stdout.write(JSON.stringify({ accepted, rejected, remaining }));
+251-}
+252-
+253-function writeFulfillWaveError(error) {
+254-  const message = error instanceof Error && error.message ? error.message : 'fulfill-wave failed';
+255-  process.stderr.write(JSON.stringify({ error: message }));
+256-  process.exit(2);
+257-}
+258-
+259-function main(argv) {
+260-  const [command, ...rest] = argv;
+
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/bin/cli.js
+diff --git a/bin/cli.js b/bin/cli.js
+index 78f8a850930c541a1c8b70278b254064d043ccb0..691b8514dd3dd267efe8327027430cfb597eba58
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -238,14 +238,19 @@
+     .filter((order) => rejectedIds.has(order.id))
+     .map((order) => ({ id: order.id, reason: 'insufficient_stock' }));
+   const remaining = warehouses
+-    .flatMap((warehouse) => warehouse.lots.map((lot) => ({ warehouse: warehouse.id, ...lot })))
++    .flatMap((warehouse) => warehouse.lots.map((lot) => ({
++      warehouse: warehouse.id,
++      sku: lot.sku,
++      lot: lot.lot,
++      qty: lot.qty,
++      expires: lot.expires,
++    })))
+     .filter((lot) => lot.qty > 0)
+     .sort((left, right) => {
+       if (left.warehouse !== right.warehouse) return left.warehouse.localeCompare(right.warehouse);
+       if (left.sku !== right.sku) return left.sku.localeCompare(right.sku);
+       return lotComparator(left, right);
+-    })
+-    .map(({ warehouse, sku, lot, qty, expires }) => ({ warehouse, sku, lot, qty, expires }));
++    });
+ 
+   process.stdout.write(JSON.stringify({ accepted, rejected, remaining }));
+ }
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 78f8a850930c541a1c8b70278b254064d043ccb0..691b8514dd3dd267efe8327027430cfb597eba58
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -238,14 +238,19 @@
+     .filter((order) => rejectedIds.has(order.id))
+     .map((order) => ({ id: order.id, reason: 'insufficient_stock' }));
+   const remaining = warehouses
+-    .flatMap((warehouse) => warehouse.lots.map((lot) => ({ warehouse: warehouse.id, ...lot })))
++    .flatMap((warehouse) => warehouse.lots.map((lot) => ({
++      warehouse: warehouse.id,
++      sku: lot.sku,
++      lot: lot.lot,
++      qty: lot.qty,
++      expires: lot.expires,
++    })))
+     .filter((lot) => lot.qty > 0)
+     .sort((left, right) => {
+       if (left.warehouse !== right.warehouse) return left.warehouse.localeCompare(right.warehouse);
+       if (left.sku !== right.sku) return left.sku.localeCompare(right.sku);
+       return lotComparator(left, right);
+-    })
+-    .map(({ warehouse, sku, lot, qty, expires }) => ({ warehouse, sku, lot, qty, expires }));
++    });
+ 
+   process.stdout.write(JSON.stringify({ accepted, rejected, remaining }));
+ }
+
+exec
+/bin/zsh -lc 'git diff -- bin/cli.js && for probe in /tmp/spoof_probe.json /tmp/dup_warehouse_probe.json; do if [ -f "$probe" ]; then printf '"'%s exists\\n' \""'$probe"; else printf '"'%s missing\\n' \""'$probe"; fi; done' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+diff --git a/bin/cli.js b/bin/cli.js
+index 78f8a85..691b851 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -238,14 +238,19 @@ function fulfillWave(argv) {
+     .filter((order) => rejectedIds.has(order.id))
+     .map((order) => ({ id: order.id, reason: 'insufficient_stock' }));
+   const remaining = warehouses
+-    .flatMap((warehouse) => warehouse.lots.map((lot) => ({ warehouse: warehouse.id, ...lot })))
++    .flatMap((warehouse) => warehouse.lots.map((lot) => ({
++      warehouse: warehouse.id,
++      sku: lot.sku,
++      lot: lot.lot,
++      qty: lot.qty,
++      expires: lot.expires,
++    })))
+     .filter((lot) => lot.qty > 0)
+     .sort((left, right) => {
+       if (left.warehouse !== right.warehouse) return left.warehouse.localeCompare(right.warehouse);
+       if (left.sku !== right.sku) return left.sku.localeCompare(right.sku);
+       return lotComparator(left, right);
+-    })
+-    .map(({ warehouse, sku, lot, qty, expires }) => ({ warehouse, sku, lot, qty, expires }));
++    });
+ 
+   process.stdout.write(JSON.stringify({ accepted, rejected, remaining }));
+ }
+/tmp/spoof_probe.json exists
+/tmp/dup_warehouse_probe.json exists
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 78f8a850930c541a1c8b70278b254064d043ccb0..691b8514dd3dd267efe8327027430cfb597eba58
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -238,14 +238,19 @@
+     .filter((order) => rejectedIds.has(order.id))
+     .map((order) => ({ id: order.id, reason: 'insufficient_stock' }));
+   const remaining = warehouses
+-    .flatMap((warehouse) => warehouse.lots.map((lot) => ({ warehouse: warehouse.id, ...lot })))
++    .flatMap((warehouse) => warehouse.lots.map((lot) => ({
++      warehouse: warehouse.id,
++      sku: lot.sku,
++      lot: lot.lot,
++      qty: lot.qty,
++      expires: lot.expires,
++    })))
+     .filter((lot) => lot.qty > 0)
+     .sort((left, right) => {
+       if (left.warehouse !== right.warehouse) return left.warehouse.localeCompare(right.warehouse);
+       if (left.sku !== right.sku) return left.sku.localeCompare(right.sku);
+       return lotComparator(left, right);
+-    })
+-    .map(({ warehouse, sku, lot, qty, expires }) => ({ warehouse, sku, lot, qty, expires }));
++    });
+ 
+   process.stdout.write(JSON.stringify({ accepted, rejected, remaining }));
+ }
+
+[codex-monitored] heartbeat: elapsed=30s
+codex
+The diff now constructs only the five schema fields from each parent warehouse/lot pair; the redundant whitelist map is gone. Both supplied probe fixtures are present, so I’m running the required checks against them.
+exec
+/bin/zsh -lc 'node bin/cli.js fulfill-wave --input /tmp/spoof_probe.json' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+{"accepted":[],"rejected":[],"remaining":[{"warehouse":"real","sku":"x","lot":"l1","qty":2,"expires":"2026-05-01"}]}
+exec
+/bin/zsh -lc 'node bin/cli.js fulfill-wave --input /tmp/dup_warehouse_probe.json' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+{"accepted":[],"rejected":[],"remaining":[{"warehouse":"same","sku":"a","lot":"l2","qty":2,"expires":"2026-05-01"},{"warehouse":"same","sku":"z","lot":"l1","qty":2,"expires":"2026-05-01"}]}
+exec
+/bin/zsh -lc 'node bin/cli.js --help' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+Usage: bench-cli <command> [options]
+
+Commands:
+  hello [--name NAME]        Print a greeting (default name: "world")
+  version                    Print the CLI version from package.json
+  fulfill-wave --input PATH  Allocate warehouse stock to orders
+  --help, -h                 Show this help
+
+Examples:
+  bench-cli hello
+  bench-cli hello --name alice
+  bench-cli version
+
+exec
+/bin/zsh -lc 'npm test' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index 78f8a850930c541a1c8b70278b254064d043ccb0..691b8514dd3dd267efe8327027430cfb597eba58
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -238,14 +238,19 @@
+     .filter((order) => rejectedIds.has(order.id))
+     .map((order) => ({ id: order.id, reason: 'insufficient_stock' }));
+   const remaining = warehouses
+-    .flatMap((warehouse) => warehouse.lots.map((lot) => ({ warehouse: warehouse.id, ...lot })))
++    .flatMap((warehouse) => warehouse.lots.map((lot) => ({
++      warehouse: warehouse.id,
++      sku: lot.sku,
++      lot: lot.lot,
++      qty: lot.qty,
++      expires: lot.expires,
++    })))
+     .filter((lot) => lot.qty > 0)
+     .sort((left, right) => {
+       if (left.warehouse !== right.warehouse) return left.warehouse.localeCompare(right.warehouse);
+       if (left.sku !== right.sku) return left.sku.localeCompare(right.sku);
+       return lotComparator(left, right);
+-    })
+-    .map(({ warehouse, sku, lot, qty, expires }) => ({ warehouse, sku, lot, qty, expires }));
++    });
+ 
+   process.stdout.write(JSON.stringify({ accepted, rejected, remaining }));
+ }
+
+ exited 1 in 613ms:
+TAP version 13
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 37.700583
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 41.535833
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 54.912583
+  ...
+# Subtest: fulfill-wave accepts an order with FEFO allocations
+ok 4 - fulfill-wave accepts an order with FEFO allocations
+  ---
+  duration_ms: 82.372458
+  ...
+# Subtest: fulfill-wave rolls back a rejected all-or-nothing order
+ok 5 - fulfill-wave rolls back a rejected all-or-nothing order
+  ---
+  duration_ms: 52.519625
+  ...
+# Subtest: fulfill-wave rejects a single_warehouse line when only combined stock suffices
+ok 6 - fulfill-wave rejects a single_warehouse line when only combined stock suffices
+  ---
+  duration_ms: 75.332917
+  ...
+# Subtest: GET /health returns ok
+not ok 7 - GET /health returns ok
+  ---
+  duration_ms: 3.046542
+  location: '/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 8 - GET /items returns list
+  ---
+  duration_ms: 2.267875
+  location: '/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 9 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 1.0955
+  location: '/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 6
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 415.976416
+
+codex
+Both command-level repros pass: the spoofed lot now reports `real`, and duplicate warehouse IDs still order `a` before `z`. The full suite’s three server tests cannot bind a local listener in this sandbox (`EPERM` on `0.0.0.0`); I’ll isolate the CLI tests and confirm the final scoped diff.
+exec
+/bin/zsh -lc 'git diff --check && git diff -- bin/cli.js && git status --short' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+diff --git a/bin/cli.js b/bin/cli.js
+index 78f8a85..691b851 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -238,14 +238,19 @@ function fulfillWave(argv) {
+     .filter((order) => rejectedIds.has(order.id))
+     .map((order) => ({ id: order.id, reason: 'insufficient_stock' }));
+   const remaining = warehouses
+-    .flatMap((warehouse) => warehouse.lots.map((lot) => ({ warehouse: warehouse.id, ...lot })))
++    .flatMap((warehouse) => warehouse.lots.map((lot) => ({
++      warehouse: warehouse.id,
++      sku: lot.sku,
++      lot: lot.lot,
++      qty: lot.qty,
++      expires: lot.expires,
++    })))
+     .filter((lot) => lot.qty > 0)
+     .sort((left, right) => {
+       if (left.warehouse !== right.warehouse) return left.warehouse.localeCompare(right.warehouse);
+       if (left.sku !== right.sku) return left.sku.localeCompare(right.sku);
+       return lotComparator(left, right);
+-    })
+-    .map(({ warehouse, sku, lot, qty, expires }) => ({ warehouse, sku, lot, qty, expires }));
++    });
+ 
+   process.stdout.write(JSON.stringify({ accepted, rejected, remaining }));
+ }
+ M bin/cli.js
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+exec
+/bin/zsh -lc 'node --test tests/cli.test.js' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index 78f8a850930c541a1c8b70278b254064d043ccb0..691b8514dd3dd267efe8327027430cfb597eba58
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -238,14 +238,19 @@
+     .filter((order) => rejectedIds.has(order.id))
+     .map((order) => ({ id: order.id, reason: 'insufficient_stock' }));
+   const remaining = warehouses
+-    .flatMap((warehouse) => warehouse.lots.map((lot) => ({ warehouse: warehouse.id, ...lot })))
++    .flatMap((warehouse) => warehouse.lots.map((lot) => ({
++      warehouse: warehouse.id,
++      sku: lot.sku,
++      lot: lot.lot,
++      qty: lot.qty,
++      expires: lot.expires,
++    })))
+     .filter((lot) => lot.qty > 0)
+     .sort((left, right) => {
+       if (left.warehouse !== right.warehouse) return left.warehouse.localeCompare(right.warehouse);
+       if (left.sku !== right.sku) return left.sku.localeCompare(right.sku);
+       return lotComparator(left, right);
+-    })
+-    .map(({ warehouse, sku, lot, qty, expires }) => ({ warehouse, sku, lot, qty, expires }));
++    });
+ 
+   process.stdout.write(JSON.stringify({ accepted, rejected, remaining }));
+ }
+
+ succeeded in 337ms:
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 42.780834
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 38.63225
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 52.007208
+  ...
+# Subtest: fulfill-wave accepts an order with FEFO allocations
+ok 4 - fulfill-wave accepts an order with FEFO allocations
+  ---
+  duration_ms: 40.105209
+  ...
+# Subtest: fulfill-wave rolls back a rejected all-or-nothing order
+ok 5 - fulfill-wave rolls back a rejected all-or-nothing order
+  ---
+  duration_ms: 29.051458
+  ...
+# Subtest: fulfill-wave rejects a single_warehouse line when only combined stock suffices
+ok 6 - fulfill-wave rejects a single_warehouse line when only combined stock suffices
+  ---
+  duration_ms: 55.058416
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 323.312541
+
+[codex-monitored] heartbeat: elapsed=60s
+codex
+BLOCKED:sandbox prevents the server tests from binding `0.0.0.0` (`EPERM`), so `npm test` has 3 infrastructure failures.
+
+The scoped fix is in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/bin/cli.js:240): explicit fields prevent spoofed lot keys from overwriting the parent warehouse ID; redundant map removed.
+
+Verified:
+- Spoof probe outputs `warehouse: "real"`.
+- Duplicate-ID probe orders `sku: "a"` before `"z"`.
+- CLI tests: 6/6 pass.
+- `--help` exits 0 and includes `fulfill-wave`.
+diff --git a/bin/cli.js b/bin/cli.js
+index 78f8a850930c541a1c8b70278b254064d043ccb0..691b8514dd3dd267efe8327027430cfb597eba58
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -238,14 +238,19 @@
+     .filter((order) => rejectedIds.has(order.id))
+     .map((order) => ({ id: order.id, reason: 'insufficient_stock' }));
+   const remaining = warehouses
+-    .flatMap((warehouse) => warehouse.lots.map((lot) => ({ warehouse: warehouse.id, ...lot })))
++    .flatMap((warehouse) => warehouse.lots.map((lot) => ({
++      warehouse: warehouse.id,
++      sku: lot.sku,
++      lot: lot.lot,
++      qty: lot.qty,
++      expires: lot.expires,
++    })))
+     .filter((lot) => lot.qty > 0)
+     .sort((left, right) => {
+       if (left.warehouse !== right.warehouse) return left.warehouse.localeCompare(right.warehouse);
+       if (left.sku !== right.sku) return left.sku.localeCompare(right.sku);
+       return lotComparator(left, right);
+-    })
+-    .map(({ warehouse, sku, lot, qty, expires }) => ({ warehouse, sku, lot, qty, expires }));
++    });
+ 
+   process.stdout.write(JSON.stringify({ accepted, rejected, remaining }));
+ }
+
+tokens used
+15,785
+[codex-monitored] codex exited: code=0 elapsed=63s

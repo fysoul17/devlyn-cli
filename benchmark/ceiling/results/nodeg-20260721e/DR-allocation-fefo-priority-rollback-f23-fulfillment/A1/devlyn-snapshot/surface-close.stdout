@@ -1,0 +1,3 @@
+UVR-STALE: N/A tests/cli.test.js — USAGE text documenting `fulfill-wave --input PATH` was added fresh in this same patch alongside the implementation, so no authorized text documents a stale/old interface omitting a newly specified option.
+PATH-TEST: FIRED tests/cli.test.js:113 — Goal specifies `single_warehouse: true` must reject when no one warehouse alone has enough stock even if combined stock across warehouses would suffice; this exact rejection path was implemented (`bin/cli.js:175-184`) but neither existing test used `single_warehouse: true`, so added one minimal regression test covering it.
+PASS

@@ -1,0 +1,3 @@
+UVR-STALE: FIRED bin/cli.js:8 — USAGE help text listed hello/version/--help but omitted the new `payout --input <path>` command, so it documented the CLI's old interface; added a payout line and example to USAGE.
+PATH-TEST: N/A tests/cli.test.js:231 — every goal-specified success/failure path (successful payout w/ reserve fold, idempotent duplicate, conflicting duplicate, unknown event type, missing merchant_id/id, invalid amount_cents, missing events, invalid JSON, unreadable input) already has a regression test; no goal-specified path is uncovered.
+PASS

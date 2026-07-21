@@ -1,0 +1,4 @@
+UVR-STALE: N/A tests/server.test.js — no authorized file carries pre-existing user-visible text (docstring/README) documenting the webhook route's old interface; the route is net-new, so there's nothing stale to update.
+PATH-TEST: FIRED tests/server.test.js:127 — goal specifies the 400 `invalid_body` failure path (malformed shape with valid signature) and the patch implements it in server/index.js:64-80, but no test in the frozen diff exercised that path; added one minimal regression test.
+
+PASS

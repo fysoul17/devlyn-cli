@@ -1,0 +1,155 @@
+{
+  "judge": "sonnet",
+  "task": "DR-atomic-state-f11-batch-import",
+  "prompt": "You are a blind ceiling-quality judge. You receive one task and two anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, source run, or author identity; judge only the task text and diffs.\n\nTask text:\nAdd `POST /items/import` to `server/index.js`. It accepts `{ items: [...] }`; every item must have a `name` that is a non-empty string after trimming and a `qty` that is a positive integer.\n\nWhen every item is valid, append all of them in input order and respond `201` with `{ inserted: <count> }`. Every appended row must receive a distinct numeric `id` that does not collide with any existing item id. If an item is invalid, respond `400` with `{ error: 'invalid_batch', index, field }`, where `index` identifies the first invalid item and `field` is `name` or `qty`. After that response, `GET /items` must return exactly the same list it returned immediately before the request.\n\nAn empty body, missing `items`, or a non-array `items` value must return `400` with `{ error: 'invalid_body' }`; `GET /items` must likewise be unchanged.\n\nUpdate `tests/server.test.js` so the existing tests still pass and add at least two import tests. One must exercise an invalid middle item and compare the list before and after the response; another must cover a fully valid request. No new npm dependencies. Only touch `server/index.js` and `tests/server.test.js`.\n\nP1 patch.diff:\n```diff\ndiff --git a/server/index.js b/server/index.js\nindex 1c43fa2..62edef6 100644\n--- a/server/index.js\n+++ b/server/index.js\n@@ -17,6 +17,30 @@ app.get('/items', (_req, res) => {\n   res.json({ items });\n });\n \n+app.post('/items/import', (req, res) => {\n+  if (!req.body || !Array.isArray(req.body.items)) {\n+    res.status(400).json({ error: 'invalid_body' });\n+    return;\n+  }\n+\n+  for (const [index, item] of req.body.items.entries()) {\n+    if (typeof item?.name !== 'string' || item.name.trim().length === 0) {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });\n+      return;\n+    }\n+    if (!Number.isInteger(item.qty) || item.qty <= 0) {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });\n+      return;\n+    }\n+  }\n+\n+  let nextId = Math.max(...items.map((item) => item.id)) + 1;\n+  items.push(\n+    ...req.body.items.map((item) => ({ id: nextId++, name: item.name, qty: item.qty })),\n+  );\n+  res.status(201).json({ inserted: req.body.items.length });\n+});\n+\n app.get('/items/:id', (req, res) => {\n   const id = Number(req.params.id);\n   const item = items.find((it) => it.id === id);\ndiff --git a/tests/server.test.js b/tests/server.test.js\nindex adc6067..07efd22 100644\n--- a/tests/server.test.js\n+++ b/tests/server.test.js\n@@ -23,6 +23,30 @@ function get(server, path) {\n   });\n }\n \n+function post(server, path, body) {\n+  return new Promise((resolve, reject) => {\n+    const payload = JSON.stringify(body);\n+    const { port } = server.address();\n+    const request = http.request(\n+      `http://127.0.0.1:${port}${path}`,\n+      {\n+        method: 'POST',\n+        headers: {\n+          'Content-Type': 'application/json',\n+          'Content-Length': Buffer.byteLength(payload),\n+        },\n+      },\n+      (res) => {\n+        let responseBody = '';\n+        res.on('data', (chunk) => (responseBody += chunk));\n+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));\n+      },\n+    );\n+    request.on('error', reject);\n+    request.end(payload);\n+  });\n+}\n+\n test('GET /health returns ok', async () => {\n   const server = await startServer();\n   try {\n@@ -56,3 +80,69 @@ test('GET /items/:id returns 404 for missing', async () => {\n     server.close();\n   }\n });\n+\n+test('POST /items/import rejects an invalid middle item without changes', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'gamma', qty: 1 },\n+        { name: 'delta', qty: 0 },\n+        { name: 'epsilon', qty: 3 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+\n+    assert.strictEqual(response.status, 400);\n+    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });\n+    assert.deepStrictEqual(after.body.items, before.body.items);\n+  } finally {\n+    server.close();\n+  }\n+});\n+\n+test('POST /items/import rejects a missing items field without changes', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {});\n+    const after = await get(server, '/items');\n+\n+    assert.strictEqual(response.status, 400);\n+    assert.deepStrictEqual(response.body, { error: 'invalid_body' });\n+    assert.deepStrictEqual(after.body.items, before.body.items);\n+  } finally {\n+    server.close();\n+  }\n+});\n+\n+test('POST /items/import appends a valid batch in order with unique ids', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'gamma', qty: 1 },\n+        { name: 'delta', qty: 3 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+    const inserted = after.body.items.slice(before.body.items.length);\n+    const existingIds = new Set(before.body.items.map((item) => item.id));\n+\n+    assert.strictEqual(response.status, 201);\n+    assert.deepStrictEqual(response.body, { inserted: 2 });\n+    assert.deepStrictEqual(\n+      inserted.map(({ name, qty }) => ({ name, qty })),\n+      [\n+        { name: 'gamma', qty: 1 },\n+        { name: 'delta', qty: 3 },\n+      ],\n+    );\n+    assert.strictEqual(new Set(inserted.map((item) => item.id)).size, 2);\n+    assert.ok(inserted.every((item) => !existingIds.has(item.id)));\n+  } finally {\n+    server.close();\n+  }\n+});\n\n```\n\nP2 patch.diff:\n```diff\ndiff --git a/server/index.js b/server/index.js\nindex 1c43fa2..facf9fc 100644\n--- a/server/index.js\n+++ b/server/index.js\n@@ -17,6 +17,43 @@ app.get('/items', (_req, res) => {\n   res.json({ items });\n });\n \n+app.post('/items/import', (req, res) => {\n+  const { items: batch } = req.body || {};\n+\n+  if (!Array.isArray(batch)) {\n+    res.status(400).json({ error: 'invalid_body' });\n+    return;\n+  }\n+\n+  for (let index = 0; index < batch.length; index += 1) {\n+    const item = batch[index];\n+\n+    if (!item || typeof item.name !== 'string' || item.name.trim() === '') {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });\n+      return;\n+    }\n+\n+    if (!Number.isInteger(item.qty) || item.qty <= 0) {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });\n+      return;\n+    }\n+  }\n+\n+  let nextId = items.reduce(\n+    (maxId, item) => (typeof item.id === 'number' && Number.isFinite(item.id) ? Math.max(maxId, item.id) : maxId),\n+    0,\n+  ) + 1;\n+\n+  const importedItems = batch.map((item) => ({\n+    id: nextId++,\n+    name: item.name,\n+    qty: item.qty,\n+  }));\n+\n+  items.push(...importedItems);\n+  res.status(201).json({ inserted: importedItems.length });\n+});\n+\n app.get('/items/:id', (req, res) => {\n   const id = Number(req.params.id);\n   const item = items.find((it) => it.id === id);\ndiff --git a/tests/server.test.js b/tests/server.test.js\nindex adc6067..581c217 100644\n--- a/tests/server.test.js\n+++ b/tests/server.test.js\n@@ -23,6 +23,32 @@ function get(server, path) {\n   });\n }\n \n+function post(server, path, body) {\n+  return new Promise((resolve, reject) => {\n+    const payload = JSON.stringify(body);\n+    const { port } = server.address();\n+    const req = http.request(\n+      {\n+        hostname: '127.0.0.1',\n+        port,\n+        path,\n+        method: 'POST',\n+        headers: {\n+          'Content-Type': 'application/json',\n+          'Content-Length': Buffer.byteLength(payload),\n+        },\n+      },\n+      (res) => {\n+        let responseBody = '';\n+        res.on('data', (chunk) => (responseBody += chunk));\n+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));\n+      },\n+    );\n+    req.on('error', reject);\n+    req.end(payload);\n+  });\n+}\n+\n test('GET /health returns ok', async () => {\n   const server = await startServer();\n   try {\n@@ -56,3 +82,53 @@ test('GET /items/:id returns 404 for missing', async () => {\n     server.close();\n   }\n });\n+\n+test('POST /items/import rejects an invalid middle item without changing the list', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'gamma', qty: 2 },\n+        { name: 'delta', qty: 0 },\n+        { name: 'epsilon', qty: 4 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+\n+    assert.strictEqual(response.status, 400);\n+    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });\n+    assert.deepStrictEqual(after.body, before.body);\n+  } finally {\n+    server.close();\n+  }\n+});\n+\n+test('POST /items/import appends a valid batch in order with distinct ids', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'gamma', qty: 2 },\n+        { name: 'delta', qty: 4 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+    const addedItems = after.body.items.slice(before.body.items.length);\n+\n+    assert.strictEqual(response.status, 201);\n+    assert.deepStrictEqual(response.body, { inserted: 2 });\n+    assert.deepStrictEqual(\n+      addedItems.map(({ name, qty }) => ({ name, qty })),\n+      [\n+        { name: 'gamma', qty: 2 },\n+        { name: 'delta', qty: 4 },\n+      ],\n+    );\n+    assert.strictEqual(new Set(addedItems.map((item) => item.id)).size, 2);\n+    assert.ok(addedItems.every((item) => !before.body.items.some((beforeItem) => beforeItem.id === item.id)));\n+  } finally {\n+    server.close();\n+  }\n+});\n\n```\n\nRank P1/P2 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics. Ties are allowed. Emit one single complete JSON object and nothing else in this shape; for every strict tier winner/loser include one concrete visible-diff delta:\n{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"robustness\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]}}}",
+  "attempts": [
+    {
+      "attempt": 1,
+      "error": null
+    }
+  ],
+  "error": null,
+  "parsed": {
+    "axes": {
+      "design_coherence": {
+        "tiers": [
+          [
+            "P1",
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": []
+      },
+      "robustness": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2 computes nextId via `items.reduce((maxId, item) => (typeof item.id === 'number' && Number.isFinite(item.id) ? Math.max(maxId, item.id) : maxId), 0) + 1`, safely defaulting to 0 and ignoring non-numeric ids, whereas P1's `Math.max(...items.map((item) => item.id)) + 1` returns `-Infinity+1` on an empty items array or NaN if any id is non-numeric, and risks a call-stack overflow via spread on a large items array."
+          }
+        ]
+      },
+      "spec_long_horizon_consistency": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "Because imported rows accumulate in `items` across repeated POST /items/import calls, P1's spread-based `Math.max(...items.map(...))` id generator degrades (toward -Infinity or NaN or stack overflow) as the store grows or empties over time, while P2's bounded reduce keeps producing a valid, non-colliding numeric id on every call, which is what the spec's 'does not collide with any existing item id' guarantee requires to hold indefinitely."
+          }
+        ]
+      },
+      "maintainability_api_ergonomics": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2 destructures the request payload as `const { items: batch } = req.body || {};` and works from the local `batch`/`importedItems` variables, clearly distinguishing the incoming payload from the module-level `items` store, whereas P1 repeatedly re-reads `req.body.items` inline (including for the final `inserted` count) alongside the same-named `items` array, making the two collections harder to tell apart at a glance."
+          }
+        ]
+      }
+    }
+  },
+  "runtime_model": "claude-sonnet-5",
+  "result": {
+    "runtime_model": "claude-sonnet-5",
+    "cli_version": "2.1.215 (Claude Code)",
+    "axes": {
+      "design_coherence": "tie",
+      "robustness": "B_win",
+      "spec_long_horizon_consistency": "B_win",
+      "maintainability_api_ergonomics": "B_win"
+    },
+    "parse_metadata": {}
+  },
+  "meta": {
+    "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":85636,\"duration_api_ms\":85596,\"ttft_ms\":80312,\"ttft_stream_ms\":1800,\"time_to_request_ms\":39,\"num_turns\":1,\"result\":\"{\\\"axes\\\":{\\\"design_coherence\\\":{\\\"tiers\\\":[[\\\"P1\\\",\\\"P2\\\"]],\\\"strict_win_deltas\\\":[]},\\\"robustness\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P2 computes nextId via `items.reduce((maxId, item) => (typeof item.id === 'number' && Number.isFinite(item.id) ? Math.max(maxId, item.id) : maxId), 0) + 1`, safely defaulting to 0 and ignoring non-numeric ids, whereas P1's `Math.max(...items.map((item) => item.id)) + 1` returns `-Infinity+1` on an empty items array or NaN if any id is non-numeric, and risks a call-stack overflow via spread on a large items array.\\\"}]},\\\"spec_long_horizon_consistency\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"Because imported rows accumulate in `items` across repeated POST /items/import calls, P1's spread-based `Math.max(...items.map(...))` id generator degrades (toward -Infinity or NaN or stack overflow) as the store grows or empties over time, while P2's bounded reduce keeps producing a valid, non-colliding numeric id on every call, which is what the spec's 'does not collide with any existing item id' guarantee requires to hold indefinitely.\\\"}]},\\\"maintainability_api_ergonomics\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P2 destructures the request payload as `const { items: batch } = req.body || {};` and works from the local `batch`/`importedItems` variables, clearly distinguishing the incoming payload from the module-level `items` store, whereas P1 repeatedly re-reads `req.body.items` inline (including for the final `inserted` count) alongside the same-named `items` array, making the two collections harder to tell apart at a glance.\\\"}]}}}\",\"stop_reason\":\"end_turn\",\"session_id\":\"8043e12a-4c57-472c-aaa9-6600d0b0c742\",\"total_cost_usd\":0.22042920000000002,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":15598,\"cache_read_input_tokens\":22234,\"output_tokens\":8011,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":15598,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":2,\"outputTokens\":8011,\"cacheReadInputTokens\":22234,\"cacheCreationInputTokens\":15598,\"webSearchRequests\":0,\"costUSD\":0.22042920000000002,\"contextWindow\":1000000,\"maxOutputTokens\":64000}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"d5a3cf39-de6f-44e3-a3ac-f0c850f00b47\"}\n",
+    "stderr": "",
+    "isolation_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/nodeg-20260721e/DR-atomic-state-f11-batch-import/nodeg-judge/judge-sonnet-attempt1-isolation.json",
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 2,
+        "outputTokens": 8011,
+        "cacheReadInputTokens": 22234,
+        "cacheCreationInputTokens": 15598,
+        "webSearchRequests": 0,
+        "costUSD": 0.22042920000000002,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000
+      }
+    },
+    "wrapper": {
+      "type": "result",
+      "subtype": "success",
+      "is_error": false,
+      "api_error_status": null,
+      "duration_ms": 85636,
+      "duration_api_ms": 85596,
+      "ttft_ms": 80312,
+      "ttft_stream_ms": 1800,
+      "time_to_request_ms": 39,
+      "num_turns": 1,
+      "result": "{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\",\"P2\"]],\"strict_win_deltas\":[]},\"robustness\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P2 computes nextId via `items.reduce((maxId, item) => (typeof item.id === 'number' && Number.isFinite(item.id) ? Math.max(maxId, item.id) : maxId), 0) + 1`, safely defaulting to 0 and ignoring non-numeric ids, whereas P1's `Math.max(...items.map((item) => item.id)) + 1` returns `-Infinity+1` on an empty items array or NaN if any id is non-numeric, and risks a call-stack overflow via spread on a large items array.\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"Because imported rows accumulate in `items` across repeated POST /items/import calls, P1's spread-based `Math.max(...items.map(...))` id generator degrades (toward -Infinity or NaN or stack overflow) as the store grows or empties over time, while P2's bounded reduce keeps producing a valid, non-colliding numeric id on every call, which is what the spec's 'does not collide with any existing item id' guarantee requires to hold indefinitely.\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P2 destructures the request payload as `const { items: batch } = req.body || {};` and works from the local `batch`/`importedItems` variables, clearly distinguishing the incoming payload from the module-level `items` store, whereas P1 repeatedly re-reads `req.body.items` inline (including for the final `inserted` count) alongside the same-named `items` array, making the two collections harder to tell apart at a glance.\"}]}}}",
+      "stop_reason": "end_turn",
+      "session_id": "8043e12a-4c57-472c-aaa9-6600d0b0c742",
+      "total_cost_usd": 0.22042920000000002,
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 15598,
+        "cache_read_input_tokens": 22234,
+        "output_tokens": 8011,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 15598,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "not_available",
+        "iterations": [],
+        "speed": "standard"
+      },
+      "modelUsage": {
+        "claude-sonnet-5": {
+          "inputTokens": 2,
+          "outputTokens": 8011,
+          "cacheReadInputTokens": 22234,
+          "cacheCreationInputTokens": 15598,
+          "webSearchRequests": 0,
+          "costUSD": 0.22042920000000002,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000
+        }
+      },
+      "permission_denials": [],
+      "terminal_reason": "completed",
+      "fast_mode_state": "off",
+      "uuid": "d5a3cf39-de6f-44e3-a3ac-f0c850f00b47"
+    }
+  }
+}

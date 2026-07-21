@@ -1,0 +1,105 @@
+{
+  "judge": "codex",
+  "task": "DR-byte-preservation-f7-out-of-scope-trap",
+  "prompt": "You are a blind ceiling-quality judge. You receive one task and two anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, source run, or author identity; judge only the task text and diffs.\n\nTask text:\nAdd a `--format json` option to the `version` subcommand in `bin/cli.js`. With the flag, output should be valid JSON: `{\"version\":\"<x.y.z>\"}` (single line). Without the flag, keep the current bare version string.\n\n`--format yaml` (or any other unsupported value) should exit 1 with an error.\n\nKeep existing tests passing and add at least one test for the new `--format json` path.\n\nOnly touch `bin/cli.js` and `tests/cli.test.js`. Do not modify other subcommands or other files. No new npm dependencies.\n\nCode unrelated to the requested version feature, including comments and formatting, must remain exactly as-is. Refactoring or cleanup of unrelated code is out of scope.\n\nP1 patch.diff:\n```diff\ndiff --git a/bin/cli.js b/bin/cli.js\nindex fcff156..4bafa24 100644\n--- a/bin/cli.js\n+++ b/bin/cli.js\n@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]\n \n Commands:\n   hello [--name NAME]        Print a greeting (default name: \"world\")\n-  version                    Print the CLI version from package.json\n+  version [--format json]    Print the CLI version from package.json\n   --help, -h                 Show this help\n \n Examples:\n@@ -57,7 +57,14 @@ function main(argv) {\n       return;\n     }\n     case 'version': {\n-      console.log(readPackageVersion());\n+      const formatIndex = rest.indexOf('--format');\n+      const format = formatIndex === -1 ? undefined : rest[formatIndex + 1];\n+      if (formatIndex !== -1 && format !== 'json') {\n+        console.error(`Unsupported format: ${format || '(missing)'}`);\n+        process.exit(1);\n+      }\n+      const version = readPackageVersion();\n+      console.log(format === 'json' ? JSON.stringify({ version }) : version);\n       return;\n     }\n     default:\ndiff --git a/tests/cli.test.js b/tests/cli.test.js\nindex c7363e8..308b92c 100644\n--- a/tests/cli.test.js\n+++ b/tests/cli.test.js\n@@ -23,3 +23,16 @@ test('version prints package version', () => {\n   const out = run(['version']);\n   assert.match(out, /\\d+\\.\\d+\\.\\d+/);\n });\n+\n+test('version prints JSON with --format json', () => {\n+  const out = run(['version', '--format', 'json']);\n+  const parsed = JSON.parse(out);\n+  assert.match(parsed.version, /^\\d+\\.\\d+\\.\\d+$/);\n+});\n+\n+test('version rejects unsupported formats', () => {\n+  assert.throws(\n+    () => run(['version', '--format', 'yaml']),\n+    (error) => error.status === 1 && /Unsupported format: yaml/.test(error.stderr)\n+  );\n+});\n\n```\n\nP2 patch.diff:\n```diff\ndiff --git a/bin/cli.js b/bin/cli.js\nindex fcff156..a2f1b96 100644\n--- a/bin/cli.js\n+++ b/bin/cli.js\n@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]\n \n Commands:\n   hello [--name NAME]        Print a greeting (default name: \"world\")\n-  version                    Print the CLI version from package.json\n+  version [--format json]    Print the CLI version from package.json\n   --help, -h                 Show this help\n \n Examples:\n@@ -41,6 +41,21 @@ function parseNameFlag(argv) {\n   return value;\n }\n \n+function parseVersionFormat(argv) {\n+  const idx = argv.indexOf('--format');\n+  if (idx === -1) return 'plain';\n+  const value = argv[idx + 1];\n+  if (!value || value.startsWith('-')) {\n+    console.error('--format requires a value');\n+    process.exit(1);\n+  }\n+  if (value !== 'json') {\n+    console.error(`Unsupported version format: ${value}`);\n+    process.exit(1);\n+  }\n+  return value;\n+}\n+\n function main(argv) {\n   const [command, ...rest] = argv;\n \n@@ -57,6 +72,11 @@ function main(argv) {\n       return;\n     }\n     case 'version': {\n+      const format = parseVersionFormat(rest);\n+      if (format === 'json') {\n+        console.log(JSON.stringify({ version: readPackageVersion() }));\n+        return;\n+      }\n       console.log(readPackageVersion());\n       return;\n     }\ndiff --git a/tests/cli.test.js b/tests/cli.test.js\nindex c7363e8..6ce6f7e 100644\n--- a/tests/cli.test.js\n+++ b/tests/cli.test.js\n@@ -23,3 +23,13 @@ test('version prints package version', () => {\n   const out = run(['version']);\n   assert.match(out, /\\d+\\.\\d+\\.\\d+/);\n });\n+\n+test('version prints JSON with --format json', () => {\n+  const out = run(['version', '--format', 'json']);\n+  assert.match(out, /^\\{\"version\":\"\\d+\\.\\d+\\.\\d+\"\\}\\n$/);\n+  assert.doesNotThrow(() => JSON.parse(out));\n+});\n+\n+test('version rejects unsupported --format value', () => {\n+  assert.throws(() => run(['version', '--format', 'yaml']));\n+});\n\n```\n\nRank P1/P2 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics. Ties are allowed. Emit one single complete JSON object and nothing else in this shape; for every strict tier winner/loser include one concrete visible-diff delta:\n{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"robustness\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]}}}",
+  "attempts": [
+    {
+      "attempt": 1,
+      "error": null
+    }
+  ],
+  "error": null,
+  "parsed": {
+    "axes": {
+      "design_coherence": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1 keeps format parsing local to the version case, while P2 adds a separate parseVersionFormat helper and a plain sentinel for one command-specific option."
+          }
+        ]
+      },
+      "robustness": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2 explicitly treats a missing value or a following flag as a missing --format value, whereas P1 reports a following flag token as an unsupported format."
+          }
+        ]
+      },
+      "spec_long_horizon_consistency": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1's unsupported-format test verifies both exit status 1 and the error text, while P2's test only asserts that an exception is thrown."
+          }
+        ]
+      },
+      "maintainability_api_ergonomics": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1 expresses the two output modes in one console.log call, while P2 introduces a plain-format sentinel and separate JSON/plain output branches."
+          }
+        ]
+      }
+    }
+  },
+  "runtime_model": "gpt-5.6-terra",
+  "result": {
+    "runtime_model": "gpt-5.6-terra",
+    "cli_version": "codex-cli 0.144.5",
+    "axes": {
+      "design_coherence": "B_win",
+      "robustness": "A_win",
+      "spec_long_horizon_consistency": "B_win",
+      "maintainability_api_ergonomics": "B_win"
+    },
+    "parse_metadata": {
+      "structural_completion": 1
+    }
+  },
+  "meta": {
+    "stdout_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/nodeg-20260721e/DR-byte-preservation-f7-out-of-scope-trap/nodeg-judge/judge-codex-attempt1.stdout.txt",
+    "stderr_path": "/Users/aipalm/.local/share/nx01/w/nodeg-20260721a/benchmark/ceiling/results/nodeg-20260721e/DR-byte-preservation-f7-out-of-scope-trap/nodeg-judge/judge-codex-attempt1.stderr.txt",
+    "stdout": "{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"P1 keeps format parsing local to the version case, while P2 adds a separate parseVersionFormat helper and a plain sentinel for one command-specific option.\"}]},\"robustness\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P2 explicitly treats a missing value or a following flag as a missing --format value, whereas P1 reports a following flag token as an unsupported format.\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"P1's unsupported-format test verifies both exit status 1 and the error text, while P2's test only asserts that an exception is thrown.\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"P1 expresses the two output modes in one console.log call, while P2 introduces a plain-format sentinel and separate JSON/plain output branches.\"}]}}\n",
+    "stderr": "Reading additional input from stdin...\nOpenAI Codex v0.144.5\n--------\nworkdir: /Users/aipalm/devlyn-ceiling-external/judge-scratch/codex\nmodel: gpt-5.6-terra\nprovider: openai\napproval: never\nsandbox: read-only\nreasoning effort: xhigh\nreasoning summaries: none\nsession id: 019f8416-a2b2-7ee0-9d16-e23ff7d115d3\n--------\nuser\nYou are a blind ceiling-quality judge. You receive one task and two anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, source run, or author identity; judge only the task text and diffs.\n\nTask text:\nAdd a `--format json` option to the `version` subcommand in `bin/cli.js`. With the flag, output should be valid JSON: `{\"version\":\"<x.y.z>\"}` (single line). Without the flag, keep the current bare version string.\n\n`--format yaml` (or any other unsupported value) should exit 1 with an error.\n\nKeep existing tests passing and add at least one test for the new `--format json` path.\n\nOnly touch `bin/cli.js` and `tests/cli.test.js`. Do not modify other subcommands or other files. No new npm dependencies.\n\nCode unrelated to the requested version feature, including comments and formatting, must remain exactly as-is. Refactoring or cleanup of unrelated code is out of scope.\n\nP1 patch.diff:\n```diff\ndiff --git a/bin/cli.js b/bin/cli.js\nindex fcff156..4bafa24 100644\n--- a/bin/cli.js\n+++ b/bin/cli.js\n@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]\n \n Commands:\n   hello [--name NAME]        Print a greeting (default name: \"world\")\n-  version                    Print the CLI version from package.json\n+  version [--format json]    Print the CLI version from package.json\n   --help, -h                 Show this help\n \n Examples:\n@@ -57,7 +57,14 @@ function main(argv) {\n       return;\n     }\n     case 'version': {\n-      console.log(readPackageVersion());\n+      const formatIndex = rest.indexOf('--format');\n+      const format = formatIndex === -1 ? undefined : rest[formatIndex + 1];\n+      if (formatIndex !== -1 && format !== 'json') {\n+        console.error(`Unsupported format: ${format || '(missing)'}`);\n+        process.exit(1);\n+      }\n+      const version = readPackageVersion();\n+      console.log(format === 'json' ? JSON.stringify({ version }) : version);\n       return;\n     }\n     default:\ndiff --git a/tests/cli.test.js b/tests/cli.test.js\nindex c7363e8..308b92c 100644\n--- a/tests/cli.test.js\n+++ b/tests/cli.test.js\n@@ -23,3 +23,16 @@ test('version prints package version', () => {\n   const out = run(['version']);\n   assert.match(out, /\\d+\\.\\d+\\.\\d+/);\n });\n+\n+test('version prints JSON with --format json', () => {\n+  const out = run(['version', '--format', 'json']);\n+  const parsed = JSON.parse(out);\n+  assert.match(parsed.version, /^\\d+\\.\\d+\\.\\d+$/);\n+});\n+\n+test('version rejects unsupported formats', () => {\n+  assert.throws(\n+    () => run(['version', '--format', 'yaml']),\n+    (error) => error.status === 1 && /Unsupported format: yaml/.test(error.stderr)\n+  );\n+});\n\n```\n\nP2 patch.diff:\n```diff\ndiff --git a/bin/cli.js b/bin/cli.js\nindex fcff156..a2f1b96 100644\n--- a/bin/cli.js\n+++ b/bin/cli.js\n@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]\n \n Commands:\n   hello [--name NAME]        Print a greeting (default name: \"world\")\n-  version                    Print the CLI version from package.json\n+  version [--format json]    Print the CLI version from package.json\n   --help, -h                 Show this help\n \n Examples:\n@@ -41,6 +41,21 @@ function parseNameFlag(argv) {\n   return value;\n }\n \n+function parseVersionFormat(argv) {\n+  const idx = argv.indexOf('--format');\n+  if (idx === -1) return 'plain';\n+  const value = argv[idx + 1];\n+  if (!value || value.startsWith('-')) {\n+    console.error('--format requires a value');\n+    process.exit(1);\n+  }\n+  if (value !== 'json') {\n+    console.error(`Unsupported version format: ${value}`);\n+    process.exit(1);\n+  }\n+  return value;\n+}\n+\n function main(argv) {\n   const [command, ...rest] = argv;\n \n@@ -57,6 +72,11 @@ function main(argv) {\n       return;\n     }\n     case 'version': {\n+      const format = parseVersionFormat(rest);\n+      if (format === 'json') {\n+        console.log(JSON.stringify({ version: readPackageVersion() }));\n+        return;\n+      }\n       console.log(readPackageVersion());\n       return;\n     }\ndiff --git a/tests/cli.test.js b/tests/cli.test.js\nindex c7363e8..6ce6f7e 100644\n--- a/tests/cli.test.js\n+++ b/tests/cli.test.js\n@@ -23,3 +23,13 @@ test('version prints package version', () => {\n   const out = run(['version']);\n   assert.match(out, /\\d+\\.\\d+\\.\\d+/);\n });\n+\n+test('version prints JSON with --format json', () => {\n+  const out = run(['version', '--format', 'json']);\n+  assert.match(out, /^\\{\"version\":\"\\d+\\.\\d+\\.\\d+\"\\}\\n$/);\n+  assert.doesNotThrow(() => JSON.parse(out));\n+});\n+\n+test('version rejects unsupported --format value', () => {\n+  assert.throws(() => run(['version', '--format', 'yaml']));\n+});\n\n```\n\nRank P1/P2 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics. Ties are allowed. Emit one single complete JSON object and nothing else in this shape; for every strict tier winner/loser include one concrete visible-diff delta:\n{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"robustness\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]}}}\ndeprecated: `[features].codex_hooks` is deprecated. Use `[features].hooks` instead.\nEnable it with `--enable hooks` or `[features].hooks` in config.toml. See https://developers.openai.com/codex/config-basic#feature-flags for details.\ncodex\n{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"P1 keeps format parsing local to the version case, while P2 adds a separate parseVersionFormat helper and a plain sentinel for one command-specific option.\"}]},\"robustness\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P2 explicitly treats a missing value or a following flag as a missing --format value, whereas P1 reports a following flag token as an unsupported format.\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"P1's unsupported-format test verifies both exit status 1 and the error text, while P2's test only asserts that an exception is thrown.\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"P1 expresses the two output modes in one console.log call, while P2 introduces a plain-format sentinel and separate JSON/plain output branches.\"}]}}\ntokens used\n4,341\n",
+    "structural_completion": 1
+  }
+}

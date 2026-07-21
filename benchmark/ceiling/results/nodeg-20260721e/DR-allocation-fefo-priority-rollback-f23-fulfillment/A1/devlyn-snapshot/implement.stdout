@@ -1,0 +1,8 @@
+Implemented `fulfill-wave` validation, allocation/rollback, output/error contracts, and two CLI tests in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/bin/cli.js:39) and [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/tests/cli.test.js:36).
+
+Verification:
+- `node --test tests/cli.test.js` — 5 passed.
+- `node bin/cli.js --help` — exits 0 and includes `fulfill-wave`.
+- `npm test` — blocked by sandbox: unchanged server tests fail binding a listener at `tests/server.test.js:9` with `EPERM`.
+
+BLOCKED:sandbox denies server socket binding, so required full `npm test` cannot exit 0.

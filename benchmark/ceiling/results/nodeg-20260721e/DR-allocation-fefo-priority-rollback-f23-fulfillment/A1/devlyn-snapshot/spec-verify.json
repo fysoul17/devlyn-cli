@@ -1,0 +1,15 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "exit_code": 0
+    },
+    {
+      "cmd": "node bin/cli.js --help",
+      "exit_code": 0,
+      "stdout_contains": [
+        "fulfill-wave"
+      ]
+    }
+  ]
+}

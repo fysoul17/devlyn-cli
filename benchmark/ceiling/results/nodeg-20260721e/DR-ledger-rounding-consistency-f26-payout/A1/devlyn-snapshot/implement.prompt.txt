@@ -1,0 +1,104 @@
+# Codex (OpenAI) adapter
+
+Your default is efficient, direct, task-oriented. The canonical body specifies the outcome and constraints; you choose the efficient path. Do not over-specify process steps when an outcome is clearly stated. Resolve the request in the fewest useful tool loops without sacrificing correctness. Validation is concrete commands and tools, not self-belief: run the listed verification commands and trust their output. Avoid absolute imperatives for judgment calls except true safety invariants and required output fields. Do not narrate internal deliberation; state results and decisions directly.
+
+---
+
+# PHASE 2 — IMPLEMENT (canonical body)
+
+<role>
+You execute the plan. Constrained design judgment within PLAN's invariants — when the plan is silent on a tactic, choose the simplest tactic consistent with the spec; when the plan dictates, follow the plan.
+</role>
+
+<output>
+- Code changes implementing every Requirement. Verify with `git diff`.
+- Tests added or updated for changed behavior. Run the full test suite before stopping: `node --test tests/`.
+- Report your verdict in your final reply: `PASS` on success; `BLOCKED` if a criterion cannot be satisfied (missing external dep, blocking ambiguity in the spec) — never silently leave something unimplemented without saying so.
+</output>
+
+<quality_bar>
+- Spec is the contract. The plan is the path. If they disagree, surface the conflict and follow the spec.
+- Features: follow existing patterns, then write tests.
+- Verification commands are literal. Before declaring done, re-read the acceptance restatement below and run every command exactly as listed; compare output character-for-character.
+- Existing tests are contract. Do not replace real filesystem/subprocess calls with mocks. Do not skip or disable tests. Do not reduce assertion count on behavior still in scope.
+- Files not in the authorized surface below are off-limits. If you discover an out-of-scope file genuinely needs to change, stop and report it instead of silently expanding scope.
+</quality_bar>
+
+<runtime_principles>
+- Subtractive-first: every accretion-shaped change should be the minimum needed. Net-deletion is the default elsewhere in the repo; this task is a net-new command, which is the cited, explicit user requirement (see goal below) — implement only what it specifies, nothing extra.
+- Goal-locked: implement only the listed Requirements. Adjacent code that "looks fixable" is drift unless the plan listed it. Do not touch `server/` or `web/`. Do not add dependencies.
+- No-workaround: no silent `catch`, no hardcoded rule values (must read `data/payout-rules.json` at runtime), no helper scripts that bypass root cause. `JSON.parse`/`fs.readFileSync` failures must surface as the specified JSON error contract, never a silent catch or an uncaught stack trace.
+- Evidence: every claim should cite file:line you opened.
+</runtime_principles>
+
+Before declaring the phase complete: (1) re-read every Requirement below and confirm your diff satisfies it, (2) run `node --test tests/` and confirm it exits 0, (3) run the three risk-probe commands below (`sh .devlyn/probes/P1.sh`, `sh .devlyn/probes/P2.sh`, `sh .devlyn/probes/P3.sh`) and confirm each prints its `PASS:` line — these are concrete acceptance obligations derived from the visible verification contract, not optional extras.
+
+---
+
+## Task: original user goal (verbatim)
+
+Add a bench-cli payout command that reads ledger events from a JSON file, applies idempotent event handling and payout rules from data/payout-rules.json, and prints exact merchant payout totals with processing fees, dispute fees, reserves, and payouts in integer cents.
+
+The command should be `bench-cli payout --input <path>`. Input JSON is `{ "events": [{ "id": string, "merchant_id": string, "type": "charge" | "refund" | "dispute", "amount_cents": number }] }`. Use `data/payout-rules.json` for processing fee percent, fixed fee, dispute fee, reserve percent, and minimum payout threshold; changing those rules must change the result without a code change. Do not hardcode their values.
+
+Events with the same `id` and identical JSON content are idempotent and applied only once. The same `id` with different JSON content is a conflicting duplicate and must fail before printing totals with exit `2`, no stdout, and the exact stderr object `{ "error": "conflicting_duplicate", "id": string }`. Merchant rows are ordered by first-seen merchant after identical duplicates are removed.
+
+For each merchant, a `charge` increases `gross_charge_cents` and adds `Math.round(amount_cents * processing_fee_percent / 100) + fixed_fee_cents` to `processing_fee_cents`. A `refund` increases `refund_cents` and does not reverse processing fees. Each `dispute` increases `dispute_cents` and adds one configured `dispute_fee_cents`. Then compute `net_before_reserve = gross_charge_cents - refund_cents - dispute_cents - processing_fee_cents - dispute_fee_cents`; `reserve_cents` is `Math.round(net_before_reserve * reserve_percent / 100)` when that net is positive and `0` otherwise, and `payout_cents = net_before_reserve - reserve_cents`. If `0 < payout_cents < minimum_payout_cents`, keep the merchant row, add that original positive payout amount to `reserve_cents`, and set `payout_cents` to `0`.
+
+Successful stdout must be exactly one JSON object whose only keys are `total_payout_cents`, `total_processing_fee_cents`, `total_dispute_fee_cents`, `total_reserve_cents`, and `merchants`, with no stderr. Each merchant row has exactly `merchant_id`, `gross_charge_cents`, `refund_cents`, `dispute_cents`, `processing_fee_cents`, `dispute_fee_cents`, `reserve_cents`, and `payout_cents`. Each top-level total is the sum of its corresponding final merchant field, and every public amount is integer cents.
+
+An unknown event type, missing `merchant_id`, missing `id`, non-positive or non-integer `amount_cents`, missing `events`, invalid JSON, or unreadable input must exit `2`, write exactly one JSON error object to stderr, and write nothing to stdout.
+
+Update `tests/cli.test.js` so existing tests still pass and at least two new tests cover the payout command, including one successful payout and one validation failure. Parsing and file-read failures must surface as JSON errors rather than silent catches. Do not add dependencies. Only touch `bin/cli.js` and `tests/cli.test.js`; do not touch server or web files.
+
+## Plan (authoritative — files to touch, risks, ambiguity resolutions)
+
+<!-- devlyn:authorized-surface -->
+## Files to touch
+
+- `bin/cli.js` — edit — add a `payout` case to the existing `switch (command)` (bin/cli.js:46-60) that: parses `--input <path>` the same way `parseNameFlag` parses `--name` (bin/cli.js:27-36); reads and `JSON.parse`s the events file and `data/payout-rules.json` at runtime via `fs`/`path` (Requirement 1 — rule values must never be hardcoded); runs a pre-pass over `events` to dedupe by `id` and detect conflicting duplicates, aborting with exit `2` / stderr-only JSON before any accumulation (Requirement 2); performs the per-merchant integer-cents accumulation exactly as specified (Requirement 3); and either writes the single stdout JSON object (Requirement 4) or, on any validation failure, writes exactly one JSON error object to stderr and exits `2` with nothing on stdout (Requirement 5).
+- `tests/cli.test.js` — edit — add `node:test` cases (same `run()`/`execFileSync` harness as tests/cli.test.js:8-10) covering: a successful multi-merchant payout with known-good math against the current `data/payout-rules.json` values (Requirement 3–4); idempotent dedup of a byte-identical duplicate `id` (Requirement 2); a conflicting duplicate `id` aborting with exit `2`, empty stdout, and the exact `{"error":"conflicting_duplicate","id":...}` stderr shape (Requirement 2); and one case per validation failure in Requirement 5 (unknown `type`, missing `merchant_id`, missing `id`, non-positive/non-integer `amount_cents`, missing `events`, invalid input JSON, unreadable input file) each asserting exit `2` and empty stdout. The existing `hello default`, `hello with --name`, and `version prints package version` tests (tests/cli.test.js:12-25) are left byte-for-byte unmodified.
+
+```json
+{"authorized_surface": ["bin/cli.js", "tests/cli.test.js"]}
+```
+
+## Risks
+
+**Out-of-scope expansions to refuse:**
+- Touching anything under `server/` or `web/`.
+- Adding any npm dependency.
+- Adding new commands, flags, currency formatting, persistence, or network calls.
+- Refactoring `hello`/`version`/`--help` or the `switch` structure "while here" — only a new `case 'payout'` arm is authorized.
+
+**Ambiguous spec sections — resolved, follow these interpretations:**
+- "byte-identical JSON content" for dedup: use `JSON.stringify(event)` equality between the first-seen occurrence and any later occurrence of the same `id`.
+- Validation ordering: a full validate-then-dedupe pass over every event (structural checks: `id`, `merchant_id`, known `type`, integer positive `amount_cents`) must complete — and any failure reported — strictly before any accumulation or stdout write begins. No JSON is ever partially written to stdout on a later-discovered error.
+- Missing/absent `--input` flag: treat the same as "unreadable input file" — exit `2` with the appropriate JSON error on stderr (do not fall back to the generic `process.exit(1)` + usage-text pattern used by `hello`'s `--name` flag).
+- Merchant row ordering: "first-seen event" is evaluated post-dedup — a merchant's row position reflects its first surviving (non-duplicate) event in array iteration order.
+
+**Known failure modes to guard against:**
+- `JSON.parse`/`fs.readFileSync` throwing must be caught and converted to the exit-2 JSON stderr contract, never left as an uncaught exception/stack trace.
+- Floating-point: the spec's formulas already specify `Math.round(...)` at each step; implement exactly that arithmetic in the order given.
+- Naming collision: the rules file's `dispute_fee_cents` (flat per-dispute-event fee from `data/payout-rules.json`) and each merchant row's `dispute_fee_cents` output field (accumulated total) are distinct values with the same key name — keep them as clearly distinct bindings (e.g. `rules.dispute_fee_cents` vs. `merchant.dispute_fee_cents`).
+- The `payout_cents < minimum_payout_cents` fold-into-reserve step only applies when `0 < payout_cents`; a `payout_cents` that is already `<= 0` must be left untouched.
+
+## Acceptance restatement (verbatim from generated criteria's ## Verification section)
+
+- Idempotent replay: events with the same `id` and identical JSON content are applied only once; the same `id` with different JSON content is a conflicting duplicate.
+- Conflicting duplicate contract: a conflicting duplicate `id` must fail before printing totals with exit `2`, no stdout, and the exact stderr object `{ "error": "conflicting_duplicate", "id": string }`.
+- All-or-nothing output on any validation failure (unknown event type, missing `merchant_id`, missing `id`, non-positive or non-integer `amount_cents`, missing `events`, invalid JSON, or unreadable input) — even when other events in the same file are individually valid: exit `2`, exactly one JSON error object on stderr, and nothing on stdout; no merchant totals may be partially printed.
+- Successful stdout must be exactly one JSON object whose only keys are `total_payout_cents`, `total_processing_fee_cents`, `total_dispute_fee_cents`, `total_reserve_cents`, and `merchants`, with no stderr output.
+- Each merchant row has exactly `merchant_id`, `gross_charge_cents`, `refund_cents`, `dispute_cents`, `processing_fee_cents`, `dispute_fee_cents`, `reserve_cents`, and `payout_cents` — no unexpected keys, no missing keys.
+- Every public amount is integer cents, and each top-level total is the sum of its corresponding final merchant field.
+- Changing `data/payout-rules.json` values (processing fee percent, fixed fee, dispute fee, reserve percent, minimum payout threshold) must change the result without a code change.
+
+Verification command: `node --test tests/` must exit 0.
+
+## Concrete acceptance obligations (risk probes — run these before declaring done)
+
+- `sh .devlyn/probes/P1.sh` — idempotent replay (identical duplicate applied once) + conflicting duplicate (exit 2, empty stdout, exact `{"error":"conflicting_duplicate","id":...}` stderr).
+- `sh .devlyn/probes/P2.sh` — all-or-nothing on mixed valid/invalid batches (unknown type, missing merchant_id), plus a control success batch.
+- `sh .devlyn/probes/P3.sh` — exact stdout/error JSON shape contract (no extra/missing keys, integer amounts, totals equal sum of merchant fields).
+
+Each script exits 0 and prints a line starting `PASS:` when every assertion holds; read the script source under `.devlyn/probes/` if you need to see the exact fixtures/assertions.

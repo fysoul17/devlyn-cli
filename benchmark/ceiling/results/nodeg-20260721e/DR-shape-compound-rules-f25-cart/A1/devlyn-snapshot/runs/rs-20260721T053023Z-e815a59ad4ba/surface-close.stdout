@@ -1,0 +1,6 @@
+Audited the frozen patch against `bin/cli.js`, `tests/cli.test.js`, `data/catalog.json`, and `package.json`. Verified the pricing math by hand (TEE buy-2-get-1-free: floor(3/3)×1×2500=2500; BAG per-unit discount: 500×2=1000; coupon 10%×10400=1040; tax round(10400×0.0825)=858; shipping waived at 9360≥9000; total 10218) — all match the test's expected values exactly. USAGE string already reflects the new `cart` command with no stale documentation. The goal's own test-coverage instruction ("at least two new tests... including one successful cart and one validation failure") is met literally by the two added tests; no other success/failure path is independently specified as requiring its own test.
+
+UVR-STALE: N/A bin/cli.js:8 — USAGE block already documents `cart --input PATH` with matching example; no authorized text describes a stale pre-cart interface.
+PATH-TEST: N/A tests/cli.test.js:41 — Goal explicitly caps the requirement at "one successful cart and one validation failure" test; both exist and match the goal's math/error-shape spec exactly, so no unspecified path is left uncovered.
+
+PASS

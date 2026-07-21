@@ -1,0 +1,645 @@
+[codex-monitored] start: ts=2026-07-21T09:42:08Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=97885
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f840d-e270-7713-9808-df28090fc87b
+--------
+user
+# Codex (OpenAI) adapter
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+
+Your default is efficient, direct, task-oriented. Do not over-specify process steps when an outcome is clearly stated.
+
+## Validation pattern
+
+Validation is concrete commands and tools, not self-belief. Run test runners before declaring success when you make any change.
+
+## Anti-patterns
+
+1. Avoid absolute imperatives for judgment calls.
+2. Don't over-specify process when the destination is clear.
+3. Stop rules are explicit.
+
+Do not narrate internal deliberation. State results and decisions directly.
+
+---
+
+# PHASE 4 — CLEANUP (canonical body)
+
+Task-scoped pass — only what this diff introduced or invalidated.
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn.
+</role>
+
+<input>
+- Cumulative diff since base commit `4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8` (this includes both the IMPLEMENT commit and the SURFACE_CLOSE docstring-fix commit).
+- Spec: `.devlyn/criteria.generated.md`.
+- Pre-cleanup HEAD: `0e5796fcd30189399d14c5109084a1b2a9a5c165` — your post-cleanup diff against this SHA must stay within the allowlist below.
+</input>
+
+<allowlist>
+You may modify or delete:
+
+1. **Tooling artifacts** the spec did not list as deliverables: `test-results/`, `playwright-report/`, `.last-run.json`, coverage HTML output, build artifacts, runtime caches (`__pycache__/`, `*.pyc`, `.cache/`).
+2. **Dead code added by this diff** — symbols (functions, classes, types, exports) introduced by this diff that no other code added by this diff references AND that are not part of the spec's required surface. Pre-existing dead code is out of scope.
+3. **Doc references this diff invalidated** — links / file paths / symbol names in markdown files that this diff renamed or removed. Update only the references; do not rewrite surrounding prose.
+4. **Inline comments** that explain code this diff deleted but the comment still mentions.
+
+Files outside this allowlist must not change. Pre-existing tooling leaks (already in main before this run) belong to a future cleanup, not this one.
+</allowlist>
+
+<output>
+- Code changes within the allowlist.
+- Report your verdict in this reply: `PASS` if changes within allowlist (or no changes needed); `FAIL` if you cannot complete within the allowlist.
+</output>
+
+<quality_bar>
+- Subtractive-first applies most strongly here. Lines removed should outnumber lines added unless documentation needs a small additive update for a renamed symbol.
+- Do not "improve" code outside the allowlist, even if it looks fixable. The allowlist is the contract.
+- If an artifact / dead symbol / stale doc reference straddles the allowlist, surface it as a finding into `.devlyn/cleanup.findings.jsonl` rather than guessing.
+</quality_bar>
+
+<runtime_principles>
+Cleanup is the smallest reversible step toward "what shipped equals what the spec licensed." Do not touch files outside the allowlist.
+</runtime_principles>
+
+---
+
+The task is:
+
+Review `git diff 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8 HEAD` in the repo root (`/Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo`) — the run-budget feature (`Job.max_runs(n)`) added to `schedule/__init__.py` plus its tests in `test_schedule.py`, followed by one docstring fix in `schedule/__init__.py`. Check for:
+
+- Any new symbol this diff added that ended up unused (dead code): the diff added `Job.run_limit`, `Job.run_count`, `Job.max_runs()`, and `Job._is_run_budget_exhausted()` — verify each is actually referenced/used (they should all be live; this is a check, not an assumption).
+- Any tooling artifacts left behind by running the test suite (`python3 -m unittest test_schedule.py -v`) — e.g. `__pycache__/`, `.pytest_cache/`, coverage files. Check `git status --porcelain` and untracked-file listings.
+- Any doc reference (in `.rst`/`.md` files) that this diff's changes would have invalidated — this diff did not rename or remove any existing symbol, so this is very unlikely, but check `docs/reference.rst` and `HISTORY.rst`/`docs/changelog.rst` for anything now-stale.
+
+If nothing in the allowlist needs changing, make no changes and report `PASS`. Do not touch files outside `schedule/__init__.py` / `test_schedule.py` / the narrow allowlist categories above — no unrelated cleanup, no refactors, no "while I'm here" changes.
+codex
+I’ll inspect the cumulative diff, symbol call sites, working-tree artifacts, and the specified documentation references. I’ll only remove an artifact or adjust a directly invalidated reference if the evidence warrants it.
+codex
+Prediction: every new run-budget symbol has at least one required call site, the working tree contains no newly generated artifacts, and the named documentation files have no references invalidated by this additive API change.
+exec
+/bin/zsh -lc "sed -n '1,240p' .devlyn/criteria.generated.md" in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+# Generated criteria — run-budget feature for `schedule`
+
+Source: free-form goal (`.devlyn/goal.raw.txt`). Complexity: medium.
+
+## Requirements
+
+- [ ] `Job.max_runs(n)` is a chainable setter (returns the `Job` instance, matching the existing pattern of `tag()`, `to()`, `until()`) and is usable at any point in the fluent chain before `.do()`, e.g. `schedule.every(5).seconds.max_runs(3).do(job_fn)` and `schedule.every().max_runs(3).seconds.do(job_fn)`.
+- [ ] The budget counts actual executions of the job function (not scheduler ticks). After the job has executed `n` times in total, the job removes itself from its scheduler exactly as a job returning `CancelJob` from `Job.run()` does today (see `Scheduler._run_job`). The nth execution itself still runs normally; an (n+1)th execution must never happen.
+- [ ] Applies to every execution path that runs jobs through the scheduler: `Scheduler.run_pending()` and `Scheduler.run_all()` (both funnel through `Scheduler._run_job` → `Job.run()`).
+- [ ] Interaction with `.until(deadline)`: whichever limit (run-count budget or `cancel_after` deadline) is reached first cancels the job — first-limit-wins. Existing `.until()` / `cancel_after` / `_is_overdue` semantics must not regress (see `test_until_time` in `test_schedule.py`).
+- [ ] After a job exhausts its budget, `Scheduler.next_run` / `Scheduler.idle_seconds` must reflect its removal (falls out naturally once the job is removed from `Scheduler.jobs`, same as the existing `.until()` cancellation path).
+- [ ] Validation: `n` must be an integer `>= 1`; any other value raises `ValueError` (builtin, not `ScheduleValueError`) at `.max_runs(...)` call time — this is an explicit, literal requirement from the goal text and intentionally diverges from this codebase's usual `ScheduleValueError` convention for setter validation.
+- [ ] Calling `.max_runs()` more than once on the same job: the last call wins (overwrites the stored budget, does not accumulate).
+- [ ] Budgets are per-job: multiple jobs with different budgets must not interfere with each other (per-instance state, no shared counters).
+- [ ] `Job.max_runs` gets a docstring consistent with sibling methods (`tag()`, `to()`, `until()`); `docs/reference.rst` autodocs `schedule.Job` with `:members:`, so no manual doc-page edit is required beyond the docstring itself.
+
+## Constraints
+
+- Match existing chainable-setter style in `schedule/__init__.py` (`Job.tag`, `Job.to`, `Job.until`): validate eagerly in the setter, store state on `self`, `return self`.
+- Integrate with the existing cancellation flow in `Job.run()` / `Job._is_overdue()` rather than adding parallel scheduler-side bookkeeping — `Scheduler._run_job` already unschedules a job whenever `Job.run()` returns `CancelJob`.
+- Do not change `.until()`'s own validation, string-parsing, or timezone behavior.
+- Keep the new attribute(s) initialized in `Job.__init__` so per-job state is isolated (mirrors `self.cancel_after`, `self.tags`, etc.).
+
+## Out of Scope
+
+- Persisting run counts across process restarts.
+- Changing `.until()` semantics beyond what first-limit-wins interaction requires.
+- Any change to `repeat()` beyond what already works because `Job.max_runs()` is chainable and returns the `Job` passed into `repeat()`.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "python3 -m unittest test_schedule.py -v", "expect_exit_code": 0 }
+  ]
+}
+```
+
+exec
+/bin/zsh -lc 'git diff --name-status 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8 HEAD' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+M	schedule/__init__.py
+M	test_schedule.py
+
+exec
+/bin/zsh -lc 'git status --short' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+exec
+/bin/zsh -lc 'git diff --stat 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8 HEAD -- schedule/__init__.py test_schedule.py' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+ schedule/__init__.py |  26 +++++++++++-
+ test_schedule.py     | 110 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 134 insertions(+), 2 deletions(-)
+
+[codex-monitored] heartbeat: elapsed=30s
+codex
+The baseline diff is limited to the implementation and tests (134 additions, 2 deletions). The untracked entries are harness/project files (`.claude/`, `.devlyn/`, `AGENTS.md`, `CLAUDE.md`), not evidence of test output; I’m now checking ignored artifacts and the exact references.
+exec
+/bin/zsh -lc "find . -path ./.git -prune -o \\( -type d \\( -name __pycache__ -o -name .pytest_cache -o -name .cache -o -name test-results -o -name playwright-report -o -name htmlcov \\) -print \\) -o \\( -type f \\( -name '*.pyc' -o -name '.last-run.json' -o -name '.coverage' -o -name '.coverage.*' \\) -print \\)" in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+exec
+/bin/zsh -lc 'git ls-files --others --exclude-standard' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+exec
+/bin/zsh -lc 'git status --ignored --short' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+.claude/skills/_shared/adapters/README.md
+.claude/skills/_shared/adapters/claude.md
+.claude/skills/_shared/adapters/codex.md
+.claude/skills/_shared/adapters/omp.md
+.claude/skills/_shared/archive_run.py
+.claude/skills/_shared/codex-config.md
+.claude/skills/_shared/codex-monitored.sh
+.claude/skills/_shared/collect-codex-findings.py
+.claude/skills/_shared/engine-doctor.sh
+.claude/skills/_shared/engine-preflight.md
+.claude/skills/_shared/expected.schema.json
+.claude/skills/_shared/finish-gate.py
+.claude/skills/_shared/pair-plan-schema.md
+.claude/skills/_shared/run-bounded.py
+.claude/skills/_shared/runtime-principles.md
+.claude/skills/_shared/spec-verify-check.py
+.claude/skills/_shared/state-phase-write.py
+.claude/skills/_shared/verify-merge-findings.py
+.claude/skills/code-health-standards/SKILL.md
+.claude/skills/code-review-standards/SKILL.md
+.claude/skills/devlyn:design-ui/SKILL.md
+.claude/skills/devlyn:engines/SKILL.md
+.claude/skills/devlyn:ideate/SKILL.md
+.claude/skills/devlyn:ideate/references/elicitation.md
+.claude/skills/devlyn:ideate/references/from-spec-mode.md
+.claude/skills/devlyn:ideate/references/project-mode.md
+.claude/skills/devlyn:ideate/references/spec-template.md
+.claude/skills/devlyn:ideate/references/templates/decision.md
+.claude/skills/devlyn:ideate/references/templates/roadmap.md
+.claude/skills/devlyn:ideate/references/templates/vision.md
+.claude/skills/devlyn:queue/SKILL.md
+.claude/skills/devlyn:resolve/SKILL.md
+.claude/skills/devlyn:resolve/references/free-form-mode.md
+.claude/skills/devlyn:resolve/references/phases/build-gate.md
+.claude/skills/devlyn:resolve/references/phases/cleanup.md
+.claude/skills/devlyn:resolve/references/phases/implement.md
+.claude/skills/devlyn:resolve/references/phases/plan.md
+.claude/skills/devlyn:resolve/references/phases/probe-derive.md
+.claude/skills/devlyn:resolve/references/phases/surface-close.md
+.claude/skills/devlyn:resolve/references/phases/verify.md
+.claude/skills/devlyn:resolve/references/state-schema.md
+.claude/skills/root-cause-analysis/SKILL.md
+.claude/skills/ui-implementation-standards/SKILL.md
+.devlyn/build_gate.findings.jsonl
+.devlyn/build_gate.log.md
+.devlyn/cleanup.prompt.txt
+.devlyn/cleanup.stderr
+.devlyn/cleanup.stdout
+.devlyn/criteria.generated.md
+.devlyn/engines.json
+.devlyn/goal.raw.txt
+.devlyn/goal.txt
+.devlyn/implement.prompt.txt
+.devlyn/implement.stderr
+.devlyn/implement.stdout
+.devlyn/pipeline.state.json
+.devlyn/plan.md
+.devlyn/spec-verify-findings.jsonl
+.devlyn/spec-verify.json
+.devlyn/spec-verify.results.json
+.devlyn/surface-close.input.patch
+.devlyn/surface-close.output.json
+.devlyn/surface-close.output.stderr
+.devlyn/surface-close.prompt
+.devlyn/surface-close.stdout
+.devlyn/surface-close.worker-session.0.jsonl
+.devlyn/untracked.baseline
+AGENTS.md
+CLAUDE.md
+
+exec
+/bin/zsh -lc 'git diff --find-renames --find-copies 4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8 HEAD -- schedule/__init__.py test_schedule.py' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 8e12eeb..226a8b2 100644
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -251,6 +251,10 @@ class Job:
+         # optional time of final run
+         self.cancel_after: Optional[datetime.datetime] = None
+ 
++        # optional number of times this job can run
++        self.run_limit: Optional[int] = None
++        self.run_count: int = 0
++
+         self.tags: Set[Hashable] = set()  # unique set of tags for the job
+         self.scheduler: Optional[Scheduler] = scheduler  # scheduler to register with
+ 
+@@ -641,6 +645,18 @@ class Job:
+             )
+         return self
+ 
++    def max_runs(self, n: int):
++        """
++        Schedule job to run at most ``n`` times.
++
++        :param n: Maximum number of times the job can run.
++        :return: The invoked job instance
++        """
++        if not isinstance(n, int) or n < 1:
++            raise ValueError("max_runs() requires an integer greater than or equal to 1")
++        self.run_limit = n
++        return self
++
+     def do(self, job_func: Callable, *args, **kwargs):
+         """
+         Specifies the job_func that should be called every time the
+@@ -678,9 +694,11 @@ class Job:
+         run and CancelJob is returned immediately. If the next scheduled run exceeds
+         the job's deadline, CancelJob is returned after the execution. In this latter
+         case CancelJob takes priority over any other returned value.
++        If the job's run budget is exhausted (configured using .max_runs()),
++        CancelJob is returned after the execution.
+ 
+         :return: The return value returned by the `job_func`, or CancelJob if the job's
+-                 deadline is reached.
++                 deadline is reached or its run budget is exhausted.
+ 
+         """
+         if self._is_overdue(datetime.datetime.now()):
+@@ -689,10 +707,11 @@ class Job:
+ 
+         logger.debug("Running job %s", self)
+         ret = self.job_func()
++        self.run_count += 1
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
+ 
+-        if self._is_overdue(self.next_run):
++        if self._is_overdue(self.next_run) or self._is_run_budget_exhausted():
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
+         return ret
+@@ -819,6 +838,9 @@ class Job:
+     def _is_overdue(self, when: datetime.datetime):
+         return self.cancel_after is not None and when > self.cancel_after
+ 
++    def _is_run_budget_exhausted(self):
++        return self.run_limit is not None and self.run_count >= self.run_limit
++
+     def _decode_datetimestr(
+         self, datetime_str: str, formats: List[str]
+     ) -> Optional[datetime.datetime]:
+diff --git a/test_schedule.py b/test_schedule.py
+index f497826..61db0a8 100644
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -1522,6 +1522,116 @@ class SchedulerTests(TestCase):
+         schedule.cancel_job(mj)
+         assert len(schedule.jobs) == 0
+ 
++    def test_max_runs_is_chainable_before_do(self):
++        mock_job = make_mock_job()
++
++        first = every(5).seconds
++        assert first.max_runs(3) is first
++        first = first.do(mock_job)
++        second = every().max_runs(2).seconds.do(mock_job)
++
++        assert first.run_limit == 3
++        assert second.run_limit == 2
++
++    def test_max_runs_validates_its_argument(self):
++        for value in (0, -1, 1.5, "1", None):
++            with self.assertRaises(ValueError) as context:
++                every().max_runs(value)
++            assert type(context.exception) is ValueError
++
++    def test_max_runs_cancels_after_budgeted_run_all_executions(self):
++        mock_job = make_mock_job()
++        job = every().second.max_runs(3).do(mock_job)
++
++        schedule.run_all()
++        schedule.run_all()
++        assert mock_job.call_count == 2
++        assert job in schedule.jobs
++
++        schedule.run_all()
++        assert mock_job.call_count == 3
++        assert job not in schedule.jobs
++
++        schedule.run_all()
++        assert mock_job.call_count == 3
++
++    def test_max_runs_cancels_after_budgeted_run_pending_executions(self):
++        mock_job = make_mock_job()
++        with mock_datetime(2020, 1, 1, 11, 35, 10):
++            job = every().second.max_runs(2).do(mock_job)
++            with mock_datetime(2020, 1, 1, 11, 35, 11):
++                schedule.run_pending()
++            with mock_datetime(2020, 1, 1, 11, 35, 12):
++                schedule.run_pending()
++            with mock_datetime(2020, 1, 1, 11, 35, 13):
++                schedule.run_pending()
++
++        assert mock_job.call_count == 2
++        assert job not in schedule.jobs
++
++    def test_max_runs_last_call_wins(self):
++        mock_job = make_mock_job()
++        job = every().second.max_runs(1).max_runs(2).do(mock_job)
++
++        schedule.run_all()
++        assert job in schedule.jobs
++        schedule.run_all()
++
++        assert mock_job.call_count == 2
++        assert job not in schedule.jobs
++
++    def test_max_runs_and_until_cancel_at_the_first_limit(self):
++        mock_job = make_mock_job()
++        with mock_datetime(2020, 1, 1, 11, 35, 10):
++            budget_first = (
++                every().second.max_runs(1).until(datetime.time(11, 35, 20)).do(mock_job)
++            )
++            schedule.run_all()
++
++        assert mock_job.call_count == 1
++        assert budget_first not in schedule.jobs
++
++        schedule.clear()
++        mock_job.reset_mock()
++        with mock_datetime(2020, 1, 1, 11, 35, 10):
++            deadline_first = (
++                every().second.max_runs(3).until(datetime.time(11, 35, 11)).do(mock_job)
++            )
++            schedule.run_all()
++            assert deadline_first in schedule.jobs
++            with mock_datetime(2020, 1, 1, 11, 35, 11):
++                schedule.run_all()
++
++        assert mock_job.call_count == 2
++        assert deadline_first not in schedule.jobs
++
++    def test_max_runs_budgets_are_per_job(self):
++        first_mock_job = make_mock_job("first")
++        second_mock_job = make_mock_job("second")
++        first = every().second.max_runs(1).do(first_mock_job)
++        second = every().second.max_runs(2).do(second_mock_job)
++
++        schedule.run_all()
++        assert first_mock_job.call_count == 1
++        assert second_mock_job.call_count == 1
++        assert first not in schedule.jobs
++        assert second in schedule.jobs
++
++        schedule.run_all()
++        assert second_mock_job.call_count == 2
++        assert second not in schedule.jobs
++
++    def test_max_runs_removal_updates_next_run_and_idle_seconds(self):
++        mock_job = make_mock_job()
++        with mock_datetime(2020, 12, 9, 21, 46):
++            every().hour.max_runs(1).do(mock_job)
++            assert schedule.next_run() == datetime.datetime(2020, 12, 9, 22, 46)
++            assert schedule.idle_seconds() == 60 * 60
++
++            schedule.run_all()
++            assert schedule.next_run() is None
++            assert schedule.idle_seconds() is None
++
+     def test_cancel_jobs(self):
+         def stop_job():
+             return schedule.CancelJob
+
+exec
+/bin/zsh -lc "rg -n -C 2 '\\b(run_limit|run_count|max_runs|_is_run_budget_exhausted)\\b' schedule/__init__.py test_schedule.py" in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+exec
+/bin/zsh -lc "rg -n -i -C 1 'schedule\\.Job|Job\\.(max_runs|run_limit|run_count|_is_run_budget_exhausted)|max_runs|run_limit|run_count|_is_run_budget_exhausted' docs/reference.rst HISTORY.rst docs/changelog.rst" in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+HISTORY.rst-166-- API change: renamed ``schedule.clear_all_jobs()`` to ``schedule.clear()``
+HISTORY.rst:167:- Added ``schedule.jobs``
+HISTORY.rst-168-
+--
+docs/reference.rst-30-
+docs/reference.rst:31:.. autoclass:: schedule.Job
+docs/reference.rst-32-   :members:
+
+ succeeded in 0ms:
+test_schedule.py-1527-
+test_schedule.py-1528-        first = every(5).seconds
+test_schedule.py:1529:        assert first.max_runs(3) is first
+test_schedule.py-1530-        first = first.do(mock_job)
+test_schedule.py:1531:        second = every().max_runs(2).seconds.do(mock_job)
+test_schedule.py-1532-
+test_schedule.py:1533:        assert first.run_limit == 3
+test_schedule.py:1534:        assert second.run_limit == 2
+test_schedule.py-1535-
+test_schedule.py-1536-    def test_max_runs_validates_its_argument(self):
+test_schedule.py-1537-        for value in (0, -1, 1.5, "1", None):
+test_schedule.py-1538-            with self.assertRaises(ValueError) as context:
+test_schedule.py:1539:                every().max_runs(value)
+test_schedule.py-1540-            assert type(context.exception) is ValueError
+test_schedule.py-1541-
+test_schedule.py-1542-    def test_max_runs_cancels_after_budgeted_run_all_executions(self):
+test_schedule.py-1543-        mock_job = make_mock_job()
+test_schedule.py:1544:        job = every().second.max_runs(3).do(mock_job)
+test_schedule.py-1545-
+test_schedule.py-1546-        schedule.run_all()
+--
+test_schedule.py-1559-        mock_job = make_mock_job()
+test_schedule.py-1560-        with mock_datetime(2020, 1, 1, 11, 35, 10):
+test_schedule.py:1561:            job = every().second.max_runs(2).do(mock_job)
+test_schedule.py-1562-            with mock_datetime(2020, 1, 1, 11, 35, 11):
+test_schedule.py-1563-                schedule.run_pending()
+--
+test_schedule.py-1572-    def test_max_runs_last_call_wins(self):
+test_schedule.py-1573-        mock_job = make_mock_job()
+test_schedule.py:1574:        job = every().second.max_runs(1).max_runs(2).do(mock_job)
+test_schedule.py-1575-
+test_schedule.py-1576-        schedule.run_all()
+--
+test_schedule.py-1585-        with mock_datetime(2020, 1, 1, 11, 35, 10):
+test_schedule.py-1586-            budget_first = (
+test_schedule.py:1587:                every().second.max_runs(1).until(datetime.time(11, 35, 20)).do(mock_job)
+test_schedule.py-1588-            )
+test_schedule.py-1589-            schedule.run_all()
+--
+test_schedule.py-1596-        with mock_datetime(2020, 1, 1, 11, 35, 10):
+test_schedule.py-1597-            deadline_first = (
+test_schedule.py:1598:                every().second.max_runs(3).until(datetime.time(11, 35, 11)).do(mock_job)
+test_schedule.py-1599-            )
+test_schedule.py-1600-            schedule.run_all()
+--
+test_schedule.py-1609-        first_mock_job = make_mock_job("first")
+test_schedule.py-1610-        second_mock_job = make_mock_job("second")
+test_schedule.py:1611:        first = every().second.max_runs(1).do(first_mock_job)
+test_schedule.py:1612:        second = every().second.max_runs(2).do(second_mock_job)
+test_schedule.py-1613-
+test_schedule.py-1614-        schedule.run_all()
+--
+test_schedule.py-1625-        mock_job = make_mock_job()
+test_schedule.py-1626-        with mock_datetime(2020, 12, 9, 21, 46):
+test_schedule.py:1627:            every().hour.max_runs(1).do(mock_job)
+test_schedule.py-1628-            assert schedule.next_run() == datetime.datetime(2020, 12, 9, 22, 46)
+test_schedule.py-1629-            assert schedule.idle_seconds() == 60 * 60
+--
+schedule/__init__.py-253-
+schedule/__init__.py-254-        # optional number of times this job can run
+schedule/__init__.py:255:        self.run_limit: Optional[int] = None
+schedule/__init__.py:256:        self.run_count: int = 0
+schedule/__init__.py-257-
+schedule/__init__.py-258-        self.tags: Set[Hashable] = set()  # unique set of tags for the job
+--
+schedule/__init__.py-646-        return self
+schedule/__init__.py-647-
+schedule/__init__.py:648:    def max_runs(self, n: int):
+schedule/__init__.py-649-        """
+schedule/__init__.py-650-        Schedule job to run at most ``n`` times.
+--
+schedule/__init__.py-654-        """
+schedule/__init__.py-655-        if not isinstance(n, int) or n < 1:
+schedule/__init__.py:656:            raise ValueError("max_runs() requires an integer greater than or equal to 1")
+schedule/__init__.py:657:        self.run_limit = n
+schedule/__init__.py-658-        return self
+schedule/__init__.py-659-
+--
+schedule/__init__.py-695-        the job's deadline, CancelJob is returned after the execution. In this latter
+schedule/__init__.py-696-        case CancelJob takes priority over any other returned value.
+schedule/__init__.py:697:        If the job's run budget is exhausted (configured using .max_runs()),
+schedule/__init__.py-698-        CancelJob is returned after the execution.
+schedule/__init__.py-699-
+--
+schedule/__init__.py-708-        logger.debug("Running job %s", self)
+schedule/__init__.py-709-        ret = self.job_func()
+schedule/__init__.py:710:        self.run_count += 1
+schedule/__init__.py-711-        self.last_run = datetime.datetime.now()
+schedule/__init__.py-712-        self._schedule_next_run()
+schedule/__init__.py-713-
+schedule/__init__.py:714:        if self._is_overdue(self.next_run) or self._is_run_budget_exhausted():
+schedule/__init__.py-715-            logger.debug("Cancelling job %s", self)
+schedule/__init__.py-716-            return CancelJob
+--
+schedule/__init__.py-839-        return self.cancel_after is not None and when > self.cancel_after
+schedule/__init__.py-840-
+schedule/__init__.py:841:    def _is_run_budget_exhausted(self):
+schedule/__init__.py:842:        return self.run_limit is not None and self.run_count >= self.run_limit
+schedule/__init__.py-843-
+schedule/__init__.py-844-    def _decode_datetimestr(
+
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+[codex-monitored] heartbeat: elapsed=60s
+codex
+Raw results: the artifact scan found no `__pycache__`, `.pytest_cache`, coverage output, Playwright output, cache directory, or compiled Python files. All four added symbols are live in the implementation path; the documentation check confirms `schedule.Job` is autodocumented, with no changed or removed API name to invalidate a reference.
+exec
+/bin/zsh -lc "sed -n '1,160p' .devlyn/untracked.baseline" in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+.claude/skills/_shared/adapters/README.md
+.claude/skills/_shared/adapters/claude.md
+.claude/skills/_shared/adapters/codex.md
+.claude/skills/_shared/adapters/omp.md
+.claude/skills/_shared/archive_run.py
+.claude/skills/_shared/codex-config.md
+.claude/skills/_shared/codex-monitored.sh
+.claude/skills/_shared/collect-codex-findings.py
+.claude/skills/_shared/engine-doctor.sh
+.claude/skills/_shared/engine-preflight.md
+.claude/skills/_shared/expected.schema.json
+.claude/skills/_shared/finish-gate.py
+.claude/skills/_shared/pair-plan-schema.md
+.claude/skills/_shared/run-bounded.py
+.claude/skills/_shared/runtime-principles.md
+.claude/skills/_shared/spec-verify-check.py
+.claude/skills/_shared/state-phase-write.py
+.claude/skills/_shared/verify-merge-findings.py
+.claude/skills/code-health-standards/SKILL.md
+.claude/skills/code-review-standards/SKILL.md
+.claude/skills/devlyn:design-ui/SKILL.md
+.claude/skills/devlyn:engines/SKILL.md
+.claude/skills/devlyn:ideate/SKILL.md
+.claude/skills/devlyn:ideate/references/elicitation.md
+.claude/skills/devlyn:ideate/references/from-spec-mode.md
+.claude/skills/devlyn:ideate/references/project-mode.md
+.claude/skills/devlyn:ideate/references/spec-template.md
+.claude/skills/devlyn:ideate/references/templates/decision.md
+.claude/skills/devlyn:ideate/references/templates/roadmap.md
+.claude/skills/devlyn:ideate/references/templates/vision.md
+.claude/skills/devlyn:queue/SKILL.md
+.claude/skills/devlyn:resolve/SKILL.md
+.claude/skills/devlyn:resolve/references/free-form-mode.md
+.claude/skills/devlyn:resolve/references/phases/build-gate.md
+.claude/skills/devlyn:resolve/references/phases/cleanup.md
+.claude/skills/devlyn:resolve/references/phases/implement.md
+.claude/skills/devlyn:resolve/references/phases/plan.md
+.claude/skills/devlyn:resolve/references/phases/probe-derive.md
+.claude/skills/devlyn:resolve/references/phases/surface-close.md
+.claude/skills/devlyn:resolve/references/phases/verify.md
+.claude/skills/devlyn:resolve/references/state-schema.md
+.claude/skills/root-cause-analysis/SKILL.md
+.claude/skills/ui-implementation-standards/SKILL.md
+AGENTS.md
+CLAUDE.md
+
+exec
+/bin/zsh -lc 'git diff --name-status 0e5796fcd30189399d14c5109084a1b2a9a5c165 HEAD' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+exec
+/bin/zsh -lc 'git diff --check 0e5796fcd30189399d14c5109084a1b2a9a5c165' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+exec
+/bin/zsh -lc 'git diff --name-status HEAD' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+ succeeded in 0ms:
+ succeeded in 0ms:
+exec
+/bin/zsh -lc 'git rev-parse HEAD' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+0e5796fcd30189399d14c5109084a1b2a9a5c165
+
+[codex-monitored] heartbeat: elapsed=90s
+exec
+/bin/zsh -lc 'git status --short' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+exec
+/bin/zsh -lc 'git diff --check 0e5796fcd30189399d14c5109084a1b2a9a5c165 HEAD' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo
+ succeeded in 0ms:
+codex
+PASS
+
+No cleanup changes were needed.
+
+- All added symbols are live in [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/r500c824c689b/fa265b8ab039e/A1/repo/schedule/__init__.py:255).
+- No test-output artifacts were found.
+- `docs/reference.rst` autodocuments `schedule.Job`; no references were invalidated.
+- `git diff 0e5796f… HEAD` and `git diff --check` are empty.
+tokens used
+25,177
+[codex-monitored] codex exited: code=0 elapsed=111s

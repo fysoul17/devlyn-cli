@@ -1,0 +1,56 @@
+You are OpenAI Codex, acting as the IMPLEMENT phase worker inside the `/devlyn:resolve` pipeline, fix round 2 (repo root: /Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo, current working directory). Fresh, isolated session. You have workspace-write access to this repo.
+
+## Adapter header (Codex / OpenAI)
+
+Efficient, direct, task-oriented. Validate with actual commands, not self-belief.
+
+## Context
+
+This is fix round 2 inside `/devlyn:resolve`'s VERIFY fix loop for the `fulfill-wave` command in `bin/cli.js`. Round 1 fixed a `remaining`-sort-order bug by flattening `(warehouse, lot)` pairs before sorting: `warehouses.flatMap((warehouse) => warehouse.lots.map((lot) => ({ warehouse: warehouse.id, ...lot })))`. VERIFY's independent JUDGE (fresh context) found a NEW HIGH finding introduced by that exact fix. Fix ONLY this finding — do not touch anything else.
+
+## VERIFY finding (verbatim)
+
+```json
+{"id":"remaining-warehouse-overwrite","rule_id":"spec.remaining-warehouse-source","severity":"HIGH","confidence":"high","file":"bin/cli.js","line":241,"message":"`({ warehouse: warehouse.id, ...lot })` allows an input lot's `warehouse` member to overwrite its actual parent warehouse. A lot under warehouse `real` with `warehouse: \"spoofed\"` exits 0 and emits `warehouse: \"spoofed\"`; it must either be rejected as invalid input or emit the actual warehouse id.","criterion_ref":"Requirement 4: remaining rows must contain the warehouse id and be sorted by warehouse id","verdict_binding":true}
+```
+
+## Independent confirmation (orchestrator-verified)
+
+```
+$ cat > /tmp/spoof_probe.json <<'EOF'
+{
+  "warehouses": [
+    { "id": "real", "distance": 1, "lots": [{ "sku": "x", "lot": "l1", "qty": 2, "expires": "2026-05-01", "warehouse": "spoofed" }] }
+  ],
+  "orders": []
+}
+EOF
+$ node bin/cli.js fulfill-wave --input /tmp/spoof_probe.json
+{"accepted":[],"rejected":[],"remaining":[{"warehouse":"spoofed","sku":"x","lot":"l1","qty":2,"expires":"2026-05-01"}]}
+```
+Expected `warehouse: "real"`; got `warehouse: "spoofed"`.
+
+## Root cause
+
+`{ warehouse: warehouse.id, ...lot }` sets `warehouse` first, then spreads `lot`'s own keys on top — if the input `lot` object happens to carry its own `warehouse` key (the Lot schema does not forbid unknown/extra keys), the spread silently overwrites the correct `warehouse.id` value. This is the classic JS object-spread field-collision footgun.
+
+## Required fix
+
+Remove the spread. Build the flattened row with explicit fields only: `warehouse: warehouse.id, sku: lot.sku, lot: lot.lot, qty: lot.qty, expires: lot.expires` (plus whatever internal field you still need for the qty>0 filter and comparator — check `lotComparator`'s exact usage, since it currently expects `.expires`/`.lot` on its arguments, so keep that compatible). Since the row will now already carry exactly the final `{warehouse, sku, lot, qty, expires}` shape with no risk of extra/spoofed keys, the trailing `.map(({ warehouse, sku, lot, qty, expires }) => ({ warehouse, sku, lot, qty, expires }))` whitelist step (added in round 1 specifically to strip spread pollution) becomes redundant — remove it too if the earlier explicit construction already produces the exact clean shape (net simplification, not scope creep — this directly follows from removing the root cause of the finding you're fixing).
+
+## Scope
+
+Only touch `bin/cli.js`, and only the `remaining` computation inside `fulfillWave`. Do not touch `tests/cli.test.js` unless adding a minimal regression test for this exact spoofing case (optional). Do not touch anything else.
+
+## Verify before declaring done
+
+1. Re-run the reproduction above and confirm `remaining[0].warehouse === "real"`.
+2. Re-run the round-1 duplicate-warehouse-id reproduction and confirm it's still correct:
+   ```
+   node bin/cli.js fulfill-wave --input /tmp/dup_warehouse_probe.json
+   ```
+   (fixture already exists at that path from the previous round; if missing, recreate it: two warehouses both `id: "same"`, one with lot sku `z`, one with lot sku `a`; expect `sku: "a"` before `sku: "z"` in `remaining`.)
+3. Run `npm test` (== `node --test tests/`) and confirm all existing tests pass.
+4. Run `node bin/cli.js --help` and confirm it still exits 0 and mentions `fulfill-wave`.
+
+Report your verdict in your final reply text: `PASS` once fixed and verified; `BLOCKED:<reason>` if you cannot fix it within scope.

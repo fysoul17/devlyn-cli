@@ -1,0 +1,12 @@
+Both targeted probes pass:
+
+**Probe 1 (idempotency / conflicting-duplicate compound)**
+- Byte-identical duplicate for merchant A applied exactly once: `gross_charge_cents=100000` (not doubled), `processing_fee_cents=2930` (not 5860). Full parsed object correct across both merchants.
+- Conflicting id reuse → exit `2`, stdout exactly `""`, stderr parses to exactly `{"error":"conflicting_duplicate","id":"e1"}` with key set `["error","id"]` — no extra keys, checked before any totals.
+
+**Probe 2 (all-or-nothing on mixed batch)**
+- Valid charge for A + invalid event (missing `merchant_id`) for B → exit `2`, stdout exactly `""` (A not partially printed), stderr exactly one JSON object `{"error":"missing_merchant_id"}`.
+
+Structurally confirmed: `validatePayoutEvents`/`deduplicateEvents` run inside `runPayout` and `fail()` exits before the single `console.log(JSON.stringify(...))`, so no partial stdout is possible.
+
+VERDICT: PASS

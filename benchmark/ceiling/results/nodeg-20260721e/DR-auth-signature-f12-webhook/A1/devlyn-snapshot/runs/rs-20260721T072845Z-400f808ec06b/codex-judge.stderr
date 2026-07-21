@@ -1,0 +1,646 @@
+[codex-monitored] start: ts=2026-07-21T08:03:36Z heartbeat=30s timeout=600s bin=codex
+[codex-monitored] isolated=1
+[codex-monitored] codex pid=33931
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r500c824c689b/f08d6b52f5d4d/A1/repo
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f83b3-a805-7c11-81bb-13ad4665a6e9
+--------
+user
+# Codex (OpenAI) adapter — identity/behavior header
+
+You are OpenAI's Codex model, acting as an independent code reviewer. You have NO prior context on this task beyond what's given below — you were not involved in planning or implementing this change. Do not narrate internal deliberation; report findings directly. Report every issue you find, including low-severity/low-confidence ones — do not self-filter.
+
+# PHASE 5 — VERIFY / JUDGE (fresh-context, read-only)
+
+<role>
+Independent quality layer. Answer one question: did the diff deliver what the spec said it would, with no scope creep, no quality regression, no constraint violation? Produce findings only — you have no code-mutation tools (read-only sandbox).
+</role>
+
+<input>
+- Contract: `.devlyn/criteria.generated.md` in this repo (generated criteria, free-form mode, complexity medium) — read it directly.
+- Diff: `git diff d5e479312b6f9573373bd2057e630bba7d22c608 HEAD -- server/index.js tests/server.test.js` (or read the files directly at HEAD).
+- Environment note: this sandbox denies network/socket binding, so commands that call `.listen()` (e.g. `npm test`, `node .devlyn/probes/*.js`) will fail with `EPERM` even though the code is correct — this is a sandbox limitation, not a code defect. Ground truth already gathered by the deterministic MECHANICAL sub-phase (executed outside this sandbox, independent of PLAN/IMPLEMENT reasoning): `npm test` → exit 0, all 10 tests pass (3 pre-existing + 4 webhook tests: happy path→200, replay→409, malformed-body→400, tampered-body→401); all 3 risk probes (`.devlyn/probes/P1.js` tampered→401, `P2.js` replay→409, `P3.js` happy-path→200) → exit 0. You may cite this as fact but should independently verify correctness by READING the code, not by trusting it blindly.
+
+You do NOT receive: the PLAN document, IMPLEMENT's reasoning/commentary, BUILD_GATE's findings, CLEANUP's negotiations. Do not read `.devlyn/plan.md`, `.devlyn/implement.stdout`, `.devlyn/build_gate.*`, `.devlyn/cleanup.*`, `CLAUDE.md`, `AGENTS.md`, or `.claude/skills` — reading those would compromise independence.
+</input>
+
+<task>
+Grade the diff against the spec on these rubric axes:
+- **Spec compliance** — did every Requirement get satisfied by code you can point to (file:line)?
+- **Scope** — does the diff touch only `server/index.js` and `tests/server.test.js`? Anything else is HIGH `scope.out-of-scope-violation`.
+- **Quality** — idiomatic Express/Node patterns, or hand-rolled replacements for standard primitives? MEDIUM `design.unidiomatic-pattern` if so.
+- **Consistency** — internal style (naming, error shape, module boundaries) consistent with the surrounding code.
+
+**Clause-level check**: split each Requirement into binding clauses. Words like "before", "after", "once", "always", "never", "regardless", "irrelevant", "duplicate", "raw", "signature" usually encode a separate invariant. Trace the code order for: (a) does signature-check strictly precede body-shape-check (valid-sig + invalid-body must be 400, not 401)? (b) is `crypto.timingSafeEqual` used correctly (equal-length buffers, no thrown exception on mismatched length, no timing side-channel via early-return before the constant-time compare)? (c) is the raw body actually hashed (not a re-serialized/re-parsed JSON string)? (d) is duplicate-id detection keyed only on `id`, independent of body content, and does it correctly return 409 with the ORIGINAL id even when the second delivery's body differs? (e) does first delivery register the id BEFORE or AFTER responding (race conditions aren't in scope for this spec but check the accept-then-record ordering is sound for a single-threaded Node event loop)?
+
+**Interaction check**: this spec is complexity "medium", not high — combined-scenario execution is not mandatory, but do trace at least one scenario in your head that combines signature verification + duplicate detection (e.g., does a *tampered* replay of an already-accepted id return 401 or 409? Read the code to determine the actual order and decide whether that's spec-compliant — the spec's check order is signature → shape → duplicate, so a tampered replay must be 401, not 409).
+
+**Coverage check**: if you cannot exercise or verify an axis by reading the code, set that in your findings as a coverage gap rather than assuming pass.
+
+**Verdict-binding severity**: HIGH/CRITICAL findings are always verdict-binding. A MEDIUM finding is verdict-binding only if it's a concrete behavioral regression against the spec or existing test contract; otherwise it's advisory (non-binding).
+</task>
+
+<output>
+Emit ONLY a JSONL stream (one JSON object per line, no prose, no markdown fences) to stdout. Each finding: `{"id": "VERIFY-J-<n>", "severity": "CRITICAL|HIGH|MEDIUM|LOW", "rule_id": "<dotted.rule.id>", "file": "<path>", "line": <int>, "message": "<finding, quote the code, do not paraphrase>", "confidence": "high|medium|low", "criterion_ref": "<requirement reference>"}`. If you find zero findings, emit exactly one line: `{"verdict": "PASS"}`.
+</output>
+
+Read `server/index.js`, `tests/server.test.js`, and `.devlyn/criteria.generated.md` now and produce your findings.
+deprecated: `[features].codex_hooks` is deprecated. Use `[features].hooks` instead.
+Enable it with `--enable hooks` or `[features].hooks` in config.toml. See https://developers.openai.com/codex/config-basic#feature-flags for details.
+exec
+/bin/zsh -lc "sed -n '1,240p' .devlyn/criteria.generated.md && sed -n '1,260p' server/index.js && sed -n '1,360p' tests/server.test.js && git diff --name-only d5e479312b6f9573373bd2057e630bba7d22c608 HEAD && git diff --unified=80 d5e479312b6f9573373bd2057e630bba7d22c608 HEAD -- server/index.js tests/server.test.js" in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f08d6b52f5d4d/A1/repo
+[codex-monitored] heartbeat: elapsed=30s
+ succeeded in 19434ms:
+2026-07-21 08:03:49.883 xcodebuild[34675:4484351]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-21 08:03:50.419 xcodebuild[34675:4484350] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-gKaFIYBC' (errno=Operation not permitted)
+2026-07-21 08:03:52.194 xcodebuild[34827:4484535]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-21 08:03:53.429 xcodebuild[34827:4484534] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+server/index.js
+tests/server.test.js
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-hBwKj2hH' (errno=Operation not permitted)
+2026-07-21 08:03:59.634 xcodebuild[36525:4487500]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-21 08:04:00.179 xcodebuild[36525:4487483] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-GzVTSp0Y' (errno=Operation not permitted)
+2026-07-21 08:04:02.860 xcodebuild[37145:4488417]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-21 08:04:03.838 xcodebuild[37145:4488416] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+diff --git a/server/index.js b/server/index.js
+index 1c43fa2..1f6f74b 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -1,37 +1,98 @@
+ // Tiny Express server with a deliberately small API surface.
++const crypto = require('crypto');
+ const express = require('express');
++const fs = require('fs');
++const path = require('path');
+ 
+ const app = express();
+-app.use(express.json());
++app.use(
++  express.json({
++    verify: (req, _res, buffer) => {
++      req.rawBody = buffer;
++    },
++  })
++);
++
++const webhookSecret = fs.readFileSync(path.join(__dirname, '..', 'data', 'webhook-secret.txt'), 'utf8').trim();
++const acceptedEventIds = new Set();
+ 
+ const items = [
+   { id: 1, name: 'alpha', qty: 3 },
+   { id: 2, name: 'beta', qty: 5 },
+ ];
+ 
+ app.get('/health', (_req, res) => {
+   res.json({ status: 'ok' });
+ });
+ 
+ app.get('/items', (_req, res) => {
+   res.json({ items });
+ });
+ 
+ app.get('/items/:id', (req, res) => {
+   const id = Number(req.params.id);
+   const item = items.find((it) => it.id === id);
+   if (!item) {
+     res.status(404).json({ error: 'not_found', id });
+     return;
+   }
+   res.json({ item });
+ });
+ 
++app.post('/webhook', (req, res) => {
++  const signature = req.get('X-Signature');
++  if (!req.rawBody || typeof signature !== 'string') {
++    res.status(401).json({ error: 'invalid_signature' });
++    return;
++  }
++
++  const expectedSignature = crypto.createHmac('sha256', webhookSecret).update(req.rawBody).digest();
++  if (signature.length !== expectedSignature.length * 2 || !/^[a-f0-9]+$/.test(signature)) {
++    res.status(401).json({ error: 'invalid_signature' });
++    return;
++  }
++
++  const receivedSignature = Buffer.from(signature, 'hex');
++  if (
++    receivedSignature.length !== expectedSignature.length ||
++    !crypto.timingSafeEqual(receivedSignature, expectedSignature)
++  ) {
++    res.status(401).json({ error: 'invalid_signature' });
++    return;
++  }
++
++  const body = req.body;
++  if (
++    !body ||
++    typeof body !== 'object' ||
++    Array.isArray(body) ||
++    typeof body.id !== 'string' ||
++    body.id.length === 0 ||
++    typeof body.type !== 'string' ||
++    body.type.length === 0 ||
++    typeof body.timestamp !== 'number' ||
++    !body.data ||
++    typeof body.data !== 'object' ||
++    Array.isArray(body.data)
++  ) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  if (acceptedEventIds.has(body.id)) {
++    res.status(409).json({ error: 'duplicate_event', id: body.id });
++    return;
++  }
++
++  acceptedEventIds.add(body.id);
++  res.json({ accepted: true, id: body.id });
++});
++
+ if (require.main === module) {
+   const port = Number(process.env.PORT) || 3000;
+   app.listen(port, () => {
+     console.log(`harbor-tools server listening on :${port}`);
+   });
+ }
+ 
+ module.exports = { app };
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..da552bf 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -1,58 +1,160 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
++const crypto = require('node:crypto');
++const fs = require('node:fs');
+ const http = require('node:http');
++const path = require('node:path');
+ const { app } = require('../server');
+ 
++const webhookSecret = fs.readFileSync(path.join(__dirname, '..', 'data', 'webhook-secret.txt'), 'utf8').trim();
++
+ function startServer() {
+   return new Promise((resolve) => {
+     const server = http.createServer(app);
+     server.listen(0, () => resolve(server));
+   });
+ }
+ 
+ function get(server, path) {
+   return new Promise((resolve, reject) => {
+     const { port } = server.address();
+     http
+       .get(`http://127.0.0.1:${port}${path}`, (res) => {
+         let body = '';
+         res.on('data', (chunk) => (body += chunk));
+         res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
+       })
+       .on('error', reject);
+   });
+ }
+ 
++function post(server, path, body, headers = {}) {
++  return new Promise((resolve, reject) => {
++    const { port } = server.address();
++    const request = http.request(
++      {
++        host: '127.0.0.1',
++        port,
++        path,
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(body),
++          ...headers,
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      }
++    );
++    request.on('error', reject);
++    request.write(body);
++    request.end();
++  });
++}
++
++function sign(body) {
++  return crypto.createHmac('sha256', webhookSecret).update(body).digest('hex');
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+     const { status, body } = await get(server, '/health');
+     assert.strictEqual(status, 200);
+     assert.deepStrictEqual(body, { status: 'ok' });
+   } finally {
+     server.close();
+   }
+ });
+ 
+ test('GET /items returns list', async () => {
+   const server = await startServer();
+   try {
+     const { status, body } = await get(server, '/items');
+     assert.strictEqual(status, 200);
+     assert.ok(Array.isArray(body.items));
+     assert.ok(body.items.length >= 2);
+   } finally {
+     server.close();
+   }
+ });
+ 
+ test('GET /items/:id returns 404 for missing', async () => {
+   const server = await startServer();
+   try {
+     const { status, body } = await get(server, '/items/99999');
+     assert.strictEqual(status, 404);
+     assert.strictEqual(body.error, 'not_found');
+   } finally {
+     server.close();
+   }
+ });
++
++test('POST /webhook accepts a valid signed event', async () => {
++  const server = await startServer();
++  try {
++    const event = { id: 'evt-test-happy', type: 'order.created', timestamp: 1700000000, data: { amount: 42 } };
++    const body = JSON.stringify(event);
++    const result = await post(server, '/webhook', body, { 'X-Signature': sign(body) });
++    assert.strictEqual(result.status, 200);
++    assert.deepStrictEqual(result.body, { accepted: true, id: event.id });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a replayed event id', async () => {
++  const server = await startServer();
++  try {
++    const id = 'evt-test-replay';
++    const firstBody = JSON.stringify({ id, type: 'order.created', timestamp: 1700000001, data: { amount: 10 } });
++    const duplicateBody = JSON.stringify({ id, type: 'order.updated', timestamp: 1700000002, data: { amount: 20 } });
++
++    const first = await post(server, '/webhook', firstBody, { 'X-Signature': sign(firstBody) });
++    const duplicate = await post(server, '/webhook', duplicateBody, { 'X-Signature': sign(duplicateBody) });
++
++    assert.strictEqual(first.status, 200);
++    assert.strictEqual(duplicate.status, 409);
++    assert.deepStrictEqual(duplicate.body, { error: 'duplicate_event', id });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a malformed body with a valid signature', async () => {
++  const server = await startServer();
++  try {
++    const body = JSON.stringify({ id: 'evt-test-invalid-body', type: '', timestamp: 1700000004, data: {} });
++    const result = await post(server, '/webhook', body, { 'X-Signature': sign(body) });
++    assert.strictEqual(result.status, 400);
++    assert.deepStrictEqual(result.body, { error: 'invalid_body' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a body tampered after signing', async () => {
++  const server = await startServer();
++  try {
++    const originalBody = JSON.stringify({
++      id: 'evt-test-tampered',
++      type: 'order.created',
++      timestamp: 1700000003,
++      data: { amount: 42 },
++    });
++    const tamperedBody = JSON.stringify({
++      id: 'evt-test-tampered',
++      type: 'order.created',
++      timestamp: 1700000003,
++      data: { amount: 999 },
++    });
++    const result = await post(server, '/webhook', tamperedBody, { 'X-Signature': sign(originalBody) });
++    assert.strictEqual(result.status, 401);
++    assert.deepStrictEqual(result.body, { error: 'invalid_signature' });
++  } finally {
++    server.close();
++  }
++});
+
+exec
+/bin/zsh -lc 'nl -ba server/index.js && nl -ba tests/server.test.js && git --no-pager diff --stat d5e479312b6f9573373bd2057e630bba7d22c608 HEAD && git --no-pager diff --unified=30 d5e479312b6f9573373bd2057e630bba7d22c608 HEAD -- server/index.js tests/server.test.js' in /Users/aipalm/.local/share/nx01/w/r500c824c689b/f08d6b52f5d4d/A1/repo
+[codex-monitored] heartbeat: elapsed=60s
+ succeeded in 18092ms:
+2026-07-21 08:04:25.307 xcodebuild[41011:4494632]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-21 08:04:26.013 xcodebuild[41011:4494602] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-6EsWj9Nu' (errno=Operation not permitted)
+2026-07-21 08:04:28.465 xcodebuild[41481:4495466]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-21 08:04:29.148 xcodebuild[41481:4495465] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+ server/index.js      |  63 ++++++++++++++++++++++++++++++-
+ tests/server.test.js | 102 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 164 insertions(+), 1 deletion(-)
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-AlBEnoCe' (errno=Operation not permitted)
+2026-07-21 08:04:34.477 xcodebuild[41946:4496111]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-21 08:04:35.253 xcodebuild[41946:4496110] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-5lmZIRj0' (errno=Operation not permitted)
+2026-07-21 08:04:37.354 xcodebuild[42130:4496404]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-21 08:04:38.200 xcodebuild[42130:4496403] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+diff --git a/server/index.js b/server/index.js
+index 1c43fa2..1f6f74b 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -1,37 +1,98 @@
+ // Tiny Express server with a deliberately small API surface.
++const crypto = require('crypto');
+ const express = require('express');
++const fs = require('fs');
++const path = require('path');
+ 
+ const app = express();
+-app.use(express.json());
++app.use(
++  express.json({
++    verify: (req, _res, buffer) => {
++      req.rawBody = buffer;
++    },
++  })
++);
++
++const webhookSecret = fs.readFileSync(path.join(__dirname, '..', 'data', 'webhook-secret.txt'), 'utf8').trim();
++const acceptedEventIds = new Set();
+ 
+ const items = [
+   { id: 1, name: 'alpha', qty: 3 },
+   { id: 2, name: 'beta', qty: 5 },
+ ];
+ 
+ app.get('/health', (_req, res) => {
+   res.json({ status: 'ok' });
+ });
+ 
+ app.get('/items', (_req, res) => {
+   res.json({ items });
+ });
+ 
+ app.get('/items/:id', (req, res) => {
+   const id = Number(req.params.id);
+   const item = items.find((it) => it.id === id);
+   if (!item) {
+     res.status(404).json({ error: 'not_found', id });
+     return;
+   }
+   res.json({ item });
+ });
+ 
++app.post('/webhook', (req, res) => {
++  const signature = req.get('X-Signature');
++  if (!req.rawBody || typeof signature !== 'string') {
++    res.status(401).json({ error: 'invalid_signature' });
++    return;
++  }
++
++  const expectedSignature = crypto.createHmac('sha256', webhookSecret).update(req.rawBody).digest();
++  if (signature.length !== expectedSignature.length * 2 || !/^[a-f0-9]+$/.test(signature)) {
++    res.status(401).json({ error: 'invalid_signature' });
++    return;
++  }
++
++  const receivedSignature = Buffer.from(signature, 'hex');
++  if (
++    receivedSignature.length !== expectedSignature.length ||
++    !crypto.timingSafeEqual(receivedSignature, expectedSignature)
++  ) {
++    res.status(401).json({ error: 'invalid_signature' });
++    return;
++  }
++
++  const body = req.body;
++  if (
++    !body ||
++    typeof body !== 'object' ||
++    Array.isArray(body) ||
++    typeof body.id !== 'string' ||
++    body.id.length === 0 ||
++    typeof body.type !== 'string' ||
++    body.type.length === 0 ||
++    typeof body.timestamp !== 'number' ||
++    !body.data ||
++    typeof body.data !== 'object' ||
++    Array.isArray(body.data)
++  ) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  if (acceptedEventIds.has(body.id)) {
++    res.status(409).json({ error: 'duplicate_event', id: body.id });
++    return;
++  }
++
++  acceptedEventIds.add(body.id);
++  res.json({ accepted: true, id: body.id });
++});
++
+ if (require.main === module) {
+   const port = Number(process.env.PORT) || 3000;
+   app.listen(port, () => {
+     console.log(`harbor-tools server listening on :${port}`);
+   });
+ }
+ 
+ module.exports = { app };
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..da552bf 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -1,58 +1,160 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
++const crypto = require('node:crypto');
++const fs = require('node:fs');
+ const http = require('node:http');
++const path = require('node:path');
+ const { app } = require('../server');
+ 
++const webhookSecret = fs.readFileSync(path.join(__dirname, '..', 'data', 'webhook-secret.txt'), 'utf8').trim();
++
+ function startServer() {
+   return new Promise((resolve) => {
+     const server = http.createServer(app);
+     server.listen(0, () => resolve(server));
+   });
+ }
+ 
+ function get(server, path) {
+   return new Promise((resolve, reject) => {
+     const { port } = server.address();
+     http
+       .get(`http://127.0.0.1:${port}${path}`, (res) => {
+         let body = '';
+         res.on('data', (chunk) => (body += chunk));
+         res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
+       })
+       .on('error', reject);
+   });
+ }
+ 
++function post(server, path, body, headers = {}) {
++  return new Promise((resolve, reject) => {
++    const { port } = server.address();
++    const request = http.request(
++      {
++        host: '127.0.0.1',
++        port,
++        path,
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(body),
++          ...headers,
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      }
++    );
++    request.on('error', reject);
++    request.write(body);
++    request.end();
++  });
++}
++
++function sign(body) {
++  return crypto.createHmac('sha256', webhookSecret).update(body).digest('hex');
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+     const { status, body } = await get(server, '/health');
+     assert.strictEqual(status, 200);
+     assert.deepStrictEqual(body, { status: 'ok' });
+   } finally {
+     server.close();
+   }
+ });
+ 
+ test('GET /items returns list', async () => {
+   const server = await startServer();
+   try {
+     const { status, body } = await get(server, '/items');
+     assert.strictEqual(status, 200);
+     assert.ok(Array.isArray(body.items));
+     assert.ok(body.items.length >= 2);
+   } finally {
+     server.close();
+   }
+ });
+ 
+ test('GET /items/:id returns 404 for missing', async () => {
+   const server = await startServer();
+   try {
+     const { status, body } = await get(server, '/items/99999');
+     assert.strictEqual(status, 404);
+     assert.strictEqual(body.error, 'not_found');
+   } finally {
+     server.close();
+   }
+ });
++
++test('POST /webhook accepts a valid signed event', async () => {
++  const server = await startServer();
++  try {
++    const event = { id: 'evt-test-happy', type: 'order.created', timestamp: 1700000000, data: { amount: 42 } };
++    const body = JSON.stringify(event);
++    const result = await post(server, '/webhook', body, { 'X-Signature': sign(body) });
++    assert.strictEqual(result.status, 200);
++    assert.deepStrictEqual(result.body, { accepted: true, id: event.id });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a replayed event id', async () => {
++  const server = await startServer();
++  try {
++    const id = 'evt-test-replay';
++    const firstBody = JSON.stringify({ id, type: 'order.created', timestamp: 1700000001, data: { amount: 10 } });
++    const duplicateBody = JSON.stringify({ id, type: 'order.updated', timestamp: 1700000002, data: { amount: 20 } });
++
++    const first = await post(server, '/webhook', firstBody, { 'X-Signature': sign(firstBody) });
++    const duplicate = await post(server, '/webhook', duplicateBody, { 'X-Signature': sign(duplicateBody) });
++
++    assert.strictEqual(first.status, 200);
++    assert.strictEqual(duplicate.status, 409);
++    assert.deepStrictEqual(duplicate.body, { error: 'duplicate_event', id });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a malformed body with a valid signature', async () => {
++  const server = await startServer();
++  try {
++    const body = JSON.stringify({ id: 'evt-test-invalid-body', type: '', timestamp: 1700000004, data: {} });
++    const result = await post(server, '/webhook', body, { 'X-Signature': sign(body) });
++    assert.strictEqual(result.status, 400);
++    assert.deepStrictEqual(result.body, { error: 'invalid_body' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a body tampered after signing', async () => {
++  const server = await startServer();
++  try {
++    const originalBody = JSON.stringify({
++      id: 'evt-test-tampered',
++      type: 'order.created',
++      timestamp: 1700000003,
++      data: { amount: 42 },
++    });
++    const tamperedBody = JSON.stringify({
++      id: 'evt-test-tampered',
++      type: 'order.created',
++      timestamp: 1700000003,
++      data: { amount: 999 },
++    });
++    const result = await post(server, '/webhook', tamperedBody, { 'X-Signature': sign(originalBody) });
++    assert.strictEqual(result.status, 401);
++    assert.deepStrictEqual(result.body, { error: 'invalid_signature' });
++  } finally {
++    server.close();
++  }
++});
+
+[codex-monitored] heartbeat: elapsed=90s
+[codex-monitored] heartbeat: elapsed=120s
+codex
+{"id":"VERIFY-J-1","severity":"MEDIUM","rule_id":"spec.signature-check-order","file":"server/index.js","line":8,"message":"`app.use(express.json({ verify: (req, _res, buffer) => { req.rawBody = buffer; } }))` parses JSON before `app.post('/webhook', ...)` performs signature verification. Syntactically invalid JSON—or a strict-parser-rejected primitive such as `null`—therefore bypasses the route: an invalid signature returns 400 instead of 401, and a valid signature receives Express's parser error instead of `{ error: 'invalid_body' }`.","confidence":"high","criterion_ref":"Requirements 1-2: invalid signatures return 401; signature check runs before body-shape validation"}
+{"id":"VERIFY-J-2","severity":"LOW","rule_id":"security.signature-timing-early-return","file":"server/index.js","line":50,"message":"`if (signature.length !== expectedSignature.length * 2 || !/^[a-f0-9]+$/.test(signature)) { ... return; }` returns before `crypto.timingSafeEqual(receivedSignature, expectedSignature)`, making processing time depend on whether the supplied header passes length/hex validation rather than always reaching an equal-length constant-time comparison.","confidence":"high","criterion_ref":"Requirement 4 and timingSafeEqual clause-level check"}
+tokens used
+33,117
+[codex-monitored] codex exited: code=0 elapsed=141s

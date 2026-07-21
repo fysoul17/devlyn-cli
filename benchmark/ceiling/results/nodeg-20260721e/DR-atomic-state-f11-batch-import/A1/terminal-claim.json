@@ -1,0 +1,6 @@
+{
+  "status": "INCOMPLETE:verify",
+  "phase": "verify",
+  "reason": "phase verify history[0] started but not completed",
+  "run_id": "rs-20260721T065728Z-3138278bd76a"
+}

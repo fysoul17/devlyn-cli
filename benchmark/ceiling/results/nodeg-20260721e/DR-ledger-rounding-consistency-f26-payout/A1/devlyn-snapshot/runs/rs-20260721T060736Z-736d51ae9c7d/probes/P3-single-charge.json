@@ -1,0 +1,5 @@
+{
+  "events": [
+    {"id": "e1", "type": "charge", "merchant_id": "m1", "amount_cents": 1000}
+  ]
+}

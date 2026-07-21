@@ -238,6 +238,76 @@ this point; L-format-valid-false-N/A keeps its 24-draw receipts as a
 candidate own registration; FS-0076-B/C/D unchanged — Stage B still
 decides completion.
 
+## STAGE B ADJUDICATION — nodeg-20260721e vs frozen predictions (2026-07-21 evening) — **ALL THREE MET; iter CLOSED**
+
+Cohort identity: worktree afc7433; pins claude 2.1.215 (run-owned copy,
+sha 90608b5c…) + codex VENDOR pin 0.144.5 (sha 5e29ab10…); orchestrator
+claude-sonnet-5, executor gpt-5.6-terra (verdict cohort_identity block);
+7/7 rows + dual judges + verdict, full driver chain. Launch lineage:
+-21a orchestrator pin error (0076.4), -21b F7 draw 86, -21c F7 API 522,
+-21d API-429 storm — all archived; -21e ran clean end-to-end.
+
+- **P-0076-A (roadmap) — MET: complete-verify 5/7** (F7, F25, F26, F11,
+  F12; attribution verify_complete). First cohort ≥5 after three
+  consecutive <5. F12 — chronic 124-overrun row — completed clean.
+- **P-0076-B (mechanism, decisive) — MET: zero K1 events.** Cohort-wide
+  grep for `adjudication-malformed`: 0. Both former K1 rows passed the
+  SC gate cleanly (F23 SC PASS, FS1 SC PASS); zero
+  correct-repair-discarded-by-format events; recovery carrier never
+  needed (no continued_after_block anywhere).
+- **P-0076-C (stability) — MET: quality 0/7; wall median 11.324×** ≥8
+  (per-row 5.9-28.3×).
+- **Incomplete partition (mechanical, frozen): {K1: 0, K2a: 1 (FS1 —
+  invoke_exit 0, verify open, voluntary exit), K2b: 1 (F23 — verify
+  open at 3600s wall, invoke_exit 124), other: 0}.** Exactly the two
+  unmitigated named classes; FS-0076-B did NOT fire (≥5 complete).
+- Record-only: objective 6/7 (vs 5/7 prior cohort; F12 the miss); no
+  objective claim was frozen.
+
+**Falsifier status**: FS-0076-A fired at Stage A and was resolved by the
+v2 differential re-spec (0076.3); FS-0076-B not fired; FS-0076-C not
+fired (all gates green at ship); FS-0076-D not fired at Stage A —
+post-cohort boundary case recorded below for the next round, not a
+D-firing (the Stage A fixture set held).
+
+**New receipts surfaced by the cohort (recorded for the next
+registrations, NOT acted on):**
+1. **F11 open-history flag on a healthy row**: C2 stamped
+   INCOMPLETE:verify on `verify.history[0]` (started, completed_at
+   null, verdict BLOCKED) while the CURRENT verify completed PASS +
+   archived. Root receipt: the SPW attestation-failure path forces
+   verdict BLOCKED WITHOUT writing completed_at → internally
+   inconsistent lifecycle record — the exact drift class SPW's header
+   says it exists to prevent. Candidate small fix (own round): the
+   forced-BLOCKED path must complete the record.
+2. **F26 citation-missing reject + prose-halt disobeyed**: SC reply was
+   format-perfect but its N/A row cited `tests/cli.test.js:231` — line
+   absent even in the edited file → `BLOCKED:surface-close-adjudication-
+   citation-missing` (first observed firing of the anti-fabrication
+   line-existence guard — the guard M-RE deliberately KEPT). The
+   orchestrator then CONTINUED past this non-recoverable halt class
+   (halt sentence is prose — known prose-ceiling class). Verified
+   harmless in outcome: rollback held (`payout --input` repair absent
+   from patch.diff — no unadjudicated bytes shipped), verify judged the
+   implement-passed surface PASS_WITH_ISSUES; harm = terminal
+   misattributed bare BLOCKED via precedence rule 1. Candidates for the
+   next round: mechanical halt-class enforcement, OR extend the M0
+   recovery carrier to citation-missing under the same
+   Recoverable-State Equivalence test.
+3. **F7 session-tail hang**: pipeline fully archived, then the CLI
+   session hung streaming until the wall cap (`aborted_streaming`,
+   invoke_exit 124 in -21d; -21e F7 exited 0 at 1897s) — wall-iter
+   receipt.
+
+**Iter-0076 claim status: COMPLETE — CLOSED.** The K1 class is
+eliminated on a live cohort (decisive gate), completion returned above
+the bar for the first time in four cohorts, and the authority now reads
+archived terminals (F23-hole closed, first production firings clean).
+Roadmap consequence: **next = wall lever iter** (frozen 0075 P-B data:
+startup+interphase 92-96% of residual on clean rows; plus today's K2b
+verify-overrun and session-tail receipts), THEN C1 product wiring
+registration (K2a receipt FS1 -21e strengthens the packet).
+
 ## Principles check
 
 - **0**: closes the FS-0075-B-frozen user failure (hands-free runs dying on a

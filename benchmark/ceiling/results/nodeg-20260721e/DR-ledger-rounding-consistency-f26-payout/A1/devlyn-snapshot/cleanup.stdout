@@ -1,0 +1,8 @@
+PASS
+
+No cleanup changes were needed.
+
+- No eligible tooling artifacts found.
+- Every symbol added by the diff is referenced or part of the required `payout` surface.
+- The diff removed/renamed no documentation targets.
+- Working tracked diff remains empty.

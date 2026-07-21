@@ -1,0 +1,9 @@
+BLOCKED:sandbox prevents the server tests from binding `0.0.0.0` (`EPERM`), so `npm test` has 3 infrastructure failures.
+
+The scoped fix is in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/f99dbe9386580/A1/repo/bin/cli.js:240): explicit fields prevent spoofed lot keys from overwriting the parent warehouse ID; redundant map removed.
+
+Verified:
+- Spoof probe outputs `warehouse: "real"`.
+- Duplicate-ID probe orders `sku: "a"` before `"z"`.
+- CLI tests: 6/6 pass.
+- `--help` exits 0 and includes `fulfill-wave`.

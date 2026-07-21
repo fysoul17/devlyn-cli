@@ -1,0 +1,3 @@
+UVR-STALE: N/A tests/server.test.js — no authorized file carries user-visible text (comment/doc) describing the old `/items/import` interface; the sole comment (server/index.js:1) is a generic surface note unrelated to this endpoint's shape.
+PATH-TEST: FIRED tests/server.test.js:105 — goal's `invalid_body` failure path (missing/non-array `items`) had no covering test; added one checking 400/`invalid_body` and unchanged `GET /items`.
+PASS

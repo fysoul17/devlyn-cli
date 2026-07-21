@@ -1,0 +1,57 @@
+{
+  "censored_open_span_ms": 14470,
+  "conservation_residue_ms": 0,
+  "decomposition_status": "complete",
+  "elapsed_ms": 4202914,
+  "gap_to_censored_ms": 15341,
+  "implement_total_ms": 654446,
+  "incomplete_spans": [
+    {
+      "phase": "verify",
+      "record": "current",
+      "started_at": "2026-07-21T09:19:25.259Z"
+    }
+  ],
+  "interphase_gap_ms": 740348,
+  "judge_durations_ms": null,
+  "legacy_edge_residual_ms": null,
+  "non_phase_residual_ms": 1151220,
+  "outer_loop_gap_ms": 0,
+  "phase_sum_ms": 3051694,
+  "phase_union_ms": 3051694,
+  "phases": {
+    "build_gate": {
+      "current_triggered_by": null,
+      "duration_ms": 162973,
+      "history_sum_ms": 0
+    },
+    "cleanup": {
+      "current_triggered_by": null,
+      "duration_ms": 74056,
+      "history_sum_ms": 0
+    },
+    "implement": {
+      "current_triggered_by": "verify",
+      "duration_ms": 103639,
+      "history_sum_ms": 550807
+    },
+    "plan": {
+      "current_triggered_by": null,
+      "duration_ms": 75,
+      "history_sum_ms": 0
+    },
+    "surface_close": {
+      "current_triggered_by": null,
+      "duration_ms": 106400,
+      "history_sum_ms": 0
+    },
+    "verify": {
+      "current_triggered_by": "verify",
+      "duration_ms": null,
+      "history_sum_ms": 2053744
+    }
+  },
+  "startup_ms": 381061,
+  "tail_ms": 0,
+  "verify_complete": false
+}

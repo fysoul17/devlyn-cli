@@ -1,0 +1,13 @@
+BLOCKED — implementation is complete, but the required `npm test` gate cannot pass here: three untouched server tests fail on sandbox-rejected `0.0.0.0` binding (`EPERM` at `tests/server.test.js:9`).
+
+- Cart validation, aggregation, runtime catalog pricing, and JSON errors: [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/f38c9cf695c9e/A1/repo/bin/cli.js:76)
+- Promotion/coupon/tax/shipping ledger: [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/f38c9cf695c9e/A1/repo/bin/cli.js:123)
+- Added success and stock-validation tests without weakening existing tests: [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r500c824c689b/f38c9cf695c9e/A1/repo/tests/cli.test.js:41)
+
+Verified:
+- `node --test tests/cli.test.js` — 5/5 passed.
+- All six validation categories — passed.
+- Required cart success smoke — `CART_SMOKE_OK`.
+- Required stock-error smoke — `CART_STOCK_ERR_OK`.
+
+The literal smoke commands’ `rm -f` cleanup was disallowed by the environment, so I reran their identical CLI assertions with safe temporary-file cleanup.
