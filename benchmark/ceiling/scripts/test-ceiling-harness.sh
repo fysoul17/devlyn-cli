@@ -90,11 +90,22 @@ stamp = lambda value: value.isoformat(timespec="milliseconds").replace("+00:00",
 path = pathlib.Path(".devlyn/runs/fake/pipeline.state.json")
 path.parent.mkdir(parents=True)
 path.write_text(json.dumps({
+    "run_id": "fake",
     "started_at": stamp(started),
-    "phases": {"plan": {
-        "started_at": stamp(started), "completed_at": stamp(completed),
-        "duration_ms": 10, "verdict": "PASS",
-    }},
+    "phases": {
+        "plan": {
+            "started_at": stamp(started), "completed_at": stamp(completed),
+            "duration_ms": 10, "verdict": "PASS",
+        },
+        "verify": {
+            "started_at": stamp(started), "completed_at": stamp(completed),
+            "duration_ms": 10, "verdict": "PASS",
+        },
+        "final_report": {
+            "started_at": stamp(started), "completed_at": stamp(completed),
+            "duration_ms": 10, "verdict": "PASS",
+        },
+    },
 }) + "\n")
 PY
   fi
@@ -406,6 +417,48 @@ if not data["forbidden_transcript_scan"]["passed"]:
     raise SystemExit(data["forbidden_transcript_scan"])
 PY
 
+# F23 receipt regression: a descendant that escapes the original process group
+# must not survive the timeout grace and write after the arm is censored.
+TIMEOUT_CODEX="$TMP_DIR/timeout-codex"
+cat > "$TIMEOUT_CODEX" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${1:-}" = "--version" ]; then
+  echo "codex timeout-selftest 1.0"
+  exit 0
+fi
+trap '' TERM
+python3 - "$PWD/post-timeout-write" <<'PY' &
+import os
+import signal
+import sys
+import time
+from pathlib import Path
+
+os.setsid()
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+time.sleep(8)
+Path(sys.argv[1]).write_text("escaped child wrote after timeout\n", encoding="utf-8")
+PY
+wait
+EOF
+chmod +x "$TIMEOUT_CODEX"
+WORK_TIMEOUT="$TEST_EXTERNAL_ROOT/w/rt01/fxtimeout/B1/repo"
+RESULT_TIMEOUT="$TEST_EXTERNAL_ROOT/x/rt01/fxtimeout/B1"
+make_repo "$WORK_TIMEOUT"
+CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CODEX_BIN="$TIMEOUT_CODEX" CEILING_TEST_WORKTREE="$WORK_TIMEOUT" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
+  --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm B --attempt 1 --opaque-run-id rt01 --opaque-task-id fxtimeout --result-dir "$RESULT_TIMEOUT" --timeout-seconds 1 >/tmp/ceiling-arm-timeout.log
+python3 - "$RESULT_TIMEOUT/timing.json" <<'PY'
+import json
+import sys
+
+timing = json.load(open(sys.argv[1], encoding="utf-8"))
+if timing["invoke_exit"] != 124 or timing["timed_out"] is not True:
+    raise SystemExit(timing)
+PY
+sleep 3
+test ! -e "$WORK_TIMEOUT/post-timeout-write"
+
 WORK_C="$TEST_EXTERNAL_ROOT/w/rt01/fx02/C1/repo"
 RESULT_C="$TEST_EXTERNAL_ROOT/x/rt01/fx02/C1"
 make_repo "$WORK_C"
@@ -694,7 +747,7 @@ if grep -E 'A1|B1|C1|arm A|arm B|arm C' "$CEILING_ROOT/results/$JUDGE_RUN/SW1-dj
 fi
 grep -q 'A1' "$CEILING_ROOT/results/$JUDGE_RUN/SW1-django-13230/judge-mapping.json"
 
-python3 -m py_compile "$SCRIPT_DIR/claude-isolation.py" "$SCRIPT_DIR/ceiling-judge.py" "$SCRIPT_DIR/ceiling-gate.py"
+python3 -m py_compile "$SCRIPT_DIR/claude-isolation.py" "$SCRIPT_DIR/ceiling-judge.py" "$SCRIPT_DIR/ceiling-gate.py" "$SCRIPT_DIR/corrected-anatomy.py"
 bash -n "$SCRIPT_DIR/claude-purity-canary.sh" "$SCRIPT_DIR/run-ceiling-arm.sh" "$SCRIPT_DIR/ceiling-eval.sh" "$SCRIPT_DIR/run-ceiling-tranche.sh" "$SCRIPT_DIR/test-ceiling-harness.sh"
 
 echo "PASS test-ceiling-harness"

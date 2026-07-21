@@ -150,6 +150,50 @@ enforcement; L-format-valid-false-N/A.
 **Build**: Codex sol (workspace-write, detached, one silent-hang retry;
 orchestrator commits builds). Test arms: claude->sonnet, codex->terra.
 
+## STAGE A0 RESULTS (2026-07-21 night, raw before interpretation)
+
+Build: Codex sol (workspace-write, detached, 2352s, zero silent hangs; report
+/tmp/threeway-0077-r0/stageA0-build-report.md). Orchestrator closeout: .agents
+SPW mirror copy (sandbox read-only there), three-way mirror diff clean, lint
+rerun with writable npm cache. All gates orchestrator-re-run on disk:
+
+- **P-0077-H: PASS.** corrected-anatomy.py back-application on -21e:
+  eligible 5/7 (F23 out — phase activity after the 3600s cap; F11 out —
+  verify history[0] verdict-bearing open span), conservation raw AND
+  adjusted residue 0ms on ALL SEVEN rows, relocation ledgers published
+  per row/bucket (`adjusted_bucket = raw_bucket + declared_relocation`,
+  equation_passed everywhere).
+- **Published denominators (frozen)**: P-0077-B adjusted startup median
+  225,768ms → 60% target **135,460.8ms**; P-0077-T adjusted interphase
+  median 397,906ms → 75% target **298,429.5ms**; population F7, F25,
+  F26, F12, FS1.
+- Dispatch-binding receipts: F12 interphase 811,208→498,070ms (probe_derive
+  bound to its real dispatch); F7 interphase 660,858→397,906ms (build_gate
+  history[0] post-hoc stamp bound to its 05:07:51 Agent dispatch, adjusted
+  span 263,045ms); F11 startup 308,482→230,683ms and F23 381,061→297,802ms
+  (plan stamps bound).
+- **F11 producer ROOT-CAUSED**: VERIFY merge wrote BLOCKED onto the open
+  span, the caller skipped SPW complete before fix-loop re-entry, and old
+  `do_spawn` archived the open span into history[] unconditionally. Fix:
+  do_spawn now rejects any {started_at set, completed_at null} span before
+  history mutation (fail-closed, SystemExit names the repair path);
+  clear_verify_round_artifacts moved AFTER successful spawn (a rejected
+  spawn no longer destroys verify artifacts). Self-test replays the literal
+  F11 receipt: rejection leaves state byte-identical, no history entry.
+- Arm kill-escalation: watchdog now enumerates descendants, TERM → 5s
+  grace → KILL; timeout_flag/censoring semantics intact;
+  test-ceiling-harness gains a detached TERM-ignoring-child regression.
+- Gates green (orchestrator re-run): corrected-anatomy self-test, SPW
+  self-test (incl. new F11 test), attribution 25 assertions,
+  test-nodeg-cell, test-ceiling-harness, three-way SPW mirror diff,
+  lint-skills ALL PASS (npm-pack EPERM on first run was root-owned
+  ~/.npm/_cacache — environment, passed with writable cache).
+- Build-seat fresh VERIFY pass: one MEDIUM found and fixed pre-handoff
+  (F26 self-test now locks the exact honest 409,045ms receipt); final
+  zero CRITICAL/HIGH/MEDIUM.
+
+Stage A0 CLOSED → Stage A1 (W-B + W-T0 lever build) unblocked.
+
 ## Principles check
 
 - **0**: closes the frozen wall failure (11.324x median; user-visible wall-time)

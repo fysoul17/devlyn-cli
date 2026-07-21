@@ -1167,6 +1167,10 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     if not isinstance(entry, dict):
         entry = {}
         phases[phase] = entry
+    if entry.get("started_at") is not None and entry.get("completed_at") is None:
+        raise SystemExit(
+            f"error: phases.{phase} has an open span — complete it before respawn"
+        )
     append_phase_history(entry)
     entry["started_at"] = now_iso()
     entry["completed_at"] = None
@@ -1375,6 +1379,29 @@ def self_test() -> int:
             assert "never spawned" in str(e)
         else:
             raise AssertionError("complete() without a prior spawn() must raise")
+
+        # F11 rs-20260721T065728Z receipt: VERIFY merge wrote BLOCKED, but the
+        # caller skipped complete() before re-entry. Respawn must fail without
+        # archiving the open span as history.
+        f11_open = {
+            "phases": {
+                "verify": {
+                    "started_at": "2026-07-21T07:08:11.684Z",
+                    "completed_at": None,
+                    "duration_ms": None,
+                    "verdict": "BLOCKED",
+                }
+            }
+        }
+        before_f11 = json.dumps(f11_open, sort_keys=True)
+        try:
+            do_spawn(f11_open, "verify", 1, "verify", None, "codex", None)
+        except SystemExit as e:
+            assert "open span" in str(e) and "complete it before respawn" in str(e)
+        else:
+            raise AssertionError("respawn over an open F11 span must fail")
+        assert json.dumps(f11_open, sort_keys=True) == before_f11
+        assert "history" not in f11_open["phases"]["verify"]
 
         # A completed FAIL round must be retained before a fix-loop respawn
         # resets the live record.
@@ -2397,8 +2424,6 @@ def main() -> int:
                 pathlib.Path.cwd(), devlyn, state, args.phase, args.round,
                 require_existing=True,
             )
-        if args.phase == "verify":
-            clear_verify_round_artifacts(devlyn)
         untracked_before = (
             None if args.untracked_before_json is None
             else parse_string_list(args.untracked_before_json, "--untracked-before-json")
@@ -2409,6 +2434,8 @@ def main() -> int:
             prompt_sha256=args.prompt_sha256,
             untracked_before=untracked_before,
         )
+        if args.phase == "verify":
+            clear_verify_round_artifacts(devlyn)
         if args.phase == "surface_close":
             validate_surface_inputs(pathlib.Path.cwd(), devlyn, state)
             validate_surface_prompt(devlyn, state)

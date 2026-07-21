@@ -566,10 +566,37 @@ run_with_timeout() {
   esac
   local child_pid=$!
   set +m
+  child_descendants() {
+    ps -axo pid=,ppid= | awk -v root_pid="$child_pid" '
+      { pids[NR] = $1; parents[NR] = $2 }
+      END {
+        descendants[root_pid] = 1
+        for (round = 1; round <= NR; round++) {
+          for (row = 1; row <= NR; row++) {
+            if (descendants[parents[row]]) descendants[pids[row]] = 1
+          }
+        }
+        for (row = 1; row <= NR; row++) {
+          if (pids[row] != root_pid && descendants[pids[row]]) print pids[row]
+        }
+      }
+    '
+  }
   terminate_child_group() {
-    kill -TERM -- "-$child_pid" 2>/dev/null || kill -TERM "$child_pid" 2>/dev/null || true
+    local descendants descendant
+    descendants="$(child_descendants)"
+    kill -TERM -- "-$child_pid" 2>/dev/null || true
+    for descendant in $descendants; do
+      kill -TERM "$descendant" 2>/dev/null || true
+    done
+    kill -TERM "$child_pid" 2>/dev/null || true
     sleep 5
-    kill -KILL -- "-$child_pid" 2>/dev/null || kill -KILL "$child_pid" 2>/dev/null || true
+    descendants="$descendants $(child_descendants)"
+    kill -KILL -- "-$child_pid" 2>/dev/null || true
+    for descendant in $descendants; do
+      kill -KILL "$descendant" 2>/dev/null || true
+    done
+    kill -KILL "$child_pid" 2>/dev/null || true
   }
   local draw_monitor_pid=""
   if [ "$F7_DIAGNOSTIC_ROW" -eq 1 ]; then
