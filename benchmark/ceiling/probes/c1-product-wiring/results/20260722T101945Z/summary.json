@@ -1,0 +1,30 @@
+{
+  "claude_binary": "/Users/aipalm/.local/share/nx01/pins/iter0077-probe/claude",
+  "pk_probe_passed": true,
+  "protocol": "P-0078-K-v1",
+  "trials": {
+    "01-k-mechanical": {
+      "allow_after_archive_exit": 0,
+      "block_receipt_count": 9,
+      "env_session_id": "d8ed268d-d87a-4224-90fd-3c194982a86c",
+      "parity_canary_green": true,
+      "passed": true,
+      "session_exit": 0,
+      "state_bytes_stable_through_blocks": true
+    },
+    "02-control-absent": {
+      "block_receipt_count": 0,
+      "devlyn_created": false,
+      "passed": true,
+      "session_exit": 0,
+      "tree_neutral": true
+    },
+    "03-control-foreign": {
+      "block_receipt_count": 0,
+      "passed": true,
+      "session_exit": 0,
+      "state_bytes_identical": true,
+      "tree_neutral": true
+    }
+  }
+}
