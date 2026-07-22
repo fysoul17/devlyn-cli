@@ -1,0 +1,49 @@
+# Codex (OpenAI) adapter
+
+## Identity
+
+You are OpenAI's Codex model.
+
+## Output discipline
+
+Efficient, direct, task-oriented.
+
+## Validation pattern
+
+Run the reproduction command and the full test suite before declaring done; trust their output.
+
+---
+
+# PHASE 2 — IMPLEMENT fix round (VERIFY found 1 HIGH finding)
+
+<role>
+Fix the single VERIFY finding below in `bin/cli.js`. This is a targeted precedence fix, not a re-implementation — do not touch anything else.
+</role>
+
+<finding>
+id: verify-001
+severity: HIGH
+rule: spec.conflicting-duplicate-precedence
+file: bin/cli.js:89 (approximate — the current per-event validation loop)
+
+`.devlyn/criteria.generated.md` Requirement states unconditionally: "The same `id` with differing content is a `conflicting_duplicate` — exit 2, no stdout, stderr is exactly `{"error":"conflicting_duplicate","id":"<id>"}`." The current implementation runs full field validation (unknown `type`, missing `merchant_id`, missing `id`, invalid `amount_cents`) BEFORE checking whether this event's `id` collides with a previously-seen event that has different content. So for input events `[{id:"same",merchant_id:"m",type:"charge",amount_cents:100000},{id:"same",merchant_id:"m",type:"bogus",amount_cents:100000}]`, the second event has both an unknown `type` AND a conflicting-duplicate `id` — the implementation currently reports `{"error":"unknown_type"}` instead of `{"error":"conflicting_duplicate","id":"same"}`.
+
+Reproduction: `printf '%s' '{"events":[{"id":"same","merchant_id":"m","type":"charge","amount_cents":100000},{"id":"same","merchant_id":"m","type":"bogus","amount_cents":100000}]}' > /tmp/verify-repro.json && node bin/cli.js payout --input /tmp/verify-repro.json` currently prints `{"error":"unknown_type"}` (exit 2); must instead print `{"error":"conflicting_duplicate","id":"same"}` (exit 2).
+
+Required precedence: for each event, in array order, check for an `id` collision against a previously-accepted event FIRST (before running this event's own field validation). If the `id` matches a prior event: compare the full raw event objects with deep-equality — identical → skip (idempotent no-op, continue to next event without re-validating or re-applying it); different → `conflicting_duplicate` (exit 2, stderr exactly `{"error":"conflicting_duplicate","id":"<id>"}`, no stdout). Only when there is NO `id` collision does per-field validation (unknown type / missing merchant_id / missing id / invalid amount_cents) run for that event.
+
+Constraint this reorder must preserve: an event whose `id` has never been seen before still goes through full field validation before being accepted into a merchant's totals — this fix changes ONLY the relative order between "check id collision" and "validate this event's own fields", it does not remove any validation.
+</finding>
+
+<constraints>
+- Only touch `bin/cli.js`.
+- Do not touch `tests/cli.test.js`, `data/payout-rules.json`, `server/`, `web/`. No new dependencies.
+- All 8 existing tests, all 5 verification commands in `.devlyn/criteria.generated.md`, and the null-input fix from the previous round must still pass/behave correctly after this change.
+- No workaround: this is a genuine reordering of two existing checks, not a special-case patch bolted on top.
+</constraints>
+
+<output>
+Run `npm test` and both reproduction commands (this one, and the prior round's `null`-input case) before declaring done. Report `PASS` with a summary, or `BLOCKED` if the finding cannot be resolved as scoped.
+</output>
+
+Do not edit `.devlyn/pipeline.state.json`.

@@ -1,0 +1,8 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "description": "run full test suite (existing tests + new webhook tests: happy path, replay 409, tampered-body 401)"
+    }
+  ]
+}

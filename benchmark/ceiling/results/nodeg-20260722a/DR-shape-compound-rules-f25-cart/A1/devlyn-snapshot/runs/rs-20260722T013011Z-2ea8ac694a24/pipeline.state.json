@@ -1,0 +1,205 @@
+{
+  "base_ref": {
+    "branch": "master",
+    "sha": "d059b43faf24e64eb7a560cc37cebd5ae30fe17b"
+  },
+  "bypasses": [],
+  "complexity": "large",
+  "criteria": [
+    "cart subcommand: bench-cli cart --input <path>",
+    "catalog-driven pricing (no hardcoded catalog values)",
+    "combine duplicate SKUs before stock/promotion math",
+    "line promotions before coupon; tax after line promotions, before coupon",
+    "exact stdout/stderr JSON contract; exit 2 + JSON error on validation failure",
+    "update tests/cli.test.js; no new deps; only bin/cli.js + tests/cli.test.js"
+  ],
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "implement_passed_sha": "31c09d77399ad8aff21c63094c75ba7b59dc6793",
+  "mode": "free-form",
+  "pair_verify": true,
+  "phases": {
+    "build_gate": {
+      "artifacts": {
+        "findings_file": ".devlyn/build_gate.findings.jsonl",
+        "log_file": ".devlyn/build_gate.log.md"
+      },
+      "completed_at": "2026-07-22T01:49:16.015Z",
+      "duration_ms": 168833,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-22T01:46:27.182Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "cleanup": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T01:51:34.944Z",
+      "duration_ms": 138928,
+      "engine": "codex",
+      "model_effective": "gpt-5.6-terra",
+      "model_requested": "gpt-5.6-terra",
+      "post_sha": "00d750c20bcf0fa8bf1098eefd93a075914b82f6",
+      "pre_sha": "00d750c20bcf0fa8bf1098eefd93a075914b82f6",
+      "round": 0,
+      "started_at": "2026-07-22T01:49:16.016Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "final_report": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T02:10:56.646Z",
+      "duration_ms": 29224,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-22T02:10:27.422Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS_WITH_ISSUES"
+    },
+    "implement": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T02:02:40.236Z",
+      "duration_ms": 130902,
+      "engine": "codex",
+      "history": [
+        {
+          "completed_at": "2026-07-22T01:46:15.501Z",
+          "duration_ms": 503304,
+          "started_at": "2026-07-22T01:37:52.197Z",
+          "verdict": "PASS"
+        }
+      ],
+      "model_effective": "gpt-5.6-terra",
+      "model_requested": "gpt-5.6-terra",
+      "post_sha": "31c09d77399ad8aff21c63094c75ba7b59dc6793",
+      "round": 1,
+      "started_at": "2026-07-22T02:00:29.334Z",
+      "sub_verdicts": null,
+      "triggered_by": "verify",
+      "verdict": "PASS"
+    },
+    "plan": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T01:37:52.197Z",
+      "duration_ms": 176398,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-22T01:34:55.799Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "probe_derive": null,
+    "surface_close": {
+      "durability": [
+        {
+          "origin_phase": "verify",
+          "receipt_path": ".devlyn/closure-durability.round-1.json",
+          "receipt_sha256": "57e04614e4d1b29817014557eb79f3528489e235ba19070229a310359e35f4ee",
+          "restore_commit_sha": null,
+          "round": 1
+        }
+      ]
+    },
+    "verify": {
+      "artifacts": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T02:10:16.390Z",
+      "duration_ms": 441709,
+      "engine": "codex",
+      "history": [
+        {
+          "completed_at": "2026-07-22T02:00:22.320Z",
+          "duration_ms": 456222,
+          "started_at": "2026-07-22T01:52:46.098Z",
+          "verdict": "NEEDS_WORK"
+        }
+      ],
+      "judge_durations_ms": {
+        "judge": 230000,
+        "pair_judge": 47739
+      },
+      "merged": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "summary_file": ".devlyn/verify-merge.summary.json",
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "model_effective": null,
+      "model_requested": null,
+      "round": 1,
+      "started_at": "2026-07-22T02:02:54.681Z",
+      "sub_verdicts": {
+        "judge": "PASS_WITH_ISSUES",
+        "mechanical": "PASS",
+        "pair_judge": "PASS"
+      },
+      "triggered_by": "verify",
+      "verdict": "PASS_WITH_ISSUES"
+    }
+  },
+  "risk_probes_digest": null,
+  "risk_profile": {
+    "high_risk": true,
+    "pair_default_enabled": true,
+    "reasons": [
+      "risk keyword: payment/money/billing/invoice/pricing/tax/ledger",
+      "risk keyword: idempotency/replay/duplicate",
+      "auto-risk-probes demoted: plan surface small (2 paths)"
+    ],
+    "risk_probes_enabled": false,
+    "risk_probes_explicit": false
+  },
+  "rounds": {
+    "global": 1,
+    "max_rounds": 4
+  },
+  "run_id": "rs-20260722T013011Z-2ea8ac694a24",
+  "source": {
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "571a6fb0cf71c55622db26872ba127b81799e3056866afbfe0342d6378a921c0",
+    "goal_path": ".devlyn/goal.raw.txt",
+    "goal_sha256": "c603e6b1ea3132e0b70912d5ac5e787d3e5c691becb273bac31c0d31724af630",
+    "spec_path": null,
+    "spec_sha256": null,
+    "type": "generated"
+  },
+  "started_at": "2026-07-22T01:30:11.472Z",
+  "verify": {
+    "coverage_failed": false,
+    "pair_trigger": {
+      "eligible": true,
+      "reasons": [
+        "pair.default",
+        "mode.pair-verify",
+        "complexity.large",
+        "risk.high",
+        "judge.warning"
+      ],
+      "skipped_reason": null
+    }
+  },
+  "version": "3.0"
+}

@@ -1,0 +1,49 @@
+# Codex (OpenAI) adapter
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below.
+
+## Output discipline
+
+Efficient, direct, task-oriented.
+
+## Validation pattern
+
+Run the reproduction command and the full test suite before declaring done; trust their output.
+
+---
+
+# PHASE 2 — IMPLEMENT fix round (BUILD_GATE found 1 HIGH finding)
+
+<role>
+Fix the single BUILD_GATE finding below in `bin/cli.js`. This is a targeted bug fix, not a re-implementation — do not touch anything else.
+</role>
+
+<finding>
+id: bg-001
+severity: HIGH
+rule: correctness.uncaught-exception
+file: bin/cli.js:66
+
+`payout --input <file>` crashes with an uncaught `TypeError` when the input file's content is the syntactically-valid JSON literal `null`. `JSON.parse('null')` succeeds (no `SyntaxError`, so the existing try/catch around the parse does not fire), yielding `ledger = null`. The next line, `Object.prototype.hasOwnProperty.call(ledger, 'events')`, throws `TypeError: Cannot convert undefined or null to object` outside any try/catch — an uncaught exception: exit code 1 (spec requires 2), a raw Node stack trace on stderr (spec requires exactly one JSON error object), no defined stdout behavior.
+
+This violates `.devlyn/criteria.generated.md` Requirement: "Validation failures ... invalid input JSON ... missing events ... exit 2, write exactly one JSON error object to stderr, write nothing to stdout. Parsing/file-read failures surface as JSON errors, never silent catches."
+
+Reproduction: `printf '%s' 'null' > /tmp/repro.json && node bin/cli.js payout --input /tmp/repro.json` currently exits 1 with a stack trace; must instead exit 2 with a single JSON error object on stderr and nothing on stdout.
+
+fix_hint (from BUILD_GATE, not mandatory verbatim but the right shape): after the JSON.parse try/catch, add an explicit shape guard before the `hasOwnProperty` check, e.g. `if (ledger === null || typeof ledger !== 'object' || Array.isArray(ledger)) { payoutError('invalid_json'); return; }` — reuse the existing `payoutError()` exit-2/JSON-stderr contract; do not add a new try/catch shell around line 66.
+</finding>
+
+<constraints>
+- Only touch `bin/cli.js` (this is a one-line-class fix; do not touch `tests/cli.test.js` unless you determine a regression test is needed for this exact case — optional, not required by the finding).
+- Do not touch `data/payout-rules.json`, `server/`, `web/`, or add dependencies.
+- Do not change any other behavior. All 8 existing tests (3 pre-existing + 2 payout tests + 3 server tests) and all 5 verification commands in `.devlyn/criteria.generated.md` must still pass after your fix.
+- No workaround: do not wrap unrelated code in defensive try/catch "just in case" — fix exactly the null/non-object-top-level-JSON shape gap identified above.
+</constraints>
+
+<output>
+Run `npm test` and the reproduction command above before declaring done. Report `PASS` with the fix summary, or `BLOCKED` if the finding cannot be resolved as scoped.
+</output>
+
+Do not edit `.devlyn/pipeline.state.json`.

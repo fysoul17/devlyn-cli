@@ -231,3 +231,32 @@ mirror sync + writable npm cache).
   covered by the hook self-test (mechanical). P-0078-KL and P-0078-C
   remain cohort reads (first hook-bearing cohort — needs the runner
   settings-staging edit, post-0077 Stage B).
+
+## STAGE A2 — REGISTERED AMENDMENT (2026-07-22, via 0077.5 R-final synthesis)
+
+The 0077 Stage B adjudication revoked the W-B startup-lever claim
+(P-0077-B MISS 110.8%) and registered its removal HERE, because this
+iter's measured mechanism (session ownership) lives in the same file.
+Criterion: No Unregistered Survival — falsified machinery outlives its
+falsification only under a registered, gated, deadlined removal.
+
+- **Scope**: resolve-bootstrap.py slims to the 0078-measured surface —
+  schema-v3.0 state init + `session_id` stamp + fail-closed init
+  contract. The W-B absorption machinery (flag-combo validation beyond
+  init needs, engine preflight, untracked baseline, preclassification,
+  announce) returns to SKILL PHASE-0 prose (pre-A1 prose restored for
+  the stripped steps; net token delta reported honestly — the −11.8%
+  A1 win partially reverts and that is recorded, not hidden).
+- **Gates**: bootstrap byte-contract self-test reshape; lint + token
+  gauge + config↔mirror sync; P-0078-K/O/I re-run (committed probe
+  runner); ONE live resolve micro-probe row (sonnet arms / terra
+  executor) with FS-0077-B-class behavioral checks (no judgment
+  content, phase semantics, halt behavior, or autonomy change).
+- **Deadline**: BEFORE the first hook-bearing cohort — no further
+  measurement rides the unearned carrier.
+- **Bounds (Grok, verbatim-adopted)**: retention arguments may cite
+  only 0078's measured claim; "bootstrap almost earned P-B" is banned;
+  future startup credit requires a NEW registered bar.
+- Build = Codex sol. The runner settings-staging edit (hook-bearing
+  cohort prerequisite) may ship with A2 or separately, but the cohort
+  needs both.

@@ -1,0 +1,8 @@
+BLOCKED — implementation is scoped and syntax-valid, but `npm test` cannot run server tests in this sandbox.
+
+- Added route-scoped raw parsing and route-controlled JSON parsing in [server/index.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/server/index.js:7).
+- Added both regression tests in [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:128).
+- `git diff --check` and both `node --check` commands pass.
+- `npm test`: 3 passed, 8 failed before assertions because `server.listen(0)` raises `EPERM`; explicit `127.0.0.1` binding also raises `EPERM`.
+
+Run `npm test` in an environment that permits local listeners to complete verification.

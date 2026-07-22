@@ -1,0 +1,73 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "npm test",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "s a JSON validation error\n  ---\n  duration_ms: 42.59825\n  ...\n# Subtest: GET /health returns ok\nok 6 - GET /health returns ok\n  ---\n  duration_ms: 20.74625\n  ...\n# Subtest: GET /items returns list\nok 7 - GET /items returns list\n  ---\n  duration_ms: 3.691291\n  ...\n# Subtest: GET /items/:id returns 404 for missing\nok 8 - GET /items/:id returns 404 for missing\n  ---\n  duration_ms: 5.036167\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 264.965167\n"
+    },
+    {
+      "index": 1,
+      "cmd": "printf '%s' '{\"events\":[{\"id\":\"e1\",\"merchant_id\":\"m1\",\"type\":\"charge\",\"amount_cents\":100000}]}' > /tmp/devlyn-payout-ok.json && node bin/cli.js payout --input /tmp/devlyn-payout-ok.json",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "total_payout_cents",
+        "merchants",
+        "m1",
+        "87363",
+        "9707",
+        "2930"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "{\"total_payout_cents\":87363,\"total_processing_fee_cents\":2930,\"total_dispute_fee_cents\":0,\"total_reserve_cents\":9707,\"merchants\":[{\"merchant_id\":\"m1\",\"gross_charge_cents\":100000,\"refund_cents\":0,\"dispute_cents\":0,\"processing_fee_cents\":2930,\"dispute_fee_cents\":0,\"reserve_cents\":9707,\"payout_cents\":87363}]}\n"
+    },
+    {
+      "index": 2,
+      "cmd": "printf '%s' '{\"events\":[{\"id\":\"e1\",\"merchant_id\":\"m1\",\"type\":\"charge\",\"amount_cents\":1000}]}' > /tmp/devlyn-payout-min.json && node bin/cli.js payout --input /tmp/devlyn-payout-min.json",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "m1",
+        "941",
+        "59"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "{\"total_payout_cents\":0,\"total_processing_fee_cents\":59,\"total_dispute_fee_cents\":0,\"total_reserve_cents\":941,\"merchants\":[{\"merchant_id\":\"m1\",\"gross_charge_cents\":1000,\"refund_cents\":0,\"dispute_cents\":0,\"processing_fee_cents\":59,\"dispute_fee_cents\":0,\"reserve_cents\":941,\"payout_cents\":0}]}\n"
+    },
+    {
+      "index": 3,
+      "cmd": "printf '%s' '{\"events\":[{\"id\":\"e1\",\"merchant_id\":\"m1\",\"type\":\"charge\",\"amount_cents\":100000},{\"id\":\"e1\",\"merchant_id\":\"m1\",\"type\":\"charge\",\"amount_cents\":500}]}' > /tmp/devlyn-payout-dup.json && node bin/cli.js payout --input /tmp/devlyn-payout-dup.json",
+      "expected_exit": 2,
+      "actual_exit": 2,
+      "stdout_contains": [
+        "conflicting_duplicate",
+        "e1"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "{\"error\":\"conflicting_duplicate\",\"id\":\"e1\"}\n"
+    },
+    {
+      "index": 4,
+      "cmd": "printf '%s' '{}' > /tmp/devlyn-payout-bad.json && node bin/cli.js payout --input /tmp/devlyn-payout-bad.json",
+      "expected_exit": 2,
+      "actual_exit": 2,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "{\"error\":\"missing_events\"}\n"
+    }
+  ]
+}

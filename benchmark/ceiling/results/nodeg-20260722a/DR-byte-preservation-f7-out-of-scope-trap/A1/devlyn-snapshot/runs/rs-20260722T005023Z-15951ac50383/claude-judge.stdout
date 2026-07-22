@@ -1,0 +1,14 @@
+Both targeted probes pass.
+
+**Probe 1 (error-priority / universal validation clause):**
+- `--format xml` (bogus, non-yaml): stderr `Unsupported version format: xml`, no stdout — fix generalizes, not hardcoded to `yaml`.
+- `--format` (missing value): stderr `--format requires a value`, no stdout.
+- `--format json --format yaml` (round-1 regression repro): stderr `Unsupported version format: yaml`, **no JSON leaked to stdout** — `lastIndexOf('--format')` correctly picks the last/effective value. Fix confirmed closed. `npm test` (9/9 pass) confirms exit status === 1 for the yaml and dup-flag cases.
+
+**Probe 2 (exact-shape output clause):**
+- `--format json` → `{"version":"0.1.0"}\n` — exactly one line (`wc -l` = 1), valid JSON, single key `version`.
+- bare `version` → `0.1.0\n` — byte-for-byte the raw version string, no JSON leakage, no format flag.
+
+Static scope check: `parseVersionFormat` follows the `parseNameFlag` pattern; `hello`, `--help`/`-h`, unknown-command, and the `parseGreetingFormat` TODO are untouched. No new dependencies.
+
+PASS

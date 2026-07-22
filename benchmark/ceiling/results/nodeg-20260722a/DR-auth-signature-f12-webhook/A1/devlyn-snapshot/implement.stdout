@@ -1,0 +1,12 @@
+BLOCKED — required `npm test` cannot bind a local HTTP listener in this sandbox.
+
+Implemented the webhook route with raw-body HMAC verification, safe signature comparison, validation, replay protection, and requested tests in [server/index.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/server/index.js:7) and [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:28).
+
+Validation:
+
+- `git diff --check`: passed.
+- Syntax checks: passed.
+- Direct in-process webhook checks: 3 passed (happy path, replay 409, tampered-body 401).
+- `npm test`: 9 tests total; 3 passed, 6 failed before requests with `listen EPERM: operation not permitted 0.0.0.0` at [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:11), including all three unchanged GET tests.
+
+Rerun `npm test` in an environment that permits localhost listeners to obtain a PASS.

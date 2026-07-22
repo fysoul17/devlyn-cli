@@ -1,0 +1,5 @@
+UVR-STALE: N/A — `docs/examples.rst` and the `Job.run()` docstring (`schedule/__init__.py:696-700`) are already updated by the frozen diff itself with a new `.max_runs()` section/mention; no other authorized-file user-visible text (docstrings for `ScheduleValueError`, `until()`, etc.) documents an interface that becomes stale from this change.
+
+PATH-TEST: N/A — every success/failure path the goal specifies (chainable setter both fluent positions, exact n-run cutoff with no n+1 call, `run_pending()` and `run_all()`, first-limit-wins in both directions vs `.until()`, `next_run`/`idle_seconds` reflecting removal, validation incl. bool rejection, reconfiguration preserving run count, per-job isolation) already has a dedicated assertion in the frozen `test_schedule.py` diff.
+
+PASS

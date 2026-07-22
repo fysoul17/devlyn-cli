@@ -1,0 +1,12 @@
+PASS
+
+- R1: Added chainable `Job.max_runs(n)` and a worked example. [implementation](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/schedule/__init__.py:582), [tests](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/test_schedule.py:390), [docs](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/docs/examples.rst:248)
+- R2: Counts actual callbacks and returns `CancelJob` after the final permitted execution. [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/schedule/__init__.py:711)
+- R3: Covered `run_pending()` and `Scheduler.run_all()`. [test_schedule.py](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/test_schedule.py:402)
+- R4: Deadline and budget first-limit behavior is covered in both directions. [test_schedule.py](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/test_schedule.py:436)
+- R5: Cancellation updates module-level next-run and idle state. [test_schedule.py](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/test_schedule.py:414)
+- R6: Invalid values raise `ScheduleValueError`, now also a `ValueError`. [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/schedule/__init__.py:59)
+- R7: Reconfiguration replaces the limit without resetting the counter. [test_schedule.py](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/test_schedule.py:463)
+- R8: Limits and counters are per-job, including unbounded jobs. [test_schedule.py](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/test_schedule.py:475)
+
+Verified: `python3 -m unittest test_schedule -v` — 87 passed, 0 failures/errors (41 existing `pytz unavailable` skips).

@@ -1,0 +1,7 @@
+PASS — moved duplicate-ID handling ahead of field validation in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/bin/cli.js:89).
+
+- Conflicting duplicate with invalid `type`: exit 2, empty stdout, exact required stderr.
+- `null` input: exit 2, empty stdout, `{"error":"invalid_json"}`.
+- All four payout criteria commands passed.
+- `npm test` ran: 5 CLI tests passed; 3 unrelated server tests failed because the sandbox forbids socket binding (`listen EPERM 0.0.0.0`), not due to this change.
+

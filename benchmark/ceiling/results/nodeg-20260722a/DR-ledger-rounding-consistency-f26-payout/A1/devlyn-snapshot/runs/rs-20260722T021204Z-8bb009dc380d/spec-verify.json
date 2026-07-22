@@ -1,0 +1,41 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "exit_code": 0
+    },
+    {
+      "cmd": "printf '%s' '{\"events\":[{\"id\":\"e1\",\"merchant_id\":\"m1\",\"type\":\"charge\",\"amount_cents\":100000}]}' > /tmp/devlyn-payout-ok.json && node bin/cli.js payout --input /tmp/devlyn-payout-ok.json",
+      "exit_code": 0,
+      "stdout_contains": [
+        "total_payout_cents",
+        "merchants",
+        "m1",
+        "87363",
+        "9707",
+        "2930"
+      ]
+    },
+    {
+      "cmd": "printf '%s' '{\"events\":[{\"id\":\"e1\",\"merchant_id\":\"m1\",\"type\":\"charge\",\"amount_cents\":1000}]}' > /tmp/devlyn-payout-min.json && node bin/cli.js payout --input /tmp/devlyn-payout-min.json",
+      "exit_code": 0,
+      "stdout_contains": [
+        "m1",
+        "941",
+        "59"
+      ]
+    },
+    {
+      "cmd": "printf '%s' '{\"events\":[{\"id\":\"e1\",\"merchant_id\":\"m1\",\"type\":\"charge\",\"amount_cents\":100000},{\"id\":\"e1\",\"merchant_id\":\"m1\",\"type\":\"charge\",\"amount_cents\":500}]}' > /tmp/devlyn-payout-dup.json && node bin/cli.js payout --input /tmp/devlyn-payout-dup.json",
+      "exit_code": 2,
+      "stdout_contains": [
+        "conflicting_duplicate",
+        "e1"
+      ]
+    },
+    {
+      "cmd": "printf '%s' '{}' > /tmp/devlyn-payout-bad.json && node bin/cli.js payout --input /tmp/devlyn-payout-bad.json",
+      "exit_code": 2
+    }
+  ]
+}

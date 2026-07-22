@@ -1,0 +1,5 @@
+PASS
+
+Updated [`bin/cli.js`](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/bin/cli.js:45) to use `lastIndexOf('--format')`, plus a duplicate-flag regression test in [`tests/cli.test.js`](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/cli.test.js:36).
+
+Verified required CLI behavior and `node --test tests/cli.test.js` (6/6 pass). `npm test` reaches the CLI tests successfully but its three unrelated server tests fail because this sandbox blocks socket binding (`listen EPERM`), not due to this change.

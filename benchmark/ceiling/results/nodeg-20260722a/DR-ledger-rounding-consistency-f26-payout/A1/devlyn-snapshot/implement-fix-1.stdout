@@ -1,0 +1,6 @@
+PASS — Fixed the null/non-object JSON shape gap in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/bin/cli.js:66), routing it through the existing `invalid_json` error contract.
+
+- Null reproduction: exit 2, zero stdout, one stderr line: `{"error":"invalid_json"}`.
+- All four payout verification commands passed with expected exit codes/output.
+- `npm test` ran: 5 CLI tests passed; 3 server tests fail because this sandbox blocks listener creation (`listen EPERM 0.0.0.0`), unrelated to this change.
+- `git diff --check` passed; only `bin/cli.js` changed.

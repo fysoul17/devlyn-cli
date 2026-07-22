@@ -1,0 +1,24 @@
+PHASE 5 — VERIFY pair-JUDGE (bounded adversarial complement, fresh context, read-only).
+
+You are spawned with empty conversation context — no carry-over from PLAN/IMPLEMENT/BUILD_GATE/CLEANUP or from the primary judge. You have READ-ONLY tools (Read, Grep, Glob, and running `npm test` / `node bin/cli.js ...` in the repo at /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo). Do not edit any file. Do not read `.claude/skills/**`, `.codex/skills/**`, `CLAUDE.md`, or `AGENTS.md`.
+
+ROLE: bounded adversarial complement, not a duplicate broad audit. The primary judge owns broad coverage; you target the two highest-risk explicit Verification bullets. Execute at most two targeted probes before your first output. Stop immediately after the first verdict-binding finding and emit JSONL. If both probes pass and static scope/dependency checks show no blocker, emit PASS immediately — do not continue exploring.
+
+CONTRACT (this run's criteria, `.devlyn/criteria.generated.md`):
+
+Requirements:
+- `bin/cli.js`'s `version` subcommand accepts an optional `--format json` flag; when present, stdout is a single line of valid JSON: `{"version":"<x.y.z>"}` (from `readPackageVersion()`).
+- Without `--format`, unchanged: bare version string via `console.log(readPackageVersion())`.
+- `--format yaml`, or ANY `--format` value other than `json`, exits 1 with an error (following the `parseNameFlag` pattern).
+- Only `bin/cli.js` and `tests/cli.test.js` are modified. No new npm dependencies.
+- Code unrelated to this feature (comments, `hello`, `--help`/`-h`, unknown-command handling) must remain byte-for-byte unchanged.
+
+This is VERIFY round 2. Round 1's primary judge found a real bug: `node bin/cli.js version --format json --format yaml` (duplicate `--format` flags) exited 0 instead of 1, because the code used `argv.indexOf('--format')` (first occurrence only). The fix changed it to `argv.lastIndexOf('--format')` (last-flag-wins). Verify this fix actually closes the gap, plus recheck general robustness.
+
+The two highest-risk bullets for you to target:
+1. Error-priority / validation clause: "ANY `--format` value other than `json` ... exit 1 with an error" — this is an "any other value" universal clause, not just the literal example `yaml`. Test with at least one different bogus value (not `yaml`), the missing-value case, AND the round-1 regression repro `--format json --format yaml` (must now exit 1, since `yaml` is the last/effective value) to confirm the fix generalizes and isn't hardcoded to the single repro. Compare full externally visible result: exit code AND stderr/stdout message.
+2. Exact-shape output clause: "stdout is a single line of valid JSON: `{"version":"<x.y.z>"}`" — verify the `--format json` output is exactly one line, is valid JSON, parses to an object with exactly one key `version` (no extra/missing keys), and that the bare `version` command (no flag) is byte-for-byte unchanged from before this diff (still just the raw version string, no trailing JSON, no format flag leakage).
+
+Read `bin/cli.js` and `tests/cli.test.js` to see the actual diff/implementation before probing. Run the repo's test command (`npm test`) if useful, plus direct `node bin/cli.js version ...` invocations for your two targeted probes.
+
+OUTPUT: emit findings as JSONL on stdout, one per line, schema: `{"id": "...", "rule_id": "...", "severity": "CRITICAL|HIGH|MEDIUM|LOW", "file": "...", "line": N, "message": "...", "confidence": "high|medium|low", "verdict_binding": true|false}`. If both probes pass with no verdict-binding issue, output nothing but a final line `PASS`. Otherwise stop after the first verdict-binding finding and output your JSONL finding(s) followed by `NEEDS_WORK`.

@@ -1,0 +1,207 @@
+{
+  "base_ref": {
+    "branch": "master",
+    "sha": "cbd12daedd7f2d22c62110faf097f12797e7dda6"
+  },
+  "bypasses": [],
+  "complexity": "large",
+  "criteria": [],
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "implement_passed_sha": "983d1f14fcb7dcd42eef5e1bdc77f0f45b5a8555",
+  "mode": "free-form",
+  "pair_verify": true,
+  "phases": {
+    "build_gate": {
+      "artifacts": {
+        "findings_file": ".devlyn/build_gate.findings.jsonl",
+        "log_file": ".devlyn/build_gate.log.md"
+      },
+      "completed_at": "2026-07-22T04:27:16.135Z",
+      "duration_ms": 144304,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": "claude-sonnet-5",
+      "round": 1,
+      "started_at": "2026-07-22T04:24:51.831Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "cleanup": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T04:28:27.718Z",
+      "duration_ms": 56878,
+      "engine": "codex",
+      "model_effective": null,
+      "model_requested": null,
+      "post_sha": "09ae5061860820d78a62aa53d5d2773c81a9a5f4",
+      "pre_sha": "09ae5061860820d78a62aa53d5d2773c81a9a5f4",
+      "round": 1,
+      "started_at": "2026-07-22T04:27:30.840Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "final_report": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T04:55:37.953Z",
+      "duration_ms": 20097,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": "claude-sonnet-5",
+      "round": 1,
+      "started_at": "2026-07-22T04:55:17.856Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "implement": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T04:43:53.736Z",
+      "duration_ms": 168752,
+      "engine": "codex",
+      "history": [
+        {
+          "completed_at": "2026-07-22T04:24:38.559Z",
+          "duration_ms": 737602,
+          "started_at": "2026-07-22T04:12:20.957Z",
+          "verdict": "PASS"
+        }
+      ],
+      "model_effective": null,
+      "model_requested": null,
+      "post_sha": "983d1f14fcb7dcd42eef5e1bdc77f0f45b5a8555",
+      "round": 2,
+      "started_at": "2026-07-22T04:41:04.984Z",
+      "sub_verdicts": null,
+      "triggered_by": "verify",
+      "verdict": "PASS"
+    },
+    "plan": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T04:11:36.140Z",
+      "duration_ms": 284444,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": "claude-sonnet-5",
+      "round": 1,
+      "started_at": "2026-07-22T04:06:51.696Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "probe_derive": null,
+    "surface_close": {
+      "durability": [
+        {
+          "origin_phase": "verify",
+          "receipt_path": ".devlyn/closure-durability.round-2.json",
+          "receipt_sha256": "8bddd0c988b7278ba2416e00c04e1ed3bb36a3e0bb87bf768defc35455dec907",
+          "restore_commit_sha": null,
+          "round": 2
+        }
+      ]
+    },
+    "verify": {
+      "artifacts": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "log_file": ".devlyn/verify-merge.summary.json"
+      },
+      "completed_at": "2026-07-22T04:54:54.452Z",
+      "duration_ms": 573254,
+      "engine": "codex",
+      "history": [
+        {
+          "completed_at": "2026-07-22T04:40:41.488Z",
+          "duration_ms": 661088,
+          "started_at": "2026-07-22T04:29:40.400Z",
+          "verdict": "NEEDS_WORK"
+        }
+      ],
+      "judge_durations_ms": {
+        "judge": 238000,
+        "pair_judge": 93749
+      },
+      "merged": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "summary_file": ".devlyn/verify-merge.summary.json",
+        "verdict": "PASS"
+      },
+      "model_effective": null,
+      "model_requested": null,
+      "pair_trigger": {
+        "eligible": true,
+        "reasons": [
+          "pair.default",
+          "mode.pair-verify",
+          "complexity.large",
+          "risk.high"
+        ],
+        "skipped_reason": null
+      },
+      "round": 2,
+      "started_at": "2026-07-22T04:45:21.198Z",
+      "sub_verdicts": {
+        "judge": "PASS",
+        "mechanical": "PASS",
+        "pair_judge": "PASS"
+      },
+      "triggered_by": "verify",
+      "verdict": "PASS"
+    }
+  },
+  "risk_probes_digest": null,
+  "risk_profile": {
+    "high_risk": true,
+    "pair_default_enabled": true,
+    "reasons": [
+      "risk keyword: persistence/data mutation/deletion/migration",
+      "risk keyword: allocation/scheduling/inventory/rollback/transaction",
+      "auto-risk-probes demoted: plan surface small (2 paths)"
+    ],
+    "risk_probes_enabled": false,
+    "risk_probes_explicit": false
+  },
+  "rounds": {
+    "global": 1,
+    "max_rounds": 4
+  },
+  "run_id": "rs-20260722T035950Z-c3acbf542470",
+  "source": {
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "b5b9a705d8e5a3943b8a3e9a81d28a5c61b53800676fef550bd6606277f0d3e2",
+    "goal_path": ".devlyn/goal.raw.txt",
+    "goal_sha256": "026a153501107373a5e14ade6a4548cd3e9769a69c06a38ed8f4b44fc82183fc",
+    "spec_path": null,
+    "spec_sha256": null,
+    "type": "generated"
+  },
+  "started_at": "2026-07-22T03:59:50.896Z",
+  "verify": {
+    "coverage_failed": false,
+    "pair_trigger": {
+      "eligible": true,
+      "reasons": [
+        "pair.default",
+        "mode.pair-verify",
+        "complexity.large",
+        "risk.high"
+      ],
+      "skipped_reason": null
+    }
+  },
+  "version": "3.0"
+}

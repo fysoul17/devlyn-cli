@@ -1,0 +1,163 @@
+{
+  "judge": "sonnet",
+  "task": "FS1-schedule-max-runs",
+  "prompt": "You are a blind ceiling-quality judge. You receive one task and two anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, source run, or author identity; judge only the task text and diffs.\n\nTask text:\nAdd a run-budget feature to the `schedule` library (this repository).\n\nImplement `Job.max_runs(n)`:\n\n- Chainable setter that returns the Job instance, usable anywhere in the\n  fluent chain, e.g. `schedule.every(5).seconds.max_runs(3).do(job_fn)` or\n  `schedule.every().max_runs(3).seconds.do(job_fn)`.\n- The budget counts actual executions of the job function. After the job\n  has executed n times in total, the job removes itself from its scheduler\n  exactly as a job returning `CancelJob` does. The nth execution itself\n  still runs normally; an (n+1)-th execution must never happen.\n- Applies to every execution path that runs jobs through the scheduler\n  (`run_pending()` and `run_all()` included).\n- Interaction with `.until(deadline)`: whichever limit is reached first\n  cancels the job (first-limit-wins). The existing `.until()` semantics\n  must not regress.\n- After a job exhausts its budget, `Scheduler.next_run` / `idle_seconds`\n  must reflect its removal.\n- Validation: n must be an integer >= 1; any other value raises\n  ValueError at `.max_runs(...)` call time. Calling `.max_runs()` more\n  than once on the same job: the last call wins.\n- Budgets are per-job: multiple jobs with different budgets must not\n  interfere with each other.\n- Document the new API wherever this project documents comparable Job\n  methods, and keep the implementation idiomatic for this codebase.\n\nDeliver production-quality code: the full existing test suite must keep\npassing, and the new behavior must be covered by tests you add.\n\nP1 patch.diff:\n```diff\ndiff --git a/docs/examples.rst b/docs/examples.rst\nindex ac8f32a..29cfa32 100644\n--- a/docs/examples.rst\n+++ b/docs/examples.rst\n@@ -244,6 +244,23 @@ Run a job until a certain time\n \n The ``until`` method sets the jobs deadline. The job will not run after the deadline.\n \n+\n+Run a job a limited number of times\n+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n+\n+.. code-block:: python\n+\n+    import schedule\n+\n+    def job():\n+        print('Boo')\n+\n+    # Run the job three times, then cancel it.\n+    schedule.every(1).hours.max_runs(3).do(job)\n+\n+The ``max_runs`` method cancels the job after the specified number of executions.\n+\n+\n Time until the next execution\n ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n Use ``schedule.idle_seconds()`` to get the number of seconds until the next job is scheduled to run.\ndiff --git a/schedule/__init__.py b/schedule/__init__.py\nindex 8e12eeb..7903d22 100644\n--- a/schedule/__init__.py\n+++ b/schedule/__init__.py\n@@ -56,7 +56,7 @@ class ScheduleError(Exception):\n     pass\n \n \n-class ScheduleValueError(ScheduleError):\n+class ScheduleValueError(ScheduleError, ValueError):\n     \"\"\"Base schedule value error\"\"\"\n \n     pass\n@@ -251,6 +251,12 @@ class Job:\n         # optional time of final run\n         self.cancel_after: Optional[datetime.datetime] = None\n \n+        # optional maximum number of times the job may run\n+        self._max_runs: Optional[int] = None\n+\n+        # number of times the job function has run\n+        self._run_count: int = 0\n+\n         self.tags: Set[Hashable] = set()  # unique set of tags for the job\n         self.scheduler: Optional[Scheduler] = scheduler  # scheduler to register with\n \n@@ -573,6 +579,18 @@ class Job:\n         self.latest = latest\n         return self\n \n+    def max_runs(self, n: int):\n+        \"\"\"\n+        Schedule the job to run at most ``n`` times.\n+\n+        :param n: Maximum number of times the job may run\n+        :return: The invoked job instance\n+        \"\"\"\n+        if isinstance(n, bool) or not isinstance(n, int) or n < 1:\n+            raise ScheduleValueError(\"max_runs() requires a positive integer\")\n+        self._max_runs = n\n+        return self\n+\n     def until(\n         self,\n         until_time: Union[datetime.datetime, datetime.timedelta, datetime.time, str],\n@@ -677,24 +695,33 @@ class Job:\n         If the job's deadline is reached (configured using .until()), the job is not\n         run and CancelJob is returned immediately. If the next scheduled run exceeds\n         the job's deadline, CancelJob is returned after the execution. In this latter\n-        case CancelJob takes priority over any other returned value.\n+        case CancelJob takes priority over any other returned value. If a maximum\n+        run count is configured using .max_runs(), CancelJob is returned after the\n+        final permitted execution.\n \n         :return: The return value returned by the `job_func`, or CancelJob if the job's\n-                 deadline is reached.\n+                 deadline is reached or maximum run count is exhausted.\n \n         \"\"\"\n         if self._is_overdue(datetime.datetime.now()):\n             logger.debug(\"Cancelling job %s\", self)\n             return CancelJob\n+        if self._max_runs is not None and self._run_count >= self._max_runs:\n+            logger.debug(\"Cancelling job %s\", self)\n+            return CancelJob\n \n         logger.debug(\"Running job %s\", self)\n         ret = self.job_func()\n         self.last_run = datetime.datetime.now()\n         self._schedule_next_run()\n+        self._run_count += 1\n \n         if self._is_overdue(self.next_run):\n             logger.debug(\"Cancelling job %s\", self)\n             return CancelJob\n+        if self._max_runs is not None and self._run_count >= self._max_runs:\n+            logger.debug(\"Cancelling job %s\", self)\n+            return CancelJob\n         return ret\n \n     def _schedule_next_run(self) -> None:\ndiff --git a/test_schedule.py b/test_schedule.py\nindex f497826..ba5b5ed 100644\n--- a/test_schedule.py\n+++ b/test_schedule.py\n@@ -387,6 +387,112 @@ class SchedulerTests(TestCase):\n                 assert mock_job.call_count == 0\n                 assert len(schedule.jobs) == 0\n \n+    def test_max_runs_chainable_and_validated(self):\n+        mock_job = make_mock_job()\n+        job = every(5).seconds.max_runs(3)\n+        assert job.max_runs(3) is job\n+        assert job.do(mock_job) is job\n+        assert every().max_runs(3).seconds.do(mock_job) in schedule.jobs\n+\n+        for value in (0, -1, 1.5, \"1\", None, True):\n+            with self.assertRaises(ScheduleValueError) as context:\n+                every().max_runs(value)\n+            self.assertIsInstance(context.exception, ValueError)\n+\n+    def test_max_runs_with_run_pending(self):\n+        mock_job = make_mock_job()\n+        with mock_datetime(2020, 1, 1, 11, 35, 10):\n+            job = every().second.max_runs(2).do(mock_job)\n+            assert not job.should_run\n+            assert mock_job.call_count == 0\n+\n+            with mock_datetime(2020, 1, 1, 11, 35, 11):\n+                schedule.run_pending()\n+                assert mock_job.call_count == 1\n+                assert schedule.jobs == [job]\n+\n+            with mock_datetime(2020, 1, 1, 11, 35, 12):\n+                schedule.run_pending()\n+                assert mock_job.call_count == 2\n+                assert schedule.next_run() is None\n+                assert schedule.idle_seconds() is None\n+\n+            with mock_datetime(2020, 1, 1, 11, 35, 13):\n+                schedule.run_pending()\n+                assert mock_job.call_count == 2\n+\n+    def test_max_runs_with_run_all(self):\n+        scheduler = schedule.Scheduler()\n+        mock_job = make_mock_job()\n+        job = scheduler.every().second.max_runs(2).do(mock_job)\n+\n+        scheduler.run_all()\n+        assert mock_job.call_count == 1\n+        assert scheduler.jobs == [job]\n+        scheduler.run_all()\n+        assert mock_job.call_count == 2\n+        assert scheduler.jobs == []\n+\n+    def test_max_runs_and_until_cancel_at_the_first_limit(self):\n+        mock_job = make_mock_job()\n+        with mock_datetime(2020, 1, 1, 11, 35, 10):\n+            every(5).seconds.max_runs(3).until(datetime.time(11, 35, 20)).do(\n+                mock_job\n+            )\n+            with mock_datetime(2020, 1, 1, 11, 35, 15):\n+                schedule.run_pending()\n+                assert mock_job.call_count == 1\n+                assert len(schedule.jobs) == 1\n+            with mock_datetime(2020, 1, 1, 11, 35, 20):\n+                schedule.run_pending()\n+                assert mock_job.call_count == 2\n+                assert len(schedule.jobs) == 0\n+\n+            every(5).seconds.max_runs(2).until(datetime.time(11, 35, 30)).do(\n+                mock_job\n+            )\n+            with mock_datetime(2020, 1, 1, 11, 35, 15):\n+                schedule.run_pending()\n+                assert mock_job.call_count == 3\n+                assert len(schedule.jobs) == 1\n+            with mock_datetime(2020, 1, 1, 11, 35, 20):\n+                schedule.run_pending()\n+                assert mock_job.call_count == 4\n+                assert len(schedule.jobs) == 0\n+\n+    def test_max_runs_reconfiguration_preserves_run_count(self):\n+        scheduler = schedule.Scheduler()\n+        mock_job = make_mock_job()\n+        job = scheduler.every().second.max_runs(3).do(mock_job)\n+\n+        scheduler.run_all()\n+        assert mock_job.call_count == 1\n+        scheduler.run_all()\n+        assert mock_job.call_count == 2\n+        assert job.max_runs(1) is job\n+        scheduler.run_all()\n+        assert mock_job.call_count == 2\n+        assert scheduler.jobs == []\n+\n+    def test_max_runs_are_isolated_per_job(self):\n+        scheduler = schedule.Scheduler()\n+        limited_once = make_mock_job()\n+        limited_twice = make_mock_job()\n+        unlimited = make_mock_job()\n+        scheduler.every().second.max_runs(1).do(limited_once)\n+        scheduler.every().second.max_runs(2).do(limited_twice)\n+        scheduler.every().second.do(unlimited)\n+\n+        scheduler.run_all()\n+        assert limited_once.call_count == 1\n+        assert limited_twice.call_count == 1\n+        assert unlimited.call_count == 1\n+        scheduler.run_all()\n+        assert limited_once.call_count == 1\n+        assert limited_twice.call_count == 2\n+        assert unlimited.call_count == 2\n+        assert len(scheduler.jobs) == 1\n+\n     def test_weekday_at_todady(self):\n         mock_job = make_mock_job()\n \n\n```\n\nP2 patch.diff:\n```diff\ndiff --git a/HISTORY.rst b/HISTORY.rst\nindex 4f94ba1..7be27f9 100644\n--- a/HISTORY.rst\n+++ b/HISTORY.rst\n@@ -3,6 +3,11 @@\n History\n -------\n \n+Unreleased\n+++++++++++\n+\n+- Add ``Job.max_runs()`` to limit a job to a fixed number of executions.\n+\n 1.2.2 (2024-05-25)\n ++++++++++++++++++\n \ndiff --git a/README.rst b/README.rst\nindex a764cf6..7e18e72 100644\n--- a/README.rst\n+++ b/README.rst\n@@ -43,6 +43,7 @@ Usage\n     schedule.every().wednesday.at(\"13:15\").do(job)\n     schedule.every().day.at(\"12:42\", \"Europe/Amsterdam\").do(job)\n     schedule.every().minute.at(\":17\").do(job)\n+    schedule.every(10).seconds.max_runs(3).do(job)\n \n     def job_with_argument(name):\n         print(f\"I am {name}\")\ndiff --git a/docs/examples.rst b/docs/examples.rst\nindex ac8f32a..9817324 100644\n--- a/docs/examples.rst\n+++ b/docs/examples.rst\n@@ -244,6 +244,26 @@ Run a job until a certain time\n \n The ``until`` method sets the jobs deadline. The job will not run after the deadline.\n \n+\n+Run a job a limited number of times\n+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n+\n+Use ``max_runs`` to automatically remove a job after a fixed number of executions.\n+\n+.. code-block:: python\n+\n+    import schedule\n+\n+    def job():\n+        print('Boo')\n+\n+    # Run job at most three times.\n+    schedule.every(5).seconds.max_runs(3).do(job)\n+\n+The final allowed execution runs normally before the job is removed. ``max_runs`` can\n+be combined with ``until``; the job is removed when either limit is reached first.\n+\n+\n Time until the next execution\n ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n Use ``schedule.idle_seconds()`` to get the number of seconds until the next job is scheduled to run.\ndiff --git a/schedule/__init__.py b/schedule/__init__.py\nindex 8e12eeb..6945620 100644\n--- a/schedule/__init__.py\n+++ b/schedule/__init__.py\n@@ -251,6 +251,12 @@ class Job:\n         # optional time of final run\n         self.cancel_after: Optional[datetime.datetime] = None\n \n+        # optional maximum number of times the job should be run\n+        self._max_runs: Optional[int] = None\n+\n+        # number of times the job function has been run\n+        self._run_count = 0\n+\n         self.tags: Set[Hashable] = set()  # unique set of tags for the job\n         self.scheduler: Optional[Scheduler] = scheduler  # scheduler to register with\n \n@@ -641,6 +647,26 @@ class Job:\n             )\n         return self\n \n+    def max_runs(self, n: int):\n+        \"\"\"\n+        Limit the job to a fixed number of executions.\n+\n+        The job is canceled after it has run ``n`` times. Calling this method more\n+        than once replaces the previous limit.\n+\n+        :param n: Maximum number of times the job function may be run. Must be an\n+            integer greater than zero.\n+        :return: The invoked job instance\n+        :raises ValueError: If ``n`` is not an integer greater than zero.\n+        \"\"\"\n+        if isinstance(n, bool) or not isinstance(n, int) or n < 1:\n+            raise ValueError(\"max_runs() requires a positive integer\")\n+\n+        self._max_runs = n\n+        if self._run_count >= n and self.scheduler is not None:\n+            self.scheduler.cancel_job(self)\n+        return self\n+\n     def do(self, job_func: Callable, *args, **kwargs):\n         \"\"\"\n         Specifies the job_func that should be called every time the\n@@ -677,7 +703,8 @@ class Job:\n         If the job's deadline is reached (configured using .until()), the job is not\n         run and CancelJob is returned immediately. If the next scheduled run exceeds\n         the job's deadline, CancelJob is returned after the execution. In this latter\n-        case CancelJob takes priority over any other returned value.\n+        case CancelJob takes priority over any other returned value. A job configured\n+        with .max_runs() is also canceled after its last allowed execution.\n \n         :return: The return value returned by the `job_func`, or CancelJob if the job's\n                  deadline is reached.\n@@ -687,12 +714,24 @@ class Job:\n             logger.debug(\"Cancelling job %s\", self)\n             return CancelJob\n \n+        if self._is_max_runs_reached():\n+            logger.debug(\"Cancelling job %s\", self)\n+            return CancelJob\n+\n         logger.debug(\"Running job %s\", self)\n-        ret = self.job_func()\n+        try:\n+            ret = self.job_func()\n+        except BaseException:\n+            self._run_count += 1\n+            if self._is_max_runs_reached() and self.scheduler is not None:\n+                logger.debug(\"Cancelling job %s\", self)\n+                self.scheduler.cancel_job(self)\n+            raise\n+        self._run_count += 1\n         self.last_run = datetime.datetime.now()\n         self._schedule_next_run()\n \n-        if self._is_overdue(self.next_run):\n+        if self._is_overdue(self.next_run) or self._is_max_runs_reached():\n             logger.debug(\"Cancelling job %s\", self)\n             return CancelJob\n         return ret\n@@ -819,6 +858,9 @@ class Job:\n     def _is_overdue(self, when: datetime.datetime):\n         return self.cancel_after is not None and when > self.cancel_after\n \n+    def _is_max_runs_reached(self) -> bool:\n+        return self._max_runs is not None and self._run_count >= self._max_runs\n+\n     def _decode_datetimestr(\n         self, datetime_str: str, formats: List[str]\n     ) -> Optional[datetime.datetime]:\ndiff --git a/test_schedule.py b/test_schedule.py\nindex f497826..f31402f 100644\n--- a/test_schedule.py\n+++ b/test_schedule.py\n@@ -387,6 +387,107 @@ class SchedulerTests(TestCase):\n                 assert mock_job.call_count == 0\n                 assert len(schedule.jobs) == 0\n \n+    def test_max_runs(self):\n+        mock_job = make_mock_job()\n+\n+        job = every(5).max_runs(3).seconds.do(mock_job)\n+        assert job is schedule.jobs[0]\n+\n+        schedule.run_all()\n+        schedule.run_all()\n+        assert mock_job.call_count == 2\n+        assert schedule.jobs == [job]\n+\n+        schedule.run_all()\n+        assert mock_job.call_count == 3\n+        assert schedule.jobs == []\n+\n+        schedule.run_all()\n+        assert mock_job.call_count == 3\n+\n+    def test_max_runs_applies_to_run_pending(self):\n+        mock_job = make_mock_job()\n+\n+        with mock_datetime(2020, 1, 1, 11, 35, 10):\n+            every().second.max_runs(2).do(mock_job)\n+            with mock_datetime(2020, 1, 1, 11, 35, 11):\n+                schedule.run_pending()\n+            with mock_datetime(2020, 1, 1, 11, 35, 12):\n+                schedule.run_pending()\n+            with mock_datetime(2020, 1, 1, 11, 35, 13):\n+                schedule.run_pending()\n+\n+        assert mock_job.call_count == 2\n+        assert schedule.jobs == []\n+\n+    def test_max_runs_counts_job_functions_that_raise(self):\n+        def failing_job():\n+            raise RuntimeError\n+\n+        every().second.max_runs(1).do(failing_job)\n+        with self.assertRaises(RuntimeError):\n+            schedule.run_all()\n+\n+        assert schedule.jobs == []\n+\n+    def test_max_runs_validation_and_replacement(self):\n+        job = every()\n+        for invalid_value in (0, -1, 1.0, \"1\", None, True):\n+            with self.assertRaises(ValueError):\n+                job.max_runs(invalid_value)\n+\n+        mock_job = make_mock_job()\n+        every().max_runs(1).second.max_runs(2).do(mock_job)\n+        schedule.run_all()\n+        schedule.run_all()\n+\n+        assert mock_job.call_count == 2\n+        assert schedule.jobs == []\n+\n+    def test_max_runs_are_per_job_and_update_scheduler_state(self):\n+        first_job = make_mock_job(\"first_job\")\n+        second_job = make_mock_job(\"second_job\")\n+\n+        with mock_datetime(2020, 1, 1, 11, 35, 10):\n+            every().hour.max_runs(1).do(first_job)\n+            every().hour.max_runs(2).do(second_job)\n+            assert schedule.idle_seconds() == 60 * 60\n+\n+            schedule.run_all()\n+            assert first_job.call_count == 1\n+            assert second_job.call_count == 1\n+            assert len(schedule.jobs) == 1\n+            assert schedule.idle_seconds() == 60 * 60\n+\n+            schedule.run_all()\n+            assert second_job.call_count == 2\n+            assert schedule.next_run() is None\n+            assert schedule.idle_seconds() is None\n+\n+    def test_max_runs_and_until_cancel_when_the_first_limit_is_reached(self):\n+        deadline_limited_job = make_mock_job(\"deadline_limited_job\")\n+\n+        with mock_datetime(2020, 1, 1, 11, 35, 10):\n+            every(5).seconds.max_runs(3).until(\"11:35:20\").do(deadline_limited_job)\n+            with mock_datetime(2020, 1, 1, 11, 35, 15):\n+                schedule.run_pending()\n+            with mock_datetime(2020, 1, 1, 11, 35, 20):\n+                schedule.run_pending()\n+\n+        assert deadline_limited_job.call_count == 2\n+        assert schedule.jobs == []\n+\n+        budget_limited_job = make_mock_job(\"budget_limited_job\")\n+        with mock_datetime(2020, 1, 1, 11, 35, 10):\n+            every(5).seconds.max_runs(2).until(\"11:36:00\").do(budget_limited_job)\n+            with mock_datetime(2020, 1, 1, 11, 35, 15):\n+                schedule.run_pending()\n+            with mock_datetime(2020, 1, 1, 11, 35, 20):\n+                schedule.run_pending()\n+\n+        assert budget_limited_job.call_count == 2\n+        assert schedule.jobs == []\n+\n     def test_weekday_at_todady(self):\n         mock_job = make_mock_job()\n \n\n```\n\nRank P1/P2 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics. Ties are allowed. Emit one single complete JSON object and nothing else in this shape; for every strict tier winner/loser include one concrete visible-diff delta:\n{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"robustness\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]}}}",
+  "attempts": [
+    {
+      "attempt": 1,
+      "error": null
+    }
+  ],
+  "error": null,
+  "parsed": {
+    "axes": {
+      "design_coherence": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P2's max_runs() reaches directly into `self.scheduler.cancel_job(self)` to eagerly remove the job when reconfiguring to a lower limit, adding a second job-removal pathway alongside the normal CancelJob-return flow, whereas P1 removes jobs only through the existing `return CancelJob` mechanism that `.until()` already relies on."
+          }
+        ]
+      },
+      "robustness": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P2 wraps `self.job_func()` in a broad `except BaseException:` block (which also catches KeyboardInterrupt/SystemExit) just to increment `_run_count` and call `scheduler.cancel_job` before re-raising, introducing a new failure-prone path, while P1 leaves job execution untouched, matching the original code's lack of exception handling around `job_func()`."
+          }
+        ]
+      },
+      "spec_long_horizon_consistency": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2 updates HISTORY.rst (\"Add Job.max_runs() to limit a job to a fixed number of executions\") and README.rst's usage example list in addition to docs/examples.rst, fulfilling the spec's explicit instruction to document the new API wherever comparable Job methods are documented, whereas P1 only touches docs/examples.rst."
+          }
+        ]
+      },
+      "maintainability_api_ergonomics": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2 extracts a reusable `_is_max_runs_reached()` helper mirroring the existing `_is_overdue()` helper and collapses the post-run check into `if self._is_overdue(self.next_run) or self._is_max_runs_reached():`, while P1 duplicates the identical `if self._max_runs is not None and self._run_count >= self._max_runs:` block verbatim twice inside `_run()`."
+          }
+        ]
+      }
+    }
+  },
+  "runtime_model": "claude-sonnet-5",
+  "result": {
+    "runtime_model": "claude-sonnet-5",
+    "cli_version": "2.1.215 (Claude Code)",
+    "axes": {
+      "design_coherence": "A_win",
+      "robustness": "A_win",
+      "spec_long_horizon_consistency": "B_win",
+      "maintainability_api_ergonomics": "B_win"
+    },
+    "parse_metadata": {}
+  },
+  "meta": {
+    "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":143842,\"duration_api_ms\":143803,\"ttft_ms\":135743,\"ttft_stream_ms\":4024,\"time_to_request_ms\":36,\"num_turns\":2,\"result\":\"{\\\"axes\\\":{\\\"design_coherence\\\":{\\\"tiers\\\":[[\\\"P1\\\"],[\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P2's max_runs() reaches directly into `self.scheduler.cancel_job(self)` to eagerly remove the job when reconfiguring to a lower limit, adding a second job-removal pathway alongside the normal CancelJob-return flow, whereas P1 removes jobs only through the existing `return CancelJob` mechanism that `.until()` already relies on.\\\"}]},\\\"robustness\\\":{\\\"tiers\\\":[[\\\"P1\\\"],[\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P2 wraps `self.job_func()` in a broad `except BaseException:` block (which also catches KeyboardInterrupt/SystemExit) just to increment `_run_count` and call `scheduler.cancel_job` before re-raising, introducing a new failure-prone path, while P1 leaves job execution untouched, matching the original code's lack of exception handling around `job_func()`.\\\"}]},\\\"spec_long_horizon_consistency\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P2 updates HISTORY.rst (\\\\\\\"Add Job.max_runs() to limit a job to a fixed number of executions\\\\\\\") and README.rst's usage example list in addition to docs/examples.rst, fulfilling the spec's explicit instruction to document the new API wherever comparable Job methods are documented, whereas P1 only touches docs/examples.rst.\\\"}]},\\\"maintainability_api_ergonomics\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P2 extracts a reusable `_is_max_runs_reached()` helper mirroring the existing `_is_overdue()` helper and collapses the post-run check into `if self._is_overdue(self.next_run) or self._is_max_runs_reached():`, while P1 duplicates the identical `if self._max_runs is not None and self._run_count >= self._max_runs:` block verbatim twice inside `_run()`.\\\"}]}}}\",\"stop_reason\":\"end_turn\",\"session_id\":\"c224f94e-e082-4d59-9dac-50edf788aa61\",\"total_cost_usd\":0.4133973,\"usage\":{\"input_tokens\":4,\"cache_creation_input_tokens\":32018,\"cache_read_input_tokens\":63791,\"output_tokens\":13476,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":32018,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":4,\"outputTokens\":13476,\"cacheReadInputTokens\":63791,\"cacheCreationInputTokens\":32018,\"webSearchRequests\":0,\"costUSD\":0.4133973,\"contextWindow\":1000000,\"maxOutputTokens\":64000}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"98aec5c3-aa6c-4b2a-a6f9-6fab5f821ecf\"}\n",
+    "stderr": "",
+    "isolation_path": "/Users/aipalm/devlyn-ceiling-external/exam-0077-probe/benchmark/ceiling/results/nodeg-20260722a/FS1-schedule-max-runs/nodeg-judge/judge-sonnet-attempt1-isolation.json",
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 4,
+        "outputTokens": 13476,
+        "cacheReadInputTokens": 63791,
+        "cacheCreationInputTokens": 32018,
+        "webSearchRequests": 0,
+        "costUSD": 0.4133973,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000
+      }
+    },
+    "wrapper": {
+      "type": "result",
+      "subtype": "success",
+      "is_error": false,
+      "api_error_status": null,
+      "duration_ms": 143842,
+      "duration_api_ms": 143803,
+      "ttft_ms": 135743,
+      "ttft_stream_ms": 4024,
+      "time_to_request_ms": 36,
+      "num_turns": 2,
+      "result": "{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"P2's max_runs() reaches directly into `self.scheduler.cancel_job(self)` to eagerly remove the job when reconfiguring to a lower limit, adding a second job-removal pathway alongside the normal CancelJob-return flow, whereas P1 removes jobs only through the existing `return CancelJob` mechanism that `.until()` already relies on.\"}]},\"robustness\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"P2 wraps `self.job_func()` in a broad `except BaseException:` block (which also catches KeyboardInterrupt/SystemExit) just to increment `_run_count` and call `scheduler.cancel_job` before re-raising, introducing a new failure-prone path, while P1 leaves job execution untouched, matching the original code's lack of exception handling around `job_func()`.\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P2 updates HISTORY.rst (\\\"Add Job.max_runs() to limit a job to a fixed number of executions\\\") and README.rst's usage example list in addition to docs/examples.rst, fulfilling the spec's explicit instruction to document the new API wherever comparable Job methods are documented, whereas P1 only touches docs/examples.rst.\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P2 extracts a reusable `_is_max_runs_reached()` helper mirroring the existing `_is_overdue()` helper and collapses the post-run check into `if self._is_overdue(self.next_run) or self._is_max_runs_reached():`, while P1 duplicates the identical `if self._max_runs is not None and self._run_count >= self._max_runs:` block verbatim twice inside `_run()`.\"}]}}}",
+      "stop_reason": "end_turn",
+      "session_id": "c224f94e-e082-4d59-9dac-50edf788aa61",
+      "total_cost_usd": 0.4133973,
+      "usage": {
+        "input_tokens": 4,
+        "cache_creation_input_tokens": 32018,
+        "cache_read_input_tokens": 63791,
+        "output_tokens": 13476,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 32018,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "not_available",
+        "iterations": [],
+        "speed": "standard"
+      },
+      "modelUsage": {
+        "claude-sonnet-5": {
+          "inputTokens": 4,
+          "outputTokens": 13476,
+          "cacheReadInputTokens": 63791,
+          "cacheCreationInputTokens": 32018,
+          "webSearchRequests": 0,
+          "costUSD": 0.4133973,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000
+        }
+      },
+      "permission_denials": [],
+      "terminal_reason": "completed",
+      "fast_mode_state": "off",
+      "uuid": "98aec5c3-aa6c-4b2a-a6f9-6fab5f821ecf"
+    }
+  }
+}

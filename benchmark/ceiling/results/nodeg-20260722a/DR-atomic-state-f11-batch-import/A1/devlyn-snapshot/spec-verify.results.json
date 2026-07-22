@@ -1,0 +1,15 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "npm test",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "  ---\n  duration_ms: 2.623833\n  ...\n# Subtest: POST /items/import rejects an invalid middle item without mutation\nok 7 - POST /items/import rejects an invalid middle item without mutation\n  ---\n  duration_ms: 9.113667\n  ...\n# Subtest: POST /items/import appends a valid batch with distinct ids\nok 8 - POST /items/import appends a valid batch with distinct ids\n  ---\n  duration_ms: 6.077333\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 188.406375\n"
+    }
+  ]
+}

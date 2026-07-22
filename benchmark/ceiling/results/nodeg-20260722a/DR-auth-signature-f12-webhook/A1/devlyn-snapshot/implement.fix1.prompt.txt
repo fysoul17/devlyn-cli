@@ -1,0 +1,52 @@
+# Codex (OpenAI) adapter
+
+You are OpenAI's Codex model. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+Efficient, direct, task-oriented.
+
+## Validation pattern
+Validation is concrete commands and tools, not self-belief. Run `npm test` and trust its output before declaring success.
+
+## Anti-patterns
+Avoid absolute imperatives for judgment calls; don't over-specify process when the destination is clear.
+
+---
+
+# PHASE 2 — IMPLEMENT (fix round 2) — canonical body
+
+<role>
+Fix the VERIFY findings below. This is a targeted fix round, not a re-plan — the original plan and scope (`server/index.js`, `tests/server.test.js` only) still apply.
+</role>
+
+<input>
+- Spec: `.devlyn/criteria.generated.md`.
+- Current code: `server/index.js`, `tests/server.test.js` (already has the webhook route + 3 new tests from round 1 — read the current file contents, do not assume round-1 shape from memory).
+- VERIFY findings to fix (from an independent fresh-context judge, reproduced and confirmed real by the orchestrator):
+</input>
+
+<findings>
+1. **HIGH — `spec.signature-check-order`** (`server/index.js`): The global `app.use(express.json({ verify: ... }))` middleware parses the request body for ALL routes, including `/webhook`, before the route handler runs. When the request body is not valid JSON (e.g. malformed/garbled bytes), `express.json()`'s strict parser throws a `SyntaxError`, which Express's default error handler catches and returns as `400` with an HTML body — this happens BEFORE the `/webhook` route handler code (which contains the signature check) ever executes. Per the spec, the signature check must run first for every request (it only needs the raw bytes, not parsed JSON), so a malformed-JSON request with a missing/invalid signature must still get `401 {"error":"invalid_signature"}`, not a generic Express `400` HTML error. Reproduced: `POST /webhook` with body `not-json-at-all{{{` and no `X-Signature` header returns `400 text/html` (Express's default parse-error page), not `401 {"error":"invalid_signature"}`.
+
+2. **HIGH — `spec.invalid-body-response`** (`server/index.js`): `express.json()` defaults to `strict: true`, which rejects any top-level JSON value that isn't an object or array (e.g. a bare JSON primitive like `42`) with its own `SyntaxError` → Express's default `400` HTML error page, again bypassing the route handler entirely. A body that "fails the shape" (per spec, `{ id, type, timestamp, data }` required) must return exactly `400 {"error":"invalid_body"}` — not a generic HTML error. Reproduced: a correctly-signed body of `42` returns `400 text/html`, not `400 {"error":"invalid_body"}`.
+
+**Root cause (both findings)**: the `/webhook` route currently relies on the *global* `express.json()` middleware to both capture the raw body (via its `verify` hook) and parse it — but that middleware's own strict-mode JSON parsing can fail and short-circuit to Express's default error handler before the `/webhook` handler's signature-check-first logic ever runs. The webhook route needs to control its own raw-body acquisition, independent of whether the bytes are valid/strict JSON, so that: (a) the signature check always runs first against the raw bytes regardless of JSON validity, and (b) any JSON-parse failure or shape failure is handled inside the route as `400 {"error":"invalid_body"}`, never as Express's generic parser error page.
+</findings>
+
+<constraints>
+- Do not change the behavior of `/health`, `/items`, `/items/:id` — they must keep working exactly as before (they still need `express.json()` to parse their (non-existent, GET-only) bodies — actually they're GET routes with no body, so this is moot, but the global JSON parser must remain in place for any future/other routes).
+- No new npm dependencies — Node built-ins (`crypto`, `fs`) plus already-present `express` (which ships `express.raw()`/`express.text()` as part of its bundled `body-parser`).
+- Only touch `server/index.js` and `tests/server.test.js`.
+- Keep all existing behavior for the 3 original tests + the 3 webhook tests from round 1 passing.
+- Add regression tests for both fixed findings: (a) malformed/non-JSON body with a missing or invalid signature → `401 {"error":"invalid_signature"}`; (b) a correctly-signed JSON primitive body (e.g. `42`) → `400 {"error":"invalid_body"}`.
+</constraints>
+
+<quality_bar>
+- Fix the root cause: give the `/webhook` route control over its own raw-body acquisition (e.g. `express.raw({ type: () => true })` scoped only to that route, registered so it runs instead of the global JSON parser for `/webhook` requests), then do signature verification over those exact raw bytes, then attempt `JSON.parse` yourself (in a try/catch) for the shape check — a parse failure is just another "fails the shape" case → `400 {"error":"invalid_body"}`.
+- Do not add a global try/catch or Express error-handling middleware that patches over the symptom (e.g. a generic error handler that reformats ALL Express errors as JSON) — that would be a workaround, not a root-cause fix, and would touch behavior for other routes too.
+- Verification is literal: re-run `npm test` and confirm all tests (existing + round-1 + new regression tests) pass before declaring done.
+</quality_bar>
+
+---
+
+Fix both HIGH findings at their root cause, add the two regression tests named above, run `npm test`, and report `PASS` with the pass/fail summary, or `BLOCKED` if you cannot fix within the two-file scope.

@@ -1,0 +1,1211 @@
+[codex-monitored] start: ts=2026-07-22T03:45:17Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=71203
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f87ed-8784-7e83-866d-2a6ac965aced
+--------
+user
+# Codex (OpenAI) adapter
+
+You are OpenAI's Codex model. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+Efficient, direct, task-oriented.
+
+## Validation pattern
+Validation is concrete commands and tools, not self-belief. Run `npm test` and trust its output before declaring success.
+
+## Anti-patterns
+Avoid absolute imperatives for judgment calls; don't over-specify process when the destination is clear.
+
+---
+
+# PHASE 2 — IMPLEMENT (fix round 2) — canonical body
+
+<role>
+Fix the VERIFY findings below. This is a targeted fix round, not a re-plan — the original plan and scope (`server/index.js`, `tests/server.test.js` only) still apply.
+</role>
+
+<input>
+- Spec: `.devlyn/criteria.generated.md`.
+- Current code: `server/index.js`, `tests/server.test.js` (already has the webhook route + 3 new tests from round 1 — read the current file contents, do not assume round-1 shape from memory).
+- VERIFY findings to fix (from an independent fresh-context judge, reproduced and confirmed real by the orchestrator):
+</input>
+
+<findings>
+1. **HIGH — `spec.signature-check-order`** (`server/index.js`): The global `app.use(express.json({ verify: ... }))` middleware parses the request body for ALL routes, including `/webhook`, before the route handler runs. When the request body is not valid JSON (e.g. malformed/garbled bytes), `express.json()`'s strict parser throws a `SyntaxError`, which Express's default error handler catches and returns as `400` with an HTML body — this happens BEFORE the `/webhook` route handler code (which contains the signature check) ever executes. Per the spec, the signature check must run first for every request (it only needs the raw bytes, not parsed JSON), so a malformed-JSON request with a missing/invalid signature must still get `401 {"error":"invalid_signature"}`, not a generic Express `400` HTML error. Reproduced: `POST /webhook` with body `not-json-at-all{{{` and no `X-Signature` header returns `400 text/html` (Express's default parse-error page), not `401 {"error":"invalid_signature"}`.
+
+2. **HIGH — `spec.invalid-body-response`** (`server/index.js`): `express.json()` defaults to `strict: true`, which rejects any top-level JSON value that isn't an object or array (e.g. a bare JSON primitive like `42`) with its own `SyntaxError` → Express's default `400` HTML error page, again bypassing the route handler entirely. A body that "fails the shape" (per spec, `{ id, type, timestamp, data }` required) must return exactly `400 {"error":"invalid_body"}` — not a generic HTML error. Reproduced: a correctly-signed body of `42` returns `400 text/html`, not `400 {"error":"invalid_body"}`.
+
+**Root cause (both findings)**: the `/webhook` route currently relies on the *global* `express.json()` middleware to both capture the raw body (via its `verify` hook) and parse it — but that middleware's own strict-mode JSON parsing can fail and short-circuit to Express's default error handler before the `/webhook` handler's signature-check-first logic ever runs. The webhook route needs to control its own raw-body acquisition, independent of whether the bytes are valid/strict JSON, so that: (a) the signature check always runs first against the raw bytes regardless of JSON validity, and (b) any JSON-parse failure or shape failure is handled inside the route as `400 {"error":"invalid_body"}`, never as Express's generic parser error page.
+</findings>
+
+<constraints>
+- Do not change the behavior of `/health`, `/items`, `/items/:id` — they must keep working exactly as before (they still need `express.json()` to parse their (non-existent, GET-only) bodies — actually they're GET routes with no body, so this is moot, but the global JSON parser must remain in place for any future/other routes).
+- No new npm dependencies — Node built-ins (`crypto`, `fs`) plus already-present `express` (which ships `express.raw()`/`express.text()` as part of its bundled `body-parser`).
+- Only touch `server/index.js` and `tests/server.test.js`.
+- Keep all existing behavior for the 3 original tests + the 3 webhook tests from round 1 passing.
+- Add regression tests for both fixed findings: (a) malformed/non-JSON body with a missing or invalid signature → `401 {"error":"invalid_signature"}`; (b) a correctly-signed JSON primitive body (e.g. `42`) → `400 {"error":"invalid_body"}`.
+</constraints>
+
+<quality_bar>
+- Fix the root cause: give the `/webhook` route control over its own raw-body acquisition (e.g. `express.raw({ type: () => true })` scoped only to that route, registered so it runs instead of the global JSON parser for `/webhook` requests), then do signature verification over those exact raw bytes, then attempt `JSON.parse` yourself (in a try/catch) for the shape check — a parse failure is just another "fails the shape" case → `400 {"error":"invalid_body"}`.
+- Do not add a global try/catch or Express error-handling middleware that patches over the symptom (e.g. a generic error handler that reformats ALL Express errors as JSON) — that would be a workaround, not a root-cause fix, and would touch behavior for other routes too.
+- Verification is literal: re-run `npm test` and confirm all tests (existing + round-1 + new regression tests) pass before declaring done.
+</quality_bar>
+
+---
+
+Fix both HIGH findings at their root cause, add the two regression tests named above, run `npm test`, and report `PASS` with the pass/fail summary, or `BLOCKED` if you cannot fix within the two-file scope.
+codex
+I’ll make the route-scoped raw-body fix and its two regressions, preserving the global parser for every other route. I’ll first inspect the current two files and spec, then run the full test suite.
+exec
+/bin/zsh -lc "git status --short && rg -n -C 4 \"webhook|express\\.json|health|items\" server/index.js tests/server.test.js && sed -n '1,220p' .devlyn/criteria.generated.md && sed -n '1,260p' tests/server.test.js" in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+server/index.js-3-const express = require('express');
+server/index.js-4-const fs = require('fs');
+server/index.js-5-
+server/index.js-6-const app = express();
+server/index.js:7:app.use(express.json({ verify: (req, _res, buffer) => { req.rawBody = buffer; } }));
+server/index.js-8-
+server/index.js:9:const webhookSecret = fs.readFileSync(`${__dirname}/../data/webhook-secret.txt`, 'utf8').replace(/\r?\n$/, '');
+server/index.js-10-const acceptedWebhookIds = new Set();
+server/index.js-11-
+server/index.js:12:const items = [
+server/index.js-13-  { id: 1, name: 'alpha', qty: 3 },
+server/index.js-14-  { id: 2, name: 'beta', qty: 5 },
+server/index.js-15-];
+server/index.js-16-
+server/index.js:17:app.get('/health', (_req, res) => {
+server/index.js-18-  res.json({ status: 'ok' });
+server/index.js-19-});
+server/index.js-20-
+server/index.js:21:app.get('/items', (_req, res) => {
+server/index.js:22:  res.json({ items });
+server/index.js-23-});
+server/index.js-24-
+server/index.js:25:app.get('/items/:id', (req, res) => {
+server/index.js-26-  const id = Number(req.params.id);
+server/index.js:27:  const item = items.find((it) => it.id === id);
+server/index.js-28-  if (!item) {
+server/index.js-29-    res.status(404).json({ error: 'not_found', id });
+server/index.js-30-    return;
+server/index.js-31-  }
+server/index.js-32-  res.json({ item });
+server/index.js-33-});
+server/index.js-34-
+server/index.js:35:app.post('/webhook', (req, res) => {
+server/index.js-36-  const signature = req.get('X-Signature');
+server/index.js-37-  const signatureBuffer = typeof signature === 'string' && /^[0-9a-f]+$/i.test(signature) && signature.length % 2 === 0
+server/index.js-38-    ? Buffer.from(signature, 'hex')
+server/index.js-39-    : null;
+server/index.js-40-  const expectedSignature = Buffer.isBuffer(req.rawBody)
+server/index.js:41:    ? Buffer.from(crypto.createHmac('sha256', webhookSecret).update(req.rawBody).digest('hex'), 'hex')
+server/index.js-42-    : null;
+server/index.js-43-
+server/index.js-44-  if (!expectedSignature || !signatureBuffer || expectedSignature.length !== signatureBuffer.length
+server/index.js-45-    || !crypto.timingSafeEqual(expectedSignature, signatureBuffer)) {
+--
+tests/server.test.js-48-  });
+tests/server.test.js-49-}
+tests/server.test.js-50-
+tests/server.test.js-51-function sign(body) {
+tests/server.test.js:52:  const secret = fs.readFileSync(`${__dirname}/../data/webhook-secret.txt`, 'utf8').replace(/\r?\n$/, '');
+tests/server.test.js-53-  return crypto.createHmac('sha256', secret).update(body).digest('hex');
+tests/server.test.js-54-}
+tests/server.test.js-55-
+tests/server.test.js:56:test('GET /health returns ok', async () => {
+tests/server.test.js-57-  const server = await startServer();
+tests/server.test.js-58-  try {
+tests/server.test.js:59:    const { status, body } = await get(server, '/health');
+tests/server.test.js-60-    assert.strictEqual(status, 200);
+tests/server.test.js-61-    assert.deepStrictEqual(body, { status: 'ok' });
+tests/server.test.js-62-  } finally {
+tests/server.test.js-63-    server.close();
+tests/server.test.js-64-  }
+tests/server.test.js-65-});
+tests/server.test.js-66-
+tests/server.test.js:67:test('GET /items returns list', async () => {
+tests/server.test.js-68-  const server = await startServer();
+tests/server.test.js-69-  try {
+tests/server.test.js:70:    const { status, body } = await get(server, '/items');
+tests/server.test.js-71-    assert.strictEqual(status, 200);
+tests/server.test.js:72:    assert.ok(Array.isArray(body.items));
+tests/server.test.js:73:    assert.ok(body.items.length >= 2);
+tests/server.test.js-74-  } finally {
+tests/server.test.js-75-    server.close();
+tests/server.test.js-76-  }
+tests/server.test.js-77-});
+tests/server.test.js-78-
+tests/server.test.js:79:test('GET /items/:id returns 404 for missing', async () => {
+tests/server.test.js-80-  const server = await startServer();
+tests/server.test.js-81-  try {
+tests/server.test.js:82:    const { status, body } = await get(server, '/items/99999');
+tests/server.test.js-83-    assert.strictEqual(status, 404);
+tests/server.test.js-84-    assert.strictEqual(body.error, 'not_found');
+tests/server.test.js-85-  } finally {
+tests/server.test.js-86-    server.close();
+tests/server.test.js-87-  }
+tests/server.test.js-88-});
+tests/server.test.js-89-
+tests/server.test.js:90:test('POST /webhook accepts a valid signed event', async () => {
+tests/server.test.js-91-  const server = await startServer();
+tests/server.test.js-92-  try {
+tests/server.test.js-93-    const body = JSON.stringify({ id: 'event-happy', type: 'order.created', timestamp: 1721618860, data: {} });
+tests/server.test.js:94:    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
+tests/server.test.js-95-    assert.strictEqual(status, 200);
+tests/server.test.js-96-    assert.deepStrictEqual(responseBody, { accepted: true, id: 'event-happy' });
+tests/server.test.js-97-  } finally {
+tests/server.test.js-98-    server.close();
+tests/server.test.js-99-  }
+tests/server.test.js-100-});
+tests/server.test.js-101-
+tests/server.test.js:102:test('POST /webhook rejects a replayed event id', async () => {
+tests/server.test.js-103-  const server = await startServer();
+tests/server.test.js-104-  try {
+tests/server.test.js-105-    const body = JSON.stringify({ id: 'event-replay', type: 'order.created', timestamp: 1721618861, data: {} });
+tests/server.test.js:106:    await post(server, '/webhook', body, sign(body));
+tests/server.test.js:107:    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
+tests/server.test.js-108-    assert.strictEqual(status, 409);
+tests/server.test.js-109-    assert.deepStrictEqual(responseBody, { error: 'duplicate_event', id: 'event-replay' });
+tests/server.test.js-110-  } finally {
+tests/server.test.js-111-    server.close();
+tests/server.test.js-112-  }
+tests/server.test.js-113-});
+tests/server.test.js-114-
+tests/server.test.js:115:test('POST /webhook rejects a tampered body with a stale signature', async () => {
+tests/server.test.js-116-  const server = await startServer();
+tests/server.test.js-117-  try {
+tests/server.test.js-118-    const originalBody = JSON.stringify({ id: 'event-tampered', type: 'order.created', timestamp: 1721618862, data: {} });
+tests/server.test.js-119-    const tamperedBody = JSON.stringify({ id: 'event-tampered', type: 'order.created', timestamp: 1721618863, data: {} });
+tests/server.test.js:120:    const { status, body: responseBody } = await post(server, '/webhook', tamperedBody, sign(originalBody));
+tests/server.test.js-121-    assert.strictEqual(status, 401);
+tests/server.test.js-122-    assert.deepStrictEqual(responseBody, { error: 'invalid_signature' });
+tests/server.test.js-123-  } finally {
+tests/server.test.js-124-    server.close();
+# Generated criteria — POST /webhook signature-verified endpoint
+
+recommend: /devlyn:ideate first (large complexity, best-effort spec synthesized from free-form goal; review `## Assumptions` before trusting scope)
+
+## Requirements
+
+- Add a `POST /webhook` route to `server/index.js`.
+- Capture the exact raw request-body bytes (not the Express-parsed/re-serialized object) so the HMAC is computed over precisely what the client sent.
+- Read the shared secret from `data/webhook-secret.txt` and compute `HMAC-SHA256` over the raw body, hex-encoded (lowercase — Node's `.digest('hex')` is already lowercase).
+- Compare the computed digest to the request's `X-Signature` header using `crypto.timingSafeEqual`; a length mismatch between the two must not throw and must be treated as a signature failure.
+- Signature check runs first, before body-shape validation. Mismatch → `401` with exactly `{ error: 'invalid_signature' }`.
+- After the signature passes, validate body shape: `{ id, type, timestamp, data }` where `id` and `type` are non-empty strings, `timestamp` is a number, and `data` is an object. Invalid shape → `400` with exactly `{ error: 'invalid_body' }`. A bad body with a valid signature is `400`, not `401`.
+- Track accepted event `id`s across requests. After an `id` has been accepted once, any later delivery of that same `id` → `409` with exactly `{ error: 'duplicate_event', id }` — the second request's `type`/`timestamp`/`data` do not affect this outcome.
+- First valid, non-duplicate delivery → `200` with exactly `{ accepted: true, id }`, and the `id` is then recorded as accepted.
+- No new npm dependencies; use only Node built-ins (`crypto`, `fs`) and the already-present `express`.
+- Touch only `server/index.js` and `tests/server.test.js`.
+- Update `tests/server.test.js`: the 3 existing tests (`GET /health`, `GET /items`, `GET /items/:id`) must keep passing. Add at least 3 new tests: (a) happy path — valid signature + valid body → `200 { accepted: true, id }`; (b) replay — same `id` delivered twice → second delivery → `409 { error: 'duplicate_event', id }`; (c) tampered body with the original (now-stale) signature → `401 { error: 'invalid_signature' }`.
+
+## Constraints
+
+- Raw-body capture: use `express.json()`'s `verify` option (e.g. stash the raw `Buffer` on the request during parsing) — `express.json()` is already mounted ahead of any new route and replaces the body stream, so this is the idiomatic way to keep both the parsed body and the exact bytes.
+- Read `data/webhook-secret.txt` via `fs`, trimmed of a trailing newline.
+- Accepted-id tracking is in-memory (e.g. a module-scoped `Set`), scoped to the running process — no persistence layer exists in this repo and none may be added (no new deps, no new files).
+- `crypto.timingSafeEqual` requires equal-length `Buffer`s — guard the length check before calling it so a short/long header value fails closed as `invalid_signature` rather than throwing.
+
+## Out of Scope
+
+- Any change to the existing `/health`, `/items`, `/items/:id` routes.
+- Any change to `data/webhook-secret.txt`, `data/_sample-event.json`, `package.json`, `package-lock.json`, or any file other than `server/index.js` and `tests/server.test.js`.
+- Persistence, rate limiting, logging, retries, or any other provider-side concern not named in the goal.
+
+## Assumptions
+
+- `data` must be a plain JSON object per the goal's `data is an object` — `null`, arrays, and non-object primitives are rejected as `invalid_body`; `{}` (empty object) is accepted.
+- Duplicate-id detection runs after both the signature check and the body-shape check succeed: the shape check is what establishes a trustworthy `id` to key the duplicate-check on, and only then does "the second body is irrelevant" apply (i.e. a duplicate delivery with an otherwise-malformed body is not specified by the goal and is out of scope for this run).
+- A missing or malformed `X-Signature` header is treated the same as a mismatched one (`401 invalid_signature`) — the goal defines only `invalid_signature` and `invalid_body` as failure shapes, with no third error class for a missing header.
+- `timestamp` only needs to satisfy `typeof timestamp === 'number'` (finite) — no freshness/staleness window is implied by the goal text.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{"verification_commands": [{"cmd": "npm test", "description": "run full test suite (existing tests + new webhook tests: happy path, replay 409, tampered-body 401)"}]}
+```
+const { test } = require('node:test');
+const assert = require('node:assert');
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const http = require('node:http');
+const { app } = require('../server');
+
+function startServer() {
+  return new Promise((resolve) => {
+    const server = http.createServer(app);
+    server.listen(0, () => resolve(server));
+  });
+}
+
+function get(server, path) {
+  return new Promise((resolve, reject) => {
+    const { port } = server.address();
+    http
+      .get(`http://127.0.0.1:${port}${path}`, (res) => {
+        let body = '';
+        res.on('data', (chunk) => (body += chunk));
+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
+      })
+      .on('error', reject);
+  });
+}
+
+function post(server, path, body, signature) {
+  return new Promise((resolve, reject) => {
+    const { port } = server.address();
+    const request = http.request({
+      hostname: '127.0.0.1',
+      port,
+      path,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+        'X-Signature': signature,
+      },
+    }, (res) => {
+      let responseBody = '';
+      res.on('data', (chunk) => (responseBody += chunk));
+      res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
+    });
+    request.on('error', reject);
+    request.end(body);
+  });
+}
+
+function sign(body) {
+  const secret = fs.readFileSync(`${__dirname}/../data/webhook-secret.txt`, 'utf8').replace(/\r?\n$/, '');
+  return crypto.createHmac('sha256', secret).update(body).digest('hex');
+}
+
+test('GET /health returns ok', async () => {
+  const server = await startServer();
+  try {
+    const { status, body } = await get(server, '/health');
+    assert.strictEqual(status, 200);
+    assert.deepStrictEqual(body, { status: 'ok' });
+  } finally {
+    server.close();
+  }
+});
+
+test('GET /items returns list', async () => {
+  const server = await startServer();
+  try {
+    const { status, body } = await get(server, '/items');
+    assert.strictEqual(status, 200);
+    assert.ok(Array.isArray(body.items));
+    assert.ok(body.items.length >= 2);
+  } finally {
+    server.close();
+  }
+});
+
+test('GET /items/:id returns 404 for missing', async () => {
+  const server = await startServer();
+  try {
+    const { status, body } = await get(server, '/items/99999');
+    assert.strictEqual(status, 404);
+    assert.strictEqual(body.error, 'not_found');
+  } finally {
+    server.close();
+  }
+});
+
+test('POST /webhook accepts a valid signed event', async () => {
+  const server = await startServer();
+  try {
+    const body = JSON.stringify({ id: 'event-happy', type: 'order.created', timestamp: 1721618860, data: {} });
+    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
+    assert.strictEqual(status, 200);
+    assert.deepStrictEqual(responseBody, { accepted: true, id: 'event-happy' });
+  } finally {
+    server.close();
+  }
+});
+
+test('POST /webhook rejects a replayed event id', async () => {
+  const server = await startServer();
+  try {
+    const body = JSON.stringify({ id: 'event-replay', type: 'order.created', timestamp: 1721618861, data: {} });
+    await post(server, '/webhook', body, sign(body));
+    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
+    assert.strictEqual(status, 409);
+    assert.deepStrictEqual(responseBody, { error: 'duplicate_event', id: 'event-replay' });
+  } finally {
+    server.close();
+  }
+});
+
+test('POST /webhook rejects a tampered body with a stale signature', async () => {
+  const server = await startServer();
+  try {
+    const originalBody = JSON.stringify({ id: 'event-tampered', type: 'order.created', timestamp: 1721618862, data: {} });
+    const tamperedBody = JSON.stringify({ id: 'event-tampered', type: 'order.created', timestamp: 1721618863, data: {} });
+    const { status, body: responseBody } = await post(server, '/webhook', tamperedBody, sign(originalBody));
+    assert.strictEqual(status, 401);
+    assert.deepStrictEqual(responseBody, { error: 'invalid_signature' });
+  } finally {
+    server.close();
+  }
+});
+
+exec
+/bin/zsh -lc "sed -n '1,220p' server/index.js && rg -n '\"test\"|express' package.json" in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo
+ succeeded in 0ms:
+// Tiny Express server with a deliberately small API surface.
+const crypto = require('crypto');
+const express = require('express');
+const fs = require('fs');
+
+const app = express();
+app.use(express.json({ verify: (req, _res, buffer) => { req.rawBody = buffer; } }));
+
+const webhookSecret = fs.readFileSync(`${__dirname}/../data/webhook-secret.txt`, 'utf8').replace(/\r?\n$/, '');
+const acceptedWebhookIds = new Set();
+
+const items = [
+  { id: 1, name: 'alpha', qty: 3 },
+  { id: 2, name: 'beta', qty: 5 },
+];
+
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.get('/items', (_req, res) => {
+  res.json({ items });
+});
+
+app.get('/items/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const item = items.find((it) => it.id === id);
+  if (!item) {
+    res.status(404).json({ error: 'not_found', id });
+    return;
+  }
+  res.json({ item });
+});
+
+app.post('/webhook', (req, res) => {
+  const signature = req.get('X-Signature');
+  const signatureBuffer = typeof signature === 'string' && /^[0-9a-f]+$/i.test(signature) && signature.length % 2 === 0
+    ? Buffer.from(signature, 'hex')
+    : null;
+  const expectedSignature = Buffer.isBuffer(req.rawBody)
+    ? Buffer.from(crypto.createHmac('sha256', webhookSecret).update(req.rawBody).digest('hex'), 'hex')
+    : null;
+
+  if (!expectedSignature || !signatureBuffer || expectedSignature.length !== signatureBuffer.length
+    || !crypto.timingSafeEqual(expectedSignature, signatureBuffer)) {
+    res.status(401).json({ error: 'invalid_signature' });
+    return;
+  }
+
+  const { id, type, timestamp, data } = req.body;
+  if (typeof id !== 'string' || id.length === 0
+    || typeof type !== 'string' || type.length === 0
+    || typeof timestamp !== 'number' || !Number.isFinite(timestamp)
+    || typeof data !== 'object' || data === null || Array.isArray(data)) {
+    res.status(400).json({ error: 'invalid_body' });
+    return;
+  }
+
+  if (acceptedWebhookIds.has(id)) {
+    res.status(409).json({ error: 'duplicate_event', id });
+    return;
+  }
+
+  acceptedWebhookIds.add(id);
+  res.json({ accepted: true, id });
+});
+
+if (require.main === module) {
+  const port = Number(process.env.PORT) || 3000;
+  app.listen(port, () => {
+    console.log(`harbor-tools server listening on :${port}`);
+  });
+}
+
+module.exports = { app };
+12:    "test": "node --test tests/",
+16:    "express": "4.19.2"
+
+[codex-monitored] heartbeat: elapsed=30s
+codex
+The failure is confirmed: the global JSON parser is mounted before the handler, so it can terminate `/webhook` before signature verification. I’ll place `express.raw()` specifically on `/webhook`, verify its buffer, then parse and validate it in the handler.
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/server/index.js
+/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js
+diff --git a/server/index.js b/server/index.js
+index 8d5f55696ed2062b7e91fc95160e4954538e1020..7efa27f8816da451d22c41639d466e0dc0ed46e3
+--- a/server/index.js
++++ b/server/index.js
+@@ -4,6 +4,7 @@
+ const fs = require('fs');
+ 
+ const app = express();
++app.use('/webhook', express.raw({ type: () => true }));
+ app.use(express.json({ verify: (req, _res, buffer) => { req.rawBody = buffer; } }));
+ 
+ const webhookSecret = fs.readFileSync(`${__dirname}/../data/webhook-secret.txt`, 'utf8').replace(/\r?\n$/, '');
+@@ -37,8 +38,8 @@
+   const signatureBuffer = typeof signature === 'string' && /^[0-9a-f]+$/i.test(signature) && signature.length % 2 === 0
+     ? Buffer.from(signature, 'hex')
+     : null;
+-  const expectedSignature = Buffer.isBuffer(req.rawBody)
+-    ? Buffer.from(crypto.createHmac('sha256', webhookSecret).update(req.rawBody).digest('hex'), 'hex')
++  const expectedSignature = Buffer.isBuffer(req.body)
++    ? crypto.createHmac('sha256', webhookSecret).update(req.body).digest()
+     : null;
+ 
+   if (!expectedSignature || !signatureBuffer || expectedSignature.length !== signatureBuffer.length
+@@ -47,7 +48,20 @@
+     return;
+   }
+ 
+-  const { id, type, timestamp, data } = req.body;
++  let event;
++  try {
++    event = JSON.parse(req.body.toString('utf8'));
++  } catch {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  if (typeof event !== 'object' || event === null || Array.isArray(event)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  const { id, type, timestamp, data } = event;
+   if (typeof id !== 'string' || id.length === 0
+     || typeof type !== 'string' || type.length === 0
+     || typeof timestamp !== 'number' || !Number.isFinite(timestamp)
+diff --git a/tests/server.test.js b/tests/server.test.js
+index 352227e2a250833e63821029bd8d50a8b6d5abb4..a9739dac38e18b392f84429245ac5de5f15b17a6
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -124,3 +124,26 @@
+     server.close();
+   }
+ });
++
++test('POST /webhook rejects malformed JSON before parsing when the signature is invalid', async () => {
++  const server = await startServer();
++  try {
++    const { status, body } = await post(server, '/webhook', 'not-json-at-all{{{', 'invalid-signature');
++    assert.strictEqual(status, 401);
++    assert.deepStrictEqual(body, { error: 'invalid_signature' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a correctly signed JSON primitive as an invalid body', async () => {
++  const server = await startServer();
++  try {
++    const body = '42';
++    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
++    assert.strictEqual(status, 400);
++    assert.deepStrictEqual(responseBody, { error: 'invalid_body' });
++  } finally {
++    server.close();
++  }
++});
+
+diff --git a/server/index.js b/server/index.js
+index 8d5f55696ed2062b7e91fc95160e4954538e1020..7efa27f8816da451d22c41639d466e0dc0ed46e3
+--- a/server/index.js
++++ b/server/index.js
+@@ -4,6 +4,7 @@
+ const fs = require('fs');
+ 
+ const app = express();
++app.use('/webhook', express.raw({ type: () => true }));
+ app.use(express.json({ verify: (req, _res, buffer) => { req.rawBody = buffer; } }));
+ 
+ const webhookSecret = fs.readFileSync(`${__dirname}/../data/webhook-secret.txt`, 'utf8').replace(/\r?\n$/, '');
+@@ -37,8 +38,8 @@
+   const signatureBuffer = typeof signature === 'string' && /^[0-9a-f]+$/i.test(signature) && signature.length % 2 === 0
+     ? Buffer.from(signature, 'hex')
+     : null;
+-  const expectedSignature = Buffer.isBuffer(req.rawBody)
+-    ? Buffer.from(crypto.createHmac('sha256', webhookSecret).update(req.rawBody).digest('hex'), 'hex')
++  const expectedSignature = Buffer.isBuffer(req.body)
++    ? crypto.createHmac('sha256', webhookSecret).update(req.body).digest()
+     : null;
+ 
+   if (!expectedSignature || !signatureBuffer || expectedSignature.length !== signatureBuffer.length
+@@ -47,7 +48,20 @@
+     return;
+   }
+ 
+-  const { id, type, timestamp, data } = req.body;
++  let event;
++  try {
++    event = JSON.parse(req.body.toString('utf8'));
++  } catch {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  if (typeof event !== 'object' || event === null || Array.isArray(event)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  const { id, type, timestamp, data } = event;
+   if (typeof id !== 'string' || id.length === 0
+     || typeof type !== 'string' || type.length === 0
+     || typeof timestamp !== 'number' || !Number.isFinite(timestamp)
+diff --git a/tests/server.test.js b/tests/server.test.js
+index 352227e2a250833e63821029bd8d50a8b6d5abb4..a9739dac38e18b392f84429245ac5de5f15b17a6
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -124,3 +124,26 @@
+     server.close();
+   }
+ });
++
++test('POST /webhook rejects malformed JSON before parsing when the signature is invalid', async () => {
++  const server = await startServer();
++  try {
++    const { status, body } = await post(server, '/webhook', 'not-json-at-all{{{', 'invalid-signature');
++    assert.strictEqual(status, 401);
++    assert.deepStrictEqual(body, { error: 'invalid_signature' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a correctly signed JSON primitive as an invalid body', async () => {
++  const server = await startServer();
++  try {
++    const body = '42';
++    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
++    assert.strictEqual(status, 400);
++    assert.deepStrictEqual(responseBody, { error: 'invalid_body' });
++  } finally {
++    server.close();
++  }
++});
+
+codex
+Prediction: malformed bytes with an invalid signature now reach the route and return `401` JSON; a correctly signed `42` parses inside the route and returns `400` JSON. I’ll validate that with the complete `npm test` suite.
+[codex-monitored] heartbeat: elapsed=60s
+exec
+/bin/zsh -lc 'npm test' in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo
+diff --git a/server/index.js b/server/index.js
+index 8d5f55696ed2062b7e91fc95160e4954538e1020..7efa27f8816da451d22c41639d466e0dc0ed46e3
+--- a/server/index.js
++++ b/server/index.js
+@@ -4,6 +4,7 @@
+ const fs = require('fs');
+ 
+ const app = express();
++app.use('/webhook', express.raw({ type: () => true }));
+ app.use(express.json({ verify: (req, _res, buffer) => { req.rawBody = buffer; } }));
+ 
+ const webhookSecret = fs.readFileSync(`${__dirname}/../data/webhook-secret.txt`, 'utf8').replace(/\r?\n$/, '');
+@@ -37,8 +38,8 @@
+   const signatureBuffer = typeof signature === 'string' && /^[0-9a-f]+$/i.test(signature) && signature.length % 2 === 0
+     ? Buffer.from(signature, 'hex')
+     : null;
+-  const expectedSignature = Buffer.isBuffer(req.rawBody)
+-    ? Buffer.from(crypto.createHmac('sha256', webhookSecret).update(req.rawBody).digest('hex'), 'hex')
++  const expectedSignature = Buffer.isBuffer(req.body)
++    ? crypto.createHmac('sha256', webhookSecret).update(req.body).digest()
+     : null;
+ 
+   if (!expectedSignature || !signatureBuffer || expectedSignature.length !== signatureBuffer.length
+@@ -47,7 +48,20 @@
+     return;
+   }
+ 
+-  const { id, type, timestamp, data } = req.body;
++  let event;
++  try {
++    event = JSON.parse(req.body.toString('utf8'));
++  } catch {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  if (typeof event !== 'object' || event === null || Array.isArray(event)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  const { id, type, timestamp, data } = event;
+   if (typeof id !== 'string' || id.length === 0
+     || typeof type !== 'string' || type.length === 0
+     || typeof timestamp !== 'number' || !Number.isFinite(timestamp)
+diff --git a/tests/server.test.js b/tests/server.test.js
+index 352227e2a250833e63821029bd8d50a8b6d5abb4..a9739dac38e18b392f84429245ac5de5f15b17a6
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -124,3 +124,26 @@
+     server.close();
+   }
+ });
++
++test('POST /webhook rejects malformed JSON before parsing when the signature is invalid', async () => {
++  const server = await startServer();
++  try {
++    const { status, body } = await post(server, '/webhook', 'not-json-at-all{{{', 'invalid-signature');
++    assert.strictEqual(status, 401);
++    assert.deepStrictEqual(body, { error: 'invalid_signature' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a correctly signed JSON primitive as an invalid body', async () => {
++  const server = await startServer();
++  try {
++    const body = '42';
++    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
++    assert.strictEqual(status, 400);
++    assert.deepStrictEqual(responseBody, { error: 'invalid_body' });
++  } finally {
++    server.close();
++  }
++});
+
+ exited 1 in 240ms:
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 35.2205
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 29.894083
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 29.259584
+  ...
+# Subtest: GET /health returns ok
+not ok 4 - GET /health returns ok
+  ---
+  duration_ms: 2.080125
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:56:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:11:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:9:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:57:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 5 - GET /items returns list
+  ---
+  duration_ms: 0.658208
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:67:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:11:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:9:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:68:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 6 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.340542
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:79:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:11:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:9:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:80:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: POST /webhook accepts a valid signed event
+not ok 7 - POST /webhook accepts a valid signed event
+  ---
+  duration_ms: 0.274708
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:90:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:11:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:9:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:91:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: POST /webhook rejects a replayed event id
+not ok 8 - POST /webhook rejects a replayed event id
+  ---
+  duration_ms: 0.471
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:102:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:11:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:9:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:103:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: POST /webhook rejects a tampered body with a stale signature
+not ok 9 - POST /webhook rejects a tampered body with a stale signature
+  ---
+  duration_ms: 0.751458
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:115:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:11:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:9:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:116:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: POST /webhook rejects malformed JSON before parsing when the signature is invalid
+not ok 10 - POST /webhook rejects malformed JSON before parsing when the signature is invalid
+  ---
+  duration_ms: 0.593667
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:128:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:11:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:9:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:129:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: POST /webhook rejects a correctly signed JSON primitive as an invalid body
+not ok 11 - POST /webhook rejects a correctly signed JSON primitive as an invalid body
+  ---
+  duration_ms: 0.566334
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:139:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:11:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:9:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:140:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 3
+# fail 8
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 145.679292
+
+codex
+`npm test` is currently blocked before any HTTP assertion: all server tests fail with `EPERM` while binding `0.0.0.0` (the three CLI tests pass). I’ll check whether the sandbox permits an explicit loopback bind; if so, I’ll make the test helper use it without changing application behavior.
+exec
+/bin/zsh -lc "node -e \"require('node:http').createServer().listen(0, '127.0.0.1', function () { console.log('loopback-listen-ok'); this.close(); }).on('error', (error) => { console.error(error.code); process.exitCode = 1; })\"" in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo
+ exited 1 in 0ms:
+EPERM
+
+diff --git a/server/index.js b/server/index.js
+index 8d5f55696ed2062b7e91fc95160e4954538e1020..7efa27f8816da451d22c41639d466e0dc0ed46e3
+--- a/server/index.js
++++ b/server/index.js
+@@ -4,6 +4,7 @@
+ const fs = require('fs');
+ 
+ const app = express();
++app.use('/webhook', express.raw({ type: () => true }));
+ app.use(express.json({ verify: (req, _res, buffer) => { req.rawBody = buffer; } }));
+ 
+ const webhookSecret = fs.readFileSync(`${__dirname}/../data/webhook-secret.txt`, 'utf8').replace(/\r?\n$/, '');
+@@ -37,8 +38,8 @@
+   const signatureBuffer = typeof signature === 'string' && /^[0-9a-f]+$/i.test(signature) && signature.length % 2 === 0
+     ? Buffer.from(signature, 'hex')
+     : null;
+-  const expectedSignature = Buffer.isBuffer(req.rawBody)
+-    ? Buffer.from(crypto.createHmac('sha256', webhookSecret).update(req.rawBody).digest('hex'), 'hex')
++  const expectedSignature = Buffer.isBuffer(req.body)
++    ? crypto.createHmac('sha256', webhookSecret).update(req.body).digest()
+     : null;
+ 
+   if (!expectedSignature || !signatureBuffer || expectedSignature.length !== signatureBuffer.length
+@@ -47,7 +48,20 @@
+     return;
+   }
+ 
+-  const { id, type, timestamp, data } = req.body;
++  let event;
++  try {
++    event = JSON.parse(req.body.toString('utf8'));
++  } catch {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  if (typeof event !== 'object' || event === null || Array.isArray(event)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  const { id, type, timestamp, data } = event;
+   if (typeof id !== 'string' || id.length === 0
+     || typeof type !== 'string' || type.length === 0
+     || typeof timestamp !== 'number' || !Number.isFinite(timestamp)
+diff --git a/tests/server.test.js b/tests/server.test.js
+index 352227e2a250833e63821029bd8d50a8b6d5abb4..a9739dac38e18b392f84429245ac5de5f15b17a6
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -124,3 +124,26 @@
+     server.close();
+   }
+ });
++
++test('POST /webhook rejects malformed JSON before parsing when the signature is invalid', async () => {
++  const server = await startServer();
++  try {
++    const { status, body } = await post(server, '/webhook', 'not-json-at-all{{{', 'invalid-signature');
++    assert.strictEqual(status, 401);
++    assert.deepStrictEqual(body, { error: 'invalid_signature' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a correctly signed JSON primitive as an invalid body', async () => {
++  const server = await startServer();
++  try {
++    const body = '42';
++    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
++    assert.strictEqual(status, 400);
++    assert.deepStrictEqual(responseBody, { error: 'invalid_body' });
++  } finally {
++    server.close();
++  }
++});
+
+[codex-monitored] heartbeat: elapsed=90s
+codex
+The loopback check also fails with `EPERM`, so this environment disallows all listener creation; changing the test host would not unblock the suite and would be unrelated to the webhook fix. I’ll do the remaining non-network syntax/diff checks and preserve the scoped implementation.
+exec
+/bin/zsh -lc 'git diff --check && node --check server/index.js && node --check tests/server.test.js && git diff -- server/index.js tests/server.test.js' in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo
+ succeeded in 0ms:
+diff --git a/server/index.js b/server/index.js
+index 8d5f556..7efa27f 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -4,6 +4,7 @@ const express = require('express');
+ const fs = require('fs');
+ 
+ const app = express();
++app.use('/webhook', express.raw({ type: () => true }));
+ app.use(express.json({ verify: (req, _res, buffer) => { req.rawBody = buffer; } }));
+ 
+ const webhookSecret = fs.readFileSync(`${__dirname}/../data/webhook-secret.txt`, 'utf8').replace(/\r?\n$/, '');
+@@ -37,8 +38,8 @@ app.post('/webhook', (req, res) => {
+   const signatureBuffer = typeof signature === 'string' && /^[0-9a-f]+$/i.test(signature) && signature.length % 2 === 0
+     ? Buffer.from(signature, 'hex')
+     : null;
+-  const expectedSignature = Buffer.isBuffer(req.rawBody)
+-    ? Buffer.from(crypto.createHmac('sha256', webhookSecret).update(req.rawBody).digest('hex'), 'hex')
++  const expectedSignature = Buffer.isBuffer(req.body)
++    ? crypto.createHmac('sha256', webhookSecret).update(req.body).digest()
+     : null;
+ 
+   if (!expectedSignature || !signatureBuffer || expectedSignature.length !== signatureBuffer.length
+@@ -47,7 +48,20 @@ app.post('/webhook', (req, res) => {
+     return;
+   }
+ 
+-  const { id, type, timestamp, data } = req.body;
++  let event;
++  try {
++    event = JSON.parse(req.body.toString('utf8'));
++  } catch {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  if (typeof event !== 'object' || event === null || Array.isArray(event)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  const { id, type, timestamp, data } = event;
+   if (typeof id !== 'string' || id.length === 0
+     || typeof type !== 'string' || type.length === 0
+     || typeof timestamp !== 'number' || !Number.isFinite(timestamp)
+diff --git a/tests/server.test.js b/tests/server.test.js
+index 352227e..a9739da 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -124,3 +124,26 @@ test('POST /webhook rejects a tampered body with a stale signature', async () =>
+     server.close();
+   }
+ });
++
++test('POST /webhook rejects malformed JSON before parsing when the signature is invalid', async () => {
++  const server = await startServer();
++  try {
++    const { status, body } = await post(server, '/webhook', 'not-json-at-all{{{', 'invalid-signature');
++    assert.strictEqual(status, 401);
++    assert.deepStrictEqual(body, { error: 'invalid_signature' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a correctly signed JSON primitive as an invalid body', async () => {
++  const server = await startServer();
++  try {
++    const body = '42';
++    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
++    assert.strictEqual(status, 400);
++    assert.deepStrictEqual(responseBody, { error: 'invalid_body' });
++  } finally {
++    server.close();
++  }
++});
+
+diff --git a/server/index.js b/server/index.js
+index 8d5f55696ed2062b7e91fc95160e4954538e1020..7efa27f8816da451d22c41639d466e0dc0ed46e3
+--- a/server/index.js
++++ b/server/index.js
+@@ -4,6 +4,7 @@
+ const fs = require('fs');
+ 
+ const app = express();
++app.use('/webhook', express.raw({ type: () => true }));
+ app.use(express.json({ verify: (req, _res, buffer) => { req.rawBody = buffer; } }));
+ 
+ const webhookSecret = fs.readFileSync(`${__dirname}/../data/webhook-secret.txt`, 'utf8').replace(/\r?\n$/, '');
+@@ -37,8 +38,8 @@
+   const signatureBuffer = typeof signature === 'string' && /^[0-9a-f]+$/i.test(signature) && signature.length % 2 === 0
+     ? Buffer.from(signature, 'hex')
+     : null;
+-  const expectedSignature = Buffer.isBuffer(req.rawBody)
+-    ? Buffer.from(crypto.createHmac('sha256', webhookSecret).update(req.rawBody).digest('hex'), 'hex')
++  const expectedSignature = Buffer.isBuffer(req.body)
++    ? crypto.createHmac('sha256', webhookSecret).update(req.body).digest()
+     : null;
+ 
+   if (!expectedSignature || !signatureBuffer || expectedSignature.length !== signatureBuffer.length
+@@ -47,7 +48,20 @@
+     return;
+   }
+ 
+-  const { id, type, timestamp, data } = req.body;
++  let event;
++  try {
++    event = JSON.parse(req.body.toString('utf8'));
++  } catch {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  if (typeof event !== 'object' || event === null || Array.isArray(event)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  const { id, type, timestamp, data } = event;
+   if (typeof id !== 'string' || id.length === 0
+     || typeof type !== 'string' || type.length === 0
+     || typeof timestamp !== 'number' || !Number.isFinite(timestamp)
+diff --git a/tests/server.test.js b/tests/server.test.js
+index 352227e2a250833e63821029bd8d50a8b6d5abb4..a9739dac38e18b392f84429245ac5de5f15b17a6
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -124,3 +124,26 @@
+     server.close();
+   }
+ });
++
++test('POST /webhook rejects malformed JSON before parsing when the signature is invalid', async () => {
++  const server = await startServer();
++  try {
++    const { status, body } = await post(server, '/webhook', 'not-json-at-all{{{', 'invalid-signature');
++    assert.strictEqual(status, 401);
++    assert.deepStrictEqual(body, { error: 'invalid_signature' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a correctly signed JSON primitive as an invalid body', async () => {
++  const server = await startServer();
++  try {
++    const body = '42';
++    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
++    assert.strictEqual(status, 400);
++    assert.deepStrictEqual(responseBody, { error: 'invalid_body' });
++  } finally {
++    server.close();
++  }
++});
+
+codex
+BLOCKED — implementation is scoped and syntax-valid, but `npm test` cannot run server tests in this sandbox.
+
+- Added route-scoped raw parsing and route-controlled JSON parsing in [server/index.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/server/index.js:7).
+- Added both regression tests in [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo/tests/server.test.js:128).
+- `git diff --check` and both `node --check` commands pass.
+- `npm test`: 3 passed, 8 failed before assertions because `server.listen(0)` raises `EPERM`; explicit `127.0.0.1` binding also raises `EPERM`.
+
+Run `npm test` in an environment that permits local listeners to complete verification.
+diff --git a/server/index.js b/server/index.js
+index 8d5f55696ed2062b7e91fc95160e4954538e1020..7efa27f8816da451d22c41639d466e0dc0ed46e3
+--- a/server/index.js
++++ b/server/index.js
+@@ -4,6 +4,7 @@
+ const fs = require('fs');
+ 
+ const app = express();
++app.use('/webhook', express.raw({ type: () => true }));
+ app.use(express.json({ verify: (req, _res, buffer) => { req.rawBody = buffer; } }));
+ 
+ const webhookSecret = fs.readFileSync(`${__dirname}/../data/webhook-secret.txt`, 'utf8').replace(/\r?\n$/, '');
+@@ -37,8 +38,8 @@
+   const signatureBuffer = typeof signature === 'string' && /^[0-9a-f]+$/i.test(signature) && signature.length % 2 === 0
+     ? Buffer.from(signature, 'hex')
+     : null;
+-  const expectedSignature = Buffer.isBuffer(req.rawBody)
+-    ? Buffer.from(crypto.createHmac('sha256', webhookSecret).update(req.rawBody).digest('hex'), 'hex')
++  const expectedSignature = Buffer.isBuffer(req.body)
++    ? crypto.createHmac('sha256', webhookSecret).update(req.body).digest()
+     : null;
+ 
+   if (!expectedSignature || !signatureBuffer || expectedSignature.length !== signatureBuffer.length
+@@ -47,7 +48,20 @@
+     return;
+   }
+ 
+-  const { id, type, timestamp, data } = req.body;
++  let event;
++  try {
++    event = JSON.parse(req.body.toString('utf8'));
++  } catch {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  if (typeof event !== 'object' || event === null || Array.isArray(event)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  const { id, type, timestamp, data } = event;
+   if (typeof id !== 'string' || id.length === 0
+     || typeof type !== 'string' || type.length === 0
+     || typeof timestamp !== 'number' || !Number.isFinite(timestamp)
+diff --git a/tests/server.test.js b/tests/server.test.js
+index 352227e2a250833e63821029bd8d50a8b6d5abb4..a9739dac38e18b392f84429245ac5de5f15b17a6
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -124,3 +124,26 @@
+     server.close();
+   }
+ });
++
++test('POST /webhook rejects malformed JSON before parsing when the signature is invalid', async () => {
++  const server = await startServer();
++  try {
++    const { status, body } = await post(server, '/webhook', 'not-json-at-all{{{', 'invalid-signature');
++    assert.strictEqual(status, 401);
++    assert.deepStrictEqual(body, { error: 'invalid_signature' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a correctly signed JSON primitive as an invalid body', async () => {
++  const server = await startServer();
++  try {
++    const body = '42';
++    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
++    assert.strictEqual(status, 400);
++    assert.deepStrictEqual(responseBody, { error: 'invalid_body' });
++  } finally {
++    server.close();
++  }
++});
+
+tokens used
+26,347
+[codex-monitored] codex exited: code=0 elapsed=101s

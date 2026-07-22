@@ -1,0 +1,35 @@
+{
+  "blocks": [
+    {
+      "action": "none",
+      "classification": "SURVIVED",
+      "finding_targeted": false,
+      "id": "bin/cli.js:1:c84ca16f5c36bf90",
+      "path": "bin/cli.js",
+      "pre_fix_span": [
+        12,
+        12
+      ]
+    },
+    {
+      "action": "none",
+      "classification": "SURVIVED",
+      "finding_targeted": false,
+      "id": "tests/cli.test.js:1:3645c0b568baf132",
+      "path": "tests/cli.test.js",
+      "pre_fix_span": [
+        31,
+        34
+      ]
+    }
+  ],
+  "fix_commit_sha": "0aa2627c08eb1997fa5f30f97751df045cfcbbaf",
+  "origin_phase": "verify",
+  "post_restore_sha": "0aa2627c08eb1997fa5f30f97751df045cfcbbaf",
+  "pre_fix_sha": "8b280a5fbac33ae63c5986a7ec90c64c46b84f80",
+  "restore_commit_sha": null,
+  "round": 2,
+  "schema_version": 1,
+  "surface_close_commit_sha": "8b280a5fbac33ae63c5986a7ec90c64c46b84f80",
+  "triggering_findings_sha256": "a69678328c8225fcfb067864c9c85e55821c4e0e1458e01fd6df080c8ddc7d00"
+}

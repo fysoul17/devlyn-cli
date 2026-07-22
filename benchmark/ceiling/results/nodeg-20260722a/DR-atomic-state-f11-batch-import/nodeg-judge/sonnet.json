@@ -1,0 +1,163 @@
+{
+  "judge": "sonnet",
+  "task": "DR-atomic-state-f11-batch-import",
+  "prompt": "You are a blind ceiling-quality judge. You receive one task and two anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, source run, or author identity; judge only the task text and diffs.\n\nTask text:\nAdd `POST /items/import` to `server/index.js`. It accepts `{ items: [...] }`; every item must have a `name` that is a non-empty string after trimming and a `qty` that is a positive integer.\n\nWhen every item is valid, append all of them in input order and respond `201` with `{ inserted: <count> }`. Every appended row must receive a distinct numeric `id` that does not collide with any existing item id. If an item is invalid, respond `400` with `{ error: 'invalid_batch', index, field }`, where `index` identifies the first invalid item and `field` is `name` or `qty`. After that response, `GET /items` must return exactly the same list it returned immediately before the request.\n\nAn empty body, missing `items`, or a non-array `items` value must return `400` with `{ error: 'invalid_body' }`; `GET /items` must likewise be unchanged.\n\nUpdate `tests/server.test.js` so the existing tests still pass and add at least two import tests. One must exercise an invalid middle item and compare the list before and after the response; another must cover a fully valid request. No new npm dependencies. Only touch `server/index.js` and `tests/server.test.js`.\n\nP1 patch.diff:\n```diff\ndiff --git a/server/index.js b/server/index.js\nindex 1c43fa2..384a61f 100644\n--- a/server/index.js\n+++ b/server/index.js\n@@ -27,6 +27,35 @@ app.get('/items/:id', (req, res) => {\n   res.json({ item });\n });\n \n+app.post('/items/import', (req, res) => {\n+  if (!req.body || !Array.isArray(req.body.items)) {\n+    res.status(400).json({ error: 'invalid_body' });\n+    return;\n+  }\n+\n+  const validatedItems = [];\n+  for (let index = 0; index < req.body.items.length; index += 1) {\n+    const item = req.body.items[index];\n+    if (!item || typeof item.name !== 'string' || item.name.trim() === '') {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });\n+      return;\n+    }\n+    if (!Number.isInteger(item.qty) || item.qty <= 0) {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });\n+      return;\n+    }\n+    validatedItems.push({ name: item.name.trim(), qty: item.qty });\n+  }\n+\n+  const maxId = items.reduce((max, item) => Math.max(max, item.id), 0);\n+  const importedItems = validatedItems.map((item, index) => ({\n+    id: maxId + index + 1,\n+    ...item,\n+  }));\n+  items.push(...importedItems);\n+  res.status(201).json({ inserted: importedItems.length });\n+});\n+\n if (require.main === module) {\n   const port = Number(process.env.PORT) || 3000;\n   app.listen(port, () => {\ndiff --git a/tests/server.test.js b/tests/server.test.js\nindex adc6067..5f522af 100644\n--- a/tests/server.test.js\n+++ b/tests/server.test.js\n@@ -23,6 +23,32 @@ function get(server, path) {\n   });\n }\n \n+function post(server, path, body) {\n+  return new Promise((resolve, reject) => {\n+    const payload = JSON.stringify(body);\n+    const { port } = server.address();\n+    const request = http.request(\n+      {\n+        hostname: '127.0.0.1',\n+        port,\n+        path,\n+        method: 'POST',\n+        headers: {\n+          'content-type': 'application/json',\n+          'content-length': Buffer.byteLength(payload),\n+        },\n+      },\n+      (res) => {\n+        let responseBody = '';\n+        res.on('data', (chunk) => (responseBody += chunk));\n+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));\n+      },\n+    );\n+    request.on('error', reject);\n+    request.end(payload);\n+  });\n+}\n+\n test('GET /health returns ok', async () => {\n   const server = await startServer();\n   try {\n@@ -56,3 +82,60 @@ test('GET /items/:id returns 404 for missing', async () => {\n     server.close();\n   }\n });\n+\n+test('POST /items/import rejects an invalid middle item without mutation', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'first', qty: 1 },\n+        { name: '   ', qty: 2 },\n+        { name: 'last', qty: 3 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+\n+    assert.strictEqual(response.status, 400);\n+    assert.deepStrictEqual(response.body, {\n+      error: 'invalid_batch',\n+      index: 1,\n+      field: 'name',\n+    });\n+    assert.deepStrictEqual(after.body, before.body);\n+  } finally {\n+    server.close();\n+  }\n+});\n+\n+test('POST /items/import appends a valid batch with distinct ids', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const existingIds = new Set(before.body.items.map((item) => item.id));\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: '  gamma  ', qty: 4, ignored: true },\n+        { name: 'delta', qty: 6, ignored: true },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+    const importedItems = after.body.items.slice(before.body.items.length);\n+    const importedIds = importedItems.map((item) => item.id);\n+\n+    assert.strictEqual(response.status, 201);\n+    assert.deepStrictEqual(response.body, { inserted: 2 });\n+    assert.deepStrictEqual(\n+      importedItems.map((item) => ({ name: item.name, qty: item.qty })),\n+      [\n+        { name: 'gamma', qty: 4 },\n+        { name: 'delta', qty: 6 },\n+      ],\n+    );\n+    assert.ok(importedItems.every((item) => Object.keys(item).length === 3));\n+    assert.ok(importedIds.every((id) => Number.isInteger(id) && !existingIds.has(id)));\n+    assert.strictEqual(new Set(importedIds).size, 2);\n+  } finally {\n+    server.close();\n+  }\n+});\n\n```\n\nP2 patch.diff:\n```diff\ndiff --git a/server/index.js b/server/index.js\nindex 1c43fa2..facf9fc 100644\n--- a/server/index.js\n+++ b/server/index.js\n@@ -17,6 +17,43 @@ app.get('/items', (_req, res) => {\n   res.json({ items });\n });\n \n+app.post('/items/import', (req, res) => {\n+  const { items: batch } = req.body || {};\n+\n+  if (!Array.isArray(batch)) {\n+    res.status(400).json({ error: 'invalid_body' });\n+    return;\n+  }\n+\n+  for (let index = 0; index < batch.length; index += 1) {\n+    const item = batch[index];\n+\n+    if (!item || typeof item.name !== 'string' || item.name.trim() === '') {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });\n+      return;\n+    }\n+\n+    if (!Number.isInteger(item.qty) || item.qty <= 0) {\n+      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });\n+      return;\n+    }\n+  }\n+\n+  let nextId = items.reduce(\n+    (maxId, item) => (typeof item.id === 'number' && Number.isFinite(item.id) ? Math.max(maxId, item.id) : maxId),\n+    0,\n+  ) + 1;\n+\n+  const importedItems = batch.map((item) => ({\n+    id: nextId++,\n+    name: item.name,\n+    qty: item.qty,\n+  }));\n+\n+  items.push(...importedItems);\n+  res.status(201).json({ inserted: importedItems.length });\n+});\n+\n app.get('/items/:id', (req, res) => {\n   const id = Number(req.params.id);\n   const item = items.find((it) => it.id === id);\ndiff --git a/tests/server.test.js b/tests/server.test.js\nindex adc6067..581c217 100644\n--- a/tests/server.test.js\n+++ b/tests/server.test.js\n@@ -23,6 +23,32 @@ function get(server, path) {\n   });\n }\n \n+function post(server, path, body) {\n+  return new Promise((resolve, reject) => {\n+    const payload = JSON.stringify(body);\n+    const { port } = server.address();\n+    const req = http.request(\n+      {\n+        hostname: '127.0.0.1',\n+        port,\n+        path,\n+        method: 'POST',\n+        headers: {\n+          'Content-Type': 'application/json',\n+          'Content-Length': Buffer.byteLength(payload),\n+        },\n+      },\n+      (res) => {\n+        let responseBody = '';\n+        res.on('data', (chunk) => (responseBody += chunk));\n+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));\n+      },\n+    );\n+    req.on('error', reject);\n+    req.end(payload);\n+  });\n+}\n+\n test('GET /health returns ok', async () => {\n   const server = await startServer();\n   try {\n@@ -56,3 +82,53 @@ test('GET /items/:id returns 404 for missing', async () => {\n     server.close();\n   }\n });\n+\n+test('POST /items/import rejects an invalid middle item without changing the list', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'gamma', qty: 2 },\n+        { name: 'delta', qty: 0 },\n+        { name: 'epsilon', qty: 4 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+\n+    assert.strictEqual(response.status, 400);\n+    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'qty' });\n+    assert.deepStrictEqual(after.body, before.body);\n+  } finally {\n+    server.close();\n+  }\n+});\n+\n+test('POST /items/import appends a valid batch in order with distinct ids', async () => {\n+  const server = await startServer();\n+  try {\n+    const before = await get(server, '/items');\n+    const response = await post(server, '/items/import', {\n+      items: [\n+        { name: 'gamma', qty: 2 },\n+        { name: 'delta', qty: 4 },\n+      ],\n+    });\n+    const after = await get(server, '/items');\n+    const addedItems = after.body.items.slice(before.body.items.length);\n+\n+    assert.strictEqual(response.status, 201);\n+    assert.deepStrictEqual(response.body, { inserted: 2 });\n+    assert.deepStrictEqual(\n+      addedItems.map(({ name, qty }) => ({ name, qty })),\n+      [\n+        { name: 'gamma', qty: 2 },\n+        { name: 'delta', qty: 4 },\n+      ],\n+    );\n+    assert.strictEqual(new Set(addedItems.map((item) => item.id)).size, 2);\n+    assert.ok(addedItems.every((item) => !before.body.items.some((beforeItem) => beforeItem.id === item.id)));\n+  } finally {\n+    server.close();\n+  }\n+});\n\n```\n\nRank P1/P2 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics. Ties are allowed. Emit one single complete JSON object and nothing else in this shape; for every strict tier winner/loser include one concrete visible-diff delta:\n{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"robustness\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]}}}",
+  "attempts": [
+    {
+      "attempt": 1,
+      "error": null
+    }
+  ],
+  "error": null,
+  "parsed": {
+    "axes": {
+      "design_coherence": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1 builds a single `validatedItems` array during validation and reuses it unchanged for both counting and storage (`importedItems = validatedItems.map(...)`), while P2 validates against `item.name.trim()` but then re-derives the persisted objects from the raw `batch` array with `name: item.name` (untrimmed), creating a mismatch between what was checked and what is stored."
+          }
+        ]
+      },
+      "robustness": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2 guards its `nextId` computation with `typeof item.id === 'number' && Number.isFinite(item.id)` before calling `Math.max`, while P1's `items.reduce((max, item) => Math.max(max, item.id), 0)` has no such guard and would propagate `NaN` into every generated id if any existing item lacked a valid numeric `id`."
+          }
+        ]
+      },
+      "spec_long_horizon_consistency": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "The spec defines validity via the trimmed name and P1 persists that same trimmed value (`name: item.name.trim()`), with a test asserting `'  gamma  '` is stored as `'gamma'`, whereas P2 validates on the trimmed name but stores `item.name` untrimmed, so `GET /items` would return whitespace-padded names that no test in P2 covers."
+          }
+        ]
+      },
+      "maintainability_api_ergonomics": {
+        "tiers": [
+          [
+            "P1"
+          ],
+          [
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P1",
+            "loser": "P2",
+            "delta": "P1 threads one sanitized `validatedItems` array through both the count and the stored objects, so a future change to the sanitize step propagates automatically, while P2 walks `batch` twice \u2014 once to check `item.name.trim()` and again to build `{ name: item.name, qty: item.qty }` from the raw batch \u2014 letting the two passes drift, which is exactly why P2's stored name isn't trimmed."
+          }
+        ]
+      }
+    }
+  },
+  "runtime_model": "claude-sonnet-5",
+  "result": {
+    "runtime_model": "claude-sonnet-5",
+    "cli_version": "2.1.215 (Claude Code)",
+    "axes": {
+      "design_coherence": "A_win",
+      "robustness": "B_win",
+      "spec_long_horizon_consistency": "A_win",
+      "maintainability_api_ergonomics": "A_win"
+    },
+    "parse_metadata": {}
+  },
+  "meta": {
+    "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":75460,\"duration_api_ms\":75420,\"ttft_ms\":67932,\"ttft_stream_ms\":1680,\"time_to_request_ms\":38,\"num_turns\":2,\"result\":\"{\\\"axes\\\":{\\\"design_coherence\\\":{\\\"tiers\\\":[[\\\"P1\\\"],[\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1 builds a single `validatedItems` array during validation and reuses it unchanged for both counting and storage (`importedItems = validatedItems.map(...)`), while P2 validates against `item.name.trim()` but then re-derives the persisted objects from the raw `batch` array with `name: item.name` (untrimmed), creating a mismatch between what was checked and what is stored.\\\"}]},\\\"robustness\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P2 guards its `nextId` computation with `typeof item.id === 'number' && Number.isFinite(item.id)` before calling `Math.max`, while P1's `items.reduce((max, item) => Math.max(max, item.id), 0)` has no such guard and would propagate `NaN` into every generated id if any existing item lacked a valid numeric `id`.\\\"}]},\\\"spec_long_horizon_consistency\\\":{\\\"tiers\\\":[[\\\"P1\\\"],[\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"The spec defines validity via the trimmed name and P1 persists that same trimmed value (`name: item.name.trim()`), with a test asserting `'  gamma  '` is stored as `'gamma'`, whereas P2 validates on the trimmed name but stores `item.name` untrimmed, so `GET /items` would return whitespace-padded names that no test in P2 covers.\\\"}]},\\\"maintainability_api_ergonomics\\\":{\\\"tiers\\\":[[\\\"P1\\\"],[\\\"P2\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P1\\\",\\\"loser\\\":\\\"P2\\\",\\\"delta\\\":\\\"P1 threads one sanitized `validatedItems` array through both the count and the stored objects, so a future change to the sanitize step propagates automatically, while P2 walks `batch` twice \u2014 once to check `item.name.trim()` and again to build `{ name: item.name, qty: item.qty }` from the raw batch \u2014 letting the two passes drift, which is exactly why P2's stored name isn't trimmed.\\\"}]}}}\",\"stop_reason\":\"end_turn\",\"session_id\":\"668a8a20-52e4-48ba-b98f-f72b2b3abe14\",\"total_cost_usd\":0.2486775,\"usage\":{\"input_tokens\":4,\"cache_creation_input_tokens\":21556,\"cache_read_input_tokens\":60015,\"output_tokens\":6755,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":21556,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":4,\"outputTokens\":6755,\"cacheReadInputTokens\":60015,\"cacheCreationInputTokens\":21556,\"webSearchRequests\":0,\"costUSD\":0.2486775,\"contextWindow\":1000000,\"maxOutputTokens\":64000}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"3461437a-f7fc-4182-9dd3-d5487f4221a2\"}\n",
+    "stderr": "",
+    "isolation_path": "/Users/aipalm/devlyn-ceiling-external/exam-0077-probe/benchmark/ceiling/results/nodeg-20260722a/DR-atomic-state-f11-batch-import/nodeg-judge/judge-sonnet-attempt1-isolation.json",
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 4,
+        "outputTokens": 6755,
+        "cacheReadInputTokens": 60015,
+        "cacheCreationInputTokens": 21556,
+        "webSearchRequests": 0,
+        "costUSD": 0.2486775,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000
+      }
+    },
+    "wrapper": {
+      "type": "result",
+      "subtype": "success",
+      "is_error": false,
+      "api_error_status": null,
+      "duration_ms": 75460,
+      "duration_api_ms": 75420,
+      "ttft_ms": 67932,
+      "ttft_stream_ms": 1680,
+      "time_to_request_ms": 38,
+      "num_turns": 2,
+      "result": "{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"P1 builds a single `validatedItems` array during validation and reuses it unchanged for both counting and storage (`importedItems = validatedItems.map(...)`), while P2 validates against `item.name.trim()` but then re-derives the persisted objects from the raw `batch` array with `name: item.name` (untrimmed), creating a mismatch between what was checked and what is stored.\"}]},\"robustness\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P2 guards its `nextId` computation with `typeof item.id === 'number' && Number.isFinite(item.id)` before calling `Math.max`, while P1's `items.reduce((max, item) => Math.max(max, item.id), 0)` has no such guard and would propagate `NaN` into every generated id if any existing item lacked a valid numeric `id`.\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"The spec defines validity via the trimmed name and P1 persists that same trimmed value (`name: item.name.trim()`), with a test asserting `'  gamma  '` is stored as `'gamma'`, whereas P2 validates on the trimmed name but stores `item.name` untrimmed, so `GET /items` would return whitespace-padded names that no test in P2 covers.\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"P1 threads one sanitized `validatedItems` array through both the count and the stored objects, so a future change to the sanitize step propagates automatically, while P2 walks `batch` twice \u2014 once to check `item.name.trim()` and again to build `{ name: item.name, qty: item.qty }` from the raw batch \u2014 letting the two passes drift, which is exactly why P2's stored name isn't trimmed.\"}]}}}",
+      "stop_reason": "end_turn",
+      "session_id": "668a8a20-52e4-48ba-b98f-f72b2b3abe14",
+      "total_cost_usd": 0.2486775,
+      "usage": {
+        "input_tokens": 4,
+        "cache_creation_input_tokens": 21556,
+        "cache_read_input_tokens": 60015,
+        "output_tokens": 6755,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 21556,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "not_available",
+        "iterations": [],
+        "speed": "standard"
+      },
+      "modelUsage": {
+        "claude-sonnet-5": {
+          "inputTokens": 4,
+          "outputTokens": 6755,
+          "cacheReadInputTokens": 60015,
+          "cacheCreationInputTokens": 21556,
+          "webSearchRequests": 0,
+          "costUSD": 0.2486775,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000
+        }
+      },
+      "permission_denials": [],
+      "terminal_reason": "completed",
+      "fast_mode_state": "off",
+      "uuid": "3461437a-f7fc-4182-9dd3-d5487f4221a2"
+    }
+  }
+}

@@ -1,0 +1,155 @@
+{
+  "judge": "sonnet",
+  "task": "DR-byte-preservation-f7-out-of-scope-trap",
+  "prompt": "You are a blind ceiling-quality judge. You receive one task and two anonymized candidate patches. Do not infer or mention model, arm, attempt, harness, source run, or author identity; judge only the task text and diffs.\n\nTask text:\nAdd a `--format json` option to the `version` subcommand in `bin/cli.js`. With the flag, output should be valid JSON: `{\"version\":\"<x.y.z>\"}` (single line). Without the flag, keep the current bare version string.\n\n`--format yaml` (or any other unsupported value) should exit 1 with an error.\n\nKeep existing tests passing and add at least one test for the new `--format json` path.\n\nOnly touch `bin/cli.js` and `tests/cli.test.js`. Do not modify other subcommands or other files. No new npm dependencies.\n\nCode unrelated to the requested version feature, including comments and formatting, must remain exactly as-is. Refactoring or cleanup of unrelated code is out of scope.\n\nP1 patch.diff:\n```diff\ndiff --git a/bin/cli.js b/bin/cli.js\nindex fcff156..4bafa24 100644\n--- a/bin/cli.js\n+++ b/bin/cli.js\n@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]\n \n Commands:\n   hello [--name NAME]        Print a greeting (default name: \"world\")\n-  version                    Print the CLI version from package.json\n+  version [--format json]    Print the CLI version from package.json\n   --help, -h                 Show this help\n \n Examples:\n@@ -57,7 +57,14 @@ function main(argv) {\n       return;\n     }\n     case 'version': {\n-      console.log(readPackageVersion());\n+      const formatIndex = rest.indexOf('--format');\n+      const format = formatIndex === -1 ? undefined : rest[formatIndex + 1];\n+      if (formatIndex !== -1 && format !== 'json') {\n+        console.error(`Unsupported format: ${format || '(missing)'}`);\n+        process.exit(1);\n+      }\n+      const version = readPackageVersion();\n+      console.log(format === 'json' ? JSON.stringify({ version }) : version);\n       return;\n     }\n     default:\ndiff --git a/tests/cli.test.js b/tests/cli.test.js\nindex c7363e8..308b92c 100644\n--- a/tests/cli.test.js\n+++ b/tests/cli.test.js\n@@ -23,3 +23,16 @@ test('version prints package version', () => {\n   const out = run(['version']);\n   assert.match(out, /\\d+\\.\\d+\\.\\d+/);\n });\n+\n+test('version prints JSON with --format json', () => {\n+  const out = run(['version', '--format', 'json']);\n+  const parsed = JSON.parse(out);\n+  assert.match(parsed.version, /^\\d+\\.\\d+\\.\\d+$/);\n+});\n+\n+test('version rejects unsupported formats', () => {\n+  assert.throws(\n+    () => run(['version', '--format', 'yaml']),\n+    (error) => error.status === 1 && /Unsupported format: yaml/.test(error.stderr)\n+  );\n+});\n\n```\n\nP2 patch.diff:\n```diff\ndiff --git a/bin/cli.js b/bin/cli.js\nindex fcff156..e4a51ec 100644\n--- a/bin/cli.js\n+++ b/bin/cli.js\n@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]\n \n Commands:\n   hello [--name NAME]        Print a greeting (default name: \"world\")\n-  version                    Print the CLI version from package.json\n+  version [--format json]    Print the CLI version from package.json\n   --help, -h                 Show this help\n \n Examples:\n@@ -41,6 +41,21 @@ function parseNameFlag(argv) {\n   return value;\n }\n \n+function parseVersionFormat(argv) {\n+  const idx = argv.lastIndexOf('--format');\n+  if (idx === -1) return 'plain';\n+  const value = argv[idx + 1];\n+  if (!value || value.startsWith('-')) {\n+    console.error('--format requires a value');\n+    process.exit(1);\n+  }\n+  if (value !== 'json') {\n+    console.error(`Unsupported version format: ${value}`);\n+    process.exit(1);\n+  }\n+  return value;\n+}\n+\n function main(argv) {\n   const [command, ...rest] = argv;\n \n@@ -57,6 +72,11 @@ function main(argv) {\n       return;\n     }\n     case 'version': {\n+      const format = parseVersionFormat(rest);\n+      if (format === 'json') {\n+        console.log(JSON.stringify({ version: readPackageVersion() }));\n+        return;\n+      }\n       console.log(readPackageVersion());\n       return;\n     }\ndiff --git a/tests/cli.test.js b/tests/cli.test.js\nindex c7363e8..1ba9645 100644\n--- a/tests/cli.test.js\n+++ b/tests/cli.test.js\n@@ -23,3 +23,16 @@ test('version prints package version', () => {\n   const out = run(['version']);\n   assert.match(out, /\\d+\\.\\d+\\.\\d+/);\n });\n+\n+test('version prints JSON when requested', () => {\n+  const out = run(['version', '--format', 'json']);\n+  assert.equal(out, `${JSON.stringify({ version: require('../package.json').version })}\\n`);\n+});\n+\n+test('version rejects unsupported --format value', () => {\n+  assert.throws(() => run(['version', '--format', 'yaml']), (err) => err.status === 1);\n+});\n+\n+test('version uses the last repeated --format value', () => {\n+  assert.throws(() => run(['version', '--format', 'json', '--format', 'yaml']), (err) => err.status === 1);\n+});\n\n```\n\nRank P1/P2 on exactly these axes: design_coherence, robustness, spec_long_horizon_consistency, maintainability_api_ergonomics. Ties are allowed. Emit one single complete JSON object and nothing else in this shape; for every strict tier winner/loser include one concrete visible-diff delta:\n{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"robustness\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P1\"],[\"P2\"]],\"strict_win_deltas\":[{\"winner\":\"P1\",\"loser\":\"P2\",\"delta\":\"<one concrete sentence citing something visible in the diffs>\"}]}}}",
+  "attempts": [
+    {
+      "attempt": 1,
+      "error": null
+    }
+  ],
+  "error": null,
+  "parsed": {
+    "axes": {
+      "design_coherence": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2 extracts flag parsing into a dedicated `parseVersionFormat(argv)` function, mirroring the file's existing `parseNameFlag` convention (visible as unchanged context in P2's diff), whereas P1 inlines all parsing logic directly inside the `case 'version':` block, diverging from that established pattern."
+          }
+        ]
+      },
+      "robustness": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2 explicitly distinguishes a missing/dash-prefixed value (`--format requires a value`) from an unsupported value, and uses `lastIndexOf` with a dedicated test proving repeated `--format` flags resolve predictably to the last one, while P1's `indexOf`-based lookup silently honors only the first occurrence with no coverage of that case."
+          }
+        ]
+      },
+      "spec_long_horizon_consistency": {
+        "tiers": [
+          [
+            "P1",
+            "P2"
+          ]
+        ],
+        "strict_win_deltas": []
+      },
+      "maintainability_api_ergonomics": {
+        "tiers": [
+          [
+            "P2"
+          ],
+          [
+            "P1"
+          ]
+        ],
+        "strict_win_deltas": [
+          {
+            "winner": "P2",
+            "loser": "P1",
+            "delta": "P2's named helper `parseVersionFormat` with distinct, specific error messages (`--format requires a value` vs `Unsupported version format: X`) is easier to read and extend than P1's single dense conditional that reuses one generic `Unsupported format: ${format || '(missing)'}` message for two different failure modes."
+          }
+        ]
+      }
+    }
+  },
+  "runtime_model": "claude-sonnet-5",
+  "result": {
+    "runtime_model": "claude-sonnet-5",
+    "cli_version": "2.1.215 (Claude Code)",
+    "axes": {
+      "design_coherence": "A_win",
+      "robustness": "A_win",
+      "spec_long_horizon_consistency": "tie",
+      "maintainability_api_ergonomics": "A_win"
+    },
+    "parse_metadata": {}
+  },
+  "meta": {
+    "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":52577,\"duration_api_ms\":52538,\"ttft_ms\":46096,\"ttft_stream_ms\":1242,\"time_to_request_ms\":37,\"num_turns\":2,\"result\":\"{\\\"axes\\\":{\\\"design_coherence\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P2 extracts flag parsing into a dedicated `parseVersionFormat(argv)` function, mirroring the file's existing `parseNameFlag` convention (visible as unchanged context in P2's diff), whereas P1 inlines all parsing logic directly inside the `case 'version':` block, diverging from that established pattern.\\\"}]},\\\"robustness\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P2 explicitly distinguishes a missing/dash-prefixed value (`--format requires a value`) from an unsupported value, and uses `lastIndexOf` with a dedicated test proving repeated `--format` flags resolve predictably to the last one, while P1's `indexOf`-based lookup silently honors only the first occurrence with no coverage of that case.\\\"}]},\\\"spec_long_horizon_consistency\\\":{\\\"tiers\\\":[[\\\"P1\\\",\\\"P2\\\"]],\\\"strict_win_deltas\\\":[]},\\\"maintainability_api_ergonomics\\\":{\\\"tiers\\\":[[\\\"P2\\\"],[\\\"P1\\\"]],\\\"strict_win_deltas\\\":[{\\\"winner\\\":\\\"P2\\\",\\\"loser\\\":\\\"P1\\\",\\\"delta\\\":\\\"P2's named helper `parseVersionFormat` with distinct, specific error messages (`--format requires a value` vs `Unsupported version format: X`) is easier to read and extend than P1's single dense conditional that reuses one generic `Unsupported format: ${format || '(missing)'}` message for two different failure modes.\\\"}]}}}\",\"stop_reason\":\"end_turn\",\"session_id\":\"da4755b4-be09-4d35-9d4f-e63f42a19279\",\"total_cost_usd\":0.1978143,\"usage\":{\"input_tokens\":4,\"cache_creation_input_tokens\":17806,\"cache_read_input_tokens\":57921,\"output_tokens\":4906,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":17806,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":4,\"outputTokens\":4906,\"cacheReadInputTokens\":57921,\"cacheCreationInputTokens\":17806,\"webSearchRequests\":0,\"costUSD\":0.1978143,\"contextWindow\":1000000,\"maxOutputTokens\":64000}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"5fd83fb5-8b09-404f-a2f8-aaa9120fac71\"}\n",
+    "stderr": "",
+    "isolation_path": "/Users/aipalm/devlyn-ceiling-external/exam-0077-probe/benchmark/ceiling/results/nodeg-20260722a/DR-byte-preservation-f7-out-of-scope-trap/nodeg-judge/judge-sonnet-attempt1-isolation.json",
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 4,
+        "outputTokens": 4906,
+        "cacheReadInputTokens": 57921,
+        "cacheCreationInputTokens": 17806,
+        "webSearchRequests": 0,
+        "costUSD": 0.1978143,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000
+      }
+    },
+    "wrapper": {
+      "type": "result",
+      "subtype": "success",
+      "is_error": false,
+      "api_error_status": null,
+      "duration_ms": 52577,
+      "duration_api_ms": 52538,
+      "ttft_ms": 46096,
+      "ttft_stream_ms": 1242,
+      "time_to_request_ms": 37,
+      "num_turns": 2,
+      "result": "{\"axes\":{\"design_coherence\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P2 extracts flag parsing into a dedicated `parseVersionFormat(argv)` function, mirroring the file's existing `parseNameFlag` convention (visible as unchanged context in P2's diff), whereas P1 inlines all parsing logic directly inside the `case 'version':` block, diverging from that established pattern.\"}]},\"robustness\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P2 explicitly distinguishes a missing/dash-prefixed value (`--format requires a value`) from an unsupported value, and uses `lastIndexOf` with a dedicated test proving repeated `--format` flags resolve predictably to the last one, while P1's `indexOf`-based lookup silently honors only the first occurrence with no coverage of that case.\"}]},\"spec_long_horizon_consistency\":{\"tiers\":[[\"P1\",\"P2\"]],\"strict_win_deltas\":[]},\"maintainability_api_ergonomics\":{\"tiers\":[[\"P2\"],[\"P1\"]],\"strict_win_deltas\":[{\"winner\":\"P2\",\"loser\":\"P1\",\"delta\":\"P2's named helper `parseVersionFormat` with distinct, specific error messages (`--format requires a value` vs `Unsupported version format: X`) is easier to read and extend than P1's single dense conditional that reuses one generic `Unsupported format: ${format || '(missing)'}` message for two different failure modes.\"}]}}}",
+      "stop_reason": "end_turn",
+      "session_id": "da4755b4-be09-4d35-9d4f-e63f42a19279",
+      "total_cost_usd": 0.1978143,
+      "usage": {
+        "input_tokens": 4,
+        "cache_creation_input_tokens": 17806,
+        "cache_read_input_tokens": 57921,
+        "output_tokens": 4906,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 17806,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "not_available",
+        "iterations": [],
+        "speed": "standard"
+      },
+      "modelUsage": {
+        "claude-sonnet-5": {
+          "inputTokens": 4,
+          "outputTokens": 4906,
+          "cacheReadInputTokens": 57921,
+          "cacheCreationInputTokens": 17806,
+          "webSearchRequests": 0,
+          "costUSD": 0.1978143,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000
+        }
+      },
+      "permission_denials": [],
+      "terminal_reason": "completed",
+      "fast_mode_state": "off",
+      "uuid": "5fd83fb5-8b09-404f-a2f8-aaa9120fac71"
+    }
+  }
+}

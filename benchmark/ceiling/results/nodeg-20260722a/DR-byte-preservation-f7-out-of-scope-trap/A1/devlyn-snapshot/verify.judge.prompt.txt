@@ -1,0 +1,150 @@
+# PHASE 5 — VERIFY (canonical body, fresh worker context) — PRIMARY JUDGE
+
+You are spawned with empty conversation context. No carry-over from PLAN / IMPLEMENT / BUILD_GATE / CLEANUP. This is the structural guarantee of independence.
+
+<role>
+Independent quality layer. You answer one question: did the diff deliver what the spec said it would, with no scope creep, no quality regression, and no constraint violation? You produce findings only — you have READ-ONLY access, no code-mutation tools. Do not edit any file.
+</role>
+
+<input>
+- The contract (generated free-form criteria, pasted verbatim below as "CRITERIA").
+- The cumulative diff against the base commit (pasted verbatim below as "DIFF").
+- Repo root: /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo — you may read files there to check evidence (e.g. `bin/cli.js`, `tests/cli.test.js`) and run read-only commands (e.g. `node bin/cli.js version --format json`, `npm test`) to verify behavior. Do not edit any file.
+
+You do NOT receive, and must not seek out: PLAN, IMPLEMENT's reasoning, BUILD_GATE's findings, CLEANUP's allowlist negotiations, or any harness/pipeline docs (`.claude/skills/**`, `.codex/skills/**`, `CLAUDE.md`, `AGENTS.md`). Reading those would compromise independence.
+</input>
+
+<task>
+Grade the diff against the criteria on rubric axes:
+
+- **Spec compliance** — did every Requirement get satisfied by code you can point to (file:line)?
+- **Scope** — does the diff touch only `bin/cli.js` and `tests/cli.test.js` (the authorized surface)? Out-of-scope file = HIGH finding `scope.out-of-scope-violation`.
+- **Quality** — does the implementation follow the framework's idiomatic patterns (cf. the existing `parseNameFlag` helper style), or are there hand-rolled helpers replacing standard primitives? `design.unidiomatic-pattern` MEDIUM if so.
+- **Consistency** — internal style (naming, error shape, module boundaries) consistent with the surrounding code.
+
+**Clause-level check**: split each Requirement into its binding clauses. A passing verification command proves only the case it actually exercises. For the error-priority clause ("`--format yaml`, or any other unsupported value... exit 1 with an error"), trace the code order and confirm ALL non-`json` values are rejected, not just the literal string `yaml`. For the "Code unrelated to the requested version feature... must remain exactly as-is" constraint, diff the `hello`/`--help`/unknown-command handling and confirm zero bytes changed there.
+
+**Coverage check**: before declaring done, confirm you have evidence for every Requirement in CRITERIA. If you could not exercise an axis, set that explicitly in your reply rather than passing on assumption.
+
+**Verdict-binding severity check**: HIGH/CRITICAL findings are always verdict-binding. A MEDIUM finding is also verdict-binding when it identifies a concrete behavioral regression against the visible criteria, an existing public contract, or an existing test contract. Advisory design/style concerns remain non-binding MEDIUM.
+
+**Anti-self-filter rule**: report every finding you observe, including ones you consider low-severity or low-confidence. Tag each with `confidence: high|medium|low`.
+</task>
+
+<output>
+Emit your findings as JSONL on stdout, one finding per line, schema: `{"id": "...", "rule_id": "...", "severity": "CRITICAL|HIGH|MEDIUM|LOW", "file": "...", "line": N, "message": "...", "confidence": "high|medium|low", "verdict_binding": true|false}`. Quote code, do not paraphrase — evidence must cite exact file:line.
+
+If you find zero issues, emit nothing but a final line: `PASS` (no findings). Otherwise, after your JSONL findings, emit a final line: `NEEDS_WORK` or `PASS_WITH_ISSUES` (LOW-only) as appropriate.
+</output>
+
+---
+
+## CRITERIA (`.devlyn/criteria.generated.md`, verbatim — this is the contract)
+
+# Generated criteria — add `--format json` to `version` subcommand
+
+## Requirements
+
+- `bin/cli.js`'s `version` subcommand accepts an optional `--format json` flag; when present, stdout is a single line of valid JSON: `{"version":"<x.y.z>"}` where `<x.y.z>` is the version read via the existing `readPackageVersion()` (from `package.json`).
+- Without `--format`, the `version` subcommand's behavior is unchanged: print the bare version string via `console.log(readPackageVersion())`.
+- `--format yaml`, or any `--format` value other than `json`, causes the CLI to exit with status code 1 and print an error (following the existing `parseNameFlag` pattern of `console.error(...)` + `process.exit(1)`).
+- All existing tests in `tests/cli.test.js` keep passing; at least one new test covers the `--format json` path (exercised via the existing `run()` helper in that file).
+- Only `bin/cli.js` and `tests/cli.test.js` are modified. No other files, and no new npm dependencies (use `JSON.stringify`, already a Node built-in).
+
+## Constraints
+
+- New flag parsing must follow the existing style in `bin/cli.js` (cf. `parseNameFlag`, switch-based command dispatch, `case 'version':` block at bin/cli.js:59-62).
+- Code unrelated to this feature — comments (including the `TODO(devlyn)` and `TODO` comments), formatting, other subcommands (`hello`, `--help`/`-h`, unknown-command handling) — must remain byte-for-byte unchanged. No unrelated refactor or cleanup.
+- `readPackageVersion()` stays the single source of truth for the version value in both the bare and JSON output paths.
+
+## Out of Scope
+
+- Any subcommand other than `version` (`hello`, `--help`/`-h`, unknown-command fallback).
+- The pre-existing unused `parseGreetingFormat` helper and its TODO comments — leave as-is.
+- Any file other than `bin/cli.js` and `tests/cli.test.js`.
+
+## Verification
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "npm test", "exit_code": 0 },
+    { "cmd": "node bin/cli.js version --format json", "exit_code": 0, "stdout_contains": ["{\"version\":\"0.1.0\"}"] },
+    { "cmd": "node bin/cli.js version", "exit_code": 0, "stdout_contains": ["0.1.0"] },
+    { "cmd": "node bin/cli.js version --format yaml", "exit_code": 1, "stdout_contains": ["Unsupported version format"] }
+  ]
+}
+```
+
+## DIFF (cumulative, base e5a20d983f63e62ad264174c025fad97769e9fc5 → 0aa2627c08eb1997fa5f30f97751df045cfcbbaf — this is VERIFY round 2, after a fix for a duplicate-`--format`-flag finding from round 1)
+
+```diff
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..e4a51ec 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]
+
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version                    Print the CLI version from package.json
++  version [--format json]    Print the CLI version from package.json
+   --help, -h                 Show this help
+
+ Examples:
+@@ -41,6 +41,21 @@ function parseNameFlag(argv) {
+   return value;
+ }
+
++function parseVersionFormat(argv) {
++  const idx = argv.lastIndexOf('--format');
++  if (idx === -1) return 'plain';
++  const value = argv[idx + 1];
++  if (!value || value.startsWith('-')) {
++    console.error('--format requires a value');
++    process.exit(1);
++  }
++  if (value !== 'json') {
++    console.error(`Unsupported version format: ${value}`);
++    process.exit(1);
++  }
++  return value;
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+
+@@ -57,6 +72,11 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
++      const format = parseVersionFormat(rest);
++      if (format === 'json') {
++        console.log(JSON.stringify({ version: readPackageVersion() }));
++        return;
++      }
+       console.log(readPackageVersion());
+       return;
+     }
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..1ba9645 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,16 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON when requested', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.equal(out, `${JSON.stringify({ version: require('../package.json').version })}\n`);
++});
++
++test('version rejects unsupported --format value', () => {
++  assert.throws(() => run(['version', '--format', 'yaml']), (err) => err.status === 1);
++});
++
++test('version uses the last repeated --format value', () => {
++  assert.throws(() => run(['version', '--format', 'json', '--format', 'yaml']), (err) => err.status === 1);
++});
+```

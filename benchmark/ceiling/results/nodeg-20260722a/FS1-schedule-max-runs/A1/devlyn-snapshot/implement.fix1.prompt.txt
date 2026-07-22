@@ -1,0 +1,70 @@
+# Codex (OpenAI) adapter
+
+> Source: <https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.5>
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below.
+
+## Output discipline
+
+Efficient, direct, task-oriented. Use Markdown only where it carries structure.
+
+## Validation pattern
+
+Validation is concrete commands and tools, not self-belief. Run the listed verification command and trust its output.
+
+## Anti-patterns
+
+Avoid absolute imperatives for judgment calls; use decision rules with conditions. Do not narrate internal deliberation — state results and decisions directly.
+
+---
+
+# PHASE 2 — IMPLEMENT — fix round 1 (triggered by VERIFY findings)
+
+<role>
+Fix the verdict-binding findings below from an independent, fresh-context VERIFY dual-judge pass (primary Codex judge + pair Claude judge, run against the diff you already committed). Both judges independently reproduced the same root-cause bug. Constrained design judgment: fix the root cause, follow the plan's/spec's invariants.
+</role>
+
+<verdict_binding_findings>
+```json
+[
+  {"id":"JUDGE-1","severity":"HIGH","file":"schedule/__init__.py","line":711,"message":"The run-budget guard occurs only after invoking job_func. After max_runs(1), a second direct Job.run() invokes job_func again before returning CancelJob. The same extra execution occurs through Scheduler.run_all() when a job that has run once is reconfigured from max_runs(3) to max_runs(1), violating Requirements 2 and 7.","quoted_evidence":"ret = self.job_func()\n...\nif self._max_runs is not None and self._run_count >= self._max_runs:\n    logger.debug(\"Cancelling job %s\", self)\n    return CancelJob"},
+  {"id":"JUDGE-2","severity":"HIGH","confidence":"medium","file":"schedule/__init__.py","line":714,"message":"The counter is incremented only after job_func returns and rescheduling succeeds. If job_func raises, its actual invocation is never counted; repeated scheduler calls can therefore invoke it more than n times.","quoted_evidence":"ret = self.job_func()\nself.last_run = datetime.datetime.now()\nself._schedule_next_run()\nself._run_count += 1"},
+  {"id":"JUDGE-3","severity":"LOW","file":"schedule/__init__.py","line":702,"message":"Job.run's return documentation remains incomplete: it describes CancelJob only for deadline exhaustion even though the method now also returns it for run-budget exhaustion.","quoted_evidence":":return: The return value returned by the `job_func`, or CancelJob if the job's\n         deadline is reached."},
+  {"id":"PAIR-1","severity":"HIGH","file":"schedule/__init__.py","line":711,"message":"Job.run() calls job_func() unconditionally before checking _run_count >= _max_runs. When .max_runs(n) is lowered to a value at/below the already-accumulated _run_count (Req 7: reconfigure preserves count), the next scheduler run still executes job_func one extra (n+1)th time before CancelJob is returned, violating Req 2's 'an (n+1)th call to job_func must never happen'. Reproduced live: job ran once under max_runs(5) (call_count=1), then job.max_runs(1) was set, then one more run_all() call made call_count=2 (job_func called twice under a budget of 1) before the job was finally cancelled.","quoted_evidence":"ret = self.job_func()\n...\nif self._max_runs is not None and self._run_count >= self._max_runs:\n    return CancelJob"}
+]
+```
+
+Both judges independently and reproducibly confirmed JUDGE-1/PAIR-1's core claim (same root cause): `Job.run()` only checks the run-budget AFTER calling `job_func()`, never BEFORE. The existing `.until()` deadline guard, by contrast, has a pre-run check (`if self._is_overdue(datetime.datetime.now()): return CancelJob` at the top of `run()`, before `job_func()` is called) — that is precisely what makes `.until()` safe against a second call after the deadline, whether reached via normal scheduling or via any other path that re-invokes `run()`. `max_runs()` needs the analogous pre-run guard: `Job.run()` must check `if self._max_runs is not None and self._run_count >= self._max_runs` and return `CancelJob` WITHOUT calling `job_func()` when the budget is already exhausted at the top of `run()`, in addition to (not instead of) the existing post-run check that catches the exact-nth-run case. This closes the gap for BOTH the "already exhausted, called again directly" case AND the reachable-via-public-API case where `.max_runs()` is reconfigured downward to at/below the already-accumulated count (Requirement 7) and the scheduler runs the job again before the caller notices — the fix must not let that scheduler run call `job_func` at all once the budget is already met or exceeded.
+
+JUDGE-2 (medium confidence) is about `job_func()` raising an exception — note this mirrors pre-existing behavior already in this file (e.g. `self.last_run` is also only set after `job_func()` returns successfully; this library has no built-in exception isolation around job execution for ANY job, with or without `max_runs`). Use your own judgment on whether this is in scope for a minimal, root-cause fix versus a pre-existing library-wide characteristic outside this diff's goal — do not take on a broader exception-handling redesign unrelated to `max_runs` to address it.
+
+JUDGE-3 is a real, LOW-severity, one-line docstring nit — the prose paragraph in `Job.run()`'s docstring was updated to mention `max_runs`, but the separate `:return:` field below it still only mentions the deadline case. Fix this alongside the HIGH finding since you're already touching this docstring's surrounding lines.
+</verdict_binding_findings>
+
+<constraints>
+- Files you may touch: `schedule/__init__.py`, `test_schedule.py`, `docs/examples.rst` (same authorized surface as the original diff — do not expand it).
+- Add a test that specifically reproduces the PAIR-1/JUDGE-1 scenario (reconfigure `.max_runs()` downward to at/below the already-accumulated run count, then confirm the NEXT scheduler run does not call `job_func` again) so this regression cannot reappear silently.
+- Preserve every existing passing test and every Requirement already satisfied in the prior round — this is a targeted fix, not a rewrite.
+- Follow this codebase's existing pattern: mirror the `_is_overdue` pre-run-guard shape already used for `.until()`.
+</constraints>
+
+<output>
+- Code changes fixing the findings above.
+- Tests added/updated for the fixed behavior. Run the full test suite before stopping.
+- Report your verdict in this reply: `PASS` on success; `BLOCKED` if a finding cannot be resolved. For each finding, cite the file:line evidence of your fix. Do not edit `pipeline.state.json` yourself.
+</output>
+
+<runtime_principles>
+Subtractive-first: the fix should be a small, targeted addition (one pre-run guard clause) — not a rewrite.
+No-workaround: fix the root cause (missing pre-run guard), not a symptom-level patch.
+Evidence: every claim cites file:line you opened.
+</runtime_principles>
+
+## Task context
+
+Repo root: /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo
+Current HEAD: commit `34f399f1b405ad0203d6a6a58d7febd155a4a204` (your prior round's committed diff — `git log`/`git diff` to see it).
+
+After fixing, run exactly: `python3 -m unittest test_schedule -v` — it must pass with zero failures/errors before you report `PASS`.

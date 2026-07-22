@@ -1,0 +1,289 @@
+[codex-monitored] start: ts=2026-07-22T03:33:49Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=87095
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: high
+reasoning summaries: none
+session id: 019f87e3-02e6-7680-8ed6-815af06a75ca
+--------
+user
+# Codex (OpenAI) adapter
+
+You are OpenAI's Codex model. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+Efficient, direct, task-oriented. Do not over-specify process when the outcome is clear.
+
+## Anti-patterns
+Avoid absolute imperatives for judgment calls; don't over-specify process; follow stop rules explicitly.
+
+---
+
+# PHASE 4 — CLEANUP (canonical body)
+
+Task-scoped pass — only what this diff introduced or invalidated.
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn.
+</role>
+
+<input>
+- Cumulative diff since the base commit: `git diff d5e479312b6f9573373bd2057e630bba7d22c608..HEAD`.
+- Spec: `.devlyn/criteria.generated.md`.
+- Current HEAD is the pre-cleanup SHA; your post-cleanup diff against it must stay within the allowlist below.
+</input>
+
+<allowlist>
+You may modify or delete:
+
+1. Tooling artifacts the spec did not list as deliverables: `test-results/`, `playwright-report/`, `.last-run.json`, coverage HTML output, build artifacts, runtime caches (`__pycache__/`, `*.pyc`, `.cache/`).
+2. Dead code added by this diff — symbols introduced by this diff that no other code added by this diff references AND that are not part of the spec's required surface. Pre-existing dead code is out of scope.
+3. Doc references this diff invalidated — links / file paths / symbol names in markdown files that this diff renamed or removed. Update only the references; do not rewrite surrounding prose.
+4. Inline comments that explain code this diff deleted but the comment still mentions.
+
+Files outside this allowlist must not change. Pre-existing tooling leaks (already in main before this run) belong to a future cleanup, not this one.
+</allowlist>
+
+<output>
+- Code changes within the allowlist (or none, if nothing qualifies).
+- Report your verdict in your final reply: `PASS` if changes within allowlist (or no changes needed); `FAIL` if you cannot complete within the allowlist.
+</output>
+
+<quality_bar>
+- Subtractive-first applies most strongly here. Lines removed should outnumber lines added unless documentation needs a small additive update for a renamed symbol.
+- Do not "improve" code outside the allowlist, even if it looks fixable. The allowlist is the contract.
+</quality_bar>
+
+---
+
+The task: this diff (in `git diff d5e479312b6f9573373bd2057e630bba7d22c608..HEAD`) added a `POST /webhook` route to `server/index.js` and 3 new tests plus a `post()`/`sign()` test helper pair to `tests/server.test.js`. Check whether the diff introduced any tooling artifacts, dead code (e.g. an unused helper or variable), or invalidated doc references. If nothing qualifies under the allowlist, make no changes and report PASS with a one-line explanation of what you checked.
+codex
+I’ll inspect the prescribed cumulative diff and the generated criteria, then only remove an artifact or newly introduced unused code if the evidence supports it.
+exec
+/bin/zsh -lc "git status --short && git diff --stat d5e479312b6f9573373bd2057e630bba7d22c608..HEAD && git diff --find-renames --find-copies d5e479312b6f9573373bd2057e630bba7d22c608..HEAD -- server/index.js tests/server.test.js && printf '\\n--- criteria ---\\n' && sed -n '1,240p' .devlyn/criteria.generated.md" in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+ server/index.js      | 40 ++++++++++++++++++++++++++++++-
+ tests/server.test.js | 68 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 107 insertions(+), 1 deletion(-)
+diff --git a/server/index.js b/server/index.js
+index 1c43fa2..8d5f556 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -1,8 +1,13 @@
+ // Tiny Express server with a deliberately small API surface.
++const crypto = require('crypto');
+ const express = require('express');
++const fs = require('fs');
+ 
+ const app = express();
+-app.use(express.json());
++app.use(express.json({ verify: (req, _res, buffer) => { req.rawBody = buffer; } }));
++
++const webhookSecret = fs.readFileSync(`${__dirname}/../data/webhook-secret.txt`, 'utf8').replace(/\r?\n$/, '');
++const acceptedWebhookIds = new Set();
+ 
+ const items = [
+   { id: 1, name: 'alpha', qty: 3 },
+@@ -27,6 +32,39 @@ app.get('/items/:id', (req, res) => {
+   res.json({ item });
+ });
+ 
++app.post('/webhook', (req, res) => {
++  const signature = req.get('X-Signature');
++  const signatureBuffer = typeof signature === 'string' && /^[0-9a-f]+$/i.test(signature) && signature.length % 2 === 0
++    ? Buffer.from(signature, 'hex')
++    : null;
++  const expectedSignature = Buffer.isBuffer(req.rawBody)
++    ? Buffer.from(crypto.createHmac('sha256', webhookSecret).update(req.rawBody).digest('hex'), 'hex')
++    : null;
++
++  if (!expectedSignature || !signatureBuffer || expectedSignature.length !== signatureBuffer.length
++    || !crypto.timingSafeEqual(expectedSignature, signatureBuffer)) {
++    res.status(401).json({ error: 'invalid_signature' });
++    return;
++  }
++
++  const { id, type, timestamp, data } = req.body;
++  if (typeof id !== 'string' || id.length === 0
++    || typeof type !== 'string' || type.length === 0
++    || typeof timestamp !== 'number' || !Number.isFinite(timestamp)
++    || typeof data !== 'object' || data === null || Array.isArray(data)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  if (acceptedWebhookIds.has(id)) {
++    res.status(409).json({ error: 'duplicate_event', id });
++    return;
++  }
++
++  acceptedWebhookIds.add(id);
++  res.json({ accepted: true, id });
++});
++
+ if (require.main === module) {
+   const port = Number(process.env.PORT) || 3000;
+   app.listen(port, () => {
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..352227e 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -1,5 +1,7 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
++const crypto = require('node:crypto');
++const fs = require('node:fs');
+ const http = require('node:http');
+ const { app } = require('../server');
+ 
+@@ -23,6 +25,34 @@ function get(server, path) {
+   });
+ }
+ 
++function post(server, path, body, signature) {
++  return new Promise((resolve, reject) => {
++    const { port } = server.address();
++    const request = http.request({
++      hostname: '127.0.0.1',
++      port,
++      path,
++      method: 'POST',
++      headers: {
++        'Content-Type': 'application/json',
++        'Content-Length': Buffer.byteLength(body),
++        'X-Signature': signature,
++      },
++    }, (res) => {
++      let responseBody = '';
++      res.on('data', (chunk) => (responseBody += chunk));
++      res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++    });
++    request.on('error', reject);
++    request.end(body);
++  });
++}
++
++function sign(body) {
++  const secret = fs.readFileSync(`${__dirname}/../data/webhook-secret.txt`, 'utf8').replace(/\r?\n$/, '');
++  return crypto.createHmac('sha256', secret).update(body).digest('hex');
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +86,41 @@ test('GET /items/:id returns 404 for missing', async () => {
+     server.close();
+   }
+ });
++
++test('POST /webhook accepts a valid signed event', async () => {
++  const server = await startServer();
++  try {
++    const body = JSON.stringify({ id: 'event-happy', type: 'order.created', timestamp: 1721618860, data: {} });
++    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
++    assert.strictEqual(status, 200);
++    assert.deepStrictEqual(responseBody, { accepted: true, id: 'event-happy' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a replayed event id', async () => {
++  const server = await startServer();
++  try {
++    const body = JSON.stringify({ id: 'event-replay', type: 'order.created', timestamp: 1721618861, data: {} });
++    await post(server, '/webhook', body, sign(body));
++    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
++    assert.strictEqual(status, 409);
++    assert.deepStrictEqual(responseBody, { error: 'duplicate_event', id: 'event-replay' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a tampered body with a stale signature', async () => {
++  const server = await startServer();
++  try {
++    const originalBody = JSON.stringify({ id: 'event-tampered', type: 'order.created', timestamp: 1721618862, data: {} });
++    const tamperedBody = JSON.stringify({ id: 'event-tampered', type: 'order.created', timestamp: 1721618863, data: {} });
++    const { status, body: responseBody } = await post(server, '/webhook', tamperedBody, sign(originalBody));
++    assert.strictEqual(status, 401);
++    assert.deepStrictEqual(responseBody, { error: 'invalid_signature' });
++  } finally {
++    server.close();
++  }
++});
+
+--- criteria ---
+# Generated criteria — POST /webhook signature-verified endpoint
+
+recommend: /devlyn:ideate first (large complexity, best-effort spec synthesized from free-form goal; review `## Assumptions` before trusting scope)
+
+## Requirements
+
+- Add a `POST /webhook` route to `server/index.js`.
+- Capture the exact raw request-body bytes (not the Express-parsed/re-serialized object) so the HMAC is computed over precisely what the client sent.
+- Read the shared secret from `data/webhook-secret.txt` and compute `HMAC-SHA256` over the raw body, hex-encoded (lowercase — Node's `.digest('hex')` is already lowercase).
+- Compare the computed digest to the request's `X-Signature` header using `crypto.timingSafeEqual`; a length mismatch between the two must not throw and must be treated as a signature failure.
+- Signature check runs first, before body-shape validation. Mismatch → `401` with exactly `{ error: 'invalid_signature' }`.
+- After the signature passes, validate body shape: `{ id, type, timestamp, data }` where `id` and `type` are non-empty strings, `timestamp` is a number, and `data` is an object. Invalid shape → `400` with exactly `{ error: 'invalid_body' }`. A bad body with a valid signature is `400`, not `401`.
+- Track accepted event `id`s across requests. After an `id` has been accepted once, any later delivery of that same `id` → `409` with exactly `{ error: 'duplicate_event', id }` — the second request's `type`/`timestamp`/`data` do not affect this outcome.
+- First valid, non-duplicate delivery → `200` with exactly `{ accepted: true, id }`, and the `id` is then recorded as accepted.
+- No new npm dependencies; use only Node built-ins (`crypto`, `fs`) and the already-present `express`.
+- Touch only `server/index.js` and `tests/server.test.js`.
+- Update `tests/server.test.js`: the 3 existing tests (`GET /health`, `GET /items`, `GET /items/:id`) must keep passing. Add at least 3 new tests: (a) happy path — valid signature + valid body → `200 { accepted: true, id }`; (b) replay — same `id` delivered twice → second delivery → `409 { error: 'duplicate_event', id }`; (c) tampered body with the original (now-stale) signature → `401 { error: 'invalid_signature' }`.
+
+## Constraints
+
+- Raw-body capture: use `express.json()`'s `verify` option (e.g. stash the raw `Buffer` on the request during parsing) — `express.json()` is already mounted ahead of any new route and replaces the body stream, so this is the idiomatic way to keep both the parsed body and the exact bytes.
+- Read `data/webhook-secret.txt` via `fs`, trimmed of a trailing newline.
+- Accepted-id tracking is in-memory (e.g. a module-scoped `Set`), scoped to the running process — no persistence layer exists in this repo and none may be added (no new deps, no new files).
+- `crypto.timingSafeEqual` requires equal-length `Buffer`s — guard the length check before calling it so a short/long header value fails closed as `invalid_signature` rather than throwing.
+
+## Out of Scope
+
+- Any change to the existing `/health`, `/items`, `/items/:id` routes.
+- Any change to `data/webhook-secret.txt`, `data/_sample-event.json`, `package.json`, `package-lock.json`, or any file other than `server/index.js` and `tests/server.test.js`.
+- Persistence, rate limiting, logging, retries, or any other provider-side concern not named in the goal.
+
+## Assumptions
+
+- `data` must be a plain JSON object per the goal's `data is an object` — `null`, arrays, and non-object primitives are rejected as `invalid_body`; `{}` (empty object) is accepted.
+- Duplicate-id detection runs after both the signature check and the body-shape check succeed: the shape check is what establishes a trustworthy `id` to key the duplicate-check on, and only then does "the second body is irrelevant" apply (i.e. a duplicate delivery with an otherwise-malformed body is not specified by the goal and is out of scope for this run).
+- A missing or malformed `X-Signature` header is treated the same as a mismatched one (`401 invalid_signature`) — the goal defines only `invalid_signature` and `invalid_body` as failure shapes, with no third error class for a missing header.
+- `timestamp` only needs to satisfy `typeof timestamp === 'number'` (finite) — no freshness/staleness window is implied by the goal text.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{"verification_commands": [{"cmd": "npm test", "description": "run full test suite (existing tests + new webhook tests: happy path, replay 409, tampered-body 401)"}]}
+```
+
+exec
+/bin/zsh -lc "git diff --name-status d5e479312b6f9573373bd2057e630bba7d22c608..HEAD && rg -n \"\\b(post|sign)\\(\" tests/server.test.js && rg -n \"webhook|rawBody|acceptedWebhookIds|webhookSecret|X-Signature\" --glob '*.md' . || true && find . -type d \\( -name test-results -o -name playwright-report -o -name __pycache__ -o -name .cache \\) -prune -print && find . -type f \\( -name .last-run.json -o -name '*.pyc' \\) -print" in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f08d6b52f5d4d/A1/repo
+ succeeded in 0ms:
+M	server/index.js
+M	tests/server.test.js
+28:function post(server, path, body, signature) {
+51:function sign(body) {
+94:    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
+106:    await post(server, '/webhook', body, sign(body));
+107:    const { status, body: responseBody } = await post(server, '/webhook', body, sign(body));
+120:    const { status, body: responseBody } = await post(server, '/webhook', tamperedBody, sign(originalBody));
+
+codex
+PASS — checked the cumulative diff: only the specified route/tests changed; `post()` and `sign()` are used, with no tooling artifacts or invalidated Markdown references found. No changes made.
+tokens used
+10,459
+[codex-monitored] codex exited: code=0 elapsed=21s

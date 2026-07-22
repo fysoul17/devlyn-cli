@@ -1,0 +1,61 @@
+# PHASE 3 — BUILD_GATE (canonical body)
+
+Per-engine adapter header is prepended at runtime. BUILD_GATE is mechanical / deterministic — same commands CI / Docker / production run.
+
+<role>
+Run language-specific gates and the spec literal-match verification. Emit findings; the orchestrator's fix loop consumes them.
+</role>
+
+<detection>
+Detect the project shape from files in `state.base_ref.sha`:
+
+- `package.json` → Node. Use the declared package manager; default `npm`. If `tsconfig.json` exists → run `tsc --noEmit`.
+- `pyproject.toml` / `requirements.txt` → Python. If `pyproject.toml` declares a tool config (`ruff`, `mypy`, `pytest`), run the declared tool.
+- `go.mod` → Go. Run `go build ./... && go vet ./... && go test ./...`.
+- `Cargo.toml` → Rust. Run `cargo build && cargo clippy && cargo test`.
+- Mixed / monorepo: detect per-workspace; run only against changed workspaces (use `git diff --name-only <state.base_ref.sha>`).
+</detection>
+
+<gates>
+Run in this order; each emits findings into `.devlyn/build_gate.findings.jsonl`:
+
+1. **Type check** (TypeScript / mypy / etc.). Each error → one finding, severity `HIGH`, rule `correctness.type-check`.
+2. **Lint** (eslint / ruff / clippy / etc.). Each error → finding, severity `MEDIUM`, rule `quality.lint`. Warnings stay LOW unless the spec elevates them.
+3. **Test suite** (npm test / pytest / go test / cargo test). Each failing test → finding, severity `HIGH`, rule `correctness.test-failure`. Include the failing test's file:line and the assertion.
+4. **Spec literal verification + risk probes**: `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --include-risk-probes`. The script self-stages from sibling `spec.expected.json` next to `state.source.spec_path`, or the legacy inline carrier when the sibling is absent; benchmark-prestaged `.devlyn/spec-verify.json` still wins. It appends `.devlyn/risk-probes.jsonl` when present, and requires that file when `state.risk_profile.risk_probes_enabled == true`. Malformed `state.risk_profile` is also CRITICAL because it can hide enabled risk probes. When probes are enabled or `.devlyn/risk-probes.jsonl` exists, missing or mismatched top-level `state.risk_probes_digest` emits `correctness.risk-probe-integrity` CRITICAL; the digest binds `.devlyn/risk-probes.jsonl` plus referenced `.devlyn/probes/` script bytes. Command or risk-probe mismatch → CRITICAL finding. Missing required risk probes, missing/malformed generated carrier, or malformed sibling expected file → `correctness.spec-verify-malformed` CRITICAL. The same invocation also enforces PLAN's declared `authorized_surface` (the json block under `.devlyn/plan.md`'s `<!-- devlyn:authorized-surface -->` section, located by that sentinel regardless of the heading's language) against this run's diff and untracked delta: any changed path or created-during-run untracked path outside the declared surface → `scope.out-of-scope-file` CRITICAL (`.devlyn/` exempt) — the only sanctioned fix is removing the file, never widening the declared surface, since that would let the same worker that leaked scope self-authorize the leak; missing sentinel, malformed `plan.md`/surface block, or missing `.devlyn/untracked.baseline` → `scope.authorized-surface-malformed` CRITICAL. This scope check runs only here (BUILD_GATE), not when VERIFY MECHANICAL reuses this script post-CLEANUP, because CLEANUP's own allowlist legitimately touches paths PLAN never declared.
+5. **Browser** (only when diff touches `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `page.*`, `layout.*`, `route.*`, `*.css`, `*.html`): start the dev server and run the repo's existing browser checks, or a minimal curl/HTML check when no browser test harness exists. Each failed check → finding, severity `HIGH`, rule `correctness.browser-flow-failed`.
+
+Append all findings; do not stop on the first failure.
+</gates>
+
+<output>
+- `.devlyn/build_gate.findings.jsonl` — JSONL stream, one finding per line. Schema: `{id, rule_id, severity, file, line, message, fix_hint, criterion_ref}`.
+- `.devlyn/build_gate.log.md` — human-readable summary of which gates ran and their raw output.
+- Report your verdict via these artifacts: `PASS` if zero CRITICAL/HIGH findings; `FAIL` otherwise. Do not edit `pipeline.state.json` yourself — the orchestrator records it via `state-phase-write.py` from these artifacts.
+</output>
+
+<quality_bar>
+- Same commands every time. Configuration drift between this gate and CI is a defect; raise as a finding rather than soften this gate.
+- Forbidden-pattern check (regex against `git diff`) for `spec.expected.json.forbidden_patterns` runs as part of step 4. Disqualifier-severity matches → CRITICAL findings.
+- Reporter artifacts the gate generates (Playwright traces, coverage HTML) belong in gitignored paths. If they leak into `git diff --stat`, flag as `scope.tooling-artifact-leak` MEDIUM and let the fix loop / cleanup handle removal.
+</quality_bar>
+
+<runtime_principles>
+Subtractive-first: raise findings on drift rather than softening the gate.
+Goal-locked: run only the declared gates; do not add new tooling configs as part of this pass.
+No-workaround: do not mute or narrow-scope a finding without a justified spec exception.
+Evidence: every finding cites file:line and the raw command output that produced it.
+</runtime_principles>
+
+## Task context
+
+Repo root: /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo (this is your working directory)
+Base ref: branch `master`, sha `4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8`
+Run id: rs-20260722T045643Z-9152160f5c47
+`DEVLYN_SHARED_DIR` = `/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/.claude/skills/_shared`
+
+This is the well-known `schedule` Python job-scheduling library (single package `schedule/__init__.py`, tests in `test_schedule.py`, docs in `docs/`). `pyproject.toml` declares no `[tool.ruff]`/`[tool.mypy]`/`[tool.pytest.ini_options]` config sections of its own — `tox.ini` is where `pytest`/`mypy` are wired for CI, but this working environment has neither `pytest` nor `mypy` installed (`pip show` confirms both missing), and there is no outbound network guarantee for `pip install`. `test_schedule.py` is `unittest.TestCase`-based and runs cleanly stdlib-only via `python3 -m unittest test_schedule -v` (verified: 87 tests, 0 failures, 41 pre-existing `pytz unavailable` skips). Use your own judgment per the gate's detection/quality-bar rules for whether to attempt installing `pytest`/`mypy` (only if fast and available) versus running the stdlib-only equivalent and noting the gap — do not spend excessive time on environment setup for tools this repo's own `pyproject.toml` does not mandate.
+
+IMPLEMENT has already committed its diff (commit `34f399f1b405ad0203d6a6a58d7febd155a4a204`); the diff touched exactly `schedule/__init__.py`, `test_schedule.py`, `docs/examples.rst`, matching `.devlyn/plan.md`'s authorized surface. Run step 4's `spec-verify-check.py --include-risk-probes` invocation exactly as specified — it will read `.devlyn/criteria.generated.md`'s `## Verification` block for the literal-match command and check the authorized surface against `.devlyn/plan.md`.
+
+Write your findings to `.devlyn/build_gate.findings.jsonl` (JSONL, one finding per line — empty file if zero findings) and your summary to `.devlyn/build_gate.log.md`. State your final verdict (`PASS` or `FAIL`) clearly in your reply.

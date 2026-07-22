@@ -1,0 +1,15 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "npm test",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "ects malformed JSON before parsing when the signature is invalid\nok 10 - POST /webhook rejects malformed JSON before parsing when the signature is invalid\n  ---\n  duration_ms: 1.730375\n  ...\n# Subtest: POST /webhook rejects a correctly signed JSON primitive as an invalid body\nok 11 - POST /webhook rejects a correctly signed JSON primitive as an invalid body\n  ---\n  duration_ms: 1.73325\n  ...\n1..11\n# tests 11\n# suites 0\n# pass 11\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 129.5535\n"
+    }
+  ]
+}

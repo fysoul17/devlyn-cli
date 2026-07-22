@@ -1,0 +1,4 @@
+{
+  "verdict": "NEEDS_WORK",
+  "notes": "Probe 1 (first-limit-wins, both directions) PASSED cleanly; Probe 2 found a confirmed HIGH bug: reconfiguring .max_runs() down to at/below the already-accumulated count still lets job_func execute one extra (n+1)th time via run_pending/run_all before cancellation."
+}

@@ -297,3 +297,99 @@ probe-b first launch refused on the documented worktree-dirty gotcha
   family, existing attribution union); no new defensive layers.
 - **6**: no new pair surface; micro-probe is minutes-tier; cohort is the
   existing periodic exam (measurement-tiering rule 7).
+
+## STAGE B RESULTS (cohort nodeg-20260722a, 2026-07-22, raw before interpretation)
+
+Launch: quiet window (user-cleared) + API health gate 2/2 (09:29/09:49) +
+worktree ae9f9ae clean + pins sha-verified. Full completion 09:49→15:21,
+zero draws. Artifacts: benchmark/ceiling/results/nodeg-20260722a/
+(nodeg-verdict.json + corrected-baseline.json; committed with this record).
+
+- **P-0077-B (startup ≤135,460.8ms): MISS** — adjusted startup median
+  250,220ms = 110.8% of the corrected -21e baseline (target 60%).
+  Per-row: F7 111,738 / F11 142,737 / F12 223,775 / F26 250,220 /
+  FS1 287,534 / F25 316,790 / F23 457,952.
+- **P-0077-T (interphase ≤298,429.5ms): PASS** — adjusted interphase
+  median 47,698ms = 12.0% of baseline (bar 75%; Grok stretch 0.55
+  obliterated). Per-row: F11 0 / F12 5,159 / F26 26,160 / F7 47,698 /
+  F25 115,327 / FS1 121,302 / F23 279,838.
+- **P-0077-W (wall ≤10.19×, fail-open): MISS at 10.659×** — below the
+  ENTIRE no-lever noise band (10.888/12.1/11.324; best cohort median
+  ever measured — descriptive only, not improvement evidence beyond the
+  band). Ratios: F25 9.54 / F23 9.95 / F12 10.46 / F11 10.66 /
+  F26 10.75 / FS1 10.90 / F7 35.46 (composition outlier: startup only
+  111.7s, phase_union 2,191.7s carries it; included per
+  no-post-hoc-outlier-surgery — excluding it the median is still a miss).
+- **Senior guards ALL PASS (FS-0077-D clear)**: complete-verify 6/7
+  (best ever; sole incomplete F11 = K2a, invoke_exit 0, censored open
+  489,547ms — pre-hook baseline datum for 0078, never a P-0078-C read);
+  **zero K1** — sole SC event cohort-wide is FS1 surface_close
+  skipped_reason=surface_close_rolled_back_adjudication_malformed +
+  continued_after_block=true then completed VERIFY: **0076 M0
+  skip-carrier FIRST CLEAN LIVE COHORT FIRING** (mechanism receipt);
+  objective 6/7 (F12 hidden-oracle behavioral, apply_exit 0,
+  unconfounded); blind axes A_win 19 / B_win 36 / tie 1 (guard ≤45
+  PASS; A_win 9→19 direction improvement, not a quality-bar claim);
+  zero harness-path CRITICAL/HIGH (snapshot severity hits are VERIFY
+  findings on fixture task code). Conservation adjusted residue 0ms on
+  ALL 7 rows (FS-0077-E clear); eligible 7/7.
+- Partition: {K1: 0, K2a: 1 (F11), K2b: 0, other: 0}.
+
+## STAGE B ADJUDICATION (three-way R-final 2026-07-22, packets /tmp/threeway-0077-stageB/)
+
+Seat verdicts: Q1 W-T0 SHIP unanimous. Q4 shape-unchanged unanimous
+(no post-hoc outlier surgery; F7 stays). Q3 fail-open miss accepted by
+both; Codex broadened the residual with a fresh measurement the
+orchestrator VERIFIED on both corrected-baseline artifacts: matched
+frozen-five phase_union median 1,664,239→2,191,700ms (+31.7%), all
+five frozen-population rows increased (F12 +12.9% / F26 +15.0% /
+F25 +22.9% / F7 +83.4% / FS1 +248.3%), FS1 increase > F7. Honesty
+caveats recorded: over all SEVEN matched rows F23 (−15.6%) and F11
+(−10.7%) DECREASED; FS1/F11 deltas carry a completion-mix caveat
+(-21e FS1 died mid-flight, so its phase mass was truncated).
+**Q2 split**: Grok Option B (claim/carrier separation, hard
+anti-laundering bounds, strip = separate registration); Codex OBJECT →
+gated Option C (Claim-to-Byte Earned-Keep: 0078 measured only
+state-init + session stamp — the remaining absorption machinery is
+unearned; strip now, re-run gates). Both seats named the SAME strongest
+counter (post-hoc claim substitution / file-colocation laundering).
+
+**Orchestrator synthesis (named criterion: No Unregistered Survival)**:
+falsified machinery may outlive its falsification ONLY under a
+registered, gated, deadlined removal obligation. Adopted: **P-0077-B
+MISS recorded, zero startup-lever credit, W-B loses lever status
+(FS-0077-C executed at claim level tonight — no third unmeasured byte
+shape created inside this closeout)** + **the strip is REGISTERED
+IMMEDIATELY as iter-0078 Stage A2** (bootstrap slims to
+state-init + session-stamp — the 0078-measured surface; absorbed
+PHASE-0 steps return to SKILL prose; gates = bootstrap/state byte
+contract re-run + P-0078-K/O/I re-run + one live resolve micro-probe
+row sonnet/terra; deadline = BEFORE the first hook-bearing cohort so
+no further measurement rides the unearned carrier). Grok's hard bounds
+adopted verbatim: retention arguments may cite only 0078's measured
+claim; "bootstrap almost earned P-B" is banned; future startup credit
+requires a NEW registered bar; the laundering counter is recorded here,
+not waved away.
+
+**Record corrections (Codex Q4, orchestrator-verified)**: (a) the
+treatment corrected-baseline.json `denominators.*_absolute_target_ms`
+fields are SELF-REFERENTIAL (0.6/0.75 × this cohort's own medians —
+150,132 / 35,773.5); they must never replace the frozen -21e targets
+(135,460.8 / 298,429.5) in any adjudication (instrument-labeling
+record-only note; corrected-anatomy.py is a frozen oracle, no edit).
+(b) Cohort artifacts were local-until-committed during the R-final
+(consistent with R-final-before-commit); committed with this record.
+
+**Wall residual re-derivation (fail-open obligation)**: next targets =
+(1) STARTUP — oracle-corrected, unmoved at 110.8%, requires a NEW
+lever registration with a fresh mechanism hypothesis (the mechanical-
+absorption hypothesis is falsified: the model re-derives PHASE-0
+context at LLM latency regardless of the script); (2) PHASE-UNION
+growth/variance (different lever class — executor/model work, not
+skeleton; F7/FS1 exemplars with the completion-mix caveat). The 12%
+interphase win was largely absorbed by phase growth on this cohort.
+
+Iter-0077 verdict: **PARTIAL SHIP** — W-T0 shipped (12% of baseline,
+conservation-clean), H0 corrected oracle shipped (Stage A0), W-B
+claim-revoked with registered removal obligation, wall direction
+missed fail-open with the residual re-named. CLOSED.

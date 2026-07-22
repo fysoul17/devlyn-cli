@@ -1,0 +1,520 @@
+[codex-monitored] start: ts=2026-07-22T02:27:55Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=89214
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f87a6-afc9-7573-aa30-4fc1b67d8c3a
+--------
+user
+# Codex (OpenAI) adapter
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below.
+
+## Output discipline
+
+Efficient, direct, task-oriented.
+
+## Validation pattern
+
+Run the reproduction command and the full test suite before declaring done; trust their output.
+
+---
+
+# PHASE 2 — IMPLEMENT fix round (BUILD_GATE found 1 HIGH finding)
+
+<role>
+Fix the single BUILD_GATE finding below in `bin/cli.js`. This is a targeted bug fix, not a re-implementation — do not touch anything else.
+</role>
+
+<finding>
+id: bg-001
+severity: HIGH
+rule: correctness.uncaught-exception
+file: bin/cli.js:66
+
+`payout --input <file>` crashes with an uncaught `TypeError` when the input file's content is the syntactically-valid JSON literal `null`. `JSON.parse('null')` succeeds (no `SyntaxError`, so the existing try/catch around the parse does not fire), yielding `ledger = null`. The next line, `Object.prototype.hasOwnProperty.call(ledger, 'events')`, throws `TypeError: Cannot convert undefined or null to object` outside any try/catch — an uncaught exception: exit code 1 (spec requires 2), a raw Node stack trace on stderr (spec requires exactly one JSON error object), no defined stdout behavior.
+
+This violates `.devlyn/criteria.generated.md` Requirement: "Validation failures ... invalid input JSON ... missing events ... exit 2, write exactly one JSON error object to stderr, write nothing to stdout. Parsing/file-read failures surface as JSON errors, never silent catches."
+
+Reproduction: `printf '%s' 'null' > /tmp/repro.json && node bin/cli.js payout --input /tmp/repro.json` currently exits 1 with a stack trace; must instead exit 2 with a single JSON error object on stderr and nothing on stdout.
+
+fix_hint (from BUILD_GATE, not mandatory verbatim but the right shape): after the JSON.parse try/catch, add an explicit shape guard before the `hasOwnProperty` check, e.g. `if (ledger === null || typeof ledger !== 'object' || Array.isArray(ledger)) { payoutError('invalid_json'); return; }` — reuse the existing `payoutError()` exit-2/JSON-stderr contract; do not add a new try/catch shell around line 66.
+</finding>
+
+<constraints>
+- Only touch `bin/cli.js` (this is a one-line-class fix; do not touch `tests/cli.test.js` unless you determine a regression test is needed for this exact case — optional, not required by the finding).
+- Do not touch `data/payout-rules.json`, `server/`, `web/`, or add dependencies.
+- Do not change any other behavior. All 8 existing tests (3 pre-existing + 2 payout tests + 3 server tests) and all 5 verification commands in `.devlyn/criteria.generated.md` must still pass after your fix.
+- No workaround: do not wrap unrelated code in defensive try/catch "just in case" — fix exactly the null/non-object-top-level-JSON shape gap identified above.
+</constraints>
+
+<output>
+Run `npm test` and the reproduction command above before declaring done. Report `PASS` with the fix summary, or `BLOCKED` if the finding cannot be resolved as scoped.
+</output>
+
+Do not edit `.devlyn/pipeline.state.json`.
+codex
+I’ll make the narrow top-level JSON shape guard in `bin/cli.js`. Prediction: `null` currently reaches the property check and throws; after the guard it will return the existing `invalid_json` JSON error with exit code 2 and no stdout.
+exec
+/bin/zsh -lc "git status --short && nl -ba bin/cli.js | sed -n '45,85p' && printf '%s' 'null' > /tmp/repro.json && node bin/cli.js payout --input /tmp/repro.json; task_status="'$?; printf '"'\\nREPRO_EXIT=%s\\n' \""'$task_status"' in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+    45	
+    46	function payoutError(error, extra = {}) {
+    47	  console.error(JSON.stringify({ error, ...extra }));
+    48	  process.exitCode = 2;
+    49	}
+    50	
+    51	function runPayout(argv) {
+    52	  const inputPath = parseInputFlag(argv);
+    53	  if (!inputPath) {
+    54	    payoutError('missing_input');
+    55	    return;
+    56	  }
+    57	
+    58	  let ledger;
+    59	  try {
+    60	    ledger = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
+    61	  } catch (error) {
+    62	    payoutError(error instanceof SyntaxError ? 'invalid_json' : 'input_unreadable');
+    63	    return;
+    64	  }
+    65	
+    66	  if (!Object.prototype.hasOwnProperty.call(ledger, 'events')) {
+    67	    payoutError('missing_events');
+    68	    return;
+    69	  }
+    70	  if (!Array.isArray(ledger.events)) {
+    71	    payoutError('invalid_events');
+    72	    return;
+    73	  }
+    74	
+    75	  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
+    76	  const rules = JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
+    77	  const eventsById = new Map();
+    78	  const merchantsById = new Map();
+    79	
+    80	  for (const event of ledger.events) {
+    81	    if (!event || typeof event !== 'object' || Array.isArray(event)) {
+    82	      payoutError('invalid_event');
+    83	      return;
+    84	    }
+    85	    if (!['charge', 'refund', 'dispute'].includes(event.type)) {
+/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/bin/cli.js:66
+  if (!Object.prototype.hasOwnProperty.call(ledger, 'events')) {
+                                       ^
+
+TypeError: Cannot convert undefined or null to object
+    at hasOwnProperty (<anonymous>)
+    at runPayout (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/bin/cli.js:66:40)
+    at main (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/bin/cli.js:190:7)
+    at Object.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/bin/cli.js:200:1)
+    at Module._compile (node:internal/modules/cjs/loader:1529:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.19.0
+
+REPRO_EXIT=1
+
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/bin/cli.js
+diff --git a/bin/cli.js b/bin/cli.js
+index f5a820b60ad798fad70beae8d501d8719f8fbb91..85a28bc248e704f76103cae37090f8ef9c2f63c9
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -63,6 +63,10 @@
+     return;
+   }
+ 
++  if (ledger === null || typeof ledger !== 'object' || Array.isArray(ledger)) {
++    payoutError('invalid_json');
++    return;
++  }
+   if (!Object.prototype.hasOwnProperty.call(ledger, 'events')) {
+     payoutError('missing_events');
+     return;
+
+diff --git a/bin/cli.js b/bin/cli.js
+index f5a820b60ad798fad70beae8d501d8719f8fbb91..85a28bc248e704f76103cae37090f8ef9c2f63c9
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -63,6 +63,10 @@
+     return;
+   }
+ 
++  if (ledger === null || typeof ledger !== 'object' || Array.isArray(ledger)) {
++    payoutError('invalid_json');
++    return;
++  }
+   if (!Object.prototype.hasOwnProperty.call(ledger, 'events')) {
+     payoutError('missing_events');
+     return;
+
+codex
+The failure matches the finding exactly. I added only the explicit non-object top-level guard, reusing `payoutError('invalid_json')`; I’ll now run the required regression, full suite, and the listed verification commands.
+exec
+/bin/zsh -lc "sed -n '/Verification/,"'$p'"' .devlyn/criteria.generated.md && npm test && printf '%s' 'null' > /tmp/repro.json && payout_stdout="'$(mktemp /tmp/payout-stdout.XXXXXX) && payout_stderr=$(mktemp /tmp/payout-stderr.XXXXXX) && node bin/cli.js payout --input /tmp/repro.json >"$payout_stdout" 2>"$payout_stderr"; payout_status=$?; printf '"'REPRO_EXIT=%s\\n' \""'$payout_status"; printf '"'REPRO_STDOUT_BYTES='; wc -c <\""'$payout_stdout"; printf '"'REPRO_STDERR_LINES='; wc -l <\""'$payout_stderr"; printf '"'REPRO_STDERR='; cat \""'$payout_stderr"; test "$payout_status" -eq 2 && test ! -s "$payout_stdout" && test "$(wc -l < "$payout_stderr" | tr -d '"' ')\" -eq 1 && node -e \"const fs=require('fs'); const actual=JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); if (actual.error "'!== '"'invalid_json') process.exit(1);\" \""'$payout_stderr"' in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index f5a820b60ad798fad70beae8d501d8719f8fbb91..85a28bc248e704f76103cae37090f8ef9c2f63c9
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -63,6 +63,10 @@
+     return;
+   }
+ 
++  if (ledger === null || typeof ledger !== 'object' || Array.isArray(ledger)) {
++    payoutError('invalid_json');
++    return;
++  }
+   if (!Object.prototype.hasOwnProperty.call(ledger, 'events')) {
+     payoutError('missing_events');
+     return;
+
+ exited 1 in 381ms:
+TAP version 13
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 37.645333
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 36.685875
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 35.105667
+  ...
+# Subtest: payout calculates charges, refunds, disputes, and reserves
+ok 4 - payout calculates charges, refunds, disputes, and reserves
+  ---
+  duration_ms: 35.474042
+  ...
+# Subtest: payout reports a JSON validation error
+ok 5 - payout reports a JSON validation error
+  ---
+  duration_ms: 35.739916
+  ...
+# Subtest: GET /health returns ok
+not ok 6 - GET /health returns ok
+  ---
+  duration_ms: 3.512416
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 7 - GET /items returns list
+  ---
+  duration_ms: 0.688458
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 8 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.461208
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 5
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 232.687625
+REPRO_EXIT=1
+REPRO_STDOUT_BYTES=zsh:1: no such file or directory: 
+REPRO_STDERR_LINES=zsh:1: no such file or directory: 
+REPRO_STDERR=cat: : No such file or directory
+
+[codex-monitored] heartbeat: elapsed=30s
+codex
+`npm test` executed: all five CLI tests pass, but the three server tests cannot bind a local listener in this sandbox (`EPERM` on `0.0.0.0`), an environment restriction unrelated to this edit. I’ll still run each listed CLI verification command and capture the fixed null case exactly.
+exec
+/bin/zsh -lc "set +e
+npm test
+printf 'VERIFY_NPM_TEST_EXIT=%s\\n' \""'$?"
+printf '"'%s' '{\"events\":[{\"id\":\"e1\",\"merchant_id\":\"m1\",\"type\":\"charge\",\"amount_cents\":100000}]}' > /tmp/devlyn-payout-ok.json && node bin/cli.js payout --input /tmp/devlyn-payout-ok.json
+printf 'VERIFY_OK_EXIT=%s\\n' \""'$?"
+printf '"'%s' '{\"events\":[{\"id\":\"e1\",\"merchant_id\":\"m1\",\"type\":\"charge\",\"amount_cents\":1000}]}' > /tmp/devlyn-payout-min.json && node bin/cli.js payout --input /tmp/devlyn-payout-min.json
+printf 'VERIFY_MIN_EXIT=%s\\n' \""'$?"
+printf '"'%s' '{\"events\":[{\"id\":\"e1\",\"merchant_id\":\"m1\",\"type\":\"charge\",\"amount_cents\":100000},{\"id\":\"e1\",\"merchant_id\":\"m1\",\"type\":\"charge\",\"amount_cents\":500}]}' > /tmp/devlyn-payout-dup.json && node bin/cli.js payout --input /tmp/devlyn-payout-dup.json
+printf 'VERIFY_DUP_EXIT=%s\\n' \""'$?"
+printf '"'%s' '{}' > /tmp/devlyn-payout-bad.json && node bin/cli.js payout --input /tmp/devlyn-payout-bad.json
+printf 'VERIFY_BAD_EXIT=%s\\n' \""'$?"
+printf '"'%s' 'null' > /tmp/repro.json
+payout_stdout="'$(mktemp /tmp/payout-stdout.XXXXXX)
+payout_stderr=$(mktemp /tmp/payout-stderr.XXXXXX)
+node bin/cli.js payout --input /tmp/repro.json >"$payout_stdout" 2>"$payout_stderr"
+payout_status=$?
+printf '"'REPRO_EXIT=%s\\n' \""'$payout_status"
+printf '"'REPRO_STDOUT_BYTES='
+wc -c <\""'$payout_stdout"
+printf '"'REPRO_STDERR_LINES='
+wc -l <\""'$payout_stderr"
+printf '"'REPRO_STDERR='
+cat \""'$payout_stderr"
+node -e "const fs=require('"'fs'); const actual=JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); process.exit(actual.error === 'invalid_json' ? 0 : 1);\" \""'$payout_stderr"
+printf '"'REPRO_JSON_CHECK_EXIT=%s\\n' \""'$?"
+exit 0' in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index f5a820b60ad798fad70beae8d501d8719f8fbb91..85a28bc248e704f76103cae37090f8ef9c2f63c9
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -63,6 +63,10 @@
+     return;
+   }
+ 
++  if (ledger === null || typeof ledger !== 'object' || Array.isArray(ledger)) {
++    payoutError('invalid_json');
++    return;
++  }
+   if (!Object.prototype.hasOwnProperty.call(ledger, 'events')) {
+     payoutError('missing_events');
+     return;
+
+ succeeded in 628ms:
+
+> harbor-tools@0.1.0 test
+> node --test tests/
+
+TAP version 13
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 54.659584
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 36.463667
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 34.328417
+  ...
+# Subtest: payout calculates charges, refunds, disputes, and reserves
+ok 4 - payout calculates charges, refunds, disputes, and reserves
+  ---
+  duration_ms: 32.990666
+  ...
+# Subtest: payout reports a JSON validation error
+ok 5 - payout reports a JSON validation error
+  ---
+  duration_ms: 31.606125
+  ...
+# Subtest: GET /health returns ok
+not ok 6 - GET /health returns ok
+  ---
+  duration_ms: 3.531292
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 7 - GET /items returns list
+  ---
+  duration_ms: 1.3205
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 8 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.949292
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 5
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 243.431
+VERIFY_NPM_TEST_EXIT=1
+{"total_payout_cents":87363,"total_processing_fee_cents":2930,"total_dispute_fee_cents":0,"total_reserve_cents":9707,"merchants":[{"merchant_id":"m1","gross_charge_cents":100000,"refund_cents":0,"dispute_cents":0,"processing_fee_cents":2930,"dispute_fee_cents":0,"reserve_cents":9707,"payout_cents":87363}]}
+VERIFY_OK_EXIT=0
+{"total_payout_cents":0,"total_processing_fee_cents":59,"total_dispute_fee_cents":0,"total_reserve_cents":941,"merchants":[{"merchant_id":"m1","gross_charge_cents":1000,"refund_cents":0,"dispute_cents":0,"processing_fee_cents":59,"dispute_fee_cents":0,"reserve_cents":941,"payout_cents":0}]}
+VERIFY_MIN_EXIT=0
+{"error":"conflicting_duplicate","id":"e1"}
+VERIFY_DUP_EXIT=2
+{"error":"missing_events"}
+VERIFY_BAD_EXIT=2
+REPRO_EXIT=2
+REPRO_STDOUT_BYTES=       0
+REPRO_STDERR_LINES=       1
+REPRO_STDERR={"error":"invalid_json"}
+REPRO_JSON_CHECK_EXIT=0
+
+[codex-monitored] heartbeat: elapsed=60s
+codex
+All payout verification commands have the required outcomes, and the null regression now exits 2 with zero stdout and exactly one `{"error":"invalid_json"}` stderr line. I’m doing the final scope and diff check; deleting this guard would restore the pre-fix reproduction failure.
+exec
+/bin/zsh -lc 'git diff --check && git diff -- bin/cli.js && git status --short' in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo
+ succeeded in 0ms:
+diff --git a/bin/cli.js b/bin/cli.js
+index f5a820b..85a28bc 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -63,6 +63,10 @@ function runPayout(argv) {
+     return;
+   }
+ 
++  if (ledger === null || typeof ledger !== 'object' || Array.isArray(ledger)) {
++    payoutError('invalid_json');
++    return;
++  }
+   if (!Object.prototype.hasOwnProperty.call(ledger, 'events')) {
+     payoutError('missing_events');
+     return;
+ M bin/cli.js
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+diff --git a/bin/cli.js b/bin/cli.js
+index f5a820b60ad798fad70beae8d501d8719f8fbb91..85a28bc248e704f76103cae37090f8ef9c2f63c9
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -63,6 +63,10 @@
+     return;
+   }
+ 
++  if (ledger === null || typeof ledger !== 'object' || Array.isArray(ledger)) {
++    payoutError('invalid_json');
++    return;
++  }
+   if (!Object.prototype.hasOwnProperty.call(ledger, 'events')) {
+     payoutError('missing_events');
+     return;
+
+codex
+PASS — Fixed the null/non-object JSON shape gap in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/bin/cli.js:66), routing it through the existing `invalid_json` error contract.
+
+- Null reproduction: exit 2, zero stdout, one stderr line: `{"error":"invalid_json"}`.
+- All four payout verification commands passed with expected exit codes/output.
+- `npm test` ran: 5 CLI tests passed; 3 server tests fail because this sandbox blocks listener creation (`listen EPERM 0.0.0.0`), unrelated to this change.
+- `git diff --check` passed; only `bin/cli.js` changed.
+diff --git a/bin/cli.js b/bin/cli.js
+index f5a820b60ad798fad70beae8d501d8719f8fbb91..85a28bc248e704f76103cae37090f8ef9c2f63c9
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -63,6 +63,10 @@
+     return;
+   }
+ 
++  if (ledger === null || typeof ledger !== 'object' || Array.isArray(ledger)) {
++    payoutError('invalid_json');
++    return;
++  }
+   if (!Object.prototype.hasOwnProperty.call(ledger, 'events')) {
+     payoutError('missing_events');
+     return;
+
+tokens used
+26,599
+[codex-monitored] codex exited: code=0 elapsed=75s

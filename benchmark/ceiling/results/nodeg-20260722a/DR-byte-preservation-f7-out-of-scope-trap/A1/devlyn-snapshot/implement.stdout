@@ -1,0 +1,11 @@
+BLOCKED — implementation is complete, but `npm test` exits 1 because sandbox policy prevents the pre-existing server tests from binding `0.0.0.0` (`listen EPERM` in `tests/server.test.js`).
+
+Implemented:
+- Version-only `--format` parsing and JSON output: [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/bin/cli.js:44)
+- JSON version test through `run()`: [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/cli.test.js:27)
+
+Verification:
+- `node bin/cli.js version --format json` → `{"version":"0.1.0"}`, exit 0
+- `node bin/cli.js version` → `0.1.0`, exit 0
+- `node bin/cli.js version --format yaml` → error, exit 1
+- CLI tests passed within `npm test`; `git diff --check` passed.

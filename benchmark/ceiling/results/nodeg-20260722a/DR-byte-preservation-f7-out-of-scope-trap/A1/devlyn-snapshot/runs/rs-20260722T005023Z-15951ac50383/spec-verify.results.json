@@ -1,0 +1,54 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "npm test",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": " repeated --format value\n  ---\n  duration_ms: 38.383208\n  ...\n# Subtest: GET /health returns ok\nok 7 - GET /health returns ok\n  ---\n  duration_ms: 11.427292\n  ...\n# Subtest: GET /items returns list\nok 8 - GET /items returns list\n  ---\n  duration_ms: 2.04075\n  ...\n# Subtest: GET /items/:id returns 404 for missing\nok 9 - GET /items/:id returns 404 for missing\n  ---\n  duration_ms: 1.597167\n  ...\n1..9\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 243.198542\n"
+    },
+    {
+      "index": 1,
+      "cmd": "node bin/cli.js version --format json",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "{\"version\":\"0.1.0\"}"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "{\"version\":\"0.1.0\"}\n"
+    },
+    {
+      "index": 2,
+      "cmd": "node bin/cli.js version",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "0.1.0"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "0.1.0\n"
+    },
+    {
+      "index": 3,
+      "cmd": "node bin/cli.js version --format yaml",
+      "expected_exit": 1,
+      "actual_exit": 1,
+      "stdout_contains": [
+        "Unsupported version format"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "Unsupported version format: yaml\n"
+    }
+  ]
+}

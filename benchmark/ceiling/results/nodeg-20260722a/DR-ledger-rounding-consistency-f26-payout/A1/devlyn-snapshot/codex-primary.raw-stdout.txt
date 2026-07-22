@@ -1,0 +1,2 @@
+{"id":"coverage-001","rule_id":"verification.coverage-limited","severity":"LOW","confidence":"high","file":"tests/cli.test.js","line":30,"message":"Could not fully verify \"existing tests keep passing\": `npm test` was blocked by the read-only judge sandbox at `const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));` with `EPERM`; pre-existing server tests were likewise blocked from listening. Manual adversarial CLI executions passed.","criterion_ref":"Requirements[11]; Verification[1]"}
+# SUMMARY {"verdict":"PASS_WITH_ISSUES","findings_count":1}

@@ -1,0 +1,7 @@
+BLOCKED — the fix is complete, but full `npm test` cannot pass in this sandbox: all 3 server tests fail on `listen EPERM: operation not permitted 0.0.0.0` at `tests/server.test.js:9`.
+
+- Raw numeric `submitted_at` values are now rejected; ISO date/timestamp strings remain accepted: [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f99dbe9386580/A1/repo/bin/cli.js:57).
+- Added regression coverage for numeric `submitted_at: 0`: [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f99dbe9386580/A1/repo/tests/cli.test.js:95).
+- `node --test tests/cli.test.js`: 6/6 passed.
+- All four specified CLI verification commands passed.
+- Manual probes confirmed numeric rejection (exit 2, empty stdout, JSON stderr) and ISO-string acceptance.

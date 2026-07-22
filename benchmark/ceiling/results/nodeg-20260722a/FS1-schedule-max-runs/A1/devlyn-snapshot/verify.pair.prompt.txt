@@ -1,0 +1,77 @@
+# PHASE 5 — VERIFY — pair-JUDGE sub-phase (fresh worker context, bounded adversarial complement)
+
+**You are spawned with empty conversation context. You have NOT seen PLAN, IMPLEMENT's reasoning, BUILD_GATE's findings, or CLEANUP's allowlist negotiations.** Do not read `.claude/skills`, `.codex/skills`, `CLAUDE.md`, `AGENTS.md`, or other harness docs. Use only the spec below, the diff, the implementation files, the tests, and the repo's existing test runner (`python3 -m unittest test_schedule -v` or a targeted `python3 -c "..."` snippet — read-only exploration plus running the existing test suite is fine; do NOT edit any files — you have no code-mutation tools for this task).
+
+<role>
+You are the PAIR judge — a bounded adversarial complement to a separate, independent primary judge who owns broad spec coverage. Your job is NOT a duplicate broad audit. Target the two highest-risk explicit Requirement clauses that cross state mutation, ordering, or idempotency-like "exactly N times" semantics.
+</role>
+
+<bounded_contract>
+- Execute at most TWO targeted probes before your first output line.
+- Each probe must compare the FULL externally visible result (not just one property): e.g. for a probe about run count, check `mock_job.call_count`, `len(scheduler.jobs)` / `job in scheduler.jobs`, AND `scheduler.next_run()` / `scheduler.idle_seconds()` together, not just one of them.
+- Stop and emit JSONL immediately on the first verdict-binding (HIGH/CRITICAL, or behavior-regressing MEDIUM) finding.
+- If both probes pass and a quick static scope/dependency check shows no blocker, emit PASS immediately — do not continue exhaustive exploration.
+- Do not reinterpret or widen any scope-qualified clause.
+</bounded_contract>
+
+<target_probes>
+Pick your two probes from (or close variants of) these two highest-risk clauses in the spec below:
+
+1. **First-limit-wins between `.max_runs()` and `.until()` (Requirement 4)** — construct a case where the run-budget would be reached BEFORE the `.until()` deadline (budget wins), and a case where the `.until()` deadline is reached BEFORE the run-budget is exhausted (deadline wins) — confirm the job's actual call count and removal-from-scheduler state matches whichever limit is hit first, in both directions, using the repo's real `mock_datetime`/`make_mock_job` test helpers (see `test_schedule.py` for their exact signatures) via a temporary throwaway script or REPL-style `python3 -c` snippet — leave no new tracked files behind.
+2. **Exact nth-run cutoff with no (n+1)th call, through BOTH `run_pending()` and `run_all()` (Requirements 2, 3), AND that re-calling `.max_runs()` replaces the limit without resetting the already-accumulated count (Requirement 7)** — run a job past its limit via `run_pending()` in one scenario and via `run_all()` in another, confirming `job_func` is called exactly n times and never n+1; separately confirm that calling `.max_runs(new_n)` after some executions have already happened does not reset the accumulated count (i.e. the job still cancels after `new_n` TOTAL executions, not `new_n` additional ones).
+</target_probes>
+
+<output>
+Emit your findings as JSONL, one finding object per line, using this shape:
+```json
+{"id": "PAIR-1", "severity": "HIGH|MEDIUM|LOW|INFO", "rule_id": "...", "file": "path", "line": N, "message": "...", "confidence": "high|medium|low", "quoted_evidence": "..."}
+```
+If nothing verdict-binding is found, emit zero finding lines. After all finding lines (zero or more), emit exactly one summary line prefixed `# SUMMARY ` followed by a JSON object: `# SUMMARY {"verdict": "PASS|PASS_WITH_ISSUES|NEEDS_WORK", "notes": "one-line rationale covering both probes"}`. Your final reply text must contain ONLY the JSONL finding lines (if any) followed by the one `# SUMMARY` line — nothing else.
+</output>
+
+---
+
+## Data (read-only inputs for this review)
+
+Repo root: /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo — you have full read access here; open `schedule/__init__.py`, `test_schedule.py` directly for context.
+
+### Spec — `.devlyn/criteria.generated.md`
+
+```markdown
+# Free-form criteria — run-budget feature for `schedule.Job`
+
+## Requirements
+
+1. `Job.max_runs(n)` is a chainable setter that returns the `Job` instance
+   itself, usable anywhere in the fluent chain — both
+   `schedule.every(5).seconds.max_runs(3).do(job_fn)` and
+   `schedule.every().max_runs(3).seconds.do(job_fn)` must work.
+2. The budget counts actual executions of `job_func` (the call inside
+   `Job.run()`), not `.do()` registration or `should_run` checks. After the
+   job has executed `n` times in total, the job removes itself from its
+   scheduler exactly as a job returning `CancelJob` does. The nth execution
+   itself still calls `job_func` normally; an (n+1)th call to `job_func`
+   must never happen.
+3. Applies to every path that runs jobs through the scheduler:
+   `Scheduler.run_pending()` and `Scheduler.run_all()` (and the
+   module-level `schedule.run_pending()` / `schedule.run_all()` shortcuts).
+4. Interaction with `.until(deadline)` is first-limit-wins: whichever of the
+   deadline or the run-budget is reached first cancels the job. Existing
+   `.until()`-only behavior (no `.max_runs()` call) must not regress.
+5. After a job is cancelled for exhausting its run budget,
+   `Scheduler.next_run` / `Scheduler.idle_seconds` must reflect the job's
+   removal, matching the existing behavior already asserted for
+   `CancelJob`/deadline-triggered removal.
+6. Validation: `.max_runs(n)` raises when `n` is not an integer >= 1, and
+   the raised exception must satisfy `isinstance(exc, ValueError)`.
+7. Calling `.max_runs()` more than once on the same job: the last call's `n`
+   wins (replaces any previously configured budget). Re-configuring the
+   budget must not reset the job's already-accumulated execution count.
+8. Budgets are per-job instance: two jobs with different (or absent)
+   `.max_runs()` budgets scheduled on the same scheduler must not interfere
+   with each other's counts or cancellation.
+
+## Verification
+
+Command: `python3 -m unittest test_schedule -v` — full existing test suite plus new max_runs() tests must pass.
+```

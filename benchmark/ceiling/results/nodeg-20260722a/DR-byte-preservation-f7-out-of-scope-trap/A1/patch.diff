@@ -1,0 +1,68 @@
+diff --git a/bin/cli.js b/bin/cli.js
+index fcff156..e4a51ec 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -9,7 +9,7 @@ const USAGE = `Usage: bench-cli <command> [options]
+ 
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+-  version                    Print the CLI version from package.json
++  version [--format json]    Print the CLI version from package.json
+   --help, -h                 Show this help
+ 
+ Examples:
+@@ -41,6 +41,21 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function parseVersionFormat(argv) {
++  const idx = argv.lastIndexOf('--format');
++  if (idx === -1) return 'plain';
++  const value = argv[idx + 1];
++  if (!value || value.startsWith('-')) {
++    console.error('--format requires a value');
++    process.exit(1);
++  }
++  if (value !== 'json') {
++    console.error(`Unsupported version format: ${value}`);
++    process.exit(1);
++  }
++  return value;
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -57,6 +72,11 @@ function main(argv) {
+       return;
+     }
+     case 'version': {
++      const format = parseVersionFormat(rest);
++      if (format === 'json') {
++        console.log(JSON.stringify({ version: readPackageVersion() }));
++        return;
++      }
+       console.log(readPackageVersion());
+       return;
+     }
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..1ba9645 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -23,3 +23,16 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('version prints JSON when requested', () => {
++  const out = run(['version', '--format', 'json']);
++  assert.equal(out, `${JSON.stringify({ version: require('../package.json').version })}\n`);
++});
++
++test('version rejects unsupported --format value', () => {
++  assert.throws(() => run(['version', '--format', 'yaml']), (err) => err.status === 1);
++});
++
++test('version uses the last repeated --format value', () => {
++  assert.throws(() => run(['version', '--format', 'json', '--format', 'yaml']), (err) => err.status === 1);
++});

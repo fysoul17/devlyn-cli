@@ -1,0 +1,8 @@
+BLOCKED — implementation is complete, but `npm test` cannot pass in this sandbox: three pre-existing server tests fail to bind `0.0.0.0` with `EPERM`.
+
+Implemented payout processing in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/bin/cli.js:39) and added success/validation coverage in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fee93957fc8fe/A1/repo/tests/cli.test.js:28).
+
+Verification:
+- `npm test`: 5 CLI tests pass; 3 unrelated server tests blocked by sandbox networking.
+- All four specified payout commands produced the required outputs and exit codes.
+- `git diff --check` passes.

@@ -1,0 +1,495 @@
+[codex-monitored] start: ts=2026-07-22T03:01:57Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=19051
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f04eb7d76921c/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f87c5-dae8-7e33-9d9c-9f40e033dc3e
+--------
+user
+# Codex (OpenAI) adapter
+
+> Source: <https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.5>
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+
+Your default is efficient, direct, task-oriented. The canonical body specifies the outcome and constraints; you choose the efficient path. Do not over-specify process steps when an outcome is clearly stated. Use Markdown only where it carries structure (`inline code`, code fences, short lists/tables); otherwise favor short paragraphs and natural transitions. When `text.verbosity` is `low`, prefer even shorter responses.
+
+## Tool-use posture
+
+Resolve the request in the fewest useful tool loops without sacrificing correctness. For retrieval tasks: start with one broad search using short discriminative keywords; make another retrieval call only when the top results don't answer the core question or a required fact / parameter / source is missing. For tool-heavy tasks, start with a brief preamble: a one-line acknowledgment of the request and the first step you'll take.
+
+## Validation pattern
+
+Validation is concrete commands and tools, not self-belief. When the canonical body lists verification commands, execute them and trust their output. Do not substitute your judgment for a deterministic check the harness has provided. When validation tools are available (test runners, lint, type-check, the harness's `spec-verify-check.py`), run them before declaring success. The minimum evidence sufficient to answer correctly, cited precisely — then stop.
+
+## Anti-patterns
+
+The official guide warns explicitly about carrying over instructions from older prompt stacks — earlier models needed more help, and process-heavy directives now narrow GPT-5.5's search space.
+
+1. **Avoid absolute imperatives for judgment calls.** ALWAYS / NEVER / must / only are reserved for true safety invariants and required output fields. For judgment calls, use decision rules with conditions ("when X, do Y"). The canonical body uses this style; do not promote softer guidance to absolute rules.
+2. **Don't over-specify process when the destination is clear.** If the canonical body names the outcome, choose the path; do not narrate every step.
+3. **Stop rules are explicit.** When the canonical body or the harness asks you to stop / abstain / ask, follow the stop rule rather than retrying loops indefinitely. Loop-minimization does not outrank correctness or required citation.
+
+## Prompt-maintenance cue
+
+When asked to improve a failed prompt, act as a metaprompter for itself: name the observed failure, then propose the smallest instruction to add, remove, or relocate. Prefer subtractive changes before adding new rules; keep the canonical body model-neutral and put only GPT-specific tactics in this adapter.
+
+Do not narrate internal deliberation. State results and decisions directly.
+
+---
+
+# PHASE 1 — PLAN (canonical body)
+
+<role>
+You translate a spec or generated criteria into a concrete plan: the file list to touch, the risks the implementation must navigate, and a verbatim restatement of what acceptance requires. The plan is the contract IMPLEMENT executes against.
+</role>
+
+<input>
+- Source: `.devlyn/criteria.generated.md` (this run is free-form mode; there is no real spec file).
+- Codebase at current HEAD in this worktree.
+- `state.complexity == "large"` (classifier reason: file_scope_signals=11 > 10, from backticked symbol/path mentions in the goal — NOT because the actual work spans multiple subsystems; see the criteria file's header note).
+</input>
+
+<output>
+Write `.devlyn/plan.md` with three sections:
+
+1. **Files to touch** — precede this section with a `<!-- devlyn:authorized-surface -->` sentinel comment on its own line directly above the heading. Explicit list: each entry is a path, change type (`new` / `edit` / `delete`), one-line rationale tied to a specific Requirement. Immediately after the list, emit one fenced ```json block restating just the paths as the mechanical scope contract BUILD_GATE enforces: `{"authorized_surface": ["path/one.ts", "path/two.ts"]}`. An entry may end in `/**` to authorize an entire directory only when the file count is genuinely unenumerable — this is your scoping judgment, not a mechanism default. List every path from section 1 literally; do not paraphrase or add paths not already decided above.
+2. **Risks** — out-of-scope expansions to refuse, ambiguous spec sections to interpret strictly, known failure modes for this language/framework.
+3. **Acceptance restatement** — verbatim copy of the criteria file's `## Verification` block.
+4. **Execution phases** — conditional; large work only. Emit this section ONLY when ALL hold: (a) `state.complexity == "large"`; (b) the work spans multiple subsystems or more than ~8 files; (c) every phase boundary has at least one runnable gate command. Otherwise emit exactly the three sections above — when in doubt, do not decompose. This task touches exactly 2 files (`server/index.js`, `tests/server.test.js`) and is a single subsystem (one Express route + its tests), so condition (b) fails: do NOT emit this section.
+
+Report your verdict in this reply: `PASS` if plan is shippable; `BLOCKED` if spec is internally contradictory or cannot be planned without violating constraints. Do not edit `pipeline.state.json` yourself — the orchestrator records it via `state-phase-write.py`.
+</output>
+
+<quality_bar>
+- Scope first, then implementation. Decide what files to touch before deciding how to implement. Files not in the list are off-limits to IMPLEMENT.
+- Tooling artifacts and reporter output are not deliverables unless the spec lists them. Plan to configure tools to emit to gitignored paths.
+- Existing tests are contract. Plan to extend them; do not plan to remove or weaken them.
+- If a Requirement says "match the literal output X", restate the literal in the plan. Paraphrasing the contract here propagates into IMPLEMENT.
+</quality_bar>
+
+<runtime_principles>
+- Subtractive-first: prefer trimming an existing helper to introducing a new one. Pure-addition needs a cited prior failure mode or an explicit spec/user requirement.
+- Goal-locked: refuse "while I'm here" cleanups, speculative robustness, mid-flight re-scoping. Single test before any deviation: "did the user ask for this OR does the stated goal strictly require it?"
+- No-workaround: no `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scripts that bypass root cause.
+- Evidence: every claim cites file:line opened at planning time. Vague claims excluded.
+</runtime_principles>
+
+The task is:
+
+Plan the implementation described in `.devlyn/criteria.generated.md` at the repo root (read it now — it is the full contract: Requirements, Constraints, Out of Scope, Assumptions, and the `## Verification` block). Summary: add `POST /items/import` to `server/index.js` (batch item import with all-or-nothing validation, per-item `name`/`qty` checks, distinct id assignment, `201 {inserted}` / `400 {error, index, field}` / `400 {error: 'invalid_body'}` responses), and extend `tests/server.test.js` with at least two new tests (invalid-middle-item unchanged-list case, fully-valid multi-item case) while keeping existing tests passing. Only `server/index.js` and `tests/server.test.js` may be touched; no new npm dependencies.
+
+Write `.devlyn/plan.md` now.
+codex
+I’ll inspect the generated criteria and the two permitted files, then write the tightly scoped plan.
+exec
+/bin/zsh -lc "git status --short && printf '\\n--- criteria ---\\n' && sed -n '1,240p' .devlyn/criteria.generated.md && printf '\\n--- server ---\\n' && nl -ba server/index.js && printf '\\n--- tests ---\\n' && nl -ba tests/server.test.js" in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f04eb7d76921c/A1/repo
+ succeeded in 4785ms:
+2026-07-22 03:02:08.207 xcodebuild[20525:15104353]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-22 03:02:09.029 xcodebuild[20525:15104346] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+--- criteria ---
+# Generated criteria — POST /items/import
+
+recommend: /devlyn:ideate first
+
+Free-form goal classified `large` (file_scope_signals = 11, > 10 threshold). The
+goal text itself is well-specified (exact endpoint, exact response shapes, exact
+error contract) so this best-effort spec narrows only the details the goal left
+implicit; see `## Assumptions`.
+
+## Requirements
+
+1. Add `POST /items/import` to `server/index.js`.
+2. Request body must be `{ items: [...] }`. If the body is empty, `items` is
+   missing, or `items` is not an array, respond `400` with
+   `{ error: 'invalid_body' }` and leave the in-memory item list unchanged.
+3. Validate every item in `items` before mutating any state:
+   - `name` must be a string that is non-empty after `.trim()`.
+   - `qty` must be a positive integer.
+   - The first invalid item (by input-order index) determines the response:
+     `400` with `{ error: 'invalid_batch', index, field }`, where `field` is
+     `'name'` or `'qty'` (whichever fails first, `name` checked before `qty`
+     when both fail on the same item). No items are appended in this case;
+     `GET /items` must return exactly the same list it returned immediately
+     before the request.
+4. If every item is valid, append all of them to the in-memory item list in
+   input order and respond `201` with `{ inserted: <count> }`, where
+   `<count>` equals `items.length`.
+5. Each appended row must receive a distinct numeric `id` that does not
+   collide with any existing item id (pre-request or newly assigned within
+   the same batch).
+6. Update `tests/server.test.js`: keep existing tests passing, add at least
+   two new tests for `/items/import`:
+   - One exercising an invalid *middle* item (not first, not last) that
+     captures `GET /items` before and after the `POST` and asserts the list
+     is byte-for-byte unchanged.
+   - One exercising a fully valid multi-item request that asserts the `201`
+     response and that the new items are present via `GET /items`.
+
+## Constraints
+
+- Only `server/index.js` and `tests/server.test.js` may be touched.
+- No new npm dependencies (`package.json` `dependencies` / `devDependencies`
+  must be unchanged).
+- Reuse the existing in-memory `items` array and its existing id scheme
+  (sequential numeric ids starting at 1 in the current seed data).
+- Follow the existing route style in `server/index.js` (plain Express
+  handlers, `res.status(...).json(...)`, no added framework/middleware).
+
+## Out of Scope
+
+- Persistence beyond the in-memory `items` array.
+- Changes to `GET /items`, `GET /items/:id`, or `GET /health`.
+- Authentication, rate limiting, or request size limits.
+- `bin/cli.js`, `web/index.html`, or any file other than the two listed above.
+
+## Assumptions
+
+Every assumption below is scope-narrowing and reversible (a stricter/narrower
+reading of an already-implied behavior, not an invented feature).
+
+1. **id assignment** — new ids are assigned as `(max existing id at request
+   start) + 1, +2, ...` in input order, so ids stay sequential and
+   deterministic and never collide with existing or newly-inserted rows.
+2. **`qty` type** — "positive integer" means a JS `number` that is
+   `Number.isInteger(qty) && qty > 0`; a numeric string (e.g. `"5"`) is
+   invalid (`field: 'qty'`), matching the strict typing implied by the spec
+   text rather than a permissive coercion.
+3. **Extra item fields** — if a client sends extra keys on an item object,
+   only `name` (trimmed) and `qty` are copied into the stored row alongside
+   the generated `id`; extra keys are dropped.
+4. **Empty `items` array** — `{ items: [] }` is a valid array (passes the
+   `invalid_body` check) and is vacuously "every item is valid", so it
+   responds `201` with `{ inserted: 0 }` and appends nothing.
+5. **`name` field storage** — the stored `name` is the trimmed string (not
+   the raw untrimmed input), consistent with "non-empty string after
+   trimming" being the validation rule.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "npm test", "exit_code": 0 }
+  ]
+}
+```
+
+--- server ---
+     1	// Tiny Express server with a deliberately small API surface.
+     2	const express = require('express');
+     3	
+     4	const app = express();
+     5	app.use(express.json());
+     6	
+     7	const items = [
+     8	  { id: 1, name: 'alpha', qty: 3 },
+     9	  { id: 2, name: 'beta', qty: 5 },
+    10	];
+    11	
+    12	app.get('/health', (_req, res) => {
+    13	  res.json({ status: 'ok' });
+    14	});
+    15	
+    16	app.get('/items', (_req, res) => {
+    17	  res.json({ items });
+    18	});
+    19	
+    20	app.get('/items/:id', (req, res) => {
+    21	  const id = Number(req.params.id);
+    22	  const item = items.find((it) => it.id === id);
+    23	  if (!item) {
+    24	    res.status(404).json({ error: 'not_found', id });
+    25	    return;
+    26	  }
+    27	  res.json({ item });
+    28	});
+    29	
+    30	if (require.main === module) {
+    31	  const port = Number(process.env.PORT) || 3000;
+    32	  app.listen(port, () => {
+    33	    console.log(`harbor-tools server listening on :${port}`);
+    34	  });
+    35	}
+    36	
+    37	module.exports = { app };
+
+--- tests ---
+     1	const { test } = require('node:test');
+     2	const assert = require('node:assert');
+     3	const http = require('node:http');
+     4	const { app } = require('../server');
+     5	
+     6	function startServer() {
+     7	  return new Promise((resolve) => {
+     8	    const server = http.createServer(app);
+     9	    server.listen(0, () => resolve(server));
+    10	  });
+    11	}
+    12	
+    13	function get(server, path) {
+    14	  return new Promise((resolve, reject) => {
+    15	    const { port } = server.address();
+    16	    http
+    17	      .get(`http://127.0.0.1:${port}${path}`, (res) => {
+    18	        let body = '';
+    19	        res.on('data', (chunk) => (body += chunk));
+    20	        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
+    21	      })
+    22	      .on('error', reject);
+    23	  });
+    24	}
+    25	
+    26	test('GET /health returns ok', async () => {
+    27	  const server = await startServer();
+    28	  try {
+    29	    const { status, body } = await get(server, '/health');
+    30	    assert.strictEqual(status, 200);
+    31	    assert.deepStrictEqual(body, { status: 'ok' });
+    32	  } finally {
+    33	    server.close();
+    34	  }
+    35	});
+    36	
+    37	test('GET /items returns list', async () => {
+    38	  const server = await startServer();
+    39	  try {
+    40	    const { status, body } = await get(server, '/items');
+    41	    assert.strictEqual(status, 200);
+    42	    assert.ok(Array.isArray(body.items));
+    43	    assert.ok(body.items.length >= 2);
+    44	  } finally {
+    45	    server.close();
+    46	  }
+    47	});
+    48	
+    49	test('GET /items/:id returns 404 for missing', async () => {
+    50	  const server = await startServer();
+    51	  try {
+    52	    const { status, body } = await get(server, '/items/99999');
+    53	    assert.strictEqual(status, 404);
+    54	    assert.strictEqual(body.error, 'not_found');
+    55	  } finally {
+    56	    server.close();
+    57	  }
+    58	});
+
+[codex-monitored] heartbeat: elapsed=30s
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f04eb7d76921c/A1/repo/.devlyn/plan.md
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..0f5fba319bd6674cf717e0da7993807586978c28
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,31 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `server/index.js` — edit — Add the `POST /items/import` handler required by Requirements 1–5, validating the entire batch before appending normalized rows with sequential numeric ids.
++- `tests/server.test.js` — edit — Add the two required `/items/import` integration tests from Requirement 6 while preserving the existing GET-route tests.
++
++```json
++{"authorized_surface":["server/index.js","tests/server.test.js"]}
++```
++
++## Risks
++
++- Do not touch files outside the two authorized paths or add dependencies; the criteria explicitly prohibits both.
++- Interpret request-body validation strictly: an empty/missing/non-array `items` value returns exactly `400 { error: 'invalid_body' }` without mutation. The existing JSON middleware supplies `req.body` (`server/index.js:5`), while no current route mutates the module-scoped `items` list (`server/index.js:7-28`).
++- Validate every item before assigning or appending rows, so the first invalid input-order index produces exactly `400 { error: 'invalid_batch', index, field }` and an invalid middle item cannot partially import. Check `name` before `qty` on the same item; accept only a non-empty trimmed string and `Number.isInteger(qty) && qty > 0`.
++- Preserve the existing sequential numeric id scheme seeded at 1 and 2 (`server/index.js:7-10`): compute ids from the pre-request maximum and assign consecutive, distinct ids in input order, including within one valid batch.
++- Store only `id`, trimmed `name`, and `qty`; do not retain extra item fields. Treat an empty `items` array as valid and return `201 { inserted: 0 }` without appending.
++- Extend the existing direct-HTTP test style (`tests/server.test.js:6-24`) rather than introducing a test dependency. Tests share the module-scoped app and item list (`tests/server.test.js:4`), so assertions must use before/after GET results and avoid assuming the initial list remains only the two seed rows after other tests run.
++- Refuse unrelated changes to the existing GET routes, health endpoint, persistence, authentication, rate limiting, or request-size limits; all are out of scope.
++
++## Acceptance restatement
++
++## Verification
++
++```json
++{
++  "verification_commands": [
++    { "cmd": "npm test", "exit_code": 0 }
++  ]
++}
++```
+
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..0f5fba319bd6674cf717e0da7993807586978c28
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,31 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `server/index.js` — edit — Add the `POST /items/import` handler required by Requirements 1–5, validating the entire batch before appending normalized rows with sequential numeric ids.
++- `tests/server.test.js` — edit — Add the two required `/items/import` integration tests from Requirement 6 while preserving the existing GET-route tests.
++
++```json
++{"authorized_surface":["server/index.js","tests/server.test.js"]}
++```
++
++## Risks
++
++- Do not touch files outside the two authorized paths or add dependencies; the criteria explicitly prohibits both.
++- Interpret request-body validation strictly: an empty/missing/non-array `items` value returns exactly `400 { error: 'invalid_body' }` without mutation. The existing JSON middleware supplies `req.body` (`server/index.js:5`), while no current route mutates the module-scoped `items` list (`server/index.js:7-28`).
++- Validate every item before assigning or appending rows, so the first invalid input-order index produces exactly `400 { error: 'invalid_batch', index, field }` and an invalid middle item cannot partially import. Check `name` before `qty` on the same item; accept only a non-empty trimmed string and `Number.isInteger(qty) && qty > 0`.
++- Preserve the existing sequential numeric id scheme seeded at 1 and 2 (`server/index.js:7-10`): compute ids from the pre-request maximum and assign consecutive, distinct ids in input order, including within one valid batch.
++- Store only `id`, trimmed `name`, and `qty`; do not retain extra item fields. Treat an empty `items` array as valid and return `201 { inserted: 0 }` without appending.
++- Extend the existing direct-HTTP test style (`tests/server.test.js:6-24`) rather than introducing a test dependency. Tests share the module-scoped app and item list (`tests/server.test.js:4`), so assertions must use before/after GET results and avoid assuming the initial list remains only the two seed rows after other tests run.
++- Refuse unrelated changes to the existing GET routes, health endpoint, persistence, authentication, rate limiting, or request-size limits; all are out of scope.
++
++## Acceptance restatement
++
++## Verification
++
++```json
++{
++  "verification_commands": [
++    { "cmd": "npm test", "exit_code": 0 }
++  ]
++}
++```
+
+exec
+/bin/zsh -lc "sed -n '1,240p' .devlyn/plan.md && git diff --check -- .devlyn/plan.md && git status --short" in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f04eb7d76921c/A1/repo
+ succeeded in 0ms:
+<!-- devlyn:authorized-surface -->
+## Files to touch
+
+- `server/index.js` — edit — Add the `POST /items/import` handler required by Requirements 1–5, validating the entire batch before appending normalized rows with sequential numeric ids.
+- `tests/server.test.js` — edit — Add the two required `/items/import` integration tests from Requirement 6 while preserving the existing GET-route tests.
+
+```json
+{"authorized_surface":["server/index.js","tests/server.test.js"]}
+```
+
+## Risks
+
+- Do not touch files outside the two authorized paths or add dependencies; the criteria explicitly prohibits both.
+- Interpret request-body validation strictly: an empty/missing/non-array `items` value returns exactly `400 { error: 'invalid_body' }` without mutation. The existing JSON middleware supplies `req.body` (`server/index.js:5`), while no current route mutates the module-scoped `items` list (`server/index.js:7-28`).
+- Validate every item before assigning or appending rows, so the first invalid input-order index produces exactly `400 { error: 'invalid_batch', index, field }` and an invalid middle item cannot partially import. Check `name` before `qty` on the same item; accept only a non-empty trimmed string and `Number.isInteger(qty) && qty > 0`.
+- Preserve the existing sequential numeric id scheme seeded at 1 and 2 (`server/index.js:7-10`): compute ids from the pre-request maximum and assign consecutive, distinct ids in input order, including within one valid batch.
+- Store only `id`, trimmed `name`, and `qty`; do not retain extra item fields. Treat an empty `items` array as valid and return `201 { inserted: 0 }` without appending.
+- Extend the existing direct-HTTP test style (`tests/server.test.js:6-24`) rather than introducing a test dependency. Tests share the module-scoped app and item list (`tests/server.test.js:4`), so assertions must use before/after GET results and avoid assuming the initial list remains only the two seed rows after other tests run.
+- Refuse unrelated changes to the existing GET routes, health endpoint, persistence, authentication, rate limiting, or request-size limits; all are out of scope.
+
+## Acceptance restatement
+
+## Verification
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "npm test", "exit_code": 0 }
+  ]
+}
+```
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..0f5fba319bd6674cf717e0da7993807586978c28
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,31 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `server/index.js` — edit — Add the `POST /items/import` handler required by Requirements 1–5, validating the entire batch before appending normalized rows with sequential numeric ids.
++- `tests/server.test.js` — edit — Add the two required `/items/import` integration tests from Requirement 6 while preserving the existing GET-route tests.
++
++```json
++{"authorized_surface":["server/index.js","tests/server.test.js"]}
++```
++
++## Risks
++
++- Do not touch files outside the two authorized paths or add dependencies; the criteria explicitly prohibits both.
++- Interpret request-body validation strictly: an empty/missing/non-array `items` value returns exactly `400 { error: 'invalid_body' }` without mutation. The existing JSON middleware supplies `req.body` (`server/index.js:5`), while no current route mutates the module-scoped `items` list (`server/index.js:7-28`).
++- Validate every item before assigning or appending rows, so the first invalid input-order index produces exactly `400 { error: 'invalid_batch', index, field }` and an invalid middle item cannot partially import. Check `name` before `qty` on the same item; accept only a non-empty trimmed string and `Number.isInteger(qty) && qty > 0`.
++- Preserve the existing sequential numeric id scheme seeded at 1 and 2 (`server/index.js:7-10`): compute ids from the pre-request maximum and assign consecutive, distinct ids in input order, including within one valid batch.
++- Store only `id`, trimmed `name`, and `qty`; do not retain extra item fields. Treat an empty `items` array as valid and return `201 { inserted: 0 }` without appending.
++- Extend the existing direct-HTTP test style (`tests/server.test.js:6-24`) rather than introducing a test dependency. Tests share the module-scoped app and item list (`tests/server.test.js:4`), so assertions must use before/after GET results and avoid assuming the initial list remains only the two seed rows after other tests run.
++- Refuse unrelated changes to the existing GET routes, health endpoint, persistence, authentication, rate limiting, or request-size limits; all are out of scope.
++
++## Acceptance restatement
++
++## Verification
++
++```json
++{
++  "verification_commands": [
++    { "cmd": "npm test", "exit_code": 0 }
++  ]
++}
++```
+
+codex
+PASS — wrote the scoped plan to [.devlyn/plan.md](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f04eb7d76921c/A1/repo/.devlyn/plan.md).
+
+It authorizes only `server/index.js` and `tests/server.test.js`, includes the verification block verbatim, and omits execution phases because this is one subsystem touching two files.
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..0f5fba319bd6674cf717e0da7993807586978c28
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,31 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `server/index.js` — edit — Add the `POST /items/import` handler required by Requirements 1–5, validating the entire batch before appending normalized rows with sequential numeric ids.
++- `tests/server.test.js` — edit — Add the two required `/items/import` integration tests from Requirement 6 while preserving the existing GET-route tests.
++
++```json
++{"authorized_surface":["server/index.js","tests/server.test.js"]}
++```
++
++## Risks
++
++- Do not touch files outside the two authorized paths or add dependencies; the criteria explicitly prohibits both.
++- Interpret request-body validation strictly: an empty/missing/non-array `items` value returns exactly `400 { error: 'invalid_body' }` without mutation. The existing JSON middleware supplies `req.body` (`server/index.js:5`), while no current route mutates the module-scoped `items` list (`server/index.js:7-28`).
++- Validate every item before assigning or appending rows, so the first invalid input-order index produces exactly `400 { error: 'invalid_batch', index, field }` and an invalid middle item cannot partially import. Check `name` before `qty` on the same item; accept only a non-empty trimmed string and `Number.isInteger(qty) && qty > 0`.
++- Preserve the existing sequential numeric id scheme seeded at 1 and 2 (`server/index.js:7-10`): compute ids from the pre-request maximum and assign consecutive, distinct ids in input order, including within one valid batch.
++- Store only `id`, trimmed `name`, and `qty`; do not retain extra item fields. Treat an empty `items` array as valid and return `201 { inserted: 0 }` without appending.
++- Extend the existing direct-HTTP test style (`tests/server.test.js:6-24`) rather than introducing a test dependency. Tests share the module-scoped app and item list (`tests/server.test.js:4`), so assertions must use before/after GET results and avoid assuming the initial list remains only the two seed rows after other tests run.
++- Refuse unrelated changes to the existing GET routes, health endpoint, persistence, authentication, rate limiting, or request-size limits; all are out of scope.
++
++## Acceptance restatement
++
++## Verification
++
++```json
++{
++  "verification_commands": [
++    { "cmd": "npm test", "exit_code": 0 }
++  ]
++}
++```
+
+tokens used
+13,432
+[codex-monitored] codex exited: code=0 elapsed=44s

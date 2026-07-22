@@ -1,0 +1,22 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/",
+      "exit_code": 0
+    },
+    {
+      "cmd": "node -e 'const os=require(\"os\"),fs=require(\"fs\"),path=require(\"path\"),{execFileSync}=require(\"child_process\"),assert=require(\"assert\");const f=path.join(os.tmpdir(),\"devlyn-cart-ok.json\");fs.writeFileSync(f,JSON.stringify({state:\"CA\",coupon:null,items:[{sku:\"MUG\",qty:2}]}));const out=execFileSync(\"node\",[\"bin/cli.js\",\"cart\",\"--input\",f],{encoding:\"utf8\"});const obj=JSON.parse(out);assert.deepStrictEqual(obj,{subtotal_cents:2400,line_discount_cents:0,coupon_discount_cents:0,tax_cents:0,shipping_cents:699,total_cents:3099,items:[{sku:\"MUG\",qty:2,line_subtotal_cents:2400,line_discount_cents:0,line_total_cents:2400}]});fs.unlinkSync(f);console.log(\"CART_OK\");'",
+      "exit_code": 0,
+      "stdout_contains": [
+        "CART_OK"
+      ]
+    },
+    {
+      "cmd": "node -e 'const os=require(\"os\"),fs=require(\"fs\"),path=require(\"path\"),{execFileSync}=require(\"child_process\"),assert=require(\"assert\");const f=path.join(os.tmpdir(),\"devlyn-cart-stock.json\");fs.writeFileSync(f,JSON.stringify({state:\"CA\",coupon:null,items:[{sku:\"BAG\",qty:5}]}));let code=0,stderrOut=\"\";try{execFileSync(\"node\",[\"bin/cli.js\",\"cart\",\"--input\",f],{encoding:\"utf8\"});}catch(e){code=e.status;stderrOut=e.stderr;}assert.strictEqual(code,2);const obj=JSON.parse(stderrOut);assert.deepStrictEqual(obj,{error:\"invalid_stock\",sku:\"BAG\",available:4,requested:5});fs.unlinkSync(f);console.log(\"STOCK_FAIL_OK\");'",
+      "exit_code": 0,
+      "stdout_contains": [
+        "STOCK_FAIL_OK"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,526 @@
+[codex-monitored] start: ts=2026-07-22T01:21:22Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=19201
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f8769-c16c-7a30-8fa2-0b7ad247e00d
+--------
+user
+# Codex (OpenAI) adapter
+
+Efficient, direct, task-oriented. Validation is concrete commands, not self-belief. Do not narrate internal deliberation.
+
+---
+
+# PHASE 2 — IMPLEMENT fix round (triggered by VERIFY finding)
+
+<role>
+Fix a VERIFY-reported finding within the authorized surface (`bin/cli.js`, `tests/cli.test.js`). Do not touch anything else.
+</role>
+
+<finding_to_fix>
+id: format-duplicate-unsupported
+rule_id: spec.unsupported-format-not-rejected
+severity: MEDIUM (verdict-binding)
+file: bin/cli.js, line 45 (the `parseVersionFormat` function)
+
+`const idx = argv.indexOf('--format');` inspects only the FIRST occurrence of `--format` in argv. Repro: `node bin/cli.js version --format json --format yaml` exits 0 and prints `{"version":"0.1.0"}` instead of rejecting the unsupported `yaml` value with exit 1. This violates the criteria's requirement: "`--format yaml`, or any `--format` value other than `json`, causes the CLI to exit with status code 1 and print an error."
+</finding_to_fix>
+
+<fix_guidance>
+Standard CLI convention (and Node's own `util.parseArgs`) is last-flag-wins when a flag is repeated. Change `parseVersionFormat`'s lookup from `argv.indexOf('--format')` to `argv.lastIndexOf('--format')` so the LAST occurrence of `--format` determines the value. This makes `--format json --format yaml` correctly resolve to `yaml` (last one) and exit 1, while keeping the function's existing structure/style (same missing-value check, same error+exit pattern) unchanged. This is a one-line fix.
+
+Do NOT touch `parseNameFlag` (the pre-existing `--name` flag parser used by the unrelated `hello` subcommand) — it is out of scope per the criteria's "Out of Scope" section, even though it has the same first-occurrence pattern. Only `parseVersionFormat` (added by this diff, used only by `version`) is in scope.
+</fix_guidance>
+
+<verification>
+After your fix, run and confirm:
+- `node bin/cli.js version --format json --format yaml` → must exit 1 with an error message (the finding's repro case).
+- `node bin/cli.js version --format json` → must still print `{"version":"0.1.0"}` and exit 0 (unchanged).
+- `node bin/cli.js version` → must still print `0.1.0` and exit 0 (unchanged).
+- `node bin/cli.js version --format yaml` → must still exit 1 (unchanged).
+- `npm test` → all existing tests must still pass. Optionally add one regression test in `tests/cli.test.js` for the duplicate-flag case (`run(['version', '--format', 'json', '--format', 'yaml'])` should throw with exit 1) — this is encouraged but not mandatory; keep it minimal if added.
+</verification>
+
+<output>
+Report your verdict: `PASS` on success; `BLOCKED` if you cannot fix this within `bin/cli.js`/`tests/cli.test.js`. Do not run `git commit`. Only touch `bin/cli.js` and `tests/cli.test.js`.
+</output>
+
+Fix the finding now.
+codex
+I’ll make the one-line `parseVersionFormat` correction, add the focused regression test if the existing test structure supports it, then run the four CLI checks and `npm test`.
+exec
+/bin/zsh -lc "git status --short && rg -n -C 4 \"parseVersionFormat|version.*format|format\" bin/cli.js tests/cli.test.js && sed -n '1,240p' tests/cli.test.js" in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+tests/cli.test.js-24-  assert.match(out, /\d+\.\d+\.\d+/);
+tests/cli.test.js-25-});
+tests/cli.test.js-26-
+tests/cli.test.js-27-test('version prints JSON when requested', () => {
+tests/cli.test.js:28:  const out = run(['version', '--format', 'json']);
+tests/cli.test.js-29-  assert.equal(out, `${JSON.stringify({ version: require('../package.json').version })}\n`);
+tests/cli.test.js-30-});
+tests/cli.test.js-31-
+tests/cli.test.js:32:test('version rejects unsupported --format value', () => {
+tests/cli.test.js:33:  assert.throws(() => run(['version', '--format', 'yaml']), (err) => err.status === 1);
+tests/cli.test.js-34-});
+--
+bin/cli.js-8-const USAGE = `Usage: bench-cli <command> [options]
+bin/cli.js-9-
+bin/cli.js-10-Commands:
+bin/cli.js-11-  hello [--name NAME]        Print a greeting (default name: "world")
+bin/cli.js:12:  version [--format json]    Print the CLI version from package.json
+bin/cli.js-13-  --help, -h                 Show this help
+bin/cli.js-14-
+bin/cli.js-15-Examples:
+bin/cli.js-16-  bench-cli hello
+--
+bin/cli.js-40-  }
+bin/cli.js-41-  return value;
+bin/cli.js-42-}
+bin/cli.js-43-
+bin/cli.js:44:function parseVersionFormat(argv) {
+bin/cli.js:45:  const idx = argv.indexOf('--format');
+bin/cli.js-46-  if (idx === -1) return 'plain';
+bin/cli.js-47-  const value = argv[idx + 1];
+bin/cli.js-48-  if (!value || value.startsWith('-')) {
+bin/cli.js:49:    console.error('--format requires a value');
+bin/cli.js-50-    process.exit(1);
+bin/cli.js-51-  }
+bin/cli.js-52-  if (value !== 'json') {
+bin/cli.js:53:    console.error(`Unsupported version format: ${value}`);
+bin/cli.js-54-    process.exit(1);
+bin/cli.js-55-  }
+bin/cli.js-56-  return value;
+bin/cli.js-57-}
+--
+bin/cli.js-71-      console.log(`Hello, ${name}!`);
+bin/cli.js-72-      return;
+bin/cli.js-73-    }
+bin/cli.js-74-    case 'version': {
+bin/cli.js:75:      const format = parseVersionFormat(rest);
+bin/cli.js:76:      if (format === 'json') {
+bin/cli.js-77-        console.log(JSON.stringify({ version: readPackageVersion() }));
+bin/cli.js-78-        return;
+bin/cli.js-79-      }
+bin/cli.js-80-      console.log(readPackageVersion());
+const { test } = require('node:test');
+const assert = require('node:assert');
+const { execFileSync } = require('node:child_process');
+const path = require('node:path');
+
+const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+
+function run(args) {
+  return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+}
+
+test('hello default', () => {
+  const out = run(['hello']);
+  assert.match(out, /Hello, world!/);
+});
+
+test('hello with --name', () => {
+  const out = run(['hello', '--name', 'alice']);
+  assert.match(out, /Hello, alice!/);
+});
+
+test('version prints package version', () => {
+  const out = run(['version']);
+  assert.match(out, /\d+\.\d+\.\d+/);
+});
+
+test('version prints JSON when requested', () => {
+  const out = run(['version', '--format', 'json']);
+  assert.equal(out, `${JSON.stringify({ version: require('../package.json').version })}\n`);
+});
+
+test('version rejects unsupported --format value', () => {
+  assert.throws(() => run(['version', '--format', 'yaml']), (err) => err.status === 1);
+});
+
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/bin/cli.js
+/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/cli.test.js
+diff --git a/bin/cli.js b/bin/cli.js
+index a2f1b9625dc0bd232f9fb6ca879b3075673b5a93..e4a51ec4c23fc0023911c78bf1168e2670f9aa24
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -42,7 +42,7 @@
+ }
+ 
+ function parseVersionFormat(argv) {
+-  const idx = argv.indexOf('--format');
++  const idx = argv.lastIndexOf('--format');
+   if (idx === -1) return 'plain';
+   const value = argv[idx + 1];
+   if (!value || value.startsWith('-')) {
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index af661ca65a3a08cd0a828c47d41f5b02c8e774b4..1ba9645c525efa68153f2a272b4a2ae7577784d2
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -32,3 +32,7 @@
+ test('version rejects unsupported --format value', () => {
+   assert.throws(() => run(['version', '--format', 'yaml']), (err) => err.status === 1);
+ });
++
++test('version uses the last repeated --format value', () => {
++  assert.throws(() => run(['version', '--format', 'json', '--format', 'yaml']), (err) => err.status === 1);
++});
+
+diff --git a/bin/cli.js b/bin/cli.js
+index a2f1b9625dc0bd232f9fb6ca879b3075673b5a93..e4a51ec4c23fc0023911c78bf1168e2670f9aa24
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -42,7 +42,7 @@
+ }
+ 
+ function parseVersionFormat(argv) {
+-  const idx = argv.indexOf('--format');
++  const idx = argv.lastIndexOf('--format');
+   if (idx === -1) return 'plain';
+   const value = argv[idx + 1];
+   if (!value || value.startsWith('-')) {
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index af661ca65a3a08cd0a828c47d41f5b02c8e774b4..1ba9645c525efa68153f2a272b4a2ae7577784d2
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -32,3 +32,7 @@
+ test('version rejects unsupported --format value', () => {
+   assert.throws(() => run(['version', '--format', 'yaml']), (err) => err.status === 1);
+ });
++
++test('version uses the last repeated --format value', () => {
++  assert.throws(() => run(['version', '--format', 'json', '--format', 'yaml']), (err) => err.status === 1);
++});
+
+codex
+The implementation now uses the final `--format` occurrence, and the regression test covers the reported duplicate-flag case. I’m validating the required command behavior and the full suite.
+exec
+/bin/zsh -lc 'node bin/cli.js version --format json --format yaml' in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo
+ exited 1 in 0ms:
+Unsupported version format: yaml
+
+exec
+/bin/zsh -lc 'node bin/cli.js version' in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo
+exec
+/bin/zsh -lc 'node bin/cli.js version --format json' in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo
+ succeeded in 0ms:
+0.1.0
+
+ succeeded in 0ms:
+{"version":"0.1.0"}
+
+exec
+/bin/zsh -lc 'node bin/cli.js version --format yaml' in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo
+ exited 1 in 0ms:
+Unsupported version format: yaml
+
+diff --git a/bin/cli.js b/bin/cli.js
+index a2f1b9625dc0bd232f9fb6ca879b3075673b5a93..e4a51ec4c23fc0023911c78bf1168e2670f9aa24
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -42,7 +42,7 @@
+ }
+ 
+ function parseVersionFormat(argv) {
+-  const idx = argv.indexOf('--format');
++  const idx = argv.lastIndexOf('--format');
+   if (idx === -1) return 'plain';
+   const value = argv[idx + 1];
+   if (!value || value.startsWith('-')) {
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index af661ca65a3a08cd0a828c47d41f5b02c8e774b4..1ba9645c525efa68153f2a272b4a2ae7577784d2
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -32,3 +32,7 @@
+ test('version rejects unsupported --format value', () => {
+   assert.throws(() => run(['version', '--format', 'yaml']), (err) => err.status === 1);
+ });
++
++test('version uses the last repeated --format value', () => {
++  assert.throws(() => run(['version', '--format', 'json', '--format', 'yaml']), (err) => err.status === 1);
++});
+
+[codex-monitored] heartbeat: elapsed=30s
+exec
+/bin/zsh -lc 'npm test && git diff --check && git diff -- bin/cli.js tests/cli.test.js && git status --short' in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index a2f1b9625dc0bd232f9fb6ca879b3075673b5a93..e4a51ec4c23fc0023911c78bf1168e2670f9aa24
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -42,7 +42,7 @@
+ }
+ 
+ function parseVersionFormat(argv) {
+-  const idx = argv.indexOf('--format');
++  const idx = argv.lastIndexOf('--format');
+   if (idx === -1) return 'plain';
+   const value = argv[idx + 1];
+   if (!value || value.startsWith('-')) {
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index af661ca65a3a08cd0a828c47d41f5b02c8e774b4..1ba9645c525efa68153f2a272b4a2ae7577784d2
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -32,3 +32,7 @@
+ test('version rejects unsupported --format value', () => {
+   assert.throws(() => run(['version', '--format', 'yaml']), (err) => err.status === 1);
+ });
++
++test('version uses the last repeated --format value', () => {
++  assert.throws(() => run(['version', '--format', 'json', '--format', 'yaml']), (err) => err.status === 1);
++});
+
+ exited 1 in 295ms:
+# Unsupported version format: yaml
+# Unsupported version format: yaml
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 31.853292
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 29.209667
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 28.759875
+  ...
+# Subtest: version prints JSON when requested
+ok 4 - version prints JSON when requested
+  ---
+  duration_ms: 26.438166
+  ...
+# Subtest: version rejects unsupported --format value
+ok 5 - version rejects unsupported --format value
+  ---
+  duration_ms: 27.038875
+  ...
+# Subtest: version uses the last repeated --format value
+ok 6 - version uses the last repeated --format value
+  ---
+  duration_ms: 25.282083
+  ...
+# Subtest: GET /health returns ok
+not ok 7 - GET /health returns ok
+  ---
+  duration_ms: 2.616916
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 8 - GET /items returns list
+  ---
+  duration_ms: 0.529875
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 9 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.374208
+  location: '/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 6
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 209.850875
+
+codex
+All four required CLI commands now have the specified results. The focused CLI suite passes; the broader `npm test` is blocked by this sandbox refusing server binds (`listen EPERM`), affecting three unrelated `tests/server.test.js` cases. I’ll capture the final scoped diff and integrity check.
+exec
+/bin/zsh -lc 'node --test tests/cli.test.js && git diff --check && git diff -- bin/cli.js tests/cli.test.js && git status --short' in /Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index a2f1b9625dc0bd232f9fb6ca879b3075673b5a93..e4a51ec4c23fc0023911c78bf1168e2670f9aa24
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -42,7 +42,7 @@
+ }
+ 
+ function parseVersionFormat(argv) {
+-  const idx = argv.indexOf('--format');
++  const idx = argv.lastIndexOf('--format');
+   if (idx === -1) return 'plain';
+   const value = argv[idx + 1];
+   if (!value || value.startsWith('-')) {
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index af661ca65a3a08cd0a828c47d41f5b02c8e774b4..1ba9645c525efa68153f2a272b4a2ae7577784d2
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -32,3 +32,7 @@
+ test('version rejects unsupported --format value', () => {
+   assert.throws(() => run(['version', '--format', 'yaml']), (err) => err.status === 1);
+ });
++
++test('version uses the last repeated --format value', () => {
++  assert.throws(() => run(['version', '--format', 'json', '--format', 'yaml']), (err) => err.status === 1);
++});
+
+ succeeded in 223ms:
+# Unsupported version format: yaml
+# Unsupported version format: yaml
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 26.388292
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 25.906375
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 25.355125
+  ...
+# Subtest: version prints JSON when requested
+ok 4 - version prints JSON when requested
+  ---
+  duration_ms: 25.638792
+  ...
+# Subtest: version rejects unsupported --format value
+ok 5 - version rejects unsupported --format value
+  ---
+  duration_ms: 24.610458
+  ...
+# Subtest: version uses the last repeated --format value
+ok 6 - version uses the last repeated --format value
+  ---
+  duration_ms: 25.7495
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 193.082917
+diff --git a/bin/cli.js b/bin/cli.js
+index a2f1b96..e4a51ec 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -42,7 +42,7 @@ function parseNameFlag(argv) {
+ }
+ 
+ function parseVersionFormat(argv) {
+-  const idx = argv.indexOf('--format');
++  const idx = argv.lastIndexOf('--format');
+   if (idx === -1) return 'plain';
+   const value = argv[idx + 1];
+   if (!value || value.startsWith('-')) {
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index af661ca..1ba9645 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -32,3 +32,7 @@ test('version prints JSON when requested', () => {
+ test('version rejects unsupported --format value', () => {
+   assert.throws(() => run(['version', '--format', 'yaml']), (err) => err.status === 1);
+ });
++
++test('version uses the last repeated --format value', () => {
++  assert.throws(() => run(['version', '--format', 'json', '--format', 'yaml']), (err) => err.status === 1);
++});
+ M bin/cli.js
+ M tests/cli.test.js
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+codex
+PASS
+
+Updated [`bin/cli.js`](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/bin/cli.js:45) to use `lastIndexOf('--format')`, plus a duplicate-flag regression test in [`tests/cli.test.js`](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/ff10888c89791/A1/repo/tests/cli.test.js:36).
+
+Verified required CLI behavior and `node --test tests/cli.test.js` (6/6 pass). `npm test` reaches the CLI tests successfully but its three unrelated server tests fail because this sandbox blocks socket binding (`listen EPERM`), not due to this change.
+diff --git a/bin/cli.js b/bin/cli.js
+index a2f1b9625dc0bd232f9fb6ca879b3075673b5a93..e4a51ec4c23fc0023911c78bf1168e2670f9aa24
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -42,7 +42,7 @@
+ }
+ 
+ function parseVersionFormat(argv) {
+-  const idx = argv.indexOf('--format');
++  const idx = argv.lastIndexOf('--format');
+   if (idx === -1) return 'plain';
+   const value = argv[idx + 1];
+   if (!value || value.startsWith('-')) {
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index af661ca65a3a08cd0a828c47d41f5b02c8e774b4..1ba9645c525efa68153f2a272b4a2ae7577784d2
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -32,3 +32,7 @@
+ test('version rejects unsupported --format value', () => {
+   assert.throws(() => run(['version', '--format', 'yaml']), (err) => err.status === 1);
+ });
++
++test('version uses the last repeated --format value', () => {
++  assert.throws(() => run(['version', '--format', 'json', '--format', 'yaml']), (err) => err.status === 1);
++});
+
+tokens used
+22,735
+[codex-monitored] codex exited: code=0 elapsed=49s

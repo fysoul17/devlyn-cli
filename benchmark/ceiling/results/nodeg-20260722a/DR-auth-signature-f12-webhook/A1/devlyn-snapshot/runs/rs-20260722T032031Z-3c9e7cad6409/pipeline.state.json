@@ -1,0 +1,206 @@
+{
+  "base_ref": {
+    "branch": "master",
+    "sha": "d5e479312b6f9573373bd2057e630bba7d22c608"
+  },
+  "bypasses": [],
+  "complexity": "large",
+  "criteria": [],
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "implement_passed_sha": "46a255acccb5cf9be0158eda79fbfdb877af86af",
+  "mode": "free-form",
+  "pair_verify": true,
+  "phases": {
+    "build_gate": {
+      "artifacts": {
+        "findings_file": ".devlyn/build_gate.findings.jsonl",
+        "log_file": ".devlyn/build_gate.log.md"
+      },
+      "completed_at": "2026-07-22T03:33:24.014Z",
+      "duration_ms": 102817,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": "claude-sonnet-5",
+      "round": 1,
+      "started_at": "2026-07-22T03:31:41.197Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "cleanup": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T03:34:27.559Z",
+      "duration_ms": 63544,
+      "engine": "codex",
+      "model_effective": null,
+      "model_requested": null,
+      "post_sha": "5f18fcd86aadf3300c23276b8fe9c874c5cf0e38",
+      "pre_sha": "5f18fcd86aadf3300c23276b8fe9c874c5cf0e38",
+      "round": 1,
+      "started_at": "2026-07-22T03:33:24.015Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "final_report": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T03:58:34.259Z",
+      "duration_ms": 27907,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 1,
+      "started_at": "2026-07-22T03:58:06.352Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS_WITH_ISSUES"
+    },
+    "implement": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T03:48:51.496Z",
+      "duration_ms": 269797,
+      "engine": "codex",
+      "history": [
+        {
+          "completed_at": "2026-07-22T03:31:41.196Z",
+          "duration_ms": 315021,
+          "started_at": "2026-07-22T03:26:26.175Z",
+          "verdict": "PASS"
+        }
+      ],
+      "model_effective": null,
+      "model_requested": null,
+      "post_sha": "46a255acccb5cf9be0158eda79fbfdb877af86af",
+      "round": 2,
+      "started_at": "2026-07-22T03:44:21.699Z",
+      "sub_verdicts": null,
+      "triggered_by": "verify",
+      "verdict": "PASS"
+    },
+    "plan": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T03:26:26.175Z",
+      "duration_ms": 156227,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": "claude-sonnet-5",
+      "post_sha": "d5e479312b6f9573373bd2057e630bba7d22c608",
+      "round": 1,
+      "started_at": "2026-07-22T03:23:49.948Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "probe_derive": null,
+    "surface_close": {
+      "durability": [
+        {
+          "origin_phase": "verify",
+          "receipt_path": ".devlyn/closure-durability.round-1.json",
+          "receipt_sha256": "c0d9e74077feaa2189ce4afbd5218ee9553f7412da93c83c1a07a8e1d31fbc0a",
+          "restore_commit_sha": null,
+          "round": 1
+        },
+        {
+          "origin_phase": "verify",
+          "receipt_path": ".devlyn/closure-durability.round-2.json",
+          "receipt_sha256": "daef2aad1a29b6eece1a9f0428dee5029753bdb78521e73784deed64e80977b0",
+          "restore_commit_sha": null,
+          "round": 2
+        }
+      ]
+    },
+    "verify": {
+      "artifacts": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T03:58:01.195Z",
+      "duration_ms": 549699,
+      "engine": "codex",
+      "history": [
+        {
+          "completed_at": "2026-07-22T03:44:21.699Z",
+          "duration_ms": 594140,
+          "started_at": "2026-07-22T03:34:27.559Z",
+          "verdict": "NEEDS_WORK"
+        }
+      ],
+      "judge_durations_ms": {
+        "judge": 201000,
+        "pair_judge": 74634
+      },
+      "merged": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "summary_file": ".devlyn/verify-merge.summary.json",
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "model_effective": null,
+      "model_requested": null,
+      "round": 2,
+      "started_at": "2026-07-22T03:48:51.496Z",
+      "sub_verdicts": {
+        "judge": "PASS_WITH_ISSUES",
+        "mechanical": "PASS",
+        "pair_judge": "PASS"
+      },
+      "triggered_by": "verify",
+      "verdict": "PASS_WITH_ISSUES"
+    }
+  },
+  "risk_probes_digest": null,
+  "risk_profile": {
+    "high_risk": true,
+    "pair_default_enabled": true,
+    "reasons": [
+      "risk keyword: idempotency/replay/duplicate",
+      "risk keyword: API/webhook/raw-body/signature",
+      "auto-risk-probes demoted: plan surface small (2 paths)"
+    ],
+    "risk_probes_enabled": false,
+    "risk_probes_explicit": false
+  },
+  "rounds": {
+    "global": 2,
+    "max_rounds": 4
+  },
+  "run_id": "rs-20260722T032031Z-3c9e7cad6409",
+  "source": {
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "f13d04743341d973c7d42b097b7427116ef93469b7432224cbbdb3cb182cf1a2",
+    "goal_path": ".devlyn/goal.raw.txt",
+    "goal_sha256": "58e149bd9cbe6be89e214600420416b3ba17ecd83c523dd6d1d787b1cf1900e3",
+    "spec_path": null,
+    "spec_sha256": null,
+    "type": "generated"
+  },
+  "started_at": "2026-07-22T03:20:31.869Z",
+  "verify": {
+    "coverage_failed": false,
+    "pair_trigger": {
+      "eligible": true,
+      "reasons": [
+        "pair.default",
+        "mode.pair-verify",
+        "complexity.large",
+        "risk.high",
+        "judge.warning"
+      ],
+      "skipped_reason": null
+    }
+  },
+  "version": "3.0"
+}

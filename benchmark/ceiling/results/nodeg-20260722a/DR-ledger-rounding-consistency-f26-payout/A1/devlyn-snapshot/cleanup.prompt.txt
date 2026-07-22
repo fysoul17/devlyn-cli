@@ -1,0 +1,45 @@
+# Codex (OpenAI) adapter
+
+## Identity
+
+You are OpenAI's Codex model.
+
+## Output discipline
+
+Efficient, direct, task-oriented.
+
+---
+
+# PHASE 4 — CLEANUP (canonical body)
+
+Task-scoped pass — only what this diff introduced or invalidated.
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. Bounded by the allowlist below.
+</role>
+
+<input>
+- Cumulative diff since base commit `17fce0a` (two commits on top: `6cdfc42` IMPLEMENT, `0a08c13` fix round 1) touching only `bin/cli.js` and `tests/cli.test.js` — added the `payout` subcommand and its tests.
+- Spec: `.devlyn/criteria.generated.md` (read it).
+- Your post-cleanup diff must stay within the allowlist below; it is checked against `pre_sha = 0a08c137c5cf05a5178d1a32f404d2dc9f56b77f` (current HEAD).
+</input>
+
+<allowlist>
+You may modify or delete:
+1. Tooling artifacts the spec did not list as deliverables (test-results/, coverage output, caches).
+2. Dead code added by this diff — symbols introduced by this diff that nothing else added by this diff references and that are not part of the spec's required surface.
+3. Doc references this diff invalidated (renamed/removed links/paths/symbols in markdown).
+4. Inline comments referring to code this diff deleted.
+
+Files outside this allowlist must not change. Pre-existing tooling leaks or pre-existing dead code are out of scope.
+</allowlist>
+
+<task>
+Review `git diff 17fce0a..HEAD -- bin/cli.js tests/cli.test.js` for anything in the allowlist above. Based on a prior read of this diff: it added `parseInputFlag`, `payoutError`, `runPayout` to `bin/cli.js` (all three are used — `runPayout` is called from the `payout` case in `main`'s switch, which calls `parseInputFlag` and `payoutError`), and two new `test(...)` blocks plus a `writePayoutInput` helper to `tests/cli.test.js` (helper is used by both new tests). Confirm this independently — do not assume it's correct. If you find no allowlist-eligible cleanup needed, make no changes.
+</task>
+
+<output>
+Report your verdict in your final reply: `PASS` if changes are within allowlist (or no changes needed); `FAIL` if you cannot complete within the allowlist.
+</output>
+
+Do not edit `.devlyn/pipeline.state.json`. Do not touch `data/payout-rules.json`, `server/`, `web/`, or anything outside the allowlist.

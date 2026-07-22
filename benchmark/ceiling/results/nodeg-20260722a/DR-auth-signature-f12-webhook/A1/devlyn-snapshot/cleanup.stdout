@@ -1,0 +1,1 @@
+PASS — checked the cumulative diff: only the specified route/tests changed; `post()` and `sign()` are used, with no tooling artifacts or invalidated Markdown references found. No changes made.

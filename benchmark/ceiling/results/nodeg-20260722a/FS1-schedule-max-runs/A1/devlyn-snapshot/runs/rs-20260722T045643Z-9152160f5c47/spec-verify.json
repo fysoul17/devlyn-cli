@@ -1,0 +1,8 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "python3 -m unittest test_schedule -v",
+      "description": "Full existing test suite plus new max_runs() tests must pass (stdlib unittest \u2014 no pytest install required in this environment; test_schedule.py is unittest.TestCase-based)."
+    }
+  ]
+}

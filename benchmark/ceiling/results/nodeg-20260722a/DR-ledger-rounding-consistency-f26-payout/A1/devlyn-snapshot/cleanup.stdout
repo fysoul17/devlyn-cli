@@ -1,0 +1,8 @@
+PASS
+
+No allowlist-eligible cleanup found; made no changes.
+
+- `parseInputFlag`, `payoutError`, and `runPayout` are all referenced by the new payout path.
+- `writePayoutInput` is referenced by both added payout tests.
+- No invalidated docs/comments or generated artifacts were introduced by the payout diff.
+- `git diff --check` passed.

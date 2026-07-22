@@ -1,0 +1,8 @@
+PASS
+
+- JUDGE-1 / PAIR-1: added the pre-run `max_runs` guard before `job_func()`, preventing any invocation after the budget is exhausted. [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/schedule/__init__.py:709)
+- Regression coverage: runs twice, lowers the budget to one, then confirms `run_all()` does not invoke the job again and removes it. [test_schedule.py](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/test_schedule.py:463)
+- JUDGE-2: no exception-handling change. State remains updated only after successful execution, preserving the library’s existing exception-propagation semantics. [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/schedule/__init__.py:714)
+- JUDGE-3: updated `Job.run()` return documentation for run-budget cancellation. [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/fa265b8ab039e/A1/repo/schedule/__init__.py:702)
+
+Validation: `python3 -m unittest test_schedule -v` — 87 tests passed.

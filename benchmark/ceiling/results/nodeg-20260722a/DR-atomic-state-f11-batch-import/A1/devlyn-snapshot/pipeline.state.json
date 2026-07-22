@@ -1,0 +1,149 @@
+{
+  "base_ref": {
+    "branch": "master",
+    "sha": "cbd12daedd7f2d22c62110faf097f12797e7dda6"
+  },
+  "bypasses": [],
+  "complexity": "large",
+  "criteria": [],
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "implement_passed_sha": "9563add7d62d3042c1b0f20c65120e398fe32bc5",
+  "mode": "free-form",
+  "pair_verify": true,
+  "phases": {
+    "build_gate": {
+      "artifacts": {
+        "findings_file": ".devlyn/build_gate.findings.jsonl",
+        "log_file": ".devlyn/build_gate.log.md"
+      },
+      "completed_at": "2026-07-22T03:10:56.813Z",
+      "duration_ms": 233373,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": "default",
+      "round": 1,
+      "started_at": "2026-07-22T03:07:03.440Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "cleanup": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T03:11:50.671Z",
+      "duration_ms": 53858,
+      "engine": "codex",
+      "model_effective": null,
+      "model_requested": "default",
+      "post_sha": "9563add7d62d3042c1b0f20c65120e398fe32bc5",
+      "pre_sha": "9563add7d62d3042c1b0f20c65120e398fe32bc5",
+      "round": 1,
+      "started_at": "2026-07-22T03:10:56.813Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "final_report": null,
+    "implement": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T03:07:03.440Z",
+      "duration_ms": 248125,
+      "engine": "codex",
+      "model_effective": null,
+      "model_requested": "default",
+      "post_sha": "9563add7d62d3042c1b0f20c65120e398fe32bc5",
+      "round": 1,
+      "started_at": "2026-07-22T03:02:55.315Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "plan": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T03:02:55.315Z",
+      "duration_ms": 142995,
+      "engine": "codex",
+      "model_effective": null,
+      "model_requested": "default",
+      "post_sha": "cbd12daedd7f2d22c62110faf097f12797e7dda6",
+      "round": 1,
+      "started_at": "2026-07-22T03:00:32.320Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "probe_derive": null,
+    "surface_close": null,
+    "verify": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": null,
+      "duration_ms": null,
+      "engine": "codex",
+      "judge_durations_ms": null,
+      "model_effective": null,
+      "model_requested": "default",
+      "round": 1,
+      "started_at": "2026-07-22T03:11:50.671Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": null,
+      "pair_trigger": {
+        "eligible": true,
+        "reasons": [
+          "pair.default",
+          "mode.pair-verify",
+          "complexity.large"
+        ],
+        "skipped_reason": null
+      }
+    }
+  },
+  "risk_probes_digest": null,
+  "risk_profile": {
+    "high_risk": false,
+    "pair_default_enabled": true,
+    "reasons": [],
+    "risk_probes_enabled": false,
+    "risk_probes_explicit": false
+  },
+  "rounds": {
+    "global": 0,
+    "max_rounds": 4
+  },
+  "run_id": "rs-20260722T025837Z-83755f51a761",
+  "source": {
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "a384b8ec83860251fc54eab5359af73876fad70d007e29cd4d0d71db8bef017a",
+    "goal_path": ".devlyn/goal.raw.txt",
+    "goal_sha256": "9b9a805b85c1d617269b0d22c321fe13fffcc6ea670745fcdc090c7ead921775",
+    "spec_path": null,
+    "spec_sha256": null,
+    "type": "generated"
+  },
+  "started_at": "2026-07-22T02:58:37.725Z",
+  "verify": {
+    "coverage_failed": false,
+    "pair_trigger": {
+      "eligible": true,
+      "reasons": [
+        "pair.default",
+        "mode.pair-verify",
+        "complexity.large"
+      ],
+      "skipped_reason": null
+    }
+  },
+  "version": "3.0"
+}

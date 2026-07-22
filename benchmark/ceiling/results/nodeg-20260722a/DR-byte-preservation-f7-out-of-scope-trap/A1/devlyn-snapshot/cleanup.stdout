@@ -1,0 +1,3 @@
+PASS — no cleanup changes needed.
+
+Reviewed the cumulative diff: it only adds the required `version --format json` behavior, usage text, and two relevant tests. No pipeline artifacts, unreferenced added symbols, or stale documentation references were introduced. `git diff 8b280a5..` is empty.

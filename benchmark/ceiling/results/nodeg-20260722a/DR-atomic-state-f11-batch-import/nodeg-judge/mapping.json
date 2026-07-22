@@ -1,0 +1,28 @@
+{
+  "seed": 2225326369510180091139630498414875909595179637803409547010555438831456287580,
+  "packets": {
+    "P1": {
+      "candidate": "A",
+      "patch_sha256": "2141693f05ba4b146b3ef41b81b6bd94f72fea81f553e537a9981c9eb20b8af5"
+    },
+    "P2": {
+      "candidate": "B",
+      "patch_sha256": "d319c2ffff25dfc67027053f8d3abbb6ff7a798be773465078a24653cc688c6b"
+    }
+  },
+  "frozen_b_source": {
+    "control_id": "F11",
+    "task": "DR-atomic-state-f11-batch-import",
+    "run_id": "iter0068-gate-20260711h",
+    "attempt": "B1",
+    "attempt_dir": "/Users/aipalm/devlyn-ceiling-external/exam-0077-probe/benchmark/ceiling/results/iter0068-gate-20260711h/DR-atomic-state-f11-batch-import/B1",
+    "patch_path": "/Users/aipalm/devlyn-ceiling-external/exam-0077-probe/benchmark/ceiling/results/iter0068-gate-20260711h/DR-atomic-state-f11-batch-import/B1/patch.diff",
+    "patch_sha256": "d319c2ffff25dfc67027053f8d3abbb6ff7a798be773465078a24653cc688c6b",
+    "objective_path": "/Users/aipalm/devlyn-ceiling-external/exam-0077-probe/benchmark/ceiling/results/iter0068-gate-20260711h/DR-atomic-state-f11-batch-import/B1/objective.json",
+    "objective_sha256": "fb859dc8a1e9c9f2752708d16bc87024fa3baebe9b862bac4e86ca491ead2750",
+    "timing_path": "/Users/aipalm/devlyn-ceiling-external/exam-0077-probe/benchmark/ceiling/results/iter0068-gate-20260711h/DR-atomic-state-f11-batch-import/B1/timing.json",
+    "timing_sha256": "15915e52027675a49fdec39635cc92a1cf84b5536d2c317184fbb0f0aa8e94e6",
+    "resolved": true,
+    "elapsed_seconds": 123
+  }
+}

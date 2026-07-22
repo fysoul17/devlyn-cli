@@ -1,0 +1,4 @@
+{
+  "notes": "The specified unittest command passes all 87 tests, and the pre-run guard closes the previously reported downward-reconfiguration gap. However, Requirement 2 still fails when job_func raises because the counter increment is skipped, permitting calls beyond the configured budget.",
+  "verdict": "NEEDS_WORK"
+}

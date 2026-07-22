@@ -1,0 +1,14 @@
+BLOCKED — implementation is complete, but `npm test` cannot pass in this sandbox: all 5 CLI tests pass; the 3 existing server tests fail at `server.listen(0)` with `EPERM` ([server test](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f99dbe9386580/A1/repo/tests/server.test.js:9)).
+
+Implemented:
+
+- `fulfill-wave` dispatch, full validation, JSON-only error handling: [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f99dbe9386580/A1/repo/bin/cli.js:80), [dispatch](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f99dbe9386580/A1/repo/bin/cli.js:294)
+- Global priority ordering, FEFO allocation, single-warehouse rule, rollback, sorted remaining inventory: [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f99dbe9386580/A1/repo/bin/cli.js:166)
+- Required accepted and rollback tests: [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rfe286ecefc19/f99dbe9386580/A1/repo/tests/cli.test.js:29)
+
+Verification:
+
+- `node --test tests/cli.test.js` — 5/5 passed.
+- All prescribed CLI checks passed: `Hello, world!`, `MECH_ACCEPT_OK`, `MECH_REJECT_OK`, `MECH_INVALID_OK`.
+- `git diff --check` passed.
+- Diff is limited to `bin/cli.js` and `tests/cli.test.js`.
