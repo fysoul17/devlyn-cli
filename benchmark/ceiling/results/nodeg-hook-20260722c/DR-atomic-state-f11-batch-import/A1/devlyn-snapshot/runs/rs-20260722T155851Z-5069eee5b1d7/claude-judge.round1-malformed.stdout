@@ -1,0 +1,9 @@
+Traced both probes against the exact source.
+
+**Probe 1** — `items: [{name:'x', qty:2}, {name:'y', qty:0}]`: index 0 passes both checks (line 38 name ok, line 42 `Number.isInteger(2)&&2>0` ok). index 1: name ok, then line 42 `Number.isInteger(0)` true but `0 <= 0` true → line 43 emits `{ error:'invalid_batch', index:1, field:'qty' }`, status 400, `return` before the append loop (lines 48-52) ever runs. `items` array is never mutated on any invalid path, so `GET /items` is byte-identical (same array reference, order, ids). Field is `'qty'` not `'name'`. ✓
+
+**Probe 2** — strict types: `qty:"5"` → line 42 `Number.isInteger("5")` is `false` → rejected field `qty`; `qty:2.5` → `Number.isInteger(2.5)` `false` → rejected field `qty`; `name:7` → line 38 `typeof 7 !== 'string'` true → rejected field `name`. No coercion path exists — `item.qty`/`item.name` are used verbatim only after passing the integer/string guards. Response body is exactly the three-key object; `GET /items` unmatched. ✓
+
+Both highest-risk bullets hold; no scope or dependency blocker (only `server/index.js` touched, no new deps).
+
+# SUMMARY {"verdict": "PASS"}

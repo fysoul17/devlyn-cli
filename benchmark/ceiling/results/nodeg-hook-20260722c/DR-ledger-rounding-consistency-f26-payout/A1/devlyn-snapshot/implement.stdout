@@ -1,0 +1,7 @@
+Implemented `bench-cli payout --input <path>` with validation, deduplication, runtime rule loading, payout calculations, and exact JSON output in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/bin/cli.js:40). Added success and validation-error coverage in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/cli.test.js:40).
+
+Verification:
+- `node --test tests/cli.test.js` — 5/5 passed.
+- `node --test tests/` — payout/CLI tests passed; 3 unrelated server tests failed because the sandbox denies `server.listen(0)` with `EPERM` at [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:9). That file is outside the authorized surface.
+
+BLOCKED

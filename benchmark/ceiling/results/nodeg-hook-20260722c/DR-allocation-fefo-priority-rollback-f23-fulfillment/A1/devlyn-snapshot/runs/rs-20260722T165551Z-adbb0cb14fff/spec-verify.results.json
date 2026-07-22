@@ -1,0 +1,64 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "node --test tests/",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "# pass 11",
+        "# fail 0"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "ower-priority draws\n  ---\n  duration_ms: 24.363834\n  ...\n# Subtest: GET /health returns ok\nok 9 - GET /health returns ok\n  ---\n  duration_ms: 9.517041\n  ...\n# Subtest: GET /items returns list\nok 10 - GET /items returns list\n  ---\n  duration_ms: 2.705208\n  ...\n# Subtest: GET /items/:id returns 404 for missing\nok 11 - GET /items/:id returns 404 for missing\n  ---\n  duration_ms: 1.724792\n  ...\n1..11\n# tests 11\n# suites 0\n# pass 11\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 246.552333\n"
+    },
+    {
+      "index": 1,
+      "cmd": "TMP=$(mktemp) && printf '%s' '{\"warehouses\":[{\"id\":\"W1\",\"distance\":1,\"lots\":[{\"sku\":\"SKU1\",\"lot\":\"L1\",\"qty\":10,\"expires\":\"2026-01-01\"}]}],\"orders\":[{\"id\":\"O1\",\"priority\":1,\"submitted_at\":\"2026-01-01T00:00:00Z\",\"lines\":[{\"sku\":\"SKU1\",\"qty\":5,\"single_warehouse\":false}]}]}' > \"$TMP\" && node bin/cli.js fulfill-wave --input \"$TMP\"; CODE=$?; rm -f \"$TMP\"; exit $CODE",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "\"accepted\"",
+        "\"O1\"",
+        "\"SKU1\"",
+        "\"W1\"",
+        "\"L1\""
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "{\"accepted\":[{\"id\":\"O1\",\"allocations\":[{\"sku\":\"SKU1\",\"warehouse\":\"W1\",\"lot\":\"L1\",\"qty\":5}]}],\"rejected\":[],\"remaining\":[{\"warehouse\":\"W1\",\"sku\":\"SKU1\",\"lot\":\"L1\",\"qty\":5,\"expires\":\"2026-01-01\"}]}\n"
+    },
+    {
+      "index": 2,
+      "cmd": "TMP=$(mktemp) && printf '%s' '{\"warehouses\":[{\"id\":\"W1\",\"distance\":1,\"lots\":[{\"sku\":\"SKU1\",\"lot\":\"L1\",\"qty\":3,\"expires\":\"2026-01-01\"}]}],\"orders\":[{\"id\":\"O1\",\"priority\":1,\"submitted_at\":\"2026-01-01T00:00:00Z\",\"lines\":[{\"sku\":\"SKU1\",\"qty\":5,\"single_warehouse\":false}]}]}' > \"$TMP\" && node bin/cli.js fulfill-wave --input \"$TMP\"; CODE=$?; rm -f \"$TMP\"; exit $CODE",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "\"rejected\"",
+        "\"insufficient_stock\"",
+        "\"remaining\"",
+        "\"qty\":3"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "{\"accepted\":[],\"rejected\":[{\"id\":\"O1\",\"reason\":\"insufficient_stock\"}],\"remaining\":[{\"warehouse\":\"W1\",\"sku\":\"SKU1\",\"lot\":\"L1\",\"qty\":3,\"expires\":\"2026-01-01\"}]}\n"
+    },
+    {
+      "index": 3,
+      "cmd": "TMP=$(mktemp) && printf '%s' '{\"warehouses\":[],\"orders\":[{\"id\":\"\",\"priority\":1,\"submitted_at\":\"bad\",\"lines\":[]}]}' > \"$TMP\" && node bin/cli.js fulfill-wave --input \"$TMP\" >/tmp/fw-stdout.$$ 2>/tmp/fw-stderr.$$; CODE=$?; OUT=$(cat /tmp/fw-stdout.$$); ERR=$(cat /tmp/fw-stderr.$$); rm -f \"$TMP\" /tmp/fw-stdout.$$ /tmp/fw-stderr.$$; if [ \"$CODE\" -eq 2 ] && [ -z \"$OUT\" ] && [ -n \"$ERR\" ]; then echo INVALID_INPUT_OK; exit 0; else echo INVALID_INPUT_FAIL; exit 1; fi",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [
+        "INVALID_INPUT_OK"
+      ],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "INVALID_INPUT_OK\n"
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "base_ref": {
+    "branch": "master",
+    "sha": "4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8"
+  },
+  "bypasses": [],
+  "complexity": "large",
+  "criteria": [],
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "implement_passed_sha": "62a6cde7142b40b1f6654ae04b42cdcdf9a00af5",
+  "mode": "free-form",
+  "pair_verify": true,
+  "phases": {
+    "build_gate": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": null,
+      "duration_ms": null,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 1,
+      "started_at": "2026-07-22T17:54:14.127Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": null
+    },
+    "cleanup": null,
+    "final_report": null,
+    "implement": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T17:54:14.127Z",
+      "duration_ms": 425867,
+      "engine": "codex",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 1,
+      "started_at": "2026-07-22T17:47:08.260Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "plan": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T17:34:24.965Z",
+      "duration_ms": 216540,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": "claude-sonnet-5",
+      "round": 1,
+      "started_at": "2026-07-22T17:30:48.425Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "probe_derive": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T17:47:08.260Z",
+      "duration_ms": 763295,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": "claude-sonnet-5",
+      "round": 1,
+      "started_at": "2026-07-22T17:34:24.965Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "surface_close": null,
+    "verify": null
+  },
+  "risk_probes_digest": "0a741e93cb72e06d597ec5f0ef04f2121f317cb5e355cc89f9aa5ed26cae78aa",
+  "risk_profile": {
+    "high_risk": true,
+    "pair_default_enabled": true,
+    "reasons": [
+      "risk.explicit-error-contract: max_runs(n) validation must raise ValueError for invalid n",
+      "risk.state-mutation-ordering: budget exhaustion cancels the job through the same path as CancelJob and interacts with .until() first-limit-wins ordering"
+    ],
+    "risk_probes_enabled": true,
+    "risk_probes_explicit": false
+  },
+  "rounds": {
+    "global": 0,
+    "max_rounds": 4
+  },
+  "run_id": "rs-20260722T172740Z-643aecd654bf",
+  "session_id": "c8bc069e-b73f-4f76-85be-d8c52a23cee3",
+  "source": {
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "1db215957526c45d093571530f8dd54f053864c115b8c0a0f0f82df35e89a11d",
+    "goal_path": ".devlyn/goal.raw.txt",
+    "goal_sha256": "0194d750427cec5c6a6f6c3e0196e7ba20f0238162648ca1db6bbe4ce2b5a309",
+    "spec_path": null,
+    "spec_sha256": null,
+    "type": "generated"
+  },
+  "started_at": "2026-07-22T17:27:40.206Z",
+  "verify": {
+    "coverage_failed": false,
+    "pair_trigger": null
+  },
+  "version": "3.0"
+}

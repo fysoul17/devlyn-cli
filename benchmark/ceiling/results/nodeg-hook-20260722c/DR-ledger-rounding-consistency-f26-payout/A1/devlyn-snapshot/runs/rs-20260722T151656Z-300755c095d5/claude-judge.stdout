@@ -1,0 +1,7 @@
+Both probes pass.
+
+- **Probe 1 (conflicting-duplicate ordering + idempotency)**: idempotent dup `e1` applied once without error; conflicting dup `e2` → exit `2`, stdout completely empty, stderr exactly `{"error":"conflicting_duplicate","id":"e2"}`. Checked before any totals printed. ✅
+- **Probe 2 (reserve absorption + exact shape/math)**: m1 lands in absorption band (net 1038, reserve 104, payout 934 → `0<934<1000` → reserve 1038, payout 0); m2 full charge/refund/dispute mix correct. Top-level = exactly the 5 keys; each row = exactly the 8 keys; all four totals equal the sum of final per-merchant fields; ordering is first-seen (m1, m2). ✅
+- **Scope**: diff touches only `bin/cli.js` and `tests/cli.test.js`. ✅
+
+PASS

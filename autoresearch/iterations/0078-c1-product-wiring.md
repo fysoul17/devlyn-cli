@@ -313,3 +313,55 @@ own registration (CLI-surface change).
 
 Stage A2 CLOSED: the 0077.5 removal obligation is discharged before any
 hook-bearing cohort; no measurement rides the unearned carrier.
+
+## FIRST HOOK-BEARING COHORT `nodeg-hook-20260722c` (2026-07-22→23, raw before interpretation)
+
+Launch: worktree @3a7eeaf, run-owned claude 2.1.215 copy
+(pins/iter0078-cohort, sha-receipted) + codex vendor 0.144.5 + node
+v20.19.0, health-gated 2×20min, fully OS-detached. Two dead prior ids
+(both archived): `-22a` F7 diagnostic-draw exit 86 (the known ~1/3
+lottery); `-22b` F7 killed mid-arm SIGTERM exit 143 — orchestrator error:
+launcher run as a session-owned background task instead of the binding
+nohup-detached recipe; kill propagated. Recipe restored (nohup+disown)
+for `-22c`. Judge stage died once on the F7 sonnet transport flake; one
+`--resume` completed verdict clean (-20260720b precedent). Verdict
+carries the NEW mechanical label on its face:
+`cohort_identity.stop_hook_staged: true` + settings sha — first verdict
+in the corpus that attests its own treatment surface. Zero deviations.
+
+- **P-0078-KL (live, antecedent-conditioned): PASS — first live
+  diagnostic row.** F23 is the sole antecedent row ({same-session ∧
+  incomplete-at-Stop} actually occurred): the sonnet session attempted
+  Stop with `plan` open → hook blocked (1 archive-allowlisted receipt,
+  `classifier_status INCOMPLETE:plan`, receipt session_id ==
+  state.session_id == 5029bec3…) → the session RESUMED and completed the
+  ENTIRE pipeline (plan→implement→build_gate→cleanup all PASS, honest
+  BLOCKED terminals on surface_close/final_report, run archived,
+  invoke_exit 0, objective A_resolved TRUE). Zero exit-0-with-open-phase
+  rows. The mechanism did live exactly what C1 was wired for: a would-be
+  K2a death converted into a completed, objective-passing row.
+- **P-0078-C (report-only): K2a partition = 0.** Sole incomplete row =
+  FS1, invoke_exit **1** with `build_gate` dispatched — NOT K2a (which
+  requires invoke_exit 0): claude-debug.log shows `API auth_error: OAuth
+  access token has been revoked` at 17:54:45Z — the operator ran
+  `/login` on the host mid-cohort, revoking the token the isolated arm's
+  seeded credentials were using. Infrastructure death, outside the Stop
+  path (no Stop event → hook correctly silent; 0 receipts). Objective
+  still passed from the recorded patch. Operator lesson recorded below.
+- Standing 3-bar instrument (context, not 0078 falsifiers): objective
+  6/7 (sole miss F12 — same known-variance row as the A2 micro-probe and
+  0077); complete 6/7 (equal best-ever; sole incomplete = the external
+  auth revocation); **wall median 7.867× — best-ever by a wide margin**
+  (prior best 10.659×, no-lever band ≥11.3×; F7 outlier 33.4×; still
+  ≥3× cap, report-only — wall claims belong to a future registration);
+  blind quality 0/7, A_win 8 / B_win 47 of 55 axis decisions —
+  descriptively worse than -22a's A_win 19/B_win 36 (NEW-baseline datum,
+  never mixed into 0077 aggregation; single-cohort variance vs. effect
+  not separable — a future hook-bearing cohort reads it).
+- **Operator lesson (binding for future cohorts)**: do not run `/login`
+  (or anything that rotates the host OAuth token) while a cohort is in
+  flight — seeded arm credentials are revoked mid-row (FS1 receipt).
+
+Remaining 0078 surface: none — P-K/O/I/KL/C all read. Iter closes with
+C1 pressure MEASURED LIVE (block → resume → completion) and C2 authority
+unchanged.

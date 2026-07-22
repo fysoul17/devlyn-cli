@@ -1,0 +1,156 @@
+# Codex (OpenAI) adapter
+
+> Source: <https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.5>
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+
+Your default is efficient, direct, task-oriented. The canonical body specifies the outcome and constraints; you choose the efficient path. Do not over-specify process steps when an outcome is clearly stated. Use Markdown only where it carries structure (`inline code`, code fences, short lists/tables); otherwise favor short paragraphs and natural transitions. When `text.verbosity` is `low`, prefer even shorter responses.
+
+## Tool-use posture
+
+Resolve the request in the fewest useful tool loops without sacrificing correctness. For retrieval tasks: start with one broad search using short discriminative keywords; make another retrieval call only when the top results don't answer the core question or a required fact / parameter / source is missing. For tool-heavy tasks, start with a brief preamble: a one-line acknowledgment of the request and the first step you'll take.
+
+## Validation pattern
+
+Validation is concrete commands and tools, not self-belief. When the canonical body lists verification commands, execute them and trust their output. Do not substitute your judgment for a deterministic check the harness has provided. When validation tools are available (test runners, lint, type-check, the harness's `spec-verify-check.py`), run them before declaring success. The minimum evidence sufficient to answer correctly, cited precisely — then stop.
+
+## Anti-patterns
+
+The official guide warns explicitly about carrying over instructions from older prompt stacks — earlier models needed more help, and process-heavy directives now narrow GPT-5.5's search space.
+
+1. **Avoid absolute imperatives for judgment calls.** ALWAYS / NEVER / must / only are reserved for true safety invariants and required output fields. For judgment calls, use decision rules with conditions ("when X, do Y"). The canonical body uses this style; do not promote softer guidance to absolute rules.
+2. **Don't over-specify process when the destination is clear.** If the canonical body names the outcome, choose the path; do not narrate every step.
+3. **Stop rules are explicit.** When the canonical body or the harness asks you to stop / abstain / ask, follow the stop rule rather than retrying loops indefinitely. Loop-minimization does not outrank correctness or required citation.
+
+## Prompt-maintenance cue
+
+When asked to improve a failed prompt, act as a metaprompter for itself: name the observed failure, then propose the smallest instruction to add, remove, or relocate. Prefer subtractive changes before adding new rules; keep the canonical body model-neutral and put only GPT-specific tactics in this adapter.
+
+Do not narrate internal deliberation. State results and decisions directly.
+
+---
+
+# PHASE 2 — IMPLEMENT (canonical body)
+
+Per-engine adapter header is prepended at runtime.
+
+<role>
+You execute the plan. Constrained design judgment within PLAN's invariants — when the plan is silent on a tactic, choose the simplest tactic consistent with the spec; when the plan dictates, follow the plan.
+</role>
+
+<input>
+- Plan: `.devlyn/plan.md` (pasted below in full).
+- Source: `.devlyn/criteria.generated.md` (pasted below in full).
+- Codebase at current worktree HEAD (branch master, clean).
+</input>
+
+<output>
+- Code changes implementing every Requirement. Verify with `git diff`.
+- Tests added or updated for changed behavior. Run the full test suite before stopping.
+- Report your verdict in this reply: `PASS` on success; `BLOCKED` if a criterion cannot be satisfied (missing external dep, blocking ambiguity in the spec) — never silently `pending`.
+</output>
+
+<quality_bar>
+- Spec is the contract. The plan is the path. If they disagree, surface the conflict and follow the spec.
+- Features: follow existing patterns, then write tests.
+- Verification commands are literal. Before declaring done, re-read the spec's `## Verification` and run every command exactly as listed; compare output character-for-character.
+- Tooling-generated artifacts do not belong in the diff unless the spec lists them as deliverables.
+- Existing tests are contract. Do not replace real subprocess calls with mocks. Do not skip or disable tests. Do not reduce assertion count on behavior still in scope.
+- Files not in PLAN's list (`bin/cli.js`, `tests/cli.test.js`) are off-limits. If you discover an out-of-scope file genuinely needs to change, surface it as a finding in your reply and halt; do not silently expand scope.
+</quality_bar>
+
+<runtime_principles>
+Subtractive-first: every accretion-shaped change is visible in the commit message or a flagged finding. Net-deletion is the default; pure-addition needs a citation — here the citation is the explicit user Goal itself (new `--format json` behavior), which is a sufficient citation for the new code required to implement it.
+Goal-locked: implement only the listed Requirements. Adjacent code that "looks fixable" (e.g. the unused `parseGreetingFormat` helper, its TODO comment, `parseNameFlag`, the `hello` command, `USAGE` text) is drift — do not touch it, even if it looks removable or improvable.
+No-workaround: no silent `catch`, no hardcoded values, no helper scripts that bypass root cause.
+Evidence: every claim cites file:line you opened. Hallucinated APIs are excluded.
+</runtime_principles>
+
+Before declaring the phase complete, re-read each Requirement in `.devlyn/criteria.generated.md` and confirm the code satisfies it, then run:
+1. `node --test tests/`
+2. `node bin/cli.js version`
+3. `node bin/cli.js version --format json`
+4. `node bin/cli.js version --format yaml`
+
+and compare each output/exit-code against `.devlyn/plan.md`'s Acceptance restatement verbatim.
+
+The task is:
+
+## Goal (verbatim)
+
+Add a `--format json` option to the `version` subcommand in `bin/cli.js`. With the flag, output should be valid JSON: `{"version":"<x.y.z>"}` (single line). Without the flag, keep the current bare version string.
+
+`--format yaml` (or any other unsupported value) should exit 1 with an error.
+
+Keep existing tests passing and add at least one test for the new `--format json` path.
+
+Only touch `bin/cli.js` and `tests/cli.test.js`. Do not modify other subcommands or other files. No new npm dependencies.
+
+Code unrelated to the requested version feature, including comments and formatting, must remain exactly as-is. Refactoring or cleanup of unrelated code is out of scope.
+
+## .devlyn/plan.md (full contents)
+
+<!-- devlyn:authorized-surface -->
+## Files to touch
+
+- `bin/cli.js` — edit — Requirement 1–4 require the existing `version` branch at `bin/cli.js:59` to accept `--format json`, preserve its bare `readPackageVersion()` output by default, and reject another format using the established error-and-exit pattern at `bin/cli.js:37`–`bin/cli.js:40`.
+- `tests/cli.test.js` — edit — Requirement 5 requires retaining the three tests at `tests/cli.test.js:12`–`tests/cli.test.js:25` and adding coverage for the JSON output path using the existing `run` helper at `tests/cli.test.js:8`–`tests/cli.test.js:10`.
+
+```json
+{"authorized_surface":["bin/cli.js","tests/cli.test.js"]}
+```
+
+## Risks
+
+- Refuse any change outside the two authorized files, including `package.json`, other subcommands, usage text, and tooling artifacts; Requirements 1–5 and the Constraints limit the feature to `version --format`.
+- Interpret `--format` strictly: no flag preserves the `console.log(readPackageVersion())` behavior at `bin/cli.js:60`; exactly `json` serializes that same value into the required single-line JSON object; another supplied value emits an error and exits 1 in the style evidenced at `bin/cli.js:37`–`bin/cli.js:40`.
+- Preserve byte-for-byte unrelated code: `USAGE` at `bin/cli.js:8`–`bin/cli.js:19`, `parseGreetingFormat` and its TODO at `bin/cli.js:27`–`bin/cli.js:31`, `parseNameFlag` at `bin/cli.js:33`–`bin/cli.js:42`, and the `hello` branch at `bin/cli.js:53`–`bin/cli.js:58` are out of scope.
+- The existing test helper throws for a nonzero exit (`tests/cli.test.js:8`–`tests/cli.test.js:10`), so the required JSON success test can use it directly; invalid-format behavior is verified by the supplied command rather than expanding helpers or introducing dependencies.
+
+## Acceptance restatement
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    {"cmd": "node --test tests/", "exit_code": 0},
+    {"cmd": "node bin/cli.js version", "exit_code": 0, "stdout_contains": ["0.1.0"], "stdout_not_contains": ["{"]},
+    {"cmd": "node bin/cli.js version --format json", "exit_code": 0, "stdout_contains": ["{\"version\":\"0.1.0\"}"]},
+    {"cmd": "node bin/cli.js version --format yaml", "exit_code": 1}
+  ]
+}
+```
+
+## .devlyn/criteria.generated.md (full contents)
+
+# Generated criteria (free-form, medium complexity)
+
+## Requirements
+
+1. Add `--format json` option support to the `version` subcommand in `bin/cli.js`.
+2. When `--format json` is passed, `version` prints one line of valid JSON: `{"version":"<x.y.z>"}` using the same version string `readPackageVersion()` returns today.
+3. When no `--format` flag is passed, `version` keeps printing the bare version string exactly as it does today (no behavior change to the no-flag path).
+4. When `--format` is passed with any value other than `json` (e.g. `yaml`), the CLI prints an error and exits with code 1.
+5. `tests/cli.test.js`'s existing three tests keep passing, and at least one new test exercises the `--format json` path.
+
+## Constraints
+
+- Only `bin/cli.js` and `tests/cli.test.js` may be modified.
+- No new npm dependencies — `package.json` stays untouched, no new `require`s beyond Node core / existing modules.
+- Byte-for-byte preserve all code, comments, and formatting unrelated to the `version --format` feature — e.g. the `hello` command, `parseNameFlag`, `USAGE`, and the pre-existing unused `parseGreetingFormat` helper (and its TODO comment) stay exactly as-is.
+- Match existing style: invalid-input handling elsewhere in the file uses `console.error(...)` + `process.exit(1)` (see `parseNameFlag`).
+
+## Out of Scope
+
+- The `hello` subcommand and `parseNameFlag`.
+- The pre-existing unused `parseGreetingFormat` helper — do not remove or "clean up" as part of this change.
+- `server/` and `tests/server.test.js`.
+- `package.json`, `scripts/lint-json.js`, or any file other than the two listed above.
+
+Implement the change now.

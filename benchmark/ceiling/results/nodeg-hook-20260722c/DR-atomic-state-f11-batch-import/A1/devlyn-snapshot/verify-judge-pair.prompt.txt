@@ -1,0 +1,75 @@
+You are the pair-JUDGE: a bounded adversarial complement to a separate primary reviewer you cannot see. You have NO memory of PLAN, IMPLEMENT, BUILD_GATE, or CLEANUP for this change. Do NOT read `.claude/skills`, `.codex/skills`, `CLAUDE.md`, `AGENTS.md`, or any harness documentation. Use only: the spec below, the diff below, the actual repository files (`server/index.js`, `tests/server.test.js`), and `npm test`.
+
+Your job is NOT a duplicate broad audit. Execute at most TWO targeted probes against the two highest-risk explicit Verification bullets, then stop.
+
+## Spec (verbatim — `.devlyn/criteria.generated.md`)
+
+- Add `POST /items/import` to `server/index.js`. It accepts a JSON body `{ items: [...] }`.
+- Validate every item: `name` non-empty string after trim; `qty` positive integer.
+- All valid: append all in input order, each gets a distinct numeric `id` not colliding with any existing id, respond `201 { inserted: <count> }`.
+- Any invalid: respond `400 { error: 'invalid_batch', index, field }` where `index` is the position of the FIRST invalid item and `field` is `'name'` or `'qty'`. No items appended — `GET /items` right after must equal `GET /items` right before, exactly.
+- Empty body / missing `items` / non-array `items`: `400 { error: 'invalid_body' }`, `GET /items` unchanged.
+- Only `server/index.js` and `tests/server.test.js` may change. No new npm dependencies.
+
+## The two highest-risk bullets for your probes
+
+1. **All-or-nothing rollback + first-invalid-item-wins error shape**: a batch where an EARLIER item is valid and a LATER item is invalid specifically on `qty` (not `name`) — confirm `field` is exactly `'qty'` (not `'name'`), `index` is the later item's position, HTTP status is exactly `400`, the error body is EXACTLY `{ error: 'invalid_batch', index, field }` (no extra/missing/aliased keys), and `GET /items` immediately after is byte-for-byte identical (same array, same order, same ids) to `GET /items` immediately before — not just the same length.
+2. **Strict type validation, not coercion**: a batch where `qty` is a numeric-looking string (e.g. `"5"`) or a float (e.g. `2.5`), or `name` is a non-string (e.g. a number) — confirm these are rejected as invalid (not coerced to valid), and confirm the full response body shape and `GET /items` unchanged, same as probe 1.
+
+## Diff under review (base `cbd12daedd7f2d22c62110faf097f12797e7dda6` -> current HEAD)
+
+```diff
+diff --git a/server/index.js b/server/index.js
+index 1c43fa2..07b2243 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -27,6 +27,33 @@ app.get('/items/:id', (req, res) => {
+   res.json({ item });
+ });
+
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (let index = 0; index < req.body.items.length; index += 1) {
++    const item = req.body.items[index];
++    if (!item || typeof item.name !== 'string' || item.name.trim() === '') {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  let nextId = Math.max(0, ...items.map((item) => item.id)) + 1;
++  for (const item of req.body.items) {
++    items.push({ id: nextId, name: item.name, qty: item.qty });
++    nextId += 1;
++  }
++
++  res.status(201).json({ inserted: req.body.items.length });
++});
++
+ if (require.main === module) {
+```
+
+(tests/server.test.js also changed — added a `post()` helper and three new tests; read it directly from disk if you need to see the exact existing test patterns/helpers.)
+
+## How to run your probes
+
+Use the existing `startServer`/`get`/`post`-helper pattern already in `tests/server.test.js` (read it to see the exact shape), and run ad-hoc probes via a temporary Node script executed through `npm test`-adjacent tooling, OR reason precisely by reading `server/index.js`'s exact logic line-by-line and tracing execution for your two constructed inputs (you have Read/Grep/Glob and `npm test` only — no Write/Edit, so do not create new files; a careful code trace against the exact source is an acceptable substitute for executing a live probe, as long as you quote the exact lines you traced).
+
+## Output contract — mechanically parsed by a strict line-by-line JSON parser, read carefully
+
+This output is parsed by a script that attempts `json.loads()` on every non-blank line that does not start with `#`. A line that is plain prose (not JSON, not `#`-prefixed) is a HARD PARSE ERROR and fails the entire pipeline run. You must NOT write any bare prose line. Every single line of your output must be exactly one of:
+1. A `#`-prefixed comment line (put ALL your reasoning/trace/narration here, each line individually starting with `# `) — these are ignored by the parser.
+2. A single-line JSON finding object: `{"id": "<slug>", "rule_id": "<dotted.rule>", "severity": "CRITICAL"|"HIGH"|"MEDIUM"|"LOW", "confidence": "high"|"medium"|"low", "file": "<path>", "line": <int>, "message": "<one line, quote the exact code and the exact expected-vs-actual result>", "criterion_ref": "<which bullet>"}` — zero or more of these.
+3. Exactly one final line, `# SUMMARY {"verdict": "PASS"|"PASS_WITH_ISSUES"|"NEEDS_WORK"}` — REQUIRED even at zero findings.
+
+Do not write any explanatory sentence on its own line. If you want to explain your trace, prefix every single line of that explanation with `# `. Multi-line trace narration must be multiple separate `#`-prefixed lines, never an unprefixed paragraph.
+
+Stop immediately after the first verdict-binding (HIGH/CRITICAL) finding and emit output — do not keep probing. If both probes pass and you see no scope/dependency blocker, emit PASS immediately; do not continue exhaustive exploration. Do not reinterpret spec qualifiers more broadly than written.

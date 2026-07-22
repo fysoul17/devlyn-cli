@@ -1,0 +1,29 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/",
+      "exit_code": 0
+    },
+    {
+      "cmd": "node bin/cli.js version",
+      "exit_code": 0,
+      "stdout_contains": [
+        "0.1.0"
+      ],
+      "stdout_not_contains": [
+        "{"
+      ]
+    },
+    {
+      "cmd": "node bin/cli.js version --format json",
+      "exit_code": 0,
+      "stdout_contains": [
+        "{\"version\":\"0.1.0\"}"
+      ]
+    },
+    {
+      "cmd": "node bin/cli.js version --format yaml",
+      "exit_code": 1
+    }
+  ]
+}

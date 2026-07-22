@@ -1,0 +1,292 @@
+{
+  "base_ref": {
+    "branch": "master",
+    "sha": "e5a20d983f63e62ad264174c025fad97769e9fc5"
+  },
+  "bypasses": [],
+  "complexity": "medium",
+  "criteria": [],
+  "engine": "codex",
+  "engine_source": "engines.json",
+  "implement_passed_sha": "e5a20d983f63e62ad264174c025fad97769e9fc5",
+  "mode": "free-form",
+  "pair_verify": true,
+  "phases": {
+    "build_gate": {
+      "artifacts": {
+        "findings_file": ".devlyn/build_gate.findings.jsonl",
+        "log_file": ".devlyn/build_gate.log.md"
+      },
+      "completed_at": "2026-07-22T14:27:18.041Z",
+      "duration_ms": 20891,
+      "engine": "claude",
+      "history": [
+        {
+          "completed_at": "2026-07-22T14:24:36.480Z",
+          "duration_ms": 228274,
+          "started_at": "2026-07-22T14:20:48.206Z",
+          "verdict": "FAIL"
+        }
+      ],
+      "model_effective": null,
+      "model_requested": null,
+      "round": 1,
+      "started_at": "2026-07-22T14:26:57.150Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS_WITH_ISSUES"
+    },
+    "cleanup": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": ".devlyn/cleanup.stdout"
+      },
+      "completed_at": "2026-07-22T14:28:33.692Z",
+      "duration_ms": 64885,
+      "engine": "codex",
+      "model_effective": "gpt-5.6-terra",
+      "model_requested": null,
+      "post_sha": "a522aa1aa2726ac5b57318d989f67ce11f8e6c45",
+      "pre_sha": "a522aa1aa2726ac5b57318d989f67ce11f8e6c45",
+      "round": 0,
+      "started_at": "2026-07-22T14:27:28.807Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "final_report": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T14:41:11.256Z",
+      "duration_ms": 104753,
+      "engine": "claude",
+      "model_effective": null,
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-22T14:39:26.503Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS_WITH_ISSUES"
+    },
+    "implement": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": ".devlyn/implement.fix1.stdout"
+      },
+      "completed_at": "2026-07-22T14:26:09.163Z",
+      "duration_ms": 89408,
+      "engine": "codex",
+      "history": [
+        {
+          "completed_at": "2026-07-22T14:15:50.423Z",
+          "duration_ms": 239429,
+          "started_at": "2026-07-22T14:11:50.994Z",
+          "verdict": "PASS"
+        }
+      ],
+      "model_effective": "gpt-5.6-terra",
+      "model_requested": null,
+      "round": 1,
+      "started_at": "2026-07-22T14:24:39.755Z",
+      "sub_verdicts": null,
+      "triggered_by": "build_gate",
+      "verdict": "BLOCKED"
+    },
+    "plan": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": ".devlyn/plan.stdout"
+      },
+      "completed_at": "2026-07-22T14:11:35.349Z",
+      "duration_ms": 204131,
+      "engine": "codex",
+      "model_effective": "gpt-5.6-terra",
+      "model_requested": null,
+      "round": 0,
+      "started_at": "2026-07-22T14:08:11.218Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "verdict": "PASS"
+    },
+    "probe_derive": null,
+    "surface_close": {
+      "artifacts": {
+        "findings_file": null,
+        "log_file": ".devlyn/surface-close.stdout"
+      },
+      "completed_at": "2026-07-22T14:20:26.844Z",
+      "durability": [
+        {
+          "origin_phase": "build_gate",
+          "receipt_path": ".devlyn/closure-durability.round-1.json",
+          "receipt_sha256": "6c40c26ec0027424d8468611b878d9f4024e9d43ed6769cb05fa5f8b64d4f196",
+          "restore_commit_sha": null,
+          "round": 1
+        }
+      ],
+      "duration_ms": 94209,
+      "engine": "claude",
+      "input_patch_sha256": "192532d7c2fd400a4b042eac1143ce2519b86eb5d39a9f8af3424f9cdeeb4094",
+      "model_effective": "claude-sonnet-5",
+      "model_requested": "claude-sonnet-5",
+      "post_sha": "4cb70b42c7862420891843a4b86b848e0258430f",
+      "pre_sha": "a90faefa61eb026ae7cc26b450af6fa431ab5d47",
+      "prompt_sha256": "2570a39cfd816610b1129f284d113bcf674eec3a09fc626d0b8573e697cf314b",
+      "round": 0,
+      "started_at": "2026-07-22T14:18:52.635Z",
+      "sub_verdicts": null,
+      "triggered_by": null,
+      "untracked_before": [
+        ".claude/settings.json",
+        ".claude/skills/_shared/adapters/README.md",
+        ".claude/skills/_shared/adapters/claude.md",
+        ".claude/skills/_shared/adapters/codex.md",
+        ".claude/skills/_shared/adapters/omp.md",
+        ".claude/skills/_shared/archive_run.py",
+        ".claude/skills/_shared/codex-config.md",
+        ".claude/skills/_shared/codex-monitored.sh",
+        ".claude/skills/_shared/collect-codex-findings.py",
+        ".claude/skills/_shared/engine-doctor.sh",
+        ".claude/skills/_shared/engine-preflight.md",
+        ".claude/skills/_shared/expected.schema.json",
+        ".claude/skills/_shared/finish-gate.py",
+        ".claude/skills/_shared/pair-plan-schema.md",
+        ".claude/skills/_shared/resolve-bootstrap.py",
+        ".claude/skills/_shared/resolve-stop-hook.py",
+        ".claude/skills/_shared/run-bounded.py",
+        ".claude/skills/_shared/runtime-principles.md",
+        ".claude/skills/_shared/spec-verify-check.py",
+        ".claude/skills/_shared/state-phase-write.py",
+        ".claude/skills/_shared/terminal-claim-check.py",
+        ".claude/skills/_shared/verify-merge-findings.py",
+        ".claude/skills/code-health-standards/SKILL.md",
+        ".claude/skills/code-review-standards/SKILL.md",
+        ".claude/skills/devlyn:design-ui/SKILL.md",
+        ".claude/skills/devlyn:engines/SKILL.md",
+        ".claude/skills/devlyn:ideate/SKILL.md",
+        ".claude/skills/devlyn:ideate/references/elicitation.md",
+        ".claude/skills/devlyn:ideate/references/from-spec-mode.md",
+        ".claude/skills/devlyn:ideate/references/project-mode.md",
+        ".claude/skills/devlyn:ideate/references/spec-template.md",
+        ".claude/skills/devlyn:ideate/references/templates/decision.md",
+        ".claude/skills/devlyn:ideate/references/templates/roadmap.md",
+        ".claude/skills/devlyn:ideate/references/templates/vision.md",
+        ".claude/skills/devlyn:queue/SKILL.md",
+        ".claude/skills/devlyn:resolve/SKILL.md",
+        ".claude/skills/devlyn:resolve/references/free-form-mode.md",
+        ".claude/skills/devlyn:resolve/references/phases/build-gate.md",
+        ".claude/skills/devlyn:resolve/references/phases/cleanup.md",
+        ".claude/skills/devlyn:resolve/references/phases/implement.md",
+        ".claude/skills/devlyn:resolve/references/phases/plan.md",
+        ".claude/skills/devlyn:resolve/references/phases/probe-derive.md",
+        ".claude/skills/devlyn:resolve/references/phases/surface-close.md",
+        ".claude/skills/devlyn:resolve/references/phases/verify.md",
+        ".claude/skills/devlyn:resolve/references/state-schema.md",
+        ".claude/skills/root-cause-analysis/SKILL.md",
+        ".claude/skills/ui-implementation-standards/SKILL.md",
+        ".devlyn/_implement.prompt.txt",
+        ".devlyn/_plan.prompt.txt",
+        ".devlyn/criteria.generated.md",
+        ".devlyn/engines.json",
+        ".devlyn/goal.raw.txt",
+        ".devlyn/goal.txt",
+        ".devlyn/implement.stderr",
+        ".devlyn/implement.stdout",
+        ".devlyn/implement.worker-session.0.jsonl",
+        ".devlyn/pipeline.state.json",
+        ".devlyn/plan.md",
+        ".devlyn/plan.stderr",
+        ".devlyn/plan.stdout",
+        ".devlyn/surface-close.input.patch",
+        ".devlyn/surface-close.prompt",
+        ".devlyn/untracked.baseline",
+        "AGENTS.md",
+        "CLAUDE.md"
+      ],
+      "verdict": "PASS"
+    },
+    "verify": {
+      "artifacts": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "log_file": null
+      },
+      "completed_at": "2026-07-22T14:39:06.796Z",
+      "duration_ms": 615523,
+      "engine": "codex",
+      "judge_durations_ms": {
+        "judge": 33000,
+        "pair_judge": 69000
+      },
+      "merged": {
+        "findings_file": ".devlyn/verify-merged.findings.jsonl",
+        "summary_file": ".devlyn/verify-merge.summary.json",
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "model_effective": null,
+      "model_requested": null,
+      "pair_trigger": {
+        "eligible": true,
+        "reasons": [
+          "pair.default",
+          "mode.pair-verify",
+          "risk.high",
+          "judge.warning"
+        ],
+        "skipped_reason": null
+      },
+      "round": 0,
+      "started_at": "2026-07-22T14:28:51.273Z",
+      "sub_verdicts": {
+        "judge": "PASS_WITH_ISSUES",
+        "mechanical": "PASS",
+        "pair_judge": "PASS"
+      },
+      "triggered_by": null,
+      "verdict": "PASS_WITH_ISSUES"
+    }
+  },
+  "risk_probes_digest": null,
+  "risk_profile": {
+    "high_risk": true,
+    "pair_default_enabled": true,
+    "reasons": [
+      "risk.high: explicit output-shape contract (version --format json must emit exact JSON {\"version\":\"<x.y.z>\"})",
+      "risk.high: explicit error contract (unsupported --format value must exit 1)",
+      "auto-risk-probes demoted: plan surface small (2 paths)"
+    ],
+    "risk_probes_enabled": false,
+    "risk_probes_explicit": false
+  },
+  "rounds": {
+    "global": 1,
+    "max_rounds": 4
+  },
+  "run_id": "rs-20260722T140503Z-b330a3d32334",
+  "session_id": "1db4d672-c48c-42a6-b796-b4e31f1bfbc8",
+  "source": {
+    "criteria_path": ".devlyn/criteria.generated.md",
+    "criteria_sha256": "180b7182e8713c8dfb7fcadf7a5a5b20bc71fc0956b06fda639f311792c0dbae",
+    "goal_path": ".devlyn/goal.raw.txt",
+    "goal_sha256": "55391caf171d958aacca92a9326cb2b8c0f461599674829c984876bdfbc99528",
+    "spec_path": null,
+    "spec_sha256": null,
+    "type": "generated"
+  },
+  "started_at": "2026-07-22T14:05:03.787Z",
+  "verify": {
+    "coverage_failed": false,
+    "pair_trigger": {
+      "eligible": true,
+      "reasons": [
+        "pair.default",
+        "mode.pair-verify",
+        "risk.high",
+        "judge.warning"
+      ],
+      "skipped_reason": null
+    }
+  },
+  "version": "3.0"
+}

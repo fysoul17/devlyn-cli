@@ -1,0 +1,3 @@
+UVR-STALE: N/A tests/server.test.js — the diff adds a wholly new `/items/import` route (no pre-existing symbol behavior changed), and no authorized file carries user-visible text (comments/docs) documenting an old interface for it; the only nearby comment (`server/index.js:1`, "deliberately small API surface") doesn't enumerate routes/options so nothing is stale.
+PATH-TEST: FIRED tests/server.test.js:135 — Goal's `invalid_body` failure path (empty body / missing `items` / non-array `items` → 400 `{ error: 'invalid_body' }`, list unchanged) is implemented at `server/index.js:31` but no test in the original patch exercised it; added one minimal regression test.
+PASS

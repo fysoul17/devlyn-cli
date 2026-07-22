@@ -1,0 +1,13 @@
+{
+  "schema_version": 2,
+  "task": "DR-atomic-state-f11-batch-import",
+  "arm": "A",
+  "attempt": 1,
+  "elapsed_seconds": 2075,
+  "invoke_exit": 0,
+  "timed_out": false,
+  "draw_non_diagnostic": false,
+  "worktree": "/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f04eb7d76921c/A1/repo",
+  "invoke_started_at": "2026-07-22T15:58:20.702Z",
+  "invoke_completed_at": "2026-07-22T16:32:55.826Z"
+}

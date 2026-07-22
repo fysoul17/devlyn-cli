@@ -1,0 +1,3 @@
+UVR-STALE: N/A tests/server.test.js — no authorized file carries user-visible text (comments/docs) describing `/webhook`'s old interface; the top-of-file comment (server/index.js:1) is unrelated and no doc text needed updating.
+PATH-TEST: FIRED tests/server.test.js:191 — Goal specifies "A body that fails this shape returns 400 with `{ error: 'invalid_body' }`" (sig check runs first) as a distinct success/failure path, but the three added tests only covered 200/409/401; added a test posting a validly-signed, wrong-shaped body expecting 400 `invalid_body`.
+PASS

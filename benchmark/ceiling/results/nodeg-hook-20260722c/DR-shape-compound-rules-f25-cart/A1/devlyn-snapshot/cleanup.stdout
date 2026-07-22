@@ -1,0 +1,3 @@
+PASS — no changes needed.
+
+Reviewed the implementation diff: every introduced helper/import is used, no eligible artifacts or stale references were found, and the post-cleanup diff from `96c68c3` is empty. Test suite not run per instruction.

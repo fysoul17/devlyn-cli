@@ -1,0 +1,7 @@
+BLOCKED — implementation is complete, but the required test suite cannot bind any local HTTP socket in this sandbox.
+
+- Added signed `POST /webhook` with raw-byte HMAC validation, guarded `timingSafeEqual`, body validation, and in-memory replay detection in [server/index.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f08d6b52f5d4d/A1/repo/server/index.js:1).
+- Added happy-path, replay, and tampered-body tests in [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f08d6b52f5d4d/A1/repo/tests/server.test.js:97).
+- `git diff --check` and both Node syntax checks pass.
+- `node --test tests/` starts 3 CLI tests successfully, but all 6 server tests (including the pre-existing GET tests) fail before app code runs: `listen EPERM: operation not permitted`.
+- A direct loopback bind to `127.0.0.1` fails with the same `EPERM`, confirming the environment restriction.

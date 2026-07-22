@@ -1,0 +1,599 @@
+[codex-monitored] start: ts=2026-07-22T14:09:25Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=97574
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/ff10888c89791/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: high
+reasoning summaries: none
+session id: 019f8a28-eef1-74b1-858e-c4405cf47bf7
+--------
+user
+# Codex (OpenAI) adapter
+
+> Source: <https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.5>
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+
+Your default is efficient, direct, task-oriented. The canonical body specifies the outcome and constraints; you choose the efficient path. Do not over-specify process steps when an outcome is clearly stated. Use Markdown only where it carries structure (`inline code`, code fences, short lists/tables); otherwise favor short paragraphs and natural transitions. When `text.verbosity` is `low`, prefer even shorter responses.
+
+## Tool-use posture
+
+Resolve the request in the fewest useful tool loops without sacrificing correctness. For retrieval tasks: start with one broad search using short discriminative keywords; make another retrieval call only when the top results don't answer the core question or a required fact / parameter / source is missing. For tool-heavy tasks, start with a brief preamble: a one-line acknowledgment of the request and the first step you'll take.
+
+## Validation pattern
+
+Validation is concrete commands and tools, not self-belief. When the canonical body lists verification commands, execute them and trust their output. Do not substitute your judgment for a deterministic check the harness has provided. When validation tools are available (test runners, lint, type-check, the harness's `spec-verify-check.py`), run them before declaring success. The minimum evidence sufficient to answer correctly, cited precisely — then stop.
+
+## Anti-patterns
+
+The official guide warns explicitly about carrying over instructions from older prompt stacks — earlier models needed more help, and process-heavy directives now narrow GPT-5.5's search space.
+
+1. **Avoid absolute imperatives for judgment calls.** ALWAYS / NEVER / must / only are reserved for true safety invariants and required output fields. For judgment calls, use decision rules with conditions ("when X, do Y"). The canonical body uses this style; do not promote softer guidance to absolute rules.
+2. **Don't over-specify process when the destination is clear.** If the canonical body names the outcome, choose the path; do not narrate every step.
+3. **Stop rules are explicit.** When the canonical body or the harness asks you to stop / abstain / ask, follow the stop rule rather than retrying loops indefinitely. Loop-minimization does not outrank correctness or required citation.
+
+## Prompt-maintenance cue
+
+When asked to improve a failed prompt, act as a metaprompter for itself: name the observed failure, then propose the smallest instruction to add, remove, or relocate. Prefer subtractive changes before adding new rules; keep the canonical body model-neutral and put only GPT-specific tactics in this adapter.
+
+Do not narrate internal deliberation. State results and decisions directly.
+
+---
+
+# PHASE 1 — PLAN (canonical body)
+
+The per-engine adapter header from `_shared/adapters/<engine>.md` is prepended at runtime. This file is engine-agnostic.
+
+<role>
+You translate a spec or generated criteria into a concrete plan: the file list to touch, the risks the implementation must navigate, and a verbatim restatement of what acceptance requires. The plan is the contract IMPLEMENT executes against.
+</role>
+
+<input>
+- Source: `pipeline.state.json:source.criteria_path` (`.devlyn/criteria.generated.md`) — generated (free-form, medium complexity).
+- Codebase at `state.base_ref.sha` (current worktree HEAD, branch master).
+- `state.complexity` = "medium".
+</input>
+
+<output>
+Write `.devlyn/plan.md` with three sections:
+
+1. **Files to touch** — precede this section with a `<!-- devlyn:authorized-surface -->` sentinel comment on its own line directly above the heading (the machine locator BUILD_GATE uses; the heading text itself is decorative, any language). Explicit list: each entry is a path, change type (`new` / `edit` / `delete`), one-line rationale tied to a specific Requirement. Immediately after the list, emit one fenced ```json block restating just the paths as the mechanical scope contract BUILD_GATE enforces: `{"authorized_surface": ["path/one.ts", "path/two.ts"]}`. List every path from section 1 literally; do not paraphrase or add paths not already decided above.
+2. **Risks** — out-of-scope expansions to refuse, ambiguous spec sections to interpret strictly, known failure modes for this language/framework.
+3. **Acceptance restatement** — verbatim copy of the spec's `## Verification` block (or generated criteria's equivalent). The plan is wrong if any verification command later fails because of a planning oversight.
+4. **Execution phases** — conditional; large work only. Do NOT emit this section for this task (complexity is medium, single small file pair).
+
+Report your verdict in this reply: `PASS` if plan is shippable; `BLOCKED` if spec is internally contradictory or cannot be planned without violating constraints. Do not edit `pipeline.state.json` yourself.
+</output>
+
+<quality_bar>
+- Scope first, then implementation. Decide what files to touch before deciding how to implement. Files not in the list are off-limits to IMPLEMENT.
+- Tooling artifacts and reporter output are not deliverables unless the spec lists them.
+- Existing tests are contract. Plan to extend them; do not plan to remove or weaken them.
+- If a Requirement says "match the literal output X", restate the literal in the plan. Paraphrasing the contract here propagates into IMPLEMENT.
+</quality_bar>
+
+<runtime_principles>
+Subtractive-first: prefer trimming an existing helper to introducing a new one. Pure-addition needs a cited prior failure mode or an explicit spec/user requirement.
+Goal-locked: refuse "while I'm here" cleanups, speculative robustness, mid-flight re-scoping. Single test before any deviation: "did the user ask for this OR does the stated goal strictly require it?"
+No-workaround: no silent `catch`, no hardcoded values, no helper scripts that bypass root cause.
+Evidence: every claim cites file:line opened at planning time. Vague claims excluded.
+</runtime_principles>
+
+The task is:
+
+## Goal (verbatim, from .devlyn/goal.txt)
+
+Add a `--format json` option to the `version` subcommand in `bin/cli.js`. With the flag, output should be valid JSON: `{"version":"<x.y.z>"}` (single line). Without the flag, keep the current bare version string.
+
+`--format yaml` (or any other unsupported value) should exit 1 with an error.
+
+Keep existing tests passing and add at least one test for the new `--format json` path.
+
+Only touch `bin/cli.js` and `tests/cli.test.js`. Do not modify other subcommands or other files. No new npm dependencies.
+
+Code unrelated to the requested version feature, including comments and formatting, must remain exactly as-is. Refactoring or cleanup of unrelated code is out of scope.
+
+## Generated criteria (.devlyn/criteria.generated.md, full contents)
+
+# Generated criteria (free-form, medium complexity)
+
+## Requirements
+
+1. Add `--format json` option support to the `version` subcommand in `bin/cli.js`.
+2. When `--format json` is passed, `version` prints one line of valid JSON: `{"version":"<x.y.z>"}` using the same version string `readPackageVersion()` returns today.
+3. When no `--format` flag is passed, `version` keeps printing the bare version string exactly as it does today (no behavior change to the no-flag path).
+4. When `--format` is passed with any value other than `json` (e.g. `yaml`), the CLI prints an error and exits with code 1.
+5. `tests/cli.test.js`'s existing three tests keep passing, and at least one new test exercises the `--format json` path.
+
+## Constraints
+
+- Only `bin/cli.js` and `tests/cli.test.js` may be modified.
+- No new npm dependencies — `package.json` stays untouched, no new `require`s beyond Node core / existing modules.
+- Byte-for-byte preserve all code, comments, and formatting unrelated to the `version --format` feature — e.g. the `hello` command, `parseNameFlag`, `USAGE`, and the pre-existing unused `parseGreetingFormat` helper (and its TODO comment) stay exactly as-is.
+- Match existing style: invalid-input handling elsewhere in the file uses `console.error(...)` + `process.exit(1)` (see `parseNameFlag`).
+
+## Out of Scope
+
+- The `hello` subcommand and `parseNameFlag`.
+- The pre-existing unused `parseGreetingFormat` helper — do not remove or "clean up" as part of this change.
+- `server/` and `tests/server.test.js`.
+- `package.json`, `scripts/lint-json.js`, or any file other than the two listed above.
+
+## Verification (verbatim)
+
+```json
+{
+  "verification_commands": [
+    {"cmd": "node --test tests/", "exit_code": 0},
+    {"cmd": "node bin/cli.js version", "exit_code": 0, "stdout_contains": ["0.1.0"], "stdout_not_contains": ["{"]},
+    {"cmd": "node bin/cli.js version --format json", "exit_code": 0, "stdout_contains": ["{\"version\":\"0.1.0\"}"]},
+    {"cmd": "node bin/cli.js version --format yaml", "exit_code": 1}
+  ]
+}
+```
+
+## Current bin/cli.js (full contents, for reference — do not paste back verbatim in the plan, cite by file:line instead)
+
+```js
+#!/usr/bin/env node
+// harbor-tools — small command-line utilities for local workflows.
+// Keep the core commands minimal and easy to understand.
+
+const fs = require('fs');
+const path = require('path');
+
+const USAGE = `Usage: bench-cli <command> [options]
+
+Commands:
+  hello [--name NAME]        Print a greeting (default name: "world")
+  version                    Print the CLI version from package.json
+  --help, -h                 Show this help
+
+Examples:
+  bench-cli hello
+  bench-cli hello --name alice
+  bench-cli version
+`;
+
+function readPackageVersion() {
+  const pkgPath = path.join(__dirname, '..', 'package.json');
+  const raw = fs.readFileSync(pkgPath, 'utf8');
+  return JSON.parse(raw).version;
+}
+
+// TODO(devlyn): this helper is unused — leftover from an abandoned refactor.
+//               Keep for now; removing it is out of scope for the current feature.
+function parseGreetingFormat(_argv) {
+  return 'plain';
+}
+
+function parseNameFlag(argv) {
+  const idx = argv.indexOf('--name');
+  if (idx === -1) return 'world';
+  const value = argv[idx + 1];
+  if (!value || value.startsWith('-')) {
+    console.error('--name requires a value');
+    process.exit(1);
+  }
+  return value;
+}
+
+function main(argv) {
+  const [command, ...rest] = argv;
+
+  if (!command || command === '--help' || command === '-h') {
+    process.stdout.write(USAGE);
+    return;
+  }
+
+  switch (command) {
+    case 'hello': {
+      // TODO: consider supporting a --greeting flag later — out of scope for now.
+      const name = parseNameFlag(rest);
+      console.log(`Hello, ${name}!`);
+      return;
+    }
+    case 'version': {
+      console.log(readPackageVersion());
+      return;
+    }
+    default:
+      console.error(`Unknown command: ${command}`);
+      process.stderr.write(USAGE);
+      process.exit(1);
+  }
+}
+
+main(process.argv.slice(2));
+```
+
+## Current tests/cli.test.js (full contents, for reference)
+
+```js
+const { test } = require('node:test');
+const assert = require('node:assert');
+const { execFileSync } = require('node:child_process');
+const path = require('node:path');
+
+const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+
+function run(args) {
+  return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+}
+
+test('hello default', () => {
+  const out = run(['hello']);
+  assert.match(out, /Hello, world!/);
+});
+
+test('hello with --name', () => {
+  const out = run(['hello', '--name', 'alice']);
+  assert.match(out, /Hello, alice!/);
+});
+
+test('version prints package version', () => {
+  const out = run(['version']);
+  assert.match(out, /\d+\.\d+\.\d+/);
+});
+```
+
+Write `.devlyn/plan.md` now per the <output> contract above.
+codex
+I’ll verify the current CLI and test files, then write the constrained implementation plan.
+exec
+/bin/zsh -lc "git status --short && nl -ba bin/cli.js && nl -ba tests/cli.test.js && printf '\\n-- criteria --\\n' && nl -ba .devlyn/criteria.generated.md" in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/ff10888c89791/A1/repo
+ succeeded in 2671ms:
+2026-07-22 14:09:35.185 xcodebuild[98143:22734022]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-22 14:09:35.557 xcodebuild[98143:22734021] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+     1	#!/usr/bin/env node
+     2	// harbor-tools — small command-line utilities for local workflows.
+     3	// Keep the core commands minimal and easy to understand.
+     4	
+     5	const fs = require('fs');
+     6	const path = require('path');
+     7	
+     8	const USAGE = `Usage: bench-cli <command> [options]
+     9	
+    10	Commands:
+    11	  hello [--name NAME]        Print a greeting (default name: "world")
+    12	  version                    Print the CLI version from package.json
+    13	  --help, -h                 Show this help
+    14	
+    15	Examples:
+    16	  bench-cli hello
+    17	  bench-cli hello --name alice
+    18	  bench-cli version
+    19	`;
+    20	
+    21	function readPackageVersion() {
+    22	  const pkgPath = path.join(__dirname, '..', 'package.json');
+    23	  const raw = fs.readFileSync(pkgPath, 'utf8');
+    24	  return JSON.parse(raw).version;
+    25	}
+    26	
+    27	// TODO(devlyn): this helper is unused — leftover from an abandoned refactor.
+    28	//               Keep for now; removing it is out of scope for the current feature.
+    29	function parseGreetingFormat(_argv) {
+    30	  return 'plain';
+    31	}
+    32	
+    33	function parseNameFlag(argv) {
+    34	  const idx = argv.indexOf('--name');
+    35	  if (idx === -1) return 'world';
+    36	  const value = argv[idx + 1];
+    37	  if (!value || value.startsWith('-')) {
+    38	    console.error('--name requires a value');
+    39	    process.exit(1);
+    40	  }
+    41	  return value;
+    42	}
+    43	
+    44	function main(argv) {
+    45	  const [command, ...rest] = argv;
+    46	
+    47	  if (!command || command === '--help' || command === '-h') {
+    48	    process.stdout.write(USAGE);
+    49	    return;
+    50	  }
+    51	
+    52	  switch (command) {
+    53	    case 'hello': {
+    54	      // TODO: consider supporting a --greeting flag later — out of scope for now.
+    55	      const name = parseNameFlag(rest);
+    56	      console.log(`Hello, ${name}!`);
+    57	      return;
+    58	    }
+    59	    case 'version': {
+    60	      console.log(readPackageVersion());
+    61	      return;
+    62	    }
+    63	    default:
+    64	      console.error(`Unknown command: ${command}`);
+    65	      process.stderr.write(USAGE);
+    66	      process.exit(1);
+    67	  }
+    68	}
+    69	
+    70	main(process.argv.slice(2));
+     1	const { test } = require('node:test');
+     2	const assert = require('node:assert');
+     3	const { execFileSync } = require('node:child_process');
+     4	const path = require('node:path');
+     5	
+     6	const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+     7	
+     8	function run(args) {
+     9	  return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+    10	}
+    11	
+    12	test('hello default', () => {
+    13	  const out = run(['hello']);
+    14	  assert.match(out, /Hello, world!/);
+    15	});
+    16	
+    17	test('hello with --name', () => {
+    18	  const out = run(['hello', '--name', 'alice']);
+    19	  assert.match(out, /Hello, alice!/);
+    20	});
+    21	
+    22	test('version prints package version', () => {
+    23	  const out = run(['version']);
+    24	  assert.match(out, /\d+\.\d+\.\d+/);
+    25	});
+
+-- criteria --
+     1	# Generated criteria (free-form, medium complexity)
+     2	
+     3	## Requirements
+     4	
+     5	1. Add `--format json` option support to the `version` subcommand in `bin/cli.js`.
+     6	2. When `--format json` is passed, `version` prints one line of valid JSON: `{"version":"<x.y.z>"}` using the same version string `readPackageVersion()` returns today.
+     7	3. When no `--format` flag is passed, `version` keeps printing the bare version string exactly as it does today (no behavior change to the no-flag path).
+     8	4. When `--format` is passed with any value other than `json` (e.g. `yaml`), the CLI prints an error and exits with code 1.
+     9	5. `tests/cli.test.js`'s existing three tests keep passing, and at least one new test exercises the `--format json` path.
+    10	
+    11	## Constraints
+    12	
+    13	- Only `bin/cli.js` and `tests/cli.test.js` may be modified.
+    14	- No new npm dependencies — `package.json` stays untouched, no new `require`s beyond Node core / existing modules.
+    15	- Byte-for-byte preserve all code, comments, and formatting unrelated to the `version --format` feature — e.g. the `hello` command, `parseNameFlag`, `USAGE`, and the pre-existing unused `parseGreetingFormat` helper (and its TODO comment) stay exactly as-is.
+    16	- Match existing style: invalid-input handling elsewhere in the file uses `console.error(...)` + `process.exit(1)` (see `parseNameFlag`).
+    17	
+    18	## Out of Scope
+    19	
+    20	- The `hello` subcommand and `parseNameFlag`.
+    21	- The pre-existing unused `parseGreetingFormat` helper — do not remove or "clean up" as part of this change.
+    22	- `server/` and `tests/server.test.js`.
+    23	- `package.json`, `scripts/lint-json.js`, or any file other than the two listed above.
+    24	
+    25	<!-- devlyn:verification -->
+    26	## Verification
+    27	
+    28	```json
+    29	{
+    30	  "verification_commands": [
+    31	    {"cmd": "node --test tests/", "exit_code": 0},
+    32	    {"cmd": "node bin/cli.js version", "exit_code": 0, "stdout_contains": ["0.1.0"], "stdout_not_contains": ["{"]},
+    33	    {"cmd": "node bin/cli.js version --format json", "exit_code": 0, "stdout_contains": ["{\"version\":\"0.1.0\"}"]},
+    34	    {"cmd": "node bin/cli.js version --format yaml", "exit_code": 1}
+    35	  ]
+    36	}
+    37	```
+
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/ff10888c89791/A1/repo/.devlyn/plan.md
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..e66073d56938688920e98e78c94a1d2220e8a73c
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,32 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `bin/cli.js` — edit — Requirement 1–4 require the existing `version` branch at `bin/cli.js:59` to accept `--format json`, preserve its bare `readPackageVersion()` output by default, and reject another format using the established error-and-exit pattern at `bin/cli.js:37`–`bin/cli.js:40`.
++- `tests/cli.test.js` — edit — Requirement 5 requires retaining the three tests at `tests/cli.test.js:12`–`tests/cli.test.js:25` and adding coverage for the JSON output path using the existing `run` helper at `tests/cli.test.js:8`–`tests/cli.test.js:10`.
++
++```json
++{"authorized_surface":["bin/cli.js","tests/cli.test.js"]}
++```
++
++## Risks
++
++- Refuse any change outside the two authorized files, including `package.json`, other subcommands, usage text, and tooling artifacts; Requirements 1–5 and the Constraints limit the feature to `version --format`.
++- Interpret `--format` strictly: no flag preserves the `console.log(readPackageVersion())` behavior at `bin/cli.js:60`; exactly `json` serializes that same value into the required single-line JSON object; another supplied value emits an error and exits 1 in the style evidenced at `bin/cli.js:37`–`bin/cli.js:40`.
++- Preserve byte-for-byte unrelated code: `USAGE` at `bin/cli.js:8`–`bin/cli.js:19`, `parseGreetingFormat` and its TODO at `bin/cli.js:27`–`bin/cli.js:31`, `parseNameFlag` at `bin/cli.js:33`–`bin/cli.js:42`, and the `hello` branch at `bin/cli.js:53`–`bin/cli.js:58` are out of scope.
++- The existing test helper throws for a nonzero exit (`tests/cli.test.js:8`–`tests/cli.test.js:10`), so the required JSON success test can use it directly; invalid-format behavior is verified by the supplied command rather than expanding helpers or introducing dependencies.
++
++## Acceptance restatement
++
++<!-- devlyn:verification -->
++## Verification
++
++```json
++{
++  "verification_commands": [
++    {"cmd": "node --test tests/", "exit_code": 0},
++    {"cmd": "node bin/cli.js version", "exit_code": 0, "stdout_contains": ["0.1.0"], "stdout_not_contains": ["{"]},
++    {"cmd": "node bin/cli.js version --format json", "exit_code": 0, "stdout_contains": ["{\"version\":\"0.1.0\"}"]},
++    {"cmd": "node bin/cli.js version --format yaml", "exit_code": 1}
++  ]
++}
++```
+
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..e66073d56938688920e98e78c94a1d2220e8a73c
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,32 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `bin/cli.js` — edit — Requirement 1–4 require the existing `version` branch at `bin/cli.js:59` to accept `--format json`, preserve its bare `readPackageVersion()` output by default, and reject another format using the established error-and-exit pattern at `bin/cli.js:37`–`bin/cli.js:40`.
++- `tests/cli.test.js` — edit — Requirement 5 requires retaining the three tests at `tests/cli.test.js:12`–`tests/cli.test.js:25` and adding coverage for the JSON output path using the existing `run` helper at `tests/cli.test.js:8`–`tests/cli.test.js:10`.
++
++```json
++{"authorized_surface":["bin/cli.js","tests/cli.test.js"]}
++```
++
++## Risks
++
++- Refuse any change outside the two authorized files, including `package.json`, other subcommands, usage text, and tooling artifacts; Requirements 1–5 and the Constraints limit the feature to `version --format`.
++- Interpret `--format` strictly: no flag preserves the `console.log(readPackageVersion())` behavior at `bin/cli.js:60`; exactly `json` serializes that same value into the required single-line JSON object; another supplied value emits an error and exits 1 in the style evidenced at `bin/cli.js:37`–`bin/cli.js:40`.
++- Preserve byte-for-byte unrelated code: `USAGE` at `bin/cli.js:8`–`bin/cli.js:19`, `parseGreetingFormat` and its TODO at `bin/cli.js:27`–`bin/cli.js:31`, `parseNameFlag` at `bin/cli.js:33`–`bin/cli.js:42`, and the `hello` branch at `bin/cli.js:53`–`bin/cli.js:58` are out of scope.
++- The existing test helper throws for a nonzero exit (`tests/cli.test.js:8`–`tests/cli.test.js:10`), so the required JSON success test can use it directly; invalid-format behavior is verified by the supplied command rather than expanding helpers or introducing dependencies.
++
++## Acceptance restatement
++
++<!-- devlyn:verification -->
++## Verification
++
++```json
++{
++  "verification_commands": [
++    {"cmd": "node --test tests/", "exit_code": 0},
++    {"cmd": "node bin/cli.js version", "exit_code": 0, "stdout_contains": ["0.1.0"], "stdout_not_contains": ["{"]},
++    {"cmd": "node bin/cli.js version --format json", "exit_code": 0, "stdout_contains": ["{\"version\":\"0.1.0\"}"]},
++    {"cmd": "node bin/cli.js version --format yaml", "exit_code": 1}
++  ]
++}
++```
+
+[codex-monitored] heartbeat: elapsed=30s
+exec
+/bin/zsh -lc 'nl -ba .devlyn/plan.md && git diff --check -- .devlyn/plan.md && git status --short -- .devlyn/plan.md' in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/ff10888c89791/A1/repo
+ succeeded in 0ms:
+     1	<!-- devlyn:authorized-surface -->
+     2	## Files to touch
+     3	
+     4	- `bin/cli.js` — edit — Requirement 1–4 require the existing `version` branch at `bin/cli.js:59` to accept `--format json`, preserve its bare `readPackageVersion()` output by default, and reject another format using the established error-and-exit pattern at `bin/cli.js:37`–`bin/cli.js:40`.
+     5	- `tests/cli.test.js` — edit — Requirement 5 requires retaining the three tests at `tests/cli.test.js:12`–`tests/cli.test.js:25` and adding coverage for the JSON output path using the existing `run` helper at `tests/cli.test.js:8`–`tests/cli.test.js:10`.
+     6	
+     7	```json
+     8	{"authorized_surface":["bin/cli.js","tests/cli.test.js"]}
+     9	```
+    10	
+    11	## Risks
+    12	
+    13	- Refuse any change outside the two authorized files, including `package.json`, other subcommands, usage text, and tooling artifacts; Requirements 1–5 and the Constraints limit the feature to `version --format`.
+    14	- Interpret `--format` strictly: no flag preserves the `console.log(readPackageVersion())` behavior at `bin/cli.js:60`; exactly `json` serializes that same value into the required single-line JSON object; another supplied value emits an error and exits 1 in the style evidenced at `bin/cli.js:37`–`bin/cli.js:40`.
+    15	- Preserve byte-for-byte unrelated code: `USAGE` at `bin/cli.js:8`–`bin/cli.js:19`, `parseGreetingFormat` and its TODO at `bin/cli.js:27`–`bin/cli.js:31`, `parseNameFlag` at `bin/cli.js:33`–`bin/cli.js:42`, and the `hello` branch at `bin/cli.js:53`–`bin/cli.js:58` are out of scope.
+    16	- The existing test helper throws for a nonzero exit (`tests/cli.test.js:8`–`tests/cli.test.js:10`), so the required JSON success test can use it directly; invalid-format behavior is verified by the supplied command rather than expanding helpers or introducing dependencies.
+    17	
+    18	## Acceptance restatement
+    19	
+    20	<!-- devlyn:verification -->
+    21	## Verification
+    22	
+    23	```json
+    24	{
+    25	  "verification_commands": [
+    26	    {"cmd": "node --test tests/", "exit_code": 0},
+    27	    {"cmd": "node bin/cli.js version", "exit_code": 0, "stdout_contains": ["0.1.0"], "stdout_not_contains": ["{"]},
+    28	    {"cmd": "node bin/cli.js version --format json", "exit_code": 0, "stdout_contains": ["{\"version\":\"0.1.0\"}"]},
+    29	    {"cmd": "node bin/cli.js version --format yaml", "exit_code": 1}
+    30	  ]
+    31	}
+    32	```
+?? .devlyn/plan.md
+
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..e66073d56938688920e98e78c94a1d2220e8a73c
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,32 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `bin/cli.js` — edit — Requirement 1–4 require the existing `version` branch at `bin/cli.js:59` to accept `--format json`, preserve its bare `readPackageVersion()` output by default, and reject another format using the established error-and-exit pattern at `bin/cli.js:37`–`bin/cli.js:40`.
++- `tests/cli.test.js` — edit — Requirement 5 requires retaining the three tests at `tests/cli.test.js:12`–`tests/cli.test.js:25` and adding coverage for the JSON output path using the existing `run` helper at `tests/cli.test.js:8`–`tests/cli.test.js:10`.
++
++```json
++{"authorized_surface":["bin/cli.js","tests/cli.test.js"]}
++```
++
++## Risks
++
++- Refuse any change outside the two authorized files, including `package.json`, other subcommands, usage text, and tooling artifacts; Requirements 1–5 and the Constraints limit the feature to `version --format`.
++- Interpret `--format` strictly: no flag preserves the `console.log(readPackageVersion())` behavior at `bin/cli.js:60`; exactly `json` serializes that same value into the required single-line JSON object; another supplied value emits an error and exits 1 in the style evidenced at `bin/cli.js:37`–`bin/cli.js:40`.
++- Preserve byte-for-byte unrelated code: `USAGE` at `bin/cli.js:8`–`bin/cli.js:19`, `parseGreetingFormat` and its TODO at `bin/cli.js:27`–`bin/cli.js:31`, `parseNameFlag` at `bin/cli.js:33`–`bin/cli.js:42`, and the `hello` branch at `bin/cli.js:53`–`bin/cli.js:58` are out of scope.
++- The existing test helper throws for a nonzero exit (`tests/cli.test.js:8`–`tests/cli.test.js:10`), so the required JSON success test can use it directly; invalid-format behavior is verified by the supplied command rather than expanding helpers or introducing dependencies.
++
++## Acceptance restatement
++
++<!-- devlyn:verification -->
++## Verification
++
++```json
++{
++  "verification_commands": [
++    {"cmd": "node --test tests/", "exit_code": 0},
++    {"cmd": "node bin/cli.js version", "exit_code": 0, "stdout_contains": ["0.1.0"], "stdout_not_contains": ["{"]},
++    {"cmd": "node bin/cli.js version --format json", "exit_code": 0, "stdout_contains": ["{\"version\":\"0.1.0\"}"]},
++    {"cmd": "node bin/cli.js version --format yaml", "exit_code": 1}
++  ]
++}
++```
+
+codex
+PASS — wrote the shippable plan to [.devlyn/plan.md](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/ff10888c89791/A1/repo/.devlyn/plan.md:1).
+
+It authorizes only `bin/cli.js` and `tests/cli.test.js`, and preserves the verification block verbatim.
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..e66073d56938688920e98e78c94a1d2220e8a73c
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,32 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `bin/cli.js` — edit — Requirement 1–4 require the existing `version` branch at `bin/cli.js:59` to accept `--format json`, preserve its bare `readPackageVersion()` output by default, and reject another format using the established error-and-exit pattern at `bin/cli.js:37`–`bin/cli.js:40`.
++- `tests/cli.test.js` — edit — Requirement 5 requires retaining the three tests at `tests/cli.test.js:12`–`tests/cli.test.js:25` and adding coverage for the JSON output path using the existing `run` helper at `tests/cli.test.js:8`–`tests/cli.test.js:10`.
++
++```json
++{"authorized_surface":["bin/cli.js","tests/cli.test.js"]}
++```
++
++## Risks
++
++- Refuse any change outside the two authorized files, including `package.json`, other subcommands, usage text, and tooling artifacts; Requirements 1–5 and the Constraints limit the feature to `version --format`.
++- Interpret `--format` strictly: no flag preserves the `console.log(readPackageVersion())` behavior at `bin/cli.js:60`; exactly `json` serializes that same value into the required single-line JSON object; another supplied value emits an error and exits 1 in the style evidenced at `bin/cli.js:37`–`bin/cli.js:40`.
++- Preserve byte-for-byte unrelated code: `USAGE` at `bin/cli.js:8`–`bin/cli.js:19`, `parseGreetingFormat` and its TODO at `bin/cli.js:27`–`bin/cli.js:31`, `parseNameFlag` at `bin/cli.js:33`–`bin/cli.js:42`, and the `hello` branch at `bin/cli.js:53`–`bin/cli.js:58` are out of scope.
++- The existing test helper throws for a nonzero exit (`tests/cli.test.js:8`–`tests/cli.test.js:10`), so the required JSON success test can use it directly; invalid-format behavior is verified by the supplied command rather than expanding helpers or introducing dependencies.
++
++## Acceptance restatement
++
++<!-- devlyn:verification -->
++## Verification
++
++```json
++{
++  "verification_commands": [
++    {"cmd": "node --test tests/", "exit_code": 0},
++    {"cmd": "node bin/cli.js version", "exit_code": 0, "stdout_contains": ["0.1.0"], "stdout_not_contains": ["{"]},
++    {"cmd": "node bin/cli.js version --format json", "exit_code": 0, "stdout_contains": ["{\"version\":\"0.1.0\"}"]},
++    {"cmd": "node bin/cli.js version --format yaml", "exit_code": 1}
++  ]
++}
++```
+
+tokens used
+24,521
+[codex-monitored] codex exited: code=0 elapsed=37s

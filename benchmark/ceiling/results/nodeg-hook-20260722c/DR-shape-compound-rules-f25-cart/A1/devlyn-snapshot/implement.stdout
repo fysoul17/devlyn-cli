@@ -1,0 +1,6 @@
+BLOCKED — implementation is complete, but required `npm test` cannot pass here: three unrelated server tests fail because the sandbox denies `listen()` (`EPERM` on `0.0.0.0`).
+
+- Added catalog-driven `cart --input` pricing, validation, JSON error output, and exact cent calculations in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f38c9cf695c9e/A1/repo/bin/cli.js:40).
+- Added successful duplicate/promotion/cart-total and combined-stock validation tests in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f38c9cf695c9e/A1/repo/tests/cli.test.js:45).
+- `node --test tests/cli.test.js`: 5 passed.
+- `npm test`: 5 passed, 3 blocked by sandbox socket restrictions.

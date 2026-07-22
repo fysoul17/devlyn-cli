@@ -1,0 +1,13 @@
+{
+  "task": "FS1-schedule-max-runs",
+  "arm_attempt": "A1",
+  "resolved": true,
+  "tests_passed": 1,
+  "tests_total": 1,
+  "hidden_test_failures": 0,
+  "apply_exit": 0,
+  "oracle_exit": 0,
+  "report_path": "/Users/aipalm/.local/share/nx01/v/rb50d3c291c96/fa265b8ab039e/A1/oracle.log",
+  "neutralization_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "neutral_baseline_sha": "4f513d7ae2598e737ef8dcd82cfed0d44ebc1be8"
+}

@@ -1,0 +1,6 @@
+{
+  "status": "INCOMPLETE:build_gate",
+  "phase": "build_gate",
+  "reason": "phase started but not completed",
+  "run_id": "rs-20260722T172740Z-643aecd654bf"
+}

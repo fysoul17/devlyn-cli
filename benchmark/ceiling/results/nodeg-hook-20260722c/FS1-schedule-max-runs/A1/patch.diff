@@ -1,0 +1,211 @@
+diff --git a/docs/examples.rst b/docs/examples.rst
+index ac8f32a..5b01c66 100644
+--- a/docs/examples.rst
++++ b/docs/examples.rst
+@@ -244,6 +244,16 @@ Run a job until a certain time
+ 
+ The ``until`` method sets the jobs deadline. The job will not run after the deadline.
+ 
++Run a job a limited number of times
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++.. code-block:: python
++
++    # Run my_job three times, then cancel it.
++    schedule.every(1).hours.max_runs(3).do(my_job)
++
++The ``max_runs`` method sets the maximum number of times a job will run.
++
+ Time until the next execution
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ Use ``schedule.idle_seconds()`` to get the number of seconds until the next job is scheduled to run.
+diff --git a/schedule/__init__.py b/schedule/__init__.py
+index 8e12eeb..eeaa254 100644
+--- a/schedule/__init__.py
++++ b/schedule/__init__.py
+@@ -40,6 +40,7 @@ Usage:
+ 
+ from collections.abc import Hashable
+ import datetime
++from datetime import datetime as _datetime
+ import functools
+ import logging
+ import random
+@@ -251,6 +252,9 @@ class Job:
+         # optional time of final run
+         self.cancel_after: Optional[datetime.datetime] = None
+ 
++        # optional number of job runs remaining
++        self.max_runs_remaining: Optional[int] = None
++
+         self.tags: Set[Hashable] = set()  # unique set of tags for the job
+         self.scheduler: Optional[Scheduler] = scheduler  # scheduler to register with
+ 
+@@ -602,7 +606,7 @@ class Job:
+         :return: The invoked job instance
+         """
+ 
+-        if isinstance(until_time, datetime.datetime):
++        if isinstance(until_time, _datetime):
+             self.cancel_after = until_time
+         elif isinstance(until_time, datetime.timedelta):
+             self.cancel_after = datetime.datetime.now() + until_time
+@@ -641,6 +645,18 @@ class Job:
+             )
+         return self
+ 
++    def max_runs(self, n: int):
++        """
++        Schedule the job to run at most ``n`` times.
++
++        :param n: Positive number of times the job may run
++        :return: The invoked job instance
++        """
++        if type(n) is not int or n < 1:
++            raise ValueError("max_runs() requires a positive integer")
++        self.max_runs_remaining = n
++        return self
++
+     def do(self, job_func: Callable, *args, **kwargs):
+         """
+         Specifies the job_func that should be called every time the
+@@ -692,6 +708,12 @@ class Job:
+         self.last_run = datetime.datetime.now()
+         self._schedule_next_run()
+ 
++        if self.max_runs_remaining is not None:
++            self.max_runs_remaining -= 1
++            if self.max_runs_remaining == 0:
++                logger.debug("Cancelling job %s", self)
++                return CancelJob
++
+         if self._is_overdue(self.next_run):
+             logger.debug("Cancelling job %s", self)
+             return CancelJob
+diff --git a/test_schedule.py b/test_schedule.py
+index f497826..287ea54 100644
+--- a/test_schedule.py
++++ b/test_schedule.py
+@@ -387,6 +387,122 @@ class SchedulerTests(TestCase):
+                 assert mock_job.call_count == 0
+                 assert len(schedule.jobs) == 0
+ 
++    def test_until_accepts_datetime_when_datetime_is_mocked(self):
++        real_datetime = datetime.datetime
++        with mock_datetime(2020, 1, 1, 12, 0, 0):
++            job = every().day.until(real_datetime(2020, 1, 2)).do(make_mock_job())
++            assert job.cancel_after == real_datetime(2020, 1, 2)
++
++    def test_max_runs_is_chainable_and_validates_input(self):
++        mock_job = make_mock_job()
++
++        job_after_unit = every(5).seconds.max_runs(3)
++        assert job_after_unit is job_after_unit.max_runs(3)
++        assert job_after_unit.do(mock_job) is job_after_unit
++
++        job_before_unit = every().max_runs(3).seconds
++        assert job_before_unit.do(mock_job) is job_before_unit
++
++        for value in (0, -1, 1.0, 2.5, "3", None, True, False):
++            with self.subTest(value=value):
++                with self.assertRaises(ValueError):
++                    every().seconds.max_runs(value)
++
++    def test_max_runs_cancels_after_nth_run_pending_execution(self):
++        mock_job = make_mock_job()
++        with mock_datetime(2020, 1, 1, 12, 0, 0):
++            job = every().seconds.max_runs(2).do(mock_job)
++            with mock_datetime(2020, 1, 1, 12, 0, 1):
++                schedule.run_pending()
++                assert mock_job.call_count == 1
++                assert job.max_runs_remaining == 1
++                assert schedule.jobs == [job]
++            with mock_datetime(2020, 1, 1, 12, 0, 2):
++                schedule.run_pending()
++                assert mock_job.call_count == 2
++                assert job.max_runs_remaining == 0
++                assert schedule.jobs == []
++            with mock_datetime(2020, 1, 1, 12, 0, 3):
++                schedule.run_pending()
++                assert mock_job.call_count == 2
++
++    def test_max_runs_cancels_after_nth_run_all_execution(self):
++        mock_job = make_mock_job()
++        job = every().seconds.max_runs(2).do(mock_job)
++
++        schedule.run_all()
++        assert mock_job.call_count == 1
++        assert schedule.jobs == [job]
++        schedule.run_all()
++        assert mock_job.call_count == 2
++        assert schedule.jobs == []
++        schedule.run_all()
++        assert mock_job.call_count == 2
++
++    def test_max_runs_and_until_cancel_when_each_limit_is_first(self):
++        budget_job = make_mock_job("budget_job")
++        deadline_job = make_mock_job("deadline_job")
++        with mock_datetime(2020, 1, 1, 11, 35, 10):
++            budget = every(5).seconds.max_runs(1).until(
++                datetime.datetime(2020, 1, 1, 11, 36)
++            ).do(budget_job)
++            deadline = every(5).seconds.max_runs(5).until(
++                datetime.datetime(2020, 1, 1, 11, 35, 20)
++            ).do(deadline_job)
++            with mock_datetime(2020, 1, 1, 11, 35, 15):
++                schedule.run_pending()
++                assert budget_job.call_count == 1
++                assert budget.max_runs_remaining == 0
++                assert deadline_job.call_count == 1
++                assert deadline.max_runs_remaining == 4
++                assert schedule.jobs == [deadline]
++            with mock_datetime(2020, 1, 1, 11, 35, 20):
++                schedule.run_all()
++                assert deadline_job.call_count == 2
++                assert deadline.max_runs_remaining == 3
++                assert schedule.jobs == []
++
++    def test_max_runs_last_call_wins_and_budgets_are_independent(self):
++        first_job = make_mock_job("first_job")
++        second_job = make_mock_job("second_job")
++        first = every().seconds.max_runs(5).do(first_job)
++        second = every().seconds.max_runs(2).do(second_job)
++
++        schedule.run_all()
++        assert first.max_runs_remaining == 4
++        first.max_runs(1)
++        assert first.max_runs_remaining == 1
++        assert second.max_runs_remaining == 1
++
++        schedule.run_all()
++        assert first_job.call_count == 2
++        assert second_job.call_count == 2
++        assert first.max_runs_remaining == 0
++        assert second.max_runs_remaining == 0
++        assert schedule.jobs == []
++
++    def test_max_runs_removal_updates_next_run_and_idle_seconds(self):
++        first_job = make_mock_job("first_job")
++        second_job = make_mock_job("second_job")
++        with mock_datetime(2020, 1, 1, 12, 0, 0):
++            first = every(5).seconds.max_runs(1).do(first_job)
++            second = every().hours.max_runs(2).do(second_job)
++            assert schedule.next_run() == first.next_run
++
++            schedule.run_all()
++            assert schedule.jobs == [second]
++            assert schedule.next_run() == second.next_run
++            assert schedule.idle_seconds() is not None
++            assert schedule.default_scheduler.next_run == second.next_run
++            assert schedule.default_scheduler.idle_seconds is not None
++
++            schedule.run_all()
++            assert schedule.jobs == []
++            assert schedule.next_run() is None
++            assert schedule.idle_seconds() is None
++            assert schedule.default_scheduler.next_run is None
++            assert schedule.default_scheduler.idle_seconds is None
++
+     def test_weekday_at_todady(self):
+         mock_job = make_mock_job()
+ 

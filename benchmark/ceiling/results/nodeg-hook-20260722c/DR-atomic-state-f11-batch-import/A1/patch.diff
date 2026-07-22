@@ -1,0 +1,142 @@
+diff --git a/server/index.js b/server/index.js
+index 1c43fa2..07b2243 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -27,6 +27,33 @@ app.get('/items/:id', (req, res) => {
+   res.json({ item });
+ });
+ 
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (let index = 0; index < req.body.items.length; index += 1) {
++    const item = req.body.items[index];
++    if (!item || typeof item.name !== 'string' || item.name.trim() === '') {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  let nextId = Math.max(0, ...items.map((item) => item.id)) + 1;
++  for (const item of req.body.items) {
++    items.push({ id: nextId, name: item.name, qty: item.qty });
++    nextId += 1;
++  }
++
++  res.status(201).json({ inserted: req.body.items.length });
++});
++
+ if (require.main === module) {
+   const port = Number(process.env.PORT) || 3000;
+   app.listen(port, () => {
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..eb2f5d9 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -23,6 +23,32 @@ function get(server, path) {
+   });
+ }
+ 
++function post(server, path, payload) {
++  return new Promise((resolve, reject) => {
++    const body = JSON.stringify(payload);
++    const { port } = server.address();
++    const request = http.request(
++      {
++        hostname: '127.0.0.1',
++        port,
++        path,
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(body),
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    request.on('error', reject);
++    request.end(body);
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +82,66 @@ test('GET /items/:id returns 404 for missing', async () => {
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changes', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 2 },
++        { name: ' ', qty: 4 },
++        { name: 'delta', qty: 6 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'name' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a valid batch with fresh ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const batch = [
++      { name: 'gamma', qty: 2 },
++      { name: 'delta', qty: 6 },
++    ];
++    const response = await post(server, '/items/import', { items: batch });
++    const after = await get(server, '/items');
++    const inserted = after.body.items.slice(before.body.items.length);
++    const existingIds = new Set(before.body.items.map((item) => item.id));
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: batch.length });
++    assert.strictEqual(after.body.items.length, before.body.items.length + batch.length);
++    assert.deepStrictEqual(
++      inserted.map(({ name, qty }) => ({ name, qty })),
++      batch,
++    );
++    assert.ok(inserted.every((item) => Number.isInteger(item.id) && !existingIds.has(item.id)));
++    assert.strictEqual(new Set(inserted.map((item) => item.id)).size, batch.length);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import rejects a non-array items body without changes', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', { items: 'not-an-array' });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_body' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});

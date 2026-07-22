@@ -1,0 +1,3 @@
+UVR-STALE: N/A tests/cli.test.js — USAGE text in bin/cli.js already documents the new `payout --input PATH` option and example; no authorized file carries stale user-visible text omitting the new option/shape.
+PATH-TEST: FIRED tests/cli.test.js:104 — Goal specifies the conflicting-duplicate path (exit 2, no stdout, exact stderr `{"error":"conflicting_duplicate","id":...}`) with its own precise contract, distinct from the generic validation-failure path already tested, and no prior test exercised it.
+PASS

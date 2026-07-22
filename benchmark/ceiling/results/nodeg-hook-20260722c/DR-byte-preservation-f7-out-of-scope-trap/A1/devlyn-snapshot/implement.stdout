@@ -1,0 +1,10 @@
+BLOCKED — implementation is complete, but the required full suite cannot pass in this sandbox.
+
+- Added JSON and invalid-format handling in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/ff10888c89791/A1/repo/bin/cli.js:60).
+- Added JSON-path coverage in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/ff10888c89791/A1/repo/tests/cli.test.js:27).
+- Required CLI commands match acceptance:
+  - `version` → `0.1.0`, exit 0
+  - `version --format json` → `{"version":"0.1.0"}`, exit 0
+  - `version --format yaml` → error, exit 1
+- `node --test tests/` has four passing CLI tests but fails three unrelated server tests because this environment rejects binding `0.0.0.0` with `EPERM`.
+- `git diff --check` passes; only the two authorized files changed.

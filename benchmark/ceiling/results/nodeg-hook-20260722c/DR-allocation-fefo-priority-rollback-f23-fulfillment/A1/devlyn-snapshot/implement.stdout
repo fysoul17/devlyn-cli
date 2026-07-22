@@ -1,0 +1,13 @@
+BLOCKED — implementation is complete, but the required full-suite gate cannot pass in this sandbox.
+
+Implemented `fulfill-wave` with upfront validation, deterministic FEFO allocation, per-order rollback, output/error contracts, and five CLI tests in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/bin/cli.js:83) and [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/tests/cli.test.js:47).
+
+Verification:
+
+- `node --test tests/`: `# pass 8`, `# fail 3`. The three unrelated server tests fail because socket binding is forbidden (`EPERM`) at [tests/server.test.js:9](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/tests/server.test.js:9).
+- Focused CLI suite: 8 pass, 0 fail.
+- Accepted allocation fixture: passed.
+- Rejected/rollback fixture: passed.
+- Invalid-input exit-2, empty stdout, JSON stderr: passed.
+
+The literal fixture commands containing `rm -f` were rejected by the environment before execution; equivalent fixture runs passed. The plan’s expected full-suite total is also inconsistent with current HEAD: `tests/server.test.js` adds three pre-existing tests, so a normal successful full suite would report 11 passes, not 8.

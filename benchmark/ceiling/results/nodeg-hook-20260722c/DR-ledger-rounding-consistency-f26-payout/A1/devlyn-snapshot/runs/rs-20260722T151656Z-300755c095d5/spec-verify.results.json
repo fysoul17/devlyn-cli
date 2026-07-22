@@ -1,0 +1,15 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "node --test tests/",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "xtra JSON properties\n  ---\n  duration_ms: 24.662792\n  ...\n# Subtest: GET /health returns ok\nok 8 - GET /health returns ok\n  ---\n  duration_ms: 9.287084\n  ...\n# Subtest: GET /items returns list\nok 9 - GET /items returns list\n  ---\n  duration_ms: 2.200875\n  ...\n# Subtest: GET /items/:id returns 404 for missing\nok 10 - GET /items/:id returns 404 for missing\n  ---\n  duration_ms: 1.973875\n  ...\n1..10\n# tests 10\n# suites 0\n# pass 10\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 215.297333\n"
+    }
+  ]
+}

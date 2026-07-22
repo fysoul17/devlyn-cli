@@ -1,0 +1,62 @@
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below.
+
+## Output discipline
+
+Your default is efficient, direct, task-oriented.
+
+## Validation pattern
+
+Validation is concrete commands and tools. Run `npm test` before declaring done if you change anything.
+
+## Anti-patterns
+
+Don't over-specify process when the destination is clear. Do not narrate internal deliberation.
+
+---
+
+# PHASE 4 — CLEANUP (canonical body)
+
+Task-scoped pass — only what this diff introduced or invalidated.
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn.
+</role>
+
+<input>
+- Cumulative diff: `git diff cbd12da HEAD -- bin/cli.js tests/cli.test.js` (the `fulfill-wave` command implementation, already committed).
+- Spec: `.devlyn/criteria.generated.md` (read it for the full requirements).
+- Plan: `.devlyn/plan.md`.
+</input>
+
+<allowlist>
+You may modify or delete:
+
+1. Tooling artifacts the spec did not list as deliverables (this repo has none from this diff — no test-results/, no build output).
+2. Dead code added by this diff — symbols introduced by this diff that nothing added by this diff references AND that are not part of the spec's required surface. Pre-existing dead code is out of scope.
+3. Doc references this diff invalidated (this diff touched no docs).
+4. Inline comments explaining code this diff deleted but the comment still mentions.
+
+Files outside `bin/cli.js` and `tests/cli.test.js` must not change. Pre-existing issues elsewhere in the repo are out of scope.
+</allowlist>
+
+<output>
+Report your verdict in this reply: `PASS` if changes within allowlist (or no changes needed); `FAIL` if you cannot complete within the allowlist.
+</output>
+
+<quality_bar>
+- Subtractive-first applies most strongly here.
+- Do not "improve" code outside the allowlist, even if it looks fixable.
+- If you find nothing to clean up, say so plainly and report PASS with zero changes — do not invent work.
+</quality_bar>
+
+<task>
+Review the `fulfill-wave` implementation just added to `bin/cli.js` (functions: `ensure`, `compareValues`, `isNonEmptyString`, `isPositiveInteger`, `isValidDate`, `submittedAtTimestamp`, `validateFulfillWaveInput`, `parseInputFlag`, `compareWarehouses`, `compareLots`, `buildWorkingStock`, `drawFromWarehouse`, `drawLine`, `fulfillWave`, `runFulfillWave`) and the 5 new tests in `tests/cli.test.js`. Check specifically:
+
+1. Is every helper function actually referenced (no dead code introduced by this diff)?
+2. Are there any leftover debug statements, commented-out code, or stray artifacts from the implementation pass?
+3. Does anything in this diff need a doc update (README.md mentions the CLI's commands — check if it lists `hello`/`version` and would need a `fulfill-wave` mention; if README.md is out of the authorized surface, do NOT edit it — just note it as a finding, do not touch it)?
+
+Make only allowlisted changes to `bin/cli.js` and/or `tests/cli.test.js` if you find something; otherwise report PASS with no changes.
+</task>

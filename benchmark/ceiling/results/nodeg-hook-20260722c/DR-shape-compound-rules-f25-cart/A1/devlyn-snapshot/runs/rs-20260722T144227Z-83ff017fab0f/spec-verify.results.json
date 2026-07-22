@@ -1,0 +1,15 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "npm test",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "bined quantity above stock\n  ---\n  duration_ms: 40.06425\n  ...\n# Subtest: GET /health returns ok\nok 6 - GET /health returns ok\n  ---\n  duration_ms: 9.850166\n  ...\n# Subtest: GET /items returns list\nok 7 - GET /items returns list\n  ---\n  duration_ms: 2.022375\n  ...\n# Subtest: GET /items/:id returns 404 for missing\nok 8 - GET /items/:id returns 404 for missing\n  ---\n  duration_ms: 1.693542\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 193.96025\n"
+    }
+  ]
+}

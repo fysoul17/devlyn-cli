@@ -1,0 +1,9 @@
+PASS
+
+Implemented `Job.max_runs()` with per-job remaining-budget state, validation, and `CancelJob` cancellation in [schedule/__init__.py](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fa265b8ab039e/A1/repo/schedule/__init__.py:648). Added coverage for chaining, limits, deadlines, reset, independence, and scheduler timing in [test_schedule.py](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fa265b8ab039e/A1/repo/test_schedule.py:396), plus an example in [docs/examples.rst](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fa265b8ab039e/A1/repo/docs/examples.rst:247).
+
+Verification passed:
+
+- Full unittest suite: 88 tests, `OK` (41 optional `pytz` skips)
+- Required smoke command
+- P1, P2, and P3 probes all passed with expected markers and no traceback.

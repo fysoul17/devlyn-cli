@@ -1,0 +1,207 @@
+You are an independent code-review judge. You have NO memory of any prior conversation, PLAN, IMPLEMENT reasoning, BUILD_GATE findings, or CLEANUP negotiation for this change — you are seeing the diff for the first time, fresh. This independence is load-bearing: do not try to be helpful by assuming good intent from an unseen author; verify from the spec and the diff alone.
+
+Do NOT read `.devlyn/`, `.claude/skills`, `.codex/skills`, `CLAUDE.md`, `AGENTS.md`, or any harness documentation. Use only: the spec text below, the diff below, the actual repository source/test files (`server/index.js`, `tests/server.test.js`, `package.json`), and the repo's test runner (`npm test`).
+
+## Role
+
+You answer one question: did the diff deliver what the spec said it would, with no scope creep, no quality regression, and no constraint violation? Produce findings only — you have no code-mutation tools (read-only sandbox); do not attempt to edit any file.
+
+## Spec (verbatim — `.devlyn/criteria.generated.md`)
+
+# Generated criteria — free-form goal
+
+## Requirements
+
+- Add `POST /items/import` to `server/index.js`. It accepts a JSON body `{ items: [...] }`.
+- Validate every item in the batch: `name` must be a non-empty string after trimming; `qty` must be a positive integer.
+- If every item is valid: append all items to the in-memory `items` list in input order. Each newly appended row receives a distinct numeric `id` that does not collide with any existing item id. Respond `201` with `{ inserted: <count> }`.
+- If any item is invalid: respond `400` with `{ error: 'invalid_batch', index, field }`, where `index` is the position of the first invalid item and `field` is `'name'` or `'qty'`. No items are appended — a subsequent `GET /items` must return exactly the same list it returned immediately before the request.
+- If the body is empty, `items` is missing, or `items` is not an array: respond `400` with `{ error: 'invalid_body' }`. `GET /items` must likewise be unchanged.
+- Update `tests/server.test.js`: keep all existing tests passing, and add at least two new tests for the import endpoint — one exercising an invalid middle item (comparing `GET /items` before and after the request), and one covering a fully valid batch import.
+
+## Constraints
+
+- No new npm dependencies — use only `express` (already a dependency) and Node's built-in `node:test`/`node:assert`/`node:http`.
+- Only touch `server/index.js` and `tests/server.test.js`.
+- Follow the existing route style already in `server/index.js` (plain `app.<verb>(path, (req, res) => { ... res.status(...).json(...) })` handlers, no added middleware/abstraction layers).
+- Follow the existing test style already in `tests/server.test.js` (`node:test` + `node:assert`, the `startServer`/`get` helper pattern — add an analogous `post` helper rather than introducing a new HTTP client).
+
+## Out of Scope
+
+- Any endpoint other than `POST /items/import` (no PUT/DELETE/PATCH additions).
+- Persistence beyond the existing in-memory `items` array.
+- Concurrency/locking beyond what a single synchronous request handler already provides.
+
+## Verification
+
+`npm test` must exit 0.
+
+## The diff under review (base `cbd12daedd7f2d22c62110faf097f12797e7dda6` -> current HEAD, `server/index.js` + `tests/server.test.js`)
+
+```diff
+diff --git a/server/index.js b/server/index.js
+index 1c43fa2..07b2243 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -27,6 +27,33 @@ app.get('/items/:id', (req, res) => {
+   res.json({ item });
+ });
+
++app.post('/items/import', (req, res) => {
++  if (!req.body || !Array.isArray(req.body.items)) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  for (let index = 0; index < req.body.items.length; index += 1) {
++    const item = req.body.items[index];
++    if (!item || typeof item.name !== 'string' || item.name.trim() === '') {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'name' });
++      return;
++    }
++    if (!Number.isInteger(item.qty) || item.qty <= 0) {
++      res.status(400).json({ error: 'invalid_batch', index, field: 'qty' });
++      return;
++    }
++  }
++
++  let nextId = Math.max(0, ...items.map((item) => item.id)) + 1;
++  for (const item of req.body.items) {
++    items.push({ id: nextId, name: item.name, qty: item.qty });
++    nextId += 1;
++  }
++
++  res.status(201).json({ inserted: req.body.items.length });
++});
++
+ if (require.main === module) {
+   const port = Number(process.env.PORT) || 3000;
+   app.listen(port, () => {
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..eb2f5d9 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -23,6 +23,32 @@ function get(server, path) {
+   });
+ }
+
++function post(server, path, payload) {
++  return new Promise((resolve, reject) => {
++    const body = JSON.stringify(payload);
++    const { port } = server.address();
++    const request = http.request(
++      {
++        hostname: '127.0.0.1',
++        port,
++        path,
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(body),
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    request.on('error', reject);
++    request.end(body);
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +82,66 @@ test('GET /items/:id returns 404 for missing', async () => {
+     server.close();
+   }
+ });
++
++test('POST /items/import rejects an invalid middle item without changes', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', {
++      items: [
++        { name: 'gamma', qty: 2 },
++        { name: ' ', qty: 4 },
++        { name: 'delta', qty: 6 },
++      ],
++    });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_batch', index: 1, field: 'name' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import appends a valid batch with fresh ids', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const batch = [
++      { name: 'gamma', qty: 2 },
++      { name: 'delta', qty: 6 },
++    ];
++    const response = await post(server, '/items/import', { items: batch });
++    const after = await get(server, '/items');
++    const inserted = after.body.items.slice(before.body.items.length);
++    const existingIds = new Set(before.body.items.map((item) => item.id));
++
++    assert.strictEqual(response.status, 201);
++    assert.deepStrictEqual(response.body, { inserted: batch.length });
++    assert.strictEqual(after.body.items.length, before.body.items.length + batch.length);
++    assert.deepStrictEqual(
++      inserted.map(({ name, qty }) => ({ name, qty })),
++      batch,
++    );
++    assert.ok(inserted.every((item) => Number.isInteger(item.id) && !existingIds.has(item.id)));
++    assert.strictEqual(new Set(inserted.map((item) => item.id)).size, batch.length);
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /items/import rejects a non-array items body without changes', async () => {
++  const server = await startServer();
++  try {
++    const before = await get(server, '/items');
++    const response = await post(server, '/items/import', { items: 'not-an-array' });
++    const after = await get(server, '/items');
++
++    assert.strictEqual(response.status, 400);
++    assert.deepStrictEqual(response.body, { error: 'invalid_body' });
++    assert.deepStrictEqual(after.body.items, before.body.items);
++  } finally {
++    server.close();
++  }
++});
+```
+
+## A note on your sandbox
+
+You are running in a read-only sandbox. `npm test` binds a TCP listener, and read-only sandboxes commonly deny that with `EPERM` — this is an environment limitation of your sandbox, not evidence the tests are broken. If `npm test` fails to bind a socket, do not treat that as a test failure or a spec violation; instead fall back to a careful manual trace of `server/index.js`'s exact logic against `tests/server.test.js`'s exact assertions, quoting line numbers, and note in a `#` comment that live execution was sandbox-blocked.
+
+## What to check
+
+- **Spec compliance** — every Requirement above has code that satisfies it. Quote file:line evidence.
+- **Scope** — diff touches only `server/index.js` and `tests/server.test.js`. Any other file = HIGH `scope.out-of-scope-violation`.
+- **Quality** — idiomatic Express/Node patterns, no hand-rolled reinvention of something the stdlib/framework already provides.
+- **Consistency** — style matches surrounding code (error shape, naming, module boundaries).
+- **Clause-level check**: split each Requirement into binding clauses. Trace code order for: validate-before-mutate (does the handler ever push a partial batch before finishing validation?), first-invalid-item-wins (is `index`/`field` correct when multiple items are invalid?), id-collision-avoidance (can `nextId` collide with an existing id, e.g. if `items` becomes empty, or under repeated imports?), and the three-way body-shape guard (empty body / missing `items` / non-array `items`, in that order, before any per-item validation).
+- **Interaction check**: consider a scenario that combines ordering + rollback + shape — e.g. a batch where item 1 is valid, item 2 fails on `qty` (not `name`), and confirm `field` is `'qty'` not `'name'`, and confirm zero items were appended (re-check the full `items` array is unchanged, not just the count).
+- **Coverage check**: if you cannot exercise an axis, say so explicitly rather than assuming PASS.
+
+## Output contract — read carefully, this is mechanically parsed
+
+Emit on stdout ONLY:
+1. Zero or more JSONL finding lines — one JSON object per line, each with at least `{"id": "<slug>", "rule_id": "<dotted.rule>", "severity": "CRITICAL"|"HIGH"|"MEDIUM"|"LOW", "confidence": "high"|"medium"|"low", "file": "<path>", "line": <int>, "message": "<one line>", "criterion_ref": "<which requirement>"}`. Quote the actual code as evidence inside `message`.
+2. Lines starting with `#` are treated as comments and ignored (use this for any reasoning you want to show).
+3. Exactly one final line starting with `# SUMMARY ` followed by a JSON object: `{"verdict": "PASS"|"PASS_WITH_ISSUES"|"NEEDS_WORK"}`. This line is REQUIRED even when there are zero findings — a silent PASS is rejected by the harness.
+
+Do not emit any other prose outside `#`-prefixed comment lines. Do not filter findings for importance — report every issue you observe, including low-confidence ones, each tagged with its own `confidence`.

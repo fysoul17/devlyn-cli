@@ -14,7 +14,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-22 late night (iter-0078 Stage A2 SHIPPED 0078.4 + runner settings-staging SHIPPED 0078.5; **first hook-bearing cohort `nodeg-hook-20260722a` LAUNCHED health-gated from @3a7eeaf** — reads P-0078-KL/P-C when it completes)
+## 🚦 START-HERE — state after 2026-07-23 (iter-0078 **CLOSED** 0078.6: first hook-bearing cohort `nodeg-hook-20260722c` read — **P-0078-KL PASS live (F23 block→resume→full completion), P-0078-C K2a=0**; wall median 7.867× best-ever report-only)
 
 **Where the loop stands (one paragraph).** iter-0077 is CLOSED partial-ship
 (0077.5: W-T0 interphase 12.0% SHIPPED, W-B startup claim REVOKED at
@@ -39,26 +39,23 @@ pressure (CLI ~9-block cap honest bound). Remaining 0078 reads P-KL/P-C
 ride the first hook-bearing cohort.
 
 **Next work (in order)**:
-1. **Launch + read cohort `nodeg-hook-20260722a`** (NOT in flight —
-   the 2026-07-22 night launcher was killed DURING the health gate at
-   1/2 pings, BEFORE the cell started: zero rows, zero contamination,
-   worktree @3a7eeaf + run-owned pins intact; concurrent machine
-   activity was visible at kill time, so relaunch needs a real quiet
-   window. Relaunch = `bash ~/.local/share/nx01/pins/iter0078-cohort/hook-cohort-health-gated-launch.sh`
-   (health-gated 2×20min; fresh run id if any draw). Reads:
-   P-0078-KL (antecedent-conditioned — only rows with {same-session ∧
-   incomplete-at-Stop} are diagnostic; no antecedent → NON_DIAGNOSTIC,
-   never a failure) + P-0078-C (K2a partition = 0 expected, report-only,
-   never a revert trigger alone). NEW baseline — the verdict now carries
-   cohort_identity.stop_hook_staged mechanically; never mix into 0077
-   aggregation. F11 K2a from -22a is the pre-hook baseline datum.
-   Diagnostic-draw rate ≈ 1/3 — a pre8/cmds=0 F7 draw exits 86 cheap;
-   relaunch with a fresh id.
-2. **Startup lever re-registration** (fail-open obligation from 0077.5)
+1. **Startup lever re-registration** (fail-open obligation from 0077.5)
    — new mechanism hypothesis required (mechanical absorption is
    falsified); residual data: startup median 250s unmoved, phase_union
    frozen-five +31.7% (different lever class — executor/model work).
+   Fresh context: `-22c` wall median 7.867× (hook-bearing NEW baseline,
+   best-ever descriptive) — re-derive the residual target from ITS
+   decomposition before registering.
+2. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
+   / B_win 36 — single-cohort variance vs. real hook-cohort effect is
+   unresolved; the next hook-bearing cohort reads it before any quality
+   lever is registered.
 3. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
+
+**Cohort operator rule (new, binding)**: never run `/login` or anything
+that rotates the host OAuth token while a cohort is in flight — seeded
+arm credentials get revoked mid-row (`-22c` FS1 receipt: invoke_exit 1,
+`OAuth access token has been revoked`).
 
 **Cohort/row mechanics (binding, updated 2026-07-20)**: full cohort =
 `git worktree add --detach <path> <SHA>` (runner-SHA integrity —

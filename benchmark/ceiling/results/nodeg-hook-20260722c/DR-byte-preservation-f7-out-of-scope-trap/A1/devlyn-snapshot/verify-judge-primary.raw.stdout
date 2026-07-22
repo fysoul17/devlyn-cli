@@ -1,0 +1,2 @@
+{"id":"verification.full-suite-blocked","rule_id":"verification.command-unexercised","severity":"LOW","file":"tests/server.test.js","line":9,"message":"`node --test tests/` could not complete in this read-only sandbox because the unchanged server tests cannot bind a listener (`EPERM`); the relevant `tests/cli.test.js` suite passed (5/5).","confidence":"high","criterion_ref":"Verification"}
+# SUMMARY {"verdict":"PASS_WITH_ISSUES"}

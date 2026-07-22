@@ -1,0 +1,3 @@
+UVR-STALE: FIRED bin/cli.js:8 — `USAGE` (printed on `--help`/no-command) documented only `hello`/`version`/`--help` after `main`'s dispatch gained the `fulfill-wave` case, so the help text omitted the new command; updated its Commands/Examples entries.
+PATH-TEST: FIRED tests/cli.test.js:377 — goal requires a `single_warehouse: true` line be allowed to "consume multiple lots in that warehouse" on success, but no existing test drew from more than one lot within a single warehouse for a `single_warehouse` line (only the reject-when-combined-stock-needed case existed); added one minimal regression test for that success path.
+PASS

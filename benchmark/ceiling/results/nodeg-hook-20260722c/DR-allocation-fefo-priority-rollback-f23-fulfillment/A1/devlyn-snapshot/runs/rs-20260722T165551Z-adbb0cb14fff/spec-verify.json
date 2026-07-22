@@ -1,0 +1,36 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/",
+      "stdout_contains": [
+        "# pass 11",
+        "# fail 0"
+      ]
+    },
+    {
+      "cmd": "TMP=$(mktemp) && printf '%s' '{\"warehouses\":[{\"id\":\"W1\",\"distance\":1,\"lots\":[{\"sku\":\"SKU1\",\"lot\":\"L1\",\"qty\":10,\"expires\":\"2026-01-01\"}]}],\"orders\":[{\"id\":\"O1\",\"priority\":1,\"submitted_at\":\"2026-01-01T00:00:00Z\",\"lines\":[{\"sku\":\"SKU1\",\"qty\":5,\"single_warehouse\":false}]}]}' > \"$TMP\" && node bin/cli.js fulfill-wave --input \"$TMP\"; CODE=$?; rm -f \"$TMP\"; exit $CODE",
+      "stdout_contains": [
+        "\"accepted\"",
+        "\"O1\"",
+        "\"SKU1\"",
+        "\"W1\"",
+        "\"L1\""
+      ]
+    },
+    {
+      "cmd": "TMP=$(mktemp) && printf '%s' '{\"warehouses\":[{\"id\":\"W1\",\"distance\":1,\"lots\":[{\"sku\":\"SKU1\",\"lot\":\"L1\",\"qty\":3,\"expires\":\"2026-01-01\"}]}],\"orders\":[{\"id\":\"O1\",\"priority\":1,\"submitted_at\":\"2026-01-01T00:00:00Z\",\"lines\":[{\"sku\":\"SKU1\",\"qty\":5,\"single_warehouse\":false}]}]}' > \"$TMP\" && node bin/cli.js fulfill-wave --input \"$TMP\"; CODE=$?; rm -f \"$TMP\"; exit $CODE",
+      "stdout_contains": [
+        "\"rejected\"",
+        "\"insufficient_stock\"",
+        "\"remaining\"",
+        "\"qty\":3"
+      ]
+    },
+    {
+      "cmd": "TMP=$(mktemp) && printf '%s' '{\"warehouses\":[],\"orders\":[{\"id\":\"\",\"priority\":1,\"submitted_at\":\"bad\",\"lines\":[]}]}' > \"$TMP\" && node bin/cli.js fulfill-wave --input \"$TMP\" >/tmp/fw-stdout.$$ 2>/tmp/fw-stderr.$$; CODE=$?; OUT=$(cat /tmp/fw-stdout.$$); ERR=$(cat /tmp/fw-stderr.$$); rm -f \"$TMP\" /tmp/fw-stdout.$$ /tmp/fw-stderr.$$; if [ \"$CODE\" -eq 2 ] && [ -z \"$OUT\" ] && [ -n \"$ERR\" ]; then echo INVALID_INPUT_OK; exit 0; else echo INVALID_INPUT_FAIL; exit 1; fi",
+      "stdout_contains": [
+        "INVALID_INPUT_OK"
+      ]
+    }
+  ]
+}

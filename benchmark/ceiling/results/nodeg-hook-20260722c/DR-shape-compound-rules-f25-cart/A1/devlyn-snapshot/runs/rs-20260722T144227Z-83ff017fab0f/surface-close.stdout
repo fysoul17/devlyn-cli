@@ -1,0 +1,5 @@
+UVR-STALE: N/A bin/cli.js:8 — the USAGE text in the patch already documents `cart --input PATH` and the example invocation, so no authorized user-visible text still describes a stale pre-cart interface.
+
+PATH-TEST: N/A tests/cli.test.js:95 — the goal's explicit testing requirement ("at least two new tests… including one successful cart and one validation failure") is met verbatim by the two added tests, which together exercise the full pricing formula (combine → line promotions → coupon → tax → shipping → total) and the shared error contract (exit 2, single stderr JSON object, empty stdout) via `invalid_stock`; the remaining error codes (invalid_json, missing_items, unknown_sku, invalid_quantity, unknown_coupon, unknown_state) share that same contract shape already demonstrated, so no goal-specified path is left without coverage beyond the stated minimum.
+
+PASS

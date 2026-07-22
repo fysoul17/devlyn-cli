@@ -1,0 +1,3 @@
+PASS — wrote the shippable plan to [.devlyn/plan.md](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/ff10888c89791/A1/repo/.devlyn/plan.md:1).
+
+It authorizes only `bin/cli.js` and `tests/cli.test.js`, and preserves the verification block verbatim.

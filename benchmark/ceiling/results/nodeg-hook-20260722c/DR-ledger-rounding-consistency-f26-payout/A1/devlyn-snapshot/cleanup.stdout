@@ -1,0 +1,3 @@
+PASS
+
+No cleanup changes needed. The cumulative diff touches only `bin/cli.js` and `tests/cli.test.js`; every newly added helper is referenced by the payout flow or its tests. No listed build/test artifacts or stale documentation references were found.

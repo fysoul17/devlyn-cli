@@ -1,0 +1,8 @@
+BLOCKED
+
+- `scripts/lint-json.js` has no history (`git log -p --follow -- scripts/lint-json.js` returned no commits).
+- Initial commit `e5a20d9` already declares `"lint:json": "node scripts/lint-json.js"` in `package.json:13`; the defect is pre-existing.
+- Fixing requires changing `package.json` or adding `scripts/lint-json.js`, both outside the authorized surface.
+- The user explicitly forbids touching files other than `bin/cli.js` and `tests/cli.test.js`.
+
+No files changed.

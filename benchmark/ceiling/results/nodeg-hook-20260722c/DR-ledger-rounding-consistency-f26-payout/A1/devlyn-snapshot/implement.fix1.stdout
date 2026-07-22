@@ -1,0 +1,6 @@
+BLOCKED — the fix is complete, but full-suite validation is sandbox-blocked.
+
+- Deep structural duplicate comparison added in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/bin/cli.js:85).
+- Regression test added in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/cli.test.js:121).
+- `node --test tests/cli.test.js`: 7/7 passing.
+- `node --test tests/`: 3 unrelated server tests fail because the sandbox rejects `listen(0.0.0.0)` with `EPERM`.

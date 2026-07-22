@@ -1,0 +1,5 @@
+PASS
+
+No cleanup changes were needed: no diff-created artifacts, dead code, or stale references found. Feature-scoped checks pass (`node --test tests/cli.test.js` and all `version` behaviors).
+
+The full test suite remains sandbox-blocked by `EPERM` binding the pre-existing server tests.

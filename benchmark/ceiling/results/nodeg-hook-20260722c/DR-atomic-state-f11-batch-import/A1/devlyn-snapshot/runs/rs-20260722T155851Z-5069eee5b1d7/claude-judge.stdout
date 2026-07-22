@@ -1,0 +1,17 @@
+# Probe 1 — all-or-nothing rollback + first-invalid qty error shape
+# Traced input: items = [{name:'a',qty:3}, {name:'b',qty:0}]
+# index 0 (server/index.js:38): item.name='a' string, trim!=='' → pass name; :42 qty=3 Number.isInteger true, 3<=0 false → pass qty.
+# index 1 (:38): name='b' passes; :42 qty=0 Number.isInteger(0)=true but 0<=0 true → reject.
+# :43 emits res.status(400).json({error:'invalid_batch', index:1, field:'qty'}) then return — loop exits BEFORE append block :48-52.
+# field is exactly 'qty', index is later item's position (1), status 400, body has exactly the 3 keys. Append loop never reached → items array untouched (same reference in GET /items).
+# Matches spec bullet and existing test at tests/server.test.js:99-101 shape. PASS.
+#
+# Probe 2 — strict type, no coercion
+# qty="5" (:42): Number.isInteger("5")=false → reject field 'qty'. Not coerced.
+# qty=2.5 (:42): Number.isInteger(2.5)=false → reject field 'qty'. Not coerced.
+# name=42 (:38): typeof 42 !== 'string' → reject field 'name'. Not coerced.
+# All rejected with 400 + exact {error:'invalid_batch', index, field}; append block unreached → GET /items unchanged. PASS.
+#
+# invalid_body path (:31) and 201 inserted count (:54) consistent with spec; no new deps; only server/index.js + tests changed.
+# Both highest-risk bullets pass; no scope/dependency blocker. Stopping.
+# SUMMARY {"verdict": "PASS"}

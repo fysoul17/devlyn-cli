@@ -1,0 +1,910 @@
+[codex-monitored] start: ts=2026-07-22T15:48:04Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=67141
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: high
+reasoning summaries: none
+session id: 019f8a83-4175-7d41-a777-46c58f4de649
+--------
+user
+# Codex (OpenAI) adapter
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below.
+
+## Output discipline
+
+Your default is efficient, direct, task-oriented.
+
+## Validation pattern
+
+Run `node --test tests/` and trust its output before declaring success.
+
+---
+
+# PHASE 2 — IMPLEMENT fix round 1 (VERIFY findings)
+
+<role>
+Fix the VERIFY finding below within the existing authorized surface (`bin/cli.js`, `tests/cli.test.js`). Do not touch any other file.
+</role>
+
+<finding>
+```json
+{"id":"payout.duplicate-content-not-compared-fully","rule_id":"spec.idempotency.conflicting_duplicate","severity":"HIGH","file":"bin/cli.js","line":85,"message":"Duplicate equality compares only id, merchant_id, type, and amount_cents, ignoring other JSON content. Two events with the same id and required fields but source values \"card-a\" and \"card-b\" exited 0 and produced a payout instead of exiting 2 with {\"error\":\"conflicting_duplicate\",\"id\":\"same\"}.","confidence":"high"}
+```
+
+The goal (`.devlyn/goal.raw.txt`) states: "Events with the same `id` and identical JSON content are idempotent and applied only once. The same `id` with different JSON content is a conflicting duplicate." The current `hasSameEventContent` helper in `bin/cli.js` only compares the four schema-defined fields (`id`, `merchant_id`, `type`, `amount_cents`), so two events sharing an `id` but differing in any other JSON property are incorrectly treated as an identical (idempotent) duplicate instead of a `conflicting_duplicate`.
+</finding>
+
+<fix>
+Change the duplicate-equality check to compare the full JSON content of the two events (deep/structural equality across all properties present on the event object), not just the four defined schema fields. The simplest correct fix: compare via a stable deep-equality check (e.g. comparing `JSON.stringify` of each object with its keys sorted, or an explicit recursive/key-set comparison) so any differing property — defined or not — triggers `conflicting_duplicate`.
+
+Keep the four required-field validation (`validateEvent`) unchanged — that governs which fields must be present/valid, separately from the idempotency-equality check.
+
+Add a regression test to `tests/cli.test.js` asserting that two events with the same `id`, identical required fields, but a different value in an extra property are correctly rejected as `conflicting_duplicate` (exit 2, stderr exactly `{"error":"conflicting_duplicate","id":"<id>"}`, empty stdout).
+</fix>
+
+<quality_bar>
+- Minimal, targeted fix. Do not refactor unrelated code.
+- Do not weaken or remove any existing test.
+- Only touch `bin/cli.js` and `tests/cli.test.js`.
+- Run `node --test tests/` and confirm all tests (existing + new) pass before finishing.
+</quality_bar>
+
+Report your verdict in your final reply text: `PASS` on success; `BLOCKED` if you cannot fix this within the authorized surface.
+codex
+I’ll make the narrowly scoped duplicate-comparison fix and regression test, then run the required Node test suite.
+exec
+/bin/zsh -lc "git status --short && sed -n '1,180p' bin/cli.js && rg -n \"duplicate|idempot|conflicting|same\" tests/cli.test.js" in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+#!/usr/bin/env node
+// harbor-tools — small command-line utilities for local workflows.
+// Keep the core commands minimal and easy to understand.
+
+const fs = require('fs');
+const path = require('path');
+
+const USAGE = `Usage: bench-cli <command> [options]
+
+Commands:
+  hello [--name NAME]        Print a greeting (default name: "world")
+  version                    Print the CLI version from package.json
+  payout --input PATH        Print payout totals for ledger events
+  --help, -h                 Show this help
+
+Examples:
+  bench-cli hello
+  bench-cli hello --name alice
+  bench-cli version
+  bench-cli payout --input ledger-events.json
+`;
+
+function readPackageVersion() {
+  const pkgPath = path.join(__dirname, '..', 'package.json');
+  const raw = fs.readFileSync(pkgPath, 'utf8');
+  return JSON.parse(raw).version;
+}
+
+function parseNameFlag(argv) {
+  const idx = argv.indexOf('--name');
+  if (idx === -1) return 'world';
+  const value = argv[idx + 1];
+  if (!value || value.startsWith('-')) {
+    console.error('--name requires a value');
+    process.exit(1);
+  }
+  return value;
+}
+
+function writePayoutError(error) {
+  process.stderr.write(`${JSON.stringify(error)}\n`);
+  process.exit(2);
+}
+
+function readPayoutInput(argv) {
+  const inputIndex = argv.indexOf('--input');
+  const inputPath = argv[inputIndex + 1];
+
+  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
+    writePayoutError({ error: 'unreadable_input' });
+  }
+
+  let rawInput;
+  try {
+    rawInput = fs.readFileSync(inputPath, 'utf8');
+  } catch {
+    writePayoutError({ error: 'unreadable_input' });
+  }
+
+  try {
+    return JSON.parse(rawInput);
+  } catch {
+    writePayoutError({ error: 'invalid_json' });
+  }
+}
+
+function validateEvent(event, index) {
+  if (!event || typeof event !== 'object' || Array.isArray(event)) {
+    writePayoutError({ error: 'invalid_event', index });
+  }
+  if (typeof event.id !== 'string') {
+    writePayoutError({ error: 'missing_id', index });
+  }
+  if (typeof event.merchant_id !== 'string') {
+    writePayoutError({ error: 'missing_merchant_id', index });
+  }
+  if (!['charge', 'refund', 'dispute'].includes(event.type)) {
+    writePayoutError({ error: 'unknown_type', index });
+  }
+  if (!Number.isInteger(event.amount_cents) || event.amount_cents <= 0) {
+    writePayoutError({ error: 'invalid_amount_cents', index });
+  }
+}
+
+function hasSameEventContent(first, second) {
+  return first.id === second.id
+    && first.merchant_id === second.merchant_id
+    && first.type === second.type
+    && first.amount_cents === second.amount_cents;
+}
+
+function uniqueEvents(events) {
+  const eventsById = new Map();
+  const unique = [];
+
+  events.forEach((event, index) => {
+    validateEvent(event, index);
+    const priorEvent = eventsById.get(event.id);
+    if (priorEvent) {
+      if (!hasSameEventContent(priorEvent, event)) {
+        writePayoutError({ error: 'conflicting_duplicate', id: event.id });
+      }
+      return;
+    }
+    eventsById.set(event.id, event);
+    unique.push(event);
+  });
+
+  return unique;
+}
+
+function loadPayoutRules() {
+  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
+  return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
+}
+
+function createMerchant(merchantId) {
+  return {
+    merchant_id: merchantId,
+    gross_charge_cents: 0,
+    refund_cents: 0,
+    dispute_cents: 0,
+    processing_fee_cents: 0,
+    dispute_fee_cents: 0,
+  };
+}
+
+function calculatePayout(events, rules) {
+  const merchantsById = new Map();
+
+  for (const event of events) {
+    let merchant = merchantsById.get(event.merchant_id);
+    if (!merchant) {
+      merchant = createMerchant(event.merchant_id);
+      merchantsById.set(event.merchant_id, merchant);
+    }
+
+    if (event.type === 'charge') {
+      merchant.gross_charge_cents += event.amount_cents;
+      merchant.processing_fee_cents += Math.round(
+        event.amount_cents * rules.processing_fee_percent / 100,
+      ) + rules.fixed_fee_cents;
+    } else if (event.type === 'refund') {
+      merchant.refund_cents += event.amount_cents;
+    } else {
+      merchant.dispute_cents += event.amount_cents;
+      merchant.dispute_fee_cents += rules.dispute_fee_cents;
+    }
+  }
+
+  const merchants = Array.from(merchantsById.values(), (merchant) => {
+    const netBeforeReserve = merchant.gross_charge_cents
+      - merchant.refund_cents
+      - merchant.dispute_cents
+      - merchant.processing_fee_cents
+      - merchant.dispute_fee_cents;
+    let reserveCents = netBeforeReserve > 0
+      ? Math.round(netBeforeReserve * rules.reserve_percent / 100)
+      : 0;
+    let payoutCents = netBeforeReserve - reserveCents;
+
+    if (payoutCents > 0 && payoutCents < rules.minimum_payout_cents) {
+      reserveCents += payoutCents;
+      payoutCents = 0;
+    }
+
+    return {
+      ...merchant,
+      reserve_cents: reserveCents,
+      payout_cents: payoutCents,
+    };
+  });
+
+  return {
+    total_payout_cents: merchants.reduce((total, merchant) => total + merchant.payout_cents, 0),
+    total_processing_fee_cents: merchants.reduce(
+      (total, merchant) => total + merchant.processing_fee_cents,
+      0,
+    ),
+    total_dispute_fee_cents: merchants.reduce(
+103:test('payout exits with conflicting_duplicate before printing totals when an id repeats with different content', (t) => {
+118:  assert.deepEqual(JSON.parse(String(failure.stderr)), { error: 'conflicting_duplicate', id: 'charge-a' });
+
+exec
+/bin/zsh -lc "sed -n '1,175p' tests/cli.test.js && sed -n '175,360p' tests/cli.test.js" in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo
+ succeeded in 0ms:
+const { test } = require('node:test');
+const assert = require('node:assert');
+const { execFileSync } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+
+function run(args) {
+  return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+}
+
+function runFailure(args) {
+  let failure;
+  try {
+    run(args);
+  } catch (error) {
+    failure = error;
+  }
+  assert.ok(failure, 'expected the CLI command to fail');
+  return failure;
+}
+
+test('hello default', () => {
+  const out = run(['hello']);
+  assert.match(out, /Hello, world!/);
+});
+
+test('hello with --name', () => {
+  const out = run(['hello', '--name', 'alice']);
+  assert.match(out, /Hello, alice!/);
+});
+
+test('version prints package version', () => {
+  const out = run(['version']);
+  assert.match(out, /\d+\.\d+\.\d+/);
+});
+
+test('payout prints per-merchant totals after deduplicating events', (t) => {
+  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
+  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
+  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
+  fs.writeFileSync(inputPath, JSON.stringify({
+    events: [
+      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 10000 },
+      { id: 'refund-a', merchant_id: 'merchant-a', type: 'refund', amount_cents: 1000 },
+      { id: 'dispute-a', merchant_id: 'merchant-a', type: 'dispute', amount_cents: 500 },
+      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
+      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
+    ],
+  }));
+
+  const output = JSON.parse(run(['payout', '--input', inputPath]));
+  assert.deepEqual(output, {
+    total_payout_cents: 6012,
+    total_processing_fee_cents: 365,
+    total_dispute_fee_cents: 1500,
+    total_reserve_cents: 1123,
+    merchants: [
+      {
+        merchant_id: 'merchant-a',
+        gross_charge_cents: 10000,
+        refund_cents: 1000,
+        dispute_cents: 500,
+        processing_fee_cents: 320,
+        dispute_fee_cents: 1500,
+        reserve_cents: 668,
+        payout_cents: 6012,
+      },
+      {
+        merchant_id: 'merchant-b',
+        gross_charge_cents: 500,
+        refund_cents: 0,
+        dispute_cents: 0,
+        processing_fee_cents: 45,
+        dispute_fee_cents: 0,
+        reserve_cents: 455,
+        payout_cents: 0,
+      },
+    ],
+  });
+});
+
+test('payout reports validation failures as a single JSON error', (t) => {
+  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
+  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
+  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
+  fs.writeFileSync(inputPath, JSON.stringify({
+    events: [{ id: 'unknown-type', merchant_id: 'merchant-a', type: 'transfer', amount_cents: 100 }],
+  }));
+
+  const failure = runFailure(['payout', '--input', inputPath]);
+  const stderr = String(failure.stderr);
+  const error = JSON.parse(stderr);
+
+  assert.equal(failure.status, 2);
+  assert.equal(String(failure.stdout), '');
+  assert.ok(error.error);
+  assert.equal(stderr, `${JSON.stringify(error)}\n`);
+});
+
+test('payout exits with conflicting_duplicate before printing totals when an id repeats with different content', (t) => {
+  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
+  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
+  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
+  fs.writeFileSync(inputPath, JSON.stringify({
+    events: [
+      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 100 },
+      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 200 },
+    ],
+  }));
+
+  const failure = runFailure(['payout', '--input', inputPath]);
+
+  assert.equal(failure.status, 2);
+  assert.equal(String(failure.stdout), '');
+  assert.deepEqual(JSON.parse(String(failure.stderr)), { error: 'conflicting_duplicate', id: 'charge-a' });
+});
+
+codex
+The current helper is confirmed to compare only four fields. I’ll replace it with recursive structural equality (including nested extra JSON properties and key sets) and add the `source` regression case.
+[codex-monitored] heartbeat: elapsed=30s
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/bin/cli.js
+/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/cli.test.js
+diff --git a/bin/cli.js b/bin/cli.js
+index e94d7589ad987bfa3106fc99d07a0e15c0c3b53c..a55115dba44da29a22ab97f91986166cc5314b4b
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -83,10 +83,18 @@
+ }
+ 
+ function hasSameEventContent(first, second) {
+-  return first.id === second.id
+-    && first.merchant_id === second.merchant_id
+-    && first.type === second.type
+-    && first.amount_cents === second.amount_cents;
++  if (first === second) return true;
++  if (!first || !second || typeof first !== 'object' || typeof second !== 'object') {
++    return false;
++  }
++
++  const firstKeys = Object.keys(first).sort();
++  const secondKeys = Object.keys(second).sort();
++  if (firstKeys.length !== secondKeys.length) return false;
++
++  return firstKeys.every((key, index) => (
++    key === secondKeys[index] && hasSameEventContent(first[key], second[key])
++  ));
+ }
+ 
+ function uniqueEvents(events) {
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index 74d9b4a8975a50a9dec004742ed5508a9b17947d..7cb326b6d131d0adfde5131cc65cd748b339159d
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -117,3 +117,25 @@
+   assert.equal(String(failure.stdout), '');
+   assert.deepEqual(JSON.parse(String(failure.stderr)), { error: 'conflicting_duplicate', id: 'charge-a' });
+ });
++
++test('payout rejects duplicate ids with different extra JSON properties', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      {
++        id: 'same', merchant_id: 'merchant-a', type: 'charge', amount_cents: 100, source: 'card-a',
++      },
++      {
++        id: 'same', merchant_id: 'merchant-a', type: 'charge', amount_cents: 100, source: 'card-b',
++      },
++    ],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.equal(String(failure.stderr), '{"error":"conflicting_duplicate","id":"same"}\n');
++});
+
+diff --git a/bin/cli.js b/bin/cli.js
+index e94d7589ad987bfa3106fc99d07a0e15c0c3b53c..a55115dba44da29a22ab97f91986166cc5314b4b
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -83,10 +83,18 @@
+ }
+ 
+ function hasSameEventContent(first, second) {
+-  return first.id === second.id
+-    && first.merchant_id === second.merchant_id
+-    && first.type === second.type
+-    && first.amount_cents === second.amount_cents;
++  if (first === second) return true;
++  if (!first || !second || typeof first !== 'object' || typeof second !== 'object') {
++    return false;
++  }
++
++  const firstKeys = Object.keys(first).sort();
++  const secondKeys = Object.keys(second).sort();
++  if (firstKeys.length !== secondKeys.length) return false;
++
++  return firstKeys.every((key, index) => (
++    key === secondKeys[index] && hasSameEventContent(first[key], second[key])
++  ));
+ }
+ 
+ function uniqueEvents(events) {
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index 74d9b4a8975a50a9dec004742ed5508a9b17947d..7cb326b6d131d0adfde5131cc65cd748b339159d
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -117,3 +117,25 @@
+   assert.equal(String(failure.stdout), '');
+   assert.deepEqual(JSON.parse(String(failure.stderr)), { error: 'conflicting_duplicate', id: 'charge-a' });
+ });
++
++test('payout rejects duplicate ids with different extra JSON properties', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      {
++        id: 'same', merchant_id: 'merchant-a', type: 'charge', amount_cents: 100, source: 'card-a',
++      },
++      {
++        id: 'same', merchant_id: 'merchant-a', type: 'charge', amount_cents: 100, source: 'card-b',
++      },
++    ],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.equal(String(failure.stderr), '{"error":"conflicting_duplicate","id":"same"}\n');
++});
+
+exec
+/bin/zsh -lc 'git diff --check && git diff -- bin/cli.js tests/cli.test.js && node --test tests/' in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index e94d7589ad987bfa3106fc99d07a0e15c0c3b53c..a55115dba44da29a22ab97f91986166cc5314b4b
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -83,10 +83,18 @@
+ }
+ 
+ function hasSameEventContent(first, second) {
+-  return first.id === second.id
+-    && first.merchant_id === second.merchant_id
+-    && first.type === second.type
+-    && first.amount_cents === second.amount_cents;
++  if (first === second) return true;
++  if (!first || !second || typeof first !== 'object' || typeof second !== 'object') {
++    return false;
++  }
++
++  const firstKeys = Object.keys(first).sort();
++  const secondKeys = Object.keys(second).sort();
++  if (firstKeys.length !== secondKeys.length) return false;
++
++  return firstKeys.every((key, index) => (
++    key === secondKeys[index] && hasSameEventContent(first[key], second[key])
++  ));
+ }
+ 
+ function uniqueEvents(events) {
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index 74d9b4a8975a50a9dec004742ed5508a9b17947d..7cb326b6d131d0adfde5131cc65cd748b339159d
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -117,3 +117,25 @@
+   assert.equal(String(failure.stdout), '');
+   assert.deepEqual(JSON.parse(String(failure.stderr)), { error: 'conflicting_duplicate', id: 'charge-a' });
+ });
++
++test('payout rejects duplicate ids with different extra JSON properties', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      {
++        id: 'same', merchant_id: 'merchant-a', type: 'charge', amount_cents: 100, source: 'card-a',
++      },
++      {
++        id: 'same', merchant_id: 'merchant-a', type: 'charge', amount_cents: 100, source: 'card-b',
++      },
++    ],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.equal(String(failure.stderr), '{"error":"conflicting_duplicate","id":"same"}\n');
++});
+
+ exited 1 in 237ms:
+# {"error":"unknown_type","index":0}
+# {"error":"conflicting_duplicate","id":"charge-a"}
+# {"error":"conflicting_duplicate","id":"same"}
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 27.344708
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 24.570709
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 23.355625
+  ...
+# Subtest: payout prints per-merchant totals after deduplicating events
+ok 4 - payout prints per-merchant totals after deduplicating events
+  ---
+  duration_ms: 25.892792
+  ...
+# Subtest: payout reports validation failures as a single JSON error
+ok 5 - payout reports validation failures as a single JSON error
+  ---
+  duration_ms: 28.660584
+  ...
+# Subtest: payout exits with conflicting_duplicate before printing totals when an id repeats with different content
+ok 6 - payout exits with conflicting_duplicate before printing totals when an id repeats with different content
+  ---
+  duration_ms: 24.353167
+  ...
+# Subtest: payout rejects duplicate ids with different extra JSON properties
+ok 7 - payout rejects duplicate ids with different extra JSON properties
+  ---
+  duration_ms: 25.030458
+  ...
+# Subtest: GET /health returns ok
+not ok 8 - GET /health returns ok
+  ---
+  duration_ms: 2.19525
+  location: '/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 9 - GET /items returns list
+  ---
+  duration_ms: 0.513625
+  location: '/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 10 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.373958
+  location: '/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 7
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 216.678084
+
+codex
+The targeted CLI tests pass, including the new regression. The required full suite is blocked by the sandbox: all three unrelated server tests fail before execution because binding `0.0.0.0` returns `EPERM`; that cannot be corrected within the authorized files.
+exec
+/bin/zsh -lc "node --test tests/cli.test.js && git status --short && nl -ba bin/cli.js | sed -n '82,108p' && nl -ba tests/cli.test.js | sed -n '112,150p'" in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index e94d7589ad987bfa3106fc99d07a0e15c0c3b53c..a55115dba44da29a22ab97f91986166cc5314b4b
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -83,10 +83,18 @@
+ }
+ 
+ function hasSameEventContent(first, second) {
+-  return first.id === second.id
+-    && first.merchant_id === second.merchant_id
+-    && first.type === second.type
+-    && first.amount_cents === second.amount_cents;
++  if (first === second) return true;
++  if (!first || !second || typeof first !== 'object' || typeof second !== 'object') {
++    return false;
++  }
++
++  const firstKeys = Object.keys(first).sort();
++  const secondKeys = Object.keys(second).sort();
++  if (firstKeys.length !== secondKeys.length) return false;
++
++  return firstKeys.every((key, index) => (
++    key === secondKeys[index] && hasSameEventContent(first[key], second[key])
++  ));
+ }
+ 
+ function uniqueEvents(events) {
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index 74d9b4a8975a50a9dec004742ed5508a9b17947d..7cb326b6d131d0adfde5131cc65cd748b339159d
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -117,3 +117,25 @@
+   assert.equal(String(failure.stdout), '');
+   assert.deepEqual(JSON.parse(String(failure.stderr)), { error: 'conflicting_duplicate', id: 'charge-a' });
+ });
++
++test('payout rejects duplicate ids with different extra JSON properties', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      {
++        id: 'same', merchant_id: 'merchant-a', type: 'charge', amount_cents: 100, source: 'card-a',
++      },
++      {
++        id: 'same', merchant_id: 'merchant-a', type: 'charge', amount_cents: 100, source: 'card-b',
++      },
++    ],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.equal(String(failure.stderr), '{"error":"conflicting_duplicate","id":"same"}\n');
++});
+
+ succeeded in 221ms:
+# {"error":"unknown_type","index":0}
+# {"error":"conflicting_duplicate","id":"charge-a"}
+# {"error":"conflicting_duplicate","id":"same"}
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 24.802042
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 23.827291
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 25.02975
+  ...
+# Subtest: payout prints per-merchant totals after deduplicating events
+ok 4 - payout prints per-merchant totals after deduplicating events
+  ---
+  duration_ms: 26.352041
+  ...
+# Subtest: payout reports validation failures as a single JSON error
+ok 5 - payout reports validation failures as a single JSON error
+  ---
+  duration_ms: 23.643792
+  ...
+# Subtest: payout exits with conflicting_duplicate before printing totals when an id repeats with different content
+ok 6 - payout exits with conflicting_duplicate before printing totals when an id repeats with different content
+  ---
+  duration_ms: 24.029625
+  ...
+# Subtest: payout rejects duplicate ids with different extra JSON properties
+ok 7 - payout rejects duplicate ids with different extra JSON properties
+  ---
+  duration_ms: 26.108541
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 210.158416
+ M bin/cli.js
+ M tests/cli.test.js
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+    82	  }
+    83	}
+    84	
+    85	function hasSameEventContent(first, second) {
+    86	  if (first === second) return true;
+    87	  if (!first || !second || typeof first !== 'object' || typeof second !== 'object') {
+    88	    return false;
+    89	  }
+    90	
+    91	  const firstKeys = Object.keys(first).sort();
+    92	  const secondKeys = Object.keys(second).sort();
+    93	  if (firstKeys.length !== secondKeys.length) return false;
+    94	
+    95	  return firstKeys.every((key, index) => (
+    96	    key === secondKeys[index] && hasSameEventContent(first[key], second[key])
+    97	  ));
+    98	}
+    99	
+   100	function uniqueEvents(events) {
+   101	  const eventsById = new Map();
+   102	  const unique = [];
+   103	
+   104	  events.forEach((event, index) => {
+   105	    validateEvent(event, index);
+   106	    const priorEvent = eventsById.get(event.id);
+   107	    if (priorEvent) {
+   108	      if (!hasSameEventContent(priorEvent, event)) {
+   112	  }));
+   113	
+   114	  const failure = runFailure(['payout', '--input', inputPath]);
+   115	
+   116	  assert.equal(failure.status, 2);
+   117	  assert.equal(String(failure.stdout), '');
+   118	  assert.deepEqual(JSON.parse(String(failure.stderr)), { error: 'conflicting_duplicate', id: 'charge-a' });
+   119	});
+   120	
+   121	test('payout rejects duplicate ids with different extra JSON properties', (t) => {
+   122	  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
+   123	  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
+   124	  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
+   125	  fs.writeFileSync(inputPath, JSON.stringify({
+   126	    events: [
+   127	      {
+   128	        id: 'same', merchant_id: 'merchant-a', type: 'charge', amount_cents: 100, source: 'card-a',
+   129	      },
+   130	      {
+   131	        id: 'same', merchant_id: 'merchant-a', type: 'charge', amount_cents: 100, source: 'card-b',
+   132	      },
+   133	    ],
+   134	  }));
+   135	
+   136	  const failure = runFailure(['payout', '--input', inputPath]);
+   137	
+   138	  assert.equal(failure.status, 2);
+   139	  assert.equal(String(failure.stdout), '');
+   140	  assert.equal(String(failure.stderr), '{"error":"conflicting_duplicate","id":"same"}\n');
+   141	});
+
+codex
+BLOCKED — the fix is complete, but full-suite validation is sandbox-blocked.
+
+- Deep structural duplicate comparison added in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/bin/cli.js:85).
+- Regression test added in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/cli.test.js:121).
+- `node --test tests/cli.test.js`: 7/7 passing.
+- `node --test tests/`: 3 unrelated server tests fail because the sandbox rejects `listen(0.0.0.0)` with `EPERM`.
+diff --git a/bin/cli.js b/bin/cli.js
+index e94d7589ad987bfa3106fc99d07a0e15c0c3b53c..a55115dba44da29a22ab97f91986166cc5314b4b
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -83,10 +83,18 @@
+ }
+ 
+ function hasSameEventContent(first, second) {
+-  return first.id === second.id
+-    && first.merchant_id === second.merchant_id
+-    && first.type === second.type
+-    && first.amount_cents === second.amount_cents;
++  if (first === second) return true;
++  if (!first || !second || typeof first !== 'object' || typeof second !== 'object') {
++    return false;
++  }
++
++  const firstKeys = Object.keys(first).sort();
++  const secondKeys = Object.keys(second).sort();
++  if (firstKeys.length !== secondKeys.length) return false;
++
++  return firstKeys.every((key, index) => (
++    key === secondKeys[index] && hasSameEventContent(first[key], second[key])
++  ));
+ }
+ 
+ function uniqueEvents(events) {
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index 74d9b4a8975a50a9dec004742ed5508a9b17947d..7cb326b6d131d0adfde5131cc65cd748b339159d
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -117,3 +117,25 @@
+   assert.equal(String(failure.stdout), '');
+   assert.deepEqual(JSON.parse(String(failure.stderr)), { error: 'conflicting_duplicate', id: 'charge-a' });
+ });
++
++test('payout rejects duplicate ids with different extra JSON properties', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      {
++        id: 'same', merchant_id: 'merchant-a', type: 'charge', amount_cents: 100, source: 'card-a',
++      },
++      {
++        id: 'same', merchant_id: 'merchant-a', type: 'charge', amount_cents: 100, source: 'card-b',
++      },
++    ],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.equal(String(failure.stderr), '{"error":"conflicting_duplicate","id":"same"}\n');
++});
+
+tokens used
+18,206
+[codex-monitored] codex exited: code=0 elapsed=59s

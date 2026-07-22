@@ -1,0 +1,910 @@
+[codex-monitored] start: ts=2026-07-22T17:14:28Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=78582
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f8ad2-58af-77b1-93ea-65357a82ef3e
+--------
+user
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below.
+
+## Output discipline
+
+Your default is efficient, direct, task-oriented.
+
+## Validation pattern
+
+Validation is concrete commands and tools. Run `npm test` before declaring done if you change anything.
+
+## Anti-patterns
+
+Don't over-specify process when the destination is clear. Do not narrate internal deliberation.
+
+---
+
+# PHASE 4 — CLEANUP (canonical body)
+
+Task-scoped pass — only what this diff introduced or invalidated.
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn.
+</role>
+
+<input>
+- Cumulative diff: `git diff cbd12da HEAD -- bin/cli.js tests/cli.test.js` (the `fulfill-wave` command implementation, already committed).
+- Spec: `.devlyn/criteria.generated.md` (read it for the full requirements).
+- Plan: `.devlyn/plan.md`.
+</input>
+
+<allowlist>
+You may modify or delete:
+
+1. Tooling artifacts the spec did not list as deliverables (this repo has none from this diff — no test-results/, no build output).
+2. Dead code added by this diff — symbols introduced by this diff that nothing added by this diff references AND that are not part of the spec's required surface. Pre-existing dead code is out of scope.
+3. Doc references this diff invalidated (this diff touched no docs).
+4. Inline comments explaining code this diff deleted but the comment still mentions.
+
+Files outside `bin/cli.js` and `tests/cli.test.js` must not change. Pre-existing issues elsewhere in the repo are out of scope.
+</allowlist>
+
+<output>
+Report your verdict in this reply: `PASS` if changes within allowlist (or no changes needed); `FAIL` if you cannot complete within the allowlist.
+</output>
+
+<quality_bar>
+- Subtractive-first applies most strongly here.
+- Do not "improve" code outside the allowlist, even if it looks fixable.
+- If you find nothing to clean up, say so plainly and report PASS with zero changes — do not invent work.
+</quality_bar>
+
+<task>
+Review the `fulfill-wave` implementation just added to `bin/cli.js` (functions: `ensure`, `compareValues`, `isNonEmptyString`, `isPositiveInteger`, `isValidDate`, `submittedAtTimestamp`, `validateFulfillWaveInput`, `parseInputFlag`, `compareWarehouses`, `compareLots`, `buildWorkingStock`, `drawFromWarehouse`, `drawLine`, `fulfillWave`, `runFulfillWave`) and the 5 new tests in `tests/cli.test.js`. Check specifically:
+
+1. Is every helper function actually referenced (no dead code introduced by this diff)?
+2. Are there any leftover debug statements, commented-out code, or stray artifacts from the implementation pass?
+3. Does anything in this diff need a doc update (README.md mentions the CLI's commands — check if it lists `hello`/`version` and would need a `fulfill-wave` mention; if README.md is out of the authorized surface, do NOT edit it — just note it as a finding, do not touch it)?
+
+Make only allowlisted changes to `bin/cli.js` and/or `tests/cli.test.js` if you find something; otherwise report PASS with no changes.
+</task>
+codex
+I’ll review the committed diff and its required contract, then run the test suite. I’ll keep this strictly to the two authorized files and make no change unless the cleanup checks identify one.
+exec
+/bin/zsh -lc "git status --short && printf '\\n--- SPEC ---\\n' && sed -n '1,240p' .devlyn/criteria.generated.md && printf '\\n--- PLAN ---\\n' && sed -n '1,240p' .devlyn/plan.md && printf '\\n--- DIFF STAT ---\\n' && git diff --stat cbd12da HEAD -- bin/cli.js tests/cli.test.js && printf '\\n--- DIFF ---\\n' && git diff --find-renames --find-copies cbd12da HEAD -- bin/cli.js tests/cli.test.js" in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+--- SPEC ---
+# Generated criteria — fulfill-wave CLI command
+
+## Requirements
+
+- Add a `fulfill-wave` subcommand to `bin/cli.js`, invoked as `bench-cli fulfill-wave --input <path>`, reading one JSON object from `<path>` with required arrays `warehouses` (each `{ id, distance, lots: [{ sku, lot, qty, expires }] }`) and `orders` (each `{ id, priority, submitted_at, lines: [{ sku, qty, single_warehouse }] }`).
+- Validate the full input before allocating anything: ids/SKU/lot identifiers are non-empty strings; quantities are positive integers; `expires` is a valid `YYYY-MM-DD` calendar date; `submitted_at` parses as an ISO date/timestamp; `distance`/`priority` are numbers; `warehouses`/`orders`/`lots`/`lines` are arrays; order ids are unique. The input file must never be mutated.
+- Process orders in global order: `priority` descending, then `submitted_at` ascending, then `id` ascending. Each order is all-or-nothing — if any line cannot be fully allocated, reject the whole order and roll back every tentative stock deduction it made; rejected orders must not affect stock available to later orders.
+- `single_warehouse: false` lines may split across warehouses/lots; `single_warehouse: true` lines must be fully satisfied from one warehouse (which may combine multiple lots in that warehouse) and reject if no single warehouse alone has enough stock, even if combined stock across warehouses would suffice.
+- Warehouse selection order: `distance` ascending, then warehouse `id` ascending. Lot consumption within a warehouse: FEFO — `expires` ascending, then `lot` id ascending. Allocation rows preserve the exact sequence stock was drawn in.
+- On success, write exactly one parseable JSON object to stdout (nothing to stderr, no extra text) with only keys `accepted` (processing order; each `{ id, allocations: [{ sku, warehouse, lot, qty }] }`), `rejected` (original input order; each `{ id, reason: "insufficient_stock" }`), and `remaining` (positive leftover lots sorted by warehouse id, then sku, then expires, then lot id; each `{ warehouse, sku, lot, qty, expires }`).
+- On invalid input or file-read failure, exit code `2`, write nothing to stdout, and write exactly one parseable JSON object (non-null, non-array) to stderr describing the failure.
+- Update `tests/cli.test.js`: keep all existing tests passing, and add at least two `fulfill-wave` tests — one accepted allocation, one rejected all-or-nothing order.
+
+## Constraints
+
+- Only touch `bin/cli.js` and `tests/cli.test.js` (matches existing CLI structure: a `USAGE` string, a `switch (command)` dispatcher in `main()`, tests invoking `node bin/cli.js <args>` via `execFileSync`).
+- No new npm dependencies (`package.json` currently declares only `express` as a runtime dependency for the server, unrelated to the CLI).
+- No catch block that silently returns `null`/`undefined`/empty string/empty object, and no empty catch block.
+- Out of scope: carrier selection, package dimensions, backorders/partial order acceptance, and persistence beyond stdout.
+
+## Out of Scope
+
+- Anything not in `bin/cli.js` or `tests/cli.test.js`.
+- The existing `hello`/`version`/`--help` commands, beyond leaving them working.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/",
+      "stdout_contains": ["# pass 11", "# fail 0"]
+    },
+    {
+      "cmd": "TMP=$(mktemp) && printf '%s' '{\"warehouses\":[{\"id\":\"W1\",\"distance\":1,\"lots\":[{\"sku\":\"SKU1\",\"lot\":\"L1\",\"qty\":10,\"expires\":\"2026-01-01\"}]}],\"orders\":[{\"id\":\"O1\",\"priority\":1,\"submitted_at\":\"2026-01-01T00:00:00Z\",\"lines\":[{\"sku\":\"SKU1\",\"qty\":5,\"single_warehouse\":false}]}]}' > \"$TMP\" && node bin/cli.js fulfill-wave --input \"$TMP\"; CODE=$?; rm -f \"$TMP\"; exit $CODE",
+      "stdout_contains": ["\"accepted\"", "\"O1\"", "\"SKU1\"", "\"W1\"", "\"L1\""]
+    },
+    {
+      "cmd": "TMP=$(mktemp) && printf '%s' '{\"warehouses\":[{\"id\":\"W1\",\"distance\":1,\"lots\":[{\"sku\":\"SKU1\",\"lot\":\"L1\",\"qty\":3,\"expires\":\"2026-01-01\"}]}],\"orders\":[{\"id\":\"O1\",\"priority\":1,\"submitted_at\":\"2026-01-01T00:00:00Z\",\"lines\":[{\"sku\":\"SKU1\",\"qty\":5,\"single_warehouse\":false}]}]}' > \"$TMP\" && node bin/cli.js fulfill-wave --input \"$TMP\"; CODE=$?; rm -f \"$TMP\"; exit $CODE",
+      "stdout_contains": ["\"rejected\"", "\"insufficient_stock\"", "\"remaining\"", "\"qty\":3"]
+    },
+    {
+      "cmd": "TMP=$(mktemp) && printf '%s' '{\"warehouses\":[],\"orders\":[{\"id\":\"\",\"priority\":1,\"submitted_at\":\"bad\",\"lines\":[]}]}' > \"$TMP\" && node bin/cli.js fulfill-wave --input \"$TMP\" >/tmp/fw-stdout.$$ 2>/tmp/fw-stderr.$$; CODE=$?; OUT=$(cat /tmp/fw-stdout.$$); ERR=$(cat /tmp/fw-stderr.$$); rm -f \"$TMP\" /tmp/fw-stdout.$$ /tmp/fw-stderr.$$; if [ \"$CODE\" -eq 2 ] && [ -z \"$OUT\" ] && [ -n \"$ERR\" ]; then echo INVALID_INPUT_OK; exit 0; else echo INVALID_INPUT_FAIL; exit 1; fi",
+      "stdout_contains": ["INVALID_INPUT_OK"]
+    }
+  ]
+}
+```
+
+--- PLAN ---
+# Plan — `fulfill-wave` CLI command
+
+<!-- devlyn:authorized-surface -->
+## 1. Files to touch
+
+| Path | Change | Rationale |
+|---|---|---|
+| `bin/cli.js` | edit | Add a `fulfill-wave` case to the existing `switch (command)` dispatcher (`bin/cli.js:46`), alongside a `--input` flag parser (mirrors the `parseNameFlag` shape at `bin/cli.js:27-36`, but see Risk below on exit-code divergence), the input validator, the allocation engine, and the stdout/stderr writer. Covers Requirements R1 (subcommand + schema), R2 (validation), R3 (global processing order + all-or-nothing rollback), R4 (`single_warehouse` constraint), R5 (warehouse/lot selection order), R6 (success output shape), R7 (invalid-input/error contract). |
+| `tests/cli.test.js` | edit | Keep the 3 existing tests (`hello default`, `hello with --name`, `version prints package version`) untouched. Add **exactly 5** new `fulfill-wave` tests (3 + 5 = 8), covering R8 and directly exercising Verification commands 1-4 (see Risks for why the count is exactly 5, not "at least 2"). |
+
+```json
+{"authorized_surface": ["bin/cli.js", "tests/cli.test.js"]}
+```
+
+## 2. Risks
+
+**Scope discipline**
+- Only `bin/cli.js` and `tests/cli.test.js` are authorized. No new fixture files for test inputs — temp JSON files must be written at runtime inside the test (e.g. `fs.mkdtempSync(path.join(os.tmpdir(), ...))` + `fs.writeFileSync`), then cleaned up. `os` and `fs` are already-available Node built-ins, not new dependencies.
+- Do not touch `hello`, `version`, `--help`, or the default/unknown-command branch (`bin/cli.js:56-59`) beyond leaving them working. Do not refactor `parseNameFlag` or `readPackageVersion`.
+- No new npm dependencies (confirmed: `package.json` declares only `express`, unrelated to the CLI).
+
+**Exit-code / output-channel contract is stricter than the existing pattern — do not reuse it verbatim**
+- The existing `--name` failure path (`bin/cli.js:31-34`) does `console.error(...)` + `process.exit(1)` with a plain-text message, and the unknown-command path (`bin/cli.js:56-59`) writes `console.error` **and** the full `USAGE` block to stderr, exiting `1`. Neither pattern satisfies `fulfill-wave`'s contract: invalid input / file-read failure must exit **`2`**, write **nothing** to stdout, and write **exactly one parseable JSON object** (non-null, non-array) to stderr — no `USAGE` text, no extra lines. A missing/invalid `--input` flag value falls under this same "invalid input" contract (exit 2 + JSON stderr), not the existing exit-1/plain-text convention — this is the strict reading adopted for the ambiguous case "what if `--input` itself is malformed."
+- On success, write **nothing** to stderr and **exactly one** JSON object to stdout (a single `console.log(JSON.stringify(result))` call — no other `console.log`/`console.error`/`process.stdout.write` call may execute on that path).
+- Read + parse + schema-validate must be wrapped in one `try/catch` that, on failure, builds a real error object (e.g. `{ error: err.message }`) and writes it to stderr before `process.exit(2)` — never an empty catch block, never a catch that returns `null`/`undefined`/`''`/`{}` silently (explicit repo rule). No catch is added around the allocation engine itself: validation already guarantees well-formed input reaches it, and no observed failure mode justifies a second defensive layer there.
+
+**Validation must reject cases naive parsing would silently accept**
+- `expires` ("valid `YYYY-MM-DD` calendar date"): a regex match alone is insufficient — `new Date('2026-02-30')` auto-rolls over to March instead of throwing. Validate by regex-matching `YYYY-MM-DD`, extracting the numeric parts, and confirming they round-trip through `Date.UTC` (catches Feb 30, month 13, day 0, leap-year Feb 29 on non-leap years, etc.).
+- `submitted_at` ("parses as an ISO date or timestamp"): schema types it as a string, so accept it if `Date.parse(value)` is not `NaN`, OR the string is purely numeric and `Number(value)` is finite (epoch-ms-as-string case). This is the strict interpretation adopted for the spec's otherwise ambiguous "or timestamps."
+- `distance` / `priority` must be `typeof === 'number' && Number.isFinite(...)` — a numeric-looking string (e.g. `"1"`) is rejected, no implicit coercion.
+- `qty` must be `Number.isInteger(v) && v > 0` — rejects 0, negatives, non-integers, non-numbers.
+- ids/sku/lot: `typeof === 'string' && v.length > 0`.
+- Order id uniqueness is checked across the full `orders` array as part of the single up-front validation pass, before any allocation starts — "validate before allocating anything" means the whole document, not per-order.
+
+**Allocation engine must not mutate the parsed input**
+- Do not deep-clone the parsed document to satisfy "do not mutate the input file." Instead, build an independent working-stock structure (new plain objects: per warehouse, lots grouped by sku and pre-sorted by `expires` ascending then `lot` id ascending) derived from the parsed input. The engine only ever reads/writes this derived structure, never the parsed input's own objects/arrays — this makes mutation structurally impossible rather than defending against it after the fact.
+- Warehouse iteration order (distance ascending, then id ascending) and lot iteration order (expires ascending, then lot id ascending) must use plain code-unit string/number comparison (`a < b ? -1 : a > b ? 1 : 0`), not `localeCompare` — locale-sensitive collation would make ordering environment-dependent.
+- Global order-processing sequence (priority descending, then `submitted_at` ascending by resolved timestamp, then id ascending) is a separate sort from input order; the `rejected` output must use **original input order** (track each order's original array index), while `accepted` uses **processing order** — conflating the two orderings is a distinct, easy-to-miss bug.
+- All-or-nothing + rollback: track every tentative stock deduction made while attempting an order's lines (which lot, how much) in a per-order list. If any line in the order cannot be fully satisfied, add every recorded deduction back to the working stock before moving on, and do not add the order to `accepted`. If all lines succeed, the deductions are already applied — no further action needed, and later orders in processing order see the reduced stock.
+- `single_warehouse: true` lines: sum a warehouse's own matching-sku stock only; a warehouse qualifies only if its own total (across its own lots) covers the line's `qty`, even if two warehouses combined would. Reject the whole order if no single warehouse qualifies, even though `single_warehouse: false` lines in the same input could straddle warehouses.
+- Allocation rows for a given order must be appended in the exact sequence stock was drawn (warehouse-then-lot draw order as the engine consumes it) — never grouped/merged by sku or lot after the fact, even if two rows end up referencing the same lot from two different lines.
+- **`rejected` order (insufficient stock, part of the normal success JSON, exit 0) is not the same thing as invalid input (exit 2, stderr JSON)** — this distinction must not be conflated in either the implementation or the tests. A rejected order is a valid, successful `fulfill-wave` run that happens to report one order as unfulfillable.
+
+**Output shape**
+- Success stdout: one JSON object with **only** keys `accepted`, `rejected`, `remaining` — no extra bookkeeping fields (e.g. internal warehouse/lot working-stock structures) may leak into the serialized rows.
+- `remaining`: only lots with qty `> 0` after all processing, sorted by warehouse id, then sku, then `expires`, then lot id. Since `expires` is already `YYYY-MM-DD`, plain string comparison sorts it chronologically — no need to parse it as a `Date` for this sort.
+
+**Test-count precision (mechanical gate, not a style choice)**
+- Verification command 1 requires `node --test tests/` stdout to contain the literal substring `"# pass 8"` and `"# fail 0"`. There are 3 existing tests. The spec prose says "add at least two" `fulfill-wave` tests, but the mechanical gate fixes the total at exactly 8 — so exactly **5** new tests must be added (not 2, not 6+, which would print `# pass 9` etc. and fail the substring check). Suggested 5, each tied to a distinct acceptance criterion (no padding): (1) accepted allocation — mirrors Verification command 2; (2) rejected all-or-nothing / `insufficient_stock` — mirrors Verification command 3; (3) invalid-input contract (exit 2, empty stdout, one JSON object on stderr) — mirrors Verification command 4; (4) `single_warehouse: true` rejected when only *combined* cross-warehouse stock would suffice (no single warehouse alone qualifies) — the one business rule not exercised by commands 1-4; (5) multi-order priority-descending processing where a higher-priority order consumes stock a lower-priority order needed, proving rollback doesn't leak stock back to orders it shouldn't.
+- Existing `run(args)` helper (`tests/cli.test.js:8-10`) calls `execFileSync` with no `{ shell: true }` and default behavior: it **throws** on non-zero exit status, embedding `stdout`/`stderr` on the thrown error object. The exit-2 test must wrap the call in `try/catch` (or pass `{ encoding: 'utf8' }` directly and inspect `err.status`/`err.stdout`/`err.stderr`) rather than calling the existing `run()` helper and expecting a return value — calling `run()` directly on an exit-2 invocation will throw and fail the test file, not return a result to assert on.
+
+## 3. Acceptance restatement
+
+Verbatim copy of `.devlyn/criteria.generated.md`'s `## Verification` block:
+
+```json
+{
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/",
+      "stdout_contains": ["# pass 8", "# fail 0"]
+    },
+    {
+      "cmd": "TMP=$(mktemp) && printf '%s' '{\"warehouses\":[{\"id\":\"W1\",\"distance\":1,\"lots\":[{\"sku\":\"SKU1\",\"lot\":\"L1\",\"qty\":10,\"expires\":\"2026-01-01\"}]}],\"orders\":[{\"id\":\"O1\",\"priority\":1,\"submitted_at\":\"2026-01-01T00:00:00Z\",\"lines\":[{\"sku\":\"SKU1\",\"qty\":5,\"single_warehouse\":false}]}]}' > \"$TMP\" && node bin/cli.js fulfill-wave --input \"$TMP\"; CODE=$?; rm -f \"$TMP\"; exit $CODE",
+      "stdout_contains": ["\"accepted\"", "\"O1\"", "\"SKU1\"", "\"W1\"", "\"L1\""]
+    },
+    {
+      "cmd": "TMP=$(mktemp) && printf '%s' '{\"warehouses\":[{\"id\":\"W1\",\"distance\":1,\"lots\":[{\"sku\":\"SKU1\",\"lot\":\"L1\",\"qty\":3,\"expires\":\"2026-01-01\"}]}],\"orders\":[{\"id\":\"O1\",\"priority\":1,\"submitted_at\":\"2026-01-01T00:00:00Z\",\"lines\":[{\"sku\":\"SKU1\",\"qty\":5,\"single_warehouse\":false}]}]}' > \"$TMP\" && node bin/cli.js fulfill-wave --input \"$TMP\"; CODE=$?; rm -f \"$TMP\"; exit $CODE",
+      "stdout_contains": ["\"rejected\"", "\"insufficient_stock\"", "\"remaining\"", "\"qty\":3"]
+    },
+    {
+      "cmd": "TMP=$(mktemp) && printf '%s' '{\"warehouses\":[],\"orders\":[{\"id\":\"\",\"priority\":1,\"submitted_at\":\"bad\",\"lines\":[]}]}' > \"$TMP\" && node bin/cli.js fulfill-wave --input \"$TMP\" >/tmp/fw-stdout.$$ 2>/tmp/fw-stderr.$$; CODE=$?; OUT=$(cat /tmp/fw-stdout.$$); ERR=$(cat /tmp/fw-stderr.$$); rm -f \"$TMP\" /tmp/fw-stdout.$$ /tmp/fw-stderr.$$; if [ \"$CODE\" -eq 2 ] && [ -z \"$OUT\" ] && [ -n \"$ERR\" ]; then echo INVALID_INPUT_OK; exit 0; else echo INVALID_INPUT_FAIL; exit 1; fi",
+      "stdout_contains": ["INVALID_INPUT_OK"]
+    }
+  ]
+}
+```
+
+--- DIFF STAT ---
+ bin/cli.js        | 233 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/cli.test.js | 134 +++++++++++++++++++++++++++++++
+ 2 files changed, 367 insertions(+)
+
+--- DIFF ---
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b24..6078ec7 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -35,6 +35,235 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function ensure(condition, message) {
++  if (!condition) {
++    throw new Error(message);
++  }
++}
++
++function compareValues(left, right) {
++  if (left < right) return -1;
++  if (left > right) return 1;
++  return 0;
++}
++
++function isNonEmptyString(value) {
++  return typeof value === 'string' && value.length > 0;
++}
++
++function isPositiveInteger(value) {
++  return Number.isInteger(value) && value > 0;
++}
++
++function isValidDate(value) {
++  const parts = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(value);
++  if (!parts) return false;
++
++  const year = Number(parts[1]);
++  const month = Number(parts[2]);
++  const day = Number(parts[3]);
++  const date = new Date(Date.UTC(year, month - 1, day));
++
++  return date.getUTCFullYear() === year
++    && date.getUTCMonth() === month - 1
++    && date.getUTCDate() === day;
++}
++
++function submittedAtTimestamp(value) {
++  if (!isNonEmptyString(value)) return Number.NaN;
++
++  if (/^[+-]?[0-9]+(?:\.[0-9]+)?$/.test(value)) {
++    const timestamp = Number(value);
++    return Number.isFinite(timestamp) ? timestamp : Number.NaN;
++  }
++
++  return Date.parse(value);
++}
++
++function validateFulfillWaveInput(input) {
++  ensure(input !== null && typeof input === 'object' && !Array.isArray(input),
++    'input must be a JSON object');
++  ensure(Array.isArray(input.warehouses), 'warehouses must be an array');
++  ensure(Array.isArray(input.orders), 'orders must be an array');
++
++  for (const warehouse of input.warehouses) {
++    ensure(warehouse !== null && typeof warehouse === 'object' && !Array.isArray(warehouse),
++      'warehouse must be an object');
++    ensure(isNonEmptyString(warehouse.id), 'warehouse id must be a non-empty string');
++    ensure(typeof warehouse.distance === 'number' && Number.isFinite(warehouse.distance),
++      'warehouse distance must be a number');
++    ensure(Array.isArray(warehouse.lots), 'warehouse lots must be an array');
++
++    for (const lot of warehouse.lots) {
++      ensure(lot !== null && typeof lot === 'object' && !Array.isArray(lot),
++        'lot must be an object');
++      ensure(isNonEmptyString(lot.sku), 'lot sku must be a non-empty string');
++      ensure(isNonEmptyString(lot.lot), 'lot id must be a non-empty string');
++      ensure(isPositiveInteger(lot.qty), 'lot qty must be a positive integer');
++      ensure(isValidDate(lot.expires), 'lot expires must be a valid YYYY-MM-DD date');
++    }
++  }
++
++  const orderIds = new Set();
++  for (const order of input.orders) {
++    ensure(order !== null && typeof order === 'object' && !Array.isArray(order),
++      'order must be an object');
++    ensure(isNonEmptyString(order.id), 'order id must be a non-empty string');
++    ensure(!orderIds.has(order.id), 'order ids must be unique');
++    orderIds.add(order.id);
++    ensure(typeof order.priority === 'number' && Number.isFinite(order.priority),
++      'order priority must be a number');
++    ensure(Number.isFinite(submittedAtTimestamp(order.submitted_at)),
++      'order submitted_at must be an ISO date or timestamp');
++    ensure(Array.isArray(order.lines), 'order lines must be an array');
++
++    for (const line of order.lines) {
++      ensure(line !== null && typeof line === 'object' && !Array.isArray(line),
++        'order line must be an object');
++      ensure(isNonEmptyString(line.sku), 'order line sku must be a non-empty string');
++      ensure(isPositiveInteger(line.qty), 'order line qty must be a positive integer');
++      ensure(typeof line.single_warehouse === 'boolean',
++        'order line single_warehouse must be a boolean');
++    }
++  }
++}
++
++function parseInputFlag(argv) {
++  const index = argv.indexOf('--input');
++  const inputPath = argv[index + 1];
++  ensure(index !== -1 && isNonEmptyString(inputPath) && !inputPath.startsWith('-'),
++    '--input requires a path');
++  return inputPath;
++}
++
++function compareWarehouses(left, right) {
++  return compareValues(left.distance, right.distance)
++    || compareValues(left.id, right.id);
++}
++
++function compareLots(left, right) {
++  return compareValues(left.expires, right.expires)
++    || compareValues(left.lot, right.lot);
++}
++
++function buildWorkingStock(warehouses) {
++  return warehouses.map((warehouse) => ({
++    id: warehouse.id,
++    distance: warehouse.distance,
++    lots: warehouse.lots.map((lot) => ({
++      sku: lot.sku,
++      lot: lot.lot,
++      qty: lot.qty,
++      expires: lot.expires,
++    })).sort(compareLots),
++  })).sort(compareWarehouses);
++}
++
++function drawFromWarehouse(warehouse, sku, qty, allocations, deductions) {
++  let remaining = qty;
++
++  for (const lot of warehouse.lots) {
++    if (lot.sku !== sku || lot.qty === 0 || remaining === 0) continue;
++
++    const drawn = Math.min(lot.qty, remaining);
++    lot.qty -= drawn;
++    remaining -= drawn;
++    allocations.push({ sku, warehouse: warehouse.id, lot: lot.lot, qty: drawn });
++    deductions.push({ lot, qty: drawn });
++  }
++
++  return remaining;
++}
++
++function drawLine(stock, line, allocations, deductions) {
++  if (line.single_warehouse) {
++    for (const warehouse of stock) {
++      const available = warehouse.lots.reduce((total, lot) => (
++        lot.sku === line.sku ? total + lot.qty : total
++      ), 0);
++      if (available >= line.qty) {
++        return drawFromWarehouse(warehouse, line.sku, line.qty, allocations, deductions) === 0;
++      }
++    }
++    return false;
++  }
++
++  let remaining = line.qty;
++  for (const warehouse of stock) {
++    remaining = drawFromWarehouse(warehouse, line.sku, remaining, allocations, deductions);
++    if (remaining === 0) {
++      return true;
++    }
++  }
++
++  return false;
++}
++
++function fulfillWave(input) {
++  const stock = buildWorkingStock(input.warehouses);
++  const accepted = [];
++  const rejectedIds = new Set();
++  const orders = input.orders.map((order) => ({
++    order,
++    submittedAt: submittedAtTimestamp(order.submitted_at),
++  })).sort((left, right) => (
++    compareValues(right.order.priority, left.order.priority)
++      || compareValues(left.submittedAt, right.submittedAt)
++      || compareValues(left.order.id, right.order.id)
++  ));
++
++  for (const { order } of orders) {
++    const allocations = [];
++    const deductions = [];
++    const fulfilled = order.lines.every((line) => drawLine(stock, line, allocations, deductions));
++
++    if (fulfilled) {
++      accepted.push({ id: order.id, allocations });
++      continue;
++    }
++
++    for (const deduction of deductions) {
++      deduction.lot.qty += deduction.qty;
++    }
++    rejectedIds.add(order.id);
++  }
++
++  const rejected = input.orders
++    .filter((order) => rejectedIds.has(order.id))
++    .map((order) => ({ id: order.id, reason: 'insufficient_stock' }));
++  const remaining = stock.flatMap((warehouse) => warehouse.lots
++    .filter((lot) => lot.qty > 0)
++    .map((lot) => ({
++      warehouse: warehouse.id,
++      sku: lot.sku,
++      lot: lot.lot,
++      qty: lot.qty,
++      expires: lot.expires,
++    }))).sort((left, right) => (
++    compareValues(left.warehouse, right.warehouse)
++      || compareValues(left.sku, right.sku)
++      || compareValues(left.expires, right.expires)
++      || compareValues(left.lot, right.lot)
++  ));
++
++  return { accepted, rejected, remaining };
++}
++
++function runFulfillWave(argv) {
++  let input;
++  try {
++    const inputPath = parseInputFlag(argv);
++    input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++    validateFulfillWaveInput(input);
++  } catch (error) {
++    const message = error instanceof Error ? error.message : String(error);
++    process.stderr.write(`${JSON.stringify({ error: message })}\n`);
++    process.exit(2);
++  }
++
++  process.stdout.write(`${JSON.stringify(fulfillWave(input))}\n`);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +282,10 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'fulfill-wave': {
++      runFulfillWave(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..9bd8ad3 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,24 @@ function run(args) {
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function withInput(input, callback) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  const inputPath = path.join(directory, 'input.json');
++  fs.writeFileSync(inputPath, JSON.stringify(input));
++
++  try {
++    return callback(inputPath);
++  } finally {
++    fs.rmSync(directory, { recursive: true, force: true });
++  }
++}
++
++function fulfill(input) {
++  return withInput(input, (inputPath) => (
++    JSON.parse(run(['fulfill-wave', '--input', inputPath]))
++  ));
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +43,117 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('fulfill-wave allocates stock in warehouse and FEFO order', () => {
++  const result = fulfill({
++    warehouses: [
++      { id: 'W2', distance: 2, lots: [{ sku: 'SKU1', lot: 'L2', qty: 4, expires: '2026-02-01' }] },
++      { id: 'W1', distance: 1, lots: [{ sku: 'SKU1', lot: 'L1', qty: 3, expires: '2026-01-01' }] },
++    ],
++    orders: [{
++      id: 'O1', priority: 1, submitted_at: '2026-01-01T00:00:00Z',
++      lines: [{ sku: 'SKU1', qty: 5, single_warehouse: false }],
++    }],
++  });
++
++  assert.deepStrictEqual(result, {
++    accepted: [{ id: 'O1', allocations: [
++      { sku: 'SKU1', warehouse: 'W1', lot: 'L1', qty: 3 },
++      { sku: 'SKU1', warehouse: 'W2', lot: 'L2', qty: 2 },
++    ] }],
++    rejected: [],
++    remaining: [{ warehouse: 'W2', sku: 'SKU1', lot: 'L2', qty: 2, expires: '2026-02-01' }],
++  });
++});
++
++test('fulfill-wave rejects an all-or-nothing order without consuming stock', () => {
++  const result = fulfill({
++    warehouses: [{
++      id: 'W1', distance: 1,
++      lots: [{ sku: 'SKU1', lot: 'L1', qty: 3, expires: '2026-01-01' }],
++    }],
++    orders: [{
++      id: 'O1', priority: 1, submitted_at: '2026-01-01T00:00:00Z',
++      lines: [{ sku: 'SKU1', qty: 5, single_warehouse: false }],
++    }],
++  });
++
++  assert.deepStrictEqual(result, {
++    accepted: [],
++    rejected: [{ id: 'O1', reason: 'insufficient_stock' }],
++    remaining: [{ warehouse: 'W1', sku: 'SKU1', lot: 'L1', qty: 3, expires: '2026-01-01' }],
++  });
++});
++
++test('fulfill-wave reports invalid input as one stderr JSON object with exit 2', () => {
++  withInput({
++    warehouses: [],
++    orders: [{ id: '', priority: 1, submitted_at: 'bad', lines: [] }],
++  }, (inputPath) => {
++    assert.throws(
++      () => run(['fulfill-wave', '--input', inputPath]),
++      (error) => {
++        assert.strictEqual(error.status, 2);
++        assert.strictEqual(error.stdout, '');
++        const payload = JSON.parse(error.stderr);
++        assert.ok(payload !== null && !Array.isArray(payload));
++        assert.strictEqual(typeof payload.error, 'string');
++        return true;
++      },
++    );
++  });
++});
++
++test('fulfill-wave rejects single-warehouse lines that require combined warehouse stock', () => {
++  const result = fulfill({
++    warehouses: [
++      { id: 'W1', distance: 1, lots: [{ sku: 'SKU1', lot: 'L1', qty: 3, expires: '2026-01-01' }] },
++      { id: 'W2', distance: 2, lots: [{ sku: 'SKU1', lot: 'L2', qty: 3, expires: '2026-01-01' }] },
++    ],
++    orders: [{
++      id: 'O1', priority: 1, submitted_at: '2026-01-01T00:00:00Z',
++      lines: [{ sku: 'SKU1', qty: 5, single_warehouse: true }],
++    }],
++  });
++
++  assert.deepStrictEqual(result, {
++    accepted: [],
++    rejected: [{ id: 'O1', reason: 'insufficient_stock' }],
++    remaining: [
++      { warehouse: 'W1', sku: 'SKU1', lot: 'L1', qty: 3, expires: '2026-01-01' },
++      { warehouse: 'W2', sku: 'SKU1', lot: 'L2', qty: 3, expires: '2026-01-01' },
++    ],
++  });
++});
++
++test('fulfill-wave processes priority first and rolls back failed lower-priority draws', () => {
++  const result = fulfill({
++    warehouses: [{
++      id: 'W1', distance: 1,
++      lots: [{ sku: 'SKU1', lot: 'L1', qty: 10, expires: '2026-01-01' }],
++    }],
++    orders: [
++      {
++        id: 'O-low', priority: 1, submitted_at: '2026-01-01T00:00:00Z',
++        lines: [{ sku: 'SKU1', qty: 6, single_warehouse: false }],
++      },
++      {
++        id: 'O-high', priority: 2, submitted_at: '2026-01-01T00:00:00Z',
++        lines: [{ sku: 'SKU1', qty: 6, single_warehouse: false }],
++      },
++      {
++        id: 'O-final', priority: 0, submitted_at: '2026-01-01T00:00:00Z',
++        lines: [{ sku: 'SKU1', qty: 4, single_warehouse: false }],
++      },
++    ],
++  });
++
++  assert.deepStrictEqual(result, {
++    accepted: [
++      { id: 'O-high', allocations: [{ sku: 'SKU1', warehouse: 'W1', lot: 'L1', qty: 6 }] },
++      { id: 'O-final', allocations: [{ sku: 'SKU1', warehouse: 'W1', lot: 'L1', qty: 4 }] },
++    ],
++    rejected: [{ id: 'O-low', reason: 'insufficient_stock' }],
++    remaining: [],
++  });
++});
+
+codex
+The cumulative diff is confined to the authorized files. I found no candidate cleanup from the diff inspection; I’m now verifying helper reachability, checking the README command listing without editing it, and running the repository tests.
+exec
+/bin/zsh -lc "rg -n \"\\b(ensure|compareValues|isNonEmptyString|isPositiveInteger|isValidDate|submittedAtTimestamp|validateFulfillWaveInput|parseInputFlag|compareWarehouses|compareLots|buildWorkingStock|drawFromWarehouse|drawLine|fulfillWave|runFulfillWave)\\b|console\\.|debugger|TODO|FIXME\" bin/cli.js tests/cli.test.js README.md" in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+bin/cli.js:32:    console.error('--name requires a value');
+bin/cli.js:38:function ensure(condition, message) {
+bin/cli.js:44:function compareValues(left, right) {
+bin/cli.js:50:function isNonEmptyString(value) {
+bin/cli.js:54:function isPositiveInteger(value) {
+bin/cli.js:58:function isValidDate(value) {
+bin/cli.js:72:function submittedAtTimestamp(value) {
+bin/cli.js:73:  if (!isNonEmptyString(value)) return Number.NaN;
+bin/cli.js:83:function validateFulfillWaveInput(input) {
+bin/cli.js:84:  ensure(input !== null && typeof input === 'object' && !Array.isArray(input),
+bin/cli.js:86:  ensure(Array.isArray(input.warehouses), 'warehouses must be an array');
+bin/cli.js:87:  ensure(Array.isArray(input.orders), 'orders must be an array');
+bin/cli.js:90:    ensure(warehouse !== null && typeof warehouse === 'object' && !Array.isArray(warehouse),
+bin/cli.js:92:    ensure(isNonEmptyString(warehouse.id), 'warehouse id must be a non-empty string');
+bin/cli.js:93:    ensure(typeof warehouse.distance === 'number' && Number.isFinite(warehouse.distance),
+bin/cli.js:95:    ensure(Array.isArray(warehouse.lots), 'warehouse lots must be an array');
+bin/cli.js:98:      ensure(lot !== null && typeof lot === 'object' && !Array.isArray(lot),
+bin/cli.js:100:      ensure(isNonEmptyString(lot.sku), 'lot sku must be a non-empty string');
+bin/cli.js:101:      ensure(isNonEmptyString(lot.lot), 'lot id must be a non-empty string');
+bin/cli.js:102:      ensure(isPositiveInteger(lot.qty), 'lot qty must be a positive integer');
+bin/cli.js:103:      ensure(isValidDate(lot.expires), 'lot expires must be a valid YYYY-MM-DD date');
+bin/cli.js:109:    ensure(order !== null && typeof order === 'object' && !Array.isArray(order),
+bin/cli.js:111:    ensure(isNonEmptyString(order.id), 'order id must be a non-empty string');
+bin/cli.js:112:    ensure(!orderIds.has(order.id), 'order ids must be unique');
+bin/cli.js:114:    ensure(typeof order.priority === 'number' && Number.isFinite(order.priority),
+bin/cli.js:116:    ensure(Number.isFinite(submittedAtTimestamp(order.submitted_at)),
+bin/cli.js:118:    ensure(Array.isArray(order.lines), 'order lines must be an array');
+bin/cli.js:121:      ensure(line !== null && typeof line === 'object' && !Array.isArray(line),
+bin/cli.js:123:      ensure(isNonEmptyString(line.sku), 'order line sku must be a non-empty string');
+bin/cli.js:124:      ensure(isPositiveInteger(line.qty), 'order line qty must be a positive integer');
+bin/cli.js:125:      ensure(typeof line.single_warehouse === 'boolean',
+bin/cli.js:131:function parseInputFlag(argv) {
+bin/cli.js:134:  ensure(index !== -1 && isNonEmptyString(inputPath) && !inputPath.startsWith('-'),
+bin/cli.js:139:function compareWarehouses(left, right) {
+bin/cli.js:140:  return compareValues(left.distance, right.distance)
+bin/cli.js:141:    || compareValues(left.id, right.id);
+bin/cli.js:144:function compareLots(left, right) {
+bin/cli.js:145:  return compareValues(left.expires, right.expires)
+bin/cli.js:146:    || compareValues(left.lot, right.lot);
+bin/cli.js:149:function buildWorkingStock(warehouses) {
+bin/cli.js:158:    })).sort(compareLots),
+bin/cli.js:159:  })).sort(compareWarehouses);
+bin/cli.js:162:function drawFromWarehouse(warehouse, sku, qty, allocations, deductions) {
+bin/cli.js:178:function drawLine(stock, line, allocations, deductions) {
+bin/cli.js:185:        return drawFromWarehouse(warehouse, line.sku, line.qty, allocations, deductions) === 0;
+bin/cli.js:193:    remaining = drawFromWarehouse(warehouse, line.sku, remaining, allocations, deductions);
+bin/cli.js:202:function fulfillWave(input) {
+bin/cli.js:203:  const stock = buildWorkingStock(input.warehouses);
+bin/cli.js:208:    submittedAt: submittedAtTimestamp(order.submitted_at),
+bin/cli.js:210:    compareValues(right.order.priority, left.order.priority)
+bin/cli.js:211:      || compareValues(left.submittedAt, right.submittedAt)
+bin/cli.js:212:      || compareValues(left.order.id, right.order.id)
+bin/cli.js:218:    const fulfilled = order.lines.every((line) => drawLine(stock, line, allocations, deductions));
+bin/cli.js:243:    compareValues(left.warehouse, right.warehouse)
+bin/cli.js:244:      || compareValues(left.sku, right.sku)
+bin/cli.js:245:      || compareValues(left.expires, right.expires)
+bin/cli.js:246:      || compareValues(left.lot, right.lot)
+bin/cli.js:252:function runFulfillWave(argv) {
+bin/cli.js:255:    const inputPath = parseInputFlag(argv);
+bin/cli.js:257:    validateFulfillWaveInput(input);
+bin/cli.js:264:  process.stdout.write(`${JSON.stringify(fulfillWave(input))}\n`);
+bin/cli.js:278:      console.log(`Hello, ${name}!`);
+bin/cli.js:282:      console.log(readPackageVersion());
+bin/cli.js:286:      runFulfillWave(rest);
+bin/cli.js:290:      console.error(`Unknown command: ${command}`);
+
+[codex-monitored] heartbeat: elapsed=30s
+exec
+/bin/zsh -lc "rg --files -g 'README*' -g 'package.json' -g 'package-lock.json'" in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+package.json
+package-lock.json
+README.md
+
+exec
+/bin/zsh -lc "sed -n '1,240p' README.md" in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+# harbor-tools
+
+A small Node.js toolkit with a command-line interface, an HTTP server, and a
+minimal browser page.
+
+## Commands
+
+- `npm test` runs the test suite.
+- `npm run cli -- --help` prints command-line help.
+- `npm start` starts the HTTP server.
+
+The project intentionally keeps each component small and independent.
+
+exec
+/bin/zsh -lc 'npm test' in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo
+ exited 1 in 353ms:
+# {"error":"order id must be a non-empty string"}
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 27.141625
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 27.381667
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 25.916917
+  ...
+# Subtest: fulfill-wave allocates stock in warehouse and FEFO order
+ok 4 - fulfill-wave allocates stock in warehouse and FEFO order
+  ---
+  duration_ms: 27.383209
+  ...
+# Subtest: fulfill-wave rejects an all-or-nothing order without consuming stock
+ok 5 - fulfill-wave rejects an all-or-nothing order without consuming stock
+  ---
+  duration_ms: 25.744583
+  ...
+# Subtest: fulfill-wave reports invalid input as one stderr JSON object with exit 2
+ok 6 - fulfill-wave reports invalid input as one stderr JSON object with exit 2
+  ---
+  duration_ms: 24.918666
+  ...
+# Subtest: fulfill-wave rejects single-warehouse lines that require combined warehouse stock
+ok 7 - fulfill-wave rejects single-warehouse lines that require combined warehouse stock
+  ---
+  duration_ms: 28.274584
+  ...
+# Subtest: fulfill-wave processes priority first and rolls back failed lower-priority draws
+ok 8 - fulfill-wave processes priority first and rolls back failed lower-priority draws
+  ---
+  duration_ms: 26.5995
+  ...
+# Subtest: GET /health returns ok
+not ok 9 - GET /health returns ok
+  ---
+  duration_ms: 3.348417
+  location: '/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 10 - GET /items returns list
+  ---
+  duration_ms: 0.785708
+  location: '/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 11 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.500833
+  location: '/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 8
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 252.38375
+
+codex
+All 15 introduced helpers are reachable from the `fulfill-wave` dispatch path, and the diff contains no debug/commented-out code or artifacts. README only describes how to invoke CLI help; it does not enumerate `hello` or `version`, so this command does not invalidate a documented command list.
+exec
+/bin/zsh -lc 'node --test tests/cli.test.js' in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo
+ succeeded in 239ms:
+# {"error":"order id must be a non-empty string"}
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 26.37725
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 25.530584
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 24.377042
+  ...
+# Subtest: fulfill-wave allocates stock in warehouse and FEFO order
+ok 4 - fulfill-wave allocates stock in warehouse and FEFO order
+  ---
+  duration_ms: 25.724625
+  ...
+# Subtest: fulfill-wave rejects an all-or-nothing order without consuming stock
+ok 5 - fulfill-wave rejects an all-or-nothing order without consuming stock
+  ---
+  duration_ms: 24.772958
+  ...
+# Subtest: fulfill-wave reports invalid input as one stderr JSON object with exit 2
+ok 6 - fulfill-wave reports invalid input as one stderr JSON object with exit 2
+  ---
+  duration_ms: 23.701333
+  ...
+# Subtest: fulfill-wave rejects single-warehouse lines that require combined warehouse stock
+ok 7 - fulfill-wave rejects single-warehouse lines that require combined warehouse stock
+  ---
+  duration_ms: 23.81775
+  ...
+# Subtest: fulfill-wave processes priority first and rolls back failed lower-priority draws
+ok 8 - fulfill-wave processes priority first and rolls back failed lower-priority draws
+  ---
+  duration_ms: 25.753042
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 240.637166
+
+[codex-monitored] heartbeat: elapsed=60s
+exec
+/bin/zsh -lc 'git diff --check cbd12da HEAD -- bin/cli.js tests/cli.test.js' in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f99dbe9386580/A1/repo
+ succeeded in 0ms:
+codex
+PASS — zero changes.
+
+All introduced helpers are referenced; no debug code, commented-out code, or artifacts found. README does not enumerate `hello`/`version`, so no doc update is invalidated.
+
+Validation: `node --test tests/cli.test.js` passed (8/8). `npm test` hit three unrelated server-test sandbox failures (`listen EPERM` on `0.0.0.0`); the CLI tests passed.
+tokens used
+26,621
+[codex-monitored] codex exited: code=0 elapsed=68s

@@ -1,0 +1,5 @@
+PASS — zero changes.
+
+All introduced helpers are referenced; no debug code, commented-out code, or artifacts found. README does not enumerate `hello`/`version`, so no doc update is invalidated.
+
+Validation: `node --test tests/cli.test.js` passed (8/8). `npm test` hit three unrelated server-test sandbox failures (`listen EPERM` on `0.0.0.0`); the CLI tests passed.

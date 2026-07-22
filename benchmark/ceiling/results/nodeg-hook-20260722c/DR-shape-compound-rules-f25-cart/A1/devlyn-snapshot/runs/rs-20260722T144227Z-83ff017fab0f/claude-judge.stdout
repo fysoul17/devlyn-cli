@@ -1,0 +1,3 @@
+Both probes pass. Probe 1: combined `requested=6` before per-line stock check, exit 2, empty stdout, exact stderr. Probe 2: matches hand-computed `{subtotal:15000, line_discount:5000, coupon:1000, tax:825 (on post-line-discount pre-coupon base 10000×0.0825), shipping:0, total:9825}` key-for-key.
+
+PASS

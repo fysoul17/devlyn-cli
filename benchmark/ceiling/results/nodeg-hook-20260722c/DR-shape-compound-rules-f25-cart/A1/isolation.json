@@ -1,0 +1,119 @@
+{
+  "auth": {
+    "is_symlink": false,
+    "mode": "0600",
+    "path": "/Users/aipalm/.local/share/nx01/d/rb50d3c291c96/f38c9cf695c9e/A1/auth.json"
+  },
+  "auth_mechanism": "macos-keychain-blob",
+  "claude_config_dir": "/Users/aipalm/.local/share/nx01/claude-homes/rb50d3c291c96/f38c9cf695c9e/A1/.claude",
+  "claude_env_keys": [
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+    "CLAUDE_CONFIG_DIR",
+    "CODEX_HOME",
+    "DISABLE_AUTOUPDATER",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_NOSYSTEM",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "NPM_CONFIG_CACHE",
+    "NPM_CONFIG_USERCONFIG",
+    "PATH",
+    "TERM",
+    "TMPDIR",
+    "TZ"
+  ],
+  "claude_env_keys_sha256": "17d2dcc4580cd623e98eb249998518a561e7da70322d5e2b92354ae55b87132c",
+  "command_v_claude": {
+    "command": "command -v claude",
+    "exit_code": 0,
+    "passed": true,
+    "path": "/Users/aipalm/.local/share/nx01/claude-homes/rb50d3c291c96/f38c9cf695c9e/A1/b/claude",
+    "resolved_path": "/Users/aipalm/.local/share/nx01/pins/iter0078-cohort/claude",
+    "sha256": "90608b5c5ab504e96e77365cea6203d046e291d59b2bb42cf28dcb2ccdf9dd58"
+  },
+  "credentials_seeded": true,
+  "direct_claude": {
+    "path": "/Users/aipalm/.local/share/nx01/pins/iter0078-cohort/claude",
+    "requested_model": "sonnet",
+    "sha256": "90608b5c5ab504e96e77365cea6203d046e291d59b2bb42cf28dcb2ccdf9dd58",
+    "superset_wrapper": false,
+    "version": "2.1.215 (Claude Code)"
+  },
+  "direct_codex": {
+    "path": "/Users/aipalm/.local/share/nx01/pins/codex-0.144.5/bin/codex",
+    "sha256": "5e29ab10ca1171be158f7335dd6bd8ce1aaf9af1556939db36a5ee338be6f5f2",
+    "superset_wrapper": false,
+    "version": "codex-cli 0.144.5"
+  },
+  "environment": {
+    "forbidden_values_absent": true,
+    "keys": [
+      "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+      "CLAUDE_CONFIG_DIR",
+      "CODEX_HOME",
+      "DISABLE_AUTOUPDATER",
+      "GIT_CONFIG_GLOBAL",
+      "GIT_CONFIG_NOSYSTEM",
+      "HOME",
+      "LANG",
+      "LC_ALL",
+      "NPM_CONFIG_CACHE",
+      "NPM_CONFIG_USERCONFIG",
+      "PATH",
+      "TERM",
+      "TMPDIR",
+      "TZ"
+    ],
+    "keys_sha256": "17d2dcc4580cd623e98eb249998518a561e7da70322d5e2b92354ae55b87132c"
+  },
+  "forbidden_transcript_scan": {
+    "hits": [],
+    "passed": true,
+    "transcript_sha256": "9beda8e9d6d9b07fab1eb27b9a7e641c5cad3551ca6b8297ef2e33a10c2d3c3a"
+  },
+  "frozen_path": "/Users/aipalm/.local/share/nx01/claude-homes/rb50d3c291c96/f38c9cf695c9e/A1/b:/Users/aipalm/.local/share/nx01/pins/codex-0.144.5/bin:/Users/aipalm/.nvm/versions/node/v20.19.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+  "git": {
+    "neutral_baseline_sha": "d059b43faf24e64eb7a560cc37cebd5ae30fe17b",
+    "reflogs": [],
+    "remotes": []
+  },
+  "home": "/Users/aipalm/.local/share/nx01/claude-homes/rb50d3c291c96/f38c9cf695c9e/A1",
+  "neutralization": {
+    "author_email": "maintainer@example.com",
+    "author_name": "Project Maintainer",
+    "commit_date": "2000-01-01T00:00:00Z",
+    "commit_message": "Initial project snapshot",
+    "git_reflogs": [],
+    "git_remotes": [],
+    "neutral_baseline_sha": "d059b43faf24e64eb7a560cc37cebd5ae30fe17b",
+    "neutral_project_name": "harbor-tools",
+    "neutralization_diff_bytes": 5314,
+    "neutralization_diff_sha256": "05afa7a9be5baf8505182a0a2b3be0bb1400a51d1ca455dee0b66f3ef8f15f44",
+    "schema_version": 1,
+    "seed_derived": true
+  },
+  "opaque_paths": {
+    "external_root": "/Users/aipalm/.local/share/nx01",
+    "generated": [
+      "/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/f38c9cf695c9e/A1/repo",
+      "/Users/aipalm/.local/share/nx01/a/rb50d3c291c96/f38c9cf695c9e/a1",
+      "/Users/aipalm/.local/share/nx01/h/rb50d3c291c96/f38c9cf695c9e/A1",
+      "/Users/aipalm/.local/share/nx01/d/rb50d3c291c96/f38c9cf695c9e/A1",
+      "/Users/aipalm/.local/share/nx01/claude-homes/rb50d3c291c96/f38c9cf695c9e/A1"
+    ],
+    "opaque_run_id": "rb50d3c291c96",
+    "opaque_task_id": "f38c9cf695c9e",
+    "passed": true
+  },
+  "schema_version": 2,
+  "shell_startup_canary": {
+    "host_startup_files_absent": true,
+    "passed": true,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_sha256": "a3ca2c0c7f959b8b18925f967a2eeba5215a22c0ecd0ff7f7e594e609f38aa15"
+  },
+  "shim_path": "/Users/aipalm/.local/share/nx01/claude-homes/rb50d3c291c96/f38c9cf695c9e/A1/b/claude",
+  "shim_target": "/Users/aipalm/.local/share/nx01/pins/iter0078-cohort/claude",
+  "shim_target_sha256": "90608b5c5ab504e96e77365cea6203d046e291d59b2bb42cf28dcb2ccdf9dd58"
+}

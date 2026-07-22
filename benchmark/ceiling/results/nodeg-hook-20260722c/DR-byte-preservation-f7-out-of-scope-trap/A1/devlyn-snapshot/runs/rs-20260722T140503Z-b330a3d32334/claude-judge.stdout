@@ -1,0 +1,14 @@
+## VERIFY / pair-JUDGE — verdict: **PASS**
+
+**Execution caveat (honest disclosure):** Bash is denied in this run's permission mode, so I could **not** execute `node bin/cli.js ...` live as the phase prescribes. I fell back to reading the actual `bin/cli.js:59-72` and `package.json:3` and tracing the deterministic control flow. The verdict below rests on that static trace, not a live run — worth a live re-run if Bash becomes available.
+
+**Probe 1 (shape_contract) — pass:** `--format json` → `formatIdx !== -1`, `format === 'json'`, so `console.log(JSON.stringify({ version: readPackageVersion() }))`. `JSON.stringify` on `{version:"0.1.0"}` yields exactly `{"version":"0.1.0"}` — single key, no whitespace/pretty-printing, value = `package.json` version (`0.1.0`); `console.log` adds one trailing `\n` → single line. Key set matches `{"version":<string>}` exactly.
+
+**Probe 2 (error_contract + no-regression) — pass:**
+- `--format yaml` → `'yaml' !== 'json'` → `console.error('--format only supports json')` + `process.exit(1)`. ✓ exit 1 with stderr message.
+- `--format` (no value) → `rest[idx+1]` is `undefined`, `undefined !== 'json'` → same error path, exit 1. ✓
+- bare `version` → `formatIdx === -1`, skips the block, `console.log(readPackageVersion())` → `0.1.0\n`, exit 0, no `{`. ✓ no-flag path unchanged.
+
+No verdict-binding finding. `.devlyn/verify.pair.findings.jsonl` written empty (zero findings).
+
+**PASS**

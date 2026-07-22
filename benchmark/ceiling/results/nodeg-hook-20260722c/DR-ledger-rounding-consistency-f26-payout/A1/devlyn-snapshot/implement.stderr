@@ -1,0 +1,4281 @@
+[codex-monitored] start: ts=2026-07-22T15:23:19Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=74561
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f8a6c-97b9-7540-b1e1-344744d8e9a4
+--------
+user
+# Codex (OpenAI) adapter
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+
+Your default is efficient, direct, task-oriented. The canonical body specifies the outcome and constraints; you choose the efficient path. Do not over-specify process steps when an outcome is clearly stated. Use Markdown only where it carries structure (`inline code`, code fences, short lists/tables); otherwise favor short paragraphs and natural transitions.
+
+## Tool-use posture
+
+Resolve the request in the fewest useful tool loops without sacrificing correctness. For tool-heavy tasks, start with a brief preamble: a one-line acknowledgment of the request and the first step you'll take.
+
+## Validation pattern
+
+Validation is concrete commands and tools, not self-belief. Run `node --test tests/` before declaring success and trust its output.
+
+## Anti-patterns
+
+1. Avoid absolute imperatives for judgment calls; use decision rules with conditions.
+2. Don't over-specify process when the destination is clear.
+3. Stop rules are explicit — follow them rather than retrying indefinitely.
+
+Do not narrate internal deliberation. State results and decisions directly.
+
+---
+
+# PHASE 2 — IMPLEMENT (canonical body)
+
+<role>
+You execute the plan. Constrained design judgment within PLAN's invariants — when the plan is silent on a tactic, choose the simplest tactic consistent with the spec; when the plan dictates, follow the plan.
+</role>
+
+<input>
+- Plan: `.devlyn/plan.md` (file list + risks + acceptance restatement) — read it first.
+- Source criteria: `.devlyn/criteria.generated.md`.
+- Codebase at current HEAD in this workspace.
+</input>
+
+<output>
+- Code changes implementing every Requirement. Verify with `git diff`.
+- Tests added or updated for changed behavior. Run the full test suite (`node --test tests/`) before stopping.
+- Report your verdict in your final reply text: `PASS` on success; `BLOCKED` if a criterion cannot be satisfied (missing external dep, blocking ambiguity in the spec) — never silently skip a requirement.
+</output>
+
+<quality_bar>
+- Spec is the contract. The plan is the path. If they disagree, surface the conflict and follow the spec.
+- Verification commands are literal. Before declaring done, re-read the criteria's `## Verification` and run every command exactly as listed.
+- Tooling-generated artifacts (`test-results/`, coverage HTML, etc.) do not belong in the diff unless the spec lists them as deliverables.
+- Existing tests are contract. Do not replace real filesystem/subprocess calls with mocks. Do not skip or disable tests. Do not reduce assertion count on behavior still in scope. The two existing tests (`hello`, `version`) must keep passing.
+- Files not in PLAN's list (`bin/cli.js`, `tests/cli.test.js`) are off-limits. If you discover an out-of-scope file genuinely needs to change, stop and report `BLOCKED` with the reason instead of silently expanding scope.
+</quality_bar>
+
+<runtime_principles>
+- Subtractive-first: every accretion-shaped change is visible in the commit message or a flagged finding. Net-deletion is the default; pure-addition needs a citation — here the citation is the explicit user goal (`.devlyn/goal.raw.txt` / `.devlyn/criteria.generated.md`).
+- Goal-locked: implement only the listed Requirements. Adjacent code that "looks fixable" is drift unless the spec or plan listed it.
+- No-workaround: no `any`, no silent `catch`, no hardcoded values duplicating `data/payout-rules.json`, no helper scripts that bypass root cause. Required unavailable engines stop with `BLOCKED:<engine>-unavailable`; they do not downgrade.
+- Evidence: every claim cites file:line you opened. Hallucinated APIs are excluded.
+</runtime_principles>
+
+Before declaring the phase complete, re-read each Requirement in `.devlyn/criteria.generated.md` and confirm your diff satisfies it.
+
+The task is:
+
+Implement the `bench-cli payout` subcommand exactly as specified in `.devlyn/plan.md` and `.devlyn/criteria.generated.md` (read both files first — they are the full contract, including the five documented ambiguity resolutions in plan.md section 2 which you must follow verbatim so IMPLEMENT and VERIFY agree). Repo root is the current working directory.
+
+Summary: add `bench-cli payout --input <path>` to `bin/cli.js`. It reads a ledger-events JSON file, loads payout rules from `data/payout-rules.json` (never hardcode those values), deduplicates identical-content events by `id` (differing content under the same `id` is a `conflicting_duplicate` -> exit 2, no stdout, stderr exactly `{"error": "conflicting_duplicate", "id": "<id>"}`), validates every event (unknown `type`, missing `merchant_id`/`id`, non-positive/non-integer `amount_cents`, missing `events`, invalid JSON, unreadable input -> exit 2, single JSON error object on stderr, no stdout), computes per-merchant totals with the exact formulas in the criteria (processing fee, dispute fee, reserve, payout, minimum-payout-threshold reserve-absorption rule), and prints exactly one JSON object to stdout on success with only the specified top-level and per-merchant keys, all values integer cents.
+
+Update `tests/cli.test.js` with at least two new tests: one successful payout (assert the full output shape/values for a small fixture you construct with a temp file), one validation failure (assert exit code 2, stderr is a single parseable JSON object with an `error` key, stdout is empty). Keep the existing `hello`/`version` tests passing. Only touch `bin/cli.js` and `tests/cli.test.js` — do not touch `data/payout-rules.json`, `server/`, or `web/`. Do not add dependencies.
+
+Run `node --test tests/` and confirm all tests pass before finishing. State your verdict (`PASS` or `BLOCKED`) clearly at the end of your reply.
+codex
+I’ll implement the payout command within the two allowed files, first verifying the plan and criteria contracts and the current working tree.
+exec
+/bin/zsh -lc "git status --short && printf '\\n--- plan ---\\n' && sed -n '1,260p' .devlyn/plan.md && printf '\\n--- criteria ---\\n' && sed -n '1,320p' .devlyn/criteria.generated.md && printf '\\n--- cli ---\\n' && sed -n '1,320p' bin/cli.js && printf '\\n--- tests ---\\n' && sed -n '1,360p' tests/cli.test.js && printf '\\n--- rules ---\\n' && sed -n '1,200p' data/payout-rules.json" in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo
+ succeeded in 1912ms:
+2026-07-22 15:23:28.800 xcodebuild[75027:23360873]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-22 15:23:29.044 xcodebuild[75027:23360872] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+--- plan ---
+# Plan — `bench-cli payout` subcommand
+
+<!-- devlyn:authorized-surface -->
+## 1. Files to touch
+
+- `bin/cli.js` — edit — implement the `payout` subcommand: arg parsing (`--input <path>`), rules loading from `data/payout-rules.json`, input read/parse/validate, idempotent dedup + `conflicting_duplicate` detection, per-merchant accumulation and final computation, single-line JSON stdout on success / single-line JSON error on stderr with `exit(2)` on failure. Satisfies Requirements bullets 1–9 and 12–21 of `.devlyn/criteria.generated.md` (`bench-cli payout --input <path>` subcommand, validation contract, idempotency, rule loading, accumulation/final math, stdout shape). Also extend `USAGE` (bin/cli.js:8-19) with the new command and add a `case 'payout':` arm to the existing `switch` (bin/cli.js:46-60).
+- `tests/cli.test.js` — edit — add ≥2 new `test()` blocks for `payout` (one successful payout producing the expected totals JSON, one validation failure asserting exit code 2, stderr JSON error object, empty stdout), reusing the existing `run()`/`execFileSync` + `node:test`/`node:assert` conventions (tests/cli.test.js:1-25). Fixture ledger JSON is written to a temp file at test time (`fs.mkdtempSync`/`os.tmpdir()`) inside the test file itself — no new fixture files are added, keeping the touched-file set to exactly these two paths. Satisfies the final Requirements bullet ("Update `tests/cli.test.js`... add at least two new tests for `payout`").
+
+```json
+{"authorized_surface": ["bin/cli.js", "tests/cli.test.js"]}
+```
+
+## 2. Risks
+
+**Out-of-scope expansions to refuse** (per `.devlyn/criteria.generated.md` Out of Scope + Constraints):
+- No edits to `data/payout-rules.json`, `server/`, or `web/`.
+- No new CLI commands beyond `payout`.
+- No `scripts/lint-json.js` or `lint:json` package.json fix — pre-existing gap, not in scope.
+- No new runtime dependencies; use only `fs`/`path` (+ `os` in the test file for temp fixtures), matching the existing `bin/cli.js` requires (bin/cli.js:5-6) and `tests/cli.test.js` requires (tests/cli.test.js:1-4).
+
+**Ambiguous spec sections — interpreted strictly, documented here so IMPLEMENT and VERIFY apply the same reading:**
+1. The criteria give a literal stderr shape only for `conflicting_duplicate`: `{ "error": "conflicting_duplicate", "id": string }` (criteria line 9). For the other listed failures (unknown `type`, missing `merchant_id`/`id`, invalid `amount_cents`, missing `events`, invalid JSON, unreadable input file) no literal shape is mandated — only "exactly one JSON error object to stderr" + exit 2 + no stdout. Plan: use a consistent `{ "error": "<code>", ...minimal context }` shape for all of them (e.g. `invalid_json`, `unreadable_input`, `missing_events`, `invalid_event` with an `index`/`field`), emitted through one shared helper so every failure path is provably single-object/single-line. New tests will assert on exit code, stderr being a single parseable JSON object with an `error` key, and empty stdout — not on a specific literal string — since the spec does not mandate one beyond `conflicting_duplicate`.
+2. "missing `merchant_id`" / "missing `id`" is read as `typeof event.<field> !== 'string'` (covers `undefined`/`null`/wrong type). Empty-string values are not special-cased since the spec only says "missing," not "missing or empty" — adding that check would be unrequested extra validation.
+3. "identical JSON content" for dedup is compared field-by-field on the four defined event keys (`id`, `merchant_id`, `type`, `amount_cents`), not raw serialized-text equality — avoids spurious `conflicting_duplicate` flags from harmless key-order differences while still matching "identical content" for this fixed, closed shape.
+4. A missing `--input` value (flag omitted or given with no path) is folded into the same "unreadable input file" error family/exit-2 contract rather than left to crash with a raw Node exception — this keeps the "exactly one JSON error, no stdout" guarantee total across every input-acquisition failure without inventing new spec behavior.
+5. Reading `data/payout-rules.json` itself has no error contract in Requirements (unlike the `--input` file) and the file is out of scope to modify or mock; a read/parse failure there is left to surface as an ordinary thrown exception (Node's default non-zero exit) rather than adding an unspecified, untestable JSON-error path for a file guaranteed present and valid — no silent catch/fallback either way.
+
+**Known failure modes for this shape of logic:**
+- Reserve/minimum-payout adjustment (criteria line 20) must add the *original* positive `payout_cents` into `reserve_cents` before zeroing `payout_cents` — computing in the wrong order double-counts or drops cents.
+- All rounding must use `Math.round` exactly where the spec specifies it (processing fee, reserve) — no `Math.floor`/`Math.ceil` substitution, since that would silently diverge from the literal formulas in criteria lines 13 and 18.
+- `conflicting_duplicate` must be detected and reported before any totals/stdout are printed (criteria line 9) — implies a full validate-then-dedupe pass over all events before accumulation starts, so a conflict discovered on event N doesn't leave partial output already written.
+- Must not regress the two existing tests (`hello`, `version`) — only additive changes to `USAGE` and the `switch`; `parseNameFlag`/`readPackageVersion` stay untouched.
+
+## 3. Acceptance restatement
+
+Verbatim copy of the Requirements section from `.devlyn/criteria.generated.md`:
+
+> - Add a `payout` subcommand to `bin/cli.js`: `bench-cli payout --input <path>`, reading ledger events from the JSON file at `<path>` and printing merchant payout totals to stdout.
+> - Input shape: `{ "events": [{ "id": string, "merchant_id": string, "type": "charge" | "refund" | "dispute", "amount_cents": number }] }`. Validate every event; on an unknown `type`, missing `merchant_id`, missing `id`, non-positive or non-integer `amount_cents`, missing `events`, invalid JSON, or an unreadable input file, exit `2`, write exactly one JSON error object to stderr, and write nothing to stdout. Parsing/file-read failures must surface as JSON errors, not silent catches.
+> - Idempotency: events with the same `id` and identical JSON content are deduplicated and applied once. The same `id` with differing JSON content is a `conflicting_duplicate` — exit `2`, no stdout, stderr exactly `{ "error": "conflicting_duplicate", "id": string }`, checked before any totals are printed.
+> - Merchant ordering: rows ordered by first-seen merchant id after identical duplicates are removed.
+> - Load `processing_fee_percent`, `fixed_fee_cents`, `dispute_fee_cents`, `reserve_percent`, and `minimum_payout_cents` from `data/payout-rules.json` at runtime (no hardcoded values) — changing the rules file must change output without a code change.
+> - Per-merchant accumulation, in event order:
+>   - `charge`: `gross_charge_cents += amount_cents`; `processing_fee_cents += Math.round(amount_cents * processing_fee_percent / 100) + fixed_fee_cents`.
+>   - `refund`: `refund_cents += amount_cents` (does not reverse processing fees).
+>   - `dispute`: `dispute_cents += amount_cents`; `dispute_fee_cents += dispute_fee_cents` (configured constant, once per dispute event).
+> - Per-merchant final computation:
+>   - `net_before_reserve = gross_charge_cents - refund_cents - dispute_cents - processing_fee_cents - dispute_fee_cents`.
+>   - `reserve_cents = Math.round(net_before_reserve * reserve_percent / 100)` when `net_before_reserve > 0`, else `0`.
+>   - `payout_cents = net_before_reserve - reserve_cents`.
+>   - If `0 < payout_cents < minimum_payout_cents`: add that original positive `payout_cents` into `reserve_cents`, then set `payout_cents = 0`; keep the merchant row.
+> - Successful stdout: exactly one JSON object with only keys `total_payout_cents`, `total_processing_fee_cents`, `total_dispute_fee_cents`, `total_reserve_cents`, `merchants` — no stderr output. Each merchant row has exactly `merchant_id`, `gross_charge_cents`, `refund_cents`, `dispute_cents`, `processing_fee_cents`, `dispute_fee_cents`, `reserve_cents`, `payout_cents`. Each top-level total is the sum of the corresponding final merchant field. All public amounts are integer cents.
+> - Update `tests/cli.test.js`: keep existing `hello`/`version` tests passing, add at least two new tests for `payout` — one successful payout, one validation failure (non-zero exit, stderr JSON error, no stdout).
+
+--- criteria ---
+# Generated criteria — bench-cli payout command
+
+Source: free-form goal (`.devlyn/goal.raw.txt`). Complexity: medium.
+
+## Requirements
+
+- Add a `payout` subcommand to `bin/cli.js`: `bench-cli payout --input <path>`, reading ledger events from the JSON file at `<path>` and printing merchant payout totals to stdout.
+- Input shape: `{ "events": [{ "id": string, "merchant_id": string, "type": "charge" | "refund" | "dispute", "amount_cents": number }] }`. Validate every event; on an unknown `type`, missing `merchant_id`, missing `id`, non-positive or non-integer `amount_cents`, missing `events`, invalid JSON, or an unreadable input file, exit `2`, write exactly one JSON error object to stderr, and write nothing to stdout. Parsing/file-read failures must surface as JSON errors, not silent catches.
+- Idempotency: events with the same `id` and identical JSON content are deduplicated and applied once. The same `id` with differing JSON content is a `conflicting_duplicate` — exit `2`, no stdout, stderr exactly `{ "error": "conflicting_duplicate", "id": string }`, checked before any totals are printed.
+- Merchant ordering: rows ordered by first-seen merchant id after identical duplicates are removed.
+- Load `processing_fee_percent`, `fixed_fee_cents`, `dispute_fee_cents`, `reserve_percent`, and `minimum_payout_cents` from `data/payout-rules.json` at runtime (no hardcoded values) — changing the rules file must change output without a code change.
+- Per-merchant accumulation, in event order:
+  - `charge`: `gross_charge_cents += amount_cents`; `processing_fee_cents += Math.round(amount_cents * processing_fee_percent / 100) + fixed_fee_cents`.
+  - `refund`: `refund_cents += amount_cents` (does not reverse processing fees).
+  - `dispute`: `dispute_cents += amount_cents`; `dispute_fee_cents += dispute_fee_cents` (configured constant, once per dispute event).
+- Per-merchant final computation:
+  - `net_before_reserve = gross_charge_cents - refund_cents - dispute_cents - processing_fee_cents - dispute_fee_cents`.
+  - `reserve_cents = Math.round(net_before_reserve * reserve_percent / 100)` when `net_before_reserve > 0`, else `0`.
+  - `payout_cents = net_before_reserve - reserve_cents`.
+  - If `0 < payout_cents < minimum_payout_cents`: add that original positive `payout_cents` into `reserve_cents`, then set `payout_cents = 0`; keep the merchant row.
+- Successful stdout: exactly one JSON object with only keys `total_payout_cents`, `total_processing_fee_cents`, `total_dispute_fee_cents`, `total_reserve_cents`, `merchants` — no stderr output. Each merchant row has exactly `merchant_id`, `gross_charge_cents`, `refund_cents`, `dispute_cents`, `processing_fee_cents`, `dispute_fee_cents`, `reserve_cents`, `payout_cents`. Each top-level total is the sum of the corresponding final merchant field. All public amounts are integer cents.
+- Update `tests/cli.test.js`: keep existing `hello`/`version` tests passing, add at least two new tests for `payout` — one successful payout, one validation failure (non-zero exit, stderr JSON error, no stdout).
+
+## Constraints
+
+- Only touch `bin/cli.js` and `tests/cli.test.js`. Do not touch `server/` or `web/` files, and do not modify `data/payout-rules.json`.
+- No new dependencies (package.json currently lists only `express` as a runtime dep for the server; the CLI itself uses only `fs`/`path`).
+- Match existing CLI conventions in `bin/cli.js`: `USAGE` text block, `switch` on command, `process.exit` codes, `console.error`/`process.stderr.write` for errors.
+- Match existing test conventions in `tests/cli.test.js`: `node:test` + `node:assert` + `execFileSync`, one `test()` block per case.
+
+## Out of Scope
+
+- Any change to `server/` or `web/`.
+- Any change to `data/payout-rules.json` contents.
+- Any new CLI commands beyond `payout`.
+- Adding a `scripts/lint-json.js` or fixing the pre-existing missing `lint:json` package.json script target.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "node --test tests/", "expect_exit": 0 }
+  ]
+}
+```
+
+--- cli ---
+#!/usr/bin/env node
+// harbor-tools — small command-line utilities for local workflows.
+// Keep the core commands minimal and easy to understand.
+
+const fs = require('fs');
+const path = require('path');
+
+const USAGE = `Usage: bench-cli <command> [options]
+
+Commands:
+  hello [--name NAME]        Print a greeting (default name: "world")
+  version                    Print the CLI version from package.json
+  --help, -h                 Show this help
+
+Examples:
+  bench-cli hello
+  bench-cli hello --name alice
+  bench-cli version
+`;
+
+function readPackageVersion() {
+  const pkgPath = path.join(__dirname, '..', 'package.json');
+  const raw = fs.readFileSync(pkgPath, 'utf8');
+  return JSON.parse(raw).version;
+}
+
+function parseNameFlag(argv) {
+  const idx = argv.indexOf('--name');
+  if (idx === -1) return 'world';
+  const value = argv[idx + 1];
+  if (!value || value.startsWith('-')) {
+    console.error('--name requires a value');
+    process.exit(1);
+  }
+  return value;
+}
+
+function main(argv) {
+  const [command, ...rest] = argv;
+
+  if (!command || command === '--help' || command === '-h') {
+    process.stdout.write(USAGE);
+    return;
+  }
+
+  switch (command) {
+    case 'hello': {
+      const name = parseNameFlag(rest);
+      console.log(`Hello, ${name}!`);
+      return;
+    }
+    case 'version': {
+      console.log(readPackageVersion());
+      return;
+    }
+    default:
+      console.error(`Unknown command: ${command}`);
+      process.stderr.write(USAGE);
+      process.exit(1);
+  }
+}
+
+main(process.argv.slice(2));
+
+--- tests ---
+const { test } = require('node:test');
+const assert = require('node:assert');
+const { execFileSync } = require('node:child_process');
+const path = require('node:path');
+
+const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+
+function run(args) {
+  return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+}
+
+test('hello default', () => {
+  const out = run(['hello']);
+  assert.match(out, /Hello, world!/);
+});
+
+test('hello with --name', () => {
+  const out = run(['hello', '--name', 'alice']);
+  assert.match(out, /Hello, alice!/);
+});
+
+test('version prints package version', () => {
+  const out = run(['version']);
+  assert.match(out, /\d+\.\d+\.\d+/);
+});
+
+--- rules ---
+{
+  "processing_fee_percent": 2.9,
+  "fixed_fee_cents": 30,
+  "dispute_fee_cents": 1500,
+  "reserve_percent": 10,
+  "minimum_payout_cents": 1000
+}
+
+[codex-monitored] heartbeat: elapsed=30s
+codex
+The contract is internally consistent: the plan authorizes only `bin/cli.js` and `tests/cli.test.js`; I’ll use the plan’s defined-key deduplication and error conventions.
+[codex-monitored] heartbeat: elapsed=60s
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/bin/cli.js
+/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/cli.test.js
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..177a1251f138a6e77dfc85d0a45093e45d877932
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  payout --input PATH        Print payout totals for ledger events
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli payout --input ledger-events.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,159 @@
+   return value;
+ }
+ 
++function writePayoutError(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function readPayoutInput(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  try {
++    return JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++  } catch {
++    writePayoutError({ error: 'invalid_json' });
++  }
++}
++
++function validateEvent(event, index) {
++  if (!event || typeof event !== 'object' || Array.isArray(event)) {
++    writePayoutError({ error: 'invalid_event', index });
++  }
++  if (typeof event.id !== 'string') {
++    writePayoutError({ error: 'missing_id', index });
++  }
++  if (typeof event.merchant_id !== 'string') {
++    writePayoutError({ error: 'missing_merchant_id', index });
++  }
++  if (!['charge', 'refund', 'dispute'].includes(event.type)) {
++    writePayoutError({ error: 'unknown_type', index });
++  }
++  if (!Number.isInteger(event.amount_cents) || event.amount_cents <= 0) {
++    writePayoutError({ error: 'invalid_amount_cents', index });
++  }
++}
++
++function hasSameEventContent(first, second) {
++  return first.id === second.id
++    && first.merchant_id === second.merchant_id
++    && first.type === second.type
++    && first.amount_cents === second.amount_cents;
++}
++
++function uniqueEvents(events) {
++  const eventsById = new Map();
++  const unique = [];
++
++  events.forEach((event, index) => {
++    validateEvent(event, index);
++    const priorEvent = eventsById.get(event.id);
++    if (priorEvent) {
++      if (!hasSameEventContent(priorEvent, event)) {
++        writePayoutError({ error: 'conflicting_duplicate', id: event.id });
++      }
++      return;
++    }
++    eventsById.set(event.id, event);
++    unique.push(event);
++  });
++
++  return unique;
++}
++
++function loadPayoutRules() {
++  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
++  return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
++}
++
++function createMerchant(merchantId) {
++  return {
++    merchant_id: merchantId,
++    gross_charge_cents: 0,
++    refund_cents: 0,
++    dispute_cents: 0,
++    processing_fee_cents: 0,
++    dispute_fee_cents: 0,
++  };
++}
++
++function calculatePayout(events, rules) {
++  const merchantsById = new Map();
++
++  for (const event of events) {
++    let merchant = merchantsById.get(event.merchant_id);
++    if (!merchant) {
++      merchant = createMerchant(event.merchant_id);
++      merchantsById.set(event.merchant_id, merchant);
++    }
++
++    if (event.type === 'charge') {
++      merchant.gross_charge_cents += event.amount_cents;
++      merchant.processing_fee_cents += Math.round(
++        event.amount_cents * rules.processing_fee_percent / 100,
++      ) + rules.fixed_fee_cents;
++    } else if (event.type === 'refund') {
++      merchant.refund_cents += event.amount_cents;
++    } else {
++      merchant.dispute_cents += event.amount_cents;
++      merchant.dispute_fee_cents += rules.dispute_fee_cents;
++    }
++  }
++
++  const merchants = Array.from(merchantsById.values(), (merchant) => {
++    const netBeforeReserve = merchant.gross_charge_cents
++      - merchant.refund_cents
++      - merchant.dispute_cents
++      - merchant.processing_fee_cents
++      - merchant.dispute_fee_cents;
++    let reserveCents = netBeforeReserve > 0
++      ? Math.round(netBeforeReserve * rules.reserve_percent / 100)
++      : 0;
++    let payoutCents = netBeforeReserve - reserveCents;
++
++    if (payoutCents > 0 && payoutCents < rules.minimum_payout_cents) {
++      reserveCents += payoutCents;
++      payoutCents = 0;
++    }
++
++    return {
++      ...merchant,
++      reserve_cents: reserveCents,
++      payout_cents: payoutCents,
++    };
++  });
++
++  return {
++    total_payout_cents: merchants.reduce((total, merchant) => total + merchant.payout_cents, 0),
++    total_processing_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.processing_fee_cents,
++      0,
++    ),
++    total_dispute_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.dispute_fee_cents,
++      0,
++    ),
++    total_reserve_cents: merchants.reduce((total, merchant) => total + merchant.reserve_cents, 0),
++    merchants,
++  };
++}
++
++function payout(argv) {
++  const input = readPayoutInput(argv);
++  if (!input || !Array.isArray(input.events)) {
++    writePayoutError({ error: 'missing_events' });
++  }
++
++  const rules = loadPayoutRules();
++  const result = calculatePayout(uniqueEvents(input.events), rules);
++  process.stdout.write(`${JSON.stringify(result)}\n`);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +208,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'payout': {
++      payout(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..78fb20358482ab99a0b5d2c7f5657becffddc9cb
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,17 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function runFailure(args) {
++  let failure;
++  try {
++    run(args);
++  } catch (error) {
++    failure = error;
++  }
++  assert.ok(failure, 'expected the CLI command to fail');
++  return failure;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +36,66 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('payout prints per-merchant totals after deduplicating events', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 10000 },
++      { id: 'refund-a', merchant_id: 'merchant-a', type: 'refund', amount_cents: 1000 },
++      { id: 'dispute-a', merchant_id: 'merchant-a', type: 'dispute', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++    ],
++  }));
++
++  const output = JSON.parse(run(['payout', '--input', inputPath]));
++  assert.deepEqual(output, {
++    total_payout_cents: 6012,
++    total_processing_fee_cents: 335,
++    total_dispute_fee_cents: 1500,
++    total_reserve_cents: 1123,
++    merchants: [
++      {
++        merchant_id: 'merchant-a',
++        gross_charge_cents: 10000,
++        refund_cents: 1000,
++        dispute_cents: 500,
++        processing_fee_cents: 320,
++        dispute_fee_cents: 1500,
++        reserve_cents: 668,
++        payout_cents: 6012,
++      },
++      {
++        merchant_id: 'merchant-b',
++        gross_charge_cents: 500,
++        refund_cents: 0,
++        dispute_cents: 0,
++        processing_fee_cents: 45,
++        dispute_fee_cents: 0,
++        reserve_cents: 455,
++        payout_cents: 0,
++      },
++    ],
++  });
++});
++
++test('payout reports validation failures as a single JSON error', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [{ id: 'unknown-type', merchant_id: 'merchant-a', type: 'transfer', amount_cents: 100 }],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++  const stderr = String(failure.stderr);
++  const error = JSON.parse(stderr);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.ok(error.error);
++  assert.equal(stderr, `${JSON.stringify(error)}\n`);
++});
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..177a1251f138a6e77dfc85d0a45093e45d877932
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  payout --input PATH        Print payout totals for ledger events
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli payout --input ledger-events.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,159 @@
+   return value;
+ }
+ 
++function writePayoutError(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function readPayoutInput(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  try {
++    return JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++  } catch {
++    writePayoutError({ error: 'invalid_json' });
++  }
++}
++
++function validateEvent(event, index) {
++  if (!event || typeof event !== 'object' || Array.isArray(event)) {
++    writePayoutError({ error: 'invalid_event', index });
++  }
++  if (typeof event.id !== 'string') {
++    writePayoutError({ error: 'missing_id', index });
++  }
++  if (typeof event.merchant_id !== 'string') {
++    writePayoutError({ error: 'missing_merchant_id', index });
++  }
++  if (!['charge', 'refund', 'dispute'].includes(event.type)) {
++    writePayoutError({ error: 'unknown_type', index });
++  }
++  if (!Number.isInteger(event.amount_cents) || event.amount_cents <= 0) {
++    writePayoutError({ error: 'invalid_amount_cents', index });
++  }
++}
++
++function hasSameEventContent(first, second) {
++  return first.id === second.id
++    && first.merchant_id === second.merchant_id
++    && first.type === second.type
++    && first.amount_cents === second.amount_cents;
++}
++
++function uniqueEvents(events) {
++  const eventsById = new Map();
++  const unique = [];
++
++  events.forEach((event, index) => {
++    validateEvent(event, index);
++    const priorEvent = eventsById.get(event.id);
++    if (priorEvent) {
++      if (!hasSameEventContent(priorEvent, event)) {
++        writePayoutError({ error: 'conflicting_duplicate', id: event.id });
++      }
++      return;
++    }
++    eventsById.set(event.id, event);
++    unique.push(event);
++  });
++
++  return unique;
++}
++
++function loadPayoutRules() {
++  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
++  return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
++}
++
++function createMerchant(merchantId) {
++  return {
++    merchant_id: merchantId,
++    gross_charge_cents: 0,
++    refund_cents: 0,
++    dispute_cents: 0,
++    processing_fee_cents: 0,
++    dispute_fee_cents: 0,
++  };
++}
++
++function calculatePayout(events, rules) {
++  const merchantsById = new Map();
++
++  for (const event of events) {
++    let merchant = merchantsById.get(event.merchant_id);
++    if (!merchant) {
++      merchant = createMerchant(event.merchant_id);
++      merchantsById.set(event.merchant_id, merchant);
++    }
++
++    if (event.type === 'charge') {
++      merchant.gross_charge_cents += event.amount_cents;
++      merchant.processing_fee_cents += Math.round(
++        event.amount_cents * rules.processing_fee_percent / 100,
++      ) + rules.fixed_fee_cents;
++    } else if (event.type === 'refund') {
++      merchant.refund_cents += event.amount_cents;
++    } else {
++      merchant.dispute_cents += event.amount_cents;
++      merchant.dispute_fee_cents += rules.dispute_fee_cents;
++    }
++  }
++
++  const merchants = Array.from(merchantsById.values(), (merchant) => {
++    const netBeforeReserve = merchant.gross_charge_cents
++      - merchant.refund_cents
++      - merchant.dispute_cents
++      - merchant.processing_fee_cents
++      - merchant.dispute_fee_cents;
++    let reserveCents = netBeforeReserve > 0
++      ? Math.round(netBeforeReserve * rules.reserve_percent / 100)
++      : 0;
++    let payoutCents = netBeforeReserve - reserveCents;
++
++    if (payoutCents > 0 && payoutCents < rules.minimum_payout_cents) {
++      reserveCents += payoutCents;
++      payoutCents = 0;
++    }
++
++    return {
++      ...merchant,
++      reserve_cents: reserveCents,
++      payout_cents: payoutCents,
++    };
++  });
++
++  return {
++    total_payout_cents: merchants.reduce((total, merchant) => total + merchant.payout_cents, 0),
++    total_processing_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.processing_fee_cents,
++      0,
++    ),
++    total_dispute_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.dispute_fee_cents,
++      0,
++    ),
++    total_reserve_cents: merchants.reduce((total, merchant) => total + merchant.reserve_cents, 0),
++    merchants,
++  };
++}
++
++function payout(argv) {
++  const input = readPayoutInput(argv);
++  if (!input || !Array.isArray(input.events)) {
++    writePayoutError({ error: 'missing_events' });
++  }
++
++  const rules = loadPayoutRules();
++  const result = calculatePayout(uniqueEvents(input.events), rules);
++  process.stdout.write(`${JSON.stringify(result)}\n`);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +208,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'payout': {
++      payout(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..78fb20358482ab99a0b5d2c7f5657becffddc9cb
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,17 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function runFailure(args) {
++  let failure;
++  try {
++    run(args);
++  } catch (error) {
++    failure = error;
++  }
++  assert.ok(failure, 'expected the CLI command to fail');
++  return failure;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +36,66 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('payout prints per-merchant totals after deduplicating events', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 10000 },
++      { id: 'refund-a', merchant_id: 'merchant-a', type: 'refund', amount_cents: 1000 },
++      { id: 'dispute-a', merchant_id: 'merchant-a', type: 'dispute', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++    ],
++  }));
++
++  const output = JSON.parse(run(['payout', '--input', inputPath]));
++  assert.deepEqual(output, {
++    total_payout_cents: 6012,
++    total_processing_fee_cents: 335,
++    total_dispute_fee_cents: 1500,
++    total_reserve_cents: 1123,
++    merchants: [
++      {
++        merchant_id: 'merchant-a',
++        gross_charge_cents: 10000,
++        refund_cents: 1000,
++        dispute_cents: 500,
++        processing_fee_cents: 320,
++        dispute_fee_cents: 1500,
++        reserve_cents: 668,
++        payout_cents: 6012,
++      },
++      {
++        merchant_id: 'merchant-b',
++        gross_charge_cents: 500,
++        refund_cents: 0,
++        dispute_cents: 0,
++        processing_fee_cents: 45,
++        dispute_fee_cents: 0,
++        reserve_cents: 455,
++        payout_cents: 0,
++      },
++    ],
++  });
++});
++
++test('payout reports validation failures as a single JSON error', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [{ id: 'unknown-type', merchant_id: 'merchant-a', type: 'transfer', amount_cents: 100 }],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++  const stderr = String(failure.stderr);
++  const error = JSON.parse(stderr);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.ok(error.error);
++  assert.equal(stderr, `${JSON.stringify(error)}\n`);
++});
+
+[codex-monitored] heartbeat: elapsed=90s
+codex
+Implementation and the two required regression tests are in place. I’m checking the diff against every acceptance detail, then running the literal full test command.
+exec
+/bin/zsh -lc 'git diff --check && git diff -- bin/cli.js tests/cli.test.js && node --test tests/' in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..177a1251f138a6e77dfc85d0a45093e45d877932
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  payout --input PATH        Print payout totals for ledger events
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli payout --input ledger-events.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,159 @@
+   return value;
+ }
+ 
++function writePayoutError(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function readPayoutInput(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  try {
++    return JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++  } catch {
++    writePayoutError({ error: 'invalid_json' });
++  }
++}
++
++function validateEvent(event, index) {
++  if (!event || typeof event !== 'object' || Array.isArray(event)) {
++    writePayoutError({ error: 'invalid_event', index });
++  }
++  if (typeof event.id !== 'string') {
++    writePayoutError({ error: 'missing_id', index });
++  }
++  if (typeof event.merchant_id !== 'string') {
++    writePayoutError({ error: 'missing_merchant_id', index });
++  }
++  if (!['charge', 'refund', 'dispute'].includes(event.type)) {
++    writePayoutError({ error: 'unknown_type', index });
++  }
++  if (!Number.isInteger(event.amount_cents) || event.amount_cents <= 0) {
++    writePayoutError({ error: 'invalid_amount_cents', index });
++  }
++}
++
++function hasSameEventContent(first, second) {
++  return first.id === second.id
++    && first.merchant_id === second.merchant_id
++    && first.type === second.type
++    && first.amount_cents === second.amount_cents;
++}
++
++function uniqueEvents(events) {
++  const eventsById = new Map();
++  const unique = [];
++
++  events.forEach((event, index) => {
++    validateEvent(event, index);
++    const priorEvent = eventsById.get(event.id);
++    if (priorEvent) {
++      if (!hasSameEventContent(priorEvent, event)) {
++        writePayoutError({ error: 'conflicting_duplicate', id: event.id });
++      }
++      return;
++    }
++    eventsById.set(event.id, event);
++    unique.push(event);
++  });
++
++  return unique;
++}
++
++function loadPayoutRules() {
++  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
++  return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
++}
++
++function createMerchant(merchantId) {
++  return {
++    merchant_id: merchantId,
++    gross_charge_cents: 0,
++    refund_cents: 0,
++    dispute_cents: 0,
++    processing_fee_cents: 0,
++    dispute_fee_cents: 0,
++  };
++}
++
++function calculatePayout(events, rules) {
++  const merchantsById = new Map();
++
++  for (const event of events) {
++    let merchant = merchantsById.get(event.merchant_id);
++    if (!merchant) {
++      merchant = createMerchant(event.merchant_id);
++      merchantsById.set(event.merchant_id, merchant);
++    }
++
++    if (event.type === 'charge') {
++      merchant.gross_charge_cents += event.amount_cents;
++      merchant.processing_fee_cents += Math.round(
++        event.amount_cents * rules.processing_fee_percent / 100,
++      ) + rules.fixed_fee_cents;
++    } else if (event.type === 'refund') {
++      merchant.refund_cents += event.amount_cents;
++    } else {
++      merchant.dispute_cents += event.amount_cents;
++      merchant.dispute_fee_cents += rules.dispute_fee_cents;
++    }
++  }
++
++  const merchants = Array.from(merchantsById.values(), (merchant) => {
++    const netBeforeReserve = merchant.gross_charge_cents
++      - merchant.refund_cents
++      - merchant.dispute_cents
++      - merchant.processing_fee_cents
++      - merchant.dispute_fee_cents;
++    let reserveCents = netBeforeReserve > 0
++      ? Math.round(netBeforeReserve * rules.reserve_percent / 100)
++      : 0;
++    let payoutCents = netBeforeReserve - reserveCents;
++
++    if (payoutCents > 0 && payoutCents < rules.minimum_payout_cents) {
++      reserveCents += payoutCents;
++      payoutCents = 0;
++    }
++
++    return {
++      ...merchant,
++      reserve_cents: reserveCents,
++      payout_cents: payoutCents,
++    };
++  });
++
++  return {
++    total_payout_cents: merchants.reduce((total, merchant) => total + merchant.payout_cents, 0),
++    total_processing_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.processing_fee_cents,
++      0,
++    ),
++    total_dispute_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.dispute_fee_cents,
++      0,
++    ),
++    total_reserve_cents: merchants.reduce((total, merchant) => total + merchant.reserve_cents, 0),
++    merchants,
++  };
++}
++
++function payout(argv) {
++  const input = readPayoutInput(argv);
++  if (!input || !Array.isArray(input.events)) {
++    writePayoutError({ error: 'missing_events' });
++  }
++
++  const rules = loadPayoutRules();
++  const result = calculatePayout(uniqueEvents(input.events), rules);
++  process.stdout.write(`${JSON.stringify(result)}\n`);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +208,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'payout': {
++      payout(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..78fb20358482ab99a0b5d2c7f5657becffddc9cb
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,17 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function runFailure(args) {
++  let failure;
++  try {
++    run(args);
++  } catch (error) {
++    failure = error;
++  }
++  assert.ok(failure, 'expected the CLI command to fail');
++  return failure;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +36,66 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('payout prints per-merchant totals after deduplicating events', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 10000 },
++      { id: 'refund-a', merchant_id: 'merchant-a', type: 'refund', amount_cents: 1000 },
++      { id: 'dispute-a', merchant_id: 'merchant-a', type: 'dispute', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++    ],
++  }));
++
++  const output = JSON.parse(run(['payout', '--input', inputPath]));
++  assert.deepEqual(output, {
++    total_payout_cents: 6012,
++    total_processing_fee_cents: 335,
++    total_dispute_fee_cents: 1500,
++    total_reserve_cents: 1123,
++    merchants: [
++      {
++        merchant_id: 'merchant-a',
++        gross_charge_cents: 10000,
++        refund_cents: 1000,
++        dispute_cents: 500,
++        processing_fee_cents: 320,
++        dispute_fee_cents: 1500,
++        reserve_cents: 668,
++        payout_cents: 6012,
++      },
++      {
++        merchant_id: 'merchant-b',
++        gross_charge_cents: 500,
++        refund_cents: 0,
++        dispute_cents: 0,
++        processing_fee_cents: 45,
++        dispute_fee_cents: 0,
++        reserve_cents: 455,
++        payout_cents: 0,
++      },
++    ],
++  });
++});
++
++test('payout reports validation failures as a single JSON error', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [{ id: 'unknown-type', merchant_id: 'merchant-a', type: 'transfer', amount_cents: 100 }],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++  const stderr = String(failure.stderr);
++  const error = JSON.parse(stderr);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.ok(error.error);
++  assert.equal(stderr, `${JSON.stringify(error)}\n`);
++});
+
+ exited 1 in 208ms:
+# {"error":"unknown_type","index":0}
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 27.275542
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 28.912458
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 25.4685
+  ...
+# Subtest: payout prints per-merchant totals after deduplicating events
+not ok 4 - payout prints per-merchant totals after deduplicating events
+  ---
+  duration_ms: 27.366959
+  location: '/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/cli.test.js:40:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be loosely deep-equal:
+    
+    {
+      merchants: [
+        {
+          dispute_cents: 500,
+          dispute_fee_cents: 1500,
+          gross_charge_cents: 10000,
+          merchant_id: 'merchant-a',
+          payout_cents: 6012,
+          processing_fee_cents: 320,
+          refund_cents: 1000,
+          reserve_cents: 668
+        },
+        {
+          dispute_cents: 0,
+          dispute_fee_cents: 0,
+          gross_charge_cents: 500,
+          merchant_id: 'merchant-b',
+          payout_cents: 0,
+          processing_fee_cents: 45,
+          refund_cents: 0,
+          reserve_cents: 455
+        }
+      ],
+      total_di...
+    
+    should loosely deep-equal
+    
+    {
+      merchants: [
+        {
+          dispute_cents: 500,
+          dispute_fee_cents: 1500,
+          gross_charge_cents: 10000,
+          merchant_id: 'merchant-a',
+          payout_cents: 6012,
+          processing_fee_cents: 320,
+          refund_cents: 1000,
+          reserve_cents: 668
+        },
+        {
+          dispute_cents: 0,
+          dispute_fee_cents: 0,
+          gross_charge_cents: 500,
+          merchant_id: 'merchant-b',
+          payout_cents: 0,
+          processing_fee_cents: 45,
+          refund_cents: 0,
+          reserve_cents: 455
+        }
+      ],
+      total_di...
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    total_payout_cents: 6012
+    total_processing_fee_cents: 335
+    total_dispute_fee_cents: 1500
+    total_reserve_cents: 1123
+    merchants:
+      0:
+        merchant_id: 'merchant-a'
+        gross_charge_cents: 10000
+        refund_cents: 1000
+        dispute_cents: 500
+        processing_fee_cents: 320
+        dispute_fee_cents: 1500
+        reserve_cents: 668
+        payout_cents: 6012
+      1:
+        merchant_id: 'merchant-b'
+        gross_charge_cents: 500
+        refund_cents: 0
+        dispute_cents: 0
+        processing_fee_cents: 45
+        dispute_fee_cents: 0
+        reserve_cents: 455
+        payout_cents: 0
+  actual:
+    total_payout_cents: 6012
+    total_processing_fee_cents: 365
+    total_dispute_fee_cents: 1500
+    total_reserve_cents: 1123
+    merchants:
+      0:
+        merchant_id: 'merchant-a'
+        gross_charge_cents: 10000
+        refund_cents: 1000
+        dispute_cents: 500
+        processing_fee_cents: 320
+        dispute_fee_cents: 1500
+        reserve_cents: 668
+        payout_cents: 6012
+      1:
+        merchant_id: 'merchant-b'
+        gross_charge_cents: 500
+        refund_cents: 0
+        dispute_cents: 0
+        processing_fee_cents: 45
+        dispute_fee_cents: 0
+        reserve_cents: 455
+        payout_cents: 0
+  operator: 'deepEqual'
+  stack: |-
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/cli.test.js:55:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: payout reports validation failures as a single JSON error
+ok 5 - payout reports validation failures as a single JSON error
+  ---
+  duration_ms: 26.109583
+  ...
+# Subtest: GET /health returns ok
+not ok 6 - GET /health returns ok
+  ---
+  duration_ms: 2.333167
+  location: '/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 7 - GET /items returns list
+  ---
+  duration_ms: 0.538125
+  location: '/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 8 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.407333
+  location: '/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 4
+# fail 4
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 191.164542
+
+codex
+The payout calculation matched the formulas; the first test’s expected processing-fee total was arithmetically wrong (320 + 45 = 365). I’ll correct that assertion and distinguish unreadable input from malformed JSON before re-running.
+2026-07-22T15:25:09.483998Z ERROR codex_core::tools::router: error=apply_patch verification failed: Failed to find expected lines in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/bin/cli.js:
+    total_processing_fee_cents: 335,
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..177a1251f138a6e77dfc85d0a45093e45d877932
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  payout --input PATH        Print payout totals for ledger events
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli payout --input ledger-events.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,159 @@
+   return value;
+ }
+ 
++function writePayoutError(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function readPayoutInput(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  try {
++    return JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++  } catch {
++    writePayoutError({ error: 'invalid_json' });
++  }
++}
++
++function validateEvent(event, index) {
++  if (!event || typeof event !== 'object' || Array.isArray(event)) {
++    writePayoutError({ error: 'invalid_event', index });
++  }
++  if (typeof event.id !== 'string') {
++    writePayoutError({ error: 'missing_id', index });
++  }
++  if (typeof event.merchant_id !== 'string') {
++    writePayoutError({ error: 'missing_merchant_id', index });
++  }
++  if (!['charge', 'refund', 'dispute'].includes(event.type)) {
++    writePayoutError({ error: 'unknown_type', index });
++  }
++  if (!Number.isInteger(event.amount_cents) || event.amount_cents <= 0) {
++    writePayoutError({ error: 'invalid_amount_cents', index });
++  }
++}
++
++function hasSameEventContent(first, second) {
++  return first.id === second.id
++    && first.merchant_id === second.merchant_id
++    && first.type === second.type
++    && first.amount_cents === second.amount_cents;
++}
++
++function uniqueEvents(events) {
++  const eventsById = new Map();
++  const unique = [];
++
++  events.forEach((event, index) => {
++    validateEvent(event, index);
++    const priorEvent = eventsById.get(event.id);
++    if (priorEvent) {
++      if (!hasSameEventContent(priorEvent, event)) {
++        writePayoutError({ error: 'conflicting_duplicate', id: event.id });
++      }
++      return;
++    }
++    eventsById.set(event.id, event);
++    unique.push(event);
++  });
++
++  return unique;
++}
++
++function loadPayoutRules() {
++  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
++  return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
++}
++
++function createMerchant(merchantId) {
++  return {
++    merchant_id: merchantId,
++    gross_charge_cents: 0,
++    refund_cents: 0,
++    dispute_cents: 0,
++    processing_fee_cents: 0,
++    dispute_fee_cents: 0,
++  };
++}
++
++function calculatePayout(events, rules) {
++  const merchantsById = new Map();
++
++  for (const event of events) {
++    let merchant = merchantsById.get(event.merchant_id);
++    if (!merchant) {
++      merchant = createMerchant(event.merchant_id);
++      merchantsById.set(event.merchant_id, merchant);
++    }
++
++    if (event.type === 'charge') {
++      merchant.gross_charge_cents += event.amount_cents;
++      merchant.processing_fee_cents += Math.round(
++        event.amount_cents * rules.processing_fee_percent / 100,
++      ) + rules.fixed_fee_cents;
++    } else if (event.type === 'refund') {
++      merchant.refund_cents += event.amount_cents;
++    } else {
++      merchant.dispute_cents += event.amount_cents;
++      merchant.dispute_fee_cents += rules.dispute_fee_cents;
++    }
++  }
++
++  const merchants = Array.from(merchantsById.values(), (merchant) => {
++    const netBeforeReserve = merchant.gross_charge_cents
++      - merchant.refund_cents
++      - merchant.dispute_cents
++      - merchant.processing_fee_cents
++      - merchant.dispute_fee_cents;
++    let reserveCents = netBeforeReserve > 0
++      ? Math.round(netBeforeReserve * rules.reserve_percent / 100)
++      : 0;
++    let payoutCents = netBeforeReserve - reserveCents;
++
++    if (payoutCents > 0 && payoutCents < rules.minimum_payout_cents) {
++      reserveCents += payoutCents;
++      payoutCents = 0;
++    }
++
++    return {
++      ...merchant,
++      reserve_cents: reserveCents,
++      payout_cents: payoutCents,
++    };
++  });
++
++  return {
++    total_payout_cents: merchants.reduce((total, merchant) => total + merchant.payout_cents, 0),
++    total_processing_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.processing_fee_cents,
++      0,
++    ),
++    total_dispute_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.dispute_fee_cents,
++      0,
++    ),
++    total_reserve_cents: merchants.reduce((total, merchant) => total + merchant.reserve_cents, 0),
++    merchants,
++  };
++}
++
++function payout(argv) {
++  const input = readPayoutInput(argv);
++  if (!input || !Array.isArray(input.events)) {
++    writePayoutError({ error: 'missing_events' });
++  }
++
++  const rules = loadPayoutRules();
++  const result = calculatePayout(uniqueEvents(input.events), rules);
++  process.stdout.write(`${JSON.stringify(result)}\n`);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +208,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'payout': {
++      payout(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..78fb20358482ab99a0b5d2c7f5657becffddc9cb
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,17 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function runFailure(args) {
++  let failure;
++  try {
++    run(args);
++  } catch (error) {
++    failure = error;
++  }
++  assert.ok(failure, 'expected the CLI command to fail');
++  return failure;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +36,66 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('payout prints per-merchant totals after deduplicating events', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 10000 },
++      { id: 'refund-a', merchant_id: 'merchant-a', type: 'refund', amount_cents: 1000 },
++      { id: 'dispute-a', merchant_id: 'merchant-a', type: 'dispute', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++    ],
++  }));
++
++  const output = JSON.parse(run(['payout', '--input', inputPath]));
++  assert.deepEqual(output, {
++    total_payout_cents: 6012,
++    total_processing_fee_cents: 335,
++    total_dispute_fee_cents: 1500,
++    total_reserve_cents: 1123,
++    merchants: [
++      {
++        merchant_id: 'merchant-a',
++        gross_charge_cents: 10000,
++        refund_cents: 1000,
++        dispute_cents: 500,
++        processing_fee_cents: 320,
++        dispute_fee_cents: 1500,
++        reserve_cents: 668,
++        payout_cents: 6012,
++      },
++      {
++        merchant_id: 'merchant-b',
++        gross_charge_cents: 500,
++        refund_cents: 0,
++        dispute_cents: 0,
++        processing_fee_cents: 45,
++        dispute_fee_cents: 0,
++        reserve_cents: 455,
++        payout_cents: 0,
++      },
++    ],
++  });
++});
++
++test('payout reports validation failures as a single JSON error', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [{ id: 'unknown-type', merchant_id: 'merchant-a', type: 'transfer', amount_cents: 100 }],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++  const stderr = String(failure.stderr);
++  const error = JSON.parse(stderr);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.ok(error.error);
++  assert.equal(stderr, `${JSON.stringify(error)}\n`);
++});
+
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/bin/cli.js
+/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/cli.test.js
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..e94d7589ad987bfa3106fc99d07a0e15c0c3b53c
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  payout --input PATH        Print payout totals for ledger events
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli payout --input ledger-events.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,166 @@
+   return value;
+ }
+ 
++function writePayoutError(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function readPayoutInput(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  let rawInput;
++  try {
++    rawInput = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  try {
++    return JSON.parse(rawInput);
++  } catch {
++    writePayoutError({ error: 'invalid_json' });
++  }
++}
++
++function validateEvent(event, index) {
++  if (!event || typeof event !== 'object' || Array.isArray(event)) {
++    writePayoutError({ error: 'invalid_event', index });
++  }
++  if (typeof event.id !== 'string') {
++    writePayoutError({ error: 'missing_id', index });
++  }
++  if (typeof event.merchant_id !== 'string') {
++    writePayoutError({ error: 'missing_merchant_id', index });
++  }
++  if (!['charge', 'refund', 'dispute'].includes(event.type)) {
++    writePayoutError({ error: 'unknown_type', index });
++  }
++  if (!Number.isInteger(event.amount_cents) || event.amount_cents <= 0) {
++    writePayoutError({ error: 'invalid_amount_cents', index });
++  }
++}
++
++function hasSameEventContent(first, second) {
++  return first.id === second.id
++    && first.merchant_id === second.merchant_id
++    && first.type === second.type
++    && first.amount_cents === second.amount_cents;
++}
++
++function uniqueEvents(events) {
++  const eventsById = new Map();
++  const unique = [];
++
++  events.forEach((event, index) => {
++    validateEvent(event, index);
++    const priorEvent = eventsById.get(event.id);
++    if (priorEvent) {
++      if (!hasSameEventContent(priorEvent, event)) {
++        writePayoutError({ error: 'conflicting_duplicate', id: event.id });
++      }
++      return;
++    }
++    eventsById.set(event.id, event);
++    unique.push(event);
++  });
++
++  return unique;
++}
++
++function loadPayoutRules() {
++  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
++  return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
++}
++
++function createMerchant(merchantId) {
++  return {
++    merchant_id: merchantId,
++    gross_charge_cents: 0,
++    refund_cents: 0,
++    dispute_cents: 0,
++    processing_fee_cents: 0,
++    dispute_fee_cents: 0,
++  };
++}
++
++function calculatePayout(events, rules) {
++  const merchantsById = new Map();
++
++  for (const event of events) {
++    let merchant = merchantsById.get(event.merchant_id);
++    if (!merchant) {
++      merchant = createMerchant(event.merchant_id);
++      merchantsById.set(event.merchant_id, merchant);
++    }
++
++    if (event.type === 'charge') {
++      merchant.gross_charge_cents += event.amount_cents;
++      merchant.processing_fee_cents += Math.round(
++        event.amount_cents * rules.processing_fee_percent / 100,
++      ) + rules.fixed_fee_cents;
++    } else if (event.type === 'refund') {
++      merchant.refund_cents += event.amount_cents;
++    } else {
++      merchant.dispute_cents += event.amount_cents;
++      merchant.dispute_fee_cents += rules.dispute_fee_cents;
++    }
++  }
++
++  const merchants = Array.from(merchantsById.values(), (merchant) => {
++    const netBeforeReserve = merchant.gross_charge_cents
++      - merchant.refund_cents
++      - merchant.dispute_cents
++      - merchant.processing_fee_cents
++      - merchant.dispute_fee_cents;
++    let reserveCents = netBeforeReserve > 0
++      ? Math.round(netBeforeReserve * rules.reserve_percent / 100)
++      : 0;
++    let payoutCents = netBeforeReserve - reserveCents;
++
++    if (payoutCents > 0 && payoutCents < rules.minimum_payout_cents) {
++      reserveCents += payoutCents;
++      payoutCents = 0;
++    }
++
++    return {
++      ...merchant,
++      reserve_cents: reserveCents,
++      payout_cents: payoutCents,
++    };
++  });
++
++  return {
++    total_payout_cents: merchants.reduce((total, merchant) => total + merchant.payout_cents, 0),
++    total_processing_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.processing_fee_cents,
++      0,
++    ),
++    total_dispute_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.dispute_fee_cents,
++      0,
++    ),
++    total_reserve_cents: merchants.reduce((total, merchant) => total + merchant.reserve_cents, 0),
++    merchants,
++  };
++}
++
++function payout(argv) {
++  const input = readPayoutInput(argv);
++  if (!input || !Array.isArray(input.events)) {
++    writePayoutError({ error: 'missing_events' });
++  }
++
++  const rules = loadPayoutRules();
++  const result = calculatePayout(uniqueEvents(input.events), rules);
++  process.stdout.write(`${JSON.stringify(result)}\n`);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +215,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'payout': {
++      payout(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..46d55d4aa0eaf1b170ef4952ebb2f278bdadb786
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,17 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function runFailure(args) {
++  let failure;
++  try {
++    run(args);
++  } catch (error) {
++    failure = error;
++  }
++  assert.ok(failure, 'expected the CLI command to fail');
++  return failure;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +36,66 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('payout prints per-merchant totals after deduplicating events', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 10000 },
++      { id: 'refund-a', merchant_id: 'merchant-a', type: 'refund', amount_cents: 1000 },
++      { id: 'dispute-a', merchant_id: 'merchant-a', type: 'dispute', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++    ],
++  }));
++
++  const output = JSON.parse(run(['payout', '--input', inputPath]));
++  assert.deepEqual(output, {
++    total_payout_cents: 6012,
++    total_processing_fee_cents: 365,
++    total_dispute_fee_cents: 1500,
++    total_reserve_cents: 1123,
++    merchants: [
++      {
++        merchant_id: 'merchant-a',
++        gross_charge_cents: 10000,
++        refund_cents: 1000,
++        dispute_cents: 500,
++        processing_fee_cents: 320,
++        dispute_fee_cents: 1500,
++        reserve_cents: 668,
++        payout_cents: 6012,
++      },
++      {
++        merchant_id: 'merchant-b',
++        gross_charge_cents: 500,
++        refund_cents: 0,
++        dispute_cents: 0,
++        processing_fee_cents: 45,
++        dispute_fee_cents: 0,
++        reserve_cents: 455,
++        payout_cents: 0,
++      },
++    ],
++  });
++});
++
++test('payout reports validation failures as a single JSON error', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [{ id: 'unknown-type', merchant_id: 'merchant-a', type: 'transfer', amount_cents: 100 }],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++  const stderr = String(failure.stderr);
++  const error = JSON.parse(stderr);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.ok(error.error);
++  assert.equal(stderr, `${JSON.stringify(error)}\n`);
++});
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..e94d7589ad987bfa3106fc99d07a0e15c0c3b53c
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  payout --input PATH        Print payout totals for ledger events
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli payout --input ledger-events.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,166 @@
+   return value;
+ }
+ 
++function writePayoutError(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function readPayoutInput(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  let rawInput;
++  try {
++    rawInput = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  try {
++    return JSON.parse(rawInput);
++  } catch {
++    writePayoutError({ error: 'invalid_json' });
++  }
++}
++
++function validateEvent(event, index) {
++  if (!event || typeof event !== 'object' || Array.isArray(event)) {
++    writePayoutError({ error: 'invalid_event', index });
++  }
++  if (typeof event.id !== 'string') {
++    writePayoutError({ error: 'missing_id', index });
++  }
++  if (typeof event.merchant_id !== 'string') {
++    writePayoutError({ error: 'missing_merchant_id', index });
++  }
++  if (!['charge', 'refund', 'dispute'].includes(event.type)) {
++    writePayoutError({ error: 'unknown_type', index });
++  }
++  if (!Number.isInteger(event.amount_cents) || event.amount_cents <= 0) {
++    writePayoutError({ error: 'invalid_amount_cents', index });
++  }
++}
++
++function hasSameEventContent(first, second) {
++  return first.id === second.id
++    && first.merchant_id === second.merchant_id
++    && first.type === second.type
++    && first.amount_cents === second.amount_cents;
++}
++
++function uniqueEvents(events) {
++  const eventsById = new Map();
++  const unique = [];
++
++  events.forEach((event, index) => {
++    validateEvent(event, index);
++    const priorEvent = eventsById.get(event.id);
++    if (priorEvent) {
++      if (!hasSameEventContent(priorEvent, event)) {
++        writePayoutError({ error: 'conflicting_duplicate', id: event.id });
++      }
++      return;
++    }
++    eventsById.set(event.id, event);
++    unique.push(event);
++  });
++
++  return unique;
++}
++
++function loadPayoutRules() {
++  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
++  return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
++}
++
++function createMerchant(merchantId) {
++  return {
++    merchant_id: merchantId,
++    gross_charge_cents: 0,
++    refund_cents: 0,
++    dispute_cents: 0,
++    processing_fee_cents: 0,
++    dispute_fee_cents: 0,
++  };
++}
++
++function calculatePayout(events, rules) {
++  const merchantsById = new Map();
++
++  for (const event of events) {
++    let merchant = merchantsById.get(event.merchant_id);
++    if (!merchant) {
++      merchant = createMerchant(event.merchant_id);
++      merchantsById.set(event.merchant_id, merchant);
++    }
++
++    if (event.type === 'charge') {
++      merchant.gross_charge_cents += event.amount_cents;
++      merchant.processing_fee_cents += Math.round(
++        event.amount_cents * rules.processing_fee_percent / 100,
++      ) + rules.fixed_fee_cents;
++    } else if (event.type === 'refund') {
++      merchant.refund_cents += event.amount_cents;
++    } else {
++      merchant.dispute_cents += event.amount_cents;
++      merchant.dispute_fee_cents += rules.dispute_fee_cents;
++    }
++  }
++
++  const merchants = Array.from(merchantsById.values(), (merchant) => {
++    const netBeforeReserve = merchant.gross_charge_cents
++      - merchant.refund_cents
++      - merchant.dispute_cents
++      - merchant.processing_fee_cents
++      - merchant.dispute_fee_cents;
++    let reserveCents = netBeforeReserve > 0
++      ? Math.round(netBeforeReserve * rules.reserve_percent / 100)
++      : 0;
++    let payoutCents = netBeforeReserve - reserveCents;
++
++    if (payoutCents > 0 && payoutCents < rules.minimum_payout_cents) {
++      reserveCents += payoutCents;
++      payoutCents = 0;
++    }
++
++    return {
++      ...merchant,
++      reserve_cents: reserveCents,
++      payout_cents: payoutCents,
++    };
++  });
++
++  return {
++    total_payout_cents: merchants.reduce((total, merchant) => total + merchant.payout_cents, 0),
++    total_processing_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.processing_fee_cents,
++      0,
++    ),
++    total_dispute_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.dispute_fee_cents,
++      0,
++    ),
++    total_reserve_cents: merchants.reduce((total, merchant) => total + merchant.reserve_cents, 0),
++    merchants,
++  };
++}
++
++function payout(argv) {
++  const input = readPayoutInput(argv);
++  if (!input || !Array.isArray(input.events)) {
++    writePayoutError({ error: 'missing_events' });
++  }
++
++  const rules = loadPayoutRules();
++  const result = calculatePayout(uniqueEvents(input.events), rules);
++  process.stdout.write(`${JSON.stringify(result)}\n`);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +215,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'payout': {
++      payout(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..46d55d4aa0eaf1b170ef4952ebb2f278bdadb786
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,17 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function runFailure(args) {
++  let failure;
++  try {
++    run(args);
++  } catch (error) {
++    failure = error;
++  }
++  assert.ok(failure, 'expected the CLI command to fail');
++  return failure;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +36,66 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('payout prints per-merchant totals after deduplicating events', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 10000 },
++      { id: 'refund-a', merchant_id: 'merchant-a', type: 'refund', amount_cents: 1000 },
++      { id: 'dispute-a', merchant_id: 'merchant-a', type: 'dispute', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++    ],
++  }));
++
++  const output = JSON.parse(run(['payout', '--input', inputPath]));
++  assert.deepEqual(output, {
++    total_payout_cents: 6012,
++    total_processing_fee_cents: 365,
++    total_dispute_fee_cents: 1500,
++    total_reserve_cents: 1123,
++    merchants: [
++      {
++        merchant_id: 'merchant-a',
++        gross_charge_cents: 10000,
++        refund_cents: 1000,
++        dispute_cents: 500,
++        processing_fee_cents: 320,
++        dispute_fee_cents: 1500,
++        reserve_cents: 668,
++        payout_cents: 6012,
++      },
++      {
++        merchant_id: 'merchant-b',
++        gross_charge_cents: 500,
++        refund_cents: 0,
++        dispute_cents: 0,
++        processing_fee_cents: 45,
++        dispute_fee_cents: 0,
++        reserve_cents: 455,
++        payout_cents: 0,
++      },
++    ],
++  });
++});
++
++test('payout reports validation failures as a single JSON error', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [{ id: 'unknown-type', merchant_id: 'merchant-a', type: 'transfer', amount_cents: 100 }],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++  const stderr = String(failure.stderr);
++  const error = JSON.parse(stderr);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.ok(error.error);
++  assert.equal(stderr, `${JSON.stringify(error)}\n`);
++});
+
+[codex-monitored] heartbeat: elapsed=120s
+exec
+/bin/zsh -lc 'git diff --check && node --test tests/cli.test.js && git diff -- bin/cli.js tests/cli.test.js && git status --short' in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..e94d7589ad987bfa3106fc99d07a0e15c0c3b53c
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  payout --input PATH        Print payout totals for ledger events
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli payout --input ledger-events.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,166 @@
+   return value;
+ }
+ 
++function writePayoutError(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function readPayoutInput(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  let rawInput;
++  try {
++    rawInput = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  try {
++    return JSON.parse(rawInput);
++  } catch {
++    writePayoutError({ error: 'invalid_json' });
++  }
++}
++
++function validateEvent(event, index) {
++  if (!event || typeof event !== 'object' || Array.isArray(event)) {
++    writePayoutError({ error: 'invalid_event', index });
++  }
++  if (typeof event.id !== 'string') {
++    writePayoutError({ error: 'missing_id', index });
++  }
++  if (typeof event.merchant_id !== 'string') {
++    writePayoutError({ error: 'missing_merchant_id', index });
++  }
++  if (!['charge', 'refund', 'dispute'].includes(event.type)) {
++    writePayoutError({ error: 'unknown_type', index });
++  }
++  if (!Number.isInteger(event.amount_cents) || event.amount_cents <= 0) {
++    writePayoutError({ error: 'invalid_amount_cents', index });
++  }
++}
++
++function hasSameEventContent(first, second) {
++  return first.id === second.id
++    && first.merchant_id === second.merchant_id
++    && first.type === second.type
++    && first.amount_cents === second.amount_cents;
++}
++
++function uniqueEvents(events) {
++  const eventsById = new Map();
++  const unique = [];
++
++  events.forEach((event, index) => {
++    validateEvent(event, index);
++    const priorEvent = eventsById.get(event.id);
++    if (priorEvent) {
++      if (!hasSameEventContent(priorEvent, event)) {
++        writePayoutError({ error: 'conflicting_duplicate', id: event.id });
++      }
++      return;
++    }
++    eventsById.set(event.id, event);
++    unique.push(event);
++  });
++
++  return unique;
++}
++
++function loadPayoutRules() {
++  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
++  return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
++}
++
++function createMerchant(merchantId) {
++  return {
++    merchant_id: merchantId,
++    gross_charge_cents: 0,
++    refund_cents: 0,
++    dispute_cents: 0,
++    processing_fee_cents: 0,
++    dispute_fee_cents: 0,
++  };
++}
++
++function calculatePayout(events, rules) {
++  const merchantsById = new Map();
++
++  for (const event of events) {
++    let merchant = merchantsById.get(event.merchant_id);
++    if (!merchant) {
++      merchant = createMerchant(event.merchant_id);
++      merchantsById.set(event.merchant_id, merchant);
++    }
++
++    if (event.type === 'charge') {
++      merchant.gross_charge_cents += event.amount_cents;
++      merchant.processing_fee_cents += Math.round(
++        event.amount_cents * rules.processing_fee_percent / 100,
++      ) + rules.fixed_fee_cents;
++    } else if (event.type === 'refund') {
++      merchant.refund_cents += event.amount_cents;
++    } else {
++      merchant.dispute_cents += event.amount_cents;
++      merchant.dispute_fee_cents += rules.dispute_fee_cents;
++    }
++  }
++
++  const merchants = Array.from(merchantsById.values(), (merchant) => {
++    const netBeforeReserve = merchant.gross_charge_cents
++      - merchant.refund_cents
++      - merchant.dispute_cents
++      - merchant.processing_fee_cents
++      - merchant.dispute_fee_cents;
++    let reserveCents = netBeforeReserve > 0
++      ? Math.round(netBeforeReserve * rules.reserve_percent / 100)
++      : 0;
++    let payoutCents = netBeforeReserve - reserveCents;
++
++    if (payoutCents > 0 && payoutCents < rules.minimum_payout_cents) {
++      reserveCents += payoutCents;
++      payoutCents = 0;
++    }
++
++    return {
++      ...merchant,
++      reserve_cents: reserveCents,
++      payout_cents: payoutCents,
++    };
++  });
++
++  return {
++    total_payout_cents: merchants.reduce((total, merchant) => total + merchant.payout_cents, 0),
++    total_processing_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.processing_fee_cents,
++      0,
++    ),
++    total_dispute_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.dispute_fee_cents,
++      0,
++    ),
++    total_reserve_cents: merchants.reduce((total, merchant) => total + merchant.reserve_cents, 0),
++    merchants,
++  };
++}
++
++function payout(argv) {
++  const input = readPayoutInput(argv);
++  if (!input || !Array.isArray(input.events)) {
++    writePayoutError({ error: 'missing_events' });
++  }
++
++  const rules = loadPayoutRules();
++  const result = calculatePayout(uniqueEvents(input.events), rules);
++  process.stdout.write(`${JSON.stringify(result)}\n`);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +215,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'payout': {
++      payout(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..46d55d4aa0eaf1b170ef4952ebb2f278bdadb786
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,17 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function runFailure(args) {
++  let failure;
++  try {
++    run(args);
++  } catch (error) {
++    failure = error;
++  }
++  assert.ok(failure, 'expected the CLI command to fail');
++  return failure;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +36,66 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('payout prints per-merchant totals after deduplicating events', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 10000 },
++      { id: 'refund-a', merchant_id: 'merchant-a', type: 'refund', amount_cents: 1000 },
++      { id: 'dispute-a', merchant_id: 'merchant-a', type: 'dispute', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++    ],
++  }));
++
++  const output = JSON.parse(run(['payout', '--input', inputPath]));
++  assert.deepEqual(output, {
++    total_payout_cents: 6012,
++    total_processing_fee_cents: 365,
++    total_dispute_fee_cents: 1500,
++    total_reserve_cents: 1123,
++    merchants: [
++      {
++        merchant_id: 'merchant-a',
++        gross_charge_cents: 10000,
++        refund_cents: 1000,
++        dispute_cents: 500,
++        processing_fee_cents: 320,
++        dispute_fee_cents: 1500,
++        reserve_cents: 668,
++        payout_cents: 6012,
++      },
++      {
++        merchant_id: 'merchant-b',
++        gross_charge_cents: 500,
++        refund_cents: 0,
++        dispute_cents: 0,
++        processing_fee_cents: 45,
++        dispute_fee_cents: 0,
++        reserve_cents: 455,
++        payout_cents: 0,
++      },
++    ],
++  });
++});
++
++test('payout reports validation failures as a single JSON error', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [{ id: 'unknown-type', merchant_id: 'merchant-a', type: 'transfer', amount_cents: 100 }],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++  const stderr = String(failure.stderr);
++  const error = JSON.parse(stderr);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.ok(error.error);
++  assert.equal(stderr, `${JSON.stringify(error)}\n`);
++});
+
+ succeeded in 196ms:
+# {"error":"unknown_type","index":0}
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 26.080084
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 23.848083
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 24.083208
+  ...
+# Subtest: payout prints per-merchant totals after deduplicating events
+ok 4 - payout prints per-merchant totals after deduplicating events
+  ---
+  duration_ms: 28.665
+  ...
+# Subtest: payout reports validation failures as a single JSON error
+ok 5 - payout reports validation failures as a single JSON error
+  ---
+  duration_ms: 25.80775
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 167.225709
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b24..e94d758 100644
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@ const USAGE = `Usage: bench-cli <command> [options]
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  payout --input PATH        Print payout totals for ledger events
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli payout --input ledger-events.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,166 @@ function parseNameFlag(argv) {
+   return value;
+ }
+ 
++function writePayoutError(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function readPayoutInput(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  let rawInput;
++  try {
++    rawInput = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  try {
++    return JSON.parse(rawInput);
++  } catch {
++    writePayoutError({ error: 'invalid_json' });
++  }
++}
++
++function validateEvent(event, index) {
++  if (!event || typeof event !== 'object' || Array.isArray(event)) {
++    writePayoutError({ error: 'invalid_event', index });
++  }
++  if (typeof event.id !== 'string') {
++    writePayoutError({ error: 'missing_id', index });
++  }
++  if (typeof event.merchant_id !== 'string') {
++    writePayoutError({ error: 'missing_merchant_id', index });
++  }
++  if (!['charge', 'refund', 'dispute'].includes(event.type)) {
++    writePayoutError({ error: 'unknown_type', index });
++  }
++  if (!Number.isInteger(event.amount_cents) || event.amount_cents <= 0) {
++    writePayoutError({ error: 'invalid_amount_cents', index });
++  }
++}
++
++function hasSameEventContent(first, second) {
++  return first.id === second.id
++    && first.merchant_id === second.merchant_id
++    && first.type === second.type
++    && first.amount_cents === second.amount_cents;
++}
++
++function uniqueEvents(events) {
++  const eventsById = new Map();
++  const unique = [];
++
++  events.forEach((event, index) => {
++    validateEvent(event, index);
++    const priorEvent = eventsById.get(event.id);
++    if (priorEvent) {
++      if (!hasSameEventContent(priorEvent, event)) {
++        writePayoutError({ error: 'conflicting_duplicate', id: event.id });
++      }
++      return;
++    }
++    eventsById.set(event.id, event);
++    unique.push(event);
++  });
++
++  return unique;
++}
++
++function loadPayoutRules() {
++  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
++  return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
++}
++
++function createMerchant(merchantId) {
++  return {
++    merchant_id: merchantId,
++    gross_charge_cents: 0,
++    refund_cents: 0,
++    dispute_cents: 0,
++    processing_fee_cents: 0,
++    dispute_fee_cents: 0,
++  };
++}
++
++function calculatePayout(events, rules) {
++  const merchantsById = new Map();
++
++  for (const event of events) {
++    let merchant = merchantsById.get(event.merchant_id);
++    if (!merchant) {
++      merchant = createMerchant(event.merchant_id);
++      merchantsById.set(event.merchant_id, merchant);
++    }
++
++    if (event.type === 'charge') {
++      merchant.gross_charge_cents += event.amount_cents;
++      merchant.processing_fee_cents += Math.round(
++        event.amount_cents * rules.processing_fee_percent / 100,
++      ) + rules.fixed_fee_cents;
++    } else if (event.type === 'refund') {
++      merchant.refund_cents += event.amount_cents;
++    } else {
++      merchant.dispute_cents += event.amount_cents;
++      merchant.dispute_fee_cents += rules.dispute_fee_cents;
++    }
++  }
++
++  const merchants = Array.from(merchantsById.values(), (merchant) => {
++    const netBeforeReserve = merchant.gross_charge_cents
++      - merchant.refund_cents
++      - merchant.dispute_cents
++      - merchant.processing_fee_cents
++      - merchant.dispute_fee_cents;
++    let reserveCents = netBeforeReserve > 0
++      ? Math.round(netBeforeReserve * rules.reserve_percent / 100)
++      : 0;
++    let payoutCents = netBeforeReserve - reserveCents;
++
++    if (payoutCents > 0 && payoutCents < rules.minimum_payout_cents) {
++      reserveCents += payoutCents;
++      payoutCents = 0;
++    }
++
++    return {
++      ...merchant,
++      reserve_cents: reserveCents,
++      payout_cents: payoutCents,
++    };
++  });
++
++  return {
++    total_payout_cents: merchants.reduce((total, merchant) => total + merchant.payout_cents, 0),
++    total_processing_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.processing_fee_cents,
++      0,
++    ),
++    total_dispute_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.dispute_fee_cents,
++      0,
++    ),
++    total_reserve_cents: merchants.reduce((total, merchant) => total + merchant.reserve_cents, 0),
++    merchants,
++  };
++}
++
++function payout(argv) {
++  const input = readPayoutInput(argv);
++  if (!input || !Array.isArray(input.events)) {
++    writePayoutError({ error: 'missing_events' });
++  }
++
++  const rules = loadPayoutRules();
++  const result = calculatePayout(uniqueEvents(input.events), rules);
++  process.stdout.write(`${JSON.stringify(result)}\n`);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +215,10 @@ function main(argv) {
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'payout': {
++      payout(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8..46d55d4 100644
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,17 @@ function run(args) {
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function runFailure(args) {
++  let failure;
++  try {
++    run(args);
++  } catch (error) {
++    failure = error;
++  }
++  assert.ok(failure, 'expected the CLI command to fail');
++  return failure;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +36,66 @@ test('version prints package version', () => {
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('payout prints per-merchant totals after deduplicating events', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 10000 },
++      { id: 'refund-a', merchant_id: 'merchant-a', type: 'refund', amount_cents: 1000 },
++      { id: 'dispute-a', merchant_id: 'merchant-a', type: 'dispute', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++    ],
++  }));
++
++  const output = JSON.parse(run(['payout', '--input', inputPath]));
++  assert.deepEqual(output, {
++    total_payout_cents: 6012,
++    total_processing_fee_cents: 365,
++    total_dispute_fee_cents: 1500,
++    total_reserve_cents: 1123,
++    merchants: [
++      {
++        merchant_id: 'merchant-a',
++        gross_charge_cents: 10000,
++        refund_cents: 1000,
++        dispute_cents: 500,
++        processing_fee_cents: 320,
++        dispute_fee_cents: 1500,
++        reserve_cents: 668,
++        payout_cents: 6012,
++      },
++      {
++        merchant_id: 'merchant-b',
++        gross_charge_cents: 500,
++        refund_cents: 0,
++        dispute_cents: 0,
++        processing_fee_cents: 45,
++        dispute_fee_cents: 0,
++        reserve_cents: 455,
++        payout_cents: 0,
++      },
++    ],
++  });
++});
++
++test('payout reports validation failures as a single JSON error', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [{ id: 'unknown-type', merchant_id: 'merchant-a', type: 'transfer', amount_cents: 100 }],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++  const stderr = String(failure.stderr);
++  const error = JSON.parse(stderr);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.ok(error.error);
++  assert.equal(stderr, `${JSON.stringify(error)}\n`);
++});
+ M bin/cli.js
+ M tests/cli.test.js
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+codex
+The CLI-focused suite now passes all five tests, including hello/version. I’m executing the mandated full suite once more; any remaining issue will be reported separately from the changed command.
+exec
+/bin/zsh -lc 'node --test tests/' in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..e94d7589ad987bfa3106fc99d07a0e15c0c3b53c
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  payout --input PATH        Print payout totals for ledger events
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli payout --input ledger-events.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,166 @@
+   return value;
+ }
+ 
++function writePayoutError(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function readPayoutInput(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  let rawInput;
++  try {
++    rawInput = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  try {
++    return JSON.parse(rawInput);
++  } catch {
++    writePayoutError({ error: 'invalid_json' });
++  }
++}
++
++function validateEvent(event, index) {
++  if (!event || typeof event !== 'object' || Array.isArray(event)) {
++    writePayoutError({ error: 'invalid_event', index });
++  }
++  if (typeof event.id !== 'string') {
++    writePayoutError({ error: 'missing_id', index });
++  }
++  if (typeof event.merchant_id !== 'string') {
++    writePayoutError({ error: 'missing_merchant_id', index });
++  }
++  if (!['charge', 'refund', 'dispute'].includes(event.type)) {
++    writePayoutError({ error: 'unknown_type', index });
++  }
++  if (!Number.isInteger(event.amount_cents) || event.amount_cents <= 0) {
++    writePayoutError({ error: 'invalid_amount_cents', index });
++  }
++}
++
++function hasSameEventContent(first, second) {
++  return first.id === second.id
++    && first.merchant_id === second.merchant_id
++    && first.type === second.type
++    && first.amount_cents === second.amount_cents;
++}
++
++function uniqueEvents(events) {
++  const eventsById = new Map();
++  const unique = [];
++
++  events.forEach((event, index) => {
++    validateEvent(event, index);
++    const priorEvent = eventsById.get(event.id);
++    if (priorEvent) {
++      if (!hasSameEventContent(priorEvent, event)) {
++        writePayoutError({ error: 'conflicting_duplicate', id: event.id });
++      }
++      return;
++    }
++    eventsById.set(event.id, event);
++    unique.push(event);
++  });
++
++  return unique;
++}
++
++function loadPayoutRules() {
++  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
++  return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
++}
++
++function createMerchant(merchantId) {
++  return {
++    merchant_id: merchantId,
++    gross_charge_cents: 0,
++    refund_cents: 0,
++    dispute_cents: 0,
++    processing_fee_cents: 0,
++    dispute_fee_cents: 0,
++  };
++}
++
++function calculatePayout(events, rules) {
++  const merchantsById = new Map();
++
++  for (const event of events) {
++    let merchant = merchantsById.get(event.merchant_id);
++    if (!merchant) {
++      merchant = createMerchant(event.merchant_id);
++      merchantsById.set(event.merchant_id, merchant);
++    }
++
++    if (event.type === 'charge') {
++      merchant.gross_charge_cents += event.amount_cents;
++      merchant.processing_fee_cents += Math.round(
++        event.amount_cents * rules.processing_fee_percent / 100,
++      ) + rules.fixed_fee_cents;
++    } else if (event.type === 'refund') {
++      merchant.refund_cents += event.amount_cents;
++    } else {
++      merchant.dispute_cents += event.amount_cents;
++      merchant.dispute_fee_cents += rules.dispute_fee_cents;
++    }
++  }
++
++  const merchants = Array.from(merchantsById.values(), (merchant) => {
++    const netBeforeReserve = merchant.gross_charge_cents
++      - merchant.refund_cents
++      - merchant.dispute_cents
++      - merchant.processing_fee_cents
++      - merchant.dispute_fee_cents;
++    let reserveCents = netBeforeReserve > 0
++      ? Math.round(netBeforeReserve * rules.reserve_percent / 100)
++      : 0;
++    let payoutCents = netBeforeReserve - reserveCents;
++
++    if (payoutCents > 0 && payoutCents < rules.minimum_payout_cents) {
++      reserveCents += payoutCents;
++      payoutCents = 0;
++    }
++
++    return {
++      ...merchant,
++      reserve_cents: reserveCents,
++      payout_cents: payoutCents,
++    };
++  });
++
++  return {
++    total_payout_cents: merchants.reduce((total, merchant) => total + merchant.payout_cents, 0),
++    total_processing_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.processing_fee_cents,
++      0,
++    ),
++    total_dispute_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.dispute_fee_cents,
++      0,
++    ),
++    total_reserve_cents: merchants.reduce((total, merchant) => total + merchant.reserve_cents, 0),
++    merchants,
++  };
++}
++
++function payout(argv) {
++  const input = readPayoutInput(argv);
++  if (!input || !Array.isArray(input.events)) {
++    writePayoutError({ error: 'missing_events' });
++  }
++
++  const rules = loadPayoutRules();
++  const result = calculatePayout(uniqueEvents(input.events), rules);
++  process.stdout.write(`${JSON.stringify(result)}\n`);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +215,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'payout': {
++      payout(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..46d55d4aa0eaf1b170ef4952ebb2f278bdadb786
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,17 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function runFailure(args) {
++  let failure;
++  try {
++    run(args);
++  } catch (error) {
++    failure = error;
++  }
++  assert.ok(failure, 'expected the CLI command to fail');
++  return failure;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +36,66 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('payout prints per-merchant totals after deduplicating events', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 10000 },
++      { id: 'refund-a', merchant_id: 'merchant-a', type: 'refund', amount_cents: 1000 },
++      { id: 'dispute-a', merchant_id: 'merchant-a', type: 'dispute', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++    ],
++  }));
++
++  const output = JSON.parse(run(['payout', '--input', inputPath]));
++  assert.deepEqual(output, {
++    total_payout_cents: 6012,
++    total_processing_fee_cents: 365,
++    total_dispute_fee_cents: 1500,
++    total_reserve_cents: 1123,
++    merchants: [
++      {
++        merchant_id: 'merchant-a',
++        gross_charge_cents: 10000,
++        refund_cents: 1000,
++        dispute_cents: 500,
++        processing_fee_cents: 320,
++        dispute_fee_cents: 1500,
++        reserve_cents: 668,
++        payout_cents: 6012,
++      },
++      {
++        merchant_id: 'merchant-b',
++        gross_charge_cents: 500,
++        refund_cents: 0,
++        dispute_cents: 0,
++        processing_fee_cents: 45,
++        dispute_fee_cents: 0,
++        reserve_cents: 455,
++        payout_cents: 0,
++      },
++    ],
++  });
++});
++
++test('payout reports validation failures as a single JSON error', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [{ id: 'unknown-type', merchant_id: 'merchant-a', type: 'transfer', amount_cents: 100 }],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++  const stderr = String(failure.stderr);
++  const error = JSON.parse(stderr);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.ok(error.error);
++  assert.equal(stderr, `${JSON.stringify(error)}\n`);
++});
+
+ exited 1 in 154ms:
+# {"error":"unknown_type","index":0}
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 27.921291
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 24.206708
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 24.390875
+  ...
+# Subtest: payout prints per-merchant totals after deduplicating events
+ok 4 - payout prints per-merchant totals after deduplicating events
+  ---
+  duration_ms: 26.680041
+  ...
+# Subtest: payout reports validation failures as a single JSON error
+ok 5 - payout reports validation failures as a single JSON error
+  ---
+  duration_ms: 25.480125
+  ...
+# Subtest: GET /health returns ok
+not ok 6 - GET /health returns ok
+  ---
+  duration_ms: 2.600542
+  location: '/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 7 - GET /items returns list
+  ---
+  duration_ms: 0.6905
+  location: '/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 8 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 0.403625
+  location: '/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 5
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 164.477875
+
+[codex-monitored] heartbeat: elapsed=150s
+codex
+The required full command is blocked by the sandbox: all three unrelated server tests fail while binding `0.0.0.0` with `EPERM`; payout and existing CLI tests pass. I’ll make a final scope and contract check now.
+exec
+/bin/zsh -lc "git diff --check && nl -ba bin/cli.js | sed -n '1,245p' && nl -ba tests/cli.test.js | sed -n '1,130p' && nl -ba tests/server.test.js | sed -n '1,20p' && git diff --name-only" in /Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo
+ succeeded in 0ms:
+     1	#!/usr/bin/env node
+     2	// harbor-tools — small command-line utilities for local workflows.
+     3	// Keep the core commands minimal and easy to understand.
+     4	
+     5	const fs = require('fs');
+     6	const path = require('path');
+     7	
+     8	const USAGE = `Usage: bench-cli <command> [options]
+     9	
+    10	Commands:
+    11	  hello [--name NAME]        Print a greeting (default name: "world")
+    12	  version                    Print the CLI version from package.json
+    13	  payout --input PATH        Print payout totals for ledger events
+    14	  --help, -h                 Show this help
+    15	
+    16	Examples:
+    17	  bench-cli hello
+    18	  bench-cli hello --name alice
+    19	  bench-cli version
+    20	  bench-cli payout --input ledger-events.json
+    21	`;
+    22	
+    23	function readPackageVersion() {
+    24	  const pkgPath = path.join(__dirname, '..', 'package.json');
+    25	  const raw = fs.readFileSync(pkgPath, 'utf8');
+    26	  return JSON.parse(raw).version;
+    27	}
+    28	
+    29	function parseNameFlag(argv) {
+    30	  const idx = argv.indexOf('--name');
+    31	  if (idx === -1) return 'world';
+    32	  const value = argv[idx + 1];
+    33	  if (!value || value.startsWith('-')) {
+    34	    console.error('--name requires a value');
+    35	    process.exit(1);
+    36	  }
+    37	  return value;
+    38	}
+    39	
+    40	function writePayoutError(error) {
+    41	  process.stderr.write(`${JSON.stringify(error)}\n`);
+    42	  process.exit(2);
+    43	}
+    44	
+    45	function readPayoutInput(argv) {
+    46	  const inputIndex = argv.indexOf('--input');
+    47	  const inputPath = argv[inputIndex + 1];
+    48	
+    49	  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
+    50	    writePayoutError({ error: 'unreadable_input' });
+    51	  }
+    52	
+    53	  let rawInput;
+    54	  try {
+    55	    rawInput = fs.readFileSync(inputPath, 'utf8');
+    56	  } catch {
+    57	    writePayoutError({ error: 'unreadable_input' });
+    58	  }
+    59	
+    60	  try {
+    61	    return JSON.parse(rawInput);
+    62	  } catch {
+    63	    writePayoutError({ error: 'invalid_json' });
+    64	  }
+    65	}
+    66	
+    67	function validateEvent(event, index) {
+    68	  if (!event || typeof event !== 'object' || Array.isArray(event)) {
+    69	    writePayoutError({ error: 'invalid_event', index });
+    70	  }
+    71	  if (typeof event.id !== 'string') {
+    72	    writePayoutError({ error: 'missing_id', index });
+    73	  }
+    74	  if (typeof event.merchant_id !== 'string') {
+    75	    writePayoutError({ error: 'missing_merchant_id', index });
+    76	  }
+    77	  if (!['charge', 'refund', 'dispute'].includes(event.type)) {
+    78	    writePayoutError({ error: 'unknown_type', index });
+    79	  }
+    80	  if (!Number.isInteger(event.amount_cents) || event.amount_cents <= 0) {
+    81	    writePayoutError({ error: 'invalid_amount_cents', index });
+    82	  }
+    83	}
+    84	
+    85	function hasSameEventContent(first, second) {
+    86	  return first.id === second.id
+    87	    && first.merchant_id === second.merchant_id
+    88	    && first.type === second.type
+    89	    && first.amount_cents === second.amount_cents;
+    90	}
+    91	
+    92	function uniqueEvents(events) {
+    93	  const eventsById = new Map();
+    94	  const unique = [];
+    95	
+    96	  events.forEach((event, index) => {
+    97	    validateEvent(event, index);
+    98	    const priorEvent = eventsById.get(event.id);
+    99	    if (priorEvent) {
+   100	      if (!hasSameEventContent(priorEvent, event)) {
+   101	        writePayoutError({ error: 'conflicting_duplicate', id: event.id });
+   102	      }
+   103	      return;
+   104	    }
+   105	    eventsById.set(event.id, event);
+   106	    unique.push(event);
+   107	  });
+   108	
+   109	  return unique;
+   110	}
+   111	
+   112	function loadPayoutRules() {
+   113	  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
+   114	  return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
+   115	}
+   116	
+   117	function createMerchant(merchantId) {
+   118	  return {
+   119	    merchant_id: merchantId,
+   120	    gross_charge_cents: 0,
+   121	    refund_cents: 0,
+   122	    dispute_cents: 0,
+   123	    processing_fee_cents: 0,
+   124	    dispute_fee_cents: 0,
+   125	  };
+   126	}
+   127	
+   128	function calculatePayout(events, rules) {
+   129	  const merchantsById = new Map();
+   130	
+   131	  for (const event of events) {
+   132	    let merchant = merchantsById.get(event.merchant_id);
+   133	    if (!merchant) {
+   134	      merchant = createMerchant(event.merchant_id);
+   135	      merchantsById.set(event.merchant_id, merchant);
+   136	    }
+   137	
+   138	    if (event.type === 'charge') {
+   139	      merchant.gross_charge_cents += event.amount_cents;
+   140	      merchant.processing_fee_cents += Math.round(
+   141	        event.amount_cents * rules.processing_fee_percent / 100,
+   142	      ) + rules.fixed_fee_cents;
+   143	    } else if (event.type === 'refund') {
+   144	      merchant.refund_cents += event.amount_cents;
+   145	    } else {
+   146	      merchant.dispute_cents += event.amount_cents;
+   147	      merchant.dispute_fee_cents += rules.dispute_fee_cents;
+   148	    }
+   149	  }
+   150	
+   151	  const merchants = Array.from(merchantsById.values(), (merchant) => {
+   152	    const netBeforeReserve = merchant.gross_charge_cents
+   153	      - merchant.refund_cents
+   154	      - merchant.dispute_cents
+   155	      - merchant.processing_fee_cents
+   156	      - merchant.dispute_fee_cents;
+   157	    let reserveCents = netBeforeReserve > 0
+   158	      ? Math.round(netBeforeReserve * rules.reserve_percent / 100)
+   159	      : 0;
+   160	    let payoutCents = netBeforeReserve - reserveCents;
+   161	
+   162	    if (payoutCents > 0 && payoutCents < rules.minimum_payout_cents) {
+   163	      reserveCents += payoutCents;
+   164	      payoutCents = 0;
+   165	    }
+   166	
+   167	    return {
+   168	      ...merchant,
+   169	      reserve_cents: reserveCents,
+   170	      payout_cents: payoutCents,
+   171	    };
+   172	  });
+   173	
+   174	  return {
+   175	    total_payout_cents: merchants.reduce((total, merchant) => total + merchant.payout_cents, 0),
+   176	    total_processing_fee_cents: merchants.reduce(
+   177	      (total, merchant) => total + merchant.processing_fee_cents,
+   178	      0,
+   179	    ),
+   180	    total_dispute_fee_cents: merchants.reduce(
+   181	      (total, merchant) => total + merchant.dispute_fee_cents,
+   182	      0,
+   183	    ),
+   184	    total_reserve_cents: merchants.reduce((total, merchant) => total + merchant.reserve_cents, 0),
+   185	    merchants,
+   186	  };
+   187	}
+   188	
+   189	function payout(argv) {
+   190	  const input = readPayoutInput(argv);
+   191	  if (!input || !Array.isArray(input.events)) {
+   192	    writePayoutError({ error: 'missing_events' });
+   193	  }
+   194	
+   195	  const rules = loadPayoutRules();
+   196	  const result = calculatePayout(uniqueEvents(input.events), rules);
+   197	  process.stdout.write(`${JSON.stringify(result)}\n`);
+   198	}
+   199	
+   200	function main(argv) {
+   201	  const [command, ...rest] = argv;
+   202	
+   203	  if (!command || command === '--help' || command === '-h') {
+   204	    process.stdout.write(USAGE);
+   205	    return;
+   206	  }
+   207	
+   208	  switch (command) {
+   209	    case 'hello': {
+   210	      const name = parseNameFlag(rest);
+   211	      console.log(`Hello, ${name}!`);
+   212	      return;
+   213	    }
+   214	    case 'version': {
+   215	      console.log(readPackageVersion());
+   216	      return;
+   217	    }
+   218	    case 'payout': {
+   219	      payout(rest);
+   220	      return;
+   221	    }
+   222	    default:
+   223	      console.error(`Unknown command: ${command}`);
+   224	      process.stderr.write(USAGE);
+   225	      process.exit(1);
+   226	  }
+   227	}
+   228	
+   229	main(process.argv.slice(2));
+     1	const { test } = require('node:test');
+     2	const assert = require('node:assert');
+     3	const { execFileSync } = require('node:child_process');
+     4	const fs = require('node:fs');
+     5	const os = require('node:os');
+     6	const path = require('node:path');
+     7	
+     8	const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+     9	
+    10	function run(args) {
+    11	  return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+    12	}
+    13	
+    14	function runFailure(args) {
+    15	  let failure;
+    16	  try {
+    17	    run(args);
+    18	  } catch (error) {
+    19	    failure = error;
+    20	  }
+    21	  assert.ok(failure, 'expected the CLI command to fail');
+    22	  return failure;
+    23	}
+    24	
+    25	test('hello default', () => {
+    26	  const out = run(['hello']);
+    27	  assert.match(out, /Hello, world!/);
+    28	});
+    29	
+    30	test('hello with --name', () => {
+    31	  const out = run(['hello', '--name', 'alice']);
+    32	  assert.match(out, /Hello, alice!/);
+    33	});
+    34	
+    35	test('version prints package version', () => {
+    36	  const out = run(['version']);
+    37	  assert.match(out, /\d+\.\d+\.\d+/);
+    38	});
+    39	
+    40	test('payout prints per-merchant totals after deduplicating events', (t) => {
+    41	  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
+    42	  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
+    43	  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
+    44	  fs.writeFileSync(inputPath, JSON.stringify({
+    45	    events: [
+    46	      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 10000 },
+    47	      { id: 'refund-a', merchant_id: 'merchant-a', type: 'refund', amount_cents: 1000 },
+    48	      { id: 'dispute-a', merchant_id: 'merchant-a', type: 'dispute', amount_cents: 500 },
+    49	      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
+    50	      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
+    51	    ],
+    52	  }));
+    53	
+    54	  const output = JSON.parse(run(['payout', '--input', inputPath]));
+    55	  assert.deepEqual(output, {
+    56	    total_payout_cents: 6012,
+    57	    total_processing_fee_cents: 365,
+    58	    total_dispute_fee_cents: 1500,
+    59	    total_reserve_cents: 1123,
+    60	    merchants: [
+    61	      {
+    62	        merchant_id: 'merchant-a',
+    63	        gross_charge_cents: 10000,
+    64	        refund_cents: 1000,
+    65	        dispute_cents: 500,
+    66	        processing_fee_cents: 320,
+    67	        dispute_fee_cents: 1500,
+    68	        reserve_cents: 668,
+    69	        payout_cents: 6012,
+    70	      },
+    71	      {
+    72	        merchant_id: 'merchant-b',
+    73	        gross_charge_cents: 500,
+    74	        refund_cents: 0,
+    75	        dispute_cents: 0,
+    76	        processing_fee_cents: 45,
+    77	        dispute_fee_cents: 0,
+    78	        reserve_cents: 455,
+    79	        payout_cents: 0,
+    80	      },
+    81	    ],
+    82	  });
+    83	});
+    84	
+    85	test('payout reports validation failures as a single JSON error', (t) => {
+    86	  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
+    87	  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
+    88	  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
+    89	  fs.writeFileSync(inputPath, JSON.stringify({
+    90	    events: [{ id: 'unknown-type', merchant_id: 'merchant-a', type: 'transfer', amount_cents: 100 }],
+    91	  }));
+    92	
+    93	  const failure = runFailure(['payout', '--input', inputPath]);
+    94	  const stderr = String(failure.stderr);
+    95	  const error = JSON.parse(stderr);
+    96	
+    97	  assert.equal(failure.status, 2);
+    98	  assert.equal(String(failure.stdout), '');
+    99	  assert.ok(error.error);
+   100	  assert.equal(stderr, `${JSON.stringify(error)}\n`);
+   101	});
+     1	const { test } = require('node:test');
+     2	const assert = require('node:assert');
+     3	const http = require('node:http');
+     4	const { app } = require('../server');
+     5	
+     6	function startServer() {
+     7	  return new Promise((resolve) => {
+     8	    const server = http.createServer(app);
+     9	    server.listen(0, () => resolve(server));
+    10	  });
+    11	}
+    12	
+    13	function get(server, path) {
+    14	  return new Promise((resolve, reject) => {
+    15	    const { port } = server.address();
+    16	    http
+    17	      .get(`http://127.0.0.1:${port}${path}`, (res) => {
+    18	        let body = '';
+    19	        res.on('data', (chunk) => (body += chunk));
+    20	        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
+bin/cli.js
+tests/cli.test.js
+
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..e94d7589ad987bfa3106fc99d07a0e15c0c3b53c
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  payout --input PATH        Print payout totals for ledger events
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli payout --input ledger-events.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,166 @@
+   return value;
+ }
+ 
++function writePayoutError(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function readPayoutInput(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  let rawInput;
++  try {
++    rawInput = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  try {
++    return JSON.parse(rawInput);
++  } catch {
++    writePayoutError({ error: 'invalid_json' });
++  }
++}
++
++function validateEvent(event, index) {
++  if (!event || typeof event !== 'object' || Array.isArray(event)) {
++    writePayoutError({ error: 'invalid_event', index });
++  }
++  if (typeof event.id !== 'string') {
++    writePayoutError({ error: 'missing_id', index });
++  }
++  if (typeof event.merchant_id !== 'string') {
++    writePayoutError({ error: 'missing_merchant_id', index });
++  }
++  if (!['charge', 'refund', 'dispute'].includes(event.type)) {
++    writePayoutError({ error: 'unknown_type', index });
++  }
++  if (!Number.isInteger(event.amount_cents) || event.amount_cents <= 0) {
++    writePayoutError({ error: 'invalid_amount_cents', index });
++  }
++}
++
++function hasSameEventContent(first, second) {
++  return first.id === second.id
++    && first.merchant_id === second.merchant_id
++    && first.type === second.type
++    && first.amount_cents === second.amount_cents;
++}
++
++function uniqueEvents(events) {
++  const eventsById = new Map();
++  const unique = [];
++
++  events.forEach((event, index) => {
++    validateEvent(event, index);
++    const priorEvent = eventsById.get(event.id);
++    if (priorEvent) {
++      if (!hasSameEventContent(priorEvent, event)) {
++        writePayoutError({ error: 'conflicting_duplicate', id: event.id });
++      }
++      return;
++    }
++    eventsById.set(event.id, event);
++    unique.push(event);
++  });
++
++  return unique;
++}
++
++function loadPayoutRules() {
++  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
++  return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
++}
++
++function createMerchant(merchantId) {
++  return {
++    merchant_id: merchantId,
++    gross_charge_cents: 0,
++    refund_cents: 0,
++    dispute_cents: 0,
++    processing_fee_cents: 0,
++    dispute_fee_cents: 0,
++  };
++}
++
++function calculatePayout(events, rules) {
++  const merchantsById = new Map();
++
++  for (const event of events) {
++    let merchant = merchantsById.get(event.merchant_id);
++    if (!merchant) {
++      merchant = createMerchant(event.merchant_id);
++      merchantsById.set(event.merchant_id, merchant);
++    }
++
++    if (event.type === 'charge') {
++      merchant.gross_charge_cents += event.amount_cents;
++      merchant.processing_fee_cents += Math.round(
++        event.amount_cents * rules.processing_fee_percent / 100,
++      ) + rules.fixed_fee_cents;
++    } else if (event.type === 'refund') {
++      merchant.refund_cents += event.amount_cents;
++    } else {
++      merchant.dispute_cents += event.amount_cents;
++      merchant.dispute_fee_cents += rules.dispute_fee_cents;
++    }
++  }
++
++  const merchants = Array.from(merchantsById.values(), (merchant) => {
++    const netBeforeReserve = merchant.gross_charge_cents
++      - merchant.refund_cents
++      - merchant.dispute_cents
++      - merchant.processing_fee_cents
++      - merchant.dispute_fee_cents;
++    let reserveCents = netBeforeReserve > 0
++      ? Math.round(netBeforeReserve * rules.reserve_percent / 100)
++      : 0;
++    let payoutCents = netBeforeReserve - reserveCents;
++
++    if (payoutCents > 0 && payoutCents < rules.minimum_payout_cents) {
++      reserveCents += payoutCents;
++      payoutCents = 0;
++    }
++
++    return {
++      ...merchant,
++      reserve_cents: reserveCents,
++      payout_cents: payoutCents,
++    };
++  });
++
++  return {
++    total_payout_cents: merchants.reduce((total, merchant) => total + merchant.payout_cents, 0),
++    total_processing_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.processing_fee_cents,
++      0,
++    ),
++    total_dispute_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.dispute_fee_cents,
++      0,
++    ),
++    total_reserve_cents: merchants.reduce((total, merchant) => total + merchant.reserve_cents, 0),
++    merchants,
++  };
++}
++
++function payout(argv) {
++  const input = readPayoutInput(argv);
++  if (!input || !Array.isArray(input.events)) {
++    writePayoutError({ error: 'missing_events' });
++  }
++
++  const rules = loadPayoutRules();
++  const result = calculatePayout(uniqueEvents(input.events), rules);
++  process.stdout.write(`${JSON.stringify(result)}\n`);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +215,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'payout': {
++      payout(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..46d55d4aa0eaf1b170ef4952ebb2f278bdadb786
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,17 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function runFailure(args) {
++  let failure;
++  try {
++    run(args);
++  } catch (error) {
++    failure = error;
++  }
++  assert.ok(failure, 'expected the CLI command to fail');
++  return failure;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +36,66 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('payout prints per-merchant totals after deduplicating events', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 10000 },
++      { id: 'refund-a', merchant_id: 'merchant-a', type: 'refund', amount_cents: 1000 },
++      { id: 'dispute-a', merchant_id: 'merchant-a', type: 'dispute', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++    ],
++  }));
++
++  const output = JSON.parse(run(['payout', '--input', inputPath]));
++  assert.deepEqual(output, {
++    total_payout_cents: 6012,
++    total_processing_fee_cents: 365,
++    total_dispute_fee_cents: 1500,
++    total_reserve_cents: 1123,
++    merchants: [
++      {
++        merchant_id: 'merchant-a',
++        gross_charge_cents: 10000,
++        refund_cents: 1000,
++        dispute_cents: 500,
++        processing_fee_cents: 320,
++        dispute_fee_cents: 1500,
++        reserve_cents: 668,
++        payout_cents: 6012,
++      },
++      {
++        merchant_id: 'merchant-b',
++        gross_charge_cents: 500,
++        refund_cents: 0,
++        dispute_cents: 0,
++        processing_fee_cents: 45,
++        dispute_fee_cents: 0,
++        reserve_cents: 455,
++        payout_cents: 0,
++      },
++    ],
++  });
++});
++
++test('payout reports validation failures as a single JSON error', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [{ id: 'unknown-type', merchant_id: 'merchant-a', type: 'transfer', amount_cents: 100 }],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++  const stderr = String(failure.stderr);
++  const error = JSON.parse(stderr);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.ok(error.error);
++  assert.equal(stderr, `${JSON.stringify(error)}\n`);
++});
+
+codex
+Implemented `bench-cli payout --input <path>` with validation, deduplication, runtime rule loading, payout calculations, and exact JSON output in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/bin/cli.js:40). Added success and validation-error coverage in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/cli.test.js:40).
+
+Verification:
+- `node --test tests/cli.test.js` — 5/5 passed.
+- `node --test tests/` — payout/CLI tests passed; 3 unrelated server tests failed because the sandbox denies `server.listen(0)` with `EPERM` at [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/rb50d3c291c96/fee93957fc8fe/A1/repo/tests/server.test.js:9). That file is outside the authorized surface.
+
+BLOCKED
+diff --git a/bin/cli.js b/bin/cli.js
+index 9cc9b243349921960c5145e9f393ff59c86a4ab8..e94d7589ad987bfa3106fc99d07a0e15c0c3b53c
+--- a/bin/cli.js
++++ b/bin/cli.js
+@@ -10,12 +10,14 @@
+ Commands:
+   hello [--name NAME]        Print a greeting (default name: "world")
+   version                    Print the CLI version from package.json
++  payout --input PATH        Print payout totals for ledger events
+   --help, -h                 Show this help
+ 
+ Examples:
+   bench-cli hello
+   bench-cli hello --name alice
+   bench-cli version
++  bench-cli payout --input ledger-events.json
+ `;
+ 
+ function readPackageVersion() {
+@@ -35,6 +37,166 @@
+   return value;
+ }
+ 
++function writePayoutError(error) {
++  process.stderr.write(`${JSON.stringify(error)}\n`);
++  process.exit(2);
++}
++
++function readPayoutInput(argv) {
++  const inputIndex = argv.indexOf('--input');
++  const inputPath = argv[inputIndex + 1];
++
++  if (inputIndex === -1 || !inputPath || inputPath.startsWith('-')) {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  let rawInput;
++  try {
++    rawInput = fs.readFileSync(inputPath, 'utf8');
++  } catch {
++    writePayoutError({ error: 'unreadable_input' });
++  }
++
++  try {
++    return JSON.parse(rawInput);
++  } catch {
++    writePayoutError({ error: 'invalid_json' });
++  }
++}
++
++function validateEvent(event, index) {
++  if (!event || typeof event !== 'object' || Array.isArray(event)) {
++    writePayoutError({ error: 'invalid_event', index });
++  }
++  if (typeof event.id !== 'string') {
++    writePayoutError({ error: 'missing_id', index });
++  }
++  if (typeof event.merchant_id !== 'string') {
++    writePayoutError({ error: 'missing_merchant_id', index });
++  }
++  if (!['charge', 'refund', 'dispute'].includes(event.type)) {
++    writePayoutError({ error: 'unknown_type', index });
++  }
++  if (!Number.isInteger(event.amount_cents) || event.amount_cents <= 0) {
++    writePayoutError({ error: 'invalid_amount_cents', index });
++  }
++}
++
++function hasSameEventContent(first, second) {
++  return first.id === second.id
++    && first.merchant_id === second.merchant_id
++    && first.type === second.type
++    && first.amount_cents === second.amount_cents;
++}
++
++function uniqueEvents(events) {
++  const eventsById = new Map();
++  const unique = [];
++
++  events.forEach((event, index) => {
++    validateEvent(event, index);
++    const priorEvent = eventsById.get(event.id);
++    if (priorEvent) {
++      if (!hasSameEventContent(priorEvent, event)) {
++        writePayoutError({ error: 'conflicting_duplicate', id: event.id });
++      }
++      return;
++    }
++    eventsById.set(event.id, event);
++    unique.push(event);
++  });
++
++  return unique;
++}
++
++function loadPayoutRules() {
++  const rulesPath = path.join(__dirname, '..', 'data', 'payout-rules.json');
++  return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
++}
++
++function createMerchant(merchantId) {
++  return {
++    merchant_id: merchantId,
++    gross_charge_cents: 0,
++    refund_cents: 0,
++    dispute_cents: 0,
++    processing_fee_cents: 0,
++    dispute_fee_cents: 0,
++  };
++}
++
++function calculatePayout(events, rules) {
++  const merchantsById = new Map();
++
++  for (const event of events) {
++    let merchant = merchantsById.get(event.merchant_id);
++    if (!merchant) {
++      merchant = createMerchant(event.merchant_id);
++      merchantsById.set(event.merchant_id, merchant);
++    }
++
++    if (event.type === 'charge') {
++      merchant.gross_charge_cents += event.amount_cents;
++      merchant.processing_fee_cents += Math.round(
++        event.amount_cents * rules.processing_fee_percent / 100,
++      ) + rules.fixed_fee_cents;
++    } else if (event.type === 'refund') {
++      merchant.refund_cents += event.amount_cents;
++    } else {
++      merchant.dispute_cents += event.amount_cents;
++      merchant.dispute_fee_cents += rules.dispute_fee_cents;
++    }
++  }
++
++  const merchants = Array.from(merchantsById.values(), (merchant) => {
++    const netBeforeReserve = merchant.gross_charge_cents
++      - merchant.refund_cents
++      - merchant.dispute_cents
++      - merchant.processing_fee_cents
++      - merchant.dispute_fee_cents;
++    let reserveCents = netBeforeReserve > 0
++      ? Math.round(netBeforeReserve * rules.reserve_percent / 100)
++      : 0;
++    let payoutCents = netBeforeReserve - reserveCents;
++
++    if (payoutCents > 0 && payoutCents < rules.minimum_payout_cents) {
++      reserveCents += payoutCents;
++      payoutCents = 0;
++    }
++
++    return {
++      ...merchant,
++      reserve_cents: reserveCents,
++      payout_cents: payoutCents,
++    };
++  });
++
++  return {
++    total_payout_cents: merchants.reduce((total, merchant) => total + merchant.payout_cents, 0),
++    total_processing_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.processing_fee_cents,
++      0,
++    ),
++    total_dispute_fee_cents: merchants.reduce(
++      (total, merchant) => total + merchant.dispute_fee_cents,
++      0,
++    ),
++    total_reserve_cents: merchants.reduce((total, merchant) => total + merchant.reserve_cents, 0),
++    merchants,
++  };
++}
++
++function payout(argv) {
++  const input = readPayoutInput(argv);
++  if (!input || !Array.isArray(input.events)) {
++    writePayoutError({ error: 'missing_events' });
++  }
++
++  const rules = loadPayoutRules();
++  const result = calculatePayout(uniqueEvents(input.events), rules);
++  process.stdout.write(`${JSON.stringify(result)}\n`);
++}
++
+ function main(argv) {
+   const [command, ...rest] = argv;
+ 
+@@ -53,6 +215,10 @@
+       console.log(readPackageVersion());
+       return;
+     }
++    case 'payout': {
++      payout(rest);
++      return;
++    }
+     default:
+       console.error(`Unknown command: ${command}`);
+       process.stderr.write(USAGE);
+diff --git a/tests/cli.test.js b/tests/cli.test.js
+index c7363e8888af33c4ee061eeed31a3f08729e3e86..46d55d4aa0eaf1b170ef4952ebb2f278bdadb786
+--- a/tests/cli.test.js
++++ b/tests/cli.test.js
+@@ -1,6 +1,8 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
+ const { execFileSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
+ const path = require('node:path');
+ 
+ const CLI = path.join(__dirname, '..', 'bin', 'cli.js');
+@@ -9,6 +11,17 @@
+   return execFileSync('node', [CLI, ...args], { encoding: 'utf8' });
+ }
+ 
++function runFailure(args) {
++  let failure;
++  try {
++    run(args);
++  } catch (error) {
++    failure = error;
++  }
++  assert.ok(failure, 'expected the CLI command to fail');
++  return failure;
++}
++
+ test('hello default', () => {
+   const out = run(['hello']);
+   assert.match(out, /Hello, world!/);
+@@ -23,3 +36,66 @@
+   const out = run(['version']);
+   assert.match(out, /\d+\.\d+\.\d+/);
+ });
++
++test('payout prints per-merchant totals after deduplicating events', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [
++      { id: 'charge-a', merchant_id: 'merchant-a', type: 'charge', amount_cents: 10000 },
++      { id: 'refund-a', merchant_id: 'merchant-a', type: 'refund', amount_cents: 1000 },
++      { id: 'dispute-a', merchant_id: 'merchant-a', type: 'dispute', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++      { id: 'charge-b', merchant_id: 'merchant-b', type: 'charge', amount_cents: 500 },
++    ],
++  }));
++
++  const output = JSON.parse(run(['payout', '--input', inputPath]));
++  assert.deepEqual(output, {
++    total_payout_cents: 6012,
++    total_processing_fee_cents: 365,
++    total_dispute_fee_cents: 1500,
++    total_reserve_cents: 1123,
++    merchants: [
++      {
++        merchant_id: 'merchant-a',
++        gross_charge_cents: 10000,
++        refund_cents: 1000,
++        dispute_cents: 500,
++        processing_fee_cents: 320,
++        dispute_fee_cents: 1500,
++        reserve_cents: 668,
++        payout_cents: 6012,
++      },
++      {
++        merchant_id: 'merchant-b',
++        gross_charge_cents: 500,
++        refund_cents: 0,
++        dispute_cents: 0,
++        processing_fee_cents: 45,
++        dispute_fee_cents: 0,
++        reserve_cents: 455,
++        payout_cents: 0,
++      },
++    ],
++  });
++});
++
++test('payout reports validation failures as a single JSON error', (t) => {
++  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-cli-'));
++  t.after(() => fs.rmSync(fixtureDirectory, { recursive: true, force: true }));
++  const inputPath = path.join(fixtureDirectory, 'ledger-events.json');
++  fs.writeFileSync(inputPath, JSON.stringify({
++    events: [{ id: 'unknown-type', merchant_id: 'merchant-a', type: 'transfer', amount_cents: 100 }],
++  }));
++
++  const failure = runFailure(['payout', '--input', inputPath]);
++  const stderr = String(failure.stderr);
++  const error = JSON.parse(stderr);
++
++  assert.equal(failure.status, 2);
++  assert.equal(String(failure.stdout), '');
++  assert.ok(error.error);
++  assert.equal(stderr, `${JSON.stringify(error)}\n`);
++});
+
+tokens used
+41,821
+[codex-monitored] codex exited: code=0 elapsed=165s

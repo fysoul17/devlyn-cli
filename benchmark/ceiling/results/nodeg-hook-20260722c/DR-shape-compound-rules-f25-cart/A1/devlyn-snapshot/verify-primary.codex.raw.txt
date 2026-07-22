@@ -1,0 +1,3 @@
+{"id":"VERIFY-0001","rule_id":"design.unidiomatic-pattern","severity":"MEDIUM","file":"bin/cli.js","line":40,"message":"parseInputFlag hand-rolls option parsing instead of using Node's standard node:util parseArgs primitive; advisory because observed cart behavior matches the contract.","confidence":"high"}
+{"id":"VERIFY-0002","rule_id":"verification.coverage-unexercised","severity":"MEDIUM","file":"tests/cli.test.js","line":19,"message":"The required npm test and /tmp-backed adversarial check could not complete because the sandbox denied temporary-file creation with EPERM; cart behavior and all specified error paths were exercised successfully via /dev/stdin, but a clean test-run pass remains unverified.","confidence":"high"}
+PASS
