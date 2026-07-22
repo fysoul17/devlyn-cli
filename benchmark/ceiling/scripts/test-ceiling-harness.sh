@@ -208,6 +208,27 @@ CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" 
   --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm A --attempt 1 --timeout-seconds 30 >/tmp/ceiling-arm-a.log
 test -d "$WORK_A/.claude/skills"
 test "$(cat "$WORK_A/.devlyn/engines.json")" = '{"executor":"codex"}'
+EXPECTED_STOP_HOOK_SETTINGS='{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"python3 \"$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py\"","timeout":30}]}]}}'
+printf '%s\n' "$EXPECTED_STOP_HOOK_SETTINGS" | cmp -s - "$WORK_A/.claude/settings.json"
+python3 - "$WORK_A/.claude/settings.json" "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/settings-staging.json" <<'PY'
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+settings = Path(sys.argv[1])
+receipt = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+hook = json.loads(settings.read_text(encoding="utf-8"))["hooks"]["Stop"][0]["hooks"][0]
+expected_command = 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"'
+if hook != {"type": "command", "command": expected_command, "timeout": 30}:
+    raise SystemExit(hook)
+if receipt != {
+    "schema_version": 1,
+    "stop_hook_staged": True,
+    "settings_sha256": hashlib.sha256(settings.read_bytes()).hexdigest(),
+}:
+    raise SystemExit(receipt)
+PY
 grep -q 'changed by A' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/patch.diff"
 ! grep -q 'CLAUDE.md' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/patch.diff"
 ! grep -q '.claude' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/patch.diff"
@@ -379,6 +400,8 @@ RESULT_B="$TEST_EXTERNAL_ROOT/x/rt01/fx01/B1"
 make_repo "$WORK_B"
 CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" CEILING_TEST_WORKTREE="$WORK_B" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
   --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm B --attempt 1 --opaque-run-id rt01 --opaque-task-id fx01 --result-dir "$RESULT_B" --timeout-seconds 30 >/tmp/ceiling-arm-b.log
+test ! -e "$WORK_B/.claude/settings.json"
+test ! -e "$RESULT_B/settings-staging.json"
 python3 - "$CEILING_ROOT/corpus/FS1-schedule-max-runs/task.txt" "$WORK_B/.nx-prompt" <<'PY'
 import sys
 from pathlib import Path
@@ -464,6 +487,8 @@ RESULT_C="$TEST_EXTERNAL_ROOT/x/rt01/fx02/C1"
 make_repo "$WORK_C"
 CEILING_EXTERNAL_ROOT="$TEST_EXTERNAL_ROOT" CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" CEILING_TEST_WORKTREE="$WORK_C" bash "$SCRIPT_DIR/run-ceiling-arm.sh" \
   --run-id "$RUN_ID" --task FS1-schedule-max-runs --arm C --attempt 1 --opaque-run-id rt01 --opaque-task-id fx02 --result-dir "$RESULT_C" --timeout-seconds 30 >/tmp/ceiling-arm-c.log
+test ! -e "$WORK_C/.claude/settings.json"
+test ! -e "$RESULT_C/settings-staging.json"
 python3 - "$CEILING_ROOT/corpus/copycat-doc.md" "$CEILING_ROOT/corpus/FS1-schedule-max-runs/task.txt" "$WORK_C/.nx-prompt" <<'PY'
 import sys
 from pathlib import Path

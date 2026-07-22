@@ -6,6 +6,19 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TMP_DIR="$(mktemp -d /tmp/nodeg-selftest.XXXXXX)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
+RUNNER_HOOK_LINE="$(grep -F "local stop_hook_command='" "$SCRIPT_DIR/run-ceiling-arm.sh")"
+INSTALLER_HOOK_LINE="$(grep -F "const stopHookCommand = '" "$SCRIPT_DIR/../../../bin/devlyn.js")"
+RUNNER_HOOK_COMMAND="${RUNNER_HOOK_LINE#*\'}"
+RUNNER_HOOK_COMMAND="${RUNNER_HOOK_COMMAND%\'}"
+INSTALLER_HOOK_COMMAND="${INSTALLER_HOOK_LINE#*\'}"
+INSTALLER_HOOK_COMMAND="${INSTALLER_HOOK_COMMAND%\';}"
+if [ -z "$RUNNER_HOOK_COMMAND" ] || [ "$RUNNER_HOOK_COMMAND" != "$INSTALLER_HOOK_COMMAND" ]; then
+  echo "STOP-HOOK-DRIFT: run-ceiling-arm.sh command literal differs from bin/devlyn.js" >&2
+  echo "runner: $RUNNER_HOOK_COMMAND" >&2
+  echo "installer: $INSTALLER_HOOK_COMMAND" >&2
+  exit 1
+fi
+
 REPO="$TMP_DIR/repo"
 CEILING="$REPO/benchmark/ceiling"
 TASK="DR-byte-preservation-f7-out-of-scope-trap"
@@ -88,6 +101,8 @@ mkdir -p "$JUDGE_RUN/A1" "$TMP_DIR/fakebin"
 printf 'diff --git a/a b/a\n+candidate A\n' > "$JUDGE_RUN/A1/patch.diff"
 printf '{"invoke_exit":0,"timed_out":false,"elapsed_seconds":100}\n' > "$JUDGE_RUN/A1/timing.json"
 printf '{"modelUsage":{"claude-sonnet-fake":{}}}\n' > "$JUDGE_RUN/A1/transcript.txt"
+printf '{"schema_version":1,"stop_hook_staged":true,"settings_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}\n' \
+  > "$JUDGE_RUN/A1/settings-staging.json"
 
 cat > "$TMP_DIR/fakebin/claude" <<'EOF'
 #!/usr/bin/env bash
@@ -368,6 +383,9 @@ import json
 import sys
 
 verdict = json.load(open(sys.argv[1], encoding="utf-8"))
+identity = verdict["cohort_identity"]
+if identity["stop_hook_staged"] is not True or identity["settings_sha256"] != "a" * 64:
+    raise SystemExit(identity)
 if set(verdict["bars"]) != {"objective", "quality", "wall"}:
     raise SystemExit(verdict)
 if not all(bar["passed"] for bar in verdict["bars"].values()):
@@ -382,6 +400,21 @@ if {entry["type"] for entry in verdict["deviations"]} != {
 }:
     raise SystemExit(verdict["deviations"])
 PY
+
+# Absent-receipt path (pre-edit cohort replay): no settings-staging.json must
+# still verdict cleanly with an explicit false/None hook-bearing label.
+rm "$JUDGE_RUN/A1/settings-staging.json"
+run_verdict --deviations "$DEVIATIONS" > "$TMP_DIR/verdict-absent-receipt.stdout"
+python3 - "$CEILING/results/selftest-judge/nodeg-verdict.json" <<'PY'
+import json
+import sys
+
+identity = json.load(open(sys.argv[1], encoding="utf-8"))["cohort_identity"]
+if identity["stop_hook_staged"] is not False or identity["settings_sha256"] is not None:
+    raise SystemExit(identity)
+PY
+printf '{"schema_version":1,"stop_hook_staged":true,"settings_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}\n' \
+  > "$JUDGE_RUN/A1/settings-staging.json"
 
 RUNTIME_DEVIATIONS="$TMP_DIR/runtime-deviations.json"
 python3 - "$DEVIATIONS" "$RUNTIME_DEVIATIONS" "$TASK" <<'PY'

@@ -768,6 +768,7 @@ def verdict(args: argparse.Namespace) -> int:
     a_models: set[str] = set()
     judge_models: dict[str, set[str]] = {"sonnet": set(), "codex": set()}
     judge_versions: dict[str, set[str]] = {"sonnet": set(), "codex": set()}
+    settings_identities: set[tuple[bool, str | None]] = set()
     sources: list[dict[str, Any]] = []
     for control in controls:
         source = frozen_source(ceiling_root, control)
@@ -777,6 +778,22 @@ def verdict(args: argparse.Namespace) -> int:
         objective = load_json(attempt_dir / "objective.json")
         timing = load_json(attempt_dir / "timing.json")
         isolation = load_json(attempt_dir / "isolation.json")
+        settings_receipt_path = attempt_dir / "settings-staging.json"
+        if settings_receipt_path.exists():
+            settings_receipt = load_json(settings_receipt_path)
+            stop_hook_staged = settings_receipt.get("stop_hook_staged")
+            settings_sha256 = settings_receipt.get("settings_sha256")
+            if settings_receipt.get("schema_version") != 1 or not isinstance(stop_hook_staged, bool):
+                die(f"invalid settings staging receipt: {settings_receipt_path}")
+            if stop_hook_staged:
+                if not isinstance(settings_sha256, str) or re.fullmatch(r"[0-9a-f]{64}", settings_sha256) is None:
+                    die(f"invalid staged settings SHA: {settings_receipt_path}")
+            elif settings_sha256 is not None:
+                die(f"unstaged settings receipt has a SHA: {settings_receipt_path}")
+        else:
+            stop_hook_staged = False
+            settings_sha256 = None
+        settings_identities.add((stop_hook_staged, settings_sha256))
         if deviations is None and isolation.get("opaque_paths", {}).get("passed") is not True:
             die(f"{control} A attempt {attempt_dir.name} opaque-path attestation did not pass: {attempt_dir / 'isolation.json'}")
         objective_rows[control] = {
@@ -840,6 +857,9 @@ def verdict(args: argparse.Namespace) -> int:
         die(f"judge model identity drift: {judge_models}")
     if any(len(versions) != 1 for versions in judge_versions.values()):
         die(f"judge CLI identity drift: {judge_versions}")
+    if len(settings_identities) != 1:
+        die(f"A settings staging identity drift: {settings_identities}")
+    stop_hook_staged, settings_sha256 = next(iter(settings_identities))
     payload = {
         "schema_version": 1,
         "cell_owner": "iter-0068",
@@ -852,6 +872,8 @@ def verdict(args: argparse.Namespace) -> int:
                 "judge_sonnet": next(iter(judge_versions["sonnet"])),
                 "judge_codex": next(iter(judge_versions["codex"])),
             },
+            "stop_hook_staged": stop_hook_staged,
+            "settings_sha256": settings_sha256,
             "resolved_models": {
                 "a_orchestrator": sorted(a_models),
                 "a_executor": ["gpt-5.6-terra"],

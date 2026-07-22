@@ -363,12 +363,34 @@ prepare_fs_workspace() {
 
 stage_devlyn_context() {
   local worktree="$1"
+  local stop_hook_command='python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"'
+  local escaped_stop_hook_command="${stop_hook_command//\"/\\\"}"
   mkdir -p "$worktree/.claude" "$worktree/.devlyn"
   rm -rf "$worktree/.claude/skills"
   cp -R "$REPO_ROOT/config/skills" "$worktree/.claude/skills"
   [ -f "$REPO_ROOT/CLAUDE.md" ] && cp "$REPO_ROOT/CLAUDE.md" "$worktree/CLAUDE.md"
   [ -f "$REPO_ROOT/AGENTS.md" ] && cp "$REPO_ROOT/AGENTS.md" "$worktree/AGENTS.md"
+  printf '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"%s","timeout":30}]}]}}\n' \
+    "$escaped_stop_hook_command" > "$worktree/.claude/settings.json"
   printf '{"executor":"codex"}\n' > "$worktree/.devlyn/engines.json"
+}
+
+write_settings_staging_receipt() {
+  local settings="$1"
+  python3 - "$settings" "$RESULT_DIR/settings-staging.json" <<'PY'
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+settings = Path(sys.argv[1])
+staged = settings.is_file()
+Path(sys.argv[2]).write_text(json.dumps({
+    "schema_version": 1,
+    "stop_hook_staged": staged,
+    "settings_sha256": hashlib.sha256(settings.read_bytes()).hexdigest() if staged else None,
+}, indent=2) + "\n", encoding="utf-8")
+PY
 }
 
 write_patch() {
@@ -743,8 +765,13 @@ fi
 case "$ARM" in
   A)
     stage_devlyn_context "$WORKTREE"
+    write_settings_staging_receipt "$WORKTREE/.claude/settings.json"
     [ -f "$WORKTREE/.claude/skills/devlyn:resolve/SKILL.md" ] || {
       echo "staged devlyn:resolve skill missing" >&2
+      exit 1
+    }
+    [ -f "$WORKTREE/.claude/settings.json" ] || {
+      echo "staged .claude/settings.json missing" >&2
       exit 1
     }
     PROMPT="$(json_quote_task_prompt "$WORKTREE")"
