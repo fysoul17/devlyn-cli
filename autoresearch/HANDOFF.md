@@ -39,10 +39,13 @@ pressure (CLI ~9-block cap honest bound). Remaining 0078 reads P-KL/P-C
 ride the first hook-bearing cohort.
 
 **Next work (in order)**:
-1. **Read cohort `nodeg-hook-20260722a`** (IN FLIGHT — launched
-   2026-07-22 night, health-gated 2×20min, worktree @3a7eeaf, run-owned
-   claude 2.1.215 copy at pins/iter0078-cohort/ + codex vendor 0.144.5;
-   launcher log pins/iter0078-cohort/hook-cohort-launch.log). Reads:
+1. **Launch + read cohort `nodeg-hook-20260722a`** (NOT in flight —
+   the 2026-07-22 night launcher was killed DURING the health gate at
+   1/2 pings, BEFORE the cell started: zero rows, zero contamination,
+   worktree @3a7eeaf + run-owned pins intact; concurrent machine
+   activity was visible at kill time, so relaunch needs a real quiet
+   window. Relaunch = `bash ~/.local/share/nx01/pins/iter0078-cohort/hook-cohort-health-gated-launch.sh`
+   (health-gated 2×20min; fresh run id if any draw). Reads:
    P-0078-KL (antecedent-conditioned — only rows with {same-session ∧
    incomplete-at-Stop} are diagnostic; no antecedent → NON_DIAGNOSTIC,
    never a failure) + P-0078-C (K2a partition = 0 expected, report-only,
