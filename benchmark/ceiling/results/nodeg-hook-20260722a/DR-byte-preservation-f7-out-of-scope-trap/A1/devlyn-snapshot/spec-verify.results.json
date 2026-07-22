@@ -1,0 +1,48 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "node --test tests/",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": " rejects unsupported formats\n  ---\n  duration_ms: 31.05225\n  ...\n# Subtest: GET /health returns ok\nok 6 - GET /health returns ok\n  ---\n  duration_ms: 14.819\n  ...\n# Subtest: GET /items returns list\nok 7 - GET /items returns list\n  ---\n  duration_ms: 5.033958\n  ...\n# Subtest: GET /items/:id returns 404 for missing\nok 8 - GET /items/:id returns 404 for missing\n  ---\n  duration_ms: 1.57625\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 279.731334\n"
+    },
+    {
+      "index": 1,
+      "cmd": "node bin/cli.js version",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "0.1.0\n"
+    },
+    {
+      "index": 2,
+      "cmd": "node bin/cli.js version --format json",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "{\"version\":\"0.1.0\"}\n"
+    },
+    {
+      "index": 3,
+      "cmd": "node bin/cli.js version --format yaml; test $? -eq 1",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": "--format must be json\n"
+    }
+  ]
+}

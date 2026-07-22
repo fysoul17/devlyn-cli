@@ -1,0 +1,637 @@
+[codex-monitored] start: ts=2026-07-22T12:56:34Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=22951
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f89e6-3ff1-75d0-b6a6-c4e92112f4e6
+--------
+user
+# Codex (OpenAI) adapter
+
+> Source: <https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.5>
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below. When the canonical body and this header conflict on tactics, the canonical body wins on what to deliver; this header wins on how to deliver it.
+
+## Output discipline
+
+Your default is efficient, direct, task-oriented. The canonical body specifies the outcome and constraints; you choose the efficient path. Do not over-specify process steps when an outcome is clearly stated. Use Markdown only where it carries structure (`inline code`, code fences, short lists/tables); otherwise favor short paragraphs and natural transitions. When `text.verbosity` is `low`, prefer even shorter responses.
+
+## Tool-use posture
+
+Resolve the request in the fewest useful tool loops without sacrificing correctness. For retrieval tasks: start with one broad search using short discriminative keywords; make another retrieval call only when the top results don't answer the core question or a required fact / parameter / source is missing. For tool-heavy tasks, start with a brief preamble: a one-line acknowledgment of the request and the first step you'll take.
+
+## Validation pattern
+
+Validation is concrete commands and tools, not self-belief. When the canonical body lists verification commands, execute them and trust their output. Do not substitute your judgment for a deterministic check the harness has provided. When validation tools are available (test runners, lint, type-check, the harness's `spec-verify-check.py`), run them before declaring success. The minimum evidence sufficient to answer correctly, cited precisely — then stop.
+
+## Anti-patterns
+
+The official guide warns explicitly about carrying over instructions from older prompt stacks — earlier models needed more help, and process-heavy directives now narrow GPT-5.5's search space.
+
+1. **Avoid absolute imperatives for judgment calls.** ALWAYS / NEVER / must / only are reserved for true safety invariants and required output fields. For judgment calls, use decision rules with conditions ("when X, do Y"). The canonical body uses this style; do not promote softer guidance to absolute rules.
+2. **Don't over-specify process when the destination is clear.** If the canonical body names the outcome, choose the path; do not narrate every step.
+3. **Stop rules are explicit.** When the canonical body or the harness asks you to stop / abstain / ask, follow the stop rule rather than retrying loops indefinitely. Loop-minimization does not outrank correctness or required citation.
+
+## Prompt-maintenance cue
+
+When asked to improve a failed prompt, act as a metaprompter for itself: name the observed failure, then propose the smallest instruction to add, remove, or relocate. Prefer subtractive changes before adding new rules; keep the canonical body model-neutral and put only GPT-specific tactics in this adapter.
+
+Do not narrate internal deliberation. State results and decisions directly.
+
+---
+
+# PHASE 1 — PLAN (canonical body)
+
+The per-engine adapter header from `_shared/adapters/<engine>.md` is prepended at runtime. This file is engine-agnostic.
+
+<role>
+You translate a spec or generated criteria into a concrete plan: the file list to touch, the risks the implementation must navigate, and a verbatim restatement of what acceptance requires. The plan is the contract IMPLEMENT executes against.
+</role>
+
+<input>
+- Source: `pipeline.state.json:source.criteria_path` (`.devlyn/criteria.generated.md`) — read it in full.
+- Codebase at `state.base_ref.sha` (current worktree HEAD).
+- state.complexity = "medium" — informs depth (moderate, not exhaustive).
+</input>
+
+<output>
+Write `.devlyn/plan.md` with three sections:
+
+1. **Files to touch** — precede this section with a `<!-- devlyn:authorized-surface -->` sentinel comment on its own line directly above the heading (the machine locator BUILD_GATE uses; the heading text itself is decorative, any language). Explicit list: each entry is a path, change type (`new` / `edit` / `delete`), one-line rationale tied to a specific Requirement. Immediately after the list, emit one fenced ```json block restating just the paths as the mechanical scope contract BUILD_GATE enforces: `{"authorized_surface": ["path/one.ts", "path/two.ts"]}`. An entry may end in `/**` to authorize an entire directory only when the file count is genuinely unenumerable (e.g. a codemod) — this is your scoping judgment, not a mechanism default. List every path from section 1 literally; do not paraphrase or add paths not already decided above.
+2. **Risks** — out-of-scope expansions to refuse, ambiguous spec sections to interpret strictly, known failure modes for this language/framework.
+3. **Acceptance restatement** — verbatim copy of the spec's `## Verification` block (or generated criteria's equivalent). The plan is wrong if any verification command later fails because of a planning oversight.
+4. **Execution phases** — conditional; large work only. Do NOT emit this section — this run's complexity is "medium", not "large".
+
+Report your verdict in this reply: `PASS` if plan is shippable; `BLOCKED` if spec is internally contradictory or cannot be planned without violating constraints. Do not edit `pipeline.state.json` yourself — the orchestrator records it via `state-phase-write.py`.
+</output>
+
+<quality_bar>
+- Scope first, then implementation. Decide what files to touch before deciding how to implement. Files not in the list are off-limits to IMPLEMENT.
+- Tooling artifacts and reporter output are not deliverables unless the spec lists them. Plan to configure tools to emit to gitignored paths.
+- Existing tests are contract. Plan to extend them; do not plan to remove or weaken them.
+- Spec frontmatter is read-only to PLAN and IMPLEMENT. The DOCS-style status flip happens in CLEANUP under a tight allowlist.
+- If a Requirement says "match the literal output X", restate the literal in the plan. Paraphrasing the contract here propagates into IMPLEMENT.
+</quality_bar>
+
+<runtime_principles>
+- Subtractive-first: prefer trimming an existing helper to introducing a new one. Pure-addition needs a cited prior failure mode or an explicit spec/user requirement.
+- Goal-locked: refuse "while I'm here" cleanups, speculative robustness, mid-flight re-scoping. Single test before any deviation: "did the user ask for this OR does the stated goal strictly require it?"
+- No-workaround: no `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scripts that bypass root cause.
+- Evidence: every claim cites file:line opened at planning time. Vague claims excluded.
+</runtime_principles>
+
+The task: read `.devlyn/criteria.generated.md` in the repo root for the full Requirements / Constraints / Out of Scope / Verification contract (a `--format json` option on the `version` subcommand of `bin/cli.js`, tests in `tests/cli.test.js`, only those two files may be touched, no new dependencies, unrelated code must stay byte-for-byte unchanged). Write `.devlyn/plan.md` per the <output> contract above.
+codex
+I’ll verify the generated criteria and the current CLI/test structure, then write the tightly scoped implementation plan.
+exec
+/bin/zsh -lc "git status --short && printf '\\n--- criteria ---\\n' && sed -n '1,240p' .devlyn/criteria.generated.md && printf '\\n--- cli candidates ---\\n' && rg -n -C 3 \"version|format|JSON|json\" bin/cli.js tests/cli.test.js" in /Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo
+ succeeded in 2998ms:
+2026-07-22 12:56:45.478 xcodebuild[25689:21734157]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-07-22 12:56:45.981 xcodebuild[25689:21734154] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+--- criteria ---
+# Generated criteria (free-form, medium)
+
+## Requirements
+
+- Add a `--format json` option to the `version` subcommand in `bin/cli.js`.
+- When `--format json` is passed, `version` outputs valid single-line JSON: `{"version":"<x.y.z>"}` where `<x.y.z>` is the same version value currently printed bare (from `package.json`).
+- When `--format` is omitted, `version` keeps printing the current bare version string with no behavior change.
+- When `--format` is passed with any unsupported value (e.g. `yaml`), the CLI exits with code 1 and prints an error.
+- Existing tests in `tests/cli.test.js` continue to pass, and at least one new test exercises the `--format json` path.
+
+## Constraints
+
+- Only `bin/cli.js` and `tests/cli.test.js` may be modified.
+- No new npm dependencies — use Node built-ins / existing deps only.
+- Code unrelated to the version/`--format` feature (other subcommands, comments, formatting) must remain byte-for-byte unchanged.
+- Follow the existing argv-parsing style used by `parseNameFlag` (manual `indexOf`/`argv[idx+1]` parsing, `console.error` + `process.exit(1)` for CLI-usage errors) rather than introducing an argument-parsing library.
+- Do not repurpose the unused `parseGreetingFormat` helper — it is an explicitly out-of-scope leftover from an abandoned refactor.
+
+## Out of Scope
+
+- The `hello` subcommand and its `--name` flag.
+- The unused `parseGreetingFormat` helper.
+- `server/index.js`, `web/index.html`, `package.json`, or any file other than `bin/cli.js` and `tests/cli.test.js`.
+- Adding new npm dependencies or an argument-parsing library.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    { "id": "existing-tests", "cmd": "node --test tests/" },
+    { "id": "version-bare", "cmd": "node bin/cli.js version" },
+    { "id": "version-json", "cmd": "node bin/cli.js version --format json" },
+    { "id": "version-bad-format", "cmd": "node bin/cli.js version --format yaml; test $? -eq 1" }
+  ]
+}
+```
+
+--- cli candidates ---
+tests/cli.test.js-19-  assert.match(out, /Hello, alice!/);
+tests/cli.test.js-20-});
+tests/cli.test.js-21-
+tests/cli.test.js:22:test('version prints package version', () => {
+tests/cli.test.js:23:  const out = run(['version']);
+tests/cli.test.js-24-  assert.match(out, /\d+\.\d+\.\d+/);
+tests/cli.test.js-25-});
+--
+bin/cli.js-9-
+bin/cli.js-10-Commands:
+bin/cli.js-11-  hello [--name NAME]        Print a greeting (default name: "world")
+bin/cli.js:12:  version                    Print the CLI version from package.json
+bin/cli.js-13-  --help, -h                 Show this help
+bin/cli.js-14-
+bin/cli.js-15-Examples:
+bin/cli.js-16-  bench-cli hello
+bin/cli.js-17-  bench-cli hello --name alice
+bin/cli.js:18:  bench-cli version
+bin/cli.js-19-`;
+bin/cli.js-20-
+bin/cli.js-21-function readPackageVersion() {
+bin/cli.js:22:  const pkgPath = path.join(__dirname, '..', 'package.json');
+bin/cli.js-23-  const raw = fs.readFileSync(pkgPath, 'utf8');
+bin/cli.js:24:  return JSON.parse(raw).version;
+bin/cli.js-25-}
+bin/cli.js-26-
+bin/cli.js-27-// TODO(devlyn): this helper is unused — leftover from an abandoned refactor.
+--
+bin/cli.js-56-      console.log(`Hello, ${name}!`);
+bin/cli.js-57-      return;
+bin/cli.js-58-    }
+bin/cli.js:59:    case 'version': {
+bin/cli.js-60-      console.log(readPackageVersion());
+bin/cli.js-61-      return;
+bin/cli.js-62-    }
+
+exec
+/bin/zsh -lc "nl -ba bin/cli.js && printf '\\n--- tests ---\\n' && nl -ba tests/cli.test.js && printf '\\n--- package version ---\\n' && node -p \"require('./package.json').version\" && printf '\\n--- targeted baseline ---\\n' && node --test tests/ && node bin/cli.js version && (node bin/cli.js version --format yaml; test "'$? -eq 1)' in /Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo
+ exited 1 in 283ms:
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 54.484125
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 48.5485
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 40.543209
+  ...
+# Subtest: GET /health returns ok
+not ok 4 - GET /health returns ok
+  ---
+  duration_ms: 7.277917
+  location: '/Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/tests/server.test.js:26:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/tests/server.test.js:27:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items returns list
+not ok 5 - GET /items returns list
+  ---
+  duration_ms: 1.421625
+  location: '/Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/tests/server.test.js:37:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/tests/server.test.js:38:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+# Subtest: GET /items/:id returns 404 for missing
+not ok 6 - GET /items/:id returns 404 for missing
+  ---
+  duration_ms: 1.081125
+  location: '/Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/tests/server.test.js:49:1'
+  failureType: 'uncaughtException'
+  error: 'listen EPERM: operation not permitted 0.0.0.0'
+  code: 'EPERM'
+  stack: |-
+    Server.setupListenHandle [as _listen2] (node:net:1886:21)
+    listenInCluster (node:net:1965:12)
+    Server.listen (node:net:2067:7)
+    /Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/tests/server.test.js:9:12
+    new Promise (<anonymous>)
+    startServer (/Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/tests/server.test.js:7:10)
+    TestContext.<anonymous> (/Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/tests/server.test.js:50:24)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 3
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 215.307334
+
+codex
+Baseline evidence: the three CLI tests pass, while the required full suite is blocked here by the sandbox denying server binds (`EPERM` in `tests/server.test.js`); the version path itself is confined to `bin/cli.js:59-62`. I expect both `--format json` and `--format yaml` currently produce the bare version because `version` does not inspect `rest`; I’m confirming that behavior before finalizing the plan.
+exec
+/bin/zsh -lc 'node --test tests/cli.test.js && node bin/cli.js version --format json; json_status=$?; node bin/cli.js version --format yaml; yaml_status=$?; printf '"'json_exit=%s\\nyaml_exit=%s\\n' \""'$json_status" "$yaml_status"' in /Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo
+ succeeded in 235ms:
+# Subtest: hello default
+ok 1 - hello default
+  ---
+  duration_ms: 45.373375
+  ...
+# Subtest: hello with --name
+ok 2 - hello with --name
+  ---
+  duration_ms: 38.285375
+  ...
+# Subtest: version prints package version
+ok 3 - version prints package version
+  ---
+  duration_ms: 31.2525
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 161.525834
+0.1.0
+0.1.0
+json_exit=0
+yaml_exit=0
+
+[codex-monitored] heartbeat: elapsed=30s
+exec
+/bin/zsh -lc "if test -e .devlyn/plan.md; then nl -ba .devlyn/plan.md; else printf '%s\\n' 'plan.md: absent'; fi" in /Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo
+ succeeded in 0ms:
+plan.md: absent
+
+[codex-monitored] heartbeat: elapsed=60s
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/.devlyn/plan.md
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..ffdedc644176e46f0db0969caccadbc4eb12e2f7
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,33 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `bin/cli.js` — edit — Requirement “Add a `--format json` option”: inspect the `version` arguments in the existing `case 'version'` branch (`bin/cli.js:59-62`), emit the required serialized object for `json`, preserve the bare-version default, and reject missing or unsupported format values through the established `console.error`/`process.exit(1)` style (`bin/cli.js:33-42`).
++- `tests/cli.test.js` — edit — Requirements “at least one new test exercises the `--format json` path” and unsupported formats exit with an error: extend the version coverage after the current bare-version test (`tests/cli.test.js:22-25`) to assert the exact JSON payload and the invalid-format failure using Node built-ins already used by this test file.
++
++```json
++{"authorized_surface":["bin/cli.js","tests/cli.test.js"]}
++```
++
++## Risks
++
++- Preserve every byte outside the version implementation: the criteria explicitly excludes `hello`, the unused `parseGreetingFormat` helper, help text, and all other files; `parseGreetingFormat` is explicitly marked out of scope in `bin/cli.js:27-30`.
++- Do not add an argument parser or reuse `parseGreetingFormat`; parse only `--format` directly with the `indexOf` and next-argument convention proven by `parseNameFlag` (`bin/cli.js:33-42`). A missing value or a following option is interpreted as a CLI-usage error, so it reports visibly and exits 1 rather than silently serializing an incorrect result.
++- JSON output must be one line and use exactly the value returned by `readPackageVersion` (`bin/cli.js:21-25`); string-building must not introduce a stale or hardcoded version.
++- The existing `run` helper only returns successful stdout (`tests/cli.test.js:8-10`), so failure-path coverage needs the smallest Node built-in mechanism that exposes child exit status and stderr without changing successful test behavior.
++- The full `node --test tests/` baseline is environment-blocked because `tests/server.test.js` cannot bind `0.0.0.0` (`listen EPERM`); this is unrelated to the authorized surface. The CLI-only suite passes, and IMPLEMENT must still run the prescribed full command plus the three direct version checks.
++
++## Acceptance restatement
++
++<!-- devlyn:verification -->
++## Verification
++
++```json
++{
++  "verification_commands": [
++    { "id": "existing-tests", "cmd": "node --test tests/" },
++    { "id": "version-bare", "cmd": "node bin/cli.js version" },
++    { "id": "version-json", "cmd": "node bin/cli.js version --format json" },
++    { "id": "version-bad-format", "cmd": "node bin/cli.js version --format yaml; test $? -eq 1" }
++  ]
++}
++```
+
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..ffdedc644176e46f0db0969caccadbc4eb12e2f7
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,33 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `bin/cli.js` — edit — Requirement “Add a `--format json` option”: inspect the `version` arguments in the existing `case 'version'` branch (`bin/cli.js:59-62`), emit the required serialized object for `json`, preserve the bare-version default, and reject missing or unsupported format values through the established `console.error`/`process.exit(1)` style (`bin/cli.js:33-42`).
++- `tests/cli.test.js` — edit — Requirements “at least one new test exercises the `--format json` path” and unsupported formats exit with an error: extend the version coverage after the current bare-version test (`tests/cli.test.js:22-25`) to assert the exact JSON payload and the invalid-format failure using Node built-ins already used by this test file.
++
++```json
++{"authorized_surface":["bin/cli.js","tests/cli.test.js"]}
++```
++
++## Risks
++
++- Preserve every byte outside the version implementation: the criteria explicitly excludes `hello`, the unused `parseGreetingFormat` helper, help text, and all other files; `parseGreetingFormat` is explicitly marked out of scope in `bin/cli.js:27-30`.
++- Do not add an argument parser or reuse `parseGreetingFormat`; parse only `--format` directly with the `indexOf` and next-argument convention proven by `parseNameFlag` (`bin/cli.js:33-42`). A missing value or a following option is interpreted as a CLI-usage error, so it reports visibly and exits 1 rather than silently serializing an incorrect result.
++- JSON output must be one line and use exactly the value returned by `readPackageVersion` (`bin/cli.js:21-25`); string-building must not introduce a stale or hardcoded version.
++- The existing `run` helper only returns successful stdout (`tests/cli.test.js:8-10`), so failure-path coverage needs the smallest Node built-in mechanism that exposes child exit status and stderr without changing successful test behavior.
++- The full `node --test tests/` baseline is environment-blocked because `tests/server.test.js` cannot bind `0.0.0.0` (`listen EPERM`); this is unrelated to the authorized surface. The CLI-only suite passes, and IMPLEMENT must still run the prescribed full command plus the three direct version checks.
++
++## Acceptance restatement
++
++<!-- devlyn:verification -->
++## Verification
++
++```json
++{
++  "verification_commands": [
++    { "id": "existing-tests", "cmd": "node --test tests/" },
++    { "id": "version-bare", "cmd": "node bin/cli.js version" },
++    { "id": "version-json", "cmd": "node bin/cli.js version --format json" },
++    { "id": "version-bad-format", "cmd": "node bin/cli.js version --format yaml; test $? -eq 1" }
++  ]
++}
++```
+
+apply patch
+patch: completed
+/Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/.devlyn/plan.md
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..1c6ee3fe37e436313502d97eab49d811eeb9e08c
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,33 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `bin/cli.js` — edit — Requirement “Add a `--format json` option”: inspect the `version` arguments in the existing `case 'version'` branch (`bin/cli.js:59-62`), emit the required serialized object for `json`, preserve the bare-version default, and reject missing or unsupported format values through the established `console.error`/`process.exit(1)` style (`bin/cli.js:33-42`).
++- `tests/cli.test.js` — edit — Requirements “at least one new test exercises the `--format json` path” and unsupported formats exit with an error: extend the version coverage after the current bare-version test (`tests/cli.test.js:22-25`) to assert the exact JSON payload and the invalid-format failure using Node built-ins already used by this test file.
++
++```json
++{"authorized_surface":["bin/cli.js","tests/cli.test.js"]}
++```
++
++## Risks
++
++- Preserve every byte outside the version implementation: the criteria explicitly excludes `hello`, the unused `parseGreetingFormat` helper, help text, and all other files; `parseGreetingFormat` is explicitly marked out of scope in `bin/cli.js:27-30`.
++- Do not add an argument parser or reuse `parseGreetingFormat`; parse only `--format` directly with the `indexOf` and next-argument convention proven by `parseNameFlag` (`bin/cli.js:33-42`). A missing value or a following option is interpreted as a CLI-usage error, so it reports visibly and exits 1 rather than silently serializing an incorrect result.
++- JSON output must be the single-line literal `{"version":"<x.y.z>"}` and use exactly the value returned by `readPackageVersion` (`bin/cli.js:21-25`); string-building must not introduce a stale or hardcoded version.
++- The existing `run` helper only returns successful stdout (`tests/cli.test.js:8-10`), so failure-path coverage needs the smallest Node built-in mechanism that exposes child exit status and stderr without changing successful test behavior.
++- The full `node --test tests/` baseline is environment-blocked because `tests/server.test.js` cannot bind `0.0.0.0` (`listen EPERM`); this is unrelated to the authorized surface. The CLI-only suite passes, and IMPLEMENT must still run the prescribed full command plus the three direct version checks.
++
++## Acceptance restatement
++
++<!-- devlyn:verification -->
++## Verification
++
++```json
++{
++  "verification_commands": [
++    { "id": "existing-tests", "cmd": "node --test tests/" },
++    { "id": "version-bare", "cmd": "node bin/cli.js version" },
++    { "id": "version-json", "cmd": "node bin/cli.js version --format json" },
++    { "id": "version-bad-format", "cmd": "node bin/cli.js version --format yaml; test $? -eq 1" }
++  ]
++}
++```
+
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..1c6ee3fe37e436313502d97eab49d811eeb9e08c
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,33 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `bin/cli.js` — edit — Requirement “Add a `--format json` option”: inspect the `version` arguments in the existing `case 'version'` branch (`bin/cli.js:59-62`), emit the required serialized object for `json`, preserve the bare-version default, and reject missing or unsupported format values through the established `console.error`/`process.exit(1)` style (`bin/cli.js:33-42`).
++- `tests/cli.test.js` — edit — Requirements “at least one new test exercises the `--format json` path” and unsupported formats exit with an error: extend the version coverage after the current bare-version test (`tests/cli.test.js:22-25`) to assert the exact JSON payload and the invalid-format failure using Node built-ins already used by this test file.
++
++```json
++{"authorized_surface":["bin/cli.js","tests/cli.test.js"]}
++```
++
++## Risks
++
++- Preserve every byte outside the version implementation: the criteria explicitly excludes `hello`, the unused `parseGreetingFormat` helper, help text, and all other files; `parseGreetingFormat` is explicitly marked out of scope in `bin/cli.js:27-30`.
++- Do not add an argument parser or reuse `parseGreetingFormat`; parse only `--format` directly with the `indexOf` and next-argument convention proven by `parseNameFlag` (`bin/cli.js:33-42`). A missing value or a following option is interpreted as a CLI-usage error, so it reports visibly and exits 1 rather than silently serializing an incorrect result.
++- JSON output must be the single-line literal `{"version":"<x.y.z>"}` and use exactly the value returned by `readPackageVersion` (`bin/cli.js:21-25`); string-building must not introduce a stale or hardcoded version.
++- The existing `run` helper only returns successful stdout (`tests/cli.test.js:8-10`), so failure-path coverage needs the smallest Node built-in mechanism that exposes child exit status and stderr without changing successful test behavior.
++- The full `node --test tests/` baseline is environment-blocked because `tests/server.test.js` cannot bind `0.0.0.0` (`listen EPERM`); this is unrelated to the authorized surface. The CLI-only suite passes, and IMPLEMENT must still run the prescribed full command plus the three direct version checks.
++
++## Acceptance restatement
++
++<!-- devlyn:verification -->
++## Verification
++
++```json
++{
++  "verification_commands": [
++    { "id": "existing-tests", "cmd": "node --test tests/" },
++    { "id": "version-bare", "cmd": "node bin/cli.js version" },
++    { "id": "version-json", "cmd": "node bin/cli.js version --format json" },
++    { "id": "version-bad-format", "cmd": "node bin/cli.js version --format yaml; test $? -eq 1" }
++  ]
++}
++```
+
+codex
+The plan now confines implementation to the two authorized files, explicitly preserves the unused helper and other commands, and carries the exact JSON literal plus the full verification contract. I’m doing a structural check on that artifact without touching pipeline state.
+[codex-monitored] heartbeat: elapsed=90s
+exec
+/bin/zsh -lc "node -e \"const fs=require('fs'); const plan=fs.readFileSync('.devlyn/plan.md','utf8'); const criteria=fs.readFileSync('.devlyn/criteria.generated.md','utf8'); const scope=plan.match(/<"'!-- devlyn:authorized-surface -->'"\\n## Files to touch[\\s\\S]*?"'```json'"\\n(\\{["'^'"\\n]+\\})\\n"'```/); if (!scope) throw new Error('"'authorized-surface block missing'); const paths=JSON.parse(scope[1]).authorized_surface; if (JSON.stringify(paths)"'!==JSON.stringify(['"'bin/cli.js','tests/cli.test.js'])) throw new Error('unexpected scope: '+JSON.stringify(paths)); const verification=criteria.match(/<"'!-- devlyn:verification -->['"\\s\\S]*"'$/)[0]; if (!plan.endsWith(verification)) throw new Error('"'verification block is not verbatim'); if (/"'^## Execution phases/m.test(plan)) throw new Error('"'medium plan must not contain execution phases'); console.log('plan structure: ok');\" && nl -ba .devlyn/plan.md && git status --short" in /Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo
+ exited 1 in 0ms:
+zsh:1: no matches found: jsonn({[^n]+})n
+<anonymous_script>:1
+undefined
+^
+
+SyntaxError: "undefined" is not valid JSON
+    at JSON.parse (<anonymous>)
+    at [eval]:1:322
+    at runScriptInThisContext (node:internal/vm:209:10)
+    at node:internal/process/execution:118:14
+    at [eval]-wrapper:6:24
+    at runScript (node:internal/process/execution:101:62)
+    at evalScript (node:internal/process/execution:133:3)
+    at node:internal/main/eval_string:51:3
+
+Node.js v20.19.0
+
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..1c6ee3fe37e436313502d97eab49d811eeb9e08c
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,33 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `bin/cli.js` — edit — Requirement “Add a `--format json` option”: inspect the `version` arguments in the existing `case 'version'` branch (`bin/cli.js:59-62`), emit the required serialized object for `json`, preserve the bare-version default, and reject missing or unsupported format values through the established `console.error`/`process.exit(1)` style (`bin/cli.js:33-42`).
++- `tests/cli.test.js` — edit — Requirements “at least one new test exercises the `--format json` path” and unsupported formats exit with an error: extend the version coverage after the current bare-version test (`tests/cli.test.js:22-25`) to assert the exact JSON payload and the invalid-format failure using Node built-ins already used by this test file.
++
++```json
++{"authorized_surface":["bin/cli.js","tests/cli.test.js"]}
++```
++
++## Risks
++
++- Preserve every byte outside the version implementation: the criteria explicitly excludes `hello`, the unused `parseGreetingFormat` helper, help text, and all other files; `parseGreetingFormat` is explicitly marked out of scope in `bin/cli.js:27-30`.
++- Do not add an argument parser or reuse `parseGreetingFormat`; parse only `--format` directly with the `indexOf` and next-argument convention proven by `parseNameFlag` (`bin/cli.js:33-42`). A missing value or a following option is interpreted as a CLI-usage error, so it reports visibly and exits 1 rather than silently serializing an incorrect result.
++- JSON output must be the single-line literal `{"version":"<x.y.z>"}` and use exactly the value returned by `readPackageVersion` (`bin/cli.js:21-25`); string-building must not introduce a stale or hardcoded version.
++- The existing `run` helper only returns successful stdout (`tests/cli.test.js:8-10`), so failure-path coverage needs the smallest Node built-in mechanism that exposes child exit status and stderr without changing successful test behavior.
++- The full `node --test tests/` baseline is environment-blocked because `tests/server.test.js` cannot bind `0.0.0.0` (`listen EPERM`); this is unrelated to the authorized surface. The CLI-only suite passes, and IMPLEMENT must still run the prescribed full command plus the three direct version checks.
++
++## Acceptance restatement
++
++<!-- devlyn:verification -->
++## Verification
++
++```json
++{
++  "verification_commands": [
++    { "id": "existing-tests", "cmd": "node --test tests/" },
++    { "id": "version-bare", "cmd": "node bin/cli.js version" },
++    { "id": "version-json", "cmd": "node bin/cli.js version --format json" },
++    { "id": "version-bad-format", "cmd": "node bin/cli.js version --format yaml; test $? -eq 1" }
++  ]
++}
++```
+
+codex
+The first structural-check command hit a shell-quoting error before it could inspect the plan; no files were changed. I’m rerunning the same read-only check with shell-safe quoting.
+exec
+/bin/zsh -lc "node -e 'const fs=require(\"fs\"); const plan=fs.readFileSync(\".devlyn/plan.md\",\"utf8\"); const criteria=fs.readFileSync(\".devlyn/criteria.generated.md\",\"utf8\"); const scope=plan.match(/<"'!-- devlyn:authorized-surface -->'"\\n## Files to touch[\\s\\S]*?"'```json'"\\n(\\{["'^'"\\n]+\\})\\n"'```/); if (!scope) throw new Error("authorized-surface block missing"); const paths=JSON.parse(scope[1]).authorized_surface; if (JSON.stringify(paths)!==JSON.stringify(["bin/cli.js","tests/cli.test.js"])) throw new Error("unexpected scope: "+JSON.stringify(paths)); const verification=criteria.match(/<!-- devlyn:verification -->['"\\s\\S]*"'$/)[0]; if (!plan.endsWith(verification)) throw new Error("verification block is not verbatim"); if (/''^## Execution phases/m.test(plan)) throw new Error("medium plan must not contain execution phases"); console.log("plan structure: ok");'"' && git status --short" in /Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo
+ succeeded in 0ms:
+plan structure: ok
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..1c6ee3fe37e436313502d97eab49d811eeb9e08c
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,33 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `bin/cli.js` — edit — Requirement “Add a `--format json` option”: inspect the `version` arguments in the existing `case 'version'` branch (`bin/cli.js:59-62`), emit the required serialized object for `json`, preserve the bare-version default, and reject missing or unsupported format values through the established `console.error`/`process.exit(1)` style (`bin/cli.js:33-42`).
++- `tests/cli.test.js` — edit — Requirements “at least one new test exercises the `--format json` path” and unsupported formats exit with an error: extend the version coverage after the current bare-version test (`tests/cli.test.js:22-25`) to assert the exact JSON payload and the invalid-format failure using Node built-ins already used by this test file.
++
++```json
++{"authorized_surface":["bin/cli.js","tests/cli.test.js"]}
++```
++
++## Risks
++
++- Preserve every byte outside the version implementation: the criteria explicitly excludes `hello`, the unused `parseGreetingFormat` helper, help text, and all other files; `parseGreetingFormat` is explicitly marked out of scope in `bin/cli.js:27-30`.
++- Do not add an argument parser or reuse `parseGreetingFormat`; parse only `--format` directly with the `indexOf` and next-argument convention proven by `parseNameFlag` (`bin/cli.js:33-42`). A missing value or a following option is interpreted as a CLI-usage error, so it reports visibly and exits 1 rather than silently serializing an incorrect result.
++- JSON output must be the single-line literal `{"version":"<x.y.z>"}` and use exactly the value returned by `readPackageVersion` (`bin/cli.js:21-25`); string-building must not introduce a stale or hardcoded version.
++- The existing `run` helper only returns successful stdout (`tests/cli.test.js:8-10`), so failure-path coverage needs the smallest Node built-in mechanism that exposes child exit status and stderr without changing successful test behavior.
++- The full `node --test tests/` baseline is environment-blocked because `tests/server.test.js` cannot bind `0.0.0.0` (`listen EPERM`); this is unrelated to the authorized surface. The CLI-only suite passes, and IMPLEMENT must still run the prescribed full command plus the three direct version checks.
++
++## Acceptance restatement
++
++<!-- devlyn:verification -->
++## Verification
++
++```json
++{
++  "verification_commands": [
++    { "id": "existing-tests", "cmd": "node --test tests/" },
++    { "id": "version-bare", "cmd": "node bin/cli.js version" },
++    { "id": "version-json", "cmd": "node bin/cli.js version --format json" },
++    { "id": "version-bad-format", "cmd": "node bin/cli.js version --format yaml; test $? -eq 1" }
++  ]
++}
++```
+
+codex
+PASS — wrote the scoped plan at [.devlyn/plan.md](/Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/.devlyn/plan.md).
+
+It authorizes only `bin/cli.js` and `tests/cli.test.js`, preserves the verification block verbatim, and passed structural validation. Baseline CLI tests pass; the full suite is sandbox-blocked by server socket permissions (`EPERM`), documented as an environment risk.
+diff --git a/.devlyn/plan.md b/.devlyn/plan.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..1c6ee3fe37e436313502d97eab49d811eeb9e08c
+--- /dev/null
++++ b/.devlyn/plan.md
+@@ -0,0 +1,33 @@
++<!-- devlyn:authorized-surface -->
++## Files to touch
++
++- `bin/cli.js` — edit — Requirement “Add a `--format json` option”: inspect the `version` arguments in the existing `case 'version'` branch (`bin/cli.js:59-62`), emit the required serialized object for `json`, preserve the bare-version default, and reject missing or unsupported format values through the established `console.error`/`process.exit(1)` style (`bin/cli.js:33-42`).
++- `tests/cli.test.js` — edit — Requirements “at least one new test exercises the `--format json` path” and unsupported formats exit with an error: extend the version coverage after the current bare-version test (`tests/cli.test.js:22-25`) to assert the exact JSON payload and the invalid-format failure using Node built-ins already used by this test file.
++
++```json
++{"authorized_surface":["bin/cli.js","tests/cli.test.js"]}
++```
++
++## Risks
++
++- Preserve every byte outside the version implementation: the criteria explicitly excludes `hello`, the unused `parseGreetingFormat` helper, help text, and all other files; `parseGreetingFormat` is explicitly marked out of scope in `bin/cli.js:27-30`.
++- Do not add an argument parser or reuse `parseGreetingFormat`; parse only `--format` directly with the `indexOf` and next-argument convention proven by `parseNameFlag` (`bin/cli.js:33-42`). A missing value or a following option is interpreted as a CLI-usage error, so it reports visibly and exits 1 rather than silently serializing an incorrect result.
++- JSON output must be the single-line literal `{"version":"<x.y.z>"}` and use exactly the value returned by `readPackageVersion` (`bin/cli.js:21-25`); string-building must not introduce a stale or hardcoded version.
++- The existing `run` helper only returns successful stdout (`tests/cli.test.js:8-10`), so failure-path coverage needs the smallest Node built-in mechanism that exposes child exit status and stderr without changing successful test behavior.
++- The full `node --test tests/` baseline is environment-blocked because `tests/server.test.js` cannot bind `0.0.0.0` (`listen EPERM`); this is unrelated to the authorized surface. The CLI-only suite passes, and IMPLEMENT must still run the prescribed full command plus the three direct version checks.
++
++## Acceptance restatement
++
++<!-- devlyn:verification -->
++## Verification
++
++```json
++{
++  "verification_commands": [
++    { "id": "existing-tests", "cmd": "node --test tests/" },
++    { "id": "version-bare", "cmd": "node bin/cli.js version" },
++    { "id": "version-json", "cmd": "node bin/cli.js version --format json" },
++    { "id": "version-bad-format", "cmd": "node bin/cli.js version --format yaml; test $? -eq 1" }
++  ]
++}
++```
+
+tokens used
+22,404
+[codex-monitored] codex exited: code=0 elapsed=111s

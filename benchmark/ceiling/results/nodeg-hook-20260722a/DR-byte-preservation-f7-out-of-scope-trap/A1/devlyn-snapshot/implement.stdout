@@ -1,0 +1,13 @@
+PASS
+
+Implemented JSON version output and invalid-format errors in [bin/cli.js](/Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/bin/cli.js:59), with JSON and failure-path coverage in [tests/cli.test.js](/Users/aipalm/.local/share/nx01/w/r997f9b533f59/ff10888c89791/A1/repo/tests/cli.test.js:27).
+
+Verified:
+
+- `node --test tests/cli.test.js` — 5/5 passing
+- Bare version: `0.1.0`
+- JSON version: `{"version":"0.1.0"}`
+- YAML format exits 1 with `--format must be json`
+- `git diff --check` — clean
+
+`node --test tests/` ran; its three server tests fail only on the known sandbox socket restriction: `listen EPERM: operation not permitted 0.0.0.0`. No commit created.

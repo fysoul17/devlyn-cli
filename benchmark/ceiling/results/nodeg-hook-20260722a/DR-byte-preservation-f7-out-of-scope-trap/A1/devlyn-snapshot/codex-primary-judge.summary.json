@@ -1,0 +1,5 @@
+{
+  "coverage_failed": false,
+  "notes": "All binding clauses were covered; CLI tests passed 5/5, while unrelated server tests could not bind in this sandbox because listen failed with EPERM.",
+  "verdict": "PASS_WITH_ISSUES"
+}

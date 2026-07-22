@@ -1,0 +1,1 @@
+PASS — no cleanup changes needed; the feature adds no artifacts, dead code, or stale docs, and CLI tests pass (full suite’s server tests are sandbox-blocked on port binding).

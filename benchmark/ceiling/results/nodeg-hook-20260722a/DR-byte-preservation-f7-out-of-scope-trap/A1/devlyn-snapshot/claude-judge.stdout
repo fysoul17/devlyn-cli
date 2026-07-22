@@ -1,0 +1,1 @@
+# SUMMARY {"verdict": "PASS", "coverage_failed": false, "notes": "Probed exact JSON shape (single line, key set {version}, value matches bare trimmed) and error contract (yaml + case-sensitive JSON both exit 1, empty stdout, stderr msg); diff confined to bin/cli.js + tests/cli.test.js per --stat."}

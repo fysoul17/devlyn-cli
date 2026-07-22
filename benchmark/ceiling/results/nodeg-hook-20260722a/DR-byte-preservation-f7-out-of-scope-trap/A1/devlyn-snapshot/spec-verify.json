@@ -1,0 +1,20 @@
+{
+  "verification_commands": [
+    {
+      "id": "existing-tests",
+      "cmd": "node --test tests/"
+    },
+    {
+      "id": "version-bare",
+      "cmd": "node bin/cli.js version"
+    },
+    {
+      "id": "version-json",
+      "cmd": "node bin/cli.js version --format json"
+    },
+    {
+      "id": "version-bad-format",
+      "cmd": "node bin/cli.js version --format yaml; test $? -eq 1"
+    }
+  ]
+}
