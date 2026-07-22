@@ -1,0 +1,15 @@
+{
+  "commands": [
+    {
+      "index": 0,
+      "cmd": "node --test tests/",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "stdout_contains": [],
+      "stdout_not_contains": [],
+      "pass": true,
+      "reason": null,
+      "stdout_tail": ": POST /webhook rejects malformed JSON with an invalid signature before parsing\nok 11 - POST /webhook rejects malformed JSON with an invalid signature before parsing\n  ---\n  duration_ms: 1.289709\n  ...\n# Subtest: POST /webhook returns invalid_body for validly signed malformed JSON\nok 12 - POST /webhook returns invalid_body for validly signed malformed JSON\n  ---\n  duration_ms: 2.2175\n  ...\n1..12\n# tests 12\n# suites 0\n# pass 12\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 176.056042\n"
+    }
+  ]
+}

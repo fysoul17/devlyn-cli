@@ -1,0 +1,422 @@
+[codex-monitored] start: ts=2026-07-22T10:42:04Z heartbeat=30s timeout=0s bin=codex
+[codex-monitored] codex pid=84571
+Reading additional input from stdin...
+OpenAI Codex v0.144.5
+--------
+workdir: /Users/aipalm/.local/share/nx01/w/rfe4a3450fa47/f08d6b52f5d4d/A1/repo
+model: gpt-5.6-terra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019f896b-1892-7541-899c-7f49268f6d81
+--------
+user
+# Codex (OpenAI) adapter
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below.
+
+## Output discipline
+
+Your default is efficient, direct, task-oriented.
+
+## Validation pattern
+
+Validation is concrete commands and tools, not self-belief.
+
+## Anti-patterns
+
+Don't over-specify process when the destination is clear. Stop rules are explicit — follow them rather than looping indefinitely.
+
+Do not narrate internal deliberation. State results and decisions directly.
+
+---
+
+# PHASE 4 — CLEANUP (canonical body)
+
+Task-scoped pass — only what this diff introduced or invalidated.
+
+<role>
+Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn.
+</role>
+
+<input>
+- Cumulative diff since `d5e479312b6f9573373bd2057e630bba7d22c608` (state.base_ref.sha) — this run added `POST /webhook` (signature verification, body-shape validation, replay/idempotency tracking) to `server/index.js`, plus 4 new tests in `tests/server.test.js`.
+- Spec: `.devlyn/criteria.generated.md`.
+- Pre-cleanup HEAD: `9f140f657666c152c99d288f08338633e7587fa1` — your post-cleanup diff against this SHA must stay within the allowlist below.
+</input>
+
+<allowlist>
+You may modify or delete:
+
+1. **Tooling artifacts** the spec did not list as deliverables: `test-results/`, `playwright-report/`, `.last-run.json`, coverage HTML output, build artifacts, runtime caches (`__pycache__/`, `*.pyc`, `.cache/`).
+2. **Dead code added by this diff** — symbols (functions, classes, types, exports) introduced by this diff that no other code added by this diff references AND that are not part of the spec's required surface. Pre-existing dead code is out of scope.
+3. **Doc references this diff invalidated** — links / file paths / symbol names in markdown files that this diff renamed or removed. Update only the references; do not rewrite surrounding prose.
+4. **Inline comments** that explain code this diff deleted but the comment still mentions.
+
+Files outside this allowlist must not change. Pre-existing tooling leaks (already in main before this run) belong to a future cleanup, not this one.
+</allowlist>
+
+<output>
+- Code changes within the allowlist.
+- Report your verdict in this reply: `PASS` if changes within allowlist (or no changes needed); `FAIL` if you cannot complete within the allowlist.
+</output>
+
+<quality_bar>
+- Subtractive-first applies most strongly here. Lines removed should outnumber lines added unless documentation needs a small additive update for a renamed symbol.
+- Do not "improve" code outside the allowlist, even if it looks fixable. The allowlist is the contract.
+- If an artifact / dead symbol / stale doc reference straddles the allowlist, surface it as a finding into `.devlyn/cleanup.findings.jsonl` rather than guessing.
+</quality_bar>
+
+<runtime_principles>
+Cleanup is the smallest reversible step toward "what shipped equals what the spec licensed." Do not touch files outside the allowlist. No adjacent refactors.
+</runtime_principles>
+
+Working directory: `/Users/aipalm/.local/share/nx01/w/rfe4a3450fa47/f08d6b52f5d4d/A1/repo`. Inspect `git diff d5e479312b6f9573373bd2057e630bba7d22c608 HEAD -- server/index.js tests/server.test.js` for the diff to audit. If nothing in this diff matches the allowlist, make no changes and report PASS (no changes needed) — do not invent work.
+codex
+I’ll audit only the specified cumulative webhook diff and repository artifacts. Prediction: no dead, unreferenced symbols or newly created tooling artifacts qualify for deletion; I’ll verify that against the actual diff and status.
+exec
+/bin/zsh -lc "git status --short && git diff --stat d5e479312b6f9573373bd2057e630bba7d22c608 HEAD && git diff --find-renames --find-copies d5e479312b6f9573373bd2057e630bba7d22c608 HEAD -- server/index.js tests/server.test.js && printf '\\n--- criteria ---\\n' && sed -n '1,240p' .devlyn/criteria.generated.md" in /Users/aipalm/.local/share/nx01/w/rfe4a3450fa47/f08d6b52f5d4d/A1/repo
+ succeeded in 0ms:
+?? .claude/
+?? .devlyn/
+?? AGENTS.md
+?? CLAUDE.md
+ server/index.js      |  45 ++++++++++++++++++-
+ tests/server.test.js | 119 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 163 insertions(+), 1 deletion(-)
+diff --git a/server/index.js b/server/index.js
+index 1c43fa2..9441964 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -1,8 +1,14 @@
+ // Tiny Express server with a deliberately small API surface.
++const crypto = require('crypto');
+ const express = require('express');
++const fs = require('fs');
++const path = require('path');
+ 
+ const app = express();
+-app.use(express.json());
++app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = Buffer.from(buf); } }));
++
++const webhookSecret = fs.readFileSync(path.join(__dirname, '../data/webhook-secret.txt'), 'utf8').trim();
++const acceptedEventIds = new Set();
+ 
+ const items = [
+   { id: 1, name: 'alpha', qty: 3 },
+@@ -27,6 +33,43 @@ app.get('/items/:id', (req, res) => {
+   res.json({ item });
+ });
+ 
++app.post('/webhook', (req, res) => {
++  const signature = req.get('X-Signature');
++  const expectedSignature = crypto
++    .createHmac('sha256', webhookSecret)
++    .update(req.rawBody)
++    .digest('hex');
++
++  if (
++    typeof signature !== 'string'
++    || !/^[0-9a-f]{64}$/.test(signature)
++    || !crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expectedSignature, 'hex'))
++  ) {
++    res.status(401).json({ error: 'invalid_signature' });
++    return;
++  }
++
++  const event = req.body;
++  if (
++    typeof event !== 'object' || event === null || Array.isArray(event)
++    || typeof event.id !== 'string' || event.id.length === 0
++    || typeof event.type !== 'string' || event.type.length === 0
++    || typeof event.timestamp !== 'number'
++    || typeof event.data !== 'object' || event.data === null || Array.isArray(event.data)
++  ) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  if (acceptedEventIds.has(event.id)) {
++    res.status(409).json({ error: 'duplicate_event', id: event.id });
++    return;
++  }
++
++  acceptedEventIds.add(event.id);
++  res.json({ accepted: true, id: event.id });
++});
++
+ if (require.main === module) {
+   const port = Number(process.env.PORT) || 3000;
+   app.listen(port, () => {
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..f0e4986 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -1,8 +1,13 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
++const crypto = require('node:crypto');
++const fs = require('node:fs');
+ const http = require('node:http');
++const path = require('node:path');
+ const { app } = require('../server');
+ 
++const webhookSecret = fs.readFileSync(path.join(__dirname, '../data/webhook-secret.txt'), 'utf8').trim();
++
+ function startServer() {
+   return new Promise((resolve) => {
+     const server = http.createServer(app);
+@@ -23,6 +28,34 @@ function get(server, path) {
+   });
+ }
+ 
++function signatureFor(body) {
++  return crypto.createHmac('sha256', webhookSecret).update(body).digest('hex');
++}
++
++function post(server, path, body, signature = signatureFor(body)) {
++  return new Promise((resolve, reject) => {
++    const { port } = server.address();
++    const req = http.request(
++      `http://127.0.0.1:${port}${path}`,
++      {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(body),
++          'X-Signature': signature,
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    req.on('error', reject);
++    req.end(body);
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +89,89 @@ test('GET /items/:id returns 404 for missing', async () => {
+     server.close();
+   }
+ });
++
++test('POST /webhook accepts a valid signed event', async () => {
++  const server = await startServer();
++  try {
++    const body = JSON.stringify({
++      id: 'event-happy-path',
++      type: 'item.created',
++      timestamp: 1721644140,
++      data: { itemId: 1 },
++    });
++    const { status, body: responseBody } = await post(server, '/webhook', body);
++    assert.strictEqual(status, 200);
++    assert.deepStrictEqual(responseBody, { accepted: true, id: 'event-happy-path' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a replayed event id', async () => {
++  const server = await startServer();
++  try {
++    const firstBody = JSON.stringify({
++      id: 'event-replay',
++      type: 'item.created',
++      timestamp: 1721644141,
++      data: { itemId: 1 },
++    });
++    const replayedBody = JSON.stringify({
++      id: 'event-replay',
++      type: 'item.updated',
++      timestamp: 1721644142,
++      data: { itemId: 2 },
++    });
++    await post(server, '/webhook', firstBody);
++    const { status, body: responseBody } = await post(server, '/webhook', replayedBody);
++    assert.strictEqual(status, 409);
++    assert.deepStrictEqual(responseBody, { error: 'duplicate_event', id: 'event-replay' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a tampered body with its original signature', async () => {
++  const server = await startServer();
++  try {
++    const originalBody = JSON.stringify({
++      id: 'event-tampered',
++      type: 'item.created',
++      timestamp: 1721644143,
++      data: { itemId: 1 },
++    });
++    const tamperedBody = JSON.stringify({
++      id: 'event-tampered',
++      type: 'item.created',
++      timestamp: 1721644143,
++      data: { itemId: 2 },
++    });
++    const { status, body: responseBody } = await post(
++      server,
++      '/webhook',
++      tamperedBody,
++      signatureFor(originalBody),
++    );
++    assert.strictEqual(status, 401);
++    assert.deepStrictEqual(responseBody, { error: 'invalid_signature' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a validly signed body that fails the shape check', async () => {
++  const server = await startServer();
++  try {
++    const body = JSON.stringify({
++      id: '',
++      type: 'item.created',
++      timestamp: 1721644144,
++      data: { itemId: 1 },
++    });
++    const { status, body: responseBody } = await post(server, '/webhook', body);
++    assert.strictEqual(status, 400);
++    assert.deepStrictEqual(responseBody, { error: 'invalid_body' });
++  } finally {
++    server.close();
++  }
++});
+
+--- criteria ---
+# Generated criteria (free-form, medium complexity)
+
+## Requirements
+
+- Add `POST /webhook` to `server/index.js` that verifies an `X-Signature` header: lowercase hex HMAC-SHA256 over the exact raw request body, computed with the shared secret in `data/webhook-secret.txt`, compared via `crypto.timingSafeEqual`. Mismatch (or malformed/missing header) responds `401` with `{ error: 'invalid_signature' }`.
+- Signature check runs before body-shape validation: an invalid body with a valid signature is `400`; any body (valid or invalid) with an invalid signature is `401`.
+- Validate body shape `{ id, type, timestamp, data }`: `id` and `type` non-empty strings, `timestamp` a number, `data` an object. Shape failure (after signature passes) responds `400` with `{ error: 'invalid_body' }`.
+- Track accepted event `id`s in memory. First delivery of a given `id` responds `200` with `{ accepted: true, id }` and records the id as accepted. Any subsequent delivery of the same `id` responds `409` with `{ error: 'duplicate_event', id }`, regardless of the second request's body content.
+- Update `tests/server.test.js`: keep existing GET tests passing, and add tests for happy path (200), replayed id (409), and tampered body with the original signature (401).
+
+## Constraints
+
+- No new npm dependencies — use Node's built-in `crypto` module only.
+- Only touch `server/index.js` and `tests/server.test.js`.
+- HMAC must be computed over the exact raw bytes of the request body as received, not a re-serialization of parsed JSON (key order / whitespace would change the byte sequence and break signature verification). `express.json()`'s default parsing discards the raw bytes, so the route needs access to the raw body via a `verify` callback or a dedicated raw-body reader ahead of JSON parsing.
+- Existing routes (`GET /health`, `GET /items`, `GET /items/:id`) must keep working unchanged.
+
+## Out of Scope
+
+- Any change to `bin/cli.js`, `scripts/lint-json.js`, `web/`, or `data/_sample-event.json`.
+- Persisting accepted ids beyond process memory (no database/file-backed idempotency store).
+- Signature/replay logic for any route other than `POST /webhook`.
+
+<!-- devlyn:verification -->
+## Verification
+
+```json
+{
+  "verification_commands": [
+    { "cmd": "node --test tests/", "expect_exit": 0 }
+  ]
+}
+```
+
+codex
+Raw audit result: the cumulative committed diff contains only `server/index.js` and `tests/server.test.js`. Every introduced symbol is referenced by the required webhook route or its tests; no generated artifact appears in that diff. I’m doing a final path-level check against the pre-cleanup SHA without changing files.
+exec
+/bin/zsh -lc "git diff --name-status 9f140f657666c152c99d288f08338633e7587fa1 HEAD && git diff --name-status d5e479312b6f9573373bd2057e630bba7d22c608 HEAD && git ls-files -o --exclude-standard && rg --files -uu -g 'test-results/**' -g 'playwright-report/**' -g '.last-run.json' -g 'coverage/**' -g '**/__pycache__/**' -g '**/*.pyc' -g '**/.cache/**'" in /Users/aipalm/.local/share/nx01/w/rfe4a3450fa47/f08d6b52f5d4d/A1/repo
+ exited 1 in 0ms:
+M	server/index.js
+M	tests/server.test.js
+.claude/skills/_shared/adapters/README.md
+.claude/skills/_shared/adapters/claude.md
+.claude/skills/_shared/adapters/codex.md
+.claude/skills/_shared/adapters/omp.md
+.claude/skills/_shared/archive_run.py
+.claude/skills/_shared/codex-config.md
+.claude/skills/_shared/codex-monitored.sh
+.claude/skills/_shared/collect-codex-findings.py
+.claude/skills/_shared/engine-doctor.sh
+.claude/skills/_shared/engine-preflight.md
+.claude/skills/_shared/expected.schema.json
+.claude/skills/_shared/finish-gate.py
+.claude/skills/_shared/pair-plan-schema.md
+.claude/skills/_shared/resolve-bootstrap.py
+.claude/skills/_shared/resolve-stop-hook.py
+.claude/skills/_shared/run-bounded.py
+.claude/skills/_shared/runtime-principles.md
+.claude/skills/_shared/spec-verify-check.py
+.claude/skills/_shared/state-phase-write.py
+.claude/skills/_shared/terminal-claim-check.py
+.claude/skills/_shared/verify-merge-findings.py
+.claude/skills/code-health-standards/SKILL.md
+.claude/skills/code-review-standards/SKILL.md
+.claude/skills/devlyn:design-ui/SKILL.md
+.claude/skills/devlyn:engines/SKILL.md
+.claude/skills/devlyn:ideate/SKILL.md
+.claude/skills/devlyn:ideate/references/elicitation.md
+.claude/skills/devlyn:ideate/references/from-spec-mode.md
+.claude/skills/devlyn:ideate/references/project-mode.md
+.claude/skills/devlyn:ideate/references/spec-template.md
+.claude/skills/devlyn:ideate/references/templates/decision.md
+.claude/skills/devlyn:ideate/references/templates/roadmap.md
+.claude/skills/devlyn:ideate/references/templates/vision.md
+.claude/skills/devlyn:queue/SKILL.md
+.claude/skills/devlyn:resolve/SKILL.md
+.claude/skills/devlyn:resolve/references/free-form-mode.md
+.claude/skills/devlyn:resolve/references/phases/build-gate.md
+.claude/skills/devlyn:resolve/references/phases/cleanup.md
+.claude/skills/devlyn:resolve/references/phases/implement.md
+.claude/skills/devlyn:resolve/references/phases/plan.md
+.claude/skills/devlyn:resolve/references/phases/probe-derive.md
+.claude/skills/devlyn:resolve/references/phases/surface-close.md
+.claude/skills/devlyn:resolve/references/phases/verify.md
+.claude/skills/devlyn:resolve/references/state-schema.md
+.claude/skills/root-cause-analysis/SKILL.md
+.claude/skills/ui-implementation-standards/SKILL.md
+.devlyn/build_gate.findings.jsonl
+.devlyn/build_gate.log.md
+.devlyn/cleanup.prompt.txt
+.devlyn/cleanup.stderr
+.devlyn/cleanup.stdout
+.devlyn/criteria.generated.md
+.devlyn/engines.json
+.devlyn/goal.raw.txt
+.devlyn/goal.txt
+.devlyn/implement.prompt.txt
+.devlyn/implement.stderr
+.devlyn/implement.stdout
+.devlyn/pipeline.state.json
+.devlyn/plan.md
+.devlyn/spec-verify-findings.jsonl
+.devlyn/spec-verify.json
+.devlyn/spec-verify.results.json
+.devlyn/surface-close.input.patch
+.devlyn/surface-close.output.json
+.devlyn/surface-close.prompt
+.devlyn/surface-close.prompt.txt
+.devlyn/surface-close.stderr
+.devlyn/surface-close.stdout
+.devlyn/surface-close.worker-session.1.jsonl
+.devlyn/untracked.baseline
+AGENTS.md
+CLAUDE.md
+
+[codex-monitored] heartbeat: elapsed=30s
+codex
+PASS — no cleanup changes needed.
+
+Audited diff: only required webhook implementation and tests are present; all newly introduced symbols are referenced. No qualifying generated artifacts or stale documentation references appeared in the cumulative diff.
+tokens used
+13,779
+[codex-monitored] codex exited: code=0 elapsed=44s

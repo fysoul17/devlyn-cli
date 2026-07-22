@@ -260,3 +260,56 @@ falsification only under a registered, gated, deadlined removal.
 - Build = Codex sol. The runner settings-staging edit (hook-bearing
   cohort prerequisite) may ship with A2 or separately, but the cohort
   needs both.
+
+## STAGE A2 RESULTS (2026-07-22, raw before interpretation)
+
+Build: Codex sol (workspace-write, detached, 1624s, zero silent hangs;
+report /tmp/codex-0078a2/build.log). Shipped df68598: bootstrap 881→630
+lines (tracked diff +370/−856 incl. .agents mirrors). Strip verified
+in-diff by the orchestrator: resolve_engines/adapters/engines.json
+validation, classify_complexity/classify_risk + all preclassification
+regexes, untracked-baseline write, announce assembly, and the
+result-JSON route fields all deleted; kept surface byte-equivalent
+(session stamp semantics, schema-v3.0 skeleton, source hashing, spec
+staging, verify-only diff capture). Two additions, both packet-cited:
+`atomic_write_batch` (all-or-nothing init — closes pre-strip
+partial-state paths between goal/spec/state writes; forced-failure
+self-test) and `sys.dont_write_bytecode` (Stage A run-1 pyc receipt
+class — bootstrap importlib-loads spec-verify-check). SKILL PHASE-0
+pre-A1 prose restored for the five stripped steps; honest token delta
++2,186 chars (+546 est c/4) — A1's −11.8% win partially reverts as
+registered. Grok 4.5 R1: **CONFIRM-COMMIT, F1–F5 not fired**; adopted
+its precision edit (pre-A1 bare-enum carrier sentence re-attached at
+step 2); its second suggestion declined with named reason (explicit-wins
+already encoded by the Otherwise structure). Pre-existing orphan
+recorded, not expanded: `--perf` lost its prose definition at A1 and its
+result field at A2 — accepted token, no semantics; deletion needs its
+own registration (CLI-surface change).
+
+- **P-0078-K/O/I re-run (20260722T101945Z, pinned 2.1.215 + vendor
+  0.144.5): 3/3 PASS post-strip** — trial 01 nine block receipts +
+  parity canary green + state bytes stable + allow-after-archive 0;
+  controls (a)/(c) zero blocks, tree-neutral. Codex sandbox could not
+  run it (keychain); orchestrator ran it post-commit.
+- **Live micro-probe `iter0078a2-probe-a` (F12, sonnet arms / terra
+  executor, health-gated, worktree df68598): FS-0077-B NOT FIRED.**
+  Full completion, no K2a recurrence, honest NEEDS_WORK terminal.
+  Restored prose steps all executed live: slim bootstrap stamped
+  session_id 444efc87… (first live product-path stamp via a real
+  pipeline run); model preflight REPLACED engine/engine_source with the
+  engines.json pin (codex, exactly the step-2 contract); model-owned
+  complexity=medium + risk_profile with 3 keyword-class reasons +
+  auto-enable + PLAN small-surface demotion, strict types intact;
+  untracked.baseline written; legal phase sequence with SPW
+  verdicts/durations + one implement fix round; VERIFY caught the real
+  quality gap (4 HIGH merged findings, file:line-cited) →
+  final_report NEEDS_WORK + PHASE-6 archive. Objective 0/1 (hidden
+  oracle) on a known-variance row (0077 probe-a K2a / probe-b 1/1) —
+  an executor-implementation outcome honestly surfaced by VERIFY, not a
+  harness behavior change. Announce-line presence is not observable in
+  the transcript artifact in EITHER era (0 matches in probe-a/probe-b
+  pre-A2 rows too) — no delta attributable. Wall 11.56× recorded,
+  report-only (0077 owns wall claims).
+
+Stage A2 CLOSED: the 0077.5 removal obligation is discharged before any
+hook-bearing cohort; no measurement rides the unearned carrier.

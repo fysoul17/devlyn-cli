@@ -1,0 +1,61 @@
+# Codex (OpenAI) adapter
+
+## Identity
+
+You are OpenAI's Codex model. OpenAI's prompt-guidance for this model governs your behavior on top of the canonical phase prompt below.
+
+## Validation pattern
+
+Validation is concrete commands and tools, not self-belief. Run the test suite before declaring success.
+
+## Anti-patterns
+
+Don't over-specify process when the destination is clear. Do not narrate internal deliberation.
+
+---
+
+# VERIFY fix round (IMPLEMENT canonical body applies)
+
+<role>
+You execute a fix for a VERIFY finding. Constrained design judgment — fix exactly the finding below within the existing plan's file scope; do not expand scope.
+</role>
+
+<input>
+- Authorized surface (unchanged from PLAN): `server/index.js`, `tests/server.test.js`. Only touch these two files.
+- Repo root: `/Users/aipalm/.local/share/nx01/w/rfe4a3450fa47/f08d6b52f5d4d/A1/repo`. Current HEAD already has the webhook implementation + 4 tests committed.
+</input>
+
+<verify_finding>
+```json
+{"confidence":"high","criterion_ref":"Signature check runs before body-shape validation: an invalid body with a valid signature is 400; any body (valid or invalid) with an invalid signature is 401.","file":"server/index.js","id":"PRIMARY-1","line":8,"message":"`app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = Buffer.from(buf); } }))` parses JSON before the `/webhook` handler performs signature verification. In the combined execution, malformed JSON with a valid HMAC returned 400 with Express's HTML error instead of `{ error: 'invalid_body' }`; the same malformed body with an invalid all-zero signature also returned 400 HTML instead of the required 401 `{ error: 'invalid_signature' }`. Thus parser failures bypass both the required signature-first ordering and response contracts.","rule_id":"signature.before_parse","severity":"HIGH","source":"judge"}
+```
+
+Independently reproduced by the orchestrator: `node -e` sent a syntactically-malformed JSON body (`{not valid json`) with an all-zero (definitely invalid) `X-Signature` header to `POST /webhook`. Observed: HTTP 400 with Express's default HTML error page (from `body-parser`'s `JSON.parse` throwing inside the `express.json()` middleware, which runs before the route handler). Expected per spec: HTTP 401 `{ error: 'invalid_signature' }`, since signature verification must run first and does not require the body to be valid JSON — it's computed over the raw bytes regardless of whether they parse.
+</verify_finding>
+
+<fix_guidance>
+The root cause: `express.json()` is registered as global middleware ahead of the `/webhook` route, so a JSON parse failure short-circuits to Express's default error handler before the route handler (where the signature check lives) ever runs. The fix must make signature verification happen against the raw body bytes BEFORE any JSON-parsing failure can short-circuit the request — for every code path, not just the ones where JSON.parse happens to succeed.
+
+A standard, idiomatic fix: stop relying on `express.json()`'s `verify` callback (which fires ON the way to parsing, but a parse failure inside the same middleware still short-circuits past the route handler). Instead, read the raw body for the `/webhook` route with `express.raw({ type: 'application/json' })` (an Express/body-parser built-in, no new dependency) so the route handler receives a `Buffer` unconditionally, verify the HMAC signature over that raw buffer first, and only THEN attempt `JSON.parse` on it inside the route handler (a syntax error there is a body-shape problem → `400 { error: 'invalid_body' }`, not a signature problem, and it happens strictly after the signature check passes). Keep `express.json()` for the other existing routes if any of them rely on parsed JSON (currently none do — `GET /health`, `GET /items`, `GET /items/:id` take no body), or scope `express.json()`/`express.raw()` per-route so `/webhook` alone uses the raw-body reader.
+
+Do not hand-roll a body-parsing module — `express.raw()` is the standard built-in primitive for this exact "verify raw bytes before parsing" pattern; using it is not a new dependency (it ships inside `express`/`body-parser`, already a transitive dependency).
+</fix_guidance>
+
+<output>
+- Fix `server/index.js` so that for EVERY request to `POST /webhook` — including syntactically-malformed JSON bodies — signature verification runs first against the raw bytes, unconditionally:
+  - Invalid/missing signature (regardless of body content, parseable or not) → 401 `{ error: 'invalid_signature' }`.
+  - Valid signature + body that fails to parse as JSON, OR parses but fails the shape check → 400 `{ error: 'invalid_body' }`.
+  - Valid signature + valid shape + new id → 200 `{ accepted: true, id }`.
+  - Valid signature + valid shape + duplicate id → 409 `{ error: 'duplicate_event', id }`.
+- Add tests to `tests/server.test.js` proving the previously-broken ordering: (a) malformed-JSON body + invalid signature → 401 `{ error: 'invalid_signature' }`; (b) malformed-JSON body + VALID signature (computed over the exact malformed raw bytes) → 400 `{ error: 'invalid_body' }`. Keep all existing tests passing unchanged.
+- Run `node --test tests/` — must exit 0, all tests (existing + new) passing.
+- Report your verdict in this reply: `PASS` on success; `BLOCKED` if genuinely impossible within the authorized surface.
+</output>
+
+<quality_bar>
+- Fix only this finding. Do not touch unrelated code. Do not widen scope beyond `server/index.js` and `tests/server.test.js`.
+- No new npm dependency (per the original spec's Constraints, still binding) — `express.raw` ships with `express`.
+- Existing tests (including the 4 already added) must keep passing.
+</quality_bar>
+
+Working directory: `/Users/aipalm/.local/share/nx01/w/rfe4a3450fa47/f08d6b52f5d4d/A1/repo`.

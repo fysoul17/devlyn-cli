@@ -1,0 +1,190 @@
+diff --git a/server/index.js b/server/index.js
+index 1c43fa2..9441964 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -1,8 +1,14 @@
+ // Tiny Express server with a deliberately small API surface.
++const crypto = require('crypto');
+ const express = require('express');
++const fs = require('fs');
++const path = require('path');
+ 
+ const app = express();
+-app.use(express.json());
++app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = Buffer.from(buf); } }));
++
++const webhookSecret = fs.readFileSync(path.join(__dirname, '../data/webhook-secret.txt'), 'utf8').trim();
++const acceptedEventIds = new Set();
+ 
+ const items = [
+   { id: 1, name: 'alpha', qty: 3 },
+@@ -27,6 +33,43 @@ app.get('/items/:id', (req, res) => {
+   res.json({ item });
+ });
+ 
++app.post('/webhook', (req, res) => {
++  const signature = req.get('X-Signature');
++  const expectedSignature = crypto
++    .createHmac('sha256', webhookSecret)
++    .update(req.rawBody)
++    .digest('hex');
++
++  if (
++    typeof signature !== 'string'
++    || !/^[0-9a-f]{64}$/.test(signature)
++    || !crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expectedSignature, 'hex'))
++  ) {
++    res.status(401).json({ error: 'invalid_signature' });
++    return;
++  }
++
++  const event = req.body;
++  if (
++    typeof event !== 'object' || event === null || Array.isArray(event)
++    || typeof event.id !== 'string' || event.id.length === 0
++    || typeof event.type !== 'string' || event.type.length === 0
++    || typeof event.timestamp !== 'number'
++    || typeof event.data !== 'object' || event.data === null || Array.isArray(event.data)
++  ) {
++    res.status(400).json({ error: 'invalid_body' });
++    return;
++  }
++
++  if (acceptedEventIds.has(event.id)) {
++    res.status(409).json({ error: 'duplicate_event', id: event.id });
++    return;
++  }
++
++  acceptedEventIds.add(event.id);
++  res.json({ accepted: true, id: event.id });
++});
++
+ if (require.main === module) {
+   const port = Number(process.env.PORT) || 3000;
+   app.listen(port, () => {
+diff --git a/tests/server.test.js b/tests/server.test.js
+index adc6067..e14913c 100644
+--- a/tests/server.test.js
++++ b/tests/server.test.js
+@@ -1,8 +1,13 @@
+ const { test } = require('node:test');
+ const assert = require('node:assert');
++const crypto = require('node:crypto');
++const fs = require('node:fs');
+ const http = require('node:http');
++const path = require('node:path');
+ const { app } = require('../server');
+ 
++const webhookSecret = fs.readFileSync(path.join(__dirname, '../data/webhook-secret.txt'), 'utf8').trim();
++
+ function startServer() {
+   return new Promise((resolve) => {
+     const server = http.createServer(app);
+@@ -23,6 +28,34 @@ function get(server, path) {
+   });
+ }
+ 
++function signatureFor(body) {
++  return crypto.createHmac('sha256', webhookSecret).update(body).digest('hex');
++}
++
++function post(server, path, body, signature = signatureFor(body)) {
++  return new Promise((resolve, reject) => {
++    const { port } = server.address();
++    const req = http.request(
++      `http://127.0.0.1:${port}${path}`,
++      {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Content-Length': Buffer.byteLength(body),
++          'X-Signature': signature,
++        },
++      },
++      (res) => {
++        let responseBody = '';
++        res.on('data', (chunk) => (responseBody += chunk));
++        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(responseBody) }));
++      },
++    );
++    req.on('error', reject);
++    req.end(body);
++  });
++}
++
+ test('GET /health returns ok', async () => {
+   const server = await startServer();
+   try {
+@@ -56,3 +89,72 @@ test('GET /items/:id returns 404 for missing', async () => {
+     server.close();
+   }
+ });
++
++test('POST /webhook accepts a valid signed event', async () => {
++  const server = await startServer();
++  try {
++    const body = JSON.stringify({
++      id: 'event-happy-path',
++      type: 'item.created',
++      timestamp: 1721644140,
++      data: { itemId: 1 },
++    });
++    const { status, body: responseBody } = await post(server, '/webhook', body);
++    assert.strictEqual(status, 200);
++    assert.deepStrictEqual(responseBody, { accepted: true, id: 'event-happy-path' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a replayed event id', async () => {
++  const server = await startServer();
++  try {
++    const firstBody = JSON.stringify({
++      id: 'event-replay',
++      type: 'item.created',
++      timestamp: 1721644141,
++      data: { itemId: 1 },
++    });
++    const replayedBody = JSON.stringify({
++      id: 'event-replay',
++      type: 'item.updated',
++      timestamp: 1721644142,
++      data: { itemId: 2 },
++    });
++    await post(server, '/webhook', firstBody);
++    const { status, body: responseBody } = await post(server, '/webhook', replayedBody);
++    assert.strictEqual(status, 409);
++    assert.deepStrictEqual(responseBody, { error: 'duplicate_event', id: 'event-replay' });
++  } finally {
++    server.close();
++  }
++});
++
++test('POST /webhook rejects a tampered body with its original signature', async () => {
++  const server = await startServer();
++  try {
++    const originalBody = JSON.stringify({
++      id: 'event-tampered',
++      type: 'item.created',
++      timestamp: 1721644143,
++      data: { itemId: 1 },
++    });
++    const tamperedBody = JSON.stringify({
++      id: 'event-tampered',
++      type: 'item.created',
++      timestamp: 1721644143,
++      data: { itemId: 2 },
++    });
++    const { status, body: responseBody } = await post(
++      server,
++      '/webhook',
++      tamperedBody,
++      signatureFor(originalBody),
++    );
++    assert.strictEqual(status, 401);
++    assert.deepStrictEqual(responseBody, { error: 'invalid_signature' });
++  } finally {
++    server.close();
++  }
++});

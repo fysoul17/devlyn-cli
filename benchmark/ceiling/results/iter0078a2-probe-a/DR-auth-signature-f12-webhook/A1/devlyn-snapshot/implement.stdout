@@ -1,0 +1,7 @@
+BLOCKED — implementation is complete, but the mandated HTTP suite cannot run in this sandbox.
+
+- Added raw-body HMAC verification, body validation, and in-memory replay protection in [server/index.js](/Users/aipalm/.local/share/nx01/w/rfe4a3450fa47/f08d6b52f5d4d/A1/repo/server/index.js:36).
+- Added happy-path, replay, and tamper tests in [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/rfe4a3450fa47/f08d6b52f5d4d/A1/repo/tests/server.test.js:93).
+- `node --check` and `git diff --check` pass.
+
+`node --test tests/` exits 1 because this environment denies the unchanged test server’s ephemeral bind: `listen EPERM: operation not permitted 0.0.0.0` at [tests/server.test.js:14](/Users/aipalm/.local/share/nx01/w/rfe4a3450fa47/f08d6b52f5d4d/A1/repo/tests/server.test.js:14). The three CLI tests pass; all six HTTP tests fail before making a request.

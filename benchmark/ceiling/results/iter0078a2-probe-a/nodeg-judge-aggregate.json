@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "run_id": "iter0078a2-probe-a",
+  "tasks": {
+    "DR-auth-signature-f12-webhook": {
+      "control_id": "F12",
+      "judges": {
+        "sonnet": {
+          "runtime_model": "claude-sonnet-5",
+          "cli_version": "2.1.215 (Claude Code)",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "A_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "A_win"
+          },
+          "parse_metadata": {}
+        },
+        "codex": {
+          "runtime_model": "gpt-5.6-terra",
+          "cli_version": "codex-cli 0.144.5",
+          "axes": {
+            "design_coherence": "B_win",
+            "robustness": "B_win",
+            "spec_long_horizon_consistency": "B_win",
+            "maintainability_api_ergonomics": "B_win"
+          },
+          "parse_metadata": {}
+        }
+      }
+    }
+  }
+}

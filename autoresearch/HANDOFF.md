@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iter: [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (Stage A SHIPPED + P-0078-K live probe 3/3 PASS — 0078.1/.2; **Stage A2 strip REGISTERED 0078.3 = next build**; remaining reads P-KL/P-C ride the first hook-bearing cohort). Context iters: [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5 PARTIAL SHIP — W-T0 shipped 12%, W-B claim revoked, wall fail-open miss, residual re-named), [`iterations/0076-completion-rate.md`](iterations/0076-completion-rate.md) (CLOSED 0076.5; M0 first clean live firing in -22a), [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (C1 probe 0074.3 → product wiring = iter-0078). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iter: [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (Stage A SHIPPED + P-K probe PASS 0078.1/.2; **Stage A2 strip SHIPPED + both gates green 0078.4** — removal obligation discharged; remaining reads P-KL/P-C ride the first hook-bearing cohort, whose only missing prerequisite is the runner settings-staging edit). Context iters: [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5 PARTIAL SHIP — W-T0 shipped 12%, W-B claim revoked, wall fail-open miss, residual re-named), [`iterations/0076-completion-rate.md`](iterations/0076-completion-rate.md) (CLOSED 0076.5; M0 first clean live firing in -22a), [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (C1 probe 0074.3 → product wiring = iter-0078). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,46 +14,41 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-22 late (iter-0077 **CLOSED partial-ship** via cohort nodeg-20260722a; iter-0078 Stage A SHIPPED + probe PASS, **Stage A2 strip registered = next build**)
+## 🚦 START-HERE — state after 2026-07-22 night (iter-0078 **Stage A2 SHIPPED + both gates green** 0078.4; the 0077.5 removal obligation is discharged — next = runner settings-staging edit, then the first hook-bearing cohort)
 
-**Where the loop stands (one paragraph).** iter-0077 CLOSED as PARTIAL
-SHIP (0077.5): cohort `nodeg-20260722a` completed 7/7 rows zero draws in
-a clean quiet window. **W-T0 transition verb SHIPPED** — adjusted
-interphase median 47,698ms = 12.0% of the corrected baseline (bar 75%).
-**W-B bootstrap claim REVOKED** — adjusted startup median 250,220ms =
-110.8% of baseline (bar 60%; the mechanical-absorption hypothesis is
-FALSIFIED: the model re-derives PHASE-0 at LLM latency regardless of the
-script); FS-0077-C executed at claim level, byte removal registered as
-**iter-0078 Stage A2** (No Unregistered Survival criterion; deadline =
-before the first hook-bearing cohort). Wall fail-open MISS at 10.659× —
-below the entire no-lever noise band (descriptive best-ever), residual
-re-named = STARTUP (new registration required) + PHASE-UNION growth
-(frozen-five median +31.7%; completion-mix caveat on FS1/F11). Senior
-guards ALL PASSED: complete 6/7 best-ever (sole incomplete = F11 K2a —
-the pre-hook baseline datum for 0078), **zero K1 with the 0076 M0
-skip-carrier's first clean live firing**, objective 6/7, blind B_win 36
-≤45 with A_win 9→19, conservation 0ms ×7. iter-0078 (C1 product wiring)
-is REGISTERED + Stage A SHIPPED + P-0078-K live probe 3/3 PASS
-(session-parity canary green on 2.1.215; the over-tight control caught
-and root-fixed a real allow-path pyc mutation); remaining reads P-KL/P-C
-ride the first hook-bearing cohort. C2 stays terminal authority; C1 is
-in-session pressure (CLI ~9-block cap honest bound).
+**Where the loop stands (one paragraph).** iter-0077 is CLOSED partial-ship
+(0077.5: W-T0 interphase 12.0% SHIPPED, W-B startup claim REVOKED at
+110.8%, wall fail-open MISS 10.659× best-ever-below-noise-band, residual
+re-named STARTUP + PHASE-UNION; senior guards all passed, complete 6/7,
+zero K1, sole incomplete F11 K2a = the pre-hook baseline datum). iter-0078
+Stage A SHIPPED + P-K live probe 3/3 PASS (0078.2), and **Stage A2 is now
+SHIPPED with both gates green (0078.4, df68598)**: bootstrap 881→630 —
+falsified W-B machinery (engine preflight, complexity/risk
+preclassification, untracked baseline, announce) deleted and returned to
+pre-A1 SKILL prose (honest +546-token partial revert of the A1 win); kept
+surface = schema-v3.0 state init + null-safe session_id stamp +
+batch-atomic fail-closed init. Grok R1 CONFIRM-COMMIT (F1–F5 not fired).
+P-0078-K/O/I re-ran 3/3 PASS post-strip; live micro-probe
+`iter0078a2-probe-a` (F12, sonnet/terra, worktree df68598) FS-0077-B NOT
+FIRED — full completion, honest NEEDS_WORK terminal, first live
+product-path session stamp, model-executed preflight correctly replaced
+engine with the engines.json pin, VERIFY caught the real quality gap (4
+HIGH); objective 0/1 is a known-variance-row outcome honestly surfaced,
+not a harness delta. C2 stays terminal authority; C1 is in-session
+pressure (CLI ~9-block cap honest bound). Remaining 0078 reads P-KL/P-C
+ride the first hook-bearing cohort.
 
 **Next work (in order)**:
-1. **iter-0078 STAGE A2 build (REGISTERED 0078.3 — the 0077.5 removal
-   obligation)** — Codex sol build per iterations/0078-c1-product-wiring.md
-   §STAGE A2: bootstrap slims to state-init + session_id stamp; absorbed
-   PHASE-0 steps return to SKILL prose (net token delta reported
-   honestly). Gates: bootstrap byte-contract self-test reshape, lint +
-   gauge + mirror sync, P-0078-K/O/I re-run (committed probe runner at
-   benchmark/ceiling/probes/c1-product-wiring/), ONE live resolve
-   micro-probe row (sonnet arms / terra executor, FS-0077-B-class
-   behavioral checks). DEADLINE: before the first hook-bearing cohort.
-2. **First hook-bearing cohort** (reads P-0078-KL + P-0078-C) —
-   prerequisites: Stage A2 done; runner settings-staging edit
-   (stage_devlyn_context does not stage .claude/settings.json today);
-   explicit hook-bearing NEW-baseline label, never mixed into 0077
-   aggregation; quiet-window + health-gate + pin rules below all apply.
+1. **Runner settings-staging edit** (the only missing hook-bearing-cohort
+   prerequisite): stage_devlyn_context (run-ceiling-arm.sh:364-372) does
+   not stage .claude/settings.json today, so no cohort arm can carry the
+   Stop hook. Small benchmark-surface build + its own self-test; then the
+   cohort launches with an explicit hook-bearing NEW-baseline label,
+   never mixed into 0077 aggregation.
+2. **First hook-bearing cohort** (reads P-0078-KL + P-0078-C, K2a
+   partition expected 0 report-only) — quiet-window + health-gate + pin
+   rules below all apply; F11 K2a from -22a is the pre-hook baseline
+   datum.
 3. **Startup lever re-registration** (fail-open obligation from 0077.5)
    — new mechanism hypothesis required (mechanical absorption is
    falsified); residual data: startup median 250s unmoved, phase_union

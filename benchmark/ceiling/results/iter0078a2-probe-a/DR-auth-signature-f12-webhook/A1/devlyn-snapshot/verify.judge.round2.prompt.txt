@@ -1,0 +1,150 @@
+You are the PRIMARY VERIFY judge in an independent, fresh-context quality-review phase, round 2 (a prior round 1 found a HIGH issue that has since been fixed). You have NOT seen any PLAN, IMPLEMENT, or BUILD_GATE reasoning — you are grading only the final diff against the spec, from scratch. You have NO code-mutation tools: this is a read-only review, do not edit any file.
+
+ROLE: answer one question — did the diff deliver what the spec said it would, with no scope creep, no quality regression, and no constraint violation? Produce findings only.
+
+SPEC (verbatim, `.devlyn/criteria.generated.md` in the repo, sha256 81b9bef0f47cb7e71d0aa50a2cdf23e2dea47ee4bfb74f72f3ba3ffc6ad7916c):
+
+---
+# Generated criteria (free-form, medium complexity)
+
+## Requirements
+
+- Add `POST /webhook` to `server/index.js` that verifies an `X-Signature` header: lowercase hex HMAC-SHA256 over the exact raw request body, computed with the shared secret in `data/webhook-secret.txt`, compared via `crypto.timingSafeEqual`. Mismatch (or malformed/missing header) responds `401` with `{ error: 'invalid_signature' }`.
+- Signature check runs before body-shape validation: an invalid body with a valid signature is `400`; any body (valid or invalid) with an invalid signature is `401`.
+- Validate body shape `{ id, type, timestamp, data }`: `id` and `type` non-empty strings, `timestamp` a number, `data` an object. Shape failure (after signature passes) responds `400` with `{ error: 'invalid_body' }`.
+- Track accepted event `id`s in memory. First delivery of a given `id` responds `200` with `{ accepted: true, id }` and records the id as accepted. Any subsequent delivery of the same `id` responds `409` with `{ error: 'duplicate_event', id }`, regardless of the second request's body content.
+- Update `tests/server.test.js`: keep existing GET tests passing, and add tests for happy path (200), replayed id (409), and tampered body with the original signature (401).
+
+## Constraints
+
+- No new npm dependencies — use Node's built-in `crypto` module only.
+- Only touch `server/index.js` and `tests/server.test.js`.
+- HMAC must be computed over the exact raw bytes of the request body as received, not a re-serialization of parsed JSON.
+- Existing routes (`GET /health`, `GET /items`, `GET /items/:id`) must keep working unchanged.
+
+## Out of Scope
+- Any change to `bin/cli.js`, `scripts/lint-json.js`, `web/`, or `data/_sample-event.json`.
+- Persisting accepted ids beyond process memory.
+- Signature/replay logic for any route other than `POST /webhook`.
+
+## Verification
+{"verification_commands": [{"cmd": "node --test tests/", "expect_exit": 0}]}
+---
+
+WORKING DIRECTORY: `/Users/aipalm/.local/share/nx01/w/rfe4a3450fa47/f08d6b52f5d4d/A1/repo`. Base commit `d5e479312b6f9573373bd2057e630bba7d22c608`. Current HEAD has the implementation, plus a round-1 fix for a signature-ordering bug (malformed JSON used to bypass signature verification because `express.json()` global middleware parsed the body before the route handler ran; the fix switched to `express.raw({ type: '*/*' })` scoped to `/webhook`, verifies the signature over the raw buffer FIRST, then does its own `JSON.parse` inside a try/catch that maps a parse failure to `400 invalid_body`). Read `server/index.js` and `tests/server.test.js` directly, and/or run `git diff d5e479312b6f9573373bd2057e630bba7d22c608 HEAD -- server/index.js tests/server.test.js`.
+
+CURRENT `server/index.js` (for reference, read the live file too):
+
+```js
+// Tiny Express server with a deliberately small API surface.
+const crypto = require('crypto');
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+
+const webhookSecret = fs.readFileSync(path.join(__dirname, '../data/webhook-secret.txt'), 'utf8').trim();
+const acceptedEventIds = new Set();
+
+const items = [
+  { id: 1, name: 'alpha', qty: 3 },
+  { id: 2, name: 'beta', qty: 5 },
+];
+
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.get('/items', (_req, res) => {
+  res.json({ items });
+});
+
+app.get('/items/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const item = items.find((it) => it.id === id);
+  if (!item) {
+    res.status(404).json({ error: 'not_found', id });
+    return;
+  }
+  res.json({ item });
+});
+
+app.post('/webhook', express.raw({ type: '*/*' }), (req, res) => {
+  const signature = req.get('X-Signature');
+  const expectedSignature = crypto
+    .createHmac('sha256', webhookSecret)
+    .update(req.body)
+    .digest('hex');
+
+  if (
+    typeof signature !== 'string'
+    || !/^[0-9a-f]{64}$/.test(signature)
+    || !crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expectedSignature, 'hex'))
+  ) {
+    res.status(401).json({ error: 'invalid_signature' });
+    return;
+  }
+
+  let event;
+  try {
+    event = JSON.parse(req.body.toString('utf8'));
+  } catch {
+    res.status(400).json({ error: 'invalid_body' });
+    return;
+  }
+
+  if (
+    typeof event !== 'object' || event === null || Array.isArray(event)
+    || typeof event.id !== 'string' || event.id.length === 0
+    || typeof event.type !== 'string' || event.type.length === 0
+    || typeof event.timestamp !== 'number'
+    || typeof event.data !== 'object' || event.data === null || Array.isArray(event.data)
+  ) {
+    res.status(400).json({ error: 'invalid_body' });
+    return;
+  }
+
+  if (acceptedEventIds.has(event.id)) {
+    res.status(409).json({ error: 'duplicate_event', id: event.id });
+    return;
+  }
+
+  acceptedEventIds.add(event.id);
+  res.json({ accepted: true, id: event.id });
+});
+
+if (require.main === module) {
+  const port = Number(process.env.PORT) || 3000;
+  app.listen(port, () => {
+    console.log(`harbor-tools server listening on :${port}`);
+  });
+}
+
+module.exports = { app };
+```
+
+GRADING RUBRIC:
+- Spec compliance — did every Requirement get satisfied by code you can point at (file:line)?
+- Scope — does the diff touch only `server/index.js` and `tests/server.test.js`?
+- Quality — idiomatic Node/Express patterns?
+- Consistency — style consistent with the surrounding code?
+
+CLAUSE-LEVEL CHECK — verify specifically:
+1. Ordering for EVERY code path including malformed/non-JSON bytes: does signature verification always run first, unconditionally, before any JSON-parse attempt? (This is exactly what round 1 got wrong — confirm it's actually fixed now, don't just trust the diff summary.)
+2. Bad-body + valid-signature → 400. Bad-signature + any body (valid, malformed, or empty) → 401.
+3. Raw body integrity: is the HMAC computed over the literal bytes Express received (`req.body` is now a `Buffer` from `express.raw`), not a re-serialization?
+4. `crypto.timingSafeEqual` is used, and buffers are guaranteed equal-length before calling it (regex pre-filter) so it can't throw on a malformed header.
+5. Duplicate detection is immune to the second request's body content.
+6. Any regression versus round 1: did fixing the ordering bug (switching from `express.json()` to `express.raw()` + manual `JSON.parse`) break anything for the OTHER existing routes, or introduce a new gap (e.g. `express.raw({ type: '*/*' })` accepting/mishandling unusual Content-Types, empty bodies, oversized bodies, or a body-less request causing `req.body` to be `undefined` rather than an empty Buffer)? Check what `express.raw()` does when the request has no body or `Content-Length: 0`.
+
+INTERACTION CHECK: actually execute (using `node --test tests/` or a short-lived `node -e` script against a locally-started instance of the app, leaving no tracked files behind) at least one combined adversarial scenario that was NOT already covered by the existing 12 tests, e.g.: an empty body (`Content-Length: 0` / no body at all) with a valid signature over empty bytes, or a very large duplicate/replay chain. Report actual observed output.
+
+COVERAGE CHECK: if you cannot exercise an axis, say so explicitly.
+
+OUTPUT CONTRACT — return ONLY JSONL (one JSON object per line, no prose, no markdown fences):
+{"id": "PRIMARY-<n>", "severity": "CRITICAL|HIGH|MEDIUM|LOW", "confidence": "high|medium|low", "file": "<path>", "line": <int>, "rule_id": "<short.slug>", "message": "<finding, cite exact code>", "criterion_ref": "<requirement bullet>"}
+
+If you find zero verdict-binding issues after doing the above (including executing at least one scenario), output exactly one line: {"verdict": "PASS"}
+
+Report every finding you observe, including low-severity/low-confidence ones. Do not read `.claude/skills`, `.codex/skills`, `CLAUDE.md`, or `AGENTS.md`. Do not call `apply_patch` or edit any file.

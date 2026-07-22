@@ -1,0 +1,8 @@
+BLOCKED — implementation and regression tests are in place, but `node --test tests/` cannot pass in this sandbox: all HTTP tests fail before execution at `server.listen(0)` with `EPERM`.
+
+Changed:
+
+- [server/index.js](/Users/aipalm/.local/share/nx01/w/rfe4a3450fa47/f08d6b52f5d4d/A1/repo/server/index.js:35): raw body → signature verification → JSON parse/shape validation.
+- [tests/server.test.js](/Users/aipalm/.local/share/nx01/w/rfe4a3450fa47/f08d6b52f5d4d/A1/repo/tests/server.test.js:179): added malformed JSON ordering cases.
+
+`node --check` and `git diff --check` pass.

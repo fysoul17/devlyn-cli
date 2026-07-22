@@ -1,0 +1,3 @@
+UVR-STALE: N/A tests/server.test.js — patch only adds new webhook behavior; no authorized-file comment/docstring documents `/webhook`'s old interface or omits the new signature/shape option, so no stale user-visible text exists to update.
+PATH-TEST: FIRED tests/server.test.js:157 — goal-specified 400 `invalid_body` failure path (server/index.js:53-62) had no exercising test; added one minimal regression test for a validly-signed but shape-invalid body.
+PASS
