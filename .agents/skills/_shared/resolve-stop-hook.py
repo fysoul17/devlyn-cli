@@ -17,8 +17,8 @@ from types import ModuleType
 from typing import Any
 
 # Allow paths must make zero project-filesystem mutations; without this the
-# importlib loads below write .claude/skills/_shared/__pycache__ into the
-# project on every invocation (caught live by P-0078-O control (a)).
+# importlib loads below write a __pycache__ directory next to the installed
+# hook on every invocation (caught live by P-0078-O control (a)).
 sys.dont_write_bytecode = True
 
 
