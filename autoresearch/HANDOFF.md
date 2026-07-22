@@ -14,7 +14,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-22 night (iter-0078 **Stage A2 SHIPPED + both gates green** 0078.4; the 0077.5 removal obligation is discharged — next = runner settings-staging edit, then the first hook-bearing cohort)
+## 🚦 START-HERE — state after 2026-07-22 late night (iter-0078 Stage A2 SHIPPED 0078.4 + runner settings-staging SHIPPED 0078.5; **first hook-bearing cohort `nodeg-hook-20260722a` LAUNCHED health-gated from @3a7eeaf** — reads P-0078-KL/P-C when it completes)
 
 **Where the loop stands (one paragraph).** iter-0077 is CLOSED partial-ship
 (0077.5: W-T0 interphase 12.0% SHIPPED, W-B startup claim REVOKED at
@@ -39,21 +39,23 @@ pressure (CLI ~9-block cap honest bound). Remaining 0078 reads P-KL/P-C
 ride the first hook-bearing cohort.
 
 **Next work (in order)**:
-1. **Runner settings-staging edit** (the only missing hook-bearing-cohort
-   prerequisite): stage_devlyn_context (run-ceiling-arm.sh:364-372) does
-   not stage .claude/settings.json today, so no cohort arm can carry the
-   Stop hook. Small benchmark-surface build + its own self-test; then the
-   cohort launches with an explicit hook-bearing NEW-baseline label,
-   never mixed into 0077 aggregation.
-2. **First hook-bearing cohort** (reads P-0078-KL + P-0078-C, K2a
-   partition expected 0 report-only) — quiet-window + health-gate + pin
-   rules below all apply; F11 K2a from -22a is the pre-hook baseline
-   datum.
-3. **Startup lever re-registration** (fail-open obligation from 0077.5)
+1. **Read cohort `nodeg-hook-20260722a`** (IN FLIGHT — launched
+   2026-07-22 night, health-gated 2×20min, worktree @3a7eeaf, run-owned
+   claude 2.1.215 copy at pins/iter0078-cohort/ + codex vendor 0.144.5;
+   launcher log pins/iter0078-cohort/hook-cohort-launch.log). Reads:
+   P-0078-KL (antecedent-conditioned — only rows with {same-session ∧
+   incomplete-at-Stop} are diagnostic; no antecedent → NON_DIAGNOSTIC,
+   never a failure) + P-0078-C (K2a partition = 0 expected, report-only,
+   never a revert trigger alone). NEW baseline — the verdict now carries
+   cohort_identity.stop_hook_staged mechanically; never mix into 0077
+   aggregation. F11 K2a from -22a is the pre-hook baseline datum.
+   Diagnostic-draw rate ≈ 1/3 — a pre8/cmds=0 F7 draw exits 86 cheap;
+   relaunch with a fresh id.
+2. **Startup lever re-registration** (fail-open obligation from 0077.5)
    — new mechanism hypothesis required (mechanical absorption is
    falsified); residual data: startup median 250s unmoved, phase_union
    frozen-five +31.7% (different lever class — executor/model work).
-4. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
+3. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
 
 **Cohort/row mechanics (binding, updated 2026-07-20)**: full cohort =
 `git worktree add --detach <path> <SHA>` (runner-SHA integrity —
