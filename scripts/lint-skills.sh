@@ -1139,8 +1139,9 @@ if ! grep -Fq 'The `--engine` flag does not disable default pairing' config/skil
   || ! grep -Fq 'the second judge uses the OTHER engine by default when available' config/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'the second judge uses the OTHER engine by default when available' .claude/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'the second judge uses the OTHER engine by default when available' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq '_shared/adapters/claude.md` `## Invocation' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq '_shared/adapters/claude.md` `## Invocation' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq '_shared/adapters/<name>.md' config/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq '`## Invocation`' config/skills/devlyn:resolve/references/phases/verify.md \
+  || ! grep -Fq '_shared/adapters/<name>.md` `## Invocation' config/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq '## Invocation' config/skills/_shared/adapters/claude.md \
   || ! grep -Fq '.devlyn/claude-judge.stdout' config/skills/_shared/adapters/claude.md; then
   bad "engine-neutral pair-judge dual declaration (iter-0060) out of sync"

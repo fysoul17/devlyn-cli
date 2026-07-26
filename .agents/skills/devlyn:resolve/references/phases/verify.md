@@ -198,42 +198,31 @@ When eligible and the orchestrator spawns a second VERIFY agent with the OTHER e
   and the assertion must cover the complete output ordering for both accepted
   (or scheduled) and rejected rows.
 
-Codex pair-JUDGE is read-only. Invoke `codex-monitored.sh` directly with
+The resolved pair-JUDGE is read-only. Codex keeps the monitored
+`codex-monitored.sh` route with
 `CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600` and
-`-c model_reasoning_effort=medium`; this is a
-bounded two-probe review, not implementation. Isolation blocks user config,
-AGENTS.md, hooks, and project rules from hidden context/tool
-side effects. Do not pipe it to `tail`, `head`, `grep`, `sed`, or `awk`.
-Capture stdout/stderr directly. The Codex judge must return JSONL findings on
-stdout; the orchestrator writes `.devlyn/verify.pair.findings.jsonl` and merges
-verdicts. Do not ask Codex to `apply_patch` or edit `.devlyn`.
-When the OTHER engine is Claude (codex/omp orchestrator), the judge call
-follows `_shared/adapters/claude.md` `## Invocation`: wrap headless `claude -p`
-as `python3 "$DEVLYN_SHARED_DIR/run-bounded.py" 600 -- claude -p ...` with
-`--permission-mode dontAsk`, an allowlist of `Read,Grep,Glob` plus the repo test
-command, hermetic settings, stdout captured to
-`.devlyn/claude-judge.stdout`. The same bounded-output contract and emission
-rule apply to that stdout file, and the orchestrator writes the same
-canonical `.devlyn/verify.pair.findings.jsonl`.
-The Codex prompt must include a bounded-output contract: no harness-doc reads,
+`-c model_reasoning_effort=medium`; isolation blocks user config, AGENTS.md,
+hooks, and project rules from hidden context/tool side effects. Do not pipe it
+to `tail`, `head`, `grep`, `sed`, or `awk`; capture stdout/stderr directly.
+Every other resolved OTHER engine follows `_shared/adapters/<name>.md`
+`## Invocation`. Capture the result as `.devlyn/<name>-judge.stdout`, then run
+`python3 "$DEVLYN_SHARED_DIR/collect-codex-findings.py" --devlyn-dir
+"<abs repo>/.devlyn" --stdout-file <name>-judge.stdout` before merge.
+The orchestrator writes the canonical `.devlyn/verify.pair.findings.jsonl`.
+The pair prompt must include a bounded-output contract: no harness-doc reads,
 maximum two targeted probes before first output, stop on the first
 verdict-binding finding, and emit PASS immediately after the bounded checks pass.
-If stdout is first captured to `.devlyn/codex-judge.stdout`, run
-`python3 "$DEVLYN_SHARED_DIR/collect-codex-findings.py"` before merge. That
-script is the deterministic boundary writer for
-`.devlyn/verify.pair.findings.jsonl`.
-If raw Codex stdout is captured as `.devlyn/codex-judge.stdout`,
-`verify-merge-findings.py` treats it as a diagnostic only. If stdout contains
-findings or a non-PASS summary while `.devlyn/verify.pair.findings.jsonl` is
-empty, VERIFY is `BLOCKED` for `verify.pair.emission-contract`; do not pass or
-silently recover from a broken capture contract.
+Raw stdout is diagnostic-only. A non-zero collector exit must write no
+canonical findings file: set the pair source to `BLOCKED` for
+`verify.pair.emission-contract`, and do not merge as though unparsed stdout were
+only a diagnostic. Do not ask the judge to edit `.devlyn`.
 
 Both pair-judge directions are wall-budgeted at 600s. The orchestrator records
 `state.phases.verify.judge_durations_ms: {"judge": <int>, "pair_judge": <int|null>}`
 as it collects each judge result; these wall durations are siblings of, never
 nested inside, normalized string `sub_verdicts`. A judge subprocess exit
 124 is a budget abort: before merge, the orchestrator writes
-`.devlyn/verify.pair.timeout.json` with `{"engine": "<codex|claude>",
+`.devlyn/verify.pair.timeout.json` with `{"engine": "<resolved name>",
 "budget_seconds": 600}`. Three cases are binding: marker plus no canonical pair
 findings and no parseable stdout findings records `pair_judge: "TIMEOUT"`,
 computes the merged verdict from mechanical plus primary judge, and surfaces
