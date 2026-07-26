@@ -14,7 +14,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-26 (iter-0080 **BUILT + GATED PARTIAL** 0080.2: emission boundary shipped, **A/B/C PASS · D falsified n=6 · E residual 5/6**, grok deliberately NOT emission-certified; next = clear the E residual, then register the post-anchor allow-scope defect)
+## 🚦 START-HERE — state after 2026-07-27 (iter-0080 continuation 0080.3: **three pre-registered measurements, all NEGATIVE, product files changed NONE**; both seats converged on stop-emission / register / pivot; next = **R-allow-scope**, gate part 2)
 
 **Where the loop stands (one paragraph).** iter-0077 is CLOSED partial-ship
 (0077.5: W-T0 interphase 12.0% SHIPPED, W-B startup claim REVOKED at
@@ -39,99 +39,57 @@ pressure (CLI ~9-block cap honest bound). Remaining 0078 reads P-KL/P-C
 ride the first hook-bearing cohort.
 
 **Next work (in order)**:
-0. **iter-0080 pair-emission boundary — BUILT + GATED, PARTIAL 2026-07-26
-   (`4ed7c8b`). Emission NOT certified, by design.**
-   [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md)
-   § "BUILT + GATED" has the raw results. SHIPPED: `--output-format json`,
-   variant (iv) isolation, the `--json-schema` prohibition, an engine-neutral
-   envelope pre-pass with an `EndTurn`-only fail-closed gate, and the unchained
-   dominance-anchor clause. **A PASS · B PASS · C PASS 3/3 · D FALSIFIED at n=6 ·
-   E residual 5/6.** Closing gate unsatisfied → doctor note stays, adapter
-   certification line stays, **no durable `pair grok` pin**.
-   **Next work, in order**: (a) step 2 prompt-delta A/B against the **json** arm
-   (`adapters/README.md:56-59` cond. 3) and/or step 3's frozen byte-forward
-   recovery + its B3+recovery test tier — either must clear P-0080-E's 5/6
-   residual to certify; (b) a **new registration** for the post-anchor
-   allow-scope residual that falsified P-0080-D (the judge's *second* command
-   falls outside the bare-anchor rule and the review dies at exit 0 — widening
-   the allowlist stays forbidden).
-   Binding facts the next session must not re-derive: `--json-schema` is
-   REJECTED for the judge seat; **chained shell commands are
-   `PermissionCancelled` under `dontAsk` for every allow shape tested, including
-   an exact full-string rule** (cells at `emission-sweep/out/cell-*`); the
-   pre-0080 recipe **connected 65 MCP tools and injected both an MCP and a
-   plugin-skills reminder** into the judge conversation, so the 0079
-   `[skills] ignore` fix does NOT cover `~/.claude/plugins/marketplaces/` and any
-   grok seat run before `4ed7c8b` is context-contaminated. **Operator lesson,
-   third occurrence: sweep the vendor's documented knobs before concluding none
-   exists** (step-1 knobs, `HOME`, `ZDOTDIR` — all three paid).
+0. **R-allow-scope — the ONLY residual that can still move a failing gate
+   conjunct. Emission work is CLOSED for now (DECISIONS 0080.3, 2026-07-27).**
+   Register and close the post-anchor allow-scope defect: after B4 the judge runs
+   the dominance anchor correctly, states the right root cause, then dies at
+   exit 0 on a *later* exploratory command outside the bare-anchor allow rule
+   (`iterations/0080-pair-emission-boundary.md` § "What B4 actually bought").
+   That is gate part 2, it fails independently of emission, and **widening the
+   allowlist stays forbidden**.
 
-   **Superseded: iter-0079 N-model pair — BUILT + GATED, PARTIAL SHIP 2026-07-26.**
-   Shipped and proven: generic OTHER-engine spawn rule (binary wording replaced),
-   `adapters/grok.md`, doctor/lint catalog rows, README semantics, collector
-   zero-exit hardening. Gates: 6 PASS (isolation re-cert, P-A, F6a fired live,
-   P-D, P-E, P-G, P-H), **P-B 4/6 and P-F FALSIFIED on one shared cause** — a
-   narration preamble welded to output line 1 — so **FS-0079-A fired and the
-   emission dimension is VALID-NEGATIVE**. grok is wired/isolated/reachable/
-   probe-capable/fail-closed but **NOT emission-certified**; the doctor carries a
-   `not emission-certified` note and `adapters/grok.md` a certification line; no
-   durable pin was written. Path A validated: grok executed a mandatory
-   dominance-loss probe through the scoped `--allow` rule and found the seeded
-   CRITICAL correctly. **Gates caught three defects in shipped artifacts** —
-   `~/.agents/skills` leaking devlyn skill descriptions into the judge, the
-   `Bash(cmd *)` allow template silently destroying reviews on no-arg commands,
-   and the collector's zero-exit silent PASS. Six orchestrator claims retracted
-   across the iter; every one was caught by a seat.
-   **Superseded status line (was: REGISTERED-FROZEN, READY TO BUILD):** Six rounds. A two-seat freeze on 07-25 broke within a day when
-   the Codex quota reset and the second cross-vendor seat found two mechanical
-   holes all prior parties had missed (unenforceable Boolean `pair_judge: yes`
-   vs mandatory-probe specs; zero-exit silent pair PASS at
-   `collect-codex-findings.py:64-68` → `verify-merge-findings.py:877-878`).
-   **Operating lesson, binding: a same-vendor second seat does not substitute
-   for a cross-vendor one — the two-seat freeze record's own caveat was the
-   operative risk, not a formality.** Resolved by path A (scoped shell at
-   claude-judge parity, measured live); final round had all three seats at
-   stands-with-amendments with every item applied. Build gate = P-0079-A..H plus
-   a re-run of the five-invariant isolation table against the **shell-bearing**
-   recipe (the 07-25 receipt certified the pre-shell one). Named residual for a
-   follow-up registration: `verify-merge-findings.py:877-878`'s default-to-PASS,
-   where three failure paths converge — deliberately NOT changed here
-   (engine-neutral, pipeline-wide scope). Grok R0 + Fable 5 R1/R2/R3; freeze declared on
-   the R3 seat's pre-commitment after its last carve-out edit landed. Codex seat
-   still owed (quota-dead until 7/29) — R0 question set is durable in the iter
-   doc and can go to Codex unchanged against the corrected text. Build routes
-   through `.devlyn/engines.json` `executor: codex`, which is the same dead
-   engine, so building needs either the 7/29 window or an explicit pin change.
-   Isolation is MEASURED and the recipe is frozen; four orchestrator claims were
-   retracted during the iter (listed in the doc's freeze record).
+   **Do NOT reopen emission without new evidence.** iter-0080's continuation
+   round ran three pre-registered measurements, all negative, and both seats
+   converged on stop-register-pivot (Grok: "strategic emission-tunnel"; Codex:
+   "continuing to tweak emission now would become drift"). Facts the next
+   session must not re-derive — § "CONTINUATION ROUND" has the raw data:
+   - **All three `--output-format` values are now measured.** `streaming-json` is
+     VALID-NEGATIVE (a run welds narration *and* contract into one `text` run);
+     `--json-schema` is REJECTED for the judge seat; `json` ships.
+   - **The weld's mechanism**: `.text` under `--output-format json` is the
+     concatenation of per-turn assistant text with **no separator**.
+   - **Prompt deltas via `--rules` measured zero effect and zero degradation**
+     (n=6/arm, interleaved control, both arms 6/6 welded). One text, one channel —
+     this does not close prompt deltas generally.
+   - **Frozen step-3 recovery is measured but NOT shippable**: 16/17 `EndTurn`
+     rows recover, and its Tier B3+recovery is **not green** — a TAB-separated
+     dual-contract is admitted because the collector strips leading whitespace and
+     the last summary overwrites the first. Registered residuals: **R-weld**
+     (16/16, not bar-cleared), **R-fence** (paired markdown fence, both
+     transports, needs its OWN freeze — never a retroactive amendment to v1),
+     **R-dual-tab**.
+   - **Chained shell commands are `PermissionCancelled` under `dontAsk` for every
+     allow shape tested**, including an exact full-string rule
+     (`emission-sweep/out/cell-*`).
+   - Any grok seat run before `4ed7c8b` is **context-contaminated**: that recipe
+     connected 65 MCP tools and injected both an MCP and a plugin-skills reminder,
+     so the 0079 `[skills] ignore` fix does **not** cover
+     `~/.claude/plugins/marketplaces/`.
+   - **Operator lesson, four occurrences: sweep the vendor's documented knobs
+     before concluding none exists** (step-1 knobs, `HOME`, `ZDOTDIR`, and the
+     third `--output-format` value the sweep skipped).
+
    **Operational gotcha, binding for ANY future grok seat**: a bare `grok -p`
-   invocation is NOT isolated. Measured live 2026-07-25 via `grok inspect`
-   (0.2.112) in this repo: 6 MCP servers auto-scanned from `~/.claude.json`
-   (`07-mcp-servers.md:214`) including **`pyx-memory` (writes memory)** and
-   **`MCP_DOCKER` (GitHub write tools)**, 33 hooks, 99 skills, and ~10.5k tokens
-   of injected `~/.claude/CLAUDE.md` + repo `AGENTS.md`/`CLAUDE.md`. The
-   iter-0079 R0 round was run this way with `--always-approve` — repo verified
-   clean (HEAD 9a7c359 unmoved) but the capability was live, and that round is
-   therefore NOT context-independent. Isolate before reusing.
-   `iterations/0079-n-model-pair-grok.md` (R0-amended, **NOT FROZEN**). User
-   directive 2026-07-25: grok/Kimi K3/Qwen must all be pinnable as pair judges.
-   Root cause was never an engine whitelist — `BLOCKED:invalid-engine-config` is
-   the fail-closed response to a missing `_shared/adapters/<name>.md`. R0 ran
-   **two-seat, not three**: Grok GO-WITH-EDITS (7 findings); **Codex seat dead —
-   quota exhausted until 2026-07-29** (`codex --version` passes, spawn exits 1:
-   "You've hit your usage limit"). User first chose to wait, then redirected
-   2026-07-25: **substitute Fable 5 for the Codex seat** rather than wait. Round
-   now = Grok (xAI) + Fable 5 (Anthropic) + Opus 5 orchestrator (Anthropic) —
-   **only ONE cross-vendor seat**, so convergence here is weaker evidence than
-   the Grok↔Codex rounds of 0068.1/0078.1; iter doc records the caveat. Question
-   sets are durable in the iter doc (scratchpad packets are session-scoped). Two orchestrator claims already
-   WITHDRAWN and verified at live lines — do not resurrect them: (a) "one file,
-   zero skill-body changes" is false, spawn recipes are binary-hardcoded
-   (`engine-preflight.md:51`, `verify.md:211`); (b) the memory-sourced grok
-   recipe used non-existent tool IDs and `--always-approve` (= `--yolo`, auto-approves
-   file writes). **Side effect of the same outage**: the harness has NO pair judge
-   at all until 7/29, and machine-local `.devlyn/engines.json` `executor: codex`
-   hard-blocks every `/devlyn:resolve` run in the meantime.
+   invocation is NOT isolated — measured live via `grok inspect`, it auto-scans
+   `~/.claude.json` for MCP servers (incl. memory-writing and GitHub-write
+   tools), hooks, skills, and injects `~/.claude/CLAUDE.md` + repo
+   `AGENTS.md`/`CLAUDE.md`. Use the `adapters/grok.md ## Invocation` recipe.
+   **Second binding gotcha (2026-07-27)**: any instrument that reads
+   `~/.grok/auth.json` must redact **recursively** — the credential is a nested
+   object, so a top-level-only redactor leaks the access JWT, the refresh token,
+   and PII into artifacts and transcripts. Also unexplained and NOT asserted:
+   two clusters of `Not signed in` failures each followed ~4 rapid isolated runs,
+   with rotation and expiry both falsified.
 1. **Startup lever re-registration** (fail-open obligation from 0077.5)
    — new mechanism hypothesis required (mechanical absorption is
    falsified); residual data: startup median 250s unmoved, phase_union

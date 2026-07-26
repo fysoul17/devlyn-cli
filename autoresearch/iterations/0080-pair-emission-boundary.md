@@ -886,3 +886,156 @@ connections. P-0080-C is the only thing that certifies that.
 B1 holds only if the adapter recipe is the sole spawn path; B4's real gate is
 the behavioural P-0080-D, not the markdown edit. Both limits are recorded rather
 than papered over.
+
+## CONTINUATION ROUND 2026-07-27 — three pre-registered measurements, all NEGATIVE. **SHIP NOTHING.**
+
+Three-seat round (Opus 5 orchestrator · Codex GPT-5.6-sol · Grok 4.5), R0 + R1,
+both seats independent on every load-bearing citation. Artifacts are
+session-scoped; every claim below is reproducible from the pre-registrations and
+raw outputs named in each subsection.
+
+### M1 — KS-5: the step-1 knob sweep was incomplete, and completing it is a NEGATIVE
+
+`--output-format` documents **three** values (`0080-…md:91`); only `json` and
+`--json-schema` were ever measured. `grep -in streaming` over this iter returns
+exactly one hit — that table cell. The one artifact, `out/diag-stream.ndjson`, is
+a 1-turn `Cancelled` diagnostic cited nowhere. **So the amended sequencing rule's
+"survives both knobs" license (line 480+) rested on an unmeasured third value.**
+Both seats confirmed this independently.
+
+Measured under the shipped recipe verbatim, sole delta `streaming-json`, n=4:
+the stream separates narration from contract via an interleaved `thought` run —
+**and `stream-3` fires the pre-registered falsifier**: narration *and* the
+canonical contract inside a **single** maximal `text` run, plus a ```` ```json ````
+fence. 3/4 separable is **not** reported as a partial pass; the falsifier is
+"any", the same discipline P-0080-D was held to at line 806.
+
+**Path (i) streaming-json is VALID-NEGATIVE for production.** What survives is a
+mechanism this iter never named: **`.text` under `--output-format json` is the
+concatenation of per-turn assistant text with no separator** — that is *why* the
+weld exists. Step 1 is now complete, so steps 2/3 are licensed by measurement
+rather than by omission.
+
+### M2 — Step 2 (prompt delta): FALSIFIED at n=6 per arm, matched interleaved control
+
+Channel = `--rules` (alias `--append-system-prompt`), the vendor's documented
+**system-prompt** channel, text wrapped in `<human_rules>`
+(`~/.grok/docs/user-guide/12-project-rules.md:163-171`) — chosen over a judge-prompt
+edit so the canonical `verify.md` body stays untouched and the delta stays
+engine-scoped. Rule text kept narrow per that guide's line **177**
+("shorter, specific rules are easier for Grok to follow"), naming only the two
+measured defect shapes. `--system-prompt-override` was rejected: it replaces the
+default system prompt and skips `--rules` (line 171) — `--json-schema`-class
+capability-suppression risk.
+
+| arm | n | collector-accepted | welded | EndTurn | turns≥2 | seeded CRITICAL | PASS |
+|---|---|---|---|---|---|---|---|
+| A (control) | 6 | **0/6** | **6/6** | 6/6 | 6/6 | 6/6 | 0 |
+| B (+`--rules`) | 6 | **0/6** | **6/6** | 6/6 | 6/6 | 6/6 | 0 |
+
+**Zero effect, zero degradation.** First-turn narration is near-identical across
+arms. Frozen bar condition 1 fails → both seats' pre-committed flip to (iii)
+fires. The control measured **6/6** welded, worse than P-0080-E's 5/6.
+
+**Not claimed**: that no prompt delta can work. One text, one channel — a negative
+existence claim must not outrun its cells.
+
+### M3 — the frozen step-3 fallback, measured on 18 REAL artifacts BEFORE building
+
+Faithful prototype of § "Pre-committed step-3 fallback" with no additions.
+
+| Result | Count |
+|---|---|
+| `EndTurn` rows recovered, real CRITICAL + `NEEDS_WORK` preserved | **16** |
+| `EndTurn` rows still rejected | **1** — the fence row |
+| non-`EndTurn` correctly refused (`Cancelled`) | 1 |
+
+The single failure is **a defect shape neither 0079 nor 0080 recorded**: the model
+wraps the finding in a markdown fence. Byte-forward recovery discards the *opening*
+fence with the preceding prose; the **trailing** ` ``` ` line survives and fails the
+line contract. Observed independently on **both** transports (json arm and
+streaming arm) — not a singleton.
+
+**And Tier B3+recovery is NOT green.** Codex constructed, and the orchestrator
+verified executable, a **tab-separated dual-contract** composition:
+an INFO finding + `# SUMMARY PASS`, then a TAB-indented CRITICAL + `# SUMMARY
+NEEDS_WORK`. The tab defeats a `}{` adjacency check while
+`collect-codex-findings.py` strips leading whitespace per line and lets the **last**
+summary overwrite the first — so two verdict documents are admitted as one. The
+frozen rule's binding "dual-document `.text` still rejects" constraint is therefore
+**not satisfied by a naive implementation**, which is itself the finding: the
+constraint is harder to implement than the freeze text implies.
+
+Grok added a third gap: an **opening-only** fence (no closer) would ACCEPT under the
+frozen rule today — "the freeze is not a coherent fence policy."
+
+### Seat convergence
+
+| Decision | Codex | Grok | Resolved |
+|---|---|---|---|
+| D1 — is 16/17 "cleared"? | **No** — partial liveness only; no prospectively frozen bar | **No** — gate part 1 needs a co-frozen bar AND a green negative tier | **NOT CLEARED.** Even 17/17 would not clear: clause D (tier green) independently fails |
+| D2 — fence handled inside recovery? | **No** as a retroactive amendment to frozen v1; **yes** only via a prospectively registered v2 | **No** under this freeze; a new freeze may license a bounded strip | **Same position.** Not in v1; a v2 needs its own freeze + negatives written first |
+| D3 — what ships? | **No new prompt or collector code.** Keep B1/B3 + both warnings; register everything | Register three residuals; optional freeze-as-written build only as explicitly non-certifying | **SHIP NOTHING** — Codex's stricter reading wins on evidence: building a mechanism whose frozen negative tier is known-failing is not licensed by the step-2 flip |
+| Drift? | Not yet; continuing to tweak emission would be | **Yes — strategic emission-tunnel**; hygiene excellent, allocation drifted | **Stop emission. Register. Pivot to allow-scope** — the only residual whose clearance can move a failing gate conjunct |
+
+The step-2 flip licensed *attempting* (iii), not *claiming clearance* — and the
+tab-dual bypass shows the attempt is not ready to be product code.
+
+### Registered residuals (measured anchors, no fix shipped)
+
+- **R-weld** — narration preamble welded to the first content bytes of `.text`.
+  Named at freeze; frozen byte-forward recovery clears **16/16** pure-weld
+  `EndTurn` rows on this corpus. **Mechanism-addressable, NOT bar-cleared.**
+- **R-fence** — paired markdown fence around the contract. Two independent
+  transports. Frozen recovery fails closed on it. **New residual; needs its own
+  freeze + bar + negative tier before any code.** Note the step-2 rule text
+  explicitly forbade fences and the model emitted one anyway.
+- **R-dual-tab** — the dual-document constraint is defeated by whitespace that the
+  collector strips but an adjacency check does not. **Blocks Tier B3+recovery.**
+- **R-allow-scope** — post-anchor exploratory command outside the bare-anchor allow
+  rule (§ "What B4 actually bought"). Gate part 2. **Independently failing; no
+  emission work can touch it.**
+
+### Closing-gate verdict: UNCHANGED — NOT emission-certified
+
+The `not emission-certified` note stays in `engine-doctor.sh`, the certification
+line stays in `adapters/grok.md`, no durable `pair grok` pin. **Product files
+changed: none.**
+
+### Orchestrator retractions this round: 4
+
+1. **P-C admission rule** — Codex composed a bypass from measured components
+   (prose diagnosis discarded as unparseable + INFO+PASS admitted); orchestrator
+   verified it at `collect-codex-findings.py:64-65`. P-C would have *opened* a
+   false-accept path the shipped `json` route already closes. Withdrawn.
+2. **"~83% of clean reviews become BLOCKED"** — a category transfer of P-0080-E's
+   probe-route rate onto the clean route. Grok caught it. Retracted.
+3. **"Only step 2 leaves clean PASS reachable"** — true only against (iii); under
+   the measured streaming morphology path (i) kills it too. Narrowed.
+4. **"Both full pre-registrations executed"** — too strong: Grok's R0 falsifier
+   required a paired clean route, which the step-2 pre-registration explicitly
+   excluded. Codex caught it. (Does not rescue the delta: condition 1 failed 6/6.)
+
+Also corrected on verification: the vendor quote cited as `12-project-rules.md:175`
+is at line **177** (Codex).
+
+**Seat claims verified before adoption: 2, both CONFIRMED** (the tab-dual
+composition, executed; the citation line number).
+
+### P-AUTH — FALSIFIED, and the probe itself was the finding
+
+Two clusters of `Not signed in` failures each followed ~4 rapid isolated runs.
+Hypothesis — refresh-token rotation written into `$ISO_HOME` and discarded with it
+— **FALSIFIED**: before / iso-after / host-after were byte-identical. Not expiry
+either: the credential in use had a 6-hour life and the same file that "failed"
+worked afterwards. **Cause unknown; not asserted.**
+
+**Codex found a security defect in the probe itself**: its redactor masked only
+top-level string values, so the nested auth object — access JWT, refresh token, and
+PII — was written to a plaintext artifact and echoed into the orchestrator's
+transcript. Artifacts purged, the seat log redacted, three stale `$ISO_HOME`
+directories holding credential copies removed, and the probe **deleted** rather
+than repaired (its hypothesis is falsified, so a credential-dumping instrument has
+no remaining use). **The credential must be rotated.** Recorded as a first-class
+lesson: an instrument that reads secrets needs recursive redaction, and "it is only
+a scratchpad file" is not a control.
