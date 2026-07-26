@@ -5,7 +5,7 @@
 executor: no
 pair_judge: yes
 
-Certification status: the pair-judge seat is wired, isolated, reachable, and probe-capable, but not emission-certified; P-0079-B measured 4/6, and P-0079-F failed emission because a narration preamble was welded to output line 1; a durable `pair grok` pin remains gated on follow-up emission registration and the standing seat-fitness rule.
+Certification status: the pair-judge seat is wired, reachable, and probe-capable, but not emission-certified; isolation has three independent invariants — tool callability, MCP connection/enumeration, and context injection — and only P-0080-C can certify them; the doctor cannot. Before this change, the shipped recipe connected 65 MCP tools and injected both an MCP reminder and a plugin-skills reminder into the judge's conversation; a durable `pair grok` pin remains gated on follow-up emission registration and the standing seat-fitness rule.
 
 ## Invocation
 
@@ -27,7 +27,7 @@ escalation remains a reported solo skip).
 # $NEUTRAL  = empty dir outside any git repo
 # $REPO     = absolute repo root (redirects MUST be absolute — cwd is $NEUTRAL)
 cd "$NEUTRAL"
-GROK_HOME="$ISO_HOME" \
+HOME="$NEUTRAL" ZDOTDIR="$NEUTRAL" GROK_HOME="$ISO_HOME" \
 GROK_CLAUDE_MCPS_ENABLED=false GROK_CURSOR_MCPS_ENABLED=false \
 GROK_CLAUDE_SKILLS_ENABLED=false GROK_CURSOR_SKILLS_ENABLED=false \
 GROK_CLAUDE_HOOKS_ENABLED=false GROK_CURSOR_HOOKS_ENABLED=false \
@@ -39,17 +39,25 @@ python3 "$DEVLYN_SHARED_DIR/run-bounded.py" 600 -- grok -p "<judge prompt>" \
   --disallowed-tools "Agent,use_tool,search_tool" \
   --allow 'Bash(<repo probe command family>)' \
   --reasoning-effort medium \
+  --output-format json \
   > "$REPO/.devlyn/grok-judge.stdout" 2> "$REPO/.devlyn/grok-judge.stderr"
 ```
 
 Copy `auth.json` into `$ISO_HOME` for every run and seed its `config.toml` with
-the shown `[plugins]` and `[skills] ignore` entries.
+the shown `[plugins]` and `[skills] ignore` entries. Before launch, create
+`$NEUTRAL/.zshenv` containing `export HOME=<the operator's real home>`.
+Both overrides are needed because grok scans `~/.claude.json` from `$HOME`,
+while zsh reads rc files from `$ZDOTDIR`, which is exported in some environments.
 `$NEUTRAL` and `$ISO_HOME` must be on paths that do not embed a project or repo identifier.
 `--permission-mode plan` is forbidden headless because it silently blocks
 all tools and returns an empty review; `--always-approve` is banned because it
 auto-approves writes. `--tools` and `--disallowed-tools` are headless-only (the
 TUI warns and ignores them); when both are present, the disallow list wins and
 removes tools entirely rather than merely gating execution.
+
+Never use `--json-schema` for the pair judge: measured runs degraded the
+tool-use loop (2/3 made zero tool calls and fabricated findings), and a
+`Cancelled` run emitted a PASS-shaped payload after its schema had failed.
 
 The `--allow` rule must cover the full probe-command family the judge may need,
 and the judge prompt must name the exact permitted command(s). Derive the prompt
@@ -60,6 +68,10 @@ otherwise the repo's existing test/CLI runner. If none exists, the probe
 obligation does not arise and a static review is correct for that spec.
 The documented `Bash(<command>)` form matches the exact command or its prefix;
 the trailing ` *` form fails a no-argument command.
+Under `dontAsk`, every allow shape tested for a chained command — including an
+exact full-string rule for the chain — returned `PermissionCancelled`, so the
+mandatory dominance-loss anchor must run unchained with the allow rule scoped
+to that bare anchor.
 
 Grok's deny semantics are not Claude-parity: an out-of-allowlist command silently
 truncates the review at exit 0. Treat the resulting collector rejection as

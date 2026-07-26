@@ -177,7 +177,11 @@ When eligible and the orchestrator spawns a second VERIFY agent with the OTHER e
   A targeted probe must compare the full externally visible result
   (stdout/stderr/exit and full parsed output object, including accepted/scheduled
   rows, rejected rows, and remaining state when present), not just a single
-  property. When the spec names exact keys, row shapes, JSON object shape, or an
+  property. The mandatory dominance-loss anchor must run as a single command
+  with no shell chain operators. Chains used only to re-capture exit status are
+  forbidden because the tool result already carries it; this does not ban
+  compound shell generally or multi-step probes issued as separate tool calls.
+  When the spec names exact keys, row shapes, JSON object shape, or an
   exact error body, compare parsed key sets/deep equality so aliased keys,
   missing keys, and extra keys are verdict-binding failures. Use the spec's
   visible input key names literally when constructing the probe input. For

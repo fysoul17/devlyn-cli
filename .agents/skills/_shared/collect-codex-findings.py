@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Normalize raw Codex pair-JUDGE stdout into canonical VERIFY JSONL."""
+"""Normalize raw pair-JUDGE stdout into canonical VERIFY JSONL."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from typing import Any
 
 
 FINDING_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"}
+ENVELOPE_KEYS = {"text", "stopReason", "sessionId", "requestId"}
 
 
 def reject_json_constant(token: str) -> None:
@@ -66,28 +67,73 @@ def collect(stdout_path: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, 
     return findings, summary
 
 
+def collect_stdout(stdout_path: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    stdout_text = stdout_path.read_text(encoding="utf-8")
+    try:
+        candidate = loads_strict_json(stdout_text)
+    except ValueError:
+        candidate = None
+    if (
+        not isinstance(candidate, dict)
+        or not ENVELOPE_KEYS.issubset(candidate)
+        or "severity" in candidate
+    ):
+        return collect(stdout_path)
+
+    stop_reason = candidate["stopReason"]
+    if stop_reason != "EndTurn":
+        raise SystemExit(
+            f"error: envelope stopReason must be 'EndTurn' at {stdout_path}; "
+            f"got {stop_reason!r}"
+        )
+    envelope_text = candidate["text"]
+    if not isinstance(envelope_text, str):
+        raise SystemExit(f"error: envelope text must be a string at {stdout_path}")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        text_path = pathlib.Path(tmp) / "envelope-text.stdout"
+        text_path.write_text(envelope_text, encoding="utf-8")
+        try:
+            return collect(text_path)
+        except SystemExit as exc:
+            raise SystemExit(f"error: envelope text rejected: {exc}") from None
+
+
 def self_test() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
-        stdout_path = root / "codex-judge.stdout"
+        stdout_path = root / "pair-judge.stdout"
         out_path = root / "verify.pair.findings.jsonl"
-        summary_path = root / "codex-judge.summary.json"
+        summary_path = root / "pair-judge.summary.json"
+
+        def assert_rejected(text: str, label: str, *message_parts: str) -> None:
+            stdout_path.write_text(text, encoding="utf-8")
+            try:
+                collect_stdout(stdout_path)
+            except SystemExit as exc:
+                message = str(exc)
+                assert all(part in message for part in message_parts)
+            else:
+                raise AssertionError(f"{label} must be rejected")
+
+        plain_finding = {"id": "a", "severity": "HIGH"}
+        plain_summary = {"verdict": "NEEDS_WORK"}
         stdout_path.write_text(
-            json.dumps({"id": "a", "severity": "HIGH"}) + "\n"
-            + '# SUMMARY {"verdict":"NEEDS_WORK"}\n',
+            json.dumps(plain_finding) + "\n"
+            + "# SUMMARY " + json.dumps(plain_summary) + "\n",
             encoding="utf-8",
         )
-        findings, summary = collect(stdout_path)
+        findings, summary = collect_stdout(stdout_path)
+        assert findings == [plain_finding]
+        assert summary == plain_summary
         write_outputs(findings, summary, out_path, summary_path)
         assert out_path.read_text(encoding="utf-8").count("\n") == 1
         assert loads_strict_json(summary_path.read_text(encoding="utf-8"))["verdict"] == "NEEDS_WORK"
-        stdout_path.write_text('{"id":"nan","severity":NaN}\n', encoding="utf-8")
-        try:
-            collect(stdout_path)
-        except SystemExit as exc:
-            assert "invalid JSON numeric constant: NaN" in str(exc)
-        else:
-            raise AssertionError("NaN Codex stdout finding must not normalize")
+        assert_rejected(
+            '{"id":"nan","severity":NaN}\n',
+            "NaN pair-JUDGE stdout finding",
+            "invalid JSON numeric constant: NaN",
+        )
         rejection_cases = (
             ("", "no SUMMARY line"),
             ('# SUMMARY {}\n', "empty SUMMARY object"),
@@ -95,13 +141,95 @@ def self_test() -> int:
             ('# SUMMARY {"verdict":"UNKNOWN"}\n', "unknown verdict"),
         )
         for text, label in rejection_cases:
-            stdout_path.write_text(text, encoding="utf-8")
-            try:
-                collect(stdout_path)
-            except SystemExit as exc:
-                assert str(exc) == "error: non-PASS SUMMARY without JSONL findings"
-            else:
-                raise AssertionError(f"{label} must not normalize to PASS")
+            assert_rejected(
+                text,
+                label,
+                "error: non-PASS SUMMARY without JSONL findings",
+            )
+
+        def envelope(text: Any, stop_reason: str = "EndTurn") -> str:
+            return json.dumps(
+                {
+                    "text": text,
+                    "stopReason": stop_reason,
+                    "sessionId": "session",
+                    "requestId": "request",
+                }
+            )
+
+        envelope_finding = {
+            "id": "envelope-finding",
+            "severity": "HIGH",
+            "detail": {"preserved": True},
+        }
+        envelope_summary = {"verdict": "NEEDS_WORK"}
+        stdout_path.write_text(
+            envelope(
+                json.dumps(envelope_finding)
+                + "\n# SUMMARY "
+                + json.dumps(envelope_summary)
+                + "\n"
+            ),
+            encoding="utf-8",
+        )
+        findings, summary = collect_stdout(stdout_path)
+        assert findings == [envelope_finding]
+        assert summary == envelope_summary
+
+        assert_rejected(
+            envelope("review completed without findings"),
+            "findings-less envelope text",
+            "error: envelope text rejected: error: invalid JSONL",
+        )
+        assert_rejected(
+            envelope('{"findings":[],"verdict":"PASS"}', "Cancelled"),
+            "Cancelled envelope",
+            "envelope stopReason must be 'EndTurn'",
+            "'Cancelled'",
+        )
+        assert_rejected(
+            envelope("", "UnknownStop"),
+            "unknown envelope stopReason",
+            "envelope stopReason must be 'EndTurn'",
+            "'UnknownStop'",
+        )
+        assert_rejected(
+            envelope(None),
+            "non-string envelope text",
+            "error: envelope text must be a string",
+        )
+        welded = (
+            "I will inspect the result."
+            + json.dumps(envelope_finding)
+            + "\n# SUMMARY "
+            + json.dumps(envelope_summary)
+            + "\n"
+        )
+        assert_rejected(
+            envelope(welded),
+            "welded envelope preamble",
+            "error: envelope text rejected: error: invalid JSONL",
+        )
+        dual_document = (
+            json.dumps(envelope_finding)
+            + json.dumps({"id": "second", "severity": "LOW"})
+            + "\n# SUMMARY "
+            + json.dumps(envelope_summary)
+            + "\n"
+        )
+        assert_rejected(
+            envelope(dual_document),
+            "concatenated envelope documents",
+            "error: envelope text rejected: error: invalid JSONL",
+        )
+        clean_summary = {"verdict": "PASS"}
+        stdout_path.write_text(
+            envelope("# SUMMARY " + json.dumps(clean_summary) + "\n"),
+            encoding="utf-8",
+        )
+        findings, summary = collect_stdout(stdout_path)
+        assert findings == []
+        assert summary == clean_summary
     return 0
 
 
@@ -122,9 +250,9 @@ def write_outputs(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--devlyn-dir", default=".devlyn")
-    parser.add_argument("--stdout-file", default="codex-judge.stdout")
+    parser.add_argument("--stdout-file", default="pair-judge.stdout")
     parser.add_argument("--out", default="verify.pair.findings.jsonl")
-    parser.add_argument("--summary-out", default="codex-judge.summary.json")
+    parser.add_argument("--summary-out", default="pair-judge.summary.json")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
@@ -135,7 +263,7 @@ def main() -> int:
     if not stdout_path.is_file():
         sys.stderr.write(f"error: {stdout_path} not found\n")
         return 1
-    findings, summary = collect(stdout_path)
+    findings, summary = collect_stdout(stdout_path)
     write_outputs(findings, summary, devlyn / args.out, devlyn / args.summary_out)
     print(json.dumps({"findings_count": len(findings), "summary": summary}, sort_keys=True))
     return 0

@@ -789,6 +789,65 @@ re-freezing the INFO+PASS clean-route criterion (a criterion change, not a
 collector bug — `collect-codex-findings.py:64-65` is correct) · shipping
 `Bash(echo *)` or `--always-approve`.
 
+## BUILT + GATED 2026-07-26 — PARTIAL. Emission NOT certified (as the contract predicted).
+
+Build delegated to Codex (`-s workspace-write`, executor pin). Files changed:
+`adapters/grok.md`, `collect-codex-findings.py`, `verify.md` (+ `.claude` and
+`.agents` mirrors), and one knock-on to `scripts/lint-skills.sh`. Self-test green,
+`lint-skills.sh` **All checks passed**.
+
+### Gate results
+
+| Prediction | Result | Evidence |
+|---|---|---|
+| **P-0080-A** unwrap fail-closed | **PASS 3/3** | the **real** `out/schema-1` artifact (`Cancelled` + `{"findings":[],"verdict":"PASS"}`) → exit 1, **no canonical file**, 3/3. Bonus real-data checks: `sjson-2` (welded `.text`) → exit 1 fail-closed; `sjson-1` (clean) → exit 0 with the true `CRITICAL priority-order-not-applied` @ `allocator.py:13` preserved |
+| **P-0080-B** no default-route regression | **PASS** | **25 real** `codex-judge.stdout` / `claude-judge.stdout` artifacts from `benchmark/auto-resolve/` and `.devlyn/runs/` replayed through old vs new collector: identical exit, identical stdout, identical canonical files. 0 mismatches |
+| **P-0080-C** isolation + evidence fidelity, 5 invariants | **PASS 3/3** | against the **literal shipped recipe**: `mcp_server_connected` 0 · MCP reminder 0 · skills reminder 0 · no `logs/mcp/` · no host `.zshenv` error · `Path.home()`/`.gitconfig`/`.npmrc` baseline-equivalent · `EndTurn` |
+| **P-0080-D** unchained probe | **FALSIFIED at n=6** | 5/6 `EndTurn` with the correct CRITICAL, **1 `Cancelled`**. The frozen falsifier is *"any `PermissionCancelled`"*, so this is a falsification — reporting the first 3 as "3/3" would be cherry-picking the frozen bar |
+| **P-0080-E** emission residual | **5/6 welded** | baseline recorded, **no pass bar** by construction. Collector correctly rejects 3/3 on the runs checked end-to-end |
+
+### A receipt/ship-shape divergence I caught in my own work
+
+Every iter-0080 measurement had been taken with `--no-plan`, which the shipped
+recipe does **not** contain — the same stale-receipt class that recurred three
+times in iter-0079 and that Treatment-Seat Identity Fidelity (0074.2 (f))
+exists to prevent. Rather than add the flag to match my receipts, P-0080-C was
+re-run against the recipe **exactly as shipped**: 3/3 PASS. `--no-plan` was never
+load-bearing, so nothing was added. The certified shape is now the shipped shape.
+
+### What B4 actually bought, and what it did not
+
+**Bought**: before B4 the probe route was **0/6** — every run died at turn 1 with
+the anchor chained. After B4 the anchor executes in **6/6** runs, and run 3's own
+narration reads *"Running the mandatory dominance-loss probe as a single
+comman[d]"* — the instruction is being followed.
+
+**Did not buy**: elimination. Run 5 reached `turns=3`, ran the probe
+successfully, stated the correct root cause (*"the allocator walks input order
+and never sorts by priority"*), and was then `Cancelled` on a **later exploratory
+command** outside the bare-anchor allow rule. So the failure mode **moved and
+narrowed**: from "the anchor itself is unauthorizable" to "the judge's follow-up
+command is out of allow scope". That is the P-H under-scoped-allowlist hazard,
+not the chain defect, and it needs its own registration — widening the allowlist
+is still forbidden.
+
+Grok's R1 predicted exactly this shape: *"B4 is prompt text. Models still emit
+`; echo "EXIT:$?"`… P-0080-D is the real gate (behavioural), not the markdown
+edit."* Prose reduced the rate from 6/6 to 1/6; it did not mechanize it.
+
+### Closing-gate verdict: NOT emission-certified
+
+Gate parts 1 (residual cleared) and 2 (probe path, no `PermissionCancelled`) both
+fail. Therefore: the `not emission-certified` note **stays** in `engine-doctor.sh`,
+the certification line **stays** in `adapters/grok.md`, and **no durable `pair
+grok` pin is written**. This is the 4-part conjunction working as designed — the
+amendment Codex forced (`DELTA-R1-2`) is precisely what stops B1-B4 landing from
+being read as certification.
+
+**Next work**: step 2 (prompt delta A/B against the json arm, `adapters/README.md:56-59`
+condition 3) and/or step 3 (the frozen byte-forward recovery + its tier), plus a
+separate registration for the post-anchor allow-scope residual.
+
 ## Gate for closing — AMENDED per `DELTA-R1-2`
 
 The original one-liner let A-D pass and the residual stand while someone lifted

@@ -388,7 +388,7 @@ else
 fi
 if ! grep -Fq 'def reject_json_constant' config/skills/_shared/collect-codex-findings.py \
   || ! grep -Fq 'loads_strict_json(raw)' config/skills/_shared/collect-codex-findings.py \
-  || ! grep -Fq 'NaN Codex stdout finding must not normalize' config/skills/_shared/collect-codex-findings.py; then
+  || ! grep -Fq 'NaN pair-JUDGE stdout finding' config/skills/_shared/collect-codex-findings.py; then
   bad "collect-codex-findings.py must reject non-standard JSON constants in pair-JUDGE stdout"
 fi
 
