@@ -39,28 +39,32 @@ pressure (CLI ~9-block cap honest bound). Remaining 0078 reads P-KL/P-C
 ride the first hook-bearing cohort.
 
 **Next work (in order)**:
-0. **iter-0080 pair-emission boundary — REGISTERED-FROZEN 2026-07-26, NOT BUILT.
-   Next action: BUILD B1-B5.** [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md)
-   is the frozen contract (build scope, 5-rule unwrap, tiered self-tests,
-   P-0080-A..E, 4-part closing gate). Five seat rounds; Codex FREEZE, Grok
-   NOT-FREEZE on one contradiction now fixed. **Product files: none changed yet.**
-   Headlines the build must not re-derive: `--json-schema` is REJECTED for the
-   judge seat (perfect emission, 2/3 zero-tool-call + hallucinated findings, and
-   a `Cancelled`-run PASS payload emitted while the schema itself FAILED);
-   `--output-format json` is ADOPTED; **chained shell commands are
-   `PermissionCancelled` under `dontAsk` even with an exact full-string allow
-   rule** (cells persisted at `emission-sweep/out/cell-*`), and
-   `verify.md:177-179`'s exit-comparison clause is what induces the chain;
-   **B2 = variant (iv)** (`HOME=$NEUTRAL ZDOTDIR=$NEUTRAL` + a controlled
-   `$NEUTRAL/.zshenv` restoring the real HOME for probe shells only), measured
-   3/3 on five invariants. **Binding isolation correction**: the shipped 0079
-   recipe connects **65 MCP tools** (incl. GitHub write + memory write/delete)
-   and injects both an MCP reminder and a **plugin-skills reminder** into the
-   judge's conversation — the 0079 `[skills] ignore` fix does NOT cover
-   `~/.claude/plugins/marketplaces/`. Any grok seat run before B2 ships is
-   context-contaminated. **Operator lesson (binding, third occurrence)**: sweep
-   the vendor's documented knobs before concluding none exists — it paid three
-   times in this iter alone.
+0. **iter-0080 pair-emission boundary — BUILT + GATED, PARTIAL 2026-07-26
+   (`4ed7c8b`). Emission NOT certified, by design.**
+   [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md)
+   § "BUILT + GATED" has the raw results. SHIPPED: `--output-format json`,
+   variant (iv) isolation, the `--json-schema` prohibition, an engine-neutral
+   envelope pre-pass with an `EndTurn`-only fail-closed gate, and the unchained
+   dominance-anchor clause. **A PASS · B PASS · C PASS 3/3 · D FALSIFIED at n=6 ·
+   E residual 5/6.** Closing gate unsatisfied → doctor note stays, adapter
+   certification line stays, **no durable `pair grok` pin**.
+   **Next work, in order**: (a) step 2 prompt-delta A/B against the **json** arm
+   (`adapters/README.md:56-59` cond. 3) and/or step 3's frozen byte-forward
+   recovery + its B3+recovery test tier — either must clear P-0080-E's 5/6
+   residual to certify; (b) a **new registration** for the post-anchor
+   allow-scope residual that falsified P-0080-D (the judge's *second* command
+   falls outside the bare-anchor rule and the review dies at exit 0 — widening
+   the allowlist stays forbidden).
+   Binding facts the next session must not re-derive: `--json-schema` is
+   REJECTED for the judge seat; **chained shell commands are
+   `PermissionCancelled` under `dontAsk` for every allow shape tested, including
+   an exact full-string rule** (cells at `emission-sweep/out/cell-*`); the
+   pre-0080 recipe **connected 65 MCP tools and injected both an MCP and a
+   plugin-skills reminder** into the judge conversation, so the 0079
+   `[skills] ignore` fix does NOT cover `~/.claude/plugins/marketplaces/` and any
+   grok seat run before `4ed7c8b` is context-contaminated. **Operator lesson,
+   third occurrence: sweep the vendor's documented knobs before concluding none
+   exists** (step-1 knobs, `HOME`, `ZDOTDIR` — all three paid).
 
    **Superseded: iter-0079 N-model pair — BUILT + GATED, PARTIAL SHIP 2026-07-26.**
    Shipped and proven: generic OTHER-engine spawn rule (binary wording replaced),
