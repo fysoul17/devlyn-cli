@@ -39,6 +39,57 @@ pressure (CLI ~9-block cap honest bound). Remaining 0078 reads P-KL/P-C
 ride the first hook-bearing cohort.
 
 **Next work (in order)**:
+0. **iter-0079 N-model pair — REGISTERED-FROZEN 2026-07-26 (three-seat), READY
+   TO BUILD.** Six rounds. A two-seat freeze on 07-25 broke within a day when
+   the Codex quota reset and the second cross-vendor seat found two mechanical
+   holes all prior parties had missed (unenforceable Boolean `pair_judge: yes`
+   vs mandatory-probe specs; zero-exit silent pair PASS at
+   `collect-codex-findings.py:64-68` → `verify-merge-findings.py:877-878`).
+   **Operating lesson, binding: a same-vendor second seat does not substitute
+   for a cross-vendor one — the two-seat freeze record's own caveat was the
+   operative risk, not a formality.** Resolved by path A (scoped shell at
+   claude-judge parity, measured live); final round had all three seats at
+   stands-with-amendments with every item applied. Build gate = P-0079-A..H plus
+   a re-run of the five-invariant isolation table against the **shell-bearing**
+   recipe (the 07-25 receipt certified the pre-shell one). Named residual for a
+   follow-up registration: `verify-merge-findings.py:877-878`'s default-to-PASS,
+   where three failure paths converge — deliberately NOT changed here
+   (engine-neutral, pipeline-wide scope). Grok R0 + Fable 5 R1/R2/R3; freeze declared on
+   the R3 seat's pre-commitment after its last carve-out edit landed. Codex seat
+   still owed (quota-dead until 7/29) — R0 question set is durable in the iter
+   doc and can go to Codex unchanged against the corrected text. Build routes
+   through `.devlyn/engines.json` `executor: codex`, which is the same dead
+   engine, so building needs either the 7/29 window or an explicit pin change.
+   Isolation is MEASURED and the recipe is frozen; four orchestrator claims were
+   retracted during the iter (listed in the doc's freeze record).
+   **Operational gotcha, binding for ANY future grok seat**: a bare `grok -p`
+   invocation is NOT isolated. Measured live 2026-07-25 via `grok inspect`
+   (0.2.112) in this repo: 6 MCP servers auto-scanned from `~/.claude.json`
+   (`07-mcp-servers.md:214`) including **`pyx-memory` (writes memory)** and
+   **`MCP_DOCKER` (GitHub write tools)**, 33 hooks, 99 skills, and ~10.5k tokens
+   of injected `~/.claude/CLAUDE.md` + repo `AGENTS.md`/`CLAUDE.md`. The
+   iter-0079 R0 round was run this way with `--always-approve` — repo verified
+   clean (HEAD 9a7c359 unmoved) but the capability was live, and that round is
+   therefore NOT context-independent. Isolate before reusing.
+   `iterations/0079-n-model-pair-grok.md` (R0-amended, **NOT FROZEN**). User
+   directive 2026-07-25: grok/Kimi K3/Qwen must all be pinnable as pair judges.
+   Root cause was never an engine whitelist — `BLOCKED:invalid-engine-config` is
+   the fail-closed response to a missing `_shared/adapters/<name>.md`. R0 ran
+   **two-seat, not three**: Grok GO-WITH-EDITS (7 findings); **Codex seat dead —
+   quota exhausted until 2026-07-29** (`codex --version` passes, spawn exits 1:
+   "You've hit your usage limit"). User first chose to wait, then redirected
+   2026-07-25: **substitute Fable 5 for the Codex seat** rather than wait. Round
+   now = Grok (xAI) + Fable 5 (Anthropic) + Opus 5 orchestrator (Anthropic) —
+   **only ONE cross-vendor seat**, so convergence here is weaker evidence than
+   the Grok↔Codex rounds of 0068.1/0078.1; iter doc records the caveat. Question
+   sets are durable in the iter doc (scratchpad packets are session-scoped). Two orchestrator claims already
+   WITHDRAWN and verified at live lines — do not resurrect them: (a) "one file,
+   zero skill-body changes" is false, spawn recipes are binary-hardcoded
+   (`engine-preflight.md:51`, `verify.md:211`); (b) the memory-sourced grok
+   recipe used non-existent tool IDs and `--always-approve` (= `--yolo`, auto-approves
+   file writes). **Side effect of the same outage**: the harness has NO pair judge
+   at all until 7/29, and machine-local `.devlyn/engines.json` `executor: codex`
+   hard-blocks every `/devlyn:resolve` run in the meantime.
 1. **Startup lever re-registration** (fail-open obligation from 0077.5)
    — new mechanism hypothesis required (mechanical absorption is
    falsified); residual data: startup median 250s unmoved, phase_union
