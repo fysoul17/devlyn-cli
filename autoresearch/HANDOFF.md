@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iter: [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (Stage A SHIPPED + P-K probe PASS 0078.1/.2; **Stage A2 strip SHIPPED + both gates green 0078.4** — removal obligation discharged; remaining reads P-KL/P-C ride the first hook-bearing cohort, whose only missing prerequisite is the runner settings-staging edit). Context iters: [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5 PARTIAL SHIP — W-T0 shipped 12%, W-B claim revoked, wall fail-open miss, residual re-named), [`iterations/0076-completion-rate.md`](iterations/0076-completion-rate.md) (CLOSED 0076.5; M0 first clean live firing in -22a), [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (C1 probe 0074.3 → product wiring = iter-0078). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iter: [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md) (**BUILT + GATED PARTIAL 2026-07-26** — read § "BUILT + GATED" first for the gate table, then § "REGISTRATION" for the frozen contract the next step must honor; emission NOT certified and that is the designed outcome). Context iters: [`iterations/0079-n-model-pair-grok.md`](iterations/0079-n-model-pair-grok.md) (N-model pair wiring; FS-0079-A is why 0080 exists), [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (CLOSED 0078.6 — C1 product wiring, P-KL live PASS), [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5 PARTIAL SHIP — W-T0 shipped 12%, W-B claim revoked, wall fail-open miss, residual re-named), [`iterations/0076-completion-rate.md`](iterations/0076-completion-rate.md) (CLOSED 0076.5; M0 first clean live firing in -22a), [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (C1 probe 0074.3 → product wiring = iter-0078). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,7 +14,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-23 (iter-0078 **CLOSED** 0078.6: first hook-bearing cohort `nodeg-hook-20260722c` read — **P-0078-KL PASS live (F23 block→resume→full completion), P-0078-C K2a=0**; wall median 7.867× best-ever report-only)
+## 🚦 START-HERE — state after 2026-07-26 (iter-0080 **BUILT + GATED PARTIAL** 0080.2: emission boundary shipped, **A/B/C PASS · D falsified n=6 · E residual 5/6**, grok deliberately NOT emission-certified; next = clear the E residual, then register the post-anchor allow-scope defect)
 
 **Where the loop stands (one paragraph).** iter-0077 is CLOSED partial-ship
 (0077.5: W-T0 interphase 12.0% SHIPPED, W-B startup claim REVOKED at
@@ -361,7 +361,8 @@ python3 benchmark/noncoding/scripts/conformance-gate.py benchmark/noncoding/vali
 python3 config/skills/_shared/run-bounded.py 1 -- sleep 3 >/dev/null 2>&1; [ $? -eq 124 ] && echo "run-bounded ✓"
 python3 config/skills/_shared/spec-verify-check.py --self-test && echo "spec-verify self-test ✓"
 python3 config/skills/_shared/state-phase-write.py --self-test && echo "phase-write (L-D) ✓"
-python3 benchmark/ceiling/scripts/terminal-claim-check.py --self-test && echo "terminal-claim ✓"
+python3 config/skills/_shared/terminal-claim-check.py --self-test && echo "terminal-claim ✓"   # moved to _shared in 0078 Stage A (5339e41)
+python3 config/skills/_shared/collect-codex-findings.py --self-test && echo "collector (0080 envelope gate) ✓"
 python3 benchmark/ceiling/scripts/attribution.py --self-test >/dev/null && echo "attribution ✓"
 python3 benchmark/ceiling/scripts/isolation-payload.py --self-test >/dev/null 2>&1 && echo "isolation-payload ✓"
 command -v codex && codex --version 2>&1 | head -1
