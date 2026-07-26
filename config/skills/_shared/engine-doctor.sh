@@ -17,12 +17,13 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 ADAPTERS_DIR="$SCRIPT_DIR/adapters"
 
-TARGETS=(claude codex omp pi)
-KINDS=(cli-engine cli-engine cli-engine orchestrator-only)
-BINARIES=(claude codex omp "")
+TARGETS=(claude codex grok omp pi)
+KINDS=(cli-engine cli-engine cli-engine cli-engine orchestrator-only)
+BINARIES=(claude codex grok omp "")
 INSTALL_HINTS=(
   "see https://docs.anthropic.com/en/docs/claude-code"
   "npm install -g @openai/codex"
+  "see https://docs.x.ai/build/overview (install + browser auth)"
   "brew install can1357/tap/omp"
   ""
 )
@@ -87,6 +88,8 @@ for i in "${!TARGETS[@]}"; do
       note='informational only; not a routable role engine — no verified CLI binary or adapter'
       ;;
   esac
+
+  [ "$target" = 'grok' ] && note='not emission-certified; BLOCKED pair source'
 
   printf '%-8s %-17s %-8s %-8s %-14s %-12s %s\n' \
     "$target" "$kind" "$binary" "$adapter" "$role" "$pin_eligible" "$note"

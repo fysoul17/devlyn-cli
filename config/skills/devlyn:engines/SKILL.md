@@ -25,7 +25,7 @@ DEVLYN_SHARED_DIR="$(cd "$DEVLYN_SKILL_DIR/../_shared" && pwd)"
 ## No args — status + how to choose
 
 1. Read `cwd/.devlyn/engines.json`. Absent → report "no pins — auto-detection active".
-2. Run `bash "$DEVLYN_SHARED_DIR/engine-doctor.sh"` — read-only; never installs anything or writes `.devlyn/engines.json`. It detects, per target (`claude`, `codex`, `omp`, `pi`), whether its binary is present, whether `_shared/adapters/<name>.md` exists, and whether that makes it `pin_eligible` today. Its trailing line is either a pair-judge-diversity confirmation or a recommendation to add a second adapter-valid engine (`autoresearch/iterations/0045-model-arm-drift.md`: different model tiers hit different failure-mode blind spots, so VERIFY pair-judge/risk-probes need ≥2 to ever fire).
+2. Run `bash "$DEVLYN_SHARED_DIR/engine-doctor.sh"` — read-only; never installs anything or writes `.devlyn/engines.json`. It detects, per target in the doctor's catalog, whether its binary is present, whether `_shared/adapters/<name>.md` exists, and whether that makes it `pin_eligible` today. Its trailing line is either a pair-judge-diversity confirmation or a recommendation to add a second adapter-valid engine (`autoresearch/iterations/0045-model-arm-drift.md`: different model tiers hit different failure-mode blind spots, so VERIFY pair-judge/risk-probes need ≥2 to ever fire).
 3. Print the role table. Executor's "Available engines" = rows where `pin_eligible: yes` and `role` includes `executor` (i.e. not `judge-only`). Pair judge's "Available engines" = rows where `pin_eligible: yes` and `role` includes `judge` (`executor+judge` or `judge-only`):
 
 ```

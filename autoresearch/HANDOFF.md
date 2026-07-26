@@ -39,8 +39,24 @@ pressure (CLI ~9-block cap honest bound). Remaining 0078 reads P-KL/P-C
 ride the first hook-bearing cohort.
 
 **Next work (in order)**:
-0. **iter-0079 N-model pair — REGISTERED-FROZEN 2026-07-26 (three-seat), READY
-   TO BUILD.** Six rounds. A two-seat freeze on 07-25 broke within a day when
+0. **iter-0079 N-model pair — BUILT + GATED, PARTIAL SHIP 2026-07-26.
+   Next: [`iterations/0080-pair-emission-boundary-STUB.md`](iterations/0080-pair-emission-boundary-STUB.md).**
+   Shipped and proven: generic OTHER-engine spawn rule (binary wording replaced),
+   `adapters/grok.md`, doctor/lint catalog rows, README semantics, collector
+   zero-exit hardening. Gates: 6 PASS (isolation re-cert, P-A, F6a fired live,
+   P-D, P-E, P-G, P-H), **P-B 4/6 and P-F FALSIFIED on one shared cause** — a
+   narration preamble welded to output line 1 — so **FS-0079-A fired and the
+   emission dimension is VALID-NEGATIVE**. grok is wired/isolated/reachable/
+   probe-capable/fail-closed but **NOT emission-certified**; the doctor carries a
+   `not emission-certified` note and `adapters/grok.md` a certification line; no
+   durable pin was written. Path A validated: grok executed a mandatory
+   dominance-loss probe through the scoped `--allow` rule and found the seeded
+   CRITICAL correctly. **Gates caught three defects in shipped artifacts** —
+   `~/.agents/skills` leaking devlyn skill descriptions into the judge, the
+   `Bash(cmd *)` allow template silently destroying reviews on no-arg commands,
+   and the collector's zero-exit silent PASS. Six orchestrator claims retracted
+   across the iter; every one was caught by a seat.
+   **Superseded status line (was: REGISTERED-FROZEN, READY TO BUILD):** Six rounds. A two-seat freeze on 07-25 broke within a day when
    the Codex quota reset and the second cross-vendor seat found two mechanical
    holes all prior parties had missed (unenforceable Boolean `pair_judge: yes`
    vs mandatory-probe specs; zero-exit silent pair PASS at

@@ -827,6 +827,187 @@ but the seat is wasted. Two obligations follow, both to be frozen before build:
    run ends BLOCKED rather than PASS (this also satisfies Codex finding 4's
    request for failure-injection coverage).
 
+## GATE RESULTS — 2026-07-26 (raw before interpretation)
+
+### Isolation re-certification vs the SHELL-BEARING recipe — FAIL then PASS
+
+The build-gate obligation fired and **caught a real defect in the shipped
+adapter**. First run of the shipped recipe: `INSTR: NONE` (good) but the judge's
+context carried **29 skill entries from `~/.agents/skills/`** including
+`devlyn-engines: Show and pin engine roles for the devlyn pipeline (executor /
+pair judge)` with absolute paths — a pair judge being handed the description of
+the pipeline it judges. Root cause: `GROK_*_SKILLS_ENABLED` gates only the
+claude/cursor vendor surfaces; `~/.agents/skills/` is a native grok tier
+(`08-skills.md:29`). Fix: `[skills] ignore = ["~/.agents","~/.claude","~/.cursor"]`
+in the ephemeral `config.toml` (`:48` — `ignore` hides completely, `disabled`
+only de-prompts while keeping entries listed). Skills 67 → 38. Second defect,
+same class: grok injects the **workspace path verbatim**, so a neutral dir whose
+path embedded `devlyn-cli` leaked project identity by itself — adapter now
+requires neutrally-named `$NEUTRAL`/`$ISO_HOME`. Post-fix re-run: `INSTR: NONE`,
+`LEAK: DEVLYN_ABSENT`, `TOOLS: run_terminal_command, read_file, list_dir, grep`.
+**PASS.**
+
+### P-0079-H — fired live, incidentally
+
+A probe instructing an MCP call produced exactly the registered failure: output
+truncated at the preamble, exit 0, no MCP call executed. Confirms both the
+truncation mode AND MCP containment behaviourally. Also confirms a measurement
+rule the hard way: **grok's self-report is unreliable** — the same recipe
+self-reported `MCP_NOT_CALLABLE` and `MCP_CALLABLE` on different runs; only the
+behavioural attempt settled it.
+
+### P-0079-B — 3/6 raw. **INVALID as a gate run; two defects are the harness's.**
+
+| Route | Result |
+|---|---|
+| (i) seeded-finding × 3 | **3/3 PASS** — collector exit 0, 1 CRITICAL finding + `# SUMMARY {"verdict":"NEEDS_WORK"}`, first char `{`, zero preamble |
+| (ii) "clean" × 3 | **0/3** — collector exit 1 on all three |
+
+Diagnosis, before any conclusion about grok:
+1. **Fixture (ii) was not clean — orchestrator defect.** All three runs found
+   genuine bugs in it (`money(-1234)` → `"$-13.66"` via floor-division on
+   negatives; `isinstance(True, int)` passes the type guard). The judge was
+   right and the fixture was wrong, so the clean-PASS route was **never
+   exercised**. Those three runs are INVALID, not failures — the iter-0068
+   valid-vs-invalid-attempt rule.
+2. **The prompt was not the frozen one — orchestrator defect.** P-0079-B
+   specifies "the pair-JUDGE prompt used for the codex direction **verbatim**";
+   the orchestrator authored a substitute. The run is therefore a **pilot**, not
+   the frozen gate, regardless of fixture quality.
+3. **Real signal about grok, worth keeping**: on the runs where it narrated an
+   intended action, grok prepended `Reviewing the diff against the docstring
+   contract…` **concatenated to the first content line with no newline**,
+   corrupting line 1 for a strict parser — 3/3 in that condition, 0/3 in the
+   other. The emission risk is not malformed JSON, it is a **preamble welded to
+   line 1**. Explicit "first character must be `{` or `#`" instruction did not
+   prevent it.
+
+**Pilot P-0079-B remains UNMEASURED.** The bar stays 6/6 — re-running an invalid
+measurement is not relaxing it (principle #3 forbids moving the bar after seeing
+results, not re-running a run whose instrument was broken).
+
+### P-0079-B — RE-MEASURED with a valid instrument: **4/6 → FALSIFIED, FS-0079-A FIRES**
+
+Instrument corrections: fixture (ii) replaced with a docstring-only addition to
+`def add(a: int, b: int) -> int: return a + b` (contract = the added docstring;
+nothing to find); prompt rebuilt from `verify.md`'s pair-JUDGE contract (no
+harness-doc reads, ≤2 targeted checks, stop on first verdict-binding finding,
+PASS immediately after bounded checks, emission format). **No anti-preamble
+clause was added** despite the pilot showing preamble corruption — that would be
+tuning the instrument after seeing results.
+
+| Route | collector exit | findings | summary | Verdict vs frozen criterion |
+|---|---|---|---|---|
+| seeded ×3 | 0, 0, 0 | 1 CRITICAL each (priority-sort removal, correctly identified) | NEEDS_WORK | **3/3 PASS** |
+| clean-1 | 0 | **1 × INFO** `pair-judge-pass` | PASS | FAIL — criterion requires an *empty* findings list |
+| clean-2 | 0 | 0 | PASS | PASS |
+| clean-3 | 0 | **1 × INFO** `pair-judge-pass` | PASS | FAIL — same |
+
+**Raw result: 4/6. Frozen bar is 6/6. P-0079-B is FALSIFIED and FS-0079-A fires.**
+
+Three separations that must not be collapsed:
+- **Parse mechanics: 6/6.** Every run parsed, collector exit 0 six times, and the
+  pilot's preamble-welding did NOT recur even once. The emission *machinery*
+  works.
+- **Frozen contract conformance: 4/6.** Two clean runs emitted an INFO
+  `pair-judge-pass` pseudo-finding *alongside* `# SUMMARY {"verdict":"PASS"}`,
+  which the prompt's own rule forbids ("emit the PASS summary if you emitted
+  none").
+- **Material pipeline impact: none.** Verified at
+  `verify-merge-findings.py:912-917` — the emission-contract blocker counts only
+  CRITICAL/HIGH/MEDIUM/LOW; **INFO is excluded**, so the pseudo-finding neither
+  triggers `verify-pair-emission-contract-violated` nor becomes verdict-binding.
+
+**The bar is NOT relaxed.** A defensible argument exists that an INFO-only
+deviation is harmless (the third bullet), and that argument is exactly what
+principle #3 forbids acting on after seeing the result. FS-0079-A's frozen
+disposition governs: a bare adapter is not sufficient for this third-party
+engine, and the remedy is a **SEPARATE registration**, not an inline patch.
+**Correction to the remedy sketch (Fable, 07-26)**: an earlier draft named "a
+collector rule that tests emptiness against the verdict-binding set" — but the
+collector already exits 0 on INFO+PASS; the test that failed was the **frozen
+criterion's**, not the collector's. A follow-up drafted from that sketch would
+patch code that is not the failing instrument. The remedy enumeration also
+omitted the **vendor output-format knob sweep**, which is structurally the same
+omission as retraction #4 ("zero-MCP unachievable" — concluded before searching
+the vendor's documented knobs). The knob sweep goes FIRST in the follow-up.
+Recorded outcome for the emission dimension: **VALID-NEGATIVE**.
+
+### P-0079-F — path A VALIDATED, prediction FALSIFIED on the same emission class
+
+Run: `pair_judge_priority: ["grok"]` pinned (temporarily; **pin reverted after
+measurement** per the frozen no-durable-pin commitment — `.devlyn/engines.json`
+is back to `{"executor":"codex"}`), mandatory-probe fixture (priority ordering +
+rollback-safe rejection), spec `## Verification` carrying the backticked anchor
+`python3 /private/tmp/pf-fixture/probe.py`, allow rule derived from that same
+anchor, output captured to `$REPO/.devlyn/grok-judge.stdout`.
+
+**A third shipped-artifact defect, found by this gate — the adapter's allow
+template is wrong.** The recipe ships `Bash(<repo probe command family> *)`. That
+trailing ` *` **does not match a command invoked with no arguments**: the first
+P-F run produced empty stdout at exit 0 — the review destroyed silently, exactly
+the P-H mode. Dropping the suffix (`Bash(python3 …/probe.py)`) executed
+immediately. The adapter template needs the bare/prefix form (or the documented
+`cmd:*` suffix form), and this is precisely the "under-scoped allowlist is
+review-destroying, not mild" hazard the registration wrote down — now observed.
+
+Re-run with the corrected anchor:
+
+| Claim under P-F | Result |
+|---|---|
+| Orchestrator spawns grok via the **generic** rule, no per-engine branch | **PASS** |
+| grok **executes** the mandatory dominance-loss probe (not static reasoning) | **PASS** — it ran the probe and quoted the real parsed output: `accepted=['low-early'], rejected=['high-late','mid-tail']` |
+| Judgement quality on the seeded defect | **PASS** — one CRITICAL, correct root cause ("iterates input order instead of highest-priority-first, so low-early consumes stock and starves higher-priority orders") |
+| Canonical `verify.pair.findings.jsonl` present and mergeable | **FAIL** — preamble welded to line 1 (`Running the mandatory dominance-loss probe…{"id":…`), collector exit 1 |
+| merged `sub_verdicts.pair_judge != null` | **FAIL** — unreachable once the collector rejects |
+
+**P-0079-F: FALSIFIED — but the failure is the SAME emission class as P-B
+(FS-0079-A), not a reachability or capability failure.** The two things Codex's
+freeze-break demanded be proven are proven: grok is reachable through the generic
+rule, and the scoped shell makes it able to discharge a mandatory-probe spec.
+**Path A is validated.** What blocks is one narrow, characterized behaviour:
+a narration preamble concatenated to the first output line.
+
+**Fail-closed behaviour held exactly as designed**: collector exit 1 → **no
+canonical findings file written** (verified absent) → per the item-0 (F2a) rule
+the pair source is BLOCKED, never a false PASS.
+
+**P-0079-C — containment PROVEN, positive enumeration STILL OPEN.** *(Corrected: the first write-up claimed the enumeration was "exercised and CLEAN", which it cannot be — the collector rejected, so two of the four permitted files were never produced. Both review seats flagged the overclaim.)* The run wrote
+`grok-judge.stdout` and `grok-judge.stderr` into `$REPO/.devlyn` and nothing
+else; `verify.pair.findings.jsonl` and `grok-judge.summary.json` were correctly
+NOT created because the collector rejected. Tracked tree shows only
+build-authored files. **Proven: no write outside the permitted set. Unproven:
+that a fully successful run produces exactly those four and no more** — that
+needs a run whose collector exits 0, i.e. it rides the emission fix.
+
+### P-0079-A / D / E / G — engine-resolution gates
+
+| Gate | Result | Receipt |
+|---|---|---|
+| **P-A (name validity)** | **PASS** | `engine-doctor.sh` renders `grok cli-engine binary=yes adapter=yes role=judge-only pin_eligible=yes`. The `role=judge-only` column proves the adapter's `## Role eligibility` `executor: no` was read as a structured marker, not prose. Trailing line: "Pair-judge diversity: 4 adapter-valid engines available" (was 3) |
+| **F6a (executor refusal)** | **PASS — fired live 2026-07-26** | `/devlyn:engines executor grok` invoked for real: the skill read `adapters/grok.md` `## Role eligibility` (`executor: no`), returned `BLOCKED:invalid-engine-config` naming the valid executor pins (claude, codex, omp), and **left `.devlyn/engines.json` byte-identical** (sha 363b52cb603b). *Correction: this was first recorded as "PASS, mechanically implied" from the doctor's `judge-only` column — the sixth orchestrator error of this iter, and structurally the same probe-is-necessary-not-sufficient mistake this session convicted `command -v codex` of. The refusal path had never fired live; now it has.* |
+| **P-D (masked binary)** | **PASS** | with grok masked off PATH: `binary=no pin_eligible=no note="not installed; see …"`. Correct fail-closed classification with setup guidance |
+| **P-G (spawn failure ≠ probe failure)** | **PASS** | empty `GROK_HOME` → `command -v grok` PASSES while the spawn exits 1 with **zero stdout** and `Not signed in…` on stderr. Exactly the adapter's declared class: post-probe auth failure is the same fail-closed availability class as a failed probe |
+| **P-E (no default-route regression)** | **PASS** | `.devlyn/engines.json` is still `{"executor":"codex"}` — untouched by the whole build; `pair_judge_priority` absent, so `engine-preflight.md:19` keeps the binary claude↔codex complement. Searched `resolve/SKILL.md` for any adapters-directory scan in default selection: none (independently matches both review seats' searches) |
+
+**Honest limit on P-D/P-G**: the measured half is the *classification* (doctor
+columns, probe-vs-spawn split). The other half — that a **pinned** run halts with
+`BLOCKED:grok-unavailable` — is orchestrator prose, since there is no
+`engines.py`; it is a compliance behaviour, not a mechanically enforced one.
+Same enforcement layer as the rest of role resolution, stated rather than
+claimed as measured.
+
+### P-0079-C — partially exercised, honestly
+
+Across all 6 P-B runs the repo tree gained **zero** judge-authored bytes:
+`git status` shows only build-authored files plus this iteration doc. That is
+stronger than the prediction's bar in one sense and weaker in another — the runs
+redirected to per-run temp dirs rather than `$REPO/.devlyn`, so the frozen
+four-file permitted-write set was **never produced** and its enumeration remains
+untested. **P-C: PASS on "no seat-authored repo mutation", UNTESTED on the
+permitted-set enumeration.** Closing it requires the P-F pipeline run, which
+writes into `$REPO/.devlyn` for real.
+
 ## R1-F1 DISCHARGED — isolation measured live 2026-07-25 (grok 0.2.112)
 
 Fable's synthesis made the isolation set a frozen gate whose failure would have

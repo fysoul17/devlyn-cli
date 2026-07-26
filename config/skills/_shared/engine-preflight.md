@@ -48,4 +48,11 @@ Do not report a downgraded successful run when a required engine is missing.
 
 ## Canonical cross-engine invocations
 
-After the availability check passes: a Claude-side orchestrator spawning a Codex judge/worker uses `config/skills/_shared/codex-config.md` (monitored wrapper, canonical flag set); a non-Claude orchestrator spawning a Claude judge uses `_shared/adapters/claude.md` `## Invocation` (headless `claude -p`, locked-down allowlist, hermetic settings).
+After the availability check passes, Codex keeps the monitored `codex-monitored.sh`
+path; every other resolved OTHER engine follows `_shared/adapters/<name>.md`
+`## Invocation`. Capture `.devlyn/<name>-judge.stdout`, then normalize it with
+`collect-codex-findings.py --devlyn-dir "<abs repo>/.devlyn" --stdout-file
+<name>-judge.stdout`. A non-zero collector exit writes no canonical findings:
+the pair source is `BLOCKED` for `verify.pair.emission-contract`, and unparsed
+stdout remains diagnostic-only rather than being merged. On exit 124, the
+timeout marker's `engine` field is the resolved `<name>`.

@@ -83,6 +83,7 @@ _shared/expected.schema.json
 _shared/adapters/README.md
 _shared/adapters/claude.md
 _shared/adapters/codex.md
+_shared/adapters/grok.md
 _shared/adapters/omp.md
 _shared/codex-config.md
 _shared/codex-monitored.sh

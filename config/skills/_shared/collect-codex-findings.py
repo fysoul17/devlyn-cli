@@ -61,9 +61,7 @@ def collect(stdout_path: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, 
             if severity not in FINDING_SEVERITIES:
                 raise SystemExit(f"error: finding missing valid severity at {stdout_path}:{line_no}")
             findings.append(item)
-    if not findings and summary is None:
-        raise SystemExit("error: Codex pair-JUDGE stdout contained no JSONL findings or PASS line")
-    if summary and summary.get("verdict") in {"NEEDS_WORK", "FAIL", "BLOCKED"} and not findings:
+    if not findings and (summary is None or summary.get("verdict") != "PASS"):
         raise SystemExit("error: non-PASS SUMMARY without JSONL findings")
     return findings, summary
 
@@ -90,13 +88,20 @@ def self_test() -> int:
             assert "invalid JSON numeric constant: NaN" in str(exc)
         else:
             raise AssertionError("NaN Codex stdout finding must not normalize")
-        stdout_path.write_text("", encoding="utf-8")
-        try:
-            collect(stdout_path)
-        except SystemExit as exc:
-            assert "no JSONL findings" in str(exc)
-        else:
-            raise AssertionError("empty Codex stdout must not normalize to PASS")
+        rejection_cases = (
+            ("", "no SUMMARY line"),
+            ('# SUMMARY {}\n', "empty SUMMARY object"),
+            ('# SUMMARY {"verdict":"pass"}\n', "lowercase pass"),
+            ('# SUMMARY {"verdict":"UNKNOWN"}\n', "unknown verdict"),
+        )
+        for text, label in rejection_cases:
+            stdout_path.write_text(text, encoding="utf-8")
+            try:
+                collect(stdout_path)
+            except SystemExit as exc:
+                assert str(exc) == "error: non-PASS SUMMARY without JSONL findings"
+            else:
+                raise AssertionError(f"{label} must not normalize to PASS")
     return 0
 
 
