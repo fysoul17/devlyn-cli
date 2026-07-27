@@ -1,11 +1,11 @@
 # iter-0082 — R-weld: make the pair judge's review actually collectable
 
-**Status: v2 FROZEN, NOT BUILT. Product files at HEAD: unchanged. 2026-07-27.**
-Read § "v2 FROZEN" (last section) first. v1 was frozen, built, measured, and
-**failed its own gate** on an unsatisfiable conjunct; that record is preserved
-below and is not amended. **The v1 patch does not survive v2's round either** —
-two seats and the orchestrator independently measured a false PASS it introduces
-plus two frozen-negative acceptances. Next action = build against the v2 bar.
+**Status: v2 FROZEN, BUILT, GATED, SHIPPED. 2026-07-28.**
+Read § "BUILT + GATED" (last section) first, then § "v2 FROZEN" for the bar it
+was scored against. v1 was frozen, built, measured, and **failed its own gate**
+on an unsatisfiable conjunct; that record is preserved below and is not amended.
+The v1 patch was **not** reused — v2's round measured a false PASS in it. The
+shipped implementation is a different one, built against a bar frozen first.
 
 Opened because iter-0081 cleared gate part 2 and **R-weld is now the only thing
 between the grok pair seat and a usable review**. Every one of the six admissible
@@ -587,3 +587,106 @@ terminated on a content filter before its synthesis was emitted** (`exited code=
 Its measurements were kept — they are reproducible and I reproduced them — and its
 design position was obtained in a rephrased R1. Recorded as the honest label:
 R0 produced data, not a verdict.
+
+## BUILT + GATED — 2026-07-27/28. **SHIP.** Three seats, all executing.
+
+**Grok: SHIP. Codex: NOT SHIP → SHIP with a named delta. Fable: SHIP, no blockers.**
+The tracked tree was verified unchanged after every seat round.
+
+### Result against the frozen bar
+
+`test-collector-contract.py` **✓ 110 checks** — 9 negatives across ingress paths,
+N12 conservation ×3, 3 fence shapes uniform, 6 positive controls, 12 real captures
+(W1 rows also replayed through the real merge), 61 tracked captures byte-identical
+to a baseline taken from the pre-change collector. Collector self-test ✓. Lint
+**All checks passed**, now including the contract runner. All three mirrors
+byte-identical. One product file: **+89/-41**.
+
+**The measured failure this closes**: HEAD rejects all 8 real welded captures;
+v2 collects each as one `CRITICAL` + `NEEDS_WORK`, and the real merge returns
+`NEEDS_WORK` 8/8. The pair judge's review survives the harness.
+
+### The root-cause shape held
+
+`NARRATIVE_PREAMBLE_BYTES` is an allowlist of what the discarded preamble may
+contain, exactly as frozen — Fable computed it as
+`{\t,\n,\r} ∪ (0x20-0x7E minus {#, backtick, {}) ∪ 0x80-0xFF`, byte-exact, nothing
+extra, nothing missing. High bytes admit UTF-8 narration (Korean preamble recovery
+measured). Because recovery can never slice past the first `{`, `#`, or backtick,
+mid-JSON slicing and comment consumption are **structurally impossible** rather
+than defended against. `VERDICT_RANK`/`finding_rank` are single-sourced from merge
+instead of redefined — v1 invented a second definition and broke 4 real captures.
+
+### Codex's NOT SHIP, and why it was overturned
+
+Codex reported a "new false-PASS path": fenced + `#` comment + two `INFO` + bare
+`{"verdict":"NEEDS_WORK"}` → collector ACCEPT → merge PASS, where HEAD rejects.
+Two measurements retired it:
+
+1. **The behaviour is pre-existing.** HEAD accepts the same shape in its
+   `# SUMMARY` spelling and merge reports PASS. The diff adds spellings, not the hole.
+2. **On the full shipped path HEAD's REJECT lands on PASS too** — collector writes
+   nothing, merge defaults `pair_judge` None→PASS (`verify-merge-findings.py:877-878`).
+
+```
+HEAD      collector=REJECT   -> merge pair_judge=PASS  overall=PASS  findings_in_record=0
+WORKTREE  collector=ACCEPT   -> merge pair_judge=PASS  overall=PASS  findings_in_record=2
+```
+
+Identical verdict; the change **preserves two findings HEAD silently drops**.
+Refusing the shape would also have required rejecting frozen **G3**, making the
+bar unsatisfiable — a fourth instance of the class that killed 0081 v1, 0082 v1,
+and nearly this freeze.
+
+**Codex's named delta, in its words**: *"my prior criterion was collector-local
+ACCEPT versus REJECT. The shipped-path measurement falsified my claim that this
+created a new false-PASS outcome."*
+
+### Two frozen items Codex found missing — both closed before ship
+
+Lint did not invoke the contract runner, and the runner never invoked merge
+(v1's N8 merge half). Both wired; bar and lint re-run green.
+
+### NEW residual — R-summary-verdict-not-merged
+
+The collector writes the judge's verdict to `pair-judge.summary.json`
+(`collect-codex-findings.py:315`) and **merge never reads it** — verified by
+search: merge touches only `verify.pair*.findings.jsonl`, `*-judge.stdout`, and
+its own output `verify-merge.summary.json`. `pair_judge` derives solely from
+finding severity (`:165-170`). **A judge that says `NEEDS_WORK` with only
+`LOW`/`INFO` findings is reported `PASS`** — the same "harness discards the
+judge's conclusion" failure this iter fixes, one layer up. Codex's invariant,
+recorded for its own freeze: `pair_judge = worse(summary verdict,
+finding-derived verdict)`.
+
+### Also registered, NOT conjoined
+
+- **R-envelope-severity-bypass** — a top-level `"severity"` in the envelope makes
+  it parse as a *finding*, bypassing the `EndTurn` gate. HEAD and v2 alike.
+- **R-backtick-preamble** — the byte allowlist excludes every backtick, stricter
+  than the frozen "no fence token". Measured: 0/8 real welded preambles contain
+  one, so the corpus is unaffected, but 25/61 tracked captures contain a backtick
+  somewhere, so a future judge narrating with inline code loses its review. Fails
+  closed. Both seats: residual, do not relax inside this ship.
+
+### Verifier findings, non-blocking, recorded not fixed
+
+Tier-2 reject rows are checked by exit code only, not reject reason (audited
+manually this round). Manifest sha256 is provenance, not a run-time check. Tier 2
+compares severity-sequence + verdict, while Tier 3 is byte-exact. Verdict
+vocabulary is case-sensitive while severity is case-insensitive — sanctioned by N10.
+
+### What could have gone wrong and didn't
+
+`tracked-baseline.json` could have been generated from the **new** collector,
+which would have made the entire 61-capture non-regression tier decorative — the
+same class as v1's false "125 tracked". Fable regenerated it from the pre-change
+collector and got 0/61 mismatches; the orchestrator reproduced that independently.
+
+### Seat accounting
+
+Orchestrator retractions this round: **0**. Seat claims verified before adoption:
+**9** — 8 confirmed (Codex's two missing frozen items, its envelope-severity
+bypass, its summary-not-merged invariant; Fable's byte-set computation, baseline
+honesty, four claim confirmations), 1 overturned by measurement (Codex's NOT SHIP
+blocker). Grok found no defect that survived.

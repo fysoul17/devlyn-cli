@@ -386,6 +386,14 @@ if python3 config/skills/_shared/collect-codex-findings.py --self-test >/dev/nul
 else
   bad "collect-codex-findings.py self-test failed"
 fi
+# iter-0082: the frozen collector contract — every negative through every ingress
+# path, plus real judge captures replayed against hand-verified expectations.
+# The self-test above is unit-shaped; this is the integration bar against real bytes.
+if python3 benchmark/ceiling/probes/r-weld-0082/test-collector-contract.py >/dev/null 2>&1; then
+  ok "collector contract (iter-0082 negatives + real-capture corpus) passed"
+else
+  bad "collector contract failed — run benchmark/ceiling/probes/r-weld-0082/test-collector-contract.py"
+fi
 if ! grep -Fq 'def reject_json_constant' config/skills/_shared/collect-codex-findings.py \
   || ! grep -Fq 'loads_strict_json(raw)' config/skills/_shared/collect-codex-findings.py \
   || ! grep -Fq 'NaN pair-JUDGE stdout finding' config/skills/_shared/collect-codex-findings.py; then

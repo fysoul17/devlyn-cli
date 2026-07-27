@@ -20,6 +20,7 @@ reproducible from a clean clone).
 import hashlib
 import json
 import pathlib
+import runpy
 import subprocess
 import sys
 import tempfile
@@ -34,6 +35,19 @@ INFO = '{"id":"i","severity":"INFO"}'
 NW = '# SUMMARY {"verdict":"NEEDS_WORK"}'
 PASS = '# SUMMARY {"verdict":"PASS"}'
 BARE_NW = '{"verdict":"NEEDS_WORK"}'
+
+
+def merge_verdict(findings):
+    """What the real merge makes of these collected findings."""
+    merge = runpy.run_path(str(REPO / "config/skills/_shared/verify-merge-findings.py"))
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td)
+        (root / "verify.pair.findings.jsonl").write_text(
+            "".join(json.dumps(f) + "\n" for f in findings), encoding="utf-8"
+        )
+        merged, source_verdicts = merge["read_findings"](root)
+        merge["write_outputs"](root, merged, source_verdicts)
+        return source_verdicts["pair_judge"]
 
 
 def collect(body, *, envelope=False, narrated=False, stop_reason="EndTurn"):
@@ -187,6 +201,13 @@ def main():
             failures.append(
                 f"  corpus {row['file']}: verdict {(summary or {}).get('verdict')}, want {want['verdict']}"
             )
+        # v1's N8 carried a merge half: collecting is not enough, the run must
+        # actually come back NEEDS_WORK. Written down rather than implied.
+        merged = merge_verdict(got)
+        if merged != want["verdict"]:
+            failures.append(
+                f"  corpus {row['file']}: merge returned {merged}, want {want['verdict']}"
+            )
 
     # Tier 3 — C5: the git-tracked judge captures must collect exactly as they did
     # at HEAD before the change. The baseline was taken from the pre-change
@@ -222,7 +243,7 @@ def main():
     print(f"collector contract ✓ ({checks} checks: "
           f"{len(NEGATIVES)} negatives across ingress paths, N12 conservation x{len(PATHS)}, "
           f"{len(FENCE_SHAPES)} fence shapes, {len(POSITIVES)} positive controls, "
-          f"{len(manifest['captures'])} real captures, "
+          f"{len(manifest['captures'])} real captures (W1 rows also replayed through the real merge), "
           f"{len(baseline['captures'])} tracked non-regression)")
     return 0
 
