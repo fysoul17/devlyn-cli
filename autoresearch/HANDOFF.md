@@ -29,72 +29,72 @@ findings is still reported `PASS`. Older closed threads — 0077 wall levers, 00
 C1 product wiring, the nodeg cohorts — are summarized in DECISIONS.md and their
 iter files; their only live descendants are the queued items below.
 
+**Just shipped — context, do not re-derive**:
+
+- **iter-0082 R-weld — SHIPPED (`557152f`, 2026-07-28), three-seat gate.**
+  `iterations/0082-weld-recovery-STUB.md` § "BUILT + GATED". The grok pair seat can
+  now deliver a collectable review: HEAD rejects all 8 real welded captures, the
+  shipped collector collects each as one `CRITICAL` + `NEEDS_WORK`, real merge
+  `NEEDS_WORK` 8/8. **Claim boundary: collection only** — emission is still NOT
+  certified, there is **no durable `pair grok` pin**, and losslessness is claimed
+  for shape class W1 alone (the fence-wrapped-*finding* class is reported
+  **uncovered**). Mechanism: the recovery preamble is an **allowlist of narrative
+  bytes** (no `#`, no backtick, no `{`; mid-line cut), which makes mid-JSON slicing
+  and comment consumption *structurally impossible* rather than defended against —
+  a token denylist is the shape that made v1 launder its own frozen negatives.
+  `VERDICT_RANK`/`finding_rank` are single-sourced from merge; v1 invented a second
+  definition and broke 4 real captures. Durable corpus:
+  `benchmark/ceiling/probes/r-weld-0082/` (+ off-repo vault
+  `~/.local/share/nx01/iter0082-corpus/`); `tracked-baseline.json` pins how all 61
+  tracked judge captures collect at the **pre-change** collector — regenerate it
+  from the pre-change collector or the whole tier is decorative.
+- **iter-0081 R-allow-scope — SHIPPED (`78a0dd4`), gate part 2 only.** The
+  `PreToolUse` anchor guard turns an out-of-anchor denial into a model-visible
+  `tool_result` instead of a silent exit-0 truncation. Its v1 FAILED and
+  § "GATE RESULTS" is the more instructive record.
+
+**Binding operator lessons from 0081-0082 — all orchestrator failures**: never
+handicap a gate seat (a read-only seat cannot run the collector); score the frozen
+conjunct, never a proxy; **a bar must not conjoin an independently registered
+residual NOR an unsatisfiable conjunct**; **a freeze is not frozen until a seat has
+tried to satisfy every conjunct by execution** (asserting the check was run is not
+running it — a verifier pointed only at satisfiability caught what two design seats
+read past, three iters running); every seat prompt granting a shell must forbid
+modifying tracked files; **a wrong claim in a seat packet propagates into the
+seat's answer**, so packets get the same verification bar as findings.
+
 **Next work (in order)**:
-0. **iter-0082 R-weld — SHIPPED (`557152f`, 2026-07-28). Gate cleared by three
-   seats.** `iterations/0082-weld-recovery-STUB.md` § "BUILT + GATED" is the
-   record. **The grok pair seat can now deliver a collectable review**: HEAD
-   rejects all 8 real welded captures, the shipped collector collects each as one
-   `CRITICAL` + `NEEDS_WORK`, and the real merge returns `NEEDS_WORK` 8/8.
+1. **R-summary-verdict-not-merged — the strongest open lead, and the natural
+   successor to 0082.** The collector writes the judge's verdict to
+   `pair-judge.summary.json` and **merge never reads it** (verified by search:
+   merge touches only `verify.pair*.findings.jsonl`, `*-judge.stdout`, and its own
+   `verify-merge.summary.json`). `pair_judge` derives solely from finding severity
+   (`verify-merge-findings.py:165-170`), so **a judge saying `NEEDS_WORK` with only
+   `LOW`/`INFO` findings is reported `PASS`** — the same "harness discards the
+   judge's conclusion" failure 0082 just fixed, one layer up. Codex's proposed
+   invariant, recorded for its own freeze: `pair_judge = worse(summary verdict,
+   finding-derived verdict)`. **Register and freeze it on its own; do not conjoin.**
 
-   **Claim boundary**: this fixes collection. Emission is still not certified and
-   there is **no durable `pair grok` pin**. The bar's losslessness claim is bounded
-   to shape class W1 (8 real captures, one shape); the fence-wrapped-*finding*
-   class has no surviving real capture and is reported **uncovered**.
-
-   **Do not re-derive**: the recovery preamble is an allowlist of narrative bytes
-   (no `#`, no backtick, no `{`; mid-line cut), which makes mid-JSON slicing and
-   comment consumption *structurally impossible* rather than defended against. A
-   token denylist is the shape that made v1 launder its own frozen negatives.
-   `VERDICT_RANK`/`finding_rank` are single-sourced from merge — v1 invented a
-   second definition and broke 4 real captures. The durable corpus lives at
-   `benchmark/ceiling/probes/r-weld-0082/` (+ off-repo vault
-   `~/.local/share/nx01/iter0082-corpus/`), and `tracked-baseline.json` pins how
-   all 61 tracked judge captures collect at the **pre-change** collector.
-
-   **NEW residual, the strongest lead — R-summary-verdict-not-merged**: the
-   collector writes the judge's verdict to `pair-judge.summary.json` and **merge
-   never reads it**; `pair_judge` derives solely from finding severity, so a judge
-   saying `NEEDS_WORK` with only `LOW`/`INFO` findings is reported **PASS**. Same
-   "harness discards the judge's conclusion" failure this iter fixed, one layer up.
-   Codex's invariant: `pair_judge = worse(summary verdict, finding-derived verdict)`.
-   Also registered, not conjoined: **R-merge-envelope**, **R-comment-finding**,
-   **R-verdict-default**, **R-rawstream-weld**, **R-envelope-severity-bypass**
+   Registered alongside, none conjoined: **R-merge-envelope** (a collector reject
+   leaves `pair_judge: PASS` because merge defaults `None`→PASS on stdout presence,
+   `:877-878`), **R-comment-finding**, **R-verdict-default** (`:93-94` ranks an
+   unrecognised verdict as PASS), **R-rawstream-weld**, **R-envelope-severity-bypass**
    (a top-level `"severity"` makes the envelope parse as a finding, bypassing the
-   `EndTurn` gate), **R-backtick-preamble** (any backtick in the narration kills
-   recovery; 0/8 corpus rows affected, 25/61 tracked captures contain one).
-
-   **Binding lesson, earned three times**: a clearance bar must not conjoin an
-   independently registered residual nor an unsatisfiable conjunct — **and a
-   freeze is not frozen until a seat has tried to satisfy every conjunct by
-   execution.** Asserting the check was run is not running it; a Fable verifier
-   pointed only at satisfiability caught what two design seats read past.
-
-1. **iter-0081 R-allow-scope — SHIPPED (`78a0dd4`), gate part 2 cleared.**
-   The `PreToolUse` anchor guard makes an out-of-anchor denial a model-visible
-   `tool_result` instead of a silent exit-0 truncation; the judge re-routes and
-   still executes the anchor itself. **Claim boundary: gate part 2 only** —
-   emission is not certified and there is no durable `pair grok` pin.
-   Its v1 attempt FAILED and § "GATE RESULTS" is the more instructive record.
-
-   **Binding operator lessons from 0081-0082, all orchestrator failures**:
-   never handicap a gate seat (a read-only seat cannot run the collector; a
-   shell-less seat cannot reproduce a command); score the frozen conjunct, never
-   a proxy; a bar must not conjoin an open residual nor an unsatisfiable
-   conjunct; **every seat prompt that grants a shell must forbid modifying
-   tracked files** (both seats wrote into the iteration record when it did not).
-
-1. **Startup lever re-registration** (fail-open obligation from 0077.5)
+   `EndTurn` gate — HEAD and shipped alike), **R-backtick-preamble** (any backtick
+   in the narration kills recovery; 0/8 corpus rows affected, 25/61 tracked captures
+   contain one — fails closed, both seats say residual).
+2. **Startup lever re-registration** (fail-open obligation from 0077.5)
    — new mechanism hypothesis required (mechanical absorption is
    falsified); residual data: startup median 250s unmoved, phase_union
    frozen-five +31.7% (different lever class — executor/model work).
    Fresh context: `-22c` wall median 7.867× (hook-bearing NEW baseline,
    best-ever descriptive) — re-derive the residual target from ITS
    decomposition before registering.
-2. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
+3. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
    / B_win 36 — single-cohort variance vs. real hook-cohort effect is
    unresolved; the next hook-bearing cohort reads it before any quality
    lever is registered.
-3. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
+4. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
 
 **Cohort operator rule (new, binding)**: never run `/login` or anything
 that rotates the host OAuth token while a cohort is in flight — seeded
@@ -314,6 +314,7 @@ python3 config/skills/_shared/spec-verify-check.py --self-test && echo "spec-ver
 python3 config/skills/_shared/state-phase-write.py --self-test && echo "phase-write (L-D) ✓"
 python3 config/skills/_shared/terminal-claim-check.py --self-test && echo "terminal-claim ✓"   # moved to _shared in 0078 Stage A (5339e41)
 python3 config/skills/_shared/collect-codex-findings.py --self-test && echo "collector (0080 envelope gate) ✓"
+python3 benchmark/ceiling/probes/r-weld-0082/test-collector-contract.py   # 110 checks incl. 12 real captures + 61 tracked non-regression (iter-0082)
 python3 benchmark/ceiling/scripts/attribution.py --self-test >/dev/null && echo "attribution ✓"
 python3 benchmark/ceiling/scripts/isolation-payload.py --self-test >/dev/null 2>&1 && echo "isolation-payload ✓"
 command -v codex && codex --version 2>&1 | head -1
