@@ -20,7 +20,7 @@ OUT="${MC6_OUT:-$PROBE_DIR/out}"          # artifacts only
 ISOROOT="${MC6_ISOROOT:?set MC6_ISOROOT to a neutral dir outside any repo}"
 N="${MC6_N:-6}"
 
-FIXTURE="$OUT/fixture"
+FIXTURE="$ISOROOT/fixture"   # judge-read path must also be external
 ISO="$ISOROOT/iso"; NEUTRAL="$ISOROOT/neutral"
 ANCHOR="python3 $FIXTURE/probe.py"
 
@@ -75,7 +75,8 @@ Rules:
 - The mandatory anchor command is exactly: \`$ANCHOR\`
   Run it as a single command with no shell chain operators.
 - To compare the full result you must know the probe's exact inputs. Obtain the
-  contents of $FIXTURE/probe.py by running a shell command that prints that file.
+  contents of $FIXTURE/probe.py by running exactly this shell command:
+  python3 -c "from pathlib import Path; print(Path('$FIXTURE/probe.py').read_text())"
 - Do not read harness docs. Use only the spec, the implementation, and the probe.
 - Stop immediately after the first verdict-binding finding and emit JSONL.
 

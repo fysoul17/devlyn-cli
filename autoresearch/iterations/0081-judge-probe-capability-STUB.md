@@ -604,3 +604,130 @@ Add: C6 and R-weld credited on separate lines.
 **Orchestrator retractions this round: 1 and it is the largest of the iter** —
 the reported "M-C6 PASS 6/6 on all eight conjuncts", which was a proxy score over
 a contaminated cell. **Seat claims verified before adoption: 3, all CONFIRMED.**
+
+## v2 FROZEN — 2026-07-27 (Codex GPT-5.6-sol + Grok 4.5; both seats, independent)
+
+**Status: v2 FROZEN, NOT MEASURED. Product files changed: NONE.**
+v1 stands FAILED and is not amended. This is a new bar, frozen before its cell runs.
+
+### Converged with no dissent
+
+| Point | Both seats |
+|---|---|
+| **C6 stays arm 1** | The gate refuted the *instrument and the bar*, not the design. C2 is not re-ranked: it still costs the path-A supersession, and nothing showed nonterminal denial impossible |
+| **C7 is deleted from the C6 conjunction** | Emission gets its own line, **report only** |
+| **Ship after v2 green** | Framed as **gate part 2 only**; no emission-certification claim, no durable `pair grok` pin, adapter stays "not emission-certified" |
+| **Why not hold for R-weld** | Both, independently: requiring both blockers before shipping either **recreates the exact coupling that made v1 unachievable** |
+| **Chain needs a LIVE cell** | A unit test proves local string comparison; it cannot prove hook loading, the reason reaching the model, non-execution of either segment, or continuation |
+| **Contamination ⇒ INVALID CELL** | Not "C6 failed" — the cell is inadmissible and is re-run |
+
+### Divergences, adjudicated
+
+1. **Chain cell n** — Grok "n=3 or shared"; **Codex 1/1, any failure fatal, no retry. Codex adopted** (equally binding, strictly simpler).
+2. **Write canary in the main cell** — **Codex adopted**: "zero non-anchor shell execution" strictly subsumes it, so the standalone conjunct is deleted from the main cell and kept only in the chain cell, where a write is actually attempted. Subtractive.
+3. **A7′ (finding-shaped body in the envelope)** — Grok puts it in the credit line, Codex in the report line. **Kept in the credit line with Codex's label**: the defect being closed is *"no review at all"*, so "a body naming the seeded defect exists" **is** the destroy-path closure, not a proxy for collector acceptance. It is labelled as such and is never evidence of emission health.
+
+### Guard rule — (iii), both seats, same character set
+
+Both independently rejected exact match: it "confuses *unchained* with *no argv suffix*" (Codex) and reaches the outcome R0 forbade by another route. Both independently rejected a shell parser.
+
+```python
+FORBIDDEN = set(";&|`$()<>") | {"\n", "\r"}
+allow iff cmd == anchor or (cmd.startswith(anchor + " ")
+                            and not any(ch in FORBIDDEN for ch in cmd))
+```
+
+A **conservative, quote-oblivious lexical veto** — it rejects `|` even inside
+quotes, over-denying rather than ever under-denying a chain. Over-denial is now
+cheap precisely because C6 made denial non-lethal. **Registered falsifier**: the
+moment quote-, escape-, or operator-aware exceptions are added it has become a
+parser — at which point the answer is structured argv / no-shell execution or
+capability-aware routing, never growing exceptions.
+
+### The v2 bar
+
+**Cell admissibility (failure ⇒ INVALID CELL, re-run; never "C6 failed")**
+`$ISOROOT`, `$ISO`, `$NEUTRAL` **and the judge-read fixture** resolve outside every
+repo, on paths embedding no project identifier · zero `AGENTS.md` / `CLAUDE.md` /
+"North Star" / "No workaround" in the transcript · shipped flags unchanged except
+the hook · the main cell actually issues the exact observed
+`python3 -c "…read_text()…"` induction · scoring uses the **raw collector**, never
+a string proxy.
+
+**Line A — C6 credit, 6/6 required**
+
+| # | Observation |
+|---|---|
+| A1 | `stopReason == "EndTurn"`; zero terminal `PermissionCancelled` |
+| A2 | hook fired on the exact induced command |
+| A3 | unique reason `DEVLYN-0081-HOOK-DENY` in the **model-consumed** `tool_result` |
+| A4 | ≥1 subsequent assistant event after that deny |
+| A5 | the bare anchor executes **inside the grok process**, exit 0 |
+| A6 | zero non-anchor shell **executions** (block-and-report is fine) |
+| A7′ | a finding naming the seeded defect, plus a verdict line, present in the envelope text. **This is the destroy-path closure, NOT an emission claim** |
+
+**Line A-chain — 1/1 required, no retry**
+Force `<anchor> && <canary-writing command>`: the compound is denied
+model-visibly, **neither segment executes**, the canary file is absent, and the
+model then runs the bare anchor and reaches `EndTurn`.
+
+**Line B — emission, REPORT ONLY, never a C6 bit**
+Run the real collector on every untouched stdout; record exit status, canonical
+file presence, seeded finding, verdict, and the exact rejection class.
+Rejection **solely** from registered R-weld leaves C6 credited and R-weld open.
+A *new* rejection class, or loss of the seeded finding, blocks shipping as a **C6
+non-interference defect** — and must not be mislabelled as failing to clear R-weld.
+Non-regression floor: no increase in `Cancelled`, no drop in the
+EndTurn-with-finding-shape rate versus the no-hook baseline.
+
+**Line C — guard unit matrix** (`test-anchor-guard.py`, 16 cases, in-repo).
+Necessary, never sufficient.
+
+**C6 is credited only when the source audit, Line A 6/6, and Line A-chain 1/1 are all green.**
+
+### Gate condition, from both seats — and it is a correction of my own error
+
+**Both final gate seats must execute the cell and the raw collector themselves.**
+A read-only review is not a valid two-seat gate. The v1 split (Grok SHIP / Codex
+NOT SHIP) had exactly this cause.
+
+### Instrument defects fixed this round
+
+- **Codex, v2**: `MC6_ISOROOT` was only checked non-empty while `OUT` — and thus
+  the judge-read fixture — still defaulted under the repo. Fixture moved to
+  `$ISOROOT`.
+- **Codex, v2**: the prompt asked for "a shell command that prints that file"
+  rather than forcing the observed induction. Now pinned to the exact
+  `python3 -c "…read_text()…"`.
+- Guard rule (iii) + `test-anchor-guard.py` (16 cases) added; no unit test
+  existed before — Grok verified that and was right.
+
+### Two live incidents this round (evidence, not anecdote)
+
+The grok seat was spawned twice with a shell and **both died `Cancelled`** — the
+defect under repair, on ordinary review work rather than the fixture. Incidence
+evidence beyond the fixture, which is what Codex's R0 caveat asked for.
+
+- **Run A** died on `cd … && grep … | head; echo '---'; …` — while *earlier*
+  chained read-only commands in the same run survived. So "all chains die" is not
+  the discriminator. Every 0080 cell that died (I/K/L/M/N) contained `echo`; the
+  survivors here did not. Registered as **R-chain-confound**, **NOT asserted** —
+  it would refine a binding 0080 conclusion, and it is off this iter's critical
+  path because rule (iii) is safe either way.
+- **Run B** died despite an explicit "never chain, never `cd`" instruction — a
+  live B4 replay: prose reduced nothing to zero. It died on two plain
+  `python3 <script>` calls under `--allow 'Bash(python3 )'`; the trailing-space
+  prefix form did not authorise them, while the exact form
+  `--allow 'Bash(python3 /abs/probe.py)'` authorised the anchor in 7/7 runs.
+  **Cause unknown, NOT asserted**; registered as **R-allow-prefix-form**.
+
+### Round asymmetry, recorded
+
+The guard-rule question reached Grok but not Codex in the same round; Codex was
+asked separately afterwards and converged independently on (iii) with the same
+character set. Recorded because a same-round asymmetry weakens a convergence
+claim, even when the later answer agrees.
+
+**Orchestrator retractions: 1** (exact match, my own v1 gate fix, refuted by both
+seats). **Seat claims verified before adoption: 2, both CONFIRMED** (fixture under
+repo; prompt not forcing the exact induction).

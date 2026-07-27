@@ -20,6 +20,12 @@ REASON = (
 
 SHELL_TOOLS = {"run_terminal_command", "run_terminal_cmd", "Bash"}
 
+# A conservative, quote-OBLIVIOUS lexical veto — deliberately not a shell parser.
+# It rejects these characters even inside quotes, over-denying rather than ever
+# under-denying a chain. Adding quote-, escape-, or operator-aware exceptions is
+# how this becomes a parser; that is a registered falsifier, not a polish.
+FORBIDDEN = set(";&|`$()<>") | {"\n", "\r"}
+
 
 def main():
     anchor = os.environ.get("DEVLYN_PROBE_ANCHOR", "")
@@ -29,12 +35,16 @@ def main():
         print(json.dumps({"decision": "allow"}))
         return
 
-    # Exact match, not prefix. A prefix rule would allow `<anchor> && <other>`,
-    # which is the vendor's own documented footgun (22-permissions-and-safety.md
-    # "Bash(git *) auto-approves git status && rm -rf /") and would defeat the
-    # contract's "must run unchained". Caught by the iter-0081 R-final gate.
-    command = (payload.get("toolInput") or {}).get("command", "")
-    if command.strip() == anchor:
+    # The anchor, or the anchor plus argv, and nothing that could start a second
+    # command. A bare prefix rule would allow `<anchor> && <other>` — the vendor's
+    # own documented footgun. Exact match would instead deny `<anchor> --n 5`,
+    # mechanically destroying the "bounded input variations" that verify.md
+    # requires of every engine. Both were rejected by both seats (iter-0081 v2).
+    command = (payload.get("toolInput") or {}).get("command", "").strip()
+    if command == anchor or (
+        command.startswith(anchor + " ")
+        and not any(ch in FORBIDDEN for ch in command)
+    ):
         print(json.dumps({"decision": "allow"}))
         return
 
