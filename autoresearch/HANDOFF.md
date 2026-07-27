@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iter: [`iterations/0081-judge-probe-capability-STUB.md`](iterations/0081-judge-probe-capability-STUB.md) (**REGISTERED, R0+R1 DONE, NOT FROZEN 2026-07-27** — read it end to end; the freeze is the next action). Context iters: [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md) (emission boundary SHIPPED but deliberately NOT certified; § "CONTINUATION ROUND" closed emission as valid-negative), [`iterations/0079-n-model-pair-grok.md`](iterations/0079-n-model-pair-grok.md) (N-model pair wiring; path A; finding F5 is why `README.md:49` reads as it does), [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (CLOSED 0078.6), [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iter: [`iterations/0081-judge-probe-capability-STUB.md`](iterations/0081-judge-probe-capability-STUB.md) (**FROZEN, MEASURED, GATE FAILED 2026-07-27 — SHIP NOTHING** — read its last two sections first; the v1 cell is INVALID and the freeze bar was mis-specified. Next action = freeze v2, then re-measure). Context iters: [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md) (emission boundary SHIPPED but deliberately NOT certified; § "CONTINUATION ROUND" closed emission as valid-negative), [`iterations/0079-n-model-pair-grok.md`](iterations/0079-n-model-pair-grok.md) (N-model pair wiring; path A; finding F5 is why `README.md:49` reads as it does), [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (CLOSED 0078.6), [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -30,8 +30,36 @@ the nodeg cohorts — are summarized in DECISIONS.md and their iter files;
 their only live descendants are the queued items 1-3 below.
 
 **Next work (in order)**:
-0. **iter-0081 R-allow-scope — REGISTERED, R0+R1 DONE, NOT FROZEN, NOT BUILT
-   (`75b668f`, 2026-07-27). Next action = freeze, then build.**
+0. **iter-0081 R-allow-scope — FROZEN (`e9d775d`), MEASURED, **GATE FAILED**
+   (`cada0bd`, 2026-07-27). SHIP NOTHING; product files changed: NONE.
+   Next action = **freeze v2**, then re-measure.**
+
+   **Do not re-derive the v1 result — it is INVALID.** Four defects, all in
+   § "GATE RESULTS": C7 was scored by a text proxy and truly fails 0/6 (the real
+   collector exits 1 on all six, cause = the uncleared **R-weld**); the guard
+   allowed `anchor && other` (the vendor's own documented footgun); isolation
+   failed so "sole delta = the hook" is FALSE (repo `AGENTS.md`/`CLAUDE.md`
+   injected — 0080's contamination class); and **the freeze bar itself conjoined
+   C6 with R-weld**, an independently registered open residual, so no hook could
+   ever have cleared it. v1 stands FAILED and is NOT retroactively amended.
+
+   **What survives and must not be re-measured**: `PreToolUse` deny **liveness is
+   positively resolved** — the denial arrives as a model-visible `tool_result`,
+   the judge re-routes to `read_file`, the anchor still executes inside the grok
+   process, `EndTurn` with zero cancels across six runs. The vendor documents this
+   continuation nowhere (only `Stop` states it); measurement supplied it, and both
+   seats agree. A real finding, not a ship.
+
+   **Two binding operator lessons (new)**: (a) **a gate only one seat can actually
+   run is not a two-seat gate** — the grok R-final seat was spawned without a
+   shell, so it could not execute the collector and returned SHIP while Codex
+   returned NOT SHIP on defects it had reproduced; (b) **score the frozen
+   conjunct, never a proxy for it** — "collector exit 0" must run the collector.
+
+   **`$ISO`/`$NEUTRAL` must sit outside any repo and embed no project identifier**
+   (`grok.md:51`). Every grok invocation of the 2026-07-27 session violated this,
+   including the seat rounds: seat *opinions* stand, any *measurement* taken
+   through them does not.
    [`iterations/0081-judge-probe-capability-STUB.md`](iterations/0081-judge-probe-capability-STUB.md)
    is the whole record. This is gate part 2 of the iter-0080 closing conjunction;
    it fails independently of emission, and **widening the allowlist stays
