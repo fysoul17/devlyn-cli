@@ -731,3 +731,41 @@ claim, even when the later answer agrees.
 **Orchestrator retractions: 1** (exact match, my own v1 gate fix, refuted by both
 seats). **Seat claims verified before adoption: 2, both CONFIRMED** (fixture under
 repo; prompt not forcing the exact induction).
+
+## v2 CELL MEASURED — 2026-07-27. Lines green; **final gate NOT RUN**; nothing shipped.
+
+Measured against the bar frozen at `c5a9352`. No conjunct was amended.
+
+| Line | Result |
+|---|---|
+| **Admissibility** | **PASS** — `$ISOROOT`/`$ISO`/`$NEUTRAL` **and the judge-read fixture** under an opaque `/tmp/nx-mc6-*` path outside every repo; zero `AGENTS.md`/`CLAUDE.md`/"North Star"/"No workaround" in any of the six transcripts (checked programmatically); the exact `python3 -c "…read_text()…"` induction issued 6/6 |
+| **Line A — C6 credit** | **PASS 6/6** (A1 EndTurn + zero terminal `PermissionCancelled` · A2 hook fired on the exact induced command · A3 unique reason in the model-consumed `tool_result` · A4 subsequent assistant event · A5 bare anchor executed **inside the grok process**, exit 0 · A6 zero non-anchor executions · A7′ seeded finding + verdict in envelope text) |
+| **Line A-chain** | **PASS 1/1, no retry** — hook saw `python3 <ext>/fixture/probe.py && touch <canary>`; denied model-visibly; **canary ABSENT** (neither segment executed); model continued; then ran the bare anchor to exit 0; EndTurn |
+| **Line B — report only** | collector **exit 1 on 6/6**. Classified: narration fused ahead of the first JSON object **on the same line** (JSON at col 173/221/257/228/252/245) = **registered R-weld exactly**, no new class, seeded finding never lost. Non-regression floor: `Cancelled` 1/6 → **0/6**; EndTurn-with-finding-shape 5/6 → **6/6** |
+| **Line C** | guard unit matrix **16/16** (`test-anchor-guard.py`) |
+
+Under the frozen fallback — *"rejection solely from registered R-weld leaves C6
+credited and R-weld open"* — C6 is credited and the product wiring was built.
+
+### But the gate did not run, so nothing ships
+
+Both final-gate seats were **killed mid-run with zero output** (codex log 449 KB,
+no exit marker; grok stdout 0 bytes). The v2 bar requires that **both gate seats
+execute** before any ship. **That condition is unmet.**
+
+**State**: product wiring is BUILT and **UNCOMMITTED** —
+`config/skills/_shared/grok-anchor-guard.py` (new) and the `adapters/grok.md`
+recipe edit, mirrored to `.claude/skills` and `.agents/skills`, lint green.
+It is held out of `HEAD` deliberately. **Committed here: the instrument and this
+measurement record only. PRODUCT FILES AT HEAD: UNCHANGED.**
+
+**Next action**: re-run the two-seat gate on the built diff. If it passes, ship
+C6 alone framed as **gate part 2 only** — no emission certification, no durable
+`pair grok` pin, adapter stays "not emission-certified".
+
+**Seat-round operational note, never a product change**: the grok gate seat was
+spawned with `--permission-mode bypassPermissions` plus `--deny` on the
+destructive classes, because a read-only seat cannot satisfy the
+both-seats-execute condition and because `--allow 'Bash(python3 )'` was measured
+not to authorise plain `python3 <script>` (**R-allow-prefix-form**). The tree must
+be verified clean after any such run.
