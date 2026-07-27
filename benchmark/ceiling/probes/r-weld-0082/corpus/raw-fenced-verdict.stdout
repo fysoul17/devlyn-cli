@@ -1,0 +1,12 @@
+Bash and Write are denied in this environment, so I verified both probes by exhaustive static trace against the actual code (`bin/cli.js` diff) and `data/catalog.json` rather than execution.
+
+**Probe 1** — SKU loop (lines: `for (const item of cart.items)` checking `hasOwnProperty(catalog.products, item.sku)`) runs in full *before* the quantity loop. MUG passes (exists), NOPE fails → `failCart({error:'invalid_sku', sku:'NOPE'})`, exit 2. MUG's `qty:0` is never evaluated. SKU-before-quantity ordering across the whole cart confirmed real. ✓
+
+**Probe 2** — omitted coupon: `cart.coupon != null` is `false` for `undefined` (loose `undefined == null`), so no `invalid_coupon` and `couponDiscountCents = 0`. Identical to `coupon:null`. Full output for both:
+`subtotal_cents:12400, line_discount_cents:2500, coupon_discount_cents:0, tax_cents:619, shipping_cents:0, total_cents:10519, items:[{TEE,4,10000,2500,7500},{MUG,2,2400,0,2400}]`. Tax = `round(7500 × 0.0825)=619` (rounded once on aggregate taxable post-line-discount; MUG exempt excluded). Coupon base = post-line-discount subtotal (9900). Both formulas match spec. ✓
+
+Scope: diff touches only `bin/cli.js` + `tests/cli.test.js`; no `package.json`/dependency change. Catalog read/parse now wrapped → `invalid_catalog` JSON error (fix 1 real). Both probes match expected; scope clean.
+
+```
+{"verdict": "PASS"}
+```

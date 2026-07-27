@@ -1,0 +1,314 @@
+{
+  "captured_from": "HEAD 7e6a64f, BEFORE any iter-0082 collector change \u2014 the only honest moment to take it",
+  "purpose": "C5: the git-TRACKED judge captures must collect identically after the change. 61 tracked; the 125 on-disk count includes 64 untracked files that cannot be part of a reproducible-from-clean-clone bar.",
+  "count": 61,
+  "accepted": 25,
+  "rejected": 36,
+  "captures": {
+    "benchmark/ceiling/results/iter0075-canary-b/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/codex-judge-primary.stdout": {
+      "exit": 0,
+      "findings_sha256": "9bf4581583aafc0d3a168baa2d09c4e0513ad649e1a192b91172b54419710cd2",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/iter0075-canary-b/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/runs/rs-20260720T084205Z-13272ab7dbc8/claude-judge.stdout": {
+      "exit": 0,
+      "findings_sha256": "2783d93038f0f9ff172dd724386de4007c888fa745cdf5bd0d2fd27883b116d6",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/iter0077-probe-b/DR-auth-signature-f12-webhook/A1/devlyn-snapshot/runs/rs-20260721T150755Z-a9adaef3f560/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/iter0078a2-probe-a/DR-auth-signature-f12-webhook/A1/devlyn-snapshot/runs/rs-20260722T102122Z-68dfad3ca202/codex-primary-judge.round2.stdout": {
+      "exit": 0,
+      "findings_sha256": "1b22708e37b9da2ac245ac3b78e7fbedb4ec7373ce7568efd24e425a997f0e1e",
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260718d/DR-byte-preservation-f7-out-of-scope-trap/A1/row-artifacts/devlyn-archive/runs/rs-20260718T000000Z-a1b2c3d4e5f6/codex-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260719g/DR-allocation-fefo-priority-rollback-f23-fulfillment/A1/devlyn-snapshot/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260719g/DR-allocation-fefo-priority-rollback-f23-fulfillment/A1/devlyn-snapshot/codex-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260719g/DR-atomic-state-f11-batch-import/A1/devlyn-snapshot/runs/rs-20260719T121412Z-6408dc3d43c8/claude-judge.cleaned.stdout": {
+      "exit": 0,
+      "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/nodeg-20260719g/DR-atomic-state-f11-batch-import/A1/devlyn-snapshot/runs/rs-20260719T121412Z-6408dc3d43c8/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260719g/DR-auth-signature-f12-webhook/A1/devlyn-snapshot/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260719g/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260719g/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/codex-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260719g/DR-ledger-rounding-consistency-f26-payout/A1/devlyn-snapshot/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260719g/DR-ledger-rounding-consistency-f26-payout/A1/devlyn-snapshot/codex-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260719g/DR-shape-compound-rules-f25-cart/A1/devlyn-snapshot/runs/rs-20260719T103916Z-60b9f2c446f0/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260719g/DR-shape-compound-rules-f25-cart/A1/devlyn-snapshot/runs/rs-20260719T103916Z-60b9f2c446f0/codex-judge.stdout": {
+      "exit": 0,
+      "findings_sha256": "82ac7505f1261c60f78d6e886daeb2d488373d381aadb61e6a35d659ca741f97",
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260719g/FS1-schedule-max-runs/A1/devlyn-snapshot/runs/rs-20260719T141211Z-0df16ad855be/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260720a/FS1-schedule-max-runs/A1/devlyn-snapshot/runs/rs-20260720T040421Z-4402cc885dcc/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260720a/FS1-schedule-max-runs/A1/devlyn-snapshot/runs/rs-20260720T040421Z-4402cc885dcc/verify.primary-judge.raw.stdout": {
+      "exit": 0,
+      "findings_sha256": "558518623dcdcd7b5c1491554aa9ffa8f68cb8a09d4976ebc284b64a2e9b5a97",
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260720a/FS1-schedule-max-runs/A1/devlyn-snapshot/runs/rs-20260720T044950Z-db5f081dc14f/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260720a/FS1-schedule-max-runs/A1/devlyn-snapshot/runs/rs-20260720T044950Z-db5f081dc14f/verify2.primary-judge.raw.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260720d/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/codex-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260720e/DR-atomic-state-f11-batch-import/A1/devlyn-snapshot/runs/rs-20260720T115437Z-42c41ed4b954/claude-judge.stdout": {
+      "exit": 0,
+      "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/nodeg-20260720e/DR-atomic-state-f11-batch-import/A1/devlyn-snapshot/verify-judge-primary.raw.stdout": {
+      "exit": 0,
+      "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/nodeg-20260720e/DR-auth-signature-f12-webhook/A1/devlyn-snapshot/codex-primary-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260720e/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/runs/rs-20260720T095826Z-6d16d8c644d7/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260720e/DR-ledger-rounding-consistency-f26-payout/A1/devlyn-snapshot/codex-judge-primary.round1.stdout": {
+      "exit": 0,
+      "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/nodeg-20260720e/DR-ledger-rounding-consistency-f26-payout/A1/devlyn-snapshot/codex-judge-primary.stdout": {
+      "exit": 0,
+      "findings_sha256": "4471bb2c0dd07f6f482e6b025c6e2b36d4966bb821d34a3a49213450e4611cff",
+      "verdict": "NEEDS_WORK"
+    },
+    "benchmark/ceiling/results/nodeg-20260720e/DR-ledger-rounding-consistency-f26-payout/A1/devlyn-snapshot/runs/rs-20260720T111620Z-d55e9412e513/claude-judge.stdout": {
+      "exit": 0,
+      "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/nodeg-20260720e/DR-shape-compound-rules-f25-cart/A1/devlyn-snapshot/claude-judge.stdout": {
+      "exit": 0,
+      "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/nodeg-20260720e/DR-shape-compound-rules-f25-cart/A1/devlyn-snapshot/codex-primary-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260720e/FS1-schedule-max-runs/A1/devlyn-snapshot/runs/rs-20260720T140815Z-068baf0da60c/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260720e/FS1-schedule-max-runs/A1/devlyn-snapshot/runs/rs-20260720T140815Z-068baf0da60c/codex-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260721d/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/runs/rs-20260721T022528Z-0e9359021b47/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260721d/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/verify-judge-primary.raw.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260721e/DR-atomic-state-f11-batch-import/A1/devlyn-snapshot/runs/rs-20260721T065728Z-3138278bd76a/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260721e/DR-auth-signature-f12-webhook/A1/devlyn-snapshot/runs/rs-20260721T072845Z-400f808ec06b/codex-judge.stdout": {
+      "exit": 0,
+      "findings_sha256": "f4923ae20546626bccf397063855b43275126ae7a8edabd496d05f4d65cc5785",
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260721e/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/runs/rs-20260721T045349Z-ce725608fffe/claude-judge.stdout": {
+      "exit": 0,
+      "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/nodeg-20260721e/DR-ledger-rounding-consistency-f26-payout/A1/devlyn-snapshot/runs/rs-20260721T060736Z-736d51ae9c7d/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260721e/DR-ledger-rounding-consistency-f26-payout/A1/devlyn-snapshot/verify.judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260721e/DR-shape-compound-rules-f25-cart/A1/devlyn-snapshot/runs/rs-20260721T053023Z-e815a59ad4ba/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260721e/DR-shape-compound-rules-f25-cart/A1/devlyn-snapshot/verify.judge.raw.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260721e/FS1-schedule-max-runs/A1/devlyn-snapshot/codex-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260722a/DR-allocation-fefo-priority-rollback-f23-fulfillment/A1/devlyn-snapshot/codex-judge-primary-r2.stdout": {
+      "exit": 0,
+      "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/nodeg-20260722a/DR-allocation-fefo-priority-rollback-f23-fulfillment/A1/devlyn-snapshot/codex-judge-primary.stdout": {
+      "exit": 0,
+      "findings_sha256": "ff8c2ed9c5d115b8db96750943234bcad5d99886233f8aa85bab9072cf300922",
+      "verdict": "NEEDS_WORK"
+    },
+    "benchmark/ceiling/results/nodeg-20260722a/DR-allocation-fefo-priority-rollback-f23-fulfillment/A1/devlyn-snapshot/runs/rs-20260722T035950Z-c3acbf542470/claude-judge.stdout": {
+      "exit": 0,
+      "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/nodeg-20260722a/DR-atomic-state-f11-batch-import/A1/devlyn-snapshot/claude-judge.stdout": {
+      "exit": 0,
+      "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/nodeg-20260722a/DR-atomic-state-f11-batch-import/A1/devlyn-snapshot/codex-primary-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260722a/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/runs/rs-20260722T005023Z-15951ac50383/claude-judge.round2.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260722a/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/runs/rs-20260722T005023Z-15951ac50383/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-20260722a/DR-ledger-rounding-consistency-f26-payout/A1/devlyn-snapshot/runs/rs-20260722T021204Z-8bb009dc380d/claude-judge.stdout": {
+      "exit": 0,
+      "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/nodeg-20260722a/FS1-schedule-max-runs/A1/devlyn-snapshot/runs/rs-20260722T045643Z-9152160f5c47/claude-judge.stdout": {
+      "exit": 0,
+      "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/nodeg-20260722a/FS1-schedule-max-runs/A1/devlyn-snapshot/runs/rs-20260722T045643Z-9152160f5c47/codex-primary-judge.round1.stdout": {
+      "exit": 0,
+      "findings_sha256": "c87b8cc69a994f07f38b635b3c7846c5daa0b07b7e2d5373da2e2334f2c55f28",
+      "verdict": "NEEDS_WORK"
+    },
+    "benchmark/ceiling/results/nodeg-hook-20260722a/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/claude-judge.stdout": {
+      "exit": 0,
+      "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/nodeg-hook-20260722a/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/codex-primary-judge.stdout": {
+      "exit": 0,
+      "findings_sha256": "d2a1f7e22b2a5594b6eeb9e37dde550e5bd3b66dd73752098230730b87fa5909",
+      "verdict": "PASS_WITH_ISSUES"
+    },
+    "benchmark/ceiling/results/nodeg-hook-20260722c/DR-atomic-state-f11-batch-import/A1/devlyn-snapshot/runs/rs-20260722T155851Z-5069eee5b1d7/claude-judge.round1-malformed.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-hook-20260722c/DR-atomic-state-f11-batch-import/A1/devlyn-snapshot/runs/rs-20260722T155851Z-5069eee5b1d7/claude-judge.stdout": {
+      "exit": 0,
+      "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verdict": "PASS"
+    },
+    "benchmark/ceiling/results/nodeg-hook-20260722c/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/runs/rs-20260722T140503Z-b330a3d32334/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-hook-20260722c/DR-byte-preservation-f7-out-of-scope-trap/A1/devlyn-snapshot/verify-judge-primary.raw.stdout": {
+      "exit": 0,
+      "findings_sha256": "ff63229504d0aa318014387cb26bfab375add8c9d868faded6c77c922a945a1a",
+      "verdict": "PASS_WITH_ISSUES"
+    },
+    "benchmark/ceiling/results/nodeg-hook-20260722c/DR-ledger-rounding-consistency-f26-payout/A1/devlyn-snapshot/runs/rs-20260722T151656Z-300755c095d5/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    },
+    "benchmark/ceiling/results/nodeg-hook-20260722c/DR-shape-compound-rules-f25-cart/A1/devlyn-snapshot/runs/rs-20260722T144227Z-83ff017fab0f/claude-judge.stdout": {
+      "exit": 1,
+      "findings_sha256": null,
+      "verdict": null
+    }
+  }
+}

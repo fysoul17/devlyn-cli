@@ -1,0 +1,185 @@
+{
+  "iter": "0082",
+  "frozen": "2026-07-27",
+  "purpose": "Replaces the unsatisfiable N9. Real judge captures, exact bytes, with hand-verified expected collections.",
+  "redaction": "NONE \u2014 exact raw bytes. A pattern scan over every capture returned only field names (inputTokens, output_tokens); no credential. Rewriting would make 'this is a genuine capture' uncheckable against the vault hashes.",
+  "vault": "~/.local/share/nx01/iter0082-corpus/ (+SHA256SUMS) \u2014 off-repo insurance against the loss class that killed N9 twice.",
+  "losslessness_claim_bounded_to": "shape class W1 only. 8 samples of ONE shape, not 8 shape classes.",
+  "uncovered_by_real_data": [
+    "fence-wrapped FINDING \u2014 no surviving capture; swept all 125 on-disk *judge*.stdout plus non-judge .stdout under benchmark/ and .devlyn/. The nearest real capture (raw-fenced-verdict.stdout) wraps a verdict, not a finding."
+  ],
+  "captures": [
+    {
+      "file": "env-weld-0081-run1.json",
+      "provenance": "iter-0081 v2 cell run1 (probes/r-allow-scope-0081/out/, gitignored in place)",
+      "shape_class": "W1",
+      "shape": "grok --output-format json envelope; EndTurn; narration welded mid-line to one CRITICAL; terminal severity-less NEEDS_WORK",
+      "expect": {
+        "exit": 0,
+        "findings": [
+          {
+            "severity": "CRITICAL"
+          }
+        ],
+        "verdict": "NEEDS_WORK"
+      },
+      "sha256": "cb599c40f1ab661c778ec66e727acf843374061c3b9dbdb39b5e1a26906de8ff"
+    },
+    {
+      "file": "env-weld-0081-run2.json",
+      "provenance": "iter-0081 v2 cell run2 (probes/r-allow-scope-0081/out/, gitignored in place)",
+      "shape_class": "W1",
+      "shape": "grok --output-format json envelope; EndTurn; narration welded mid-line to one CRITICAL; terminal severity-less NEEDS_WORK",
+      "expect": {
+        "exit": 0,
+        "findings": [
+          {
+            "severity": "CRITICAL"
+          }
+        ],
+        "verdict": "NEEDS_WORK"
+      },
+      "sha256": "906a832bad8a08e86e22a7b39c3a6ae91c97684639cb5fedf1a1b76f3c7f69e0"
+    },
+    {
+      "file": "env-weld-0081-run3.json",
+      "provenance": "iter-0081 v2 cell run3 (probes/r-allow-scope-0081/out/, gitignored in place)",
+      "shape_class": "W1",
+      "shape": "grok --output-format json envelope; EndTurn; narration welded mid-line to one CRITICAL; terminal severity-less NEEDS_WORK",
+      "expect": {
+        "exit": 0,
+        "findings": [
+          {
+            "severity": "CRITICAL"
+          }
+        ],
+        "verdict": "NEEDS_WORK"
+      },
+      "sha256": "c386cb01d48081582b5424a24eb097585f2f9da9ae87459a0564057195f5bd3f"
+    },
+    {
+      "file": "env-weld-0081-run4.json",
+      "provenance": "iter-0081 v2 cell run4 (probes/r-allow-scope-0081/out/, gitignored in place)",
+      "shape_class": "W1",
+      "shape": "grok --output-format json envelope; EndTurn; narration welded mid-line to one CRITICAL; terminal severity-less NEEDS_WORK",
+      "expect": {
+        "exit": 0,
+        "findings": [
+          {
+            "severity": "CRITICAL"
+          }
+        ],
+        "verdict": "NEEDS_WORK"
+      },
+      "sha256": "ea15a1c9010098df0626a37532655a14b5c20c25d379861bca0849486a6b8a6c"
+    },
+    {
+      "file": "env-weld-0081-run5.json",
+      "provenance": "iter-0081 v2 cell run5 (probes/r-allow-scope-0081/out/, gitignored in place)",
+      "shape_class": "W1",
+      "shape": "grok --output-format json envelope; EndTurn; narration welded mid-line to one CRITICAL; terminal severity-less NEEDS_WORK",
+      "expect": {
+        "exit": 0,
+        "findings": [
+          {
+            "severity": "CRITICAL"
+          }
+        ],
+        "verdict": "NEEDS_WORK"
+      },
+      "sha256": "d61e7a4b80d8a3e090f93ea94f6804f34592e62f0caeca788592ed8e604a914c"
+    },
+    {
+      "file": "env-weld-0081-run6.json",
+      "provenance": "iter-0081 v2 cell run6 (probes/r-allow-scope-0081/out/, gitignored in place)",
+      "shape_class": "W1",
+      "shape": "grok --output-format json envelope; EndTurn; narration welded mid-line to one CRITICAL; terminal severity-less NEEDS_WORK",
+      "expect": {
+        "exit": 0,
+        "findings": [
+          {
+            "severity": "CRITICAL"
+          }
+        ],
+        "verdict": "NEEDS_WORK"
+      },
+      "sha256": "cfa8d4146c4bd92c391b0d656838b46b26e13cce538bc603e4bab8b1e3df7b31"
+    },
+    {
+      "file": "env-weld-mc6chain.json",
+      "provenance": "iter-0081 mc6-chain smoke run1 (session scratchpad)",
+      "shape_class": "W1",
+      "shape": "grok --output-format json envelope; EndTurn; narration welded mid-line to one CRITICAL; terminal severity-less NEEDS_WORK",
+      "expect": {
+        "exit": 0,
+        "findings": [
+          {
+            "severity": "CRITICAL"
+          }
+        ],
+        "verdict": "NEEDS_WORK"
+      },
+      "sha256": "8f959128cef967c8b7b934dfcc2c1ad7e246ff5775be3af3ab7f1c4b0c5a331b"
+    },
+    {
+      "file": "env-weld-mc6smoke.json",
+      "provenance": "iter-0081 mc6-smoke run1 (session scratchpad)",
+      "shape_class": "W1",
+      "shape": "grok --output-format json envelope; EndTurn; narration welded mid-line to one CRITICAL; terminal severity-less NEEDS_WORK",
+      "expect": {
+        "exit": 0,
+        "findings": [
+          {
+            "severity": "CRITICAL"
+          }
+        ],
+        "verdict": "NEEDS_WORK"
+      },
+      "sha256": "372de3b13ee1ea8e8a371b3b67ed861f5dc2b1832dc3973f4996f236d192e06e"
+    },
+    {
+      "file": "env-cancelled-a.json",
+      "provenance": "iter-0081 v2 design round, real grok CLI run",
+      "shape_class": "C1-cancelled",
+      "shape": "envelope with stopReason Cancelled; no contract in .text",
+      "expect": {
+        "exit": 1,
+        "reason": "stopReason must be EndTurn"
+      },
+      "sha256": "da734e21d3e009b6a8a7c10d7141e5fef9f8466e3a6d449a13f8ac741d6244a8"
+    },
+    {
+      "file": "env-cancelled-b.json",
+      "provenance": "iter-0081 v2 design round, real grok CLI run",
+      "shape_class": "C1-cancelled",
+      "shape": "envelope with stopReason Cancelled; no contract in .text",
+      "expect": {
+        "exit": 1,
+        "reason": "stopReason must be EndTurn"
+      },
+      "sha256": "5033f6627be4cba4e2a30d6c07ae5e0bb48f884d965308dd79595cb19776f77e"
+    },
+    {
+      "file": "raw-weld-devlyn.stdout",
+      "provenance": ".devlyn/grok-judge.stdout, 2026-07-26 iter-0079 corrections run",
+      "shape_class": "R1-rawweld",
+      "shape": "raw stream (not enveloped); narration welded mid-line to one CRITICAL",
+      "expect": {
+        "exit": 1,
+        "reason": "recovery is envelope-only; registered as R-rawstream-weld, out of this bar's scope"
+      },
+      "sha256": "1fa75de911e023bc7ed5245355d8bc25749000eb6c590236dd1a75dd6f215a78"
+    },
+    {
+      "file": "raw-fenced-verdict.stdout",
+      "provenance": "benchmark/ceiling/results/nodeg-20260719g/DR-shape-compound-rules-f25-cart/A1/devlyn-snapshot/runs/rs-20260719T103916Z-60b9f2c446f0/claude-judge.stdout (tracked)",
+      "shape_class": "R2-fencedverdict",
+      "shape": "raw stream; prose review then a paired-fence-wrapped severity-less {\"verdict\":\"PASS\"}",
+      "expect": {
+        "exit": 1,
+        "reason": "prose lines precede the fence and do not parse; HEAD rejects it too. The nearest real capture to the fence class C3 reports uncovered \u2014 it wraps a VERDICT, not a FINDING."
+      },
+      "sha256": "ebc3f8e328b9ee99b288e2063e9ce1a740e4be0e6199bd3ff68cd5320c2d7340"
+    }
+  ]
+}
