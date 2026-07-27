@@ -1,8 +1,10 @@
 # iter-0081 — R-allow-scope: the judge's probe capability contradicts its permitted scope
 
-**Status: FROZEN, NOT BUILT. 2026-07-27.** (Freeze record at the end of this
-file: § "FROZEN — 2026-07-27". Read it before any edit — it withdraws two claims
-made above, including `:87-90`.)
+**Status: FROZEN, MEASURED, GATE FAILED. SHIP NOTHING. 2026-07-27.**
+Read the last two sections first: § "FROZEN — 2026-07-27" (withdraws two claims
+made above, including `:87-90`) and § "GATE RESULTS" (the v1 cell is INVALID —
+contaminated isolation — and the orchestrator's reported PASS was a proxy score;
+the freeze bar itself was mis-specified). Product files changed: NONE.
 Opened because iter-0080's closing gate **part 2** fails independently of emission
 (DECISIONS 0080.3), and both seats' R1 named this the only residual whose
 clearance can move a failing gate conjunct.
@@ -508,3 +510,97 @@ drift `CLAUDE.md` § Goal-locked forbids.
 "other permission modes are untested"; `10-hooks.md:162-170` matcher aliasing;
 `10-hooks.md:238-255` the deny-payload / Stop-continuation asymmetry).
 **Orchestrator withdrawals: 2** (raw C5; STUB `:87-90`).
+
+## GATE RESULTS — 2026-07-27. **FAILED. SHIP NOTHING. Product files changed: NONE.**
+
+M-C6 ran n=6. The orchestrator scored it PASS 6/6 and **that score was wrong**.
+The R-final gate caught it. Product edits were built, then **reverted**; the tree
+is back to `e9d775d` on every product path.
+
+### Seat split, and why one seat was structurally handicapped
+
+**Grok: SHIP** (3 LOW residuals). **Codex: NOT SHIP** (3 binding defects).
+**Codex is right, and all three of its defects were reproduced by the
+orchestrator before adoption.**
+
+The split has a cause the orchestrator owns: the R-final grok seat was spawned
+with `--disallowed-tools "…,run_terminal_cmd"`, so it **could not execute the
+collector or reproduce the chain case**. It reviewed by reading. Codex had a
+shell. That is an instrument asymmetry introduced by the orchestrator, not a
+seat-quality difference — a gate that only one seat can actually run is not a
+two-seat gate.
+
+### The three defects (each reproduced, not adopted on assertion)
+
+1. **C7 was scored by proxy, and truly fails 0/6.** The frozen conjunct is
+   "collector exit 0 with a canonical verdict"; the scorer instead tested
+   `"CRITICAL" in text and "verdict" in text`. Running the real
+   `collect-codex-findings.py` over all six stdouts: **exit 1 on 6/6**. Cause is
+   the known **R-weld** residual — narration welded ahead of the JSON — which
+   iter-0080 closed as a valid-negative and left explicitly uncleared.
+2. **The guard allowed chains.** `startswith(anchor)` returned
+   `{"decision":"allow"}` for `python3 …/probe.py && echo pwned` — a faithful
+   reproduction of the vendor's own documented footgun
+   (`22-permissions-and-safety.md`: `Bash(git *)` auto-approves
+   `git status && rm -rf /`), and a direct contradiction of the contract's
+   "must run unchained".
+3. **Treatment fidelity failed — "sole delta = the hook" is FALSE.** The runner
+   put `$ISO`/`$NEUTRAL` under the repo, contrary to `grok.md:51`
+   ("must be on paths that do not embed a project or repo identifier"). The
+   preserved judge transcript contains this repo's `AGENTS.md`, `CLAUDE.md`,
+   "North Star", and "No workaround" — the exact contamination class iter-0080
+   made binding. **This invalidates the v1 cell**, and it also invalidates the
+   ad-hoc product-shape check run the same session (its path embedded the repo
+   name too): that result is suggestive, not certified.
+
+Plus ~15 MB of regenerated runtime under `out/` was staged for commit; now
+`.gitignore`d.
+
+### A fourth defect, and it is in the FREEZE itself
+
+**C7 couples C6's clearance to R-weld, an independently registered, uncleared
+residual.** No hook can make the collector accept welded output. As written, the
+frozen conjunction was **unachievable regardless of whether C6 works** — the bar
+tested two defects and credited neither separately.
+
+This is **not** retroactively amended. v1 stands as FAILED, per the same rule
+that forced R-fence into its own freeze rather than a v1 amendment (0080.3).
+
+### What survives — the round's real gain
+
+**Liveness is positively resolved, and both seats say so independently.** Codex:
+"that changes 'PreToolUse continuation unknown' to 'continuation observed'."
+Raw transcript: model-visible `Hook denied: DEVLYN-0081-HOOK-DENY…` →
+`"Shell is locked to the anchor probe; reading the files with the file tool
+instead."` → `read_file` → anchor `exit: 0` in the grok process → `EndTurn`,
+zero cancels across six runs. The vendor documents no such sentence for
+`PreToolUse`; measurement supplied it.
+
+That is a real finding. **It is not a ship.**
+
+### Instrument defects fixed (correctness bugs the gate found, not hypothesis tuning)
+
+- guard: prefix → **exact match**; the chain question is deleted rather than handled
+- runner: `$ISOROOT` is now a **required** external path (`:?` guard), never under the repo
+- `out/` gitignored
+
+### Registered residuals
+
+- **R-freeze-coupling** — a clearance bar must not conjoin an independently
+  registered open residual. v2 must credit C6 and R-weld separately.
+- **R-iso-path** — every grok invocation this session used a path embedding the
+  repo identifier, including the seat rounds. Seat *opinions* are unaffected;
+  any *measurement* from them is not certified.
+- **R-guard-exactness** — closed by the fix above, but only re-measurable in v2.
+
+### v2 entry conditions (to be frozen BEFORE re-measuring, never inferred from here)
+
+Codex's named harder cell, adopted verbatim as the starting point: rerun with
+truly external `$ISO`/`$NEUTRAL`, zero injected project context, the exact
+observed `python3 -c …read_text()` induction, **raw collector execution**, and an
+anchor-prefix-chain case proving the corrected guard denies it model-visibly.
+Add: C6 and R-weld credited on separate lines.
+
+**Orchestrator retractions this round: 1 and it is the largest of the iter** —
+the reported "M-C6 PASS 6/6 on all eight conjuncts", which was a proxy score over
+a contaminated cell. **Seat claims verified before adoption: 3, all CONFIRMED.**
