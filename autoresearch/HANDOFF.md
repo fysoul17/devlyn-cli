@@ -30,51 +30,44 @@ the nodeg cohorts — are summarized in DECISIONS.md and their iter files;
 their only live descendants are the queued items 1-3 below.
 
 **Next work (in order)**:
-0. **iter-0082 R-weld — v2 FROZEN, NOT BUILT (2026-07-27). Next action = BUILD
-   against the v2 bar.** `iterations/0082-weld-recovery-STUB.md` § "v2 FROZEN" is
-   the record; § "GATE" above it is v1's failure and is not amended. The grok pair
-   seat still cannot deliver a collectable review; **that is the live frontier.**
+0. **iter-0082 R-weld — SHIPPED (`557152f`, 2026-07-28). Gate cleared by three
+   seats.** `iterations/0082-weld-recovery-STUB.md` § "BUILT + GATED" is the
+   record. **The grok pair seat can now deliver a collectable review**: HEAD
+   rejects all 8 real welded captures, the shipped collector collects each as one
+   `CRITICAL` + `NEEDS_WORK`, and the real merge returns `NEEDS_WORK` 8/8.
 
-   **v1 died on an UNSATISFIABLE conjunct** (N9's corpus lived in session
-   scratchpad and is gone). Binding lesson, widened: **a clearance bar must not
-   conjoin an independently registered open residual NOR an unsatisfiable
-   conjunct.** v2 was checked conjunct-by-conjunct for satisfiability *before*
-   freezing, and every row names an artifact that exists.
+   **Claim boundary**: this fixes collection. Emission is still not certified and
+   there is **no durable `pair grok` pin**. The bar's losslessness claim is bounded
+   to shape class W1 (8 real captures, one shape); the fence-wrapped-*finding*
+   class has no surviving real capture and is reported **uncovered**.
 
-   **Do not reuse the v1 patch.** v2's round measured three defects in it, all
-   reproduced by the orchestrator: it accepts a **false PASS that HEAD rejects**
-   (fence + `#` comment + one `INFO` + a severity-less `{"verdict":"UNKNOWN"}` →
-   `pair_judge: PASS`), and it accepts frozen negative **N6**'s own shape (fence
-   token with trailing bytes) through recovery, and promotes a `#`-commented
-   finding into the findings.
+   **Do not re-derive**: the recovery preamble is an allowlist of narrative bytes
+   (no `#`, no backtick, no `{`; mid-line cut), which makes mid-JSON slicing and
+   comment consumption *structurally impossible* rather than defended against. A
+   token denylist is the shape that made v1 launder its own frozen negatives.
+   `VERDICT_RANK`/`finding_rank` are single-sourced from merge — v1 invented a
+   second definition and broke 4 real captures. The durable corpus lives at
+   `benchmark/ceiling/probes/r-weld-0082/` (+ off-repo vault
+   `~/.local/share/nx01/iter0082-corpus/`), and `tracked-baseline.json` pins how
+   all 61 tracked judge captures collect at the **pre-change** collector.
 
-   **Two distinct mechanisms** — the false PASS is the **plain** path (G3 widened
-   the summary verdict vocabulary past HEAD; merge then ranks the lone `INFO` at 0),
-   while the launderings are `contract_offset()` discarding bytes before the first
-   parseable object. **The orchestrator first attributed the false PASS to recovery
-   and was wrong**; a seat inherited that error from the packet.
+   **NEW residual, the strongest lead — R-summary-verdict-not-merged**: the
+   collector writes the judge's verdict to `pair-judge.summary.json` and **merge
+   never reads it**; `pair_judge` derives solely from finding severity, so a judge
+   saying `NEEDS_WORK` with only `LOW`/`INFO` findings is reported **PASS**. Same
+   "harness discards the judge's conclusion" failure this iter fixed, one layer up.
+   Codex's invariant: `pair_judge = worse(summary verdict, finding-derived verdict)`.
+   Also registered, not conjoined: **R-merge-envelope**, **R-comment-finding**,
+   **R-verdict-default**, **R-rawstream-weld**, **R-envelope-severity-bypass**
+   (a top-level `"severity"` makes the envelope parse as a finding, bypassing the
+   `EndTurn` gate), **R-backtick-preamble** (any backtick in the narration kills
+   recovery; 0/8 corpus rows affected, 25/61 tracked captures contain one).
 
-   **Frozen v2 bar in one line**: every negative rejects **on every ingress path**
-   (plain / envelope / recovery); the real-capture corpus replaces N9 with 11
-   vaulted captures at `~/.local/share/nx01/iter0082-corpus/` (+SHA256SUMS);
-   losslessness is claimed only for the one shape class real bytes support; the
-   fence-wrapped-finding class is reported **uncovered**. Build constraint: the
-   recovery prefix rule is defined by what the preamble may **contain** (no fence,
-   no `#`, no `{`; the cut may fall **mid-line** — all 8 real welds do), never by
-   a token denylist.
-
-   **A third seat (Fable) verified the freeze itself and found it DEFECTIVE.**
-   N10 had conjoined R-merge-envelope — `pair_judge=PASS` measured 4/4 — i.e. **I
-   froze an unsatisfiable conjunct for the third iter running, inside the very
-   freeze written to prevent it.** Also repaired pre-build: "cut at a line
-   boundary" (would have recovered 0/8) and "125 tracked" (61 are).
-   **Binding: a freeze is not frozen until a seat has tried to satisfy every
-   conjunct by execution.** Asserting the check was run is not running it.
-
-   **Registered separately, NOT conjoined** — four; none blocks R-weld:
-   **R-merge-envelope**, **R-comment-finding**, **R-verdict-default**, and NEW
-   **R-rawstream-weld** (a real non-enveloped weld is still discarded; the shipped
-   capture path is always enveloped).
+   **Binding lesson, earned three times**: a clearance bar must not conjoin an
+   independently registered residual nor an unsatisfiable conjunct — **and a
+   freeze is not frozen until a seat has tried to satisfy every conjunct by
+   execution.** Asserting the check was run is not running it; a Fable verifier
+   pointed only at satisfiability caught what two design seats read past.
 
 1. **iter-0081 R-allow-scope — SHIPPED (`78a0dd4`), gate part 2 cleared.**
    The `PreToolUse` anchor guard makes an out-of-anchor denial a model-visible
