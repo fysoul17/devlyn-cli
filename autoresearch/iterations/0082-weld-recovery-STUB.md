@@ -222,3 +222,91 @@ New `test-collector-negatives.py` holds the frozen negatives.
 
 **Held uncommitted until the two-seat gate runs.** Both seats must EXECUTE, and —
 new this iter — **the gate prompt must forbid modifying tracked files.**
+
+## GATE — 2026-07-27. **FAILED. SHIP NOTHING. Product files at HEAD: unchanged.**
+
+**Grok: SHIP. Codex: NOT SHIP. Codex is right on both counts, and both were
+reproduced by the orchestrator before adoption.**
+
+### Blocker 1 — a real defect: recovery laundered a frozen negative
+
+`contract_offset()` finds the JSON object *after* a forbidden fence prefix, and
+the slice discards that prefix before the fence rule ever sees it. Reproduced:
+
+```
+Narration.```json{"id":"first","severity":"HIGH",…}
+{"verdict":"NEEDS_WORK"}
+```
+
+→ **plain path rejects (N6), recovery path ACCEPTS.** The two paths disagreed on
+a frozen negative. My negative suite exercised N6 only as a plain stream — the
+suite itself had the hole. Grok saw the same shape and ranked it non-blocking
+because it is not a false PASS; **Codex's reading is the correct one**: N6 is a
+frozen conjunct, and a path that accepts it fails the bar regardless of severity.
+
+### Blocker 1b — a regression I introduced
+
+A trailing `#` comment after the summary: **HEAD accepts, my version rejected.**
+G1 terminates on a later *record*; a comment is ignorable everywhere. My terminal
+check ran before the comment skip.
+
+### Both fixed, and the suite now closes the hole
+
+Comments are ignorable wherever they appear; a duplicate summary and a later
+record reject separately; recovery refuses a fence token welded to the contract
+start. Every plain negative now also runs **through recovery** (`N6r`, `N2r`).
+After the fixes: negatives **13/13**, self-test green, **N8 6/6**, 106-capture
+sweep **0 regressions / 65 byte-identical**, lint green.
+
+### Blocker 2 — N9, and it is the same mistake I recorded as binding one iter ago
+
+The frozen bar reads *"Anything less does not ship."* **N9 is unmet and
+unsatisfiable** — the corpus is gone and no product change can recreate it.
+Codex: *"Because the bar was frozen before measurement, corpus loss cannot
+retroactively weaken it."* That is correct, and the consequence is that
+**this bar can never be met.**
+
+**That is exactly the defect iter-0081 v1 had — a clearance bar conjoined to
+something no work in the iter can satisfy — and I recorded "a clearance bar must
+not conjoin an independently registered open residual" as a binding lesson, then
+made the same class of error in the next iter.** The lesson was too narrow: it
+must also read **a bar must not conjoin an UNSATISFIABLE conjunct.**
+
+Codex's assessment of the substitute, adopted: the 106-capture sweep is good
+evidence for *plain-stream* non-regression and it caught the real `LOW` bug, but
+it contains **zero newly recovered envelope welds** — the novel path whose
+losslessness N9 exists to measure. N8's six recovery positives do not cover the
+16-recovery / 1-fence-reject / 1-non-EndTurn-refusal spread the lost corpus had.
+
+### Gate integrity note
+
+Codex disclosed that its attempt to run an independent Claude seat failed (that
+CLI was not logged in) and **explicitly refused to present its run as a
+successful two-engine gate**. Recorded as the honest label it is.
+
+### v2 entry conditions — to be frozen BEFORE re-measuring
+
+1. Replace N9 with a **satisfiable** corpus requirement: a durable, in-repo set of
+   real welded envelopes with known-correct expected collections. N8's six are the
+   seed; the shape spread (recovery positives, fence rejects, non-`EndTurn`
+   refusals) must be rebuilt from real captures, never synthesised into the bar.
+2. Carry forward, already measured: negatives 13/13 incl. the through-recovery
+   variants, N8 6/6, 106-capture sweep clean.
+3. Keep the code as fixed here; the patch is preserved, the tree is not.
+
+### Registered separately — NOT conjoined (three now)
+
+- **R-merge-envelope** — merge never unwraps the envelope, so a collector reject
+  leaves `pair_judge: PASS` on the shipped path.
+- **R-comment-finding** — pre-existing in HEAD and unchanged here:
+  `# {"severity":"CRITICAL"}` + `# SUMMARY PASS` accepts as PASS with zero
+  findings, because the commented finding is skipped.
+- **R-verdict-default** — `verify-merge-findings.py:94` is
+  `VERDICT_RANK.get(verdict, 0)` and **0 is PASS**, so any unrecognised verdict
+  string ranks as PASS. The orchestrator first reasoned this was fail-closed and
+  **that reasoning was wrong**; the default is what makes it a real vector,
+  bounded today only because the findings themselves still rank.
+
+**Orchestrator retractions this round: 2** (the "non-exact verdict is fail-closed"
+reasoning; and the claim that the frozen bar was satisfiable).
+**Seat claims verified before adoption: 4, all CONFIRMED.**
