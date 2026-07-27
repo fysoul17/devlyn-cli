@@ -30,43 +30,51 @@ the nodeg cohorts — are summarized in DECISIONS.md and their iter files;
 their only live descendants are the queued items 1-3 below.
 
 **Next work (in order)**:
-0. **iter-0082 R-weld — FROZEN, BUILT, MEASURED, GATE FAILED (`07f0bea`,
-   2026-07-27). SHIP NOTHING. Next action = freeze v2.**
-   `iterations/0082-weld-recovery-STUB.md` § "GATE" is the record. The grok pair
+0. **iter-0082 R-weld — v2 FROZEN, NOT BUILT (2026-07-27). Next action = BUILD
+   against the v2 bar.** `iterations/0082-weld-recovery-STUB.md` § "v2 FROZEN" is
+   the record; § "GATE" above it is v1's failure and is not amended. The grok pair
    seat still cannot deliver a collectable review; **that is the live frontier.**
 
-   **The bar failed because I froze an UNSATISFIABLE conjunct.** N9 required the
-   18-artifact iter-0080 corpus, which lived in session scratchpad and is gone —
-   no product change can recreate it. Codex held the frozen text: corpus loss
-   cannot retroactively weaken a bar frozen before measurement. **This is the
-   iter-0081 v1 defect one iter later**, so the binding lesson is widened:
-   **a clearance bar must not conjoin an independently registered open residual
-   NOR an unsatisfiable conjunct.**
+   **v1 died on an UNSATISFIABLE conjunct** (N9's corpus lived in session
+   scratchpad and is gone). Binding lesson, widened: **a clearance bar must not
+   conjoin an independently registered open residual NOR an unsatisfiable
+   conjunct.** v2 was checked conjunct-by-conjunct for satisfiability *before*
+   freezing, and every row names an artifact that exists.
 
-   **What is measured and carries forward** (do not re-derive): the collector fix
-   makes all six iter-0081 welds collect as `NEEDS_WORK` + `CRITICAL`; negatives
-   13/13 including through-recovery variants; 106 real captures with 0 regressions
-   and 65 byte-identical; lint green. The patch is preserved in the session
-   scratchpad and re-derivable from § "What changed in the product".
+   **Do not reuse the v1 patch.** v2's round measured three defects in it, all
+   reproduced by the orchestrator: it accepts a **false PASS that HEAD rejects**
+   (fence + `#` comment + one `INFO` + a severity-less `{"verdict":"UNKNOWN"}` →
+   `pair_judge: PASS`), and it accepts frozen negative **N6**'s own shape (fence
+   token with trailing bytes) through recovery, and promotes a `#`-commented
+   finding into the findings.
 
-   **Two real defects the gate found, both fixed in the patch**: recovery
-   laundered frozen negative N6 (a fence welded to the contract start rejects
-   plainly but was accepted through recovery — the negative suite tested N6 only
-   as a plain stream), and a trailing `#` comment after the summary regressed
-   against HEAD.
+   **Two distinct mechanisms** — the false PASS is the **plain** path (G3 widened
+   the summary verdict vocabulary past HEAD; merge then ranks the lone `INFO` at 0),
+   while the launderings are `contract_offset()` discarding bytes before the first
+   parseable object. **The orchestrator first attributed the false PASS to recovery
+   and was wrong**; a seat inherited that error from the packet.
 
-   **v2 entry**: replace N9 with a durable in-repo corpus of real welded
-   envelopes with known-correct expected collections — N8's six are the seed, and
-   the shape spread must be rebuilt from real captures, never synthesised.
+   **Frozen v2 bar in one line**: every negative rejects **on every ingress path**
+   (plain / envelope / recovery); the real-capture corpus replaces N9 with 11
+   vaulted captures at `~/.local/share/nx01/iter0082-corpus/` (+SHA256SUMS);
+   losslessness is claimed only for the one shape class real bytes support; the
+   fence-wrapped-finding class is reported **uncovered**. Build constraint: the
+   recovery prefix rule is defined by what the preamble may **contain** (no fence,
+   no `#`, no `{`; the cut may fall **mid-line** — all 8 real welds do), never by
+   a token denylist.
 
-   **Registered separately, NOT conjoined** — all three are pre-existing and none
-   blocks R-weld: **R-merge-envelope** (merge never unwraps the envelope, so a
-   collector reject leaves `pair_judge: PASS` on the shipped path);
-   **R-comment-finding** (`# {"severity":"CRITICAL"}` + `# SUMMARY PASS` accepts
-   as PASS with zero findings); **R-verdict-default**
-   (`verify-merge-findings.py:94` defaults an unrecognised verdict to rank 0 =
-   PASS — the orchestrator first reasoned this was fail-closed and that reasoning
-   was wrong).
+   **A third seat (Fable) verified the freeze itself and found it DEFECTIVE.**
+   N10 had conjoined R-merge-envelope — `pair_judge=PASS` measured 4/4 — i.e. **I
+   froze an unsatisfiable conjunct for the third iter running, inside the very
+   freeze written to prevent it.** Also repaired pre-build: "cut at a line
+   boundary" (would have recovered 0/8) and "125 tracked" (61 are).
+   **Binding: a freeze is not frozen until a seat has tried to satisfy every
+   conjunct by execution.** Asserting the check was run is not running it.
+
+   **Registered separately, NOT conjoined** — four; none blocks R-weld:
+   **R-merge-envelope**, **R-comment-finding**, **R-verdict-default**, and NEW
+   **R-rawstream-weld** (a real non-enveloped weld is still discarded; the shipped
+   capture path is always enveloped).
 
 1. **iter-0081 R-allow-scope — SHIPPED (`78a0dd4`), gate part 2 cleared.**
    The `PreToolUse` anchor guard makes an out-of-anchor denial a model-visible
