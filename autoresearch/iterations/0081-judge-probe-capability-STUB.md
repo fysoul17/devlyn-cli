@@ -1,10 +1,12 @@
 # iter-0081 — R-allow-scope: the judge's probe capability contradicts its permitted scope
 
-**Status: FROZEN, MEASURED, GATE FAILED. SHIP NOTHING. 2026-07-27.**
-Read the last two sections first: § "FROZEN — 2026-07-27" (withdraws two claims
-made above, including `:87-90`) and § "GATE RESULTS" (the v1 cell is INVALID —
-contaminated isolation — and the orchestrator's reported PASS was a proxy score;
-the freeze bar itself was mis-specified). Product files changed: NONE.
+**Status: SHIPPED 2026-07-27 — gate part 2 only. Read the last section first**
+(§ "v2 FINAL GATE"), then § "v2 FROZEN" for the bar it was measured against.
+**v1 FAILED and is not amended**: its cell was INVALID (contaminated isolation),
+the orchestrator's reported PASS was a proxy score, and the v1 bar itself was
+mis-specified — §§ "FROZEN — 2026-07-27" and "GATE RESULTS" keep that record.
+Two claims made *above* this line are withdrawn in the v2 freeze, including
+`:87-90`. **Emission is NOT certified, R-weld stays open, no durable `pair grok` pin.**
 Opened because iter-0080's closing gate **part 2** fails independently of emission
 (DECISIONS 0080.3), and both seats' R1 named this the only residual whose
 clearance can move a failing gate conjunct.
