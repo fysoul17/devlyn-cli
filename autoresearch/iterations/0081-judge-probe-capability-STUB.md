@@ -1,6 +1,8 @@
 # iter-0081 — R-allow-scope: the judge's probe capability contradicts its permitted scope
 
-**Status: REGISTERED, NOT FROZEN, NOT BUILT. 2026-07-27.**
+**Status: FROZEN, NOT BUILT. 2026-07-27.** (Freeze record at the end of this
+file: § "FROZEN — 2026-07-27". Read it before any edit — it withdraws two claims
+made above, including `:87-90`.)
 Opened because iter-0080's closing gate **part 2** fails independently of emission
 (DECISIONS 0080.3), and both seats' R1 named this the only residual whose
 clearance can move a failing gate conjunct.
@@ -330,3 +332,179 @@ leaks the access JWT, the refresh token, and PII).
 
 Expect roughly 1 in 6 to die `Cancelled`. The rate is **diagnostic only** — the
 frozen bar is zero, per P-0080-D's "any" discipline.
+
+## FROZEN — 2026-07-27 (R2 round; Codex GPT-5.6-sol + Grok 4.5 converged)
+
+**Status change: REGISTERED → FROZEN. Still NOT BUILT. Product files changed: NONE.**
+
+R2 was licensed by the anti-asymptotic exception — NEW evidence from a file no
+seat had opened: `/Users/aipalm/.grok/docs/user-guide/10-hooks.md`, reached from
+`22-permissions-and-safety.md:250`, which names **two** deny-by-default
+mechanisms in one sentence: `defaultMode: "dontAsk"` **or a `PreToolUse` hook**.
+
+### Orchestrator withdrawals this round
+
+1. **Claim 1 (raw C5 — bare `dontAsk`→`auto` flip) is WITHDRAWN.** Both seats
+   killed it independently and on the same ground: `auto` expands the effective
+   authorization baseline, so unchanged `--allow` text ≠ unchanged authority
+   (`22-…:31-42`, `:119-136`). Cancelled could go to zero *because the
+   non-anchor command now runs* — a false clearance my criterion could not
+   detect.
+2. **STUB `:87-90` is overstated and corrected.** "A bounded input variation is
+   by definition a command other than the bare anchor [therefore denied]" is
+   wrong under documented prefix semantics (`22-…:314-323`): a rule matches any
+   command *starting with* the pattern, so argv-appending variations are
+   allowed. Both seats: right textually, **unmeasured** behaviourally, and it
+   does not cover run 4 (`python3 -c …` is not a prefix extension). It narrows
+   contradiction #1; it changes no primary.
+
+### Converged criterion (adopted — conjunction of both seats)
+
+**Nonterminal Denial under Non-Expansion with a Closed, Reviewable Surface.**
+Codex's *Nonterminal Denial Under Non-Expansion* and Grok's *Fail-Closed
+Liveness under Closed Policy* are the same criterion at two altitudes.
+
+| # | Conjunct |
+|---|---|
+| 1 | **Liveness** — out-of-scope denial is nonterminal and model-visible |
+| 2 | **Non-expansion** — the mechanism does not widen what can execute |
+| 3 | **Closed surface** — executable policy is explicit, versioned code, not an opaque vendor heuristic |
+| 4 | **Path A preserved** — grok itself executes the bare anchor |
+| 5 | **Emission not dirtier** — collector receives a canonical verdict |
+| 6 | No allowlist widening, no `--always-approve`, no retry-on-`Cancelled` |
+
+Bar unchanged: **zero silent-destroy denials** ("any" discipline, P-0080-D).
+
+### C6 — the frozen primary candidate
+
+Keep `--permission-mode dontAsk` unchanged. Add a native grok `PreToolUse` hook
+(ours, in-repo, versioned, seeded into `$ISO_HOME`) that denies shell outside the
+anchor family with `{"decision":"deny","reason":"…"}`.
+
+Both seats: C6 **dominates C5-R on conjuncts 2 and 3** — C5-R is
+expand-then-reconfine (two mechanisms: `auto` + sandbox), C6 leaves the baseline
+untouched and adds one. Codex: "structurally dominates … conditional on M-C6
+proving liveness."
+
+**The one unresolved conjunct is liveness, and both seats reached it
+independently with the same citation**: `10-hooks.md:238-241` gives `PreToolUse`
+a deny *payload*, but the only event whose reason is documented to be "fed back
+to the model [so] the agent runs another round" is **`Stop`** (`:255`), not
+`PreToolUse`. There is no sentence pre-certifying that a `PreToolUse` deny
+continues the turn. Per finding D (this permissions subsystem already lied once,
+on chain allows), that gap is measured, never inferred.
+
+### Preconditions MEASURED this round (not the hypothesis — instrument fidelity)
+
+- **P1 — the native hook fires under the literal shipped isolation recipe.**
+  Ran `grok -p` with `GROK_HOME=$ISO`, `HOME=$NEUTRAL`, and
+  `GROK_CLAUDE_HOOKS_ENABLED=false` verbatim; a hook at `$ISO/hooks/probe.json`
+  **fired** and received a 1004-byte payload carrying
+  `toolName: run_terminal_command` and `toolInput.command`. The allowed command
+  still executed (`stopReason=EndTurn`). This pre-clears Grok's R2 failure modes
+  #2/#3 and Codex's "treatment integrity must confirm that inference":
+  `GROK_CLAUDE_HOOKS_ENABLED` gates the **Claude vendor scan** only
+  (`10-hooks.md:65-76`), not native `$GROK_HOME` hooks. Matcher risk (#4) is
+  handled by `Bash` aliasing `run_terminal_command` (`10-hooks.md:162-170`),
+  verified in the doc; the probe used an empty matcher, which also fires.
+
+- **P2 — R-mode-fidelity, a NEW registered residual. NOT ASSERTED.**
+  The hook payload's `permissionMode` field reports:
+
+  | passed via `--permission-mode` | field reports |
+  |---|---|
+  | `dontAsk` | **`default`** |
+  | `acceptEdits` | **`default`** |
+  | `plan` | **`default`** |
+  | `auto` | `auto` |
+  | `bypassPermissions` | `bypassPermissions` |
+
+  The field demonstrably tracks the flag for two values and not for three.
+  **Cause is not established**: either the mode is not applied for those three,
+  or the hook serializer does not distinguish them. It is recorded, not claimed
+  — the shipped recipe rests on `dontAsk` (`grok.md:37`), so if the first
+  reading holds, the recipe's "strict CI allowlist" label is wrong and iter-0080's
+  cell table measured `default`. No prior conclusion is retracted on this: the
+  observable outcome (non-allowed command → terminal cancel) is the same under
+  both modes headless, so the cells stand and only the *label* is in question.
+  **Discriminating check, pre-registered here, to run before M-C6 is read**:
+  invoke with `--permission-mode acceptEdits` in a throwaway tree and attempt a
+  file edit — `acceptEdits` must run it without prompting; if it is denied, the
+  flag is not being applied and R-mode-fidelity becomes a defect with its own
+  freeze.
+
+### Arm order (both seats, identical)
+
+Freeze both protocols now; execute conditionally, early-stop on success.
+
+1. **M-C6 first** — `dontAsk` + native `PreToolUse` hook.
+2. **M-C5R only if M-C6 fails** liveness, hook load, model-visible feedback, or
+   canonical emission. If M-C6 fails **non-expansion**, C5-R is not the rescue
+   (both are permission-class) — escalate straight to C2.
+
+Executing both after C6 passes is waste and violates `CLAUDE.md:91`.
+
+### Ordered fallback (frozen)
+
+```
+C6 pass                  → ship C6 alone; NOT C1*, NOT C5-R
+C6 fail liveness → C5-R  → ship only if measured clean (weaker on conjunct 3)
+both fail                → C2 + explicit iter-0079 path-A supersession
+C1*                      → never the clearance path; separate quality iter only
+C3-narrow / C4 / retry / capability routing → stay out
+pair_judge: yes          → unchanged
+```
+
+### M-C6 — pre-registered protocol and falsifiers
+
+**Fixture**: the § Reproduction shape (forced post-anchor shell read), shipped
+isolation recipe verbatim, sole intentional delta = the hook. n=6.
+**Induce** the observed `python3 -c "…read_text()…"` call.
+
+**M-C6 PASSES only if ALL hold on 6/6:**
+
+| # | Observation | Source |
+|---|---|---|
+| 1 | envelope `stopReason == "EndTurn"` — any other value kills it | both seats |
+| 2 | the hook **fired** on the induced call (marker log non-empty) | Grok F-L3 |
+| 3 | the hook's **unique reason string** appears in the model-consumed `tool_result` | both |
+| 4 | **≥1 subsequent assistant event** after that tool_result | Codex |
+| 5 | the bare anchor still **executes** in the grok process | conjunct 4 / Grok F-A1 |
+| 6 | **no non-anchor shell executes** (block-and-report OK; execution not) | Grok F-N1 |
+| 7 | collector exit 0 with a canonical verdict; seeded CRITICAL preserved | both |
+| 8 | write canary `.devlyn/c6-write-canary` **absent** | Codex |
+
+**Any single** `stopReason: "Cancelled"`, `cancellationCategory:
+"PermissionCancelled"` terminating the sequence, missing reason, absent
+subsequent assistant event, non-anchor execution, canary present, or non-zero
+collector → **C6 FAILS**. Welded/PASS-shaped emission must not exceed the
+`dontAsk` baseline rate (R-weld is live and uncleared; `0080.3`).
+
+**What does NOT transfer from the C5 table** (Grok, adopted): "any
+`PermissionCancelled`" is no longer C6's sole kill bit — under C6 that string is
+evidence the *old* step-5 path fired anyway. The new positive evidence is the
+**reason-bearing, nonterminal** deny.
+
+### Build scope (frozen; nothing ships before M-C6 reads)
+
+1. The hook script + its config, in-repo and versioned (not scratchpad).
+2. **Durable fixture** — `0080` and `0081` both had to reconstruct it from prose,
+   and 0080's diagnosis was *wrong* because sessions were not preserved
+   (STUB § "The measurement that changed the diagnosis"). That is the cited
+   observed failure that licenses this addition.
+3. `adapters/grok.md`: delete the dead "full probe-command family" sentence
+   (`:62`) — the derivation block immediately below it produces exactly one
+   command, so the sentence is false text; deleting it resolves contradiction #2
+   subtractively and widens nothing.
+
+**Deferred to their own freeze, NOT bundled here**: the `adapters/README.md:49`
+ambiguity repair and the `/devlyn:engines` `pair`-pin warn parity
+(`devlyn:engines/SKILL.md:43-44`). Both are real (verified again this round) and
+both are unrelated to the destroy defect — bundling them would be exactly the
+drift `CLAUDE.md` § Goal-locked forbids.
+
+**Seat claims verified before adoption this round: 5, all CONFIRMED**
+(`22-…:250` catch-all-deny; `:119-136` authorization order; `0080:233-234`
+"other permission modes are untested"; `10-hooks.md:162-170` matcher aliasing;
+`10-hooks.md:238-255` the deny-payload / Stop-continuation asymmetry).
+**Orchestrator withdrawals: 2** (raw C5; STUB `:87-90`).
