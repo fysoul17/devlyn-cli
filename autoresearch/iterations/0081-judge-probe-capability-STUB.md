@@ -769,3 +769,57 @@ destructive classes, because a read-only seat cannot satisfy the
 both-seats-execute condition and because `--allow 'Bash(python3 )'` was measured
 not to authorise plain `python3 <script>` (**R-allow-prefix-form**). The tree must
 be verified clean after any such run.
+
+## v2 FINAL GATE — 2026-07-27. **BOTH SEATS SHIP. C6 SHIPPED (gate part 2 only).**
+
+Both seats executed; neither reviewed read-only. That condition was theirs, and
+enforcing it cost two extra rounds — both caused by the orchestrator.
+
+| Seat | Verdict | What it executed |
+|---|---|---|
+| **Grok 4.5** | **SHIP** | re-derived Line A run1 end-to-end, Line B's six 1-based columns (174/222/258/229/253/246), Line A-chain from the preserved chain artifacts, Line C on **both** the probe copy and the product guard |
+| **Codex GPT-5.6-sol** | **SHIP** | guard matrix 16/16; **raw collector CLI on all six untouched stdouts** (6/6 exit 1, registered R-weld, no canonical artifact, each retaining a CRITICAL + `NEEDS_WORK`); chain cell; full lint |
+
+**Two orchestrator errors this gate, both the same class as v1's**: the grok seat
+was first spawned without a working shell (two runs died `Cancelled` — the defect
+under repair), and the codex seat was first spawned `-s read-only`, so the
+collector could not allocate a temp dir and Codex returned a **procedural**
+NOT SHIP. Re-spawned with `workspace-write`, it shipped. *Handicapping a gate seat
+is the orchestrator's recurring failure mode in this iter.*
+
+### Seat-found defect, fixed before commit
+
+`adapters/grok.md` claimed the hook "keeps the judge from **ever** reaching"
+the mode's auto-deny, while the same paragraph documents fail-open and the guard
+allows shell when the anchor is unset (`grok-anchor-guard.py:34`). Narrowed to
+**"On the configured, measured path…"** (Codex, LOW, adopted).
+
+### The env-delivery question — disclosed by the orchestrator, adjudicated by Codex
+
+The v2 cell delivered `DEVLYN_PROBE_ANCHOR` through the runner's hook *wrapper*;
+the shipped recipe puts it on the **grok parent env**. Two attempts to close that
+on an admissible path **failed with `Not signed in`** (third occurrence of the
+0080.3 cluster). Codex's adjudication, adopted:
+
+> the earlier direct-hook run produced the unique `DEVLYN-0081-HOOK-DENY` tool
+> result, and **the guard allows when the anchor is absent** — so that denial
+> *is* proof the hook subprocess inherited the parent anchor. Repo-path
+> contamination can bias the model's command selection; it cannot populate a
+> subprocess environment or manufacture a deterministic tool result. It
+> invalidates that run as context-injection evidence, **not** as this narrow
+> inheritance proof.
+
+**New observation on R-AUTH, recorded not asserted**: Codex read the failing logs
+as "expired credential followed by `invalid_grant`/revoked refresh token".
+DECISIONS 0080.3 recorded rotation *and* expiry as **falsified** for that cluster.
+These may conflict; it needs its own look, and nothing here depends on it.
+
+### SHIPPED
+
+`config/skills/_shared/grok-anchor-guard.py` (new) + the `adapters/grok.md` recipe
+wiring and the dead-sentence deletion, mirrored to `.claude/skills` and
+`.agents/skills`. Lint green; guard 16/16; collector self-test green.
+
+**Claim boundary, held on both seats' insistence**: this clears **gate part 2
+only**. Emission is **not** certified, **R-weld stays open**, the adapter keeps
+its "not emission-certified" line, and **no durable `pair grok` pin** is added.

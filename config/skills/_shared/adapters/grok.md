@@ -24,10 +24,15 @@ escalation remains a reported solo skip).
 #
 #   [skills]
 #   ignore = ["~/.agents", "~/.claude", "~/.cursor"]
+#   plus $ISO_HOME/hooks/anchor-guard.json. grok reads that file as JSON, not
+#   through a shell, so its "command" must carry an ALREADY-EXPANDED path:
+#   {"hooks":{"PreToolUse":[{"hooks":[{"type":"command",
+#     "command":"python3 /abs/path/to/_shared/grok-anchor-guard.py","timeout":10}]}]}}
 # $NEUTRAL  = empty dir outside any git repo
 # $REPO     = absolute repo root (redirects MUST be absolute — cwd is $NEUTRAL)
 cd "$NEUTRAL"
 HOME="$NEUTRAL" ZDOTDIR="$NEUTRAL" GROK_HOME="$ISO_HOME" \
+DEVLYN_PROBE_ANCHOR="<the bare anchor, derived exactly as the --allow rule below>" \
 GROK_CLAUDE_MCPS_ENABLED=false GROK_CURSOR_MCPS_ENABLED=false \
 GROK_CLAUDE_SKILLS_ENABLED=false GROK_CURSOR_SKILLS_ENABLED=false \
 GROK_CLAUDE_HOOKS_ENABLED=false GROK_CURSOR_HOOKS_ENABLED=false \
@@ -37,14 +42,15 @@ python3 "$DEVLYN_SHARED_DIR/run-bounded.py" 600 -- grok -p "<judge prompt>" \
   --permission-mode dontAsk --no-memory \
   --tools "read_file,grep,list_dir,run_terminal_cmd" \
   --disallowed-tools "Agent,use_tool,search_tool" \
-  --allow 'Bash(<repo probe command family>)' \
+  --allow 'Bash(<the bare anchor>)' \
   --reasoning-effort medium \
   --output-format json \
   > "$REPO/.devlyn/grok-judge.stdout" 2> "$REPO/.devlyn/grok-judge.stderr"
 ```
 
 Copy `auth.json` into `$ISO_HOME` for every run and seed its `config.toml` with
-the shown `[plugins]` and `[skills] ignore` entries. Before launch, create
+the shown `[plugins]` and `[skills] ignore` entries and its
+`hooks/anchor-guard.json` with the shown `PreToolUse` entry. Before launch, create
 `$NEUTRAL/.zshenv` containing `export HOME=<the operator's real home>`.
 Both overrides are needed because grok scans `~/.claude.json` from `$HOME`,
 while zsh reads rc files from `$ZDOTDIR`, which is exported in some environments.
@@ -59,8 +65,7 @@ Never use `--json-schema` for the pair judge: measured runs degraded the
 tool-use loop (2/3 made zero tool calls and fabricated findings), and a
 `Cancelled` run emitted a PASS-shaped payload after its schema had failed.
 
-The `--allow` rule must cover the full probe-command family the judge may need,
-and the judge prompt must name the exact permitted command(s). Derive the prompt
+The judge prompt must name the exact permitted command(s). Derive the prompt
 anchor and allow-list string identically from one source, in this precedence:
 the solo-headroom hypothesis's backticked observable command when present;
 otherwise the backticked commands in the spec's `## Verification` bullets;
@@ -73,10 +78,16 @@ exact full-string rule for the chain — returned `PermissionCancelled`, so the
 mandatory dominance-loss anchor must run unchained with the allow rule scoped
 to that bare anchor.
 
-Grok's deny semantics are not Claude-parity: an out-of-allowlist command silently
-truncates the review at exit 0. Treat the resulting collector rejection as
-`BLOCKED` for `verify.pair.emission-contract`, never PASS. After a non-timeout
-spawn, run:
+Grok's deny semantics are not Claude-parity: reaching the permission mode's
+auto-deny silently truncates the review at exit 0. On the configured, measured
+path the `PreToolUse` hook above keeps the judge from reaching it — the hook runs
+at step 1, before the rules and before the mode policy, and returns the denial as
+a model-visible `tool_result`.
+It admits the bare anchor and anchor-plus-argv, and vetoes any character that
+could start a second command, so `verify.md`'s bounded input variations survive
+while chaining does not. The hook fails open, so the collector rejection remains
+the fail-closed floor: treat it as `BLOCKED` for
+`verify.pair.emission-contract`, never PASS. After a non-timeout spawn, run:
 
 ```bash
 python3 "$DEVLYN_SHARED_DIR/collect-codex-findings.py" \
