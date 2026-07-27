@@ -172,3 +172,53 @@ forbid modifying tracked files.**
 Everything adopted above was re-executed by the orchestrator first: the Break-A
 counterexample, the `CRITICAL`+`PASS` hole, the absence of envelope unwrapping in
 merge, the fence-prefix false PASS, and the 27-row `verdict` count.
+
+## BUILT + MEASURED — 2026-07-27. Gate NOT yet run; product held uncommitted.
+
+| Frozen item | Result |
+|---|---|
+| N1 dual-tab (two full contracts, tab-indented second) | **reject** |
+| N2 one summary, trailing `CRITICAL` after it | **reject** |
+| N3 `CRITICAL` + `SUMMARY PASS` | **reject** |
+| N4 recovered preamble + `INFO` + `PASS` | **reject** |
+| N5 paired / opening-only / closing-only fences | **uniform — all three accept** |
+| N6 fence token with trailing bytes | **reject** |
+| N7 fenced decoy `PASS`, then real `NEEDS_WORK` | **reject** |
+| N8 the six untouched iter-0081 v2 stdouts | **accept 6/6**, each `NEEDS_WORK` + 1 `CRITICAL` |
+| **N9 the 18 settled 0080 artifacts** | **UNSATISFIABLE — the artifacts do not exist** |
+
+Plus the collector's own self-test (updated to the new contract) and an 11-case
+negative suite, both green; lint green.
+
+### N9 is unsatisfiable, and the bar is NOT quietly amended
+
+The 0080 corpus lived in `scratchpad/emission-sweep/` — session-scoped, gone.
+**This is the exact failure that made iter-0081's fixture durable**, recurring.
+N9 is reported **unmet**, not rewritten.
+
+**Substitute regression check, explicitly labelled as NOT N9**: every
+`*-judge.stdout` still in the repo — **106 real captures** — collected under both
+the HEAD collector and the new one, comparing exit status and canonical bytes.
+
+**The substitute earned its keep on the first run: 4 REGRESSIONS.** A real
+historical shape — a `LOW`-severity `VJP-PASS` advisory finding alongside a
+`PASS` summary — was newly rejected, because the orchestrator's new consistency
+rule counted `LOW` as verdict-binding. **It is not**: `verify-merge-findings.py:117-121`
+binds only `CRITICAL`/`HIGH`, plus `MEDIUM` when the finding sets
+`verdict_binding: true`. The collector now calls the same predicate instead of
+inventing a second one.
+
+After that fix: **65 accepted by both, byte-identical, 0 regressions, 0 newly
+accepted** (recovery only reaches envelope-wrapped welds, which the historical
+corpus does not contain).
+
+### What changed in the product
+
+`collect-codex-findings.py`: summary is terminal; exact-token fences ignorable;
+the severity-less `{"verdict": …}` summary form recognised; a `PASS` summary with
+a verdict-binding finding rejects; byte-forward recovery after the `EndTurn` gate,
+admissible only with a verdict-binding finding **and** a `NEEDS_WORK` summary.
+New `test-collector-negatives.py` holds the frozen negatives.
+
+**Held uncommitted until the two-seat gate runs.** Both seats must EXECUTE, and —
+new this iter — **the gate prompt must forbid modifying tracked files.**
