@@ -1036,6 +1036,7 @@ PII — was written to a plaintext artifact and echoed into the orchestrator's
 transcript. Artifacts purged, the seat log redacted, three stale `$ISO_HOME`
 directories holding credential copies removed, and the probe **deleted** rather
 than repaired (its hypothesis is falsified, so a credential-dumping instrument has
-no remaining use). **The credential must be rotated.** Recorded as a first-class
+no remaining use). **Credential ROTATED by the operator 2026-07-27 and verified
+live afterwards (`grok -p` → `EndTurn`); this action item is CLOSED.** Recorded as a first-class
 lesson: an instrument that reads secrets needs recursive redaction, and "it is only
 a scratchpad file" is not a control.
