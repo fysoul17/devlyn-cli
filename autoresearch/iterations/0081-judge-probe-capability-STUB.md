@@ -303,3 +303,30 @@ destroy-defect fix, and are subject to the same pre-registration discipline.
 **Seat claims verified before adoption: 4, all CONFIRMED** (git provenance;
 `pin_eligible` independence from `role`; the pin-time warn asymmetry; the doctor's
 hardcoded grok note).
+
+## Reproduction (scratchpad artifacts are session-scoped; this is the durable recipe)
+
+The n=6 capture above ran the `adapters/grok.md ## Invocation` recipe **verbatim**
+with exactly one change — `$ISO_HOME` is preserved instead of `rm -rf`'d, so
+`$ISO_HOME/sessions/*/*/chat_history.jsonl` can be read for the actual tool calls.
+**Shred `$ISO_HOME/auth.json` before archiving anything** (binding lesson,
+DECISIONS 0080.3: the credential is a nested object, so a top-level-only redactor
+leaks the access JWT, the refresh token, and PII).
+
+- Prompt: the P-0080-D/E probe-route prompt — pair-JUDGE contract + the mandatory
+  dominance-loss clause + B4's unchained-anchor sentence. Reconstruct from
+  `verify.md`'s pair-JUDGE section; it carries no anti-preamble clause.
+- Fixture: a ~20-line priority allocator with one seeded CRITICAL (input-order
+  iteration instead of priority-first), a `spec.md` whose `## Verification` bullet
+  backticks the probe command, and a `probe.py` that prints only the **actual**
+  parsed object. The under-specification is load-bearing — it is why-chain step 3.
+- Flags: `--permission-mode dontAsk --no-memory --tools
+  "read_file,grep,list_dir,run_terminal_cmd" --disallowed-tools
+  "Agent,use_tool,search_tool" --allow "Bash(python3 <abs>/probe.py)"
+  --reasoning-effort medium --output-format json`. **No `--no-plan`** — the
+  shipped recipe does not carry it (0080's receipt/ship-shape correction).
+- Read per run: envelope `stopReason`/`num_turns`, and every `tool_calls` entry in
+  `chat_history.jsonl` plus any `tool_result` containing "User cancelled".
+
+Expect roughly 1 in 6 to die `Cancelled`. The rate is **diagnostic only** — the
+frozen bar is zero, per P-0080-D's "any" discipline.

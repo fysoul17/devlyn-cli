@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iter: [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md) (**BUILT + GATED PARTIAL 2026-07-26** — read § "BUILT + GATED" first for the gate table, then § "REGISTRATION" for the frozen contract the next step must honor; emission NOT certified and that is the designed outcome). Context iters: [`iterations/0079-n-model-pair-grok.md`](iterations/0079-n-model-pair-grok.md) (N-model pair wiring; FS-0079-A is why 0080 exists), [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (CLOSED 0078.6 — C1 product wiring, P-KL live PASS), [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5 PARTIAL SHIP — W-T0 shipped 12%, W-B claim revoked, wall fail-open miss, residual re-named), [`iterations/0076-completion-rate.md`](iterations/0076-completion-rate.md) (CLOSED 0076.5; M0 first clean live firing in -22a), [`iterations/0074-terminal-claim-integrity-STUB.md`](iterations/0074-terminal-claim-integrity-STUB.md) (C1 probe 0074.3 → product wiring = iter-0078). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iter: [`iterations/0081-judge-probe-capability-STUB.md`](iterations/0081-judge-probe-capability-STUB.md) (**REGISTERED, R0+R1 DONE, NOT FROZEN 2026-07-27** — read it end to end; the freeze is the next action). Context iters: [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md) (emission boundary SHIPPED but deliberately NOT certified; § "CONTINUATION ROUND" closed emission as valid-negative), [`iterations/0079-n-model-pair-grok.md`](iterations/0079-n-model-pair-grok.md) (N-model pair wiring; path A; finding F5 is why `README.md:49` reads as it does), [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (CLOSED 0078.6), [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,39 +14,63 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-27 (iter-0080 continuation 0080.3: **three pre-registered measurements, all NEGATIVE, product files changed NONE**; both seats converged on stop-emission / register / pivot; next = **R-allow-scope**, gate part 2)
+## 🚦 START-HERE — state after 2026-07-27 (emission CLOSED as valid-negative, 0080.3; **iter-0081 R-allow-scope registered with R0+R1 done and the `pair_judge` question decided** — next action is its **freeze**, then build. Product files changed across both: **NONE**)
 
-**Where the loop stands (one paragraph).** iter-0077 is CLOSED partial-ship
-(0077.5: W-T0 interphase 12.0% SHIPPED, W-B startup claim REVOKED at
-110.8%, wall fail-open MISS 10.659× best-ever-below-noise-band, residual
-re-named STARTUP + PHASE-UNION; senior guards all passed, complete 6/7,
-zero K1, sole incomplete F11 K2a = the pre-hook baseline datum). iter-0078
-Stage A SHIPPED + P-K live probe 3/3 PASS (0078.2), and **Stage A2 is now
-SHIPPED with both gates green (0078.4, df68598)**: bootstrap 881→630 —
-falsified W-B machinery (engine preflight, complexity/risk
-preclassification, untracked baseline, announce) deleted and returned to
-pre-A1 SKILL prose (honest +546-token partial revert of the A1 win); kept
-surface = schema-v3.0 state init + null-safe session_id stamp +
-batch-atomic fail-closed init. Grok R1 CONFIRM-COMMIT (F1–F5 not fired).
-P-0078-K/O/I re-ran 3/3 PASS post-strip; live micro-probe
-`iter0078a2-probe-a` (F12, sonnet/terra, worktree df68598) FS-0077-B NOT
-FIRED — full completion, honest NEEDS_WORK terminal, first live
-product-path session stamp, model-executed preflight correctly replaced
-engine with the engines.json pin, VERIFY caught the real quality gap (4
-HIGH); objective 0/1 is a known-variance-row outcome honestly surfaced,
-not a harness delta. C2 stays terminal authority; C1 is in-session
-pressure (CLI ~9-block cap honest bound). Remaining 0078 reads P-KL/P-C
-ride the first hook-bearing cohort.
+**Where the loop stands (one paragraph).** The live thread is the **grok
+pair-judge seat**: iter-0079 wired it (N-model pair, generic OTHER-engine
+spawn), iter-0080 shipped the emission boundary and **deliberately did not
+certify it**, and iter-0080's continuation closed emission as a
+valid-negative after three pre-registered measurements all came back
+negative. **iter-0081 is the live iter** — gate part 2 (the judge's probe
+capability vs its permitted scope), registered with both cross-vendor seat
+rounds done and the `pair_judge` question decided; the freeze is the next
+action. Nothing has shipped to product files since `4ed7c8b` (iter-0080
+B1-B5). Older closed threads — 0077 wall levers, 0078 C1 product wiring,
+the nodeg cohorts — are summarized in DECISIONS.md and their iter files;
+their only live descendants are the queued items 1-3 below.
 
 **Next work (in order)**:
-0. **R-allow-scope — the ONLY residual that can still move a failing gate
-   conjunct. Emission work is CLOSED for now (DECISIONS 0080.3, 2026-07-27).**
-   Register and close the post-anchor allow-scope defect: after B4 the judge runs
-   the dominance anchor correctly, states the right root cause, then dies at
-   exit 0 on a *later* exploratory command outside the bare-anchor allow rule
-   (`iterations/0080-pair-emission-boundary.md` § "What B4 actually bought").
-   That is gate part 2, it fails independently of emission, and **widening the
-   allowlist stays forbidden**.
+0. **iter-0081 R-allow-scope — REGISTERED, R0+R1 DONE, NOT FROZEN, NOT BUILT
+   (`75b668f`, 2026-07-27). Next action = freeze, then build.**
+   [`iterations/0081-judge-probe-capability-STUB.md`](iterations/0081-judge-probe-capability-STUB.md)
+   is the whole record. This is gate part 2 of the iter-0080 closing conjunction;
+   it fails independently of emission, and **widening the allowlist stays
+   forbidden**.
+
+   **The defect, re-diagnosed from preserved transcripts (n=6) — do not re-derive
+   from 0080's wording, which was imprecise.** All six runs have the *same*
+   information need (read `probe.py` for the probe's inputs); five use `read_file`
+   and live, one uses `python3 -c "…read_text()…"` through the shell and dies
+   `Cancelled` at exit 0. **It was a file read, not an exploratory command, and
+   the allow rule refused it correctly.** Correct CRITICAL in 6/6; completion 5/6.
+   Fail-closed: BLOCKED, never a false PASS — a **reliability/seat-fitness**
+   defect, not a safety one.
+
+   **Two contradictions in SHIPPED text** are the product-level part:
+   `verify.md:171-176` tells the judge to add "bounded input variations" while
+   `adapters/grok.md` scopes the allow rule to "that bare anchor"; and
+   `grok.md` itself says both "full probe-command family" and "bare anchor".
+
+   **Seat-converged and settled — do not relitigate**: bar = **zero
+   silent-destroy denials** (1/6 is diagnostic, never a threshold); no allowlist
+   widening, no retry-on-`Cancelled`, prose-only is not a clearance path; and if
+   the judge ever loses its shell, that is an **explicit supersession** of
+   iter-0079's path A (Grok conceded this to Codex on the text, with a named
+   delta). Candidate fixes C1\*/C2/C3/C4 are laid out in the STUB; **Codex and
+   Grok still diverge on the primary**, and that divergence is live.
+
+   **Decided 2026-07-27 (Opus 5 + Fable 5, at user direction): keep
+   `pair_judge: yes`.** Codex's `pair_judge: no` proposal is **refuted on git
+   provenance** — `git log -L 49,49:config/skills/_shared/adapters/README.md`
+   shows the "or not certified" clause was added by the iter-0079 ship commit
+   `155fc8b` itself, per finding F5, **specifically to license `yes`+uncertified**.
+   The orchestrator's earlier adjudication the other way is retracted. What
+   survives is a real doc defect (the sentence is ambiguous enough that two
+   frontier models and the orchestrator all misread it) and one real gap:
+   `/devlyn:engines` `executor` warns-and-writes for an unavailable pin while
+   `pair` has no equivalent clause (`devlyn:engines/SKILL.md:43-44`). Both are
+   freeze candidates, not free edits. Same-vendor caveat recorded: Opus+Fable
+   convergence is weaker evidence than the Codex↔Grok rounds.
 
    **Do NOT reopen emission without new evidence.** iter-0080's continuation
    round ran three pre-registered measurements, all negative, and both seats
