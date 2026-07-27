@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iter: [`iterations/0082-weld-recovery-STUB.md`](iterations/0082-weld-recovery-STUB.md) (**GATE FAILED 2026-07-27, SHIP NOTHING** — the bar was unsatisfiable; next action is a v2 freeze). Context: [`iterations/0081-judge-probe-capability-STUB.md`](iterations/0081-judge-probe-capability-STUB.md) (**SHIPPED 2026-07-27, gate part 2 only** — read § "v2 FINAL GATE" first, then § "v2 FROZEN". v1 FAILED and is not amended. Emission still NOT certified; R-weld open; no durable `pair grok` pin). Context iters: [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md) (emission boundary SHIPPED but deliberately NOT certified; § "CONTINUATION ROUND" closed emission as valid-negative), [`iterations/0079-n-model-pair-grok.md`](iterations/0079-n-model-pair-grok.md) (N-model pair wiring; path A; finding F5 is why `README.md:49` reads as it does), [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (CLOSED 0078.6), [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iter: [`iterations/0082-weld-recovery-STUB.md`](iterations/0082-weld-recovery-STUB.md) (**SHIPPED 2026-07-28** — read § "BUILT + GATED" first, then § "v2 FROZEN" for the bar. v1 FAILED on an unsatisfiable conjunct and is not amended.). Context: [`iterations/0081-judge-probe-capability-STUB.md`](iterations/0081-judge-probe-capability-STUB.md) (**SHIPPED 2026-07-27, gate part 2 only** — read § "v2 FINAL GATE" first, then § "v2 FROZEN". v1 FAILED and is not amended. Emission still NOT certified; R-weld open; no durable `pair grok` pin). Context iters: [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md) (emission boundary SHIPPED but deliberately NOT certified; § "CONTINUATION ROUND" closed emission as valid-negative), [`iterations/0079-n-model-pair-grok.md`](iterations/0079-n-model-pair-grok.md) (N-model pair wiring; path A; finding F5 is why `README.md:49` reads as it does), [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (CLOSED 0078.6), [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,20 +14,20 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-27 (emission CLOSED as valid-negative, 0080.3; **iter-0081 R-allow-scope registered with R0+R1 done and the `pair_judge` question decided** — next action is its **freeze**, then build. Product files changed across both: **NONE**)
+## 🚦 START-HERE — state after 2026-07-28 (**iter-0082 R-weld SHIPPED**, `557152f`; the pair judge's welded review is finally collectable. Next lead: **R-summary-verdict-not-merged**)
 
 **Where the loop stands (one paragraph).** The live thread is the **grok
-pair-judge seat**: iter-0079 wired it (N-model pair, generic OTHER-engine
-spawn), iter-0080 shipped the emission boundary and **deliberately did not
-certify it**, and iter-0080's continuation closed emission as a
-valid-negative after three pre-registered measurements all came back
-negative. **iter-0081 is the live iter** — gate part 2 (the judge's probe
-capability vs its permitted scope), registered with both cross-vendor seat
-rounds done and the `pair_judge` question decided; the freeze is the next
-action. Nothing has shipped to product files since `4ed7c8b` (iter-0080
-B1-B5). Older closed threads — 0077 wall levers, 0078 C1 product wiring,
-the nodeg cohorts — are summarized in DECISIONS.md and their iter files;
-their only live descendants are the queued items 1-3 below.
+pair-judge seat**: 0079 wired it, 0080 shipped the emission boundary and
+deliberately did not certify it, 0081 cleared gate part 2 (probe capability vs
+permitted scope), and **0082 has now cleared R-weld — the judge's welded review
+survives collection**, which was the last blocker between the seat and a usable
+review. What remains before a durable `pair grok` pin is **emission
+certification**, which 0080's continuation closed as a valid-negative. The
+strongest lead is the residual 0082 surfaced one layer up: **merge never reads the
+judge's own verdict**, so a `NEEDS_WORK` review carrying only `LOW`/`INFO`
+findings is still reported `PASS`. Older closed threads — 0077 wall levers, 0078
+C1 product wiring, the nodeg cohorts — are summarized in DECISIONS.md and their
+iter files; their only live descendants are the queued items below.
 
 **Next work (in order)**:
 0. **iter-0082 R-weld — SHIPPED (`557152f`, 2026-07-28). Gate cleared by three
