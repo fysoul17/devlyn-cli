@@ -1,6 +1,11 @@
 # iter-0082 — R-weld: make the pair judge's review actually collectable
 
-**Status: REGISTERED, NOT FROZEN, NOT BUILT. 2026-07-27.**
+**Status: FROZEN, BUILT, MEASURED, GATE FAILED. SHIP NOTHING. 2026-07-27.**
+Read § "GATE" (last section) first. The bar was **unsatisfiable** — N9's corpus no
+longer exists — so it can never be met; that is the iter-0081 v1 defect repeated.
+The code defects the gate found are fixed and the patch is preserved, but
+**product files at HEAD are unchanged**. Next action = freeze v2 with a
+satisfiable corpus requirement.
 
 Opened because iter-0081 cleared gate part 2 and **R-weld is now the only thing
 between the grok pair seat and a usable review**. Every one of the six admissible

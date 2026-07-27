@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iter: [`iterations/0081-judge-probe-capability-STUB.md`](iterations/0081-judge-probe-capability-STUB.md) (**SHIPPED 2026-07-27, gate part 2 only** — read § "v2 FINAL GATE" first, then § "v2 FROZEN". v1 FAILED and is not amended. Emission still NOT certified; R-weld open; no durable `pair grok` pin). Context iters: [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md) (emission boundary SHIPPED but deliberately NOT certified; § "CONTINUATION ROUND" closed emission as valid-negative), [`iterations/0079-n-model-pair-grok.md`](iterations/0079-n-model-pair-grok.md) (N-model pair wiring; path A; finding F5 is why `README.md:49` reads as it does), [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (CLOSED 0078.6), [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Active iter: [`iterations/0082-weld-recovery-STUB.md`](iterations/0082-weld-recovery-STUB.md) (**GATE FAILED 2026-07-27, SHIP NOTHING** — the bar was unsatisfiable; next action is a v2 freeze). Context: [`iterations/0081-judge-probe-capability-STUB.md`](iterations/0081-judge-probe-capability-STUB.md) (**SHIPPED 2026-07-27, gate part 2 only** — read § "v2 FINAL GATE" first, then § "v2 FROZEN". v1 FAILED and is not amended. Emission still NOT certified; R-weld open; no durable `pair grok` pin). Context iters: [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md) (emission boundary SHIPPED but deliberately NOT certified; § "CONTINUATION ROUND" closed emission as valid-negative), [`iterations/0079-n-model-pair-grok.md`](iterations/0079-n-model-pair-grok.md) (N-model pair wiring; path A; finding F5 is why `README.md:49` reads as it does), [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (CLOSED 0078.6), [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -30,54 +30,58 @@ the nodeg cohorts — are summarized in DECISIONS.md and their iter files;
 their only live descendants are the queued items 1-3 below.
 
 **Next work (in order)**:
-0. **iter-0081 R-allow-scope — SHIPPED (`78a0dd4`, 2026-07-27). Gate part 2 CLEARED.**
-   `config/skills/_shared/grok-anchor-guard.py` is a native grok `PreToolUse`
-   hook that runs at step 1, before the rules and before the mode policy, and
-   returns an out-of-anchor denial as a **model-visible `tool_result`**. Measured:
-   the judge reads the reason, re-routes to `read_file`, still executes the anchor
-   itself (path A preserved), and finishes `EndTurn`. Rule = the bare anchor, or
-   anchor + argv with a **quote-oblivious veto** on any character that could start
-   a second command, so `verify.md`'s bounded input variations survive while
-   chaining does not.
+0. **iter-0082 R-weld — FROZEN, BUILT, MEASURED, GATE FAILED (`07f0bea`,
+   2026-07-27). SHIP NOTHING. Next action = freeze v2.**
+   `iterations/0082-weld-recovery-STUB.md` § "GATE" is the record. The grok pair
+   seat still cannot deliver a collectable review; **that is the live frontier.**
 
-   **Claim boundary, do not widen it**: this cleared **gate part 2 only**.
-   Emission is **NOT** certified, **R-weld is open**, the adapter keeps its
-   "not emission-certified" line, and there is **no durable `pair grok` pin**.
-   Cancelled went 1/6 → 0/6 and finding-shape 5/6 → 6/6, but the collector still
-   rejects 6/6 on R-weld, so a grok pair review still lands `BLOCKED` today.
+   **The bar failed because I froze an UNSATISFIABLE conjunct.** N9 required the
+   18-artifact iter-0080 corpus, which lived in session scratchpad and is gone —
+   no product change can recreate it. Codex held the frozen text: corpus loss
+   cannot retroactively weaken a bar frozen before measurement. **This is the
+   iter-0081 v1 defect one iter later**, so the binding lesson is widened:
+   **a clearance bar must not conjoin an independently registered open residual
+   NOR an unsatisfiable conjunct.**
 
-   **The v1 attempt FAILED and is the more instructive record.** Do not re-derive
-   from it — § "GATE RESULTS" has it. Four defects: the orchestrator scored a
-   frozen conjunct by text proxy (the real collector failed 6/6); the guard's
-   prefix rule allowed `anchor && other`; isolation put `$ISO`/`$NEUTRAL` under
-   the repo so "sole delta" was false; and **the v1 bar conjoined C6 with R-weld**,
-   an independently open residual, making it unachievable by construction.
+   **What is measured and carries forward** (do not re-derive): the collector fix
+   makes all six iter-0081 welds collect as `NEEDS_WORK` + `CRITICAL`; negatives
+   13/13 including through-recovery variants; 106 real captures with 0 regressions
+   and 65 byte-identical; lint green. The patch is preserved in the session
+   scratchpad and re-derivable from § "What changed in the product".
 
-   **Binding operator lessons from this iter** — all three are orchestrator
-   failures, and each cost a round:
-   - **Never handicap a gate seat.** A read-only seat cannot run the collector; a
-     shell-less seat cannot reproduce a command. Both happened here, and the v1
-     SHIP/NOT-SHIP split was caused by exactly that, not by seat quality.
-   - **Score the frozen conjunct, never a proxy for it.** "Collector exit 0" means
-     run the collector.
-   - **A clearance bar must not conjoin an independently registered open residual.**
-   - `$ISO`/`$NEUTRAL` **and any judge-read fixture** must sit outside every repo
-     on paths embedding no project identifier (`grok.md:51`).
+   **Two real defects the gate found, both fixed in the patch**: recovery
+   laundered frozen negative N6 (a fence welded to the contract start rejects
+   plainly but was accepted through recovery — the negative suite tested N6 only
+   as a plain stream), and a trailing `#` comment after the summary regressed
+   against HEAD.
 
-   **Registered, NOT asserted**: **R-chain-confound** (every 0080 cell that died
-   contained `echo`; chained read-only commands survived here — it would refine a
-   binding 0080 conclusion); **R-allow-prefix-form** (`--allow 'Bash(python3 )'`
-   did not authorise `python3 <script>`, while the exact form authorised the anchor
-   7/7); **R-AUTH** (Codex read the failing logs as expired credential +
-   `invalid_grant`, which may conflict with 0080.3 recording rotation and expiry
-   as falsified — third occurrence of that cluster).
+   **v2 entry**: replace N9 with a durable in-repo corpus of real welded
+   envelopes with known-correct expected collections — N8's six are the seed, and
+   the shape spread must be rebuilt from real captures, never synthesised.
 
-   **Still deferred to their own freeze** (both seats confirmed): the
-   `adapters/README.md:49` ambiguity and the `/devlyn:engines` `pair`-pin warn
-   parity (`devlyn:engines/SKILL.md:43-44`).
+   **Registered separately, NOT conjoined** — all three are pre-existing and none
+   blocks R-weld: **R-merge-envelope** (merge never unwraps the envelope, so a
+   collector reject leaves `pair_judge: PASS` on the shipped path);
+   **R-comment-finding** (`# {"severity":"CRITICAL"}` + `# SUMMARY PASS` accepts
+   as PASS with zero findings); **R-verdict-default**
+   (`verify-merge-findings.py:94` defaults an unrecognised verdict to rank 0 =
+   PASS — the orchestrator first reasoned this was fail-closed and that reasoning
+   was wrong).
 
-   **Next on this thread**: R-weld's own freeze — it is now the only thing between
-   the grok seat and a usable pair review.
+1. **iter-0081 R-allow-scope — SHIPPED (`78a0dd4`), gate part 2 cleared.**
+   The `PreToolUse` anchor guard makes an out-of-anchor denial a model-visible
+   `tool_result` instead of a silent exit-0 truncation; the judge re-routes and
+   still executes the anchor itself. **Claim boundary: gate part 2 only** —
+   emission is not certified and there is no durable `pair grok` pin.
+   Its v1 attempt FAILED and § "GATE RESULTS" is the more instructive record.
+
+   **Binding operator lessons from 0081-0082, all orchestrator failures**:
+   never handicap a gate seat (a read-only seat cannot run the collector; a
+   shell-less seat cannot reproduce a command); score the frozen conjunct, never
+   a proxy; a bar must not conjoin an open residual nor an unsatisfiable
+   conjunct; **every seat prompt that grants a shell must forbid modifying
+   tracked files** (both seats wrote into the iteration record when it did not).
+
 1. **Startup lever re-registration** (fail-open obligation from 0077.5)
    — new mechanism hypothesis required (mechanical absorption is
    falsified); residual data: startup median 250s unmoved, phase_union
