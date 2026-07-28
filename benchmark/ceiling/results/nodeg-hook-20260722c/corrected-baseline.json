@@ -1,0 +1,698 @@
+{
+  "denominators": {
+    "p_0077_b_absolute_target_ms": 115809.6,
+    "p_0077_b_adjusted_startup_median_ms": 193016,
+    "p_0077_b_multiplier": 0.6,
+    "p_0077_t_absolute_target_ms": 37950,
+    "p_0077_t_adjusted_interphase_median_ms": 50600,
+    "p_0077_t_multiplier": 0.75,
+    "population": [
+      "DR-byte-preservation-f7-out-of-scope-trap",
+      "DR-shape-compound-rules-f25-cart",
+      "DR-ledger-rounding-consistency-f26-payout",
+      "DR-atomic-state-f11-batch-import",
+      "DR-auth-signature-f12-webhook",
+      "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+      "FS1-schedule-max-runs"
+    ]
+  },
+  "gate": {
+    "conservation_passed": true,
+    "conservation_tolerance_ms": 1000,
+    "eligible_count": 7,
+    "eligible_rows": [
+      "DR-byte-preservation-f7-out-of-scope-trap",
+      "DR-shape-compound-rules-f25-cart",
+      "DR-ledger-rounding-consistency-f26-payout",
+      "DR-atomic-state-f11-batch-import",
+      "DR-auth-signature-f12-webhook",
+      "DR-allocation-fefo-priority-rollback-f23-fulfillment",
+      "FS1-schedule-max-runs"
+    ],
+    "expected_total_rows": 7,
+    "id": "P-0077-H",
+    "minimum_eligible_rows": 5,
+    "passed": true,
+    "relocation_ledger_published": true,
+    "total_rows": 7,
+    "verdict": "PASS"
+  },
+  "instrument": "corrected-anatomy",
+  "rows": {
+    "DR-allocation-fefo-priority-rollback-f23-fulfillment": {
+      "adjusted_attribution": {
+        "censored_open_span_ms": 0,
+        "elapsed_ms": 1905708,
+        "gap_to_censored_ms": 0,
+        "interphase_gap_ms": 524970,
+        "non_phase_residual_ms": 752362,
+        "outer_loop_gap_ms": 0,
+        "phase_union_ms": 1153346,
+        "startup_ms": 201023,
+        "tail_ms": 26369
+      },
+      "attempt": "DR-allocation-fefo-priority-rollback-f23-fulfillment/A1",
+      "conservation": {
+        "adjusted_partition_total_ms": 1905708,
+        "adjusted_residue_ms": 0,
+        "passed": true,
+        "raw_partition_total_ms": 1905708,
+        "raw_residue_ms": 0,
+        "relocation_sum_ms": 0,
+        "tolerance_ms": 1000
+      },
+      "eligible": true,
+      "ineligibility_reasons": [],
+      "phase_span_corrections": [],
+      "raw_attribution": {
+        "censored_open_span_ms": 0,
+        "elapsed_ms": 1905708,
+        "gap_to_censored_ms": 0,
+        "interphase_gap_ms": 524970,
+        "outer_loop_gap_ms": 0,
+        "path": "DR-allocation-fefo-priority-rollback-f23-fulfillment/A1/attribution.json",
+        "phase_union_ms": 1153346,
+        "sha256": "3693246ad03d69755fbfaeafedb8c169b9a8956058de4225ae2fd240e342909b",
+        "startup_ms": 201023,
+        "tail_ms": 26369
+      },
+      "receipt_flags": {
+        "open_history": [],
+        "post_cap_records": []
+      },
+      "relocation_ledger": {
+        "censored_open_span_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "gap_to_censored_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "interphase_gap_ms": {
+          "adjusted_bucket_ms": 524970,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 524970
+        },
+        "outer_loop_gap_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "phase_union_ms": {
+          "adjusted_bucket_ms": 1153346,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 1153346
+        },
+        "startup_ms": {
+          "adjusted_bucket_ms": 201023,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 201023
+        },
+        "tail_ms": {
+          "adjusted_bucket_ms": 26369,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 26369
+        }
+      }
+    },
+    "DR-atomic-state-f11-batch-import": {
+      "adjusted_attribution": {
+        "censored_open_span_ms": 0,
+        "elapsed_ms": 2075124,
+        "gap_to_censored_ms": 0,
+        "interphase_gap_ms": 0,
+        "non_phase_residual_ms": 183657,
+        "outer_loop_gap_ms": 0,
+        "phase_union_ms": 1891467,
+        "startup_ms": 140541,
+        "tail_ms": 43116
+      },
+      "attempt": "DR-atomic-state-f11-batch-import/A1",
+      "conservation": {
+        "adjusted_partition_total_ms": 2075124,
+        "adjusted_residue_ms": 0,
+        "passed": true,
+        "raw_partition_total_ms": 2075124,
+        "raw_residue_ms": 0,
+        "relocation_sum_ms": 0,
+        "tolerance_ms": 1000
+      },
+      "eligible": true,
+      "ineligibility_reasons": [],
+      "phase_span_corrections": [],
+      "raw_attribution": {
+        "censored_open_span_ms": 0,
+        "elapsed_ms": 2075124,
+        "gap_to_censored_ms": 0,
+        "interphase_gap_ms": 0,
+        "outer_loop_gap_ms": 0,
+        "path": "DR-atomic-state-f11-batch-import/A1/attribution.json",
+        "phase_union_ms": 1891467,
+        "sha256": "a856ac6ff8a47743e09989a9d04a32f75042931fd5669e5e7b0db8e8746e9597",
+        "startup_ms": 140541,
+        "tail_ms": 43116
+      },
+      "receipt_flags": {
+        "open_history": [],
+        "post_cap_records": []
+      },
+      "relocation_ledger": {
+        "censored_open_span_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "gap_to_censored_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "interphase_gap_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "outer_loop_gap_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "phase_union_ms": {
+          "adjusted_bucket_ms": 1891467,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 1891467
+        },
+        "startup_ms": {
+          "adjusted_bucket_ms": 140541,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 140541
+        },
+        "tail_ms": {
+          "adjusted_bucket_ms": 43116,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 43116
+        }
+      }
+    },
+    "DR-auth-signature-f12-webhook": {
+      "adjusted_attribution": {
+        "censored_open_span_ms": 0,
+        "elapsed_ms": 1318856,
+        "gap_to_censored_ms": 0,
+        "interphase_gap_ms": 1,
+        "non_phase_residual_ms": 222655,
+        "outer_loop_gap_ms": 0,
+        "phase_union_ms": 1096201,
+        "startup_ms": 190581,
+        "tail_ms": 32073
+      },
+      "attempt": "DR-auth-signature-f12-webhook/A1",
+      "conservation": {
+        "adjusted_partition_total_ms": 1318856,
+        "adjusted_residue_ms": 0,
+        "passed": true,
+        "raw_partition_total_ms": 1318856,
+        "raw_residue_ms": 0,
+        "relocation_sum_ms": 0,
+        "tolerance_ms": 1000
+      },
+      "eligible": true,
+      "ineligibility_reasons": [],
+      "phase_span_corrections": [],
+      "raw_attribution": {
+        "censored_open_span_ms": 0,
+        "elapsed_ms": 1318856,
+        "gap_to_censored_ms": 0,
+        "interphase_gap_ms": 1,
+        "outer_loop_gap_ms": 0,
+        "path": "DR-auth-signature-f12-webhook/A1/attribution.json",
+        "phase_union_ms": 1096201,
+        "sha256": "3d99b24e8e14089409cf8dd2e12d78e48d4e1685f6394e86d49dfbbacb415af9",
+        "startup_ms": 190581,
+        "tail_ms": 32073
+      },
+      "receipt_flags": {
+        "open_history": [],
+        "post_cap_records": []
+      },
+      "relocation_ledger": {
+        "censored_open_span_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "gap_to_censored_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "interphase_gap_ms": {
+          "adjusted_bucket_ms": 1,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 1
+        },
+        "outer_loop_gap_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "phase_union_ms": {
+          "adjusted_bucket_ms": 1096201,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 1096201
+        },
+        "startup_ms": {
+          "adjusted_bucket_ms": 190581,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 190581
+        },
+        "tail_ms": {
+          "adjusted_bucket_ms": 32073,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 32073
+        }
+      }
+    },
+    "DR-byte-preservation-f7-out-of-scope-trap": {
+      "adjusted_attribution": {
+        "censored_open_span_ms": 0,
+        "elapsed_ms": 2238920,
+        "gap_to_censored_ms": 0,
+        "interphase_gap_ms": 318535,
+        "non_phase_residual_ms": 577417,
+        "outer_loop_gap_ms": 0,
+        "phase_union_ms": 1661503,
+        "startup_ms": 216537,
+        "tail_ms": 42345
+      },
+      "attempt": "DR-byte-preservation-f7-out-of-scope-trap/A1",
+      "conservation": {
+        "adjusted_partition_total_ms": 2238920,
+        "adjusted_residue_ms": 0,
+        "passed": true,
+        "raw_partition_total_ms": 2238920,
+        "raw_residue_ms": 0,
+        "relocation_sum_ms": 0,
+        "tolerance_ms": 1000
+      },
+      "eligible": true,
+      "ineligibility_reasons": [],
+      "phase_span_corrections": [],
+      "raw_attribution": {
+        "censored_open_span_ms": 0,
+        "elapsed_ms": 2238920,
+        "gap_to_censored_ms": 0,
+        "interphase_gap_ms": 318535,
+        "outer_loop_gap_ms": 0,
+        "path": "DR-byte-preservation-f7-out-of-scope-trap/A1/attribution.json",
+        "phase_union_ms": 1661503,
+        "sha256": "d31c1f70e8c367d1a2968fc757625d4a195b32275354cfcbe801b08b80a2bfb8",
+        "startup_ms": 216537,
+        "tail_ms": 42345
+      },
+      "receipt_flags": {
+        "open_history": [],
+        "post_cap_records": []
+      },
+      "relocation_ledger": {
+        "censored_open_span_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "gap_to_censored_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "interphase_gap_ms": {
+          "adjusted_bucket_ms": 318535,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 318535
+        },
+        "outer_loop_gap_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "phase_union_ms": {
+          "adjusted_bucket_ms": 1661503,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 1661503
+        },
+        "startup_ms": {
+          "adjusted_bucket_ms": 216537,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 216537
+        },
+        "tail_ms": {
+          "adjusted_bucket_ms": 42345,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 42345
+        }
+      }
+    },
+    "DR-ledger-rounding-consistency-f26-payout": {
+      "adjusted_attribution": {
+        "censored_open_span_ms": 0,
+        "elapsed_ms": 2501614,
+        "gap_to_censored_ms": 0,
+        "interphase_gap_ms": 279959,
+        "non_phase_residual_ms": 466040,
+        "outer_loop_gap_ms": 0,
+        "phase_union_ms": 2035574,
+        "startup_ms": 159020,
+        "tail_ms": 27061
+      },
+      "attempt": "DR-ledger-rounding-consistency-f26-payout/A1",
+      "conservation": {
+        "adjusted_partition_total_ms": 2501614,
+        "adjusted_residue_ms": 0,
+        "passed": true,
+        "raw_partition_total_ms": 2501614,
+        "raw_residue_ms": 0,
+        "relocation_sum_ms": 0,
+        "tolerance_ms": 1000
+      },
+      "eligible": true,
+      "ineligibility_reasons": [],
+      "phase_span_corrections": [],
+      "raw_attribution": {
+        "censored_open_span_ms": 0,
+        "elapsed_ms": 2501614,
+        "gap_to_censored_ms": 0,
+        "interphase_gap_ms": 279959,
+        "outer_loop_gap_ms": 0,
+        "path": "DR-ledger-rounding-consistency-f26-payout/A1/attribution.json",
+        "phase_union_ms": 2035574,
+        "sha256": "ddfb94dc3de4f32ffed73b30c1c0aa2dc7eec7f927175a57ee69acab04e851b5",
+        "startup_ms": 159020,
+        "tail_ms": 27061
+      },
+      "receipt_flags": {
+        "open_history": [],
+        "post_cap_records": []
+      },
+      "relocation_ledger": {
+        "censored_open_span_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "gap_to_censored_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "interphase_gap_ms": {
+          "adjusted_bucket_ms": 279959,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 279959
+        },
+        "outer_loop_gap_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "phase_union_ms": {
+          "adjusted_bucket_ms": 2035574,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 2035574
+        },
+        "startup_ms": {
+          "adjusted_bucket_ms": 159020,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 159020
+        },
+        "tail_ms": {
+          "adjusted_bucket_ms": 27061,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 27061
+        }
+      }
+    },
+    "DR-shape-compound-rules-f25-cart": {
+      "adjusted_attribution": {
+        "censored_open_span_ms": 0,
+        "elapsed_ms": 2068641,
+        "gap_to_censored_ms": 0,
+        "interphase_gap_ms": 50600,
+        "non_phase_residual_ms": 264341,
+        "outer_loop_gap_ms": 0,
+        "phase_union_ms": 1804300,
+        "startup_ms": 193016,
+        "tail_ms": 20725
+      },
+      "attempt": "DR-shape-compound-rules-f25-cart/A1",
+      "conservation": {
+        "adjusted_partition_total_ms": 2068641,
+        "adjusted_residue_ms": 0,
+        "passed": true,
+        "raw_partition_total_ms": 2068641,
+        "raw_residue_ms": 0,
+        "relocation_sum_ms": 0,
+        "tolerance_ms": 1000
+      },
+      "eligible": true,
+      "ineligibility_reasons": [],
+      "phase_span_corrections": [],
+      "raw_attribution": {
+        "censored_open_span_ms": 0,
+        "elapsed_ms": 2068641,
+        "gap_to_censored_ms": 0,
+        "interphase_gap_ms": 50600,
+        "outer_loop_gap_ms": 0,
+        "path": "DR-shape-compound-rules-f25-cart/A1/attribution.json",
+        "phase_union_ms": 1804300,
+        "sha256": "d1ae5513f0fe0096ed8b8a6d303ee760c69a7bc5c139a394b6a5d872512ff188",
+        "startup_ms": 193016,
+        "tail_ms": 20725
+      },
+      "receipt_flags": {
+        "open_history": [],
+        "post_cap_records": []
+      },
+      "relocation_ledger": {
+        "censored_open_span_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "gap_to_censored_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "interphase_gap_ms": {
+          "adjusted_bucket_ms": 50600,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 50600
+        },
+        "outer_loop_gap_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "phase_union_ms": {
+          "adjusted_bucket_ms": 1804300,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 1804300
+        },
+        "startup_ms": {
+          "adjusted_bucket_ms": 193016,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 193016
+        },
+        "tail_ms": {
+          "adjusted_bucket_ms": 20725,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 20725
+        }
+      }
+    },
+    "FS1-schedule-max-runs": {
+      "adjusted_attribution": {
+        "censored_open_span_ms": 31163,
+        "elapsed_ms": 1668468,
+        "gap_to_censored_ms": 0,
+        "interphase_gap_ms": 0,
+        "non_phase_residual_ms": 262766,
+        "outer_loop_gap_ms": 0,
+        "phase_union_ms": 1405702,
+        "startup_ms": 231603,
+        "tail_ms": 0
+      },
+      "attempt": "FS1-schedule-max-runs/A1",
+      "conservation": {
+        "adjusted_partition_total_ms": 1668468,
+        "adjusted_residue_ms": 0,
+        "passed": true,
+        "raw_partition_total_ms": 1668468,
+        "raw_residue_ms": 0,
+        "relocation_sum_ms": 0,
+        "tolerance_ms": 1000
+      },
+      "eligible": true,
+      "ineligibility_reasons": [],
+      "phase_span_corrections": [],
+      "raw_attribution": {
+        "censored_open_span_ms": 31163,
+        "elapsed_ms": 1668468,
+        "gap_to_censored_ms": 0,
+        "interphase_gap_ms": 0,
+        "outer_loop_gap_ms": 0,
+        "path": "FS1-schedule-max-runs/A1/attribution.json",
+        "phase_union_ms": 1405702,
+        "sha256": "98cde4937eebb41e7d9ca7d1047621f009a5dd7dfe1971d5f64e99ae5b5c4312",
+        "startup_ms": 231603,
+        "tail_ms": 0
+      },
+      "receipt_flags": {
+        "open_history": [],
+        "post_cap_records": []
+      },
+      "relocation_ledger": {
+        "censored_open_span_ms": {
+          "adjusted_bucket_ms": 31163,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 31163
+        },
+        "gap_to_censored_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "interphase_gap_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "outer_loop_gap_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        },
+        "phase_union_ms": {
+          "adjusted_bucket_ms": 1405702,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 1405702
+        },
+        "startup_ms": {
+          "adjusted_bucket_ms": 231603,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 231603
+        },
+        "tail_ms": {
+          "adjusted_bucket_ms": 0,
+          "declared_relocation_ms": 0,
+          "equation": "adjusted_bucket = raw_bucket + declared_relocation",
+          "equation_passed": true,
+          "raw_bucket_ms": 0
+        }
+      }
+    }
+  },
+  "schema_version": 1,
+  "source_result_dir": "nodeg-hook-20260722c",
+  "source_run_id": "nodeg-hook-20260722c",
+  "timeout_cap_seconds": 3600
+}
