@@ -157,7 +157,9 @@ less does not ship.
 - The merge self-test executes all frozen positive, negative, orphan, legacy,
   and timeout rows.
 - The collector and iter-0082 regression contracts remain green.
-- Skill lint and exact three-surface mirror parity pass.
+- BUILD_GATE runs skill lint directly; the literal verifier does not duplicate
+  that repository-wide suite under its 60-second per-command budget. Exact
+  three-surface mirror parity still passes literally.
 
 ```json
 {
@@ -173,11 +175,6 @@ less does not ship.
     {
       "cmd": "python3 benchmark/ceiling/probes/r-weld-0082/test-collector-contract.py",
       "exit_code": 0
-    },
-    {
-      "cmd": "bash scripts/lint-skills.sh",
-      "exit_code": 0,
-      "stdout_contains": ["All checks passed."]
     },
     {
       "cmd": "cmp -s config/skills/_shared/verify-merge-findings.py .agents/skills/_shared/verify-merge-findings.py && cmp -s config/skills/_shared/verify-merge-findings.py .claude/skills/_shared/verify-merge-findings.py && cmp -s config/skills/_shared/adapters/grok.md .agents/skills/_shared/adapters/grok.md && cmp -s config/skills/_shared/adapters/grok.md .claude/skills/_shared/adapters/grok.md",
