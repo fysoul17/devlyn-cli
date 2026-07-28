@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent iter: [`iterations/0083-summary-verdict-merge.md`](iterations/0083-summary-verdict-merge.md) (**SHIPPED 2026-07-28** — read § "BUILT + GATED" first). Context: [`iterations/0082-weld-recovery-STUB.md`](iterations/0082-weld-recovery-STUB.md) (**SHIPPED 2026-07-28** — read § "BUILT + GATED" first, then § "v2 FROZEN" for the bar. v1 FAILED on an unsatisfiable conjunct and is not amended.), [`iterations/0081-judge-probe-capability-STUB.md`](iterations/0081-judge-probe-capability-STUB.md) (**SHIPPED 2026-07-27, gate part 2 only** — read § "v2 FINAL GATE" first, then § "v2 FROZEN". v1 FAILED and is not amended.). Context iters: [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md) (emission boundary SHIPPED but deliberately NOT certified; § "CONTINUATION ROUND" closed emission as valid-negative), [`iterations/0079-n-model-pair-grok.md`](iterations/0079-n-model-pair-grok.md) (N-model pair wiring; path A; finding F5 is why `README.md:49` reads as it does), [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (CLOSED 0078.6), [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent iter: [`iterations/0084-node-lint-applicability.md`](iterations/0084-node-lint-applicability.md) (**SHIPPED 2026-07-28** — read § "BUILT + GATED" first). Context: [`iterations/0083-summary-verdict-merge.md`](iterations/0083-summary-verdict-merge.md) (**SHIPPED 2026-07-28**), [`iterations/0082-weld-recovery-STUB.md`](iterations/0082-weld-recovery-STUB.md) (**SHIPPED 2026-07-28** — read § "BUILT + GATED" first, then § "v2 FROZEN" for the bar. v1 FAILED on an unsatisfiable conjunct and is not amended.), [`iterations/0081-judge-probe-capability-STUB.md`](iterations/0081-judge-probe-capability-STUB.md) (**SHIPPED 2026-07-27, gate part 2 only** — read § "v2 FINAL GATE" first, then § "v2 FROZEN". v1 FAILED and is not amended.). Context iters: [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md) (emission boundary SHIPPED but deliberately NOT certified; § "CONTINUATION ROUND" closed emission as valid-negative), [`iterations/0079-n-model-pair-grok.md`](iterations/0079-n-model-pair-grok.md) (N-model pair wiring; path A; finding F5 is why `README.md:49` reads as it does), [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (CLOSED 0078.6), [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,22 +14,31 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-28 (**iter-0083 summary verdict merge SHIPPED**, `6dd5ff4`; a collected pair review now keeps its authenticated conclusion. Next lead: **startup lever re-registration**)
+## 🚦 START-HERE — state after 2026-07-28 (**iter-0084 Node lint applicability SHIPPED**, `c0f4724`; specialized `lint:*` no longer masquerades as the general lint gate. Next lead: **startup lever re-registration**)
 
-**Where the loop stands (one paragraph).** The live thread is the **grok
-pair-judge seat**: 0079 wired it, 0080 shipped the emission boundary and
-deliberately did not certify it, 0081 cleared gate part 2, 0082 made welded
-reviews collectable, and **0083 now conserves the authenticated pair summary in
-the final merge**. A `NEEDS_WORK` judge conclusion can no longer collapse to
-`PASS` merely because its findings are only `LOW`/`INFO`. What remains before a
-durable `pair grok` pin is still **emission certification**, which 0080's
-continuation closed as a valid-negative; 0083 did not broaden that claim. With
-the verdict-loss residual closed, the strongest next lead returns to **startup
-lever re-registration**. Older closed threads and the nodeg cohorts are
-summarized in DECISIONS.md and their iteration files.
+**Where the loop stands (one paragraph).** iter-0084 closed the observed Node
+BUILD_GATE variance: exact `scripts.lint` and recognized configured linters run,
+specialized `lint:*` alone skips, and spec-explicit specialized commands retain
+their real severity. The frozen four-cell replay passed 12/12 under Sonnet 5;
+Codex, Fable 5, and Grok 4.5 all returned final PASS. The Grok pair-judge line
+remains at 0083's boundary: collected conclusions are conserved, but emission is
+still uncertified and there is no durable `pair grok` pin. The strongest next
+lead is **startup lever re-registration** from the corrected
+`nodeg-hook-20260722c` decomposition; a deterministic BUILD_GATE runner remains
+deferred to M1.5.
 
 **Just shipped — context, do not re-derive**:
 
+- **iter-0084 Node lint applicability — SHIPPED (`c0f4724`, 2026-07-28),
+  three-seat final gate.** The canonical BUILD_GATE contract now treats exact
+  `scripts.lint` and recognized configured linters as applicable, never infers
+  arbitrary specialized `lint:*` as the general lint gate solely from its
+  declaration, and still executes spec-explicit specialized commands in step 4.
+  Frozen T/K1/K2/K3 replay passed 12/12; full skill lint, mirror parity,
+  mechanical VERIFY, Codex primary judge, Fable pair judge, and Grok advisory
+  review all passed. **Claim boundary:** the observed F7 false-lint trigger is
+  closed; whole-cohort wall improvement, generic verdict softening, broad
+  project generality, and the M1.5 deterministic runner are not claimed.
 - **iter-0083 R-summary-verdict-not-merged — SHIPPED (`4bb2eea` + fix
   `6dd5ff4`, 2026-07-28), three-seat final gate.** Exact
   `pair-judge.summary.json` is folded only when either canonical pair findings
@@ -85,11 +94,11 @@ the TIMEOUT suppression that fresh Codex found.
 **Next work (in order)**:
 1. **Startup lever re-registration** (fail-open obligation from 0077.5)
    — new mechanism hypothesis required (mechanical absorption is
-   falsified); residual data: startup median 250s unmoved, phase_union
-   frozen-five +31.7% (different lever class — executor/model work).
-   Fresh context: `-22c` wall median 7.867× (hook-bearing NEW baseline,
-   best-ever descriptive) — re-derive the residual target from ITS
-   decomposition before registering.
+   falsified). The corrected `nodeg-hook-20260722c` medians are startup
+   193,016 ms, interphase 50,600 ms, phase_union 1,661,503 ms, and elapsed
+   2,068,641 ms; register against that decomposition, not the superseded 250s
+   estimate. `-22c` wall median remains 7.867× (hook-bearing baseline,
+   best-ever descriptive).
 2. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
    / B_win 36 — single-cohort variance vs. real hook-cohort effect is
    unresolved; the next hook-bearing cohort reads it before any quality

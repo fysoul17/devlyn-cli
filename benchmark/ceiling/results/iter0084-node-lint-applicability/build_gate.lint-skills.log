@@ -1,0 +1,140 @@
+
+[2m=== Check 0a: Temp allocation fails closed ===[0m
+  [32m✓[0m lint-skills.sh uses temp allocation helpers instead of direct mktemp
+
+[2m=== Check 1: No mcp__codex-cli__ outside _shared / archive ===[0m
+  [32m✓[0m no MCP references in managed files
+
+[2m=== Check 2: No 'Requires Codex MCP' prose ===[0m
+  [32m✓[0m no Codex MCP prose
+
+[2m=== Check 3: No hardcoded pre-5.5 model strings ===[0m
+  [32m✓[0m no hardcoded pre-5.5 strings
+
+[2m=== Check 4: No model-pinned Claude references ===[0m
+  [32m✓[0m no model-pinned Claude references
+
+[2m=== Check 5: devlyn:* SKILL.md has name: field ===[0m
+  [32m✓[0m all devlyn:* skills have name: field
+
+[2m=== Check 5a: devlyn:design-ui is required ===[0m
+  [32m✓[0m devlyn:design-ui source lives in config/skills
+  [32m✓[0m devlyn:design-ui is not in optional-skills
+  [32m✓[0m Codex install includes devlyn:design-ui (via shared DEVLYN_CORE_SKILLS bundle)
+  [32m✓[0m devlyn:design-ui is absent from OPTIONAL_ADDONS
+
+[2m=== Check 6: Source ↔ installed mirror parity (critical path) ===[0m
+  [32m✓[0m critical path parity clean
+
+[2m=== Check 6a: Source ↔ .agents mirror parity (critical path) ===[0m
+  [32m✓[0m .agents critical path parity clean
+
+[2m=== Check 6b: VERIFY merge makes pair HIGH verdict-binding ===[0m
+  [32m✓[0m verify-merge-findings.py self-test passed
+  [32m✓[0m verify-merge-findings.py risk_profile shape guard is mirrored
+
+[2m=== Check 6c: Codex stdout collection writes canonical pair findings ===[0m
+  [32m✓[0m collect-codex-findings.py self-test passed
+  [32m✓[0m collector contract (iter-0082 negatives + real-capture corpus) passed
+
+[2m=== Check 6c1: Archive preserves pair/risk-probe artifacts safely ===[0m
+  [32m✓[0m archive_run.py self-test passed
+
+[2m=== Check 6c2: SURFACE_CLOSE v6 dispatch is complete and mirrored ===[0m
+  [32m✓[0m SURFACE_CLOSE state/envelope/adjudication/audit/rollback self-test passed
+  [32m✓[0m SURFACE_CLOSE v6 dispatch/timeout/adjudication/rollback contract is mirrored
+
+[2m=== Check 6d: Spec verification executes hidden-blind risk probes ===[0m
+  [32m✓[0m spec-verify-check.py risk-probe and expected-contract self-test passed
+  [32m✓[0m spec-verify-check.py checks reject unsupported spec complexity values
+  [32m✓[0m spec-verify-check.py covers generated criteria source extraction
+  [32m✓[0m spec-verify-check.py rejects weak solo-headroom hypotheses
+  [32m✓[0m BUILD_GATE and VERIFY require enabled risk probes
+  [32m✓[0m solo-headroom command detection rejects descriptive whitespace
+  [32m✓[0m solo-headroom command detection keeps explicit printf command support
+  [32m✓[0m solo-headroom command detection constants stay in parity
+
+[2m=== Check 6f: ideate validates sibling spec.expected.json ===[0m
+  [32m✓[0m ideate docs require --check-expected for sibling expected contracts
+  [32m✓[0m ideate/resolve docs describe mechanical solo-headroom validation
+  [32m✓[0m ideate spec template requires compound interaction verification for pair-relevant specs
+  [32m✓[0m ideate elicitation asks for compound interaction scenarios when pair-relevant risks appear
+  [32m✓[0m ideate requires solo-headroom hypothesis for benchmark and pair-evidence specs
+  [32m✓[0m ideate solo-headroom hypothesis prompt matches checker contract
+  [32m✓[0m ideate quick mode does not invent solo-headroom hypotheses
+  [32m✓[0m ideate requires solo ceiling avoidance for new unmeasured pair candidates
+  [32m✓[0m ideate specs emit complexity frontmatter for resolve pair triggers
+  [32m✓[0m ideate from-spec mode warns on pair-relevant specs with weak verification
+  [32m✓[0m ideate from-spec mode warns on missing solo-headroom hypothesis
+  [32m✓[0m ideate project mode keeps compound verification inside pair-relevant feature specs
+  [32m✓[0m ideate project mode keeps solo-headroom hypothesis inside each pair-candidate feature spec
+  [32m✓[0m ideate project mode solo-headroom prompt keeps checker contract
+  [32m✓[0m resolve risk-probe prompts consume solo-headroom hypothesis
+  [32m✓[0m resolve risk-probe solo-headroom prompt targets the stated solo_claude miss
+  [32m✓[0m resolve pair-JUDGE prompts prioritize solo-headroom hypothesis
+  [32m✓[0m engine-neutral pair-judge dual declaration (iter-0060) in sync
+  [32m✓[0m resolve VERIFY docs distinguish current large complexity, legacy high state, and legacy large spec compatibility
+  [32m✓[0m resolve VERIFY pair trigger includes actionable solo-headroom hypothesis specs
+  [32m✓[0m resolve free-form mode blocks pair-evidence goals without actionable solo-headroom hypothesis
+  [32m✓[0m resolve free-form mode blocks new unmeasured pair candidates without solo ceiling avoidance
+
+[2m=== Check 6g: resolve consumes sibling spec.expected.json ===[0m
+  [32m✓[0m resolve self-stages and mechanically checks sibling spec.expected.json
+
+[2m=== Check 6i: VERIFY mechanical findings are merge-visible ===[0m
+  [32m✓[0m spec-verify VERIFY output routes into verify-merge-findings.py
+
+[2m=== Check 6j: VERIFY default pair dispatches concurrently ===[0m
+  [32m✓[0m VERIFY default pair dispatches concurrently
+
+[2m=== Check 6h: No undocumented spec.expected.json.browser_flows field ===[0m
+  [32m✓[0m active docs do not advertise unsupported browser_flows schema field
+
+[2m=== Check 6e: All-or-nothing probes prove mutable rollback ===[0m
+  [32m✓[0m all-or-nothing probe contract preserves mutable rollback evidence
+
+[2m=== Check 8: CRITIC security is native (no stale Dual references) ===[0m
+  [32m✓[0m CRITIC security uses native (no Dual stragglers)
+
+[2m=== Check 10: No raw codex exec invocation in skill prompts ===[0m
+  [32m✓[0m no raw codex exec invocations in skill prompts (wrapper-form everywhere)
+
+[2m=== Check 10a: Bounded Codex calls use isolated wrapper mode ===[0m
+  [32m✓[0m bounded Codex probe/judge calls require isolated wrapper mode
+
+[2m=== Check 10a1: Shared helper paths resolve from the invoked skill ===[0m
+  [32m✓[0m no project-relative .claude/skills/_shared paths in managed skills
+
+[2m=== Check 10b: Shared routing docs avoid retired skill surfaces ===[0m
+  [32m✓[0m shared routing docs reference current devlyn:ideate/devlyn:resolve surface
+
+[2m=== Check 10c: User-facing current docs avoid retired skill surfaces ===[0m
+  [32m✓[0m README/package/helper copy describes current ideate -> resolve surface
+
+[2m=== Check 10d: Prompt adapters cite official model guidance ===[0m
+  [32m✓[0m adapters cite official GPT/Claude guidance, carry model-specific tactics, and both skills inject them
+
+[2m=== Check 10d1: Opus judge sidecar validates blind mapping before provider calls ===[0m
+
+[2m=== Check 10e: Benchmark docs describe current 3-arm pair topology ===[0m
+  [32m✓[0m benchmark docs use current bare / solo_claude / pair-arm topology
+
+[2m=== Check 9: Engine availability fails closed ===[0m
+  [32m✓[0m engine availability fail-closed wording canonical
+
+[2m=== Check 9b: package.json version matches exact release tag ===[0m
+  [32m✓[0m HEAD is not an exact tag — package/tag parity not applicable
+
+[2m=== Check 12: CLAUDE.md ↔ runtime-principles.md per-section excerpt parity ===[0m
+  [32m✓[0m all 3 mirrored contract sections in parity (subtractive-first / goal-locked / evidence) — markers, topology, content
+
+[2m=== Check 13: pair-plan-idgen.py output deterministic across runs (F2) ===[0m
+  [32m✓[0m F2 registry sha256 stable across two idgen runs (0fa8d35b4d8ff4f587cc8a40f80d1b5aafcea72aa37d6e26c648f3cd6842c572)
+
+[2m=== Check 14: F9 fixture id matches 2-skill contract ===[0m
+  [32m✓[0m F9 fixture id is canonical (F9-e2e-ideate-to-resolve); no stale refs outside retired/
+
+[2m=== Check 15: Pair evidence fixture notes cite current passing runs ===[0m
+  [32m✓[0m current pair-evidence fixture notes cite passing run ids
+
+[32mAll checks passed.[0m

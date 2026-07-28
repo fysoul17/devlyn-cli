@@ -1,0 +1,231 @@
+{
+  "verdict": "PASS",
+  "passed": 12,
+  "required": 12,
+  "cells": {
+    "T": "3/3",
+    "K1": "3/3",
+    "K2": "3/3",
+    "K3": "3/3"
+  },
+  "model": "claude-sonnet-5",
+  "input_hashes_unchanged": true,
+  "receipts": [
+    {
+      "case": "T",
+      "trial": 1,
+      "verdict": "PASS",
+      "model": "claude-sonnet-5",
+      "duration_ms": 28851,
+      "result": {
+        "case": "T",
+        "trial": 1,
+        "language_lint": "SKIP",
+        "command": null,
+        "observed_exit_code": null,
+        "finding_rule": null,
+        "severity": null,
+        "lint_triggered_fix_rounds": 0,
+        "reason": "package.json has no scripts.lint and no recognized linter config, only the specialized lint:json, so the general lint gate logs SKIP without executing anything or emitting findings."
+      }
+    },
+    {
+      "case": "T",
+      "trial": 2,
+      "verdict": "PASS",
+      "model": "claude-sonnet-5",
+      "duration_ms": 23318,
+      "result": {
+        "case": "T",
+        "trial": 2,
+        "language_lint": "SKIP",
+        "command": null,
+        "observed_exit_code": null,
+        "finding_rule": null,
+        "severity": null,
+        "lint_triggered_fix_rounds": 0,
+        "reason": "No scripts.lint or recognized linter config exists; lint:json is a specialized script, not the general language lint gate, so it is logged as SKIP with zero lint findings."
+      }
+    },
+    {
+      "case": "T",
+      "trial": 3,
+      "verdict": "PASS",
+      "model": "claude-sonnet-5",
+      "duration_ms": 21328,
+      "result": {
+        "case": "T",
+        "trial": 3,
+        "language_lint": "SKIP",
+        "command": null,
+        "observed_exit_code": null,
+        "finding_rule": null,
+        "severity": null,
+        "lint_triggered_fix_rounds": 0,
+        "reason": "package.json has no scripts.lint and no recognized linter config, only the specialized lint:json script which doesn't qualify as the general language lint gate."
+      }
+    },
+    {
+      "case": "K1",
+      "trial": 1,
+      "verdict": "PASS",
+      "model": "claude-sonnet-5",
+      "duration_ms": 25530,
+      "result": {
+        "case": "K1",
+        "trial": 1,
+        "language_lint": "RUN",
+        "command": "npm run lint",
+        "observed_exit_code": 1,
+        "finding_rule": "quality.lint",
+        "severity": "MEDIUM",
+        "lint_triggered_fix_rounds": 0,
+        "reason": "scripts.lint is a bare `node -e \"process.exit(1)\"` (no real linter invoked), so it deterministically exits 1 and is classified as a quality.lint MEDIUM finding under the canonical contract."
+      }
+    },
+    {
+      "case": "K1",
+      "trial": 2,
+      "verdict": "PASS",
+      "model": "claude-sonnet-5",
+      "duration_ms": 44991,
+      "result": {
+        "case": "K1",
+        "trial": 2,
+        "language_lint": "RUN",
+        "command": "npm run lint",
+        "observed_exit_code": 1,
+        "finding_rule": "quality.lint",
+        "severity": "MEDIUM",
+        "lint_triggered_fix_rounds": 0,
+        "reason": "scripts.lint is a stub (`node -e \"process.exit(1)\"`) with no real linter, so it deterministically exits 1, verified by actual execution rather than assumed."
+      }
+    },
+    {
+      "case": "K1",
+      "trial": 3,
+      "verdict": "PASS",
+      "model": "claude-sonnet-5",
+      "duration_ms": 36064,
+      "result": {
+        "case": "K1",
+        "trial": 3,
+        "language_lint": "RUN",
+        "command": "npm run lint",
+        "observed_exit_code": 1,
+        "finding_rule": "quality.lint",
+        "severity": "MEDIUM",
+        "lint_triggered_fix_rounds": 0,
+        "reason": "scripts.lint is a general language lint command (node -e \"process.exit(1)\") with no linter tool invoked, so its nonzero exit is a plain lint error, not a specialized/elevated command."
+      }
+    },
+    {
+      "case": "K2",
+      "trial": 1,
+      "verdict": "PASS",
+      "model": "claude-sonnet-5",
+      "duration_ms": 71362,
+      "result": {
+        "case": "K2",
+        "trial": 1,
+        "language_lint": "RUN",
+        "command": "npx eslint .",
+        "observed_exit_code": 1,
+        "finding_rule": "quality.lint",
+        "severity": "MEDIUM",
+        "lint_triggered_fix_rounds": 0,
+        "reason": "A recognized .eslintrc.json config plus the installed local eslint binary deterministically emit one error and exit 1, which per canonical step 2 is a standard (non-elevated) lint failure classified quality.lint/MEDIUM."
+      }
+    },
+    {
+      "case": "K2",
+      "trial": 2,
+      "verdict": "PASS",
+      "model": "claude-sonnet-5",
+      "duration_ms": 19959,
+      "result": {
+        "case": "K2",
+        "trial": 2,
+        "language_lint": "RUN",
+        "command": "npx eslint .",
+        "observed_exit_code": 1,
+        "finding_rule": "quality.lint",
+        "severity": "MEDIUM",
+        "lint_triggered_fix_rounds": 0,
+        "reason": "npx eslint . ran against the recognized ESLint config and exited 1 on the installed failing control (probe.js:1:1), which the canonical contract classifies as a quality.lint MEDIUM finding, not CRITICAL/HIGH."
+      }
+    },
+    {
+      "case": "K2",
+      "trial": 3,
+      "verdict": "PASS",
+      "model": "claude-sonnet-5",
+      "duration_ms": 24246,
+      "result": {
+        "case": "K2",
+        "trial": 3,
+        "language_lint": "RUN",
+        "command": "npx eslint .",
+        "observed_exit_code": 1,
+        "finding_rule": "quality.lint",
+        "severity": "MEDIUM",
+        "lint_triggered_fix_rounds": 0,
+        "reason": "ESLint ran and exited 1 on the intentional control error in probe.js, which the canonical contract classifies as quality.lint at MEDIUM severity, not a build-gate abort."
+      }
+    },
+    {
+      "case": "K3",
+      "trial": 1,
+      "verdict": "PASS",
+      "model": "claude-sonnet-5",
+      "duration_ms": 65390,
+      "result": {
+        "case": "K3",
+        "trial": 1,
+        "language_lint": "SKIP",
+        "command": "npm run lint:json",
+        "observed_exit_code": 1,
+        "finding_rule": "correctness.spec-literal-mismatch",
+        "severity": "CRITICAL",
+        "lint_triggered_fix_rounds": 0,
+        "reason": "npm run lint:json really exits 1 (scripts/lint-json.js is missing, MODULE_NOT_FOUND) against a spec-declared expected exit of 0, so step 4 emits a CRITICAL command-mismatch finding despite the general language lint being SKIP."
+      }
+    },
+    {
+      "case": "K3",
+      "trial": 2,
+      "verdict": "PASS",
+      "model": "claude-sonnet-5",
+      "duration_ms": 35145,
+      "result": {
+        "case": "K3",
+        "trial": 2,
+        "language_lint": "SKIP",
+        "command": "npm run lint:json",
+        "observed_exit_code": 1,
+        "finding_rule": "correctness.spec-literal-mismatch",
+        "severity": "CRITICAL",
+        "lint_triggered_fix_rounds": 0,
+        "reason": "npm run lint:json exited 1 (MODULE_NOT_FOUND: scripts/lint-json.js does not exist), failing the spec's expected exit 0, so the mismatch is preserved as CRITICAL rather than downgraded to a lint MEDIUM."
+      }
+    },
+    {
+      "case": "K3",
+      "trial": 3,
+      "verdict": "PASS",
+      "model": "claude-sonnet-5",
+      "duration_ms": 32836,
+      "result": {
+        "case": "K3",
+        "trial": 3,
+        "language_lint": "SKIP",
+        "command": "npm run lint:json",
+        "observed_exit_code": 1,
+        "finding_rule": "correctness.spec-literal-mismatch",
+        "severity": "CRITICAL",
+        "lint_triggered_fix_rounds": 0,
+        "reason": "scripts/lint-json.js does not exist in the repo, so the command throws MODULE_NOT_FOUND and exits 1 instead of the spec's expected 0."
+      }
+    }
+  ]
+}

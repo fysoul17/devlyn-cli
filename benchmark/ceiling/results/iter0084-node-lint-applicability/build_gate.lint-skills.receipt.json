@@ -1,0 +1,9 @@
+{
+  "command": "bash scripts/lint-skills.sh",
+  "exit_code": 0,
+  "completed_at": "2026-07-28T13:37:04Z",
+  "log_path": ".devlyn/build_gate.lint-skills.log",
+  "log_sha256": "94ab1d892544bc0ceb67c7d16d58ee123e28ac0de884d7ae493c20e7a10263cd",
+  "log_lines": 140,
+  "summary": "All checks passed."
+}

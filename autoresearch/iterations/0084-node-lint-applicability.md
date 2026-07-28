@@ -2,14 +2,56 @@
 id: "0084-node-lint-applicability"
 title: "Make Node lint applicability invariant"
 kind: bugfix
-status: FROZEN 2026-07-28
+status: SHIPPED 2026-07-28
 complexity: medium
 depends_on: ["0083-summary-verdict-merge"]
 ---
 
 # iter-0084 — make Node lint applicability invariant
 
-**Status: FROZEN. Build has not started.**
+**Status: SHIPPED 2026-07-28.**
+
+## BUILT + GATED
+
+The prompt-contract fix shipped in `c0f4724`. The implementation changed only
+the canonical BUILD_GATE reference and its installed mirrors: exact
+`scripts.lint` and recognized configured linters are applicable; an arbitrary
+specialized `lint:*` declaration alone is not. Spec-explicit specialized
+commands still run in step 4 with their real severity.
+
+The frozen post-edit bar passed without a behavioral retry:
+
+| Cell | Result |
+|---|---|
+| T | 3/3 general lint `SKIP`; no command, finding, or fix round |
+| K1 | 3/3 `npm run lint`; exit 1; `quality.lint` MEDIUM |
+| K2 | 3/3 `npx eslint .`; exit 1; `quality.lint` MEDIUM |
+| K3 | 3/3 general lint `SKIP`; step-4 `npm run lint:json`; exit 1; `correctness.spec-literal-mismatch` CRITICAL |
+
+All 12 receipts used `claude-sonnet-5`; input hashes were unchanged.
+`bash scripts/lint-skills.sh` completed with exit 0 and `All checks passed`
+(140-line log, SHA-256
+`94ab1d892544bc0ceb67c7d16d58ee123e28ac0de884d7ae493c20e7a10263cd`).
+Mirror parity, `git diff --check`, and spec verification passed.
+
+Formal `/devlyn:resolve` run `rs-20260728T121553Z-8a240495d492` reached VERIFY
+PASS with zero merged findings: Codex GPT-5.6-sol primary judge PASS and Fable
+5 pair judge PASS. Grok 4.5 independently checked all 12 replay receipts and
+returned PASS with zero discrepancies. Its stdout again concatenated interim
+JSON status objects before the final valid result; this is an advisory-seat
+emission residual, not a behavioral discrepancy in this gate.
+
+Two earlier Fable BUILD_GATE calls ended at their shell-tool time limits while
+the full lint suite was still running; neither was counted as PASS. The same
+suite then completed directly in the foreground, and a fresh Fable adjudicator
+verified the log hash, summary, and short gates before returning PASS. The first
+four-way replay launch also omitted the case prompt because relative paths were
+resolved from `/tmp`; all four outputs were renamed
+`*-invalid-missing-case.*` before valid trial numbering and excluded from the
+12 scored receipts.
+
+Durable evidence is in
+`benchmark/ceiling/results/iter0084-node-lint-applicability/`.
 
 ## Why this iteration exists
 
@@ -62,7 +104,7 @@ M1.5 fast-path candidate; this iteration does not ship it.
 
 ## Requirements
 
-- [ ] Replace the ambiguous Node lint wording in the canonical BUILD_GATE
+- [x] Replace the ambiguous Node lint wording in the canonical BUILD_GATE
   prompt with one mechanical applicability rule:
   - run a recognized configured language linter, such as ESLint with a config;
   - and/or run the exact `package.json` `scripts.lint` command;
@@ -71,13 +113,13 @@ M1.5 fast-path candidate; this iteration does not ship it.
   - when the spec verification commands explicitly name a specialized command,
     step 4 still executes it and preserves the real failure severity;
   - no applicable linter means an explicit logged SKIP with no lint finding.
-- [ ] Preserve the existing applicable-lint finding contract: errors are
+- [x] Preserve the existing applicable-lint finding contract: errors are
   `MEDIUM` / `quality.lint`; warnings remain LOW unless the spec elevates them.
-- [ ] Preserve the quality-bar rule that drift in an **applicable** gate is a
+- [x] Preserve the quality-bar rule that drift in an **applicable** gate is a
   finding. Add only the missing distinction that a package-script declaration
   alone is not evidence that CI executes it.
-- [ ] Keep the three installed prompt surfaces byte-identical.
-- [ ] Change no runner, state schema, engine route, model route, script, flag,
+- [x] Keep the three installed prompt surfaces byte-identical.
+- [x] Change no runner, state schema, engine route, model route, script, flag,
   dependency, or other phase.
 
 ## Exact product surface
