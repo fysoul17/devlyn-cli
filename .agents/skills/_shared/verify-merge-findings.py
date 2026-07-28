@@ -169,6 +169,41 @@ def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str,
                     source_verdicts[source], RANK_VERDICT[finding_rank(item)]
                 )
     findings.extend(detect_pair_stdout_contract_violations(devlyn, source_verdicts))
+    pair_summary_path = devlyn / "pair-judge.summary.json"
+    pair_carrier_exists = any(
+        (devlyn / name).is_file()
+        for name in ("verify.pair.findings.jsonl", "verify.pair-judge.findings.jsonl")
+    )
+    if pair_carrier_exists and pair_summary_path.is_file():
+        try:
+            pair_summary = loads_strict_json(pair_summary_path.read_text(encoding="utf-8"))
+        except ValueError as exc:
+            summary_error = f"pair-judge.summary.json is malformed JSON: {exc}"
+        else:
+            pair_verdict = pair_summary.get("verdict") if isinstance(pair_summary, dict) else None
+            summary_error = None
+            if not isinstance(pair_summary, dict):
+                summary_error = "pair-judge.summary.json must be a JSON object."
+            elif not isinstance(pair_verdict, str) or pair_verdict not in {
+                "PASS", "PASS_WITH_ISSUES", "FAIL", "NEEDS_WORK", "BLOCKED"
+            }:
+                summary_error = (
+                    "pair-judge.summary.json verdict must be PASS, PASS_WITH_ISSUES, "
+                    "FAIL, NEEDS_WORK, or BLOCKED."
+                )
+        if summary_error is not None:
+            findings.append(
+                pair_blocker(
+                    "verify-pair-summary-invalid",
+                    summary_error,
+                    pair_summary_path.name,
+                )
+            )
+            source_verdicts["pair_judge"] = "BLOCKED"
+        elif source_verdicts["pair_judge"] != "TIMEOUT":
+            source_verdicts["pair_judge"] = worse(
+                source_verdicts["pair_judge"], pair_verdict
+            )
     return findings, source_verdicts
 
 
@@ -2331,6 +2366,127 @@ def self_test() -> int:
         state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
         assert summary["verdict"] == "PASS", summary
         assert state["phases"]["verify"]["sub_verdicts"]["pair_judge"] == "PASS", state
+
+        # iter-0083: canonical summary verdict conservation.
+        iter_0083_paths = (
+            "pipeline.state.json",
+            "verify-mechanical.findings.jsonl",
+            "verify.findings.jsonl",
+            "verify.pair.findings.jsonl",
+            "verify.pair-judge.findings.jsonl",
+            "pair-judge.summary.json",
+            "codex-primary-judge.summary.json",
+            "grok-judge.summary.json",
+            "verify.pair.timeout.json",
+            "codex-judge.stdout",
+            "claude-judge.stdout",
+        )
+
+        def iter_0083_reset() -> None:
+            for name in iter_0083_paths:
+                (devlyn / name).unlink(missing_ok=True)
+
+        def iter_0083_case(
+            summary_payload: object | None,
+            severity: str | None,
+            *,
+            carrier: str | None = "verify.pair.findings.jsonl",
+            other_summary: str | None = None,
+        ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+            iter_0083_reset()
+            if carrier is not None:
+                content = (
+                    json.dumps({"id": "iter-0083", "severity": severity}) + "\n"
+                    if severity
+                    else ""
+                )
+                (devlyn / carrier).write_text(content, encoding="utf-8")
+            if summary_payload is not None:
+                content = (
+                    summary_payload
+                    if isinstance(summary_payload, str)
+                    else json.dumps(summary_payload)
+                )
+                (devlyn / "pair-judge.summary.json").write_text(content, encoding="utf-8")
+            if other_summary is not None:
+                (devlyn / other_summary).write_text(
+                    json.dumps({"verdict": "BLOCKED"}), encoding="utf-8"
+                )
+            case_findings, case_source_verdicts = read_findings(devlyn)
+            return case_findings, write_outputs(devlyn, case_findings, case_source_verdicts)
+
+        for case_id, verdict, severity, expected in (
+            ("P1", "NEEDS_WORK", "INFO", "NEEDS_WORK"),
+            ("P2", "NEEDS_WORK", "LOW", "NEEDS_WORK"),
+            ("P3", "NEEDS_WORK", "MEDIUM", "NEEDS_WORK"),
+            ("P4", "PASS", "HIGH", "NEEDS_WORK"),
+            ("P5", "BLOCKED", "INFO", "BLOCKED"),
+            ("P6", "FAIL", "INFO", "NEEDS_WORK"),
+            ("P7", "PASS", None, "PASS"),
+        ):
+            _, summary = iter_0083_case({"verdict": verdict}, severity)
+            assert summary["source_verdicts"]["pair_judge"] == expected, case_id
+            assert summary["verdict"] == expected, case_id
+
+        for case_id, severity, expected in (
+            ("P8-INFO", "INFO", "PASS"),
+            ("P8-LOW", "LOW", "PASS_WITH_ISSUES"),
+        ):
+            _, summary = iter_0083_case(None, severity)
+            assert summary["source_verdicts"]["pair_judge"] == expected, case_id
+            assert summary["verdict"] == expected, case_id
+
+        def assert_iter_0083_blocked(
+            case_id: str,
+            case_findings: list[dict[str, Any]],
+            summary: dict[str, Any],
+        ) -> None:
+            assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", case_id
+            assert summary["verdict"] == "BLOCKED", case_id
+            assert any(
+                finding.get("source") == "pair_judge"
+                and finding.get("severity") == "CRITICAL"
+                and finding.get("file") == "pair-judge.summary.json"
+                for finding in case_findings
+            ), case_id
+
+        for case_id, payload in (
+            ("N1-malformed", "{"),
+            ("N1-non-object", []),
+            ("N1-unknown", {"verdict": "UNKNOWN"}),
+            ("N2", {}),
+            ("N7", {"verdict": "TIMEOUT"}),
+        ):
+            case_findings, summary = iter_0083_case(payload, "INFO")
+            assert_iter_0083_blocked(case_id, case_findings, summary)
+
+        _, summary = iter_0083_case({"verdict": "BLOCKED"}, None, carrier=None)
+        assert summary["source_verdicts"]["pair_judge"] is None, summary
+        assert summary["verdict"] == "PASS", summary
+
+        _, summary = iter_0083_case(
+            {"verdict": "PASS"},
+            "INFO",
+            other_summary="codex-primary-judge.summary.json",
+        )
+        assert summary["source_verdicts"]["pair_judge"] == "PASS", "N4"
+        assert summary["verdict"] == "PASS", "N4"
+
+        _, summary = iter_0083_case(
+            None,
+            "INFO",
+            other_summary="grok-judge.summary.json",
+        )
+        assert summary["source_verdicts"]["pair_judge"] == "PASS", "N5"
+        assert summary["verdict"] == "PASS", "N5"
+
+        _, summary = iter_0083_case(
+            {"verdict": "NEEDS_WORK"},
+            "INFO",
+            carrier="verify.pair-judge.findings.jsonl",
+        )
+        assert summary["source_verdicts"]["pair_judge"] == "NEEDS_WORK", "N6"
+        assert summary["verdict"] == "NEEDS_WORK", "N6"
     return 0
 
 

@@ -92,8 +92,7 @@ the fail-closed floor: treat it as `BLOCKED` for
 ```bash
 python3 "$DEVLYN_SHARED_DIR/collect-codex-findings.py" \
   --devlyn-dir "$REPO/.devlyn" \
-  --stdout-file grok-judge.stdout \
-  --summary-out grok-judge.summary.json
+  --stdout-file grok-judge.stdout
 ```
 
 On exit 124, write `.devlyn/verify.pair.timeout.json` with
