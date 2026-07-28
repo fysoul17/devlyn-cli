@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active iter: [`iterations/0082-weld-recovery-STUB.md`](iterations/0082-weld-recovery-STUB.md) (**SHIPPED 2026-07-28** — read § "BUILT + GATED" first, then § "v2 FROZEN" for the bar. v1 FAILED on an unsatisfiable conjunct and is not amended.). Context: [`iterations/0081-judge-probe-capability-STUB.md`](iterations/0081-judge-probe-capability-STUB.md) (**SHIPPED 2026-07-27, gate part 2 only** — read § "v2 FINAL GATE" first, then § "v2 FROZEN". v1 FAILED and is not amended. Emission still NOT certified; R-weld open; no durable `pair grok` pin). Context iters: [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md) (emission boundary SHIPPED but deliberately NOT certified; § "CONTINUATION ROUND" closed emission as valid-negative), [`iterations/0079-n-model-pair-grok.md`](iterations/0079-n-model-pair-grok.md) (N-model pair wiring; path A; finding F5 is why `README.md:49` reads as it does), [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (CLOSED 0078.6), [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent iter: [`iterations/0083-summary-verdict-merge.md`](iterations/0083-summary-verdict-merge.md) (**SHIPPED 2026-07-28** — read § "BUILT + GATED" first). Context: [`iterations/0082-weld-recovery-STUB.md`](iterations/0082-weld-recovery-STUB.md) (**SHIPPED 2026-07-28** — read § "BUILT + GATED" first, then § "v2 FROZEN" for the bar. v1 FAILED on an unsatisfiable conjunct and is not amended.), [`iterations/0081-judge-probe-capability-STUB.md`](iterations/0081-judge-probe-capability-STUB.md) (**SHIPPED 2026-07-27, gate part 2 only** — read § "v2 FINAL GATE" first, then § "v2 FROZEN". v1 FAILED and is not amended.). Context iters: [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md) (emission boundary SHIPPED but deliberately NOT certified; § "CONTINUATION ROUND" closed emission as valid-negative), [`iterations/0079-n-model-pair-grok.md`](iterations/0079-n-model-pair-grok.md) (N-model pair wiring; path A; finding F5 is why `README.md:49` reads as it does), [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (CLOSED 0078.6), [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,23 +14,37 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-28 (**iter-0082 R-weld SHIPPED**, `557152f`; the pair judge's welded review is finally collectable. Next lead: **R-summary-verdict-not-merged**)
+## 🚦 START-HERE — state after 2026-07-28 (**iter-0083 summary verdict merge SHIPPED**, `6dd5ff4`; a collected pair review now keeps its authenticated conclusion. Next lead: **startup lever re-registration**)
 
 **Where the loop stands (one paragraph).** The live thread is the **grok
 pair-judge seat**: 0079 wired it, 0080 shipped the emission boundary and
-deliberately did not certify it, 0081 cleared gate part 2 (probe capability vs
-permitted scope), and **0082 has now cleared R-weld — the judge's welded review
-survives collection**, which was the last blocker between the seat and a usable
-review. What remains before a durable `pair grok` pin is **emission
-certification**, which 0080's continuation closed as a valid-negative. The
-strongest lead is the residual 0082 surfaced one layer up: **merge never reads the
-judge's own verdict**, so a `NEEDS_WORK` review carrying only `LOW`/`INFO`
-findings is still reported `PASS`. Older closed threads — 0077 wall levers, 0078
-C1 product wiring, the nodeg cohorts — are summarized in DECISIONS.md and their
-iter files; their only live descendants are the queued items below.
+deliberately did not certify it, 0081 cleared gate part 2, 0082 made welded
+reviews collectable, and **0083 now conserves the authenticated pair summary in
+the final merge**. A `NEEDS_WORK` judge conclusion can no longer collapse to
+`PASS` merely because its findings are only `LOW`/`INFO`. What remains before a
+durable `pair grok` pin is still **emission certification**, which 0080's
+continuation closed as a valid-negative; 0083 did not broaden that claim. With
+the verdict-loss residual closed, the strongest next lead returns to **startup
+lever re-registration**. Older closed threads and the nodeg cohorts are
+summarized in DECISIONS.md and their iteration files.
 
 **Just shipped — context, do not re-derive**:
 
+- **iter-0083 R-summary-verdict-not-merged — SHIPPED (`4bb2eea` + fix
+  `6dd5ff4`, 2026-07-28), three-seat final gate.** Exact
+  `pair-judge.summary.json` is folded only when either canonical pair findings
+  carrier exists, including empty. Valid verdicts fold monotonically through the
+  existing lattice; malformed/non-object/missing-verdict/unknown/model-authored
+  TIMEOUT summaries become explicit CRITICAL pair blockers; orphan, primary, and stale
+  Grok summaries cannot bind. Grok's stale `--summary-out` override is deleted.
+  Codex VERIFY found and closed the compound timeout case: a transport TIMEOUT
+  now survives a PASS summary but yields to any strictly worse authenticated
+  summary. Final evidence: frozen P1-P8/N1-N7 plus the compound row green,
+  collector self-test green, iter-0082 contract 110 checks, full lint green,
+  exact three-surface SHA parity, `/devlyn:resolve` terminal PASS. Actual Codex,
+  Grok 4.5, and Fable 5 final seats all PASS after executing. **Claim boundary:**
+  conclusion conservation only — emission remains uncertified and there is no
+  durable `pair grok` pin.
 - **iter-0082 R-weld — SHIPPED (`557152f`, 2026-07-28), three-seat gate.**
   `iterations/0082-weld-recovery-STUB.md` § "BUILT + GATED". The grok pair seat can
   now deliver a collectable review: HEAD rejects all 8 real welded captures, the
@@ -53,7 +67,7 @@ iter files; their only live descendants are the queued items below.
   `tool_result` instead of a silent exit-0 truncation. Its v1 FAILED and
   § "GATE RESULTS" is the more instructive record.
 
-**Binding operator lessons from 0081-0082 — all orchestrator failures**: never
+**Binding operator lessons from 0081-0083 — all orchestrator failures**: never
 handicap a gate seat (a read-only seat cannot run the collector); score the frozen
 conjunct, never a proxy; **a bar must not conjoin an independently registered
 residual NOR an unsatisfiable conjunct**; **a freeze is not frozen until a seat has
@@ -61,40 +75,31 @@ tried to satisfy every conjunct by execution** (asserting the check was run is n
 running it — a verifier pointed only at satisfiability caught what two design seats
 read past, three iters running); every seat prompt granting a shell must forbid
 modifying tracked files; **a wrong claim in a seat packet propagates into the
-seat's answer**, so packets get the same verification bar as findings.
+seat's answer**, so packets get the same verification bar as findings. Do not
+duplicate a repository-wide gate inside a fixed per-command literal verifier:
+0083's first build gate passed full lint directly but blocked when the same
+358-second suite was replayed under a 60-second budget. VERIFY interaction checks
+must compose transport state with authenticated summaries; isolated rows missed
+the TIMEOUT suppression that fresh Codex found.
 
 **Next work (in order)**:
-1. **R-summary-verdict-not-merged — the strongest open lead, and the natural
-   successor to 0082.** The collector writes the judge's verdict to
-   `pair-judge.summary.json` and **merge never reads it** (verified by search:
-   merge touches only `verify.pair*.findings.jsonl`, `*-judge.stdout`, and its own
-   `verify-merge.summary.json`). `pair_judge` derives solely from finding severity
-   (`verify-merge-findings.py:165-170`), so **a judge saying `NEEDS_WORK` with only
-   `LOW`/`INFO` findings is reported `PASS`** — the same "harness discards the
-   judge's conclusion" failure 0082 just fixed, one layer up. Codex's proposed
-   invariant, recorded for its own freeze: `pair_judge = worse(summary verdict,
-   finding-derived verdict)`. **Register and freeze it on its own; do not conjoin.**
-
-   Registered alongside, none conjoined: **R-merge-envelope** (a collector reject
-   leaves `pair_judge: PASS` because merge defaults `None`→PASS on stdout presence,
-   `:877-878`), **R-comment-finding**, **R-verdict-default** (`:93-94` ranks an
-   unrecognised verdict as PASS), **R-rawstream-weld**, **R-envelope-severity-bypass**
-   (a top-level `"severity"` makes the envelope parse as a finding, bypassing the
-   `EndTurn` gate — HEAD and shipped alike), **R-backtick-preamble** (any backtick
-   in the narration kills recovery; 0/8 corpus rows affected, 25/61 tracked captures
-   contain one — fails closed, both seats say residual).
-2. **Startup lever re-registration** (fail-open obligation from 0077.5)
+1. **Startup lever re-registration** (fail-open obligation from 0077.5)
    — new mechanism hypothesis required (mechanical absorption is
    falsified); residual data: startup median 250s unmoved, phase_union
    frozen-five +31.7% (different lever class — executor/model work).
    Fresh context: `-22c` wall median 7.867× (hook-bearing NEW baseline,
    best-ever descriptive) — re-derive the residual target from ITS
    decomposition before registering.
-3. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
+2. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
    / B_win 36 — single-cohort variance vs. real hook-cohort effect is
    unresolved; the next hook-bearing cohort reads it before any quality
    lever is registered.
-4. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
+3. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
+
+Still registered, none conjoined: **R-merge-envelope**, **R-comment-finding**,
+**R-verdict-default**, **R-rawstream-weld**, **R-envelope-severity-bypass**, and
+**R-backtick-preamble**. Their measured boundaries remain in iter-0082; 0083
+closed only R-summary-verdict-not-merged.
 
 **Cohort operator rule (new, binding)**: never run `/login` or anything
 that rotates the host OAuth token while a cohort is in flight — seeded
