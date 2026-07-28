@@ -200,7 +200,10 @@ def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str,
                 )
             )
             source_verdicts["pair_judge"] = "BLOCKED"
-        elif source_verdicts["pair_judge"] != "TIMEOUT":
+        elif (
+            source_verdicts["pair_judge"] != "TIMEOUT"
+            or rank(pair_verdict) > rank("TIMEOUT")
+        ):
             source_verdicts["pair_judge"] = worse(
                 source_verdicts["pair_judge"], pair_verdict
             )
@@ -2392,6 +2395,7 @@ def self_test() -> int:
             *,
             carrier: str | None = "verify.pair.findings.jsonl",
             other_summary: str | None = None,
+            timeout: bool = False,
         ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
             iter_0083_reset()
             if carrier is not None:
@@ -2411,6 +2415,11 @@ def self_test() -> int:
             if other_summary is not None:
                 (devlyn / other_summary).write_text(
                     json.dumps({"verdict": "BLOCKED"}), encoding="utf-8"
+                )
+            if timeout:
+                (devlyn / "verify.pair.timeout.json").write_text(
+                    json.dumps({"engine": "claude", "budget_seconds": 600}),
+                    encoding="utf-8",
                 )
             case_findings, case_source_verdicts = read_findings(devlyn)
             return case_findings, write_outputs(devlyn, case_findings, case_source_verdicts)
@@ -2487,6 +2496,11 @@ def self_test() -> int:
         )
         assert summary["source_verdicts"]["pair_judge"] == "NEEDS_WORK", "N6"
         assert summary["verdict"] == "NEEDS_WORK", "N6"
+
+        case_findings, summary = iter_0083_case({"verdict": "BLOCKED"}, None, timeout=True)
+        assert case_findings == [], "VERIFY-JUDGE-001"
+        assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", "VERIFY-JUDGE-001"
+        assert summary["verdict"] == "BLOCKED", "VERIFY-JUDGE-001"
     return 0
 
 
