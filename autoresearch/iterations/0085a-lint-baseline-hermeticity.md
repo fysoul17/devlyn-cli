@@ -46,9 +46,9 @@ lint no longer depends on that mutable machine state.
 - [ ] Remove every allocated pack temp artifact on both npm success and npm
   failure, using the script's existing guarded cleanup style.
 - [ ] Add no new flag, helper abstraction, dependency, fixture tree, or
-  lint-of-the-lint assertion. The tracked historical receipt plus the poisoned
-  cache environment in Verification exercise both regression classes through
-  the real lint path.
+  lint-of-the-lint assertion. The tracked historical receipt plus BUILD_GATE's
+  poisoned-cache full lint exercise both regression classes through the real
+  lint path.
 
 ## Exact product surface
 
@@ -88,15 +88,15 @@ evidence, package contents, benchmark behavior, or VERIFY timing.
 <!-- devlyn:verification -->
 ## Verification
 
+BUILD_GATE runs `npm_config_cache=/dev/null bash scripts/lint-skills.sh`
+directly. The literal verifier does not duplicate that repository-wide suite
+under its fixed 60-second per-command budget.
+
 ```json
 {
   "verification_commands": [
     {
       "cmd": "bash -n scripts/lint-skills.sh",
-      "exit_code": 0
-    },
-    {
-      "cmd": "npm_config_cache=/dev/null bash scripts/lint-skills.sh",
       "exit_code": 0
     },
     {
@@ -115,4 +115,3 @@ evidence, package contents, benchmark behavior, or VERIFY timing.
   ]
 }
 ```
-
