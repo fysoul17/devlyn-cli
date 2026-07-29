@@ -223,6 +223,12 @@ def ns_iso(value: int) -> str:
     return f"{whole:%Y-%m-%dT%H:%M:%S}.{nanoseconds:09d}Z"
 
 
+def state_iso(value: int) -> str:
+    seconds, nanoseconds = divmod(value, 1_000_000_000)
+    whole = dt.datetime.fromtimestamp(seconds, tz=dt.timezone.utc)
+    return f"{whole:%Y-%m-%dT%H:%M:%S}.{nanoseconds // 1_000_000:03d}Z"
+
+
 def normalized_ms(value_ns: int) -> int | float:
     return attribution.normalized(value_ns / 1_000_000)
 
@@ -602,10 +608,10 @@ def synthetic_fixture(root: Path) -> list[dict]:
         state = {
             "phases": {
                 "verify": {
-                    "completed_at": ns_iso(end_ns),
+                    "completed_at": state_iso(end_ns),
                     "duration_ms": 600_000,
                     "judge_durations_ms": {"judge": 1, "pair_judge": 2},
-                    "started_at": ns_iso(start_ns),
+                    "started_at": state_iso(start_ns),
                 }
             },
             "run_id": f"run-{index}",
@@ -669,9 +675,14 @@ def frozen_regression_projection(payload: dict) -> dict:
 def self_test() -> int:
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
-        payload, _rows = fixture_payload(root / "ordered")
+        payload, rows = fixture_payload(root / "ordered")
         assert payload["gate"]["verdict"] == "PASS"
         assert payload["aggregate"]["median_post_judge_finalize_ms"] == 300_000
+        assert (
+            rows[0]["state"]["phases"]["verify"]["started_at"]
+            == "2025-06-15T15:06:40.000Z"
+        )
+        assert ns_iso(rows[0]["start_ns"]) == "2025-06-15T15:06:40.000000000Z"
 
         missing_root = root / "missing"
         _payload, rows = fixture_payload(missing_root)
@@ -782,7 +793,7 @@ def self_test() -> int:
             end_ns = row["start_ns"] + 1_000_000_000_000
             row["state"]["phases"]["verify"].update(
                 {
-                    "completed_at": ns_iso(end_ns),
+                    "completed_at": state_iso(end_ns),
                     "duration_ms": 1_000_000,
                 }
             )

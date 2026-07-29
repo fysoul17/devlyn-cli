@@ -131,6 +131,17 @@ regression must pin the selected relative anchor paths, bucket values,
 conservation, aggregate medians, receipt hashes, and the exact-ratio threshold
 boundary; row count plus overall verdict alone is insufficient.
 
+After archived run `rs-20260729T012740Z-d593489ac0d2`, Grok 4.5 independently
+reproduced a portability HIGH: the synthetic `pipeline.state.json` producer
+used nanosecond `ns_iso()` values where retained phase state requires
+milliseconds, while this runtime's permissive parser let the self-test pass.
+Run `rs-20260729T021414Z-26b877f33894` keeps filesystem receipts on `ns_iso()`,
+uses millisecond `state_iso()` only for synthetic state, and pins the exact
+`.000Z` versus `.000000000Z` split. The new assertion failed before the fix,
+then all 11 self-test cases passed; frozen-cohort regeneration remained
+byte-identical at SHA-256
+`3fc25a668dad3d86961b8cbe753530bfb452b8833f934560b2b95536605d36c6`.
+
 ## Stage-A decision bar
 
 The bar is frozen before any product mechanism and is informed by the already
