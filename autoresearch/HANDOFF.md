@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent iter: [`iterations/0086-claude-primary-model-attestation.md`](iterations/0086-claude-primary-model-attestation.md) (**SHIPPED 2026-07-29** — read § "BUILT + GATED" first). Context: [`iterations/0085-verify-envelope-anatomy.md`](iterations/0085-verify-envelope-anatomy.md) (**SHIPPED 2026-07-29**), [`iterations/0084-node-lint-applicability.md`](iterations/0084-node-lint-applicability.md) (**SHIPPED 2026-07-28**), [`iterations/0083-summary-verdict-merge.md`](iterations/0083-summary-verdict-merge.md) (**SHIPPED 2026-07-28**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent iter: [`iterations/0087-startup-semantic-dedup.md`](iterations/0087-startup-semantic-dedup.md) (**FROZEN 2026-07-29; IMPLEMENT BLOCKED 2026-07-30 — read § "IMPLEMENTATION ATTEMPTS" first**). Context: [`iterations/0086-claude-primary-model-attestation.md`](iterations/0086-claude-primary-model-attestation.md) (**SHIPPED 2026-07-29**), [`iterations/0085-verify-envelope-anatomy.md`](iterations/0085-verify-envelope-anatomy.md) (**SHIPPED 2026-07-29**), [`iterations/0084-node-lint-applicability.md`](iterations/0084-node-lint-applicability.md) (**SHIPPED 2026-07-28**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,19 +14,30 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-29 (**iter-0086 Claude primary model attestation SHIPPED**; auxiliary billing calls no longer create false primary-model blockers. Next lead: **startup lever re-registration**)
+## 🚦 START-HERE — state after 2026-07-30 (**iter-0087 startup semantic dedup FROZEN; implementation infrastructure-blocked, not shipped**)
 
-**Where the loop stands (one paragraph).** iter-0085 measured and registered the
-post-judge VERIFY envelope without authorizing a dispatcher. iter-0086 then
-removed the observed Claude primary-attestation false blocker: a multi-entry
-wrapper now selects one exact top-level usage match while every ambiguous or
-malformed shape still fails closed. Codex, Fable 5, Grok 4.5, all literal
-commands, and the full skill lint passed. The earlier 600-second foreground
-BUILD_GATE transport failure remains honestly separate and deferred to M1.5.
-The strongest next lead is still **startup lever re-registration** from the
-corrected `nodeg-hook-20260722c` decomposition.
+**Where the loop stands (one paragraph).** iter-0087 has re-registered the
+startup lever as H1-v3 ordered one-return semantic deduplication. Actual Codex,
+Fable 5, and Grok 4.5 froze the design; Terra proved the receipt shape and four
+sequential Sonnet control rows fixed the per-pair 0.85 envelopes. No candidate
+product diff or treatment exists: Claude Sonnet was unavailable from expired
+OAuth, and the Terra formal retry ended
+`BLOCKED:fresh-context-unavailable` when its monitored PLAN child detached.
+The registration remains FROZEN, not falsified and not shipped. Resume through
+a permitted Sonnet/Terra fresh-context route; do not repair or bypass the
+foreground transport, which remains separately deferred to M1.5.
 
-**Just shipped — context, do not re-derive**:
+**Current frontier and just shipped — context, do not re-derive**:
+
+- **iter-0087 startup semantic dedup — FROZEN, NOT SHIPPED (2026-07-29/30).**
+  H1-v3 deletes parent-side semantic repository discovery and makes the actual
+  Sonnet PLAN worker write immutable criteria before its plan in one return.
+  R0/R1 Codex, Fable 5, and Grok 4.5 converged; Terra's F12 canary recovered all
+  required fields. Frozen control envelopes are F7 356,260/376,450 ms and F12
+  527,257/492,483 ms; each treatment must be <=85% of its matched control and
+  must not increase startup. Two implementation attempts produced no product
+  diff. Latest formal run `rs-20260729T182952Z-07ac4f7b38eb` is honestly
+  `BLOCKED:fresh-context-unavailable`; no treatment has run.
 
 - **iter-0086 Claude primary model attestation — SHIPPED (2026-07-29),
   three-seat final gate.** Product and R6 now use the same unique exact
@@ -105,13 +116,11 @@ must compose transport state with authenticated summaries; isolated rows missed
 the TIMEOUT suppression that fresh Codex found.
 
 **Next work (in order)**:
-1. **Startup lever re-registration** (fail-open obligation from 0077.5)
-   — new mechanism hypothesis required (mechanical absorption is
-   falsified). The corrected `nodeg-hook-20260722c` medians are startup
-   193,016 ms, interphase 50,600 ms, phase_union 1,661,503 ms, and elapsed
-   2,068,641 ms; register against that decomposition, not the superseded 250s
-   estimate. `-22c` wall median remains 7.867× (hook-bearing baseline,
-   best-ever descriptive).
+1. **Resume iter-0087 IMPLEMENT, then run the four frozen matched treatments.**
+   Use only a permitted Sonnet/Terra fresh-context execution route. Do not use
+   an expensive model for fixture/test arms, do not repair the deferred
+   foreground transport, and do not score a treatment until a real candidate
+   product diff exists. All gates and control envelopes are frozen in the iter.
 2. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
    / B_win 36 — single-cohort variance vs. real hook-cohort effect is
    unresolved; the next hook-bearing cohort reads it before any quality
