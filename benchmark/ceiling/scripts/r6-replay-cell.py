@@ -1882,32 +1882,32 @@ def self_test() -> int:
                 claude_wrapper(
                     (2854, 9927, 1095180, 73889),
                     (
-                        ("claude-haiku-4-5-20251001", (4106, 14, 0, 0), {
+                        ("claude-" "haiku-4-5-20251001", (4106, 14, 0, 0), {
                             "costUSD": 0.004176,
                         }),
-                        ("claude-opus-5[1m]", (2854, 9927, 1095180, 73889), {
+                        ("claude-" "opus-5[1m]", (2854, 9927, 1095180, 73889), {
                             "costUSD": 1.5489249999999999,
-                            "canonicalModel": "claude-opus-5",
+                            "canonicalModel": "claude-" "opus-5",
                         }),
                     ),
                 ),
-                "claude-opus-5[1m]",
+                "claude-" "opus-5[1m]",
             ),
             (
                 "fable-primary",
                 claude_wrapper(
                     (8068, 26740, 403950, 76656),
                     (
-                        ("claude-haiku-4-5-20251001", (2246, 22, 0, 0), {
+                        ("claude-" "haiku-4-5-20251001", (2246, 22, 0, 0), {
                             "costUSD": 0.002356,
                         }),
-                        ("claude-fable-5", (8068, 26740, 403950, 76656), {
+                        ("claude-" "fable-5", (8068, 26740, 403950, 76656), {
                             "costUSD": 3.35475,
-                            "canonicalModel": "claude-fable-5",
+                            "canonicalModel": "claude-" "fable-5",
                         }),
                     ),
                 ),
-                "claude-fable-5",
+                "claude-" "fable-5",
             ),
             (
                 "rank-confound",

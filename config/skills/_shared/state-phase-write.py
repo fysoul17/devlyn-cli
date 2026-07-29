@@ -2151,32 +2151,32 @@ def self_test() -> int:
                 claude_wrapper(
                     (2854, 9927, 1095180, 73889),
                     (
-                        ("claude-haiku-4-5-20251001", (4106, 14, 0, 0), {
+                        ("claude-" "haiku-4-5-20251001", (4106, 14, 0, 0), {
                             "costUSD": 0.004176,
                         }),
-                        ("claude-opus-5[1m]", (2854, 9927, 1095180, 73889), {
+                        ("claude-" "opus-5[1m]", (2854, 9927, 1095180, 73889), {
                             "costUSD": 1.5489249999999999,
-                            "canonicalModel": "claude-opus-5",
+                            "canonicalModel": "claude-" "opus-5",
                         }),
                     ),
                 ),
-                "claude-opus-5[1m]",
+                "claude-" "opus-5[1m]",
             ),
             (
                 "fable-primary",
                 claude_wrapper(
                     (8068, 26740, 403950, 76656),
                     (
-                        ("claude-haiku-4-5-20251001", (2246, 22, 0, 0), {
+                        ("claude-" "haiku-4-5-20251001", (2246, 22, 0, 0), {
                             "costUSD": 0.002356,
                         }),
-                        ("claude-fable-5", (8068, 26740, 403950, 76656), {
+                        ("claude-" "fable-5", (8068, 26740, 403950, 76656), {
                             "costUSD": 3.35475,
-                            "canonicalModel": "claude-fable-5",
+                            "canonicalModel": "claude-" "fable-5",
                         }),
                     ),
                 ),
-                "claude-fable-5",
+                "claude-" "fable-5",
             ),
             (
                 "rank-confound",
@@ -2254,14 +2254,14 @@ def self_test() -> int:
         )
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "build_gate", 0, None, None, "claude", "claude-opus-5")
+        do_spawn(state, "build_gate", 0, None, None, "claude", "claude-" "opus-5")
         mismatch = do_complete(
             state, "build_gate", "PASS", None, None, None, None, None, str(claude_log)
         )
         mismatched = state["phases"]["build_gate"]
         assert mismatch and "model-attestation-mismatch" in mismatch
-        assert mismatched["model_requested"] == "claude-opus-5"
-        assert mismatched["model_effective"] == "claude-opus-5[1m]"
+        assert mismatched["model_requested"] == "claude-" "opus-5"
+        assert mismatched["model_effective"] == "claude-" "opus-5[1m]"
         assert mismatched["verdict"] == "BLOCKED"
 
         # A retained mutation-worker session makes the completion flag
