@@ -8,7 +8,6 @@ import fcntl
 import hashlib
 import importlib.util
 import json
-import math
 import os
 import re
 import shutil
@@ -553,12 +552,12 @@ def select_claude_primary_model(wrapper: Any) -> str | None:
 
     def counters(
         container: dict[str, Any], fields: tuple[str, ...],
-    ) -> tuple[int | float, ...] | None:
+    ) -> tuple[int, ...] | None:
         values = tuple(container.get(field) for field in fields)
         if any(
-            not isinstance(value, (int, float))
+            not isinstance(value, int)
             or isinstance(value, bool)
-            or not math.isfinite(value)
+            or value < 0
             for value in values
         ):
             return None
@@ -1871,6 +1870,7 @@ def self_test() -> int:
                 wrapper["modelUsage"][model] = entry
             return wrapper
 
+        oversized_counter = 10 ** 400
         claude_selector_rows = (
             (
                 "singleton",
@@ -1923,6 +1923,17 @@ def self_test() -> int:
                 "expected-primary",
             ),
             (
+                "oversized-integer",
+                claude_wrapper(
+                    (oversized_counter, 5, 7, 11),
+                    (
+                        ("oversized-primary", (oversized_counter, 5, 7, 11), {}),
+                        ("auxiliary", (3, 5, 7, 11), {}),
+                    ),
+                ),
+                "oversized-primary",
+            ),
+            (
                 "zero-match",
                 claude_wrapper(
                     (1, 2, 3, 4),
@@ -1947,6 +1958,22 @@ def self_test() -> int:
                 None,
             ),
             (
+                "malformed-top-level-float",
+                claude_wrapper(
+                    (1.0, 2, 3, 4),
+                    (("model-a", (1, 2, 3, 4), {}), ("model-b", (5, 6, 7, 8), {})),
+                ),
+                None,
+            ),
+            (
+                "malformed-top-level-negative",
+                claude_wrapper(
+                    (-1, 2, 3, 4),
+                    (("model-a", (-1, 2, 3, 4), {}), ("model-b", (5, 6, 7, 8), {})),
+                ),
+                None,
+            ),
+            (
                 "malformed-entry-counter",
                 claude_wrapper(
                     (1, 2, 3, 4),
@@ -1957,7 +1984,7 @@ def self_test() -> int:
         )
         for row_name, wrapper, expected in claude_selector_rows:
             expect(
-                select_claude_primary_model(wrapper) == expected,
+                select_claude_primary_model(json.loads(json.dumps(wrapper))) == expected,
                 f"Claude primary selector {row_name}",
             )
 

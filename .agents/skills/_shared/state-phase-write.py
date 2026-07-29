@@ -28,7 +28,6 @@ import datetime
 import difflib
 import hashlib
 import json
-import math
 import os
 import pathlib
 import re
@@ -513,12 +512,12 @@ def select_claude_primary_model(evidence: dict) -> str:
     if not isinstance(usage, dict):
         raise ValueError("multi-entry Claude JSON wrapper has malformed top-level usage")
 
-    def counters(container: dict, fields: tuple[str, ...]) -> tuple[int | float, ...]:
+    def counters(container: dict, fields: tuple[str, ...]) -> tuple[int, ...]:
         values = tuple(container.get(field) for field in fields)
         if any(
-            not isinstance(value, (int, float))
+            not isinstance(value, int)
             or isinstance(value, bool)
-            or not math.isfinite(value)
+            or value < 0
             for value in values
         ):
             raise ValueError("multi-entry Claude JSON wrapper has malformed usage counters")
@@ -2140,6 +2139,7 @@ def self_test() -> int:
                 wrapper["modelUsage"][model] = entry
             return wrapper
 
+        oversized_counter = 10 ** 400
         claude_selector_rows = (
             (
                 "singleton",
@@ -2192,12 +2192,23 @@ def self_test() -> int:
                 "expected-primary",
             ),
             (
+                "oversized-integer",
+                claude_wrapper(
+                    (oversized_counter, 5, 7, 11),
+                    (
+                        ("oversized-primary", (oversized_counter, 5, 7, 11), {}),
+                        ("auxiliary", (3, 5, 7, 11), {}),
+                    ),
+                ),
+                "oversized-primary",
+            ),
+            (
                 "zero-match",
                 claude_wrapper(
                     (1, 2, 3, 4),
                     (("model-a", (10, 2, 3, 4), {}), ("model-b", (1, 20, 3, 4), {})),
                 ),
-                None,
+                ValueError,
             ),
             (
                 "duplicate-match",
@@ -2205,7 +2216,7 @@ def self_test() -> int:
                     (1, 2, 3, 4),
                     (("model-a", (1, 2, 3, 4), {}), ("model-b", (1, 2, 3, 4), {})),
                 ),
-                None,
+                ValueError,
             ),
             (
                 "missing-top-level-usage",
@@ -2213,7 +2224,23 @@ def self_test() -> int:
                     None,
                     (("model-a", (1, 2, 3, 4), {}), ("model-b", (5, 6, 7, 8), {})),
                 ),
-                None,
+                ValueError,
+            ),
+            (
+                "malformed-top-level-float",
+                claude_wrapper(
+                    (1.0, 2, 3, 4),
+                    (("model-a", (1, 2, 3, 4), {}), ("model-b", (5, 6, 7, 8), {})),
+                ),
+                ValueError,
+            ),
+            (
+                "malformed-top-level-negative",
+                claude_wrapper(
+                    (-1, 2, 3, 4),
+                    (("model-a", (-1, 2, 3, 4), {}), ("model-b", (5, 6, 7, 8), {})),
+                ),
+                ValueError,
             ),
             (
                 "malformed-entry-counter",
@@ -2221,12 +2248,12 @@ def self_test() -> int:
                     (1, 2, 3, 4),
                     (("model-a", (1, 2, 3, 4), {}), ("model-b", (True, 20, 30, 40), {})),
                 ),
-                None,
+                ValueError,
             ),
         )
         for row_name, wrapper, expected in claude_selector_rows:
             claude_log.write_text(json.dumps(wrapper) + "\n", encoding="utf-8")
-            if expected is None:
+            if expected is ValueError:
                 try:
                     parse_effective_model(claude_log)
                 except ValueError:
@@ -2235,6 +2262,19 @@ def self_test() -> int:
                     raise AssertionError(f"Claude selector accepted {row_name}")
             else:
                 assert parse_effective_model(claude_log) == expected, row_name
+
+        claude_log.write_text(
+            json.dumps(claude_selector_rows[-1][1]) + "\n", encoding="utf-8"
+        )
+        write_state(state_path, {"phases": {}})
+        state = read_state(state_path)
+        do_spawn(state, "plan", 0, None, None, "claude", "claude-default")
+        malformed = do_complete(
+            state, "plan", "PASS", None, None, None, None, None, str(claude_log)
+        )
+        assert malformed and "model-attestation-failed" in malformed
+        assert state["phases"]["plan"]["model_effective"] is None
+        assert state["phases"]["plan"]["verdict"] == "BLOCKED"
 
         # Requested/effective drift is a persisted, fail-closed attestation.
         write_state(state_path, {"phases": {}})
