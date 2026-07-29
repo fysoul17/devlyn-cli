@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent iter: [`iterations/0084-node-lint-applicability.md`](iterations/0084-node-lint-applicability.md) (**SHIPPED 2026-07-28** — read § "BUILT + GATED" first). Context: [`iterations/0083-summary-verdict-merge.md`](iterations/0083-summary-verdict-merge.md) (**SHIPPED 2026-07-28**), [`iterations/0082-weld-recovery-STUB.md`](iterations/0082-weld-recovery-STUB.md) (**SHIPPED 2026-07-28** — read § "BUILT + GATED" first, then § "v2 FROZEN" for the bar. v1 FAILED on an unsatisfiable conjunct and is not amended.), [`iterations/0081-judge-probe-capability-STUB.md`](iterations/0081-judge-probe-capability-STUB.md) (**SHIPPED 2026-07-27, gate part 2 only** — read § "v2 FINAL GATE" first, then § "v2 FROZEN". v1 FAILED and is not amended.). Context iters: [`iterations/0080-pair-emission-boundary.md`](iterations/0080-pair-emission-boundary.md) (emission boundary SHIPPED but deliberately NOT certified; § "CONTINUATION ROUND" closed emission as valid-negative), [`iterations/0079-n-model-pair-grok.md`](iterations/0079-n-model-pair-grok.md) (N-model pair wiring; path A; finding F5 is why `README.md:49` reads as it does), [`iterations/0078-c1-product-wiring.md`](iterations/0078-c1-product-wiring.md) (CLOSED 0078.6), [`iterations/0077-wall-residual-lever.md`](iterations/0077-wall-residual-lever.md) (CLOSED 0077.5). Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent iter: [`iterations/0086-claude-primary-model-attestation.md`](iterations/0086-claude-primary-model-attestation.md) (**SHIPPED 2026-07-29** — read § "BUILT + GATED" first). Context: [`iterations/0085-verify-envelope-anatomy.md`](iterations/0085-verify-envelope-anatomy.md) (**SHIPPED 2026-07-29**), [`iterations/0084-node-lint-applicability.md`](iterations/0084-node-lint-applicability.md) (**SHIPPED 2026-07-28**), [`iterations/0083-summary-verdict-merge.md`](iterations/0083-summary-verdict-merge.md) (**SHIPPED 2026-07-28**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,21 +14,34 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-28 (**iter-0084 Node lint applicability SHIPPED**, `c0f4724`; specialized `lint:*` no longer masquerades as the general lint gate. Next lead: **startup lever re-registration**)
+## 🚦 START-HERE — state after 2026-07-29 (**iter-0086 Claude primary model attestation SHIPPED**; auxiliary billing calls no longer create false primary-model blockers. Next lead: **startup lever re-registration**)
 
-**Where the loop stands (one paragraph).** iter-0084 closed the observed Node
-BUILD_GATE variance: exact `scripts.lint` and recognized configured linters run,
-specialized `lint:*` alone skips, and spec-explicit specialized commands retain
-their real severity. The frozen four-cell replay passed 12/12 under Sonnet 5;
-Codex, Fable 5, and Grok 4.5 all returned final PASS. The Grok pair-judge line
-remains at 0083's boundary: collected conclusions are conserved, but emission is
-still uncertified and there is no durable `pair grok` pin. The strongest next
-lead is **startup lever re-registration** from the corrected
-`nodeg-hook-20260722c` decomposition; a deterministic BUILD_GATE runner remains
-deferred to M1.5.
+**Where the loop stands (one paragraph).** iter-0085 measured and registered the
+post-judge VERIFY envelope without authorizing a dispatcher. iter-0086 then
+removed the observed Claude primary-attestation false blocker: a multi-entry
+wrapper now selects one exact top-level usage match while every ambiguous or
+malformed shape still fails closed. Codex, Fable 5, Grok 4.5, all literal
+commands, and the full skill lint passed. The earlier 600-second foreground
+BUILD_GATE transport failure remains honestly separate and deferred to M1.5.
+The strongest next lead is still **startup lever re-registration** from the
+corrected `nodeg-hook-20260722c` decomposition.
 
 **Just shipped — context, do not re-derive**:
 
+- **iter-0086 Claude primary model attestation — SHIPPED (2026-07-29),
+  three-seat final gate.** Product and R6 now use the same unique exact
+  four-counter match against top-level primary usage; singleton behavior is
+  unchanged and malformed, zero-match, duplicate-match, and requested-model
+  mismatch cases remain explicit blockers. A fresh Codex finding closed the
+  oversized-integer overflow edge before final PASS. Formal verify-only run
+  `rs-20260729T115754Z-11c3cb3d2666`, full lint, mirrors, Codex, Fable 5, and
+  Grok 4.5 all passed. **Claim boundary:** this fixes observed auxiliary-call
+  false attestation only; the M1.5 transport runner remains deferred.
+- **iter-0085 VERIFY envelope anatomy — SHIPPED (`bd7326d` + `ddf4c5e`,
+  2026-07-29).** Four-row measurement registered median post-judge
+  finalization 138,631.328 ms and 25.1% share. Formal verify-only run
+  `rs-20260729T094740Z-2df38943031e` passed after a separate foreground full
+  lint. It authorized no dispatcher or deterministic runner.
 - **iter-0084 Node lint applicability — SHIPPED (`c0f4724`, 2026-07-28),
   three-seat final gate.** The canonical BUILD_GATE contract now treats exact
   `scripts.lint` and recognized configured linters as applicable, never infers

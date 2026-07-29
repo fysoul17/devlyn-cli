@@ -2,7 +2,7 @@
 id: "0086-claude-primary-model-attestation"
 title: "Attest Claude primary models without auxiliary-call false blockers"
 kind: bugfix
-status: FROZEN 2026-07-29
+status: SHIPPED 2026-07-29
 complexity: medium
 depends_on: ["0085-verify-envelope-anatomy"]
 ---
@@ -164,3 +164,34 @@ silently expand into them.
 
 Done means the two observed false blockers select their transcript-authored
 primary model and every genuinely ambiguous wrapper still blocks.
+
+## BUILT + GATED — 2026-07-29
+
+Shipped the same deterministic selector in the product state writer and R6
+measurement path. Singleton wrappers keep their existing behavior; multi-entry
+wrappers select only a unique exact match between the top-level primary usage
+tuple and all four per-model counters. Missing, malformed, negative, boolean,
+floating-point, zero-match, duplicate-match, and requested-model-mismatch cases
+remain fail-closed. Arbitrarily large non-negative Python integers are accepted
+without an overflow path.
+
+Evidence:
+
+- all 8 literal verification commands passed on final HEAD;
+- full `bash scripts/lint-skills.sh` exited 0 with `All checks passed`
+  (log SHA-256
+  `94ab1d892544bc0ceb67c7d16d58ee123e28ac0de884d7ae493c20e7a10263cd`);
+- product and installed state-writer copies are byte-identical at SHA-256
+  `7a672a00cb0abca13314bfd88b13bafd0680f1eb91c19a1d1d1ee36fc30ca721`;
+- all three state-schema copies are byte-identical at SHA-256
+  `2b365f8cf9c3aa3ad2c9542c434ef90f2016fffef6744fbb8721e9126a2d94af`;
+- formal verify-only run `rs-20260729T115754Z-11c3cb3d2666` passed
+  mechanical verification, Codex primary review, Fable 5 pair review, merged
+  findings, and final gates with zero findings;
+- Grok 4.5 independently returned PASS after the mirror-parity evidence and the
+  R6 derived-pin history resolved its two initial concerns.
+
+The earlier normal run `rs-20260729T101047Z-7874d267e347` remains honestly
+BLOCKED because its foreground BUILD_GATE transport crossed 600 seconds. That
+is the already-deferred M1.5 deterministic-runner boundary, not an iter-0086
+product failure. The claim boundary above is unchanged.
