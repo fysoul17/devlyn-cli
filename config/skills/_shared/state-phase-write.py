@@ -28,6 +28,7 @@ import datetime
 import difflib
 import hashlib
 import json
+import math
 import os
 import pathlib
 import re
@@ -488,6 +489,60 @@ def require_surface_adjudication_malformed(
     )
 
 
+CLAUDE_USAGE_COUNTERS = (
+    ("input_tokens", "inputTokens"),
+    ("output_tokens", "outputTokens"),
+    ("cache_read_input_tokens", "cacheReadInputTokens"),
+    ("cache_creation_input_tokens", "cacheCreationInputTokens"),
+)
+
+
+def select_claude_primary_model(evidence: dict) -> str:
+    model_usage = evidence.get("modelUsage")
+    models = (
+        [model for model in model_usage if isinstance(model, str) and model]
+        if isinstance(model_usage, dict)
+        else []
+    )
+    if len(models) == 1:
+        return models[0]
+    if not models:
+        raise ValueError("Claude JSON wrapper has no effective-model evidence")
+
+    usage = evidence.get("usage")
+    if not isinstance(usage, dict):
+        raise ValueError("multi-entry Claude JSON wrapper has malformed top-level usage")
+
+    def counters(container: dict, fields: tuple[str, ...]) -> tuple[int | float, ...]:
+        values = tuple(container.get(field) for field in fields)
+        if any(
+            not isinstance(value, (int, float))
+            or isinstance(value, bool)
+            or not math.isfinite(value)
+            for value in values
+        ):
+            raise ValueError("multi-entry Claude JSON wrapper has malformed usage counters")
+        return values
+
+    primary_usage = counters(
+        usage, tuple(field[0] for field in CLAUDE_USAGE_COUNTERS)
+    )
+    matches = []
+    for model in models:
+        entry = model_usage[model]
+        if not isinstance(entry, dict):
+            raise ValueError("multi-entry Claude JSON wrapper has malformed modelUsage entry")
+        if counters(
+            entry, tuple(field[1] for field in CLAUDE_USAGE_COUNTERS)
+        ) == primary_usage:
+            matches.append(model)
+    if len(matches) == 1:
+        return matches[0]
+    raise ValueError(
+        "multi-entry Claude JSON wrapper has no unique primary usage match"
+    )
+
+
 def parse_effective_model(session_log: pathlib.Path) -> str:
     try:
         text = session_log.read_text(encoding="utf-8")
@@ -520,9 +575,8 @@ def parse_effective_model(session_log: pathlib.Path) -> str:
             evidence = loads_strict_json(text)
         except ValueError:
             evidence = None
-        model_usage = evidence.get("modelUsage") if isinstance(evidence, dict) else None
-        if isinstance(model_usage, dict):
-            models.update(model for model in model_usage if isinstance(model, str) and model)
+        if isinstance(evidence, dict) and isinstance(evidence.get("modelUsage"), dict):
+            return select_claude_primary_model(evidence)
 
     if len(models) == 1:
         return next(iter(models))
@@ -2069,10 +2123,118 @@ def self_test() -> int:
         }) + "\n", encoding="utf-8")
         assert parse_effective_model(rollout_log) == "gpt-5.6-terra"
         claude_log = devlyn / "claude-result.json"
-        claude_log.write_text(json.dumps({
-            "modelUsage": {"claude-alpha-1": {"inputTokens": 1}},
-        }) + "\n", encoding="utf-8")
-        assert parse_effective_model(claude_log) == "claude-alpha-1"
+
+        def claude_wrapper(primary_usage, entries):
+            wrapper = {"modelUsage": {}}
+            if primary_usage is not None:
+                wrapper["usage"] = dict(zip((
+                    "input_tokens", "output_tokens", "cache_read_input_tokens",
+                    "cache_creation_input_tokens",
+                ), primary_usage))
+            for model, entry_usage, metadata in entries:
+                entry = dict(zip((
+                    "inputTokens", "outputTokens", "cacheReadInputTokens",
+                    "cacheCreationInputTokens",
+                ), entry_usage))
+                entry.update(metadata)
+                wrapper["modelUsage"][model] = entry
+            return wrapper
+
+        claude_selector_rows = (
+            (
+                "singleton",
+                {"modelUsage": {"claude-alpha-1": {"inputTokens": 1}}},
+                "claude-alpha-1",
+            ),
+            (
+                "opus-primary",
+                claude_wrapper(
+                    (2854, 9927, 1095180, 73889),
+                    (
+                        ("claude-haiku-4-5-20251001", (4106, 14, 0, 0), {
+                            "costUSD": 0.004176,
+                        }),
+                        ("claude-opus-5[1m]", (2854, 9927, 1095180, 73889), {
+                            "costUSD": 1.5489249999999999,
+                            "canonicalModel": "claude-opus-5",
+                        }),
+                    ),
+                ),
+                "claude-opus-5[1m]",
+            ),
+            (
+                "fable-primary",
+                claude_wrapper(
+                    (8068, 26740, 403950, 76656),
+                    (
+                        ("claude-haiku-4-5-20251001", (2246, 22, 0, 0), {
+                            "costUSD": 0.002356,
+                        }),
+                        ("claude-fable-5", (8068, 26740, 403950, 76656), {
+                            "costUSD": 3.35475,
+                            "canonicalModel": "claude-fable-5",
+                        }),
+                    ),
+                ),
+                "claude-fable-5",
+            ),
+            (
+                "rank-confound",
+                claude_wrapper(
+                    (3, 5, 7, 11),
+                    (
+                        ("larger-auxiliary", (300000, 500000, 700000, 1100000), {
+                            "costUSD": 999.0,
+                        }),
+                        ("expected-primary", (3, 5, 7, 11), {"costUSD": 0.01}),
+                    ),
+                ),
+                "expected-primary",
+            ),
+            (
+                "zero-match",
+                claude_wrapper(
+                    (1, 2, 3, 4),
+                    (("model-a", (10, 2, 3, 4), {}), ("model-b", (1, 20, 3, 4), {})),
+                ),
+                None,
+            ),
+            (
+                "duplicate-match",
+                claude_wrapper(
+                    (1, 2, 3, 4),
+                    (("model-a", (1, 2, 3, 4), {}), ("model-b", (1, 2, 3, 4), {})),
+                ),
+                None,
+            ),
+            (
+                "missing-top-level-usage",
+                claude_wrapper(
+                    None,
+                    (("model-a", (1, 2, 3, 4), {}), ("model-b", (5, 6, 7, 8), {})),
+                ),
+                None,
+            ),
+            (
+                "malformed-entry-counter",
+                claude_wrapper(
+                    (1, 2, 3, 4),
+                    (("model-a", (1, 2, 3, 4), {}), ("model-b", (True, 20, 30, 40), {})),
+                ),
+                None,
+            ),
+        )
+        for row_name, wrapper, expected in claude_selector_rows:
+            claude_log.write_text(json.dumps(wrapper) + "\n", encoding="utf-8")
+            if expected is None:
+                try:
+                    parse_effective_model(claude_log)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError(f"Claude selector accepted {row_name}")
+            else:
+                assert parse_effective_model(claude_log) == expected, row_name
 
         # Requested/effective drift is a persisted, fail-closed attestation.
         write_state(state_path, {"phases": {}})
@@ -2085,6 +2247,21 @@ def self_test() -> int:
         assert mismatch and "model-attestation-mismatch" in mismatch
         assert mismatched["model_requested"] == "gpt-5.5"
         assert mismatched["model_effective"] == "gpt-5.6-terra"
+        assert mismatched["verdict"] == "BLOCKED"
+
+        claude_log.write_text(
+            json.dumps(claude_selector_rows[1][1]) + "\n", encoding="utf-8"
+        )
+        write_state(state_path, {"phases": {}})
+        state = read_state(state_path)
+        do_spawn(state, "build_gate", 0, None, None, "claude", "claude-opus-5")
+        mismatch = do_complete(
+            state, "build_gate", "PASS", None, None, None, None, None, str(claude_log)
+        )
+        mismatched = state["phases"]["build_gate"]
+        assert mismatch and "model-attestation-mismatch" in mismatch
+        assert mismatched["model_requested"] == "claude-opus-5"
+        assert mismatched["model_effective"] == "claude-opus-5[1m]"
         assert mismatched["verdict"] == "BLOCKED"
 
         # A retained mutation-worker session makes the completion flag

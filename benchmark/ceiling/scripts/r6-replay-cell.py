@@ -8,6 +8,7 @@ import fcntl
 import hashlib
 import importlib.util
 import json
+import math
 import os
 import re
 import shutil
@@ -45,7 +46,7 @@ PROMPTS = {
         # Amendment 5 frozen-input revision: the archived template remains
         # pinned separately; this pin is the prompt with the NEW canonical body.
         "template_sha256": "b422dd6e6783945f43059ffa2ad0cae76aac270289720416e5b0ea838bee5e83",
-        "sha256": "72eead4dc71b3b02ec50f38d888576edea021c80d6e47699519982f5c388d71d",
+        "sha256": "021d17abf0ec2bbe5157e3ec21754dadf3e618272bd4cd99d5d5b91fc739d4ee",
     },
 }
 BUNDLE = (
@@ -524,6 +525,65 @@ def run_codex(
     }
 
 
+CLAUDE_USAGE_COUNTERS = (
+    ("input_tokens", "inputTokens"),
+    ("output_tokens", "outputTokens"),
+    ("cache_read_input_tokens", "cacheReadInputTokens"),
+    ("cache_creation_input_tokens", "cacheCreationInputTokens"),
+)
+
+
+def select_claude_primary_model(wrapper: Any) -> str | None:
+    if not isinstance(wrapper, dict):
+        return None
+    model_usage = wrapper.get("modelUsage")
+    models = (
+        [model for model in model_usage if isinstance(model, str) and model]
+        if isinstance(model_usage, dict)
+        else []
+    )
+    if len(models) == 1:
+        return models[0]
+    if not models:
+        return None
+
+    usage = wrapper.get("usage")
+    if not isinstance(usage, dict):
+        return None
+
+    def counters(
+        container: dict[str, Any], fields: tuple[str, ...],
+    ) -> tuple[int | float, ...] | None:
+        values = tuple(container.get(field) for field in fields)
+        if any(
+            not isinstance(value, (int, float))
+            or isinstance(value, bool)
+            or not math.isfinite(value)
+            for value in values
+        ):
+            return None
+        return values
+
+    primary_usage = counters(
+        usage, tuple(field[0] for field in CLAUDE_USAGE_COUNTERS)
+    )
+    if primary_usage is None:
+        return None
+    matches = []
+    for model in models:
+        entry = model_usage[model]
+        if not isinstance(entry, dict):
+            return None
+        entry_usage = counters(
+            entry, tuple(field[1] for field in CLAUDE_USAGE_COUNTERS)
+        )
+        if entry_usage is None:
+            return None
+        if entry_usage == primary_usage:
+            matches.append(model)
+    return matches[0] if len(matches) == 1 else None
+
+
 def run_sonnet(
     workspace: Path,
     prompt: Path,
@@ -573,8 +633,7 @@ def run_sonnet(
         except (json.JSONDecodeError, UnicodeDecodeError):
             wrapper = {}
     model_usage = wrapper.get("modelUsage") if isinstance(wrapper, dict) else None
-    models = sorted(model_usage) if isinstance(model_usage, dict) else []
-    effective = models[0] if len(models) == 1 else None
+    effective = select_claude_primary_model(wrapper)
     final_text = wrapper.get("result") if isinstance(wrapper, dict) else None
     final = final_text.encode("utf-8") if isinstance(final_text, str) else b""
     write_bytes(artifact_dir / "final-message.txt", final)
@@ -1795,6 +1854,112 @@ def self_test() -> int:
             prepared.overlay_input_source.startswith(".devlyn/runs/"),
             "bundle clone + overlay + archived-input restoration + frozen asserts",
         )
+
+        def claude_wrapper(primary_usage, entries):
+            wrapper = {"modelUsage": {}}
+            if primary_usage is not None:
+                wrapper["usage"] = dict(zip((
+                    "input_tokens", "output_tokens", "cache_read_input_tokens",
+                    "cache_creation_input_tokens",
+                ), primary_usage))
+            for model, entry_usage, metadata in entries:
+                entry = dict(zip((
+                    "inputTokens", "outputTokens", "cacheReadInputTokens",
+                    "cacheCreationInputTokens",
+                ), entry_usage))
+                entry.update(metadata)
+                wrapper["modelUsage"][model] = entry
+            return wrapper
+
+        claude_selector_rows = (
+            (
+                "singleton",
+                {"modelUsage": {"claude-alpha-1": {"inputTokens": 1}}},
+                "claude-alpha-1",
+            ),
+            (
+                "opus-primary",
+                claude_wrapper(
+                    (2854, 9927, 1095180, 73889),
+                    (
+                        ("claude-haiku-4-5-20251001", (4106, 14, 0, 0), {
+                            "costUSD": 0.004176,
+                        }),
+                        ("claude-opus-5[1m]", (2854, 9927, 1095180, 73889), {
+                            "costUSD": 1.5489249999999999,
+                            "canonicalModel": "claude-opus-5",
+                        }),
+                    ),
+                ),
+                "claude-opus-5[1m]",
+            ),
+            (
+                "fable-primary",
+                claude_wrapper(
+                    (8068, 26740, 403950, 76656),
+                    (
+                        ("claude-haiku-4-5-20251001", (2246, 22, 0, 0), {
+                            "costUSD": 0.002356,
+                        }),
+                        ("claude-fable-5", (8068, 26740, 403950, 76656), {
+                            "costUSD": 3.35475,
+                            "canonicalModel": "claude-fable-5",
+                        }),
+                    ),
+                ),
+                "claude-fable-5",
+            ),
+            (
+                "rank-confound",
+                claude_wrapper(
+                    (3, 5, 7, 11),
+                    (
+                        ("larger-auxiliary", (300000, 500000, 700000, 1100000), {
+                            "costUSD": 999.0,
+                        }),
+                        ("expected-primary", (3, 5, 7, 11), {"costUSD": 0.01}),
+                    ),
+                ),
+                "expected-primary",
+            ),
+            (
+                "zero-match",
+                claude_wrapper(
+                    (1, 2, 3, 4),
+                    (("model-a", (10, 2, 3, 4), {}), ("model-b", (1, 20, 3, 4), {})),
+                ),
+                None,
+            ),
+            (
+                "duplicate-match",
+                claude_wrapper(
+                    (1, 2, 3, 4),
+                    (("model-a", (1, 2, 3, 4), {}), ("model-b", (1, 2, 3, 4), {})),
+                ),
+                None,
+            ),
+            (
+                "missing-top-level-usage",
+                claude_wrapper(
+                    None,
+                    (("model-a", (1, 2, 3, 4), {}), ("model-b", (5, 6, 7, 8), {})),
+                ),
+                None,
+            ),
+            (
+                "malformed-entry-counter",
+                claude_wrapper(
+                    (1, 2, 3, 4),
+                    (("model-a", (1, 2, 3, 4), {}), ("model-b", (True, 20, 30, 40), {})),
+                ),
+                None,
+            ),
+        )
+        for row_name, wrapper, expected in claude_selector_rows:
+            expect(
+                select_claude_primary_model(wrapper) == expected,
+                f"Claude primary selector {row_name}",
+            )
 
         synthetic = root / "synthetic"
         (synthetic / "bin").mkdir(parents=True)
