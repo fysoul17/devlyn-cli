@@ -101,6 +101,12 @@ cohort, covering the existing Codex primary raw stdout variants and the run's
 retry artifacts may be listed as receipts but the latest successful canonical
 judge output is the anchor.
 
+After the first formal VERIFY review (`rs-20260729T010629Z-26421565dc17`),
+"canonical" is tightened to the current state record: primary variants are
+accepted only at the snapshot root, and `claude-judge.stdout` only beside that
+record's `pipeline.state.json`. Success requires a terminal verdict marker,
+not a verdict word appearing anywhere in narrative text.
+
 ## Output contract
 
 Add `benchmark/ceiling/scripts/verify-envelope-anatomy.py` with:
@@ -120,7 +126,10 @@ medians, and a machine-readable gate verdict plus failed conjuncts.
 `--self-test` must build temporary synthetic fixtures and cover at least:
 ordered anchors/pass, missing judge output, ambiguous current run, out-of-order
 mtime, non-conservation, irrelevant stdout rejection, deterministic bytes, and
-the four-row frozen regression when the repository cohort is present.
+the four-row frozen regression when the repository cohort is present. The
+regression must pin the selected relative anchor paths, bucket values,
+conservation, aggregate medians, receipt hashes, and the exact-ratio threshold
+boundary; row count plus overall verdict alone is insufficient.
 
 ## Stage-A decision bar
 
@@ -156,6 +165,9 @@ STOP / invalidation:
 - a future mechanism that weakens either LLM judge, fresh-context independence,
   merged-severity behavior, or user-visible failure handling is rejected.
 
+The 20% conjunct is evaluated from unrounded per-row ratios. Rounded values are
+presentation-only; for example, `0.1996` must remain below the threshold.
+
 ## Scope boundary and mission boundary
 
 Allowed tracked implementation surface:
@@ -173,6 +185,7 @@ mechanical finalization can remain Mission 1 work. Replacing, skipping, or
 synthesizing an LLM quality verdict is the M1.5 deterministic-runner boundary
 and is not authorized here.
 
+<!-- devlyn:verification -->
 ## Verification
 
 - `python3 benchmark/ceiling/scripts/verify-envelope-anatomy.py --self-test`;
@@ -180,8 +193,33 @@ and is not authorized here.
 - rerun generation and require byte-identical output;
 - independently recompute all four anchor chains from state/artifact mtimes;
 - `python3 -m py_compile benchmark/ceiling/scripts/verify-envelope-anatomy.py`;
-- `bash scripts/lint-skills.sh`;
+- BUILD_GATE runs `npm_config_cache=/dev/null bash scripts/lint-skills.sh`
+  directly; the fixed-60s literal verifier does not duplicate that
+  repository-wide suite;
 - `git diff --check` and exact changed-surface audit.
+
+```json
+{
+  "verification_commands": [
+    {
+      "cmd": "python3 benchmark/ceiling/scripts/verify-envelope-anatomy.py --self-test",
+      "exit_code": 0
+    },
+    {
+      "cmd": "python3 benchmark/ceiling/scripts/verify-envelope-anatomy.py benchmark/ceiling/results/nodeg-hook-20260722c --output benchmark/ceiling/results/nodeg-hook-20260722c/verify-envelope-anatomy.json",
+      "exit_code": 0
+    },
+    {
+      "cmd": "python3 -m py_compile benchmark/ceiling/scripts/verify-envelope-anatomy.py",
+      "exit_code": 0
+    },
+    {
+      "cmd": "git diff --check",
+      "exit_code": 0
+    }
+  ]
+}
+```
 
 Done means the portable result either names a material post-judge finalization
 envelope or stops cleanly. No product optimization is bundled into the
