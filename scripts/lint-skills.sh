@@ -152,6 +152,7 @@ offenders=$(git grep -Il -- 'mcp__codex-cli__' -- \
   ':!config/skills/preflight-workspace/**' \
   ':!benchmark/auto-resolve/external/**' \
   ':!benchmark/auto-resolve/results/**' \
+  ':!benchmark/ceiling/results/**' \
   ':!benchmark/auto-resolve/PILOT-RESULTS*' \
   2>/dev/null || true)
 if [ -z "$offenders" ]; then
@@ -176,6 +177,7 @@ offenders=$(git grep -Il -- 'Requires Codex MCP\|Codex MCP server\|Codex MCP ava
   ':!config/skills/preflight-workspace/**' \
   ':!benchmark/auto-resolve/external/**' \
   ':!benchmark/auto-resolve/results/**' \
+  ':!benchmark/ceiling/results/**' \
   ':!benchmark/auto-resolve/PILOT-RESULTS*' \
   2>/dev/null || true)
 if [ -z "$offenders" ]; then
@@ -3516,8 +3518,9 @@ else
   offenders="${offenders}"$'\n'"packaged pair evidence subset could not allocate temporary audit workspace"
 fi
 if make_temp_file pack_json /tmp/devlyn-lint-pack.XXXXXX.json \
-  && npm pack --dry-run --json > "$pack_json" 2>/dev/null; then
-  if ! node - "$pack_json" <<'NODE'
+  && make_temp_dir pack_cache /tmp/devlyn-lint-pack-cache.XXXXXX; then
+  if npm_config_cache="$pack_cache" npm pack --dry-run --json > "$pack_json" 2>/dev/null; then
+    if ! node - "$pack_json" <<'NODE'
 const fs = require("fs");
 const path = require("path");
 const packPath = process.argv[2];
@@ -3603,13 +3606,17 @@ if (forbidden.length > 0) {
   process.exit(2);
 }
 NODE
-  then
-    offenders="${offenders}"$'\n'"npm pack dry-run must include benchmark runner/gate regression tests, all shadow fixture files, retired fixture replay docs, and exclude pycache artifacts"
+    then
+      offenders="${offenders}"$'\n'"npm pack dry-run must include benchmark runner/gate regression tests, all shadow fixture files, retired fixture replay docs, and exclude pycache artifacts"
+    fi
+  else
+    offenders="${offenders}"$'\n'"npm pack dry-run failed while checking benchmark runner/gate regression tests"
   fi
 else
-  offenders="${offenders}"$'\n'"npm pack dry-run failed while checking benchmark runner/gate regression tests"
+  offenders="${offenders}"$'\n'"npm pack dry-run could not allocate temporary package workspace"
 fi
 [ -n "${pack_json:-}" ] && rm -f "$pack_json"
+[ -n "${pack_cache:-}" ] && rm -rf "$pack_cache"
 non_executable_shell_scripts=$(find benchmark/auto-resolve/scripts -maxdepth 1 -name '*.sh' -type f ! -perm -111 -print | sort)
 if [ -n "$non_executable_shell_scripts" ]; then
   while IFS= read -r f; do
