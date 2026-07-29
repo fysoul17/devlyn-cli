@@ -2,12 +2,32 @@
 id: "0085-verify-envelope-anatomy"
 title: "Measure the portable post-judge VERIFY envelope"
 kind: instrumentation
-status: FROZEN 2026-07-28T14:46:42Z
+status: SHIPPED 2026-07-29
 complexity: medium
 depends_on: ["0084-node-lint-applicability"]
 ---
 
 # iter-0085 — measure the portable post-judge VERIFY envelope
+
+**Status: SHIPPED 2026-07-29.**
+
+## BUILT + GATED
+
+Commits `bd7326d` and `ddf4c5e` shipped the exact three-file instrument surface
+and the follow-up millisecond state-timestamp portability fix. `P-0085-VENV`
+passed all conjuncts on four eligible rows: median post-judge finalization was
+138,631.328 ms and median share was 25.1%. The deterministic result SHA-256 is
+`3fc25a668dad3d86961b8cbe753530bfb452b8833f934560b2b95536605d36c6`.
+
+The original full run `rs-20260729T021414Z-26b877f33894` remains honestly
+`BLOCKED:build-gate-incomplete`: its single lint invocation crossed Claude
+Bash's 600-second foreground window and was reaped without a terminal receipt.
+A separately foreground-tracked full lint then completed in about 21 minutes
+with exit 0 and `All checks passed`. Fresh verify-only run
+`rs-20260729T094740Z-2df38943031e` passed all four mechanical commands, Codex
+primary judge, Fable 5 pair judge, merged verdict, and finish gate with zero
+findings. Grok 4.5 independently accepted the scoped completion sequence. This
+does not authorize the M1.5 deterministic BUILD_GATE runner.
 
 ## Why this iteration exists
 
