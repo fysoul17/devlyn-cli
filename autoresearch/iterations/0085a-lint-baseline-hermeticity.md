@@ -2,14 +2,29 @@
 id: "0085a-lint-baseline-hermeticity"
 title: "Make lint evidence scope and npm cache hermetic"
 kind: bugfix
-status: FROZEN
+status: SHIPPED 2026-07-29
 complexity: medium
 depends_on: ["0084-node-lint-applicability", "0085-verify-envelope-anatomy"]
 ---
 
 # iter-0085a — make lint evidence scope and npm cache hermetic
 
-**Status: FROZEN 2026-07-29.**
+**Status: SHIPPED 2026-07-29.**
+
+## BUILT + GATED
+
+Commit `d8a736e` changed only `scripts/lint-skills.sh`: Check 1/2 now share the
+frozen ceiling-results exclusion, and the package-membership dry-run uses a
+fresh subprocess-only npm cache with fail-closed allocation and guarded cleanup.
+The poisoned-cache full lint completed with exit 0 and `All checks passed.`
+
+The first formal BUILD_GATE attempt is retained as an honest blocked run
+(`rs-20260728T231914Z-4a08e38c2c8f`): its fixed 60-second literal verifier
+duplicated the repository-wide full lint. Commit `04a0764` assigned that long
+command to BUILD_GATE, matching the iter-0083 precedent without weakening the
+quality bar. Fresh verify-only run `rs-20260729T004235Z-e0b7bdde702b` then
+passed mechanical, Codex, Fable 5, merged, and finish verdicts with zero
+findings. Grok 4.5 independently reviewed the final diff and returned PASS.
 
 ## Why this iteration exists
 
@@ -34,18 +49,18 @@ lint no longer depends on that mutable machine state.
 
 ## Requirements
 
-- [ ] Exclude `benchmark/ceiling/results/**` from Check 1 and Check 2 only,
+- [x] Exclude `benchmark/ceiling/results/**` from Check 1 and Check 2 only,
   matching the existing frozen-results policy while preserving scans of live
   product, skill, benchmark source, and user-facing docs.
-- [ ] Run the existing npm package-membership dry-run with a fresh cache
+- [x] Run the existing npm package-membership dry-run with a fresh cache
   allocated by `make_temp_dir`; scope `npm_config_cache` to that subprocess
   only and never mutate or repair the user's global npm cache.
-- [ ] Fail closed when either temporary allocation fails. Do not fall through
+- [x] Fail closed when either temporary allocation fails. Do not fall through
   to a bare global-cache `npm pack`, and do not misreport an allocation failure
   as an npm failure.
-- [ ] Remove every allocated pack temp artifact on both npm success and npm
+- [x] Remove every allocated pack temp artifact on both npm success and npm
   failure, using the script's existing guarded cleanup style.
-- [ ] Add no new flag, helper abstraction, dependency, fixture tree, or
+- [x] Add no new flag, helper abstraction, dependency, fixture tree, or
   lint-of-the-lint assertion. The tracked historical receipt plus BUILD_GATE's
   poisoned-cache full lint exercise both regression classes through the real
   lint path.
