@@ -2,7 +2,7 @@
 id: "0087-startup-semantic-dedup"
 title: "Remove duplicated free-form discovery before PLAN"
 kind: optimization
-status: FROZEN
+status: CLOSED-FAIL / NOT SHIPPED 2026-07-30
 complexity: medium
 depends_on: ["0086-claude-primary-model-attestation"]
 ---
@@ -307,24 +307,58 @@ decomposition and closed startup and PLAN spans. These tail outcomes are
 retained as raw evidence and are neither latency draws nor authority for a
 BUILD_GATE/transport change.
 
-## IMPLEMENTATION ATTEMPTS — BLOCKED, 2026-07-30
+## IMPLEMENTATION AND TREATMENT CLOSEOUT — CLOSED-FAIL, 2026-07-30
 
-No candidate product diff exists and no treatment row has run.
+Two earlier Terra implementation attempts ended before a candidate existed:
+`rs-20260729T180746Z-7156e3fbdc7e` rolled back a repository-local-mirror scope
+misread, and `rs-20260729T182952Z-07ac4f7b38eb` ended
+`BLOCKED:fresh-context-unavailable`. Neither is treatment evidence.
 
-- Claude Sonnet could not start a worker because the host OAuth credential was
-  expired; no product bytes changed.
-- Terra run `rs-20260729T180746Z-7156e3fbdc7e` completed a fresh PLAN after one
-  failed PLAN attempt, then blocked in IMPLEMENT when the worker interpreted
-  "installed mirrors" as user-global paths. The partial product diff was
-  rolled back. The candidate-surface section above now names only the two
-  repository-local mirrors and forbids user-global paths.
-- Terra retry `rs-20260729T182952Z-07ac4f7b38eb` bootstrapped on
-  `gpt-5.6-terra`, but the monitored PLAN wrapper could not remain attached to
-  its fresh child and the formal run ended
-  `BLOCKED:fresh-context-unavailable`. IMPLEMENT, BUILD_GATE, CLEANUP, and
-  VERIFY did not run; the worktree retained no product diff.
+The later implementation produced initial candidate `24686ec`. Terra's full
+skill lint passed, and Fable 5 plus Grok 4.5 code review found route, chronology,
+and criteria-carrier defects that were corrected. F7/T1 then reached PLAN but
+used the Codex executor pin instead of the registered Sonnet PLAN route and
+omitted the required fenced `verification_commands` carrier. Its raw runner
+records `FAILED-INCOMPLETE`, `INCOMPLETE:plan`, exit 86, and no closed PLAN
+span. The eligibility ledger separately labels that candidate
+`INVALID_REPLACED`; the two status layers are both retained.
 
-This is an infrastructure blocker, not evidence for or against H1-v3. The
-registration remains FROZEN. Resume IMPLEMENT only through a permitted
-Sonnet/Terra fresh-context route. Do not repair or bypass the foreground
-transport here: that surface remains deferred to Mission 1.5.
+Findings-backed correction `313304c` fixed the PLAN route and carrier contract.
+Terra full lint, Fable 5, and Grok 4.5 all passed the corrected product diff.
+Corrected-candidate F7/T1R dispatched the first Sonnet API request at
+`2026-07-30T12:20:28.825Z`, received provider 429, and exited after four
+seconds with zero model tokens. No `pipeline.state.json`, PHASE 0, PLAN worker,
+generated criteria, or plan existed.
+
+The replacement-count adjudication was genuinely contested. Terra's receipt
+seat called T1R a null attempt because no product phase began. Terra's test
+seat returned `STRICT`. Grok's first turn was discarded after its raw stream
+showed an unnamed NULL-to-STRICT draft reversal; its own follow-up correctly
+marked that turn unresolved. Fresh cold Grok 4.5 session
+`019fb307-1b9f-76c2-9d29-6fc17cdc8273` returned stable `STRICT`: T1 is the
+first incomplete receipt and T1R is the one allowed replacement's second
+incomplete. The strict reading binds because frozen lines 109-111 contain no
+invalid-candidate, provider-failure, or candidate-reset exception. Treating
+absence of mandatory fields as absence of a receipt would make earlier, more
+severe failures eligible for unregistered retries. This is a textual gate
+decision, not majority voting. A new Fable 5 protocol recheck was attempted but
+returned provider 429 before any model token; it is not represented as a Fable
+adjudication. Its earlier implementation reviews remain valid evidence only
+for the candidate diff.
+
+Raw engine-byte reconciliation found every control and both F7 attempts used
+the same compact `.devlyn/engines.json` bytes, SHA-256
+`5c05302a89d67bbf9825e3a350834318bdd42d13e4f262e9ac4cb7e93856621d`.
+The preflight manifest's `9e028f...` field instead hashed the spaced repository
+file and must not be cited as arm-byte attestation. The corrected neutral ledger
+is `/Users/aipalm/.local/share/nx01/iter0087-treatments/attestation/closeout.json`
+(SHA-256 `b91bef3b0c0771424f05041c5ec678826ecd0dbb0171c64e049a2754cd588a9c`).
+
+Per the frozen independent-conjunct rule, F7 fails incomplete and every
+remaining treatment arm stops unrun; no ratio is scored. This closes the
+experiment as **protocol-failed and not shipped**. It does not falsify H1-v3's
+latency or semantic-deduplication mechanism, which remains unscored. Commit
+`695ef12` withdraws both candidate commits while retaining them in history and
+restores the entire candidate product surface to baseline `9e5f6c0` tree
+`1c80222f879c702a82aca4b76adec6a8f246bd2a`. Reusing this lever requires a new
+three-seat registration and new controls; iter-0087 cannot be resumed.

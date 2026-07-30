@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent iter: [`iterations/0087-startup-semantic-dedup.md`](iterations/0087-startup-semantic-dedup.md) (**FROZEN 2026-07-29; IMPLEMENT BLOCKED 2026-07-30 — read § "IMPLEMENTATION ATTEMPTS" first**). Context: [`iterations/0086-claude-primary-model-attestation.md`](iterations/0086-claude-primary-model-attestation.md) (**SHIPPED 2026-07-29**), [`iterations/0085-verify-envelope-anatomy.md`](iterations/0085-verify-envelope-anatomy.md) (**SHIPPED 2026-07-29**), [`iterations/0084-node-lint-applicability.md`](iterations/0084-node-lint-applicability.md) (**SHIPPED 2026-07-28**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent iter: [`iterations/0087-startup-semantic-dedup.md`](iterations/0087-startup-semantic-dedup.md) (**CLOSED-FAIL / NOT SHIPPED 2026-07-30 — read § "IMPLEMENTATION AND TREATMENT CLOSEOUT" first**). Context: [`iterations/0086-claude-primary-model-attestation.md`](iterations/0086-claude-primary-model-attestation.md) (**SHIPPED 2026-07-29**), [`iterations/0085-verify-envelope-anatomy.md`](iterations/0085-verify-envelope-anatomy.md) (**SHIPPED 2026-07-29**), [`iterations/0084-node-lint-applicability.md`](iterations/0084-node-lint-applicability.md) (**SHIPPED 2026-07-28**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,30 +14,34 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-30 (**iter-0087 startup semantic dedup FROZEN; implementation infrastructure-blocked, not shipped**)
+## 🚦 START-HERE — state after 2026-07-30 (**iter-0087 closed-fail; candidate reverted, not shipped**)
 
-**Where the loop stands (one paragraph).** iter-0087 has re-registered the
-startup lever as H1-v3 ordered one-return semantic deduplication. Actual Codex,
-Fable 5, and Grok 4.5 froze the design; Terra proved the receipt shape and four
-sequential Sonnet control rows fixed the per-pair 0.85 envelopes. No candidate
-product diff or treatment exists: Claude Sonnet was unavailable from expired
-OAuth, and the Terra formal retry ended
-`BLOCKED:fresh-context-unavailable` when its monitored PLAN child detached.
-The registration remains FROZEN, not falsified and not shipped. Resume through
-a permitted Sonnet/Terra fresh-context route; do not repair or bypass the
-foreground transport, which remains separately deferred to M1.5.
+**Where the loop stands (one paragraph).** iter-0087's H1-v3 candidate passed
+Terra lint plus Fable 5 and Grok 4.5 implementation review, but the frozen F7
+replacement budget exhausted before any valid ratio: T1 closed as
+`FAILED-INCOMPLETE` in PLAN, and corrected-candidate T1R returned provider 429
+before PHASE 0. The strict frozen reading makes T1R the second incomplete, so
+remaining arms stopped and no ratio was scored. H1-v3 is unscored, not
+performance-falsified; product commits `24686ec`/`313304c` were withdrawn by
+`695ef12`, restoring baseline. Iter-0087 cannot resume. A new three-seat
+registration with new controls is required before revisiting this lever.
 
 **Current frontier and just shipped — context, do not re-derive**:
 
-- **iter-0087 startup semantic dedup — FROZEN, NOT SHIPPED (2026-07-29/30).**
+- **iter-0087 startup semantic dedup — CLOSED-FAIL, REVERTED, NOT SHIPPED
+  (2026-07-30).**
   H1-v3 deletes parent-side semantic repository discovery and makes the actual
   Sonnet PLAN worker write immutable criteria before its plan in one return.
   R0/R1 Codex, Fable 5, and Grok 4.5 converged; Terra's F12 canary recovered all
   required fields. Frozen control envelopes are F7 356,260/376,450 ms and F12
   527,257/492,483 ms; each treatment must be <=85% of its matched control and
-  must not increase startup. Two implementation attempts produced no product
-  diff. Latest formal run `rs-20260729T182952Z-07ac4f7b38eb` is honestly
-  `BLOCKED:fresh-context-unavailable`; no treatment has run.
+  must not increase startup. Candidate `24686ec` plus correction `313304c`
+  passed implementation review, but F7/T1 and T1R exhausted the single
+  incomplete replacement. No ratio was scored and remaining arms did not run.
+  `695ef12` reverted the unshipped candidate. A preflight manifest hash field
+  was also corrected by the neutral external closeout ledger: raw control and
+  treatment engine bytes match at `5c05302a...`; the old `9e028f...` value was
+  the spaced source file, not an arm snapshot.
 
 - **iter-0086 Claude primary model attestation — SHIPPED (2026-07-29),
   three-seat final gate.** Product and R6 now use the same unique exact
@@ -116,11 +120,11 @@ must compose transport state with authenticated summaries; isolated rows missed
 the TIMEOUT suppression that fresh Codex found.
 
 **Next work (in order)**:
-1. **Resume iter-0087 IMPLEMENT, then run the four frozen matched treatments.**
-   Use only a permitted Sonnet/Terra fresh-context execution route. Do not use
-   an expensive model for fixture/test arms, do not repair the deferred
-   foreground transport, and do not score a treatment until a real candidate
-   product diff exists. All gates and control envelopes are frozen in the iter.
+1. **Do not resume iter-0087.** If H1-v3 remains the best startup lever, first
+   open a new three-seat registration that defines receipt lifecycle and
+   pre-invocation provider failures before any arm, fixes arm-byte attestation,
+   and captures new controls. Do not reuse iter-0087's replacement budget,
+   controls, candidate commits, or ratios as if the old row remained open.
 2. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
    / B_win 36 — single-cohort variance vs. real hook-cohort effect is
    unresolved; the next hook-bearing cohort reads it before any quality
