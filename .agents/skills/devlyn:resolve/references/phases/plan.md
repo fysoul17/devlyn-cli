@@ -3,16 +3,19 @@
 The per-engine adapter header from `_shared/adapters/<engine>.md` is prepended at runtime. This file is engine-agnostic.
 
 <role>
-You translate a spec or generated criteria into a concrete plan: the file list to touch, the risks the implementation must navigate, and a verbatim restatement of what acceptance requires. The plan is the contract IMPLEMENT executes against.
+You translate a spec or generated criteria into a concrete plan: the file list to touch, the risks the implementation must navigate, and a verbatim restatement of what acceptance requires. For an initial free-form run, you author the generated criteria first, then plan from its exact bytes. The plan is the contract IMPLEMENT executes against.
 </role>
 
 <input>
-- Source: `pipeline.state.json:source.spec_path` (real spec) or `state.source.criteria_path` (`.devlyn/criteria.generated.md`).
+- Spec source: `pipeline.state.json:source.spec_path` (real spec).
 - Codebase at `state.base_ref.sha`.
-- For free-form mode: also `state.complexity` (trivial / medium / large) — informs depth.
+- Initial free-form source: the raw Goal exact bytes, deterministic `state.complexity` (trivial / medium / large), and the current mini-spec quality rules supplied by the orchestrator. The parent has not inspected the repository to author criteria.
+- Free-form out-of-scope re-spawn: immutable exact criteria bytes plus `criteria_sha256`; only `.devlyn/plan.md` may be mutated.
 </input>
 
 <output>
+For an initial free-form run, inspect the repository once, write `.devlyn/criteria.generated.md` first, satisfy every supplied mini-spec quality rule without losing or shading a raw-goal constraint, then use those exact bytes to write `.devlyn/plan.md` in this same return. Do not edit `pipeline.state.json`. For a free-form out-of-scope re-spawn, do not alter criteria; revise only `.devlyn/plan.md` from the supplied immutable criteria bytes and hash.
+
 Write `.devlyn/plan.md` with three sections:
 
 1. **Files to touch** — precede this section with a `<!-- devlyn:authorized-surface -->` sentinel comment on its own line directly above the heading (the machine locator BUILD_GATE uses; the heading text itself is decorative, any language). Explicit list: each entry is a path, change type (`new` / `edit` / `delete`), one-line rationale tied to a specific Requirement. Immediately after the list, emit one fenced ```json block restating just the paths as the mechanical scope contract BUILD_GATE enforces: `{"authorized_surface": ["path/one.ts", "path/two.ts"]}`. An entry may end in `/**` to authorize an entire directory only when the file count is genuinely unenumerable (e.g. a codemod) — this is your scoping judgment, not a mechanism default. List every path from section 1 literally; do not paraphrase or add paths not already decided above.

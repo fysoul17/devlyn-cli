@@ -1,6 +1,6 @@
 # Free-form mode — complexity classifier
 
-When `/devlyn:resolve` is invoked with a free-form goal (no `--spec`) — whether the goal is the inline positional text or the content of `--goal-file <path>` (PHASE 0 resolves `goal_text` from either source before classifying) — PHASE 0 runs this classifier to set `state.complexity ∈ {trivial, medium, large}` and either proceeds with an internal mini-spec, drafts focused questions for in-prompt resolution, synthesizes a best-effort spec with logged assumptions, or halts zero-scope-signal goals with `/devlyn:ideate` guidance.
+When `/devlyn:resolve` is invoked with a free-form goal (no `--spec`) — whether the goal is the inline positional text or the content of `--goal-file <path>` (PHASE 0 resolves `goal_text` from either source before classifying) — PHASE 0 runs this classifier to set `state.complexity ∈ {trivial, medium, large}` and retain every terminal halt before worker dispatch. It does not inspect the repository to author criteria or write a mini-spec: the initial PLAN worker receives the raw goal, deterministic complexity, and this quality bar, then authors the mini-spec before planning.
 
 The classifier is rules-based / deterministic — not an LLM judgment call. Decision rules below.
 
@@ -32,9 +32,7 @@ Conditions (all must hold):
 - `verb_class ∈ {fix, add}`.
 - `has_failing_test == true` OR the goal names a single specific symbol/file.
 
-Action: synthesize a minimal internal spec from the goal:
-- Write `.devlyn/criteria.generated.md` with sections `## Requirements` (the goal as a single bullet, optionally split into 2-3 if obviously separable), `## Out of Scope` ("anything not in the listed files"), `## Verification` (one runnable command if discoverable from the goal — e.g. the failing test, or a smoke command).
-- Set `state.complexity = "trivial"`. Proceed to PHASE 1.
+Action: set `state.complexity = "trivial"`. The initial PLAN worker writes `.devlyn/criteria.generated.md` with sections `## Requirements` (the goal as a single bullet, optionally split into 2-3 if obviously separable), `## Out of Scope` ("anything not in the listed files"), and `## Verification` (one runnable command if discoverable from the goal — e.g. the failing test, or a smoke command), then plans from those exact bytes.
 
 ### Medium branch
 
@@ -44,10 +42,7 @@ Conditions (any one):
 - `verb_class ∈ {refactor, debug, review}` AND scope is a single subsystem.
 - `has_failing_test == false` but the goal implies a runnable acceptance check.
 
-Action: synthesize a richer internal spec:
-- Read the named files (or grep for the named symbols) to extract 1-2 context anchors (existing patterns, related tests).
-- Write `.devlyn/criteria.generated.md` with `## Requirements` (split into 3-5 testable bullets), `## Constraints` (anything implied by the existing patterns), `## Out of Scope` (adjacent code that "looks fixable"), `## Verification` (commands or checks discoverable from existing tests / patterns).
-- Set `state.complexity = "medium"`. Proceed to PHASE 1.
+Action: set `state.complexity = "medium"`. The initial PLAN worker reads the named files (or greps for the named symbols) once to extract 1-2 context anchors (existing patterns, related tests), writes `.devlyn/criteria.generated.md` with `## Requirements` (split into 3-5 testable bullets), `## Constraints` (anything implied by the existing patterns), `## Out of Scope` (adjacent code that "looks fixable"), and `## Verification` (commands or checks discoverable from existing tests / patterns), then plans from those exact bytes.
 
 ### Large branch
 
@@ -59,7 +54,7 @@ Conditions (any one):
 - `unmeasured_pair_candidate_intent == true` and `has_solo_ceiling_avoidance == false`.
 
 Action:
-- Default: synthesize a best-effort spec from the goal with an explicit `## Assumptions` block (every assumption scope-narrowing and reversible — when in doubt, narrower); log `recommend: /devlyn:ideate first` in `.devlyn/criteria.generated.md` AND the final report; proceed to PHASE 1; the final report flags every assumption for user review.
+- Default: the initial PLAN worker synthesizes a best-effort spec from the goal with an explicit `## Assumptions` block (every assumption scope-narrowing and reversible — when in doubt, narrower); log `recommend: /devlyn:ideate first` in `.devlyn/criteria.generated.md` AND the final report; the final report flags every assumption for user review.
 - Zero-signal exception: if the large classification includes `file_scope_signals == 0` (classifier cannot pick scope), halt with terminal verdict `BLOCKED:large-needs-ideation` — assumptions there would be scope-invention, not narrowing.
 - Exception: if the large classification came from pair-evidence intent without an actionable solo-headroom hypothesis, halt with `BLOCKED:solo-headroom-hypothesis-required`. Do not invent a hypothesis; recommend `/devlyn:ideate` so the user can supply the visible behavior `solo_claude` is expected to miss.
 - Exception: if the large classification came from unmeasured pair-candidate intent without solo ceiling avoidance, halt with `BLOCKED:solo-ceiling-avoidance-required`. Do not invent the note; recommend `/devlyn:ideate` so the user can supply the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`.
@@ -72,13 +67,14 @@ When the rules are silent (rare — pathological goal text), default to `medium`
 
 ## Mini-spec quality bar
 
-The internal mini-spec written for trivial / medium / large-assumptions paths must satisfy:
+The initial PLAN worker's internal mini-spec for trivial / medium / large-assumptions paths must satisfy:
 
 - `## Requirements` non-empty, each bullet testable (CLI command, test command, observable file change).
 - `## Verification` is preceded by a `<!-- devlyn:verification -->` sentinel on its own line directly above the heading — the machine locator `spec-verify-check.py` uses; the heading text itself is decorative and may be any language. `## Verification` non-empty if the goal implies any runnable acceptance check. Empty Verification is allowed only when all Requirements are pure-design (e.g. "follow existing pattern X").
 - If a free-form goal includes pair-evidence intent and already includes an actionable solo-headroom hypothesis, preserve that literal hypothesis in `.devlyn/criteria.generated.md` unchanged enough for VERIFY to detect `solo-headroom hypothesis`, `solo_claude`, `miss`, and the backticked observable command line that itself contains `miss`, emit the canonical `spec.solo_headroom_hypothesis` pair trigger reason, and satisfy regenerated-evidence checks such as `benchmark audit --require-hypothesis-trigger`.
 - If a free-form goal includes unmeasured pair-candidate intent and already includes solo ceiling avoidance, preserve that literal note in `.devlyn/criteria.generated.md` unchanged enough for reviewers to see `solo ceiling avoidance`, `solo_claude`, and the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`.
 - Free-form mode mini-specs are written to `.devlyn/criteria.generated.md` (not to a roadmap path) — this is run-scoped artifact, not a documented spec.
-- After writing `.devlyn/criteria.generated.md`, set `state.source.type = "generated"`, `state.source.spec_path = null`, `state.source.spec_sha256 = null`, `state.source.criteria_path = ".devlyn/criteria.generated.md"`, and `state.source.criteria_sha256` to the raw-byte SHA-256 of the generated criteria file. Downstream PLAN/IMPLEMENT/VERIFY phases and `spec-verify-check.py --include-risk-probes` depend on this pointer; do not rely on the file existing by convention.
 
-PLAN reads the mini-spec the same way it reads a real spec. The downstream pipeline cannot tell the difference.
+After the initial PLAN return, the parent validates the preinitialized `state.source.criteria_path` and registers only `state.source.criteria_sha256` as the raw-byte SHA-256 of the generated criteria file. Downstream IMPLEMENT/VERIFY phases and `spec-verify-check.py --include-risk-probes` depend on this pointer; do not rely on the file existing by convention.
+
+The initial PLAN worker writes the mini-spec first and plans from those exact bytes; downstream phases read it the same way they read a real spec.

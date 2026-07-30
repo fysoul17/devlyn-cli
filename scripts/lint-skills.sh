@@ -1256,12 +1256,9 @@ if ! grep -Fq 'pair_evidence_intent' config/skills/devlyn:resolve/references/fre
   || ! grep -Fq 'state.source.type = "generated"' config/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'state.source.type = "generated"' .claude/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'state.source.type = "generated"' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'state.source.criteria_path = ".devlyn/criteria.generated.md"' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'state.source.criteria_path = ".devlyn/criteria.generated.md"' .claude/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'state.source.criteria_path = ".devlyn/criteria.generated.md"' .agents/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'state.source.criteria_sha256' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'state.source.criteria_sha256' .claude/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'state.source.criteria_sha256' .agents/skills/devlyn:resolve/references/free-form-mode.md \
+  || ! grep -Fq 'validates the preinitialized `state.source.criteria_path` and registers only `state.source.criteria_sha256`' config/skills/devlyn:resolve/references/free-form-mode.md \
+  || ! grep -Fq 'validates the preinitialized `state.source.criteria_path` and registers only `state.source.criteria_sha256`' .claude/skills/devlyn:resolve/references/free-form-mode.md \
+  || ! grep -Fq 'validates the preinitialized `state.source.criteria_path` and registers only `state.source.criteria_sha256`' .agents/skills/devlyn:resolve/references/free-form-mode.md \
   || ! grep -Fq 'state.source.criteria_sha256` for generated free-form mode' config/skills/devlyn:resolve/references/phases/verify.md \
   || ! grep -Fq 'state.source.criteria_sha256` for generated free-form mode' .claude/skills/devlyn:resolve/references/phases/verify.md \
   || ! grep -Fq 'state.source.criteria_sha256` for generated free-form mode' .agents/skills/devlyn:resolve/references/phases/verify.md \
@@ -1318,6 +1315,19 @@ if ! grep -Fq 'unmeasured_pair_candidate_intent' config/skills/devlyn:resolve/re
   bad "resolve free-form mode must block new unmeasured pair candidates without solo ceiling avoidance"
 else
   ok "resolve free-form mode blocks new unmeasured pair candidates without solo ceiling avoidance"
+fi
+
+section "Check 6k: iter-0087 free-form PLAN chronology"
+if ! grep -Fq 'All three exceptional halts above occur before any worker dispatch' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'Before its announcement in every mode, apply flag-derived state: `--no-pair` sets `pair_default_enabled: false`; explicit `--risk-probes` sets both probe booleans true. Free-form does this before its pre-dispatch pending banner.' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'risk_probes pending' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'writes `.devlyn/criteria.generated.md` first, then writes `.devlyn/plan.md` from those exact criteria bytes in the same return' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'fail closed with canonical `BLOCKED:risk-halt` and actionable `missing .devlyn/criteria.generated.md from initial PLAN worker` detail; because risk input does not exist, emit no fabricated resolved-risk line' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'after the step-4 checks and any demotion, emit exactly one resolved line `risk_probes <on|off> — <reason>`, then complete or halt the pending terminal result' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'Every mode applies the flag-derived `pair_default_enabled` and explicit probe booleans before its announcement; free-form does so before its pending announcement, then defers only criteria-dependent risk classification and automatic-probe routing' config/skills/devlyn:resolve/references/state-schema.md; then
+  bad "iter-0087 free-form PLAN chronology must remain mechanically asserted"
+else
+  ok "iter-0087 free-form PLAN chronology is mechanically asserted"
 fi
 
 section "Check 6g: resolve consumes sibling spec.expected.json"
