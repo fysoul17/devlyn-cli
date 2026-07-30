@@ -32,7 +32,7 @@ Conditions (all must hold):
 - `verb_class ∈ {fix, add}`.
 - `has_failing_test == true` OR the goal names a single specific symbol/file.
 
-Action: set `state.complexity = "trivial"`. The initial PLAN worker writes `.devlyn/criteria.generated.md` with sections `## Requirements` (the goal as a single bullet, optionally split into 2-3 if obviously separable), `## Out of Scope` ("anything not in the listed files"), and `## Verification` (one runnable command if discoverable from the goal — e.g. the failing test, or a smoke command), then plans from those exact bytes.
+Action: set `state.complexity = "trivial"`. The initial PLAN worker writes `.devlyn/criteria.generated.md` with sections `## Requirements` (the goal as a single bullet, optionally split into 2-3 if obviously separable), `## Out of Scope` ("anything not in the listed files"), and the `## Verification` carrier required below, then plans from those exact bytes.
 
 ### Medium branch
 
@@ -42,7 +42,7 @@ Conditions (any one):
 - `verb_class ∈ {refactor, debug, review}` AND scope is a single subsystem.
 - `has_failing_test == false` but the goal implies a runnable acceptance check.
 
-Action: set `state.complexity = "medium"`. The initial PLAN worker reads the named files (or greps for the named symbols) once to extract 1-2 context anchors (existing patterns, related tests), writes `.devlyn/criteria.generated.md` with `## Requirements` (split into 3-5 testable bullets), `## Constraints` (anything implied by the existing patterns), `## Out of Scope` (adjacent code that "looks fixable"), and `## Verification` (commands or checks discoverable from existing tests / patterns), then plans from those exact bytes.
+Action: set `state.complexity = "medium"`. The initial PLAN worker reads the named files (or greps for the named symbols) once to extract 1-2 context anchors (existing patterns, related tests), writes `.devlyn/criteria.generated.md` with `## Requirements` (split into 3-5 testable bullets), `## Constraints` (anything implied by the existing patterns), `## Out of Scope` (adjacent code that "looks fixable"), and the `## Verification` carrier required below, then plans from those exact bytes.
 
 ### Large branch
 
@@ -70,7 +70,7 @@ When the rules are silent (rare — pathological goal text), default to `medium`
 The initial PLAN worker's internal mini-spec for trivial / medium / large-assumptions paths must satisfy:
 
 - `## Requirements` non-empty, each bullet testable (CLI command, test command, observable file change).
-- `## Verification` is preceded by a `<!-- devlyn:verification -->` sentinel on its own line directly above the heading — the machine locator `spec-verify-check.py` uses; the heading text itself is decorative and may be any language. `## Verification` non-empty if the goal implies any runnable acceptance check. Empty Verification is allowed only when all Requirements are pure-design (e.g. "follow existing pattern X").
+- `## Verification` is preceded by a `<!-- devlyn:verification -->` sentinel on its own line immediately above the heading — the machine locator `spec-verify-check.py` uses; the heading text itself is decorative and may be any language. It contains a fenced `json` object with a schema-valid, non-empty `verification_commands` array; commands use discovered repository commands and encode any goal-stated exit or output expectations.
 - If a free-form goal includes pair-evidence intent and already includes an actionable solo-headroom hypothesis, preserve that literal hypothesis in `.devlyn/criteria.generated.md` unchanged enough for VERIFY to detect `solo-headroom hypothesis`, `solo_claude`, `miss`, and the backticked observable command line that itself contains `miss`, emit the canonical `spec.solo_headroom_hypothesis` pair trigger reason, and satisfy regenerated-evidence checks such as `benchmark audit --require-hypothesis-trigger`.
 - If a free-form goal includes unmeasured pair-candidate intent and already includes solo ceiling avoidance, preserve that literal note in `.devlyn/criteria.generated.md` unchanged enough for reviewers to see `solo ceiling avoidance`, `solo_claude`, and the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`.
 - Free-form mode mini-specs are written to `.devlyn/criteria.generated.md` (not to a roadmap path) — this is run-scoped artifact, not a documented spec.
