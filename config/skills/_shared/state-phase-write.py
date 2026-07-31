@@ -242,6 +242,9 @@ def validate_authorized_surface(raw: str) -> list[str]:
 
 
 def path_matches_surface(path: str, surface: list[str]) -> bool:
+    parsed = pathlib.PurePosixPath(path)
+    if parsed.is_absolute() or ".." in parsed.parts:
+        return False
     for entry in surface:
         if entry.endswith("/**"):
             prefix = entry[:-3].rstrip("/")
@@ -250,6 +253,63 @@ def path_matches_surface(path: str, surface: list[str]) -> bool:
         elif path == entry:
             return True
     return False
+
+
+def worktree_file_exists(work: pathlib.Path, path: str) -> bool:
+    parsed = pathlib.PurePosixPath(path)
+    if parsed.is_absolute() or ".." in parsed.parts:
+        return False
+    try:
+        resolved = (work / path).resolve()
+        resolved.relative_to(work.resolve())
+        return resolved.is_file()
+    except (OSError, RuntimeError, ValueError):
+        return False
+
+
+def worktree_path_exists(work: pathlib.Path, path: str) -> bool:
+    parsed = pathlib.PurePosixPath(path)
+    if parsed.is_absolute() or ".." in parsed.parts:
+        return False
+    try:
+        resolved = (work / path).resolve()
+        resolved.relative_to(work.resolve())
+        return resolved.exists()
+    except (OSError, RuntimeError, ValueError):
+        return False
+
+
+def resolve_na_surface_citation(
+    work: pathlib.Path, raw: str, parsed_path: str, parsed_line: int | None,
+    surface: list[str],
+) -> tuple[str, int | None]:
+    def proven(path: str) -> bool:
+        if path in surface and not path.endswith("/**"):
+            return True
+        return worktree_file_exists(work, path) and any(
+            entry.endswith("/**") and path_matches_surface(path, [entry])
+            for entry in surface
+        )
+
+    if proven(raw):
+        return raw, None
+    if worktree_path_exists(work, raw) and not path_matches_surface(raw, surface):
+        raise SystemExit(f"BLOCKED:surface-close-adjudication-out-of-surface: {raw}")
+    if (
+        worktree_path_exists(work, parsed_path)
+        and not path_matches_surface(parsed_path, surface)
+    ):
+        raise SystemExit(f"BLOCKED:surface-close-adjudication-out-of-surface: {raw}")
+    for split in range(len(raw) - 1, -1, -1):
+        if raw[split] != ":" or not proven(raw[:split]):
+            continue
+        suffix = raw[split:]
+        if not re.fullmatch(r":[1-9][0-9]*", suffix):
+            raise SystemExit(
+                f"BLOCKED:surface-close-adjudication-malformed: citation {raw!r}"
+            )
+        return raw[:split], int(suffix[1:])
+    return parsed_path, parsed_line
 
 
 def surface_offenders(work: pathlib.Path, devlyn: pathlib.Path, state: dict,
@@ -342,14 +402,20 @@ def validate_surface_adjudication(
         raw_line = match.group("fired_line") or match.group("na_line")
         line_number = int(raw_line) if raw_line is not None else None
         citation = path if line_number is None else f"{path}:{line_number}"
+        if status == "N/A":
+            path, line_number = resolve_na_surface_citation(
+                work, citation, path, line_number, surface,
+            )
+            citation = path if line_number is None else f"{path}:{line_number}"
         if not path_matches_surface(path, surface):
             raise SystemExit(
                 f"BLOCKED:surface-close-adjudication-out-of-surface: {citation}"
             )
-        cited = work / path
         try:
+            cited = (work / path).resolve()
+            cited.relative_to(work.resolve())
             cited_lines = cited.read_text(encoding="utf-8").splitlines()
-        except (OSError, UnicodeError) as exc:
+        except (OSError, RuntimeError, UnicodeError, ValueError) as exc:
             raise SystemExit(
                 f"BLOCKED:surface-close-adjudication-citation-missing: {citation}: {exc}"
             ) from exc
@@ -1835,14 +1901,24 @@ def self_test() -> int:
         subprocess.run(["git", "config", "user.name", "self-test"], cwd=work, check=True)
         (work / "allowed.txt").write_text("base\n", encoding="utf-8")
         (work / "blocked.txt").write_text("base\n", encoding="utf-8")
+        (work / "blocked:literal.txt:1").write_text("base\n", encoding="utf-8")
+        (work / "blocked:raw.txt").write_text("base\n", encoding="utf-8")
+        (work / "branchbase").write_text("line\n" * 10, encoding="utf-8")
+        (work / "branchbase:7").write_text("base\n", encoding="utf-8")
+        (work / "branchbase:dir").mkdir()
+        (work / "branchbase:dir" / "marker").write_text("base\n", encoding="utf-8")
+        (work / "exact:1").write_text("base\n", encoding="utf-8")
         (work / "schedule").mkdir()
         (work / "schedule" / "__init__.py").write_text("line\n" * 700, encoding="utf-8")
         (work / "test_schedule.py").write_text("line\n", encoding="utf-8")
         (work / "tests").mkdir()
         (work / "tests" / "cli.test.js").write_text("line\n" * 170, encoding="utf-8")
+        (work / "tests" / "literal:1-3").write_text("line\n", encoding="utf-8")
         subprocess.run(
-            ["git", "add", "--", "allowed.txt", "blocked.txt", "schedule/__init__.py",
-             "test_schedule.py", "tests/cli.test.js"],
+            ["git", "add", "--", "allowed.txt", "blocked.txt", "blocked:literal.txt:1",
+             "blocked:raw.txt", "branchbase", "branchbase:7", "branchbase:dir/marker",
+             "exact:1", "schedule/__init__.py", "test_schedule.py", "tests/cli.test.js",
+             "tests/literal:1-3"],
             cwd=work, check=True,
         )
         subprocess.run(["git", "commit", "-qm", "base"], cwd=work, check=True)
@@ -1899,8 +1975,53 @@ def self_test() -> int:
         validate_surface_prompt(work_devlyn, surface_state)
         ensure_surface_clean_baseline(work, work_devlyn, surface_state)
         surface = validate_authorized_surface(
-            '["allowed.txt", "schedule/**", "test_schedule.py", "tests/**"]'
+            '["allowed.txt", "branchbase", "exact-link", "exact:1", "schedule/**", '
+            '"test_schedule.py", "tests/**", "x.ts"]'
         )
+        outside = devlyn / "outside.txt"
+        outside.write_text("outside\n", encoding="utf-8")
+        (work / "outside-link").symlink_to(outside)
+        assert worktree_file_exists(work, "allowed.txt")
+        assert not worktree_file_exists(work, str(outside))
+        assert not worktree_file_exists(work, "../outside.txt")
+        assert not worktree_file_exists(work, "outside-link")
+        assert worktree_path_exists(work, "branchbase:dir")
+        assert not worktree_path_exists(work, str(outside))
+        assert not worktree_path_exists(work, "../outside.txt")
+        assert not worktree_path_exists(work, "outside-link")
+        (work / "outside-link").unlink()
+        for link, target in (
+            ("exact-link", "allowed.txt"),
+            ("tests/inside-link", "cli.test.js"),
+        ):
+            (work / link).symlink_to(target)
+            output = work_devlyn / "surface-close.stdout"
+            output.write_text(
+                f"UVR-STALE: N/A {link} — contained symlink\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                encoding="utf-8",
+            )
+            validate_surface_adjudication(
+                work, work_devlyn, surface_state, surface,
+            )
+            (work / link).unlink()
+        for link in ("exact-link", "tests/outside-link"):
+            (work / link).symlink_to(outside)
+            output = work_devlyn / "surface-close.stdout"
+            output.write_text(
+                f"UVR-STALE: N/A {link} — escaping symlink\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                encoding="utf-8",
+            )
+            try:
+                validate_surface_adjudication(
+                    work, work_devlyn, surface_state, surface,
+                )
+            except SystemExit as exc:
+                assert "citation-missing" in str(exc), (link, exc)
+            else:
+                raise AssertionError(f"SURFACE_CLOSE followed escaping symlink: {link}")
+            (work / link).unlink()
         entry = surface_entry(surface_state)
         assert entry["prompt_sha256"] == file_sha256(prompt)
         assert entry["model_requested"] == "sonnet"
@@ -1923,6 +2044,18 @@ def self_test() -> int:
         output.write_text(
             "UVR-STALE: FIRED allowed.txt:1 — updated visible text\n"
             "PATH-TEST: N/A allowed.txt:1 — goal names no uncovered path\nPASS\n",
+            encoding="utf-8",
+        )
+        validate_surface_adjudication(work, work_devlyn, surface_state, surface)
+        output.write_text(
+            "UVR-STALE: N/A exact:1 — exact colon path is unchanged\n"
+            "PATH-TEST: N/A exact:1:1 — exact colon path line is covered\nPASS\n",
+            encoding="utf-8",
+        )
+        validate_surface_adjudication(work, work_devlyn, surface_state, surface)
+        output.write_text(
+            "UVR-STALE: N/A tests/literal:1-3 — literal range-shaped path is unchanged\n"
+            "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
             encoding="utf-8",
         )
         validate_surface_adjudication(work, work_devlyn, surface_state, surface)
@@ -1977,6 +2110,81 @@ def self_test() -> int:
                 "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
                 "citation-missing",
             ),
+            (
+                "UVR-STALE: N/A allowed.txt:49-73,223-235,293-295 — production range citation\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "adjudication-malformed",
+            ),
+            (
+                "UVR-STALE: N/A allowed.txt:1, allowed.txt:1 — production list citation\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "adjudication-malformed",
+            ),
+            (
+                "UVR-STALE: N/A tests/cli.test.js:1-3 — glob range citation\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "adjudication-malformed",
+            ),
+            (
+                "UVR-STALE: N/A x.ts:12:34 — doubled line citation\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "adjudication-malformed",
+            ),
+            (
+                "UVR-STALE: N/A allowed.txt:0 — zero line citation\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "adjudication-malformed",
+            ),
+            (
+                "UVR-STALE: N/A allowed.txt:012 — leading-zero line citation\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "adjudication-malformed",
+            ),
+            (
+                "UVR-STALE: N/A allowed.txt: — empty line citation\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "adjudication-malformed",
+            ),
+            (
+                "UVR-STALE: N/A blocked.txt:1 — blocked parsed path\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "out-of-surface",
+            ),
+            (
+                "UVR-STALE: N/A blocked.txt:1-3 — blocked range citation\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "out-of-surface",
+            ),
+            (
+                "UVR-STALE: N/A blocked:literal.txt:1 — blocked raw colon path\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "out-of-surface",
+            ),
+            (
+                "UVR-STALE: N/A blocked:raw.txt:1 — blocked parsed colon path\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "out-of-surface",
+            ),
+            (
+                "UVR-STALE: N/A branchbase:7 — existing unauthorized raw path\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "out-of-surface",
+            ),
+            (
+                "UVR-STALE: N/A branchbase:dir:1 — existing unauthorized parsed directory\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "out-of-surface",
+            ),
+            (
+                "UVR-STALE: N/A tests/../blocked.txt:1 — wildcard traversal\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "out-of-surface",
+            ),
+            (
+                "UVR-STALE: N/A tests/ghost.txt:1 — nonexistent glob descendant\n"
+                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+                "citation-missing",
+            ),
         )
         for raw_output, marker in rejected_outputs:
             output.write_text(raw_output, encoding="utf-8")
@@ -1987,6 +2195,14 @@ def self_test() -> int:
             else:
                 raise AssertionError(f"SURFACE_CLOSE accepted invalid adjudication: {marker}")
 
+        output.write_text(
+            "UVR-STALE: N/A allowed.txt:49-73,223-235,293-295 — production range citation\n"
+            "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
+            encoding="utf-8",
+        )
+        require_surface_adjudication_malformed(
+            work, work_devlyn, surface_state, surface,
+        )
         output.write_text(
             "UVR-STALE: N/A allowed.txt:1 — no stale interface text\n"
             "PATH-TEST: N/A allowed.txt:1 — requested path already covered\nPASS\n",
