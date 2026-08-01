@@ -1431,6 +1431,36 @@ if [ $pair_trigger_order_missing -eq 0 ]; then
   ok "VERIFY default pair dispatches concurrently"
 fi
 
+section "Check 6k: PLAN route is orchestrator-fixed"
+plan_route_ok=1
+for plan_route_file in "config/skills/devlyn:resolve/SKILL.md" CLAUDE.md AGENTS.md \
+  "config/skills/devlyn:engines/SKILL.md" ".agents/skills/devlyn:resolve/SKILL.md" \
+  ".agents/skills/devlyn:engines/SKILL.md"; do
+  [ -f "$plan_route_file" ] || plan_route_ok=0
+done
+sed -n '/^<engine_routing>$/,/^<\/engine_routing>$/p' "config/skills/devlyn:resolve/SKILL.md" \
+  | grep -Fq 'PLAN is orchestrator-fixed and never inherits `--engine`, an executor pin, or `state.engine`' || plan_route_ok=0
+sed -n '/^## PHASE 1: PLAN$/,/^## PHASE 1.5/p' "config/skills/devlyn:resolve/SKILL.md" \
+  | grep -Fq 'PLAN is orchestrator-fixed and never inherits `--engine`, an executor pin, or `state.engine`' || plan_route_ok=0
+grep -Fq 'PLAN is orchestrator-fixed and never inherits `--engine` or an executor pin' CLAUDE.md || plan_route_ok=0
+grep -Fq 'PLAN is orchestrator-fixed and never inherits `--engine` or the executor pin' AGENTS.md || plan_route_ok=0
+grep -Fq 'PLAN is orchestrator-fixed and never follows the pin' config/skills/devlyn:engines/SKILL.md || plan_route_ok=0
+if grep -En '([Ee]xecutor|Default engine: Claude for)[^[:cntrl:]]{0,80}PLAN[[:space:]]*/[[:space:]]*IMPLEMENT([[:space:]]*/[[:space:]]*BUILD_GATE)?[[:space:]]*/[[:space:]]*CLEANUP' \
+    config/skills/devlyn:resolve/SKILL.md \
+    CLAUDE.md \
+    AGENTS.md \
+    config/skills/devlyn:engines/SKILL.md \
+    .agents/skills/devlyn:resolve/SKILL.md \
+    .agents/skills/devlyn:engines/SKILL.md \
+    >/dev/null 2>&1; then
+  plan_route_ok=0
+fi
+if [ $plan_route_ok -eq 1 ]; then
+  ok "PLAN is orchestrator-fixed: exact declarations locked on all surfaces, no executor-role enumeration"
+else
+  bad "PLAN route contract violated: a locked orchestrator-fixed declaration is missing or an executor-role enumeration re-teaches PLAN"
+fi
+
 section "Check 6h: No undocumented spec.expected.json.browser_flows field"
 browser_flow_refs=$(grep -RInF 'spec.expected.json.browser_flows' \
   config/skills README.md bin/ package.json 2>/dev/null || true)

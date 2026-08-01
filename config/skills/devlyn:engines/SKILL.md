@@ -40,7 +40,7 @@ pair judge    codex        binary rule     (pin order with: pair <name>,...)
 
 ## Subcommands
 
-- `executor <name>` — pin the executor (PLAN/IMPLEMENT/CLEANUP + primary VERIFY judge). Refuse names with no `_shared/adapters/<name>.md`, or whose adapter's `## Role eligibility` section declares `executor: no` (judge-only backends), listing the valid names either way. If the engine's CLI is not currently available, still write the pin but warn: pins are promises — the run will stop with `BLOCKED:<name>-unavailable` until it is installed.
+- `executor <name>` — pin the executor (IMPLEMENT/CLEANUP + primary VERIFY judge; PLAN is orchestrator-fixed and never follows the pin). Refuse names with no `_shared/adapters/<name>.md`, or whose adapter's `## Role eligibility` section declares `executor: no` (judge-only backends), listing the valid names either way. If the engine's CLI is not currently available, still write the pin but warn: pins are promises — the run will stop with `BLOCKED:<name>-unavailable` until it is installed.
 - `pair <name>[,<name>...]` — set `pair_judge_priority` (ordered; first adapter-valid, pair-judge-eligible, non-primary, available entry wins at VERIFY/risk-probe time). Refuse names with no `_shared/adapters/<name>.md`, or whose adapter declares `pair_judge: no`.
 - `clear` — remove both pins; delete `.devlyn/engines.json` when nothing else remains in it.
 

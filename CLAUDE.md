@@ -40,7 +40,7 @@ Each skill's `SKILL.md` is the source of truth for its flags and workflow — do
 | Role | Default | Manual override |
 |---|---|---|
 | Orchestrator — conversation, handoff, loop driving | whichever CLI you open (contract is symmetric: CLAUDE.md ↔ AGENTS.md). Measured status 2026-07-05: Claude Code + omp run the full phase-gated pipeline; in the iter-0061 minimal-repo trivial-add shape on this machine, Codex CLI also ran it when the project carried the devlyn AGENTS.md (ordinary invocation, 4/4); without project AGENTS.md, the same shape silently skipped the pipeline (iter-0040 F6, 4/4) | switch CLIs; the file artifacts (spec/queue/state) carry over |
-| Executor — PLAN/IMPLEMENT/CLEANUP + primary VERIFY judge | `claude` | `--engine <name>` per run, or `/devlyn:engines executor <name>` (durable pin) |
+| Executor — IMPLEMENT/CLEANUP + primary VERIFY judge; PLAN is orchestrator-fixed and never inherits `--engine` or an executor pin | `claude` | `--engine <name>` per run, or `/devlyn:engines executor <name>` (durable pin) |
 | Pair judge — default for VERIFY; conditional for risk probes | first available OTHER engine (claude↔codex) | `/devlyn:engines pair <name>,...`; `--no-pair` opts out |
 
 `/devlyn:engines` with no args shows the current role table, detected engines, and how to pin or clear — the pins live in `.devlyn/engines.json`.
