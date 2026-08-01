@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent iter: [`iterations/0087-startup-semantic-dedup.md`](iterations/0087-startup-semantic-dedup.md) (**CLOSED-FAIL / NOT SHIPPED 2026-07-30 — read § "IMPLEMENTATION AND TREATMENT CLOSEOUT" first**). Context: [`iterations/0086-claude-primary-model-attestation.md`](iterations/0086-claude-primary-model-attestation.md) (**SHIPPED 2026-07-29**), [`iterations/0085-verify-envelope-anatomy.md`](iterations/0085-verify-envelope-anatomy.md) (**SHIPPED 2026-07-29**), [`iterations/0084-node-lint-applicability.md`](iterations/0084-node-lint-applicability.md) (**SHIPPED 2026-07-28**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent iter: [`iterations/0088-plan-route-startup-dedup.md`](iterations/0088-plan-route-startup-dedup.md) (**STAGE A SHIPPED `1312cb7` + STAGE B FROZEN 2026-08-02 — controls next**). Context: [`iterations/0087-startup-semantic-dedup.md`](iterations/0087-startup-semantic-dedup.md) (**CLOSED-FAIL / NOT SHIPPED 2026-07-30**), [`iterations/0086-claude-primary-model-attestation.md`](iterations/0086-claude-primary-model-attestation.md) (**SHIPPED 2026-07-29**), [`iterations/0085-verify-envelope-anatomy.md`](iterations/0085-verify-envelope-anatomy.md) (**SHIPPED 2026-07-29**), [`iterations/0084-node-lint-applicability.md`](iterations/0084-node-lint-applicability.md) (**SHIPPED 2026-07-28**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,19 +14,32 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-07-30 (**iter-0087 closed-fail; candidate reverted, not shipped**)
+## 🚦 START-HERE — state after 2026-08-02 (**iter-0088 Stage A shipped; Stage B frozen**)
 
-**Where the loop stands (one paragraph).** iter-0087's H1-v3 candidate passed
-Terra lint plus Fable 5 and Grok 4.5 implementation review, but the frozen F7
-replacement budget exhausted before any valid ratio: T1 closed as
-`FAILED-INCOMPLETE` in PLAN, and corrected-candidate T1R returned provider 429
-before PHASE 0. The strict frozen reading makes T1R the second incomplete, so
-remaining arms stopped and no ratio was scored. H1-v3 is unscored, not
-performance-falsified; product commits `24686ec`/`313304c` were withdrawn by
-`695ef12`, restoring baseline. Iter-0087 cannot resume. A new three-seat
-registration with new controls is required before revisiting this lever.
+**Where the loop stands (one paragraph).** iter-0088 re-registered the startup
+lever in two stages after three-seat R0+R1 (Opus 5 headless
+modelUsage-attested, Codex gpt-5.6-sol xhigh, Grok 4.5 read-only allowlist;
+Fable 5 orchestrating and verifying). Stage A shipped `1312cb7`: PLAN is
+orchestrator-fixed on every surface and never inherits `--engine`, an executor
+pin, or `state.engine` — the route flip that burned 0087 F7/T1 is structurally
+closed (lint Check 6k exact-locks, 2/2 live canaries by raw worker-session
+receipts, formal verify-only `rs-20260801T152441Z-4add8821d052` PASS zero
+findings). Stage B (H1-v3 intent-identical; total receipt taxonomy
+PROTOCOL-BLOCKED/COMPLETE/NULL/INCOMPLETE with fail-closed default;
+replacement-not-retry provider policy; arm-byte attestation; exact-identity
+controls) is FROZEN with a Terra-executed satisfiability canary
+(`{"ok":true,"unsatisfied":[]}`). Control baseline = `1312cb7` (product-tree
+`08d7c2a8…`, harness-tree `99464f6f…`). No controls captured yet.
 
 **Current frontier and just shipped — context, do not re-derive**:
+
+- **iter-0088 plan-route + startup dedup — STAGE A SHIPPED (`1312cb7`),
+  STAGE B FROZEN (2026-08-02).** `iterations/0088-plan-route-startup-dedup.md`
+  is authoritative (D1-D5, gates, canary receipts; durable receipts at
+  `~/.local/share/nx01/iter0088-stagea/`). Named residual: `README.md:109/:112`
+  still teach PLAN∈executor — README is user territory, surfaced, awaiting the
+  user; `devlyn:engines/SKILL.md` absent from lint `critical_path_files`
+  (follow-up).
 
 - **iter-0087 startup semantic dedup — CLOSED-FAIL, REVERTED, NOT SHIPPED
   (2026-07-30).**
@@ -120,11 +133,11 @@ must compose transport state with authenticated summaries; isolated rows missed
 the TIMEOUT suppression that fresh Codex found.
 
 **Next work (in order)**:
-1. **Do not resume iter-0087.** If H1-v3 remains the best startup lever, first
-   open a new three-seat registration that defines receipt lifecycle and
-   pre-invocation provider failures before any arm, fixes arm-byte attestation,
-   and captures new controls. Do not reuse iter-0087's replacement budget,
-   controls, candidate commits, or ratios as if the old row remained open.
+1. **Capture iter-0088 Stage B controls, then treatments.** Sequential F7×2 +
+   F12×2 at frozen baseline `1312cb7` under D5 identity rules (cohort seat
+   pins + updater-proof binary copies; no `/login` while in flight), then the
+   mechanism-pure H1-v3 candidate and treatments under D1-D5. iter-0087
+   remains closed — never resume or reuse its budgets/controls/ratios.
 2. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
    / B_win 36 — single-cohort variance vs. real hook-cohort effect is
    unresolved; the next hook-bearing cohort reads it before any quality

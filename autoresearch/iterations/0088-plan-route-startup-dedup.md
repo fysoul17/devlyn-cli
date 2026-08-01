@@ -2,7 +2,7 @@
 id: "0088-plan-route-startup-dedup"
 title: "PLAN route determinism, then startup semantic dedup re-measurement"
 kind: optimization
-status: REGISTERED 2026-08-01 (FREEZE pending Stage A gates + satisfiability canary)
+status: STAGE A SHIPPED 1312cb7; STAGE B FROZEN 2026-08-02 (controls not yet captured)
 complexity: medium
 depends_on: ["0087-startup-semantic-dedup"]
 ---
@@ -285,9 +285,31 @@ local `.claude/skills` mirror is untracked, so no git identity pins it.
    effective-model recovery re-executed against the surviving F12 A1 raw
    session AND one Stage-A canary worker receipt.
 3. Exact control baseline commit + digests recorded in this file.
+   **RECORDED 2026-08-02**: control baseline commit
+   `1312cb731c9fc04ed03086d0ad2d7f27b75cda6b` (post-Stage-A); product-tree
+   digest (`HEAD:config/skills`) `08d7c2a8efe00ae14bf6d48117ee968604c1ac83`;
+   harness-tree digest (`HEAD:benchmark/ceiling`)
+   `99464f6f16f3218f2b765ef252ed46e4a7698d19`. Any product or harness byte
+   change after the first control invalidates these per D5.
 
 Per the binding lesson: a freeze is not frozen until a seat has tried to
 satisfy every conjunct by execution.
+
+## FROZEN — 2026-08-02
+
+All three conditions hold. Terra executed the satisfiability canary
+mechanically (`~/.local/share/nx01/iter0088-stagea/freeze-canary/satisfiability/`
+— `run_canary.py` + `report.{json,md}`): T1R → NULL-ATTEMPT with every
+zero-usage/no-artifact conjunct byte-verified; F7/C1 → COMPLETE (startup
+239,944 ms, PLAN 116,316 ms; blocked tail correctly ignored); F12 A1
+eight-field recovery equal to `0087:266-275` including effective
+`claude-sonnet-5`; Stage-A PLAN worker `claude-sonnet-5` native Agent.
+`{"ok": true, "unsatisfied": []}`. Orchestrator (Fable 5) independently
+cross-checked the T1R envelope, F7/C1 spans, and Stage-A worker receipts
+against raw bytes this session. Next execution step: sequential control
+capture F7×2 + F12×2 at baseline `1312cb7` (cohort seat pins, updater-proof
+binary copies, no `/login` while in flight), then the mechanism-pure H1-v3
+candidate and treatments under D1-D5.
 
 ## Rejection rules (Stage B)
 
