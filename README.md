@@ -106,10 +106,10 @@ Stack tasks to run back-to-back without supervision. `/devlyn:queue add "<intent
 devlyn separates three engine roles:
 
 - **Orchestrator** — the CLI you opened (Claude Code, Codex, or omp) that drives the conversation and loop. The contract is symmetric (`CLAUDE.md` ↔ `AGENTS.md`), so the same phase-gated pipeline runs whichever you launch; the file artifacts (spec, queue, state) carry over if you switch.
-- **Executor** — PLAN / IMPLEMENT / CLEANUP plus the primary VERIFY judge. Defaults to `claude`.
+- **Executor** — IMPLEMENT / CLEANUP plus the primary VERIFY judge. Defaults to `claude`. PLAN is orchestrator-fixed and never inherits `--engine` or an executor pin.
 - **Pair judge** — the first available *other* engine, default for VERIFY and conditional for risk probes.
 
-`--engine claude` (default) is the canonical implementation surface for PLAN, IMPLEMENT, BUILD_GATE, and CLEANUP. VERIFY/JUDGE runs pair mode by default when the OTHER engine is available.
+`--engine claude` (default) is the canonical implementation surface for IMPLEMENT, BUILD_GATE, and CLEANUP; PLAN always runs on the orchestrator's native worker. VERIFY/JUDGE runs pair mode by default when the OTHER engine is available.
 
 Pin roles durably with `/devlyn:engines` (no args shows the role table + detected engines; `executor <name>` / `pair <name>,...` / `clear` manage the pins, stored machine-local in `.devlyn/engines.json`). Pins fail closed: an unavailable pinned engine stops with `BLOCKED:<engine>-unavailable`, and a name with no `_shared/adapters/<name>.md` adapter stops with `BLOCKED:invalid-engine-config`. New engines plug in by shipping an adapter file — no skill changes.
 

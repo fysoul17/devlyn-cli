@@ -324,12 +324,13 @@ iter authorizes M1.5 work.
 
 Stage A PASS claims only: PLAN routing is single-valued across the enumerated
 staged surfaces (the closed five-file list + `.agents` mirrors) and
-behaviorally deterministic on the two canary paths. **Named residuals, not
-claimed**: `README.md:109` (slash-form PLAN∈executor) and `README.md:112`
-(comma-form "canonical implementation surface for PLAN, …") still teach the
-old contract — README is user territory per HANDOFF (release/installer
-surface, hands off), surfaced to the user 2026-08-01, not staged into arms
-(`run-ceiling-arm.sh:370-372`), excluded from 6k by design;
+behaviorally deterministic on the two canary paths. **Named residuals**: `README.md:109/:112`
+(slash-form and comma-form PLAN∈executor) — README is user territory per
+HANDOFF, so it was surfaced 2026-08-01 and **RESOLVED 2026-08-02 on explicit
+user directive**: both lines aligned to the orchestrator-fixed contract and
+`README.md` added to Check 6k's negative enumeration scan (red-tested: the
+pre-fix `:109` line is caught; the frozen copycat corpus fixture
+`benchmark/ceiling/corpus/copycat-doc.md` is deliberately NOT scanned);
 `devlyn:engines/SKILL.md` is absent from `critical_path_files`
 (`lint-skills.sh:58-93`) so Checks 6/6a never compared its mirror — root
 cause of the pre-existing doctor-catalog drift the Stage A sync also healed

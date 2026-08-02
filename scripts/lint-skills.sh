@@ -1449,6 +1449,7 @@ if grep -En '([Ee]xecutor|Default engine: Claude for)[^[:cntrl:]]{0,80}PLAN[[:sp
     config/skills/devlyn:resolve/SKILL.md \
     CLAUDE.md \
     AGENTS.md \
+    README.md \
     config/skills/devlyn:engines/SKILL.md \
     .agents/skills/devlyn:resolve/SKILL.md \
     .agents/skills/devlyn:engines/SKILL.md \
