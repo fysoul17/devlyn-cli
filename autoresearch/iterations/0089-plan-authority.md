@@ -2,7 +2,7 @@
 id: "0089-plan-authority"
 title: "PLAN authority — dispatch ledger, cap enforcement, prompt-delivery attestation, round-aware oracle"
 kind: reliability
-status: REGISTERED-FROZEN 2026-08-02; D1-D3 IMPLEMENTED 2026-08-03 — conjuncts 2/3/4 satisfied by execution, conjunct 1 green in self-tests, live end-to-end canary pending
+status: D1-D3 IMPLEMENTED 2026-08-03 (6795976 + hermeticity fix 830f886) — NO SHIP CREDIT (R-final NOT-SHIP); conjuncts 2/3/4 satisfied by execution; conjunct 1 machinery green, live delivery compliance 0/2 → OPEN, owned by the next registration
 complexity: medium
 depends_on: ["0088-plan-route-startup-dedup"]
 ---
@@ -360,6 +360,71 @@ against retained receipts; conjunct 1 (ledger green + delivery
 attestation end-to-end) green in self-tests — the live product canary
 (render → digest → spawn → native dispatch → oracle COMPLETE on a fresh
 run) is the remaining receipt before the gate is called.
+
+## LIVE CANARIES + R-FINAL ADJUDICATION (2026-08-03) — no ship credit
+
+**Canary 1** (headless sonnet resolve, goal = the named 0088 lint residual;
+receipts `~/.local/share/nx01/iter0089-reg/canary1/`): D1 green path LIVE —
+receipt round 0 with all spawn-known fields, recorded digest ≡
+`.devlyn/plan.prompt` on disk; goal fix correctly committed (`b6dd37d`,
+1 line, lint green incl. the new entry). **Delivery attestation caught a
+real mismatch**: worker-received bytes pruned the adapter's 35-line
+pair-JUDGE block (+3 trailing lines). BUILD_GATE never completed — a
+leftover process from the detached Codex build was writing the same
+`.devlyn` (collision), plus a stale pre-run `external-diff.patch` polluted
+scope-check; the run halted honestly.
+
+**R-final (Codex xhigh, read-only; `rfinal-codex.log`)**: **NOT-SHIP,
+adopted.** Named criterion **Attestation-Result Fidelity**: the pre-canary
+implementation record committed to "oracle COMPLETE on a fresh run" BEFORE
+observation; re-reading a detected mismatch as gate satisfaction after
+observing it is a retroactive criterion edit. Conjunct 1 requires a
+compliant-delivery arm classified COMPLETE.
+
+**Runaway-spawn defect (canary yield, root-fixed `830f886`)**: canary 1's
+live `.devlyn/spec-verify.json` (verification command = lint) closed a
+latent mutual recursion — pipeline replay exports `BENCH_WORKDIR=<repo>`;
+`spec-verify-check.py --self-test` scenario children inherited it, and
+default-mode resolution (`work = BENCH_WORKDIR or cwd`,
+spec-verify-check.py:3933) made them replay the LIVE contract → lint →
+lint-skills.sh:470 self-test → unbounded spawn storm (~18 procs/min
+observed live). Deterministic marker repro pre-fix; fix = scrub
+BENCH_WORKDIR at self-test entry (one deletion point, all 88 child calls
+covered); red-tested both env shapes. Pre-existing latent (not introduced
+by 0089), fixed in-scope because it blocked the canary path.
+
+**Canary 2** (goal = the R-final-surfaced `rg` dependency at
+lint-skills.sh:1029; receipts `canary2/`): PLAN receipt green (digest ≡
+disk), goal fix landed clean (net 1 file / 1-line change over two fix
+rounds, lint green). **Second delivery mismatch, same family**: the
+orchestrator pruned the adapter's 61-line judge-invocation block and
+added a 6-line principles condensation. The run was stopped from outside
+the session mid-VERIFY (`terminal_reason: aborted_streaming`, 131 turns)
+— no terminal verdict; PLAN receipts salvaged.
+
+**Adjudication — final for this iter**:
+- Conjuncts 2/3/4: SATISFIED by execution (retained-arm replays +
+  red-tests; record above).
+- Conjunct 1: machinery green at every layer (fail-closed spawn, digest
+  recording live 2/2, mismatch DETECTED live 2/2, missing-evidence →
+  INCOMPLETE); the pre-registered live receipt (oracle COMPLETE fresh
+  run) is NOT met — **measured live delivery compliance 0/2**, both
+  prunings the same class: the rendered artifact concatenates the FULL
+  adapter, whose judge-invocation machinery two independent live
+  orchestrators each judged irrelevant to a PLAN worker and pruned.
+  No falsifier of P-0089-1..6 fired. Per the frozen no-forcing rejection
+  rule, compliance cannot be forced inside 0089; per stop-all, the open
+  conjunct transfers to a new registration, not in-flight iteration.
+- **Named next-lever hypothesis (frozen advisory for the successor
+  registration)**: worker-scope the render inputs — a PLAN-worker-scoped
+  adapter view should remove the observed prune incentive WITHOUT
+  forcing; score delivery compliance as the registered outcome. This is
+  0088's "parent composition determinism … registered as its own scored
+  gate" advisory, now with 2/2 same-class live receipts and a working
+  measurement instrument.
+- H1-v3 re-registration stays blocked until the delivery-compliance gate
+  closes (its controls need scoreable PLAN regions AND compliant
+  delivery).
 
 ## Principles check
 

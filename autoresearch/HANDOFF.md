@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent iter: [`iterations/0089-plan-authority.md`](iterations/0089-plan-authority.md) (**REGISTERED-FROZEN 2026-08-02 — implementation not started**). Context: [`iterations/0088-plan-route-startup-dedup.md`](iterations/0088-plan-route-startup-dedup.md) (**STAGE A SHIPPED `1312cb7` + D4 locus `454bc34`; STAGE B CLOSED-FAIL protocol-failed-at-controls 2026-08-02 — H1-v3 UNSCORED**), [`iterations/0087-startup-semantic-dedup.md`](iterations/0087-startup-semantic-dedup.md) (**CLOSED-FAIL / NOT SHIPPED 2026-07-30**), [`iterations/0086-claude-primary-model-attestation.md`](iterations/0086-claude-primary-model-attestation.md) (**SHIPPED 2026-07-29**), [`iterations/0085-verify-envelope-anatomy.md`](iterations/0085-verify-envelope-anatomy.md) (**SHIPPED 2026-07-29**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent iter: [`iterations/0089-plan-authority.md`](iterations/0089-plan-authority.md) (**D1-D3 IMPLEMENTED 2026-08-03, NO SHIP CREDIT — conjunct 1 open: live delivery compliance 0/2**). Context: [`iterations/0088-plan-route-startup-dedup.md`](iterations/0088-plan-route-startup-dedup.md) (**STAGE A SHIPPED `1312cb7` + D4 locus `454bc34`; STAGE B CLOSED-FAIL protocol-failed-at-controls 2026-08-02 — H1-v3 UNSCORED**), [`iterations/0087-startup-semantic-dedup.md`](iterations/0087-startup-semantic-dedup.md) (**CLOSED-FAIL / NOT SHIPPED 2026-07-30**), [`iterations/0086-claude-primary-model-attestation.md`](iterations/0086-claude-primary-model-attestation.md) (**SHIPPED 2026-07-29**), [`iterations/0085-verify-envelope-anatomy.md`](iterations/0085-verify-envelope-anatomy.md) (**SHIPPED 2026-07-29**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -96,18 +96,21 @@ must compose transport state with authenticated summaries; isolated rows missed
 the TIMEOUT suppression that fresh Codex found.
 
 **Next work (in order)**:
-1. **Implement iter-0089** (`iterations/0089-plan-authority.md`,
-   REGISTERED-FROZEN 2026-08-02 after 3-seat R0+R1; seat receipts
-   `~/.local/share/nx01/iter0089-reg/seats/`). D1 SPW state-derived
-   ledger + cap, D2 renderer + digest, D3 round-aware oracle; red-tests
-   replay the retained fixtures
-   `~/.local/share/nx01/iter0088-stageb/controls/F12/{C2,C3}` + F7/C1.
-   R0 blockers resolved in-registration: single startup clock (first
-   ledger span ≡ attribution, 4/4 arms delta 0), state-derived cap
-   (caller round label untrusted), executable identity predicate (stem
-   match; subagent_type unkeyed), P-0089-6 bound into exit conjunct 1.
-   Only after 0089 lands can H1-v3 be re-registered (new controls; 0087
-   and 0088 budgets/controls/ratios are dead — never reuse).
+1. **Register the delivery-compliance iteration (0090)** from 0089's
+   frozen advisory (`iterations/0089-plan-authority.md` § LIVE CANARIES —
+   adjudication): D1-D3 are implemented and green (`6795976`+`830f886`;
+   ledger/cap/oracle conjuncts 2/3/4 satisfied by execution) but 0089
+   took NO ship credit — live PLAN delivery compliance measured **0/2**,
+   both canaries pruning the same class (judge-invocation adapter content
+   irrelevant to a PLAN worker). Frozen hypothesis: worker-scope the
+   render inputs (no forcing), score delivery compliance as the
+   registered outcome via the shipped attestation instrument. Receipts:
+   `~/.local/share/nx01/iter0089-reg/` (seats, canary1/2, R-final
+   NOT-SHIP). H1-v3 re-registration stays blocked behind this gate.
+   New binding operator rules from the canaries: **never launch a
+   pipeline while another process is writing the same repo `.devlyn`**
+   (check for leftovers first — detached builds leave writers), and the
+   BENCH_WORKDIR self-test hermeticity class is fixed at `830f886`.
 2. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
    / B_win 36 — single-cohort variance vs. real hook-cohort effect is
    unresolved; the next hook-bearing cohort reads it before any quality
