@@ -1738,6 +1738,13 @@ def run_check_expected_mode(expected_path: Path) -> int:
 
 
 def run_self_test() -> int:
+    # Hermeticity: a pipeline replay exports BENCH_WORKDIR at the live repo;
+    # inherited into scenario children it wins over their tmp cwd (the
+    # default-mode work resolution below) and re-executes the LIVE
+    # .devlyn/spec-verify.json — with lint as the live command this mutually
+    # recursed (lint runs this self-test) into an unbounded spawn storm
+    # (observed 2026-08-03, iter-0089 canary).
+    os.environ.pop("BENCH_WORKDIR", None)
     script_path = str(Path(__file__).resolve())
     with tempfile.TemporaryDirectory() as td:
         work = Path(td)
