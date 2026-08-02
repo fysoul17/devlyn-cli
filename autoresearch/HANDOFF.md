@@ -66,66 +66,19 @@ re-measurement. Receipts: `~/.local/share/nx01/iter0088-stageb/`.
   treatment engine bytes match at `5c05302a...`; the old `9e028f...` value was
   the spaced source file, not an arm snapshot.
 
-- **iter-0086 Claude primary model attestation — SHIPPED (2026-07-29),
-  three-seat final gate.** Product and R6 now use the same unique exact
-  four-counter match against top-level primary usage; singleton behavior is
-  unchanged and malformed, zero-match, duplicate-match, and requested-model
-  mismatch cases remain explicit blockers. A fresh Codex finding closed the
-  oversized-integer overflow edge before final PASS. Formal verify-only run
-  `rs-20260729T115754Z-11c3cb3d2666`, full lint, mirrors, Codex, Fable 5, and
-  Grok 4.5 all passed. **Claim boundary:** this fixes observed auxiliary-call
-  false attestation only; the M1.5 transport runner remains deferred.
-- **iter-0085 VERIFY envelope anatomy — SHIPPED (`bd7326d` + `ddf4c5e`,
-  2026-07-29).** Four-row measurement registered median post-judge
-  finalization 138,631.328 ms and 25.1% share. Formal verify-only run
-  `rs-20260729T094740Z-2df38943031e` passed after a separate foreground full
-  lint. It authorized no dispatcher or deterministic runner.
-- **iter-0084 Node lint applicability — SHIPPED (`c0f4724`, 2026-07-28),
-  three-seat final gate.** The canonical BUILD_GATE contract now treats exact
-  `scripts.lint` and recognized configured linters as applicable, never infers
-  arbitrary specialized `lint:*` as the general lint gate solely from its
-  declaration, and still executes spec-explicit specialized commands in step 4.
-  Frozen T/K1/K2/K3 replay passed 12/12; full skill lint, mirror parity,
-  mechanical VERIFY, Codex primary judge, Fable pair judge, and Grok advisory
-  review all passed. **Claim boundary:** the observed F7 false-lint trigger is
-  closed; whole-cohort wall improvement, generic verdict softening, broad
-  project generality, and the M1.5 deterministic runner are not claimed.
-- **iter-0083 R-summary-verdict-not-merged — SHIPPED (`4bb2eea` + fix
-  `6dd5ff4`, 2026-07-28), three-seat final gate.** Exact
-  `pair-judge.summary.json` is folded only when either canonical pair findings
-  carrier exists, including empty. Valid verdicts fold monotonically through the
-  existing lattice; malformed/non-object/missing-verdict/unknown/model-authored
-  TIMEOUT summaries become explicit CRITICAL pair blockers; orphan, primary, and stale
-  Grok summaries cannot bind. Grok's stale `--summary-out` override is deleted.
-  Codex VERIFY found and closed the compound timeout case: a transport TIMEOUT
-  now survives a PASS summary but yields to any strictly worse authenticated
-  summary. Final evidence: frozen P1-P8/N1-N7 plus the compound row green,
-  collector self-test green, iter-0082 contract 110 checks, full lint green,
-  exact three-surface SHA parity, `/devlyn:resolve` terminal PASS. Actual Codex,
-  Grok 4.5, and Fable 5 final seats all PASS after executing. **Claim boundary:**
-  conclusion conservation only — emission remains uncertified and there is no
-  durable `pair grok` pin.
-- **iter-0082 R-weld — SHIPPED (`557152f`, 2026-07-28), three-seat gate.**
-  `iterations/0082-weld-recovery-STUB.md` § "BUILT + GATED". The grok pair seat can
-  now deliver a collectable review: HEAD rejects all 8 real welded captures, the
-  shipped collector collects each as one `CRITICAL` + `NEEDS_WORK`, real merge
-  `NEEDS_WORK` 8/8. **Claim boundary: collection only** — emission is still NOT
-  certified, there is **no durable `pair grok` pin**, and losslessness is claimed
-  for shape class W1 alone (the fence-wrapped-*finding* class is reported
-  **uncovered**). Mechanism: the recovery preamble is an **allowlist of narrative
-  bytes** (no `#`, no backtick, no `{`; mid-line cut), which makes mid-JSON slicing
-  and comment consumption *structurally impossible* rather than defended against —
-  a token denylist is the shape that made v1 launder its own frozen negatives.
-  `VERDICT_RANK`/`finding_rank` are single-sourced from merge; v1 invented a second
-  definition and broke 4 real captures. Durable corpus:
-  `benchmark/ceiling/probes/r-weld-0082/` (+ off-repo vault
-  `~/.local/share/nx01/iter0082-corpus/`); `tracked-baseline.json` pins how all 61
-  tracked judge captures collect at the **pre-change** collector — regenerate it
-  from the pre-change collector or the whole tier is decorative.
-- **iter-0081 R-allow-scope — SHIPPED (`78a0dd4`), gate part 2 only.** The
-  `PreToolUse` anchor guard turns an out-of-anchor denial into a model-visible
-  `tool_result` instead of a silent exit-0 truncation. Its v1 FAILED and
-  § "GATE RESULTS" is the more instructive record.
+- **Shipped 2026-07-28/29 (one line each; iteration files are authoritative,
+  full narratives in git history of this file):** iter-0086 Claude primary
+  model attestation (three-seat gate; fixes auxiliary-call false attestation
+  only). iter-0085 VERIFY envelope anatomy (post-judge finalization median
+  138,631 ms / 25.1% share registered; no dispatcher authorized). iter-0084
+  Node lint applicability (observed F7 false-lint trigger closed; nothing
+  broader claimed). iter-0083 R-summary-verdict-not-merged (pair-judge
+  verdict conservation; emission still uncertified, no durable `pair grok`
+  pin). iter-0082 R-weld (collection only; W1 losslessness only; corpus
+  `benchmark/ceiling/probes/r-weld-0082/` — regenerate `tracked-baseline.json`
+  from the pre-change collector or the tier is decorative). iter-0081
+  R-allow-scope (gate part 2 only; v1 FAILED — § GATE RESULTS is the
+  instructive record).
 
 **Binding operator lessons from 0081-0083 — all orchestrator failures**: never
 handicap a gate seat (a read-only seat cannot run the collector); score the frozen
@@ -143,18 +96,17 @@ must compose transport state with authenticated summaries; isolated rows missed
 the TIMEOUT suppression that fresh Codex found.
 
 **Next work (in order)**:
-1. **Register the PLAN-region determinism/oracle iter (0089 candidate).**
-   The 0088 Stage B cohort measured the blocker: at fixed control bytes the
-   parent's PLAN orchestration varies out-of-instrument (H2 phase headings;
-   invented multi-round PLAN loops past the one-re-spawn cap; divergent
-   auto-probe routing) — 2/5 controls, both F12. Choose by registration:
-   (a) product determinism fix for worker-prompt composition/dispatch
-   accounting, or (b) an all-dispatch oracle supporting the registered
-   1-or-2 dispatch shape (attest every dispatch, reject ≥3, round-aware
-   envelope, explicit `startup_recomputed == attribution.startup_ms`
-   conjunct) — both seats' advisories are frozen in 0088 § STAGE B EXECUTED.
-   Only after that lands can H1-v3 be re-registered (new controls; 0087 and
-   0088 budgets/controls/ratios are dead — never reuse).
+1. **Register iter-0089 from `iterations/0089-plan-authority-STUB.md`.**
+   The design is three-way CONVERGED (2026-08-02, Fable + Codex + Grok;
+   criteria Invariant-Bookkeeping Asymmetry / narrow PLAN authority; raw
+   seat returns `~/.local/share/nx01/iter0088-stageb/seats/r3-*.log`): the
+   stub carries the full scope (dispatch ledger + mechanical cap; prompt
+   render + digest + fail-closed delivery ATTESTATION, no forcing;
+   round-aware all-dispatch oracle), the OUT list, the four-part exit gate,
+   and the registration protocol. The stub is design input, NOT a
+   registration — run full 3-seat R0+R1 + satisfiability-by-execution
+   before FREEZE. Only after 0089 lands can H1-v3 be re-registered (new
+   controls; 0087 and 0088 budgets/controls/ratios are dead — never reuse).
 2. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
    / B_win 36 — single-cohort variance vs. real hook-cohort effect is
    unresolved; the next hook-bearing cohort reads it before any quality
@@ -214,18 +166,11 @@ gates yourself before rebuilding; two live hangs observed: 35-min and
 66-min zero-output; codex sandbox cannot write .git — orchestrator
 commits builds, surfaced in the message).
 
-**Seat scorecard (2026-07-19/20 sessions, keep the triad honest)**:
-orchestrator verified every load-bearing seat citation live before
-adopting, caught its own P-c double-count suspicion before Grok named
-it, and root-caused the -19g instrument chain from receipts; Codex
-found the rounds_history schema bug + C2-activation gating + falsified
-the orchestrator's P-a SC-carrier causal claim from raw judge deltas,
-and built Stage A / M-CP / isolation-payload extraction (two silent
-hangs observed — detach + one retry); Grok killed the P-c double-count
-at R1, withdrew its C1-infeasibility counter with a named delta, and
-its C2-first ranking won the 0074 adjudication over Codex's C1-first.
-Standing lessons: verify liveness before gating; synthetic self-tests
-must be generated from REAL receipts (two live counterexamples).
+**Seat standing lessons (per-session scorecards live in the iteration
+files)**: verify liveness before gating; synthetic self-tests must be
+generated from REAL receipts (two live counterexamples); seat packets get
+the same verification bar as findings — 0088 Stage B alone recorded three
+orchestrator reversals on named criteria plus one self-caught packet error.
 
 
 ---
