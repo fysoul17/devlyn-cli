@@ -210,7 +210,7 @@ test -d "$WORK_A/.claude/skills"
 test "$(cat "$WORK_A/.devlyn/engines.json")" = '{"executor":"codex"}'
 EXPECTED_STOP_HOOK_SETTINGS='{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"python3 \"$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py\"","timeout":30}]}]}}'
 printf '%s\n' "$EXPECTED_STOP_HOOK_SETTINGS" | cmp -s - "$WORK_A/.claude/settings.json"
-python3 - "$WORK_A/.claude/settings.json" "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/settings-staging.json" <<'PY'
+python3 - "$WORK_A/.claude/settings.json" "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/settings-staging.json" "$WORK_A" "$CEILING_ROOT/../../config/skills" <<'PY'
 import hashlib
 import json
 import sys
@@ -218,16 +218,36 @@ from pathlib import Path
 
 settings = Path(sys.argv[1])
 receipt = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+worktree = Path(sys.argv[3])
+source_skills = Path(sys.argv[4])
 hook = json.loads(settings.read_text(encoding="utf-8"))["hooks"]["Stop"][0]["hooks"][0]
 expected_command = 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"'
 if hook != {"type": "command", "command": expected_command, "timeout": 30}:
     raise SystemExit(hook)
-if receipt != {
+# Independent recompute of the iter-0088 D4 arm-byte attestation against the
+# SOURCE tree the staging byte-copied (canonical "relpath\0sha256\0size\n").
+# The staged copy is not recomputed here: the arm legitimately mutates it
+# after the receipt (e.g. bytecode caches), while the source cannot change.
+skill_files = sorted(p for p in source_skills.rglob("*") if p.is_file())
+manifest = hashlib.sha256()
+for path in skill_files:
+    data = path.read_bytes()
+    manifest.update(str(path.relative_to(source_skills)).encode("utf-8") + b"\x00")
+    manifest.update(hashlib.sha256(data).hexdigest().encode("ascii") + b"\x00")
+    manifest.update(str(len(data)).encode("ascii") + b"\n")
+expected = {
     "schema_version": 1,
     "stop_hook_staged": True,
     "settings_sha256": hashlib.sha256(settings.read_bytes()).hexdigest(),
-}:
-    raise SystemExit(receipt)
+    "engines_staged": True,
+    "engines_sha256": hashlib.sha256(
+        (worktree / ".devlyn" / "engines.json").read_bytes()
+    ).hexdigest(),
+    "staged_skill_tree_file_count": len(skill_files),
+    "staged_skill_tree_sha256": manifest.hexdigest(),
+}
+if receipt != expected:
+    raise SystemExit(f"receipt={receipt}\nexpected={expected}")
 PY
 grep -q 'changed by A' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/patch.diff"
 ! grep -q 'CLAUDE.md' "$CEILING_ROOT/results/$RUN_ID/FS1-schedule-max-runs/A1/patch.diff"

@@ -377,18 +377,36 @@ stage_devlyn_context() {
 
 write_settings_staging_receipt() {
   local settings="$1"
-  python3 - "$settings" "$RESULT_DIR/settings-staging.json" <<'PY'
+  local worktree="$2"
+  # iter-0088 D4 arm-byte attestation: hash the ARM-MATERIALIZED engines bytes
+  # and staged skill tree here — after staging, before invoke — never the repo
+  # source file. Canonical manifest encoding: sorted "relpath\0sha256\0size\n".
+  python3 - "$settings" "$worktree" "$RESULT_DIR/settings-staging.json" <<'PY'
 import hashlib
 import json
 import sys
 from pathlib import Path
 
 settings = Path(sys.argv[1])
+worktree = Path(sys.argv[2])
 staged = settings.is_file()
-Path(sys.argv[2]).write_text(json.dumps({
+engines = worktree / ".devlyn" / "engines.json"
+skills = worktree / ".claude" / "skills"
+skill_files = sorted(p for p in skills.rglob("*") if p.is_file()) if skills.is_dir() else []
+manifest = hashlib.sha256()
+for path in skill_files:
+    data = path.read_bytes()
+    manifest.update(str(path.relative_to(skills)).encode("utf-8") + b"\x00")
+    manifest.update(hashlib.sha256(data).hexdigest().encode("ascii") + b"\x00")
+    manifest.update(str(len(data)).encode("ascii") + b"\n")
+Path(sys.argv[3]).write_text(json.dumps({
     "schema_version": 1,
     "stop_hook_staged": staged,
     "settings_sha256": hashlib.sha256(settings.read_bytes()).hexdigest() if staged else None,
+    "engines_staged": engines.is_file(),
+    "engines_sha256": hashlib.sha256(engines.read_bytes()).hexdigest() if engines.is_file() else None,
+    "staged_skill_tree_file_count": len(skill_files),
+    "staged_skill_tree_sha256": manifest.hexdigest() if skill_files else None,
 }, indent=2) + "\n", encoding="utf-8")
 PY
 }
@@ -765,7 +783,7 @@ fi
 case "$ARM" in
   A)
     stage_devlyn_context "$WORKTREE"
-    write_settings_staging_receipt "$WORKTREE/.claude/settings.json"
+    write_settings_staging_receipt "$WORKTREE/.claude/settings.json" "$WORKTREE"
     [ -f "$WORKTREE/.claude/skills/devlyn:resolve/SKILL.md" ] || {
       echo "staged devlyn:resolve skill missing" >&2
       exit 1
