@@ -1026,7 +1026,7 @@ fi
 if ! grep -Fq 'per-feature Verification must include a solo-headroom' config/skills/devlyn:ideate/references/project-mode.md \
   || ! grep -Fq 'per-feature Verification must include a solo-headroom' .claude/skills/devlyn:ideate/references/project-mode.md \
   || ! grep -Fq 'per-feature Verification must include a solo-headroom' .agents/skills/devlyn:ideate/references/project-mode.md \
-  || rg -q 'Context or Verification' config/skills/devlyn:ideate/references .claude/skills/devlyn:ideate/references .agents/skills/devlyn:ideate/references; then
+  || grep -rq 'Context or Verification' config/skills/devlyn:ideate/references .claude/skills/devlyn:ideate/references .agents/skills/devlyn:ideate/references; then
   bad "ideate project mode must keep solo-headroom hypothesis inside each pair-candidate feature spec"
 else
   ok "ideate project mode keeps solo-headroom hypothesis inside each pair-candidate feature spec"
