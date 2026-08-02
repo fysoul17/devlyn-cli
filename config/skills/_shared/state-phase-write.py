@@ -38,6 +38,7 @@ import tempfile
 
 VALID_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "FAIL", "NEEDS_WORK", "BLOCKED"}
 VALID_TRIGGERS = {"build_gate", "verify"}
+SPAWN_TRIGGERS = VALID_TRIGGERS | {"plan"}
 PHASE_NAMES = {"plan", "probe_derive", "implement", "surface_close", "build_gate", "cleanup", "verify", "final_report"}
 LEGAL_TRANSITIONS = {
     "plan": {"probe_derive", "implement", "final_report"},
@@ -68,6 +69,14 @@ VALIDATION_EXECUTION_RE = re.compile(
 )
 SURFACE_SKIP_REASON = "auto_surface_close_claude_unavailable"
 SURFACE_RECOVERY_REASON = "surface_close_rolled_back_adjudication_malformed"
+PLAN_MAX_DISPATCHES = 2
+PLAN_SPAWN_RECEIPT_FIELDS = (
+    "round", "started_at", "triggered_by", "engine", "model_requested", "prompt_sha256",
+)
+PLAN_COMPLETION_RECEIPT_FIELDS = (
+    "completed_at", "duration_ms", "verdict", "model_effective",
+)
+PLAN_RECEIPT_FIELDS = PLAN_SPAWN_RECEIPT_FIELDS + PLAN_COMPLETION_RECEIPT_FIELDS
 
 
 def reject_json_constant(token: str) -> None:
@@ -1253,18 +1262,21 @@ def clear_verify_round_artifacts(devlyn: pathlib.Path) -> None:
     (devlyn / "verify-merge.summary.json").unlink(missing_ok=True)
 
 
-def append_phase_history(entry: dict) -> None:
+def is_plan_dispatch_receipt(entry: dict) -> bool:
+    return all(field in entry for field in PLAN_RECEIPT_FIELDS)
+
+
+def append_phase_history(entry: dict, phase: str) -> None:
     if entry.get("started_at") is None:
         return
     history = entry.get("history")
     if not isinstance(history, list):
         history = []
-    history.append({
-        "started_at": entry.get("started_at"),
-        "verdict": entry.get("verdict"),
-        "completed_at": entry.get("completed_at"),
-        "duration_ms": entry.get("duration_ms"),
-    })
+    fields = (
+        PLAN_RECEIPT_FIELDS if phase == "plan" and is_plan_dispatch_receipt(entry)
+        else ("started_at", "verdict", "completed_at", "duration_ms")
+    )
+    history.append({field: entry.get(field) for field in fields})
     entry["history"] = history
 
 
@@ -1275,12 +1287,33 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
              untracked_before: list[str] | None = None) -> None:
     # Merge, don't replace: a phase-gated large run's `exec` progress (or any
     # other field this script doesn't own) survives a fix-loop respawn.
+    phases_value = state.get("phases")
+    entry = phases_value.get(phase) if isinstance(phases_value, dict) else None
+    if phase == "plan":
+        history = entry.get("history", []) if isinstance(entry, dict) else []
+        if not isinstance(history, list):
+            raise SystemExit("error: phases.plan.history must be an array")
+        dispatch_count = len(history) + int(
+            isinstance(entry, dict) and entry.get("started_at") is not None
+        )
+        if dispatch_count >= PLAN_MAX_DISPATCHES:
+            raise SystemExit("BLOCKED:plan-respawn-exhausted")
+        if round_ != dispatch_count:
+            raise SystemExit(
+                f"BLOCKED:plan-round-nonmonotonic: expected={dispatch_count} supplied={round_}"
+            )
+        if not isinstance(engine, str) or not engine:
+            raise SystemExit("error: phases.plan spawn requires --engine")
+        if not isinstance(model, str) or not model:
+            raise SystemExit("error: phases.plan spawn requires --model")
+        if prompt_sha256 is None or not SHA256_RE.fullmatch(prompt_sha256):
+            raise SystemExit("error: phases.plan spawn requires --prompt-sha256")
+        if dispatch_count > 0 and triggered_by is None:
+            raise SystemExit("error: phases.plan re-spawn requires --triggered-by")
     if phase == "surface_close" and engine != "claude":
         raise SystemExit("error: phases.surface_close spawn requires --engine claude")
     if phase == "surface_close" and not model:
         raise SystemExit("error: phases.surface_close spawn requires --model")
-    phases = state.setdefault("phases", {})
-    entry = phases.get(phase)
     if phase == "surface_close" and isinstance(entry, dict) and (
         entry.get("started_at") is not None or entry.get("skipped_reason") is not None
     ):
@@ -1294,8 +1327,12 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
             raise SystemExit("error: phases.surface_close spawn requires --prompt-sha256")
         if untracked_before is None:
             raise SystemExit("error: phases.surface_close spawn requires --untracked-before-json")
+    elif phase == "plan":
+        if input_patch_sha256 is not None or untracked_before is not None:
+            raise SystemExit("error: SURFACE_CLOSE metadata is invalid for this phase")
     elif input_patch_sha256 is not None or prompt_sha256 is not None or untracked_before is not None:
         raise SystemExit("error: SURFACE_CLOSE metadata is invalid for this phase")
+    phases = state.setdefault("phases", {})
     if not isinstance(entry, dict):
         entry = {}
         phases[phase] = entry
@@ -1303,7 +1340,7 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
         raise SystemExit(
             f"error: phases.{phase} has an open span — complete it before respawn"
         )
-    append_phase_history(entry)
+    append_phase_history(entry, phase)
     entry["started_at"] = now_iso()
     entry["completed_at"] = None
     entry["duration_ms"] = None
@@ -1324,9 +1361,10 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     entry["model_effective"] = None
     if pre_sha is not None:
         entry["pre_sha"] = pre_sha
+    if phase in {"plan", "surface_close"}:
+        entry["prompt_sha256"] = prompt_sha256
     if phase == "surface_close":
         entry["input_patch_sha256"] = input_patch_sha256
-        entry["prompt_sha256"] = prompt_sha256
         entry["untracked_before"] = untracked_before
 
 
@@ -1362,6 +1400,16 @@ def do_complete(state: dict, phase: str, verdict: str | None,
     entry = phases.get(phase)
     if not isinstance(entry, dict) or not entry.get("started_at"):
         raise SystemExit(f"error: phases.{phase} was never spawned (no started_at) — cannot complete")
+    if phase == "plan" and entry.get("prompt_sha256") is not None:
+        missing = [field for field in PLAN_SPAWN_RECEIPT_FIELDS if field not in entry]
+        if missing:
+            raise SystemExit(
+                "error: phases.plan spawn receipt is incomplete: " + ",".join(missing)
+            )
+        if engine is not None and engine != entry["engine"]:
+            raise SystemExit("error: phases.plan completion cannot replace spawn engine")
+        if model is not None and model != entry["model_requested"]:
+            raise SystemExit("error: phases.plan completion cannot replace requested model")
     started = parse_iso(entry["started_at"])
     now = now_ms()
     entry["completed_at"] = now_iso(now)
@@ -1387,11 +1435,11 @@ def do_complete(state: dict, phase: str, verdict: str | None,
             artifacts["findings_file"] = findings_file
         if log_file is not None:
             artifacts["log_file"] = log_file
-    if engine is not None:
+    if engine is not None and phase != "plan":
         entry["engine"] = engine
-    if model is not None:
+    if model is not None and phase != "plan":
         entry["model_requested"] = model
-    else:
+    elif phase != "plan":
         entry.setdefault("model_requested", None)
     entry.pop("model", None)
 
@@ -1502,6 +1550,141 @@ def self_test() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         devlyn = pathlib.Path(tmp)
         state_path = devlyn / "pipeline.state.json"
+        write_state(state_path, {"phases": {}})
+
+        # Iter-0089 P-0089-1/2/6: PLAN authorization is a CLI-level,
+        # state-derived ledger contract. Rejections must leave the actual
+        # state file byte-identical, not merely preserve an in-memory copy.
+        script = str(pathlib.Path(__file__).resolve())
+        digest0 = hashlib.sha256(b"plan prompt round 0").hexdigest()
+        digest1 = hashlib.sha256(b"plan prompt round 1").hexdigest()
+
+        def plan_cli(*event_args: str) -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [
+                    sys.executable, script, "--devlyn-dir", str(devlyn),
+                    "--phase", "plan", *event_args,
+                ],
+                capture_output=True, text=True, check=False,
+            )
+
+        def assert_plan_rejected_unchanged(
+            expected_stderr: str, *event_args: str,
+        ) -> None:
+            before = state_path.read_bytes()
+            before_hash = hashlib.sha256(before).hexdigest()
+            result = plan_cli(*event_args)
+            assert result.returncode != 0, result.stdout
+            assert result.stderr.strip() == expected_stderr, result.stderr
+            after = state_path.read_bytes()
+            assert after == before
+            assert hashlib.sha256(after).hexdigest() == before_hash
+
+        required_spawn = (
+            "spawn", "--round", "0", "--engine", "claude",
+            "--model", "plan-test-model", "--prompt-sha256", digest0,
+        )
+        assert_plan_rejected_unchanged(
+            "error: phases.plan spawn requires --engine",
+            "spawn", "--round", "0", "--model", "plan-test-model",
+            "--prompt-sha256", digest0,
+        )
+        assert_plan_rejected_unchanged(
+            "error: phases.plan spawn requires --model",
+            "spawn", "--round", "0", "--engine", "claude",
+            "--prompt-sha256", digest0,
+        )
+        assert_plan_rejected_unchanged(
+            "error: phases.plan spawn requires --prompt-sha256",
+            "spawn", "--round", "0", "--engine", "claude",
+            "--model", "plan-test-model",
+        )
+        assert_plan_rejected_unchanged(
+            "error: phases.plan spawn requires --prompt-sha256",
+            "spawn", "--round", "0", "--engine", "claude",
+            "--model", "plan-test-model", "--prompt-sha256", "ABC",
+        )
+        assert_plan_rejected_unchanged(
+            "BLOCKED:plan-round-nonmonotonic: expected=0 supplied=1",
+            "spawn", "--round", "1", "--engine", "claude",
+            "--model", "plan-test-model", "--prompt-sha256", digest0,
+        )
+
+        result = plan_cli(*required_spawn)
+        assert result.returncode == 0, result.stderr
+        plan0 = read_state(state_path)["phases"]["plan"]
+        assert {field: plan0[field] for field in PLAN_SPAWN_RECEIPT_FIELDS} == {
+            "round": 0,
+            "started_at": plan0["started_at"],
+            "triggered_by": None,
+            "engine": "claude",
+            "model_requested": "plan-test-model",
+            "prompt_sha256": digest0,
+        }
+        result = plan_cli("complete", "--verdict", "NEEDS_WORK")
+        assert result.returncode == 0, result.stderr
+        completed0 = read_state(state_path)["phases"]["plan"]
+        assert all(field in completed0 for field in PLAN_RECEIPT_FIELDS)
+        assert completed0["model_effective"] is None
+        assert completed0["completed_at"] is not None
+        assert completed0["duration_ms"] >= 0
+        assert_plan_rejected_unchanged(
+            "BLOCKED:plan-round-nonmonotonic: expected=1 supplied=0",
+            "spawn", "--round", "0", "--triggered-by", "plan",
+            "--engine", "claude", "--model", "plan-test-model",
+            "--prompt-sha256", digest1,
+        )
+        assert_plan_rejected_unchanged(
+            "BLOCKED:plan-round-nonmonotonic: expected=1 supplied=2",
+            "spawn", "--round", "2", "--triggered-by", "plan",
+            "--engine", "claude", "--model", "plan-test-model",
+            "--prompt-sha256", digest1,
+        )
+        assert_plan_rejected_unchanged(
+            "error: phases.plan re-spawn requires --triggered-by",
+            "spawn", "--round", "1", "--engine", "claude",
+            "--model", "plan-test-model", "--prompt-sha256", digest1,
+        )
+        result = plan_cli(
+            "spawn", "--round", "1", "--triggered-by", "plan",
+            "--engine", "claude", "--model", "plan-test-model",
+            "--prompt-sha256", digest1,
+        )
+        assert result.returncode == 0, result.stderr
+        plan1 = read_state(state_path)["phases"]["plan"]
+        assert len(plan1["history"]) == 1
+        assert set(plan1["history"][0]) == set(PLAN_RECEIPT_FIELDS)
+        assert plan1["history"][0]["prompt_sha256"] == digest0
+        assert plan1["prompt_sha256"] == digest1
+        result = plan_cli("complete", "--verdict", "PASS")
+        assert result.returncode == 0, result.stderr
+        for supplied_round in (0, 1, 2):
+            assert_plan_rejected_unchanged(
+                "BLOCKED:plan-respawn-exhausted",
+                "spawn", "--round", str(supplied_round),
+                "--triggered-by", "plan", "--engine", "claude",
+                "--model", "plan-test-model", "--prompt-sha256", digest1,
+            )
+        old_receipt = {
+            "started_at": "2026-01-01T00:00:00.000Z",
+            "verdict": "PASS",
+            "completed_at": "2026-01-01T00:00:01.000Z",
+            "duration_ms": 1000,
+        }
+        assert not is_plan_dispatch_receipt(old_receipt)
+        assert is_plan_dispatch_receipt(read_state(state_path)["phases"]["plan"])
+        legacy_state = {"phases": {"plan": old_receipt | {"round": 0}}}
+        write_state(state_path, legacy_state)
+        result = plan_cli(
+            "spawn", "--round", "1", "--triggered-by", "plan",
+            "--engine", "claude", "--model", "plan-test-model",
+            "--prompt-sha256", digest1,
+        )
+        assert result.returncode == 0, result.stderr
+        archived_legacy = read_state(state_path)["phases"]["plan"]["history"][0]
+        assert archived_legacy == old_receipt
+        print("PASS iter-0089 PLAN ledger: P-0089-1/2/6")
+
         write_state(state_path, {"phases": {}})
 
         # Round 0: spawn -> complete.
@@ -1776,7 +1959,10 @@ def self_test() -> int:
         # flow does.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "plan", 0, None, None, None, None)
+        do_spawn(
+            state, "plan", 0, None, None, "claude", "plan-test-model",
+            prompt_sha256=digest0,
+        )
         write_state(state_path, state)
         state = read_state(state_path)
         try:
@@ -2484,7 +2670,10 @@ def self_test() -> int:
         )
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "plan", 0, None, None, "claude", "claude-default")
+        do_spawn(
+            state, "plan", 0, None, None, "claude", "claude-default",
+            prompt_sha256=digest0,
+        )
         malformed = do_complete(
             state, "plan", "PASS", None, None, None, None, None, str(claude_log)
         )
@@ -2561,14 +2750,20 @@ def self_test() -> int:
         # Supplied evidence must parse and never silently record null.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "plan", 0, None, None, "claude", "claude-default")
+        do_spawn(
+            state, "plan", 0, None, None, "claude", "claude-default",
+            prompt_sha256=digest0,
+        )
         assert do_complete(state, "plan", "PASS", None, None, None, None, None) is None
         assert state["phases"]["plan"]["model_effective"] is None
         invalid_log = devlyn / "invalid-session.log"
         invalid_log.write_text("no model evidence\n", encoding="utf-8")
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "plan", 0, None, None, "claude", "claude-default")
+        do_spawn(
+            state, "plan", 0, None, None, "claude", "claude-default",
+            prompt_sha256=digest0,
+        )
         invalid = do_complete(
             state, "plan", "PASS", None, None, None, None, None, str(invalid_log)
         )
@@ -2939,7 +3134,7 @@ def main() -> int:
 
     spawn_p = sub.add_parser("spawn")
     spawn_p.add_argument("--round", type=int, required=True)
-    spawn_p.add_argument("--triggered-by", choices=sorted(VALID_TRIGGERS), default=None)
+    spawn_p.add_argument("--triggered-by", choices=sorted(SPAWN_TRIGGERS), default=None)
     spawn_p.add_argument("--pre-sha", default=None)
     spawn_p.add_argument("--input-patch-sha256", default=None)
     spawn_p.add_argument("--prompt-sha256", default=None)
@@ -2966,7 +3161,7 @@ def main() -> int:
     transition_p.add_argument("--engine-session-log", default=None)
     transition_p.add_argument("--next-phase", choices=sorted(PHASE_NAMES), required=True)
     transition_p.add_argument("--next-round", type=int, required=True)
-    transition_p.add_argument("--next-triggered-by", choices=sorted(VALID_TRIGGERS), default=None)
+    transition_p.add_argument("--next-triggered-by", choices=sorted(SPAWN_TRIGGERS), default=None)
     transition_p.add_argument("--next-pre-sha", default=None)
     transition_p.add_argument("--next-input-patch-sha256", default=None)
     transition_p.add_argument("--next-prompt-sha256", default=None)

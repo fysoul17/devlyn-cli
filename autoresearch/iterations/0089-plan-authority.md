@@ -2,7 +2,7 @@
 id: "0089-plan-authority"
 title: "PLAN authority — dispatch ledger, cap enforcement, prompt-delivery attestation, round-aware oracle"
 kind: reliability
-status: REGISTERED-FROZEN 2026-08-02 — 3-seat R0 + R1 reconciliation complete; implementation not started
+status: REGISTERED-FROZEN 2026-08-02; D1-D3 IMPLEMENTED 2026-08-03 — conjuncts 2/3/4 satisfied by execution, conjunct 1 green in self-tests, live end-to-end canary pending
 complexity: medium
 depends_on: ["0088-plan-route-startup-dedup"]
 ---
@@ -312,6 +312,54 @@ Durable receipts: `~/.local/share/nx01/iter0089-reg/seats/`
   timestamps, subagent types, SPW loci `:1324`/`:1407-1417`/`:2492`,
   four-arm startup table). No contested position remains; further rounds
   would require new evidence (anti-asymptotic rule).
+
+## IMPLEMENTED (2026-08-03)
+
+Codex gpt-5.6-sol executor build (7,134 s, per
+`feedback_implementation_to_codex` + executor pin), orchestrator-verified
+gate by gate. Files: `state-phase-write.py` +215/−20 (D1 state-derived
+ledger + cap: `dispatch_count = len(history) + open/completed current
+entry`, rejection BEFORE `append_phase_history`, spawn-known fields +
+digest fail-closed, nonmonotonic round explicit);
+`_shared/phase-prompt-render.py` +80 (D2 renderer);
+`devlyn:resolve/SKILL.md` ±3 lines (PLAN render→digest→spawn contract,
+receipt schema line, round-1 sole legal corrective re-spawn);
+`benchmark/ceiling/scripts/plan-dispatch-oracle.py` +1073 (D3).
+
+**Executed gates (orchestrator re-ran everything)**: SPW self-test incl.
+`PASS iter-0089 PLAN ledger: P-0089-1/2/6` (all round labels rejected on
+full ledger, state hash unchanged); renderer self-test; oracle self-test
+87 assertions; spec-verify self-test; full `lint-skills.sh` with three
+mirrors synced. Five-arm retained replay: F12/C3 → CONTRACT-VIOLATION,
+3 dispatches, startup PASS delta 0, legacy diagnostic
+`697,569 / +516,378, scored:false` present, composition gap 42,978 ms;
+F12/C2 → exactly 1 PLAN of 4 Agent dispatches at H2 (identity conjunct),
+INCOMPLETE per missing delivery evidence; F7/C1 → both round-continuity
+flags; all five arms startup conjunct PASS delta 0.
+
+**Orchestrator finding + edit (disclosed, small, evidence-grounded)**:
+Codex's synthesized F7C1 fixture did not reproduce the real
+engine-bearing pre-D1 current-entry key shape, so live replay mislabeled
+4/5 retained arms `plan-receipt-schema-invalid` + delivery
+`FAIL`(mismatch) where the truth is legacy-unattestable — a null recorded
+digest is UNATTESTABLE, never a MISMATCH (honest-labeling bar; fixtures
+must come from REAL receipts — standing lesson). Fix: legacy-current
+predicate accepts both measured variants (C3 no-engine/null vs F7/C1
+engine+model strings), raw fixtures made byte-faithful, raw F7C1 replay
+assertions added (80→87). Classification outcomes were unchanged
+(INCOMPLETE either way); labels now truthful.
+
+**Codex named deviations accepted**: mirror sync + commit are
+orchestrator-side (its sandbox cannot write `.agents/`); its final VERIFY
+was solo-primary (claude CLI `Not logged in` inside the sandbox);
+H1-v3 re-registration correctly NOT attempted (out of its scope).
+
+**Exit-gate status**: conjunct 2 (cap red) and 3 (identity) and 4
+(startup single clock + named legacy diagnostic) satisfied by execution
+against retained receipts; conjunct 1 (ledger green + delivery
+attestation end-to-end) green in self-tests — the live product canary
+(render → digest → spawn → native dispatch → oracle COMPLETE on a fresh
+run) is the remaining receipt before the gate is called.
 
 ## Principles check
 
