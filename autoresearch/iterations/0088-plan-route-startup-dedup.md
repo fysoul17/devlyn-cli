@@ -291,6 +291,28 @@ local `.claude/skills` mirror is untracked, so no git identity pins it.
    harness-tree digest (`HEAD:benchmark/ceiling`)
    `99464f6f16f3218f2b765ef252ed46e4a7698d19`. Any product or harness byte
    change after the first control invalidates these per D5.
+   **AMENDED 2026-08-02, pre-control (zero arms captured)**: executing D4
+   against the recorded digest exposed a freeze omission —
+   `write_settings_staging_receipt()` at `99464f6f…` receipts only settings
+   bytes, so D4's named locus did not exist and the satisfiability canary had
+   scoped D4 out ("read as classification context, not executed"). Codex seat
+   adjudication (durable receipt
+   `~/.local/share/nx01/iter0088-stageb/seats/r0-codex-d4.log`) REVERSED the
+   orchestrator's experiment-side-watcher reading via its pre-accepted
+   falsifier; named criterion **EXPLICIT INSTRUMENTATION LOCUS** (D4 names the
+   authoring site; D5 says "experiment-side" where external observation is
+   intended). Minimal harness extension landed as `454bc34` — additive
+   receipt fields, `schema_version` stays 1 (`nodeg-cell.py:786` pins it) —
+   and was exercised by execution: `test-ceiling-harness.sh` real-A-arm
+   exact-equality vs source-tree recompute, `test-nodeg-cell.sh`, full skill
+   lint, all green. Control baseline re-recorded: commit
+   `454bc3494bb36d5490c9d8fe80f1dde41735d283`; product-tree digest unchanged
+   `08d7c2a8efe00ae14bf6d48117ee968604c1ac83`; harness-tree digest
+   `86043ad3ab524385926682a0c704817c14901157`. Executed-discovery receipt: a
+   live main-repo staging carries 463 git-ignored files under `config/skills`
+   (workspace dirs + pycache) absent from a fresh worktree — Stage B arms
+   stage from the clean detached worktree; the historical-cohort implication
+   is surfaced, not folded (Goal-locked).
 
 Per the binding lesson: a freeze is not frozen until a seat has tried to
 satisfy every conjunct by execution.
@@ -307,9 +329,10 @@ eight-field recovery equal to `0087:266-275` including effective
 `{"ok": true, "unsatisfied": []}`. Orchestrator (Fable 5) independently
 cross-checked the T1R envelope, F7/C1 spans, and Stage-A worker receipts
 against raw bytes this session. Next execution step: sequential control
-capture F7×2 + F12×2 at baseline `1312cb7` (cohort seat pins, updater-proof
-binary copies, no `/login` while in flight), then the mechanism-pure H1-v3
-candidate and treatments under D1-D5.
+capture F7×2 + F12×2 at the amended baseline `454bc34` (freeze condition 3
+AMENDED entry; cohort seat pins, updater-proof binary copies, no `/login`
+while in flight), then the mechanism-pure H1-v3 candidate and treatments
+under D1-D5.
 
 ## Rejection rules (Stage B)
 
