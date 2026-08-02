@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent iter: [`iterations/0088-plan-route-startup-dedup.md`](iterations/0088-plan-route-startup-dedup.md) (**STAGE A SHIPPED `1312cb7` + STAGE B FROZEN 2026-08-02 — controls next**). Context: [`iterations/0087-startup-semantic-dedup.md`](iterations/0087-startup-semantic-dedup.md) (**CLOSED-FAIL / NOT SHIPPED 2026-07-30**), [`iterations/0086-claude-primary-model-attestation.md`](iterations/0086-claude-primary-model-attestation.md) (**SHIPPED 2026-07-29**), [`iterations/0085-verify-envelope-anatomy.md`](iterations/0085-verify-envelope-anatomy.md) (**SHIPPED 2026-07-29**), [`iterations/0084-node-lint-applicability.md`](iterations/0084-node-lint-applicability.md) (**SHIPPED 2026-07-28**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent iter: [`iterations/0088-plan-route-startup-dedup.md`](iterations/0088-plan-route-startup-dedup.md) (**STAGE A SHIPPED `1312cb7` + D4 locus `454bc34`; STAGE B CLOSED-FAIL protocol-failed-at-controls 2026-08-02 — H1-v3 UNSCORED**). Context: [`iterations/0087-startup-semantic-dedup.md`](iterations/0087-startup-semantic-dedup.md) (**CLOSED-FAIL / NOT SHIPPED 2026-07-30**), [`iterations/0086-claude-primary-model-attestation.md`](iterations/0086-claude-primary-model-attestation.md) (**SHIPPED 2026-07-29**), [`iterations/0085-verify-envelope-anatomy.md`](iterations/0085-verify-envelope-anatomy.md) (**SHIPPED 2026-07-29**), [`iterations/0084-node-lint-applicability.md`](iterations/0084-node-lint-applicability.md) (**SHIPPED 2026-07-28**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,32 +14,42 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-02 (**iter-0088 Stage A shipped; Stage B frozen**)
+## 🚦 START-HERE — state after 2026-08-02 (**iter-0088 CLOSED: Stage A shipped; Stage B protocol-failed-at-controls**)
 
-**Where the loop stands (one paragraph).** iter-0088 re-registered the startup
-lever in two stages after three-seat R0+R1 (Opus 5 headless
-modelUsage-attested, Codex gpt-5.6-sol xhigh, Grok 4.5 read-only allowlist;
-Fable 5 orchestrating and verifying). Stage A shipped `1312cb7`: PLAN is
-orchestrator-fixed on every surface and never inherits `--engine`, an executor
-pin, or `state.engine` — the route flip that burned 0087 F7/T1 is structurally
-closed (lint Check 6k exact-locks, 2/2 live canaries by raw worker-session
-receipts, formal verify-only `rs-20260801T152441Z-4add8821d052` PASS zero
-findings). Stage B (H1-v3 intent-identical; total receipt taxonomy
-PROTOCOL-BLOCKED/COMPLETE/NULL/INCOMPLETE with fail-closed default;
-replacement-not-retry provider policy; arm-byte attestation; exact-identity
-controls) is FROZEN with a Terra-executed satisfiability canary
-(`{"ok":true,"unsatisfied":[]}`). Control baseline = `1312cb7` (product-tree
-`08d7c2a8…`, harness-tree `99464f6f…`). No controls captured yet.
+**Where the loop stands (one paragraph).** iter-0088 Stage A shipped
+`1312cb7`: PLAN is orchestrator-fixed on every surface and never inherits
+`--engine`, an executor pin, or `state.engine` — the 0087 T1 route-flip class
+is structurally closed, and it held 5/5 on the Stage B control arms. Stage B
+executed at amended baseline `454bc34` (a pre-control D4 satisfiability check
+caught a freeze omission — the attestation locus didn't exist at the recorded
+harness digest; Codex adjudication EXPLICIT INSTRUMENTATION LOCUS → minimal
+harness receipt extension, exercised by execution, baseline re-recorded with
+product tree byte-identical). Controls: F7 316,490 / 257,133 ms and F12/C1
+363,974 ms COMPLETE with D4 green — but F12 pair-2 died at the control stage
+(INCOMPLETE ×2: H2-heading worker-prompt composition breaking the frozen
+H1-literal finder, then a replacement arm with THREE PLAN dispatches breaching
+the one-re-spawn product cap + divergent probe routing). Cross-vendor
+unanimous stop-all (FOUR-CONJUNCT DECISION REACHABILITY / SHIP-CREDIT
+CONJUNCT EXHAUSTION): zero treatments ran, **H1-v3 remains UNSCORED, not
+falsified**; reuse requires a new registration + new controls. The measured
+yield: the pre-H1 product's PLAN-region orchestration is stochastic at fixed
+bytes (2/5 controls out-of-instrument, both F12, two distinct classes) —
+that variance is now the leading named lever/target ahead of any startup
+re-measurement. Receipts: `~/.local/share/nx01/iter0088-stageb/`.
 
 **Current frontier and just shipped — context, do not re-derive**:
 
-- **iter-0088 plan-route + startup dedup — STAGE A SHIPPED (`1312cb7`),
-  STAGE B FROZEN (2026-08-02).** `iterations/0088-plan-route-startup-dedup.md`
-  is authoritative (D1-D5, gates, canary receipts; durable receipts at
-  `~/.local/share/nx01/iter0088-stagea/`). Named residual: `README.md:109/:112`
-  still teach PLAN∈executor — README is user territory, surfaced, awaiting the
-  user; `devlyn:engines/SKILL.md` absent from lint `critical_path_files`
-  (follow-up).
+- **iter-0088 plan-route + startup dedup — STAGE A SHIPPED (`1312cb7` + D4
+  locus `454bc34`), STAGE B CLOSED-FAIL protocol-failed-at-controls
+  (2026-08-02, DECISIONS 0088.3).**
+  `iterations/0088-plan-route-startup-dedup.md` § "STAGE B EXECUTED" is
+  authoritative (control table, both INCOMPLETE adjudications with named
+  criteria, stop-all verdict, frozen advisories for the next registration;
+  durable receipts `~/.local/share/nx01/iter0088-stage{a,b}/`). H1-v3
+  UNSCORED, never resumed inside 0088 — a new registration + new controls
+  required. Remaining named residual: `devlyn:engines/SKILL.md` absent from
+  lint `critical_path_files` (follow-up; README residual was RESOLVED
+  2026-08-02 on user directive).
 
 - **iter-0087 startup semantic dedup — CLOSED-FAIL, REVERTED, NOT SHIPPED
   (2026-07-30).**
@@ -133,11 +143,18 @@ must compose transport state with authenticated summaries; isolated rows missed
 the TIMEOUT suppression that fresh Codex found.
 
 **Next work (in order)**:
-1. **Capture iter-0088 Stage B controls, then treatments.** Sequential F7×2 +
-   F12×2 at frozen baseline `1312cb7` under D5 identity rules (cohort seat
-   pins + updater-proof binary copies; no `/login` while in flight), then the
-   mechanism-pure H1-v3 candidate and treatments under D1-D5. iter-0087
-   remains closed — never resume or reuse its budgets/controls/ratios.
+1. **Register the PLAN-region determinism/oracle iter (0089 candidate).**
+   The 0088 Stage B cohort measured the blocker: at fixed control bytes the
+   parent's PLAN orchestration varies out-of-instrument (H2 phase headings;
+   invented multi-round PLAN loops past the one-re-spawn cap; divergent
+   auto-probe routing) — 2/5 controls, both F12. Choose by registration:
+   (a) product determinism fix for worker-prompt composition/dispatch
+   accounting, or (b) an all-dispatch oracle supporting the registered
+   1-or-2 dispatch shape (attest every dispatch, reject ≥3, round-aware
+   envelope, explicit `startup_recomputed == attribution.startup_ms`
+   conjunct) — both seats' advisories are frozen in 0088 § STAGE B EXECUTED.
+   Only after that lands can H1-v3 be re-registered (new controls; 0087 and
+   0088 budgets/controls/ratios are dead — never reuse).
 2. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
    / B_win 36 — single-cohort variance vs. real hook-cohort effect is
    unresolved; the next hook-bearing cohort reads it before any quality

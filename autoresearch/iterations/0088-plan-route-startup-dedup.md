@@ -2,7 +2,7 @@
 id: "0088-plan-route-startup-dedup"
 title: "PLAN route determinism, then startup semantic dedup re-measurement"
 kind: optimization
-status: STAGE A SHIPPED 1312cb7; STAGE B FROZEN 2026-08-02 (controls not yet captured)
+status: STAGE A SHIPPED 1312cb7; STAGE B CLOSED-FAIL protocol-failed-at-controls 2026-08-02 (H1-v3 UNSCORED)
 complexity: medium
 depends_on: ["0087-startup-semantic-dedup"]
 ---
@@ -333,6 +333,89 @@ capture F7×2 + F12×2 at the amended baseline `454bc34` (freeze condition 3
 AMENDED entry; cohort seat pins, updater-proof binary copies, no `/login`
 while in flight), then the mechanism-pure H1-v3 candidate and treatments
 under D1-D5.
+
+## STAGE B EXECUTED — CLOSED protocol-failed-at-controls (2026-08-02)
+
+Sequenced per the frozen registration at amended baseline `454bc34` (D4-locus
+AMENDED entry above). Cohort seats: pinned Claude Code 2.1.215 (`90608b5c…`),
+Codex 0.144.5 vendor binary, Node v20.19.0; run id `iter0088sbc`; receipts +
+runbook durable at `~/.local/share/nx01/iter0088-stageb/`.
+
+| Arm | D1 | D4 | startup ms | PLAN ms | envelope ms |
+|---|---|---|---:|---:|---:|
+| F7/C1 | COMPLETE | green | 213,270 | 103,220 | 316,490 |
+| F7/C2 | COMPLETE | green | 154,197 | 102,936 | 257,133 |
+| F12/C1 | COMPLETE | green | 156,297 | 207,677 | 363,974 |
+| F12/C2 | INCOMPLETE #1 | green | — | — | unscored |
+| F12/C3 (repl.) | INCOMPLETE #2 | green | — | — | unscored |
+
+All five arms: `state.engine=codex`, PLAN orchestrator-fixed claude, outer CLI
+requested `sonnet`, every observed PLAN dispatch effective `claude-sonnet-5` —
+Stage A's route contract never flipped once.
+
+**F12/C2 (INCOMPLETE #1)**: the arm's parent composed the PLAN worker prompt
+with the canonical body under an **H2** heading; the frozen finder (H1
+literal — an executed freeze-canary conjunct, `recovery_checks.py:130`)
+matched nothing; fail-closed. The worker itself is the unique `plan.md`
+Writer, sidechain, `claude-sonnet-5`. Codex REJECTED the orchestrator's
+proposed Write/Edit-based replacement selector — criterion **ALL-DISPATCH
+DOMINANCE** (it under-covers pre-write failed dispatches); two orchestrator
+packet claims refuted (no plan sha exists in state; the H1 literal WAS
+frozen). Replacement consumed (`seats/r1-codex-f12c2.log`).
+
+**F12/C3 (INCOMPLETE #2)**: **three PLAN dispatches** (r0; "ROUND 1,
+CORRECTING ROUND 0"; "ROUND 2, narrow sync fix" — state records two
+superseded NEEDS_WORK rounds then PASS), breaching the product cap of one
+out-of-scope re-spawn + halt-on-second-failure, plus a RISK_PROBES activation
+no other F12 arm took (C1 was small-surface demoted). Receipt sources
+disagree on startup by 516 s (state-span recompute 697,569 vs
+`attribution.startup_ms` 181,191 — rounds 0-1 fall outside the state plan
+span). Codex criterion **FROZEN-ORACLE PLUS CONTRACT-CAP**; Grok: two
+independent frozen failure paths. INCOMPLETE #2 → **F12 pair-2 row fails
+unscored** per the declared D1 budgets.
+
+**Consequence — stop-all, cross-vendor unanimous** (Codex **FOUR-CONJUNCT
+DECISION REACHABILITY**: no remaining arm can alter the registered four-pair
+go/no-go; Grok **SHIP-CREDIT CONJUNCT EXHAUSTION**;
+`seats/r2-{codex,grok}-f12row.log`). No candidate materialized, zero
+treatment arms run, no ratio scored. **H1-v3 remains UNSCORED, not
+falsified.** Reuse requires a new registration and new controls (0087
+precedent). Citation hygiene for that registration: 0087's
+independent-conjunct sentence sits at `0087:107`, outside this file's literal
+carry ranges — 0088's own four-pair comparator text closed the gap this time;
+restate it locally next time.
+
+**Predictions vs outcomes**: P-SB-C1 **FALSIFIED** (two INCOMPLETEs, one
+replacement consumed, one row dead); P-SB-C2 held on every captured arm;
+P-SB-C3 held 5/5 (harness D4 receipt green everywhere); P-SB-C4 held on the
+three COMPLETE envelopes.
+
+**Durable findings**:
+
+1. **Product-side PLAN-region stochasticity at fixed control bytes — the
+   cohort-killer and the leading next lever candidate**: 2/5 controls (both
+   F12, two distinct classes) produced out-of-instrument receipt shapes:
+   (a) instrument-visible heading-level variance in worker-prompt
+   composition (H2 for H1); (b) an invented multi-round PLAN correction loop
+   past the contract cap + divergent auto-probe routing. The
+   violation-matrix lesson (prose contracts are probabilistic) surfacing
+   inside the product's own orchestration.
+2. **D4 arm-byte attestation shipped** (`454bc34`) and ran green on all five
+   arms — engines bytes `5c05302a…`, staged skill tree == pinned source.
+3. **A live main-repo staging carries 463 git-ignored files** under
+   `config/skills` (workspace dirs + pycache) absent from a fresh worktree —
+   historical cohorts staged unpinned bytes; this cohort staged clean (48).
+4. Orchestrator seat record: two positions reversed by seats on named
+   criteria + one self-caught packet correction (startup-absorption
+   wording); all reversals recorded with deltas.
+
+**Advisories frozen for the next registration** (both seats): all-dispatch
+oracle supporting the registered 1-or-2 dispatch shape (attest every
+dispatch, reject ≥3, round-aware envelope); explicit `startup_recomputed ==
+attribution.startup_ms` COMPLETE conjunct; parent composition determinism
+either stabilized first or registered as its own scored gate; stop-all +
+independent-conjunct text restated in-registration; non-ship measurement
+arms only if pre-registered.
 
 ## Rejection rules (Stage B)
 
