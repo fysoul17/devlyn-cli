@@ -70,6 +70,7 @@ devlyn:ideate/references/project-mode.md
 devlyn:ideate/references/from-spec-mode.md
 devlyn:resolve/SKILL.md
 devlyn:queue/SKILL.md
+devlyn:engines/SKILL.md
 devlyn:resolve/references/state-schema.md
 devlyn:resolve/references/free-form-mode.md
 devlyn:resolve/references/phases/plan.md
