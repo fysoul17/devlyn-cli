@@ -2,7 +2,7 @@
 id: "0091-plan-dispatch-boundary-identity"
 title: "PLAN dispatch-boundary identity — outcome-independent oracle + exact Agent.prompt population"
 kind: reliability
-status: STAGE A SHIPPED 2026-08-03 — oracle repair PASS; Stage B not started
+status: STAGE A SHIPPED 2026-08-03; STAGE B CLOSED-FAIL 2026-08-04 — 1/2, B1 reverted
 complexity: medium
 depends_on: ["0089-plan-authority", "0090-plan-delivery-compliance"]
 ---
@@ -387,11 +387,78 @@ All Stage A gates passed:
   `.devlyn/runs/rs-20260803T164146Z-2b9ad898cc76/`.
 
 Per the frozen ship-credit boundary, Stage A earns no PLAN-delivery or H1-v3
-credit. The next action is Stage B only: apply B1's exact native
-`Agent.prompt` data-field wording to the canonical skill and three mirrors,
-pass direct/full-lint/formal gates, then run two serial fresh Sonnet canaries at
-the frozen 2/2 bar. Fable 5 and Grok 4.5 remain judgment seats; Terra owns
-mechanical work.
+credit. Stage B was subsequently executed and closed below; its failed B1
+bytes do not survive.
+
+## Stage B execution and closure — CLOSED-FAIL 2026-08-04
+
+B1 changed only the two PHASE 1 delivery clauses in the canonical resolve skill
+and its mirrors. Candidate commit `9730a72` made Claude Code populate native
+`Agent.prompt` with the exact render bytes, treated Read display as
+non-authoritative, and stated that the field is data rather than shell syntax.
+Fable 5 session `369e7486-3706-484f-86fd-0da22cda64d6` and Grok 4.5 session
+`019fc8c3-4c1c-7d71-8dd5-1df73c99fad1` independently returned `CONFIRM` with
+zero findings. Terra ran the direct gates and full skill lint; formal normal run
+`rs-20260803T165920Z-75dac7daf2e0` passed mechanical, fresh `gpt-5.6-sol`,
+Sonnet pair, merge, finish, and archive gates with zero findings.
+
+The first clean-carrier verify-only run
+`rs-20260803T180254Z-1d48e5add80b` returned `NEEDS_WORK` after its Codex judge
+claimed that replacing the generic verbatim sentence removed the Codex/omp
+delivery contract. Reopening the unchanged engine paragraph showed the named
+counterexample: Codex uses its monitored wrapper with the same compounded
+prompt and omp receives the same compounded prompt as task context. Fable 5
+session `bd278f13-a957-4a47-b402-102fccccfa43` and Grok 4.5 session
+`019fc8d2-d42a-78a1-bd6c-827ef4b31201` independently returned
+`KEEP_ORIGINAL`. The corrected formal run
+`rs-20260803T181601Z-77da8c4d0be1` passed with zero findings.
+
+The frozen one-file goal then ran through two serial fresh Sonnet parents:
+
+- Canary 1: parent session `f3190373-957a-4f63-8309-b16d4969a5bc`, run
+  `rs-20260803T182348Z-de400f8578f7`. One completion-valid receipt bound one
+  top-level Agent `toolu_011v8BKUh3wK1jN5SY1HhR46`; recorded, rendered, and
+  delivered SHA-256 were all `709c87e7…d29c15`. The Stage A oracle returned
+  `COMPLETE`, the plan was valid, and no writer survived. The parent continued
+  into IMPLEMENT after the intended PLAN stop because its redirected stdin did
+  not receive the attempted interrupt; the exact canary-created four-line doc
+  append was removed after writer termination and is preserved as
+  `canary1/post-plan-implement.diff`. This operational tail does not change the
+  already completed PLAN scoring conjuncts.
+- Canary 2: parent session `2b3511a8-bc9a-41f9-bdfe-9a177e78ca05`, run
+  `rs-20260803T183051Z-01941eec943b`. One completion-valid receipt contained
+  two top-level Agent calls: `toolu_01VHyvLgF7naatc6TGUxjP6q` at raw parent
+  line 129 and `toolu_01KTY3tPwJ8XPs5xT89unHE6` at line 131. The first exact
+  8,902-byte prompt call was rejected because the parent supplied unsupported
+  `mode: "bypassAll"`; it then issued the second exact call with
+  `mode: "bypassPermissions"`. Both prompt digests equaled the recorded render
+  `0078aefb…d5ad2`, but the frozen oracle counts both captured in-window tool
+  uses and returned evidence-complete `CONTRACT-VIOLATION` for multiple PLAN
+  Agents. The arm completed and therefore receives no replacement.
+
+The terminal score is **1/2**, below the frozen **2/2** ship bar. Fable 5
+session `499f3f22-417d-4502-9d83-0d7220ed880f` returned
+`STAGE_B_FAIL_REVERT_B1`; Grok 4.5 session
+`019fc8ea-bc63-7551-9398-f3a9d57d434e` independently returned the same
+verdict. Terra `gpt-5.6-terra` session
+`019fc8ea-ba2e-7350-8306-2b0828604cc3` replayed both oracles and raw Agent
+events and returned `FAIL_1_OF_2_REVERT_B1`. Durable raw evidence lives under
+`~/.local/share/nx01/iter0091-stageb/canary{1,2}/`.
+
+Per the pre-registered terminal rule, commit `1e7da13` reverted B1 in the two
+tracked skill files and the ignored Claude install mirror to the Stage A
+baseline. Fresh Terra session `019fc8f1-106b-7880-b697-a1cac30bdd67` proved
+three-way mirror equality, exact equality to `945ec9b` for the tracked skill
+paths, `git diff --check`, and full `bash scripts/lint-skills.sh`; all exited 0
+and lint ended `All checks passed.` Stage A remains shipped, Stage B earns no
+delivery credit, and H1-v3 remains blocked.
+
+The newly observed failure class is the native Agent invocation's supported
+`mode` value and validation-retry cardinality, not prompt population: both
+Canary 2 attempts carried the correct prompt bytes. Full native Agent-call
+schema/mode pinning was explicitly OUT of 0091, so this iteration cannot reopen.
+Any successor requires a new registration that preserves exact prompt-byte
+population while closing the observed invalid-mode/duplicate-dispatch path.
 
 ## Principles check (frozen)
 

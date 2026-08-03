@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent iter: [`iterations/0091-plan-dispatch-boundary-identity.md`](iterations/0091-plan-dispatch-boundary-identity.md) (**STAGE A SHIPPED 2026-08-03 at `7c446c1`; Stage B exact Agent.prompt population not started**). Context: [`iterations/0090-plan-delivery-compliance.md`](iterations/0090-plan-delivery-compliance.md) (**IMPLEMENTED 2026-08-03, NO SHIP CREDIT — live delivery compliance 1/2; H1-v3 blocked**), [`iterations/0089-plan-authority.md`](iterations/0089-plan-authority.md) (**D1-D3 IMPLEMENTED 2026-08-03, NO SHIP CREDIT — baseline compliance 0/2**), [`iterations/0088-plan-route-startup-dedup.md`](iterations/0088-plan-route-startup-dedup.md) (**STAGE A SHIPPED `1312cb7` + D4 locus `454bc34`; STAGE B CLOSED-FAIL protocol-failed-at-controls 2026-08-02 — H1-v3 UNSCORED**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent iter: [`iterations/0091-plan-dispatch-boundary-identity.md`](iterations/0091-plan-dispatch-boundary-identity.md) (**STAGE A SHIPPED 2026-08-03 at `7c446c1`; STAGE B CLOSED-FAIL 2026-08-04 at 1/2, B1 reverted by `1e7da13`**). Context: [`iterations/0090-plan-delivery-compliance.md`](iterations/0090-plan-delivery-compliance.md) (**IMPLEMENTED 2026-08-03, NO SHIP CREDIT — live delivery compliance 1/2; H1-v3 blocked**), [`iterations/0089-plan-authority.md`](iterations/0089-plan-authority.md) (**D1-D3 IMPLEMENTED 2026-08-03, NO SHIP CREDIT — baseline compliance 0/2**), [`iterations/0088-plan-route-startup-dedup.md`](iterations/0088-plan-route-startup-dedup.md) (**STAGE A SHIPPED `1312cb7` + D4 locus `454bc34`; STAGE B CLOSED-FAIL protocol-failed-at-controls 2026-08-02 — H1-v3 UNSCORED**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,32 +14,33 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-03 (**iter-0091 Stage A SHIPPED; Stage B not started**)
+## 🚦 START-HERE — state after 2026-08-04 (**iter-0091 Stage A SHIPPED; Stage B CLOSED-FAIL 1/2 and reverted**)
 
-**Where the loop stands (one paragraph).** iter-0091 Stage A shipped at
-`7c446c1` after Fable 5/Grok 4.5 registration, Terra execution, and final formal
-run `rs-20260803T164146Z-2b9ad898cc76` passed mechanical/Codex/Sonnet with zero
-findings. The oracle now uses completion-valid receipt-window + every top-level
-Agent event, schema 2, and classifies 0090 Canary 1's fully captured
-`b5f3c822…` versus `4474b851…` mismatch as a product violation. Stage B next
-clarifies that native `Agent.prompt` contains the exact
-`.devlyn/plan.prompt` file/render bytes—not Read UI text or shell/path
-indirection—and scores two serial Sonnet canaries at 2/2. If B fails, its prose
-reverts while independently shipped A stays. Stage B has not started; H1-v3
-remains blocked. Registration receipts: `~/.local/share/nx01/iter0091-reg/seats/`;
-Stage A adjudication: `~/.local/share/nx01/iter0091-stagea/`.
+**Where the loop stands (one paragraph).** iter-0091 Stage A remains shipped at
+`7c446c1`. Stage B's exact `Agent.prompt` wording passed direct, full-lint, and
+formal pair gates, but its two serial Sonnet canaries scored 1/2: C1 had one
+byte-equal Agent and was `COMPLETE`; C2 carried the correct bytes twice after
+an unsupported `mode: "bypassAll"` validation error and was evidence-complete
+`CONTRACT-VIOLATION` for two in-window Agents. A completed noncompliant arm gets
+no replacement, so Fable 5, Grok 4.5, and Terra all returned fail/revert. B1 was
+reverted by `1e7da13`; fresh Terra full lint passed. H1-v3 remains blocked.
+Registration receipts: `~/.local/share/nx01/iter0091-reg/seats/`; Stage A:
+`~/.local/share/nx01/iter0091-stagea/`; Stage B:
+`~/.local/share/nx01/iter0091-stageb/`.
 
 **Current frontier and just shipped — context, do not re-derive**:
 
-- **iter-0091 PLAN dispatch-boundary identity — STAGE A SHIPPED, STAGE B NOT
-  STARTED (2026-08-03, `c99f3da` + `1818b85` + `7c446c1`, DECISIONS
-  0091.1/0091.2).** The outcome-independent schema-2 oracle conserves all seven
+- **iter-0091 PLAN dispatch-boundary identity — STAGE A SHIPPED; STAGE B
+  CLOSED-FAIL 1/2 AND REVERTED (2026-08-03/04, `c99f3da` + `1818b85` +
+  `7c446c1`, then B1 rollback `1e7da13`; DECISIONS 0091.1–0091.3).** The
+  outcome-independent schema-2 oracle conserves all seven
   retained arms and closes reversed-window, duplicate-id, and overflowing-time
   edges with 137 assertions. Fable 5/Grok 4.5 preserved frozen P-0091-A3 when a
   formal carrier dropped its outside-window qualifier. Final formal VERIFY
   `rs-20260803T164146Z-2b9ad898cc76` passed mechanical/Codex/Sonnet with zero
-  findings. Next action is frozen Stage B B1 wording, direct/full-lint/formal
-  gates, then two serial Sonnet canaries at 2/2; A stays regardless of B.
+  findings. Stage B's C1 was byte-equal `COMPLETE`; C2's invalid native Agent
+  mode caused two exact-prompt tool uses in one receipt window, violating the
+  cardinality gate. B1 did not survive; Stage A stays.
 
 - **iter-0090 PLAN delivery compliance — IMPLEMENTED `f273877`, NO SHIP
   CREDIT (2026-08-03, DECISIONS 0090.1).** The scoped renderer treatment and
@@ -113,14 +114,14 @@ must compose transport state with authenticated summaries; isolated rows missed
 the TIMEOUT suppression that fresh Codex found.
 
 **Next work (in order)**:
-1. **Execute iter-0091 Stage B only.** Stage A is shipped and frozen at
-   `7c446c1`. Replace only the exact PHASE 1 delivery clauses in the canonical
-   resolve skill and three mirrors with B1's file-bytes/data-not-shell contract;
-   preserve renderer, adapters, state, engine/model choice, and worker bytes.
-   Route mechanical/full-lint work to Terra, keep Fable 5 and Grok 4.5 as
-   judgment seats, pass formal pair VERIFY, then run two serial fresh Sonnet
-   PLAN canaries at the frozen 2/2 gate. Revert only B1/mirrors if B fails;
-   shipped Stage A remains. H1-v3 stays blocked until B earns delivery credit.
+1. **Open a new successor registration; do not reopen iter-0091.** Preserve
+   Stage A's outcome-independent oracle and re-register the minimum product
+   treatment that both populates exact `Agent.prompt` bytes and prevents the
+   observed unsupported-mode validation retry from creating multiple
+   in-window Agent candidates. Do not silently broaden this into a full native
+   Agent schema pin. Keep Fable 5 and Grok 4.5 as judgment seats, Terra for
+   mechanical work, and Sonnet for live PLAN arms. H1-v3 stays blocked until a
+   successor earns delivery credit.
 2. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
    / B_win 36 — single-cohort variance vs. real hook-cohort effect is
    unresolved; the next hook-bearing cohort reads it before any quality
