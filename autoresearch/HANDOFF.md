@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent iter: [`iterations/0089-plan-authority.md`](iterations/0089-plan-authority.md) (**D1-D3 IMPLEMENTED 2026-08-03, NO SHIP CREDIT — conjunct 1 open: live delivery compliance 0/2**). Context: [`iterations/0088-plan-route-startup-dedup.md`](iterations/0088-plan-route-startup-dedup.md) (**STAGE A SHIPPED `1312cb7` + D4 locus `454bc34`; STAGE B CLOSED-FAIL protocol-failed-at-controls 2026-08-02 — H1-v3 UNSCORED**), [`iterations/0087-startup-semantic-dedup.md`](iterations/0087-startup-semantic-dedup.md) (**CLOSED-FAIL / NOT SHIPPED 2026-07-30**), [`iterations/0086-claude-primary-model-attestation.md`](iterations/0086-claude-primary-model-attestation.md) (**SHIPPED 2026-07-29**), [`iterations/0085-verify-envelope-anatomy.md`](iterations/0085-verify-envelope-anatomy.md) (**SHIPPED 2026-07-29**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent iter: [`iterations/0090-plan-delivery-compliance.md`](iterations/0090-plan-delivery-compliance.md) (**IMPLEMENTED 2026-08-03, NO SHIP CREDIT — live delivery compliance 1/2; H1-v3 blocked**). Context: [`iterations/0089-plan-authority.md`](iterations/0089-plan-authority.md) (**D1-D3 IMPLEMENTED 2026-08-03, NO SHIP CREDIT — baseline compliance 0/2**), [`iterations/0088-plan-route-startup-dedup.md`](iterations/0088-plan-route-startup-dedup.md) (**STAGE A SHIPPED `1312cb7` + D4 locus `454bc34`; STAGE B CLOSED-FAIL protocol-failed-at-controls 2026-08-02 — H1-v3 UNSCORED**), [`iterations/0087-startup-semantic-dedup.md`](iterations/0087-startup-semantic-dedup.md) (**CLOSED-FAIL / NOT SHIPPED 2026-07-30**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,30 +14,38 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-02 (**iter-0088 CLOSED: Stage A shipped; Stage B protocol-failed-at-controls**)
+## 🚦 START-HERE — state after 2026-08-03 (**iter-0090 IMPLEMENTED, NO SHIP CREDIT: live delivery 1/2**)
 
-**Where the loop stands (one paragraph).** iter-0088 Stage A shipped
-`1312cb7`: PLAN is orchestrator-fixed on every surface and never inherits
-`--engine`, an executor pin, or `state.engine` — the 0087 T1 route-flip class
-is structurally closed, and it held 5/5 on the Stage B control arms. Stage B
-executed at amended baseline `454bc34` (a pre-control D4 satisfiability check
-caught a freeze omission — the attestation locus didn't exist at the recorded
-harness digest; Codex adjudication EXPLICIT INSTRUMENTATION LOCUS → minimal
-harness receipt extension, exercised by execution, baseline re-recorded with
-product tree byte-identical). Controls: F7 316,490 / 257,133 ms and F12/C1
-363,974 ms COMPLETE with D4 green — but F12 pair-2 died at the control stage
-(INCOMPLETE ×2: H2-heading worker-prompt composition breaking the frozen
-H1-literal finder, then a replacement arm with THREE PLAN dispatches breaching
-the one-re-spawn product cap + divergent probe routing). Cross-vendor
-unanimous stop-all (FOUR-CONJUNCT DECISION REACHABILITY / SHIP-CREDIT
-CONJUNCT EXHAUSTION): zero treatments ran, **H1-v3 remains UNSCORED, not
-falsified**; reuse requires a new registration + new controls. The measured
-yield: the pre-H1 product's PLAN-region orchestration is stochastic at fixed
-bytes (2/5 controls out-of-instrument, both F12, two distinct classes) —
-that variance is now the leading named lever/target ahead of any startup
-re-measurement. Receipts: `~/.local/share/nx01/iter0088-stageb/`.
+**Where the loop stands (one paragraph).** iter-0090 implemented the frozen
+worker-scoped PLAN render at `f273877`; all mechanical checks, direct full
+lint, Codex primary VERIFY, and Sonnet pair VERIFY passed. The only scoring
+gate was two live Sonnet PLAN deliveries. Canary 2 delivered the rendered bytes
+exactly, but Canary 1 populated `Agent.prompt` with the literal shell-style
+string `$(cat …/.devlyn/plan.prompt)` instead of the recorded render. Its raw
+capture, complete ledger receipt, and valid plan make it a completed
+non-compliant arm, not replaceable infrastructure INCOMPLETE. Fable 5 and Grok
+4.5 independently converged on **NOT-SHIP, 1/2**. Therefore 0090 earns no ship
+credit and H1-v3 remains blocked. The next registration must target
+render-to-`Agent.prompt` identity and separately bind the oracle residual that
+mislabels captured heading-less mismatches as missing evidence. Receipts:
+`~/.local/share/nx01/iter0090-reg/canaries/`.
 
 **Current frontier and just shipped — context, do not re-derive**:
+
+- **iter-0090 PLAN delivery compliance — IMPLEMENTED `f273877`, NO SHIP
+  CREDIT (2026-08-03, DECISIONS 0090.1).** The scoped renderer treatment and
+  verification gates are green; the live outcome is 1/2. Canary 1's sole
+  `Agent` tool use delivered a 68-byte literal path indirection instead of the
+  9,196-byte render; Canary 2 was byte-identical and oracle COMPLETE. Both
+  judgment seats classify Canary 1 NONCOMPLIANT and unreplaceable. The
+  iteration file's implementation/adjudication section and external canary
+  receipts are authoritative.
+
+- **iter-0089 PLAN authority — D1-D3 IMPLEMENTED `6795976` + `830f886`, NO
+  SHIP CREDIT (2026-08-03, DECISIONS 0089.2).** Ledger, state-derived cap,
+  renderer digest, and all-dispatch oracle landed; two baseline Sonnet
+  deliveries both pruned worker-irrelevant judge invocation content, so live
+  delivery compliance was 0/2 and transferred to 0090.
 
 - **iter-0088 plan-route + startup dedup — STAGE A SHIPPED (`1312cb7` + D4
   locus `454bc34`), STAGE B CLOSED-FAIL protocol-failed-at-controls
@@ -96,21 +104,14 @@ must compose transport state with authenticated summaries; isolated rows missed
 the TIMEOUT suppression that fresh Codex found.
 
 **Next work (in order)**:
-1. **Register the delivery-compliance iteration (0090)** from 0089's
-   frozen advisory (`iterations/0089-plan-authority.md` § LIVE CANARIES —
-   adjudication): D1-D3 are implemented and green (`6795976`+`830f886`;
-   ledger/cap/oracle conjuncts 2/3/4 satisfied by execution) but 0089
-   took NO ship credit — live PLAN delivery compliance measured **0/2**,
-   both canaries pruning the same class (judge-invocation adapter content
-   irrelevant to a PLAN worker). Frozen hypothesis: worker-scope the
-   render inputs (no forcing), score delivery compliance as the
-   registered outcome via the shipped attestation instrument. Receipts:
-   `~/.local/share/nx01/iter0089-reg/` (seats, canary1/2, R-final
-   NOT-SHIP). H1-v3 re-registration stays blocked behind this gate.
-   New binding operator rules from the canaries: **never launch a
-   pipeline while another process is writing the same repo `.devlyn`**
-   (check for leftovers first — detached builds leave writers), and the
-   BENCH_WORKDIR self-test hermeticity class is fixed at `830f886`.
+1. **Register the successor PLAN dispatch-boundary identity iteration.** The
+   treatment question is how the parent populates the non-shell `Agent.prompt`
+   field from the recorded render; do not reopen 0090's renderer projection or
+   silently force delivery. Carry the heading-stem oracle misclassification as
+   an explicit, separately scored instrument residual. Freeze with Fable 5 and
+   Grok 4.5 before implementation or new live arms; route mechanical probes to
+   Terra and live PLAN canaries to Sonnet. H1-v3 re-registration stays blocked
+   until a successor earns its own delivery gate.
 2. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
    / B_win 36 — single-cohort variance vs. real hook-cohort effect is
    unresolved; the next hook-bearing cohort reads it before any quality

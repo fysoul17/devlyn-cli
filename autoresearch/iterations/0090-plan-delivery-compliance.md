@@ -2,7 +2,7 @@
 id: "0090-plan-delivery-compliance"
 title: "PLAN delivery compliance — worker-scoped render inputs"
 kind: reliability
-status: REGISTERED-FROZEN 2026-08-03 — 3-seat R0/R1 complete; implementation not started
+status: IMPLEMENTED 2026-08-03 — NO SHIP CREDIT; live delivery compliance 1/2; H1-v3 blocked
 complexity: medium
 depends_on: ["0089-plan-authority"]
 ---
@@ -206,22 +206,22 @@ it does not prove general prompt-delivery determinism for other phases/engines.
       finding or contested position remains.
 - [x] FREEZE before implementation or canary execution.
 
-## Principles check (draft)
+## Principles check (final)
 
 0. Not score-chasing: closes the one open delivery conjunct that blocks the
    already-registered H1-v3 go/no-go. ✅
 7. Mission-bound: Mission 1 single-task orchestration reliability; M1.5 and
    parallel surfaces excluded. ✅
 1. No overengineering: project existing metadata sections at the existing
-   renderer; no new file/flag/schema/oracle. ✅ candidate
+   renderer; no new file/flag/schema/oracle. ✅
 2. No guesswork: 0/2 retained baseline, 2/2 precommitted treatment bar, detector
-   success explicitly insufficient. ✅ candidate
+   success explicitly insufficient; the measured 1/2 result controls. ✅
 3. No workaround: repair the worker/orchestrator boundary that caused both
-   rewrites; no stronger imperative or forced delivery. ✅ candidate
+   rewrites; no stronger imperative or forced delivery. ✅
 4/5. Worldclass/best practice: exact-byte contract remains fail-closed; raw
-   invocation surface conserved; official guidance cited. ✅ candidate
+   invocation surface conserved; official guidance cited. ✅
 6. Layer-cost-justified: zero added model calls in product; only local byte
-   projection. ✅ candidate
+   projection. ✅
 
 ## R0 record + named deltas (2026-08-03)
 
@@ -262,3 +262,56 @@ renderer mirrors, and 0089 in-repo adjudication record. Both marked amendments
 Any design, prediction, residual, replacement, or exit-gate change after this
 line requires a dated named-delta amendment before implementation/test output
 is observed; silent in-flight substitution is forbidden.
+
+## Implementation and live adjudication (2026-08-03)
+
+The frozen registration landed without expanding its product surface:
+
+- registration freeze: `b2f9c76`;
+- implementation: `f273877` — canonical renderer, PLAN body, and resolve
+  contract plus tracked `.agents` mirrors; ignored `.claude` mirrors were
+  synchronized byte-for-byte;
+- direct full skill lint: exit 0, `All checks passed` (123.57 seconds);
+- formal verify-only run `rs-20260803T135631Z-5cbc6a7c37e9`: all 12
+  mechanical commands PASS, Codex primary PASS, Sonnet pair PASS, zero merged
+  findings, finish gate PASS. The full lint was consumed as direct BUILD_GATE
+  evidence rather than duplicated inside the fixed 60-second literal verifier,
+  per the iter-0085a carrier contract.
+
+The implementation gates therefore passed, but they were explicitly
+non-scoring for the live delivery outcome. Both serial canaries used the same
+one-file placeholder goal and stopped after the first schema-complete PLAN
+receipt plus valid `.devlyn/plan.md`; pre-launch and post-stop receipts show no
+surviving repository writer.
+
+| Arm | Raw result | Frozen classification |
+|---|---|---|
+| Canary 1 — run `rs-20260803T140946Z-a6616b2c408e`, session `f202bd4a-0170-479f-8cf9-387f775ccc62` | One `Agent` tool use delivered the 68-byte literal `$(cat /Users/aipalm/Documents/GitHub/devlyn-cli/.devlyn/plan.prompt)` instead of the 9,196-byte recorded render `4474b851…`; `delivery.diff` replaces all 112 rendered lines. Ledger receipt and one-file plan are valid. The oracle reports `INCOMPLETE` only because its heading-stem finder counts this captured tool use as non-PLAN (`agent_tool_use_count=1`, `plan_dispatch_count=0`); delivery attestation is FAIL. | **NONCOMPLIANT**, completed and replacement-ineligible. Capture exists and proves a mismatch; detector labeling cannot convert adverse evidence into missing infrastructure evidence. |
+| Canary 2 — run `rs-20260803T141850Z-81b6e448870c`, session `88479197-185c-4da4-aaec-ee906b8e0754` | Exactly one heading-bearing PLAN dispatch; recorded, rendered, and delivered SHA-256 all `65b101ba…`; oracle `COMPLETE`, delivery PASS, startup PASS, valid one-file plan. | **COMPLIANT**. |
+
+Score: **1/2** against the frozen **2/2** requirement. Exit-gate conjunct 3
+fails, so 0090 earns **NO SHIP CREDIT** and H1-v3 remains blocked. No
+replacement canary is authorized: Canary 1 is a completed non-compliant arm,
+not infrastructure-only INCOMPLETE.
+
+Fable 5 and Grok 4.5 independently read the frozen registration and raw
+receipts, then unanimously returned `NOT-SHIP`, `CANARY-1: NONCOMPLIANT`, and
+`SCORE: 1/2`. Receipts are durable at
+`~/.local/share/nx01/iter0090-reg/canaries/`, especially
+`canary1/delivery.diff`, both `result/plan-dispatch-oracle.json` files,
+`fable-adjudication.log`, and `grok-adjudication-final.log`.
+
+## Successor frontier — named, not implemented
+
+Canary 2 proves the worker-scoped renderer can be delivered byte-identically;
+Canary 1 exposes the next violated invariant at the parent dispatch boundary:
+the bytes populated into `Agent.prompt` must equal the recorded render, not a
+shell-style path indirection that the non-shell tool field never evaluates.
+Any treatment requires a new frozen registration before code or live arms.
+
+Carry one separate instrumentation residual into that registration: the
+current oracle's heading-stem identity finder classifies a fully captured,
+heading-less mismatched Agent dispatch as `INCOMPLETE`/missing evidence. This
+made replacement status disputable even though the raw bytes decide the arm.
+Do not silently fix the oracle inside the dispatch treatment; specify and
+score the classification boundary explicitly.
