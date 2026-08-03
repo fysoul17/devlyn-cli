@@ -36,10 +36,13 @@ def parse_time(value: object) -> dt.datetime:
     if not isinstance(value, str) or not value:
         raise ValueError("timestamp missing or malformed")
     text = value[:-1] + "+00:00" if value.endswith("Z") else value
-    parsed = dt.datetime.fromisoformat(text)
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=dt.timezone.utc)
-    return parsed.astimezone(dt.timezone.utc)
+    try:
+        parsed = dt.datetime.fromisoformat(text)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt.timezone.utc)
+        return parsed.astimezone(dt.timezone.utc)
+    except OverflowError as exc:
+        raise ValueError("timestamp missing or malformed") from exc
 
 
 def milliseconds(start: object, end: object) -> int:
@@ -1147,6 +1150,25 @@ def self_test() -> int:
             "plan-receipt-schema-invalid" in malformed_receipt["evidence"]["issues"],
             True,
         )
+
+        overflow_receipt_result = write_fixture(
+            root, "overflow-receipt-time", [copy.deepcopy(c2_records[0])],
+            source_name="C2",
+        )
+        overflow_receipt_state_path = next(
+            (overflow_receipt_result / "devlyn-snapshot").glob(
+                "runs/*/pipeline.state.json"
+            )
+        )
+        overflow_receipt_state = json.loads(overflow_receipt_state_path.read_text())
+        overflow_receipt_state["phases"]["plan"]["started_at"] = (
+            "0001-01-01T00:00:00+14:00"
+        )
+        overflow_receipt_state_path.write_text(json.dumps(overflow_receipt_state) + "\n")
+        overflow_receipt = analyze(overflow_receipt_result)
+        equal(overflow_receipt["classification"], "INCOMPLETE")
+        equal(overflow_receipt["ledger"]["receipts"][0]["schema"], "invalid")
+        equal(overflow_receipt["dispatch_identity"]["authorization_windows"], [])
 
         reversed_receipt_result = write_fixture(
             root, "reversed-receipt-window", [copy.deepcopy(c2_records[0])],
