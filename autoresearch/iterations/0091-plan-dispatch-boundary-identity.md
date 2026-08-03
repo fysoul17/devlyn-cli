@@ -2,7 +2,7 @@
 id: "0091-plan-dispatch-boundary-identity"
 title: "PLAN dispatch-boundary identity — outcome-independent oracle + exact Agent.prompt population"
 kind: reliability
-status: REGISTERED-FROZEN 2026-08-03 — Fable 5/Grok 4.5 R1 CONFIRM; Terra satisfiability PASS
+status: STAGE A SHIPPED 2026-08-03 — oracle repair PASS; Stage B not started
 complexity: medium
 depends_on: ["0089-plan-authority", "0090-plan-delivery-compliance"]
 ---
@@ -342,6 +342,56 @@ timestamps, and candidate events means the product wrote invalid authorization
 state. Grok preserved the same product-violation position. Root therefore
 freezes overlap/multi-window membership as `CONTRACT-VIOLATION`, with every
 candidate surfaced and no silent binding.
+
+## Stage A implementation and gate — SHIPPED 2026-08-03
+
+Stage A shipped as the independently useful measurement repair authorized by
+the frozen split. Registration base is `4cf3bdd`; implementation commit
+`c99f3da` replaced heading-content/index-zip identity with schema-2
+completion-valid receipt windows plus every captured top-level parent `Agent`
+event. Formal review then found that tool-use-id deduplication collapsed two
+distinct same-id events; root-fix `1818b85` removed that collapse and added the
+two-event ambiguity regression. A later formal review found that
+`0001-01-01T00:00:00+14:00` could overflow while normalizing to UTC; root-fix
+`7c446c1` converts that boundary to `ValueError` in the common parser and adds
+an integration regression. No Stage B product prose changed.
+
+The second formal run also claimed that a heading-positive PLAN call outside
+its authorization window should add missing evidence. That premise omitted the
+qualifier frozen in P-0091-A3 (lines 210-217). Fable 5 session
+`25ce8cf9-f3a0-45a5-92fc-7305f1866e0b` returned `OBJECT`; Grok 4.5 session
+`019fc876-25be-7123-95b9-c5d2ce226c6d` independently returned
+`KEEP_ORIGINAL`. The transient product change was discarded, the formal
+carrier was corrected, and the frozen behavior remains: captured
+heading-positive off-ledger PLAN evidence is an evidence-complete
+`CONTRACT-VIOLATION`; plain zero-binding is `INCOMPLETE` only when that
+conclusive evidence is absent. Receipt:
+`~/.local/share/nx01/iter0091-stagea/round2-adjudication.md`.
+
+All Stage A gates passed:
+
+- oracle compile and `SELFTEST PASS: 137 assertions`;
+- seven retained raw replays, including 0090 C1 as evidence-complete
+  `CONTRACT-VIOLATION` at delivered `b5f3c822…` versus recorded `4474b851…`,
+  and C2 remaining byte-equal `COMPLETE` at `65b101ba…`;
+- full `bash scripts/lint-skills.sh` with `All checks passed`;
+- actual Terra mechanical sessions
+  `019fc85b-8917-7e42-8de1-1a55e2849482` and
+  `019fc87c-4373-72d3-8426-f5d9f79f0f51` passed the same-id and final
+  137-assertion regressions respectively;
+- final formal verify-only run `rs-20260803T164146Z-2b9ad898cc76` passed all
+  five literal commands, fresh monitored `gpt-5.6-sol` primary, fresh read-only
+  Sonnet pair, deterministic merge, finish gate, and archive with zero
+  findings. Candidate HEAD was `7c446c1576719f3a0c88704cc6828dbb98dbae67`;
+  tracked status stayed clean and 25 artifacts are archived under
+  `.devlyn/runs/rs-20260803T164146Z-2b9ad898cc76/`.
+
+Per the frozen ship-credit boundary, Stage A earns no PLAN-delivery or H1-v3
+credit. The next action is Stage B only: apply B1's exact native
+`Agent.prompt` data-field wording to the canonical skill and three mirrors,
+pass direct/full-lint/formal gates, then run two serial fresh Sonnet canaries at
+the frozen 2/2 bar. Fable 5 and Grok 4.5 remain judgment seats; Terra owns
+mechanical work.
 
 ## Principles check (frozen)
 
