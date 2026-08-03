@@ -6,7 +6,38 @@ import argparse
 import hashlib
 import os
 import pathlib
+import re
 import tempfile
+
+
+EXCLUDED_ADAPTER_SECTION = re.compile(
+    rb"^## (?:Role eligibility|Invocation)(?:\r?\n|\Z).*?(?=^## |\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+EXCLUDED_ADAPTER_HEADING = re.compile(
+    rb"^## (?:Role eligibility|Invocation)\r?$", re.MULTILINE
+)
+
+
+def project_adapter(content: bytes) -> bytes:
+    projected = EXCLUDED_ADAPTER_SECTION.sub(b"", content)
+    assert EXCLUDED_ADAPTER_HEADING.search(projected) is None
+    return projected
+
+
+def validate_plan_context(task_context: pathlib.Path, content: bytes) -> None:
+    if task_context.name != "plan.task-context":
+        return
+    working_directory = pathlib.Path.cwd()
+    expected = (
+        b"Working directory: "
+        + os.fsencode(working_directory)
+        + b"\nPlan output: "
+        + os.fsencode(working_directory / ".devlyn" / "plan.md")
+        + b"\n"
+    )
+    if not content.startswith(expected):
+        raise SystemExit("error: invalid PLAN task-context header")
 
 
 def render_prompt(
@@ -16,9 +47,14 @@ def render_prompt(
     output: pathlib.Path,
 ) -> str:
     try:
-        rendered = adapter.read_bytes() + canonical_body.read_bytes() + task_context.read_bytes()
+        adapter_bytes = adapter.read_bytes()
+        body_bytes = canonical_body.read_bytes()
+        context_bytes = task_context.read_bytes()
     except OSError as exc:
         raise SystemExit(f"error: prompt input unreadable: {exc}") from exc
+    projected_adapter = project_adapter(adapter_bytes)
+    validate_plan_context(task_context, context_bytes)
+    rendered = projected_adapter + body_bytes + context_bytes
     if not output.parent.is_dir():
         raise SystemExit(f"error: prompt output parent is not a directory: {output.parent}")
     fd, temporary = tempfile.mkstemp(dir=output.parent, prefix=output.name + ".tmp.")
@@ -40,19 +76,72 @@ def self_test() -> int:
         root = pathlib.Path(raw)
         adapter = root / "adapter.md"
         body = root / "plan.md"
-        context = root / "task-context"
+        context = root / "plan.task-context"
         output = root / ".devlyn" / "plan.prompt"
         output.parent.mkdir()
-        parts = (b"adapter\r\n\xff", b"# PHASE 1 \xe2\x80\x94 PLAN\n", b"context-without-newline")
-        for path, content in zip((adapter, body, context), parts):
-            path.write_bytes(content)
-        expected = b"".join(parts)
-        digest = render_prompt(adapter, body, context, output)
-        assert output.read_bytes() == expected
-        assert digest == hashlib.sha256(expected).hexdigest()
-        assert render_prompt(adapter, body, context, output) == digest
-        assert output.read_bytes() == expected
-    print("SELFTEST PASS: exact bytes + deterministic sha256")
+        original_directory = pathlib.Path.cwd()
+        os.chdir(root)
+        try:
+            working_directory = pathlib.Path.cwd()
+            adapter_bytes = (
+                b"# Claude adapter\r\n"
+                b"## Identity\r\nkept-identity-\xff\r\n"
+                b"## Role eligibility\nremove-role\r\n"
+                b"## Output discipline\r\nkept-output-\x80\n"
+                b"## Invocation\r\nremove-invocation\n"
+                b"## Anti-patterns\nkept-tail-without-newline"
+            )
+            projected_adapter = (
+                b"# Claude adapter\r\n"
+                b"## Identity\r\nkept-identity-\xff\r\n"
+                b"## Output discipline\r\nkept-output-\x80\n"
+                b"## Anti-patterns\nkept-tail-without-newline"
+            )
+            for metadata_free in (
+                b"# Codex adapter\r\n## Identity\nkept-\xfe",
+                b"# omp adapter\n## Output discipline\r\nkept\x81",
+            ):
+                assert project_adapter(metadata_free) == metadata_free
+
+            body_bytes = b"# PHASE 1 \xe2\x80\x94 PLAN\n"
+            context_bytes = (
+                b"Working directory: "
+                + os.fsencode(working_directory)
+                + b"\nPlan output: "
+                + os.fsencode(working_directory / ".devlyn" / "plan.md")
+                + b"\ncontext-without-newline"
+            )
+            for path, content in (
+                (adapter, adapter_bytes),
+                (body, body_bytes),
+                (context, context_bytes),
+            ):
+                path.write_bytes(content)
+            expected = projected_adapter + body_bytes + context_bytes
+            digest = render_prompt(adapter, body, context, output)
+            assert output.read_bytes() == expected
+            assert digest == hashlib.sha256(expected).hexdigest()
+            assert render_prompt(adapter, body, context, output) == digest
+            assert output.read_bytes() == expected
+
+            invalid_contexts = (
+                b"context-without-header",
+                b"Working directory: relative\nPlan output: relative/.devlyn/plan.md\n",
+                b"Working directory: /mismatch\nPlan output: /mismatch/.devlyn/plan.md\n",
+            )
+            for invalid_context in invalid_contexts:
+                context.write_bytes(invalid_context)
+                output.write_bytes(b"unchanged")
+                try:
+                    render_prompt(adapter, body, context, output)
+                except SystemExit:
+                    pass
+                else:
+                    raise AssertionError("invalid PLAN task-context header accepted")
+                assert output.read_bytes() == b"unchanged"
+        finally:
+            os.chdir(original_directory)
+    print("SELFTEST PASS: projected exact bytes + PLAN context validation")
     return 0
 
 

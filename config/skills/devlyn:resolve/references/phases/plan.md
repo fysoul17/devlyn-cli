@@ -32,12 +32,8 @@ Report your verdict in this reply: `PASS` if plan is shippable; `BLOCKED` if spe
 </quality_bar>
 
 <runtime_principles>
-Read `_shared/runtime-principles.md` (Subtractive-first / Goal-locked / No-workaround / Evidence). Codex-routed phases receive the contract excerpt inlined:
-
 - Subtractive-first: prefer trimming an existing helper to introducing a new one. Pure-addition needs a cited prior failure mode or an explicit spec/user requirement.
 - Goal-locked: refuse "while I'm here" cleanups, speculative robustness, mid-flight re-scoping. Single test before any deviation: "did the user ask for this OR does the stated goal strictly require it?"
 - No-workaround: no `any`, no `@ts-ignore`, no silent `catch`, no hardcoded values, no helper scripts that bypass root cause.
 - Evidence: every claim cites file:line opened at planning time. Vague claims excluded.
 </runtime_principles>
-
-The task is: [orchestrator pastes the task description and spec context here]
