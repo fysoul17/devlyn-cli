@@ -101,7 +101,7 @@ def parent_session_paths(result_dir: pathlib.Path) -> list[pathlib.Path]:
 def collect_agent_calls(
     session_paths: list[pathlib.Path], issues: list[str], result_dir: pathlib.Path,
 ) -> tuple[list[dict], int, list[dict]]:
-    candidate_by_id: dict[str, dict] = {}
+    candidates: list[dict] = []
     sidechain_agent_count = 0
     writer_evidence: list[dict] = []
     for path in session_paths:
@@ -142,7 +142,6 @@ def collect_agent_calls(
                     continue
                 prompt = tool_input.get("prompt")
                 tool_id = block.get("id")
-                identity = tool_id if isinstance(tool_id, str) and tool_id else f"{path}:{line_number}"
                 heading = None
                 delivered_digest = None
                 if isinstance(prompt, str):
@@ -151,7 +150,7 @@ def collect_agent_calls(
                         (line for line in prompt.splitlines() if PLAN_HEADING_RE.match(line)),
                         None,
                     )
-                candidate_by_id.setdefault(identity, {
+                candidates.append({
                     "tool_use_id": tool_id,
                     "timestamp": record.get("timestamp"),
                     "source": str(path.relative_to(result_dir.parent)),
@@ -172,8 +171,7 @@ def collect_agent_calls(
             timestamp = dt.datetime.max.replace(tzinfo=dt.timezone.utc)
         return timestamp, dispatch["source"], dispatch["source_line"]
 
-    candidates = sorted(candidate_by_id.values(), key=order_key)
-    return candidates, sidechain_agent_count, writer_evidence
+    return sorted(candidates, key=order_key), sidechain_agent_count, writer_evidence
 
 
 def bind_dispatches(
@@ -1009,6 +1007,32 @@ def self_test() -> int:
         )
         equal(
             multiple["product"]["violations"],
+            ["multiple-plan-agents-in-authorization-window"],
+        )
+
+        same_id_result = write_fixture(
+            root, "same-id-two-in-one-window", [copy.deepcopy(c2_records[0])],
+            source_name="C2",
+        )
+        same_id_session = same_id_result.parent / "sessions" / "parent.jsonl"
+        same_id_rows = [json.loads(same_id_session.read_text())]
+        same_id_duplicate = copy.deepcopy(same_id_rows[0])
+        same_id_duplicate["timestamp"] = "2026-08-02T02:59:00.000Z"
+        same_id_duplicate["message"]["content"][0]["input"]["prompt"] = "second"
+        same_id_rows.append(same_id_duplicate)
+        same_id_session.write_text(
+            "".join(json.dumps(row) + "\n" for row in same_id_rows)
+        )
+        same_id = analyze(same_id_result)
+        equal(same_id["classification"], "CONTRACT-VIOLATION")
+        equal(same_id["evidence"]["complete"], True)
+        equal(same_id["dispatch_identity"]["plan_dispatch_count"], 2)
+        equal(
+            same_id["dispatch_identity"]["authorization_windows"][0]["status"],
+            "AMBIGUOUS",
+        )
+        equal(
+            same_id["product"]["violations"],
             ["multiple-plan-agents-in-authorization-window"],
         )
 
