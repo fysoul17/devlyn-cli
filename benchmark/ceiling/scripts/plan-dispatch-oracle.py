@@ -98,11 +98,11 @@ def parent_session_paths(result_dir: pathlib.Path) -> list[pathlib.Path]:
     )
 
 
-def find_dispatches(
+def collect_agent_calls(
     session_paths: list[pathlib.Path], issues: list[str], result_dir: pathlib.Path,
-) -> tuple[list[dict], int, int, list[dict]]:
-    dispatch_by_id: dict[str, dict] = {}
-    agent_tool_use_count = 0
+) -> tuple[list[dict], int, list[dict]]:
+    candidate_by_id: dict[str, dict] = {}
+    sidechain_agent_count = 0
     writer_evidence: list[dict] = []
     for path in session_paths:
         try:
@@ -137,23 +137,31 @@ def find_dispatches(
                         )
                 if tool_name != "Agent":
                     continue
-                agent_tool_use_count += 1
-                prompt = tool_input.get("prompt")
-                if not isinstance(prompt, str) or PLAN_HEADING_RE.search(prompt) is None:
+                if record.get("parent_tool_use_id") is not None:
+                    sidechain_agent_count += 1
                     continue
+                prompt = tool_input.get("prompt")
                 tool_id = block.get("id")
                 identity = tool_id if isinstance(tool_id, str) and tool_id else f"{path}:{line_number}"
-                heading = next(
-                    line for line in prompt.splitlines() if PLAN_HEADING_RE.match(line)
-                )
-                dispatch_by_id.setdefault(identity, {
+                heading = None
+                delivered_digest = None
+                if isinstance(prompt, str):
+                    delivered_digest = sha256_text(prompt)
+                    heading = next(
+                        (line for line in prompt.splitlines() if PLAN_HEADING_RE.match(line)),
+                        None,
+                    )
+                candidate_by_id.setdefault(identity, {
                     "tool_use_id": tool_id,
                     "timestamp": record.get("timestamp"),
                     "source": str(path.relative_to(result_dir.parent)),
                     "source_line": line_number,
-                    "heading": heading,
                     "subagent_type": tool_input.get("subagent_type"),
-                    "delivered_prompt_sha256": sha256_text(prompt),
+                    "delivered_prompt_sha256": delivered_digest,
+                    "diagnostics": {
+                        "canonical_heading_match": heading is not None,
+                        "heading": heading,
+                    },
                 })
 
     def order_key(dispatch: dict) -> tuple:
@@ -164,8 +172,95 @@ def find_dispatches(
             timestamp = dt.datetime.max.replace(tzinfo=dt.timezone.utc)
         return timestamp, dispatch["source"], dispatch["source_line"]
 
-    dispatches = sorted(dispatch_by_id.values(), key=order_key)
-    return dispatches, agent_tool_use_count, agent_tool_use_count - len(dispatches), writer_evidence
+    candidates = sorted(candidate_by_id.values(), key=order_key)
+    return candidates, sidechain_agent_count, writer_evidence
+
+
+def bind_dispatches(
+    receipts: list[dict], candidates: list[dict],
+) -> tuple[list[dict], dict[int, dict], list[dict], list[dict], list[str]]:
+    windows: list[dict] = []
+    for receipt in receipts:
+        if receipt["_schema"] == "invalid":
+            continue
+        windows.append({
+            "ledger_index": receipt["_ledger_index"],
+            "started_at": receipt["started_at"],
+            "completed_at": receipt["completed_at"],
+            "_start": parse_time(receipt["started_at"]),
+            "_end": parse_time(receipt["completed_at"]),
+            "_candidates": [],
+        })
+
+    violations: list[str] = []
+    ambiguous_indexes: set[int] = set()
+    has_overlap = False
+    overlap_indexes: dict[int, set[int]] = {
+        window["ledger_index"]: set() for window in windows
+    }
+    for left_index, left in enumerate(windows):
+        for right in windows[left_index + 1:]:
+            if max(left["_start"], right["_start"]) <= min(left["_end"], right["_end"]):
+                pair = [left["ledger_index"], right["ledger_index"]]
+                has_overlap = True
+                ambiguous_indexes.update(pair)
+                overlap_indexes[pair[0]].add(pair[1])
+                overlap_indexes[pair[1]].add(pair[0])
+    if has_overlap:
+        violations.append("plan-authorization-windows-overlap")
+
+    outside_plan: list[dict] = []
+    non_plan: list[dict] = []
+    for candidate in candidates:
+        try:
+            timestamp = parse_time(candidate["timestamp"])
+        except (TypeError, ValueError):
+            candidate["authorization_window_indexes"] = []
+            continue
+        memberships = [
+            window for window in windows
+            if window["_start"] <= timestamp <= window["_end"]
+        ]
+        candidate["authorization_window_indexes"] = [
+            window["ledger_index"] for window in memberships
+        ]
+        for window in memberships:
+            window["_candidates"].append(candidate)
+        if len(memberships) > 1:
+            violations.append("plan-agent-matches-multiple-authorization-windows")
+            ambiguous_indexes.update(candidate["authorization_window_indexes"])
+        elif not memberships:
+            if candidate["diagnostics"]["canonical_heading_match"]:
+                outside_plan.append(candidate)
+            else:
+                non_plan.append(candidate)
+
+    bindings: dict[int, dict] = {}
+    public_windows: list[dict] = []
+    for window in windows:
+        ledger_index = window["ledger_index"]
+        candidate_ids = [candidate["tool_use_id"] for candidate in window["_candidates"]]
+        if len(window["_candidates"]) > 1:
+            violations.append("multiple-plan-agents-in-authorization-window")
+            ambiguous_indexes.add(ledger_index)
+        if ledger_index in ambiguous_indexes:
+            status = "AMBIGUOUS"
+        elif not window["_candidates"]:
+            status = "MISSING"
+        else:
+            status = "BOUND"
+            bindings[ledger_index] = window["_candidates"][0]
+        public_windows.append({
+            "ledger_index": ledger_index,
+            "started_at": window["started_at"],
+            "completed_at": window["completed_at"],
+            "candidate_tool_use_ids": candidate_ids,
+            "overlapping_ledger_indexes": sorted(overlap_indexes[ledger_index]),
+            "status": status,
+        })
+    if outside_plan:
+        violations.append("plan-dispatch-outside-authorization-window")
+    return public_windows, bindings, outside_plan, non_plan, sorted(set(violations))
 
 
 def receipt_schema(receipt: dict) -> str:
@@ -182,11 +277,9 @@ def receipt_schema(receipt: dict) -> str:
         if not valid:
             return False
         try:
-            parse_time(receipt["started_at"])
-            parse_time(receipt["completed_at"])
+            return parse_time(receipt["started_at"]) <= parse_time(receipt["completed_at"])
         except ValueError:
             return False
-        return True
 
     if set(receipt) == LEGACY_HISTORY_FIELDS:
         return "legacy-pre-d1-four-key" if valid_completion() else "invalid"
@@ -215,30 +308,18 @@ def receipt_schema(receipt: dict) -> str:
     if not all(field in receipt for field in RECEIPT_FIELDS):
         return "invalid"
     valid = (
-        isinstance(receipt["round"], int)
+        valid_completion()
+        and isinstance(receipt["round"], int)
         and not isinstance(receipt["round"], bool)
         and receipt["round"] >= 0
-        and isinstance(receipt["started_at"], str)
         and (receipt["triggered_by"] is None or isinstance(receipt["triggered_by"], str))
         and isinstance(receipt["engine"], str) and bool(receipt["engine"])
         and isinstance(receipt["model_requested"], str) and bool(receipt["model_requested"])
         and isinstance(receipt["prompt_sha256"], str)
         and SHA256_RE.fullmatch(receipt["prompt_sha256"]) is not None
-        and isinstance(receipt["completed_at"], str)
-        and isinstance(receipt["duration_ms"], (int, float))
-        and not isinstance(receipt["duration_ms"], bool)
-        and receipt["duration_ms"] >= 0
-        and isinstance(receipt["verdict"], str)
         and (receipt["model_effective"] is None or isinstance(receipt["model_effective"], str))
     )
-    if not valid:
-        return "invalid"
-    try:
-        parse_time(receipt["started_at"])
-        parse_time(receipt["completed_at"])
-    except ValueError:
-        return "invalid"
-    return "d1-complete"
+    return "d1-complete" if valid else "invalid"
 
 
 def collect_receipts(
@@ -344,16 +425,43 @@ def analyze(result_path: pathlib.Path) -> dict:
     timing = read_json(result_dir / "timing.json", evidence_issues, "timing")
     attribution = read_json(result_dir / "attribution.json", evidence_issues, "attribution")
     receipts, plan = collect_receipts(state, evidence_issues)
-    dispatches, agent_count, non_plan_count, writer_evidence = find_dispatches(
+    candidates, sidechain_agent_count, writer_evidence = collect_agent_calls(
         parent_session_paths(result_dir), evidence_issues, result_dir,
     )
+    authorization_windows, bindings, outside_plan, non_plan, binding_violations = (
+        bind_dispatches(receipts, candidates)
+    )
+    product_violations.extend(binding_violations)
+    plan_candidates = [
+        candidate for candidate in candidates
+        if candidate.get("authorization_window_indexes") or candidate in outside_plan
+    ]
+    bound_dispatches = [
+        bindings[receipt["_ledger_index"]] | {
+            "ledger_index": receipt["_ledger_index"],
+        }
+        for receipt in receipts
+        if receipt["_ledger_index"] in bindings
+    ]
+    content_diagnostic = {
+        "name": "dispatch-content-diagnostics",
+        "canonical_heading_stem": PLAN_STEM,
+        "outside_authorization_plan_tool_use_ids": [
+            candidate["tool_use_id"] for candidate in outside_plan
+        ],
+        "out_of_window_non_plan_tool_use_ids": [
+            candidate["tool_use_id"] for candidate in non_plan
+        ],
+    }
 
     legacy_receipts = [
         receipt for receipt in receipts
         if receipt["_schema"].startswith("legacy-pre-d1")
     ]
     invalid_receipts = [receipt for receipt in receipts if receipt["_schema"] == "invalid"]
-    conclusive_over_cap = len(dispatches) > PLAN_MAX_DISPATCHES
+    conclusive_dispatch_violation = (
+        len(plan_candidates) > PLAN_MAX_DISPATCHES or bool(binding_violations)
+    )
     if legacy_receipts:
         diagnostics.append({
             "name": "legacy-pre-d1-plan-receipt-schema",
@@ -362,7 +470,7 @@ def analyze(result_path: pathlib.Path) -> dict:
             "delivery_digest_attestation": "unavailable",
             "scored_as_startup": False,
         })
-        if not conclusive_over_cap:
+        if not conclusive_dispatch_violation:
             evidence_issues.append("plan-receipt-schema-incomplete")
     if invalid_receipts:
         evidence_issues.append("plan-receipt-schema-invalid")
@@ -401,25 +509,45 @@ def analyze(result_path: pathlib.Path) -> dict:
 
     delivery: list[dict] = []
     per_round: list[dict] = []
-    for index in range(max(len(receipts), len(dispatches))):
-        receipt = receipts[index] if index < len(receipts) else None
-        dispatch = dispatches[index] if index < len(dispatches) else None
-        expected_digest = receipt.get("prompt_sha256") if receipt else None
+    windows_by_index = {
+        window["ledger_index"]: window
+        for window in authorization_windows
+        if "ledger_index" in window
+    }
+    for receipt in receipts:
+        index = receipt["_ledger_index"]
+        dispatch = bindings.get(index)
+        window = windows_by_index.get(index)
+        window_status = window["status"] if window else "INVALID"
+        expected_digest = receipt.get("prompt_sha256")
         delivered_digest = dispatch.get("delivered_prompt_sha256") if dispatch else None
-        if receipt and receipt["_schema"].startswith("legacy-pre-d1"):
+        if receipt["_schema"] == "invalid":
+            matched = None
+            delivery_status = "INVALID:receipt-schema"
+        elif window_status == "AMBIGUOUS":
+            matched = None
+            delivery_status = "AMBIGUOUS:authorization-window"
+        elif dispatch and receipt["_schema"].startswith("legacy-pre-d1"):
             matched = None
             delivery_status = "UNATTESTABLE:legacy-pre-d1-receipt"
-        else:
+        elif dispatch:
             matched = (
                 isinstance(expected_digest, str)
                 and isinstance(delivered_digest, str)
                 and expected_digest == delivered_digest
             )
             delivery_status = "PASS" if matched else "FAIL"
+        elif outside_plan:
+            matched = None
+            delivery_status = "OUTSIDE:authorization-window"
+        else:
+            matched = False
+            delivery_status = "MISSING:agent-tool-use"
         delivery.append({
-            "ledger_index": index if receipt else None,
-            "round": receipt.get("round") if receipt else None,
+            "ledger_index": index,
+            "round": receipt.get("round"),
             "tool_use_id": dispatch.get("tool_use_id") if dispatch else None,
+            "candidate_tool_use_ids": window["candidate_tool_use_ids"] if window else [],
             "recorded_prompt_sha256": expected_digest,
             "delivered_prompt_sha256": delivered_digest,
             "match": matched,
@@ -427,12 +555,11 @@ def analyze(result_path: pathlib.Path) -> dict:
         })
         composition_gap = None
         ledger_span = None
-        if receipt:
-            try:
-                ledger_span = milliseconds(receipt.get("started_at"), receipt.get("completed_at"))
-            except (TypeError, ValueError):
-                pass
-        if receipt and dispatch:
+        try:
+            ledger_span = milliseconds(receipt.get("started_at"), receipt.get("completed_at"))
+        except (TypeError, ValueError):
+            pass
+        if dispatch:
             try:
                 composition_gap = milliseconds(receipt.get("started_at"), dispatch.get("timestamp"))
             except (TypeError, ValueError):
@@ -444,17 +571,19 @@ def analyze(result_path: pathlib.Path) -> dict:
             "spw_to_agent_composition_gap_ms": composition_gap,
             "agent_tool_use_id": dispatch.get("tool_use_id") if dispatch else None,
         })
-    if len(dispatches) < len(receipts):
+    missing_windows = [
+        window for window in authorization_windows
+        if window.get("status") == "MISSING"
+    ]
+    if missing_windows and not outside_plan:
         evidence_issues.append("missing-delivery-evidence")
-    if len(dispatches) > len(receipts):
-        product_violations.append("missing-ledger-receipt")
-    if len(dispatches) == len(receipts) and any(row["match"] is False for row in delivery):
+    if any(row["status"] == "FAIL" for row in delivery):
         product_violations.append("delivered-prompt-digest-mismatch")
-    if not receipts and not dispatches:
+    if not receipts and not plan_candidates:
         evidence_issues.append("missing-plan-ledger")
-    if not dispatches and receipts:
+    if missing_windows and not outside_plan and not plan_candidates:
         evidence_issues.append("missing-plan-agent-tool-use")
-    if len(dispatches) > PLAN_MAX_DISPATCHES or len(receipts) > PLAN_MAX_DISPATCHES:
+    if len(plan_candidates) > PLAN_MAX_DISPATCHES or len(receipts) > PLAN_MAX_DISPATCHES:
         product_violations.append("plan-dispatch-cap-exceeded")
 
     inter_round: list[dict] = []
@@ -467,8 +596,12 @@ def analyze(result_path: pathlib.Path) -> dict:
 
     legal_receipts = receipts[:PLAN_MAX_DISPATCHES]
     region = {"started_at": None, "completed_at": None, "duration_ms": None}
-    if legal_receipts and dispatches:
-        region["started_at"] = dispatches[0].get("timestamp")
+    first_legal_dispatch = (
+        bindings.get(legal_receipts[0]["_ledger_index"])
+        if legal_receipts else None
+    )
+    if legal_receipts and first_legal_dispatch:
+        region["started_at"] = first_legal_dispatch.get("timestamp")
         region["completed_at"] = legal_receipts[-1].get("completed_at")
         try:
             region["duration_ms"] = milliseconds(region["started_at"], region["completed_at"])
@@ -476,7 +609,7 @@ def analyze(result_path: pathlib.Path) -> dict:
             pass
 
     startup, legacy_diagnostic = build_startup(receipts, plan, timing, attribution)
-    if startup["status"] == "INCOMPLETE" and "missing-ledger-receipt" not in product_violations:
+    if startup["status"] == "INCOMPLETE" and not outside_plan:
         evidence_issues.append("startup-conjunct-unavailable")
     elif startup["status"] == "FAIL":
         product_violations.append("startup-conjunct-mismatch")
@@ -496,19 +629,22 @@ def analyze(result_path: pathlib.Path) -> dict:
         for receipt in receipts
     ]
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "classification": classification,
         "evidence": {"complete": evidence_complete, "issues": evidence_issues},
         "product": {"eligible": product_eligible, "violations": product_violations},
         "result_dir": str(result_dir),
         "state_source": state_source,
         "dispatch_identity": {
-            "authority": "parent-session-Agent-tool_use",
-            "heading_stem": PLAN_STEM,
-            "plan_dispatch_count": len(dispatches),
-            "agent_tool_use_count": agent_count,
-            "non_plan_agent_tool_use_count": non_plan_count,
-            "dispatches": dispatches,
+            "authority": "ledger-window+top-level-parent-Agent",
+            "plan_dispatch_count": len(plan_candidates),
+            "agent_tool_use_count": len(candidates),
+            "sidechain_agent_tool_use_count": sidechain_agent_count,
+            "non_plan_agent_tool_use_count": len(non_plan),
+            "dispatches": bound_dispatches,
+            "agent_candidates": candidates,
+            "authorization_windows": authorization_windows,
+            "outside_authorization_plan_dispatches": outside_plan,
             "plan_md_writer_corroboration": writer_evidence,
         },
         "ledger": {"receipt_count": len(receipts), "receipts": public_receipts},
@@ -520,7 +656,11 @@ def analyze(result_path: pathlib.Path) -> dict:
             "parent_inter_round_gaps": inter_round,
         },
         "startup": startup,
-        "diagnostics": diagnostics + ([] if legacy_diagnostic is None else [legacy_diagnostic]),
+        "diagnostics": (
+            diagnostics
+            + ([] if legacy_diagnostic is None else [legacy_diagnostic])
+            + [content_diagnostic]
+        ),
     }
 
 
@@ -757,7 +897,11 @@ def self_test() -> int:
         equal(c2["dispatch_identity"]["agent_tool_use_count"], 4)
         equal(c2["dispatch_identity"]["non_plan_agent_tool_use_count"], 3)
         equal(c2["classification"], "COMPLETE")
-        equal(c2["dispatch_identity"]["dispatches"][0]["heading"], "## " + PLAN_STEM)
+        equal(c2["schema_version"], 2)
+        equal(
+            c2["dispatch_identity"]["dispatches"][0]["diagnostics"]["heading"],
+            "## " + PLAN_STEM,
+        )
 
         quoted = copy.deepcopy(c2_records)
         quoted[0]["message"]["content"][0]["input"]["prompt"] = (
@@ -769,8 +913,9 @@ def self_test() -> int:
             json.dumps(quoted[0], ensure_ascii=False) + "\n", encoding="utf-8"
         )
         issues: list[str] = []
-        found, _, _, _ = find_dispatches(parent_session_paths(quote_dir), issues, quote_dir)
-        equal(len(found), 0)
+        found, _, _ = collect_agent_calls(parent_session_paths(quote_dir), issues, quote_dir)
+        equal(len(found), 1)
+        equal(found[0]["diagnostics"]["canonical_heading_match"], False)
         equal(issues, [])
 
         prewrite_state = json.loads(next((c2_result / "devlyn-snapshot").glob("runs/*/pipeline.state.json")).read_text())
@@ -790,7 +935,10 @@ def self_test() -> int:
         equal(prewrite["dispatch_identity"]["plan_dispatch_count"], 1)
         equal(prewrite["evidence"]["complete"], True)
         equal(prewrite["product"]["eligible"], False)
-        equal(prewrite["product"]["violations"], ["missing-ledger-receipt"])
+        equal(
+            prewrite["product"]["violations"],
+            ["plan-dispatch-outside-authorization-window"],
+        )
         equal(prewrite["classification"], "CONTRACT-VIOLATION")
 
         no_dispatch_result = root / "no-dispatch" / "result"
@@ -805,6 +953,195 @@ def self_test() -> int:
         no_dispatch = analyze(no_dispatch_result)
         equal(no_dispatch["evidence"]["complete"], False)
         equal(no_dispatch["classification"], "INCOMPLETE")
+
+        # P-0091-A1: a heading-less but fully captured in-window Agent remains
+        # the PLAN dispatch. Its adverse bytes cannot erase their own identity.
+        adverse_result = write_fixture(
+            root, "0090-C1-heading-less-mismatch", [copy.deepcopy(c2_records[0])],
+            source_name="C2",
+        )
+        adverse_session = adverse_result.parent / "sessions" / "parent.jsonl"
+        adverse_row = json.loads(adverse_session.read_text())
+        adverse_row["message"]["content"][0]["input"]["prompt"] = (
+            "$(cat /Users/aipalm/Documents/GitHub/devlyn-cli/.devlyn/plan.prompt)"
+        )
+        adverse_session.write_text(json.dumps(adverse_row) + "\n")
+        adverse = analyze(adverse_result)
+        equal(adverse["classification"], "CONTRACT-VIOLATION")
+        equal(adverse["evidence"]["complete"], True)
+        equal(adverse["dispatch_identity"]["plan_dispatch_count"], 1)
+        equal(adverse["dispatch_identity"]["authorization_windows"][0]["status"], "BOUND")
+        equal(
+            adverse["dispatch_identity"]["dispatches"][0]["diagnostics"][
+                "canonical_heading_match"
+            ],
+            False,
+        )
+        equal(adverse["delivery_attestation"][0]["match"], False)
+        equal(
+            adverse["product"]["violations"],
+            ["delivered-prompt-digest-mismatch"],
+        )
+
+        # More than one captured top-level Agent in one authorization window
+        # is complete product evidence, never a silently selected dispatch.
+        multiple_result = write_fixture(
+            root, "two-in-one-window", [copy.deepcopy(c2_records[0])],
+            source_name="C2",
+        )
+        multiple_session = multiple_result.parent / "sessions" / "parent.jsonl"
+        multiple_rows = [json.loads(multiple_session.read_text())]
+        duplicate = copy.deepcopy(multiple_rows[0])
+        duplicate["message"]["content"][0]["id"] = "second-in-window"
+        duplicate["timestamp"] = "2026-08-02T02:59:00.000Z"
+        multiple_rows.append(duplicate)
+        multiple_session.write_text(
+            "".join(json.dumps(row) + "\n" for row in multiple_rows)
+        )
+        multiple = analyze(multiple_result)
+        equal(multiple["classification"], "CONTRACT-VIOLATION")
+        equal(multiple["evidence"]["complete"], True)
+        equal(multiple["dispatch_identity"]["plan_dispatch_count"], 2)
+        equal(multiple["dispatch_identity"]["dispatches"], [])
+        equal(
+            multiple["dispatch_identity"]["authorization_windows"][0]["status"],
+            "AMBIGUOUS",
+        )
+        equal(
+            multiple["product"]["violations"],
+            ["multiple-plan-agents-in-authorization-window"],
+        )
+
+        legacy_multiple_result = write_fixture(
+            root, "legacy-two-in-one-window", [copy.deepcopy(c2_records[0])],
+            source_name="C2", enrich_receipts=False,
+        )
+        legacy_multiple_session = (
+            legacy_multiple_result.parent / "sessions" / "parent.jsonl"
+        )
+        legacy_multiple_rows = [json.loads(legacy_multiple_session.read_text())]
+        legacy_duplicate = copy.deepcopy(legacy_multiple_rows[0])
+        legacy_duplicate["message"]["content"][0]["id"] = "legacy-second-in-window"
+        legacy_duplicate["timestamp"] = "2026-08-02T02:59:00.000Z"
+        legacy_multiple_rows.append(legacy_duplicate)
+        legacy_multiple_session.write_text(
+            "".join(json.dumps(row) + "\n" for row in legacy_multiple_rows)
+        )
+        legacy_multiple = analyze(legacy_multiple_result)
+        equal(legacy_multiple["classification"], "CONTRACT-VIOLATION")
+        equal(legacy_multiple["evidence"]["complete"], True)
+        equal(
+            legacy_multiple["product"]["violations"],
+            ["multiple-plan-agents-in-authorization-window"],
+        )
+
+        # Sidechain filtering applies only to Agent candidates. Nested writer
+        # evidence remains visible as corroboration.
+        sidechain_result = write_fixture(
+            root, "sidechain-agent-writer", [copy.deepcopy(c2_records[0])],
+            source_name="C2",
+        )
+        sidechain_session = sidechain_result.parent / "sessions" / "parent.jsonl"
+        sidechain_rows = [json.loads(sidechain_session.read_text())]
+        sidechain_rows.append({
+            "timestamp": "2026-08-02T02:59:01.000Z",
+            "parent_tool_use_id": "parent-agent",
+            "message": {"content": [
+                {
+                    "type": "tool_use", "name": "Agent", "id": "nested-agent",
+                    "input": {"subagent_type": "claude", "prompt": "nested"},
+                },
+                {
+                    "type": "tool_use", "name": "Write", "id": "nested-writer",
+                    "input": {"file_path": ".devlyn/plan.md", "content": "plan"},
+                },
+            ]},
+        })
+        sidechain_session.write_text(
+            "".join(json.dumps(row) + "\n" for row in sidechain_rows)
+        )
+        sidechain = analyze(sidechain_result)
+        equal(sidechain["classification"], "COMPLETE")
+        equal(sidechain["dispatch_identity"]["agent_tool_use_count"], 1)
+        equal(sidechain["dispatch_identity"]["sidechain_agent_tool_use_count"], 1)
+        equal(len(sidechain["dispatch_identity"]["plan_md_writer_corroboration"]), 1)
+
+        # A canonical PLAN heading may escalate captured off-ledger evidence;
+        # it may not restore content as the in-window identity authority.
+        outside_result = write_fixture(
+            root, "heading-outside-window", [copy.deepcopy(c2_records[0])],
+            source_name="C2",
+        )
+        outside_session = outside_result.parent / "sessions" / "parent.jsonl"
+        outside_row = json.loads(outside_session.read_text())
+        outside_row["timestamp"] = "2026-08-02T03:05:00.000Z"
+        outside_session.write_text(json.dumps(outside_row) + "\n")
+        outside = analyze(outside_result)
+        equal(outside["classification"], "CONTRACT-VIOLATION")
+        equal(outside["evidence"]["complete"], True)
+        equal(outside["dispatch_identity"]["authorization_windows"][0]["status"], "MISSING")
+        equal(len(outside["dispatch_identity"]["outside_authorization_plan_dispatches"]), 1)
+        equal(
+            outside["product"]["violations"],
+            ["plan-dispatch-outside-authorization-window"],
+        )
+
+        malformed_time_result = write_fixture(
+            root, "malformed-agent-time", [copy.deepcopy(c2_records[0])],
+            source_name="C2",
+        )
+        malformed_time_session = malformed_time_result.parent / "sessions" / "parent.jsonl"
+        malformed_time_row = json.loads(malformed_time_session.read_text())
+        malformed_time_row["timestamp"] = "not-a-timestamp"
+        malformed_time_session.write_text(json.dumps(malformed_time_row) + "\n")
+        malformed_time = analyze(malformed_time_result)
+        equal(malformed_time["classification"], "INCOMPLETE")
+        equal(
+            any(
+                issue.startswith("dispatch-timestamp-malformed:")
+                for issue in malformed_time["evidence"]["issues"]
+            ),
+            True,
+        )
+
+        malformed_receipt_result = write_fixture(
+            root, "malformed-receipt-time", [copy.deepcopy(c2_records[0])],
+            source_name="C2",
+        )
+        malformed_receipt_state_path = next(
+            (malformed_receipt_result / "devlyn-snapshot").glob(
+                "runs/*/pipeline.state.json"
+            )
+        )
+        malformed_receipt_state = json.loads(malformed_receipt_state_path.read_text())
+        malformed_receipt_state["phases"]["plan"]["started_at"] = "not-a-timestamp"
+        malformed_receipt_state_path.write_text(json.dumps(malformed_receipt_state) + "\n")
+        malformed_receipt = analyze(malformed_receipt_result)
+        equal(malformed_receipt["classification"], "INCOMPLETE")
+        equal(malformed_receipt["dispatch_identity"]["authorization_windows"], [])
+        equal(
+            "plan-receipt-schema-invalid" in malformed_receipt["evidence"]["issues"],
+            True,
+        )
+
+        reversed_receipt_result = write_fixture(
+            root, "reversed-receipt-window", [copy.deepcopy(c2_records[0])],
+            source_name="C2",
+        )
+        reversed_receipt_state_path = next(
+            (reversed_receipt_result / "devlyn-snapshot").glob(
+                "runs/*/pipeline.state.json"
+            )
+        )
+        reversed_receipt_state = json.loads(reversed_receipt_state_path.read_text())
+        reversed_receipt_state["phases"]["plan"]["started_at"] = (
+            "2026-08-02T03:05:00.000Z"
+        )
+        reversed_receipt_state_path.write_text(json.dumps(reversed_receipt_state) + "\n")
+        reversed_receipt = analyze(reversed_receipt_result)
+        equal(reversed_receipt["classification"], "INCOMPLETE")
+        equal(reversed_receipt["ledger"]["receipts"][0]["schema"], "invalid")
+        equal(reversed_receipt["dispatch_identity"]["authorization_windows"], [])
 
         c3_records = fixture_dispatches("C3")
         c3_prompts = [
@@ -832,6 +1169,39 @@ def self_test() -> int:
         equal(c3_region["started_at"], "2026-08-02T04:11:49.215Z")
         equal(c3_region["completed_at"], "2026-08-02T04:19:42.566Z")
         equal(c3_region["duration_ms"], 473351)
+
+        overlap_result = write_fixture(
+            root, "C3-overlapping-windows", copy.deepcopy(c3_records),
+            source_name="C3",
+        )
+        overlap_state_path = next(
+            (overlap_result / "devlyn-snapshot").glob("runs/*/pipeline.state.json")
+        )
+        overlap_state = json.loads(overlap_state_path.read_text())
+        overlap_state["phases"]["plan"]["history"][0]["completed_at"] = (
+            "2026-08-02T04:16:10.000Z"
+        )
+        overlap_state_path.write_text(json.dumps(overlap_state) + "\n")
+        overlap = analyze(overlap_result)
+        equal(overlap["classification"], "CONTRACT-VIOLATION")
+        equal(overlap["evidence"]["complete"], True)
+        equal(overlap["dispatch_identity"]["authorization_windows"][0]["status"], "AMBIGUOUS")
+        equal(overlap["dispatch_identity"]["authorization_windows"][1]["status"], "AMBIGUOUS")
+        equal(
+            overlap["dispatch_identity"]["agent_candidates"][1][
+                "authorization_window_indexes"
+            ],
+            [0, 1],
+        )
+        equal(
+            "plan-authorization-windows-overlap" in overlap["product"]["violations"],
+            True,
+        )
+        equal(
+            "plan-agent-matches-multiple-authorization-windows"
+            in overlap["product"]["violations"],
+            True,
+        )
 
         # P-0089-4 raw retained-shape replay: two exact four-key history
         # rows plus the pre-D1 current receipt remain schema-distinct. Their
