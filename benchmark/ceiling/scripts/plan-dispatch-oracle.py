@@ -103,8 +103,9 @@ def parent_session_paths(result_dir: pathlib.Path) -> list[pathlib.Path]:
 
 def collect_agent_calls(
     session_paths: list[pathlib.Path], issues: list[str], result_dir: pathlib.Path,
-) -> tuple[list[dict], int, list[dict]]:
+) -> tuple[list[dict], list[dict], int, list[dict]]:
     candidates: list[dict] = []
+    tool_results: list[dict] = []
     sidechain_agent_count = 0
     writer_evidence: list[dict] = []
     for path in session_paths:
@@ -124,7 +125,19 @@ def collect_agent_calls(
             if not isinstance(content, list):
                 continue
             for block in content:
-                if not isinstance(block, dict) or block.get("type") != "tool_use":
+                if not isinstance(block, dict):
+                    continue
+                if block.get("type") == "tool_result":
+                    if record.get("parent_tool_use_id") is None:
+                        tool_results.append({
+                            "tool_use_id": block.get("tool_use_id"),
+                            "source": str(path.relative_to(result_dir.parent)),
+                            "source_line": line_number,
+                            "is_error_present": "is_error" in block,
+                            "is_error": block.get("is_error"),
+                        })
+                    continue
+                if block.get("type") != "tool_use":
                     continue
                 tool_name = block.get("name")
                 tool_input = block.get("input")
@@ -160,6 +173,9 @@ def collect_agent_calls(
                     "source_line": line_number,
                     "subagent_type": tool_input.get("subagent_type"),
                     "delivered_prompt_sha256": delivered_digest,
+                    "mode_present": "mode" in tool_input,
+                    "run_in_background_present": "run_in_background" in tool_input,
+                    "run_in_background": tool_input.get("run_in_background"),
                     "diagnostics": {
                         "canonical_heading_match": heading is not None,
                         "heading": heading,
@@ -174,12 +190,46 @@ def collect_agent_calls(
             timestamp = dt.datetime.max.replace(tzinfo=dt.timezone.utc)
         return timestamp, dispatch["source"], dispatch["source_line"]
 
-    return sorted(candidates, key=order_key), sidechain_agent_count, writer_evidence
+    candidates = sorted(candidates, key=order_key)
+    uses_by_key: dict[tuple[str, object], list[dict]] = {}
+    results_by_key: dict[tuple[str, object], list[dict]] = {}
+    for candidate in candidates:
+        uses_by_key.setdefault(
+            (candidate["source"], candidate["tool_use_id"]), []
+        ).append(candidate)
+    for result in tool_results:
+        results_by_key.setdefault(
+            (result["source"], result["tool_use_id"]), []
+        ).append(result)
+    for candidate in candidates:
+        key = (candidate["source"], candidate["tool_use_id"])
+        matching_results = results_by_key.get(key, [])
+        candidate["duplicate_tool_use_id"] = len(uses_by_key[key]) > 1
+        candidate["matching_tool_result_count"] = len(matching_results)
+        candidate["matching_tool_result_lines"] = [
+            result["source_line"] for result in matching_results
+        ]
+        if len(matching_results) != 1:
+            candidate["acceptance_disposition"] = (
+                "INCOMPLETE" if not matching_results else "CONTRACT-VIOLATION"
+            )
+            continue
+        result = matching_results[0]
+        is_error = result["is_error"]
+        if not result["is_error_present"] or is_error is None or is_error is False:
+            candidate["acceptance_disposition"] = "ACCEPTED"
+        elif is_error is True:
+            candidate["acceptance_disposition"] = "REJECTED"
+        else:
+            candidate["acceptance_disposition"] = "INCOMPLETE"
+    return candidates, tool_results, sidechain_agent_count, writer_evidence
 
 
 def bind_dispatches(
     receipts: list[dict], candidates: list[dict],
-) -> tuple[list[dict], dict[int, dict], list[dict], list[dict], list[str]]:
+) -> tuple[
+    list[dict], dict[int, dict], list[dict], list[dict], list[str], list[str],
+]:
     windows: list[dict] = []
     for receipt in receipts:
         if receipt["_schema"] == "invalid":
@@ -227,6 +277,30 @@ def bind_dispatches(
         ]
         for window in memberships:
             window["_candidates"].append(candidate)
+            matching_receipt = next(
+                receipt
+                for receipt in receipts
+                if receipt["_ledger_index"] == window["ledger_index"]
+            )
+            expected_digest = matching_receipt.get("prompt_sha256")
+            shape_violations = []
+            if (
+                matching_receipt["_schema"] == "d1-complete"
+                and candidate["delivered_prompt_sha256"] != expected_digest
+            ):
+                shape_violations.append("prompt-digest-mismatch")
+            if candidate["mode_present"]:
+                shape_violations.append("mode-present")
+            if (
+                not candidate["run_in_background_present"]
+                or candidate["run_in_background"] is not False
+            ):
+                shape_violations.append("run-in-background-not-boolean-false")
+            candidate.setdefault("authorization_evaluations", []).append({
+                "ledger_index": window["ledger_index"],
+                "shape_valid": not shape_violations,
+                "shape_violations": shape_violations,
+            })
         if len(memberships) > 1:
             violations.append("plan-agent-matches-multiple-authorization-windows")
             ambiguous_indexes.update(candidate["authorization_window_indexes"])
@@ -238,11 +312,47 @@ def bind_dispatches(
 
     bindings: dict[int, dict] = {}
     public_windows: list[dict] = []
+    evidence_issues: list[str] = []
     for window in windows:
         ledger_index = window["ledger_index"]
         candidate_ids = [candidate["tool_use_id"] for candidate in window["_candidates"]]
-        if len(window["_candidates"]) > 1:
+        attempt_contract_violation = False
+        attempt_incomplete = False
+        for candidate in window["_candidates"]:
+            evaluation = next(
+                row for row in candidate["authorization_evaluations"]
+                if row["ledger_index"] == ledger_index
+            )
+            if candidate["duplicate_tool_use_id"]:
+                violations.append("duplicate-agent-tool-use-id")
+                attempt_contract_violation = True
+            if candidate["matching_tool_result_count"] > 1:
+                violations.append("multiple-agent-tool-results")
+                attempt_contract_violation = True
+            if candidate["acceptance_disposition"] == "REJECTED":
+                violations.append("rejected-plan-agent-attempt")
+                attempt_contract_violation = True
+            elif candidate["acceptance_disposition"] == "INCOMPLETE":
+                issue = (
+                    "missing-agent-tool-result"
+                    if candidate["matching_tool_result_count"] == 0
+                    else "malformed-agent-tool-result-is-error"
+                )
+                evidence_issues.append(issue)
+                attempt_incomplete = True
+            if not evaluation["shape_valid"]:
+                violations.append("plan-agent-call-shape-invalid")
+                if "prompt-digest-mismatch" in evaluation["shape_violations"]:
+                    violations.append("delivered-prompt-digest-mismatch")
+                attempt_contract_violation = True
+        if (
+            len(window["_candidates"]) > 1
+            and not attempt_contract_violation
+            and not attempt_incomplete
+        ):
             violations.append("multiple-plan-agents-in-authorization-window")
+            attempt_contract_violation = True
+        if len(window["_candidates"]) > 1:
             ambiguous_indexes.add(ledger_index)
         if ledger_index in ambiguous_indexes:
             status = "AMBIGUOUS"
@@ -251,6 +361,16 @@ def bind_dispatches(
         else:
             status = "BOUND"
             bindings[ledger_index] = window["_candidates"][0]
+        structural_ambiguity = bool(overlap_indexes[ledger_index]) or any(
+            len(candidate["authorization_window_indexes"]) > 1
+            for candidate in window["_candidates"]
+        )
+        if structural_ambiguity or attempt_contract_violation:
+            window_classification = "CONTRACT-VIOLATION"
+        elif attempt_incomplete or not window["_candidates"]:
+            window_classification = "INCOMPLETE"
+        else:
+            window_classification = "COMPLETE"
         public_windows.append({
             "ledger_index": ledger_index,
             "started_at": window["started_at"],
@@ -258,10 +378,14 @@ def bind_dispatches(
             "candidate_tool_use_ids": candidate_ids,
             "overlapping_ledger_indexes": sorted(overlap_indexes[ledger_index]),
             "status": status,
+            "classification": window_classification,
         })
     if outside_plan:
         violations.append("plan-dispatch-outside-authorization-window")
-    return public_windows, bindings, outside_plan, non_plan, sorted(set(violations))
+    return (
+        public_windows, bindings, outside_plan, non_plan,
+        sorted(set(violations)), sorted(set(evidence_issues)),
+    )
 
 
 def receipt_schema(receipt: dict) -> str:
@@ -426,13 +550,17 @@ def analyze(result_path: pathlib.Path) -> dict:
     timing = read_json(result_dir / "timing.json", evidence_issues, "timing")
     attribution = read_json(result_dir / "attribution.json", evidence_issues, "attribution")
     receipts, plan = collect_receipts(state, evidence_issues)
-    candidates, sidechain_agent_count, writer_evidence = collect_agent_calls(
+    candidates, tool_results, sidechain_agent_count, writer_evidence = collect_agent_calls(
         parent_session_paths(result_dir), evidence_issues, result_dir,
     )
-    authorization_windows, bindings, outside_plan, non_plan, binding_violations = (
+    (
+        authorization_windows, bindings, outside_plan, non_plan,
+        binding_violations, binding_evidence_issues,
+    ) = (
         bind_dispatches(receipts, candidates)
     )
     product_violations.extend(binding_violations)
+    evidence_issues.extend(binding_evidence_issues)
     plan_candidates = [
         candidate for candidate in candidates
         if candidate.get("authorization_window_indexes") or candidate in outside_plan
@@ -578,8 +706,6 @@ def analyze(result_path: pathlib.Path) -> dict:
     ]
     if missing_windows and not outside_plan:
         evidence_issues.append("missing-delivery-evidence")
-    if any(row["status"] == "FAIL" for row in delivery):
-        product_violations.append("delivered-prompt-digest-mismatch")
     if not receipts and not plan_candidates:
         evidence_issues.append("missing-plan-ledger")
     if missing_windows and not outside_plan and not plan_candidates:
@@ -620,7 +746,8 @@ def analyze(result_path: pathlib.Path) -> dict:
     evidence_complete = not evidence_issues
     product_eligible = not product_violations
     classification = (
-        "INCOMPLETE" if not evidence_complete
+        "CONTRACT-VIOLATION" if binding_violations
+        else "INCOMPLETE" if not evidence_complete
         else "COMPLETE" if product_eligible
         else "CONTRACT-VIOLATION"
     )
@@ -630,7 +757,7 @@ def analyze(result_path: pathlib.Path) -> dict:
         for receipt in receipts
     ]
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "classification": classification,
         "evidence": {"complete": evidence_complete, "issues": evidence_issues},
         "product": {"eligible": product_eligible, "violations": product_violations},
@@ -640,10 +767,12 @@ def analyze(result_path: pathlib.Path) -> dict:
             "authority": "ledger-window+top-level-parent-Agent",
             "plan_dispatch_count": len(plan_candidates),
             "agent_tool_use_count": len(candidates),
+            "tool_result_count": len(tool_results),
             "sidechain_agent_tool_use_count": sidechain_agent_count,
             "non_plan_agent_tool_use_count": len(non_plan),
             "dispatches": bound_dispatches,
             "agent_candidates": candidates,
+            "agent_tool_results": tool_results,
             "authorization_windows": authorization_windows,
             "outside_authorization_plan_dispatches": outside_plan,
             "plan_md_writer_corroboration": writer_evidence,
@@ -762,6 +891,70 @@ REAL_C3_PROMPTS_B64 = (
     'aN3I5ycB//AfK7jNPFJ038Lc0dIm3Hc4fg/QS0EGQDPSRdjC9P6TPe38YQB0Yuzoz/8EDMp+ag=='
 )
 
+# zlib-compressed JSON containing the exact iter-0091 Stage B Canary 1 and
+# Canary 2 PLAN prompts. The retained source lines and result shapes below
+# keep the replay hermetic.
+REAL_0091_STAGE_B_PROMPTS_B64 = (
+    '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'
+    'qJXaathxJm04/NmuWqeT2FRk9w7FrRTbj7nZ95BUOss9gZ+ayYfI/ob1tc2LyasqbWnqOPnWN9+1i4kWh0ma+1kp2KCR8z+YN3lQ'
+    'xDII6ETmtCeoZyhhL0vpxyMWnUVamEgcSn6efPnlP36ZcHLSQeM2EQbmyXuxIJJ/LV8grH5JNC9tSdYEyFLW1eX9vuZqtD/G5oV8'
+    'G5BEvVtZ52K71JEw8rvRe8kOCmF92hgf0OcpkRZaXS5RM2sDm2K+BsdIBLdPP9mKoAJAqfaQS/rNADRwgs9Vy/xXepmd7GkGMfq/'
+    'oJvhazEZlmRfPfl5ucUyWPFBsnTa8QQL/Gy5zrSTtte6OCg7kuSFfpvZe8gJXQk+K1Et70/42DNOKZjxMoWPnhBmHtp0dvLLz7/I'
+    'QrMSeeN4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4z+F4'
+    'z+F4z+F4z+F4z+F4z+F4z+H/2T2HXUU92us0faNF8//Ruw/f/rq/85lXIM57+RjxexIxm8H5+Q6c5/NvE2jmwkoP1mfJTuL25Mk8'
+    'yeGz+VDsC8z2GEmFsG4YAEtHATvvWEZWJagySWPWlU38+ISFH1zG2B1j7wj67ZbRjWjTDq/YmDNGn3FVgyCg37N2HLGrlvpWHiAS'
+    'dnXZMwa3jtRXmiaYyqMX6sRt6RoShWK6lwNLUsu93mWjhzp6bcNtxkKwV5ZmxFNWa9/pIxQiTJ/IOfwCKh+IIEz39XLFPKUIBOSn'
+    'ZoVFTJQ1dFxir3Vrh7YHdacNsT/xCz1Pt0seql2yNmsWwbtlp2mtyukf0Gq+jUPl9cn7L8IRlab0gvd1yUQ+5ZdDKe7L3+rC3FBs'
+    'pWaTkus3LfnbrtiUxnzqmg3fG/M388nbNuYXDvt5Vu4u3fz8X0PUzto='
+)
+
 REAL_STARTUP_FIXTURES = {
     "F7C1": ("2026-08-02T00:58:04.045Z", 213270, [], ("2026-08-02T01:01:37.315Z", "2026-08-02T01:03:20.535Z", 103220, "PASS", 1)),
     "F7C2": ("2026-08-02T01:37:06.096Z", 154197, [], ("2026-08-02T01:39:40.293Z", "2026-08-02T01:41:23.229Z", 102936, "PASS", 0)),
@@ -797,10 +990,17 @@ def fixture_dispatches(name: str) -> list[dict]:
                 "source_prompt_sha256": source_prompt,
                 "source_jsonl_line_sha256": source_line,
             },
-            "message": {"content": [{
-                "type": "tool_use", "name": "Agent", "id": tool_id,
-                "input": {"subagent_type": subagent_type, "prompt": prompt},
-            }]},
+            "message": {"content": [
+                {
+                    "type": "tool_use", "name": "Agent", "id": tool_id,
+                    "input": {
+                        "subagent_type": subagent_type,
+                        "prompt": prompt,
+                        "run_in_background": False,
+                    },
+                },
+                {"type": "tool_result", "tool_use_id": tool_id},
+            ]},
         })
     return records
 
@@ -880,6 +1080,116 @@ def write_fixture(
     return result
 
 
+def write_stage_b_fixture(root: pathlib.Path, name: str) -> pathlib.Path:
+    prompts = json.loads(zlib.decompress(base64.b64decode(
+        "".join(REAL_0091_STAGE_B_PROMPTS_B64)
+    )).decode("utf-8"))
+    fixtures = {
+        "canary1": {
+            "invoke": "2026-08-03T18:23:19.117640Z",
+            "startup_ms": 96219,
+            "started_at": "2026-08-03T18:24:55.337Z",
+            "completed_at": "2026-08-03T18:26:57.070Z",
+            "duration_ms": 121733,
+            "digest": "709c87e76696f7c231ec8550e7d066102a8cf9c134b0966279d96daf97d29c15",
+            "rows": {
+                94: {
+                    "timestamp": "2026-08-03T18:25:24.507Z",
+                    "message": {"content": [{
+                        "type": "tool_use", "name": "Agent",
+                        "id": "toolu_011v8BKUh3wK1jN5SY1HhR46",
+                        "input": {
+                            "subagent_type": "claude", "prompt": prompts[0],
+                            "run_in_background": False,
+                        },
+                    }]},
+                },
+                108: {
+                    "timestamp": "2026-08-03T18:26:57.063Z",
+                    "message": {"content": [{
+                        "type": "tool_result",
+                        "tool_use_id": "toolu_011v8BKUh3wK1jN5SY1HhR46",
+                    }]},
+                },
+            },
+        },
+        "canary2": {
+            "invoke": "2026-08-03T18:30:31.408337Z",
+            "startup_ms": 131485,
+            "started_at": "2026-08-03T18:32:42.893Z",
+            "completed_at": "2026-08-03T18:35:11.526Z",
+            "duration_ms": 148633,
+            "digest": "0078aefb16635a4d817d0f1027c8e27647cb28240f0c63cb8e1f8ab65d4d5ad2",
+            "rows": {
+                129: {
+                    "timestamp": "2026-08-03T18:33:13.729Z",
+                    "message": {"content": [{
+                        "type": "tool_use", "name": "Agent",
+                        "id": "toolu_01VHyvLgF7naatc6TGUxjP6q",
+                        "input": {
+                            "subagent_type": "claude", "prompt": prompts[1],
+                            "mode": "bypassAll",
+                        },
+                    }]},
+                },
+                130: {
+                    "timestamp": "2026-08-03T18:33:13.731Z",
+                    "message": {"content": [{
+                        "type": "tool_result",
+                        "tool_use_id": "toolu_01VHyvLgF7naatc6TGUxjP6q",
+                        "is_error": True,
+                    }]},
+                },
+                131: {
+                    "timestamp": "2026-08-03T18:33:42.402Z",
+                    "message": {"content": [{
+                        "type": "tool_use", "name": "Agent",
+                        "id": "toolu_01KTY3tPwJ8XPs5xT89unHE6",
+                        "input": {
+                            "subagent_type": "claude", "prompt": prompts[1],
+                            "mode": "bypassPermissions",
+                        },
+                    }]},
+                },
+                134: {
+                    "timestamp": "2026-08-03T18:33:42.499Z",
+                    "message": {"content": [{
+                        "type": "tool_result",
+                        "tool_use_id": "toolu_01KTY3tPwJ8XPs5xT89unHE6",
+                    }]},
+                },
+            },
+        },
+    }
+    fixture = fixtures[name]
+    result = root / f"0091-stage-b-{name}" / "result"
+    state_path = result / "devlyn-snapshot" / "runs" / "run" / "pipeline.state.json"
+    state_path.parent.mkdir(parents=True)
+    state = {"phases": {"plan": {
+        "started_at": fixture["started_at"],
+        "completed_at": fixture["completed_at"],
+        "duration_ms": fixture["duration_ms"],
+        "verdict": "PASS", "round": 0, "triggered_by": None,
+        "engine": "claude", "model_requested": "claude-sonnet-5",
+        "prompt_sha256": fixture["digest"], "model_effective": None,
+    }}}
+    state_path.write_text(json.dumps(state) + "\n", encoding="utf-8")
+    (result / "timing.json").write_text(json.dumps({
+        "schema_version": 2, "invoke_started_at": fixture["invoke"],
+    }) + "\n", encoding="utf-8")
+    (result / "attribution.json").write_text(json.dumps({
+        "startup_ms": fixture["startup_ms"],
+    }) + "\n", encoding="utf-8")
+    session = result.parent / "sessions" / "parent.jsonl"
+    session.parent.mkdir()
+    numbered_rows = fixture["rows"]
+    session.write_text("".join(
+        json.dumps(numbered_rows.get(line, {}), ensure_ascii=False) + "\n"
+        for line in range(1, max(numbered_rows) + 1)
+    ), encoding="utf-8")
+    return result
+
+
 def self_test() -> int:
     assertions = 0
 
@@ -898,10 +1208,222 @@ def self_test() -> int:
         equal(c2["dispatch_identity"]["agent_tool_use_count"], 4)
         equal(c2["dispatch_identity"]["non_plan_agent_tool_use_count"], 3)
         equal(c2["classification"], "COMPLETE")
-        equal(c2["schema_version"], 2)
+        equal(c2["schema_version"], 3)
         equal(
             c2["dispatch_identity"]["dispatches"][0]["diagnostics"]["heading"],
             "## " + PLAN_STEM,
+        )
+
+        absent = object()
+        retained_prompt = c2_records[0]["message"]["content"][0]["input"]["prompt"]
+
+        def attempt_records(
+            tool_id: str,
+            *,
+            timestamp: str = "2026-08-02T02:58:58.818Z",
+            prompt: str = retained_prompt,
+            mode: object = absent,
+            background: object = False,
+            result_count: int = 1,
+            is_error: object = absent,
+        ) -> list[dict]:
+            tool_input = {"subagent_type": "claude", "prompt": prompt}
+            if mode is not absent:
+                tool_input["mode"] = mode
+            if background is not absent:
+                tool_input["run_in_background"] = background
+            rows = [{
+                "timestamp": timestamp,
+                "message": {"content": [{
+                    "type": "tool_use", "name": "Agent", "id": tool_id,
+                    "input": tool_input,
+                }]},
+            }]
+            for result_index in range(result_count):
+                result = {"type": "tool_result", "tool_use_id": tool_id}
+                if is_error is not absent:
+                    result["is_error"] = is_error
+                rows.append({
+                    "timestamp": "2026-08-02T03:00:00.000Z",
+                    "message": {"content": [result]},
+                    "fixture_result_index": result_index,
+                })
+            return rows
+
+        def analyze_attempts(name: str, rows: list[dict]) -> dict:
+            result = write_fixture(
+                root, name, [copy.deepcopy(c2_records[0])], source_name="C2"
+            )
+            session = result.parent / "sessions" / "parent.jsonl"
+            session.write_text(
+                "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+            return analyze(result)
+
+        for label, is_error in (
+            ("absent", absent), ("false", False), ("null", None),
+        ):
+            delayed = analyze_attempts(
+                f"delayed-result-{label}",
+                attempt_records(f"delayed-{label}", is_error=is_error),
+            )
+            equal(delayed["classification"], "COMPLETE")
+            equal(
+                delayed["dispatch_identity"]["agent_candidates"][0][
+                    "acceptance_disposition"
+                ],
+                "ACCEPTED",
+            )
+
+        missing_tool_result = analyze_attempts(
+            "missing-tool-result", attempt_records("missing-result", result_count=0)
+        )
+        equal(missing_tool_result["classification"], "INCOMPLETE")
+        equal(
+            missing_tool_result["dispatch_identity"]["authorization_windows"][0][
+                "classification"
+            ],
+            "INCOMPLETE",
+        )
+
+        duplicate_id = analyze_attempts(
+            "duplicate-tool-use-id",
+            attempt_records("duplicate", result_count=0)
+            + attempt_records(
+                "duplicate", timestamp="2026-08-02T02:59:00.000Z", result_count=0
+            ),
+        )
+        equal(duplicate_id["classification"], "CONTRACT-VIOLATION")
+        equal("duplicate-agent-tool-use-id" in duplicate_id["product"]["violations"], True)
+
+        multiple_results = analyze_attempts(
+            "multiple-matching-results",
+            attempt_records("multiple-results", result_count=2),
+        )
+        equal(multiple_results["classification"], "CONTRACT-VIOLATION")
+        equal("multiple-agent-tool-results" in multiple_results["product"]["violations"], True)
+
+        malformed_result = analyze_attempts(
+            "malformed-is-error",
+            attempt_records("malformed-result", is_error="false"),
+        )
+        equal(malformed_result["classification"], "INCOMPLETE")
+
+        accepted_plus_missing = analyze_attempts(
+            "accepted-plus-missing",
+            attempt_records("accepted")
+            + attempt_records(
+                "missing", timestamp="2026-08-02T02:59:00.000Z", result_count=0
+            ),
+        )
+        equal(accepted_plus_missing["classification"], "INCOMPLETE")
+        equal(accepted_plus_missing["product"]["violations"], [])
+
+        many_accepted = analyze_attempts(
+            "many-accepted",
+            attempt_records("accepted-one")
+            + attempt_records(
+                "accepted-two", timestamp="2026-08-02T02:59:00.000Z"
+            ),
+        )
+        equal(many_accepted["classification"], "CONTRACT-VIOLATION")
+        equal(
+            many_accepted["product"]["violations"],
+            ["multiple-plan-agents-in-authorization-window"],
+        )
+
+        rejected = analyze_attempts(
+            "rejected-only", attempt_records("rejected", is_error=True)
+        )
+        equal(rejected["classification"], "CONTRACT-VIOLATION")
+        equal("rejected-plan-agent-attempt" in rejected["product"]["violations"], True)
+
+        prompt_mismatch = analyze_attempts(
+            "prompt-mismatch", attempt_records("prompt-mismatch", prompt="wrong bytes")
+        )
+        equal(prompt_mismatch["classification"], "CONTRACT-VIOLATION")
+
+        for label, mode in (("string", "bypassPermissions"), ("null", None)):
+            mode_present = analyze_attempts(
+                f"mode-present-{label}",
+                attempt_records(f"mode-{label}", mode=mode),
+            )
+            equal(mode_present["classification"], "CONTRACT-VIOLATION")
+
+        for label, background, expected in (
+            ("absent", absent, "CONTRACT-VIOLATION"),
+            ("null", None, "CONTRACT-VIOLATION"),
+            ("numeric-zero", 0, "CONTRACT-VIOLATION"),
+            ("string-false", "false", "CONTRACT-VIOLATION"),
+            ("boolean-false", False, "COMPLETE"),
+        ):
+            background_shape = analyze_attempts(
+                f"background-{label}",
+                attempt_records(f"background-{label}", background=background),
+            )
+            equal(background_shape["classification"], expected)
+
+        for label, is_error in (("accepted", absent), ("rejected", True)):
+            outside_heading = analyze_attempts(
+                f"outside-heading-{label}",
+                attempt_records(
+                    f"outside-{label}",
+                    timestamp="2026-08-02T03:05:00.000Z",
+                    is_error=is_error,
+                ),
+            )
+            equal(outside_heading["classification"], "CONTRACT-VIOLATION")
+            equal(
+                outside_heading["product"]["violations"],
+                ["plan-dispatch-outside-authorization-window"],
+            )
+
+        outside_ordinary = analyze_attempts(
+            "outside-ordinary",
+            attempt_records(
+                "outside-ordinary",
+                timestamp="2026-08-02T03:05:00.000Z",
+                prompt="ordinary non-PLAN call",
+            ),
+        )
+        equal(outside_ordinary["classification"], "INCOMPLETE")
+        equal(outside_ordinary["dispatch_identity"]["non_plan_agent_tool_use_count"], 1)
+
+        retained_canary1 = analyze(write_stage_b_fixture(root, "canary1"))
+        canary1_attempt = retained_canary1["dispatch_identity"]["agent_candidates"][0]
+        equal(retained_canary1["classification"], "COMPLETE")
+        equal(canary1_attempt["source_line"], 94)
+        equal(canary1_attempt["matching_tool_result_lines"], [108])
+        equal(canary1_attempt["acceptance_disposition"], "ACCEPTED")
+        equal(canary1_attempt["mode_present"], False)
+        equal(canary1_attempt["run_in_background"] is False, True)
+        equal(
+            canary1_attempt["delivered_prompt_sha256"],
+            "709c87e76696f7c231ec8550e7d066102a8cf9c134b0966279d96daf97d29c15",
+        )
+
+        retained_canary2 = analyze(write_stage_b_fixture(root, "canary2"))
+        canary2_attempts = retained_canary2["dispatch_identity"]["agent_candidates"]
+        equal(retained_canary2["classification"], "CONTRACT-VIOLATION")
+        equal([row["source_line"] for row in canary2_attempts], [129, 131])
+        equal(
+            [row["matching_tool_result_lines"] for row in canary2_attempts],
+            [[130], [134]],
+        )
+        equal(
+            [row["acceptance_disposition"] for row in canary2_attempts],
+            ["REJECTED", "ACCEPTED"],
+        )
+        equal([row["mode_present"] for row in canary2_attempts], [True, True])
+        equal(
+            [row["run_in_background_present"] for row in canary2_attempts],
+            [False, False],
+        )
+        equal(
+            "multiple-plan-agents-in-authorization-window"
+            in retained_canary2["product"]["violations"],
+            False,
         )
 
         quoted = copy.deepcopy(c2_records)
@@ -914,7 +1436,9 @@ def self_test() -> int:
             json.dumps(quoted[0], ensure_ascii=False) + "\n", encoding="utf-8"
         )
         issues: list[str] = []
-        found, _, _ = collect_agent_calls(parent_session_paths(quote_dir), issues, quote_dir)
+        found, _, _, _ = collect_agent_calls(
+            parent_session_paths(quote_dir), issues, quote_dir
+        )
         equal(len(found), 1)
         equal(found[0]["diagnostics"]["canonical_heading_match"], False)
         equal(issues, [])
@@ -981,7 +1505,7 @@ def self_test() -> int:
         equal(adverse["delivery_attestation"][0]["match"], False)
         equal(
             adverse["product"]["violations"],
-            ["delivered-prompt-digest-mismatch"],
+            ["delivered-prompt-digest-mismatch", "plan-agent-call-shape-invalid"],
         )
 
         # More than one captured top-level Agent in one authorization window
@@ -994,6 +1518,7 @@ def self_test() -> int:
         multiple_rows = [json.loads(multiple_session.read_text())]
         duplicate = copy.deepcopy(multiple_rows[0])
         duplicate["message"]["content"][0]["id"] = "second-in-window"
+        duplicate["message"]["content"][1]["tool_use_id"] = "second-in-window"
         duplicate["timestamp"] = "2026-08-02T02:59:00.000Z"
         multiple_rows.append(duplicate)
         multiple_session.write_text(
@@ -1021,7 +1546,6 @@ def self_test() -> int:
         same_id_rows = [json.loads(same_id_session.read_text())]
         same_id_duplicate = copy.deepcopy(same_id_rows[0])
         same_id_duplicate["timestamp"] = "2026-08-02T02:59:00.000Z"
-        same_id_duplicate["message"]["content"][0]["input"]["prompt"] = "second"
         same_id_rows.append(same_id_duplicate)
         same_id_session.write_text(
             "".join(json.dumps(row) + "\n" for row in same_id_rows)
@@ -1036,7 +1560,7 @@ def self_test() -> int:
         )
         equal(
             same_id["product"]["violations"],
-            ["multiple-plan-agents-in-authorization-window"],
+            ["duplicate-agent-tool-use-id", "multiple-agent-tool-results"],
         )
 
         legacy_multiple_result = write_fixture(
@@ -1049,6 +1573,9 @@ def self_test() -> int:
         legacy_multiple_rows = [json.loads(legacy_multiple_session.read_text())]
         legacy_duplicate = copy.deepcopy(legacy_multiple_rows[0])
         legacy_duplicate["message"]["content"][0]["id"] = "legacy-second-in-window"
+        legacy_duplicate["message"]["content"][1]["tool_use_id"] = (
+            "legacy-second-in-window"
+        )
         legacy_duplicate["timestamp"] = "2026-08-02T02:59:00.000Z"
         legacy_multiple_rows.append(legacy_duplicate)
         legacy_multiple_session.write_text(
@@ -1144,7 +1671,7 @@ def self_test() -> int:
         malformed_receipt_state["phases"]["plan"]["started_at"] = "not-a-timestamp"
         malformed_receipt_state_path.write_text(json.dumps(malformed_receipt_state) + "\n")
         malformed_receipt = analyze(malformed_receipt_result)
-        equal(malformed_receipt["classification"], "INCOMPLETE")
+        equal(malformed_receipt["classification"], "CONTRACT-VIOLATION")
         equal(malformed_receipt["dispatch_identity"]["authorization_windows"], [])
         equal(
             "plan-receipt-schema-invalid" in malformed_receipt["evidence"]["issues"],
@@ -1166,7 +1693,7 @@ def self_test() -> int:
         )
         overflow_receipt_state_path.write_text(json.dumps(overflow_receipt_state) + "\n")
         overflow_receipt = analyze(overflow_receipt_result)
-        equal(overflow_receipt["classification"], "INCOMPLETE")
+        equal(overflow_receipt["classification"], "CONTRACT-VIOLATION")
         equal(overflow_receipt["ledger"]["receipts"][0]["schema"], "invalid")
         equal(overflow_receipt["dispatch_identity"]["authorization_windows"], [])
 
@@ -1185,7 +1712,7 @@ def self_test() -> int:
         )
         reversed_receipt_state_path.write_text(json.dumps(reversed_receipt_state) + "\n")
         reversed_receipt = analyze(reversed_receipt_result)
-        equal(reversed_receipt["classification"], "INCOMPLETE")
+        equal(reversed_receipt["classification"], "CONTRACT-VIOLATION")
         equal(reversed_receipt["ledger"]["receipts"][0]["schema"], "invalid")
         equal(reversed_receipt["dispatch_identity"]["authorization_windows"], [])
 
@@ -1323,7 +1850,7 @@ def self_test() -> int:
                 del plan["history"]
             state_path.write_text(json.dumps(state) + "\n")
             malformed = analyze(malformed_result)
-            equal(malformed["classification"], "INCOMPLETE")
+            equal(malformed["classification"], "CONTRACT-VIOLATION")
             equal(expected_issue in malformed["evidence"]["issues"], True)
 
         malformed_legacy_result = write_fixture(
@@ -1339,7 +1866,7 @@ def self_test() -> int:
         malformed_state["phases"]["plan"]["triggered_by"] = 7
         malformed_state_path.write_text(json.dumps(malformed_state) + "\n")
         malformed_legacy = analyze(malformed_legacy_result)
-        equal(malformed_legacy["classification"], "INCOMPLETE")
+        equal(malformed_legacy["classification"], "CONTRACT-VIOLATION")
         equal(
             malformed_legacy["ledger"]["receipts"][-1]["schema"], "invalid"
         )
@@ -1476,10 +2003,17 @@ def self_test() -> int:
         e2e_session.parent.mkdir()
         e2e_record = {
             "timestamp": e2e_plan["started_at"],
-            "message": {"content": [{
-                "type": "tool_use", "name": "Agent", "id": "p0089-6",
-                "input": {"subagent_type": "general-purpose", "prompt": rendered.read_text()},
-            }]},
+            "message": {"content": [
+                {
+                    "type": "tool_use", "name": "Agent", "id": "p0089-6",
+                    "input": {
+                        "subagent_type": "general-purpose",
+                        "prompt": rendered.read_text(),
+                        "run_in_background": False,
+                    },
+                },
+                {"type": "tool_result", "tool_use_id": "p0089-6"},
+            ]},
         }
         e2e_session.write_text(json.dumps(e2e_record) + "\n")
         e2e = analyze(e2e_result)
