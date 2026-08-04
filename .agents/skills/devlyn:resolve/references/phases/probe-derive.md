@@ -182,6 +182,8 @@ Rules:
   replayed probe and obeys the same hidden-path/external-URL rules as `cmd`.
   Solo-headroom hypothesis probes keep the hypothesis's backticked observable
   command inline in `cmd` for mechanical validation.
+- A probe may declare `timeout_sec` from 1 through 600 when the exercised
+  verification legitimately needs more than the default 60 seconds.
 - Match the spec's visible input and output key names literally; do not invent
   aliases such as `stock` for `lots`, `order_id` for `id`, or `warehouse_id`
   for `warehouse`.

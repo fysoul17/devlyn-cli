@@ -24,6 +24,13 @@
             "description": "Required exit code. Default 0 if omitted.",
             "default": 0
           },
+          "timeout_sec": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 600,
+            "description": "Per-command timeout in seconds. Default 60 if omitted; maximum 600.",
+            "default": 60
+          },
           "stdout_contains": {
             "type": "array",
             "description": "Each substring must appear verbatim in (stdout + stderr) for pass.",

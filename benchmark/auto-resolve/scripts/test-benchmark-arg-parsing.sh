@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 TMP="$(mktemp -d)"
 BENCH_ROOT="$ROOT/benchmark/auto-resolve"
-trap 'rm -rf "$TMP"; rm -rf "$BENCH_ROOT/results/arg-parse-command-test" "$BENCH_ROOT/results/arg-parse-discovery-test" "$BENCH_ROOT/results/arg-parse-shadow-suite-dry-run" "$BENCH_ROOT/results/arg-parse-shadow-cli-suite-dry-run" "$BENCH_ROOT/results/arg-parse-variant-path" "$BENCH_ROOT/results/arg-parse-headroom-cli-replay" "$BENCH_ROOT/results/arg-parse-pair-cli-replay" "$BENCH_ROOT/results/arg-parse-shadow-judge" "$BENCH_ROOT/results/arg-parse-opus-bad-mapping" "$BENCH_ROOT/results/arg-parse-opus-malformed-mapping" "$BENCH_ROOT/results/arg-parse-opus-malformed-score" "$BENCH_ROOT/results/arg-parse-opus-invalid-generated-score" "$BENCH_ROOT/results/arg-parse-opus-invalid-generated-dq" "$BENCH_ROOT/results/arg-parse-opus-summary-mapping" "$BENCH_ROOT/results/arg-parse-opus-summary-null-margin"; rm -rf /tmp/bench-arg-parse-variant-path-* /tmp/bench-arg-parse-headroom-cli-replay-*' EXIT
+trap 'rm -rf "$TMP"; rm -rf "$BENCH_ROOT/results/arg-parse-command-test" "$BENCH_ROOT/results/arg-parse-discovery-test" "$BENCH_ROOT/results/arg-parse-shadow-suite-dry-run" "$BENCH_ROOT/results/arg-parse-shadow-cli-suite-dry-run" "$BENCH_ROOT/results/arg-parse-variant-path" "$BENCH_ROOT/results/arg-parse-timeout-budget" "$BENCH_ROOT/results/arg-parse-headroom-cli-replay" "$BENCH_ROOT/results/arg-parse-pair-cli-replay" "$BENCH_ROOT/results/arg-parse-shadow-judge" "$BENCH_ROOT/results/arg-parse-opus-bad-mapping" "$BENCH_ROOT/results/arg-parse-opus-malformed-mapping" "$BENCH_ROOT/results/arg-parse-opus-malformed-score" "$BENCH_ROOT/results/arg-parse-opus-invalid-generated-score" "$BENCH_ROOT/results/arg-parse-opus-invalid-generated-dq" "$BENCH_ROOT/results/arg-parse-opus-summary-mapping" "$BENCH_ROOT/results/arg-parse-opus-summary-null-margin" "$BENCH_ROOT/shadow-fixtures/arg-parse-timeout-budget"; rm -rf /tmp/bench-arg-parse-variant-path-* /tmp/bench-arg-parse-timeout-budget-* /tmp/bench-arg-parse-headroom-cli-replay-*' EXIT
 
 expect_fail_contains() {
   local name="$1"
@@ -849,6 +849,74 @@ if grep -Fq -- '--engine auto' \
   exit 1
 fi
 mkdir -p "$BENCH_ROOT/shadow-fixtures"
+rm -rf "$BENCH_ROOT/shadow-fixtures/arg-parse-timeout-budget" \
+  "$BENCH_ROOT/results/arg-parse-timeout-budget"
+cp -R "$BENCH_ROOT/fixtures/F1-cli-trivial-flag" \
+  "$BENCH_ROOT/shadow-fixtures/arg-parse-timeout-budget"
+python3 - "$BENCH_ROOT/shadow-fixtures/arg-parse-timeout-budget/expected.json" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+expected = json.loads(path.read_text())
+expected["verification_commands"] = [
+    {
+        "cmd": "python3 -c \"import time; time.sleep(2)\"",
+        "timeout_sec": 1,
+    },
+    {
+        "cmd": "python3 -c \"import time; time.sleep(1)\"",
+        "timeout_sec": 5,
+    },
+]
+path.write_text(json.dumps(expected, indent=2) + "\n")
+PY
+bash "$ROOT/benchmark/auto-resolve/scripts/run-fixture.sh" \
+  --fixture arg-parse-timeout-budget \
+  --arm bare \
+  --run-id arg-parse-timeout-budget \
+  --dry-run > "$TMP/timeout-budget-dry-run.out" 2>&1
+python3 - "$BENCH_ROOT/results/arg-parse-timeout-budget/arg-parse-timeout-budget/bare/verify.json" <<'PY'
+import json
+import pathlib
+import sys
+
+commands = json.loads(pathlib.Path(sys.argv[1]).read_text())["commands"]
+assert commands[0]["reason"] == "timeout", commands
+assert commands[1]["pass"] is True, commands
+PY
+
+TIMEOUT_LINT_ROOT="$TMP/timeout-lint-fixtures"
+mkdir -p "$TIMEOUT_LINT_ROOT"
+cp -R "$BENCH_ROOT/fixtures/F1-cli-trivial-flag" \
+  "$TIMEOUT_LINT_ROOT/F1-cli-trivial-flag"
+python3 - "$TIMEOUT_LINT_ROOT/F1-cli-trivial-flag/expected.json" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+expected = json.loads(path.read_text())
+expected["verification_commands"][0]["timeout_sec"] = 600
+path.write_text(json.dumps(expected, indent=2) + "\n")
+PY
+DEVLYN_FIXTURES_DIR="$TIMEOUT_LINT_ROOT" DEVLYN_LINT_FIXTURES_NO_JSONSCHEMA=1 \
+  bash "$ROOT/scripts/lint-fixtures.sh" > "$TMP/timeout-lint-pass.out" 2>&1
+python3 - "$TIMEOUT_LINT_ROOT/F1-cli-trivial-flag/expected.json" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+expected = json.loads(path.read_text())
+expected["verification_commands"][0]["timeout_sec"] = True
+path.write_text(json.dumps(expected, indent=2) + "\n")
+PY
+expect_fail_contains timeout-lint-bool \
+  "timeout_sec must be an integer from 1 to 600" \
+  env DEVLYN_FIXTURES_DIR="$TIMEOUT_LINT_ROOT" DEVLYN_LINT_FIXTURES_NO_JSONSCHEMA=1 \
+    bash "$ROOT/scripts/lint-fixtures.sh"
 rm -rf "$BENCH_ROOT/shadow-fixtures/arg-parse-nan-metadata" \
   "$BENCH_ROOT/shadow-fixtures/arg-parse-nan-expected" \
   "$BENCH_ROOT/results/arg-parse-nan-metadata" \

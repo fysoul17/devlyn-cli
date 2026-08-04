@@ -260,11 +260,17 @@ EXPECTED_TOP_LEVEL_KEYS = {
 EXPECTED_VERIFICATION_COMMAND_KEYS = {
     "cmd",
     "exit_code",
+    "timeout_sec",
     "stdout_contains",
     "stdout_not_contains",
     "contract_refs",
 }
+DEFAULT_TIMEOUT_SEC = 60
 SPEC_COMPLEXITY_VALUES = {"trivial", "medium", "high", "large"}
+
+
+def verification_timeout_sec(command: dict) -> int:
+    return command.get("timeout_sec", DEFAULT_TIMEOUT_SEC)
 
 
 def extract_verification_block(text: str) -> tuple[bool, str | None]:
@@ -579,10 +585,12 @@ def validate_shape(data) -> str | None:
     Schema (iter-0019.8): top-level object with a non-empty
     `verification_commands` list of objects. Each object requires a
     non-empty string `cmd`; `exit_code` defaults to 0 and must be a
-    non-bool int; `stdout_contains` and `stdout_not_contains` default to
-    empty list and must be lists of strings. Bool is rejected explicitly
-    because Python's `bool` subclasses `int` — `isinstance(True, int) is
-    True` would otherwise let `exit_code: true` slip through.
+    non-bool int; `timeout_sec` defaults to DEFAULT_TIMEOUT_SEC and must be a
+    non-bool int from 1 through 600; `stdout_contains` and
+    `stdout_not_contains` default to empty list and must be lists of strings.
+    Bool is rejected explicitly because Python's `bool` subclasses `int` —
+    `isinstance(True, int) is True` would otherwise let numeric fields accept
+    true.
     """
     if not isinstance(data, dict):
         return "top-level must be a JSON object"
@@ -600,6 +608,13 @@ def validate_shape(data) -> str | None:
         ec = c.get("exit_code", 0)
         if isinstance(ec, bool) or not isinstance(ec, int):
             return f"verification_commands[{i}].exit_code must be int (not bool)"
+        timeout_sec = c.get("timeout_sec", DEFAULT_TIMEOUT_SEC)
+        if (
+            isinstance(timeout_sec, bool)
+            or not isinstance(timeout_sec, int)
+            or not 1 <= timeout_sec <= 600
+        ):
+            return f"verification_commands[{i}].timeout_sec must be int from 1 to 600 (not bool)"
         for k in ("stdout_contains", "stdout_not_contains"):
             v = c.get(k, [])
             if not isinstance(v, list) or not all(isinstance(s, str) for s in v):
@@ -1769,6 +1784,7 @@ def run_self_test() -> int:
             "derived_from": "probe must pass visible marker.",
             "cmd": "python3 .devlyn/probes/P1.py",
             "exit_code": 0,
+            "timeout_sec": 5,
             "stdout_contains": ["probe-ok"],
             "stdout_not_contains": [],
             "tags": ["shape_contract"],
@@ -1781,6 +1797,167 @@ def run_self_test() -> int:
             },
         }
         (devlyn / "risk-probes.jsonl").write_text(json.dumps(risk_probe_payload) + "\n")
+        loaded_probes, loaded_probe_error = load_risk_probes(
+            devlyn, spec_md, require_present=True
+        )
+        if loaded_probe_error or loaded_probes[0].get("timeout_sec") != 5:
+            print("risk-probe timeout_sec was not preserved", file=sys.stderr)
+            print(loaded_probe_error, file=sys.stderr)
+            return 1
+
+        if verification_timeout_sec({"cmd": "printf default"}) != DEFAULT_TIMEOUT_SEC:
+            print("absent timeout_sec did not resolve to DEFAULT_TIMEOUT_SEC", file=sys.stderr)
+            return 1
+
+        inline_timeout_spec = work / "inline-timeout-spec.md"
+        inline_timeout_devlyn = work / "inline-timeout-devlyn"
+        for invalid_timeout in (True, 0, -1, 601, "60"):
+            inline_timeout_spec.write_text(
+                "# Timeout validation\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n"
+                + json.dumps({
+                    "verification_commands": [
+                        {"cmd": "printf ok", "timeout_sec": invalid_timeout}
+                    ]
+                })
+                + "\n```\n",
+                encoding="utf-8",
+            )
+            staged, inline_error = stage_from_source(
+                inline_timeout_spec, inline_timeout_devlyn
+            )
+            if staged or not inline_error or "timeout_sec" not in inline_error:
+                print(
+                    f"inline carrier accepted invalid timeout_sec={invalid_timeout!r}",
+                    file=sys.stderr,
+                )
+                return 1
+
+        inline_timeout_spec.write_text(
+            "# Timeout preservation\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n"
+            + json.dumps({
+                "verification_commands": [
+                    {"cmd": "printf ok", "timeout_sec": 5}
+                ]
+            })
+            + "\n```\n",
+            encoding="utf-8",
+        )
+        staged, inline_error = stage_from_source(
+            inline_timeout_spec, inline_timeout_devlyn
+        )
+        inline_staged = loads_strict_json(
+            (inline_timeout_devlyn / "spec-verify.json").read_text()
+        )
+        if (
+            not staged
+            or inline_error
+            or inline_staged["verification_commands"][0].get("timeout_sec") != 5
+        ):
+            print("inline carrier did not preserve timeout_sec", file=sys.stderr)
+            return 1
+
+        sibling_timeout_root = work / "sibling-timeout"
+        sibling_timeout_root.mkdir()
+        sibling_timeout_devlyn = sibling_timeout_root / ".devlyn"
+        sibling_timeout_spec = sibling_timeout_root / "spec.md"
+        sibling_timeout_spec.write_text("# Sibling timeout\n", encoding="utf-8")
+        sibling_timeout_expected = sibling_timeout_root / "spec.expected.json"
+        for invalid_timeout in (True, 601):
+            sibling_timeout_expected.write_text(json.dumps({
+                "verification_commands": [
+                    {"cmd": "printf ok", "timeout_sec": invalid_timeout}
+                ]
+            }) + "\n")
+            found, staged, sibling_error, _path, _data = stage_from_expected(
+                sibling_timeout_spec, sibling_timeout_devlyn
+            )
+            if not found or staged or not sibling_error or "timeout_sec" not in sibling_error:
+                print(
+                    f"sibling carrier accepted invalid timeout_sec={invalid_timeout!r}",
+                    file=sys.stderr,
+                )
+                return 1
+
+        sibling_timeout_expected.write_text(json.dumps({
+            "verification_commands": [
+                {"cmd": "printf ok", "timeout_sec": 5}
+            ]
+        }) + "\n")
+        found, staged, sibling_error, _path, _data = stage_from_expected(
+            sibling_timeout_spec, sibling_timeout_devlyn
+        )
+        sibling_staged = loads_strict_json(
+            (sibling_timeout_devlyn / "spec-verify.json").read_text()
+        )
+        if (
+            not found
+            or not staged
+            or sibling_error
+            or sibling_staged["verification_commands"][0].get("timeout_sec") != 5
+        ):
+            print("sibling carrier did not preserve timeout_sec", file=sys.stderr)
+            return 1
+
+        timeout_run_root = work / "timeout-run"
+        timeout_run_root.mkdir()
+        timeout_run_devlyn = timeout_run_root / ".devlyn"
+        timeout_run_devlyn.mkdir()
+        timeout_run_spec = timeout_run_root / "spec.md"
+        timeout_run_spec.write_text(
+            "# Timeout execution\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n"
+            + json.dumps({
+                "verification_commands": [
+                    {
+                        "cmd": "python3 -c \"import time; time.sleep(2)\"",
+                        "timeout_sec": 1,
+                    },
+                    {
+                        "cmd": "python3 -c \"import time; time.sleep(1)\"",
+                        "timeout_sec": 5,
+                    },
+                ]
+            })
+            + "\n```\n",
+            encoding="utf-8",
+        )
+        (timeout_run_devlyn / "pipeline.state.json").write_text(json.dumps({
+            "source": {"type": "spec", "spec_path": str(timeout_run_spec)}
+        }))
+        timeout_run = subprocess.run(
+            [sys.executable, script_path],
+            cwd=timeout_run_root,
+            capture_output=True,
+            text=True,
+        )
+        if timeout_run.returncode == 0:
+            print("declared one-second timeout did not fail", file=sys.stderr)
+            return 1
+        timeout_results = loads_strict_json(
+            (timeout_run_devlyn / "spec-verify.results.json").read_text()
+        )["commands"]
+        timeout_findings = [
+            loads_strict_json(line)
+            for line in (timeout_run_devlyn / "spec-verify-findings.jsonl").read_text().splitlines()
+            if line.strip()
+        ]
+        if (
+            timeout_results[0].get("reason") != "timeout"
+            or timeout_results[0].get("timeout_sec") != 1
+            or not timeout_results[1].get("pass")
+        ):
+            print("declared timeout budgets were not honored", file=sys.stderr)
+            print(timeout_results, file=sys.stderr)
+            return 1
+        timeout_finding = timeout_findings[0] if timeout_findings else {}
+        if (
+            timeout_finding.get("rule_id") != "correctness.verification-timeout"
+            or "after 1s" not in timeout_finding.get("message", "")
+            or "timeout_sec" not in timeout_finding.get("message", "")
+            or "600" not in timeout_finding.get("fix_hint", "")
+        ):
+            print("timeout finding did not carry the distinct budget contract", file=sys.stderr)
+            print(timeout_finding, file=sys.stderr)
+            return 1
         env = os.environ.copy()
         env["BENCH_WORKDIR"] = str(work)
         validate_without_digest = subprocess.run(
@@ -4161,6 +4338,7 @@ def main() -> int:
         expected_exit = vc.get("exit_code", 0)
         stdout_contains = vc.get("stdout_contains", []) or []
         stdout_not_contains = vc.get("stdout_not_contains", []) or []
+        timeout_sec = verification_timeout_sec(vc)
 
         try:
             proc = subprocess.run(
@@ -4170,7 +4348,7 @@ def main() -> int:
                 env=verify_env,
                 capture_output=True,
                 text=True,
-                timeout=60,
+                timeout=timeout_sec,
             )
             # Mirror run-fixture.sh post-run verifier: combined stdout+stderr.
             out = (proc.stdout or "") + (proc.stderr or "")
@@ -4270,20 +4448,16 @@ def main() -> int:
 
         except subprocess.TimeoutExpired:
             results.append({"index": idx, "cmd": cmd, "pass": False,
-                            "reason": "timeout"})
-            rule_id = (
-                "correctness.risk-probe-failed"
-                if vc.get("_risk_probe")
-                else "correctness.spec-literal-mismatch"
-            )
+                            "reason": "timeout", "timeout_sec": timeout_sec})
             findings.append({
                 "id": f"{output_finding_prefix()}-{finding_seq:04d}",
-                "rule_id": rule_id,
+                "rule_id": "correctness.verification-timeout",
                 "level": "error",
                 "severity": "CRITICAL",
                 "confidence": 1.0,
                 "message": (
-                    f"Verification command #{idx + 1} timed out after 60s."
+                    f"Verification command #{idx + 1} timed out after {timeout_sec}s "
+                    f"(timeout_sec={timeout_sec}, maximum 600)."
                 ),
                 "file": ".devlyn/risk-probes.jsonl" if vc.get("_risk_probe") else ".devlyn/spec-verify.json",
                 "line": 1,
@@ -4294,8 +4468,9 @@ def main() -> int:
                     else f"spec-verify://verification_commands/{idx}"
                 ),
                 "fix_hint": (
-                    f"Command `{cmd}` exceeded 60s. Reduce work or fix a "
-                    f"hang in the implementation."
+                    f"Command `{cmd}` exceeded its {timeout_sec}s timeout_sec budget. "
+                    "Increase timeout_sec up to 600 when the verification legitimately "
+                    "needs more time, or fix a hang in the implementation."
                 ),
                 "blocking": True,
                 "status": "open",

@@ -161,7 +161,7 @@ def fallback_validate():
             if not isinstance(command, dict):
                 errors.append(f"verification_commands[{idx}] must be an object")
                 continue
-            unknown_command = sorted(set(command) - {"cmd", "exit_code", "stdout_contains", "stdout_not_contains", "contract_refs"})
+            unknown_command = sorted(set(command) - {"cmd", "exit_code", "timeout_sec", "stdout_contains", "stdout_not_contains", "contract_refs"})
             if unknown_command:
                 errors.append(f"verification_commands[{idx}] has unknown key(s): {', '.join(unknown_command)}")
             if not isinstance(command.get("cmd"), str) or not command.get("cmd"):
@@ -169,6 +169,9 @@ def fallback_validate():
             exit_code = command.get("exit_code", 0)
             if isinstance(exit_code, bool) or not isinstance(exit_code, int):
                 errors.append(f"verification_commands[{idx}].exit_code must be an integer")
+            timeout_sec = command.get("timeout_sec", 60)
+            if isinstance(timeout_sec, bool) or not isinstance(timeout_sec, int) or not 1 <= timeout_sec <= 600:
+                errors.append(f"verification_commands[{idx}].timeout_sec must be an integer from 1 to 600")
             for key in ("stdout_contains", "stdout_not_contains", "contract_refs"):
                 if key in command and not is_string_list(command[key]):
                     errors.append(f"verification_commands[{idx}].{key} must be an array of non-empty strings")

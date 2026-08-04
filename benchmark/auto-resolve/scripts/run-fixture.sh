@@ -745,7 +745,8 @@ verify = {"commands": [], "forbidden_pattern_hits": [], "deps_added": 0,
 for vc in expected.get("verification_commands", []):
     try:
         proc = subprocess.run(vc["cmd"], cwd=work, shell=True, env=verify_env,
-                              capture_output=True, text=True, timeout=60)
+                              capture_output=True, text=True,
+                              timeout=vc.get("timeout_sec", 60))
         out = (proc.stdout or "") + (proc.stderr or "")
         ok_exit = proc.returncode == vc.get("exit_code", 0)
         ok_contains = all(s in out for s in vc.get("stdout_contains", []))
