@@ -170,8 +170,8 @@ Rules:
     shapes, JSON objects, response bodies, stdout/stderr objects, or exact error
     bodies: `uses_visible_input_key_names`,
     `asserts_visible_output_key_names`, `asserts_no_unexpected_output_keys`.
-    If it names an exact JSON error object/body, also include
-    `asserts_exact_error_object`.
+    If it names an exact JSON error object/body, also include both
+    `visible_text_names_exact_json_error_object` and `asserts_exact_error_object`.
   Tags not listed here may use an empty evidence list or be omitted from
   `tag_evidence`.
 - `cmd` must not reference `BENCH_FIXTURE_DIR`, `verifiers/`, benchmark fixture

@@ -156,7 +156,8 @@ When visible text names exact keys, fields, row shapes, JSON objects, response
 bodies, stdout/stderr objects, or exact error bodies, `shape_contract` must
 include `uses_visible_input_key_names`, `asserts_visible_output_key_names`, and
 `asserts_no_unexpected_output_keys`; exact JSON error objects/bodies must also
-include `asserts_exact_error_object`. Cart/pricing success probes should use
+include `visible_text_names_exact_json_error_object` and
+`asserts_exact_error_object`. Cart/pricing success probes should use
 `shape_contract` unless they satisfy the `ordering_inversion` markers. The probe
 command must not reference external network URLs; use only worktree-local or
 localhost resources.

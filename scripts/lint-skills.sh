@@ -713,13 +713,16 @@ fi
 if ! grep -Fq '"uses_visible_input_key_names"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '"asserts_visible_output_key_names"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '"asserts_no_unexpected_output_keys"' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'shape_contract co-occurring with error_contract without' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'shape_contract claiming visible exact error object without' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'visible_text_names_exact_json_error_object' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'JSON error object shape_contract with exact object evidence was rejected' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'shape_contract without any evidence was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'shape_contract with exact key evidence was rejected' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '`shape_contract` when the visible text names exact keys' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`shape_contract` must' config/skills/devlyn:resolve/SKILL.md; then
-  bad "risk-probe shape contracts must require exact visible input/output key evidence unconditionally, and asserts_exact_error_object when co-occurring with error_contract/http_error_contract"
+  || ! grep -Fq 'visible_text_names_exact_json_error_object' config/skills/devlyn:resolve/references/phases/probe-derive.md \
+  || ! grep -Fq '`shape_contract` must' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'visible_text_names_exact_json_error_object' config/skills/devlyn:resolve/SKILL.md; then
+  bad "risk-probe shape contracts must require exact visible input/output key evidence unconditionally, and asserts_exact_error_object when the probe claims the visible text names an exact JSON error object"
 fi
 if ! grep -Fq '"auth_signature_contract"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '"idempotency_replay"' config/skills/_shared/spec-verify-check.py \

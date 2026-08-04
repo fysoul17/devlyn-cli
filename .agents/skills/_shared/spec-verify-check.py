@@ -810,7 +810,7 @@ def validate_risk_probe(
         if not isinstance(actual, list) or not all(isinstance(item, str) for item in actual):
             return f"risk-probes[{index}].tag_evidence.shape_contract must be a list of strings"
         required_shape = set(SHAPE_CONTRACT_REQUIRED_EVIDENCE)
-        if {"error_contract", "http_error_contract"} & set(tags):
+        if "visible_text_names_exact_json_error_object" in set(actual):
             required_shape.add("asserts_exact_error_object")
         missing_shape = sorted(required_shape - set(actual))
         if missing_shape:
@@ -3176,7 +3176,8 @@ def run_self_test() -> int:
         error_spec = error_root / "spec.md"
         error_spec.write_text(
             "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
-            "- Invalid input must print a JSON error object to stderr and exit 2.\n"
+            "- Invalid input must print JSON error object `{ \"error\": \"bad_input\" }` to stderr and exit 2.\n"
+            "- Malformed input must exit 2 and print stderr JSON with keys `code` and `detail`; values are implementation-defined.\n"
         )
         (error_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(error_spec)}
@@ -3228,7 +3229,7 @@ def run_self_test() -> int:
 
         (error_devlyn / "risk-probes.jsonl").write_text(json.dumps({
             "id": "P7c",
-            "derived_from": "Invalid input must print a JSON error object to stderr and exit 2.",
+            "derived_from": "Invalid input must print JSON error object `{ \"error\": \"bad_input\" }` to stderr and exit 2.",
             "cmd": "printf json-error-shape-contract-missing-exact",
             "exit_code": 2,
             "tags": ["stdout_stderr_contract", "error_contract", "shape_contract"],
@@ -3242,6 +3243,7 @@ def run_self_test() -> int:
                     "uses_visible_input_key_names",
                     "asserts_visible_output_key_names",
                     "asserts_no_unexpected_output_keys",
+                    "visible_text_names_exact_json_error_object",
                 ],
             },
         }) + "\n")
@@ -3253,7 +3255,7 @@ def run_self_test() -> int:
         )
         if missing_exact_error_object.returncode == 0:
             print(
-                "shape_contract co-occurring with error_contract without "
+                "shape_contract claiming visible exact error object without "
                 "asserts_exact_error_object was accepted",
                 file=sys.stderr,
             )
@@ -3261,7 +3263,7 @@ def run_self_test() -> int:
 
         (error_devlyn / "risk-probes.jsonl").write_text(json.dumps({
             "id": "P7d",
-            "derived_from": "Invalid input must print a JSON error object to stderr and exit 2.",
+            "derived_from": "Invalid input must print JSON error object `{ \"error\": \"bad_input\" }` to stderr and exit 2.",
             "cmd": "printf json-error-shape-contract",
             "exit_code": 2,
             "tags": ["stdout_stderr_contract", "error_contract", "shape_contract"],
@@ -3275,6 +3277,7 @@ def run_self_test() -> int:
                     "uses_visible_input_key_names",
                     "asserts_visible_output_key_names",
                     "asserts_no_unexpected_output_keys",
+                    "visible_text_names_exact_json_error_object",
                     "asserts_exact_error_object",
                 ],
             },
@@ -3288,6 +3291,38 @@ def run_self_test() -> int:
         if strong_json_error_shape_contract.returncode != 0:
             print("JSON error object shape_contract with exact object evidence was rejected", file=sys.stderr)
             print(strong_json_error_shape_contract.stderr, file=sys.stderr)
+            return 1
+
+        (error_devlyn / "risk-probes.jsonl").write_text(json.dumps({
+            "id": "P7e",
+            "derived_from": (
+                "Malformed input must exit 2 and print stderr JSON with keys `code` and `detail`; "
+                "values are implementation-defined."
+            ),
+            "cmd": "printf error-exit-shape-contract",
+            "exit_code": 2,
+            "tags": ["error_contract", "shape_contract"],
+            "tag_evidence": {
+                "error_contract": [
+                    "asserts_error_payload_or_stderr",
+                    "asserts_nonzero_or_exit_2",
+                ],
+                "shape_contract": [
+                    "uses_visible_input_key_names",
+                    "asserts_visible_output_key_names",
+                    "asserts_no_unexpected_output_keys",
+                ],
+            },
+        }) + "\n")
+        error_exit_shape_contract = subprocess.run(
+            [sys.executable, script_path, "--validate-risk-probes"],
+            cwd=error_root,
+            capture_output=True,
+            text=True,
+        )
+        if error_exit_shape_contract.returncode != 0:
+            print("error-exit shape_contract without visible exact error object was rejected", file=sys.stderr)
+            print(error_exit_shape_contract.stderr, file=sys.stderr)
             return 1
 
         http_error_root = work / "http-error-contract-risk-probe"
@@ -3343,6 +3378,7 @@ def run_self_test() -> int:
                     "uses_visible_input_key_names",
                     "asserts_visible_output_key_names",
                     "asserts_no_unexpected_output_keys",
+                    "visible_text_names_exact_json_error_object",
                 ],
             },
         }) + "\n")
@@ -3374,6 +3410,7 @@ def run_self_test() -> int:
                     "uses_visible_input_key_names",
                     "asserts_visible_output_key_names",
                     "asserts_no_unexpected_output_keys",
+                    "visible_text_names_exact_json_error_object",
                     "asserts_exact_error_object",
                 ],
             },
