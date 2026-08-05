@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent: [`iterations/0094-r5-regate.md`](iterations/0094-r5-regate.md) (**CLOSED 2026-08-05, DECISIONS 0094.1 — matrix ran, first past controls; NO SHIP CREDIT: candidate-discovery delivered the PLAN prompt minus its terminal LF; R1 not refuted**) and [`iterations/0092-plan-native-foreground-dispatch.md`](iterations/0092-plan-native-foreground-dispatch.md) (**implementation verified GREEN 2026-08-05; R5 CLOSED-UNSCORED protocol-failed-at-controls; DECISIONS 0092.1**). Context: iter-0093 authorable verification timeout SHIPPED (DECISIONS 0093.1); [`iterations/0091-plan-dispatch-boundary-identity.md`](iterations/0091-plan-dispatch-boundary-identity.md) (Stage A SHIPPED `7c446c1`; Stage B closed-fail, B1 reverted `1e7da13`); 0088-0090 in their iteration files. Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent: [`iterations/0095-plan-delivery-byte-fidelity-STUB.md`](iterations/0095-plan-delivery-byte-fidelity-STUB.md) (**NEXT — delivery byte-fidelity, design round held + falsifier-adjudicated, not yet registered**) and [`iterations/0094-r5-regate.md`](iterations/0094-r5-regate.md) (**CLOSED 2026-08-05, DECISIONS 0094.1 — matrix ran, first past controls; NO SHIP CREDIT: candidate-discovery delivered the PLAN prompt minus its terminal LF; R1 not refuted**) and [`iterations/0092-plan-native-foreground-dispatch.md`](iterations/0092-plan-native-foreground-dispatch.md) (**implementation verified GREEN 2026-08-05; R5 CLOSED-UNSCORED protocol-failed-at-controls; DECISIONS 0092.1**). Context: iter-0093 authorable verification timeout SHIPPED (DECISIONS 0093.1); [`iterations/0091-plan-dispatch-boundary-identity.md`](iterations/0091-plan-dispatch-boundary-identity.md) (Stage A SHIPPED `7c446c1`; Stage B closed-fail, B1 reverted `1e7da13`); 0088-0090 in their iteration files. Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,7 +14,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-05 evening (**iter-0094 CLOSED: matrix ran, first past controls, NO SHIP CREDIT on a one-byte delivery failure; NEXT = delivery byte-fidelity registration (0095)**)
+## 🚦 START-HERE — state after 2026-08-05 night (**iter-0094 CLOSED; 0095 STUB registered with adjudicated design; NEXT = iter-0095 registration**)
 
 **Where the loop stands (one paragraph).** iter-0094 re-gated 0092's R1
 (native foreground PLAN dispatch, landed `83b275e`, formally verified
@@ -136,16 +136,18 @@ must compose transport state with authenticated summaries; isolated rows missed
 the TIMEOUT suppression that fresh Codex found.
 
 **Next work (in order)**:
-1. **Register iter-0095 (PLAN delivery byte-fidelity)** — the 0094 failure
-   class: live parents deliver the rendered prompt non-byte-exactly
-   (trailing-LF strip = the contract-warned `$(cat …)` class; control arms
-   varied too). Candidate bytes for R1 remain landed + verified green; live
-   delivery credit still owed. Fresh registration, fresh controls/nonce
-   (0088.3 rule). Instrument follow-ups to fold into ITS registration
-   (never patched in place): oracle live-session evidence scoping +
-   full-dir canary gating + subagent_type absent-key ruling;
-   dispatch-scorer artifacts clause aligned to the watcher spawn-skeleton
-   allowlist. Registered product follow-ups to schedule separately:
+1. **Register iter-0095 (PLAN delivery byte-fidelity)** from
+   [`iterations/0095-plan-delivery-byte-fidelity-STUB.md`](iterations/0095-plan-delivery-byte-fidelity-STUB.md).
+   Design round DONE (2026-08-05, receipts `~/.local/share/nx01/iter0095-design/`):
+   orchestrator's "invisible byte" position refuted by its own falsifier F2
+   (Read shows terminal LF as a final empty numbered line — verified in both
+   retained 0094 sessions); adopted synthesis = keep byte-exact gate + 0094
+   verdict, amend ONLY the Claude PLAN-delivery instruction (Read
+   final-empty-numbered-line cue → reproduce the LF), canonicalization only
+   as a pre-named successor path if a live 2/2 bar still fails. Product edit
+   routes through /devlyn:resolve; instrument follow-ups (oracle evidence
+   scoping + full-dir canary gating + subagent_type ruling; scorer artifacts
+   clause) fold into the registration per the STUB. Registered product follow-ups to schedule separately:
    `resolve-bootstrap.py` `git_text` ignores `allow_empty` on nonzero exit
    (detached-HEAD unbootstrappable); `verify-merge-findings.py` crosschecks
    every `*judge.stdout` as pair-side evidence (flipped-seat false BLOCKED);
