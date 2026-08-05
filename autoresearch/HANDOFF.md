@@ -69,9 +69,41 @@ candidate-simple ADDED a trailing LF to the canonicalized no-LF
 artifact while control-simple delivered byte-exact — with 0094 (strip)
 and 0096 (strip despite cue), the terminal-LF byte is BIDIRECTIONALLY
 model-unstable at the Read→transcribe boundary; artifact- and
-instruction-side remedies are both measured-insufficient. **NEXT =
-0098: design round + registration for terminal-LF-RUN-insensitive
-delivery comparison** (both sides strip the terminal 0x0a run
+instruction-side remedies are both measured-insufficient. **0098 (LF-run-insensitive
+compare) IN FLIGHT, PAUSED ON A SESSION COLLISION (2026-08-06 00:4x
+KST)**: design round CONVERGED (Codex+Grok AGREE-WITH-EDITS; TWO-BRANCH
+predicate adopted — `recorded == raw` FIRST, OR `recorded ==
+terminal-LF-run-stripped`; named criterion RETAINED-RECEIPT
+CONSERVATION beat Grok's single stripped compare; receipts
+`~/.local/share/nx01/iter0098-design/`), registration DRAFT committed
+(`iterations/0098-lf-run-insensitive-compare.md`), oracle spec
+committed (`docs/specs/iter0098-lf-run-insensitive-compare/spec.md`),
+PLAN completed on run rs-20260805T153428Z — then HALTED: a SECOND
+orchestrator session had bootstrapped run rs-20260805T153016Z (spec
+`docs/specs/iter0098-recert-exact-model-id/spec.md`, recert exact
+model-ID — the Opus-5 A/B prerequisite) four minutes earlier, and its
+codex IMPLEMENT (xhigh) was still in flight; the Fable bootstrap
+clobbered that run's .devlyn state (bidirectional violation of the
+writer-check rule). Fable's run was halted BLOCKED + archived; the
+recert codex was left untouched. **RESUME ORDER FOR THE NEXT SESSION**:
+① check the recert diff landed (5-file surface) and shepherd it via
+`--verify-only` against its spec (recovery pack:
+`~/.local/share/nx01/recert-run-recovery/` — RECOVERY.md +
+plan-verbatim.md recovered from the live process args; do NOT resume
+its dead pipeline state); if it needs an autoresearch number use 0099.
+② re-launch the 0098-oracle resolve run
+(`--spec docs/specs/iter0098-lf-run-insensitive-compare/spec.md
+--pair-verify`, executor codex) AFTER confirming no live .devlyn
+writer. ③ 0098 freeze gate: oracle self-test + retained replays ON
+COPIES (0091 C1 + 0094 cs COMPLETE via raw branch; 0094 cd + 0091 C2
+violations conserved; NEW satisfiability receipt = 0097
+candidate-simple full-dir replay must score COMPLETE via the stripped
+branch) → R1 both seats (liveness) → fresh bases/tokens/nonce →
+matrix. **NEW BINDING OPERATOR RULE: before ANY resolve bootstrap,
+verify no live process is writing the repo's `.devlyn` (ps for claude
+-p/codex exec/resolve-bootstrap + state run_id sanity) — two collisions
+today (queue.md contamination twice + this state clobber).** Old
+frontier: **0098 design round** (both sides strip the terminal 0x0a run
 pre-compare, raw digests retained forensically, all other bytes exact —
 the 0095-rejected F4 re-opened with its premise falsified). Old
 frontier text: **register iter-0097: artifact canonicalization** (renderer emits `plan.prompt` WITHOUT the
