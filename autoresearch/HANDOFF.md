@@ -39,9 +39,20 @@ BLOCKED fired live (primary capture renamed `codex-primary.stdout`
 in-run; product follow-up stands); judge prompt files do not survive
 mid-run maintenance — rebuild at every dispatch; oracle writes its JSON
 INTO the result dir and `sessions/` is result's SIBLING — replay retained
-receipts on full-arm COPIES only. **NEXT = run the frozen four-arm ABBA
-matrix** (regenerate neutral sibling bases at the new candidate SHA,
-fresh controls + fresh nonce, pinned CLI, bars incl. 2/2 byte-exact).
+receipts on full-arm COPIES only. **MATRIX RAN AND CLOSED (same day):
+CLOSED-UNSCORED protocol-failed-at-controls at arm 1/4** (DECISIONS
+0095.1) — the control-simple Sonnet parent completed PLAN via STANDALONE
+`plan complete` (no atomic transition verb; session `:181`),
+`implement=null` at `plan.completed_at`, the exact fail-closed class the
+frozen watcher catches; after in-window PLAN use → no replacement;
+R-final Codex CONFIRM. Candidate arms unscored; R1 + the LF instruction
+NOT refuted; both product edits stay landed on formal verification.
+**NEXT = register the successor (0096): PLAN→IMPLEMENT
+transition-protocol compliance + delivery byte-fidelity re-gate**
+(condition-independent parent variance in shared contract text — the
+0094 control-delivery-variance family; fresh controls + nonce + sibling
+bases at the then-current SHA per 0088.3). Matrix receipts:
+`~/.local/share/nx01/iter0095-matrix/`.
 
 ### (superseded registration context from 0094 close below)
 
