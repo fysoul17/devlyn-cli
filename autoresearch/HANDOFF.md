@@ -47,8 +47,25 @@ CLOSED-UNSCORED protocol-failed-at-controls at arm 1/4** (DECISIONS
 frozen watcher catches; after in-window PLAN use → no replacement;
 R-final Codex CONFIRM. Candidate arms unscored; R1 + the LF instruction
 NOT refuted; both product edits stay landed on formal verification.
-**NEXT = register the successor (0096): PLAN→IMPLEMENT
-transition-protocol compliance + delivery byte-fidelity re-gate**
+**0096 RAN AND CLOSED same day (DECISIONS
+0096.1)**: SPW effective-verdict transition guard SHIPPED (3-seat FREEZE
+incl. Codex R1 EFFECTIVE-VERDICT CONSERVATION delta; two resolve outer
+loops; verify-only PASS 3/3 twice — two pipeline runs closed BLOCKED on
+concurrent user queue.md edits contaminating the scope baseline, learned
+route = bookkeeping commit + verify-only) and LIVE-VALIDATED: fresh
+four-arm matrix ran 4/4 past the watcher (0095 death class closed),
+dispatch_clean 4/4 + oracle 0 evidence issues (both 0094 instrument
+defects closed live), tripwires 0.895×. DECIDING BAR FAILED 1/2:
+candidate-discovery stripped the SAME single terminal LF (12,150/12,151)
+WITH the Read-cue instruction in-tree; candidate-simple byte-exact.
+Controls both digest-mismatched (third both-conditions variance
+receipt). Blind bar not executed (non-restorative; nonce retained;
+logged). **The pre-named escalation FIRES → NEXT = register iter-0097:
+artifact canonicalization** (renderer emits `plan.prompt` WITHOUT the
+terminal LF — digest self-consistent; DELETE the 8f99b51 cue sentence,
+subtractive; fresh controls/nonce/bases per 0088.3). Receipts:
+`~/.local/share/nx01/iter0096-{reg,matrix}/`. Old frontier text below
+superseded: **register the successor (0096)**
 (condition-independent parent variance in shared contract text — the
 0094 control-delivery-variance family; fresh controls + nonce + sibling
 bases at the then-current SHA per 0088.3). Matrix receipts:
