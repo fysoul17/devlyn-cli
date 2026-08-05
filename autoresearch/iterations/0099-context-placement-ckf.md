@@ -106,12 +106,14 @@ arm's CLAUDE.md + `.claude/skills`). 144 runs per window.
 Oracle: each probe's own `hidden/verify.sh` → verdict.json (existing).
 
 **Window 2 — pipeline.** `run-drift-bait-probe-resolve.sh` (full
-phase-gated `/devlyn:resolve` framing). The driver appends an explicit
-`--no-pair` instruction to the resolve invocation in the task prompt —
-a measurement-isolation choice applied IDENTICALLY to all arms: Claude
-seats are the measured variable; a codex pair judge would both inject
-non-Claude behavior into outcomes and consume arm-varied shared bodies
-(R0's confound). SURFACE_CLOSE (fixed claude-sonnet-5, engine-fixed,
+phase-gated `/devlyn:resolve` framing). The driver appends explicit
+`--no-pair --no-risk-probes` instructions to the resolve invocation in
+the task prompt — measurement-isolation applied IDENTICALLY to all
+arms: Claude seats are the measured variable; a codex pair judge would
+both inject non-Claude behavior into outcomes and consume arm-varied
+shared bodies (R0's confound), and `--no-pair` alone does NOT suppress
+automatic risk probes, whose derivation routes to the OTHER engine on
+high-risk cells (R1 finding, SKILL.md:118). SURFACE_CLOSE (fixed claude-sonnet-5, engine-fixed,
 identical across arms) may fire on generated-mode runs and is in-scope
 as a Claude seat. `.devlyn/engines.json` is machine-local and absent in
 fresh worktrees → executor defaults to claude. **Pipeline oracle (new,
@@ -125,8 +127,14 @@ verify.sh contract; no new oracle authoring.
 **Routing attestation (structural veto).** Per run the driver asserts
 mechanically: (bare) claude-debug.log presence + timing.json model ==
 the exact requested ID; (pipeline) additionally the devlyn-snapshot's
-pipeline.state.json shows engine=claude and no codex dispatch artifacts
-(`codex-primary.stdout`, `*-judge.stdout` from codex) in `.devlyn`.
+pipeline.state.json shows `pair_default_enabled: false` (or
+pair_trigger skipped_reason `user_no_pair`),
+`risk_probes_enabled: false`, EVERY populated `phases.*.engine` field
+in {claude} (surface_close's fixed claude route included), probe_derive
+never dispatched, and no codex dispatch artifacts
+(`codex-primary.stdout`, `*-judge.stdout`, `probe-derive.*`) in
+`.devlyn` (R1 edit: per-phase attestation, not merely global
+`state.engine`).
 A run failing attestation is INVALID → one same-cell rerun; a second
 failure → cell unscored → **that (arm × generation × window) is
 unscorable and the arm cannot be adopted on that generation** (missing
@@ -137,11 +145,17 @@ Ordinary phase prompts never exist as files (only `plan.prompt` +
 `surface-close.prompt` render to disk; state-phase-write rejects
 prompt hashes for other phases:1333; archive allowlist excludes them).
 The driver therefore harvests, per pipeline run and before workdir
-deletion: `plan.prompt`, `surface-close.prompt` (when present), AND
-every WORKER SESSION log of the run's workdir project dir
-(`~/.claude/projects/<workdir-slug>/*.jsonl`) — each worker session's
-first user message IS the exact delivered dispatch bytes. All receipts
-SHA-256'd into the run's receipt dir. Missing receipt set → run
+deletion: `plan.prompt`, `surface-close.prompt` (when present), AND the
+run's worker session logs harvested RECURSIVELY from the workdir's
+project dir — worker logs nest under the parent session as
+`~/.claude/projects/<workdir-slug>/<parent-session>/subagents/*.jsonl`
+(R1 edit: direct-root globbing returns zero worker prompts). The driver
+correlates the parent session (workdir slug + run time window), walks
+its `subagents/` tree, extracts each worker's first user message (the
+exact delivered dispatch bytes), and RECONCILES the receipt set against
+every dispatched phase/round recorded in the devlyn-snapshot
+`pipeline.state.json` (incl. `history[]`). All receipts SHA-256'd into
+the run's receipt dir. Missing or unreconciled receipt set → run
 INVALID (same rerun/veto ladder as attestation). No product change.
 
 ## Scoring + decision function (deterministic; frozen before any arm runs)
@@ -164,9 +178,31 @@ INVALID (same rerun/veto ladder as attestation). No product change.
   generations+windows" iff it passes all 4 (model × window) combos.
 - **Generation split** (decision-level): candidate passes BOTH windows
   on exactly one generation and fails ≥1 window on the other.
+- **Treatment-manipulation check (K validity conjunct; named delta vs
+  R1-C, new evidence)**: R1 proposed gating K's adoption on an
+  above-band violation IMPROVEMENT. Refused with a named delta: K's
+  benefit was never in the violation dimension — this is the
+  context-engineering track, and K's benefit is DETERMINISTIC context
+  reduction (runtime-principles.md is 14,573 bytes ≈ ~3.6k tokens per
+  read; the generic reread appears in 4 phase bodies exercised per
+  Claude run → ~14.5k tokens deleted per pipeline run). The violation
+  matrix is the SAFETY gate (non-inferiority), not the benefit metric.
+  What R1's scenario DOES expose is treatment vacuity, so the check
+  that ships is mechanical treatment validity, not a wrong-dimension
+  benefit bar: per generation, C's pipeline receipts must show ≥1
+  worker session actually reading `runtime-principles.md` (tool-use
+  evidence in the harvested session logs) and K's receipts must show
+  ZERO such reads. C-zero-reads → the reread is dead prose; K is
+  UNADOPTABLE via rule 2 (its benefit claim collapses) and the outcome
+  routes to rule 4 with a surfaced finding ("generic reread is dead
+  text — subtractive follow-up"). K-nonzero-reads → K arm INVALID
+  (treatment not delivered). Benefit receipt obligation: adjudication
+  quantifies the measured read payload deleted (bytes × observed reads
+  per run from C's receipts).
 - **Precedence (total order, no cancellation)**:
   1. F passes all 4 → adopt F wholesale + delete Check 12.
-  2. else K passes all 4 → adopt K (mirror + Check 12 stay).
+  2. else K passes all 4 AND the treatment-manipulation check holds →
+     adopt K (mirror + Check 12 stay).
   3. else exactly one of {F, K} shows a generation split → license ONE
      adapter-boundary conditional for that candidate (no flag, no
      per-generation CLAUDE.md). Both split → F's split is licensed
@@ -231,5 +267,16 @@ INVALID (same rerun/veto ladder as attestation). No product change.
   function + P1 denominator/P4 scope fixes, principles renumbered
   (#1 No workaround / #2 No overengineering), queue filename
   bookkeeping fix. Receipt: scratchpad `codex-r0-0099.log`.
-- R1 (reconciliation on r2): PENDING.
+- R1 (Codex, high, 2026-08-06): **REVISE** — six-edit reconciliation
+  faithful except: ① `--no-pair` doesn't suppress automatic risk
+  probes (probe-derive routes to OTHER on high-risk) → r3 adds
+  `--no-risk-probes` + per-phase engine attestation; ② worker session
+  logs nest under `<parent-session>/subagents/` → r3 recursive harvest
+  + state-history reconciliation; ③ proposed K benefit gate
+  (above-band violation improvement required). Receipt: scratchpad
+  `codex-r1-0099.log`. ①② adopted verbatim; ③ REFUSED with named
+  delta + new evidence (benefit lives in the context dimension:
+  14,573-byte file × 4 phase reads/run) and replaced by the mechanical
+  treatment-manipulation check above.
+- R2 (short round on the ③ delta only): PENDING.
 - FREEZE: PENDING.
