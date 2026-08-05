@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent: [`iterations/0094-r5-regate.md`](iterations/0094-r5-regate.md) (**REGISTERED-FROZEN 2026-08-05 after 3-seat FREEZE; arms next**) and [`iterations/0092-plan-native-foreground-dispatch.md`](iterations/0092-plan-native-foreground-dispatch.md) (**implementation verified GREEN 2026-08-05; R5 CLOSED-UNSCORED protocol-failed-at-controls; DECISIONS 0092.1**). Context: iter-0093 authorable verification timeout SHIPPED (DECISIONS 0093.1); [`iterations/0091-plan-dispatch-boundary-identity.md`](iterations/0091-plan-dispatch-boundary-identity.md) (Stage A SHIPPED `7c446c1`; Stage B closed-fail, B1 reverted `1e7da13`); 0088-0090 in their iteration files. Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent: [`iterations/0094-r5-regate.md`](iterations/0094-r5-regate.md) (**CLOSED 2026-08-05, DECISIONS 0094.1 — matrix ran, first past controls; NO SHIP CREDIT: candidate-discovery delivered the PLAN prompt minus its terminal LF; R1 not refuted**) and [`iterations/0092-plan-native-foreground-dispatch.md`](iterations/0092-plan-native-foreground-dispatch.md) (**implementation verified GREEN 2026-08-05; R5 CLOSED-UNSCORED protocol-failed-at-controls; DECISIONS 0092.1**). Context: iter-0093 authorable verification timeout SHIPPED (DECISIONS 0093.1); [`iterations/0091-plan-dispatch-boundary-identity.md`](iterations/0091-plan-dispatch-boundary-identity.md) (Stage A SHIPPED `7c446c1`; Stage B closed-fail, B1 reverted `1e7da13`); 0088-0090 in their iteration files. Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,28 +14,41 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-05 (**iter-0093 SHIPPED; iter-0092 verified green, R5 unscored; NEXT = iter-0094 registration**)
+## 🚦 START-HERE — state after 2026-08-05 evening (**iter-0094 CLOSED: matrix ran, first past controls, NO SHIP CREDIT on a one-byte delivery failure; NEXT = delivery byte-fidelity registration (0095)**)
 
-**Where the loop stands (one paragraph).** iter-0093 shipped the authorable
-per-command verification timeout through a full formal pipeline PASS
-(`timeout_sec` 1..600, distinct `correctness.verification-timeout` rule,
-replay parity; DECISIONS 0093.1) plus two VERIFY-caught root fixes (runner
-SPEC_VERIFY_* env leak `70ff5dc`, unvalidated replay budget `7e30723`).
-iter-0092's implementation (native foreground PLAN, `83b275e`) is formally
-verified GREEN (verify-only `rs-20260805T030021Z` PASS 3/3 after a
-three-finding adjudicated trail ending in the class-closing type-strict
-oracle pass `062c162`, 284 assertions), but its R5 live matrix closed
-UNSCORED protocol-failed-at-controls: the frozen watcher's tested
-pre-commitment forbids IMPLEMENT preparation files the real orchestrator
-flow writes pre-transition, and a real bootstrap detached-HEAD defect killed
-attempt 1. Amendment adjudication split Grok FREEZE-AMENDED vs Codex VETO;
-Codex adopted on a fired falsifier (pre-commitment integrity beats
-post-contact intent reconstruction — 0088.3/0089 precedents). R1 is
-unscored, not refuted; no ship credit. **Next action = iter-0094
-registration** per `iterations/0094-r5-regate.md` (amended watcher +
-re-proof, grace 5000ms, branch worktrees, fresh controls/nonce).
-Receipts: `~/.local/share/nx01/iter0092-r5/` (matrix + outer-loop logs),
-`~/.local/share/nx01/iter0092-reg/` (registration), 0091 receipts unchanged.
+**Where the loop stands (one paragraph).** iter-0094 re-gated 0092's R1
+(native foreground PLAN dispatch, landed `83b275e`, formally verified
+green) through a fresh 3-seat FREEZE (R0 deltas all adopted: frozen
+`--no-risk-probes` invocation, opaque arm tokens + neutral sibling base
+commits, execution-shape dispatch scorer, judge schema, sha-anchored
+receipts; R1 FREEZE ×3 — one Codex stale re-emission ruled invalid on
+seat-liveness and re-run with a liveness marker) and ran the four-arm
+Sonnet 5 ABBA matrix to completion — the first time this line got past
+controls (4/4 watcher PASS, SIGINT-only at 5000 ms grace, 0092's
+implement.task-context boundary crossed cleanly). Terminal: **NO SHIP
+CREDIT** (DECISIONS 0094.1) — candidate-discovery delivered the PLAN
+prompt minus the render's single terminal LF (10,015 vs 10,016 bytes;
+serialization strip ruled out by candidate-simple's byte-exact delivery in
+the same matrix), failing the tested, satisfiable digest conjunct 1/2 vs
+the pre-committed 2/2 bar. R1 is NOT refuted — candidate-simple proved the
+native shape delivers byte-perfectly with mode absent/rib:false/ACCEPTED —
+and candidate arms were FASTER (0.866× summed). Adjudication: Grok CONFIRM
++ Codex AMEND (precision only). **Next action = register the successor
+iter (0095): PLAN delivery byte-fidelity** (0089/0090 lineage in the
+native structured-field shape; bonus live evidence: control arms' own
+delivery varied — mode omitted in one, digest-mismatched too). Instrument
+follow-ups from first contact (scored against no one): oracle
+evidence-completeness caps every live current-format session at INCOMPLETE
+(retained 0091 C1 full-dir replay = INCOMPLETE/82 — the frozen "C1 stays
+COMPLETE" gate holds only on the curated self-test fixture) + subagent_type
+absent-key vs no-key-pin prose; dispatch-scorer artifacts clause vs the
+watcher's spawn-skeleton allowlist. Blind quality for the record: Fable
+tie/tie; Grok discovery emitted A=control but with 5/5 mechanically-proven
+inverted attributions (`judges-crosscheck.md`). Receipts:
+`~/.local/share/nx01/iter0094-reg/` (git: seats/, replay/, unblinding),
+`~/.local/share/nx01/iter0094-r5/` (arms/driver/goals); 0092 receipts
+unchanged. Context: iter-0093 shipped (DECISIONS 0093.1); iter-0092
+implementation green, its R5 closed unscored (DECISIONS 0092.1).
 
 **Current frontier and just shipped — context, do not re-derive**:
 
@@ -123,13 +136,16 @@ must compose transport state with authenticated summaries; isolated rows missed
 the TIMEOUT suppression that fresh Codex found.
 
 **Next work (in order)**:
-1. **Register iter-0094 (R5 re-gate)** from
-   [`iterations/0094-r5-regate.md`](iterations/0094-r5-regate.md) —
-   fresh FREEZE round (Fable + Grok seats, Terra watcher re-proof), then run
-   the amended four-arm matrix. The candidate product bytes are already on
-   main and verified green; only the live gate is owed. Do not reopen
-   iter-0092's frozen matrix or reuse its controls/nonce (0088.3 rule).
-   Registered product follow-ups to schedule separately, never inside 0094:
+1. **Register iter-0095 (PLAN delivery byte-fidelity)** — the 0094 failure
+   class: live parents deliver the rendered prompt non-byte-exactly
+   (trailing-LF strip = the contract-warned `$(cat …)` class; control arms
+   varied too). Candidate bytes for R1 remain landed + verified green; live
+   delivery credit still owed. Fresh registration, fresh controls/nonce
+   (0088.3 rule). Instrument follow-ups to fold into ITS registration
+   (never patched in place): oracle live-session evidence scoping +
+   full-dir canary gating + subagent_type absent-key ruling;
+   dispatch-scorer artifacts clause aligned to the watcher spawn-skeleton
+   allowlist. Registered product follow-ups to schedule separately:
    `resolve-bootstrap.py` `git_text` ignores `allow_empty` on nonzero exit
    (detached-HEAD unbootstrappable); `verify-merge-findings.py` crosschecks
    every `*judge.stdout` as pair-side evidence (flipped-seat false BLOCKED);
