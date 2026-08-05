@@ -1,6 +1,6 @@
 # iter-0099 — contract-PLACEMENT experiment C/K/F (context-engineering item 2 of 2)
 
-**STATUS: REGISTERED-DRAFT r2 (post-R0 revision; pending R1 freeze)**
+**STATUS: REGISTERED-FROZEN (2026-08-06; R0 REVISE → r2, R1 REVISE → r3, R2 FREEZE — Codex pair seat; predictions frozen before any arm build/run)**
 Registered 2026-08-06. Single source of the experiment contract:
 `docs/specs/queue.md` "Context-engineering item 2 of 2" (user-queued
 2026-08-05). Numbering note: 0098 was claimed mid-collision by the
@@ -278,5 +278,9 @@ INVALID (same rerun/veto ladder as attestation). No product change.
   delta + new evidence (benefit lives in the context dimension:
   14,573-byte file × 4 phase reads/run) and replaced by the mechanical
   treatment-manipulation check above.
-- R2 (short round on the ③ delta only): PENDING.
-- FREEZE: PENDING.
+- R2 (Codex, high, 2026-08-06, single point): **FREEZE** — "the
+  conjunct closes the vacuous-treatment mis-adoption … no concrete
+  receipt matrix under the frozen rule mis-adopts K". Receipt:
+  scratchpad `codex-r2-0099.log`.
+- FREEZE: 2026-08-06, this commit. Arm builds and matrix runs start
+  only after this stamp.
