@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent iter: [`iterations/0091-plan-dispatch-boundary-identity.md`](iterations/0091-plan-dispatch-boundary-identity.md) (**STAGE A SHIPPED 2026-08-03 at `7c446c1`; STAGE B CLOSED-FAIL 2026-08-04 at 1/2, B1 reverted by `1e7da13`**). Context: [`iterations/0090-plan-delivery-compliance.md`](iterations/0090-plan-delivery-compliance.md) (**IMPLEMENTED 2026-08-03, NO SHIP CREDIT — live delivery compliance 1/2; H1-v3 blocked**), [`iterations/0089-plan-authority.md`](iterations/0089-plan-authority.md) (**D1-D3 IMPLEMENTED 2026-08-03, NO SHIP CREDIT — baseline compliance 0/2**), [`iterations/0088-plan-route-startup-dedup.md`](iterations/0088-plan-route-startup-dedup.md) (**STAGE A SHIPPED `1312cb7` + D4 locus `454bc34`; STAGE B CLOSED-FAIL protocol-failed-at-controls 2026-08-02 — H1-v3 UNSCORED**). Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent: [`iterations/0094-r5-regate-STUB.md`](iterations/0094-r5-regate-STUB.md) (**NEXT — R5 re-gate registration, requirements frozen-ready, not yet registered**) and [`iterations/0092-plan-native-foreground-dispatch.md`](iterations/0092-plan-native-foreground-dispatch.md) (**implementation verified GREEN 2026-08-05; R5 CLOSED-UNSCORED protocol-failed-at-controls; DECISIONS 0092.1**). Context: iter-0093 authorable verification timeout SHIPPED (DECISIONS 0093.1); [`iterations/0091-plan-dispatch-boundary-identity.md`](iterations/0091-plan-dispatch-boundary-identity.md) (Stage A SHIPPED `7c446c1`; Stage B closed-fail, B1 reverted `1e7da13`); 0088-0090 in their iteration files. Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,19 +14,28 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-04 (**iter-0091 Stage A SHIPPED; Stage B CLOSED-FAIL 1/2 and reverted**)
+## 🚦 START-HERE — state after 2026-08-05 (**iter-0093 SHIPPED; iter-0092 verified green, R5 unscored; NEXT = iter-0094 registration**)
 
-**Where the loop stands (one paragraph).** iter-0091 Stage A remains shipped at
-`7c446c1`. Stage B's exact `Agent.prompt` wording passed direct, full-lint, and
-formal pair gates, but its two serial Sonnet canaries scored 1/2: C1 had one
-byte-equal Agent and was `COMPLETE`; C2 carried the correct bytes twice after
-an unsupported `mode: "bypassAll"` validation error and was evidence-complete
-`CONTRACT-VIOLATION` for two in-window Agents. A completed noncompliant arm gets
-no replacement, so Fable 5, Grok 4.5, and Terra all returned fail/revert. B1 was
-reverted by `1e7da13`; fresh Terra full lint passed. H1-v3 remains blocked.
-Registration receipts: `~/.local/share/nx01/iter0091-reg/seats/`; Stage A:
-`~/.local/share/nx01/iter0091-stagea/`; Stage B:
-`~/.local/share/nx01/iter0091-stageb/`.
+**Where the loop stands (one paragraph).** iter-0093 shipped the authorable
+per-command verification timeout through a full formal pipeline PASS
+(`timeout_sec` 1..600, distinct `correctness.verification-timeout` rule,
+replay parity; DECISIONS 0093.1) plus two VERIFY-caught root fixes (runner
+SPEC_VERIFY_* env leak `70ff5dc`, unvalidated replay budget `7e30723`).
+iter-0092's implementation (native foreground PLAN, `83b275e`) is formally
+verified GREEN (verify-only `rs-20260805T030021Z` PASS 3/3 after a
+three-finding adjudicated trail ending in the class-closing type-strict
+oracle pass `062c162`, 284 assertions), but its R5 live matrix closed
+UNSCORED protocol-failed-at-controls: the frozen watcher's tested
+pre-commitment forbids IMPLEMENT preparation files the real orchestrator
+flow writes pre-transition, and a real bootstrap detached-HEAD defect killed
+attempt 1. Amendment adjudication split Grok FREEZE-AMENDED vs Codex VETO;
+Codex adopted on a fired falsifier (pre-commitment integrity beats
+post-contact intent reconstruction — 0088.3/0089 precedents). R1 is
+unscored, not refuted; no ship credit. **Next action = iter-0094
+registration** per `iterations/0094-r5-regate-STUB.md` (amended watcher +
+re-proof, grace 5000ms, branch worktrees, fresh controls/nonce).
+Receipts: `~/.local/share/nx01/iter0092-r5/` (matrix + outer-loop logs),
+`~/.local/share/nx01/iter0092-reg/` (registration), 0091 receipts unchanged.
 
 **Current frontier and just shipped — context, do not re-derive**:
 
@@ -114,14 +123,18 @@ must compose transport state with authenticated summaries; isolated rows missed
 the TIMEOUT suppression that fresh Codex found.
 
 **Next work (in order)**:
-1. **Open a new successor registration; do not reopen iter-0091.** Preserve
-   Stage A's outcome-independent oracle and re-register the minimum product
-   treatment that both populates exact `Agent.prompt` bytes and prevents the
-   observed unsupported-mode validation retry from creating multiple
-   in-window Agent candidates. Do not silently broaden this into a full native
-   Agent schema pin. Keep Fable 5 and Grok 4.5 as judgment seats, Terra for
-   mechanical work, and Sonnet for live PLAN arms. H1-v3 stays blocked until a
-   successor earns delivery credit.
+1. **Register iter-0094 (R5 re-gate)** from
+   [`iterations/0094-r5-regate-STUB.md`](iterations/0094-r5-regate-STUB.md) —
+   fresh FREEZE round (Fable + Grok seats, Terra watcher re-proof), then run
+   the amended four-arm matrix. The candidate product bytes are already on
+   main and verified green; only the live gate is owed. Do not reopen
+   iter-0092's frozen matrix or reuse its controls/nonce (0088.3 rule).
+   Registered product follow-ups to schedule separately, never inside 0094:
+   `resolve-bootstrap.py` `git_text` ignores `allow_empty` on nonzero exit
+   (detached-HEAD unbootstrappable); `verify-merge-findings.py` crosschecks
+   every `*judge.stdout` as pair-side evidence (flipped-seat false BLOCKED);
+   `devlyn:engines/SKILL.md` absent from lint `critical_path_files`. H1-v3
+   stays blocked until the successor gate earns delivery credit.
 2. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
    / B_win 36 — single-cohort variance vs. real hook-cohort effect is
    unresolved; the next hook-bearing cohort reads it before any quality
