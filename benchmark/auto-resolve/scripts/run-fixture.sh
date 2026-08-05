@@ -744,9 +744,18 @@ verify = {"commands": [], "forbidden_pattern_hits": [], "deps_added": 0,
 
 for vc in expected.get("verification_commands", []):
     try:
+        timeout_sec = vc.get("timeout_sec", 60)
+        if (
+            isinstance(timeout_sec, bool)
+            or not isinstance(timeout_sec, int)
+            or not 1 <= timeout_sec <= 600
+        ):
+            raise ValueError(
+                "timeout_sec must be an integer from 1 to 600 (bool is not allowed)"
+            )
         proc = subprocess.run(vc["cmd"], cwd=work, shell=True, env=verify_env,
                               capture_output=True, text=True,
-                              timeout=vc.get("timeout_sec", 60))
+                              timeout=timeout_sec)
         out = (proc.stdout or "") + (proc.stderr or "")
         ok_exit = proc.returncode == vc.get("exit_code", 0)
         ok_contains = all(s in out for s in vc.get("stdout_contains", []))

@@ -861,6 +861,11 @@ import sys
 path = pathlib.Path(sys.argv[1])
 expected = json.loads(path.read_text())
 expected["verification_commands"] = [
+    {"cmd": "true"},
+    {"cmd": "true", "timeout_sec": 1},
+    {"cmd": "true", "timeout_sec": 600},
+    {"cmd": "true", "timeout_sec": True},
+    {"cmd": "true", "timeout_sec": 601},
     {
         "cmd": "python3 -c \"import time; time.sleep(2)\"",
         "timeout_sec": 1,
@@ -883,8 +888,17 @@ import pathlib
 import sys
 
 commands = json.loads(pathlib.Path(sys.argv[1]).read_text())["commands"]
-assert commands[0]["reason"] == "timeout", commands
+assert commands[0]["pass"] is True, commands
 assert commands[1]["pass"] is True, commands
+assert commands[2]["pass"] is True, commands
+expected_error = (
+    "error:ValueError:timeout_sec must be an integer from 1 to 600 "
+    "(bool is not allowed)"
+)
+assert commands[3]["pass"] is False and commands[3]["reason"] == expected_error, commands
+assert commands[4]["pass"] is False and commands[4]["reason"] == expected_error, commands
+assert commands[5]["reason"] == "timeout", commands
+assert commands[6]["pass"] is True, commands
 PY
 
 TIMEOUT_LINT_ROOT="$TMP/timeout-lint-fixtures"
