@@ -53,7 +53,7 @@ worktrees + fresh path per attempt, four serial ABBA arms with Sonnet 5
 parents via the run-owned pinned CLI, frozen
 `Run /devlyn:resolve --no-risk-probes "<goal>"` invocation, goals
 carried verbatim, opaque tokens + sealed mapping, landed oracle
-`94a2c5d7…` (e72bd1d) for the structural bar, registration scorer,
+`70504f57…` (post-b23bde3 e2e rewrite; was 94a2c5d7 at e72bd1d) for the structural bar, registration scorer,
 sha-anchored assets. FRESH per 0088.3: sibling base commits regenerated
 at the post-guard candidate SHA (control = candidate with ONLY the
 delivery-hypothesis hunks reverse-applied — 0094 patch + 8f99b51 LF
@@ -125,3 +125,14 @@ Both seats REVISE, complementary (no split). Adopted:
    top-level PLAN Agent dispatch after a reject receives normal existing
    scoring; no bar rewrite, no replacement.
 5. Prose sharpening: NOT adopted (guard-only; subtractive-first held).
+
+## R1 round 1 (2026-08-05): Grok FREEZE; Codex REVISE with two NEW-evidence deltas (adopted)
+
+1. EFFECTIVE-VERDICT CONSERVATION: the landed guard (:3221) rejects a
+   supplied PLAN PASS BEFORE do_complete's attestation-failure conversion
+   to terminal BLOCKED (:1453-1475) — a legal halting standalone
+   completion. Fix: relocate the rejection to the point where the
+   EFFECTIVE verdict is known (reject only when the effective verdict is
+   PASS/PASS_WITH_ISSUES); spec amended, outer-loop iteration 2.
+2. BYTE-ANCHORED ORACLE REPIN: full shas pinned in frozen-assets.sha256
+   (oracle changed with the e2e rewrite). Done.
