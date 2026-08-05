@@ -141,6 +141,37 @@ def collect_agent_calls(
                     continue
                 tool_name = block.get("name")
                 tool_input = block.get("input")
+                if tool_name == "Agent":
+                    if record.get("parent_tool_use_id") is not None:
+                        sidechain_agent_count += 1
+                        continue
+                    agent_input = tool_input if isinstance(tool_input, dict) else {}
+                    prompt = agent_input.get("prompt")
+                    tool_id = block.get("id")
+                    heading = None
+                    delivered_digest = None
+                    if isinstance(prompt, str):
+                        delivered_digest = sha256_text(prompt)
+                        heading = next(
+                            (line for line in prompt.splitlines() if PLAN_HEADING_RE.match(line)),
+                            None,
+                        )
+                    candidates.append({
+                        "tool_use_id": tool_id,
+                        "timestamp": record.get("timestamp"),
+                        "source": str(path.relative_to(result_dir.parent)),
+                        "source_line": line_number,
+                        "subagent_type": agent_input.get("subagent_type"),
+                        "delivered_prompt_sha256": delivered_digest,
+                        "mode_present": "mode" in agent_input,
+                        "run_in_background_present": "run_in_background" in agent_input,
+                        "run_in_background": agent_input.get("run_in_background"),
+                        "diagnostics": {
+                            "canonical_heading_match": heading is not None,
+                            "heading": heading,
+                        },
+                    })
+                    continue
                 if not isinstance(tool_input, dict):
                     continue
                 if tool_name in {"Write", "Edit"}:
@@ -151,36 +182,6 @@ def collect_agent_calls(
                         writer_evidence.append(
                             {"source": path.name, "line": line_number, "tool": tool_name}
                         )
-                if tool_name != "Agent":
-                    continue
-                if record.get("parent_tool_use_id") is not None:
-                    sidechain_agent_count += 1
-                    continue
-                prompt = tool_input.get("prompt")
-                tool_id = block.get("id")
-                heading = None
-                delivered_digest = None
-                if isinstance(prompt, str):
-                    delivered_digest = sha256_text(prompt)
-                    heading = next(
-                        (line for line in prompt.splitlines() if PLAN_HEADING_RE.match(line)),
-                        None,
-                    )
-                candidates.append({
-                    "tool_use_id": tool_id,
-                    "timestamp": record.get("timestamp"),
-                    "source": str(path.relative_to(result_dir.parent)),
-                    "source_line": line_number,
-                    "subagent_type": tool_input.get("subagent_type"),
-                    "delivered_prompt_sha256": delivered_digest,
-                    "mode_present": "mode" in tool_input,
-                    "run_in_background_present": "run_in_background" in tool_input,
-                    "run_in_background": tool_input.get("run_in_background"),
-                    "diagnostics": {
-                        "canonical_heading_match": heading is not None,
-                        "heading": heading,
-                    },
-                })
 
     def order_key(dispatch: dict) -> tuple:
         try:
@@ -1389,6 +1390,60 @@ def self_test() -> int:
         )
         equal(outside_ordinary["classification"], "INCOMPLETE")
         equal(outside_ordinary["dispatch_identity"]["non_plan_agent_tool_use_count"], 1)
+
+        null_input_rows = attempt_records("null-input")
+        null_input_rows[0]["message"]["content"][0]["input"] = None
+        null_input = analyze_attempts("null-input-in-window", null_input_rows)
+        null_input_attempt = null_input["dispatch_identity"]["agent_candidates"][0]
+        equal(null_input["classification"], "CONTRACT-VIOLATION")
+        equal(
+            null_input["product"]["violations"],
+            ["delivered-prompt-digest-mismatch", "plan-agent-call-shape-invalid"],
+        )
+        equal(null_input_attempt["delivered_prompt_sha256"], None)
+        equal(null_input_attempt["mode_present"], False)
+        equal(null_input_attempt["run_in_background_present"], False)
+        equal(null_input_attempt["run_in_background"], None)
+
+        null_plus_valid_rows = attempt_records("null-plus-valid")
+        null_plus_valid_rows[0]["message"]["content"][0]["input"] = None
+        null_plus_valid = analyze_attempts(
+            "null-input-plus-valid",
+            null_plus_valid_rows
+            + attempt_records(
+                "valid-after-null", timestamp="2026-08-02T02:59:00.000Z"
+            ),
+        )
+        equal(null_plus_valid["classification"], "CONTRACT-VIOLATION")
+        equal(
+            [
+                row["acceptance_disposition"]
+                for row in null_plus_valid["dispatch_identity"]["agent_candidates"]
+            ],
+            ["ACCEPTED", "ACCEPTED"],
+        )
+        equal(
+            null_plus_valid["dispatch_identity"]["authorization_windows"][0][
+                "classification"
+            ],
+            "CONTRACT-VIOLATION",
+        )
+
+        null_outside_rows = attempt_records(
+            "null-outside", timestamp="2026-08-02T03:05:00.000Z"
+        )
+        null_outside_rows[0]["message"]["content"][0]["input"] = None
+        null_outside = analyze_attempts("null-input-outside-window", null_outside_rows)
+        equal(null_outside["classification"], "INCOMPLETE")
+        equal(null_outside["product"]["violations"], [])
+        equal(null_outside["dispatch_identity"]["plan_dispatch_count"], 0)
+        equal(null_outside["dispatch_identity"]["non_plan_agent_tool_use_count"], 1)
+        equal(
+            null_outside["dispatch_identity"]["agent_candidates"][0]["diagnostics"][
+                "canonical_heading_match"
+            ],
+            False,
+        )
 
         retained_canary1 = analyze(write_stage_b_fixture(root, "canary1"))
         canary1_attempt = retained_canary1["dispatch_identity"]["agent_candidates"][0]
