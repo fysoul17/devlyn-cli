@@ -60,9 +60,36 @@ order: `control-simple`, `candidate-simple`, `candidate-discovery`,
 blind A/B adjudication. The registered quality, dispatch, watcher, and duration
 thresholds in the frozen spec all remain binding.
 
-## Terminal status
+## R5 terminal status (2026-08-05)
 
-No R5 arm ran during implementation. Therefore no terminal ship result,
-no no-regression credit, and no broad PLAN-reliability or performance claim is
-earned by this document. The status remains explicitly unearned until the
-separately frozen live matrix completes without a miss.
+R5 live matrix **CLOSED-UNSCORED, protocol-failed-at-controls**.
+
+- Formal verification of the implementation is GREEN: verify-only
+  `rs-20260805T030021Z` PASS 3/3 with zero findings across the adjudicated trail
+  `7f369a5` / `d52ade3` / `062c162`; the oracle self-test passed 284 assertions,
+  and retained Canary 1 remained COMPLETE while Canary 2 remained
+  CONTRACT-VIOLATION.
+- The first control arm attempt died before Agent use on a resolve-bootstrap
+  detached-HEAD defect: `git_text` ignores `allow_empty` on nonzero exit. This
+  was registered as a product follow-up, and the arm was legally replaced on a
+  branch worktree.
+- The replacement control arm ran PLAN fully. The watcher then fired
+  `FORBIDDEN_IMPLEMENT_ARTIFACT` on `.devlyn/implement.task-context`, written
+  before the atomic PLAN-complete/IMPLEMENT-carrier transition, plus
+  `SIGNAL_ESCALATION` at the 250ms grace. Receipts are under
+  `~/.local/share/nx01/iter0092-r5/`.
+- Amendment adjudication split Grok `FREEZE-AMENDED` versus Codex `VETO`. The
+  orchestrator adopted Codex with the named delta that the accepted falsifier
+  fired: `plan-stop-watch-selftest.py` deliberately creates `implement.prompt`
+  expecting `FORBIDDEN`; the preparation-file ban is explicit and tested
+  pre-commitment, and, per the 0088.3/0089 precedents, pre-commitment integrity
+  beats post-contact intent reconstruction.
+- Candidate R1 is therefore UNSCORED, not refuted, and earns no ship credit.
+  The implementation stays landed on its green formal verification.
+- Re-gating requires a NEW registration (successor matrix) whose frozen spec
+  folds in all of the following: the watcher allowed-set gains
+  `implement.task-context` and `implement.prompt`, with both `DEFAULT_FORBIDDEN`
+  and `ALLOWED` lists updated coherently; the watcher self-test forbidden-artifact
+  case is retargeted to `implement.stdout` and re-proven exit 0; SIGINT grace is
+  5000ms via `--grace-ms`; arm worktrees are branch (non-detached); every attempt
+  uses a fresh worktree path; and controls and nonce are fresh.
