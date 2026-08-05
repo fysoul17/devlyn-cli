@@ -77,34 +77,57 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   sonnet orchestrator skipped `judge_durations_ms` this run
   (instruction intact, validator non-enforcing) — noted, not rescued.
 - [ ] Context-engineering (Claude 5 blog "The new rules of context engineering
-  for Claude 5-generation models", user-queued 2026-08-05) item 1 of 3 —
-  eliminate contract repetition/drift: the seven-principles contract lives in
-  three diverging wordings (CLAUDE.md, AGENTS.md,
-  `config/skills/_shared/runtime-principles.md`; observed drift: the
-  "No workaround" clause text differs between CLAUDE.md and AGENTS.md, and
-  No-guesswork's "Retroactive prediction edits are dishonest" sentence exists
-  only in CLAUDE.md). Single-source the canonical principle text + add a
-  parity lint so the mirrors cannot drift semantically. Net-negative diff
-  expected. (Blog rule: "eliminate repetition" — repeated copies produce
-  conflicting messages.)
-- [ ] Context-engineering item 2 of 3 — measured contract-slimming A/B ("give
-  judgment, not rules"; Anthropic reports removing >80% of Claude Code's
-  system prompt for Claude 5-gen models with no coding-eval loss): author a
-  slimmed CLAUDE.md/AGENTS.md arm that compresses the rule-expansion blocks
-  (Subtractive-first hard tests + anti-rationalization clauses; Goal-locked
-  five drift patterns) to their judgment cores, moving operational detail
-  behind progressive disclosure (skill references). NOT a blind trim:
-  register as an autoresearch iteration and gate via the violation-rate
-  matrix per engine seat (claude + codex arms — the contract is
-  engine-neutral and a Claude-5-tuned slim may regress other engines); adopt
-  only on non-regression. Distinct from the deferred grok-cap AGENTS.md
-  trimming (2026-07-14): different basis, ships only on measurement.
-- [ ] Context-engineering item 3 of 3 — rich references over simple specs:
-  extend the ideate→resolve spec contract so a spec dir may carry optional
-  rich/executable references the pipeline consumes — a failing test as
-  oracle (beyond spec.expected.json mechanical checks), an HTML mockup for
-  UI intents (design-ui output feeding ideate), and a VERIFY judge rubric.
-  Blog claim: code-based specs / test suites / rubrics / HTML mockups
-  outperform markdown-only descriptions. Smallest change: an optional
-  references block in the spec format + VERIFY consumption; no new required
-  surface.
+  for Claude 5-generation models"; user-queued 2026-08-05; rewritten same
+  day after Fable×Codex round-2 cross-check, receipts in conversation +
+  scratchpad codex-r1/r2) item 1 of 2 — contract-source correctness,
+  mechanical fixes only (no violation matrix needed): ① compact-paraphrase
+  drift — plan.md:34/37 (and implement.md if it carries the same phrase)
+  say "no hardcoded values", materially broader than canonical Core
+  Principle #1 "no hardcoded fallback that hides a broken contract"
+  (CLAUDE.md:13); restore the canonical narrow wording, no precedence rule
+  exists to resolve the conflict today. ② Metadata contradiction —
+  devlyn:ideate/SKILL.md:27 claims runtime-principles.md supplies
+  No-workaround while runtime-principles.md:5 states No-workaround lives
+  only in CLAUDE.md Core Principle #1. ③ Docs naming the runtime readers
+  must name the actual five: IMPLEMENT, BUILD_GATE, CLEANUP, VERIFY,
+  PROBE_DERIVE — PLAN does not read runtime-principles.md. Corrected facts
+  vs the original item: the three CLAUDE.md↔runtime-principles.md
+  enforcement blocks are byte-identical under lint Check 12
+  (lint-skills.sh:3883) — Claude-side co-loading is a token-duplication
+  question deferred to item 2, NOT mirror drift; CLAUDE.md↔AGENTS.md parity
+  is out of scope (AGENTS.md frozen per user directive 2026-08-05). Keep
+  Check 12 until item 2 decides.
+- [ ] Context-engineering item 2 of 2 — pre-registered contract-PLACEMENT
+  experiment C/K/F, Claude seats only (AGENTS.md + codex/grok adapters stay
+  byte-identical, asserted): arm C = current (full CLAUDE.md + phase-time
+  runtime-principles reread); arm K = session-source (full CLAUDE.md;
+  Claude phase prompts omit the generic reread — note the read directives
+  live in shared canonical phase bodies, so K needs an engine-conditional
+  assembly path, itself a cost); arm F = phase-source/flip (CLAUDE.md keeps
+  the 7 principles + 3 discipline rules verbatim + a load pointer;
+  runtime-principles.md becomes sole owner of the three enforcement blocks;
+  PLAN repaired to load them). Measure BOTH windows — bare conversation
+  (existing instrument: benchmark/probes/scripts/
+  run-drift-bait-probe-resolve.sh invokes claude -p without resolve
+  framing; iter-0069 completion-evidence incidents happened on this ungated
+  surface) and pipeline. Exact pinned identities claude-opus-4-8 (gen-4) +
+  claude-sonnet-5 (gen-5); iter-0058 debug logs attest BOTH generations
+  show drift pressure under the current contract (opus-4-8 12/24, sonnet-5
+  9/24), so no arm may regress either generation. N≥4, interleaved, full
+  six-probe panel, per-cell flip bands, clean-cell regression veto, frozen
+  arm snapshots + prompt SHA-256s (all-phase prompt hashing is NEW work —
+  only PLAN persists prompt_sha256 today; archive_run.py allowlist excludes
+  ordinary phase prompts). Decision rule: F passes both generations+windows
+  → adopt flip wholesale + delete Check 12; K passes while F regresses →
+  adopt K (mirror + Check 12 stay); gen-4/gen-5 split → license ONE
+  adapter-boundary conditional only (no flag, no per-generation CLAUDE.md);
+  neither → keep current. Tie → F wins by net deletion (Subtractive-first).
+- [x] Context-engineering item 3 (rich references over simple specs) —
+  rejected 2026-08-05 by Fable×Codex round-2 cross-check, never drained:
+  bundles three mechanisms without a demonstrated gap. Failing-test oracles
+  already supported (expected.schema.json `verification_commands`); spec
+  requirements + VERIFY's four axes already form the judge rubric (resolve
+  SKILL.md:286); HTML mockup fidelity is the only plausible gap —
+  re-register a focused HTML-reference A/B only after an observed fidelity
+  miss. (No overengineering: no generic references block without an
+  observed failure.)
