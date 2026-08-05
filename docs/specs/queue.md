@@ -76,3 +76,35 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   "judge.warning"]`, both judges, dispatch overlap Δ5.8s). Known gap:
   sonnet orchestrator skipped `judge_durations_ms` this run
   (instruction intact, validator non-enforcing) — noted, not rescued.
+- [ ] Context-engineering (Claude 5 blog "The new rules of context engineering
+  for Claude 5-generation models", user-queued 2026-08-05) item 1 of 3 —
+  eliminate contract repetition/drift: the seven-principles contract lives in
+  three diverging wordings (CLAUDE.md, AGENTS.md,
+  `config/skills/_shared/runtime-principles.md`; observed drift: the
+  "No workaround" clause text differs between CLAUDE.md and AGENTS.md, and
+  No-guesswork's "Retroactive prediction edits are dishonest" sentence exists
+  only in CLAUDE.md). Single-source the canonical principle text + add a
+  parity lint so the mirrors cannot drift semantically. Net-negative diff
+  expected. (Blog rule: "eliminate repetition" — repeated copies produce
+  conflicting messages.)
+- [ ] Context-engineering item 2 of 3 — measured contract-slimming A/B ("give
+  judgment, not rules"; Anthropic reports removing >80% of Claude Code's
+  system prompt for Claude 5-gen models with no coding-eval loss): author a
+  slimmed CLAUDE.md/AGENTS.md arm that compresses the rule-expansion blocks
+  (Subtractive-first hard tests + anti-rationalization clauses; Goal-locked
+  five drift patterns) to their judgment cores, moving operational detail
+  behind progressive disclosure (skill references). NOT a blind trim:
+  register as an autoresearch iteration and gate via the violation-rate
+  matrix per engine seat (claude + codex arms — the contract is
+  engine-neutral and a Claude-5-tuned slim may regress other engines); adopt
+  only on non-regression. Distinct from the deferred grok-cap AGENTS.md
+  trimming (2026-07-14): different basis, ships only on measurement.
+- [ ] Context-engineering item 3 of 3 — rich references over simple specs:
+  extend the ideate→resolve spec contract so a spec dir may carry optional
+  rich/executable references the pipeline consumes — a failing test as
+  oracle (beyond spec.expected.json mechanical checks), an HTML mockup for
+  UI intents (design-ui output feeding ideate), and a VERIFY judge rubric.
+  Blog claim: code-based specs / test suites / rubrics / HTML mockups
+  outperform markdown-only descriptions. Smallest change: an optional
+  references block in the spec format + VERIFY consumption; no new required
+  surface.
