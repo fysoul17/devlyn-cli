@@ -2,7 +2,7 @@
 id: "0095-plan-delivery-byte-fidelity"
 title: "PLAN delivery byte-fidelity: live 2/2 byte-exact delivery through the amended Read-cue instruction"
 kind: reliability
-status: REGISTERED-FROZEN 2026-08-05 — 3-seat FREEZE (R0 Codex REVISE + Grok REVISE, F1 split adjudicated to minimal orphan-correlation; R1 FREEZE ×2 with liveness markers + orchestrator); product edits LANDED (8f99b51 instruction, e72bd1d oracle); matrix NOT yet run
+status: CLOSED-UNSCORED 2026-08-05 — matrix protocol-failed-at-controls at arm 1/4 (control-simple PLAN_INVALID: standalone `plan complete` without the atomic IMPLEMENT carrier; R-final Codex CONFIRM); candidate arms unscored, R1 + LF instruction NOT refuted; product edits stay landed on formal verification; NO SHIP CREDIT; failure class → NEW registration
 complexity: high
 depends_on: ["0094-r5-regate", "0092-plan-native-foreground-dispatch"]
 ---
@@ -226,3 +226,28 @@ proofs (scorer selftests, oracle full-dir replays) — a freeze is not
 frozen until a seat has tried to satisfy every conjunct by execution
 (0081-0083 lesson). Receipts: `~/.local/share/nx01/iter0095-reg/` (git,
 sha-anchored).
+
+## MATRIX TERMINAL (2026-08-05) — CLOSED-UNSCORED protocol-failed-at-controls
+
+Arm 1/4 (token `cbf6af50` = control-simple, base `559e244`, pinned CLI
+2.1.222, Sonnet 5 parent) died `PLAN_INVALID` under the frozen watcher:
+the parent completed PLAN with a STANDALONE
+`state-phase-write.py --phase plan complete --verdict PASS` (session
+`5fcbfe61…jsonl:181`; SPW calls at lines 68/158/181, NO transition verb),
+leaving `phases.implement = null` when `plan.completed_at` appeared —
+the exact atomic-carrier fail-closed class the watcher exists to catch
+(0092 adjudication, re-frozen here). SIGINT 6 ms after the write; clean
+wind-down; startup_ms 136,267. Failure is AFTER in-window PLAN Agent use
+→ no infra replacement; watcher-PASS-4/4 conjunct unsatisfiable → frozen
+ship rule terminates the matrix. R-final Codex gpt-5.6-sol CONFIRM with
+liveness marker (receipts `/tmp/r-final-0095-arm1.log`, copied to
+`iter0095-reg/`): no legal continuation for score; remaining arms only
+runnable as explicitly non-scoring diagnostics; failure class correctly
+named **condition-independent PLAN→IMPLEMENT transition-protocol
+compliance variance** (the violated atomic-transition contract is shared
+text, outside the sibling hypothesis delta). Successor registration owns
+BOTH: the still-owed delivery byte-fidelity credit AND the newly measured
+transition-compliance variance (0094's "control delivery varied" bonus
+finding is the same both-conditions product-variance family). Receipts:
+`~/.local/share/nx01/iter0095-matrix/` (arm, sessions, worktree
+retained), `~/.local/share/nx01/iter0095-reg/` (git).
