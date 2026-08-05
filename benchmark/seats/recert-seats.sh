@@ -105,12 +105,13 @@ COMPLIANCE_ENGINES=()
 JUDGES=()
 for engine in "${ENGINE_LIST[@]}"; do
   [ -n "$engine" ] || continue
+  if [[ "$engine" == "sonnet" || "$engine" == "opus" || "$engine" =~ ^claude-[A-Za-z0-9.-]+$ ]]; then
+    CLAUDE_MODELS+=("$engine")
+    COMPLIANCE_ENGINES+=("$engine")
+    JUDGES+=("$engine")
+    continue
+  fi
   case "$engine" in
-    sonnet|opus)
-      CLAUDE_MODELS+=("$engine")
-      COMPLIANCE_ENGINES+=("$engine")
-      [ "$engine" != "sonnet" ] || JUDGES+=("sonnet")
-      ;;
     codex)
       COMPLIANCE_ENGINES+=("codex")
       JUDGES+=("codex")
@@ -140,7 +141,7 @@ if [ ${#COMPLIANCE_ENGINES[@]} -gt 0 ]; then
             bash "$PROBES_ROOT/scripts/run-compliance-cell.sh" \
               --cli codex --size small --run-id "$RUN_PREFIX-codex-compliance"
           ;;
-        sonnet|opus)
+        *)
           run_suite compliance \
             env MODEL="$engine" bash "$PROBES_ROOT/scripts/run-compliance-cell.sh" \
               --cli claude --size small --run-id "$RUN_PREFIX-$engine-compliance"
@@ -165,12 +166,13 @@ ENGINE_VERSIONS="$(
   python3 - "$ENGINES" "$CLAUDE_VERSION" "$CODEX_VERSION" <<'PY'
 import json
 import os
+import re
 import sys
 
 engines, claude_version, codex_version = sys.argv[1:4]
 out = {}
 for engine in [e for e in engines.split(",") if e]:
-    if engine in {"sonnet", "opus"}:
+    if engine in {"sonnet", "opus"} or re.fullmatch(r"claude-[A-Za-z0-9.-]+", engine):
         out[engine] = f"{claude_version}/{engine}" if claude_version else engine
     elif engine == "codex":
         model = os.environ.get("CODEX_MODEL") or os.environ.get("OPENAI_MODEL")

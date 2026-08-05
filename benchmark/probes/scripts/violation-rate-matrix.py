@@ -16,37 +16,38 @@ import json
 import pathlib
 import re
 import sys
+import tempfile
 
-RUN_ID_RE = re.compile(r"^(?P<prefix>.+)-(?P<model>[A-Za-z0-9.]+)-r(?P<rep>\d+)$")
+
+def parse_run_id(name: str, run_prefix: str) -> tuple[str, int] | None:
+    marker = f"{run_prefix}-"
+    if not name.startswith(marker):
+        return None
+    rep_match = re.search(r"-r(\d+)$", name)
+    if not rep_match:
+        return None
+    model = name[len(marker):rep_match.start()]
+    if not model:
+        return None
+    return model, int(rep_match.group(1))
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--results-root", default="benchmark/probes/results")
-    parser.add_argument("--run-prefix", required=True,
-                        help="run-id prefix passed to run-violation-matrix.sh")
-    parser.add_argument("--out", required=True,
-                        help="output path for the matrix JSON (a sibling .md is also written)")
-    args = parser.parse_args()
-
-    root = pathlib.Path(args.results_root)
+def collect_matrix(root: pathlib.Path, run_prefix: str) -> dict[str, object]:
     cells: dict[tuple[str, str], dict[int, bool]] = {}
-    for run_dir in sorted(root.glob(f"{args.run_prefix}-*")):
-        match = RUN_ID_RE.match(run_dir.name)
-        if not match or match.group("prefix") != args.run_prefix:
+    for run_dir in sorted(root.glob(f"{run_prefix}-*")):
+        parsed = parse_run_id(run_dir.name, run_prefix)
+        if parsed is None:
             continue
-        model, rep = match.group("model"), int(match.group("rep"))
+        model, rep = parsed
         for verdict_path in sorted(run_dir.glob("drift-bait/*/verdict.json")):
             probe = verdict_path.parent.name
             verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
             if not isinstance(verdict.get("passed"), bool):
-                sys.stderr.write(f"error: {verdict_path} has no boolean 'passed'\n")
-                return 1
+                raise ValueError(f"{verdict_path} has no boolean 'passed'")
             cells.setdefault((model, probe), {})[rep] = verdict["passed"] is False
 
     if not cells:
-        sys.stderr.write(f"error: no verdicts under {root}/{args.run_prefix}-*\n")
-        return 1
+        raise ValueError(f"no verdicts under {root}/{run_prefix}-*")
 
     models = sorted({model for model, _ in cells})
     probes = sorted({probe for _, probe in cells})
@@ -63,19 +64,72 @@ def main() -> int:
                 "flip_band": min(violations, len(reps) - violations),
             }
 
-    out = {
-        "run_prefix": args.run_prefix,
+    return {
+        "run_prefix": run_prefix,
         "models": models,
         "probes": probes,
         "matrix": matrix,
         "totals": {
             model: {
-                "violations": sum(matrix[model][p]["violations"] for p in probes),
-                "reps": sum(matrix[model][p]["reps"] for p in probes),
+                "violations": sum(matrix[model][probe]["violations"] for probe in probes),
+                "reps": sum(matrix[model][probe]["reps"] for probe in probes),
             }
             for model in models
         },
     }
+
+
+def run_self_test() -> int:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = pathlib.Path(temp_dir)
+        prefix = "selftest"
+
+        def write_verdict(model: str, rep: int, passed: bool) -> None:
+            path = root / f"{prefix}-{model}-r{rep}" / "drift-bait/probe/verdict.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"passed": passed}), encoding="utf-8")
+
+        for model in ("claude-opus-4-8", "opus"):
+            write_verdict(model, 1, False)
+            write_verdict(model, 2, True)
+
+        result = collect_matrix(root, prefix)
+        matrix = result["matrix"]
+        totals = result["totals"]
+        assert isinstance(matrix, dict) and isinstance(totals, dict)
+        assert matrix["claude-opus-4-8"] == matrix["opus"]
+        assert totals["claude-opus-4-8"] == totals["opus"] == {"violations": 1, "reps": 2}
+
+    print("self-test: PASS")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--results-root", default="benchmark/probes/results")
+    parser.add_argument("--run-prefix",
+                        help="run-id prefix passed to run-violation-matrix.sh")
+    parser.add_argument("--out",
+                        help="output path for the matrix JSON (a sibling .md is also written)")
+    args = parser.parse_args()
+    if args.self_test:
+        return run_self_test()
+    if args.run_prefix is None:
+        parser.error("--run-prefix is required")
+    if args.out is None:
+        parser.error("--out is required")
+
+    root = pathlib.Path(args.results_root)
+    try:
+        out = collect_matrix(root, args.run_prefix)
+    except ValueError as error:
+        sys.stderr.write(f"error: {error}\n")
+        return 1
+    models = out["models"]
+    probes = out["probes"]
+    matrix = out["matrix"]
+    assert isinstance(models, list) and isinstance(probes, list) and isinstance(matrix, dict)
     out_path = pathlib.Path(args.out)
     out_path.write_text(json.dumps(out, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 

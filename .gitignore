@@ -33,6 +33,7 @@ benchmark/instruction-sensitivity/results/
 # Compliance-probe / drift-bait per-run measurement artifacts (iter-0042).
 # Curated baseline numbers land in autoresearch/iterations/0042-*.md.
 benchmark/probes/results/
+benchmark/seats/results/
 
 # Ceiling harness runtime state. Verdict JSON/MD artifacts remain trackable.
 benchmark/ceiling/external/

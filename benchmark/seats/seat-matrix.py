@@ -8,10 +8,10 @@ import math
 import pathlib
 import re
 import sys
+import tempfile
 from typing import Any
 
 
-DRIFT_RUN_ID_RE = re.compile(r"^(?P<prefix>.+)-(?P<model>[A-Za-z0-9_.]+)-r(?P<rep>\d+)$")
 SEATS = (
     "orchestrator",
     "drift_resistance",
@@ -43,6 +43,19 @@ def rel(root: pathlib.Path, path: pathlib.Path) -> str:
         return str(path)
 
 
+def parse_prefixed_run_id(name: str, prefix: str) -> tuple[str, int] | None:
+    marker = f"{prefix}-"
+    if not name.startswith(marker):
+        return None
+    rep_match = re.search(r"-r(\d+)$", name)
+    if not rep_match:
+        return None
+    model = name[len(marker):rep_match.start()]
+    if not model:
+        return None
+    return model, int(rep_match.group(1))
+
+
 def artifact_has_attested_prefix(artifact: str | None, attest_run_prefix: str | None) -> bool:
     if not artifact or not attest_run_prefix:
         return False
@@ -56,15 +69,17 @@ def alias_from_attested_artifact(
 ) -> str | None:
     if not attest_run_prefix:
         return None
-    aliases = set(engine_versions)
+    matches: list[str] = []
     for part in pathlib.PurePosixPath(artifact).parts:
         if not part.startswith(f"{attest_run_prefix}-"):
             continue
-        tokens = part[len(attest_run_prefix) + 1:].split("-")
-        for token in tokens:
-            if token in aliases:
-                return token
-    return None
+        remainder = part[len(attest_run_prefix) + 1:]
+        matches.extend(
+            alias
+            for alias in engine_versions
+            if remainder == alias or remainder.startswith(f"{alias}-")
+        )
+    return max(matches, key=len) if matches else None
 
 
 def model_value(cli_version: Any, model_id_or_alias: Any) -> str | None:
@@ -185,10 +200,10 @@ def collect_attested_drift_cells(
     results = root / "benchmark/probes/results"
     groups: dict[str, dict[str, Any]] = {}
     for run_dir in sorted(results.glob(f"{attest_run_prefix}-violation-*-r*")):
-        match = DRIFT_RUN_ID_RE.match(run_dir.name)
-        if not match or match.group("prefix") != f"{attest_run_prefix}-violation":
+        parsed = parse_prefixed_run_id(run_dir.name, f"{attest_run_prefix}-violation")
+        if parsed is None:
             continue
-        model = match.group("model")
+        model, _ = parsed
         group = groups.setdefault(model, {"total": 0, "violations": 0, "artifact": None})
         if group["artifact"] is None:
             group["artifact"] = f"{rel(root, results)}/{attest_run_prefix}-violation-{model}-r*/drift-bait/*/verdict.json"
@@ -620,14 +635,72 @@ def parse_engine_versions(raw: str) -> dict[str, str]:
     return data
 
 
+def run_self_test() -> int:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = pathlib.Path(temp_dir)
+        results = root / "benchmark/probes/results"
+        prefix = "selftest"
+        versions = {
+            "claude-opus": "claude-cli/claude-opus",
+            "claude-opus-4-8": "claude-cli/claude-opus-4-8",
+            "claude-opus-5": "claude-cli/claude-opus-5",
+            "opus": "claude-cli/opus",
+        }
+
+        def write_verdict(run_id: str, passed: bool) -> None:
+            path = results / run_id / "drift-bait/probe/verdict.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"passed": passed}), encoding="utf-8")
+
+        write_verdict(f"{prefix}-violation-claude-opus-4-8-r10", True)
+        write_verdict(f"{prefix}-violation-opus-r1", False)
+        write_verdict(f"{prefix}-violation--r1", False)
+        write_verdict(f"{prefix}-violation-claude-opus-5-r1-extra", False)
+        write_verdict("other-violation-claude-opus-5-r1", False)
+
+        drift_cells = collect_attested_drift_cells(root, "2026-08-05", versions, prefix)
+        assert {cell["engine_alias"] for cell in drift_cells} == {"claude-opus-4-8", "opus"}
+        exact_cell = next(cell for cell in drift_cells if cell["engine_alias"] == "claude-opus-4-8")
+        legacy_cell = next(cell for cell in drift_cells if cell["engine_alias"] == "opus")
+        assert (exact_cell["seat"], exact_cell["status"], exact_cell["value"], exact_cell["n"]) == (
+            "drift_resistance", "current", 1.0, 1,
+        )
+        assert (legacy_cell["seat"], legacy_cell["status"], legacy_cell["value"], legacy_cell["n"]) == (
+            "drift_resistance", "current", 0.0, 1,
+        )
+
+        compliance_path = results / f"{prefix}-claude-opus-5-compliance/compliance-check.json"
+        compliance_path.parent.mkdir(parents=True, exist_ok=True)
+        compliance_path.write_text(json.dumps({"cli": "claude", "overall": "PASS"}), encoding="utf-8")
+        compliance_cells = collect_compliance_cells(root, "2026-08-05", versions, prefix)
+        assert len(compliance_cells) == 1
+        assert compliance_cells[0]["engine_alias"] == "claude-opus-5"
+        assert compliance_cells[0]["status"] == "current"
+        assert alias_from_attested_artifact(
+            f"benchmark/probes/results/{prefix}-unknown-compliance/compliance-check.json",
+            prefix,
+            versions,
+        ) is None
+
+    print("self-test: PASS")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--date", required=True, help="YYYY-MM-DD; also used in output filename")
-    parser.add_argument("--engine-versions", required=True, type=parse_engine_versions)
+    parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--date", help="YYYY-MM-DD; also used in output filename")
+    parser.add_argument("--engine-versions", type=parse_engine_versions)
     parser.add_argument("--attest-run-prefix", help="recert run prefix whose alias-only result dirs attest current engine versions")
     parser.add_argument("--repo-root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--out-dir", type=pathlib.Path)
     args = parser.parse_args()
+    if args.self_test:
+        return run_self_test()
+    if args.date is None:
+        parser.error("--date is required")
+    if args.engine_versions is None:
+        parser.error("--engine-versions is required")
     if not re.match(r"^\d{4}-\d{2}-\d{2}$", args.date):
         parser.error("--date must be YYYY-MM-DD")
     root = args.repo_root.resolve()

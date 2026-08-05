@@ -2,11 +2,11 @@
 """
 run_judge_quality.py — iter-0055 JUDGE-QUALITY measurement arm.
 
-Runs every case in cases/*.json through both judges (ollama/gemma3:4b via
-the documented adapter contract, sonnet via `claude -p`), REPS times each,
+Runs every case in cases/*.json through the selected judges (ollama/gemma3:4b
+via the documented adapter contract, Claude models via `claude -p`), REPS times each,
 and scores mechanically per README.md's rules. No LLM meta-judging.
 
-Usage: python3 run_judge_quality.py [--reps N] [--judges ollama,sonnet,codex]
+Usage: python3 run_judge_quality.py [--reps N] [--judges ollama,sonnet,opus,codex]
 """
 from __future__ import annotations
 
@@ -29,6 +29,7 @@ RESULTS_DIR = HERE / "results"
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "gemma3:4b"
+CLAUDE_JUDGE_RE = re.compile(r"^claude-[A-Za-z0-9.-]+$")
 FINDINGS_SCHEMA = {
     "type": "object",
     "properties": {
@@ -127,10 +128,14 @@ def call_ollama(prompt):
     return parsed, None
 
 
-def call_sonnet(prompt, scratch_dir):
+def is_claude_judge(judge):
+    return judge in {"sonnet", "opus"} or CLAUDE_JUDGE_RE.fullmatch(judge) is not None
+
+
+def call_claude(prompt, scratch_dir, model):
     cmd = [
         "claude", "-p", prompt,
-        "--model", "sonnet",
+        "--model", model,
         "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
         "--dangerously-skip-permissions",
     ]
@@ -218,8 +223,8 @@ def call_judge_with_retry(judge, prompt, scratch_dir, *, codex_command, judge_di
     for attempt in (1, 2):
         if judge == "ollama":
             parsed, err = call_ollama(prompt)
-        elif judge == "sonnet":
-            parsed, err = call_sonnet(prompt, scratch_dir)
+        elif is_claude_judge(judge):
+            parsed, err = call_claude(prompt, scratch_dir, judge)
         elif judge == "codex":
             stdout_path = judge_dir / f"{artifact_stem}-attempt{attempt}.stdout.txt"
             stderr_path = judge_dir / f"{artifact_stem}-attempt{attempt}.stderr.txt"
@@ -251,9 +256,9 @@ def write_identity(judge, judge_dir, run_id, codex_command):
     if judge == "ollama":
         cli_version = probe_version(["ollama"], ["--version"])
         model = OLLAMA_MODEL
-    elif judge == "sonnet":
+    elif is_claude_judge(judge):
         cli_version = probe_version(["claude"], ["--version"])
-        model = "sonnet"
+        model = judge
     elif judge == "codex":
         cli_version = probe_version(codex_command, ["--version"])
         model = os.environ.get("CODEX_MODEL") or os.environ.get("OPENAI_MODEL")
@@ -359,6 +364,9 @@ if __name__ == "__main__":
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     judges = [judge for judge in args.judges.split(",") if judge]
+    invalid_judges = [judge for judge in judges if judge not in {"ollama", "codex"} and not is_claude_judge(judge)]
+    if invalid_judges:
+        parser.error(f"unsupported judge: {invalid_judges[0]}")
     codex_command = shlex.split(args.codex_command)
     if not codex_command:
         parser.error("--codex-command must not be empty")
