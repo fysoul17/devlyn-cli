@@ -110,6 +110,19 @@ def collect_agent_calls(
     writer_evidence: list[dict] = []
     for path in session_paths:
         try:
+            source = str(path.relative_to(result_dir.parent))
+            source_valid = bool(source)
+        except ValueError:
+            source = str(path)
+            source_valid = False
+            issues.append(f"parent-session-shape:source-outside-result:{path.name}:0")
+
+        def shape_issue(code: str, line_number: int) -> str:
+            issue = f"parent-session-shape:{code}:{path.name}:{line_number}"
+            issues.append(issue)
+            return issue
+
+        try:
             lines = path.read_bytes().splitlines()
         except OSError as exc:
             issues.append(f"parent-session-unreadable:{path.name}:{exc}")
@@ -120,34 +133,99 @@ def collect_agent_calls(
             except ValueError:
                 issues.append(f"parent-session-json-malformed:{path.name}:{line_number}")
                 continue
-            message = record.get("message") if isinstance(record, dict) else None
-            content = message.get("content") if isinstance(message, dict) else None
+            if not isinstance(record, dict):
+                shape_issue("record-not-object", line_number)
+                continue
+            message = record.get("message")
+            if not isinstance(message, dict):
+                shape_issue("message-not-object", line_number)
+                continue
+            content = message.get("content")
+            if isinstance(content, str):
+                continue
             if not isinstance(content, list):
+                shape_issue("content-not-array-or-string", line_number)
                 continue
             for block in content:
                 if not isinstance(block, dict):
+                    shape_issue("content-block-not-object", line_number)
                     continue
-                if block.get("type") == "tool_result":
-                    if record.get("parent_tool_use_id") is None:
-                        tool_results.append({
-                            "tool_use_id": block.get("tool_use_id"),
-                            "source": str(path.relative_to(result_dir.parent)),
-                            "source_line": line_number,
-                            "is_error_present": "is_error" in block,
-                            "is_error": block.get("is_error"),
-                        })
+                block_type = block.get("type")
+                if not isinstance(block_type, str) or not block_type:
+                    shape_issue("content-block-type-malformed", line_number)
                     continue
-                if block.get("type") != "tool_use":
+                if block_type not in {"tool_result", "tool_use"}:
+                    continue
+
+                parent_marker = record.get("parent_tool_use_id")
+                parent_marker_valid = (
+                    parent_marker is None
+                    or (isinstance(parent_marker, str) and bool(parent_marker))
+                )
+                if not parent_marker_valid:
+                    shape_issue("parent-tool-use-id-malformed", line_number)
+                    continue
+                is_top_level = parent_marker is None
+
+                if block_type == "tool_result":
+                    if not is_top_level:
+                        continue
+                    role = message.get("role")
+                    role_valid = isinstance(role, str) and bool(role)
+                    if not role_valid:
+                        shape_issue("message-role-malformed", line_number)
+                    tool_use_id = block.get("tool_use_id")
+                    tool_use_id_valid = (
+                        isinstance(tool_use_id, str) and bool(tool_use_id)
+                    )
+                    if not tool_use_id_valid:
+                        shape_issue("tool-result-id-malformed", line_number)
+                    is_error_present = "is_error" in block
+                    is_error = block.get("is_error")
+                    tool_results.append({
+                        "tool_use_id": tool_use_id,
+                        "tool_use_id_present": "tool_use_id" in block,
+                        "tool_use_id_valid": tool_use_id_valid,
+                        "source": source,
+                        "source_valid": source_valid,
+                        "source_line": line_number,
+                        "role": role,
+                        "role_valid": role_valid,
+                        "parent_tool_use_id_valid": parent_marker_valid,
+                        "is_error_present": is_error_present,
+                        "is_error": is_error,
+                    })
                     continue
                 tool_name = block.get("name")
-                tool_input = block.get("input")
+                tool_name_valid = isinstance(tool_name, str) and bool(tool_name)
+                if not tool_name_valid:
+                    shape_issue("tool-use-name-malformed", line_number)
+                    continue
                 if tool_name == "Agent":
-                    if record.get("parent_tool_use_id") is not None:
+                    if not is_top_level:
                         sidechain_agent_count += 1
                         continue
-                    agent_input = tool_input if isinstance(tool_input, dict) else {}
+                    role = message.get("role")
+                    role_valid = isinstance(role, str) and bool(role)
+                    if not role_valid:
+                        shape_issue("message-role-malformed", line_number)
+                    tool_input = block.get("input")
+                    agent_input_valid = isinstance(tool_input, dict)
+                    if not agent_input_valid:
+                        shape_issue("agent-input-not-object", line_number)
+                    agent_input = tool_input if agent_input_valid else {}
                     prompt = agent_input.get("prompt")
                     tool_id = block.get("id")
+                    tool_id_valid = isinstance(tool_id, str) and bool(tool_id)
+                    if not tool_id_valid:
+                        shape_issue("agent-tool-use-id-malformed", line_number)
+                    timestamp = record.get("timestamp")
+                    subagent_type = agent_input.get("subagent_type")
+                    subagent_type_valid = (
+                        isinstance(subagent_type, str) and bool(subagent_type)
+                    )
+                    if not subagent_type_valid:
+                        shape_issue("agent-subagent-type-malformed", line_number)
                     heading = None
                     delivered_digest = None
                     if isinstance(prompt, str):
@@ -158,10 +236,19 @@ def collect_agent_calls(
                         )
                     candidates.append({
                         "tool_use_id": tool_id,
-                        "timestamp": record.get("timestamp"),
-                        "source": str(path.relative_to(result_dir.parent)),
+                        "tool_use_id_present": "id" in block,
+                        "tool_use_id_valid": tool_id_valid,
+                        "timestamp": timestamp,
+                        "source": source,
+                        "source_valid": source_valid,
                         "source_line": line_number,
-                        "subagent_type": agent_input.get("subagent_type"),
+                        "role": role,
+                        "role_valid": role_valid,
+                        "parent_tool_use_id_valid": parent_marker_valid,
+                        "tool_name_valid": tool_name_valid,
+                        "agent_input_valid": agent_input_valid,
+                        "subagent_type": subagent_type,
+                        "subagent_type_valid": subagent_type_valid,
                         "delivered_prompt_sha256": delivered_digest,
                         "mode_present": "mode" in agent_input,
                         "run_in_background_present": "run_in_background" in agent_input,
@@ -172,11 +259,21 @@ def collect_agent_calls(
                         },
                     })
                     continue
-                if not isinstance(tool_input, dict):
-                    continue
                 if tool_name in {"Write", "Edit"}:
-                    target = tool_input.get("file_path", tool_input.get("path"))
-                    if isinstance(target, str) and (
+                    tool_input = block.get("input")
+                    if not isinstance(tool_input, dict):
+                        shape_issue("writer-input-not-object", line_number)
+                        continue
+                    target_key = (
+                        "file_path" if "file_path" in tool_input
+                        else "path" if "path" in tool_input
+                        else None
+                    )
+                    target = tool_input.get(target_key) if target_key else None
+                    if not isinstance(target, str) or not target:
+                        shape_issue("writer-target-malformed", line_number)
+                        continue
+                    if (
                         target == ".devlyn/plan.md" or target.endswith("/.devlyn/plan.md")
                     ):
                         writer_evidence.append(
@@ -195,17 +292,31 @@ def collect_agent_calls(
     uses_by_key: dict[tuple[str, object], list[dict]] = {}
     results_by_key: dict[tuple[str, object], list[dict]] = {}
     for candidate in candidates:
-        uses_by_key.setdefault(
-            (candidate["source"], candidate["tool_use_id"]), []
-        ).append(candidate)
+        if (
+            candidate["source_valid"]
+            and candidate["tool_use_id_valid"]
+        ):
+            uses_by_key.setdefault(
+                (candidate["source"], candidate["tool_use_id"]), []
+            ).append(candidate)
     for result in tool_results:
-        results_by_key.setdefault(
-            (result["source"], result["tool_use_id"]), []
-        ).append(result)
+        if (
+            result["source_valid"]
+            and result["tool_use_id_valid"]
+        ):
+            results_by_key.setdefault(
+                (result["source"], result["tool_use_id"]), []
+            ).append(result)
     for candidate in candidates:
         key = (candidate["source"], candidate["tool_use_id"])
-        matching_results = results_by_key.get(key, [])
-        candidate["duplicate_tool_use_id"] = len(uses_by_key[key]) > 1
+        key_valid = (
+            candidate["source_valid"]
+            and candidate["tool_use_id_valid"]
+        )
+        matching_results = results_by_key.get(key, []) if key_valid else []
+        candidate["duplicate_tool_use_id"] = (
+            key_valid and len(uses_by_key[key]) > 1
+        )
         candidate["matching_tool_result_count"] = len(matching_results)
         candidate["matching_tool_result_lines"] = [
             result["source_line"] for result in matching_results
@@ -991,7 +1102,7 @@ def fixture_dispatches(name: str) -> list[dict]:
                 "source_prompt_sha256": source_prompt,
                 "source_jsonl_line_sha256": source_line,
             },
-            "message": {"content": [
+            "message": {"role": "assistant", "content": [
                 {
                     "type": "tool_use", "name": "Agent", "id": tool_id,
                     "input": {
@@ -1096,7 +1207,7 @@ def write_stage_b_fixture(root: pathlib.Path, name: str) -> pathlib.Path:
             "rows": {
                 94: {
                     "timestamp": "2026-08-03T18:25:24.507Z",
-                    "message": {"content": [{
+                    "message": {"role": "assistant", "content": [{
                         "type": "tool_use", "name": "Agent",
                         "id": "toolu_011v8BKUh3wK1jN5SY1HhR46",
                         "input": {
@@ -1107,7 +1218,7 @@ def write_stage_b_fixture(root: pathlib.Path, name: str) -> pathlib.Path:
                 },
                 108: {
                     "timestamp": "2026-08-03T18:26:57.063Z",
-                    "message": {"content": [{
+                    "message": {"role": "assistant", "content": [{
                         "type": "tool_result",
                         "tool_use_id": "toolu_011v8BKUh3wK1jN5SY1HhR46",
                     }]},
@@ -1124,7 +1235,7 @@ def write_stage_b_fixture(root: pathlib.Path, name: str) -> pathlib.Path:
             "rows": {
                 129: {
                     "timestamp": "2026-08-03T18:33:13.729Z",
-                    "message": {"content": [{
+                    "message": {"role": "assistant", "content": [{
                         "type": "tool_use", "name": "Agent",
                         "id": "toolu_01VHyvLgF7naatc6TGUxjP6q",
                         "input": {
@@ -1135,7 +1246,7 @@ def write_stage_b_fixture(root: pathlib.Path, name: str) -> pathlib.Path:
                 },
                 130: {
                     "timestamp": "2026-08-03T18:33:13.731Z",
-                    "message": {"content": [{
+                    "message": {"role": "assistant", "content": [{
                         "type": "tool_result",
                         "tool_use_id": "toolu_01VHyvLgF7naatc6TGUxjP6q",
                         "is_error": True,
@@ -1143,7 +1254,7 @@ def write_stage_b_fixture(root: pathlib.Path, name: str) -> pathlib.Path:
                 },
                 131: {
                     "timestamp": "2026-08-03T18:33:42.402Z",
-                    "message": {"content": [{
+                    "message": {"role": "assistant", "content": [{
                         "type": "tool_use", "name": "Agent",
                         "id": "toolu_01KTY3tPwJ8XPs5xT89unHE6",
                         "input": {
@@ -1154,7 +1265,7 @@ def write_stage_b_fixture(root: pathlib.Path, name: str) -> pathlib.Path:
                 },
                 134: {
                     "timestamp": "2026-08-03T18:33:42.499Z",
-                    "message": {"content": [{
+                    "message": {"role": "assistant", "content": [{
                         "type": "tool_result",
                         "tool_use_id": "toolu_01KTY3tPwJ8XPs5xT89unHE6",
                     }]},
@@ -1185,7 +1296,9 @@ def write_stage_b_fixture(root: pathlib.Path, name: str) -> pathlib.Path:
     session.parent.mkdir()
     numbered_rows = fixture["rows"]
     session.write_text("".join(
-        json.dumps(numbered_rows.get(line, {}), ensure_ascii=False) + "\n"
+        json.dumps(numbered_rows.get(line, {
+            "message": {"role": "assistant", "content": []},
+        }), ensure_ascii=False) + "\n"
         for line in range(1, max(numbered_rows) + 1)
     ), encoding="utf-8")
     return result
@@ -1216,16 +1329,18 @@ def self_test() -> int:
         )
 
         absent = object()
+        same_id = object()
         retained_prompt = c2_records[0]["message"]["content"][0]["input"]["prompt"]
 
         def attempt_records(
-            tool_id: str,
+            tool_id: object,
             *,
             timestamp: str = "2026-08-02T02:58:58.818Z",
             prompt: str = retained_prompt,
             mode: object = absent,
             background: object = False,
             result_count: int = 1,
+            result_id: object = same_id,
             is_error: object = absent,
         ) -> list[dict]:
             tool_input = {"subagent_type": "claude", "prompt": prompt}
@@ -1233,20 +1348,26 @@ def self_test() -> int:
                 tool_input["mode"] = mode
             if background is not absent:
                 tool_input["run_in_background"] = background
+            tool_use = {
+                "type": "tool_use", "name": "Agent",
+                "input": tool_input,
+            }
+            if tool_id is not absent:
+                tool_use["id"] = tool_id
             rows = [{
                 "timestamp": timestamp,
-                "message": {"content": [{
-                    "type": "tool_use", "name": "Agent", "id": tool_id,
-                    "input": tool_input,
-                }]},
+                "message": {"role": "assistant", "content": [tool_use]},
             }]
             for result_index in range(result_count):
-                result = {"type": "tool_result", "tool_use_id": tool_id}
+                result = {"type": "tool_result"}
+                resolved_result_id = tool_id if result_id is same_id else result_id
+                if resolved_result_id is not absent:
+                    result["tool_use_id"] = resolved_result_id
                 if is_error is not absent:
                     result["is_error"] = is_error
                 rows.append({
                     "timestamp": "2026-08-02T03:00:00.000Z",
-                    "message": {"content": [result]},
+                    "message": {"role": "assistant", "content": [result]},
                     "fixture_result_index": result_index,
                 })
             return rows
@@ -1261,6 +1382,184 @@ def self_test() -> int:
                 encoding="utf-8",
             )
             return analyze(result)
+
+        def has_shape_issue(payload: dict, code: str) -> bool:
+            return any(
+                issue.startswith(f"parent-session-shape:{code}:")
+                for issue in payload["evidence"]["issues"]
+            )
+
+        missing_identifiers = analyze_attempts(
+            "missing-agent-and-result-identifiers",
+            attempt_records(absent, result_id=absent),
+        )
+        equal(missing_identifiers["classification"], "INCOMPLETE")
+        equal(
+            missing_identifiers["dispatch_identity"]["agent_candidates"][0][
+                "matching_tool_result_count"
+            ],
+            0,
+        )
+        equal(has_shape_issue(missing_identifiers, "agent-tool-use-id-malformed"), True)
+        equal(has_shape_issue(missing_identifiers, "tool-result-id-malformed"), True)
+
+        for label, malformed_id in (
+            ("missing", absent),
+            ("null", None),
+            ("integer", 7),
+            ("empty-string", ""),
+        ):
+            malformed_agent_id = analyze_attempts(
+                f"malformed-agent-id-{label}",
+                attempt_records(malformed_id),
+            )
+            malformed_agent = malformed_agent_id["dispatch_identity"][
+                "agent_candidates"
+            ][0]
+            equal(malformed_agent_id["classification"], "INCOMPLETE")
+            equal(malformed_agent["tool_use_id_valid"], False)
+            equal(malformed_agent["matching_tool_result_count"], 0)
+            equal(
+                has_shape_issue(malformed_agent_id, "agent-tool-use-id-malformed"),
+                True,
+            )
+
+            malformed_result_id = analyze_attempts(
+                f"malformed-result-id-{label}",
+                attempt_records("valid-agent-id", result_id=malformed_id),
+            )
+            malformed_result = malformed_result_id["dispatch_identity"][
+                "agent_tool_results"
+            ][0]
+            equal(malformed_result_id["classification"], "INCOMPLETE")
+            equal(malformed_result["tool_use_id_valid"], False)
+            equal(
+                malformed_result_id["dispatch_identity"]["agent_candidates"][0][
+                    "matching_tool_result_count"
+                ],
+                0,
+            )
+            equal(
+                has_shape_issue(malformed_result_id, "tool-result-id-malformed"),
+                True,
+            )
+
+        invalid_id_bad_shape = analyze_attempts(
+            "malformed-id-with-invalid-call-shape",
+            attempt_records(absent, result_id=absent, mode="bypassPermissions"),
+        )
+        equal(invalid_id_bad_shape["classification"], "CONTRACT-VIOLATION")
+        equal(
+            invalid_id_bad_shape["dispatch_identity"]["agent_candidates"][0][
+                "matching_tool_result_count"
+            ],
+            0,
+        )
+        equal(
+            "plan-agent-call-shape-invalid"
+            in invalid_id_bad_shape["product"]["violations"],
+            True,
+        )
+
+        collection_shape_cases = (
+            ("record", "record-not-object", "INCOMPLETE"),
+            ("message", "message-not-object", "INCOMPLETE"),
+            ("content", "content-not-array-or-string", "INCOMPLETE"),
+            ("block", "content-block-not-object", "INCOMPLETE"),
+            ("block-type", "content-block-type-malformed", "INCOMPLETE"),
+            ("role", "message-role-malformed", "INCOMPLETE"),
+            ("parent-marker", "parent-tool-use-id-malformed", "INCOMPLETE"),
+            ("tool-name", "tool-use-name-malformed", "INCOMPLETE"),
+            ("agent-input", "agent-input-not-object", "CONTRACT-VIOLATION"),
+            ("subagent-type", "agent-subagent-type-malformed", "INCOMPLETE"),
+            ("result-role", "message-role-malformed", "INCOMPLETE"),
+            ("result-parent-marker", "parent-tool-use-id-malformed", "INCOMPLETE"),
+        )
+        for label, expected_issue, expected_classification in collection_shape_cases:
+            rows = attempt_records(f"shape-{label}")
+            use_row = rows[0]
+            result_row = rows[1]
+            if label == "record":
+                rows[0] = []
+            elif label == "message":
+                use_row["message"] = None
+            elif label == "content":
+                use_row["message"]["content"] = 7
+            elif label == "block":
+                use_row["message"]["content"][0] = []
+            elif label == "block-type":
+                use_row["message"]["content"][0]["type"] = 7
+            elif label == "role":
+                use_row["message"]["role"] = 7
+            elif label == "parent-marker":
+                use_row["parent_tool_use_id"] = 7
+            elif label == "tool-name":
+                use_row["message"]["content"][0]["name"] = 7
+            elif label == "agent-input":
+                use_row["message"]["content"][0]["input"] = []
+            elif label == "subagent-type":
+                use_row["message"]["content"][0]["input"]["subagent_type"] = 7
+            elif label == "result-role":
+                result_row["message"]["role"] = 7
+            else:
+                result_row["parent_tool_use_id"] = 7
+            malformed_shape = analyze_attempts(f"malformed-{label}", rows)
+            equal(malformed_shape["classification"], expected_classification)
+            equal(has_shape_issue(malformed_shape, expected_issue), True)
+
+        malformed_writer_rows = attempt_records("malformed-writer")
+        malformed_writer_rows.append({
+            "timestamp": "2026-08-02T02:59:01.000Z",
+            "message": {"role": "assistant", "content": [{
+                "type": "tool_use", "name": "Write", "id": "writer",
+                "input": {"file_path": 7},
+            }]},
+        })
+        malformed_writer = analyze_attempts(
+            "malformed-writer-target", malformed_writer_rows
+        )
+        equal(malformed_writer["classification"], "INCOMPLETE")
+        equal(has_shape_issue(malformed_writer, "writer-target-malformed"), True)
+
+        malformed_writer_input_rows = attempt_records("malformed-writer-input")
+        malformed_writer_input_rows.append({
+            "timestamp": "2026-08-02T02:59:01.000Z",
+            "message": {"role": "assistant", "content": [{
+                "type": "tool_use", "name": "Edit", "id": "writer",
+                "input": None,
+            }]},
+        })
+        malformed_writer_input = analyze_attempts(
+            "malformed-writer-input", malformed_writer_input_rows
+        )
+        equal(malformed_writer_input["classification"], "INCOMPLETE")
+        equal(
+            has_shape_issue(malformed_writer_input, "writer-input-not-object"), True
+        )
+
+        source_scope_result = root / "source-scope" / "result"
+        outside_source = root / "outside-source.jsonl"
+        outside_source.write_text(
+            "".join(
+                json.dumps(row, ensure_ascii=False) + "\n"
+                for row in attempt_records("outside-source")
+            ),
+            encoding="utf-8",
+        )
+        source_issues: list[str] = []
+        source_candidates, source_results, _, _ = collect_agent_calls(
+            [outside_source], source_issues, source_scope_result
+        )
+        equal(source_candidates[0]["source_valid"], False)
+        equal(source_results[0]["source_valid"], False)
+        equal(source_candidates[0]["matching_tool_result_count"], 0)
+        equal(
+            any(
+                issue.startswith("parent-session-shape:source-outside-result:")
+                for issue in source_issues
+            ),
+            True,
+        )
 
         for label, is_error in (
             ("absent", absent), ("false", False), ("null", None),
@@ -1298,12 +1597,69 @@ def self_test() -> int:
         equal(duplicate_id["classification"], "CONTRACT-VIOLATION")
         equal("duplicate-agent-tool-use-id" in duplicate_id["product"]["violations"], True)
 
+        malformed_role_duplicate_rows = (
+            attempt_records("malformed-role-duplicate")
+            + attempt_records(
+                "malformed-role-duplicate",
+                timestamp="2026-08-02T02:59:00.000Z",
+                result_count=0,
+            )
+        )
+        malformed_role_duplicate_rows[2]["message"]["role"] = 7
+        malformed_role_duplicate = analyze_attempts(
+            "malformed-role-duplicate-tool-use-id", malformed_role_duplicate_rows
+        )
+        equal(malformed_role_duplicate["classification"], "CONTRACT-VIOLATION")
+        equal(
+            [
+                candidate["duplicate_tool_use_id"]
+                for candidate in malformed_role_duplicate["dispatch_identity"][
+                    "agent_candidates"
+                ]
+            ],
+            [True, True],
+        )
+        equal(
+            [
+                candidate["matching_tool_result_count"]
+                for candidate in malformed_role_duplicate["dispatch_identity"][
+                    "agent_candidates"
+                ]
+            ],
+            [1, 1],
+        )
+        equal(
+            "duplicate-agent-tool-use-id"
+            in malformed_role_duplicate["product"]["violations"],
+            True,
+        )
+
         multiple_results = analyze_attempts(
             "multiple-matching-results",
             attempt_records("multiple-results", result_count=2),
         )
         equal(multiple_results["classification"], "CONTRACT-VIOLATION")
         equal("multiple-agent-tool-results" in multiple_results["product"]["violations"], True)
+
+        malformed_role_result_rows = attempt_records(
+            "malformed-role-multiple-results", result_count=2
+        )
+        malformed_role_result_rows[2]["message"]["role"] = 7
+        malformed_role_results = analyze_attempts(
+            "malformed-role-multiple-results", malformed_role_result_rows
+        )
+        equal(malformed_role_results["classification"], "CONTRACT-VIOLATION")
+        equal(
+            malformed_role_results["dispatch_identity"]["agent_candidates"][0][
+                "matching_tool_result_count"
+            ],
+            2,
+        )
+        equal(
+            "multiple-agent-tool-results"
+            in malformed_role_results["product"]["violations"],
+            True,
+        )
 
         malformed_result = analyze_attempts(
             "malformed-is-error",
@@ -1645,7 +2001,8 @@ def self_test() -> int:
         )
 
         # Sidechain filtering applies only to Agent candidates. Nested writer
-        # evidence remains visible as corroboration.
+        # evidence remains visible as corroboration, and excluded Agent fields
+        # do not contaminate otherwise complete top-level evidence.
         sidechain_result = write_fixture(
             root, "sidechain-agent-writer", [copy.deepcopy(c2_records[0])],
             source_name="C2",
@@ -1653,12 +2010,12 @@ def self_test() -> int:
         sidechain_session = sidechain_result.parent / "sessions" / "parent.jsonl"
         sidechain_rows = [json.loads(sidechain_session.read_text())]
         sidechain_rows.append({
-            "timestamp": "2026-08-02T02:59:01.000Z",
+            "timestamp": 7,
             "parent_tool_use_id": "parent-agent",
-            "message": {"content": [
+            "message": {"role": 7, "content": [
                 {
-                    "type": "tool_use", "name": "Agent", "id": "nested-agent",
-                    "input": {"subagent_type": "claude", "prompt": "nested"},
+                    "type": "tool_use", "name": "Agent", "id": 7,
+                    "input": [],
                 },
                 {
                     "type": "tool_use", "name": "Write", "id": "nested-writer",
@@ -1674,6 +2031,45 @@ def self_test() -> int:
         equal(sidechain["dispatch_identity"]["agent_tool_use_count"], 1)
         equal(sidechain["dispatch_identity"]["sidechain_agent_tool_use_count"], 1)
         equal(len(sidechain["dispatch_identity"]["plan_md_writer_corroboration"]), 1)
+        for code in (
+            "message-role-malformed",
+            "agent-input-not-object",
+            "agent-tool-use-id-malformed",
+            "agent-subagent-type-malformed",
+        ):
+            equal(has_shape_issue(sidechain, code), False)
+
+        sidechain_result = write_fixture(
+            root, "sidechain-malformed-tool-result", [copy.deepcopy(c2_records[0])],
+            source_name="C2",
+        )
+        sidechain_result_session = (
+            sidechain_result.parent / "sessions" / "parent.jsonl"
+        )
+        sidechain_result_rows = [
+            json.loads(sidechain_result_session.read_text())
+        ]
+        sidechain_result_rows.append({
+            "timestamp": "2026-08-02T02:59:01.000Z",
+            "parent_tool_use_id": "parent-agent",
+            "message": {"role": 7, "content": [{
+                "type": "tool_result", "tool_use_id": 7, "is_error": "false",
+            }]},
+        })
+        sidechain_result_session.write_text(
+            "".join(json.dumps(row) + "\n" for row in sidechain_result_rows)
+        )
+        malformed_sidechain_result = analyze(sidechain_result)
+        equal(malformed_sidechain_result["classification"], "COMPLETE")
+        equal(
+            malformed_sidechain_result["dispatch_identity"]["tool_result_count"],
+            1,
+        )
+        for code in (
+            "message-role-malformed",
+            "tool-result-id-malformed",
+        ):
+            equal(has_shape_issue(malformed_sidechain_result, code), False)
 
         # A canonical PLAN heading may escalate captured off-ledger evidence;
         # it may not restore content as the in-window identity authority.
@@ -2058,7 +2454,7 @@ def self_test() -> int:
         e2e_session.parent.mkdir()
         e2e_record = {
             "timestamp": e2e_plan["started_at"],
-            "message": {"content": [
+            "message": {"role": "assistant", "content": [
                 {
                     "type": "tool_use", "name": "Agent", "id": "p0089-6",
                     "input": {
