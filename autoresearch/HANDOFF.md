@@ -14,7 +14,36 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-05 night (**iter-0094 CLOSED; 0095 STUB registered with adjudicated design; NEXT = iter-0095 registration**)
+## 🚦 START-HERE — state after 2026-08-05 (**iter-0095 REGISTERED-FROZEN, product edits landed; NEXT = iter-0095 four-arm matrix**)
+
+**iter-0095 registration update (2026-08-05, supersedes the paragraph
+below where they conflict).** The registration is FROZEN
+(`iterations/0095-plan-delivery-byte-fidelity.md`, 3-seat FREEZE: R0
+Codex REVISE + Grok REVISE with an F1 split — Codex fired F1 with 2.1.222
+no-message hook-attachment bytes; adjudicated to the minimal
+orphan-correlation rule with a named delta — R1 FREEZE ×2 with liveness
+markers). Landed through TWO /devlyn:resolve outer loops (executor pin
+codex + --pair-verify): ① the one-sentence Claude PLAN-delivery Read-cue
+instruction (`8f99b51`, PASS 3/3) ② the oracle evidence-scoping +
+subagent_type absent-key + orphan-correlation change (`e72bd1d`; run 1
+BLOCKED:verify-exhausted on a payload-boundary dedup collapse both judges
+converged on, spec amended, run 2 PASS 3/3; self-test 299). Freeze gate
+executed green on landed bytes: C1 COMPLETE/0 · C2 violation conserved ·
+0094 candidate-simple COMPLETE `ff7bda46…` · candidate-discovery
+violation conserved `c9d8a32e…`. Scorer artifacts clause fixed +2
+selftests (16/16). Receipts `~/.local/share/nx01/iter0095-reg/` (git).
+Session operator finds: codex-cli 0.146.0 workspace-write hard-denies
+`.agents/` (fix: `-c 'sandbox_workspace_write.writable_roots=[…/.agents]'`;
+codex-config.md follow-up registered); verify-merge flipped-seat false
+BLOCKED fired live (primary capture renamed `codex-primary.stdout`
+in-run; product follow-up stands); judge prompt files do not survive
+mid-run maintenance — rebuild at every dispatch; oracle writes its JSON
+INTO the result dir and `sessions/` is result's SIBLING — replay retained
+receipts on full-arm COPIES only. **NEXT = run the frozen four-arm ABBA
+matrix** (regenerate neutral sibling bases at the new candidate SHA,
+fresh controls + fresh nonce, pinned CLI, bars incl. 2/2 byte-exact).
+
+### (superseded registration context from 0094 close below)
 
 **Where the loop stands (one paragraph).** iter-0094 re-gated 0092's R1
 (native foreground PLAN dispatch, landed `83b275e`, formally verified
