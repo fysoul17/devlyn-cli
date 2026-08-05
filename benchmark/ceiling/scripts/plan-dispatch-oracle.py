@@ -108,7 +108,7 @@ def collect_agent_calls(
     tool_results: list[dict] = []
     sidechain_agent_count = 0
     writer_evidence: list[dict] = []
-    pending_agent_references: list[tuple[str, str, str, int]] = []
+    pending_agent_references: list[tuple[str, str, int]] = []
     for path in session_paths:
         try:
             source = str(path.relative_to(result_dir.parent))
@@ -161,7 +161,7 @@ def collect_agent_calls(
                 ):
                     referenced_ids.add(referenced_id)
                 pending_agent_references.extend(
-                    (referenced_id, source, path.name, line_number)
+                    (referenced_id, source, line_number)
                     for referenced_id in referenced_ids
                 )
                 continue
@@ -317,12 +317,12 @@ def collect_agent_calls(
         if row["tool_use_id_valid"]
     }
     orphan_records: set[tuple[str, int]] = set()
-    for referenced_id, source, source_name, line_number in pending_agent_references:
+    for referenced_id, source, line_number in pending_agent_references:
         record_key = (source, line_number)
         if referenced_id not in known_agent_ids and record_key not in orphan_records:
             issues.append(
                 f"parent-session-shape:agent-evidence-orphan:"
-                f"{source_name}:{line_number}"
+                f"{source}:{line_number}"
             )
             orphan_records.add(record_key)
 
@@ -1463,29 +1463,29 @@ def self_test() -> int:
         equal(orphan_hook["classification"], "INCOMPLETE")
         equal(has_shape_issue(orphan_hook, "agent-evidence-orphan"), True)
 
-        same_basename_paths: list[pathlib.Path] = []
-        same_basename_root = root / "same-basename"
+        same_basename_result = write_fixture(
+            root, "same-basename", [copy.deepcopy(c2_records[0])], source_name="C2"
+        )
+        same_basename_sessions = same_basename_result.parent / "sessions"
+        (same_basename_sessions / "parent.jsonl").write_text(
+            "".join(
+                json.dumps(row, ensure_ascii=False) + "\n"
+                for row in attempt_records("same-basename")
+            ),
+            encoding="utf-8",
+        )
         for source_dir in ("a", "b"):
-            same_basename_path = (
-                same_basename_root / "sessions" / source_dir / "parent.jsonl"
-            )
-            same_basename_path.parent.mkdir(parents=True)
-            same_basename_path.write_text(
+            orphan_session = same_basename_sessions / source_dir / "parent.jsonl"
+            orphan_session.parent.mkdir()
+            orphan_session.write_text(
                 json.dumps(orphan_hook_rows[-1]) + "\n", encoding="utf-8"
             )
-            same_basename_paths.append(same_basename_path)
-        same_basename_issues: list[str] = []
-        collect_agent_calls(
-            same_basename_paths,
-            same_basename_issues,
-            same_basename_root / "result",
-        )
-        equal(
-            same_basename_issues.count(
-                "parent-session-shape:agent-evidence-orphan:parent.jsonl:1"
-            ),
-            2,
-        )
+        same_basename = analyze(same_basename_result)
+        same_basename_orphans = [
+            issue for issue in same_basename["evidence"]["issues"]
+            if issue.startswith("parent-session-shape:agent-evidence-orphan:")
+        ]
+        equal(len(same_basename_orphans), 2)
 
         unrelated_id_rows = attempt_records("unrelated-id")
         unrelated_id_rows.append({
