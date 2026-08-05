@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent: [`iterations/0094-r5-regate-STUB.md`](iterations/0094-r5-regate-STUB.md) (**NEXT — R5 re-gate registration, requirements frozen-ready, not yet registered**) and [`iterations/0092-plan-native-foreground-dispatch.md`](iterations/0092-plan-native-foreground-dispatch.md) (**implementation verified GREEN 2026-08-05; R5 CLOSED-UNSCORED protocol-failed-at-controls; DECISIONS 0092.1**). Context: iter-0093 authorable verification timeout SHIPPED (DECISIONS 0093.1); [`iterations/0091-plan-dispatch-boundary-identity.md`](iterations/0091-plan-dispatch-boundary-identity.md) (Stage A SHIPPED `7c446c1`; Stage B closed-fail, B1 reverted `1e7da13`); 0088-0090 in their iteration files. Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent: [`iterations/0094-r5-regate.md`](iterations/0094-r5-regate.md) (**REGISTERED-FROZEN 2026-08-05 after 3-seat FREEZE; arms next**) and [`iterations/0092-plan-native-foreground-dispatch.md`](iterations/0092-plan-native-foreground-dispatch.md) (**implementation verified GREEN 2026-08-05; R5 CLOSED-UNSCORED protocol-failed-at-controls; DECISIONS 0092.1**). Context: iter-0093 authorable verification timeout SHIPPED (DECISIONS 0093.1); [`iterations/0091-plan-dispatch-boundary-identity.md`](iterations/0091-plan-dispatch-boundary-identity.md) (Stage A SHIPPED `7c446c1`; Stage B closed-fail, B1 reverted `1e7da13`); 0088-0090 in their iteration files. Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -32,7 +32,7 @@ attempt 1. Amendment adjudication split Grok FREEZE-AMENDED vs Codex VETO;
 Codex adopted on a fired falsifier (pre-commitment integrity beats
 post-contact intent reconstruction — 0088.3/0089 precedents). R1 is
 unscored, not refuted; no ship credit. **Next action = iter-0094
-registration** per `iterations/0094-r5-regate-STUB.md` (amended watcher +
+registration** per `iterations/0094-r5-regate.md` (amended watcher +
 re-proof, grace 5000ms, branch worktrees, fresh controls/nonce).
 Receipts: `~/.local/share/nx01/iter0092-r5/` (matrix + outer-loop logs),
 `~/.local/share/nx01/iter0092-reg/` (registration), 0091 receipts unchanged.
@@ -124,7 +124,7 @@ the TIMEOUT suppression that fresh Codex found.
 
 **Next work (in order)**:
 1. **Register iter-0094 (R5 re-gate)** from
-   [`iterations/0094-r5-regate-STUB.md`](iterations/0094-r5-regate-STUB.md) —
+   [`iterations/0094-r5-regate.md`](iterations/0094-r5-regate.md) —
    fresh FREEZE round (Fable + Grok seats, Terra watcher re-proof), then run
    the amended four-arm matrix. The candidate product bytes are already on
    main and verified green; only the live gate is owed. Do not reopen
