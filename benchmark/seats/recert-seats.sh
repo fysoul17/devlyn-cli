@@ -162,6 +162,10 @@ fi
 
 CLAUDE_VERSION="$(claude --version 2>/dev/null | head -1 || true)"
 CODEX_VERSION="$(codex --version 2>/dev/null | head -1 || true)"
+if [ ${#CLAUDE_MODELS[@]} -gt 0 ] && [ -z "$CLAUDE_VERSION" ]; then
+  echo "claude --version produced no output; cannot attest Claude engine versions" >&2
+  exit 1
+fi
 ENGINE_VERSIONS="$(
   python3 - "$ENGINES" "$CLAUDE_VERSION" "$CODEX_VERSION" <<'PY'
 import json
@@ -173,7 +177,7 @@ engines, claude_version, codex_version = sys.argv[1:4]
 out = {}
 for engine in [e for e in engines.split(",") if e]:
     if engine in {"sonnet", "opus"} or re.fullmatch(r"claude-[A-Za-z0-9.-]+", engine):
-        out[engine] = f"{claude_version}/{engine}" if claude_version else engine
+        out[engine] = f"{claude_version}/{engine}"
     elif engine == "codex":
         model = os.environ.get("CODEX_MODEL") or os.environ.get("OPENAI_MODEL")
         out[engine] = f"{codex_version}/{model}" if codex_version and model else (codex_version or "codex")
