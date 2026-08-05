@@ -1937,7 +1937,7 @@ def run_self_test() -> int:
         )["commands"]
         timeout_findings = [
             loads_strict_json(line)
-            for line in (timeout_run_devlyn / "spec-verify-findings.jsonl").read_text().splitlines()
+            for line in (timeout_run_devlyn / output_findings_name()).read_text().splitlines()
             if line.strip()
         ]
         if (
@@ -1957,6 +1957,50 @@ def run_self_test() -> int:
         ):
             print("timeout finding did not carry the distinct budget contract", file=sys.stderr)
             print(timeout_finding, file=sys.stderr)
+            return 1
+
+        runner_env_root = work / "runner-env-isolation"
+        runner_env_root.mkdir()
+        runner_env_devlyn = runner_env_root / ".devlyn"
+        runner_env_devlyn.mkdir()
+        runner_env_spec = runner_env_root / "spec.md"
+        runner_env_spec.write_text(
+            "# Runner environment isolation\n\n<!-- devlyn:verification -->\n"
+            "## Verification\n\n```json\n"
+            + json.dumps({
+                "verification_commands": [{
+                    "cmd": (
+                        "python3 -c \"import os, sys; sys.exit(any(name in os.environ "
+                        "for name in ('SPEC_VERIFY_PHASE', 'SPEC_VERIFY_FINDINGS_FILE', "
+                        "'SPEC_VERIFY_FINDING_PREFIX')))\""
+                    )
+                }]
+            })
+            + "\n```\n",
+            encoding="utf-8",
+        )
+        (runner_env_devlyn / "pipeline.state.json").write_text(json.dumps({
+            "source": {"type": "spec", "spec_path": str(runner_env_spec)}
+        }))
+        runner_env = os.environ.copy()
+        runner_env.update({
+            "SPEC_VERIFY_PHASE": "verify_mechanical",
+            "SPEC_VERIFY_FINDINGS_FILE": "runner-env.findings.jsonl",
+            "SPEC_VERIFY_FINDING_PREFIX": "RUNNER-ENV",
+        })
+        runner_env_run = subprocess.run(
+            [sys.executable, script_path],
+            cwd=runner_env_root,
+            env=runner_env,
+            capture_output=True,
+            text=True,
+        )
+        runner_env_results = loads_strict_json(
+            (runner_env_devlyn / "spec-verify.results.json").read_text()
+        )["commands"]
+        if runner_env_run.returncode != 0 or not runner_env_results[0].get("pass"):
+            print("runner-directed environment leaked into a verification command", file=sys.stderr)
+            print(runner_env_run.stderr, file=sys.stderr)
             return 1
         env = os.environ.copy()
         env["BENCH_WORKDIR"] = str(work)
@@ -2014,7 +2058,7 @@ def run_self_test() -> int:
         if mutated_script.returncode == 0:
             print("--include-risk-probes accepted mutated probe script bytes", file=sys.stderr)
             return 1
-        integrity_findings = (devlyn / "spec-verify-findings.jsonl").read_text(encoding="utf-8")
+        integrity_findings = (devlyn / output_findings_name()).read_text(encoding="utf-8")
         if "correctness.risk-probe-integrity" not in integrity_findings:
             print("mutated probe script did not emit correctness.risk-probe-integrity", file=sys.stderr)
             print(integrity_findings, file=sys.stderr)
@@ -2034,7 +2078,7 @@ def run_self_test() -> int:
         if mutated_jsonl.returncode == 0:
             print("--include-risk-probes accepted mutated risk-probes.jsonl bytes", file=sys.stderr)
             return 1
-        integrity_findings = (devlyn / "spec-verify-findings.jsonl").read_text(encoding="utf-8")
+        integrity_findings = (devlyn / output_findings_name()).read_text(encoding="utf-8")
         if "correctness.risk-probe-integrity" not in integrity_findings:
             print("mutated risk-probes.jsonl did not emit correctness.risk-probe-integrity", file=sys.stderr)
             print(integrity_findings, file=sys.stderr)
@@ -2055,7 +2099,7 @@ def run_self_test() -> int:
         if missing_digest.returncode == 0:
             print("--include-risk-probes accepted enabled risk probes with missing digest", file=sys.stderr)
             return 1
-        integrity_findings = (devlyn / "spec-verify-findings.jsonl").read_text(encoding="utf-8")
+        integrity_findings = (devlyn / output_findings_name()).read_text(encoding="utf-8")
         if "correctness.risk-probe-integrity" not in integrity_findings:
             print("missing risk_probes_digest did not emit correctness.risk-probe-integrity", file=sys.stderr)
             print(integrity_findings, file=sys.stderr)
@@ -3316,7 +3360,7 @@ def run_self_test() -> int:
         if contract_run.returncode == 0:
             print("expected contract violations were accepted", file=sys.stderr)
             return 1
-        findings_text = (contract_devlyn / "spec-verify-findings.jsonl").read_text()
+        findings_text = (contract_devlyn / output_findings_name()).read_text()
         for rule_id in (
             "correctness.forbidden-pattern",
             "correctness.required-file-missing",
@@ -3891,12 +3935,15 @@ def run_self_test() -> int:
             print("--write-untracked-baseline wrote wrong content", file=sys.stderr)
             print(repr(baseline_lines), file=sys.stderr)
             return 1
-        scope_findings_path = scope_devlyn / "spec-verify-findings.jsonl"
+        scope_findings_path = scope_devlyn / output_findings_name()
+        scope_build_gate_env = os.environ.copy()
+        scope_build_gate_env["SPEC_VERIFY_PHASE"] = "build_gate"
 
         # Test 1: no .devlyn/plan.md at all -> fail-closed CRITICAL, not a no-op.
         (scope_root / "bin" / "cli.js").write_text("module.exports = { ok: true };\n")
         missing_plan_run = subprocess.run(
-            [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
+            [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
+            capture_output=True, text=True,
         )
         if missing_plan_run.returncode == 0:
             print("BUILD_GATE accepted a run with no plan.md", file=sys.stderr)
@@ -3910,7 +3957,8 @@ def run_self_test() -> int:
             "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## 1. Files to touch\n\n- `bin/cli.js` (edit): ship the fix.\n"
         )
         malformed_block_run = subprocess.run(
-            [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
+            [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
+            capture_output=True, text=True,
         )
         if malformed_block_run.returncode == 0:
             print("BUILD_GATE accepted plan.md with no authorized_surface block", file=sys.stderr)
@@ -3955,7 +4003,8 @@ def run_self_test() -> int:
             return 1
         (scope_devlyn / "untracked.baseline").unlink()
         missing_baseline_run = subprocess.run(
-            [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
+            [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
+            capture_output=True, text=True,
         )
         if missing_baseline_run.returncode == 0:
             print("BUILD_GATE accepted missing .devlyn/untracked.baseline", file=sys.stderr)
@@ -3971,7 +4020,8 @@ def run_self_test() -> int:
             print("--write-untracked-baseline re-run failed", file=sys.stderr)
             return 1
         in_scope_run = subprocess.run(
-            [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
+            [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
+            capture_output=True, text=True,
         )
         if in_scope_run.returncode != 0:
             print("in-scope-only diff was rejected", file=sys.stderr)
@@ -3988,7 +4038,8 @@ def run_self_test() -> int:
         (scope_root / "data" / "usage-stats.json").write_text('{"leaked": true}\n')
         (scope_root / "data" / "scratch.json").write_text('{"untracked": true}\n')
         out_of_scope_run = subprocess.run(
-            [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
+            [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
+            capture_output=True, text=True,
         )
         if out_of_scope_run.returncode == 0:
             print("out-of-scope file was accepted", file=sys.stderr)
@@ -4024,7 +4075,8 @@ def run_self_test() -> int:
         # (directory-prefix boundary, not a bare string-prefix match).
         (scope_root / "lib2" / "keep.js").write_text("module.exports = { touched: true };\n")
         subprocess.run(
-            [sys.executable, script_path], cwd=scope_root, capture_output=True, text=True,
+            [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
+            capture_output=True, text=True,
         )
         boundary_flagged = {
             loads_strict_json(line)["file"]
@@ -4321,6 +4373,12 @@ def main() -> int:
     findings_path = devlyn_dir / output_findings_name()
 
     verify_env = os.environ.copy()
+    for runner_key in (
+        "SPEC_VERIFY_PHASE",
+        "SPEC_VERIFY_FINDINGS_FILE",
+        "SPEC_VERIFY_FINDING_PREFIX",
+    ):
+        verify_env.pop(runner_key, None)
     verify_env["BENCH_WORKDIR"] = str(work)
 
     results: list[dict] = []
