@@ -24,7 +24,7 @@ The user does not know context engineering. They will under-specify and over-ass
 </elicitation_contract>
 
 <harness_principles>
-Read `_shared/runtime-principles.md` (Subtractive-first / Goal-locked / No-workaround / Evidence). The principles bind the spec content as well as your conversation. A spec that says "for future flexibility" is a Subtractive-first violation. A spec that asks for `try { ... } catch { return null }` is a No-workaround violation. AI flags these in elicitation, not after `/devlyn:resolve` has built them.
+Read `_shared/runtime-principles.md` (Subtractive-first / Goal-locked / Evidence-over-claim). The principles bind the spec content as well as your conversation. A spec that says "for future flexibility" is a Subtractive-first violation. A spec that asks for `try { ... } catch { return null }` is a No-workaround violation. AI flags these in elicitation, not after `/devlyn:resolve` has built them.
 </harness_principles>
 
 <runtime_paths>
