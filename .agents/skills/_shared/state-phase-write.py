@@ -1656,7 +1656,20 @@ def self_test() -> int:
         assert set(plan1["history"][0]) == set(PLAN_RECEIPT_FIELDS)
         assert plan1["history"][0]["prompt_sha256"] == digest0
         assert plan1["prompt_sha256"] == digest1
-        result = plan_cli("complete", "--verdict", "PASS")
+        guard_error = (
+            "error: phases.plan complete with PASS or PASS_WITH_ISSUES requires "
+            "--phase plan transition --verdict <verdict> --next-phase <phase>"
+        )
+        assert_plan_rejected_unchanged(
+            guard_error, "complete", "--verdict", "PASS",
+        )
+        assert_plan_rejected_unchanged(
+            guard_error, "complete", "--verdict", "PASS_WITH_ISSUES",
+        )
+        result = plan_cli(
+            "transition", "--verdict", "PASS", "--next-phase", "implement",
+            "--next-round", "0", "--next-engine", "claude",
+        )
         assert result.returncode == 0, result.stderr
         for supplied_round in (0, 1, 2):
             assert_plan_rejected_unchanged(
@@ -1673,6 +1686,22 @@ def self_test() -> int:
         }
         assert not is_plan_dispatch_receipt(old_receipt)
         assert is_plan_dispatch_receipt(read_state(state_path)["phases"]["plan"])
+        write_state(state_path, {
+            "phases": {
+                "plan": {
+                    "started_at": "2026-01-01T00:00:00.000Z",
+                    "completed_at": None,
+                    "duration_ms": None,
+                    "round": 0,
+                    "triggered_by": None,
+                    "verdict": None,
+                },
+                "implement": None,
+            }
+        })
+        result = plan_cli("complete", "--verdict", "BLOCKED")
+        assert result.returncode == 0, result.stderr
+        assert read_state(state_path)["phases"]["plan"]["verdict"] == "BLOCKED"
         legacy_state = {"phases": {"plan": old_receipt | {"round": 0}}}
         write_state(state_path, legacy_state)
         result = plan_cli(
@@ -3188,6 +3217,15 @@ def main() -> int:
     }
     if not args.phase or args.event not in {"spawn", "complete", "transition", "durability-enforce", *surface_events}:
         ap.error("--phase and a phase event are required unless --self-test")
+    if (
+        args.event == "complete"
+        and args.phase == "plan"
+        and args.verdict in {"PASS", "PASS_WITH_ISSUES"}
+    ):
+        raise SystemExit(
+            "error: phases.plan complete with PASS or PASS_WITH_ISSUES requires "
+            "--phase plan transition --verdict <verdict> --next-phase <phase>"
+        )
 
     devlyn = pathlib.Path(args.devlyn_dir)
     if not devlyn.is_dir():
