@@ -2,7 +2,7 @@
 id: "0097-plan-prompt-canonicalization"
 title: "PLAN prompt artifact canonicalization: renderer emits no terminal LF; cue sentence deleted; delivery re-gate"
 kind: reliability
-status: REGISTRATION R0-ADJUDICATED 2026-08-05 — R0 Grok REVISE + Codex REVISE, fully convergent (3 amendments adopted); product change NOT yet landed; R1 pending
+status: REGISTRATION R1-PENDING 2026-08-05 — R0 convergent-adjudicated; canonicalization LANDED 5dcd6fc (resolve rs-20260805T134436Z PASS 3/3, net +26/-2 incl. cue deletion); R1 FREEZE pending
 complexity: high
 depends_on: ["0096-transition-compliance-delivery-regate", "0095-plan-delivery-byte-fidelity"]
 ---
