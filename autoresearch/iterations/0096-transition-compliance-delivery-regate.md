@@ -136,3 +136,17 @@ Both seats REVISE, complementary (no split). Adopted:
    PASS/PASS_WITH_ISSUES); spec amended, outer-loop iteration 2.
 2. BYTE-ANCHORED ORACLE REPIN: full shas pinned in frozen-assets.sha256
    (oracle changed with the e2e rewrite). Done.
+
+## R1 round 2 evidence (2026-08-05): both Codex deltas closed
+
+Effective-verdict relocation LANDED `73d4b1b` via outer-loop
+iteration 2 (spec amended; fresh PLAN/IMPLEMENT; verify-only
+`rs-20260805T123417Z` PASS 3/3 — pair probe executed both branches:
+attestation-converted BLOCKED writes legally, effective PASS rejected
+pre-write with state bytes unchanged). SPW sha repinned
+`bc7f74da20cd55b4…` in iter0096-reg/frozen-assets.sha256. Judges'
+first dispatch BLOCKED on an orchestrator-mistyped spec sha —
+fail-closed worked; re-dispatched with the authoritative state sha.
+Both contaminated pipeline runs (concurrent user queue.md edits) closed
+BLOCKED honestly with landed bytes re-verified via verify-only (0092
+precedent, twice).
