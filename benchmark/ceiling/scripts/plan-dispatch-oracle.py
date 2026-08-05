@@ -108,6 +108,7 @@ def collect_agent_calls(
     tool_results: list[dict] = []
     sidechain_agent_count = 0
     writer_evidence: list[dict] = []
+    pending_agent_references: list[tuple[str, str, int]] = []
     for path in session_paths:
         try:
             source = str(path.relative_to(result_dir.parent))
@@ -135,6 +136,34 @@ def collect_agent_calls(
                 continue
             if not isinstance(record, dict):
                 shape_issue("record-not-object", line_number)
+                continue
+            if "message" not in record:
+                referenced_ids: set[str] = set()
+                for container in (record, record.get("attachment")):
+                    if not isinstance(container, dict):
+                        continue
+                    hook_name = container.get("hookName")
+                    if (
+                        isinstance(hook_name, str)
+                        and hook_name in {"PreToolUse:Agent", "PostToolUse:Agent"}
+                    ):
+                        for id_key in ("toolUseID", "tool_use_id"):
+                            referenced_id = container.get(id_key)
+                            if isinstance(referenced_id, str):
+                                referenced_ids.add(referenced_id)
+                record_type = record.get("type")
+                referenced_id = record.get("tool_use_id")
+                if (
+                    isinstance(record_type, str)
+                    and (record_type == "system" or record_type.startswith("task_"))
+                    and isinstance(referenced_id, str)
+                    and ("subagent_type" in record or "prompt" in record)
+                ):
+                    referenced_ids.add(referenced_id)
+                pending_agent_references.extend(
+                    (referenced_id, path.name, line_number)
+                    for referenced_id in referenced_ids
+                )
                 continue
             message = record.get("message")
             if not isinstance(message, dict):
@@ -220,11 +249,13 @@ def collect_agent_calls(
                     if not tool_id_valid:
                         shape_issue("agent-tool-use-id-malformed", line_number)
                     timestamp = record.get("timestamp")
+                    subagent_type_present = "subagent_type" in agent_input
                     subagent_type = agent_input.get("subagent_type")
                     subagent_type_valid = (
-                        isinstance(subagent_type, str) and bool(subagent_type)
+                        not subagent_type_present
+                        or (isinstance(subagent_type, str) and bool(subagent_type))
                     )
-                    if not subagent_type_valid:
+                    if subagent_type_present and not subagent_type_valid:
                         shape_issue("agent-subagent-type-malformed", line_number)
                     heading = None
                     delivered_digest = None
@@ -279,6 +310,21 @@ def collect_agent_calls(
                         writer_evidence.append(
                             {"source": path.name, "line": line_number, "tool": tool_name}
                         )
+
+    known_agent_ids = {
+        row["tool_use_id"]
+        for row in candidates + tool_results
+        if row["tool_use_id_valid"]
+    }
+    orphan_records: set[tuple[str, int]] = set()
+    for referenced_id, source_name, line_number in pending_agent_references:
+        record_key = (source_name, line_number)
+        if referenced_id not in known_agent_ids and record_key not in orphan_records:
+            issues.append(
+                f"parent-session-shape:agent-evidence-orphan:"
+                f"{source_name}:{line_number}"
+            )
+            orphan_records.add(record_key)
 
     def order_key(dispatch: dict) -> tuple:
         try:
@@ -1388,6 +1434,56 @@ def self_test() -> int:
                 issue.startswith(f"parent-session-shape:{code}:")
                 for issue in payload["evidence"]["issues"]
             )
+
+        benign_record_rows = attempt_records("benign-no-message")
+        benign_record_rows.append({"type": "summary", "summary": "complete"})
+        benign_record = analyze_attempts("benign-no-message", benign_record_rows)
+        equal(benign_record["classification"], "COMPLETE")
+        equal(has_shape_issue(benign_record, "message-not-object"), False)
+        equal(has_shape_issue(benign_record, "agent-evidence-orphan"), False)
+        equal(benign_record["evidence"]["complete"], True)
+
+        correlated_hook_rows = attempt_records("correlated-hook")
+        correlated_hook_rows.append({
+            "hookName": "PostToolUse:Agent",
+            "toolUseID": "correlated-hook",
+        })
+        correlated_hook = analyze_attempts("correlated-hook", correlated_hook_rows)
+        equal(correlated_hook["classification"], "COMPLETE")
+        equal(has_shape_issue(correlated_hook, "agent-evidence-orphan"), False)
+
+        orphan_hook_rows = attempt_records("orphan-hook")
+        orphan_hook_rows.append({
+            "attachment": {
+                "hookName": "PreToolUse:Agent",
+                "tool_use_id": "missing-agent",
+            },
+        })
+        orphan_hook = analyze_attempts("orphan-hook", orphan_hook_rows)
+        equal(orphan_hook["classification"], "INCOMPLETE")
+        equal(has_shape_issue(orphan_hook, "agent-evidence-orphan"), True)
+
+        unrelated_id_rows = attempt_records("unrelated-id")
+        unrelated_id_rows.append({
+            "hookName": "PostToolUse:Read",
+            "tool_use_id": "unrelated-id",
+        })
+        unrelated_id = analyze_attempts("unrelated-id", unrelated_id_rows)
+        equal(unrelated_id["classification"], "COMPLETE")
+        equal(has_shape_issue(unrelated_id, "agent-evidence-orphan"), False)
+
+        absent_subagent_rows = attempt_records("absent-subagent-type")
+        del absent_subagent_rows[0]["message"]["content"][0]["input"][
+            "subagent_type"
+        ]
+        absent_subagent = analyze_attempts("absent-subagent-type", absent_subagent_rows)
+        absent_subagent_candidate = absent_subagent["dispatch_identity"][
+            "agent_candidates"
+        ][0]
+        equal(absent_subagent["classification"], "COMPLETE")
+        equal(has_shape_issue(absent_subagent, "agent-subagent-type-malformed"), False)
+        equal(absent_subagent_candidate["subagent_type_valid"], True)
+        equal(absent_subagent_candidate["acceptance_disposition"], "ACCEPTED")
 
         missing_identifiers = analyze_attempts(
             "missing-agent-and-result-identifiers",
