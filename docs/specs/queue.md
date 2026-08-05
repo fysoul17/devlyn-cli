@@ -76,7 +76,7 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   "judge.warning"]`, both judges, dispatch overlap Δ5.8s). Known gap:
   sonnet orchestrator skipped `judge_durations_ms` this run
   (instruction intact, validator non-enforcing) — noted, not rescued.
-- [ ] Context-engineering (Claude 5 blog "The new rules of context engineering
+- [x] Context-engineering (Claude 5 blog "The new rules of context engineering
   for Claude 5-generation models"; user-queued 2026-08-05; rewritten same
   day after Fable×Codex round-2 cross-check, receipts in conversation +
   scratchpad codex-r1/r2) item 1 of 2 — contract-source correctness,
@@ -102,6 +102,24 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   question deferred to item 2, NOT mirror drift; CLAUDE.md↔AGENTS.md parity
   is out of scope (AGENTS.md frozen per user directive 2026-08-05). Keep
   Check 12 until item 2 decides.
+  — done 2026-08-05: landed `4092c9c` (word-level: plan.md:37,
+  implement.md:36, ideate SKILL.md:27 + six mirror copies; executor codex
+  per pin, PLAN claude). Acceptance = the criteria's five verification
+  commands, re-run 5/5 PASS in a quiescent window (incl. lint green) after
+  the pipeline run rs-20260805T131905Z died
+  BLOCKED:concurrent-run-clobbered-devlyn (the concurrent iter-0097 resolve
+  run overwrote .devlyn mid-BUILD_GATE; VERIFY judges never ran — the
+  byte-exact mechanical contract is the acceptance evidence; verify-only
+  re-entry available on request). Orchestrator deviations logged honestly:
+  SURFACE_CLOSE mis-routed (implement→build_gate direct transition),
+  implement session-log attestation omitted. Follow-ups surfaced, NOT
+  queued (user to adjudicate): ① resolve-bootstrap leaves a stale
+  verify-only external-diff.patch that spec-verify-check trusts
+  unconditionally (fail-open scope blindness; hazard quarantined to
+  .devlyn/attic-20260805/) ② .devlyn concurrent-run lock — two live
+  collisions today, may now meet the two-real-needs bar ③ transition edge
+  table permits implement→build_gate even when generated+medium mandates
+  SURFACE_CLOSE.
 - [ ] Context-engineering item 2 of 2 — pre-registered contract-PLACEMENT
   experiment C/K/F, Claude seats only (AGENTS.md + codex/grok adapters stay
   byte-identical, asserted): arm C = current (full CLAUDE.md + phase-time
