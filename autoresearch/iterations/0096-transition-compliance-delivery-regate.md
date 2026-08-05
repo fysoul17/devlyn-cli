@@ -2,7 +2,7 @@
 id: "0096-transition-compliance-delivery-regate"
 title: "PLAN→IMPLEMENT transition-protocol compliance (mechanical guard) + delivery byte-fidelity re-gate"
 kind: reliability
-status: REGISTRATION-DRAFT 2026-08-05 — candidate design NOT yet adjudicated; 3-seat FREEZE (R0+R1) required; nothing frozen
+status: REGISTRATION R0-ADJUDICATED 2026-08-05 — R0 Codex REVISE + Grok REVISE (complementary, no split; deltas adopted below); product guard NOT yet landed; R1 FREEZE pending
 complexity: high
 depends_on: ["0095-plan-delivery-byte-fidelity", "0094-r5-regate"]
 ---
@@ -95,3 +95,33 @@ synthetic guard-blocked fixture if F4 fires); R1 FREEZE on the amended
 whole with liveness markers + self-computed shas (mandatory for every
 re-invocation); then the matrix. Receipts:
 `~/.local/share/nx01/iter0096-reg/` (git, sha-anchored).
+
+## R0 adjudication (2026-08-05; receipts ~/.local/share/nx01/iter0096-reg/) — adopted deltas
+
+Both seats REVISE, complementary (no split). Adopted:
+
+1. **Guard site = CLI argument layer** (parse/dispatch of the `complete`
+   verb), not `do_complete` internals — unit paths stay valid (Grok).
+2. **Co-land requirement (F2 fired by Grok with bytes)**: SPW's own
+   in-file self-test uses `plan_cli(... complete PASS ...)` (~:1659) and
+   the ORACLE's e2e block invokes standalone plan complete PASS
+   (~:2555-2562) — both fixtures rewritten through `transition` (or halt
+   verdicts) in the SAME product change; after landing, re-run the
+   oracle self-test AND the four retained full-arm replays (on copies)
+   before R1 (Codex).
+3. **Guard live-receipt gate (Codex)**: before any timed arm, execute
+   the exact installed writer from each fresh sibling base against an
+   isolated synthetic state; freeze receipts (writer sha256, command,
+   nonzero exit, transition-directed stderr, identical pre/post state
+   sha256) for standalone PLAN PASS, plus legal PLAN BLOCKED and
+   PASS→IMPLEMENT transition controls. Failure blocks the matrix; probes
+   run outside the timed/scored window.
+4. **F4 pre-committed ruling (both seats, merged)**: a guard-rejected
+   standalone plan-complete is NOT a plan completion (no
+   `plan.completed_at`; watcher stays not_ready until the atomic
+   carrier, never PLAN_INVALID on the reject). SPW Bash retries are not
+   PLAN Agent dispatches and do not alone fail `dispatch_clean`;
+   `bash_tool_uses` may rise as non-binding telemetry; a repeated
+   top-level PLAN Agent dispatch after a reject receives normal existing
+   scoring; no bar rewrite, no replacement.
+5. Prose sharpening: NOT adopted (guard-only; subtractive-first held).
