@@ -95,8 +95,9 @@ to a new registration with its own diagnosis.
 R0 adversarial (Codex gpt-5.6-sol + Grok 4.5; positions above stated
 first) → adjudicate with named deltas → land via `/devlyn:resolve`
 (executor pin codex + --pair-verify) → seat-executed proofs (renderer
-self-test; the landing run's OWN PLAN phase is live dogfood of the
-canonicalized artifact) → R1 FREEZE with liveness markers +
+self-test; NOTE — the landing run's own PLAN render PRE-dated the
+landing and still ended WITH LF, so it is NOT dogfood; the first live
+canonicalized renders are the per-base probes and matrix arms) → R1 FREEZE with liveness markers +
 self-computed shas (mandatory on every re-invocation) → fresh
 bases/tokens/nonce + per-base probes → matrix. Receipts:
 `~/.local/share/nx01/iter0097-reg/` (git, sha-anchored).
@@ -115,3 +116,8 @@ consumer requires the terminal LF — both seats searched), F2 NOT FIRED
 (oracle e2e fixture re-renders and records the returned digest,
 oracle:2514 — self-refreshing), F3 NOT FIRED, F4 NOT FIRED at
 registration (lint + matrix remain the landing/live checks).
+
+Registered follow-up (advisory, Grok R1): SKILL.md PHASE 1 still says
+"render ... without byte normalization" while the renderer now
+canonicalizes the terminal-LF run — prose lag, adjudicate in a future
+doc iter, not a bar change here.
