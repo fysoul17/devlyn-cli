@@ -88,9 +88,14 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   exists to resolve the conflict today. ② Metadata contradiction —
   devlyn:ideate/SKILL.md:27 claims runtime-principles.md supplies
   No-workaround while runtime-principles.md:5 states No-workaround lives
-  only in CLAUDE.md Core Principle #1. ③ Docs naming the runtime readers
-  must name the actual five: IMPLEMENT, BUILD_GATE, CLEANUP, VERIFY,
-  PROBE_DERIVE — PLAN does not read runtime-principles.md. Corrected facts
+  only in CLAUDE.md Core Principle #1. (③ withdrawn 2026-08-05 during
+  pipeline PHASE 0 verification: runtime-principles.md:3 declares
+  binding-scope — "every sub-agent … must satisfy" — not a reader list;
+  PLAN is genuinely bound via its compact paraphrase, so the sentence is
+  true and "correcting" it would narrow semantic scope. Actual readers for
+  the record: IMPLEMENT, BUILD_GATE, CLEANUP, VERIFY, PROBE_DERIVE.)
+  Paraphrase drift confirmed in BOTH plan.md:37 and implement.md:36.
+  Corrected facts
   vs the original item: the three CLAUDE.md↔runtime-principles.md
   enforcement blocks are byte-identical under lint Check 12
   (lint-skills.sh:3883) — Claude-side co-loading is a token-duplication
@@ -111,9 +116,15 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   run-drift-bait-probe-resolve.sh invokes claude -p without resolve
   framing; iter-0069 completion-evidence incidents happened on this ungated
   surface) and pipeline. Exact pinned identities claude-opus-4-8 (gen-4) +
-  claude-sonnet-5 (gen-5); iter-0058 debug logs attest BOTH generations
-  show drift pressure under the current contract (opus-4-8 12/24, sonnet-5
-  9/24), so no arm may regress either generation. N≥4, interleaved, full
+  claude-opus-5 (gen-5) — same-tier cross-generation pair isolates the
+  generation variable (user direction 2026-08-05; the earlier
+  opus-4-8+sonnet-5 pairing confounded tier×generation); claude-sonnet-5
+  optional third if budget allows. PREREQUISITE: recert-seats.sh
+  exact-model-ID support + opus-5/opus-4-8 seat certification (diagnosed
+  2026-07-28 as the A/B 선행작업; opus-5 seat currently uncertified).
+  iter-0058 debug logs attest BOTH generations show drift pressure under
+  the current contract (opus-4-8 12/24, sonnet-5 9/24), so no arm may
+  regress either generation. N≥4, interleaved, full
   six-probe panel, per-cell flip bands, clean-cell regression veto, frozen
   arm snapshots + prompt SHA-256s (all-phase prompt hashing is NEW work —
   only PLAN persists prompt_sha256 today; archive_run.py allowlist excludes
@@ -131,3 +142,13 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   re-register a focused HTML-reference A/B only after an observed fidelity
   miss. (No overengineering: no generic references block without an
   observed failure.)
+- [ ] Measurement phase 3 (user direction 2026-08-05; starts AFTER
+  context-engineering item 2 closes): bare < solo < pair performance
+  measurement + improvement on Lane A (benchmark/auto-resolve gates).
+  Pair seats per user: opus (claude), codex gpt-5.6-terra, grok 4.5 —
+  cross-vendor OTHER-engine pairs, direction-symmetric protocol.
+  Binding constraints carried in: pair-mode measurement needs benchmark
+  headroom first; pair-vs-solo is an empirical per-phase comparison (pair
+  fires only where measured lift); fable is never a test arm; grok
+  emission remains uncertified — no durable `pair grok` pin. Scope:
+  measure first, then register improvements from the observed deltas.
