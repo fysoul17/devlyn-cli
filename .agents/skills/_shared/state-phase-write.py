@@ -1702,6 +1702,30 @@ def self_test() -> int:
         result = plan_cli("complete", "--verdict", "BLOCKED")
         assert result.returncode == 0, result.stderr
         assert read_state(state_path)["phases"]["plan"]["verdict"] == "BLOCKED"
+        write_state(state_path, {
+            "phases": {
+                "plan": {
+                    "started_at": "2026-01-01T00:00:00.000Z",
+                    "completed_at": None,
+                    "duration_ms": None,
+                    "round": 0,
+                    "triggered_by": None,
+                    "verdict": None,
+                },
+                "implement": None,
+            }
+        })
+        result = plan_cli(
+            "complete", "--verdict", "PASS", "--engine-session-log",
+            str(devlyn / "missing-session.jsonl"),
+        )
+        assert result.returncode == 1, result.stderr
+        assert "BLOCKED:model-attestation-failed" in result.stderr
+        assert guard_error not in result.stderr
+        attestation_blocked = read_state(state_path)["phases"]["plan"]
+        assert attestation_blocked["verdict"] == "BLOCKED"
+        assert attestation_blocked["completed_at"] is not None
+        assert attestation_blocked["model_effective"] is None
         legacy_state = {"phases": {"plan": old_receipt | {"round": 0}}}
         write_state(state_path, legacy_state)
         result = plan_cli(
@@ -3217,16 +3241,6 @@ def main() -> int:
     }
     if not args.phase or args.event not in {"spawn", "complete", "transition", "durability-enforce", *surface_events}:
         ap.error("--phase and a phase event are required unless --self-test")
-    if (
-        args.event == "complete"
-        and args.phase == "plan"
-        and args.verdict in {"PASS", "PASS_WITH_ISSUES"}
-    ):
-        raise SystemExit(
-            "error: phases.plan complete with PASS or PASS_WITH_ISSUES requires "
-            "--phase plan transition --verdict <verdict> --next-phase <phase>"
-        )
-
     devlyn = pathlib.Path(args.devlyn_dir)
     if not devlyn.is_dir():
         sys.stderr.write(f"error: {devlyn} is not a directory\n")
@@ -3367,6 +3381,14 @@ def main() -> int:
             state, args.phase, args.verdict, args.post_sha, args.findings_file,
             args.log_file, args.engine, args.model, args.engine_session_log, devlyn,
         )
+        if (
+            args.phase == "plan"
+            and state["phases"]["plan"]["verdict"] in {"PASS", "PASS_WITH_ISSUES"}
+        ):
+            raise SystemExit(
+                "error: phases.plan complete with PASS or PASS_WITH_ISSUES requires "
+                "--phase plan transition --verdict <verdict> --next-phase <phase>"
+            )
 
     if args.event not in {"spawn", "transition"}:
         write_state(state_path, state)
