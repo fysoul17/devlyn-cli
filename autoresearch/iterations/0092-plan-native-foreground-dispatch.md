@@ -32,9 +32,11 @@ credit.
 ```text
 python3 benchmark/ceiling/scripts/plan-dispatch-oracle.py --self-test
 diff -q config/skills/devlyn:resolve/SKILL.md .agents/skills/devlyn:resolve/SKILL.md && diff -q config/skills/devlyn:resolve/SKILL.md .claude/skills/devlyn:resolve/SKILL.md
-bash scripts/lint-skills.sh
+bash scripts/lint-skills.sh  # timeout_sec: 300 (spec amendment 2026-08-05)
 git diff --check
 ```
+
+This amendment comes from the adjudicated instrument finding in `rs-20260804T113416Z`; the authorable budget shipped as iter-0093.
 
 The schema-3 oracle additionally retains the real iter-0091 Stage B Canary 1
 and Canary 2 prompt bytes and call/result shapes. Canary 1 must remain COMPLETE;
