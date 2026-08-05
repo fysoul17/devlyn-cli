@@ -2,7 +2,7 @@
 id: "0096-transition-compliance-delivery-regate"
 title: "PLAN→IMPLEMENT transition-protocol compliance (mechanical guard) + delivery byte-fidelity re-gate"
 kind: reliability
-status: REGISTRATION R0-ADJUDICATED 2026-08-05 — R0 Codex REVISE + Grok REVISE (complementary, no split; deltas adopted below); product guard NOT yet landed; R1 FREEZE pending
+status: REGISTRATION R1-PENDING 2026-08-05 — R0 adjudicated; SPW guard LANDED b23bde3 (verify-only rs-20260805T120629Z PASS 3/3; first run closed BLOCKED on concurrent user queue.md edit contaminating scope baseline — user file committed separately d84df1b, content untouched); NEXT: post-land proofs (oracle self-test + 4 full-arm replays on copies + guard live-receipt gate) → R1 FREEZE (liveness) → fresh sibling bases/tokens/nonce → matrix
 complexity: high
 depends_on: ["0095-plan-delivery-byte-fidelity", "0094-r5-regate"]
 ---
