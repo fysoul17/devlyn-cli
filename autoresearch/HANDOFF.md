@@ -60,8 +60,21 @@ candidate-discovery stripped the SAME single terminal LF (12,150/12,151)
 WITH the Read-cue instruction in-tree; candidate-simple byte-exact.
 Controls both digest-mismatched (third both-conditions variance
 receipt). Blind bar not executed (non-restorative; nonce retained;
-logged). **The pre-named escalation FIRES → NEXT = register iter-0097:
-artifact canonicalization** (renderer emits `plan.prompt` WITHOUT the
+logged). **0097 RAN AND CLOSED (DECISIONS 0097.1)**: canonicalization
+SHIPPED `5dcd6fc` (renderer no-terminal-LF + cue deletion, R0/R1
+convergent freeze); matrix infra-confounded at arm 3/4 (external
+session-quota kill mid-PLAN; Codex strict-text ruling — no replacement,
+rerun = new registration). DECISIVE non-scoring diagnostic:
+candidate-simple ADDED a trailing LF to the canonicalized no-LF
+artifact while control-simple delivered byte-exact — with 0094 (strip)
+and 0096 (strip despite cue), the terminal-LF byte is BIDIRECTIONALLY
+model-unstable at the Read→transcribe boundary; artifact- and
+instruction-side remedies are both measured-insufficient. **NEXT =
+0098: design round + registration for terminal-LF-RUN-insensitive
+delivery comparison** (both sides strip the terminal 0x0a run
+pre-compare, raw digests retained forensically, all other bytes exact —
+the 0095-rejected F4 re-opened with its premise falsified). Old
+frontier text: **register iter-0097: artifact canonicalization** (renderer emits `plan.prompt` WITHOUT the
 terminal LF — digest self-consistent; DELETE the 8f99b51 cue sentence,
 subtractive; fresh controls/nonce/bases per 0088.3). Receipts:
 `~/.local/share/nx01/iter0096-{reg,matrix}/`. Old frontier text below

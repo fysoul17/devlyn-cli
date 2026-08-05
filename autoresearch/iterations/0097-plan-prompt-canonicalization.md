@@ -2,7 +2,7 @@
 id: "0097-plan-prompt-canonicalization"
 title: "PLAN prompt artifact canonicalization: renderer emits no terminal LF; cue sentence deleted; delivery re-gate"
 kind: reliability
-status: REGISTERED-FROZEN 2026-08-05 — 3-seat FREEZE (R0 convergent; R1 Grok FREEZE + Codex REVISE→round-2 FREEZE on the dogfood-receipt correction; liveness throughout); canonicalization LANDED 5dcd6fc; MATRIX PENDING
+status: CLOSED-UNSCORED 2026-08-05/06 — matrix infrastructure-confounded at arm 3/4 (external session-quota kill mid-PLAN; strict-text ruling: no replacement, rerun = new registration); NON-SCORING DIAGNOSTIC: candidate-simple ADDED a trailing LF to the canonicalized no-LF artifact (bidirectional terminal-byte instability — canonicalization diagnostically insufficient); canonicalization + cue deletion stay landed on formal verification; NEXT = 0098 design round on terminal-LF-run-insensitive comparison
 complexity: high
 depends_on: ["0096-transition-compliance-delivery-regate", "0095-plan-delivery-byte-fidelity"]
 ---
@@ -121,3 +121,43 @@ Registered follow-up (advisory, Grok R1): SKILL.md PHASE 1 still says
 "render ... without byte normalization" while the renderer now
 canonicalizes the terminal-LF run — prose lag, adjudicate in a future
 doc iter, not a bar change here.
+
+## MATRIX TERMINAL (2026-08-05/06) — CLOSED-UNSCORED, infrastructure-confounded at arm 3/4
+
+Arms 1-2 watcher PASS; arm 3 (candidate-discovery `1b9e6f69`) died
+CHILD_EXITED_EARLY/PLAN_INVALID — the PLAN Agent worker was killed
+mid-run by an EXTERNAL account quota event ("You've hit your session
+limit · resets 12am Asia/Seoul"; watcher sent no signal;
+plan.completed_at null; zero product behavior measured). Adjudication
+(Codex, liveness, receipts `/tmp/r-arm3-check.log` →
+`iter0097-reg/`): STRICT-TEXT KILL — the frozen replacement clause
+triggers on in-window PLAN Agent USE (the call was issued), 0073.2's
+cohort confound precedent cannot override the later matrix-specific
+frozen text, post-contact deviation = amending after exposure. Matrix
+unscored; arm 4 never ran; rerun requires a NEW registration.
+
+**Non-scoring diagnostics (scored against no one, decisive for the
+successor's design)**: control-simple delivered byte-exact
+(`5de3b67b…`, COMPLETE — first control ever to pass the digest, on the
+WITH-LF artifact). candidate-simple delivered the canonicalized
+artifact PLUS an ADDED trailing LF (9,260 vs 9,259; common bytes
+identical; disk render correctly ends without LF — the renderer works).
+Combined with 0094 (strip) and 0096 (strip WITH cue): the terminal-LF
+byte at the Read→transcribe→`Agent.prompt` boundary is BIDIRECTIONALLY
+model-unstable — Sonnet parents nondeterministically normalize toward
+either convention regardless of the artifact's actual terminal byte and
+regardless of instruction. The artifact-side remedy is diagnostically
+insufficient. This NEW evidence re-opens the 0095 design round's
+rejected F4 with its premise changed: the successor design question is
+terminal-LF-RUN-INSENSITIVE delivery comparison (both sides strip the
+terminal `0x0a` run before compare; RAW digests still recorded as
+forensic receipts; every other byte remains exact) — the byte is
+semantically void (user's original intuition, 0095 packet) AND now
+measured transport-unstable in both directions. Requires a fresh design
+round + registration (0098); not an amendment here.
+
+Canonicalization (`5dcd6fc`) and the cue deletion STAY LANDED on formal
+verification — the artifact is now deterministic even though the
+transport is not. Receipts: `~/.local/share/nx01/iter0097-matrix/`
+(arms 1-3, render probes, sealed mapping/nonce unopened),
+`~/.local/share/nx01/iter0097-reg/` (git).
