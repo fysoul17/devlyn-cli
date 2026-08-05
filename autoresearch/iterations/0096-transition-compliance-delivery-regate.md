@@ -2,7 +2,7 @@
 id: "0096-transition-compliance-delivery-regate"
 title: "PLAN→IMPLEMENT transition-protocol compliance (mechanical guard) + delivery byte-fidelity re-gate"
 kind: reliability
-status: REGISTERED-FROZEN 2026-08-05 — 3-seat FREEZE (R0 both REVISE adjudicated; R1: Grok FREEZE + Codex REVISE→round-2 FREEZE after effective-verdict relocation landed+verified; liveness markers throughout); guard landed (b23bde3 + relocation commit, verify-only PASS 3/3 twice); post-land proofs green; MATRIX PENDING (fresh sibling bases at post-guard SHA + tokens/nonce + per-base live probes, then four ABBA arms)
+status: CLOSED 2026-08-05 — matrix RAN 4/4 past watcher (guard validated live; 0095 death class closed); candidate structural bar FAILED 1/2 (candidate-discovery: SAME one-byte terminal-LF strip WITH the cue instruction — 12,150/12,151); NO SHIP CREDIT on delivery; PRE-NAMED ESCALATION FIRES: artifact canonicalization justified → successor 0097; guard + instrument fixes validated live
 complexity: high
 depends_on: ["0095-plan-delivery-byte-fidelity", "0094-r5-regate"]
 ---
@@ -150,3 +150,32 @@ fail-closed worked; re-dispatched with the authoritative state sha.
 Both contaminated pipeline runs (concurrent user queue.md edits) closed
 BLOCKED honestly with landed bytes re-verified via verify-only (0092
 precedent, twice).
+
+## MATRIX TERMINAL (2026-08-05) — bar 1 FAILED 1/2; guard + instruments validated live
+
+Four ABBA arms (bases cand `95f4e06`/ctrl `401c522`, tokens 4e2cf6f7/
+a0906f49/8f7df351/ce60ea29, mapping sealed `827277cc…`, nonce
+`ca28c8dc…`): **watcher PASS 4/4** (SIGINT-only; the 0095
+standalone-complete death class did not recur — the effective-verdict
+guard is live-validated), **dispatch_clean 4/4** (corrected scorer, zero
+false-fires — 0094's artifacts-clause defect closed live), **oracle
+evidence issues 0 on all four live current-format sessions** (0094's
+INCOMPLETE-cap defect closed live), **tripwires PASS** (candidate 0.895×
+summed; 0.593/1.179 per-goal). **Deciding bar FAILED**:
+candidate-discovery delivered the PLAN prompt minus its single terminal
+LF (12,150 vs 12,151; common bytes identical; state/disk sha `24c20f8b…`
+vs delivered `53b5fe5a…`) WITH the amended Read-cue instruction present
+in its tree; candidate-simple delivered byte-exact (`27147a1b…` all
+three). Live 2/2 bar → 1/2 → NO SHIP CREDIT. Controls: both
+digest-mismatched their deliveries (control-simple additionally ran a
+legal two-dispatch corrective respawn) — third consecutive live evidence
+of both-conditions delivery variance. Blind quality bar NOT executed
+(orchestrator call, logged): non-restorative by the frozen rule with the
+deciding bar already failed; nonce retained unopened for audit.
+**Pre-named escalation (0095 design round, carried) FIRES on exactly its
+trigger**: the explicit cue failed a live 2/2 bar → artifact
+canonicalization (renderer emits `plan.prompt` WITHOUT a terminal LF;
+PLAN_PROMPT_SHA256 stays self-consistent since the renderer hashes what
+it writes) is now evidence-justified → register iter-0097. Receipts:
+`~/.local/share/nx01/iter0096-matrix/` (arms/sessions/worktrees),
+`~/.local/share/nx01/iter0096-reg/` (git).
