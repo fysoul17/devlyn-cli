@@ -55,6 +55,7 @@ def render_prompt(
     projected_adapter = project_adapter(adapter_bytes)
     validate_plan_context(task_context, context_bytes)
     rendered = projected_adapter + body_bytes + context_bytes
+    rendered = rendered.rstrip(b"\n")
     if not output.parent.is_dir():
         raise SystemExit(f"error: prompt output parent is not a directory: {output.parent}")
     fd, temporary = tempfile.mkstemp(dir=output.parent, prefix=output.name + ".tmp.")
@@ -123,6 +124,17 @@ def self_test() -> int:
             assert digest == hashlib.sha256(expected).hexdigest()
             assert render_prompt(adapter, body, context, output) == digest
             assert output.read_bytes() == expected
+
+            context_prefix = context_bytes.removesuffix(b"context-without-newline")
+            for terminal_lfs in (b"", b"\n", b"\n\n"):
+                case_context = context_prefix + b"context-terminal-lf-case" + terminal_lfs
+                context.write_bytes(case_context)
+                expected = (projected_adapter + body_bytes + case_context).rstrip(b"\n")
+                digest = render_prompt(adapter, body, context, output)
+                written = output.read_bytes()
+                assert not written.endswith(b"\n")
+                assert digest == hashlib.sha256(written).hexdigest()
+                assert written == expected
 
             invalid_contexts = (
                 b"context-without-header",
