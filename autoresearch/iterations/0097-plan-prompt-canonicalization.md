@@ -2,7 +2,7 @@
 id: "0097-plan-prompt-canonicalization"
 title: "PLAN prompt artifact canonicalization: renderer emits no terminal LF; cue sentence deleted; delivery re-gate"
 kind: reliability
-status: REGISTRATION-DRAFT 2026-08-05 — design pre-committed (0095 design round escalation path, fired by 0096 evidence); R0+R1 3-seat FREEZE required; nothing frozen
+status: REGISTRATION R0-ADJUDICATED 2026-08-05 — R0 Grok REVISE + Codex REVISE, fully convergent (3 amendments adopted); product change NOT yet landed; R1 pending
 complexity: high
 depends_on: ["0096-transition-compliance-delivery-regate", "0095-plan-delivery-byte-fidelity"]
 ---
@@ -31,9 +31,10 @@ credit for the 0092 R1 native dispatch is still the only thing owed.
 1. **Renderer canonicalization**
    (`config/skills/_shared/phase-prompt-render.py` + mirrors): the
    renderer's output contract becomes "never emits a terminal LF" —
-   exactly one trailing `\n` is stripped from the rendered bytes before
-   write+hash when present (content-internal newlines untouched; no
-   other normalization). `PLAN_PROMPT_SHA256` self-consistency is
+   the MAXIMAL trailing run of `0x0a` bytes is removed from the rendered
+   bytes before write+hash (`rendered.rstrip(b"\n")`); every
+   content-internal byte preserved; no other normalization. [R0 A2/A1
+   convergent: operator must match the contract by construction.] `PLAN_PROMPT_SHA256` self-consistency is
    automatic (the renderer hashes what it writes). Self-test additions:
    rendered output never ends with `0x0a`; digest == written bytes;
    task-context-without-final-newline case (existing) unchanged.
@@ -55,16 +56,20 @@ four serial ABBA arms + Sonnet 5 parents on the pinned CLI + frozen
 `--no-risk-probes` invocation + goals verbatim + opaque tokens/sealed
 mapping + landed oracle + registration scorer + sha-anchored assets all
 carry. FRESH: sibling bases at the post-canonicalization SHA (control =
-candidate with the delivery-hypothesis hunks reverse-applied — the 0094
-native-dispatch patch AND the renderer-canonicalization hunks; the
-transition guard from 0096 stays SHARED in both trees), fresh tokens,
-fresh controls, fresh nonce; 0096's bases/tokens/nonce retired.
+candidate with the 0094 native-dispatch patch AND the WHOLE 0097
+delivery-hypothesis patch reverse-applied — WITH-LF renderer and the
+8f99b51 cue sentence both RESTORED; mutual delta = exactly those three
+parts; the 0096 transition guard stays SHARED in both trees) [R0 both
+seats convergent], fresh tokens, fresh controls, fresh nonce; 0096's
+bases/tokens/nonce retired.
 
 Bars unchanged (0095 text is authoritative): candidate structural 2/2
 byte-exact; dispatch_clean 4/4; watcher PASS 4/4; blind no-loser
 (Fable 5 + Grok 4.5, file:line mandatory, hard conjunct,
-non-restorative) — EXECUTED this time if reached (0096's skip was an
-orchestrator call, logged); tripwires ≤1.25 / ≤1.50. Ship rule: all
+non-restorative) — EXECUTED this time if reached — the blind bar is
+reached iff mechanical bars 1, 2, 3, and 5 all pass; once reached BOTH
+blind judges MUST execute before ship adjudication; otherwise record
+NOT-REACHED [R0 Codex amendment 3]; tripwires ≤1.25 / ≤1.50. Ship rule: all
 bars pass → live delivery credit for R1 + canonicalization; any bar
 fails → no ship credit, new registration. Escalation exhaustion note:
 if the SAME one-byte class fires with a canonicalized artifact (no
@@ -95,3 +100,18 @@ canonicalized artifact) → R1 FREEZE with liveness markers +
 self-computed shas (mandatory on every re-invocation) → fresh
 bases/tokens/nonce + per-base probes → matrix. Receipts:
 `~/.local/share/nx01/iter0097-reg/` (git, sha-anchored).
+
+## R0 adjudication (2026-08-05; receipts ~/.local/share/nx01/iter0097-reg/)
+
+Grok REVISE + Codex REVISE, fully convergent (no split; Codex's first
+call died at a 10-min wall limit and was re-invoked with a liveness
+marker). Adopted: A1 control reverse-application includes the cue-
+sentence restore (mutual delta = native-dispatch patch + renderer
+canonicalization + cue deletion, exactly); A2 strip operator = maximal
+trailing-LF run (`rstrip(b"\n")`), self-tests cover zero/one/multiple
+terminal LFs + digest equality + the existing no-final-newline case;
+A3 blind-bar reachability rule (above). Falsifiers: F1 NOT FIRED (no
+consumer requires the terminal LF — both seats searched), F2 NOT FIRED
+(oracle e2e fixture re-renders and records the returned digest,
+oracle:2514 — self-refreshing), F3 NOT FIRED, F4 NOT FIRED at
+registration (lint + matrix remain the landing/live checks).
