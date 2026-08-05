@@ -131,8 +131,10 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   runtime-principles.md becomes sole owner of the three enforcement blocks;
   PLAN repaired to load them). Measure BOTH windows — bare conversation
   (existing instrument: benchmark/probes/scripts/
-  run-drift-bait-probe-resolve.sh invokes claude -p without resolve
-  framing; iter-0069 completion-evidence incidents happened on this ungated
+  run-drift-bait-probe.sh invokes claude -p without resolve
+  framing [filename corrected 2026-08-06, iter-0099 R0: the -resolve
+  sibling is the pipeline-framed runner]; iter-0069 completion-evidence
+  incidents happened on this ungated
   surface) and pipeline. Exact pinned identities claude-opus-4-8 (gen-4) +
   claude-opus-5 (gen-5) — same-tier cross-generation pair isolates the
   generation variable (user direction 2026-08-05; the earlier
