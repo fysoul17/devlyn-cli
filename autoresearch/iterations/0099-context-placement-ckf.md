@@ -284,3 +284,17 @@ INVALID (same rerun/veto ladder as attestation). No product change.
   scratchpad `codex-r2-0099.log`.
 - FREEZE: 2026-08-06, this commit. Arm builds and matrix runs start
   only after this stamp.
+- **AMENDMENT A1 (USER-DIRECTED, 2026-08-06, Codex AMEND-OK)**: pipeline
+  window N=4 → **N=2** (72 runs, reps 1-2 only). Ordered at pipeline
+  22/144 valid (0 invalid), wall-time-motivated (~28 min/run ⇒ ~2.3
+  days remaining declined), BEFORE any candidate arm completed a full
+  rep set; rep coverage identical across arms (rep-major interleave,
+  resume preserves order). Bare window stays N=4 (already complete,
+  144/144). Scoring restated at pipeline N=2: flip band = min(v, 2−v)
+  on arm C; clean-cell veto literal = C 0/2 AND candidate 2/2; all
+  other formulas unchanged, evaluated at N=2. **Statistical honesty
+  clause**: pipeline conclusions are labeled "N=2 evidence" (a 1/2 vs
+  0/2 delta is inside band-1 noise); any pipeline-only above-band
+  regression triggers a named follow-up, never silent confidence.
+  Codex adjudication: "reduces precision and temporal coverage — not
+  treatment comparability" (receipt: scratchpad `codex-amend-0099.log`).
