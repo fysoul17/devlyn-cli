@@ -1,0 +1,1374 @@
+{
+  "cells": [
+    {
+      "artifact": "benchmark/probes/results/ckf0099-recert-violation-claude-opus-4-8-r*/drift-bait/*/verdict.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude-opus-4-8",
+      "metric": "non_violation_rate",
+      "model_version": {
+        "source": "recert-attestation:ckf0099-recert",
+        "value": "2.1.222 (Claude Code)/claude-opus-4-8"
+      },
+      "n": 24,
+      "seat": "drift_resistance",
+      "status": "current",
+      "value": 0.5833333333333334
+    },
+    {
+      "artifact": "benchmark/probes/results/ckf0099-recert-violation-claude-opus-5-r*/drift-bait/*/verdict.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude-opus-5",
+      "metric": "non_violation_rate",
+      "model_version": {
+        "source": "recert-attestation:ckf0099-recert",
+        "value": "2.1.222 (Claude Code)/claude-opus-5"
+      },
+      "n": 24,
+      "seat": "drift_resistance",
+      "status": "current",
+      "value": 0.875
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0058-base-matrix.json",
+      "date": "2026-08-05",
+      "engine_alias": "opus",
+      "metric": "non_violation_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 24,
+      "seat": "drift_resistance",
+      "status": "stale",
+      "value": 0.5
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0062-a-matrix-corrected.json",
+      "date": "2026-08-05",
+      "engine_alias": "opus",
+      "metric": "non_violation_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 4,
+      "seat": "drift_resistance",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0062-b-matrix-corrected.json",
+      "date": "2026-08-05",
+      "engine_alias": "opus",
+      "metric": "non_violation_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 4,
+      "seat": "drift_resistance",
+      "status": "stale",
+      "value": 0.5
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0058-base-matrix.json",
+      "date": "2026-08-05",
+      "engine_alias": "sonnet",
+      "metric": "non_violation_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 24,
+      "seat": "drift_resistance",
+      "status": "stale",
+      "value": 0.625
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0062-a-matrix-corrected.json",
+      "date": "2026-08-05",
+      "engine_alias": "sonnet",
+      "metric": "non_violation_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 24,
+      "seat": "drift_resistance",
+      "status": "stale",
+      "value": 0.625
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0062-b-matrix-corrected.json",
+      "date": "2026-08-05",
+      "engine_alias": "sonnet",
+      "metric": "non_violation_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 24,
+      "seat": "drift_resistance",
+      "status": "stale",
+      "value": 0.8333333333333334
+    },
+    {
+      "artifact": "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof",
+      "date": "2026-08-05",
+      "engine_alias": "bare",
+      "metric": "judge_score_mean",
+      "model_version": {
+        "source": "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F16-cli-quote-tax-rules/judge.json:_judge_cli/_judge_model",
+        "value": "codex-cli unknown (version-timeout)/gpt-5.5"
+      },
+      "n": 3,
+      "seat": "implement_executor",
+      "status": "stale",
+      "value": 36.0
+    },
+    {
+      "artifact": "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof",
+      "date": "2026-08-05",
+      "engine_alias": "bare",
+      "metric": "verify_score_mean",
+      "model_version": {
+        "source": "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F16-cli-quote-tax-rules/judge.json:_judge_cli/_judge_model",
+        "value": "codex-cli unknown (version-timeout)/gpt-5.5"
+      },
+      "n": 3,
+      "seat": "implement_executor",
+      "status": "stale",
+      "value": 0.3611111111111111
+    },
+    {
+      "artifact": "benchmark/ceiling/results/iter0064-t1/ceiling-verdict.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "ceiling_objective_resolved_under_harness",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 3,
+      "seat": "implement_executor",
+      "status": "stale",
+      "value": 0.6666666666666666
+    },
+    {
+      "artifact": "benchmark/ceiling/results/iter0067-t2/ceiling-verdict.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "ceiling_objective_resolved_under_harness",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 3,
+      "seat": "implement_executor",
+      "status": "stale",
+      "value": 0.6666666666666666
+    },
+    {
+      "artifact": "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof",
+      "date": "2026-08-05",
+      "engine_alias": "l2_risk_probes",
+      "metric": "judge_score_mean",
+      "model_version": {
+        "source": "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F16-cli-quote-tax-rules/judge.json:_judge_cli/_judge_model",
+        "value": "codex-cli unknown (version-timeout)/gpt-5.5"
+      },
+      "n": 3,
+      "seat": "implement_executor",
+      "status": "stale",
+      "value": 97.33333333333333
+    },
+    {
+      "artifact": "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof",
+      "date": "2026-08-05",
+      "engine_alias": "l2_risk_probes",
+      "metric": "verify_score_mean",
+      "model_version": {
+        "source": "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F16-cli-quote-tax-rules/judge.json:_judge_cli/_judge_model",
+        "value": "codex-cli unknown (version-timeout)/gpt-5.5"
+      },
+      "n": 3,
+      "seat": "implement_executor",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof",
+      "date": "2026-08-05",
+      "engine_alias": "solo_claude",
+      "metric": "judge_score_mean",
+      "model_version": {
+        "source": "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F16-cli-quote-tax-rules/judge.json:_judge_cli/_judge_model",
+        "value": "codex-cli unknown (version-timeout)/gpt-5.5"
+      },
+      "n": 3,
+      "seat": "implement_executor",
+      "status": "stale",
+      "value": 72.0
+    },
+    {
+      "artifact": "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof",
+      "date": "2026-08-05",
+      "engine_alias": "solo_claude",
+      "metric": "verify_score_mean",
+      "model_version": {
+        "source": "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F16-cli-quote-tax-rules/judge.json:_judge_cli/_judge_model",
+        "value": "codex-cli unknown (version-timeout)/gpt-5.5"
+      },
+      "n": 3,
+      "seat": "implement_executor",
+      "status": "stale",
+      "value": 0.7222222222222222
+    },
+    {
+      "artifact": "benchmark/probes/results/dualjudge-default-20260716/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0042-20260704T001308Z/compliance/claude-medium/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0042-20260704T001308Z/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0044-verify-20260704T053516Z/compliance/claude-medium/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0044-verify-20260704T053516Z/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0046-verify/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0047-verify-claude-small/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0048-ko-compliance/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0049-verify-claude-small/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0052-verify-claude-small/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0054-verify-claude-small-20260704T132052Z/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0059-guard-claude/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0060-g4-claude/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0060-g4b-claude/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0062-verify-claude-small/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0063-v4c/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0063-verify-final/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0063-verify/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0064-recert-opus-compliance/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0064-recert-sonnet-compliance/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0066-p5/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/ckf0099-recert-claude-opus-4-8-compliance/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude-opus-4-8",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": "recert-attestation:ckf0099-recert",
+        "value": "2.1.222 (Claude Code)/claude-opus-4-8"
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "current",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/ckf0099-recert-claude-opus-5-compliance/compliance/claude-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "claude-opus-5",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": "recert-attestation:ckf0099-recert",
+        "value": "2.1.222 (Claude Code)/claude-opus-5"
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "current",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0042-20260704T001308Z/compliance/codex-medium/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0042-20260704T001308Z/compliance/codex-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0046-baseline-head/compliance/codex-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0046-baseline-with-diff/compliance/codex-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0046-verify-v2/compliance/codex-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0046-verify/compliance/codex-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0047-verify-codex-small/compliance/codex-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0052-verify-codex-small/compliance/codex-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0059-guard-codex/compliance/codex-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0060-g1-codex/compliance/codex-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0060-g4b-codex/compliance/codex-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0061-a1/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0061-a2/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0061-a3/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0061-a4/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0061-b1/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0061-b2/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0061-b3/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0061-b4/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0064-recert-codex-compliance/compliance/codex-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0042-20260704T001308Z/compliance/omp-medium/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "omp",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0042-20260704T001308Z/compliance/omp-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "omp",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0047-verify-omp-small/compliance/omp-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "omp",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0048-ko-compliance/compliance/omp-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "omp",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/results/iter0049-verify-omp-small/compliance/omp-small/compliance-check.json",
+      "date": "2026-08-05",
+      "engine_alias": "omp",
+      "metric": "compliance_pass",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 1,
+      "seat": "orchestrator",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/ceiling/results/iter0064-t1/ceiling-verdict.json",
+      "date": "2026-08-05",
+      "engine_alias": "sonnet+codex stack",
+      "metric": "ceiling_pilot_a_resolved",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 3,
+      "seat": "plan_ideate_designer",
+      "status": "stale",
+      "value": 0.6666666666666666
+    },
+    {
+      "artifact": "benchmark/ceiling/results/iter0067-t2/ceiling-verdict.json",
+      "date": "2026-08-05",
+      "engine_alias": "sonnet+codex stack",
+      "metric": "ceiling_pilot_a_resolved",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 3,
+      "seat": "plan_ideate_designer",
+      "status": "stale",
+      "value": 0.6666666666666666
+    },
+    {
+      "artifact": "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/full-pipeline-pair-gate.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "pair_gate_pass_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 3,
+      "seat": "verify_pair_judge",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/auto-resolve/results/swebench-lite-proof-gate-n11.json",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "pair_lift_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 11,
+      "seat": "verify_pair_judge",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/claude-opus-4-8",
+      "date": "2026-08-05",
+      "engine_alias": "claude-opus-4-8",
+      "metric": "false_positive_rate",
+      "model_version": {
+        "source": "benchmark/probes/judge-quality/results/claude-opus-4-8/identity.json",
+        "value": "2.1.222 (Claude Code)/claude-opus-4-8"
+      },
+      "n": 8,
+      "seat": "verify_primary_judge",
+      "status": "current",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/claude-opus-4-8",
+      "date": "2026-08-05",
+      "engine_alias": "claude-opus-4-8",
+      "metric": "parse_failure_rate",
+      "model_version": {
+        "source": "benchmark/probes/judge-quality/results/claude-opus-4-8/identity.json",
+        "value": "2.1.222 (Claude Code)/claude-opus-4-8"
+      },
+      "n": 24,
+      "seat": "verify_primary_judge",
+      "status": "current",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/claude-opus-4-8",
+      "date": "2026-08-05",
+      "engine_alias": "claude-opus-4-8",
+      "metric": "recall_rate",
+      "model_version": {
+        "source": "benchmark/probes/judge-quality/results/claude-opus-4-8/identity.json",
+        "value": "2.1.222 (Claude Code)/claude-opus-4-8"
+      },
+      "n": 16,
+      "seat": "verify_primary_judge",
+      "status": "current",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/claude-opus-5",
+      "date": "2026-08-05",
+      "engine_alias": "claude-opus-5",
+      "metric": "false_positive_rate",
+      "model_version": {
+        "source": "benchmark/probes/judge-quality/results/claude-opus-5/identity.json",
+        "value": "2.1.222 (Claude Code)/claude-opus-5"
+      },
+      "n": 8,
+      "seat": "verify_primary_judge",
+      "status": "current",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/claude-opus-5",
+      "date": "2026-08-05",
+      "engine_alias": "claude-opus-5",
+      "metric": "parse_failure_rate",
+      "model_version": {
+        "source": "benchmark/probes/judge-quality/results/claude-opus-5/identity.json",
+        "value": "2.1.222 (Claude Code)/claude-opus-5"
+      },
+      "n": 24,
+      "seat": "verify_primary_judge",
+      "status": "current",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/claude-opus-5",
+      "date": "2026-08-05",
+      "engine_alias": "claude-opus-5",
+      "metric": "recall_rate",
+      "model_version": {
+        "source": "benchmark/probes/judge-quality/results/claude-opus-5/identity.json",
+        "value": "2.1.222 (Claude Code)/claude-opus-5"
+      },
+      "n": 16,
+      "seat": "verify_primary_judge",
+      "status": "current",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/codex",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "false_positive_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 8,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/codex",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "parse_failure_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 24,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/codex",
+      "date": "2026-08-05",
+      "engine_alias": "codex",
+      "metric": "recall_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 16,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/ollama",
+      "date": "2026-08-05",
+      "engine_alias": "ollama",
+      "metric": "false_positive_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 8,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/ollama",
+      "date": "2026-08-05",
+      "engine_alias": "ollama",
+      "metric": "parse_failure_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 24,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/ollama",
+      "date": "2026-08-05",
+      "engine_alias": "ollama",
+      "metric": "recall_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 16,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 0.5
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/sonnet",
+      "date": "2026-08-05",
+      "engine_alias": "sonnet",
+      "metric": "false_positive_rate",
+      "model_version": {
+        "source": "benchmark/probes/judge-quality/results/sonnet/identity.json",
+        "value": "2.1.201 (Claude Code)/sonnet"
+      },
+      "n": 8,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 0.125
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/sonnet",
+      "date": "2026-08-05",
+      "engine_alias": "sonnet",
+      "metric": "parse_failure_rate",
+      "model_version": {
+        "source": "benchmark/probes/judge-quality/results/sonnet/identity.json",
+        "value": "2.1.201 (Claude Code)/sonnet"
+      },
+      "n": 24,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/sonnet",
+      "date": "2026-08-05",
+      "engine_alias": "sonnet",
+      "metric": "recall_rate",
+      "model_version": {
+        "source": "benchmark/probes/judge-quality/results/sonnet/identity.json",
+        "value": "2.1.201 (Claude Code)/sonnet"
+      },
+      "n": 16,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/variant-v1",
+      "date": "2026-08-05",
+      "engine_alias": "variant-v1",
+      "metric": "false_positive_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 8,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/variant-v1",
+      "date": "2026-08-05",
+      "engine_alias": "variant-v1",
+      "metric": "parse_failure_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 24,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/variant-v1",
+      "date": "2026-08-05",
+      "engine_alias": "variant-v1",
+      "metric": "recall_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 16,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 0.5
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/variant-v2",
+      "date": "2026-08-05",
+      "engine_alias": "variant-v2",
+      "metric": "false_positive_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 8,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 1.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/variant-v2",
+      "date": "2026-08-05",
+      "engine_alias": "variant-v2",
+      "metric": "parse_failure_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 24,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/variant-v2",
+      "date": "2026-08-05",
+      "engine_alias": "variant-v2",
+      "metric": "recall_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 16,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 0.5
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/variant-v3",
+      "date": "2026-08-05",
+      "engine_alias": "variant-v3",
+      "metric": "false_positive_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 8,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/variant-v3",
+      "date": "2026-08-05",
+      "engine_alias": "variant-v3",
+      "metric": "parse_failure_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 24,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 0.0
+    },
+    {
+      "artifact": "benchmark/probes/judge-quality/results/variant-v3",
+      "date": "2026-08-05",
+      "engine_alias": "variant-v3",
+      "metric": "recall_rate",
+      "model_version": {
+        "source": null,
+        "value": null
+      },
+      "n": 16,
+      "seat": "verify_primary_judge",
+      "status": "stale",
+      "value": 0.0
+    }
+  ],
+  "date": "2026-08-05",
+  "engine_versions": {
+    "claude-opus-4-8": "2.1.222 (Claude Code)/claude-opus-4-8",
+    "claude-opus-5": "2.1.222 (Claude Code)/claude-opus-5"
+  },
+  "judge_certification": {
+    "claude-opus-4-8": {
+      "certified": true,
+      "clean_reps": 8,
+      "defect_reps": 16,
+      "false_positive_rate": 0.0,
+      "parse_errors": 0,
+      "recall_rate": 1.0
+    },
+    "claude-opus-5": {
+      "certified": true,
+      "clean_reps": 8,
+      "defect_reps": 16,
+      "false_positive_rate": 0.0,
+      "parse_errors": 0,
+      "recall_rate": 1.0
+    },
+    "codex": {
+      "certified": true,
+      "clean_reps": 8,
+      "defect_reps": 16,
+      "false_positive_rate": 0.0,
+      "parse_errors": 0,
+      "recall_rate": 1.0
+    },
+    "ollama": {
+      "certified": false,
+      "clean_reps": 8,
+      "defect_reps": 16,
+      "false_positive_rate": 1.0,
+      "parse_errors": 0,
+      "recall_rate": 0.5
+    },
+    "sonnet": {
+      "certified": true,
+      "clean_reps": 8,
+      "defect_reps": 16,
+      "false_positive_rate": 0.125,
+      "parse_errors": 0,
+      "recall_rate": 1.0
+    },
+    "variant-v1": {
+      "certified": false,
+      "clean_reps": 8,
+      "defect_reps": 16,
+      "false_positive_rate": 1.0,
+      "parse_errors": 0,
+      "recall_rate": 0.5
+    },
+    "variant-v2": {
+      "certified": false,
+      "clean_reps": 8,
+      "defect_reps": 16,
+      "false_positive_rate": 1.0,
+      "parse_errors": 0,
+      "recall_rate": 0.5
+    },
+    "variant-v3": {
+      "certified": false,
+      "clean_reps": 8,
+      "defect_reps": 16,
+      "false_positive_rate": 0.0,
+      "parse_errors": 0,
+      "recall_rate": 0.0
+    }
+  },
+  "recommendation": {
+    "executor": {
+      "recommendation": "recert required",
+      "seat": "implement_executor"
+    },
+    "pair_judge_priority": {
+      "recommendation": "recert required",
+      "seat": "verify_pair_judge"
+    }
+  },
+  "schema": "devlyn-seat-matrix-v0"
+}
