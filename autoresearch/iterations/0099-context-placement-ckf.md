@@ -216,6 +216,44 @@ INVALID (same rerun/veto ladder as attestation). No product change.
   `.devlyn` + ps claude -p/codex exec/resolve-bootstrap) before every
   pipeline launch.
 
+## Scorer freeze (pre-results, 2026-08-07)
+
+The two adjudication instruments were authored and audited BEFORE their
+inputs completed, so tuning-after-seeing-results is structurally
+impossible. Both live in `~/.local/share/nx01/iter0099/receipts/`
+(experiment-side, not product): `adjudicate.py` (decision function) and
+`treatment-validity-scan.py` (K-validity conjunct, `--self-test` 21
+cases). Codex audit ran FIVE rounds, each closing concrete defects it
+found — SCORER-REVISE ×4 → **SCORER-OK**:
+
+1. R0: clean-cell threshold used `>=N` instead of the frozen `>=2`; a
+   clean veto only failed the local cell instead of rejecting the
+   candidate candidate-wide (it could leak into precedence 3);
+   `ADAPTER_CONDITIONAL_K` was reachable without treatment validity;
+   retry-vs-attempt-1 label precedence was REVERSED (the invalid
+   attempt would have been scored); band used observed reps, not frozen N.
+2. R1: verdicts were counted without checking attestation validity;
+   treatment-validity reconciliation keyed `(run_id, probe)` so an
+   invalid attempt-1 workdir survived a valid retry; the read detector
+   counted any `tool_use` MENTIONING the file.
+3. R2: bare attestation accepted any `claude-*` model instead of the
+   exact requested ID; shell parsing split quoted separators and
+   misread `cat /dev/null > file` as a read.
+4. R3/R4/R5: input-vs-output redirect classification (`< target` is a
+   read, `&>`/`>&`/`>|` are writes), and stdin redirects scoped to
+   verbs that actually consume the payload (`true < target` is not a read).
+
+**Detector-correction receipt (honesty)**: the first, loose detector
+counted 28/23 "reads" for arm C; the corrected detector shows those were
+overwhelmingly `Agent` dispatch prompts carrying the phase-body sentence
+and `cat > .devlyn/*.task-context <<'EOF'` heredocs that embed it — NOT
+reads. Channel census over the live receipts: arm C = 79 Agent
+mentions + 3 Read-tool reads + 1 `head -60 …runtime-principles.md`;
+arm F = 47 Agent mentions + 7 Read + 3 heredoc writes; arm K = 0 of
+everything. The interim gate value reported mid-run on the loose
+detector is WITHDRAWN; only the final scan against complete receipts is
+evidence.
+
 ## Predictions (FROZEN before matrix; raw results recorded after, never retro-edited)
 
 - **P-0099-1 (drift pressure persists):** arm C shows ≥1 violation per
