@@ -362,6 +362,24 @@ records a formally-licensed-but-void F conditional.
 placement stays as-is: full CLAUDE.md + phase-time runtime-principles
 reread, mirror + lint Check 12 retained.
 
+**DIVERGENCE FROM THE USER'S SOURCE RULE — surfaced, not decided.**
+The queue item (the single source) states rule 2 as: *"K passes while
+F regresses → adopt K (mirror + Check 12 stay)"*. On the raw matrix
+that antecedent is SATISFIED: K passed all four combos and F regressed.
+The registration's added treatment-validity conjunct — authored at R1
+and frozen with the Codex seat's R2 agreement — is what blocks the
+adoption, because K's registered benefit turned out inflated ~12× (and
+zero on gen-4). The orchestrator did not have authority to weaken the
+user's rule silently, so the divergence is recorded here for the user
+to adjudicate. Note what the evidence actually supports if the user
+overrides the conjunct: K is safety-neutral (non-inferior on all four
+combos; its gen-5 bare improvement 6→1 is inside the frozen noise
+bands, so it is NOT a proven quality win), and its benefit is ~1.2k
+tokens/run on gen-5 and 0 on gen-4 — bought with a new
+engine-conditional assembly path. The cheaper path the evidence points
+at is finding 1 below: if the sentence is dead text, DELETE it for all
+engines — no conditional, no new code, strictly subtractive.
+
 ### Surfaced findings (each needs its own registration; none shipped here)
 
 1. **The generic phase-body reread is largely dead text.** On

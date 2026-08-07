@@ -120,7 +120,7 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   collisions today, may now meet the two-real-needs bar ③ transition edge
   table permits implement→build_gate even when generated+medium mandates
   SURFACE_CLOSE.
-- [ ] Context-engineering item 2 of 2 — pre-registered contract-PLACEMENT
+- [x] Context-engineering item 2 of 2 — pre-registered contract-PLACEMENT
   experiment C/K/F, Claude seats only (AGENTS.md + codex/grok adapters stay
   byte-identical, asserted): arm C = current (full CLAUDE.md + phase-time
   runtime-principles reread); arm K = session-source (full CLAUDE.md;
@@ -153,6 +153,26 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   adopt K (mirror + Check 12 stay); gen-4/gen-5 split → license ONE
   adapter-boundary conditional only (no flag, no per-generation CLAUDE.md);
   neither → keep current. Tie → F wins by net deletion (Subtractive-first).
+  — done 2026-08-07, iter-0099 CLOSED (DECISIONS 0099.1, commits
+  b152feb registration / a89a7ea close). Prereq SHIPPED first
+  (c0a3b20 + d824d6b; verify-only PASS 3/3) and both seats certified
+  (ckf0099-recert: opus-4-8 10/24 violations, opus-5 3/24; judges
+  recall 1.0 / FP 0.0). Matrix ran 216/216 attested-valid — bare N=4
+  full panel, pipeline N=2 after a user-directed mid-run amendment.
+  **Verdict: KEEP_CURRENT, no product change.** F REGRESSED on
+  claude-opus-4-8 bare (B4 cell 1→4, above band) so the flip is out;
+  K was safety-neutral on all four combos but its measured benefit was
+  ~12× smaller than registered (0 bytes/run on gen-4, ~1.2k tokens/run
+  on gen-5), which the frozen treatment-validity conjunct treats as an
+  adoption blocker. **Two items need the user**: (a) the queue's own
+  rule 2 ("K passes while F regresses → adopt K") was SATISFIED on the
+  raw matrix and was blocked only by that added conjunct — recorded as
+  a divergence for the user to adjudicate, not silently applied;
+  (b) the strongest evidence-backed follow-up is subtractive and
+  cheaper than K: the generic phase-body reread was consumed 0 times in
+  12 gen-4 pipeline runs (4 in 12 on gen-5), so deleting it for all
+  engines needs no conditional at all. Codex R-final PENDING (seat
+  quota, resets 2026-08-10); nothing ships, so it blocks nothing.
 - [x] Context-engineering item 3 (rich references over simple specs) —
   rejected 2026-08-05 by Fable×Codex round-2 cross-check, never drained:
   bundles three mechanisms without a demonstrated gap. Failing-test oracles
