@@ -1,6 +1,12 @@
 # iter-0099 — contract-PLACEMENT experiment C/K/F (context-engineering item 2 of 2)
 
-**STATUS: REGISTERED-FROZEN (2026-08-06; R0 REVISE → r2, R1 REVISE → r3, R2 FREEZE — Codex pair seat; predictions frozen before any arm build/run)**
+**STATUS: CLOSED — KEEP_CURRENT, no product change (2026-08-07).**
+Registration frozen 2026-08-06 (R0 REVISE → r2, R1 REVISE → r3, R2
+FREEZE — Codex pair seat; predictions frozen before any arm build/run);
+scorer frozen + codex-audited SCORER-OK before results; matrix landed
+216/216 valid runs; adjudication CONTESTED and recorded both ways
+(§ RESULTS). P-0099-3 and P-0099-4 REFUTED — recorded as measured, not
+rationalized. Codex R-final PENDING (seat quota, resets 2026-08-10).
 Registered 2026-08-06. Single source of the experiment contract:
 `docs/specs/queue.md` "Context-engineering item 2 of 2" (user-queued
 2026-08-05). Numbering note: 0098 was claimed mid-collision by the
@@ -274,6 +280,115 @@ evidence.
 - **P-0099-4 (no generation split):** neither candidate produces the
   decision-level generation split defined above. No mechanism predicts
   one.
+
+## RESULTS (landed 2026-08-07; raw first, interpretation after)
+
+Coverage: bare 144/144 attested-valid (N=4), pipeline 72/72 valid
+(N=2 per A1; one INVALID auto-retried to VALID — the retry ladder
+firing as designed). Zero unscorable cells. Receipts:
+`~/.local/share/nx01/iter0099/receipts/` (adjudication.json,
+adjudication-strict.json, treatment-validity-final.json,
+bare-/pipeline-attestation.jsonl, per-arm manifests, arm-mapping.json).
+
+**Bare window (N=4), violations per 24-run panel:**
+
+| arm | opus-4-8 | opus-5 |
+|---|---|---|
+| C | 8 | 6 |
+| K | 8 — PASS | 1 — PASS |
+| F | 11 — **FAIL** (B4 cell C=1→F=4, band 1, d=+3) | 5 — PASS |
+
+**Pipeline window (N=2 evidence), violations per 12-run panel:**
+
+| arm | opus-4-8 | opus-5 |
+|---|---|---|
+| C | 5 | 6 |
+| K | 6 — PASS | 6 — PASS |
+| F | 6 — PASS | 6 — PASS |
+
+**Treatment-validity (certified detector, complete receipts):**
+C/opus-4-8 reads **0** across 12 workdirs · C/opus-5 **4** · K both
+generations **0** (treatment delivered) · F/opus-4-8 6 · F/opus-5 12.
+Gate FAILS on `C_nonzero_per_generation`.
+
+**Benefit receipt (frozen obligation)**: measured payload K deletes =
+0 bytes/run on opus-4-8 and 4,858 bytes/run (~1.2k tokens) on opus-5 —
+versus the registered claim of ~14.5k tokens/run. **The registered
+benefit was inflated ~12× on gen-5 and is zero on gen-4.** The
+treatment conjunct existed to catch exactly this and did.
+
+### Predictions vs outcome (no retroactive edits)
+
+- **P-0099-1 CONFIRMED** — C shows ≥1 violation per generation in both
+  windows (bare 8/6, pipeline 5/6); the pipeline half was the real
+  prediction and C is indeed lower there than bare per generation-4.
+- **P-0099-2 CONFIRMED** — K passes the pipeline window on both
+  generations.
+- **P-0099-3 REFUTED** — F regresses above band on opus-4-8 bare
+  (B4-orthogonal-edit-trap, C=1 → F=4). The pointer-load shape does
+  measurably damage contract compliance on gen-4.
+- **P-0099-4 REFUTED** — F produces the decision-level generation split
+  (passes both windows on opus-5, fails bare on opus-4-8).
+
+### Adjudication — CONTESTED, both readings recorded
+
+The frozen text contains an internal conflict this receipt matrix
+exposed (a registration defect, discovered at adjudication):
+
+- **Reading A** — the treatment-manipulation clause says literally
+  "K is UNADOPTABLE via rule 2 … and **the outcome routes to rule 4**".
+  Machine outcome: **KEEP_CURRENT**.
+- **Reading B** — the precedence list is labeled "**total order, no
+  cancellation**"; the treatment clause is titled a *K validity*
+  conjunct, so it blocks rule 2 without extinguishing F's independent
+  rule-3 antecedent. Machine outcome (`--strict-precedence`):
+  **ADAPTER_CONDITIONAL_F**. Raised by the substitute pair seat (grok
+  4.5) at R-final; the orchestrator's scorer had implemented Reading A
+  and skipped rule 3 — a real implementation gap relative to Reading B.
+
+**Synthesis with a named criterion — REMEDY REACHABILITY.** Under
+Reading B the license is *void as applied*: rule 3 licenses "ONE
+adapter-boundary conditional", but F's only failure is on the BARE
+conversation surface, where no adapter exists —
+`run-drift-bait-probe.sh:82` invokes `claude -p` directly with only
+CLAUDE.md + `.claude/skills` seeded and no phase prompt rendered, so
+no adapter header is ever applied. An adapter-boundary conditional
+therefore cannot reach the surface F failed on; exercising the license
+would ship the measured gen-4 bare regression. Both readings converge
+on the same ACTION: **no product change**. Reading B additionally
+records a formally-licensed-but-void F conditional.
+
+**Terminal outcome: KEEP_CURRENT (no product change).** The contract
+placement stays as-is: full CLAUDE.md + phase-time runtime-principles
+reread, mirror + lint Check 12 retained.
+
+### Surfaced findings (each needs its own registration; none shipped here)
+
+1. **The generic phase-body reread is largely dead text.** On
+   opus-4-8 it was consumed 0 times in 12 pipeline runs; on opus-5
+   4 times in 12. The frozen text pre-named this outcome. Follow-up
+   shape: a subtractive registration that (a) re-measures consumption
+   on the production path with the certified detector, (b) if dead,
+   deletes the generic reread sentence as pure subtraction — with the
+   honest label that K's SAFETY evidence (this iter: non-inferior on
+   all four combos) already exists, so the follow-up only has to
+   establish the benefit/consumption claim it deletes.
+2. **F harms gen-4.** The flip is not a neutral relocation: moving the
+   enforcement blocks out of CLAUDE.md measurably worsened scope
+   discipline on claude-opus-4-8 bare. Any future placement proposal
+   must clear the bare surface, which no adapter can patch.
+3. **Registration defect to avoid next time**: a conjunct that names an
+   outcome route ("routes to rule 4") inside a decision function
+   declared a total order creates exactly this ambiguity. Future
+   registrations state conjunct effects as *predicate* changes only
+   (which rules' antecedents they falsify), never as outcome jumps.
+4. **Seat availability**: the codex seat hit its usage limit before
+   R-final (resets 2026-08-10). This adjudication used grok 4.5 as the
+   substitute third seat and is labeled accordingly; the codex R-final
+   is **PENDING**. Nothing ships from this iter, so the pending round
+   blocks no action — but the contested precedence reading above
+   should get the codex seat before any follow-up reuses this
+   decision-function shape.
 
 ## Principles check
 
