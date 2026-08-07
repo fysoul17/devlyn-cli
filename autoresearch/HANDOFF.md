@@ -14,7 +14,51 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-05 (**iter-0095 REGISTERED-FROZEN, product edits landed; NEXT = iter-0095 four-arm matrix**)
+## 🚦 START-HERE — state after 2026-08-07
+
+**iter-0099 CLOSED — context-engineering item 2 (C/K/F contract
+placement): KEEP_CURRENT, no product change (DECISIONS 0099.1;
+`b152feb` registration → `a89a7ea` close → `23d9cec` queue).** Prereq
+SHIPPED: recert chain exact Claude model-ID support (`c0a3b20` +
+`d824d6b`, verify-only PASS 3/3) — the 2026-07-28 instrument gap is
+closed and both seats are certified (`ckf0099-recert`: claude-opus-4-8
+10/24 drift violations, **claude-opus-5 3/24**, judges recall 1.0 /
+FP 0.0; seat matrix committed `462b752`). Matrix ran 216/216
+attested-valid. **F (flip to a CLAUDE.md pointer) is OUT — it
+regressed claude-opus-4-8 on the bare surface (B4 cell 1→4, above
+band); P-0099-3 and P-0099-4 both REFUTED.** K was safety-neutral on
+all four combos but its registered benefit measured ~12× smaller than
+claimed (0 bytes/run gen-4, ~1.2k tokens/run gen-5), so the frozen
+treatment-validity conjunct blocked adoption. **TWO ITEMS AWAIT THE
+USER** (recorded in `docs/specs/queue.md` item 2 and the iteration
+file, never silently applied): (a) the queue's own rule 2 ("K passes
+while F regresses → adopt K") was SATISFIED on the raw matrix and was
+blocked only by the conjunct the orchestrator added at R1; (b) the
+adjudication is CONTESTED — the frozen text conflicts internally
+(treatment clause "outcome routes to rule 4" vs precedence "total
+order, no cancellation"), giving Reading A = KEEP_CURRENT and Reading
+B = ADAPTER_CONDITIONAL_F; both converge on no product change under
+the named criterion REMEDY REACHABILITY (F's failure is on the bare
+surface, where no adapter exists). **Strongest evidence-backed next
+step: the generic phase-body reread is DEAD TEXT** — consumed 0 times
+in 12 gen-4 pipeline runs (4 in 12 on gen-5) — so deleting it for all
+engines is pure subtraction and needs none of K's engine-conditional
+machinery; that is a NEW registration, and this iter already supplies
+its safety evidence. **Codex R-final PENDING** (seat usage limit,
+resets 2026-08-10); grok 4.5 served as the substitute third seat and
+found the precedence gap. Nothing ships, so the pending round blocks
+nothing. Receipts: `~/.local/share/nx01/iter0099/receipts/`.
+**Also still open from the parallel track: 0098 (LF-run-insensitive
+compare) registration DRAFT is committed and its resolve run was never
+re-fired** — see the 0098 block below for its resume order.
+Operator rules added this round: long unattended matrices must be
+detached with `python os.setsid()` (macOS has no `setsid`; a
+harness-tracked background driver was killed three times), and an
+adjudication scorer must be frozen and pair-audited BEFORE its inputs
+complete (five codex rounds caught a reversed retry precedence that
+would have scored invalid runs, among ten-plus real defects).
+
+### (superseded START-HERE from 2026-08-05 — iter-0095 context)
 
 **iter-0095 registration update (2026-08-05, supersedes the paragraph
 below where they conflict).** The registration is FROZEN
