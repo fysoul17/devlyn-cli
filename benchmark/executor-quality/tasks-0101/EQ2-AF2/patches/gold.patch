@@ -1,0 +1,34 @@
+--- a/severity-router.js
++++ b/severity-router.js
+@@ -2,7 +2,14 @@
+ 
++const { severityValue } = require("./severity");
++
+ class SeverityRouter {
+   place(tickets, limit = tickets.length) {
+-    return tickets.slice(0, limit).map((ticket, index) => ({
++    const ordered = [...tickets].sort(
++      (left, right) =>
++        severityValue(right.severity) - severityValue(left.severity)
++        || left.arrival - right.arrival,
++    );
++    return ordered.slice(0, limit).map((ticket, index) => ({
+       ...ticket,
+       slot: index + 1,
+     }));
+--- a/escalation.js
++++ b/escalation.js
+@@ -13,10 +13,10 @@
+     arrival,
+   }));
+   const acl = new OnCallAcl(assignments);
+   const router = new SeverityRouter();
++  const authorized = tickets.filter((ticket) => acl.allows(ticket));
+ 
+   return router
+-    .place(tickets, slotLimit)
+-    .filter((ticket) => acl.allows(ticket))
++    .place(authorized, slotLimit)
+     .map(({ id, severity, slot }) => ({ id, severity, slot }));
+ }
+ 

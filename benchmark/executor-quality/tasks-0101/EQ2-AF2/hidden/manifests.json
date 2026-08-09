@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Ticket escalations are placed by descending severity with arrival order breaking ties, the on-call ACL rejects every requester not assigned to the ticket's service, and when privileged and unprivileged requests interleave the ACL decides authorization before severity placement so denied tickets never consume an ordered slot.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "298a064143022e63d57088baf1912ff8bf879a44cd938b8816539be9899d81c5",
+        "quote": "Ticket escalations are placed by descending severity with arrival order breaking ties, the on-call ACL rejects every requester not assigned to the ticket's service, and when privileged and unprivileged requests interleave the ACL decides authorization before severity placement so denied tickets never consume an ordered slot."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Ticket escalations are placed by descending severity with arrival order breaking ties, the on-call ACL rejects every requester not assigned to the ticket's service, and when privileged and unprivileged requests interleave the ACL decides authorization before severity placement so denied tickets never consume an ordered slot.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "298a064143022e63d57088baf1912ff8bf879a44cd938b8816539be9899d81c5",
+        "quote": "Ticket escalations are placed by descending severity with arrival order breaking ties, the on-call ACL rejects every requester not assigned to the ticket's service, and when privileged and unprivileged requests interleave the ACL decides authorization before severity placement so denied tickets never consume an ordered slot."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Ticket escalations are placed by descending severity with arrival order breaking ties, the on-call ACL rejects every requester not assigned to the ticket's service, and when privileged and unprivileged requests interleave the ACL decides authorization before severity placement so denied tickets never consume an ordered slot.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "298a064143022e63d57088baf1912ff8bf879a44cd938b8816539be9899d81c5",
+        "quote": "Ticket escalations are placed by descending severity with arrival order breaking ties, the on-call ACL rejects every requester not assigned to the ticket's service, and when privileged and unprivileged requests interleave the ACL decides authorization before severity placement so denied tickets never consume an ordered slot."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Ticket escalations are placed by descending severity with arrival order breaking ties, the on-call ACL rejects every requester not assigned to the ticket's service, and when privileged and unprivileged requests interleave the ACL decides authorization before severity placement so denied tickets never consume an ordered slot.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "298a064143022e63d57088baf1912ff8bf879a44cd938b8816539be9899d81c5",
+        "quote": "Ticket escalations are placed by descending severity with arrival order breaking ties, the on-call ACL rejects every requester not assigned to the ticket's service, and when privileged and unprivileged requests interleave the ACL decides authorization before severity placement so denied tickets never consume an ordered slot."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Ticket escalations are placed by descending severity with arrival order breaking ties, the on-call ACL rejects every requester not assigned to the ticket's service, and when privileged and unprivileged requests interleave the ACL decides authorization before severity placement so denied tickets never consume an ordered slot.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "298a064143022e63d57088baf1912ff8bf879a44cd938b8816539be9899d81c5",
+        "quote": "Ticket escalations are placed by descending severity with arrival order breaking ties, the on-call ACL rejects every requester not assigned to the ticket's service, and when privileged and unprivileged requests interleave the ACL decides authorization before severity placement so denied tickets never consume an ordered slot."
+      }
+    }
+  ]
+}

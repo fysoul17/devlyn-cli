@@ -1,0 +1,23 @@
+{
+  "id": "EQ2-AF2",
+  "class": "absent_failure_mode",
+  "invariant": "Ticket escalations are placed by descending severity with arrival order breaking ties, the on-call ACL rejects every requester not assigned to the ticket's service, and when privileged and unprivileged requests interleave the ACL decides authorization before severity placement so denied tickets never consume an ordered slot.",
+  "goal": "Fix routeEscalations in escalation.js so ticket escalation satisfies CONTRACT.md. Run `node --test`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/escalation.js",
+    "visible/oncall-acl.js",
+    "visible/package.json",
+    "visible/severity-router.js",
+    "visible/severity.js",
+    "visible/tests/escalation.test.js",
+    "visible/tests/oncall-acl.test.js",
+    "visible/tests/severity-router.test.js"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "298a064143022e63d57088baf1912ff8bf879a44cd938b8816539be9899d81c5",
+    "quote": "Ticket escalations are placed by descending severity with arrival order breaking ties, the on-call ACL rejects every requester not assigned to the ticket's service, and when privileged and unprivileged requests interleave the ACL decides authorization before severity placement so denied tickets never consume an ordered slot."
+  }
+}

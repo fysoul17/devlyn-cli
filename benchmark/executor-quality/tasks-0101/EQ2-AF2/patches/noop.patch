@@ -1,0 +1,8 @@
+--- a/README.md
++++ b/README.md
+@@ -5,3 +5,5 @@
+ ```bash
+ node --test
+ ```
++
++The example suite uses the built-in Node.js test runner.

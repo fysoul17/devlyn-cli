@@ -1,0 +1,18 @@
+--- a/severity-router.js
++++ b/severity-router.js
+@@ -2,7 +2,14 @@
+ 
++const { severityValue } = require("./severity");
++
+ class SeverityRouter {
+   place(tickets, limit = tickets.length) {
+-    return tickets.slice(0, limit).map((ticket, index) => ({
++    const ordered = [...tickets].sort(
++      (left, right) =>
++        severityValue(right.severity) - severityValue(left.severity)
++        || left.arrival - right.arrival,
++    );
++    return ordered.slice(0, limit).map((ticket, index) => ({
+       ...ticket,
+       slot: index + 1,
+     }));
