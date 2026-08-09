@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Bid book entries settle by descending amount with arrival order breaking ties, every rejected claim refunds its tentative debit, and when reordering makes a middle bid fail after its debit the highest bid still wins while a later bid from the refunded account can settle another lot.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "ce236e93e2e667d28196cec2041f7b0d5e7cfd10b850ed92ad1dff606c3b285d",
+        "quote": "Bid book entries settle by descending amount with arrival order breaking ties, every rejected claim refunds its tentative debit, and when reordering makes a middle bid fail after its debit the highest bid still wins while a later bid from the refunded account can settle another lot."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Bid book entries settle by descending amount with arrival order breaking ties, every rejected claim refunds its tentative debit, and when reordering makes a middle bid fail after its debit the highest bid still wins while a later bid from the refunded account can settle another lot.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "ce236e93e2e667d28196cec2041f7b0d5e7cfd10b850ed92ad1dff606c3b285d",
+        "quote": "Bid book entries settle by descending amount with arrival order breaking ties, every rejected claim refunds its tentative debit, and when reordering makes a middle bid fail after its debit the highest bid still wins while a later bid from the refunded account can settle another lot."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Bid book entries settle by descending amount with arrival order breaking ties, every rejected claim refunds its tentative debit, and when reordering makes a middle bid fail after its debit the highest bid still wins while a later bid from the refunded account can settle another lot.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "ce236e93e2e667d28196cec2041f7b0d5e7cfd10b850ed92ad1dff606c3b285d",
+        "quote": "Bid book entries settle by descending amount with arrival order breaking ties, every rejected claim refunds its tentative debit, and when reordering makes a middle bid fail after its debit the highest bid still wins while a later bid from the refunded account can settle another lot."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Bid book entries settle by descending amount with arrival order breaking ties, every rejected claim refunds its tentative debit, and when reordering makes a middle bid fail after its debit the highest bid still wins while a later bid from the refunded account can settle another lot.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "ce236e93e2e667d28196cec2041f7b0d5e7cfd10b850ed92ad1dff606c3b285d",
+        "quote": "Bid book entries settle by descending amount with arrival order breaking ties, every rejected claim refunds its tentative debit, and when reordering makes a middle bid fail after its debit the highest bid still wins while a later bid from the refunded account can settle another lot."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Bid book entries settle by descending amount with arrival order breaking ties, every rejected claim refunds its tentative debit, and when reordering makes a middle bid fail after its debit the highest bid still wins while a later bid from the refunded account can settle another lot.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "ce236e93e2e667d28196cec2041f7b0d5e7cfd10b850ed92ad1dff606c3b285d",
+        "quote": "Bid book entries settle by descending amount with arrival order breaking ties, every rejected claim refunds its tentative debit, and when reordering makes a middle bid fail after its debit the highest bid still wins while a later bid from the refunded account can settle another lot."
+      }
+    }
+  ]
+}

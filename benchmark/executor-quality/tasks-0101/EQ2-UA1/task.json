@@ -1,0 +1,23 @@
+{
+  "id": "EQ2-UA1",
+  "class": "unsupported_assumption",
+  "invariant": "Seat holds are processed by descending priority with arrival order breaking ties, every failed request releases all tentative seats, and when reordering makes a middle request fail after a partial hold the higher-priority request still wins while a later request can use every released seat.",
+  "goal": "Fix reserve_batch in reservation.py so batch reservations obey CONTRACT.md. Run `python3 -m unittest discover tests`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/errors.py",
+    "visible/hold_queue.py",
+    "visible/models.py",
+    "visible/reservation.py",
+    "visible/seat_map.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_reservation.py",
+    "visible/tests/test_seat_map.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "14e05c3857589cef442d365eaac8c7b5f3858e8691326dcd5ce27c243c244923",
+    "quote": "Seat holds are processed by descending priority with arrival order breaking ties, every failed request releases all tentative seats, and when reordering makes a middle request fail after a partial hold the higher-priority request still wins while a later request can use every released seat."
+  }
+}

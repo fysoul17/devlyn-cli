@@ -1,0 +1,8 @@
+--- a/errors.py
++++ b/errors.py
+@@ -1,4 +1,4 @@
+-"""Errors raised by auction input handling."""
++"""Errors produced by auction input handling."""
+ 
+ 
+ class AuctionError(ValueError):

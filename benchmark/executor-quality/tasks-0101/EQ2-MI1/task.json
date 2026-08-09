@@ -1,0 +1,23 @@
+{
+  "id": "EQ2-MI1",
+  "class": "missed_repo_invariant",
+  "invariant": "Bid book entries settle by descending amount with arrival order breaking ties, every rejected claim refunds its tentative debit, and when reordering makes a middle bid fail after its debit the highest bid still wins while a later bid from the refunded account can settle another lot.",
+  "goal": "Fix settle_round in auction.py so auction processing obeys CONTRACT.md. Run `python3 -m unittest discover tests`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/auction.py",
+    "visible/bid_book.py",
+    "visible/errors.py",
+    "visible/models.py",
+    "visible/settlement.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_auction.py",
+    "visible/tests/test_settlement.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "ce236e93e2e667d28196cec2041f7b0d5e7cfd10b850ed92ad1dff606c3b285d",
+    "quote": "Bid book entries settle by descending amount with arrival order breaking ties, every rejected claim refunds its tentative debit, and when reordering makes a middle bid fail after its debit the highest bid still wins while a later bid from the refunded account can settle another lot."
+  }
+}

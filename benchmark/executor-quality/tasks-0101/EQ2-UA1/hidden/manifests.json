@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Seat holds are processed by descending priority with arrival order breaking ties, every failed request releases all tentative seats, and when reordering makes a middle request fail after a partial hold the higher-priority request still wins while a later request can use every released seat.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "14e05c3857589cef442d365eaac8c7b5f3858e8691326dcd5ce27c243c244923",
+        "quote": "Seat holds are processed by descending priority with arrival order breaking ties, every failed request releases all tentative seats, and when reordering makes a middle request fail after a partial hold the higher-priority request still wins while a later request can use every released seat."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Seat holds are processed by descending priority with arrival order breaking ties, every failed request releases all tentative seats, and when reordering makes a middle request fail after a partial hold the higher-priority request still wins while a later request can use every released seat.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "14e05c3857589cef442d365eaac8c7b5f3858e8691326dcd5ce27c243c244923",
+        "quote": "Seat holds are processed by descending priority with arrival order breaking ties, every failed request releases all tentative seats, and when reordering makes a middle request fail after a partial hold the higher-priority request still wins while a later request can use every released seat."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Seat holds are processed by descending priority with arrival order breaking ties, every failed request releases all tentative seats, and when reordering makes a middle request fail after a partial hold the higher-priority request still wins while a later request can use every released seat.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "14e05c3857589cef442d365eaac8c7b5f3858e8691326dcd5ce27c243c244923",
+        "quote": "Seat holds are processed by descending priority with arrival order breaking ties, every failed request releases all tentative seats, and when reordering makes a middle request fail after a partial hold the higher-priority request still wins while a later request can use every released seat."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Seat holds are processed by descending priority with arrival order breaking ties, every failed request releases all tentative seats, and when reordering makes a middle request fail after a partial hold the higher-priority request still wins while a later request can use every released seat.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "14e05c3857589cef442d365eaac8c7b5f3858e8691326dcd5ce27c243c244923",
+        "quote": "Seat holds are processed by descending priority with arrival order breaking ties, every failed request releases all tentative seats, and when reordering makes a middle request fail after a partial hold the higher-priority request still wins while a later request can use every released seat."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Seat holds are processed by descending priority with arrival order breaking ties, every failed request releases all tentative seats, and when reordering makes a middle request fail after a partial hold the higher-priority request still wins while a later request can use every released seat.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "14e05c3857589cef442d365eaac8c7b5f3858e8691326dcd5ce27c243c244923",
+        "quote": "Seat holds are processed by descending priority with arrival order breaking ties, every failed request releases all tentative seats, and when reordering makes a middle request fail after a partial hold the higher-priority request still wins while a later request can use every released seat."
+      }
+    }
+  ]
+}

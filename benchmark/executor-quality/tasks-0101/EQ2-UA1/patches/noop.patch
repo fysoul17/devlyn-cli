@@ -1,0 +1,8 @@
+--- a/errors.py
++++ b/errors.py
+@@ -1,4 +1,4 @@
+-"""Reservation errors shared by the fixture."""
++"""Reservation errors used across the fixture."""
+ 
+ 
+ class ReservationError(ValueError):

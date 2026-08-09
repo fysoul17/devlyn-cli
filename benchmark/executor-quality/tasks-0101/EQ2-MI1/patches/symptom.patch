@@ -1,0 +1,29 @@
+--- a/bid_book.py
++++ b/bid_book.py
+@@ -2,4 +2,6 @@
+ 
+ 
+ def order_bids(bids: list[dict]) -> list[dict]:
+-    return list(bids)
++    indexed = enumerate(bids)
++    ordered = sorted(indexed, key=lambda item: (-item[1]["amount"], item[0]))
++    return [bid for _, bid in ordered]
+--- a/auction.py
++++ b/auction.py
+@@ -13,7 +13,7 @@
+     accepted: list[str] = []
+     rejected: list[str] = []
+ 
+-    for bid in order_bids(normalized):
++    for position, bid in enumerate(order_bids(normalized)):
+         cost = bid["amount"] + bid["fee"]
+         if not state.debit(bid["bidder"], cost):
+             rejected.append(bid["id"])
+@@ -21,6 +21,7 @@
+             continue
+         if not state.claim(bid["lot"], bid["id"]):
+             rejected.append(bid["id"])
++            state.refund(normalized[position]["bidder"], cost)
+             continue
+         accepted.append(bid["id"])
+ 

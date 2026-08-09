@@ -1,0 +1,29 @@
+--- a/hold_queue.py
++++ b/hold_queue.py
+@@ -2,4 +2,6 @@
+ 
+ 
+ def rank_requests(requests: list[dict]) -> list[dict]:
+-    return list(requests)
++    indexed = enumerate(requests)
++    ordered = sorted(indexed, key=lambda item: (-item[1]["priority"], item[0]))
++    return [request for _, request in ordered]
+--- a/reservation.py
++++ b/reservation.py
+@@ -12,7 +12,7 @@
+     accepted: list[str] = []
+     rejected: list[str] = []
+ 
+-    for request in rank_requests(normalized):
++    for request in rank_requests(normalized):
+         complete = True
+         for seat in request["seats"]:
+             if not seat_map.hold(request["id"], seat):
+@@ -20,6 +20,7 @@
+                 break
+         if not complete:
+             rejected.append(request["id"])
++            seat_map.release(request["id"])
+             continue
+         seat_map.commit(request["id"])
+         accepted.append(request["id"])
