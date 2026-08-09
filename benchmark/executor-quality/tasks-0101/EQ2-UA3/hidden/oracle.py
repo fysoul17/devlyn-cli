@@ -4,6 +4,7 @@ import pathlib
 import sys
 
 
+sys.dont_write_bytecode = True
 workdir = pathlib.Path(sys.argv[1])
 sys.path.insert(0, str(workdir))
 

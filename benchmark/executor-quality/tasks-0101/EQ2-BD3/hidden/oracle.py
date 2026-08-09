@@ -42,10 +42,12 @@ axis2_a = multi_issue.get("rejected") == [{"source": 0, "reason": "owner"}]
 ranked_errors = execute([
     {"change": "bad-value", "owner": "value.example.", "type": "A", "value": "not-ip", "priority": 8},
     {"change": "bad-type", "owner": "type.example.", "type": "MX", "value": "mail.example.", "priority": 1},
+    {"change": "bad-value-later", "owner": "later.example.", "type": "A", "value": "still-not-ip", "priority": 9},
 ])
 axis2_b = ranked_errors.get("rejected") == [
     {"source": 1, "reason": "type"},
     {"source": 0, "reason": "value"},
+    {"source": 2, "reason": "value"},
 ]
 
 composed = execute([

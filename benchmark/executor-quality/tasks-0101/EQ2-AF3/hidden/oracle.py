@@ -4,6 +4,7 @@ import pathlib
 import sys
 
 
+sys.dont_write_bytecode = True
 workdir = pathlib.Path(sys.argv[1])
 sys.path.insert(0, str(workdir))
 from gradebook import import_rows
@@ -42,12 +43,14 @@ ranked_errors = import_rows(
     [
         {"student": "s0", "score": -1, "rank": 6},
         {"student": "", "score": 80, "rank": 3},
+        {"student": "s2", "score": 101, "rank": 9},
     ],
     3,
 )
 axis2_b = ranked_errors["rejected"] == [
     {"arrival": 1, "reason": "student"},
     {"arrival": 0, "reason": "score"},
+    {"arrival": 2, "reason": "score"},
 ]
 
 composed = import_rows(
