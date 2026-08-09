@@ -48,32 +48,34 @@ quarantined to attic — bootstrap-clear follow-up); claude-side pair
 judge must EMIT collector format (JSONL + `# SUMMARY`) — a written
 findings file alone merges as BLOCKED fail-closed; verify verdict is
 merge-owned (never pass --verdict to verify complete/transition).
-Remaining: build B (9 tasks) → pre-arm audit → matrix.
-**RESUME RECIPE (next session, in order)**: ① writer-check (`ps` for
-claude -p / codex exec / resolve-bootstrap on THIS repo + `.devlyn`
-run_id sanity) ② write
-`docs/specs/iter0100-executor-quality-corpus-b/spec.md` — 9 tasks
-completing exactly-3-per-class: EQ-UA2 EQ-UA3 (unsupported_assumption),
-EQ-MI2 EQ-MI3 (missed_repo_invariant), EQ-AF2 EQ-AF3
-(absent_failure_mode), EQ-BD1 EQ-BD2 EQ-BD3 (broken_dependency — zero
-so far); same per-task shape/laws as corpus A spec (copy its R1/R2
-sections by reference, NOT new law text); MUST carry the
-`<!-- devlyn:verification -->` sentinel; gates = `validate-task.py
---task` per task + final full sweep incl. the 3 corpus-A tasks
-(non-regression); authorized surface
-`benchmark/executor-quality/tasks/EQ-{UA2,UA3,MI2,MI3,AF2,AF3,BD1,BD2,BD3}/**`
-ONLY (scripts are frozen — a script change is a spec violation, route
-it as a finding) ③ commit spec → `/devlyn:resolve --spec <path>
---pair-verify` (executor pin codex reads automatically) ④ after PASS:
-post-build pre-arm freeze audit per the iteration file § Freeze
-protocol (corpus digest seal + both seats + sonnet dry arm + synthetic
-ledger scorer proof — grok's and sol's accepted falsifiers bind here)
-⑤ 48-run matrix: detached `python os.setsid`, fresh run-id, opaque
-workdirs, exact model IDs `claude-opus-5`/`claude-fable-5` with
-modelUsage attestation, never near 12am KST quota boundary. Fable
-scoped exception = user directive 2026-08-09 (recorded in
-`feedback_test_engine_tiering` memory); fable never enters shared
-recert `--engines`.
+**Corpus build B LANDED 2026-08-09** (run
+`rs-20260809T064222Z-a36f4bcfdf8e` PASS; spec `1c8cca8`
+`docs/specs/iter0100-executor-quality-corpus-b/`): 9 tasks
+EQ-UA2/UA3 MI2/MI3 AF2/AF3 BD1/BD2/BD3 admitted — **corpus complete,
+12 tasks, exactly 3 per class**. Spec was pair-reviewed pre-commit by
+codex sol (REVISE ×3 adopted: validator-overclaim rewording,
+behavioral-tuple distinctness law, corpus-topology mechanical gate;
+README scoped edit KEPT under CHANGE-CREATED TRUTHFULNESS;
+R1-0100B-LIVE-sol). VERIFY round 0 PASS (mechanical 16/16 +
+primary codex + pair claude, 0 findings). Operator finds this run:
+Claude-Code orchestrator Bash caps codex phase calls at 600s — a
+2-task authoring call measures ~785s, so phase-gated IMPLEMENT hits
+the wall; remedy = depth-first per-task sequencing in the phase
+prompt ("complete task A + its gate BEFORE touching task B") + the
+contract's one-fix-respawn-per-phase (consumed 3 of max_rounds 4;
+kills landed during wrap-up, completed work survived every time).
+**RESUME RECIPE (in order)**: ① writer-check (`ps` for claude -p /
+codex exec / resolve-bootstrap on THIS repo + `.devlyn` run_id
+sanity) ② post-build pre-arm freeze audit per the iteration file
+§ Freeze protocol (corpus digest seal + both seats with liveness
+markers + sonnet dry arm producing a complete oracle scorecard
+end-to-end + synthetic-ledger scorer proof — grok's and sol's
+accepted falsifiers bind here) ③ 48-run matrix: detached `python
+os.setsid`, fresh run-id, opaque workdirs, exact model IDs
+`claude-opus-5`/`claude-fable-5` with modelUsage attestation, never
+near 12am KST quota boundary. Fable scoped exception = user directive
+2026-08-09 (recorded in `feedback_test_engine_tiering` memory); fable
+never enters shared recert `--engines`.
 
 **iter-0099 CLOSED — context-engineering item 2 (C/K/F contract
 placement): KEEP_CURRENT, no product change (DECISIONS 0099.1;
