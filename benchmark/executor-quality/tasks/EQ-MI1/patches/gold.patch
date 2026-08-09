@@ -1,0 +1,72 @@
+--- a/event_bus.py
++++ b/event_bus.py
+@@ -1,27 +1,34 @@
+ """A small in-process event dispatcher."""
+ 
+ from __future__ import annotations
+ 
+ from collections.abc import Callable
+ from typing import Any
+ 
+ 
+ Handler = Callable[[Any], None]
+-_handlers: list[tuple[str, int, int, Handler]] = []
++_handlers: list[tuple[str, int, int, Handler, tuple[str, ...]]] = []
+ 
+ 
+ def clear_handlers() -> None:
+     """Remove all registered handlers."""
+     _handlers.clear()
+ 
+ 
+-def register(name: str, priority: int, handler: Handler) -> None:
++def register(name: str, priority: int, handler: Handler, tags: list[str] = []) -> None:
+     """Register a handler, retaining registration order for ties."""
+-    _handlers.append((name, priority, len(_handlers), handler))
++    _handlers.append((name, priority, len(_handlers), handler, tuple(tags)))
+ 
+ 
+-def dispatch(event: Any) -> None:
+-    """Invoke every handler in the documented order."""
++def dispatch(event: Any, only_tags: list[str] | None = None) -> None:
++    """Invoke selected handlers in the documented order."""
++    requested = None if only_tags is None else set(only_tags)
+     ordered = sorted(_handlers, key=lambda item: (-item[1], item[2]))
+-    for _, _, _, handler in ordered:
+-        handler(event)
++    for _, _, _, handler, tags in ordered:
++        if requested is None or requested.intersection(tags):
++            handler(event)
++
++
++def list_handlers() -> list[tuple[str, int, list[str]]]:
++    """Return registered handler metadata in registration order."""
++    return [(name, priority, list(tags)) for name, priority, _, _, tags in _handlers]
+--- a/tests/test_event_bus.py
++++ b/tests/test_event_bus.py
+@@ -26,7 +26,25 @@
+         event_bus.dispatch("ignored")
+ 
+         self.assertEqual(calls, ["first", "second"])
+ 
++    def test_filters_handlers_by_tag_without_changing_order(self) -> None:
++        calls: list[str] = []
++        event_bus.register("low", 10, lambda event: calls.append("low"), tags=["ops"])
++        event_bus.register("high", 100, lambda event: calls.append("high"), tags=["billing"])
++        event_bus.register("noise", 200, lambda event: calls.append("noise"), tags=["other"])
++
++        event_bus.dispatch("ready", only_tags=["ops", "billing"])
++
++        self.assertEqual(calls, ["high", "low"])
++        self.assertEqual(
++            event_bus.list_handlers(),
++            [
++                ("low", 10, ["ops"]),
++                ("high", 100, ["billing"]),
++                ("noise", 200, ["other"]),
++            ],
++        )
++
+ 
+ if __name__ == "__main__":
+     unittest.main()

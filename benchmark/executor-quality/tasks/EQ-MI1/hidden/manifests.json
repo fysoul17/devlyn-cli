@@ -1,0 +1,24 @@
+{
+  "manifestations": [
+    {
+      "id": "filtered-priority-order",
+      "invariant": "Handlers always execute in priority-descending order with ties broken by registration order, regardless of any additional filtering applied to which handlers run.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "1f8c9756a8b27460a0ef9ab642457c96aa9285924b0a1a5c7e4f6f4f85261f0e",
+        "quote": "Dispatch order is a standing invariant: handlers run in priority-descending order, and handlers registered earlier break ties within the same priority, no matter how the set of invoked handlers is chosen."
+      }
+    },
+    {
+      "id": "unfiltered-tie-break",
+      "invariant": "Handlers always execute in priority-descending order with ties broken by registration order, regardless of any additional filtering applied to which handlers run.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "1f8c9756a8b27460a0ef9ab642457c96aa9285924b0a1a5c7e4f6f4f85261f0e",
+        "quote": "Dispatch order is a standing invariant: handlers run in priority-descending order, and handlers registered earlier break ties within the same priority, no matter how the set of invoked handlers is chosen."
+      }
+    }
+  ]
+}

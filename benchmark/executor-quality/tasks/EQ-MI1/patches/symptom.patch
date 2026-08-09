@@ -1,0 +1,80 @@
+--- a/event_bus.py
++++ b/event_bus.py
+@@ -1,27 +1,47 @@
+ """A small in-process event dispatcher."""
+ 
+ from __future__ import annotations
+ 
+ from collections.abc import Callable
+ from typing import Any
+ 
+ 
+ Handler = Callable[[Any], None]
+-_handlers: list[tuple[str, int, int, Handler]] = []
++HandlerRecord = tuple[str, int, int, Handler, tuple[str, ...]]
++_handlers: list[HandlerRecord] = []
++_handlers_by_tag: dict[str, list[HandlerRecord]] = {}
+ 
+ 
+ def clear_handlers() -> None:
+     """Remove all registered handlers."""
+     _handlers.clear()
++    _handlers_by_tag.clear()
+ 
+ 
+-def register(name: str, priority: int, handler: Handler) -> None:
++def register(name: str, priority: int, handler: Handler, tags: list[str] = []) -> None:
+     """Register a handler, retaining registration order for ties."""
+-    _handlers.append((name, priority, len(_handlers), handler))
++    record = (name, priority, len(_handlers), handler, tuple(tags))
++    _handlers.append(record)
++    for tag in tags:
++        _handlers_by_tag.setdefault(tag, []).append(record)
+ 
+ 
+-def dispatch(event: Any) -> None:
+-    """Invoke every handler in the documented order."""
+-    ordered = sorted(_handlers, key=lambda item: (-item[1], item[2]))
+-    for _, _, _, handler in ordered:
++def dispatch(event: Any, only_tags: list[str] | None = None) -> None:
++    """Invoke the requested handlers."""
++    if only_tags is None:
++        ordered = sorted(_handlers, key=lambda item: (-item[1], item[2]))
++    else:
++        ordered = []
++        seen: set[int] = set()
++        for tag in only_tags:
++            for record in _handlers_by_tag.get(tag, []):
++                if record[2] not in seen:
++                    seen.add(record[2])
++                    ordered.append(record)
++    for _, _, _, handler, _ in ordered:
+         handler(event)
++
++
++def list_handlers() -> list[tuple[str, int, list[str]]]:
++    """Return registered handler metadata in registration order."""
++    return [(name, priority, list(tags)) for name, priority, _, _, tags in _handlers]
+--- a/tests/test_event_bus.py
++++ b/tests/test_event_bus.py
+@@ -26,7 +26,20 @@
+         event_bus.dispatch("ignored")
+ 
+         self.assertEqual(calls, ["first", "second"])
+ 
++    def test_filters_handlers_with_one_tag(self) -> None:
++        calls: list[str] = []
++        event_bus.register("email", 10, lambda event: calls.append("email"), tags=["alerts"])
++        event_bus.register("audit", 100, lambda event: calls.append("audit"), tags=["audit"])
++
++        event_bus.dispatch("ready", only_tags=["alerts"])
++
++        self.assertEqual(calls, ["email"])
++        self.assertEqual(
++            event_bus.list_handlers(),
++            [("email", 10, ["alerts"]), ("audit", 100, ["audit"])],
++        )
++
+ 
+ if __name__ == "__main__":
+     unittest.main()

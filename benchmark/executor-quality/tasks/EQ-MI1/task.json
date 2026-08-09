@@ -1,0 +1,18 @@
+{
+  "id": "EQ-MI1",
+  "class": "missed_repo_invariant",
+  "invariant": "Handlers always execute in priority-descending order with ties broken by registration order, regardless of any additional filtering applied to which handlers run.",
+  "goal": "This repo implements a simple in-process event dispatcher (see `event_bus.py`) with `register(name, priority, handler)` and `dispatch(event)`. Add tag support: `register` should accept an optional `tags: list[str] = []` parameter, `dispatch(event, only_tags=None)` should, when `only_tags` is given, invoke only handlers whose `tags` intersect `only_tags` (invoke all registered handlers when `only_tags` is `None`), and a new `list_handlers()` function should return the currently registered handlers as `[(name, priority, tags)]` for debugging. Run `python3 -m unittest discover tests` before and after your change to confirm the existing tests keep passing, and add at least one new test under `tests/` covering `only_tags` filtering.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/event_bus.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_event_bus.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "1f8c9756a8b27460a0ef9ab642457c96aa9285924b0a1a5c7e4f6f4f85261f0e",
+    "quote": "Dispatch order is a standing invariant: handlers run in priority-descending order, and handlers registered earlier break ties within the same priority, no matter how the set of invoked handlers is chosen."
+  }
+}
