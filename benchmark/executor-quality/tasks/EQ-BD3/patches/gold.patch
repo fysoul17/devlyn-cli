@@ -1,0 +1,13 @@
+--- a/transport.py
++++ b/transport.py
+@@ -28,6 +28,9 @@
+     return [dict(item) for item in items]
+ 
+ 
+ def classify_response(status: int, body: str) -> list[dict]:
+     """Classify one response for catalog synchronization."""
+-    raise NotImplementedError("response classification is not implemented")
++    items = decode_items(body)
++    if not 200 <= status < 300:
++        raise UpstreamUnavailable(f"catalog status {status}")
++    return items

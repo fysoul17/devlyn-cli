@@ -1,0 +1,18 @@
+--- a/theme.py
++++ b/theme.py
+@@ -24,4 +24,14 @@
+ 
+     def replace_palette(self, updates: dict[str, str]) -> int:
+         """Replace several existing color tokens."""
+-        raise NotImplementedError("palette replacement is not implemented")
++        staged = dict(self.tokens)
++        for name, value in updates.items():
++            if name not in staged:
++                raise ThemeError(f"unknown token: {name}")
++            if re.fullmatch(r"#[0-9a-fA-F]{6}", value) is None:
++                raise ThemeError(f"invalid color: {value}")
++            staged[name] = value.lower()
++
++        self.tokens = staged
++        self.version += len(updates)
++        return len(updates)

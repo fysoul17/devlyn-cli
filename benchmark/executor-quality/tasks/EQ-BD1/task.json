@@ -1,0 +1,20 @@
+{
+  "id": "EQ-BD1",
+  "class": "broken_dependency",
+  "invariant": "Checkout options are ordered by earliest delivery estimate with service-code tie-breaking, independent of carrier response order.",
+  "goal": "Add `normalize_quotes(raw_quotes) -> list[Quote]` in `rates.py` so `checkout.py` can consume carrier responses. Each response contains `service_code`, `eta_days`, and `price_cents`; follow `CONTRACT.md` for integration details. Run `python3 -m unittest discover tests` before and after the change, and add at least one new test under `tests/` for normalization.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/checkout.py",
+    "visible/rates.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_checkout.py",
+    "visible/tests/test_rates.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "081acc1ee2055b26f8d2dad841185f3f129bb1af1dc556e3f7e8f7510a6a3383",
+    "quote": "Checkout options are presented by earliest delivery estimate, and equal estimates are broken by service code, independent of carrier response order."
+  }
+}

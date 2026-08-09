@@ -1,0 +1,10 @@
+--- a/theme.py
++++ b/theme.py
+@@ -24,4 +24,6 @@
+ 
+     def replace_palette(self, updates: dict[str, str]) -> int:
+         """Replace several existing color tokens."""
+-        raise NotImplementedError("palette replacement is not implemented")
++        for name, value in updates.items():
++            self.set_token(name, value)
++        return len(updates)

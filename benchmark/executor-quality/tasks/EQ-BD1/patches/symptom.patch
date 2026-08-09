@@ -1,0 +1,9 @@
+--- a/rates.py
++++ b/rates.py
+@@ -22,4 +22,5 @@
+ 
+ def normalize_quotes(raw_quotes: list[dict]) -> list[Quote]:
+     """Convert carrier responses for checkout consumption."""
+-    raise NotImplementedError("quote normalization is not implemented")
++    quotes = [parse_quote(raw) for raw in raw_quotes]
++    return sorted(quotes, key=lambda quote: quote.eta_days)

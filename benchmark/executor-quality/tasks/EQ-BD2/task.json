@@ -1,0 +1,20 @@
+{
+  "id": "EQ-BD2",
+  "class": "broken_dependency",
+  "invariant": "Rejected palette replacement preserves the dependent campaign preview and theme version exactly as they were before the request.",
+  "goal": "Add `replace_palette(updates: dict[str, str]) -> int` to `Theme` in `theme.py`; each entry replaces an existing token with a six-digit hexadecimal color, and successful calls return the number of entries. `campaign.py` consumes this method when producing update previews, so follow `CONTRACT.md` for integration behavior. Run `python3 -m unittest discover tests` before and after the change, and add at least one new test under `tests/` for palette replacement.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/campaign.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_campaign.py",
+    "visible/tests/test_theme.py",
+    "visible/theme.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "2ab963f45beacb73ddb52a43670ddb9e56ec5fad23aaee189ee80a9735ce6aa5",
+    "quote": "A rejected palette replacement leaves both the rendered campaign preview and the theme version unchanged from before the request."
+  }
+}

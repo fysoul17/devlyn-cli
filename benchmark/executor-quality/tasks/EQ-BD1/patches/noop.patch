@@ -1,0 +1,10 @@
+--- a/README.md
++++ b/README.md
+@@ -1,5 +1,7 @@
+ # Delivery quote normalization
+ 
++This fixture uses only Python standard-library modules.
++
+ The rates component converts carrier responses into `Quote` values. The checkout component consumes those values to select and display a recommended delivery service.
+ 
+ Run the fixture tests with:

@@ -1,0 +1,24 @@
+{
+  "manifestations": [
+    {
+      "id": "flow_eta_mix",
+      "invariant": "Checkout options are ordered by earliest delivery estimate with service-code tie-breaking, independent of carrier response order.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "081acc1ee2055b26f8d2dad841185f3f129bb1af1dc556e3f7e8f7510a6a3383",
+        "quote": "Checkout options are presented by earliest delivery estimate, and equal estimates are broken by service code, independent of carrier response order."
+      }
+    },
+    {
+      "id": "flow_eta_tie",
+      "invariant": "Checkout options are ordered by earliest delivery estimate with service-code tie-breaking, independent of carrier response order.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "081acc1ee2055b26f8d2dad841185f3f129bb1af1dc556e3f7e8f7510a6a3383",
+        "quote": "Checkout options are presented by earliest delivery estimate, and equal estimates are broken by service code, independent of carrier response order."
+      }
+    }
+  ]
+}

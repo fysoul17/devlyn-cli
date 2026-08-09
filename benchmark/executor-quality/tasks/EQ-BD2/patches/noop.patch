@@ -1,0 +1,10 @@
+--- a/README.md
++++ b/README.md
+@@ -1,5 +1,7 @@
+ # Campaign palette updates
+ 
++The fixture uses only Python standard-library modules.
++
+ The theme component owns named color tokens. The campaign component renders a banner from the current tokens and exposes a preview path for palette changes.
+ 
+ Run the fixture tests with:

@@ -1,0 +1,10 @@
+--- a/README.md
++++ b/README.md
+@@ -1,5 +1,7 @@
+ # Catalog response classification
+ 
++This fixture uses only Python standard-library modules.
++
+ The transport component classifies catalog responses. The synchronization component consumes that classification to update its cursor, retry count, quarantine count, and item snapshot.
+ 
+ Run the fixture tests with:

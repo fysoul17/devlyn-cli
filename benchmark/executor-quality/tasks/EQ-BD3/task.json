@@ -1,0 +1,20 @@
+{
+  "id": "EQ-BD3",
+  "class": "broken_dependency",
+  "invariant": "Catalog synchronization quarantines invalid response bodies without advancing its cursor or scheduling a retry, even when the response status is unavailable.",
+  "goal": "Add `classify_response(status: int, body: str) -> list[dict]` in `transport.py` so `sync.py` can consume catalog responses. A successful response body is a JSON object with an `items` list, while a non-success status denotes an unavailable upstream; follow `CONTRACT.md` for integration behavior. Run `python3 -m unittest discover tests` before and after the change, and add at least one new test under `tests/` for response classification.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/sync.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_sync.py",
+    "visible/tests/test_transport.py",
+    "visible/transport.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "9d7280768657ea5ef62b7e7a4f912013d29081221660a30049eedceb28e2fcc1",
+    "quote": "Catalog synchronization quarantines a syntactically malformed or structurally invalid response body without advancing its cursor or scheduling a retry, regardless of the response status."
+  }
+}

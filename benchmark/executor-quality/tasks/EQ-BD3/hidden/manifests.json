@@ -1,0 +1,24 @@
+{
+  "manifestations": [
+    {
+      "id": "sync_bad_json_success",
+      "invariant": "Catalog synchronization quarantines invalid response bodies without advancing its cursor or scheduling a retry, even when the response status is unavailable.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "9d7280768657ea5ef62b7e7a4f912013d29081221660a30049eedceb28e2fcc1",
+        "quote": "Catalog synchronization quarantines a syntactically malformed or structurally invalid response body without advancing its cursor or scheduling a retry, regardless of the response status."
+      }
+    },
+    {
+      "id": "sync_bad_shape_unavailable",
+      "invariant": "Catalog synchronization quarantines invalid response bodies without advancing its cursor or scheduling a retry, even when the response status is unavailable.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "9d7280768657ea5ef62b7e7a4f912013d29081221660a30049eedceb28e2fcc1",
+        "quote": "Catalog synchronization quarantines a syntactically malformed or structurally invalid response body without advancing its cursor or scheduling a retry, regardless of the response status."
+      }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "manifestations": [
+    {
+      "id": "preview_bad_first",
+      "invariant": "Rejected palette replacement preserves the dependent campaign preview and theme version exactly as they were before the request.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "2ab963f45beacb73ddb52a43670ddb9e56ec5fad23aaee189ee80a9735ce6aa5",
+        "quote": "A rejected palette replacement leaves both the rendered campaign preview and the theme version unchanged from before the request."
+      }
+    },
+    {
+      "id": "preview_bad_late",
+      "invariant": "Rejected palette replacement preserves the dependent campaign preview and theme version exactly as they were before the request.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "2ab963f45beacb73ddb52a43670ddb9e56ec5fad23aaee189ee80a9735ce6aa5",
+        "quote": "A rejected palette replacement leaves both the rendered campaign preview and the theme version unchanged from before the request."
+      }
+    }
+  ]
+}

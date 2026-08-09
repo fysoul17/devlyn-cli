@@ -1,0 +1,1 @@
+"""Delivery quote fixture tests."""
