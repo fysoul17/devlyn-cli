@@ -14,5 +14,6 @@ test("uses the highest-precedence reason for one malformed line", () => {
   assert.deepEqual(parseLine("bad|wrong|-4|x", 0), {
     ok: false,
     error: { source: 0, reason: "format" },
+    candidate: { id: "bad", account: "wrong", amount: -4, priority: Number.NaN, source: 0 },
   });
 });

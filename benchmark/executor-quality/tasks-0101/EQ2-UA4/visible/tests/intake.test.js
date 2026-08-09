@@ -5,7 +5,7 @@ import { intakeBatch } from "../intake.js";
 
 test("returns one valid posting", () => {
   assert.deepEqual(intakeBatch(["A001|acct-east|12|2"]), {
-    posted: ["A001"],
+    posted: [{ invoice: "A001", postedTotal: 12 }],
     rejected: [],
   });
 });

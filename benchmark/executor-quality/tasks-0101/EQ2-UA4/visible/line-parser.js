@@ -25,6 +25,7 @@ export function parseLine(line, source) {
     return {
       ok: false,
       error: { source, reason: reasonOrder.find((reason) => issues.includes(reason)) },
+      candidate: { id, account, amount, priority, source },
     };
   }
 
