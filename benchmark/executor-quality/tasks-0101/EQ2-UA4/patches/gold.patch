@@ -1,0 +1,13 @@
+--- a/intake.js
++++ b/intake.js
+@@ -8,8 +8,8 @@ export function intakeBatch(lines) {
+   const accepted = parsed.filter((entry) => entry.ok).map((entry) => entry.value);
+   const rejected = parsed.filter((entry) => !entry.ok).map((entry) => entry.error);
+ 
+   return {
+-    posted: accepted.map((invoice) => invoice.id),
+-    rejected,
++    posted: orderPostings(accepted).map((invoice) => invoice.id),
++    rejected: rankRejects(rejected),
+   };
+ }

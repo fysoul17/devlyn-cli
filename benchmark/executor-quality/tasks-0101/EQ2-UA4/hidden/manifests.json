@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Invoice lines are posted by descending priority with source order breaking ties, parsing rejects are reported with format errors before account errors before amount errors and source order breaking ties, and when malformed and valid lines interleave the rejects retain that precedence while rejected lines never suppress or occupy positions among valid postings.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "0259d66215e9f285330e9a214a57714df16fd6dd02573d66608e8f9a13e48690",
+        "quote": "Invoice lines are posted by descending priority with source order breaking ties, parsing rejects are reported with format errors before account errors before amount errors and source order breaking ties, and when malformed and valid lines interleave the rejects retain that precedence while rejected lines never suppress or occupy positions among valid postings."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Invoice lines are posted by descending priority with source order breaking ties, parsing rejects are reported with format errors before account errors before amount errors and source order breaking ties, and when malformed and valid lines interleave the rejects retain that precedence while rejected lines never suppress or occupy positions among valid postings.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "0259d66215e9f285330e9a214a57714df16fd6dd02573d66608e8f9a13e48690",
+        "quote": "Invoice lines are posted by descending priority with source order breaking ties, parsing rejects are reported with format errors before account errors before amount errors and source order breaking ties, and when malformed and valid lines interleave the rejects retain that precedence while rejected lines never suppress or occupy positions among valid postings."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Invoice lines are posted by descending priority with source order breaking ties, parsing rejects are reported with format errors before account errors before amount errors and source order breaking ties, and when malformed and valid lines interleave the rejects retain that precedence while rejected lines never suppress or occupy positions among valid postings.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "0259d66215e9f285330e9a214a57714df16fd6dd02573d66608e8f9a13e48690",
+        "quote": "Invoice lines are posted by descending priority with source order breaking ties, parsing rejects are reported with format errors before account errors before amount errors and source order breaking ties, and when malformed and valid lines interleave the rejects retain that precedence while rejected lines never suppress or occupy positions among valid postings."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Invoice lines are posted by descending priority with source order breaking ties, parsing rejects are reported with format errors before account errors before amount errors and source order breaking ties, and when malformed and valid lines interleave the rejects retain that precedence while rejected lines never suppress or occupy positions among valid postings.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "0259d66215e9f285330e9a214a57714df16fd6dd02573d66608e8f9a13e48690",
+        "quote": "Invoice lines are posted by descending priority with source order breaking ties, parsing rejects are reported with format errors before account errors before amount errors and source order breaking ties, and when malformed and valid lines interleave the rejects retain that precedence while rejected lines never suppress or occupy positions among valid postings."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Invoice lines are posted by descending priority with source order breaking ties, parsing rejects are reported with format errors before account errors before amount errors and source order breaking ties, and when malformed and valid lines interleave the rejects retain that precedence while rejected lines never suppress or occupy positions among valid postings.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "0259d66215e9f285330e9a214a57714df16fd6dd02573d66608e8f9a13e48690",
+        "quote": "Invoice lines are posted by descending priority with source order breaking ties, parsing rejects are reported with format errors before account errors before amount errors and source order breaking ties, and when malformed and valid lines interleave the rejects retain that precedence while rejected lines never suppress or occupy positions among valid postings."
+      }
+    }
+  ]
+}

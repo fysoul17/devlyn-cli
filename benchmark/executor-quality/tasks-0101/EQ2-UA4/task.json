@@ -1,0 +1,23 @@
+{
+  "id": "EQ2-UA4",
+  "class": "unsupported_assumption",
+  "invariant": "Invoice lines are posted by descending priority with source order breaking ties, parsing rejects are reported with format errors before account errors before amount errors and source order breaking ties, and when malformed and valid lines interleave the rejects retain that precedence while rejected lines never suppress or occupy positions among valid postings.",
+  "goal": "Fix intakeBatch in intake.js so invoice batch intake satisfies CONTRACT.md. Run `node --test`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/intake.js",
+    "visible/line-parser.js",
+    "visible/package.json",
+    "visible/posting-order.js",
+    "visible/reject-ranking.js",
+    "visible/tests/intake.test.js",
+    "visible/tests/line-parser.test.js",
+    "visible/tests/posting-order.test.js",
+    "visible/tests/reject-ranking.test.js"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "0259d66215e9f285330e9a214a57714df16fd6dd02573d66608e8f9a13e48690",
+    "quote": "Invoice lines are posted by descending priority with source order breaking ties, parsing rejects are reported with format errors before account errors before amount errors and source order breaking ties, and when malformed and valid lines interleave the rejects retain that precedence while rejected lines never suppress or occupy positions among valid postings."
+  }
+}
