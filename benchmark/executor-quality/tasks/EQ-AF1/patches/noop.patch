@@ -1,0 +1,11 @@
+--- a/README.md
++++ b/README.md
+@@ -1,6 +1,8 @@
+ # Job store
+ 
+ `store.py` records job submissions and returns the stored result for each job identifier.
+ 
++The implementation uses only the Python standard library.
++
+ Run the test suite with:
+ 

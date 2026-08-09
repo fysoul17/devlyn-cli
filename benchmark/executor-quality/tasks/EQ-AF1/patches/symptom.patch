@@ -1,0 +1,49 @@
+--- a/store.py
++++ b/store.py
+@@ -21,3 +21,25 @@
+         self.records[job_id] = result
+         self.total_processed += 1
+         return result
++
++    def submit_batch(self, jobs: list[dict[str, Any]]) -> list[dict[str, Any]]:
++        """Submit jobs using the identifiers known at batch start."""
++        known_ids = set(self.records)
++        entries: list[dict[str, Any]] = []
++        for job in jobs:
++            job_id = job["job_id"]
++            if job_id in known_ids:
++                status = "duplicate"
++                result = self.records[job_id]
++            else:
++                status = "created"
++                result = {
++                    "sequence": self.total_processed + 1,
++                    "payload": job["payload"],
++                }
++                self.records[job_id] = result
++                self.total_processed += 1
++            entries.append(
++                {"job_id": job_id, "status": status, "result": result}
++            )
++        return entries
+--- a/tests/test_store.py
++++ b/tests/test_store.py
+@@ -25,6 +25,18 @@
+         self.assertEqual(store.records, {"job-1": first})
+         self.assertEqual(store.total_processed, 1)
+ 
++    def test_batch_marks_a_previously_submitted_job_duplicate(self) -> None:
++        store = JobStore()
++        first = store.submit_job("job-1", {"kind": "email"})
++
++        results = store.submit_batch(
++            [{"job_id": "job-1", "payload": {"kind": "sms"}}]
++        )
++
++        self.assertEqual(results[0]["status"], "duplicate")
++        self.assertIs(results[0]["result"], first)
++        self.assertEqual(store.total_processed, 1)
++
+ 
+ if __name__ == "__main__":
+     unittest.main()

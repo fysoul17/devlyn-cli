@@ -1,0 +1,18 @@
+{
+  "id": "EQ-AF1",
+  "class": "absent_failure_mode",
+  "invariant": "A job_id is processed at most once: no sequence of submissions — single calls, repeated calls, or multiple entries within one batch call — ever creates a second stored record or a second side effect for the same job_id.",
+  "goal": "This repo implements a small job store (see `store.py`): `submit_job(job_id, payload)` records a submission under `job_id`, returning its stored result — resubmitting a previously used `job_id` returns the existing stored result. Add `submit_batch(jobs: list[dict])` where each dict is `{\"job_id\": <str>, \"payload\": <any>}`: process the list in order and return a list of `{\"job_id\": <str>, \"status\": \"created\"|\"duplicate\", \"result\": <any>}`, one entry per input job in the same order. Run `python3 -m unittest discover tests` before and after your change to confirm existing tests keep passing, and add at least one new test under `tests/` for `submit_batch`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/store.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_store.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "c337f63ea591a26c2e8ad2a3913636c67a0f3f32b9cfb40ad9f6e9ba67753c59",
+    "quote": "job_id identifies a submission attempt exactly once: any later submission that reuses a job_id already present in the store — whether it arrives in a separate call or alongside other jobs in the same call — is a no-op that returns the original stored record without a second side effect."
+  }
+}
