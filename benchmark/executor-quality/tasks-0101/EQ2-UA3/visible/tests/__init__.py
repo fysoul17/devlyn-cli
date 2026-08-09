@@ -1,0 +1,1 @@
+"""Expense approval fixture tests."""

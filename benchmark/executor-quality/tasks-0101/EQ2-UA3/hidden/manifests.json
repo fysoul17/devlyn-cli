@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Expense requests are routed by descending urgency with submission order breaking ties, the role gate admits only submitters whose grants cover the request's cost center and amount, and when privileged and unprivileged requests interleave the role gate decides authorization before priority placement and reviewer-load assignment so denied requests never consume a reviewer's ordered slot.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "8d37956feee1b29cb19fd9ce393069f62c6c114419416919c9826a414a765747",
+        "quote": "Expense requests are routed by descending urgency with submission order breaking ties, the role gate admits only submitters whose grants cover the request's cost center and amount, and when privileged and unprivileged requests interleave the role gate decides authorization before priority placement and reviewer-load assignment so denied requests never consume a reviewer's ordered slot."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Expense requests are routed by descending urgency with submission order breaking ties, the role gate admits only submitters whose grants cover the request's cost center and amount, and when privileged and unprivileged requests interleave the role gate decides authorization before priority placement and reviewer-load assignment so denied requests never consume a reviewer's ordered slot.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "8d37956feee1b29cb19fd9ce393069f62c6c114419416919c9826a414a765747",
+        "quote": "Expense requests are routed by descending urgency with submission order breaking ties, the role gate admits only submitters whose grants cover the request's cost center and amount, and when privileged and unprivileged requests interleave the role gate decides authorization before priority placement and reviewer-load assignment so denied requests never consume a reviewer's ordered slot."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Expense requests are routed by descending urgency with submission order breaking ties, the role gate admits only submitters whose grants cover the request's cost center and amount, and when privileged and unprivileged requests interleave the role gate decides authorization before priority placement and reviewer-load assignment so denied requests never consume a reviewer's ordered slot.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "8d37956feee1b29cb19fd9ce393069f62c6c114419416919c9826a414a765747",
+        "quote": "Expense requests are routed by descending urgency with submission order breaking ties, the role gate admits only submitters whose grants cover the request's cost center and amount, and when privileged and unprivileged requests interleave the role gate decides authorization before priority placement and reviewer-load assignment so denied requests never consume a reviewer's ordered slot."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Expense requests are routed by descending urgency with submission order breaking ties, the role gate admits only submitters whose grants cover the request's cost center and amount, and when privileged and unprivileged requests interleave the role gate decides authorization before priority placement and reviewer-load assignment so denied requests never consume a reviewer's ordered slot.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "8d37956feee1b29cb19fd9ce393069f62c6c114419416919c9826a414a765747",
+        "quote": "Expense requests are routed by descending urgency with submission order breaking ties, the role gate admits only submitters whose grants cover the request's cost center and amount, and when privileged and unprivileged requests interleave the role gate decides authorization before priority placement and reviewer-load assignment so denied requests never consume a reviewer's ordered slot."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Expense requests are routed by descending urgency with submission order breaking ties, the role gate admits only submitters whose grants cover the request's cost center and amount, and when privileged and unprivileged requests interleave the role gate decides authorization before priority placement and reviewer-load assignment so denied requests never consume a reviewer's ordered slot.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "8d37956feee1b29cb19fd9ce393069f62c6c114419416919c9826a414a765747",
+        "quote": "Expense requests are routed by descending urgency with submission order breaking ties, the role gate admits only submitters whose grants cover the request's cost center and amount, and when privileged and unprivileged requests interleave the role gate decides authorization before priority placement and reviewer-load assignment so denied requests never consume a reviewer's ordered slot."
+      }
+    }
+  ]
+}

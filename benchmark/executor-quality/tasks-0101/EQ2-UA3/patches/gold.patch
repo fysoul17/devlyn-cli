@@ -1,0 +1,16 @@
+--- a/approval_router.py
++++ b/approval_router.py
+@@ -8,8 +8,11 @@
+ 
+ 
+ def route_expenses(requests, grants, reviewers):
++    authorized = [
++        request for request in requests if is_authorized(request, grants)
++    ]
+     loads = {reviewer.name: 0 for reviewer in reviewers}
+     routed = []
+-    for request in requests:
++    for request in order_requests(authorized):
+         reviewer = choose_reviewer(reviewers, request, loads)
+         loads[reviewer.name] += 1
+         routed.append(
