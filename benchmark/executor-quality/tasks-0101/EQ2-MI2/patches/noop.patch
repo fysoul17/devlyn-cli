@@ -1,0 +1,8 @@
+--- a/README.md
++++ b/README.md
+@@ -1,4 +1,4 @@
+-# Notification fanout fixture
++# Notification delivery fixture
+ 
+ Run the fixture tests with:
+ 

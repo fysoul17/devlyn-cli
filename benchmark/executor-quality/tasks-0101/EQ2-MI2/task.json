@@ -1,0 +1,25 @@
+{
+  "id": "EQ2-MI2",
+  "class": "missed_repo_invariant",
+  "invariant": "The scheduler emits notifications by the highest priority seen for each notification with first submission order breaking ties, the delivery dedup records each notification-recipient pair exactly once, and when a duplicate submission surrounds a priority reorder the fanout preserves that effective priority order while delivering the repeated notification once per recipient regardless of the duplicate's arrival slot.",
+  "goal": "Fix scheduleFanout in scheduler.js so notification fanout satisfies CONTRACT.md. Run node --test.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/delivery-dedup.js",
+    "visible/fanout.js",
+    "visible/notification.js",
+    "visible/package.json",
+    "visible/priority.js",
+    "visible/scheduler.js",
+    "visible/tests/delivery-dedup.test.js",
+    "visible/tests/notification.test.js",
+    "visible/tests/priority.test.js",
+    "visible/tests/scheduler.test.js"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "4ffa499c57e83160cc526b2ea1b658f9c2ac7074d2dad7d51242e29c71a20d45",
+    "quote": "The scheduler emits notifications by the highest priority seen for each notification with first submission order breaking ties, the delivery dedup records each notification-recipient pair exactly once, and when a duplicate submission surrounds a priority reorder the fanout preserves that effective priority order while delivering the repeated notification once per recipient regardless of the duplicate's arrival slot."
+  }
+}

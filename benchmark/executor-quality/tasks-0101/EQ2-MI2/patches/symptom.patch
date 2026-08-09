@@ -1,0 +1,34 @@
+--- a/scheduler.js
++++ b/scheduler.js
+@@ -1,12 +1,25 @@
++import { DeliveryDedup } from "./delivery-dedup.js";
+ import { createDelivery } from "./fanout.js";
+ import { normalizeNotification } from "./notification.js";
+ import { rankNotifications } from "./priority.js";
+ 
+ export function scheduleFanout(submissions) {
+-  const notifications = submissions.map((submission, sequence) =>
+-    normalizeNotification(submission, sequence),
+-  );
+-  return rankNotifications(notifications).flatMap((notification) =>
+-    notification.recipients.map((recipient) => createDelivery(notification, recipient)),
+-  );
++  const firstById = new Map();
++  for (const [sequence, submission] of submissions.entries()) {
++    const notification = normalizeNotification(submission, sequence);
++    if (!firstById.has(notification.id)) {
++      firstById.set(notification.id, notification);
++    }
++  }
++
++  const dedup = new DeliveryDedup();
++  const deliveries = [];
++  for (const notification of rankNotifications([...firstById.values()])) {
++    for (const recipient of notification.recipients) {
++      if (dedup.record(notification.id, recipient)) {
++        deliveries.push(createDelivery(notification, recipient));
++      }
++    }
++  }
++  return deliveries;
+ }
