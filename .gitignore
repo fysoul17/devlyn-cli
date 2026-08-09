@@ -44,3 +44,4 @@ benchmark/ceiling/results/**/claude-debug.log
 __pycache__/
 *.pyc
 benchmark/probes/judge-quality/results/
+benchmark/probes/judge-quality/results-*/
