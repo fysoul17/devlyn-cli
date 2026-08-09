@@ -1,0 +1,5 @@
+--- a/migration-runner.js
++++ b/migration-runner.js
+@@ -3 +3 @@
+-/** Coordinate the step applier and migration journal. */
++/** Coordinate migration steps with their journal. */

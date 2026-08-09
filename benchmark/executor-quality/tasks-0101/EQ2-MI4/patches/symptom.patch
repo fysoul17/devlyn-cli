@@ -1,0 +1,18 @@
+--- a/migration-runner.js
++++ b/migration-runner.js
+@@ -3,4 +3,6 @@
+ /** Coordinate the step applier and migration journal. */
+ export function runMigrationBatch(state, journal, migrations) {
++  const stateBefore = state.snapshot();
++  const entriesBefore = journal.entries();
+   const applied = [];
+   const skipped = [];
+@@ -18,5 +20,7 @@ export function runMigrationBatch(state, journal, migrations) {
+     }
+     return { ok: true, applied, skipped, error: null };
+   } catch (error) {
++    state.restore(stateBefore);
++    journal.replaceEntries(entriesBefore);
+     return { ok: false, applied, skipped, error: error.message };
+   }
+ }

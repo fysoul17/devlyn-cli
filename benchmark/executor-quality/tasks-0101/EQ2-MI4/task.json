@@ -1,0 +1,23 @@
+{
+  "id": "EQ2-MI4",
+  "class": "missed_repo_invariant",
+  "invariant": "Migration batches restore the schema and durable journal to their exact pre-batch states when any step fails, migration keys apply at most once on successful runs, and replaying a batch whose first partially applied attempt rolled back starts from that clean state so every step is applied and journaled exactly once.",
+  "goal": "Fix runMigrationBatch in migration-runner.js so migration execution satisfies CONTRACT.md. Run `node --test`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/journal.js",
+    "visible/migration-runner.js",
+    "visible/package.json",
+    "visible/schema-state.js",
+    "visible/step-applier.js",
+    "visible/tests/journal.test.js",
+    "visible/tests/migration-runner.test.js",
+    "visible/tests/schema-state.test.js",
+    "visible/tests/step-applier.test.js"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "9552678b0e4b5133c6a248bf71e77db1391619f92d48acbdb1bc9e307bee6072",
+    "quote": "Migration batches restore the schema and durable journal to their exact pre-batch states when any step fails, migration keys apply at most once on successful runs, and replaying a batch whose first partially applied attempt rolled back starts from that clean state so every step is applied and journaled exactly once."
+  }
+}
