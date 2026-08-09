@@ -1,18 +1,24 @@
 --- a/migration-runner.js
 +++ b/migration-runner.js
-@@ -3,4 +3,6 @@
+@@ -3,3 +3,7 @@
++const attemptedKeys = new Set();
++
  /** Coordinate the step applier and migration journal. */
  export function runMigrationBatch(state, journal, migrations) {
 +  const stateBefore = state.snapshot();
-+  const entriesBefore = journal.entries();
++  const journalBefore = journal.snapshot();
    const applied = [];
-   const skipped = [];
-@@ -18,5 +20,7 @@ export function runMigrationBatch(state, journal, migrations) {
-     }
-     return { ok: true, applied, skipped, error: null };
+@@ -8,3 +12,8 @@
+   try {
+     for (const migration of migrations) {
++      if (attemptedKeys.has(migration.key)) {
++        skipped.push(migration.key);
++        continue;
++      }
++      attemptedKeys.add(migration.key);
+       if (!journal.claim(migration.key)) {
+@@ -19,2 +28,4 @@
    } catch (error) {
 +    state.restore(stateBefore);
-+    journal.replaceEntries(entriesBefore);
++    journal.restore(journalBefore);
      return { ok: false, applied, skipped, error: error.message };
-   }
- }

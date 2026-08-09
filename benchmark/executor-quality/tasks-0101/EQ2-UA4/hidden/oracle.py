@@ -36,51 +36,85 @@ def intake(lines):
     return json.loads(completed.stdout)
 
 
-ordered = intake([
-    "A001|acct-low|10|1",
-    "B002|acct-high|20|9",
-    "C003|acct-mid|30|5",
+priority_bands = intake([
+    "A001|acct-a|10|4",
+    "B002|acct-b|20|9",
+    "C003|acct-c|30|4",
+    "D004|acct-d|40|7",
+    "E005|acct-e|50|9",
+    "F006|acct-f|60|1",
 ])
-axis1_a = ordered.get("posted") == ["B002", "C003", "A001"]
+axis1_a = priority_bands.get("posted") == [
+    "B002",
+    "E005",
+    "D004",
+    "A001",
+    "C003",
+    "F006",
+]
 
-tied = intake([
-    "D004|acct-one|10|7",
-    "E005|acct-low|20|2",
-    "F006|acct-two|30|7",
+stable_band = intake([
+    "G007|acct-g|10|6",
+    "H008|acct-h|20|6",
+    "I009|acct-i|30|6",
+    "J010|acct-j|40|6",
 ])
-axis1_b = tied.get("posted") == ["D004", "F006", "E005"]
+axis1_b = stable_band.get("posted") == ["G007", "H008", "I009", "J010"]
 
-multi_issue = intake([
+overlapping_issues = intake([
     "bad|wrong|-3|x",
+    "K011|wrong|0|5",
+    "L012|acct-l|-8|x",
 ])
-axis2_a = multi_issue.get("rejected") == [{"source": 0, "reason": "format"}]
-
-ranked_errors = intake([
-    "G007|acct-west|-1|3",
-    "H008|wrong|12|4",
-    "I009|acct-east|0|8",
-])
-axis2_b = ranked_errors.get("rejected") == [
+axis2_a = overlapping_issues.get("rejected") == [
+    {"source": 0, "reason": "format"},
+    {"source": 2, "reason": "format"},
     {"source": 1, "reason": "account"},
-    {"source": 0, "reason": "amount"},
-    {"source": 2, "reason": "amount"},
 ]
 
-composed = intake([
-    "J010|acct-tail|10|1",
-    "K011|acct-bad|-2|8",
-    "L012|acct-head|30|9",
-    "M013|wrong|14|7",
-    "N014|acct-zero|0|6",
-    "O015|acct-mid|20|5",
+precedence_groups = intake([
+    "M013|acct-m|0|2",
+    "N014|wrong|14|3",
+    "broken",
+    "O015|acct-o|-2|4",
+    "P016|wrong|16|5",
+    "Q017|acct-q|17|x",
 ])
-interaction = composed.get("posted") == ["L012", "O015", "J010"] and composed.get(
-    "rejected"
-) == [
-    {"source": 3, "reason": "account"},
-    {"source": 1, "reason": "amount"},
-    {"source": 4, "reason": "amount"},
+axis2_b = precedence_groups.get("rejected") == [
+    {"source": 2, "reason": "format"},
+    {"source": 5, "reason": "format"},
+    {"source": 1, "reason": "account"},
+    {"source": 4, "reason": "account"},
+    {"source": 0, "reason": "amount"},
+    {"source": 3, "reason": "amount"},
 ]
+
+edge_interleave = intake([
+    "broken",
+    "R018|acct-r|18|3",
+    "S019|acct-s|19|8",
+    "T020|wrong|20|7",
+    "U021|acct-u|21|5",
+    "V022|acct-v|0|9",
+    "W023|acct-w|23|8",
+])
+center_interleave = intake([
+    "X024|acct-x|24|2",
+    "Y025|acct-y|25|6",
+    "Z026|acct-z|-1|9",
+    "A027|acct-aa|27|4",
+])
+interaction = edge_interleave == {
+    "posted": ["S019", "W023", "U021", "R018"],
+    "rejected": [
+        {"source": 0, "reason": "format"},
+        {"source": 3, "reason": "account"},
+        {"source": 5, "reason": "amount"},
+    ],
+} and center_interleave == {
+    "posted": ["Y025", "A027", "X024"],
+    "rejected": [{"source": 2, "reason": "amount"}],
+}
 
 print(json.dumps({"manifestations": [
     {"id": "axis1-a", "invariant": invariant, "passed": axis1_a},

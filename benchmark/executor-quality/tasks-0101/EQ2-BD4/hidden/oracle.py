@@ -22,31 +22,31 @@ const leg = (eventId, parcelId, to, state, failAfterMove = false) => ({
   failAfterMove,
 });
 
-function rollbackSingleMovedLeg() {
-  const manifest = new ShipmentState({ box: parcel("dock") });
+function throwingLegRestoresNonReadyParcel() {
+  const manifest = new ShipmentState({ box: parcel("customs", "inspection_hold", 7) });
   const journal = new TrackingJournal();
   const beforeManifest = manifest.view();
   const beforeJournal = journal.view();
   const outcome = runShipmentBatch(manifest, journal, {
-    id: "failed-single",
-    legs: [leg("scan-r1", "box", "hub", "in_transit", true)],
+    id: "failed-held",
+    legs: [leg("scan-r1", "box", "release-dock", "released", true)],
   });
   return !outcome.ok
     && same(manifest.view(), beforeManifest)
     && same(journal.view(), beforeJournal);
 }
 
-function rollbackPreservesPriorHistory() {
+function rollbackRestoresSeveralWorkflowStates() {
   const manifest = new ShipmentState({
-    first: parcel("north", "ready", 2),
-    second: parcel("south", "ready", 4),
+    first: parcel("north-yard", "delayed", 2),
+    second: parcel("south-hub", "loaded", 4),
   });
   const prior = [{
     eventId: "older-scan",
     parcelId: "archived",
     from: "yard",
     to: "dock",
-    fromState: "ready",
+    fromState: "received",
     state: "received",
   }];
   const journal = new TrackingJournal({ entries: prior, completed: ["older-batch"] });
@@ -56,58 +56,88 @@ function rollbackPreservesPriorHistory() {
     id: "failed-history",
     legs: [
       leg("scan-r2", "first", "central", "in_transit"),
-      leg("scan-r3", "second", "central", "in_transit", true),
+      leg("scan-r3", "second", "transfer", "transferring"),
+      leg("scan-r4", "first", "airport", "loaded", true),
     ],
   });
   return !outcome.ok
+    && same(outcome.applied, ["scan-r2", "scan-r3"])
     && same(manifest.view(), beforeManifest)
     && same(journal.view(), beforeJournal);
 }
 
-function completedBatchRunsOnce() {
+function completedBatchShortCircuitsUnknownParcel() {
   const manifest = new ShipmentState({ box: parcel("dock") });
-  const journal = new TrackingJournal();
-  const batch = {
-    id: "stable-batch",
-    legs: [leg("scan-i1", "box", "hub", "in_transit")],
-  };
-  const first = runShipmentBatch(manifest, journal, batch);
-  const afterManifest = manifest.view();
-  const afterJournal = journal.view();
-  const second = runShipmentBatch(manifest, journal, batch);
-  return first.ok
-    && second.ok
-    && second.skipped
-    && same(manifest.view(), afterManifest)
-    && same(journal.view(), afterJournal);
+  const journal = new TrackingJournal({ completed: ["already-published"] });
+  const beforeManifest = manifest.view();
+  const beforeJournal = journal.view();
+  const outcome = runShipmentBatch(manifest, journal, {
+    id: "already-published",
+    legs: [leg("scan-i1", "missing", "hub", "in_transit", true)],
+  });
+  return outcome.ok
+    && outcome.skipped
+    && same(manifest.view(), beforeManifest)
+    && same(journal.view(), beforeJournal);
 }
 
-function repeatedEventIsNotRepublished() {
-  const manifest = new ShipmentState({ box: parcel("dock") });
-  const journal = new TrackingJournal();
-  const first = runShipmentBatch(manifest, journal, {
-    id: "first-event-batch",
-    legs: [leg("scan-i2", "box", "hub", "in_transit")],
+function oldEventCanInterleaveWithNewEvent() {
+  const prior = [{
+    eventId: "scan-old",
+    parcelId: "first",
+    from: "dock",
+    to: "hub",
+    fromState: "ready",
+    state: "in_transit",
+  }];
+  const manifest = new ShipmentState({
+    first: parcel("hub", "in_transit", 1),
+    second: parcel("warehouse", "packed", 3),
   });
-  const afterManifest = manifest.view();
-  const second = runShipmentBatch(manifest, journal, {
-    id: "second-event-batch",
-    legs: [leg("scan-i2", "box", "airport", "loaded")],
+  const journal = new TrackingJournal({ entries: prior, completed: ["prior-batch"] });
+  const outcome = runShipmentBatch(manifest, journal, {
+    id: "mixed-events",
+    legs: [
+      leg("scan-old", "first", "airport", "loaded"),
+      leg("scan-new", "second", "dock", "ready"),
+      leg("scan-old", "first", "aircraft", "departed"),
+    ],
   });
-  return first.ok
-    && second.ok
-    && same(second.skippedEvents, ["scan-i2"])
-    && same(manifest.view(), afterManifest)
-    && journal.view().entries.length === 1;
+  return outcome.ok
+    && same(outcome.applied, ["scan-new"])
+    && same(outcome.skippedEvents, ["scan-old", "scan-old"])
+    && same(manifest.view(), {
+      first: parcel("hub", "in_transit", 1),
+      second: parcel("dock", "ready", 4),
+    })
+    && same(journal.view().entries, [
+      ...prior,
+      {
+        eventId: "scan-new",
+        parcelId: "second",
+        from: "warehouse",
+        to: "dock",
+        fromState: "packed",
+        state: "ready",
+      },
+    ]);
 }
 
-function rollbackThenReplayFromHeldState() {
+function replannedRoutePublishesFreshReplayOrigins() {
   const manifest = new ShipmentState({ box: parcel("customs", "exception_hold", 3) });
-  const journal = new TrackingJournal();
+  const prior = [{
+    eventId: "scan-prior",
+    parcelId: "archived",
+    from: "port",
+    to: "customs",
+    fromState: "arrived",
+    state: "inspection_hold",
+  }];
+  const journal = new TrackingJournal({ entries: prior, completed: ["prior-route"] });
   const beforeManifest = manifest.view();
   const beforeJournal = journal.view();
   const batch = {
-    id: "recoverable-batch",
+    id: "replanned-batch",
     legs: [
       leg("scan-x1", "box", "gateway", "in_transit"),
       leg("scan-x2", "box", "aircraft", "loaded", true),
@@ -116,6 +146,8 @@ function rollbackThenReplayFromHeldState() {
   const first = runShipmentBatch(manifest, journal, batch);
   const rolledBack = same(manifest.view(), beforeManifest)
     && same(journal.view(), beforeJournal);
+  batch.legs[0].to = "sorter";
+  batch.legs[0].state = "sorting";
   batch.legs[1].failAfterMove = false;
   const replay = runShipmentBatch(manifest, journal, batch);
   const replayAgain = runShipmentBatch(manifest, journal, batch);
@@ -127,31 +159,32 @@ function rollbackThenReplayFromHeldState() {
     && same(replay.applied, ["scan-x1", "scan-x2"])
     && same(manifest.view(), { box: parcel("aircraft", "loaded", 5) })
     && same(journal.view().entries, [
+      ...prior,
       {
         eventId: "scan-x1",
         parcelId: "box",
         from: "customs",
-        to: "gateway",
+        to: "sorter",
         fromState: "exception_hold",
-        state: "in_transit",
+        state: "sorting",
       },
       {
         eventId: "scan-x2",
         parcelId: "box",
-        from: "gateway",
+        from: "sorter",
         to: "aircraft",
-        fromState: "in_transit",
+        fromState: "sorting",
         state: "loaded",
       },
     ]);
 }
 
 process.stdout.write(JSON.stringify([
-  rollbackSingleMovedLeg(),
-  rollbackPreservesPriorHistory(),
-  completedBatchRunsOnce(),
-  repeatedEventIsNotRepublished(),
-  rollbackThenReplayFromHeldState(),
+  throwingLegRestoresNonReadyParcel(),
+  rollbackRestoresSeveralWorkflowStates(),
+  completedBatchShortCircuitsUnknownParcel(),
+  oldEventCanInterleaveWithNewEvent(),
+  replannedRoutePublishesFreshReplayOrigins(),
 ]));
 '''
 invariant = "Failed shipment batches restore parcel positions, workflow states, hop counts, and published tracking entries to their exact pre-batch values, successful batch and event identifiers take effect at most once, and replaying a batch after its first partially applied attempt rolls back begins from that clean state so each leg and its tracking event are applied exactly once."

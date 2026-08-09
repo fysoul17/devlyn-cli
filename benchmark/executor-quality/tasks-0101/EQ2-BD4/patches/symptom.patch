@@ -1,10 +1,28 @@
 --- a/leg-applier.js
 +++ b/leg-applier.js
-@@ -5,6 +5,7 @@
+@@ -1,16 +1,23 @@
++const failedOrigins = new WeakMap();
++
+ /** Apply one physical shipment leg and return its tracking receipt. */
+ export function applyLeg(manifest, leg) {
+   const before = manifest.read(leg.parcelId);
++  const failedOrigin = failedOrigins.get(leg);
    manifest.advance(leg.parcelId, leg.to, leg.state);
  
    if (leg.failAfterMove) {
 +    manifest.restore(leg.parcelId, before);
++    failedOrigins.set(leg, before);
      throw new Error(`leg failed after move: ${leg.eventId}`);
    }
  
++  const receiptBefore = failedOrigin ?? before;
+   return {
+     eventId: leg.eventId,
+     parcelId: leg.parcelId,
+-    from: before.location,
+-    fromState: before.state,
++    from: receiptBefore.location,
++    fromState: receiptBefore.state,
++    before: receiptBefore,
+   };
+ }
