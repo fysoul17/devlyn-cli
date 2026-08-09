@@ -35,6 +35,20 @@ shared recert `--engines` arrays). Next: corpus build via
 oracles + smoke gates) → post-build pre-arm freeze audit (both seats;
 dry arm + synthetic-ledger scorer proof) → 48-run detached matrix.
 Receipts: `~/.local/share/nx01/pair-calibration-r0/`.
+**Corpus build A LANDED 2026-08-09** (run `rs-20260809T044614Z-58fec95f19be`
+PASS; spec `docs/specs/iter0100-executor-quality-corpus-a/`): scripts
+validate-task.py (smoke+conformance gate, 5 fail-closed self-tests) +
+score-cohort.py (frozen paired-Δ scorer, 4-terminal self-test) + tasks
+EQ-UA1/EQ-MI1/EQ-AF1 admitted. VERIFY r0 primary-codex HIGH
+same-binding-equality gap → fixed `78d1334` → r1 PASS 3/3. Operator
+finds: spec needs `<!-- devlyn:verification -->` sentinel BEFORE probe
+phase (run 1 died on it); stale `.devlyn/external-diff.patch` from a
+prior run poisons spec-verify `changed_files()` (BUILD_GATE root-caused,
+quarantined to attic — bootstrap-clear follow-up); claude-side pair
+judge must EMIT collector format (JSONL + `# SUMMARY`) — a written
+findings file alone merges as BLOCKED fail-closed; verify verdict is
+merge-owned (never pass --verdict to verify complete/transition).
+Remaining: build B (9 tasks) → pre-arm audit → matrix.
 
 **iter-0099 CLOSED — context-engineering item 2 (C/K/F contract
 placement): KEEP_CURRENT, no product change (DECISIONS 0099.1;

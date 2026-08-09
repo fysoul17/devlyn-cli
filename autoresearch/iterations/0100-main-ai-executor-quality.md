@@ -2,7 +2,7 @@
 id: "0100-main-ai-executor-quality"
 title: "Main-AI executor/design quality cell (pair_calibration stage 1) — opus-5 vs fable baseline under a mechanical multi-manifestation oracle"
 kind: instrument
-status: REGISTERED 2026-08-09 — R0 converged; R1 Codex sol REVISE + Grok 4.5 REVISE (liveness R1-0100-LIVE-sol / R1-0100-LIVE-grok, both 2026-08-09), all required edits ADOPTED in-text; contested estimand adjudicated (see Metrics). Next = corpus build via /devlyn:resolve → post-build pre-arm freeze audit (both seats) → 48-run matrix
+status: REGISTERED 2026-08-09 — R0 converged; R1 Codex sol REVISE + Grok 4.5 REVISE (liveness R1-0100-LIVE-sol / R1-0100-LIVE-grok, both 2026-08-09), all required edits ADOPTED in-text; contested estimand adjudicated (see Metrics). CORPUS BUILD A LANDED same day (run rs-20260809T044614Z-58fec95f19be, PASS: 5 exec phases + verify fix round 1; validate-task.py + score-cohort.py + EQ-UA1/EQ-MI1/EQ-AF1; primary codex judge caught the same-binding equality gap round 0, fixed 78d1334; pair claude judge executed boundary probes incl. Δ=0.15 equality → INCONCLUSIVE and byte-determinism). Next = corpus build B (9 tasks, one spec reusing the admitted template) → post-build pre-arm freeze audit (both seats) → 48-run matrix
 complexity: high
 depends_on: []
 ---
