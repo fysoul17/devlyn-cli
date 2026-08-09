@@ -1,0 +1,23 @@
+{
+  "id": "EQ2-AF4",
+  "class": "absent_failure_mode",
+  "invariant": "Failed purge batches restore cached entries and generation counters to their exact pre-batch states, successful batch identifiers take effect at most once, and replaying the same commands after a partially executed batch rolls back recomputes generations from that clean state so every requested scope is purged exactly once.",
+  "goal": "Fix runPurgeBatch in purge-batch.js so cache invalidation satisfies CONTRACT.md. Run `node --test`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/cache-store.js",
+    "visible/generation-counter.js",
+    "visible/package.json",
+    "visible/purge-batch.js",
+    "visible/purge-command.js",
+    "visible/tests/cache-store.test.js",
+    "visible/tests/generation-counter.test.js",
+    "visible/tests/purge-batch.test.js",
+    "visible/tests/purge-command.test.js"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "0e9b39111c7b6ca2c6a3d6c112fda7690a5795aaad8a6cbe3b2d19fb23a3021d",
+    "quote": "Failed purge batches restore cached entries and generation counters to their exact pre-batch states, successful batch identifiers take effect at most once, and replaying the same commands after a partially executed batch rolls back recomputes generations from that clean state so every requested scope is purged exactly once."
+  }
+}

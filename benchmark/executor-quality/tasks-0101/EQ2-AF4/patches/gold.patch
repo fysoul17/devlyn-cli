@@ -1,0 +1,24 @@
+--- a/purge-batch.js
++++ b/purge-batch.js
+@@ -4,6 +4,9 @@
+     return { ok: true, skipped: true, purged: [], error: null };
+   }
+ 
++  const storeBefore = store.snapshot();
++  const counterBefore = counter.snapshot();
++  const preparationsBefore = commands.map((command) => command.preparation());
+   const purged = [];
+   try {
+     for (const command of commands) {
+@@ -13,6 +16,11 @@
+     counter.complete(batchId);
+     return { ok: true, skipped: false, purged, error: null };
+   } catch (error) {
++    store.restore(storeBefore);
++    counter.restore(counterBefore);
++    commands.forEach((command, index) => {
++      command.restorePreparation(preparationsBefore[index]);
++    });
+     return { ok: false, skipped: false, purged, error: error.message };
+   }
+ }

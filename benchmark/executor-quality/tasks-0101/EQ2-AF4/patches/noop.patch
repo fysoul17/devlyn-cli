@@ -1,0 +1,5 @@
+--- a/purge-batch.js
++++ b/purge-batch.js
+@@ -1 +1 @@
+-/** Coordinate cache purges with their generation counters. */
++/** Coordinate cache purge batches with their generation counters. */
