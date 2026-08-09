@@ -79,13 +79,41 @@ all-clean, Δ=0.0; corpus does not discriminate at this difficulty;
 NO routing change; P-0100-1/2 refuted on this corpus; sol adjudicated
 the driver_sha256 schema projection PROJECTION-LEGAL,
 POSTMX-0100-LIVE-sol). Receipts `~/.local/share/nx01/iter0100-prearm/`.
-**NEXT (in order)**: ① § Matrix integration fold-in — recert-seats.sh
-`executor_quality` suite + seat-matrix.py `main_ai_executor` collector
-recording the SATURATED cell (route through /devlyn:resolve, executor
-pin codex) ② successor registration for the live signal: HARDER
-corpus (multi-invariant interaction tasks) — the frozen rule's
-pre-named successor; H2 deference probe + H4 task-matching remain the
-demoted follow-up frontier. Operator lessons this round: orchestrator
+**iter-0101 DESIGN-FROZEN same day (2026-08-09 night)** —
+`iterations/0101-executor-quality-hard-corpus.md` is the COMPLETE
+cold-start-executable authority (sol R0 REVISE ×8 + grok R1 REVISE
+×5 both adopted with liveness markers; grok verified the 32-row
+table and CI-touch bootstrap arithmetic by execution). Design core:
+N=32 two-axis compound-invariant tasks (8/class, frozen 32-row
+authoring table + 10 axis-pair templates + frozen axis role order),
+frozen `validate-task.py` + NEW `validate-hard-task.py` wrapper +
+NEW `score-calibration.py`, sonnet 2-rep calibration with ONE valid
+band evaluation (Fraction-exact mean AND frozen even-n median ∈
+[1/5,3/5], ≥22/32 interior, ≤2 total-fail; miss = CALIBRATION_MISS
+terminal, no retuning; difficulty-oracle prohibition during
+authoring), 128-run matrix opus-5 vs fable-5, δ=0.15, P-0101-1
+single prediction.
+**RESUME RECIPE (new session, in order)**: ① writer-check (ps +
+`.devlyn` run_id) ② create receipts skeleton
+`~/.local/share/nx01/iter0101/{registration,build,calibration,freeze,audit,matrix}`
+and copy the R0/R1 logs from `iter0100-prearm/` into registration/
+③ batch-01 spec per registration § Freeze protocol step 1
+(`docs/specs/iter0101-executor-quality-batch-01/spec.md`: NEW
+scripts validate-hard-task.py + score-calibration.py + the
+enumerated score-cohort N=32 amendment + tasks EQ2-UA1/MI1/AF1/BD1,
+ONE task per execution phase, both validators as phase gates,
+devlyn:verification sentinel, frozen-scripts sha pins) →
+`/devlyn:resolve --spec <path> --pair-verify` ④ batches 02-08 (tasks
+only; specs carry cumulative topology gate + non-regression sweep)
+⑤ candidate seal → calibration apparatus freeze → 64-run sonnet
+calibration → ONE band evaluation (PASS → promote digest; MISS →
+CALIBRATION_MISS, stop) ⑥ both-seat pre-arm audit (liveness; 0100
+repro classes re-run) ⑦ 128-run matrix detached (2-4 lanes, never
+near 12am KST, expect multi-evening wall). PARALLEL, independent:
+0100 § Matrix integration fold-in — recert-seats.sh
+`executor_quality` suite + seat-matrix.py `main_ai_executor`
+recording the SATURATED cell (own /devlyn:resolve run). H2
+deference probe + H4-beyond-this-shape remain demoted frontier. Operator lessons this round: orchestrator
 Bash 600s wall vs codex 2-task authoring (~785s) → depth-first
 per-task sequencing in phase prompts; NEVER launch a detached driver
 with heredoc stdin (claude -p appends stdin to the prompt — use
