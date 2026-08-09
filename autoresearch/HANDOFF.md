@@ -14,7 +14,27 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-07
+## 🚦 START-HERE — state after 2026-08-09
+
+**iter-0100 REGISTERED (2026-08-09) — main-AI executor quality cell
+(`iterations/0100-main-ai-executor-quality.md`).** Origin: user live
+signal "opus-5 almost always concedes to codex sol in pair; fable draws
+only minor objections" — user adjudicated the concessions were
+CODE-VERIFIED real errors → H1 (main-AI design/coding defect rate)
+leads; the deference probe is a demoted pre-named successor. H3 first
+bound IS IN: judge_quality re-run under CURRENT codex identity
+(`results-ckf0809-sol/`, codex-cli 0.146.1 / gpt-5.6-sol
+banner-attested): recall 16/16 · FP 0/8 · parse 0/24. R1 freeze review
+REVISE ×2 (sol + grok, liveness markers), all edits adopted; contested
+estimand adjudicated to paired-Δ (named criterion PAIRED-DESIGN
+FIDELITY + EXHAUSTIVE TERMINALS, Grok residual attack right at the
+post-build audit). **Fable baseline = user-directed SCOPED exception**
+to test-engine tiering (seat-certification only; fable never enters
+shared recert `--engines` arrays). Next: corpus build via
+/devlyn:resolve (12 tasks, 3 per taxonomy class, multi-manifestation
+oracles + smoke gates) → post-build pre-arm freeze audit (both seats;
+dry arm + synthetic-ledger scorer proof) → 48-run detached matrix.
+Receipts: `~/.local/share/nx01/pair-calibration-r0/`.
 
 **iter-0099 CLOSED — context-engineering item 2 (C/K/F contract
 placement): KEEP_CURRENT, no product change (DECISIONS 0099.1;
