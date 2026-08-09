@@ -1,0 +1,50 @@
+--- a/replicas.py
++++ b/replicas.py
+@@ -31,3 +31,26 @@
+     if not isinstance(result, dict) or "value" not in result:
+         raise CorruptReplica("invalid record")
+     return result
++
++
++def read_from_replicas(readers: list[Reader]) -> dict[str, Any]:
++    """Return the first record, preserving the strongest aggregate failure."""
++    unavailable: ReplicaUnavailable | None = None
++    corrupt: CorruptReplica | None = None
++    for reader in readers:
++        try:
++            return read_replica(reader)
++        except ReplicaUnavailable as exc:
++            if unavailable is None:
++                unavailable = exc
++        except CorruptReplica as exc:
++            if corrupt is None:
++                corrupt = exc
++        except RecordMissing:
++            continue
++
++    if unavailable is not None:
++        raise unavailable
++    if corrupt is not None:
++        raise corrupt
++    raise RecordMissing("record missing")
+--- a/tests/test_replicas.py
++++ b/tests/test_replicas.py
+@@ -26,6 +26,18 @@
+         with self.assertRaises(ReplicaUnavailable):
+             read_replica(unavailable)
+ 
++    def test_aggregate_returns_its_first_valid_record(self) -> None:
++        from replicas import read_from_replicas
++
++        first = {"value": "primary"}
++
++        def should_not_run() -> object:
++            raise AssertionError("reader called after success")
++
++        result = read_from_replicas([lambda: first, should_not_run])
++
++        self.assertIs(result, first)
++
+ 
+ if __name__ == "__main__":
+     unittest.main()

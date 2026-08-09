@@ -1,0 +1,24 @@
+{
+  "manifestations": [
+    {
+      "id": "af2-head-stop",
+      "invariant": "Key rotation commits as one state transition: if any rewrap callback raises, the active key, every ciphertext, and completed-rotation count remain exactly as they were before the call.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "4db5692fa5d32118ad58a72836f0e17c1f079bdae34963de876560f65639c131",
+        "quote": "A rejected key rotation is observationally absent: if rewrapping any stored secret raises an exception, the active key, every stored ciphertext, and the completed-rotation count all retain their pre-call values."
+      }
+    },
+    {
+      "id": "af2-late-stop",
+      "invariant": "Key rotation commits as one state transition: if any rewrap callback raises, the active key, every ciphertext, and completed-rotation count remain exactly as they were before the call.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "4db5692fa5d32118ad58a72836f0e17c1f079bdae34963de876560f65639c131",
+        "quote": "A rejected key rotation is observationally absent: if rewrapping any stored secret raises an exception, the active key, every stored ciphertext, and the completed-rotation count all retain their pre-call values."
+      }
+    }
+  ]
+}

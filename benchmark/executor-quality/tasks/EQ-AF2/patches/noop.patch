@@ -1,0 +1,11 @@
+--- a/README.md
++++ b/README.md
+@@ -1,6 +1,8 @@
+ # Keyring
+ 
+ `keyring.py` keeps named ciphertexts associated with one active encryption key.
+ 
++The fixture uses only the Python standard library.
++
+ Run the test suite with:
+ 

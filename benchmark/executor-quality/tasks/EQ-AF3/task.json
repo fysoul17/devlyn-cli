@@ -1,0 +1,18 @@
+{
+  "id": "EQ-AF3",
+  "class": "absent_failure_mode",
+  "invariant": "When all replica reads fail, aggregate failure follows a fixed precedence: ReplicaUnavailable outranks CorruptReplica, which outranks RecordMissing, independent of reader order.",
+  "goal": "This repo normalizes reads from one storage replica through `read_replica` in `replicas.py`. Add `read_from_replicas(readers) -> dict`, invoking configured readers in order and returning the first valid record. Follow `CONTRACT.md` when no reader returns a record. Run `python3 -m unittest discover tests` before and after the change, and add at least one new test under `tests/` for aggregate reads.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/replicas.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_replicas.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "5b639909719a1ef9044c0ebe52c0a86aae1e7daf676862b3057407afe29c3325",
+    "quote": "An aggregate read examines every configured replica until a record is found. If none can supply a record, `ReplicaUnavailable` outranks `CorruptReplica`, which outranks `RecordMissing`, regardless of the order in which those failures were observed."
+  }
+}

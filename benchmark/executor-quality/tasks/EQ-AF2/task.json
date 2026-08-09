@@ -1,0 +1,18 @@
+{
+  "id": "EQ-AF2",
+  "class": "absent_failure_mode",
+  "invariant": "Key rotation commits as one state transition: if any rewrap callback raises, the active key, every ciphertext, and completed-rotation count remain exactly as they were before the call.",
+  "goal": "This repo stores named ciphertexts under an active encryption key in `keyring.py`. Add `rotate_key(new_key, rewrap) -> int`, where `rewrap` is called as `rewrap(name, ciphertext, old_key, new_key)` for each secret in insertion order. A successful call replaces the ciphertexts, updates the active key, increments `completed_rotations`, and returns the number of secrets processed. Follow `CONTRACT.md` when a rewrap callback raises. Run `python3 -m unittest discover tests` before and after the change, and add at least one new test under `tests/` for key rotation.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/keyring.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_keyring.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "4db5692fa5d32118ad58a72836f0e17c1f079bdae34963de876560f65639c131",
+    "quote": "A rejected key rotation is observationally absent: if rewrapping any stored secret raises an exception, the active key, every stored ciphertext, and the completed-rotation count all retain their pre-call values."
+  }
+}

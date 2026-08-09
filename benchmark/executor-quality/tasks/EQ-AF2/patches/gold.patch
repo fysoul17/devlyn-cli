@@ -1,0 +1,47 @@
+--- a/keyring.py
++++ b/keyring.py
+@@ -22,3 +22,18 @@
+         if name in self.secrets:
+             raise ValueError(f"secret already exists: {name}")
+         self.secrets[name] = ciphertext
++
++    def rotate_key(self, new_key: str, rewrap: Rewrapper) -> int:
++        """Publish a replacement key and ciphertext set after all rewrites succeed."""
++        replacements: dict[str, str] = {}
++        for name, ciphertext in self.secrets.items():
++            replacements[name] = rewrap(
++                name,
++                ciphertext,
++                self.active_key,
++                new_key,
++            )
++        self.secrets = replacements
++        self.active_key = new_key
++        self.completed_rotations += 1
++        return len(replacements)
+--- a/tests/test_keyring.py
++++ b/tests/test_keyring.py
+@@ -24,6 +24,23 @@
+ 
+         self.assertEqual(keyring.secrets, {"mail": "cipher-a"})
+ 
++    def test_rotates_every_ciphertext(self) -> None:
++        keyring = Keyring("key-a")
++        keyring.add("mail", "cipher-a")
++        keyring.add("chat", "cipher-b")
++
++        count = keyring.rotate_key(
++            "key-b",
++            lambda name, ciphertext, old_key, new_key: (
++                f"{name}:{ciphertext}:{old_key}:{new_key}"
++            ),
++        )
++
++        self.assertEqual(count, 2)
++        self.assertEqual(keyring.active_key, "key-b")
++        self.assertEqual(keyring.completed_rotations, 1)
++        self.assertEqual(set(keyring.secrets), {"mail", "chat"})
++
+ 
+ if __name__ == "__main__":
+     unittest.main()

@@ -1,0 +1,24 @@
+{
+  "manifestations": [
+    {
+      "id": "af3-outage-first",
+      "invariant": "When all replica reads fail, aggregate failure follows a fixed precedence: ReplicaUnavailable outranks CorruptReplica, which outranks RecordMissing, independent of reader order.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "5b639909719a1ef9044c0ebe52c0a86aae1e7daf676862b3057407afe29c3325",
+        "quote": "An aggregate read examines every configured replica until a record is found. If none can supply a record, `ReplicaUnavailable` outranks `CorruptReplica`, which outranks `RecordMissing`, regardless of the order in which those failures were observed."
+      }
+    },
+    {
+      "id": "af3-outage-late",
+      "invariant": "When all replica reads fail, aggregate failure follows a fixed precedence: ReplicaUnavailable outranks CorruptReplica, which outranks RecordMissing, independent of reader order.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "5b639909719a1ef9044c0ebe52c0a86aae1e7daf676862b3057407afe29c3325",
+        "quote": "An aggregate read examines every configured replica until a record is found. If none can supply a record, `ReplicaUnavailable` outranks `CorruptReplica`, which outranks `RecordMissing`, regardless of the order in which those failures were observed."
+      }
+    }
+  ]
+}
