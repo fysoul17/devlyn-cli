@@ -1,0 +1,61 @@
+--- a/errors.py
++++ b/errors.py
+@@ -5,4 +5,7 @@
+ 
+ 
+ def rank_rejections(rejections: list[dict]) -> list[dict]:
+-    return list(rejections)
++    return sorted(
++        rejections,
++        key=lambda item: (ERROR_PRIORITY[item["reason"]], item["arrival"]),
++    )
+--- a/ranking.py
++++ b/ranking.py
+@@ -2,4 +2,10 @@
+ 
+ 
+ def order_rows(rows: list[dict]) -> list[tuple[int, dict]]:
+-    return list(enumerate(rows))
++    def key(item: tuple[int, dict]) -> tuple[int, int]:
++        arrival, row = item
++        rank = row.get("rank")
++        sortable = rank if isinstance(rank, int) and not isinstance(rank, bool) and rank >= 0 else -1
++        return (-sortable, arrival)
++
++    return sorted(enumerate(rows), key=key)
+--- a/validator.py
++++ b/validator.py
+@@ -22,4 +22,4 @@
+ 
+ def choose_issue(row: dict) -> str | None:
+     issues = row_issues(row)
+-    return issues[-1] if issues else None
++    return min(issues, key=ERROR_PRIORITY.get) if issues else None
+--- a/gradebook.py
++++ b/gradebook.py
+@@ -1,6 +1,8 @@
+ """Batch import for a bounded gradebook."""
+ 
++from errors import rank_rejections
+ from models import normalize_row
++from ranking import order_rows
+ from validator import choose_issue
+ 
+ 
+@@ -10,15 +12,15 @@
+     rejected: list[dict] = []
+ 
+-    for arrival, row in enumerate(normalized):
++    for arrival, row in order_rows(normalized):
+         reason = choose_issue(row)
+         if reason is not None:
+             rejected.append({"arrival": arrival, "reason": reason})
+             continue
+-        if len(placed) >= capacity:
++        if len(placed) == capacity:
+             rejected.append({"arrival": arrival, "reason": "full"})
+             continue
+         placed.append(row["student"])
+ 
+-    return {"placed": placed, "rejected": rejected}
++    return {"placed": placed, "rejected": rank_rejections(rejected)}

@@ -1,0 +1,8 @@
+--- a/README.md
++++ b/README.md
+@@ -1,4 +1,4 @@
+-# Gradebook row importer
++# Gradebook batch row importer
+ 
+ Run the fixture tests with:
+ 

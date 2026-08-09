@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Gradebook rows are processed by descending rank with source order breaking ties, rejected rows are reported by error precedence with student errors before score errors before rank errors and source order breaking ties, and when malformed and valid rows interleave in ranked processing the rejections retain that error precedence while malformed rows never consume placement capacity or block later valid rows.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "034f7b7cb96564c51a1cc68bf249a49c3f1c01d8e83a1d314c3c35b962aa151f",
+        "quote": "Gradebook rows are processed by descending rank with source order breaking ties, rejected rows are reported by error precedence with student errors before score errors before rank errors and source order breaking ties, and when malformed and valid rows interleave in ranked processing the rejections retain that error precedence while malformed rows never consume placement capacity or block later valid rows."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Gradebook rows are processed by descending rank with source order breaking ties, rejected rows are reported by error precedence with student errors before score errors before rank errors and source order breaking ties, and when malformed and valid rows interleave in ranked processing the rejections retain that error precedence while malformed rows never consume placement capacity or block later valid rows.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "034f7b7cb96564c51a1cc68bf249a49c3f1c01d8e83a1d314c3c35b962aa151f",
+        "quote": "Gradebook rows are processed by descending rank with source order breaking ties, rejected rows are reported by error precedence with student errors before score errors before rank errors and source order breaking ties, and when malformed and valid rows interleave in ranked processing the rejections retain that error precedence while malformed rows never consume placement capacity or block later valid rows."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Gradebook rows are processed by descending rank with source order breaking ties, rejected rows are reported by error precedence with student errors before score errors before rank errors and source order breaking ties, and when malformed and valid rows interleave in ranked processing the rejections retain that error precedence while malformed rows never consume placement capacity or block later valid rows.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "034f7b7cb96564c51a1cc68bf249a49c3f1c01d8e83a1d314c3c35b962aa151f",
+        "quote": "Gradebook rows are processed by descending rank with source order breaking ties, rejected rows are reported by error precedence with student errors before score errors before rank errors and source order breaking ties, and when malformed and valid rows interleave in ranked processing the rejections retain that error precedence while malformed rows never consume placement capacity or block later valid rows."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Gradebook rows are processed by descending rank with source order breaking ties, rejected rows are reported by error precedence with student errors before score errors before rank errors and source order breaking ties, and when malformed and valid rows interleave in ranked processing the rejections retain that error precedence while malformed rows never consume placement capacity or block later valid rows.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "034f7b7cb96564c51a1cc68bf249a49c3f1c01d8e83a1d314c3c35b962aa151f",
+        "quote": "Gradebook rows are processed by descending rank with source order breaking ties, rejected rows are reported by error precedence with student errors before score errors before rank errors and source order breaking ties, and when malformed and valid rows interleave in ranked processing the rejections retain that error precedence while malformed rows never consume placement capacity or block later valid rows."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Gradebook rows are processed by descending rank with source order breaking ties, rejected rows are reported by error precedence with student errors before score errors before rank errors and source order breaking ties, and when malformed and valid rows interleave in ranked processing the rejections retain that error precedence while malformed rows never consume placement capacity or block later valid rows.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "034f7b7cb96564c51a1cc68bf249a49c3f1c01d8e83a1d314c3c35b962aa151f",
+        "quote": "Gradebook rows are processed by descending rank with source order breaking ties, rejected rows are reported by error precedence with student errors before score errors before rank errors and source order breaking ties, and when malformed and valid rows interleave in ranked processing the rejections retain that error precedence while malformed rows never consume placement capacity or block later valid rows."
+      }
+    }
+  ]
+}
