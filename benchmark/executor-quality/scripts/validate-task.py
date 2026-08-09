@@ -160,7 +160,9 @@ def load_manifests(task_dir: Path, task: dict[str, object]) -> list[dict[str, ob
             raise ValidationError(f"{label}: invariant does not match task.json")
         if item["class"] != task["class"]:
             raise ValidationError(f"{label}: class does not match task.json")
-        validate_binding(task_dir, item["contract_excerpt"], f"{label} contract_excerpt")
+        binding = validate_binding(task_dir, item["contract_excerpt"], f"{label} contract_excerpt")
+        if binding != task["contract_excerpt"]:
+            raise ValidationError(f"{label}: contract_excerpt does not match task.json")
     return manifestations
 
 
@@ -439,6 +441,18 @@ def self_test() -> None:
         (absent / "task.json").write_text(json.dumps(task), encoding="utf-8")
         expect_failure(absent, "quote is absent")
 
+        mismatched = base / "mismatched-manifest-binding"
+        shutil.copytree(valid, mismatched)
+        manifests_path = mismatched / "hidden" / "manifests.json"
+        manifests = json.loads(manifests_path.read_text(encoding="utf-8"))
+        manifests["manifestations"][0]["contract_excerpt"] = {
+            "file": "visible/README.md",
+            "sha256": sha256_file(mismatched / "visible" / "README.md"),
+            "quote": "Run `python3 test_engine.py`.",
+        }
+        manifests_path.write_text(json.dumps(manifests), encoding="utf-8")
+        expect_failure(mismatched, "contract_excerpt does not match task.json")
+
         strawman = base / "strawman-symptom"
         shutil.copytree(valid, strawman)
         shutil.copyfile(strawman / "patches" / "noop.patch", strawman / "patches" / "symptom.patch")
@@ -462,7 +476,7 @@ def main() -> int:
         except (AssertionError, OSError, subprocess.SubprocessError, ValidationError) as exc:
             print(f"SELF_TEST: {exc}", file=sys.stderr)
             return 1
-        print("SELF_TEST_OK: 5 fail-closed scenarios and 1 valid end-to-end task")
+        print("SELF_TEST_OK: 6 fail-closed scenarios and 1 valid end-to-end task")
         return 0
     errors = validate_task(args.task.resolve())
     if errors:
