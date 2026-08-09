@@ -1,0 +1,26 @@
+{
+  "id": "EQ2-MI3",
+  "class": "missed_repo_invariant",
+  "invariant": "Room requests are evaluated by descending booking priority with submission order breaking ties, the access policy admits only requesters whose passes cover the requested room's zone, and when privileged and unprivileged requests interleave authorization is decided before calendar placement so denied requests never consume ordered calendar intervals or displace an authorized meeting.",
+  "goal": "Fix schedule_day in booking.py so room booking satisfies CONTRACT.md. Run `python3 -m unittest discover -s tests`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/access_policy.py",
+    "visible/availability.py",
+    "visible/booking.py",
+    "visible/calendar_placer.py",
+    "visible/models.py",
+    "visible/priority.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_access_policy.py",
+    "visible/tests/test_availability.py",
+    "visible/tests/test_calendar_placer.py",
+    "visible/tests/test_priority.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "378b2280dd87ccd05b27b0e255660eccd6d727f51be94fc91790e397e4629196",
+    "quote": "Room requests are evaluated by descending booking priority with submission order breaking ties, the access policy admits only requesters whose passes cover the requested room's zone, and when privileged and unprivileged requests interleave authorization is decided before calendar placement so denied requests never consume ordered calendar intervals or displace an authorized meeting."
+  }
+}

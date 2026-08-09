@@ -1,0 +1,14 @@
+--- a/booking.py
++++ b/booking.py
+@@ -27,7 +27,10 @@
+     denied = []
+     unavailable = []
+ 
+-    for request in normalized:
++    for request in order_requests(normalized):
++        if not policy.allows(request):
++            denied.append(request.request_id)
++            continue
+         booking = placer.try_place(request)
+         if booking is None:
+             unavailable.append(request.request_id)

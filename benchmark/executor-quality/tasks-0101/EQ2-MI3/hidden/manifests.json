@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Room requests are evaluated by descending booking priority with submission order breaking ties, the access policy admits only requesters whose passes cover the requested room's zone, and when privileged and unprivileged requests interleave authorization is decided before calendar placement so denied requests never consume ordered calendar intervals or displace an authorized meeting.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "378b2280dd87ccd05b27b0e255660eccd6d727f51be94fc91790e397e4629196",
+        "quote": "Room requests are evaluated by descending booking priority with submission order breaking ties, the access policy admits only requesters whose passes cover the requested room's zone, and when privileged and unprivileged requests interleave authorization is decided before calendar placement so denied requests never consume ordered calendar intervals or displace an authorized meeting."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Room requests are evaluated by descending booking priority with submission order breaking ties, the access policy admits only requesters whose passes cover the requested room's zone, and when privileged and unprivileged requests interleave authorization is decided before calendar placement so denied requests never consume ordered calendar intervals or displace an authorized meeting.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "378b2280dd87ccd05b27b0e255660eccd6d727f51be94fc91790e397e4629196",
+        "quote": "Room requests are evaluated by descending booking priority with submission order breaking ties, the access policy admits only requesters whose passes cover the requested room's zone, and when privileged and unprivileged requests interleave authorization is decided before calendar placement so denied requests never consume ordered calendar intervals or displace an authorized meeting."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Room requests are evaluated by descending booking priority with submission order breaking ties, the access policy admits only requesters whose passes cover the requested room's zone, and when privileged and unprivileged requests interleave authorization is decided before calendar placement so denied requests never consume ordered calendar intervals or displace an authorized meeting.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "378b2280dd87ccd05b27b0e255660eccd6d727f51be94fc91790e397e4629196",
+        "quote": "Room requests are evaluated by descending booking priority with submission order breaking ties, the access policy admits only requesters whose passes cover the requested room's zone, and when privileged and unprivileged requests interleave authorization is decided before calendar placement so denied requests never consume ordered calendar intervals or displace an authorized meeting."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Room requests are evaluated by descending booking priority with submission order breaking ties, the access policy admits only requesters whose passes cover the requested room's zone, and when privileged and unprivileged requests interleave authorization is decided before calendar placement so denied requests never consume ordered calendar intervals or displace an authorized meeting.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "378b2280dd87ccd05b27b0e255660eccd6d727f51be94fc91790e397e4629196",
+        "quote": "Room requests are evaluated by descending booking priority with submission order breaking ties, the access policy admits only requesters whose passes cover the requested room's zone, and when privileged and unprivileged requests interleave authorization is decided before calendar placement so denied requests never consume ordered calendar intervals or displace an authorized meeting."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Room requests are evaluated by descending booking priority with submission order breaking ties, the access policy admits only requesters whose passes cover the requested room's zone, and when privileged and unprivileged requests interleave authorization is decided before calendar placement so denied requests never consume ordered calendar intervals or displace an authorized meeting.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "378b2280dd87ccd05b27b0e255660eccd6d727f51be94fc91790e397e4629196",
+        "quote": "Room requests are evaluated by descending booking priority with submission order breaking ties, the access policy admits only requesters whose passes cover the requested room's zone, and when privileged and unprivileged requests interleave authorization is decided before calendar placement so denied requests never consume ordered calendar intervals or displace an authorized meeting."
+      }
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+"""Room booking fixture tests."""
