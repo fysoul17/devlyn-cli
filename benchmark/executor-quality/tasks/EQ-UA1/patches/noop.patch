@@ -1,0 +1,10 @@
+--- a/README.md
++++ b/README.md
+@@ -1,5 +1,7 @@
+ # Account ledger
+ 
++This project uses only the Python standard library.
++
+ The ledger stores account balances in a JSON object. Apply one JSON operation with:
+ 
+ ```sh

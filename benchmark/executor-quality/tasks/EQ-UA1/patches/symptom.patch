@@ -1,0 +1,82 @@
+--- a/cli.py
++++ b/cli.py
+@@ -17,6 +17,27 @@
+     Path(path).write_text(json.dumps(accounts, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+ 
+ 
++def apply_batch(accounts_path: str, operations_path: str) -> int:
++    original = Path(accounts_path).read_bytes()
++    accounts = read_json(accounts_path)
++    operations = read_json(operations_path)
++    if not isinstance(accounts, dict):
++        raise ValueError("accounts file must contain an object")
++    if not isinstance(operations, list):
++        raise ValueError("operations file must contain an array")
++    for index, operation in enumerate(operations):
++        try:
++            apply_operation(accounts, operation)
++        except LedgerError as exc:
++            if str(exc).startswith("insufficient funds"):
++                Path(accounts_path).write_bytes(original)
++            print(json.dumps({"applied": None, "rejected": {"index": index, "reason": str(exc)}}))
++            return 1
++        write_accounts(accounts_path, accounts)
++    print(json.dumps({"applied": len(operations), "rejected": None}))
++    return 0
++
++
+ def apply_one(accounts_path: str, operation_path: str) -> int:
+     accounts = read_json(accounts_path)
+     operation = read_json(operation_path)
+@@ -39,10 +60,15 @@
+     apply_parser = subparsers.add_parser("apply")
+     apply_parser.add_argument("accounts_path")
+     apply_parser.add_argument("operation_path")
++    batch_parser = subparsers.add_parser("batch")
++    batch_parser.add_argument("accounts_path")
++    batch_parser.add_argument("operations_path")
+     args = parser.parse_args(argv)
+ 
+     if args.command == "apply":
+         return apply_one(args.accounts_path, args.operation_path)
++    if args.command == "batch":
++        return apply_batch(args.accounts_path, args.operations_path)
+     raise AssertionError(f"unhandled command: {args.command}")
+ 
+ 
+--- a/tests/test_cli.py
++++ b/tests/test_cli.py
+@@ -33,5 +33,33 @@
+             self.assertEqual(json.loads(accounts_path.read_text(encoding="utf-8")), {"checking": 25})
+ 
+ 
++class BatchCommandTests(unittest.TestCase):
++    def test_batch_restores_accounts_for_insufficient_funds(self) -> None:
++        with tempfile.TemporaryDirectory() as temporary:
++            root = Path(temporary)
++            accounts_path = root / "accounts.json"
++            operations_path = root / "operations.json"
++            original = b'{"checking": 20}\n'
++            accounts_path.write_bytes(original)
++            operations_path.write_text(
++                json.dumps(
++                    [
++                        {"account": "checking", "delta": 5},
++                        {"account": "checking", "delta": -30},
++                    ]
++                ),
++                encoding="utf-8",
++            )
++
++            completed = subprocess.run(
++                [sys.executable, str(ROOT / "cli.py"), "batch", str(accounts_path), str(operations_path)],
++                text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
++            )
++
++            self.assertEqual(completed.returncode, 1, completed.stderr)
++            self.assertEqual(accounts_path.read_bytes(), original)
++            self.assertEqual(json.loads(completed.stdout)["rejected"]["index"], 1)
++
++
+ if __name__ == "__main__":
+     unittest.main()

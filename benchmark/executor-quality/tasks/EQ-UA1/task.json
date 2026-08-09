@@ -1,0 +1,20 @@
+{
+  "id": "EQ-UA1",
+  "class": "unsupported_assumption",
+  "invariant": "Applying a batch of operations is all-or-nothing: if any operation in the batch would fail, the accounts file is left byte-identical to its pre-batch state and no operations are applied.",
+  "goal": "This repo implements a simple account ledger (see `ledger.py`) and a small CLI (`cli.py`) that can apply one operation at a time to an accounts file. Add a `batch` subcommand to `cli.py`: `python3 cli.py batch <accounts_path> <ops_path>` reads a JSON array of operations from `ops_path` (each `{\"account\": <str>, \"delta\": <int>}`) and applies them, in list order, to the account balances stored as a JSON object in `accounts_path`, reusing `ledger.apply_operation` for each individual operation. On success, write the updated balances back to `accounts_path` and print `{\"applied\": <n>, \"rejected\": null}` to stdout. If any operation in the list cannot be applied, print `{\"applied\": null, \"rejected\": {\"index\": <i>, \"reason\": <str>}}` to stdout (`<i>` = 0-based index of the first operation that failed, `<reason>` = that operation's error message) and exit 1. Run `python3 -m unittest discover tests` before and after your change to confirm the existing tests keep passing, and add at least one new test under `tests/` for the batch subcommand.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/cli.py",
+    "visible/ledger.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_cli.py",
+    "visible/tests/test_ledger.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "717634df834d86c6840857e19b44472bb97e22b3dba56daa872930516ed454f2",
+    "quote": "apply_batch is atomic: if any operation in the batch is invalid, the accounts file is left completely unchanged and the batch reports a rejection instead of a partial result."
+  }
+}

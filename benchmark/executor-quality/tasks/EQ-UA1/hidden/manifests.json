@@ -1,0 +1,24 @@
+{
+  "manifestations": [
+    {
+      "id": "mid-batch-insufficient-funds",
+      "invariant": "Applying a batch of operations is all-or-nothing: if any operation in the batch would fail, the accounts file is left byte-identical to its pre-batch state and no operations are applied.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "717634df834d86c6840857e19b44472bb97e22b3dba56daa872930516ed454f2",
+        "quote": "apply_batch is atomic: if any operation in the batch is invalid, the accounts file is left completely unchanged and the batch reports a rejection instead of a partial result."
+      }
+    },
+    {
+      "id": "last-op-unknown-account",
+      "invariant": "Applying a batch of operations is all-or-nothing: if any operation in the batch would fail, the accounts file is left byte-identical to its pre-batch state and no operations are applied.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "717634df834d86c6840857e19b44472bb97e22b3dba56daa872930516ed454f2",
+        "quote": "apply_batch is atomic: if any operation in the batch is invalid, the accounts file is left completely unchanged and the batch reports a rejection instead of a partial result."
+      }
+    }
+  ]
+}
