@@ -1,0 +1,23 @@
+{
+  "id": "EQ2-BD4",
+  "class": "broken_dependency",
+  "invariant": "Failed shipment batches restore parcel positions, workflow states, hop counts, and published tracking entries to their exact pre-batch values, successful batch and event identifiers take effect at most once, and replaying a batch after its first partially applied attempt rolls back begins from that clean state so each leg and its tracking event are applied exactly once.",
+  "goal": "Fix applyLeg in leg-applier.js so shipment processing satisfies CONTRACT.md. Run `node --test`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/leg-applier.js",
+    "visible/package.json",
+    "visible/shipment-batch.js",
+    "visible/shipment-state.js",
+    "visible/tests/leg-applier.test.js",
+    "visible/tests/shipment-batch.test.js",
+    "visible/tests/shipment-state.test.js",
+    "visible/tests/tracking-journal.test.js",
+    "visible/tracking-journal.js"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "a506b847f61ed5cd5faac002b660ce8804dbb52880c6d160ffe12b1999a294a2",
+    "quote": "Failed shipment batches restore parcel positions, workflow states, hop counts, and published tracking entries to their exact pre-batch values, successful batch and event identifiers take effect at most once, and replaying a batch after its first partially applied attempt rolls back begins from that clean state so each leg and its tracking event are applied exactly once."
+  }
+}

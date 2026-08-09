@@ -1,0 +1,8 @@
+--- a/leg-applier.js
++++ b/leg-applier.js
+@@ -1,4 +1,4 @@
+-/** Apply one physical shipment leg and return its tracking receipt. */
++/** Apply one shipment leg and return its tracking receipt. */
+ export function applyLeg(manifest, leg) {
+   const before = manifest.read(leg.parcelId);
+   manifest.advance(leg.parcelId, leg.to, leg.state);

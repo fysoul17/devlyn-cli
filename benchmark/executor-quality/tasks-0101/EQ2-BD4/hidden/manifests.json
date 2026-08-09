@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Failed shipment batches restore parcel positions, workflow states, hop counts, and published tracking entries to their exact pre-batch values, successful batch and event identifiers take effect at most once, and replaying a batch after its first partially applied attempt rolls back begins from that clean state so each leg and its tracking event are applied exactly once.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "a506b847f61ed5cd5faac002b660ce8804dbb52880c6d160ffe12b1999a294a2",
+        "quote": "Failed shipment batches restore parcel positions, workflow states, hop counts, and published tracking entries to their exact pre-batch values, successful batch and event identifiers take effect at most once, and replaying a batch after its first partially applied attempt rolls back begins from that clean state so each leg and its tracking event are applied exactly once."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Failed shipment batches restore parcel positions, workflow states, hop counts, and published tracking entries to their exact pre-batch values, successful batch and event identifiers take effect at most once, and replaying a batch after its first partially applied attempt rolls back begins from that clean state so each leg and its tracking event are applied exactly once.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "a506b847f61ed5cd5faac002b660ce8804dbb52880c6d160ffe12b1999a294a2",
+        "quote": "Failed shipment batches restore parcel positions, workflow states, hop counts, and published tracking entries to their exact pre-batch values, successful batch and event identifiers take effect at most once, and replaying a batch after its first partially applied attempt rolls back begins from that clean state so each leg and its tracking event are applied exactly once."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Failed shipment batches restore parcel positions, workflow states, hop counts, and published tracking entries to their exact pre-batch values, successful batch and event identifiers take effect at most once, and replaying a batch after its first partially applied attempt rolls back begins from that clean state so each leg and its tracking event are applied exactly once.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "a506b847f61ed5cd5faac002b660ce8804dbb52880c6d160ffe12b1999a294a2",
+        "quote": "Failed shipment batches restore parcel positions, workflow states, hop counts, and published tracking entries to their exact pre-batch values, successful batch and event identifiers take effect at most once, and replaying a batch after its first partially applied attempt rolls back begins from that clean state so each leg and its tracking event are applied exactly once."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Failed shipment batches restore parcel positions, workflow states, hop counts, and published tracking entries to their exact pre-batch values, successful batch and event identifiers take effect at most once, and replaying a batch after its first partially applied attempt rolls back begins from that clean state so each leg and its tracking event are applied exactly once.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "a506b847f61ed5cd5faac002b660ce8804dbb52880c6d160ffe12b1999a294a2",
+        "quote": "Failed shipment batches restore parcel positions, workflow states, hop counts, and published tracking entries to their exact pre-batch values, successful batch and event identifiers take effect at most once, and replaying a batch after its first partially applied attempt rolls back begins from that clean state so each leg and its tracking event are applied exactly once."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Failed shipment batches restore parcel positions, workflow states, hop counts, and published tracking entries to their exact pre-batch values, successful batch and event identifiers take effect at most once, and replaying a batch after its first partially applied attempt rolls back begins from that clean state so each leg and its tracking event are applied exactly once.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "a506b847f61ed5cd5faac002b660ce8804dbb52880c6d160ffe12b1999a294a2",
+        "quote": "Failed shipment batches restore parcel positions, workflow states, hop counts, and published tracking entries to their exact pre-batch values, successful batch and event identifiers take effect at most once, and replaying a batch after its first partially applied attempt rolls back begins from that clean state so each leg and its tracking event are applied exactly once."
+      }
+    }
+  ]
+}
