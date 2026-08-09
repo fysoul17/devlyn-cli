@@ -93,23 +93,30 @@ band evaluation (Fraction-exact mean AND frozen even-n median ∈
 terminal, no retuning; difficulty-oracle prohibition during
 authoring), 128-run matrix opus-5 vs fable-5, δ=0.15, P-0101-1
 single prediction.
-**RESUME RECIPE (new session, in order)**: ① writer-check (ps +
-`.devlyn` run_id) ② create receipts skeleton
-`~/.local/share/nx01/iter0101/{registration,build,calibration,freeze,audit,matrix}`
-and copy the R0/R1 logs from `iter0100-prearm/` into registration/
-③ batch-01 spec per registration § Freeze protocol step 1
-(`docs/specs/iter0101-executor-quality-batch-01/spec.md`: NEW
-scripts validate-hard-task.py + score-calibration.py + the
-enumerated score-cohort N=32 amendment + tasks EQ2-UA1/MI1/AF1/BD1,
-ONE task per execution phase, both validators as phase gates,
-devlyn:verification sentinel, frozen-scripts sha pins) →
-`/devlyn:resolve --spec <path> --pair-verify` ④ batches 02-08 (tasks
-only; specs carry cumulative topology gate + non-regression sweep)
-⑤ candidate seal → calibration apparatus freeze → 64-run sonnet
-calibration → ONE band evaluation (PASS → promote digest; MISS →
-CALIBRATION_MISS, stop) ⑥ both-seat pre-arm audit (liveness; 0100
-repro classes re-run) ⑦ 128-run matrix detached (2-4 lanes, never
-near 12am KST, expect multi-evening wall). PARALLEL, independent:
+**EXECUTION IN PROGRESS (2026-08-09→10 session; § Execution log in
+the iteration file is authoritative)**: batches 01-03 CLOSED PASS —
+all four scripts landed (validate-hard-task.py 1f809e33…,
+score-calibration.py 418f3738…, score-cohort N=32 amendment
+5af3c1bd…; validate-task.py byte-frozen) + 12/32 EQ2 tasks admitted;
+every batch needed exactly one primary-codex-found fix round
+(recurring classes: same-pair structural copies ×5, oracle workdir
+mutation, tie-break coverage gaps, strawman symptom branches — bake
+these into batch 05-08 dispatch prompts). Batch-01 spec sol-reviewed
+(REVISE ×4); batch-02 spec sol-reviewed as the 03-08 TEMPLATE
+(REVISE ×7); batches 03-08 specs committed, row-substituted +
+mechanically verified vs the frozen table (`76657bd`). **Batch-04
+OPEN — BLOCKED:codex-unavailable at iter-2 VERIFY** (usage limit,
+resets 2026-08-16 10:36 KST): UA4 re-authored `1e40f67`,
+BUILD_GATE + MECHANICAL + pair claude ALL green, only the primary
+codex judge is missing; close-out = re-run that one judge on diff
+`dc53576...1e40f67`. THREE harness product findings registered in
+the iteration file (verify-merge PRIMARY fail-open — a batch-04
+iter-2 state `verify: PASS` is evidence-invalid; stale
+verify.judge.summary.json survives archive; collector/merge parser
+mismatch). Remaining after batch-04: batches 05-08 → candidate seal
+→ calibration apparatus freeze → 64-run sonnet calibration → ONE
+band evaluation → both-seat pre-arm audit → 128-run matrix detached
+(2-4 lanes, never near 12am KST). PARALLEL, independent:
 0100 § Matrix integration fold-in — recert-seats.sh
 `executor_quality` suite + seat-matrix.py `main_ai_executor`
 recording the SATURATED cell (own /devlyn:resolve run). H2
