@@ -1,0 +1,11 @@
+--- a/README.md
++++ b/README.md
+@@ -1,6 +1,8 @@
+ # Playlist registry
+ 
+ `playlist.py` keeps named playlists in memory and exposes small helpers for tests and command-line tools.
+ 
++The registry uses only the Python standard library.
++
+ Run the test suite with:
+ 

@@ -1,0 +1,24 @@
+{
+  "manifestations": [
+    {
+      "id": "catalog-reject-preserves",
+      "invariant": "A rejected playlist replacement leaves the playlist exactly as it was before the call, whether rejection comes from an unknown track or from exceeding the duration limit.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "021a1b32de91adcf8a14342c8a5c1e90679493f8cb8113bfea5da3ea40b77cda",
+        "quote": "Replacing a playlist is a single committed edit: when any requested track is absent from the catalog or the requested duration exceeds the limit, the function returns `False` and the playlist retains exactly the tracks it had before the call."
+      }
+    },
+    {
+      "id": "limit-reject-preserves",
+      "invariant": "A rejected playlist replacement leaves the playlist exactly as it was before the call, whether rejection comes from an unknown track or from exceeding the duration limit.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "021a1b32de91adcf8a14342c8a5c1e90679493f8cb8113bfea5da3ea40b77cda",
+        "quote": "Replacing a playlist is a single committed edit: when any requested track is absent from the catalog or the requested duration exceeds the limit, the function returns `False` and the playlist retains exactly the tracks it had before the call."
+      }
+    }
+  ]
+}

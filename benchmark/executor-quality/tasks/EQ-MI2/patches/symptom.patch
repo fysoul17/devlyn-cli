@@ -1,0 +1,45 @@
+--- a/playlist.py
++++ b/playlist.py
+@@ -24,3 +24,23 @@
+ def append_track(name: str, track_id: str) -> None:
+     """Append one track to an existing playlist."""
+     _playlists[name].append(track_id)
++
++
++def replace_tracks(
++    name: str,
++    track_ids: list[str],
++    catalog: dict[str, int],
++    max_seconds: int,
++) -> bool:
++    """Replace a playlist when the requested tracks fit."""
++    if any(track_id not in catalog for track_id in track_ids):
++        return False
++
++    _playlists[name] = []
++    total = 0
++    for track_id in track_ids:
++        _playlists[name].append(track_id)
++        total += catalog[track_id]
++        if total > max_seconds:
++            return False
++    return True
+--- a/tests/test_playlist.py
++++ b/tests/test_playlist.py
+@@ -26,6 +26,16 @@
+ 
+         self.assertEqual(playlist.get_tracks("focus"), ["alpha"])
+ 
++    def test_replace_tracks_commits_valid_request(self) -> None:
++        playlist.create_playlist("drive", ["old"])
++
++        accepted = playlist.replace_tracks(
++            "drive", ["one", "two"], {"one": 20, "two": 30}, 60
++        )
++
++        self.assertTrue(accepted)
++        self.assertEqual(playlist.get_tracks("drive"), ["one", "two"])
++
+ 
+ if __name__ == "__main__":
+     unittest.main()

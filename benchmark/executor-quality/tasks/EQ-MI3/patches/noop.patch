@@ -1,0 +1,11 @@
+--- a/README.md
++++ b/README.md
+@@ -1,6 +1,8 @@
+ # Route configuration validator
+ 
+ `config_validator.py` validates one JSON route configuration at a time. A configuration has a string `name` and a list of unique string `routes`.
+ 
++The validator uses only the Python standard library.
++
+ Run the test suite with:
+ 

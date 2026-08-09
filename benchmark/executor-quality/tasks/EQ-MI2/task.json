@@ -1,0 +1,18 @@
+{
+  "id": "EQ-MI2",
+  "class": "missed_repo_invariant",
+  "invariant": "A rejected playlist replacement leaves the playlist exactly as it was before the call, whether rejection comes from an unknown track or from exceeding the duration limit.",
+  "goal": "This repo maintains in-memory playlists in `playlist.py`. Add `replace_tracks(name, track_ids, catalog, max_seconds) -> bool`, where `catalog` maps track identifiers to durations in seconds. For a valid request, replace the named playlist with `track_ids` in their supplied order and return `True`; return `False` when a track is absent from the catalog or the total duration exceeds `max_seconds`. Follow `CONTRACT.md` for the required rejection behavior. Run `python3 -m unittest discover tests` before and after the change, and add at least one new test under `tests/` for replacement.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/playlist.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_playlist.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "021a1b32de91adcf8a14342c8a5c1e90679493f8cb8113bfea5da3ea40b77cda",
+    "quote": "Replacing a playlist is a single committed edit: when any requested track is absent from the catalog or the requested duration exceeds the limit, the function returns `False` and the playlist retains exactly the tracks it had before the call."
+  }
+}

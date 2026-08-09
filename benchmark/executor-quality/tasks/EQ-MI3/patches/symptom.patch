@@ -1,0 +1,39 @@
+--- a/config_validator.py
++++ b/config_validator.py
+@@ -27,3 +27,14 @@
+     except json.JSONDecodeError:
+         return {"ok": False, "error": "invalid_json"}
+     return validate_config(config)
++
++
++def validate_bundle(documents: list[str]) -> dict[str, Any]:
++    """Validate bundle documents from first to last."""
++    names: list[str] = []
++    for text in documents:
++        result = validate_document(text)
++        if not result["ok"]:
++            return result
++        names.append(result["name"])
++    return {"ok": True, "names": names}
+--- a/tests/test_config_validator.py
++++ b/tests/test_config_validator.py
+@@ -26,8 +26,19 @@
+     def test_rejects_malformed_json(self) -> None:
+         self.assertEqual(
+             config_validator.validate_document("{"),
+             {"ok": False, "error": "invalid_json"},
+         )
+ 
++    def test_accepts_valid_bundle(self) -> None:
++        documents = [
++            json.dumps({"name": "one", "routes": ["/a"]}),
++            json.dumps({"name": "two", "routes": ["/b"]}),
++        ]
++
++        self.assertEqual(
++            config_validator.validate_bundle(documents),
++            {"ok": True, "names": ["one", "two"]},
++        )
++
+ 
+ if __name__ == "__main__":

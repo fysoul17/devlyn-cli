@@ -1,0 +1,18 @@
+{
+  "id": "EQ-MI3",
+  "class": "missed_repo_invariant",
+  "invariant": "Bundle validation reports malformed JSON before any configuration-rule error, regardless of which document contains either defect.",
+  "goal": "This repo validates individual JSON route configurations through `config_validator.py`. Add `validate_bundle(documents: list[str]) -> dict`: when every document is valid, return an object with `ok` set to true and a `names` list in input order; otherwise return the applicable error object used by single-document validation. Follow `CONTRACT.md` when more than one document is invalid. Run `python3 -m unittest discover tests` before and after the change, and add at least one new test under `tests/` for bundle validation.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/config_validator.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_config_validator.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "ee91068754e117f3b3ab36b5599008cfbfdd6fe7301cd237c40d2b6042ee29cd",
+    "quote": "Bundle validation parses every document before applying configuration rules. If any document is malformed JSON, the bundle result is `{\"ok\": false, \"error\": \"invalid_json\"}` even when an earlier document also violates a configuration rule."
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "manifestations": [
+    {
+      "id": "syntax-leading",
+      "invariant": "Bundle validation reports malformed JSON before any configuration-rule error, regardless of which document contains either defect.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "ee91068754e117f3b3ab36b5599008cfbfdd6fe7301cd237c40d2b6042ee29cd",
+        "quote": "Bundle validation parses every document before applying configuration rules. If any document is malformed JSON, the bundle result is `{\"ok\": false, \"error\": \"invalid_json\"}` even when an earlier document also violates a configuration rule."
+      }
+    },
+    {
+      "id": "syntax-after-semantic",
+      "invariant": "Bundle validation reports malformed JSON before any configuration-rule error, regardless of which document contains either defect.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "ee91068754e117f3b3ab36b5599008cfbfdd6fe7301cd237c40d2b6042ee29cd",
+        "quote": "Bundle validation parses every document before applying configuration rules. If any document is malformed JSON, the bundle result is `{\"ok\": false, \"error\": \"invalid_json\"}` even when an earlier document also violates a configuration rule."
+      }
+    }
+  ]
+}
