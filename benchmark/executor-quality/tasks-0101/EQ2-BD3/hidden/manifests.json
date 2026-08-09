@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Record applier candidates are processed by descending deployment priority with source order breaking ties, syntax ranking reports rejected changes by owner errors before type errors before value errors and source order breaking ties, and when malformed and valid changes interleave under that processing order the ranked rejection report preserves that error precedence while a rejected change never reserves its owner or prevents a later valid record for that owner from being placed.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "25b6e9da1225385af1fcbff1443f1254578f748a5c7bc45dc32261f8a738c3bf",
+        "quote": "Record applier candidates are processed by descending deployment priority with source order breaking ties, syntax ranking reports rejected changes by owner errors before type errors before value errors and source order breaking ties, and when malformed and valid changes interleave under that processing order the ranked rejection report preserves that error precedence while a rejected change never reserves its owner or prevents a later valid record for that owner from being placed."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Record applier candidates are processed by descending deployment priority with source order breaking ties, syntax ranking reports rejected changes by owner errors before type errors before value errors and source order breaking ties, and when malformed and valid changes interleave under that processing order the ranked rejection report preserves that error precedence while a rejected change never reserves its owner or prevents a later valid record for that owner from being placed.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "25b6e9da1225385af1fcbff1443f1254578f748a5c7bc45dc32261f8a738c3bf",
+        "quote": "Record applier candidates are processed by descending deployment priority with source order breaking ties, syntax ranking reports rejected changes by owner errors before type errors before value errors and source order breaking ties, and when malformed and valid changes interleave under that processing order the ranked rejection report preserves that error precedence while a rejected change never reserves its owner or prevents a later valid record for that owner from being placed."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Record applier candidates are processed by descending deployment priority with source order breaking ties, syntax ranking reports rejected changes by owner errors before type errors before value errors and source order breaking ties, and when malformed and valid changes interleave under that processing order the ranked rejection report preserves that error precedence while a rejected change never reserves its owner or prevents a later valid record for that owner from being placed.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "25b6e9da1225385af1fcbff1443f1254578f748a5c7bc45dc32261f8a738c3bf",
+        "quote": "Record applier candidates are processed by descending deployment priority with source order breaking ties, syntax ranking reports rejected changes by owner errors before type errors before value errors and source order breaking ties, and when malformed and valid changes interleave under that processing order the ranked rejection report preserves that error precedence while a rejected change never reserves its owner or prevents a later valid record for that owner from being placed."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Record applier candidates are processed by descending deployment priority with source order breaking ties, syntax ranking reports rejected changes by owner errors before type errors before value errors and source order breaking ties, and when malformed and valid changes interleave under that processing order the ranked rejection report preserves that error precedence while a rejected change never reserves its owner or prevents a later valid record for that owner from being placed.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "25b6e9da1225385af1fcbff1443f1254578f748a5c7bc45dc32261f8a738c3bf",
+        "quote": "Record applier candidates are processed by descending deployment priority with source order breaking ties, syntax ranking reports rejected changes by owner errors before type errors before value errors and source order breaking ties, and when malformed and valid changes interleave under that processing order the ranked rejection report preserves that error precedence while a rejected change never reserves its owner or prevents a later valid record for that owner from being placed."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Record applier candidates are processed by descending deployment priority with source order breaking ties, syntax ranking reports rejected changes by owner errors before type errors before value errors and source order breaking ties, and when malformed and valid changes interleave under that processing order the ranked rejection report preserves that error precedence while a rejected change never reserves its owner or prevents a later valid record for that owner from being placed.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "25b6e9da1225385af1fcbff1443f1254578f748a5c7bc45dc32261f8a738c3bf",
+        "quote": "Record applier candidates are processed by descending deployment priority with source order breaking ties, syntax ranking reports rejected changes by owner errors before type errors before value errors and source order breaking ties, and when malformed and valid changes interleave under that processing order the ranked rejection report preserves that error precedence while a rejected change never reserves its owner or prevents a later valid record for that owner from being placed."
+      }
+    }
+  ]
+}

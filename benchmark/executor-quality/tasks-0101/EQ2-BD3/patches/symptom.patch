@@ -1,0 +1,31 @@
+--- a/record_applier.py
++++ b/record_applier.py
+@@ -1,6 +1,27 @@
+ """Apply ordered DNS record candidates before report ranking."""
+ 
++from models import normalize_change
++from record_order import order_changes
++from syntax_rules import syntax_issues
++
+ 
+ def apply_changes(changes: list[dict]) -> dict:
+     """Return raw placed changes and syntax/placement rejections."""
+-    raise NotImplementedError("record application is not implemented")
++    normalized = [normalize_change(change) for change in changes]
++    placed: list[dict] = []
++    rejected: list[dict] = []
++    reserved: set[object] = set()
++
++    for source, change in order_changes(normalized):
++        owner = change["owner"]
++        occupied = owner in reserved
++        reserved.add(owner)
++        issues = syntax_issues(change)
++        if not issues and occupied:
++            issues = ["occupied"]
++        if issues:
++            rejected.append({"source": source, "issues": issues})
++            continue
++        placed.append(change)
++
++    return {"placed": placed, "rejected": rejected}

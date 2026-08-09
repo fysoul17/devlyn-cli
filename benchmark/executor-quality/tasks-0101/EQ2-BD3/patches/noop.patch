@@ -1,0 +1,8 @@
+--- a/README.md
++++ b/README.md
+@@ -1,4 +1,4 @@
+-# DNS zone editor
++# DNS zone batch editor
+ 
+ Implement the record applier, then run:
+ 

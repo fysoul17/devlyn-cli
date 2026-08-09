@@ -1,0 +1,26 @@
+{
+  "id": "EQ2-BD3",
+  "class": "broken_dependency",
+  "invariant": "Record applier candidates are processed by descending deployment priority with source order breaking ties, syntax ranking reports rejected changes by owner errors before type errors before value errors and source order breaking ties, and when malformed and valid changes interleave under that processing order the ranked rejection report preserves that error precedence while a rejected change never reserves its owner or prevents a later valid record for that owner from being placed.",
+  "goal": "Implement apply_changes in record_applier.py so DNS zone edits satisfy CONTRACT.md. Run `python3 -m unittest discover -s tests`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/errors.py",
+    "visible/models.py",
+    "visible/record_applier.py",
+    "visible/record_order.py",
+    "visible/syntax_ranking.py",
+    "visible/syntax_rules.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_record_applier.py",
+    "visible/tests/test_syntax_ranking.py",
+    "visible/tests/test_zone_editor.py",
+    "visible/zone_editor.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "25b6e9da1225385af1fcbff1443f1254578f748a5c7bc45dc32261f8a738c3bf",
+    "quote": "Record applier candidates are processed by descending deployment priority with source order breaking ties, syntax ranking reports rejected changes by owner errors before type errors before value errors and source order breaking ties, and when malformed and valid changes interleave under that processing order the ranked rejection report preserves that error precedence while a rejected change never reserves its owner or prevents a later valid record for that owner from being placed."
+  }
+}
