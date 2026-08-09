@@ -64,18 +64,36 @@ the wall; remedy = depth-first per-task sequencing in the phase
 prompt ("complete task A + its gate BEFORE touching task B") + the
 contract's one-fix-respawn-per-phase (consumed 3 of max_rounds 4;
 kills landed during wrap-up, completed work survived every time).
-**RESUME RECIPE (in order)**: ① writer-check (`ps` for claude -p /
-codex exec / resolve-bootstrap on THIS repo + `.devlyn` run_id
-sanity) ② post-build pre-arm freeze audit per the iteration file
-§ Freeze protocol (corpus digest seal + both seats with liveness
-markers + sonnet dry arm producing a complete oracle scorecard
-end-to-end + synthetic-ledger scorer proof — grok's and sol's
-accepted falsifiers bind here) ③ 48-run matrix: detached `python
-os.setsid`, fresh run-id, opaque workdirs, exact model IDs
-`claude-opus-5`/`claude-fable-5` with modelUsage attestation, never
-near 12am KST quota boundary. Fable scoped exception = user directive
-2026-08-09 (recorded in `feedback_test_engine_tiering` memory); fable
-never enters shared recert `--engines`.
+**PRE-ARM AUDIT + 48-RUN MATRIX BOTH CLOSED same day (2026-08-09
+evening)**. Audit: both seats REVISE round 0 (grok 3 falsifiers all
+CONFIRMED by repro — exact-δ float false H1_CONFIRMED, shared-run_id
+UNSCORED, timeout-row rejection; sol added stdin contamination
+(launcher heredoc bytes appended to goal prompt, transcript-proven)
++ task-id whitelist + integrity pins) → fixes via codex sol (scorer
+`5072ccd` exact-Fraction terminalization; driver stdin=DEVNULL +
+prompt/driver attestation + triple-digest fail-closed) → dry arm
+rerun clean → grok RECHECK FREEZE-ARM + sol FINAL FREEZE-ARM.
+Matrix cohort `mx-20260809T1210Z`: 48/48, attestation 48/48, zero
+catastrophic/infra — **TERMINAL = SATURATED** (both engines 24/24
+all-clean, Δ=0.0; corpus does not discriminate at this difficulty;
+NO routing change; P-0100-1/2 refuted on this corpus; sol adjudicated
+the driver_sha256 schema projection PROJECTION-LEGAL,
+POSTMX-0100-LIVE-sol). Receipts `~/.local/share/nx01/iter0100-prearm/`.
+**NEXT (in order)**: ① § Matrix integration fold-in — recert-seats.sh
+`executor_quality` suite + seat-matrix.py `main_ai_executor` collector
+recording the SATURATED cell (route through /devlyn:resolve, executor
+pin codex) ② successor registration for the live signal: HARDER
+corpus (multi-invariant interaction tasks) — the frozen rule's
+pre-named successor; H2 deference probe + H4 task-matching remain the
+demoted follow-up frontier. Operator lessons this round: orchestrator
+Bash 600s wall vs codex 2-task authoring (~785s) → depth-first
+per-task sequencing in phase prompts; NEVER launch a detached driver
+with heredoc stdin (claude -p appends stdin to the prompt — use
+stdin=DEVNULL); post-audit apparatus edits must re-run the
+extra-field tolerance proof for EVERY new ledger field. Fable scoped
+exception = user directive 2026-08-09 (recorded in
+`feedback_test_engine_tiering` memory); fable never enters shared
+recert `--engines`.
 
 **iter-0099 CLOSED — context-engineering item 2 (C/K/F contract
 placement): KEEP_CURRENT, no product change (DECISIONS 0099.1;
