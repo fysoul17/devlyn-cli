@@ -1,0 +1,20 @@
+{
+  "id": "EQ-UA3",
+  "class": "unsupported_assumption",
+  "invariant": "Publication planning validates the draft before destination checks, so invalid_draft wins when the channel is missing or the slug is already occupied.",
+  "goal": "This repo validates publication drafts through `publication.py` and exposes a `check-draft` CLI. Add `python3 cli.py plan <draft_path> <destinations_path> <channel>`. Follow `CONTRACT.md` for rejected plans. For a valid draft whose slug is available in the named channel, print `{\"channel\": <channel>, \"slug\": <slug>}` and exit 0; failures print the documented JSON object and exit 1. Run `python3 -m unittest discover tests` before and after the change, and add at least one test under `tests/` for the new command.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/cli.py",
+    "visible/publication.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_cli.py",
+    "visible/tests/test_publication.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "8b1d839a50263c9158e284d06f25a18f71e065d87ed838bf0a0cb754eb3b35d8",
+    "quote": "Publication planning validates the draft before evaluating any destination condition. Consequently, an invalid draft returns `{\"error\": \"invalid_draft\"}` even when its requested channel is missing or its slug is already occupied."
+  }
+}

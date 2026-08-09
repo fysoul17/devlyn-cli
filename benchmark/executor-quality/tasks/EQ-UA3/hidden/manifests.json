@@ -1,0 +1,24 @@
+{
+  "manifestations": [
+    {
+      "id": "malformed-with-absent-route",
+      "invariant": "Publication planning validates the draft before destination checks, so invalid_draft wins when the channel is missing or the slug is already occupied.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "8b1d839a50263c9158e284d06f25a18f71e065d87ed838bf0a0cb754eb3b35d8",
+        "quote": "Publication planning validates the draft before evaluating any destination condition. Consequently, an invalid draft returns `{\"error\": \"invalid_draft\"}` even when its requested channel is missing or its slug is already occupied."
+      }
+    },
+    {
+      "id": "malformed-with-reserved-name",
+      "invariant": "Publication planning validates the draft before destination checks, so invalid_draft wins when the channel is missing or the slug is already occupied.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "8b1d839a50263c9158e284d06f25a18f71e065d87ed838bf0a0cb754eb3b35d8",
+        "quote": "Publication planning validates the draft before evaluating any destination condition. Consequently, an invalid draft returns `{\"error\": \"invalid_draft\"}` even when its requested channel is missing or its slug is already occupied."
+      }
+    }
+  ]
+}

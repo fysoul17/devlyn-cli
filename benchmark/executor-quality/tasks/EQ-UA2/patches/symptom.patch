@@ -1,0 +1,96 @@
+--- a/cli.py
++++ b/cli.py
+@@ -6,7 +6,7 @@
+ import argparse
+ import json
+ 
+-from vault import list_artifacts, load_mapping
++from vault import has_scope, list_artifacts, load_mapping, lookup_artifact
+ 
+ 
+ def emit(payload: object) -> None:
+@@ -19,15 +19,40 @@
+     return 0
+ 
+ 
++def retrieve_command(
++    catalog_path: str, grants_path: str, token: str, key: str
++) -> int:
++    catalog = load_mapping(catalog_path)
++    grants = load_mapping(grants_path)
++    artifact = lookup_artifact(catalog, key)
++    if artifact is None:
++        emit({"error": "not_found"})
++        return 1
++    if not has_scope(grants, token, "read"):
++        emit({"error": "access_denied"})
++        return 1
++    emit({"artifact": artifact, "key": key})
++    return 0
++
++
+ def main(argv: list[str] | None = None) -> int:
+     parser = argparse.ArgumentParser()
+     subparsers = parser.add_subparsers(dest="command", required=True)
+     list_parser = subparsers.add_parser("list")
+     list_parser.add_argument("catalog_path")
++    retrieve_parser = subparsers.add_parser("retrieve")
++    retrieve_parser.add_argument("catalog_path")
++    retrieve_parser.add_argument("grants_path")
++    retrieve_parser.add_argument("token")
++    retrieve_parser.add_argument("key")
+     args = parser.parse_args(argv)
+ 
+     if args.command == "list":
+         return list_command(args.catalog_path)
++    if args.command == "retrieve":
++        return retrieve_command(
++            args.catalog_path, args.grants_path, args.token, args.key
++        )
+     raise AssertionError(f"unhandled command: {args.command}")
+ 
+ 
+--- a/tests/test_cli.py
++++ b/tests/test_cli.py
+@@ -27,5 +27,41 @@
+             self.assertEqual(json.loads(completed.stdout), {"artifacts": ["a.zip", "z.zip"]})
+ 
+ 
++class RetrieveCommandTests(unittest.TestCase):
++    def test_retrieve_returns_artifact_for_reader(self) -> None:
++        with tempfile.TemporaryDirectory() as temporary:
++            root = Path(temporary)
++            catalog_path = root / "catalog.json"
++            grants_path = root / "grants.json"
++            catalog_path.write_text(
++                json.dumps({"bundle.zip": {"bytes": 4}}), encoding="utf-8"
++            )
++            grants_path.write_text(
++                json.dumps({"reader": ["read"]}), encoding="utf-8"
++            )
++
++            completed = subprocess.run(
++                [
++                    sys.executable,
++                    str(ROOT / "cli.py"),
++                    "retrieve",
++                    str(catalog_path),
++                    str(grants_path),
++                    "reader",
++                    "bundle.zip",
++                ],
++                text=True,
++                stdout=subprocess.PIPE,
++                stderr=subprocess.PIPE,
++                check=False,
++            )
++
++            self.assertEqual(completed.returncode, 0, completed.stderr)
++            self.assertEqual(
++                json.loads(completed.stdout),
++                {"artifact": {"bytes": 4}, "key": "bundle.zip"},
++            )
++
++
+ if __name__ == "__main__":
+     unittest.main()

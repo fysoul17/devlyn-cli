@@ -1,0 +1,24 @@
+{
+  "manifestations": [
+    {
+      "id": "sealed-known-ref",
+      "invariant": "Artifact retrieval authorizes the caller before catalog lookup, so a caller lacking read access receives the same access_denied response whether the requested key exists or not.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/POLICY.md",
+        "sha256": "06a837035831ff8aea367cc5cac7076ec2fba96c3117c20622d66ef4a6b60734",
+        "quote": "The `retrieve` operation authorizes the caller's `read` grant before consulting catalog membership. A caller without that grant receives `{\"error\": \"access_denied\"}` for every requested key, so catalog presence is not disclosed."
+      }
+    },
+    {
+      "id": "sealed-unknown-ref",
+      "invariant": "Artifact retrieval authorizes the caller before catalog lookup, so a caller lacking read access receives the same access_denied response whether the requested key exists or not.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/POLICY.md",
+        "sha256": "06a837035831ff8aea367cc5cac7076ec2fba96c3117c20622d66ef4a6b60734",
+        "quote": "The `retrieve` operation authorizes the caller's `read` grant before consulting catalog membership. A caller without that grant receives `{\"error\": \"access_denied\"}` for every requested key, so catalog presence is not disclosed."
+      }
+    }
+  ]
+}

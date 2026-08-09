@@ -1,0 +1,10 @@
+--- a/README.md
++++ b/README.md
+@@ -1,5 +1,7 @@
+ # Release artifact vault
+ 
++The fixture uses only the Python standard library.
++
+ The catalog is a JSON object keyed by artifact name. The grants file maps caller tokens to arrays of scopes.
+ 
+ List artifact keys with:

@@ -1,0 +1,20 @@
+{
+  "id": "EQ-UA2",
+  "class": "unsupported_assumption",
+  "invariant": "Artifact retrieval authorizes the caller before catalog lookup, so a caller lacking read access receives the same access_denied response whether the requested key exists or not.",
+  "goal": "This repo lists release artifacts from a JSON catalog through `cli.py` and provides catalog/grant helpers in `vault.py`. Add `python3 cli.py retrieve <catalog_path> <grants_path> <token> <artifact_key>`. Follow `POLICY.md` for rejected requests. For a permitted caller and a present key, print `{\"artifact\": <metadata>, \"key\": <artifact_key>}` and exit 0; failures print the documented JSON object and exit 1. Run `python3 -m unittest discover tests` before and after the change, and add at least one test under `tests/` for the new command.",
+  "visible_files": [
+    "visible/POLICY.md",
+    "visible/README.md",
+    "visible/cli.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_cli.py",
+    "visible/tests/test_vault.py",
+    "visible/vault.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/POLICY.md",
+    "sha256": "06a837035831ff8aea367cc5cac7076ec2fba96c3117c20622d66ef4a6b60734",
+    "quote": "The `retrieve` operation authorizes the caller's `read` grant before consulting catalog membership. A caller without that grant receives `{\"error\": \"access_denied\"}` for every requested key, so catalog presence is not disclosed."
+  }
+}

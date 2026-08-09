@@ -1,0 +1,10 @@
+--- a/README.md
++++ b/README.md
+@@ -1,5 +1,7 @@
+ # Publication planner
+ 
++The fixture uses only the Python standard library.
++
+ Draft and destination data are stored as JSON. Validate a draft with:
+ 
+ ```sh
