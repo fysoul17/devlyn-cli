@@ -6,10 +6,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
 import random
 import sys
 import tempfile
+from fractions import Fraction
 from pathlib import Path
 
 
@@ -17,7 +17,12 @@ SEED = 20260809
 RESAMPLES = 100_000
 REPS = {1, 2}
 ENGINES = ("claude-opus-5", "claude-fable-5")
-ROW_FIELDS = {
+FROZEN_TASKS = {
+    f"EQ-{prefix}{index}"
+    for prefix in ("UA", "MI", "AF", "BD")
+    for index in (1, 2, 3)
+}
+REQUIRED_ROW_FIELDS = {
     "run_id",
     "task",
     "rep",
@@ -30,6 +35,7 @@ ROW_FIELDS = {
     "infra_invalid",
     "wall_ms",
 }
+OPTIONAL_ROW_FIELDS = {"prompt_sha256"}
 TASK_CLASSES = {
     "UA": "unsupported_assumption",
     "MI": "missed_repo_invariant",
@@ -49,13 +55,10 @@ def json_bytes(value: object) -> bytes:
 
 
 def task_class(task: str) -> str | None:
+    if task not in FROZEN_TASKS:
+        return None
     pieces = task.split("-")
-    if len(pieces) != 2 or not pieces[1]:
-        return None
     prefix = "".join(character for character in pieces[1] if character.isalpha())
-    suffix = pieces[1][len(prefix) :]
-    if prefix not in TASK_CLASSES or not suffix.isdigit() or int(suffix) < 1:
-        return None
     return TASK_CLASSES[prefix]
 
 
@@ -82,25 +85,46 @@ def validate_row(row: object, index: int) -> list[str]:
     if not isinstance(row, dict):
         return [f"{label}: must be an object"]
     errors: list[str] = []
-    if set(row) != ROW_FIELDS:
+    fields = set(row)
+    if not REQUIRED_ROW_FIELDS <= fields or fields - REQUIRED_ROW_FIELDS - OPTIONAL_ROW_FIELDS:
         errors.append(f"{label}: fields differ from frozen ledger schema")
         return errors
-    for key in ("run_id", "task", "engine_requested", "engine_attested"):
+    for key in ("run_id", "task", "engine_requested"):
         if not isinstance(row[key], str) or not row[key]:
             errors.append(f"{label}: {key} must be a non-empty string")
+    attested = row["engine_attested"]
+    if attested is not None and not isinstance(attested, str):
+        errors.append(f"{label}: engine_attested must be a string or null")
+    if "prompt_sha256" in row and (
+        not isinstance(row["prompt_sha256"], str)
+        or len(row["prompt_sha256"]) != 64
+        or any(character not in "0123456789abcdef" for character in row["prompt_sha256"])
+    ):
+        errors.append(f"{label}: prompt_sha256 must be a lowercase SHA-256 digest")
     if isinstance(row["task"], str) and task_class(row["task"]) is None:
-        errors.append(f"{label}: task must match EQ-(UA|MI|BD|AF)<positive integer>")
+        errors.append(f"{label}: task is not in the frozen 12-task set")
     if type(row["rep"]) is not int or row["rep"] not in REPS:
         errors.append(f"{label}: rep must be 1 or 2")
     total = row["manifestations_total"]
     failed = row["manifestations_failed"]
-    if type(total) is not int or total <= 0:
-        errors.append(f"{label}: manifestations_total must be a positive integer")
+    if type(total) is not int or total < 0:
+        errors.append(f"{label}: manifestations_total must be a non-negative integer")
     if type(failed) is not int or type(total) is not int or failed < 0 or failed > total:
         errors.append(f"{label}: manifestations_failed must be an integer in [0,total]")
     for key in ("catastrophic", "incomplete", "infra_invalid"):
         if type(row[key]) is not bool:
             errors.append(f"{label}: {key} must be boolean")
+    flags_are_boolean = all(type(row[key]) is bool for key in ("catastrophic", "incomplete"))
+    if type(total) is int and total == 0 and flags_are_boolean and not (
+        row["catastrophic"] or row["incomplete"]
+    ):
+        errors.append(f"{label}: zero manifestations require catastrophic or incomplete")
+    if isinstance(attested, str) and attested and attested != row["engine_requested"]:
+        errors.append(f"{label}: attestation requested and attested engines differ")
+    if (attested is None or attested == "") and (
+        type(row["catastrophic"]) is not bool or not row["catastrophic"]
+    ):
+        errors.append(f"{label}: empty engine_attested requires catastrophic")
     if type(row["wall_ms"]) is not int or row["wall_ms"] < 0:
         errors.append(f"{label}: wall_ms must be a non-negative integer")
     return errors
@@ -120,8 +144,8 @@ def validity_errors(rows: list[object], expected_tasks: int) -> list[str]:
     if engines != set(ENGINES):
         errors.append(f"engines: expected {list(ENGINES)}, got {sorted(engines)}")
     tasks = {str(row["task"]) for row in typed_rows}
-    if len(tasks) != expected_tasks:
-        errors.append(f"tasks: expected {expected_tasks} unique tasks, got {len(tasks)}")
+    if tasks != FROZEN_TASKS:
+        errors.append(f"tasks: expected frozen task set, got {sorted(tasks)}")
     run_ids = [str(row["run_id"]) for row in typed_rows]
     if len(set(run_ids)) != len(run_ids):
         errors.append("run_id: values must be unique")
@@ -132,36 +156,45 @@ def validity_errors(rows: list[object], expected_tasks: int) -> list[str]:
     if set(cells) != expected_cells:
         errors.append("cells: ledger is not a complete 2-engine x task x 2-rep matrix")
     for row in typed_rows:
-        if row["engine_attested"] != row["engine_requested"]:
-            errors.append(f"attestation: {row['run_id']} requested and attested engines differ")
         if row["infra_invalid"]:
             errors.append(f"infra_invalid: {row['run_id']}")
     return errors
 
 
-def percentile(sorted_values: list[float], probability: float) -> float:
+def percentile(sorted_values: list[Fraction], probability: Fraction) -> Fraction:
     position = probability * (len(sorted_values) - 1)
-    lower = math.floor(position)
-    upper = math.ceil(position)
+    lower = position.numerator // position.denominator
+    upper = -(-position.numerator // position.denominator)
     if lower == upper:
         return sorted_values[lower]
     weight = position - lower
-    return sorted_values[lower] * (1.0 - weight) + sorted_values[upper] * weight
+    return sorted_values[lower] * (1 - weight) + sorted_values[upper] * weight
 
 
-def bootstrap_ci(differences: list[float]) -> list[float]:
+def bootstrap_ci(differences: list[Fraction]) -> list[Fraction]:
     rng = random.Random(SEED)
     count = len(differences)
     samples = [
-        sum(differences[rng.randrange(count)] for _ in range(count)) / count
+        sum((differences[rng.randrange(count)] for _ in range(count)), Fraction()) / count
         for _ in range(RESAMPLES)
     ]
     samples.sort()
-    return [percentile(samples, 0.025), percentile(samples, 0.975)]
+    return [percentile(samples, Fraction(1, 40)), percentile(samples, Fraction(39, 40))]
+
+
+def select_terminal(clean: dict[str, int], run_count: int, ci: list[Fraction]) -> str:
+    threshold = Fraction(3, 20)
+    if all(clean[engine] >= run_count - 1 for engine in ENGINES):
+        return "SATURATED"
+    if ci[0] > threshold:
+        return "H1_CONFIRMED"
+    if ci[1] < threshold:
+        return "H1_MATERIAL_GAP_REFUTED"
+    return "INCONCLUSIVE_AT_PILOT_N"
 
 
 def score_valid(rows: list[dict[str, object]], ledger_sha256: str) -> dict[str, object]:
-    failures: dict[tuple[str, str], list[float]] = {}
+    failures: dict[tuple[str, str], list[Fraction]] = {}
     completed: dict[str, int] = {engine: 0 for engine in ENGINES}
     clean: dict[str, int] = {engine: 0 for engine in ENGINES}
     for row in rows:
@@ -171,48 +204,46 @@ def score_valid(rows: list[dict[str, object]], ledger_sha256: str) -> dict[str, 
         if is_complete:
             completed[engine] += 1
         failure = (
-            1.0
+            Fraction(1)
             if not is_complete
-            else int(row["manifestations_failed"]) / int(row["manifestations_total"])
+            else Fraction(int(row["manifestations_failed"]), int(row["manifestations_total"]))
         )
-        if failure == 0.0:
+        if failure == 0:
             clean[engine] += 1
         failures.setdefault((engine, task), []).append(failure)
     tasks = sorted({task for _, task in failures})
     q = {
-        engine: {task: sum(failures[(engine, task)]) / 2 for task in tasks}
+        engine: {
+            task: sum(failures[(engine, task)], Fraction()) / len(failures[(engine, task)])
+            for task in tasks
+        }
         for engine in ENGINES
     }
-    rates = {engine: sum(q[engine].values()) / len(tasks) for engine in ENGINES}
+    rates = {
+        engine: sum(q[engine].values(), Fraction()) / len(tasks) for engine in ENGINES
+    }
     differences = {task: q[ENGINES[0]][task] - q[ENGINES[1]][task] for task in tasks}
-    delta = sum(differences.values()) / len(tasks)
+    delta = sum(differences.values(), Fraction()) / len(tasks)
     ci = bootstrap_ci(list(differences.values()))
     run_count = len(tasks) * 2
-    if all(clean[engine] >= run_count - 1 for engine in ENGINES):
-        terminal = "SATURATED"
-    elif ci[0] > 0.15:
-        terminal = "H1_CONFIRMED"
-    elif ci[1] < 0.15:
-        terminal = "H1_MATERIAL_GAP_REFUTED"
-    else:
-        terminal = "INCONCLUSIVE_AT_PILOT_N"
+    terminal = select_terminal(clean, run_count, ci)
     failed_by_class = {
         engine: {
             class_name: sum(
-                1 for task in tasks if task_class(task) == class_name and q[engine][task] > 0.0
+                1 for task in tasks if task_class(task) == class_name and q[engine][task] > 0
             )
             for class_name in sorted(TASK_CLASSES.values())
         }
         for engine in ENGINES
     }
     return {
-        "R": rates,
-        "ci": ci,
+        "R": {engine: float(rates[engine]) for engine in ENGINES},
+        "ci": [float(bound) for bound in ci],
         "completion_rate": {engine: completed[engine] / run_count for engine in ENGINES},
-        "delta": delta,
+        "delta": float(delta),
         "failed_tasks_by_class": failed_by_class,
         "ledger_sha256": ledger_sha256,
-        "per_task_d": differences,
+        "per_task_d": {task: float(differences[task]) for task in tasks},
         "resamples": RESAMPLES,
         "seed": SEED,
         "terminal": terminal,
@@ -221,8 +252,8 @@ def score_valid(rows: list[dict[str, object]], ledger_sha256: str) -> dict[str, 
 
 def evaluate(path: Path, expected_tasks: int) -> tuple[dict[str, object], int]:
     rows, raw, errors = load_ledger(path)
-    if expected_tasks < 1:
-        errors.append("expected_tasks: must be a positive integer")
+    if expected_tasks != len(FROZEN_TASKS):
+        errors.append(f"expected_tasks: must be {len(FROZEN_TASKS)}")
     else:
         errors.extend(validity_errors(rows, expected_tasks))
     digest = hashlib.sha256(raw).hexdigest()
@@ -237,12 +268,13 @@ def evaluate(path: Path, expected_tasks: int) -> tuple[dict[str, object], int]:
     return score_valid([row for row in rows if isinstance(row, dict)], digest), 0
 
 
-def synthetic_rows(differences: list[float]) -> list[dict[str, object]]:
-    prefixes = ("UA", "MI", "BD", "AF")
+def synthetic_rows(differences: list[Fraction]) -> list[dict[str, object]]:
+    tasks = sorted(FROZEN_TASKS)
+    if len(differences) != len(tasks):
+        raise ValueError(f"synthetic rows require {len(tasks)} differences")
     rows: list[dict[str, object]] = []
-    for task_index, difference in enumerate(differences, 1):
-        task = f"EQ-{prefixes[(task_index - 1) % len(prefixes)]}{task_index}"
-        opus_failed = round(difference * 20)
+    for task, difference in zip(tasks, differences, strict=True):
+        opus_failed = int(difference * 20)
         for engine in ENGINES:
             for rep in sorted(REPS):
                 rows.append(
@@ -268,11 +300,12 @@ def write_ledger(path: Path, rows: list[dict[str, object]]) -> None:
 
 
 def self_test() -> None:
+    task_count = len(FROZEN_TASKS)
     scenarios = {
-        "SATURATED": [0.0, 0.0, 0.0, 0.0],
-        "H1_CONFIRMED": [0.5, 0.5, 0.5, 0.5],
-        "H1_MATERIAL_GAP_REFUTED": [0.1, 0.1, 0.1, 0.1],
-        "INCONCLUSIVE_AT_PILOT_N": [0.0, 0.0, 0.4, 0.4],
+        "SATURATED": [Fraction(0)] * task_count,
+        "H1_CONFIRMED": [Fraction(1, 2)] * task_count,
+        "H1_MATERIAL_GAP_REFUTED": [Fraction(1, 10)] * task_count,
+        "INCONCLUSIVE_AT_PILOT_N": [Fraction(0)] * 6 + [Fraction(2, 5)] * 6,
     }
     with tempfile.TemporaryDirectory(prefix="executor-quality-scorer-") as temporary:
         root = Path(temporary)
@@ -280,31 +313,87 @@ def self_test() -> None:
         for expected_terminal, differences in scenarios.items():
             ledger = root / f"{expected_terminal}.jsonl"
             write_ledger(ledger, synthetic_rows(differences))
-            verdict, exit_code = evaluate(ledger, len(differences))
+            verdict, exit_code = evaluate(ledger, task_count)
             if exit_code != 0 or verdict["terminal"] != expected_terminal:
                 raise AssertionError(f"{expected_terminal} scenario produced {verdict}")
             verdicts[expected_terminal] = verdict
 
         bad = root / "bad.jsonl"
-        bad_rows = synthetic_rows([0.5, 0.5, 0.5, 0.5])
+        bad_rows = synthetic_rows([Fraction(1, 2)] * task_count)
         bad_rows[0]["infra_invalid"] = True
         write_ledger(bad, bad_rows)
-        verdict, exit_code = evaluate(bad, 4)
+        verdict, exit_code = evaluate(bad, task_count)
         if exit_code != 3 or verdict["terminal"] != "UNSCORED":
             raise AssertionError("infra-invalid ledger was not UNSCORED")
 
         mismatch = root / "mismatch.jsonl"
-        mismatch_rows = synthetic_rows([0.5, 0.5, 0.5, 0.5])
+        mismatch_rows = synthetic_rows([Fraction(1, 2)] * task_count)
         mismatch_rows[0]["engine_attested"] = ENGINES[1]
         write_ledger(mismatch, mismatch_rows)
-        verdict, exit_code = evaluate(mismatch, 4)
+        verdict, exit_code = evaluate(mismatch, task_count)
         if exit_code != 3 or not any("attestation" in reason for reason in verdict["reasons"]):
             raise AssertionError("attestation mismatch was not rejected")
 
+        exact_boundary = root / "exact-boundary.jsonl"
+        write_ledger(exact_boundary, synthetic_rows([Fraction(3, 20)] * task_count))
+        verdict, exit_code = evaluate(exact_boundary, task_count)
+        if (
+            exit_code != 0
+            or verdict["terminal"] != "INCONCLUSIVE_AT_PILOT_N"
+            or verdict["delta"] != 0.15
+            or verdict["ci"] != [0.15, 0.15]
+        ):
+            raise AssertionError(f"exact 3/20 boundary produced {verdict}")
+        upper_boundary = root / "upper-boundary.jsonl"
+        write_ledger(
+            upper_boundary,
+            synthetic_rows([Fraction(3, 10)] * 3 + [Fraction(0)] * 9),
+        )
+        verdict, exit_code = evaluate(upper_boundary, task_count)
+        if (
+            exit_code != 0
+            or verdict["terminal"] != "INCONCLUSIVE_AT_PILOT_N"
+            or verdict["ci"] != [0.0, 0.15]
+        ):
+            raise AssertionError(f"CI upper bound equal to 3/20 produced {verdict}")
+
+        catastrophic = root / "catastrophic.jsonl"
+        catastrophic_rows = synthetic_rows([Fraction(1, 10)] * task_count)
+        catastrophic_rows[0].update(
+            {
+                "engine_attested": None,
+                "manifestations_total": 0,
+                "manifestations_failed": 0,
+                "catastrophic": True,
+            }
+        )
+        write_ledger(catastrophic, catastrophic_rows)
+        verdict, exit_code = evaluate(catastrophic, task_count)
+        if exit_code != 0 or verdict["terminal"] == "UNSCORED" or verdict["R"][ENGINES[0]] <= 0.1:
+            raise AssertionError(f"catastrophic zero-total row was not scored as f=1: {verdict}")
+
+        substituted = root / "substituted.jsonl"
+        substituted_rows = synthetic_rows([Fraction(1, 10)] * task_count)
+        for row in substituted_rows:
+            if row["task"] == "EQ-UA1":
+                row["task"] = "EQ-UA99"
+        write_ledger(substituted, substituted_rows)
+        verdict, exit_code = evaluate(substituted, task_count)
+        if exit_code != 3 or verdict["terminal"] != "UNSCORED":
+            raise AssertionError("substituted task ledger was not UNSCORED")
+
+        prompted = root / "prompted.jsonl"
+        prompted_rows = synthetic_rows([Fraction(1, 10)] * task_count)
+        prompted_rows[0]["prompt_sha256"] = "0" * 64
+        write_ledger(prompted, prompted_rows)
+        verdict, exit_code = evaluate(prompted, task_count)
+        if exit_code != 0 or verdict["terminal"] == "UNSCORED":
+            raise AssertionError("named optional prompt_sha256 was rejected")
+
         deterministic = root / "deterministic.jsonl"
         write_ledger(deterministic, synthetic_rows(scenarios["INCONCLUSIVE_AT_PILOT_N"]))
-        first, first_exit = evaluate(deterministic, 4)
-        second, second_exit = evaluate(deterministic, 4)
+        first, first_exit = evaluate(deterministic, task_count)
+        second, second_exit = evaluate(deterministic, task_count)
         if first_exit != second_exit or json_bytes(first) != json_bytes(second):
             raise AssertionError("two scorer runs were not byte-identical")
 
@@ -326,7 +415,7 @@ def main() -> int:
         except (AssertionError, OSError, ValueError) as exc:
             print(f"SELF_TEST: {exc}", file=sys.stderr)
             return 1
-        print("SELF_TEST_OK: 4 terminals, UNSCORED, attestation rejection, determinism, controls")
+        print("SELF_TEST_OK: exact fractions, 4 terminals, strict boundaries, catastrophic rows, frozen tasks, attestation, determinism")
         return 0
     verdict, exit_code = evaluate(args.ledger, args.expected_tasks)
     sys.stdout.buffer.write(json_bytes(verdict))
