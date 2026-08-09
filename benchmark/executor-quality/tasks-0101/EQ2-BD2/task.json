@@ -1,0 +1,23 @@
+{
+  "id": "EQ2-BD2",
+  "class": "broken_dependency",
+  "invariant": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots.",
+  "goal": "Fix sequenceWaves in wave-sequencer.js so firmware rollout satisfies CONTRACT.md. Run `node --test`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/attestation-policy.js",
+    "visible/device-attestation.js",
+    "visible/priority.js",
+    "visible/tests/attestation-policy.test.js",
+    "visible/tests/device-attestation.test.js",
+    "visible/tests/priority.test.js",
+    "visible/wave-cursor.js",
+    "visible/wave-sequencer.js"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "36c274e37f375444ef504f3e3527554fef733fef79dc422d2265da40e9cf3f27",
+    "quote": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots."
+  }
+}

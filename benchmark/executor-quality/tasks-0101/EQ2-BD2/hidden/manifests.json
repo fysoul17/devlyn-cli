@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "36c274e37f375444ef504f3e3527554fef733fef79dc422d2265da40e9cf3f27",
+        "quote": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "36c274e37f375444ef504f3e3527554fef733fef79dc422d2265da40e9cf3f27",
+        "quote": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "36c274e37f375444ef504f3e3527554fef733fef79dc422d2265da40e9cf3f27",
+        "quote": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "36c274e37f375444ef504f3e3527554fef733fef79dc422d2265da40e9cf3f27",
+        "quote": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "36c274e37f375444ef504f3e3527554fef733fef79dc422d2265da40e9cf3f27",
+        "quote": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots."
+      }
+    }
+  ]
+}

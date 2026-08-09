@@ -1,0 +1,8 @@
+--- a/README.md
++++ b/README.md
+@@ -1,4 +1,4 @@
+-# Firmware rollout fixture
++# Firmware deployment fixture
+ 
+ Run the fixture tests with:
+ 
