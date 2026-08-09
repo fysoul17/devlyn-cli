@@ -1,0 +1,23 @@
+{
+  "id": "EQ2-BD1",
+  "class": "broken_dependency",
+  "invariant": "Manifest dedup schedules encoder-feed entries by descending priority with arrival order breaking ties, absorbs every repeated submission ID exactly once, and when a duplicate submission surrounds a priority reorder the dependent manifest output preserves that priority order while containing only one manifest for the repeated entity regardless of its arrival slot.",
+  "goal": "Fix prepare_feed in encoder_feed.py so the encoder feed satisfies CONTRACT.md. Run `python3 -m unittest discover tests`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/encoder_feed.py",
+    "visible/feed_order.py",
+    "visible/manifest_dedup.py",
+    "visible/models.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_encoder_feed.py",
+    "visible/tests/test_manifest_dedup.py",
+    "visible/transcode_queue.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "9edb887edb2d16d5869b15ce01a3a56cdc226255f0d78a1d80e7978fad28fd4a",
+    "quote": "Manifest dedup schedules encoder-feed entries by descending priority with arrival order breaking ties, absorbs every repeated submission ID exactly once, and when a duplicate submission surrounds a priority reorder the dependent manifest output preserves that priority order while containing only one manifest for the repeated entity regardless of its arrival slot."
+  }
+}

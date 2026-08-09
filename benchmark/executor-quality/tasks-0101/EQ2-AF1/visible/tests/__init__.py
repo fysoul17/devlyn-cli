@@ -1,0 +1,1 @@
+"""Parking fixture tests."""

@@ -1,0 +1,20 @@
+--- a/encoder_feed.py
++++ b/encoder_feed.py
+@@ -1,6 +1,16 @@
+ """Encoder-feed preparation."""
+ 
++from feed_order import rank_submissions
++from models import normalize_submission
++
+ 
+ def prepare_feed(submissions: list[dict]) -> list[dict]:
+     """Prepare queue submissions for manifest consumption."""
+-    raise NotImplementedError("encoder feed preparation is not implemented")
++    normalized = [normalize_submission(submission) for submission in submissions]
++    feed: list[dict] = []
++    previous_id: str | None = None
++    for submission in rank_submissions(normalized):
++        duplicate = submission["id"] == previous_id
++        feed.append({**submission, "duplicate": duplicate})
++        previous_id = submission["id"]
++    return feed

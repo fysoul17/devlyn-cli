@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Parking requests are assigned by descending priority with arrival order breaking ties, every failed multi-slot request returns all tentative slots through the release pool, and when priority reordering places a release consumer before its failed producer in arrival order the higher-priority request still wins while the later-processed request can claim every returned slot.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "0ee86a99d9a6232fe407ba590ba6c3bfadb878ca1903bf64bc0a387b18f72937",
+        "quote": "Parking requests are assigned by descending priority with arrival order breaking ties, every failed multi-slot request returns all tentative slots through the release pool, and when priority reordering places a release consumer before its failed producer in arrival order the higher-priority request still wins while the later-processed request can claim every returned slot."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Parking requests are assigned by descending priority with arrival order breaking ties, every failed multi-slot request returns all tentative slots through the release pool, and when priority reordering places a release consumer before its failed producer in arrival order the higher-priority request still wins while the later-processed request can claim every returned slot.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "0ee86a99d9a6232fe407ba590ba6c3bfadb878ca1903bf64bc0a387b18f72937",
+        "quote": "Parking requests are assigned by descending priority with arrival order breaking ties, every failed multi-slot request returns all tentative slots through the release pool, and when priority reordering places a release consumer before its failed producer in arrival order the higher-priority request still wins while the later-processed request can claim every returned slot."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Parking requests are assigned by descending priority with arrival order breaking ties, every failed multi-slot request returns all tentative slots through the release pool, and when priority reordering places a release consumer before its failed producer in arrival order the higher-priority request still wins while the later-processed request can claim every returned slot.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "0ee86a99d9a6232fe407ba590ba6c3bfadb878ca1903bf64bc0a387b18f72937",
+        "quote": "Parking requests are assigned by descending priority with arrival order breaking ties, every failed multi-slot request returns all tentative slots through the release pool, and when priority reordering places a release consumer before its failed producer in arrival order the higher-priority request still wins while the later-processed request can claim every returned slot."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Parking requests are assigned by descending priority with arrival order breaking ties, every failed multi-slot request returns all tentative slots through the release pool, and when priority reordering places a release consumer before its failed producer in arrival order the higher-priority request still wins while the later-processed request can claim every returned slot.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "0ee86a99d9a6232fe407ba590ba6c3bfadb878ca1903bf64bc0a387b18f72937",
+        "quote": "Parking requests are assigned by descending priority with arrival order breaking ties, every failed multi-slot request returns all tentative slots through the release pool, and when priority reordering places a release consumer before its failed producer in arrival order the higher-priority request still wins while the later-processed request can claim every returned slot."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Parking requests are assigned by descending priority with arrival order breaking ties, every failed multi-slot request returns all tentative slots through the release pool, and when priority reordering places a release consumer before its failed producer in arrival order the higher-priority request still wins while the later-processed request can claim every returned slot.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "0ee86a99d9a6232fe407ba590ba6c3bfadb878ca1903bf64bc0a387b18f72937",
+        "quote": "Parking requests are assigned by descending priority with arrival order breaking ties, every failed multi-slot request returns all tentative slots through the release pool, and when priority reordering places a release consumer before its failed producer in arrival order the higher-priority request still wins while the later-processed request can claim every returned slot."
+      }
+    }
+  ]
+}

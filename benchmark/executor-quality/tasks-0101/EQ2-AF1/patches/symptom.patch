@@ -1,0 +1,45 @@
+--- a/queueing.py
++++ b/queueing.py
+@@ -2,4 +2,5 @@
+ 
+ 
+ def rank_requests(requests: list[dict]) -> list[tuple[int, dict]]:
+-    return list(enumerate(requests))
++    indexed = enumerate(requests)
++    return sorted(indexed, key=lambda item: (-item[1]["priority"], item[0]))
+--- a/parking.py
++++ b/parking.py
+@@ -2,6 +2,8 @@
+ 
+ from allocator import SlotAllocator
+ from models import normalize_request
++from queueing import rank_requests
++from release_pool import ReleasePool
+ 
+ 
+ def assign_batch(requests: list[dict], slots: list[str]) -> dict:
+@@ -8,9 +10,11 @@
+     normalized = [normalize_request(request) for request in requests]
+     allocator = SlotAllocator(slots)
++    releases = ReleasePool()
+     accepted: list[str] = []
+     rejected: list[str] = []
+ 
+-    for request in normalized:
++    for arrival, request in rank_requests(normalized):
++        allocator.restore(releases.collect_before(arrival))
+         complete = True
+         for slot in request["slots"]:
+             if not allocator.claim(request["id"], slot):
+@@ -19,9 +23,11 @@
+         if not complete:
+             rejected.append(request["id"])
++            releases.deposit(arrival, allocator.abort(request["id"]))
+             continue
+         allocator.commit(request["id"])
+         accepted.append(request["id"])
+ 
++    allocator.restore(releases.collect_all())
+     return {
+         "accepted": accepted,
+         "rejected": rejected,

@@ -1,0 +1,23 @@
+{
+  "id": "EQ2-AF1",
+  "class": "absent_failure_mode",
+  "invariant": "Parking requests are assigned by descending priority with arrival order breaking ties, every failed multi-slot request returns all tentative slots through the release pool, and when priority reordering places a release consumer before its failed producer in arrival order the higher-priority request still wins while the later-processed request can claim every returned slot.",
+  "goal": "Fix assign_batch in parking.py and its slot-allocation collaborators so parking assignments obey CONTRACT.md. Run `python3 -m unittest discover tests`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/allocator.py",
+    "visible/models.py",
+    "visible/parking.py",
+    "visible/queueing.py",
+    "visible/release_pool.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_parking.py",
+    "visible/tests/test_release_pool.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "0ee86a99d9a6232fe407ba590ba6c3bfadb878ca1903bf64bc0a387b18f72937",
+    "quote": "Parking requests are assigned by descending priority with arrival order breaking ties, every failed multi-slot request returns all tentative slots through the release pool, and when priority reordering places a release consumer before its failed producer in arrival order the higher-priority request still wins while the later-processed request can claim every returned slot."
+  }
+}
