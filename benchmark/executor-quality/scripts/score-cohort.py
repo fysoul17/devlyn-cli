@@ -18,9 +18,9 @@ RESAMPLES = 100_000
 REPS = {1, 2}
 ENGINES = ("claude-opus-5", "claude-fable-5")
 FROZEN_TASKS = {
-    f"EQ-{prefix}{index}"
+    f"EQ2-{prefix}{index}"
     for prefix in ("UA", "MI", "AF", "BD")
-    for index in (1, 2, 3)
+    for index in range(1, 9)
 }
 REQUIRED_ROW_FIELDS = {
     "run_id",
@@ -102,7 +102,7 @@ def validate_row(row: object, index: int) -> list[str]:
     ):
         errors.append(f"{label}: prompt_sha256 must be a lowercase SHA-256 digest")
     if isinstance(row["task"], str) and task_class(row["task"]) is None:
-        errors.append(f"{label}: task is not in the frozen 12-task set")
+        errors.append(f"{label}: task is not in the frozen task set")
     if type(row["rep"]) is not int or row["rep"] not in REPS:
         errors.append(f"{label}: rep must be 1 or 2")
     total = row["manifestations_total"]
@@ -305,7 +305,7 @@ def self_test() -> None:
         "SATURATED": [Fraction(0)] * task_count,
         "H1_CONFIRMED": [Fraction(1, 2)] * task_count,
         "H1_MATERIAL_GAP_REFUTED": [Fraction(1, 10)] * task_count,
-        "INCONCLUSIVE_AT_PILOT_N": [Fraction(0)] * 6 + [Fraction(2, 5)] * 6,
+        "INCONCLUSIVE_AT_PILOT_N": [Fraction(0)] * 16 + [Fraction(2, 5)] * 16,
     }
     with tempfile.TemporaryDirectory(prefix="executor-quality-scorer-") as temporary:
         root = Path(temporary)
@@ -325,6 +325,14 @@ def self_test() -> None:
         verdict, exit_code = evaluate(bad, task_count)
         if exit_code != 3 or verdict["terminal"] != "UNSCORED":
             raise AssertionError("infra-invalid ledger was not UNSCORED")
+
+        saturated_boundary = root / "saturated-boundary.jsonl"
+        saturated_boundary_rows = synthetic_rows([Fraction(0)] * task_count)
+        saturated_boundary_rows[0]["manifestations_failed"] = 1
+        write_ledger(saturated_boundary, saturated_boundary_rows)
+        verdict, exit_code = evaluate(saturated_boundary, task_count)
+        if exit_code != 0 or verdict["terminal"] != "SATURATED":
+            raise AssertionError(f"63/64 clean-run boundary produced {verdict}")
 
         mismatch = root / "mismatch.jsonl"
         mismatch_rows = synthetic_rows([Fraction(1, 2)] * task_count)
@@ -347,15 +355,23 @@ def self_test() -> None:
         upper_boundary = root / "upper-boundary.jsonl"
         write_ledger(
             upper_boundary,
-            synthetic_rows([Fraction(3, 10)] * 3 + [Fraction(0)] * 9),
+            synthetic_rows([Fraction(2, 5)] * 7 + [Fraction(0)] * 25),
         )
         verdict, exit_code = evaluate(upper_boundary, task_count)
         if (
             exit_code != 0
             or verdict["terminal"] != "INCONCLUSIVE_AT_PILOT_N"
-            or verdict["ci"] != [0.0, 0.15]
+            or verdict["ci"] != [0.0375, 0.15]
         ):
             raise AssertionError(f"CI upper bound equal to 3/20 produced {verdict}")
+
+        duplicate = root / "duplicate.jsonl"
+        duplicate_rows = synthetic_rows([Fraction(1, 10)] * task_count)
+        duplicate_rows[1]["run_id"] = duplicate_rows[0]["run_id"]
+        write_ledger(duplicate, duplicate_rows)
+        verdict, exit_code = evaluate(duplicate, task_count)
+        if exit_code != 3 or verdict["terminal"] != "UNSCORED":
+            raise AssertionError("duplicate run_id ledger was not UNSCORED")
 
         catastrophic = root / "catastrophic.jsonl"
         catastrophic_rows = synthetic_rows([Fraction(1, 10)] * task_count)
@@ -365,6 +381,7 @@ def self_test() -> None:
                 "manifestations_total": 0,
                 "manifestations_failed": 0,
                 "catastrophic": True,
+                "wall_ms": 300_000,
             }
         )
         write_ledger(catastrophic, catastrophic_rows)
@@ -375,8 +392,8 @@ def self_test() -> None:
         substituted = root / "substituted.jsonl"
         substituted_rows = synthetic_rows([Fraction(1, 10)] * task_count)
         for row in substituted_rows:
-            if row["task"] == "EQ-UA1":
-                row["task"] = "EQ-UA99"
+            if row["task"] == "EQ2-UA1":
+                row["task"] = "EQ2-UA99"
         write_ledger(substituted, substituted_rows)
         verdict, exit_code = evaluate(substituted, task_count)
         if exit_code != 3 or verdict["terminal"] != "UNSCORED":
@@ -389,6 +406,14 @@ def self_test() -> None:
         verdict, exit_code = evaluate(prompted, task_count)
         if exit_code != 0 or verdict["terminal"] == "UNSCORED":
             raise AssertionError("named optional prompt_sha256 was rejected")
+
+        unexpected = root / "unexpected.jsonl"
+        unexpected_rows = synthetic_rows([Fraction(1, 10)] * task_count)
+        unexpected_rows[0]["driver_sha256"] = "0" * 64
+        write_ledger(unexpected, unexpected_rows)
+        verdict, exit_code = evaluate(unexpected, task_count)
+        if exit_code != 3 or verdict["terminal"] != "UNSCORED":
+            raise AssertionError("unexpected driver_sha256 field was not rejected")
 
         deterministic = root / "deterministic.jsonl"
         write_ledger(deterministic, synthetic_rows(scenarios["INCONCLUSIVE_AT_PILOT_N"]))
@@ -407,7 +432,7 @@ def main() -> int:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--ledger", type=Path)
     group.add_argument("--self-test", action="store_true")
-    parser.add_argument("--expected-tasks", type=int, default=12)
+    parser.add_argument("--expected-tasks", type=int, default=32)
     args = parser.parse_args()
     if args.self_test:
         try:
