@@ -1,20 +1,18 @@
 --- a/bid_book.py
 +++ b/bid_book.py
-@@ -2,4 +2,6 @@
+@@ -12,4 +12,5 @@
  
  
- def order_bids(bids: list[dict]) -> list[dict]:
--    return list(bids)
-+    indexed = enumerate(bids)
-+    ordered = sorted(indexed, key=lambda item: (-item[1]["amount"], item[0]))
-+    return [bid for _, bid in ordered]
+ def freeze_book(bids: list[Bid]) -> tuple[BookEntry, ...]:
+-    return tuple(BookEntry(bid, arrival) for arrival, bid in enumerate(bids))
++    entries = tuple(BookEntry(bid, arrival) for arrival, bid in enumerate(bids))
++    return tuple(sorted(entries, key=lambda entry: (-entry.bid.amount, entry.arrival)))
 --- a/auction.py
 +++ b/auction.py
-@@ -21,6 +21,7 @@
+@@ -22,5 +22,6 @@
              continue
-         if not state.claim(bid["lot"], bid["id"]):
-             rejected.append(bid["id"])
-+            state.refund(bid["bidder"], cost)
+         if not journal.award(bid.lot, bid.id):
+             rejected.append(bid.id)
++            journal.compensate(receipt)
              continue
-         accepted.append(bid["id"])
- 
+         accepted.append(bid.id)

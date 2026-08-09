@@ -1,9 +1,24 @@
 """Input normalization for auction bids."""
 
+from dataclasses import dataclass
+
 from errors import AuctionError
 
 
-def normalize_bid(raw: dict) -> dict:
+@dataclass(frozen=True)
+class Bid:
+    id: str
+    bidder: str
+    lot: str
+    amount: int
+    fee: int
+
+    @property
+    def cost(self) -> int:
+        return self.amount + self.fee
+
+
+def normalize_bid(raw: dict) -> Bid:
     try:
         bid_id = str(raw["id"])
         bidder = str(raw["bidder"])
@@ -14,4 +29,4 @@ def normalize_bid(raw: dict) -> dict:
         raise AuctionError("invalid auction bid") from exc
     if not bid_id or not bidder or not lot or amount < 0 or fee < 0:
         raise AuctionError("invalid auction bid")
-    return {"id": bid_id, "bidder": bidder, "lot": lot, "amount": amount, "fee": fee}
+    return Bid(bid_id, bidder, lot, amount, fee)

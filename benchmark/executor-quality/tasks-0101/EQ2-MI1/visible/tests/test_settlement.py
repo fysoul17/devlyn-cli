@@ -1,14 +1,19 @@
 import unittest
 
-from settlement import Settlement
+from settlement import SettlementJournal
 
 
 class SettlementTests(unittest.TestCase):
-    def test_refund_restores_a_debit(self) -> None:
-        state = Settlement({"ada": 30})
-        self.assertTrue(state.debit("ada", 12))
-        state.refund("ada", 12)
-        self.assertEqual(state.balances(), {"ada": 30})
+    def test_compensation_uses_its_debit_receipt(self) -> None:
+        journal = SettlementJournal({"ada": 30, "bea": 20})
+        first = journal.debit("b1", "ada", "x", 12)
+        second = journal.debit("b2", "bea", "x", 7)
+        self.assertIsNotNone(first)
+        self.assertIsNotNone(second)
+
+        journal.compensate(second)
+
+        self.assertEqual(journal.balances(), {"ada": 18, "bea": 20})
 
 
 if __name__ == "__main__":

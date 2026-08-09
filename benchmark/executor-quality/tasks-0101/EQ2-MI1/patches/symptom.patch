@@ -1,29 +1,31 @@
 --- a/bid_book.py
 +++ b/bid_book.py
-@@ -2,4 +2,6 @@
+@@ -12,4 +12,5 @@
  
  
- def order_bids(bids: list[dict]) -> list[dict]:
--    return list(bids)
-+    indexed = enumerate(bids)
-+    ordered = sorted(indexed, key=lambda item: (-item[1]["amount"], item[0]))
-+    return [bid for _, bid in ordered]
+ def freeze_book(bids: list[Bid]) -> tuple[BookEntry, ...]:
+-    return tuple(BookEntry(bid, arrival) for arrival, bid in enumerate(bids))
++    entries = tuple(BookEntry(bid, arrival) for arrival, bid in enumerate(bids))
++    return tuple(sorted(entries, key=lambda entry: (-entry.bid.amount, entry.arrival)))
 --- a/auction.py
 +++ b/auction.py
-@@ -13,7 +13,7 @@
+@@ -11,6 +11,7 @@
+     normalized = [normalize_bid(bid) for bid in bids]
+     book = freeze_book(normalized)
+     journal = SettlementJournal(balances, sold)
++    debits = []
      accepted: list[str] = []
      rejected: list[str] = []
  
--    for bid in order_bids(normalized):
-+    for position, bid in enumerate(order_bids(normalized)):
-         cost = bid["amount"] + bid["fee"]
-         if not state.debit(bid["bidder"], cost):
-             rejected.append(bid["id"])
-@@ -21,6 +21,7 @@
+@@ -21,9 +22,12 @@
+         if receipt is None:
+             rejected.append(bid.id)
              continue
-         if not state.claim(bid["lot"], bid["id"]):
-             rejected.append(bid["id"])
-+            state.refund(normalized[position]["bidder"], cost)
++        debits.append(receipt)
+         if not journal.award(bid.lot, bid.id):
+             rejected.append(bid.id)
++            matching = next(item for item in debits if item.lot == bid.lot)
++            journal.compensate(matching)
              continue
-         accepted.append(bid["id"])
+         accepted.append(bid.id)
  

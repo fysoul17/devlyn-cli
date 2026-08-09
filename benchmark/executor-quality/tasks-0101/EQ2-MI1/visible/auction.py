@@ -1,31 +1,33 @@
 """Auction round coordinator."""
 
-from bid_book import order_bids
+from bid_book import freeze_book
 from models import normalize_bid
-from settlement import Settlement
+from settlement import SettlementJournal
 
 
 def settle_round(
     bids: list[dict], balances: dict[str, int], sold: dict[str, str] | None = None
 ) -> dict:
     normalized = [normalize_bid(bid) for bid in bids]
-    state = Settlement(balances, sold)
+    book = freeze_book(normalized)
+    journal = SettlementJournal(balances, sold)
     accepted: list[str] = []
     rejected: list[str] = []
 
-    for bid in order_bids(normalized):
-        cost = bid["amount"] + bid["fee"]
-        if not state.debit(bid["bidder"], cost):
-            rejected.append(bid["id"])
+    for entry in book:
+        bid = entry.bid
+        receipt = journal.debit(bid.id, bid.bidder, bid.lot, bid.cost)
+        if receipt is None:
+            rejected.append(bid.id)
             continue
-        if not state.claim(bid["lot"], bid["id"]):
-            rejected.append(bid["id"])
+        if not journal.award(bid.lot, bid.id):
+            rejected.append(bid.id)
             continue
-        accepted.append(bid["id"])
+        accepted.append(bid.id)
 
     return {
         "accepted": accepted,
         "rejected": rejected,
-        "balances": state.balances(),
-        "sold": state.sold(),
+        "balances": journal.balances(),
+        "sold": journal.sold(),
     }
