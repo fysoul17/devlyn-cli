@@ -1,11 +1,11 @@
 export class JobDedupIndex {
-  #slots = new Map();
+  #seen = new Set();
 
-  slotOf(jobId) {
-    return this.#slots.get(jobId);
-  }
-
-  remember(jobId, slot) {
-    this.#slots.set(jobId, slot);
+  claim(jobId) {
+    if (this.#seen.has(jobId)) {
+      return false;
+    }
+    this.#seen.add(jobId);
+    return true;
   }
 }

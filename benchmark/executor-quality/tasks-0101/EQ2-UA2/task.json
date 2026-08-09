@@ -1,7 +1,7 @@
 {
   "id": "EQ2-UA2",
   "class": "unsupported_assumption",
-  "invariant": "The spooler emits queued jobs by descending priority with arrival order breaking ties, the job dedup index absorbs every repeated job ID exactly once, and when a duplicate submission surrounds a priority reorder the emitted queue preserves that priority order while containing one copy of the repeated job regardless of its arrival slot.",
+  "invariant": "The spooler fills each bounded printer queue by descending priority with arrival order breaking ties, the job dedup index absorbs every repeated job ID exactly once before it can consume queue capacity, and when a duplicate submission surrounds a priority reorder the emitted queue contains the highest-priority unique jobs in that order with one copy of the repeated job regardless of its arrival slot.",
   "goal": "Fix enqueueAll in spooler.js so the print queue satisfies CONTRACT.md. Run node --test.",
   "visible_files": [
     "visible/CONTRACT.md",
@@ -17,7 +17,7 @@
   ],
   "contract_excerpt": {
     "file": "visible/CONTRACT.md",
-    "sha256": "24ffb4821cac2f7123b5f1b0c4e4b3d63c1482e32c592163df0a1f7037e37fc5",
-    "quote": "The spooler emits queued jobs by descending priority with arrival order breaking ties, the job dedup index absorbs every repeated job ID exactly once, and when a duplicate submission surrounds a priority reorder the emitted queue preserves that priority order while containing one copy of the repeated job regardless of its arrival slot."
+    "sha256": "e9310cc8c6e19f136fca08a2b8ca44531184e9919edfc43399b467ac5e5a9040",
+    "quote": "The spooler fills each bounded printer queue by descending priority with arrival order breaking ties, the job dedup index absorbs every repeated job ID exactly once before it can consume queue capacity, and when a duplicate submission surrounds a priority reorder the emitted queue contains the highest-priority unique jobs in that order with one copy of the repeated job regardless of its arrival slot."
   }
 }

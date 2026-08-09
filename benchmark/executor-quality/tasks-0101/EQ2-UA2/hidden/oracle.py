@@ -10,13 +10,13 @@ runner = r'''import { pathToFileURL } from "node:url";
 const modulePath = pathToFileURL(process.argv[1]).href;
 const { enqueueAll } = await import(modulePath);
 const submissions = JSON.parse(process.argv[2]);
-const queued = enqueueAll(submissions);
+const queued = enqueueAll(submissions, Number(process.argv[3]));
 process.stdout.write(JSON.stringify(queued));
 '''
-invariant = "The spooler emits queued jobs by descending priority with arrival order breaking ties, the job dedup index absorbs every repeated job ID exactly once, and when a duplicate submission surrounds a priority reorder the emitted queue preserves that priority order while containing one copy of the repeated job regardless of its arrival slot."
+invariant = "The spooler fills each bounded printer queue by descending priority with arrival order breaking ties, the job dedup index absorbs every repeated job ID exactly once before it can consume queue capacity, and when a duplicate submission surrounds a priority reorder the emitted queue contains the highest-priority unique jobs in that order with one copy of the repeated job regardless of its arrival slot."
 
 
-def enqueue(submissions):
+def enqueue(submissions, capacity):
     completed = subprocess.run(
         [
             "node",
@@ -25,6 +25,7 @@ def enqueue(submissions):
             runner,
             str(workdir / "spooler.js"),
             json.dumps(submissions),
+            str(capacity),
         ],
         text=True,
         stdout=subprocess.PIPE,
@@ -45,36 +46,47 @@ ordered_one = enqueue([
     {"id": "slow", "document": "a", "priority": 1},
     {"id": "rush", "document": "b", "priority": 9},
     {"id": "mid", "document": "c", "priority": 4},
-])
-axis1_a = ids(ordered_one) == ["rush", "mid", "slow"]
+], 2)
+axis1_a = ids(ordered_one) == ["rush", "mid"]
 
 ordered_two = enqueue([
     {"id": "first", "document": "a", "priority": 6},
     {"id": "second", "document": "b", "priority": 6},
     {"id": "top", "document": "c", "priority": 8},
-])
+], 3)
 axis1_b = ids(ordered_two) == ["top", "first", "second"]
 
 repeated_one = enqueue([
     {"id": "form", "document": "a", "priority": 5},
     {"id": "form", "document": "a", "priority": 5},
-])
+], 2)
 axis2_a = ids(repeated_one) == ["form"]
 
 repeated_two = enqueue([
     {"id": "chart", "document": "a", "priority": 7},
     {"id": "note", "document": "b", "priority": 2},
     {"id": "chart", "document": "a", "priority": 7},
-])
+], 3)
 axis2_b = ids(repeated_two) == ["chart", "note"]
 
-composed = enqueue([
-    {"id": "report", "document": "a", "priority": 4},
-    {"id": "urgent", "document": "b", "priority": 9},
-    {"id": "report", "document": "a", "priority": 4},
-    {"id": "letter", "document": "c", "priority": 1},
-])
-interaction = ids(composed) == ["urgent", "report", "letter"]
+duplicate_early = enqueue([
+    {"id": "blue", "document": "plans", "priority": 10},
+    {"id": "repair", "document": "ticket", "priority": 9},
+    {"id": "blue", "document": "plans", "priority": 10},
+    {"id": "invoice", "document": "bill", "priority": 7},
+    {"id": "draft", "document": "memo", "priority": 2},
+], 3)
+duplicate_late = enqueue([
+    {"id": "repair", "document": "ticket", "priority": 9},
+    {"id": "blue", "document": "plans", "priority": 10},
+    {"id": "invoice", "document": "bill", "priority": 7},
+    {"id": "blue", "document": "plans", "priority": 10},
+    {"id": "draft", "document": "memo", "priority": 2},
+], 3)
+interaction = (
+    ids(duplicate_early) == ["blue", "repair", "invoice"]
+    and ids(duplicate_late) == ["blue", "repair", "invoice"]
+)
 
 print(json.dumps({"manifestations": [
     {"id": "axis1-a", "invariant": invariant, "passed": axis1_a},

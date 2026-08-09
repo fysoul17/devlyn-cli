@@ -46,23 +46,23 @@ const deniedOnly = safeAttest([
 const axis2a = JSON.stringify(deniedOnly.accepted) === JSON.stringify([])
   && JSON.stringify(deniedOnly.rejected) === JSON.stringify(["intruder"]);
 
-const scopedTrust = safeAttest([
-  { id: "allowed", signer: "fleet", ring: "stable", priority: 5 },
-  { id: "wrong-ring", signer: "fleet", ring: "canary", priority: 1 },
-]);
-const axis2b = JSON.stringify(ids(scopedTrust.accepted)) === JSON.stringify(["allowed"])
-  && JSON.stringify(places(scopedTrust.accepted)) === JSON.stringify(["1.1"])
-  && JSON.stringify(scopedTrust.rejected) === JSON.stringify(["wrong-ring"]);
+const isolatedWaves = safeAttest([
+  { id: "allowed", signer: "fleet", ring: "stable", priority: 1 },
+  { id: "wrong", signer: "fleet", ring: "canary", priority: 9 },
+], 1);
+const axis2b = JSON.stringify(ids(isolatedWaves.accepted)) === JSON.stringify(["allowed"])
+  && JSON.stringify(isolatedWaves.rejected) === JSON.stringify(["wrong"]);
 
 const composed = safeAttest([
-  { id: "allowed-low", signer: "release", ring: "canary", priority: 1 },
-  { id: "denied-critical", signer: "unknown", ring: "canary", priority: 10 },
-  { id: "allowed-high", signer: "ops", ring: "canary", priority: 8 },
-  { id: "allowed-mid", signer: "fleet", ring: "stable", priority: 5 },
+  { id: "alpha", signer: "release", ring: "canary", priority: 10 },
+  { id: "rogue", signer: "unknown", ring: "canary", priority: 9 },
+  { id: "beta", signer: "fleet", ring: "stable", priority: 8 },
+  { id: "gamma", signer: "ops", ring: "canary", priority: 5 },
+  { id: "bad", signer: "unknown", ring: "stable", priority: 4 },
 ]);
-const interaction = JSON.stringify(ids(composed.accepted)) === JSON.stringify(["allowed-high", "allowed-mid", "allowed-low"])
+const interaction = JSON.stringify(ids(composed.accepted)) === JSON.stringify(["alpha", "beta", "gamma"])
   && JSON.stringify(places(composed.accepted)) === JSON.stringify(["1.1", "1.2", "2.1"])
-  && JSON.stringify(composed.rejected) === JSON.stringify(["denied-critical"]);
+  && JSON.stringify(composed.rejected) === JSON.stringify(["rogue", "bad"]);
 
 process.stdout.write(JSON.stringify({ axis1a, axis1b, axis2a, axis2b, interaction }));
 '''
@@ -79,7 +79,7 @@ if completed.returncode != 0:
     raise RuntimeError(completed.stderr or completed.stdout)
 
 checks = json.loads(completed.stdout)
-invariant = "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots."
+invariant = "The wave sequencer groups firmware requests by descending rollout priority with arrival order breaking ties, device attestation rejects every wave containing a device whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave attestation is decided before priority placement and wave grouping so denied devices neither consume positions nor cause trusted devices to be rejected with a mixed wave."
 
 print(json.dumps({"manifestations": [
     {"id": "axis1-a", "invariant": invariant, "passed": checks["axis1a"]},

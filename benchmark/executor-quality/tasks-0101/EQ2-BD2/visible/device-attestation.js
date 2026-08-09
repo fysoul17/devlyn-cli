@@ -12,11 +12,27 @@ function attestRollout(requests, trustedSigners, waveSize = 2) {
     priority: Number(request.priority),
     arrival,
   }));
-  const result = sequenceWaves(normalized, policy, waveSize);
+  const plan = sequenceWaves(normalized, policy, waveSize);
+  const accepted = [];
+  const rejected = [...plan.rejected];
+  const waves = new Map();
+  for (const request of plan.placed) {
+    const wave = waves.get(request.wave) ?? [];
+    wave.push(request);
+    waves.set(request.wave, wave);
+  }
+
+  for (const wave of waves.values()) {
+    if (wave.every((request) => policy.allows(request))) {
+      accepted.push(...wave);
+    } else {
+      rejected.push(...wave.map((request) => request.id));
+    }
+  }
 
   return {
-    accepted: result.accepted.map(({ id, wave, slot }) => ({ id, wave, slot })),
-    rejected: [...result.rejected],
+    accepted: accepted.map(({ id, wave, slot }) => ({ id, wave, slot })),
+    rejected,
   };
 }
 

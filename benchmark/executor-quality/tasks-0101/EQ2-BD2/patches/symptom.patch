@@ -1,6 +1,6 @@
 --- a/wave-sequencer.js
 +++ b/wave-sequencer.js
-@@ -1,7 +1,23 @@
+@@ -1,7 +1,16 @@
  "use strict";
  
 +const { rankRequests } = require("./priority");
@@ -9,19 +9,12 @@
  function sequenceWaves(requests, policy, waveSize = 2) {
 -  throw new Error("wave sequencing is not implemented");
 +  const cursor = new WaveCursor(waveSize);
-+  const accepted = [];
-+  const rejected = [];
++  const placed = rankRequests(requests).map((request) => ({
++    ...request,
++    ...cursor.allocate(),
++  }));
 +
-+  for (const request of rankRequests(requests)) {
-+    const placement = cursor.allocate();
-+    if (!policy.allows(request)) {
-+      rejected.push(request.id);
-+      continue;
-+    }
-+    accepted.push({ ...request, ...placement });
-+  }
-+
-+  return { accepted, rejected };
++  return { placed, rejected: [] };
  }
  
  module.exports = { sequenceWaves };

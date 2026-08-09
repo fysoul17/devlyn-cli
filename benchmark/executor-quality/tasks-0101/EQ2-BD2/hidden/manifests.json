@@ -2,52 +2,52 @@
   "manifestations": [
     {
       "id": "axis1-a",
-      "invariant": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots.",
+      "invariant": "The wave sequencer groups firmware requests by descending rollout priority with arrival order breaking ties, device attestation rejects every wave containing a device whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave attestation is decided before priority placement and wave grouping so denied devices neither consume positions nor cause trusted devices to be rejected with a mixed wave.",
       "class": "broken_dependency",
       "contract_excerpt": {
         "file": "visible/CONTRACT.md",
-        "sha256": "36c274e37f375444ef504f3e3527554fef733fef79dc422d2265da40e9cf3f27",
-        "quote": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots."
+        "sha256": "1344240a29eaef5bc3760e50c2ec5919bdabe1009c703f4ec1c9d1b65224496b",
+        "quote": "The wave sequencer groups firmware requests by descending rollout priority with arrival order breaking ties, device attestation rejects every wave containing a device whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave attestation is decided before priority placement and wave grouping so denied devices neither consume positions nor cause trusted devices to be rejected with a mixed wave."
       }
     },
     {
       "id": "axis1-b",
-      "invariant": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots.",
+      "invariant": "The wave sequencer groups firmware requests by descending rollout priority with arrival order breaking ties, device attestation rejects every wave containing a device whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave attestation is decided before priority placement and wave grouping so denied devices neither consume positions nor cause trusted devices to be rejected with a mixed wave.",
       "class": "broken_dependency",
       "contract_excerpt": {
         "file": "visible/CONTRACT.md",
-        "sha256": "36c274e37f375444ef504f3e3527554fef733fef79dc422d2265da40e9cf3f27",
-        "quote": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots."
+        "sha256": "1344240a29eaef5bc3760e50c2ec5919bdabe1009c703f4ec1c9d1b65224496b",
+        "quote": "The wave sequencer groups firmware requests by descending rollout priority with arrival order breaking ties, device attestation rejects every wave containing a device whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave attestation is decided before priority placement and wave grouping so denied devices neither consume positions nor cause trusted devices to be rejected with a mixed wave."
       }
     },
     {
       "id": "axis2-a",
-      "invariant": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots.",
+      "invariant": "The wave sequencer groups firmware requests by descending rollout priority with arrival order breaking ties, device attestation rejects every wave containing a device whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave attestation is decided before priority placement and wave grouping so denied devices neither consume positions nor cause trusted devices to be rejected with a mixed wave.",
       "class": "broken_dependency",
       "contract_excerpt": {
         "file": "visible/CONTRACT.md",
-        "sha256": "36c274e37f375444ef504f3e3527554fef733fef79dc422d2265da40e9cf3f27",
-        "quote": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots."
+        "sha256": "1344240a29eaef5bc3760e50c2ec5919bdabe1009c703f4ec1c9d1b65224496b",
+        "quote": "The wave sequencer groups firmware requests by descending rollout priority with arrival order breaking ties, device attestation rejects every wave containing a device whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave attestation is decided before priority placement and wave grouping so denied devices neither consume positions nor cause trusted devices to be rejected with a mixed wave."
       }
     },
     {
       "id": "axis2-b",
-      "invariant": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots.",
+      "invariant": "The wave sequencer groups firmware requests by descending rollout priority with arrival order breaking ties, device attestation rejects every wave containing a device whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave attestation is decided before priority placement and wave grouping so denied devices neither consume positions nor cause trusted devices to be rejected with a mixed wave.",
       "class": "broken_dependency",
       "contract_excerpt": {
         "file": "visible/CONTRACT.md",
-        "sha256": "36c274e37f375444ef504f3e3527554fef733fef79dc422d2265da40e9cf3f27",
-        "quote": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots."
+        "sha256": "1344240a29eaef5bc3760e50c2ec5919bdabe1009c703f4ec1c9d1b65224496b",
+        "quote": "The wave sequencer groups firmware requests by descending rollout priority with arrival order breaking ties, device attestation rejects every wave containing a device whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave attestation is decided before priority placement and wave grouping so denied devices neither consume positions nor cause trusted devices to be rejected with a mixed wave."
       }
     },
     {
       "id": "interaction",
-      "invariant": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots.",
+      "invariant": "The wave sequencer groups firmware requests by descending rollout priority with arrival order breaking ties, device attestation rejects every wave containing a device whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave attestation is decided before priority placement and wave grouping so denied devices neither consume positions nor cause trusted devices to be rejected with a mixed wave.",
       "class": "broken_dependency",
       "contract_excerpt": {
         "file": "visible/CONTRACT.md",
-        "sha256": "36c274e37f375444ef504f3e3527554fef733fef79dc422d2265da40e9cf3f27",
-        "quote": "Device attestation orders firmware requests by descending rollout priority with arrival order breaking ties, rejects every unprivileged request whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave it decides authorization before wave placement so denied devices never consume ordered slots."
+        "sha256": "1344240a29eaef5bc3760e50c2ec5919bdabe1009c703f4ec1c9d1b65224496b",
+        "quote": "The wave sequencer groups firmware requests by descending rollout priority with arrival order breaking ties, device attestation rejects every wave containing a device whose signer is not trusted for its rollout ring, and when privileged and unprivileged requests interleave attestation is decided before priority placement and wave grouping so denied devices neither consume positions nor cause trusted devices to be rejected with a mixed wave."
       }
     }
   ]
