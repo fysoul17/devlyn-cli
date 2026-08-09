@@ -1,0 +1,24 @@
+--- a/spooler.js
++++ b/spooler.js
+@@ -1,7 +1,19 @@
+ import { normalizeJob } from "./job.js";
++import { JobDedupIndex } from "./job-dedup-index.js";
+ import { rankJobs } from "./priority.js";
+ 
+ export function enqueueAll(submissions) {
+-  const jobs = submissions.map((submission, sequence) => normalizeJob(submission, sequence));
+-  return rankJobs(jobs);
++  const index = new JobDedupIndex();
++  let queue = [];
++  for (const [sequence, submission] of submissions.entries()) {
++    const job = normalizeJob(submission, sequence);
++    const knownSlot = index.slotOf(job.id);
++    if (knownSlot !== undefined && queue[knownSlot]?.id === job.id) {
++      continue;
++    }
++    queue.push(job);
++    index.remember(job.id, queue.length - 1);
++    queue = rankJobs(queue);
++  }
++  return queue;
+ }

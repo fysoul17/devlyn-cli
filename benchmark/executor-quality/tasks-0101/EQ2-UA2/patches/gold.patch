@@ -1,0 +1,42 @@
+--- a/job-dedup-index.js
++++ b/job-dedup-index.js
+@@ -1,11 +1,11 @@
+ export class JobDedupIndex {
+-  #slots = new Map();
++  #seen = new Set();
+ 
+-  slotOf(jobId) {
+-    return this.#slots.get(jobId);
++  has(jobId) {
++    return this.#seen.has(jobId);
+   }
+ 
+-  remember(jobId, slot) {
+-    this.#slots.set(jobId, slot);
++  remember(jobId) {
++    this.#seen.add(jobId);
+   }
+ }
+--- a/spooler.js
++++ b/spooler.js
+@@ -1,7 +1,18 @@
+ import { normalizeJob } from "./job.js";
++import { JobDedupIndex } from "./job-dedup-index.js";
+ import { rankJobs } from "./priority.js";
+ 
+ export function enqueueAll(submissions) {
+-  const jobs = submissions.map((submission, sequence) => normalizeJob(submission, sequence));
+-  return rankJobs(jobs);
++  const index = new JobDedupIndex();
++  let queue = [];
++  for (const [sequence, submission] of submissions.entries()) {
++    const job = normalizeJob(submission, sequence);
++    if (index.has(job.id)) {
++      continue;
++    }
++    index.remember(job.id);
++    queue.push(job);
++    queue = rankJobs(queue);
++  }
++  return queue;
+ }
