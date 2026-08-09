@@ -123,6 +123,7 @@ Input: ledger JSONL, one row per run:
 Remaining 9 tasks; corpus digest sealing; arm runner; recert-seats.sh
 `executor_quality` suite; seat-matrix.py collector. Do not touch.
 
+<!-- devlyn:verification -->
 ## Verification
 
 ```json
