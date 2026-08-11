@@ -371,7 +371,7 @@ Freeze-protocol step 1 progress — 16/32 candidate tasks admitted:
 | 01 (scripts + EQ2-*1) | rs-20260809T125952Z | PASS | 1 — MI1 re-authored (renamed structural copy of UA1) |
 | 02 (EQ2-*2, Node) | rs-20260809T144652Z | PASS | 1 — UA2 (copy of BD1) + BD2 (copy of AF2) re-authored |
 | 03 (EQ2-*3) | rs-20260809T155123Z | PASS | 1 — UA3/AF3 oracle `__pycache__` workdir-mutation guard; AF3/BD3 same-reason tie-break coverage |
-| 04 (EQ2-*4, Node) | iter1 rs-20260809T164937Z BLOCKED:verify-exhausted; iter2 rs-20260809T175755Z | **OPEN — BLOCKED:codex-unavailable** | iter1 r0 ×4 (MI4/BD4 symptom rollback-incorrectness, UA4 copy of AF3, MI4/AF4/BD4 shared RI oracle template) → fix; r1 re-fired UA4 topology + strawman symptom → iter2 re-authored UA4 (1e40f67); BUILD_GATE + MECHANICAL + pair claude all green; primary codex judge never ran (usage limit, resets 2026-08-16 10:36) |
+| 04 (EQ2-*4, Node) | iter1 rs-20260809T164937Z BLOCKED:verify-exhausted; iter2 rs-20260809T175755Z | **CLOSED PASS (2026-08-11 close-out)** | iter1 r0 ×4 (MI4/BD4 symptom rollback-incorrectness, UA4 copy of AF3, MI4/AF4/BD4 shared RI oracle template) → fix; r1 re-fired UA4 topology + strawman symptom → iter2 re-authored UA4 (1e40f67); BUILD_GATE + MECHANICAL + pair claude green in-run; primary codex judge re-run 2026-08-11 after seat recovery (diff dc53576...1e40f67, 204s, 0 findings, PASS) → merge PASS 3/3, evidence-valid; run archive + receipts completed |
 
 Batch-01 spec pair-reviewed pre-commit (sol REVISE ×4, R1-0101B01-LIVE-sol,
 incl. CI-touch corrected to exact [3/80, 3/20] by execution ×2). Batch-02
@@ -403,11 +403,15 @@ dispatch prompts**: same-pair structural copying (5 HIGH findings across 3
 batches), oracle workdir mutation, tie-break coverage gaps, strawman
 symptom branches keyed on input mix.
 
-**RESUME (codex seat required — resets 2026-08-16 10:36 KST, or user
-re-pins executor)**: ① writer-check ② batch-04 close-out = re-run ONLY the
-iteration-2 primary codex VERIFY judge against diff
-`dc53576...1e40f67` (spec sha 6aaad08f…; pair+mechanical already green;
-receipts `~/.local/share/nx01/iter0101/build/batch-04/RECEIPT.md`) → on
-PASS, batch-04 CLOSED ③ batches 05-08 sequentially (specs committed +
-verified; per-batch flow identical to 03) ④ candidate seal → calibration →
-both-seat pre-arm audit → 128-run matrix per the frozen recipe above.
+**RESUME executed 2026-08-11 (codex seat recovered before the posted
+reset)**: ① writer-check clean ② batch-04 CLOSED PASS — primary codex
+VERIFY judge re-run on diff `dc53576...1e40f67` (spec sha 6aaad08f…
+re-verified; 204s, 0 findings), merge PASS 3/3 evidence-valid; the state's
+prior fail-open `verify: PASS` is superseded (product finding 1 itself
+still stands as a registered class). Bonus live receipt: the first merge
+attempt without `claude-judge.stdout` in `.devlyn` root correctly fired
+`verify-pair-required-output-missing` — the pair spawn-evidence gate
+works as designed. Remaining: ③ batches 05-08 sequentially (per-batch
+flow identical to 03; carry the four recurring authoring failure classes
+into dispatch prompts) ④ candidate seal → calibration → both-seat
+pre-arm audit → 128-run matrix per the frozen recipe above.

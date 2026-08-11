@@ -105,11 +105,10 @@ these into batch 05-08 dispatch prompts). Batch-01 spec sol-reviewed
 (REVISE ×4); batch-02 spec sol-reviewed as the 03-08 TEMPLATE
 (REVISE ×7); batches 03-08 specs committed, row-substituted +
 mechanically verified vs the frozen table (`76657bd`). **Batch-04
-OPEN — BLOCKED:codex-unavailable at iter-2 VERIFY** (usage limit,
-resets 2026-08-16 10:36 KST): UA4 re-authored `1e40f67`,
-BUILD_GATE + MECHANICAL + pair claude ALL green, only the primary
-codex judge is missing; close-out = re-run that one judge on diff
-`dc53576...1e40f67`. THREE harness product findings registered in
+CLOSED PASS (2026-08-11 close-out — codex seat recovered early)**:
+UA4 re-authored `1e40f67`; primary codex judge re-run on diff
+`dc53576...1e40f67` (204s, 0 findings) → merge PASS 3/3
+evidence-valid; 16/32 admitted. THREE harness product findings registered in
 the iteration file (verify-merge PRIMARY fail-open — a batch-04
 iter-2 state `verify: PASS` is evidence-invalid; stale
 verify.judge.summary.json survives archive; collector/merge parser
