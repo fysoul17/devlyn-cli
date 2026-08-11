@@ -424,14 +424,34 @@ tasks, 554 files, per-file sha256) + tree digest
 at git `cc23209`; four script pins re-verified byte-identical to the
 registration values. Receipts:
 `~/.local/share/nx01/iter0101/freeze/{candidate-manifest.json,candidate-tree.sha256,scripts.sha256}`.
-Remaining (next session; do NOT fire arms near 12am KST): ③ calibration
-apparatus freeze against the CANDIDATE manifest (0100 driver/launcher
-lineage; engines={claude-sonnet-5}; 64 attempts = 2 reps × 32; ledger
-scored ONLY by score-calibration.py; TASKS_ROOT/manifest/digests/
-BOUND_SEC=1800/stdin DEVNULL/prompt_sha256/attestation/scrubbed env/
-pinned CLI per matrix rules; no driver_sha256 field) → ④ 64-run sonnet
-calibration → ⑤ ONE band evaluation (PASS → candidate digest promoted
-UNCHANGED; MISS → CALIBRATION_MISS stop) → ⑥ matrix launcher freeze →
-⑦ both-seat pre-arm audit (sol + grok, liveness, synthetic-ledger
-proofs incl. the four 0100 repro classes) → ⑧ 128-run matrix detached
-(2-4 lanes).
+**STEP ③ CALIBRATION APPARATUS FROZEN (2026-08-12 session, FREEZE-ARM
+×2)**: cal-driver f7347a72… + cal-launcher 719ea0f1… (0100 lineage,
+enumerated deltas only: TASKS_ROOT tasks-0101, BOUND_SEC 1800, no
+driver_sha256, JSON candidate manifest 59cc0dc1… + tree-digest 2685fa07…
+double-binding, sonnet-only hard gate, index-parity 2-lane 64-cell
+schedule) at `~/.local/share/nx01/iter0101/calibration/`. Pre-freeze:
+writer-check clean; seal re-verified 554/554 + tree digest reconstructed
+(compact-JSON sort_keys construction); mechanical proofs 19/19 (tamper/
+symlink/extra-file/pin fail-closed; row schema == scorer REQUIRED∪OPTIONAL;
+extra-field driver_sha256 injection → UNSCORED re-proven); all 32 oracles
+timed ≤0.20s on pristine copies (60s bound, ~300× headroom); NO pilot arm
+(prohibition honored). Seat round: grok R0 FREEZE-ARM vs sol R0 REVISE
+(H1 AUTH lexical taxonomy, H2 empty-modelUsage→scored f=1, H3 receipt
+apparatus-bytes/attempt binding, L4 D6 revert) → orchestrator adjudication
+(`calfrz-adjudication.md`, named criterion = silent-alteration ∧
+registration-legality): H3+L4 ADOPTED (launch-detached.py fail-closed
+digest gate + launch-receipt.json binding; launcher merge byte-revert),
+H1/H2 NOT freeze-blockers (taxonomy byte-frozen by Arms clause; 0100
+FREEZE-ARM ×2 precedent) with two PRE-COMMITTED operational rules:
+(i) both-seat infra-authenticity adjudication recorded before any
+replacement launch, (ii) MISS + any success-subtype/empty-attestation row
+→ surface to user as CONTESTED before recording CALIBRATION_MISS.
+RECHECK convergence: sol FREEZE-ARM + grok FREEZE-ARM (liveness
+RECHECK-CALFRZ-LIVE-sol-b8c88b56 / -grok-7ab88b86). Taxonomy
+modernization (structured CLI status classification) registered as
+next-registration harness follow-up. Remaining: ④ 64-run sonnet
+calibration (detached, post-midnight-KST window) → ⑤ ONE band evaluation
+(PASS → candidate digest promoted UNCHANGED; MISS → CALIBRATION_MISS
+stop) → ⑥ matrix launcher freeze → ⑦ both-seat pre-arm audit (sol +
+grok, liveness, synthetic-ledger proofs incl. the four 0100 repro
+classes) → ⑧ 128-run matrix detached (2-4 lanes).
