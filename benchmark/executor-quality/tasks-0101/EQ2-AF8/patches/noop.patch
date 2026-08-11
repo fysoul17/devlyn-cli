@@ -3,6 +3,5 @@
 @@ -1,4 +1,4 @@
 -# Certificate renewal fixture
 +# Certificate renewal service fixture
- 
+
  The fixture separates renewal authorization, CSR review, and the serial-backed certificate issuance chain. `renewal-service.js` composes the boundary.
- 

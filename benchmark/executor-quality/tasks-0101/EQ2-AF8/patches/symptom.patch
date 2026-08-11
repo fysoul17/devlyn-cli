@@ -1,7 +1,7 @@
 --- a/csr-policy.js
 +++ b/csr-policy.js
 @@ -48,7 +48,7 @@
- 
+
  export function rankCsrDefects(defects) {
    return [...defects].sort(
 -    (left, right) => left.reason.localeCompare(right.reason)

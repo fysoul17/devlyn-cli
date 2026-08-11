@@ -1,7 +1,7 @@
 --- a/limit-rules.js
 +++ b/limit-rules.js
 @@ -23,8 +23,8 @@
- 
+
  export function selectLimitIssue(change) {
    const rules = Array.isArray(change.rules) ? change.rules : [];
 -  for (const [ruleIndex, rule] of rules.entries()) {

@@ -2,7 +2,7 @@
 +++ b/schema-check.js
 @@ -54,7 +54,10 @@
  }
- 
+
  export function rankSchemaIssues(issues) {
 -  return [...issues].sort((left, right) => left.arrivalIndex - right.arrivalIndex);
 +  return [...issues].sort(
@@ -10,7 +10,7 @@
 +      || left.arrivalIndex - right.arrivalIndex,
 +  );
  }
- 
+
  export class SchemaDiagnosticJournal {
 --- a/publisher.js
 +++ b/publisher.js

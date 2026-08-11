@@ -1,11 +1,11 @@
 --- a/README.md
 +++ b/README.md
 @@ -2,7 +2,7 @@
- 
+
  The fixture separates gate-owned approval and decision history from limit-writer validation and persistence. `admin-gate.js` composes the boundary for each request in a batch.
- 
+
 -Run the tests with:
 +Run the local tests with:
- 
+
  ```sh
  node --test
