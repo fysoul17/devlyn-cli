@@ -1,0 +1,15 @@
+--- a/duplicate_log.py
++++ b/duplicate_log.py
+@@ -14 +14 @@
+-        return f"{request.request_key}:{request.candidate_id}"
++        return request.request_key
+--- a/reason_policy.py
++++ b/reason_policy.py
+@@ -20 +20,6 @@
+-    return tuple(sorted(rejections, key=lambda item: item.source_index))
++    return tuple(
++        sorted(
++            rejections,
++            key=lambda item: (REASON_PRIORITY[item.reason], item.source_index),
++        )
++    )

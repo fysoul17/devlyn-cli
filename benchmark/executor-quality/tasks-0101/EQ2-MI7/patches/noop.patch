@@ -1,0 +1,5 @@
+--- a/models.py
++++ b/models.py
+@@ -1 +1 @@
+-"""Public values used by the waitlist promotion flow."""
++"""Public value objects used by the waitlist promotion flow."""

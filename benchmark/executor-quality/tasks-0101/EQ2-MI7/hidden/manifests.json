@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Within one bounded promotion board, submissions sharing a request key must reuse the first duplicate-log outcome and change the queue or roster at most once, rejection reasons rank paused candidate before full roster before out-of-turn position with source order breaking equal-reason ties, and when duplicate bodies would fail for different reasons the first recorded ranked rejection must remain stable without a second log row or promotion side effect.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "5ef1b72f291854c0a70ab00614e7ca876771c7d34c461fb5567a1ba08b9fdd5b",
+        "quote": "Within one bounded promotion board, submissions sharing a request key must reuse the first duplicate-log outcome and change the queue or roster at most once, rejection reasons rank paused candidate before full roster before out-of-turn position with source order breaking equal-reason ties, and when duplicate bodies would fail for different reasons the first recorded ranked rejection must remain stable without a second log row or promotion side effect."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Within one bounded promotion board, submissions sharing a request key must reuse the first duplicate-log outcome and change the queue or roster at most once, rejection reasons rank paused candidate before full roster before out-of-turn position with source order breaking equal-reason ties, and when duplicate bodies would fail for different reasons the first recorded ranked rejection must remain stable without a second log row or promotion side effect.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "5ef1b72f291854c0a70ab00614e7ca876771c7d34c461fb5567a1ba08b9fdd5b",
+        "quote": "Within one bounded promotion board, submissions sharing a request key must reuse the first duplicate-log outcome and change the queue or roster at most once, rejection reasons rank paused candidate before full roster before out-of-turn position with source order breaking equal-reason ties, and when duplicate bodies would fail for different reasons the first recorded ranked rejection must remain stable without a second log row or promotion side effect."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Within one bounded promotion board, submissions sharing a request key must reuse the first duplicate-log outcome and change the queue or roster at most once, rejection reasons rank paused candidate before full roster before out-of-turn position with source order breaking equal-reason ties, and when duplicate bodies would fail for different reasons the first recorded ranked rejection must remain stable without a second log row or promotion side effect.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "5ef1b72f291854c0a70ab00614e7ca876771c7d34c461fb5567a1ba08b9fdd5b",
+        "quote": "Within one bounded promotion board, submissions sharing a request key must reuse the first duplicate-log outcome and change the queue or roster at most once, rejection reasons rank paused candidate before full roster before out-of-turn position with source order breaking equal-reason ties, and when duplicate bodies would fail for different reasons the first recorded ranked rejection must remain stable without a second log row or promotion side effect."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Within one bounded promotion board, submissions sharing a request key must reuse the first duplicate-log outcome and change the queue or roster at most once, rejection reasons rank paused candidate before full roster before out-of-turn position with source order breaking equal-reason ties, and when duplicate bodies would fail for different reasons the first recorded ranked rejection must remain stable without a second log row or promotion side effect.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "5ef1b72f291854c0a70ab00614e7ca876771c7d34c461fb5567a1ba08b9fdd5b",
+        "quote": "Within one bounded promotion board, submissions sharing a request key must reuse the first duplicate-log outcome and change the queue or roster at most once, rejection reasons rank paused candidate before full roster before out-of-turn position with source order breaking equal-reason ties, and when duplicate bodies would fail for different reasons the first recorded ranked rejection must remain stable without a second log row or promotion side effect."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Within one bounded promotion board, submissions sharing a request key must reuse the first duplicate-log outcome and change the queue or roster at most once, rejection reasons rank paused candidate before full roster before out-of-turn position with source order breaking equal-reason ties, and when duplicate bodies would fail for different reasons the first recorded ranked rejection must remain stable without a second log row or promotion side effect.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "5ef1b72f291854c0a70ab00614e7ca876771c7d34c461fb5567a1ba08b9fdd5b",
+        "quote": "Within one bounded promotion board, submissions sharing a request key must reuse the first duplicate-log outcome and change the queue or roster at most once, rejection reasons rank paused candidate before full roster before out-of-turn position with source order breaking equal-reason ties, and when duplicate bodies would fail for different reasons the first recorded ranked rejection must remain stable without a second log row or promotion side effect."
+      }
+    }
+  ]
+}
