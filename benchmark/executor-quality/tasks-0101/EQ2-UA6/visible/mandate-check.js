@@ -1,24 +1,48 @@
+function denied(transfer, reason) {
+  return { transfer, authorized: false, reason };
+}
+
 export class MandateCheck {
   constructor(mandates) {
     this.mandates = structuredClone(mandates);
   }
 
-  review(transfers) {
+  reviewTransfer(transfer, effectiveDate) {
+    const mandate = this.mandates[transfer.mandateId];
+    if (!mandate) {
+      return denied(transfer, "missing-mandate");
+    }
+    if (mandate.status !== "active") {
+      return denied(transfer, mandate.status);
+    }
+    if (effectiveDate > mandate.expiresOn) {
+      return denied(transfer, "expired");
+    }
+    if (mandate.debitAccount !== transfer.fromAccount) {
+      return denied(transfer, "debit-scope");
+    }
+    if (mandate.currency !== transfer.currency) {
+      return denied(transfer, "currency-scope");
+    }
+    if (transfer.amountCents > mandate.remainingCents) {
+      return denied(transfer, "allowance");
+    }
+    return { transfer, authorized: true, reason: null };
+  }
+
+  reviewBatch(transfers, effectiveDate) {
+    const usedByMandate = new Map();
     return transfers.map((transfer) => {
-      const mandate = this.mandates[transfer.mandateId];
-      if (!mandate) {
-        return { transfer, authorized: false, reason: "missing-mandate" };
+      const decision = this.reviewTransfer(transfer, effectiveDate);
+      if (!decision.authorized) {
+        return decision;
       }
-      if (mandate.status !== "active") {
-        return { transfer, authorized: false, reason: mandate.status };
+      const used = (usedByMandate.get(transfer.mandateId) ?? 0) + transfer.amountCents;
+      if (used > this.mandates[transfer.mandateId].remainingCents) {
+        return denied(transfer, "batch-allowance");
       }
-      if (
-        mandate.debitAccount !== transfer.fromAccount ||
-        transfer.amountCents > mandate.limitCents
-      ) {
-        return { transfer, authorized: false, reason: "mandate-scope" };
-      }
-      return { transfer, authorized: true, reason: null };
+      usedByMandate.set(transfer.mandateId, used);
+      return decision;
     });
   }
 }

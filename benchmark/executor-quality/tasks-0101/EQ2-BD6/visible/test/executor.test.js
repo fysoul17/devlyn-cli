@@ -8,8 +8,8 @@ import { executePickWave } from "../pick_executor.js";
 test("a successful wave records its picks and commit", () => {
   const store = new InventoryStore({ A: 8, B: 5 });
   const result = executePickWave(store, "wave-ok", [
-    { quantity: 3, sku: "A" },
-    { quantity: 2, sku: "B" },
+    { quantity: 3, sku: "A", zone: "north" },
+    { quantity: 2, sku: "B", zone: "south" },
   ]);
 
   assert.deepEqual(result.picks, [
@@ -24,7 +24,9 @@ test("a physical write fault restores the wave start", () => {
   const before = store.snapshotBytes();
 
   assert.throws(
-    () => executePickWave(store, "wave-write", [{ failAfterWrite: true, quantity: 3, sku: "A" }]),
+    () => executePickWave(store, "wave-write", [
+      { failAfterWrite: true, quantity: 3, sku: "A", zone: "north" },
+    ]),
     WriteFault,
   );
   assert.deepEqual(store.snapshotBytes(), before);
@@ -38,7 +40,10 @@ test("a commit fault restores multiple completed picks", () => {
     () => executePickWave(
       store,
       "wave-commit",
-      [{ quantity: 3, sku: "A" }, { quantity: 2, sku: "B" }],
+      [
+        { quantity: 3, sku: "A", zone: "north" },
+        { quantity: 2, sku: "B", zone: "south" },
+      ],
       { failCommit: true },
     ),
     CommitFault,

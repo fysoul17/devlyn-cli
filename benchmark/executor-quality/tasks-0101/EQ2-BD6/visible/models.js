@@ -1,8 +1,10 @@
 export function makeIssue(arrivalIndex, row, reason) {
   return Object.freeze({
     arrivalIndex,
+    quantity: row.quantity,
     reason,
     sku: row.sku,
+    zone: row.zone,
   });
 }
 

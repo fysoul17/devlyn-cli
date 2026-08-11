@@ -13,6 +13,7 @@ test("snapshot restoration preserves canonical bytes", () => {
 
 test("locked bins and insufficient stock have distinct causes", () => {
   const store = new InventoryStore({ A: 7, B: 2 }, { locked: ["A"] });
+  assert.equal(store.availableFor("B"), 2);
   assert.equal(store.problemFor({ quantity: 1, sku: "A" }), "conflict");
   assert.equal(store.problemFor({ quantity: 3, sku: "B" }), "shortage");
   assert.equal(store.problemFor({ quantity: 2, sku: "B" }), null);

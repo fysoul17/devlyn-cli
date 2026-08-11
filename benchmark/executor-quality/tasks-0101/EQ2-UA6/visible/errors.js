@@ -1,12 +1,18 @@
-export class LedgerWriteError extends Error {
+export class LedgerBatchError extends Error {
   constructor(message) {
     super(message);
     this.name = new.target.name;
   }
 }
 
-export class DebitPostingError extends LedgerWriteError {}
+export class InsufficientFundsError extends LedgerBatchError {
+  constructor(transferId) {
+    super(`insufficient funds for ${transferId}`);
+  }
+}
 
-export class CreditPostingError extends LedgerWriteError {}
-
-export class JournalAppendError extends LedgerWriteError {}
+export class SettlementRejectedError extends LedgerBatchError {
+  constructor(batchId) {
+    super(`settlement rejected ${batchId}`);
+  }
+}

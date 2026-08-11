@@ -3,13 +3,14 @@ export function createTransfer({
   mandateId,
   fromAccount,
   toAccount,
+  currency,
   amountCents,
 }) {
-  if (!id || !mandateId || !fromAccount || !toAccount) {
-    throw new TypeError("transfer identifiers are required");
+  if (!id || !mandateId || !fromAccount || !toAccount || !currency) {
+    throw new TypeError("transfer identifiers and currency are required");
   }
   if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
     throw new TypeError("amountCents must be a positive safe integer");
   }
-  return Object.freeze({ id, mandateId, fromAccount, toAccount, amountCents });
+  return Object.freeze({ id, mandateId, fromAccount, toAccount, currency, amountCents });
 }

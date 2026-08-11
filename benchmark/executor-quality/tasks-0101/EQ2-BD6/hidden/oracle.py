@@ -17,11 +17,16 @@ const { executePickWave } = await import(new URL("pick_executor.js", rootUrl).hr
 const { ShortageReporter } = await import(new URL("shortage_reporter.js", rootUrl).href);
 const scenario = JSON.parse(process.argv[2]);
 
-function capture(action, store) {
+function capture(action, store, reporter = null) {
   const before = store?.snapshotBytes();
   try {
     const value = action();
-    return { error: null, same: store ? store.snapshotBytes().equals(before) : null, value };
+    return {
+      error: null,
+      reporter: reporter?.snapshot() ?? null,
+      same: store ? store.snapshotBytes().equals(before) : null,
+      value,
+    };
   } catch (error) {
     return {
       error: error.name,
@@ -29,6 +34,7 @@ function capture(action, store) {
         ? error.issues.map((issue) => [issue.arrivalIndex, issue.reason, issue.sku])
         : [],
       reason: error.reason ?? null,
+      reporter: reporter?.snapshot() ?? null,
       same: store ? store.snapshotBytes().equals(before) : null,
     };
   }
@@ -38,7 +44,9 @@ let output;
 if (scenario === "write") {
   const store = new InventoryStore({ A: 9 });
   output = capture(
-    () => executePickWave(store, "w1", [{ failAfterWrite: true, quantity: 4, sku: "A" }]),
+    () => executePickWave(store, "w1", [
+      { failAfterWrite: true, quantity: 4, sku: "A", zone: "north" },
+    ]),
     store,
   );
 } else if (scenario === "commit") {
@@ -47,33 +55,51 @@ if (scenario === "write") {
     () => executePickWave(
       store,
       "w2",
-      [{ quantity: 4, sku: "A" }, { quantity: 2, sku: "B" }],
+      [
+        { quantity: 4, sku: "A", zone: "north" },
+        { quantity: 2, sku: "B", zone: "south" },
+      ],
       { failCommit: true },
     ),
     store,
   );
 } else if (scenario === "distinct") {
   const reporter = new ShortageReporter();
-  reporter.record(makeIssue(0, { sku: "A" }, "shortage"));
-  reporter.record(makeIssue(1, { sku: "B" }, "invalid"));
-  reporter.record(makeIssue(2, { sku: "C" }, "conflict"));
-  output = capture(() => reporter.conclude());
+  const issues = [
+    makeIssue(0, { quantity: 4, sku: "A", zone: "north" }, "shortage"),
+    makeIssue(1, { quantity: 0, sku: "B", zone: "east" }, "invalid"),
+    makeIssue(2, { quantity: 2, sku: "C", zone: "south" }, "conflict"),
+  ];
+  output = { order: reporter.rank(issues).map((issue) => [issue.arrivalIndex, issue.reason]) };
 } else if (scenario === "tie") {
   const reporter = new ShortageReporter();
-  reporter.record(makeIssue(4, { sku: "A" }, "conflict"));
-  reporter.record(makeIssue(3, { sku: "B" }, "invalid"));
-  reporter.record(makeIssue(1, { sku: "C" }, "conflict"));
-  output = capture(() => reporter.conclude());
+  const issues = [
+    makeIssue(4, { quantity: 1, sku: "A", zone: "north" }, "conflict"),
+    makeIssue(3, { quantity: 0, sku: "B", zone: "east" }, "invalid"),
+    makeIssue(1, { quantity: 1, sku: "C", zone: "south" }, "conflict"),
+  ];
+  output = { order: reporter.rank(issues).map((issue) => [issue.arrivalIndex, issue.reason]) };
 } else if (scenario === "combined") {
-  const store = new InventoryStore({ A: 9, B: 7, C: 2, D: 1 }, { locked: ["B"] });
+  const reporter = new ShortageReporter();
+  const priorStore = new InventoryStore({ E: 1 });
+  reporter.recordRejectedWave("prior", [
+    makeIssue(0, { quantity: 4, sku: "E", zone: "east" }, "shortage"),
+  ], priorStore);
+  const store = new InventoryStore({ A: 10, B: 7, C: 2 }, { locked: ["B"] });
   output = capture(
-    () => executePickWave(store, "w3", [
-      { quantity: 4, sku: "A" },
-      { quantity: 2, sku: "B" },
-      { quantity: 0, sku: "C" },
-      { quantity: 3, sku: "D" },
-    ]),
+    () => executePickWave(
+      store,
+      "w3",
+      [
+        { quantity: 4, sku: "A", zone: "north" },
+        { quantity: 2, sku: "B", zone: "east" },
+        { quantity: 0, sku: "C", zone: "east" },
+        { quantity: 8, sku: "A", zone: "north" },
+      ],
+      { reporter },
+    ),
     store,
+    reporter,
   );
 } else {
   throw new Error("unknown scenario");
@@ -111,17 +137,17 @@ commit_fault = invoke("commit")
 axis1_b = commit_fault.get("error") == "CommitFault" and commit_fault.get("same") is True
 
 distinct = invoke("distinct")
-axis2_a = distinct.get("reason") == "invalid" and distinct.get("order") == [
-    [1, "invalid", "B"],
-    [2, "conflict", "C"],
-    [0, "shortage", "A"],
+axis2_a = distinct.get("order") == [
+    [1, "invalid"],
+    [2, "conflict"],
+    [0, "shortage"],
 ]
 
 tie = invoke("tie")
-axis2_b = tie.get("reason") == "invalid" and tie.get("order") == [
-    [3, "invalid", "B"],
-    [1, "conflict", "C"],
-    [4, "conflict", "A"],
+axis2_b = tie.get("order") == [
+    [3, "invalid"],
+    [1, "conflict"],
+    [4, "conflict"],
 ]
 
 combined = invoke("combined")
@@ -130,12 +156,16 @@ interaction = (
     and combined.get("order") == [
         [2, "invalid", "C"],
         [1, "conflict", "B"],
-        [3, "shortage", "D"],
+        [3, "shortage", "A"],
     ]
     and combined.get("same") is True
+    and combined.get("reporter") == {
+        "byZone": {"east": 3},
+        "waves": ["prior", "w3"],
+    }
 )
 
-invariant = "A rejected pick wave leaves the inventory store byte-identical to its pre-wave form, the shortage reporter orders invalid before conflict before shortage with arrival order breaking equal-reason ties, and when accepted picks precede validation and conflict failures the highest-priority error is reported while every earlier inventory change is rolled back."
+invariant = "A rejected pick wave leaves the inventory store byte-identical to its pre-wave form, the shortage reporter ranks invalid before conflict before shortage with arrival order breaking equal-reason ties, and when accepted picks precede multiple failures the highest-priority error is reported while the reporter accumulates only zone shortages that remain after rollback."
 checks = [axis1_a, axis1_b, axis2_a, axis2_b, interaction]
 identifiers = ["axis1-a", "axis1-b", "axis2-a", "axis2-b", "interaction"]
 print(json.dumps({"manifestations": [

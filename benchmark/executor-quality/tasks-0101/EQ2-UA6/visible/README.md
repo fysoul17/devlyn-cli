@@ -1,8 +1,8 @@
 # Bank transfer fixture
 
-`executeTransferBatch` coordinates the decision records returned by `MandateCheck` with the double-entry state owned by `LedgerWriter`.
+`executeTransferBatch` coordinates batch-aware mandate review with the copy-on-commit netting draft owned by `LedgerWriter`.
 
-`MandateCheck.review` returns one decision per instruction in submission order; it does not move denied decisions ahead of approvals.
+The writer publishes account balances, net positions, settlement rows, and sequence advancement only after its complete draft is accepted.
 
 Run the visible tests from this directory:
 

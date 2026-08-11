@@ -24,12 +24,15 @@ export class InventoryStore {
     return decodeState(this.snapshotBytes());
   }
 
+  availableFor(sku) {
+    return this.state.stock[sku] ?? 0;
+  }
+
   problemFor(row) {
     if (this.state.locked.includes(row.sku)) {
       return "conflict";
     }
-    const available = this.state.stock[row.sku] ?? 0;
-    if (available < row.quantity) {
+    if (this.availableFor(row.sku) < row.quantity) {
       return "shortage";
     }
     return null;

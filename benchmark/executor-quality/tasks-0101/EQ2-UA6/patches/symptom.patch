@@ -1,43 +1,12 @@
 --- a/batch-service.js
 +++ b/batch-service.js
-@@ -1,21 +1,26 @@
- export function executeTransferBatch(writer, mandateCheck, transfers) {
-   const decisions = mandateCheck.review(transfers);
-+  const snapshot = writer.snapshot();
-   const transferIds = [];
+@@ -20,9 +20,7 @@
+   }
  
 -  for (const decision of decisions) {
--    if (!decision.authorized) {
--      return {
--        status: "denied",
--        transferIds: [],
--        denial: {
--          transferId: decision.transfer.id,
--          reason: decision.reason,
--        },
--      };
-+  try {
-+    for (const decision of decisions) {
-+      if (!decision.authorized) {
-+        return {
-+          status: "denied",
-+          transferIds: [],
-+          denial: {
-+            transferId: decision.transfer.id,
-+            reason: decision.reason,
-+          },
-+        };
-+      }
-+      writer.write(decision.transfer);
-+      transferIds.push(decision.transfer.id);
-     }
--    writer.write(decision.transfer);
--    transferIds.push(decision.transfer.id);
-+    return { status: "committed", transferIds, denial: null };
-+  } catch (error) {
-+    writer.restore(snapshot);
-+    throw error;
-   }
--
--  return { status: "committed", transferIds, denial: null };
- }
+-    writer.postBatch(`${batchId}:${decision.transfer.id}`, [decision.transfer]);
+-  }
++  writer.postBatch(batchId, decisions.map((decision) => decision.transfer));
+   return {
+     status: "committed",
+     batchId,

@@ -1,46 +1,21 @@
 --- a/batch-service.js
 +++ b/batch-service.js
-@@ -1,21 +1,27 @@
- export function executeTransferBatch(writer, mandateCheck, transfers) {
-   const decisions = mandateCheck.review(transfers);
--  const transferIds = [];
--
--  for (const decision of decisions) {
--    if (!decision.authorized) {
--      return {
--        status: "denied",
--        transferIds: [],
--        denial: {
--          transferId: decision.transfer.id,
--          reason: decision.reason,
--        },
--      };
--    }
--    writer.write(decision.transfer);
--    transferIds.push(decision.transfer.id);
-+  const denied = decisions.find((decision) => !decision.authorized);
-+  if (denied) {
-+    return {
-+      status: "denied",
-+      transferIds: [],
-+      denial: {
-+        transferId: denied.transfer.id,
-+        reason: denied.reason,
-+      },
-+    };
+@@ -12,7 +12,7 @@
+ }
+
+ export function executeTransferBatch(writer, mandateCheck, batchId, effectiveDate, transfers) {
+-  const decisions = transfers.map((transfer) => mandateCheck.reviewTransfer(transfer, effectiveDate));
++  const decisions = mandateCheck.reviewBatch(transfers, effectiveDate);
+   const denied = decisions.find((decision) => !decision.authorized);
+   if (denied) {
+     return deniedResult(batchId, denied);
+@@ -20,9 +20,7 @@
    }
  
--  return { status: "committed", transferIds, denial: null };
-+  const snapshot = writer.snapshot();
-+  const transferIds = [];
-+  try {
-+    for (const decision of decisions) {
-+      writer.write(decision.transfer);
-+      transferIds.push(decision.transfer.id);
-+    }
-+    return { status: "committed", transferIds, denial: null };
-+  } catch (error) {
-+    writer.restore(snapshot);
-+    throw error;
-+  }
- }
+-  for (const decision of decisions) {
+-    writer.postBatch(`${batchId}:${decision.transfer.id}`, [decision.transfer]);
+-  }
++  writer.postBatch(batchId, decisions.map((decision) => decision.transfer));
+   return {
+     status: "committed",
+     batchId,

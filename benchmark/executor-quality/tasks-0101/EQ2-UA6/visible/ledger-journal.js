@@ -1,23 +1,27 @@
-import { JournalAppendError } from "./errors.js";
+import { SettlementRejectedError } from "./errors.js";
 
 export class LedgerJournal {
-  constructor(rows = [], { failAfterAppend = [] } = {}) {
+  constructor(rows = [], { blockedBatchIds = [] } = {}) {
     this.rows = structuredClone(rows);
-    this.failAfterAppend = new Set(failAfterAppend);
+    this.blockedBatchIds = new Set(blockedBatchIds);
   }
 
-  append(row) {
-    this.rows.push(structuredClone(row));
-    if (this.failAfterAppend.has(row.transferId)) {
-      throw new JournalAppendError(`cannot append ${row.transferId}`);
+  prepare(batchId, rows) {
+    if (this.blockedBatchIds.has(batchId)) {
+      throw new SettlementRejectedError(batchId);
     }
+    return [...structuredClone(this.rows), ...structuredClone(rows)];
+  }
+
+  commit(rows) {
+    this.rows = structuredClone(rows);
+  }
+
+  allowBatch(batchId) {
+    this.blockedBatchIds.delete(batchId);
   }
 
   snapshot() {
     return structuredClone(this.rows);
-  }
-
-  restore(snapshot) {
-    this.rows = structuredClone(snapshot);
   }
 }

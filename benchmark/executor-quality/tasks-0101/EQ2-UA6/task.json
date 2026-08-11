@@ -1,7 +1,7 @@
 {
   "id": "EQ2-UA6",
   "class": "unsupported_assumption",
-  "invariant": "When a transfer batch mixes authorized and unauthorized instructions, all mandate decisions must be collected and the batch authorized before the ledger writer records any debit or credit, the denied instruction must abort the whole batch with balances, posting journal, and sequence exactly at their pre-batch values, and any ledger posting or journal failure must roll back that same complete ledger state.",
+  "invariant": "A transfer batch must either commit one double-entry netting draft or leave balances, per-batch net positions, settlement journal, and posting sequence byte-for-byte unchanged; mandate decisions for effective date, currency, debit account, and aggregate batch allowance must all complete before that draft begins, so any unauthorized instruction aborts the whole batch without a ledger change.",
   "goal": "Fix executeTransferBatch in batch-service.js so bank transfer batches satisfy CONTRACT.md. Run `node --test`.",
   "visible_files": [
     "visible/CONTRACT.md",
@@ -19,7 +19,7 @@
   ],
   "contract_excerpt": {
     "file": "visible/CONTRACT.md",
-    "sha256": "1ebcef0d10acc4f58445b8b4e21a37c9d7fccae126abe7608685a7ffaed7cd99",
-    "quote": "When a transfer batch mixes authorized and unauthorized instructions, all mandate decisions must be collected and the batch authorized before the ledger writer records any debit or credit, the denied instruction must abort the whole batch with balances, posting journal, and sequence exactly at their pre-batch values, and any ledger posting or journal failure must roll back that same complete ledger state."
+    "sha256": "332d15b0a109b16dcd2c4f8ec5793b04c80fb377cc4a922a7181eaa96dda9f75",
+    "quote": "A transfer batch must either commit one double-entry netting draft or leave balances, per-batch net positions, settlement journal, and posting sequence byte-for-byte unchanged; mandate decisions for effective date, currency, debit account, and aggregate batch allowance must all complete before that draft begins, so any unauthorized instruction aborts the whole batch without a ledger change."
   }
 }

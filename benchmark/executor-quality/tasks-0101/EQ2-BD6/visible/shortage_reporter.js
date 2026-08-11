@@ -1,5 +1,3 @@
-import { BatchReject } from "./errors.js";
-
 const REASON_RANK = new Map([
   ["invalid", 0],
   ["conflict", 1],
@@ -8,24 +6,41 @@ const REASON_RANK = new Map([
 
 export class ShortageReporter {
   constructor() {
-    this.issues = [];
+    this.byZone = new Map();
+    this.waves = [];
   }
 
-  record(issue) {
-    if (!REASON_RANK.has(issue.reason)) {
-      throw new TypeError(`unknown pick issue: ${issue.reason}`);
+  rank(issues) {
+    for (const issue of issues) {
+      if (!REASON_RANK.has(issue.reason)) {
+        throw new TypeError(`unknown pick issue: ${issue.reason}`);
+      }
     }
-    this.issues.push(issue);
-  }
-
-  conclude() {
-    if (this.issues.length === 0) {
-      return;
-    }
-    const ordered = [...this.issues].sort((left, right) => {
+    return [...issues].sort((left, right) => {
       const byReason = REASON_RANK.get(left.reason) - REASON_RANK.get(right.reason);
       return byReason || left.arrivalIndex - right.arrivalIndex;
     });
-    throw new BatchReject(ordered);
+  }
+
+  recordRejectedWave(waveId, issues, store) {
+    const ordered = this.rank(issues);
+    for (const issue of ordered) {
+      if (issue.reason !== "shortage") {
+        continue;
+      }
+      const missing = Math.max(0, issue.quantity - store.availableFor(issue.sku));
+      if (missing > 0) {
+        this.byZone.set(issue.zone, (this.byZone.get(issue.zone) ?? 0) + missing);
+      }
+    }
+    this.waves.push(waveId);
+    return ordered;
+  }
+
+  snapshot() {
+    return {
+      byZone: Object.fromEntries([...this.byZone].sort(([left], [right]) => left.localeCompare(right))),
+      waves: [...this.waves],
+    };
   }
 }

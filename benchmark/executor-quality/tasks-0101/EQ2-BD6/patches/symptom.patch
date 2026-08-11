@@ -1,35 +1,47 @@
 --- a/pick_executor.js
 +++ b/pick_executor.js
-@@ -15,17 +15,24 @@
+@@ -15,22 +15,30 @@
+   rows,
    { failCommit = false, reporter = new ShortageReporter() } = {},
  ) {
 +  const before = store.snapshotBytes();
+   const issues = [];
    const picks = [];
 -  for (const [arrivalIndex, row] of rows.entries()) {
 -    const reason = issueReason(store, row);
 -    if (reason !== null) {
--      reporter.record(makeIssue(arrivalIndex, row, reason));
+-      issues.push(makeIssue(arrivalIndex, row, reason));
 -      continue;
 +  try {
 +    for (const [arrivalIndex, row] of rows.entries()) {
 +      const reason = issueReason(store, row);
 +      if (reason !== null) {
-+        reporter.record(makeIssue(arrivalIndex, row, reason));
++        issues.push(makeIssue(arrivalIndex, row, reason));
 +        continue;
 +      }
 +      store.take(row);
 +      picks.push(makePick(row));
++    }
++
++    if (issues.length === 0) {
++      store.commitWave(waveId, { fail: failCommit });
++      return makeWaveResult(waveId, picks);
      }
 -    store.take(row);
 -    picks.push(makePick(row));
-+
-+    store.commitWave(waveId, { fail: failCommit });
+-  }
+-
+-  store.commitWave(waveId, { fail: failCommit });
+-  if (issues.length > 0) {
+-    const ordered = reporter.recordRejectedWave(waveId, issues, store);
+-    throw new BatchReject(ordered);
 +  } catch (error) {
 +    store.restoreBytes(before);
 +    throw error;
    }
- 
--  store.commitWave(waveId, { fail: failCommit });
-   reporter.conclude();
-   return makeWaveResult(waveId, picks);
+-  return makeWaveResult(waveId, picks);
++
++  const ordered = reporter.recordRejectedWave(waveId, issues, store);
++  store.restoreBytes(before);
++  throw new BatchReject(ordered);
  }

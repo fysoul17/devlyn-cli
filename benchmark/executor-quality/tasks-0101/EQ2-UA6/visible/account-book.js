@@ -1,35 +1,32 @@
-import { CreditPostingError, DebitPostingError } from "./errors.js";
+import { InsufficientFundsError } from "./errors.js";
 
 export class AccountBook {
-  constructor(balances, { failOnCredit = [] } = {}) {
+  constructor(balances) {
     this.balances = new Map(Object.entries(balances));
-    this.failOnCredit = new Set(failOnCredit);
   }
 
-  debit(accountId, amountCents, transferId) {
-    const balance = this.balances.get(accountId);
-    if (!Number.isSafeInteger(balance) || balance < amountCents) {
-      throw new DebitPostingError(`cannot debit ${transferId}`);
-    }
-    this.balances.set(accountId, balance - amountCents);
+  draft() {
+    return new Map(this.balances);
   }
 
-  credit(accountId, amountCents, transferId) {
-    if (this.failOnCredit.has(transferId)) {
-      throw new CreditPostingError(`cannot credit ${transferId}`);
+  apply(draft, transfer) {
+    const debitBalance = draft.get(transfer.fromAccount);
+    const creditBalance = draft.get(transfer.toAccount);
+    if (!Number.isSafeInteger(debitBalance) || debitBalance < transfer.amountCents) {
+      throw new InsufficientFundsError(transfer.id);
     }
-    const balance = this.balances.get(accountId);
-    if (!Number.isSafeInteger(balance)) {
-      throw new CreditPostingError(`unknown credit account for ${transferId}`);
+    if (!Number.isSafeInteger(creditBalance)) {
+      throw new InsufficientFundsError(transfer.id);
     }
-    this.balances.set(accountId, balance + amountCents);
+    draft.set(transfer.fromAccount, debitBalance - transfer.amountCents);
+    draft.set(transfer.toAccount, creditBalance + transfer.amountCents);
+  }
+
+  commit(draft) {
+    this.balances = new Map(draft);
   }
 
   snapshot() {
     return Object.fromEntries([...this.balances].sort(([left], [right]) => left.localeCompare(right)));
-  }
-
-  restore(snapshot) {
-    this.balances = new Map(Object.entries(structuredClone(snapshot)));
   }
 }

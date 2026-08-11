@@ -1,3 +1,4 @@
+import { BatchReject } from "./errors.js";
 import { makeIssue, makePick, makeWaveResult } from "./models.js";
 import { ShortageReporter } from "./shortage_reporter.js";
 
@@ -14,11 +15,12 @@ export function executePickWave(
   rows,
   { failCommit = false, reporter = new ShortageReporter() } = {},
 ) {
+  const issues = [];
   const picks = [];
   for (const [arrivalIndex, row] of rows.entries()) {
     const reason = issueReason(store, row);
     if (reason !== null) {
-      reporter.record(makeIssue(arrivalIndex, row, reason));
+      issues.push(makeIssue(arrivalIndex, row, reason));
       continue;
     }
     store.take(row);
@@ -26,6 +28,9 @@ export function executePickWave(
   }
 
   store.commitWave(waveId, { fail: failCommit });
-  reporter.conclude();
+  if (issues.length > 0) {
+    const ordered = reporter.recordRejectedWave(waveId, issues, store);
+    throw new BatchReject(ordered);
+  }
   return makeWaveResult(waveId, picks);
 }
