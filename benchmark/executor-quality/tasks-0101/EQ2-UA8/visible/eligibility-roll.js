@@ -1,11 +1,16 @@
 export class EligibilityRoll {
-  #voterIds;
+  #votersByPrecinct;
 
-  constructor(voterIds) {
-    this.#voterIds = new Set(voterIds);
+  constructor(votersByPrecinct) {
+    this.#votersByPrecinct = new Map(
+      Object.entries(votersByPrecinct).map(([precinctId, voterIds]) => [
+        precinctId,
+        new Set(voterIds),
+      ]),
+    );
   }
 
-  includes(voterId) {
-    return this.#voterIds.has(voterId);
+  includes(precinctId, voterId) {
+    return this.#votersByPrecinct.get(precinctId)?.has(voterId) ?? false;
   }
 }

@@ -1,8 +1,5 @@
 --- a/README.md
 +++ b/README.md
-@@ -1,4 +1,4 @@
--# Poll voting fixture
-+# Poll ballot fixture
- 
- Run the fixture tests with:
- 
+@@ -1 +1 @@
+-# Precinct ballot tally
++# Precinct vote tally

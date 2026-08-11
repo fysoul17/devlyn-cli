@@ -1,23 +1,23 @@
 {
   "id": "EQ2-UA8",
   "class": "unsupported_assumption",
-  "invariant": "Ballot receipts must admit at most one accepted ballot or rejection record across changed duplicate envelopes, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with arrival order breaking equal-reason ties, and when duplicate envelopes would fail for different reasons the first envelope's ranked rejection must remain the only outcome without another log append or ballot-box side effect.",
-  "goal": "Repair receiveBallot in intake.js so poll submissions satisfy CONTRACT.md. Run `node --test`.",
+  "invariant": "Within a poll, each ballot identifier must be finalized once in the precinct tally across accepted and rejected deliveries, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with earlier arrival breaking same-reason ties, and when changed duplicate deliveries would each fail differently the first delivery's ranked reason must remain the precinct ledger's sole error with neither a second log append nor a duplicate tally effect while other ballots in the batch accumulate exactly once.",
+  "goal": "Repair the precinct ballot batch intake so it satisfies CONTRACT.md. Run `node --test`.",
   "visible_files": [
     "visible/CONTRACT.md",
     "visible/README.md",
-    "visible/ballot-box.js",
     "visible/eligibility-roll.js",
     "visible/intake.js",
     "visible/package.json",
     "visible/poll.js",
+    "visible/precinct-tally.js",
     "visible/rejection-log.js",
     "visible/rejection-policy.js",
     "visible/tests/intake.test.js"
   ],
   "contract_excerpt": {
     "file": "visible/CONTRACT.md",
-    "sha256": "a23cc524305171cd8b262a1d9466606ea36fa55aad55b0ebb2eeb0c1ef22ea09",
-    "quote": "Ballot receipts must admit at most one accepted ballot or rejection record across changed duplicate envelopes, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with arrival order breaking equal-reason ties, and when duplicate envelopes would fail for different reasons the first envelope's ranked rejection must remain the only outcome without another log append or ballot-box side effect."
+    "sha256": "32b46cc4a7bd113c0adfd6e69886a1d9e846c5828aa4ccd286693577150a751a",
+    "quote": "Within a poll, each ballot identifier must be finalized once in the precinct tally across accepted and rejected deliveries, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with earlier arrival breaking same-reason ties, and when changed duplicate deliveries would each fail differently the first delivery's ranked reason must remain the precinct ledger's sole error with neither a second log append nor a duplicate tally effect while other ballots in the batch accumulate exactly once."
   }
 }

@@ -1,37 +1,74 @@
---- a/ballot-box.js
-+++ b/ballot-box.js
-@@ -4,7 +4,7 @@
-   #outcomes = new Map();
- 
-   #key(ballot) {
--    return `${ballot.receiptId}:${ballot.voterId}`;
-+    return ballot.receiptId;
+--- a/precinct-tally.js
++++ b/precinct-tally.js
+@@ -22,6 +22,11 @@
+     return outcome;
    }
- 
-   find(ballot) {
---- a/intake.js
-+++ b/intake.js
-@@ -6,6 +6,11 @@
-     return accepted;
-   }
- 
-+  const rejected = rejectionLog.find(ballot.receiptId);
-+  if (rejected !== null) {
-+    return rejected;
+
++  recordRejection(outcome) {
++    this.#decisions.set(outcome.ballotId, outcome);
++    return outcome;
 +  }
 +
-   const rejection = chooseRejection(poll.rejectionsFor(ballot));
-   if (rejection !== null) {
-     return rejectionLog.append({
+   totalsFor(precinctId) {
+     return Object.fromEntries(this.#counts.get(precinctId) ?? []);
+   }
+--- a/intake.js
++++ b/intake.js
+@@ -20,5 +20,0 @@
+-    const logged = rejectionLog.findExact(ballot);
+-    if (logged !== null) {
+-      return duplicateOf(logged);
+-    }
+-
+@@ -25,4 +20,5 @@
+     const rejection = chooseRejection(poll.rejectionsFor(ballot));
+     if (rejection !== null) {
+-      return rejectionLog.append(ballot, rejection);
++      const outcome = rejectionLog.append(ballot, rejection);
++      return tally.recordRejection(outcome);
+     }
+--- a/rejection-log.js
++++ b/rejection-log.js
+@@ -4,10 +4,0 @@
+-  #signature(ballot) {
+-    return JSON.stringify([ballot.ballotId, ballot.voterId, ballot.choices]);
+-  }
+-
+-  findExact(ballot) {
+-    const signature = this.#signature(ballot);
+-    const record = (this.#recordsByPrecinct.get(ballot.precinctId) ?? [])
+-      .find((candidate) => candidate.signature === signature);
+-    return record?.outcome ?? null;
+-  }
+@@ -22,3 +12,3 @@
+-    const records = this.#recordsByPrecinct.get(ballot.precinctId) ?? [];
+-    records.push({ signature: this.#signature(ballot), outcome });
+-    this.#recordsByPrecinct.set(ballot.precinctId, records);
++    const entries = this.#recordsByPrecinct.get(ballot.precinctId) ?? [];
++    entries.push(outcome);
++    this.#recordsByPrecinct.set(ballot.precinctId, entries);
+@@ -28,4 +18,3 @@
+   entriesFor(precinctId) {
+-    return (this.#recordsByPrecinct.get(precinctId) ?? [])
+-      .map(({ outcome }) => outcome);
++    return [...(this.#recordsByPrecinct.get(precinctId) ?? [])];
+   }
 --- a/rejection-policy.js
 +++ b/rejection-policy.js
-@@ -7,7 +7,8 @@
- 
+@@ -8,3 +8,15 @@
  export function rankRejections(rejections) {
-   return [...rejections].sort(
--    (left, right) => left.arrivalIndex - right.arrivalIndex,
-+    (left, right) => REASON_PRIORITY[left.reason] - REASON_PRIORITY[right.reason]
-+      || left.arrivalIndex - right.arrivalIndex,
-   );
+-  return [...rejections];
++  const buckets = new Map(REASON_ORDER.map((reason) => [reason, []]));
++  for (const rejection of rejections) {
++    const bucket = buckets.get(rejection.reason);
++    const later = bucket.findIndex(
++      (candidate) => candidate.arrivalIndex > rejection.arrivalIndex,
++    );
++    if (later === -1) {
++      bucket.push(rejection);
++    } else {
++      bucket.splice(later, 0, rejection);
++    }
++  }
++  return REASON_ORDER.flatMap((reason) => buckets.get(reason));
  }
- 

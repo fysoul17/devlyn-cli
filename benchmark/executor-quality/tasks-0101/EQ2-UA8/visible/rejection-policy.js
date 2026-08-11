@@ -1,14 +1,12 @@
-export const REASON_PRIORITY = Object.freeze({
-  poll_closed: 0,
-  ineligible: 1,
-  overvote: 2,
-  unknown_choice: 3,
-});
+export const REASON_ORDER = Object.freeze([
+  "poll_closed",
+  "ineligible",
+  "overvote",
+  "unknown_choice",
+]);
 
 export function rankRejections(rejections) {
-  return [...rejections].sort(
-    (left, right) => left.arrivalIndex - right.arrivalIndex,
-  );
+  return [...rejections];
 }
 
 export function chooseRejection(rejections) {

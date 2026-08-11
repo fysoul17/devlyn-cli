@@ -1,18 +1,32 @@
 export class RejectionLog {
-  #entries = [];
+  #recordsByPrecinct = new Map();
 
-  find(receiptId) {
-    const entry = this.#entries.find((candidate) => candidate.receiptId === receiptId);
-    return entry ?? null;
+  #signature(ballot) {
+    return JSON.stringify([ballot.ballotId, ballot.voterId, ballot.choices]);
   }
 
-  append(outcome) {
-    const entry = Object.freeze({ ...outcome });
-    this.#entries.push(entry);
-    return entry;
+  findExact(ballot) {
+    const signature = this.#signature(ballot);
+    const record = (this.#recordsByPrecinct.get(ballot.precinctId) ?? [])
+      .find((candidate) => candidate.signature === signature);
+    return record?.outcome ?? null;
   }
 
-  get entries() {
-    return [...this.#entries];
+  append(ballot, rejection) {
+    const outcome = Object.freeze({
+      ballotId: ballot.ballotId,
+      precinctId: ballot.precinctId,
+      status: "rejected",
+      reason: rejection.reason,
+    });
+    const records = this.#recordsByPrecinct.get(ballot.precinctId) ?? [];
+    records.push({ signature: this.#signature(ballot), outcome });
+    this.#recordsByPrecinct.set(ballot.precinctId, records);
+    return outcome;
+  }
+
+  entriesFor(precinctId) {
+    return (this.#recordsByPrecinct.get(precinctId) ?? [])
+      .map(({ outcome }) => outcome);
   }
 }

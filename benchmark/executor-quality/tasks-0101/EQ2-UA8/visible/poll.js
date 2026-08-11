@@ -2,13 +2,13 @@ export class Poll {
   #candidateIds;
   #eligibilityRoll;
   #maxChoices;
-  #open;
+  #openPrecinctIds;
 
-  constructor({ candidateIds, eligibilityRoll, maxChoices = 1, open = true }) {
+  constructor({ candidateIds, eligibilityRoll, openPrecinctIds, maxChoices = 1 }) {
     this.#candidateIds = new Set(candidateIds);
     this.#eligibilityRoll = eligibilityRoll;
     this.#maxChoices = maxChoices;
-    this.#open = open;
+    this.#openPrecinctIds = new Set(openPrecinctIds);
   }
 
   rejectionsFor(ballot) {
@@ -25,11 +25,11 @@ export class Poll {
       rejections.push({ arrivalIndex, reason: "overvote" });
       arrivalIndex += 1;
     }
-    if (!this.#eligibilityRoll.includes(ballot.voterId)) {
+    if (!this.#eligibilityRoll.includes(ballot.precinctId, ballot.voterId)) {
       rejections.push({ arrivalIndex, reason: "ineligible" });
       arrivalIndex += 1;
     }
-    if (!this.#open) {
+    if (!this.#openPrecinctIds.has(ballot.precinctId)) {
       rejections.push({ arrivalIndex, reason: "poll_closed" });
     }
     return rejections;

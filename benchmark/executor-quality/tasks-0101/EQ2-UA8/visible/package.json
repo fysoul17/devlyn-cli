@@ -1,5 +1,5 @@
 {
-  "name": "poll-ballot-intake-fixture",
+  "name": "precinct-ballot-tally-fixture",
   "private": true,
   "type": "module",
   "scripts": {

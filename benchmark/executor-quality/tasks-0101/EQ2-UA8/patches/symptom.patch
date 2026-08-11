@@ -1,23 +1,19 @@
---- a/ballot-box.js
-+++ b/ballot-box.js
-@@ -4,7 +4,7 @@
-   #outcomes = new Map();
- 
-   #key(ballot) {
--    return `${ballot.receiptId}:${ballot.voterId}`;
-+    return ballot.receiptId;
-   }
- 
-   find(ballot) {
 --- a/rejection-policy.js
 +++ b/rejection-policy.js
-@@ -7,7 +7,8 @@
- 
+@@ -8,3 +8,15 @@
  export function rankRejections(rejections) {
-   return [...rejections].sort(
--    (left, right) => left.arrivalIndex - right.arrivalIndex,
-+    (left, right) => REASON_PRIORITY[left.reason] - REASON_PRIORITY[right.reason]
-+      || left.arrivalIndex - right.arrivalIndex,
-   );
+-  return [...rejections];
++  const buckets = new Map(REASON_ORDER.map((reason) => [reason, []]));
++  for (const rejection of rejections) {
++    const bucket = buckets.get(rejection.reason);
++    const later = bucket.findIndex(
++      (candidate) => candidate.arrivalIndex > rejection.arrivalIndex,
++    );
++    if (later === -1) {
++      bucket.push(rejection);
++    } else {
++      bucket.splice(later, 0, rejection);
++    }
++  }
++  return REASON_ORDER.flatMap((reason) => buckets.get(reason));
  }
- 
