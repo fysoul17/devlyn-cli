@@ -1,0 +1,10 @@
+--- a/quota/debit_writer.py
++++ b/quota/debit_writer.py
+@@ -20,6 +20,6 @@
+         operations: Iterable[DebitOperation],
+     ) -> list[str]:
+-        """Apply one debit batch and return committed operation ids."""
++        """Apply one debit batch and return its committed operation ids."""
+         staged: list[DebitOperation] = []
+         for operation in operations:
+             self.accounts.debit(tenant_id, operation.units)

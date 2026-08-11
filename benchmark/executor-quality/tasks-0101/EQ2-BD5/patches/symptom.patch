@@ -1,0 +1,39 @@
+--- a/quota/debit_writer.py
++++ b/quota/debit_writer.py
+@@ -4,6 +4,7 @@
+ 
+ from .account_book import QuotaAccountBook
+ from .debit_journal import DebitJournal
++from .errors import DebitWriteError, QuotaExceeded
+ from .models import DebitOperation
+ 
+ 
+@@ -19,10 +20,23 @@
+         operations: Iterable[DebitOperation],
+     ) -> list[str]:
+         """Apply one debit batch and return committed operation ids."""
++        account_snapshot = self.accounts.snapshot()
++        journal_snapshot = self.journal.snapshot()
+         staged: list[DebitOperation] = []
+-        for operation in operations:
+-            self.accounts.debit(tenant_id, operation.units)
+-            staged.append(operation)
+-        for operation in staged:
+-            self.journal.append(tenant_id, operation)
++        try:
++            for operation in operations:
++                self.accounts.debit(tenant_id, operation.units)
++                staged.append(operation)
++        except QuotaExceeded:
++            self.accounts.restore(account_snapshot)
++            self.journal.restore(journal_snapshot)
++            raise
++
++        try:
++            for operation in staged:
++                self.journal.append(tenant_id, operation)
++        except DebitWriteError:
++            self.accounts.restore(account_snapshot)
++            self.journal.restore(journal_snapshot)
++            raise
+         return [operation.operation_id for operation in staged]

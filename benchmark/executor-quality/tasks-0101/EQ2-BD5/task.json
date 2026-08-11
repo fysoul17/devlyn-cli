@@ -1,0 +1,24 @@
+{
+  "id": "EQ2-BD5",
+  "class": "broken_dependency",
+  "invariant": "When a tenant debit batch contains an operation outside the actor's tenant scope, every scope decision must complete before the debit writer changes quota state, and any denial or debit failure must leave both remaining capacity and the debit journal exactly as they were before the batch.",
+  "goal": "Repair quota/debit_writer.py so quota debit batches meet the repository contract while preserving TenantScopeCheck's public API. The scope-check component supplies the operation stream and depends on the writer's batching behavior. Work from the visible documentation and tests, add focused tests as needed, and run python3 -m unittest discover -s tests -v from the fixture root.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/quota/__init__.py",
+    "visible/quota/account_book.py",
+    "visible/quota/debit_journal.py",
+    "visible/quota/debit_writer.py",
+    "visible/quota/errors.py",
+    "visible/quota/models.py",
+    "visible/quota/scope_check.py",
+    "visible/tests/test_debit_writer.py",
+    "visible/tests/test_scope_check.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "dbc1956960e961214d79e2124a7896e1d5a291f72637f9c0ad1c804893ce2722",
+    "quote": "When a tenant debit batch contains an operation outside the actor's tenant scope, every scope decision must complete before the debit writer changes quota state, and any denial or debit failure must leave both remaining capacity and the debit journal exactly as they were before the batch."
+  }
+}

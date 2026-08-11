@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "When a tenant debit batch contains an operation outside the actor's tenant scope, every scope decision must complete before the debit writer changes quota state, and any denial or debit failure must leave both remaining capacity and the debit journal exactly as they were before the batch.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "dbc1956960e961214d79e2124a7896e1d5a291f72637f9c0ad1c804893ce2722",
+        "quote": "When a tenant debit batch contains an operation outside the actor's tenant scope, every scope decision must complete before the debit writer changes quota state, and any denial or debit failure must leave both remaining capacity and the debit journal exactly as they were before the batch."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "When a tenant debit batch contains an operation outside the actor's tenant scope, every scope decision must complete before the debit writer changes quota state, and any denial or debit failure must leave both remaining capacity and the debit journal exactly as they were before the batch.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "dbc1956960e961214d79e2124a7896e1d5a291f72637f9c0ad1c804893ce2722",
+        "quote": "When a tenant debit batch contains an operation outside the actor's tenant scope, every scope decision must complete before the debit writer changes quota state, and any denial or debit failure must leave both remaining capacity and the debit journal exactly as they were before the batch."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "When a tenant debit batch contains an operation outside the actor's tenant scope, every scope decision must complete before the debit writer changes quota state, and any denial or debit failure must leave both remaining capacity and the debit journal exactly as they were before the batch.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "dbc1956960e961214d79e2124a7896e1d5a291f72637f9c0ad1c804893ce2722",
+        "quote": "When a tenant debit batch contains an operation outside the actor's tenant scope, every scope decision must complete before the debit writer changes quota state, and any denial or debit failure must leave both remaining capacity and the debit journal exactly as they were before the batch."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "When a tenant debit batch contains an operation outside the actor's tenant scope, every scope decision must complete before the debit writer changes quota state, and any denial or debit failure must leave both remaining capacity and the debit journal exactly as they were before the batch.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "dbc1956960e961214d79e2124a7896e1d5a291f72637f9c0ad1c804893ce2722",
+        "quote": "When a tenant debit batch contains an operation outside the actor's tenant scope, every scope decision must complete before the debit writer changes quota state, and any denial or debit failure must leave both remaining capacity and the debit journal exactly as they were before the batch."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "When a tenant debit batch contains an operation outside the actor's tenant scope, every scope decision must complete before the debit writer changes quota state, and any denial or debit failure must leave both remaining capacity and the debit journal exactly as they were before the batch.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "dbc1956960e961214d79e2124a7896e1d5a291f72637f9c0ad1c804893ce2722",
+        "quote": "When a tenant debit batch contains an operation outside the actor's tenant scope, every scope decision must complete before the debit writer changes quota state, and any denial or debit failure must leave both remaining capacity and the debit journal exactly as they were before the batch."
+      }
+    }
+  ]
+}
