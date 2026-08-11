@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Authorized coupon redemption requests sharing an idempotency key must produce one redemption record and replay the same success without consuming the coupon again, every request must pass current session authorization before the redemption store reads or writes deduplication state, and across repeated identical attempts under expired and rotated sessions an authorization failure must neither reveal an earlier success nor reserve the coupon nor create a deduplication entry.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "d559dfbb247bb66cedd52a9d1cb7c12d07f785f6eafc6554f60840cb13c1280c",
+        "quote": "Authorized coupon redemption requests sharing an idempotency key must produce one redemption record and replay the same success without consuming the coupon again, every request must pass current session authorization before the redemption store reads or writes deduplication state, and across repeated identical attempts under expired and rotated sessions an authorization failure must neither reveal an earlier success nor reserve the coupon nor create a deduplication entry."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Authorized coupon redemption requests sharing an idempotency key must produce one redemption record and replay the same success without consuming the coupon again, every request must pass current session authorization before the redemption store reads or writes deduplication state, and across repeated identical attempts under expired and rotated sessions an authorization failure must neither reveal an earlier success nor reserve the coupon nor create a deduplication entry.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "d559dfbb247bb66cedd52a9d1cb7c12d07f785f6eafc6554f60840cb13c1280c",
+        "quote": "Authorized coupon redemption requests sharing an idempotency key must produce one redemption record and replay the same success without consuming the coupon again, every request must pass current session authorization before the redemption store reads or writes deduplication state, and across repeated identical attempts under expired and rotated sessions an authorization failure must neither reveal an earlier success nor reserve the coupon nor create a deduplication entry."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Authorized coupon redemption requests sharing an idempotency key must produce one redemption record and replay the same success without consuming the coupon again, every request must pass current session authorization before the redemption store reads or writes deduplication state, and across repeated identical attempts under expired and rotated sessions an authorization failure must neither reveal an earlier success nor reserve the coupon nor create a deduplication entry.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "d559dfbb247bb66cedd52a9d1cb7c12d07f785f6eafc6554f60840cb13c1280c",
+        "quote": "Authorized coupon redemption requests sharing an idempotency key must produce one redemption record and replay the same success without consuming the coupon again, every request must pass current session authorization before the redemption store reads or writes deduplication state, and across repeated identical attempts under expired and rotated sessions an authorization failure must neither reveal an earlier success nor reserve the coupon nor create a deduplication entry."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Authorized coupon redemption requests sharing an idempotency key must produce one redemption record and replay the same success without consuming the coupon again, every request must pass current session authorization before the redemption store reads or writes deduplication state, and across repeated identical attempts under expired and rotated sessions an authorization failure must neither reveal an earlier success nor reserve the coupon nor create a deduplication entry.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "d559dfbb247bb66cedd52a9d1cb7c12d07f785f6eafc6554f60840cb13c1280c",
+        "quote": "Authorized coupon redemption requests sharing an idempotency key must produce one redemption record and replay the same success without consuming the coupon again, every request must pass current session authorization before the redemption store reads or writes deduplication state, and across repeated identical attempts under expired and rotated sessions an authorization failure must neither reveal an earlier success nor reserve the coupon nor create a deduplication entry."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Authorized coupon redemption requests sharing an idempotency key must produce one redemption record and replay the same success without consuming the coupon again, every request must pass current session authorization before the redemption store reads or writes deduplication state, and across repeated identical attempts under expired and rotated sessions an authorization failure must neither reveal an earlier success nor reserve the coupon nor create a deduplication entry.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "d559dfbb247bb66cedd52a9d1cb7c12d07f785f6eafc6554f60840cb13c1280c",
+        "quote": "Authorized coupon redemption requests sharing an idempotency key must produce one redemption record and replay the same success without consuming the coupon again, every request must pass current session authorization before the redemption store reads or writes deduplication state, and across repeated identical attempts under expired and rotated sessions an authorization failure must neither reveal an earlier success nor reserve the coupon nor create a deduplication entry."
+      }
+    }
+  ]
+}

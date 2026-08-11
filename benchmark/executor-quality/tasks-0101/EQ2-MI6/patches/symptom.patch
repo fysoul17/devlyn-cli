@@ -1,0 +1,9 @@
+--- a/redemption-service.js
++++ b/redemption-service.js
+@@ -7,6 +7,5 @@
+   const decision = sessionAuth.authorize({ sessionId, accountId: request.accountId });
+   if (!decision.authorized) {
+     const denied = { status: "denied", reason: decision.reason };
+-    store.remember(request.idempotencyKey, denied);
+     return denied;
+   }

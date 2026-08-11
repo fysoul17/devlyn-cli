@@ -1,0 +1,5 @@
+--- a/README.md
++++ b/README.md
+@@ -3 +3 @@
+-Repair `redeemCoupon` in `redemption-service.js` so it follows `CONTRACT.md`.
++Repair `redeemCoupon` in `redemption-service.js` so it follows the rules in `CONTRACT.md`.
