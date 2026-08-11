@@ -1,0 +1,31 @@
+import { makeIssue, makePick, makeWaveResult } from "./models.js";
+import { ShortageReporter } from "./shortage_reporter.js";
+
+function issueReason(store, row) {
+  if (!Number.isInteger(row.quantity) || row.quantity <= 0) {
+    return "invalid";
+  }
+  return store.problemFor(row);
+}
+
+export function executePickWave(
+  store,
+  waveId,
+  rows,
+  { failCommit = false, reporter = new ShortageReporter() } = {},
+) {
+  const picks = [];
+  for (const [arrivalIndex, row] of rows.entries()) {
+    const reason = issueReason(store, row);
+    if (reason !== null) {
+      reporter.record(makeIssue(arrivalIndex, row, reason));
+      continue;
+    }
+    store.take(row);
+    picks.push(makePick(row));
+  }
+
+  store.commitWave(waveId, { fail: failCommit });
+  reporter.conclude();
+  return makeWaveResult(waveId, picks);
+}

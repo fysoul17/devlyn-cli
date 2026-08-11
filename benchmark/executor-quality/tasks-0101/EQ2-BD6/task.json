@@ -1,0 +1,25 @@
+{
+  "id": "EQ2-BD6",
+  "class": "broken_dependency",
+  "invariant": "A rejected pick wave leaves the inventory store byte-identical to its pre-wave form, the shortage reporter orders invalid before conflict before shortage with arrival order breaking equal-reason ties, and when accepted picks precede validation and conflict failures the highest-priority error is reported while every earlier inventory change is rolled back.",
+  "goal": "Repair executePickWave in pick_executor.js so warehouse pick waves satisfy the behavior documented in CONTRACT.md. Run `node --test`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/errors.js",
+    "visible/inventory_store.js",
+    "visible/models.js",
+    "visible/package.json",
+    "visible/pick_executor.js",
+    "visible/shortage_reporter.js",
+    "visible/state_codec.js",
+    "visible/test/executor.test.js",
+    "visible/test/reporter.test.js",
+    "visible/test/store.test.js"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "0b274c439fb0d3ad3c6711fb28e97a6e98d76c0a80402199295cdf92f81f3e52",
+    "quote": "A rejected pick wave leaves the inventory store byte-identical to its pre-wave form, the shortage reporter orders invalid before conflict before shortage with arrival order breaking equal-reason ties, and when accepted picks precede validation and conflict failures the highest-priority error is reported while every earlier inventory change is rolled back."
+  }
+}

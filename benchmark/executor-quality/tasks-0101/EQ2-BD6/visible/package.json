@@ -1,0 +1,8 @@
+{
+  "name": "warehouse-pick-wave-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

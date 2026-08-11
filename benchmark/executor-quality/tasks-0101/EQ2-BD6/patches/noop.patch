@@ -1,0 +1,8 @@
+--- a/pick_executor.js
++++ b/pick_executor.js
+@@ -4,4 +4,5 @@
+ function issueReason(store, row) {
++  // Classify the row before mutating inventory.
+   if (!Number.isInteger(row.quantity) || row.quantity <= 0) {
+     return "invalid";
+   }

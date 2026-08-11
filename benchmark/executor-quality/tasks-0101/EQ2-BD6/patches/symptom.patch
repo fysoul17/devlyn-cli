@@ -1,0 +1,35 @@
+--- a/pick_executor.js
++++ b/pick_executor.js
+@@ -15,17 +15,24 @@
+   { failCommit = false, reporter = new ShortageReporter() } = {},
+ ) {
++  const before = store.snapshotBytes();
+   const picks = [];
+-  for (const [arrivalIndex, row] of rows.entries()) {
+-    const reason = issueReason(store, row);
+-    if (reason !== null) {
+-      reporter.record(makeIssue(arrivalIndex, row, reason));
+-      continue;
++  try {
++    for (const [arrivalIndex, row] of rows.entries()) {
++      const reason = issueReason(store, row);
++      if (reason !== null) {
++        reporter.record(makeIssue(arrivalIndex, row, reason));
++        continue;
++      }
++      store.take(row);
++      picks.push(makePick(row));
+     }
+-    store.take(row);
+-    picks.push(makePick(row));
++
++    store.commitWave(waveId, { fail: failCommit });
++  } catch (error) {
++    store.restoreBytes(before);
++    throw error;
+   }
+ 
+-  store.commitWave(waveId, { fail: failCommit });
+   reporter.conclude();
+   return makeWaveResult(waveId, picks);
+ }
