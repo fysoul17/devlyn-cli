@@ -418,6 +418,20 @@ attempt without `claude-judge.stdout` in `.devlyn` root correctly fired
 works as designed. Batches 05-08 EXECUTED same session (2026-08-11): 05 PASS r0-clean, 06
 PASS at outer iter 2, 07 PASS r0-clean, 08 PASS at outer iter 2 —
 **freeze-protocol step 1 COMPLETE, all 32 candidate tasks admitted**.
-Remaining: ④ candidate seal → calibration apparatus freeze → 64-run
-sonnet calibration → ONE band evaluation → both-seat pre-arm audit →
-128-run matrix detached per the frozen recipe above.
+**Step 2 CANDIDATE SEALED same session**: canonical flat manifest (32
+tasks, 554 files, per-file sha256) + tree digest
+`2685fa07b19d72584cd0b5de31fb13dbad71ed2b93c05a206631a53001ac0b82`
+at git `cc23209`; four script pins re-verified byte-identical to the
+registration values. Receipts:
+`~/.local/share/nx01/iter0101/freeze/{candidate-manifest.json,candidate-tree.sha256,scripts.sha256}`.
+Remaining (next session; do NOT fire arms near 12am KST): ③ calibration
+apparatus freeze against the CANDIDATE manifest (0100 driver/launcher
+lineage; engines={claude-sonnet-5}; 64 attempts = 2 reps × 32; ledger
+scored ONLY by score-calibration.py; TASKS_ROOT/manifest/digests/
+BOUND_SEC=1800/stdin DEVNULL/prompt_sha256/attestation/scrubbed env/
+pinned CLI per matrix rules; no driver_sha256 field) → ④ 64-run sonnet
+calibration → ⑤ ONE band evaluation (PASS → candidate digest promoted
+UNCHANGED; MISS → CALIBRATION_MISS stop) → ⑥ matrix launcher freeze →
+⑦ both-seat pre-arm audit (sol + grok, liveness, synthetic-ledger
+proofs incl. the four 0100 repro classes) → ⑧ 128-run matrix detached
+(2-4 lanes).
