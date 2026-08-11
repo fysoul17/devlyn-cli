@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "A rejected return batch leaves the order store byte-identical to its pre-batch form, rejection causes are reported by precedence with bad amount before missing order before closed return and arrival order breaking ties, and when successful refund writes precede validation and conflict failures the highest-precedence cause is reported while every earlier write is rolled back.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "d45169011164f3046a5e1bc23b94dc94b311cf9fd43d369bc226afc452beac0a",
+        "quote": "A rejected return batch leaves the order store byte-identical to its pre-batch form, rejection causes are reported by precedence with bad amount before missing order before closed return and arrival order breaking ties, and when successful refund writes precede validation and conflict failures the highest-precedence cause is reported while every earlier write is rolled back."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "A rejected return batch leaves the order store byte-identical to its pre-batch form, rejection causes are reported by precedence with bad amount before missing order before closed return and arrival order breaking ties, and when successful refund writes precede validation and conflict failures the highest-precedence cause is reported while every earlier write is rolled back.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "d45169011164f3046a5e1bc23b94dc94b311cf9fd43d369bc226afc452beac0a",
+        "quote": "A rejected return batch leaves the order store byte-identical to its pre-batch form, rejection causes are reported by precedence with bad amount before missing order before closed return and arrival order breaking ties, and when successful refund writes precede validation and conflict failures the highest-precedence cause is reported while every earlier write is rolled back."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "A rejected return batch leaves the order store byte-identical to its pre-batch form, rejection causes are reported by precedence with bad amount before missing order before closed return and arrival order breaking ties, and when successful refund writes precede validation and conflict failures the highest-precedence cause is reported while every earlier write is rolled back.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "d45169011164f3046a5e1bc23b94dc94b311cf9fd43d369bc226afc452beac0a",
+        "quote": "A rejected return batch leaves the order store byte-identical to its pre-batch form, rejection causes are reported by precedence with bad amount before missing order before closed return and arrival order breaking ties, and when successful refund writes precede validation and conflict failures the highest-precedence cause is reported while every earlier write is rolled back."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "A rejected return batch leaves the order store byte-identical to its pre-batch form, rejection causes are reported by precedence with bad amount before missing order before closed return and arrival order breaking ties, and when successful refund writes precede validation and conflict failures the highest-precedence cause is reported while every earlier write is rolled back.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "d45169011164f3046a5e1bc23b94dc94b311cf9fd43d369bc226afc452beac0a",
+        "quote": "A rejected return batch leaves the order store byte-identical to its pre-batch form, rejection causes are reported by precedence with bad amount before missing order before closed return and arrival order breaking ties, and when successful refund writes precede validation and conflict failures the highest-precedence cause is reported while every earlier write is rolled back."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "A rejected return batch leaves the order store byte-identical to its pre-batch form, rejection causes are reported by precedence with bad amount before missing order before closed return and arrival order breaking ties, and when successful refund writes precede validation and conflict failures the highest-precedence cause is reported while every earlier write is rolled back.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "d45169011164f3046a5e1bc23b94dc94b311cf9fd43d369bc226afc452beac0a",
+        "quote": "A rejected return batch leaves the order store byte-identical to its pre-batch form, rejection causes are reported by precedence with bad amount before missing order before closed return and arrival order breaking ties, and when successful refund writes precede validation and conflict failures the highest-precedence cause is reported while every earlier write is rolled back."
+      }
+    }
+  ]
+}

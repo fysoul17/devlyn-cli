@@ -1,0 +1,25 @@
+{
+  "id": "EQ2-MI5",
+  "class": "missed_repo_invariant",
+  "invariant": "A rejected return batch leaves the order store byte-identical to its pre-batch form, rejection causes are reported by precedence with bad amount before missing order before closed return and arrival order breaking ties, and when successful refund writes precede validation and conflict failures the highest-precedence cause is reported while every earlier write is rolled back.",
+  "goal": "Fix process_returns in refund_engine.py so order returns satisfy the behavior documented in CONTRACT.md. Run `python3 -m unittest discover -s tests -v`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/errors.py",
+    "visible/models.py",
+    "visible/reason_ranker.py",
+    "visible/refund_engine.py",
+    "visible/return_store.py",
+    "visible/serialization.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_reason_ranker.py",
+    "visible/tests/test_refund_engine.py",
+    "visible/tests/test_store.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "d45169011164f3046a5e1bc23b94dc94b311cf9fd43d369bc226afc452beac0a",
+    "quote": "A rejected return batch leaves the order store byte-identical to its pre-batch form, rejection causes are reported by precedence with bad amount before missing order before closed return and arrival order breaking ties, and when successful refund writes precede validation and conflict failures the highest-precedence cause is reported while every earlier write is rolled back."
+  }
+}

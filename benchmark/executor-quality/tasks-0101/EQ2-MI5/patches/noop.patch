@@ -1,0 +1,8 @@
+--- a/refund_engine.py
++++ b/refund_engine.py
+@@ -1,4 +1,4 @@
+-"""Coordinate refund writes and rejection reporting."""
++"""Coordinate refund writes and rejection reporting for one batch."""
+ 
+ from __future__ import annotations
+ 

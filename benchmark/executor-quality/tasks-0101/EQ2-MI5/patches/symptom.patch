@@ -1,0 +1,46 @@
+--- a/refund_engine.py
++++ b/refund_engine.py
+@@ -4,8 +4,9 @@
+ 
+ from collections.abc import Sequence
+ 
+-from errors import RefundBatchError
++from errors import RefundBatchError, StoreFault
+ from models import BatchResult, Rejection, ReturnRequest
++from reason_ranker import rank_rejections
+ from return_store import ReturnStore
+ 
+ 
+@@ -18,17 +19,22 @@
+ ) -> BatchResult:
+     """Apply one batch and report any rejected requests."""
+ 
++    before = store.snapshot_bytes()
+     refunded: list[str] = []
+     rejections: list[Rejection] = []
+-    for source_index, request in enumerate(requests):
+-        reason = store.rejection_reason(request)
+-        if reason is not None:
+-            rejections.append(Rejection(source_index, reason))
+-            continue
+-        store.apply_refund(request)
+-        refunded.append(request.order_id)
++    try:
++        for source_index, request in enumerate(requests):
++            reason = store.rejection_reason(request)
++            if reason is not None:
++                rejections.append(Rejection(source_index, reason))
++                continue
++            store.apply_refund(request)
++            refunded.append(request.order_id)
+ 
+-    store.finalize_batch(batch_id, fail=fail_on_commit)
+-    if rejections:
+-        raise RefundBatchError(rejections)
++        if rejections:
++            raise RefundBatchError(rank_rejections(rejections))
++        store.finalize_batch(batch_id, fail=fail_on_commit)
++    except StoreFault:
++        store.restore_bytes(before)
++        raise
+     return BatchResult(batch_id, tuple(refunded))
