@@ -1,0 +1,5 @@
+--- a/README.md
++++ b/README.md
+@@ -4 +4 @@
+-Repair `postAccrual` in `accrual-service.js` so periodic loyalty accrual follows `CONTRACT.md`.
++Repair `postAccrual` in `accrual-service.js` so the periodic loyalty accrual rules in `CONTRACT.md` are followed.

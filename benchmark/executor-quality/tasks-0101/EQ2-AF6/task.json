@@ -1,0 +1,27 @@
+{
+  "id": "EQ2-AF6",
+  "class": "absent_failure_mode",
+  "invariant": "Authorized loyalty accrual batches sharing an idempotency key must replay one cycle receipt without reapplying event points or consuming the member's cycle cap, complete member-token authorization (status plus member and cycle scopes) must occur before the accrual store reads or writes receipt state, and when identical periodic accrual attempts span expired and rotated tokens only authorized calls may create or reveal the receipt so denied calls leave balances, cap usage, and idempotency state unchanged.",
+  "goal": "Repair postAccrual in accrual-service.js so periodic loyalty accrual satisfies CONTRACT.md. Run `node --test`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/accrual-event.js",
+    "visible/accrual-service.js",
+    "visible/accrual-store.js",
+    "visible/cycle-policy.js",
+    "visible/errors.js",
+    "visible/fixtures.js",
+    "visible/member-token.js",
+    "visible/package.json",
+    "visible/tests/accrual-event.test.js",
+    "visible/tests/accrual-service.test.js",
+    "visible/tests/accrual-store.test.js",
+    "visible/tests/member-token.test.js"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "307393755e9bc9d0834a1bedeb7b72e950691110d625cd9c6da9a23f33ab1919",
+    "quote": "Authorized loyalty accrual batches sharing an idempotency key must replay one cycle receipt without reapplying event points or consuming the member's cycle cap, complete member-token authorization (status plus member and cycle scopes) must occur before the accrual store reads or writes receipt state, and when identical periodic accrual attempts span expired and rotated tokens only authorized calls may create or reveal the receipt so denied calls leave balances, cap usage, and idempotency state unchanged."
+  }
+}
