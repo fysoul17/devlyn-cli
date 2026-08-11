@@ -1,0 +1,25 @@
+{
+  "id": "EQ2-UA7",
+  "class": "unsupported_assumption",
+  "invariant": "Rejected transfer batches restore the serialized multi-location stock ledger byte-for-byte to its pre-batch form, the discrepancy reporter ranks invalid quantity before destination lock before destination capacity with source order breaking equal-reason ties, and when an earlier move plus a later unpaired source debit precede validation and conflict failures the highest-priority discrepancy is returned with zero per-location drift across every touched endpoint.",
+  "goal": "Repair move_batch in stock_mover.py so multi-location inventory transfers satisfy CONTRACT.md. Run `python3 -m unittest discover -s tests -v`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/discrepancy_reporter.py",
+    "visible/errors.py",
+    "visible/models.py",
+    "visible/state_codec.py",
+    "visible/stock_mover.py",
+    "visible/stock_store.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_reporter.py",
+    "visible/tests/test_stock_mover.py",
+    "visible/tests/test_store.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "3f62b7cc45f928523622193d1df3899162f3c666f432e36c39e5a727e0f5082e",
+    "quote": "Rejected transfer batches restore the serialized multi-location stock ledger byte-for-byte to its pre-batch form, the discrepancy reporter ranks invalid quantity before destination lock before destination capacity with source order breaking equal-reason ties, and when an earlier move plus a later unpaired source debit precede validation and conflict failures the highest-priority discrepancy is returned with zero per-location drift across every touched endpoint."
+  }
+}

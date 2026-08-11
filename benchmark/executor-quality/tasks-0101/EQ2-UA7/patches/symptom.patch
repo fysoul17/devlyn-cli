@@ -1,0 +1,86 @@
+--- a/stock_mover.py
++++ b/stock_mover.py
+@@ -5,7 +5,7 @@
+ from collections.abc import Sequence
+ 
+ from discrepancy_reporter import DiscrepancyReporter
+-from errors import TransferRejected
++from errors import StockFault, TransferRejected
+ from models import BatchResult, Discrepancy, Transfer
+ from stock_store import StockStore
+ 
+@@ -30,37 +30,44 @@
+     before = store.snapshot_bytes()
+     completed: list[Transfer] = []
+     discrepancies: list[Discrepancy] = []
+-    for source_index, transfer in enumerate(transfers):
+-        reason = _validation_issue(transfer)
+-        if reason is not None:
+-            discrepancies.append(
+-                Discrepancy(
+-                    source_index,
+-                    reason,
+-                    transfer.source,
+-                    transfer.destination,
+-                    transfer.sku,
++    try:
++        for source_index, transfer in enumerate(transfers):
++            reason = _validation_issue(transfer)
++            if reason is not None:
++                discrepancies.append(
++                    Discrepancy(
++                        source_index,
++                        reason,
++                        transfer.source,
++                        transfer.destination,
++                        transfer.sku,
++                    )
+                 )
+-            )
+-            continue
+-        store.debit(transfer)
+-        reason = store.destination_issue(transfer)
+-        if reason is not None:
+-            discrepancies.append(
+-                Discrepancy(
+-                    source_index,
+-                    reason,
+-                    transfer.source,
+-                    transfer.destination,
+-                    transfer.sku,
++                continue
++            store.debit(transfer)
++            reason = store.destination_issue(transfer)
++            if reason is not None:
++                discrepancies.append(
++                    Discrepancy(
++                        source_index,
++                        reason,
++                        transfer.source,
++                        transfer.destination,
++                        transfer.sku,
++                    )
+                 )
+-            )
+-            continue
+-        store.credit(transfer)
+-        completed.append(transfer)
++                continue
++            store.credit(transfer)
++            completed.append(transfer)
+ 
+-    if discrepancies:
+-        report = active_reporter.build(discrepancies, before, store.snapshot_bytes())
+-        raise TransferRejected(report)
+-    store.commit_batch(batch_id, fail=fail_on_commit)
++        if discrepancies:
++            for transfer in reversed(completed):
++                store.undo(transfer)
++            report = active_reporter.build(discrepancies, before, store.snapshot_bytes())
++            raise TransferRejected(report)
++        store.commit_batch(batch_id, fail=fail_on_commit)
++    except StockFault:
++        for transfer in reversed(completed):
++            store.undo(transfer)
++        raise
+     return BatchResult(batch_id, tuple(completed))

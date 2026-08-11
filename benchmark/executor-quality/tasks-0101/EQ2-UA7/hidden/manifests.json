@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Rejected transfer batches restore the serialized multi-location stock ledger byte-for-byte to its pre-batch form, the discrepancy reporter ranks invalid quantity before destination lock before destination capacity with source order breaking equal-reason ties, and when an earlier move plus a later unpaired source debit precede validation and conflict failures the highest-priority discrepancy is returned with zero per-location drift across every touched endpoint.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "3f62b7cc45f928523622193d1df3899162f3c666f432e36c39e5a727e0f5082e",
+        "quote": "Rejected transfer batches restore the serialized multi-location stock ledger byte-for-byte to its pre-batch form, the discrepancy reporter ranks invalid quantity before destination lock before destination capacity with source order breaking equal-reason ties, and when an earlier move plus a later unpaired source debit precede validation and conflict failures the highest-priority discrepancy is returned with zero per-location drift across every touched endpoint."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Rejected transfer batches restore the serialized multi-location stock ledger byte-for-byte to its pre-batch form, the discrepancy reporter ranks invalid quantity before destination lock before destination capacity with source order breaking equal-reason ties, and when an earlier move plus a later unpaired source debit precede validation and conflict failures the highest-priority discrepancy is returned with zero per-location drift across every touched endpoint.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "3f62b7cc45f928523622193d1df3899162f3c666f432e36c39e5a727e0f5082e",
+        "quote": "Rejected transfer batches restore the serialized multi-location stock ledger byte-for-byte to its pre-batch form, the discrepancy reporter ranks invalid quantity before destination lock before destination capacity with source order breaking equal-reason ties, and when an earlier move plus a later unpaired source debit precede validation and conflict failures the highest-priority discrepancy is returned with zero per-location drift across every touched endpoint."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Rejected transfer batches restore the serialized multi-location stock ledger byte-for-byte to its pre-batch form, the discrepancy reporter ranks invalid quantity before destination lock before destination capacity with source order breaking equal-reason ties, and when an earlier move plus a later unpaired source debit precede validation and conflict failures the highest-priority discrepancy is returned with zero per-location drift across every touched endpoint.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "3f62b7cc45f928523622193d1df3899162f3c666f432e36c39e5a727e0f5082e",
+        "quote": "Rejected transfer batches restore the serialized multi-location stock ledger byte-for-byte to its pre-batch form, the discrepancy reporter ranks invalid quantity before destination lock before destination capacity with source order breaking equal-reason ties, and when an earlier move plus a later unpaired source debit precede validation and conflict failures the highest-priority discrepancy is returned with zero per-location drift across every touched endpoint."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Rejected transfer batches restore the serialized multi-location stock ledger byte-for-byte to its pre-batch form, the discrepancy reporter ranks invalid quantity before destination lock before destination capacity with source order breaking equal-reason ties, and when an earlier move plus a later unpaired source debit precede validation and conflict failures the highest-priority discrepancy is returned with zero per-location drift across every touched endpoint.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "3f62b7cc45f928523622193d1df3899162f3c666f432e36c39e5a727e0f5082e",
+        "quote": "Rejected transfer batches restore the serialized multi-location stock ledger byte-for-byte to its pre-batch form, the discrepancy reporter ranks invalid quantity before destination lock before destination capacity with source order breaking equal-reason ties, and when an earlier move plus a later unpaired source debit precede validation and conflict failures the highest-priority discrepancy is returned with zero per-location drift across every touched endpoint."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Rejected transfer batches restore the serialized multi-location stock ledger byte-for-byte to its pre-batch form, the discrepancy reporter ranks invalid quantity before destination lock before destination capacity with source order breaking equal-reason ties, and when an earlier move plus a later unpaired source debit precede validation and conflict failures the highest-priority discrepancy is returned with zero per-location drift across every touched endpoint.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "3f62b7cc45f928523622193d1df3899162f3c666f432e36c39e5a727e0f5082e",
+        "quote": "Rejected transfer batches restore the serialized multi-location stock ledger byte-for-byte to its pre-batch form, the discrepancy reporter ranks invalid quantity before destination lock before destination capacity with source order breaking equal-reason ties, and when an earlier move plus a later unpaired source debit precede validation and conflict failures the highest-priority discrepancy is returned with zero per-location drift across every touched endpoint."
+      }
+    }
+  ]
+}

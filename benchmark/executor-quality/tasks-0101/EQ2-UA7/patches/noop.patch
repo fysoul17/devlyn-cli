@@ -1,0 +1,8 @@
+--- a/stock_mover.py
++++ b/stock_mover.py
+@@ -1,4 +1,4 @@
+-"""Coordinate endpoint writes and discrepancy reporting for one batch."""
++"""Coordinate endpoint writes and discrepancy reporting for a transfer batch."""
+ 
+ from __future__ import annotations
+ 
