@@ -1,0 +1,14 @@
+--- a/limit-rules.js
++++ b/limit-rules.js
+@@ -37,7 +37,10 @@
+ }
+ 
+ export function rankLimitIssues(issues) {
+-  return [...issues].sort((left, right) => left.ruleIndex - right.ruleIndex);
++  return [...issues].sort(
++    (left, right) => REASON_PRIORITY[left.reason] - REASON_PRIORITY[right.reason]
++      || left.ruleIndex - right.ruleIndex,
++  );
+ }
+ 
+ export { REASON_PRIORITY };

@@ -1,0 +1,32 @@
+--- a/limit-rules.js
++++ b/limit-rules.js
+@@ -37,7 +37,10 @@
+ }
+ 
+ export function rankLimitIssues(issues) {
+-  return [...issues].sort((left, right) => left.ruleIndex - right.ruleIndex);
++  return [...issues].sort(
++    (left, right) => REASON_PRIORITY[left.reason] - REASON_PRIORITY[right.reason]
++      || left.ruleIndex - right.ruleIndex,
++  );
+ }
+ 
+ export { REASON_PRIORITY };
+--- a/admin-gate.js
++++ b/admin-gate.js
+@@ -6,7 +6,6 @@
+   }
+ 
+   submit(request) {
+-    const evaluation = this.writer.inspect(request.change);
+     const authorization = this.approvals.authorize(request.approvalIds, request.change.tier);
+     if (!authorization.ok) {
+       this.decisions.append({
+@@ -16,6 +15,7 @@
+       });
+       return authorization;
+     }
++    const evaluation = this.writer.inspect(request.change);
+     if (!evaluation.ok) {
+       this.decisions.append({
+         requestId: request.id,

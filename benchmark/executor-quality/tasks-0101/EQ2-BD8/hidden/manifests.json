@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "The admin gate must establish an active two-approver quorum before asking the limit writer to inspect a change, limit-writer rejections rank unknown-bucket before invalid-window before invalid-limit with rule arrival order breaking same-reason ties, and an unauthorized malformed change must return admin_denied while appending only an admin-denied gate decision and no writer rejection or stored limit revision.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "79bb108fbfd0269969333b4bde0e256f24c0a5373f14b9c6cfe078f11d69da48",
+        "quote": "The admin gate must establish an active two-approver quorum before asking the limit writer to inspect a change, limit-writer rejections rank unknown-bucket before invalid-window before invalid-limit with rule arrival order breaking same-reason ties, and an unauthorized malformed change must return admin_denied while appending only an admin-denied gate decision and no writer rejection or stored limit revision."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "The admin gate must establish an active two-approver quorum before asking the limit writer to inspect a change, limit-writer rejections rank unknown-bucket before invalid-window before invalid-limit with rule arrival order breaking same-reason ties, and an unauthorized malformed change must return admin_denied while appending only an admin-denied gate decision and no writer rejection or stored limit revision.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "79bb108fbfd0269969333b4bde0e256f24c0a5373f14b9c6cfe078f11d69da48",
+        "quote": "The admin gate must establish an active two-approver quorum before asking the limit writer to inspect a change, limit-writer rejections rank unknown-bucket before invalid-window before invalid-limit with rule arrival order breaking same-reason ties, and an unauthorized malformed change must return admin_denied while appending only an admin-denied gate decision and no writer rejection or stored limit revision."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "The admin gate must establish an active two-approver quorum before asking the limit writer to inspect a change, limit-writer rejections rank unknown-bucket before invalid-window before invalid-limit with rule arrival order breaking same-reason ties, and an unauthorized malformed change must return admin_denied while appending only an admin-denied gate decision and no writer rejection or stored limit revision.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "79bb108fbfd0269969333b4bde0e256f24c0a5373f14b9c6cfe078f11d69da48",
+        "quote": "The admin gate must establish an active two-approver quorum before asking the limit writer to inspect a change, limit-writer rejections rank unknown-bucket before invalid-window before invalid-limit with rule arrival order breaking same-reason ties, and an unauthorized malformed change must return admin_denied while appending only an admin-denied gate decision and no writer rejection or stored limit revision."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "The admin gate must establish an active two-approver quorum before asking the limit writer to inspect a change, limit-writer rejections rank unknown-bucket before invalid-window before invalid-limit with rule arrival order breaking same-reason ties, and an unauthorized malformed change must return admin_denied while appending only an admin-denied gate decision and no writer rejection or stored limit revision.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "79bb108fbfd0269969333b4bde0e256f24c0a5373f14b9c6cfe078f11d69da48",
+        "quote": "The admin gate must establish an active two-approver quorum before asking the limit writer to inspect a change, limit-writer rejections rank unknown-bucket before invalid-window before invalid-limit with rule arrival order breaking same-reason ties, and an unauthorized malformed change must return admin_denied while appending only an admin-denied gate decision and no writer rejection or stored limit revision."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "The admin gate must establish an active two-approver quorum before asking the limit writer to inspect a change, limit-writer rejections rank unknown-bucket before invalid-window before invalid-limit with rule arrival order breaking same-reason ties, and an unauthorized malformed change must return admin_denied while appending only an admin-denied gate decision and no writer rejection or stored limit revision.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "79bb108fbfd0269969333b4bde0e256f24c0a5373f14b9c6cfe078f11d69da48",
+        "quote": "The admin gate must establish an active two-approver quorum before asking the limit writer to inspect a change, limit-writer rejections rank unknown-bucket before invalid-window before invalid-limit with rule arrival order breaking same-reason ties, and an unauthorized malformed change must return admin_denied while appending only an admin-denied gate decision and no writer rejection or stored limit revision."
+      }
+    }
+  ]
+}
