@@ -1,42 +1,56 @@
-import { collectLimitIssues, rankLimitIssues } from "./limit-rules.js";
+import { selectLimitIssue } from "./limit-rules.js";
 
-export class LimitRejectionLog {
+const DENIED = Object.freeze({ ok: false, error: "admin_denied" });
+
+function rejection(entry) {
+  return {
+    ok: false,
+    error: "limit_rejected",
+    reason: entry.reason,
+    field: entry.field,
+    ruleIndex: entry.ruleIndex,
+  };
+}
+
+export class LimitValidationJournal {
   entries = [];
 
   append(entry) {
-    const stored = Object.freeze({ ...entry });
+    const stored = Object.freeze({ sequence: this.entries.length + 1, ...entry });
     this.entries.push(stored);
     return stored;
   }
 }
 
 export class LimitWriter {
-  constructor(store, rejections) {
+  constructor(store, validations) {
     this.store = store;
-    this.rejections = rejections;
+    this.validations = validations;
   }
 
-  inspect(change) {
-    const issue = rankLimitIssues(collectLimitIssues(change))[0] ?? null;
+  prepare(change) {
+    const issue = selectLimitIssue(change);
     if (issue !== null) {
-      const stored = this.rejections.append({ changeId: change.id, ...issue });
-      return {
-        ok: false,
-        error: "limit_rejected",
-        reason: stored.reason,
-        field: stored.field,
-        ruleIndex: stored.ruleIndex,
-      };
+      const stored = this.validations.append({ changeId: change.id, ...issue });
+      return rejection(stored);
     }
-    const plan = Object.freeze({
-      changeId: change.id,
-      tier: change.tier,
-      rules: Object.freeze(change.rules.map((rule) => Object.freeze({ ...rule }))),
-    });
-    return { ok: true, plan };
+    return {
+      ok: true,
+      plan: Object.freeze({
+        changeId: change.id,
+        rules: Object.freeze(change.rules.map((rule) => Object.freeze({ ...rule }))),
+      }),
+    };
   }
 
-  commit(plan, approvedBy) {
-    return this.store.write(plan, approvedBy);
+  apply(change, admission) {
+    const prepared = this.prepare(change);
+    if (!admission.ok) {
+      return DENIED;
+    }
+    if (!prepared.ok) {
+      return prepared;
+    }
+    return this.store.write(prepared.plan, admission);
   }
 }

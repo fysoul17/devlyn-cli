@@ -1,5 +1,7 @@
 # Rate-limit administration contract
 
-The admin gate must establish an active two-approver quorum before asking the limit writer to inspect a change, limit-writer rejections rank unknown-bucket before invalid-window before invalid-limit with rule arrival order breaking same-reason ties, and an unauthorized malformed change must return admin_denied while appending only an admin-denied gate decision and no writer rejection or stored limit revision.
+The admin gate must bind every rate-limit change in a batch to that change's current operator-and-security approval before the limit writer may publish a validation result, writer errors select unknown-bucket before invalid-window before invalid-limit with rule source order breaking same-reason ties, and when an unauthorized malformed change follows authorized and rejected changes in the same batch its result must remain admin_denied with a denied gate decision and no inherited admission, validation entry, or stored revision while later authorized changes continue from the accumulated journal state.
 
-Every accepted or denied request receives one entry in the gate-owned decision ledger. Validation rejections belong to the writer and may be recorded only after the gate admits the request.
+Each request contributes a fresh approval entry and a decision entry to the gate-owned batch ledger. A denied entry replaces the current admission just as an accepted entry does; prior approvals never carry forward to another change.
+
+The limit writer prepares rule outcomes without publishing them. Only the current request's admission may release a validation entry or revision into durable state.

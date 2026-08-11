@@ -1,32 +1,49 @@
 --- a/limit-rules.js
 +++ b/limit-rules.js
-@@ -37,7 +37,10 @@
- }
+@@ -23,8 +23,8 @@
  
- export function rankLimitIssues(issues) {
--  return [...issues].sort((left, right) => left.ruleIndex - right.ruleIndex);
-+  return [...issues].sort(
-+    (left, right) => REASON_PRIORITY[left.reason] - REASON_PRIORITY[right.reason]
-+      || left.ruleIndex - right.ruleIndex,
-+  );
- }
- 
- export { REASON_PRIORITY };
---- a/admin-gate.js
-+++ b/admin-gate.js
-@@ -6,7 +6,6 @@
+ export function selectLimitIssue(change) {
+   const rules = Array.isArray(change.rules) ? change.rules : [];
+-  for (const [ruleIndex, rule] of rules.entries()) {
+-    for (const check of LIMIT_CHECKS) {
++  for (const check of LIMIT_CHECKS) {
++    for (const [ruleIndex, rule] of rules.entries()) {
+       const field = check.field(rule, ruleIndex);
+       if (field !== null) {
+         return { reason: check.reason, field, ruleIndex };
+--- a/limit-writer.js
++++ b/limit-writer.js
+@@ -28,8 +28,7 @@
+   prepare(change) {
+     const issue = selectLimitIssue(change);
+     if (issue !== null) {
+-      const stored = this.validations.append({ changeId: change.id, ...issue });
+-      return rejection(stored);
++      return { ok: false, issue: Object.freeze({ changeId: change.id, ...issue }) };
+     }
+     return {
+       ok: true,
+@@ -46,7 +45,7 @@
+       return DENIED;
+     }
+     if (!prepared.ok) {
+-      return prepared;
++      return rejection(this.validations.append(prepared.issue));
+     }
+     return this.store.write(prepared.plan, admission);
+   }
+--- a/decision-ledger.js
++++ b/decision-ledger.js
+@@ -15,10 +15,8 @@
+       ...(decision.ok ? { approvedBy: Object.freeze([...decision.approvedBy]) } : {}),
+     });
+     this.approvalEntries.push(stored);
+-    if (stored.ok) {
+-      this.#currentAdmission = stored;
+-    }
+-    return this.#currentAdmission;
++    this.#currentAdmission = stored;
++    return stored;
    }
  
-   submit(request) {
--    const evaluation = this.writer.inspect(request.change);
-     const authorization = this.approvals.authorize(request.approvalIds, request.change.tier);
-     if (!authorization.ok) {
-       this.decisions.append({
-@@ -16,6 +15,7 @@
-       });
-       return authorization;
-     }
-+    const evaluation = this.writer.inspect(request.change);
-     if (!evaluation.ok) {
-       this.decisions.append({
-         requestId: request.id,
+   appendDecision(entry) {

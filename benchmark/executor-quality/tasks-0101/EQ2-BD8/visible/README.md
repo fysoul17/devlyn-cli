@@ -1,8 +1,8 @@
-# Rate-limit configuration fixture
+# Batched rate-limit configuration fixture
 
-The fixture models two-person administration of shared rate-limit rules. The limit writer owns rule inspection and persistence; the admin gate owns authorization decisions and their sequence.
+The fixture separates gate-owned approval and decision history from limit-writer validation and persistence. `admin-gate.js` composes the boundary for each request in a batch.
 
-Run the checks with:
+Run the tests with:
 
 ```sh
 node --test

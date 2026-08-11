@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate dependent admin-gate behavior without modifying the supplied tree."""
+"""Evaluate rate-limit administration behavior without mutating the supplied tree."""
 
 import json
 from pathlib import Path
@@ -12,54 +12,57 @@ RUNNER = r'''import { pathToFileURL } from "node:url";
 
 const root = process.argv[1];
 const load = async (name) => import(pathToFileURL(`${root}/${name}`).href);
-const { createRateLimitFixture, validChange, validRequest } = await load("fixtures.js");
+const { createRateLimitFixture, validBatch, validChange, validRequest } = await load("fixtures.js");
 
-const denial = { ok: false, error: "admin_denied" };
+const admitted = Object.freeze({
+  ok: true,
+  tier: "edge",
+  approvedBy: ["operator-north", "security-edge"],
+});
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 
-function gateOnlyDenial(state, requestId) {
-  return same(state.decisions.entries, [{
-    sequence: 1,
-    requestId,
-    outcome: "denied",
+function deniedMalformedRequest(approvalIds, rules) {
+  const state = createRateLimitFixture();
+  const batch = state.gate.applyBatch(validBatch([validRequest({
+    approvalIds,
+    change: validChange({ rules }),
+  })]));
+  return same(batch.results[0], {
+    requestId: "request-edge-defaults",
+    ok: false,
     error: "admin_denied",
-  }])
-    && state.rejections.entries.length === 0
+  })
+    && state.ledger.approvalEntries.length === 1
+    && state.ledger.approvalEntries[0].ok === false
+    && state.ledger.decisionEntries.length === 1
+    && state.ledger.decisionEntries[0].outcome === "denied"
+    && state.validations.entries.length === 0
     && state.store.revisions.length === 0;
 }
 
-function missingQuorumCannotReachWriter() {
-  const state = createRateLimitFixture();
-  const request = validRequest({
-    id: "request-one-approval",
-    approvalIds: ["approval-east"],
-  });
-  const result = state.gate.submit(request);
-  return same(result, denial) && gateOnlyDenial(state, request.id);
+function missingRoleStopsValidation() {
+  return deniedMalformedRequest(
+    ["operator-north", "operator-south"],
+    [{ bucket: "internal", windowMs: 5_000, limit: 0 }],
+  );
 }
 
-function inactivePeerCannotReachWriter() {
-  const state = createRateLimitFixture();
-  const request = validRequest({
-    id: "request-retired-approval",
-    approvalIds: ["approval-east", "approval-retired"],
-  });
-  const result = state.gate.submit(request);
-  return same(result, denial) && gateOnlyDenial(state, request.id);
+function inactiveApprovalStopsValidation() {
+  return deniedMalformedRequest(
+    ["operator-north", "security-retired"],
+    [{ bucket: "member", windowMs: 10_000, limit: 0 }],
+  );
 }
 
-function differentReasonsUseWriterPriority() {
+function distinctIssuesUseWriterPriority() {
   const state = createRateLimitFixture();
-  const result = state.gate.submit(validRequest({
-    id: "request-mixed-defects",
-    change: validChange({
-      id: "change-mixed-defects",
-      rules: [
-        { bucket: "member", windowMs: 1_000, limit: 0 },
-        { bucket: "internal", windowMs: 60_000, limit: 50 },
-      ],
-    }),
-  }));
+  const result = state.writer.apply(validChange({
+    rules: [
+      { bucket: "member", windowMs: 1_000, limit: 0 },
+      { bucket: "internal", windowMs: 60_000, limit: 40 },
+    ],
+  }), admitted);
+  const entry = state.validations.entries[0];
   return same(result, {
     ok: false,
     error: "limit_rejected",
@@ -67,66 +70,106 @@ function differentReasonsUseWriterPriority() {
     field: "rules[1].bucket",
     ruleIndex: 1,
   })
-    && state.rejections.entries[0]?.reason === "unknown_bucket"
-    && state.decisions.entries[0]?.reason === "unknown_bucket"
-    && state.decisions.entries[0]?.outcome === "rejected"
-    && state.rejections.entries.length === 1
-    && state.decisions.entries.length === 1
+    && entry?.reason === "unknown_bucket"
+    && entry?.ruleIndex === 1
+    && state.validations.entries.length === 1
     && state.store.revisions.length === 0;
 }
 
-function matchingReasonsKeepRuleArrival() {
+function sameIssueUsesRuleSourceOrder() {
   const state = createRateLimitFixture();
-  const result = state.gate.submit(validRequest({
-    id: "request-window-tie",
-    change: validChange({
-      id: "change-window-tie",
-      rules: [
-        { bucket: "anonymous", windowMs: 5_000, limit: 20 },
-        { bucket: "member", windowMs: 10_000, limit: 50 },
-      ],
-    }),
-  }));
+  const result = state.writer.apply(validChange({
+    rules: [
+      { bucket: "anonymous", windowMs: 5_000, limit: 20 },
+      { bucket: "member", windowMs: 10_000, limit: 50 },
+    ],
+  }), admitted);
+  const entry = state.validations.entries[0];
   return result.reason === "invalid_window"
     && result.field === "rules[0].windowMs"
     && result.ruleIndex === 0
-    && state.rejections.entries[0]?.ruleIndex === 0
-    && state.decisions.entries[0]?.reason === "invalid_window"
-    && state.rejections.entries.length === 1
+    && entry?.reason === "invalid_window"
+    && entry?.ruleIndex === 0
+    && state.validations.entries.length === 1
     && state.store.revisions.length === 0;
 }
 
-function deniedMalformedChangeLeavesOnlyGateDecision() {
+function accumulatedGateStateDoesNotCarryAdmission() {
   const state = createRateLimitFixture();
-  const request = validRequest({
-    id: "request-denied-malformed",
-    approvalIds: ["approval-east"],
-    change: validChange({
-      id: "change-denied-malformed",
-      rules: [
-        { bucket: "member", windowMs: 5_000, limit: 0 },
-        { bucket: "internal", windowMs: 60_000, limit: 40 },
-      ],
+  const batch = state.gate.applyBatch(validBatch([
+    validRequest({
+      id: "request-applied-a",
+      change: validChange({ id: "change-applied-a" }),
     }),
-  });
-  const result = state.gate.submit(request);
-  return same(result, denial) && gateOnlyDenial(state, request.id);
+    validRequest({
+      id: "request-rejected",
+      change: validChange({
+        id: "change-rejected",
+        rules: [
+          { bucket: "member", windowMs: 1_000, limit: 0 },
+          { bucket: "internal", windowMs: 60_000, limit: 40 },
+        ],
+      }),
+    }),
+    validRequest({
+      id: "request-denied",
+      tier: "core",
+      approvalIds: ["operator-north", "security-edge"],
+      change: validChange({
+        id: "change-denied",
+        rules: [{ bucket: "internal", windowMs: 5_000, limit: 0 }],
+      }),
+    }),
+    validRequest({
+      id: "request-applied-b",
+      tier: "core",
+      approvalIds: ["operator-north", "security-core"],
+      change: validChange({ id: "change-applied-b" }),
+    }),
+  ], "batch-accumulated"));
+  return same(batch.results.map(({ requestId, error, status }) => ({
+    requestId,
+    error,
+    status,
+  })), [
+    { requestId: "request-applied-a", status: "applied" },
+    { requestId: "request-rejected", error: "limit_rejected" },
+    { requestId: "request-denied", error: "admin_denied" },
+    { requestId: "request-applied-b", status: "applied" },
+  ])
+    && same(state.ledger.approvalEntries.map(({ ok }) => ok), [true, true, false, true])
+    && same(state.ledger.decisionEntries.map(({ outcome }) => outcome), [
+      "applied",
+      "rejected",
+      "denied",
+      "applied",
+    ])
+    && state.validations.entries.length === 1
+    && state.validations.entries[0].sequence === 1
+    && state.validations.entries[0].changeId === "change-rejected"
+    && state.validations.entries[0].reason === "unknown_bucket"
+    && state.store.revisions.length === 2
+    && state.store.revisions[0].changeId === "change-applied-a"
+    && state.store.revisions[1].changeId === "change-applied-b"
+    && state.store.revisions[1].tier === "core";
 }
 
 process.stdout.write(JSON.stringify([
-  missingQuorumCannotReachWriter(),
-  inactivePeerCannotReachWriter(),
-  differentReasonsUseWriterPriority(),
-  matchingReasonsKeepRuleArrival(),
-  deniedMalformedChangeLeavesOnlyGateDecision(),
+  missingRoleStopsValidation(),
+  inactiveApprovalStopsValidation(),
+  distinctIssuesUseWriterPriority(),
+  sameIssueUsesRuleSourceOrder(),
+  accumulatedGateStateDoesNotCarryAdmission(),
 ]));
 '''
 INVARIANT = (
-    "The admin gate must establish an active two-approver quorum before asking the limit writer to "
-    "inspect a change, limit-writer rejections rank unknown-bucket before invalid-window before "
-    "invalid-limit with rule arrival order breaking same-reason ties, and an unauthorized malformed "
-    "change must return admin_denied while appending only an admin-denied gate decision and no writer "
-    "rejection or stored limit revision."
+    "The admin gate must bind every rate-limit change in a batch to that change's current "
+    "operator-and-security approval before the limit writer may publish a validation result, writer "
+    "errors select unknown-bucket before invalid-window before invalid-limit with rule source order "
+    "breaking same-reason ties, and when an unauthorized malformed change follows authorized and "
+    "rejected changes in the same batch its result must remain admin_denied with a denied gate decision "
+    "and no inherited admission, validation entry, or stored revision while later authorized changes "
+    "continue from the accumulated journal state."
 )
 
 
