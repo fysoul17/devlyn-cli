@@ -1,0 +1,13 @@
+--- a/flag_mutation.py
++++ b/flag_mutation.py
+@@ -15,8 +15,7 @@
+     if recorded is not None:
+         return recorded
+-
+-    committed = chain.append(request)
++
+     decision = authorize()
+     if not decision.authorized:
+         return MutationDenied(status="denied", reason=decision.reason or "token_denied")
+-    return committed
++    return chain.append(request)

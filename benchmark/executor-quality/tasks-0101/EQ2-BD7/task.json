@@ -1,0 +1,26 @@
+{
+  "id": "EQ2-BD7",
+  "class": "broken_dependency",
+  "invariant": "Authorized flag-change operations sharing an operation key must append one revision and replay that revision across active actor-token rotations, every token must be validated against its current actor and environment grant before the flag's revision chain is inspected or extended, and an expired or out-of-scope token repeating either a fresh or recorded operation must be denied without revealing a prior result or recording an operation marker.",
+  "goal": "Repair apply_flag_mutation in flag_mutation.py so feature flag changes satisfy CONTRACT.md. Run `python3 -m unittest discover -s tests -v`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/actor_token.py",
+    "visible/errors.py",
+    "visible/fixtures.py",
+    "visible/flag_mutation.py",
+    "visible/flag_state.py",
+    "visible/models.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_actor_token.py",
+    "visible/tests/test_flag_gateway.py",
+    "visible/tests/test_flag_mutation.py",
+    "visible/tests/test_flag_state.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "697e7ceb54c5bbd31be0fefd92c95583414f87564ea49b1b2c7fa4c4dee66e41",
+    "quote": "Authorized flag-change operations sharing an operation key must append one revision and replay that revision across active actor-token rotations, every token must be validated against its current actor and environment grant before the flag's revision chain is inspected or extended, and an expired or out-of-scope token repeating either a fresh or recorded operation must be denied without revealing a prior result or recording an operation marker."
+  }
+}

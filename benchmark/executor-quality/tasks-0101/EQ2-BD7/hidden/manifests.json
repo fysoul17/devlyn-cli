@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Authorized flag-change operations sharing an operation key must append one revision and replay that revision across active actor-token rotations, every token must be validated against its current actor and environment grant before the flag's revision chain is inspected or extended, and an expired or out-of-scope token repeating either a fresh or recorded operation must be denied without revealing a prior result or recording an operation marker.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "697e7ceb54c5bbd31be0fefd92c95583414f87564ea49b1b2c7fa4c4dee66e41",
+        "quote": "Authorized flag-change operations sharing an operation key must append one revision and replay that revision across active actor-token rotations, every token must be validated against its current actor and environment grant before the flag's revision chain is inspected or extended, and an expired or out-of-scope token repeating either a fresh or recorded operation must be denied without revealing a prior result or recording an operation marker."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Authorized flag-change operations sharing an operation key must append one revision and replay that revision across active actor-token rotations, every token must be validated against its current actor and environment grant before the flag's revision chain is inspected or extended, and an expired or out-of-scope token repeating either a fresh or recorded operation must be denied without revealing a prior result or recording an operation marker.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "697e7ceb54c5bbd31be0fefd92c95583414f87564ea49b1b2c7fa4c4dee66e41",
+        "quote": "Authorized flag-change operations sharing an operation key must append one revision and replay that revision across active actor-token rotations, every token must be validated against its current actor and environment grant before the flag's revision chain is inspected or extended, and an expired or out-of-scope token repeating either a fresh or recorded operation must be denied without revealing a prior result or recording an operation marker."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Authorized flag-change operations sharing an operation key must append one revision and replay that revision across active actor-token rotations, every token must be validated against its current actor and environment grant before the flag's revision chain is inspected or extended, and an expired or out-of-scope token repeating either a fresh or recorded operation must be denied without revealing a prior result or recording an operation marker.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "697e7ceb54c5bbd31be0fefd92c95583414f87564ea49b1b2c7fa4c4dee66e41",
+        "quote": "Authorized flag-change operations sharing an operation key must append one revision and replay that revision across active actor-token rotations, every token must be validated against its current actor and environment grant before the flag's revision chain is inspected or extended, and an expired or out-of-scope token repeating either a fresh or recorded operation must be denied without revealing a prior result or recording an operation marker."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Authorized flag-change operations sharing an operation key must append one revision and replay that revision across active actor-token rotations, every token must be validated against its current actor and environment grant before the flag's revision chain is inspected or extended, and an expired or out-of-scope token repeating either a fresh or recorded operation must be denied without revealing a prior result or recording an operation marker.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "697e7ceb54c5bbd31be0fefd92c95583414f87564ea49b1b2c7fa4c4dee66e41",
+        "quote": "Authorized flag-change operations sharing an operation key must append one revision and replay that revision across active actor-token rotations, every token must be validated against its current actor and environment grant before the flag's revision chain is inspected or extended, and an expired or out-of-scope token repeating either a fresh or recorded operation must be denied without revealing a prior result or recording an operation marker."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Authorized flag-change operations sharing an operation key must append one revision and replay that revision across active actor-token rotations, every token must be validated against its current actor and environment grant before the flag's revision chain is inspected or extended, and an expired or out-of-scope token repeating either a fresh or recorded operation must be denied without revealing a prior result or recording an operation marker.",
+      "class": "broken_dependency",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "697e7ceb54c5bbd31be0fefd92c95583414f87564ea49b1b2c7fa4c4dee66e41",
+        "quote": "Authorized flag-change operations sharing an operation key must append one revision and replay that revision across active actor-token rotations, every token must be validated against its current actor and environment grant before the flag's revision chain is inspected or extended, and an expired or out-of-scope token repeating either a fresh or recorded operation must be denied without revealing a prior result or recording an operation marker."
+      }
+    }
+  ]
+}

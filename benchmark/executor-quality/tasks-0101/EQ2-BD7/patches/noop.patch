@@ -1,0 +1,8 @@
+--- a/README.md
++++ b/README.md
+@@ -3,3 +3,3 @@
+ Repair `apply_flag_mutation` in `flag_mutation.py` so the actor-token gateway follows `CONTRACT.md`.
+-
++
+-Run the fixture tests with `python3 -m unittest discover -s tests -v` from this directory.
++Run this fixture's tests with `python3 -m unittest discover -s tests -v` from this directory.
