@@ -375,6 +375,7 @@ Freeze-protocol step 1 progress — 16/32 candidate tasks admitted:
 | 05 (EQ2-*5, Python) | rs-20260811T055548Z | **PASS** | ZERO fix rounds — first r0-clean batch; failure-class pre-injection in all 5 dispatch prompts; PLAN sonnet corrected the orchestrator briefing by execution (EQ2-BD1 is OI → AF5/BD5 are the FIRST two RA tasks, comparator = each other); IMPLEMENT phases 1-3 hit the 600s Bash wall at wrap-up (work complete on disk, gates green), 4-5 in-wall; VERIFY r0 primary codex 355s + pair claude 224s + mechanical all PASS, 0 findings |
 | 06 (EQ2-*6, Node) | iter1 rs-20260811T071925Z BLOCKED:verify-exhausted; iter2 rs-20260811T091646Z | **PASS** | iter1 r0 HIGH ×2 (UA6 = RA-topology copy of AF5/BD5; BD6 = copy of MI5, BD asymmetry cosmetic) + LOW ×3 → fix r1 (wall-killed mid-way, continuation completed) closed both; r1 judge fired NEW HIGH (AF6 = IA copy of MI6, same receipt-map + 5-step choreography) + LOW ×2 → exhausted; iter2 re-authored AF6 only + UA6 patch hygiene → VERIFY r0 PASS 3/3 (primary 173s, pair probes: perturbation fails-closed + oracle hash-identical). Probe gotcha: derived_from must match RAW spec bytes incl. JSON-escaped \" — pre-warn in probe contexts |
 | 07 (EQ2-*7, Python) | rs-20260811T100338Z | **PASS** | ZERO fix rounds — second r0-clean batch; comparator sets + choreography-level distinctness warnings pre-injected per dispatch (UA7 3rd RE vs MI5/BD6; MI7/AF7 first IE pair; BD7 3rd IA vs MI6/AF6 + BD law); VERIFY r0 primary 201s + pair 153s + mechanical all PASS, 0 findings; 28/32 admitted |
+| 08 (EQ2-*8, Node) | iter1 rs-20260811T111357Z BLOCKED:verify-exhausted; iter2 rs-20260811T130819Z | **PASS — CORPUS COMPLETE 32/32** | iter1 r0 HIGH (MI8↔BD8 AE-copy — first triple-AE batch) → fix r1 re-authored BD8 (dependent decision-ledger state); r1 fired NEW HIGH (UA8 = IE copy of MI7) + HIGH ×4 patch lone-space context lines (cumulative git diff --check = correct instrument) → exhausted; iter2 re-authored UA8 (per-precinct tally/ledger) + 9-file patch hygiene → VERIFY r0 PASS 3/3. Harness finding candidate: path_matches_surface() silently ignores brace-glob surface entries (false scope CRITICALs + empty staging) |
 
 Batch-01 spec pair-reviewed pre-commit (sol REVISE ×4, R1-0101B01-LIVE-sol,
 incl. CI-touch corrected to exact [3/80, 3/20] by execution ×2). Batch-02
@@ -414,7 +415,9 @@ prior fail-open `verify: PASS` is superseded (product finding 1 itself
 still stands as a registered class). Bonus live receipt: the first merge
 attempt without `claude-judge.stdout` in `.devlyn` root correctly fired
 `verify-pair-required-output-missing` — the pair spawn-evidence gate
-works as designed. Remaining: ③ batches 05-08 sequentially (per-batch
-flow identical to 03; carry the four recurring authoring failure classes
-into dispatch prompts) ④ candidate seal → calibration → both-seat
-pre-arm audit → 128-run matrix per the frozen recipe above.
+works as designed. Batches 05-08 EXECUTED same session (2026-08-11): 05 PASS r0-clean, 06
+PASS at outer iter 2, 07 PASS r0-clean, 08 PASS at outer iter 2 —
+**freeze-protocol step 1 COMPLETE, all 32 candidate tasks admitted**.
+Remaining: ④ candidate seal → calibration apparatus freeze → 64-run
+sonnet calibration → ONE band evaluation → both-seat pre-arm audit →
+128-run matrix detached per the frozen recipe above.
