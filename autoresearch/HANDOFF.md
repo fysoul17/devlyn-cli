@@ -104,11 +104,24 @@ mutation, tie-break coverage gaps, strawman symptom branches — bake
 these into batch 05-08 dispatch prompts). Batch-01 spec sol-reviewed
 (REVISE ×4); batch-02 spec sol-reviewed as the 03-08 TEMPLATE
 (REVISE ×7); batches 03-08 specs committed, row-substituted +
-mechanically verified vs the frozen table (`76657bd`). **Batch-04
-CLOSED PASS (2026-08-11 close-out — codex seat recovered early)**:
-UA4 re-authored `1e40f67`; primary codex judge re-run on diff
-`dc53576...1e40f67` (204s, 0 findings) → merge PASS 3/3
-evidence-valid; 16/32 admitted. THREE harness product findings registered in
+mechanically verified vs the frozen table (`76657bd`). **ALL EIGHT
+BATCHES CLOSED PASS + CANDIDATE SEALED (2026-08-11 session — codex
+seat recovered early, before the posted 08-16 reset)**: batch-04
+close-out (primary judge re-run on `dc53576...1e40f67`, 204s, 0
+findings, merge PASS 3/3); batch-05 PASS r0-clean; batch-06 PASS at
+outer iter 2 (structural-copy HIGHs UA6/BD6 then AF6 closed by
+re-authors); batch-07 PASS r0-clean; batch-08 PASS at outer iter 2
+(MI8↔BD8 then UA8 copies + patch lone-space class closed) —
+**32/32 admitted, freeze step 1+2 complete**, candidate tree
+`2685fa07…` at `cc23209` (receipts
+`~/.local/share/nx01/iter0101/{build,freeze}/`). NEXT (new session;
+never fire arms near 12am KST): calibration apparatus freeze →
+64-run sonnet calibration → ONE band evaluation → matrix launcher
+freeze → both-seat pre-arm audit → 128-run matrix detached (recipe
+in the iteration file § Execution log). NEW product finding
+candidate: `path_matches_surface()` silently ignores brace-glob
+surface entries (false scope CRITICALs + empty
+`--print-authorized-surface`). THREE harness product findings registered in
 the iteration file (verify-merge PRIMARY fail-open — a batch-04
 iter-2 state `verify: PASS` is evidence-invalid; stale
 verify.judge.summary.json survives archive; collector/merge parser
