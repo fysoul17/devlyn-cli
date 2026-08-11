@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic checks for token-gated periodic loyalty accrual."""
+"""Deterministic checks for authorized loyalty statement folding."""
 
 import json
 from pathlib import Path
@@ -28,12 +28,13 @@ function setup(maxPoints = 100) {
       { value: "active-current", tokenId: "current", memberId: "member-41", status: "active", cycles: ["2026-W32"], signature: "trusted" },
       { value: "active-rotated", tokenId: "rotated", memberId: "member-41", status: "active", cycles: ["2026-W32"], signature: "trusted" },
       { value: "active-outsider", tokenId: "outsider", memberId: "member-99", status: "active", cycles: ["2026-W32"], signature: "trusted" },
+      { value: "forged-member", tokenId: "forged", memberId: "member-41", status: "active", cycles: ["2026-W32"], signature: "untrusted" },
     ]),
   };
 }
 
-function event(eventId, points, cycleId = "2026-W32") {
-  return createAccrualEvent({ eventId, points, cycleId });
+function event(eventId, points) {
+  return createAccrualEvent({ eventId, cycleId: "2026-W32", points });
 }
 
 function request(overrides = {}) {
@@ -50,48 +51,50 @@ function fingerprint(store) {
   return JSON.stringify(store.snapshot());
 }
 
-function repeatedAggregationHasOneReceipt() {
+function sameBatchOccupiesOneStatementLine() {
   const { store, tokens } = setup();
   const batch = request();
   const first = postAccrual(store, tokens, batch, "active-current");
-  const second = postAccrual(store, tokens, batch, "active-current");
-  const state = store.snapshot();
+  const second = postAccrual(store, tokens, batch, "active-rotated");
+  const [statement] = store.snapshot().statements;
   return JSON.stringify(first) === JSON.stringify(second)
     && first.pointsAwarded === 55
-    && state.receipts.length === 1
-    && state.receiptsByKey.length === 1
-    && state.eventPostings.length === 2
-    && state.cycleTotals[0][1] === 55;
+    && statement.batches.length === 1
+    && statement.cyclePoints === 55
+    && statement.closingBalance === 55;
 }
 
-function cappedAggregationReplaysExactly() {
-  const { store, tokens } = setup(100);
-  const batch = request({
-    idempotencyKey: "cap-boundary",
-    events: [event("stay-80", 80), event("bonus-50", 50)],
+function changedPayloadCannotEscapeStatementKey() {
+  const { store, tokens } = setup();
+  const firstBatch = request({
+    idempotencyKey: "statement-key",
+    events: [event("hotel-80", 80), event("bonus-50", 50)],
   });
-  const first = postAccrual(store, tokens, batch, "active-current");
-  const second = postAccrual(store, tokens, batch, "active-rotated");
-  const state = store.snapshot();
+  const changedRetry = request({
+    idempotencyKey: "statement-key",
+    events: [event("late-adjustment", 10)],
+  });
+  const first = postAccrual(store, tokens, firstBatch, "active-current");
+  const second = postAccrual(store, tokens, changedRetry, "active-rotated");
+  const [statement] = store.snapshot().statements;
   return JSON.stringify(first) === JSON.stringify(second)
-    && first.pointsAwarded === 100
     && JSON.stringify(first.allocations) === JSON.stringify([
-      { eventId: "stay-80", points: 80 },
+      { eventId: "hotel-80", points: 80 },
       { eventId: "bonus-50", points: 20 },
     ])
-    && state.receipts.length === 1
-    && state.cycleTotals[0][1] === 100;
+    && statement.batches.length === 1
+    && statement.cyclePoints === 100;
 }
 
-function expiredTokenCannotTouchStore() {
+function forgedSignatureCannotOpenStatement() {
   const { store, tokens } = setup();
   const before = fingerprint(store);
-  const result = postAccrual(store, tokens, request(), "expired-old");
-  return JSON.stringify(result) === JSON.stringify({ status: "denied", reason: "token_expired" })
+  const result = postAccrual(store, tokens, request(), "forged-member");
+  return JSON.stringify(result) === JSON.stringify({ status: "denied", reason: "token_invalid" })
     && fingerprint(store) === before;
 }
 
-function memberScopeCannotTouchStore() {
+function differentMemberCannotOpenStatement() {
   const { store, tokens } = setup();
   const before = fingerprint(store);
   const result = postAccrual(store, tokens, request(), "active-outsider");
@@ -99,55 +102,51 @@ function memberScopeCannotTouchStore() {
     && fingerprint(store) === before;
 }
 
-function rotatedTokenSequencePreservesCycleState() {
+function expiredCapClosingBatchWaitsForRotatedToken() {
   const { store, tokens } = setup(100);
   const seed = request({
-    idempotencyKey: "cycle-seed",
-    events: [event("seed-purchase", 30)],
+    idempotencyKey: "cycle-opening",
+    events: [event("seed-purchase", 70)],
   });
   const seeded = postAccrual(store, tokens, seed, "active-current");
   const target = request({
-    idempotencyKey: "rotation-cycle",
-    events: [event("hotel-stay", 60), event("partner-bonus", 20)],
+    idempotencyKey: "cap-closing",
+    events: [event("partner-stay", 40), event("survey-bonus", 20)],
   });
   const beforeDenied = fingerprint(store);
-  const deniedBefore = postAccrual(store, tokens, target, "expired-old");
+  const denied = postAccrual(store, tokens, target, "expired-old");
   const afterDenied = fingerprint(store);
-  const accrued = postAccrual(store, tokens, target, "active-rotated");
-  const deniedAfter = postAccrual(store, tokens, target, "expired-old");
-  const replayed = postAccrual(store, tokens, target, "active-current");
-  const state = store.snapshot();
-  return seeded.pointsAwarded === 30
-    && JSON.stringify(deniedBefore) === JSON.stringify({ status: "denied", reason: "token_expired" })
+  const posted = postAccrual(store, tokens, target, "active-rotated");
+  const [statement] = store.snapshot().statements;
+  return seeded.pointsAwarded === 70
+    && JSON.stringify(denied) === JSON.stringify({ status: "denied", reason: "token_expired" })
     && afterDenied === beforeDenied
-    && accrued.pointsAwarded === 70
-    && JSON.stringify(accrued.allocations) === JSON.stringify([
-      { eventId: "hotel-stay", points: 60 },
-      { eventId: "partner-bonus", points: 10 },
-    ])
-    && JSON.stringify(deniedAfter) === JSON.stringify({ status: "denied", reason: "token_expired" })
-    && JSON.stringify(replayed) === JSON.stringify(accrued)
-    && state.cycleTotals[0][1] === 100
-    && state.balances[0][1] === 100
-    && state.receipts.length === 2
-    && state.receiptsByKey.length === 2;
+    && posted.pointsAwarded === 30
+    && JSON.stringify(posted.allocations) === JSON.stringify([{ eventId: "partner-stay", points: 30 }])
+    && statement.cyclePoints === 100
+    && statement.closingBalance === 100
+    && statement.batches.length === 2
+    && JSON.stringify(statement.batches.map((batch) => batch.idempotencyKey)) === JSON.stringify([
+      "cycle-opening",
+      "cap-closing",
+    ]);
 }
 
 process.stdout.write(JSON.stringify({
-  repeatedAggregationHasOneReceipt: repeatedAggregationHasOneReceipt(),
-  cappedAggregationReplaysExactly: cappedAggregationReplaysExactly(),
-  expiredTokenCannotTouchStore: expiredTokenCannotTouchStore(),
-  memberScopeCannotTouchStore: memberScopeCannotTouchStore(),
-  rotatedTokenSequencePreservesCycleState: rotatedTokenSequencePreservesCycleState(),
+  sameBatchOccupiesOneStatementLine: sameBatchOccupiesOneStatementLine(),
+  changedPayloadCannotEscapeStatementKey: changedPayloadCannotEscapeStatementKey(),
+  forgedSignatureCannotOpenStatement: forgedSignatureCannotOpenStatement(),
+  differentMemberCannotOpenStatement: differentMemberCannotOpenStatement(),
+  expiredCapClosingBatchWaitsForRotatedToken: expiredCapClosingBatchWaitsForRotatedToken(),
 }));
 '''
 INVARIANT = (
-    "Authorized loyalty accrual batches sharing an idempotency key must replay one cycle receipt "
-    "without reapplying event points or consuming the member's cycle cap, complete member-token "
-    "authorization (status plus member and cycle scopes) must occur before the accrual store reads or "
-    "writes receipt state, and when identical periodic accrual attempts span expired and rotated tokens "
-    "only authorized calls may create or reveal the receipt so denied calls leave balances, cap usage, "
-    "and idempotency state unchanged."
+    "Within each member cycle, authorized loyalty accrual batches sharing an idempotency key must "
+    "occupy one statement entry and fold their event points into the cycle total and cap exactly once, "
+    "complete member-token authorization (signature, member, status, and cycle scope) must finish before "
+    "the accrual store folds any batch into that statement, and when an expired token is followed by a "
+    "rotated authorized token for the same cap-closing batch the denial must leave the aggregate untouched "
+    "so only the authorized retry records the entry and consumes the remaining cap."
 )
 
 
@@ -165,11 +164,11 @@ except json.JSONDecodeError:
     results = {}
 
 checks = [
-    ("axis1-a", bool(results.get("repeatedAggregationHasOneReceipt"))),
-    ("axis1-b", bool(results.get("cappedAggregationReplaysExactly"))),
-    ("axis2-a", bool(results.get("expiredTokenCannotTouchStore"))),
-    ("axis2-b", bool(results.get("memberScopeCannotTouchStore"))),
-    ("interaction", bool(results.get("rotatedTokenSequencePreservesCycleState"))),
+    ("axis1-a", bool(results.get("sameBatchOccupiesOneStatementLine"))),
+    ("axis1-b", bool(results.get("changedPayloadCannotEscapeStatementKey"))),
+    ("axis2-a", bool(results.get("forgedSignatureCannotOpenStatement"))),
+    ("axis2-b", bool(results.get("differentMemberCannotOpenStatement"))),
+    ("interaction", bool(results.get("expiredCapClosingBatchWaitsForRotatedToken"))),
 ]
 
 print(

@@ -10,85 +10,98 @@ function cycleKey(memberId, cycleId) {
 
 export class AccrualStore {
   #policy;
-  #balances;
-  #cycleTotals = new Map();
-  #eventPostings = new Map();
-  #receipts = [];
-  #receiptsByKey = new Map();
-  #nextReceipt = 1;
+  #openingBalances;
+  #statements = new Map();
 
   constructor({ members, policy }) {
     this.#policy = policy;
-    this.#balances = new Map(members.map(({ memberId, balance }) => [memberId, balance]));
+    this.#openingBalances = new Map(members.map(({ memberId, balance }) => [memberId, balance]));
   }
 
-  replay(idempotencyKey) {
-    const receipt = this.#receiptsByKey.get(idempotencyKey);
-    return receipt ? copy(receipt) : null;
+  appendToStatement(request) {
+    return this.#fold(request, false);
   }
 
-  remember(idempotencyKey, receipt) {
-    if (!this.#receiptsByKey.has(idempotencyKey)) {
-      this.#receiptsByKey.set(idempotencyKey, copy(receipt));
-    }
+  postStatementBatch(request) {
+    return this.#fold(request, true);
   }
 
-  aggregate(request) {
-    if (!this.#balances.has(request.memberId)) {
+  #fold(request, detectRepeat) {
+    if (!this.#openingBalances.has(request.memberId)) {
       throw new UnknownMemberError(request.memberId);
     }
-
-    const key = cycleKey(request.memberId, request.cycleId);
-    const used = this.#cycleTotals.get(key) ?? 0;
-    let remaining = this.#policy.remaining(used);
-    const allocations = [];
 
     for (const event of request.events) {
       if (event.cycleId !== request.cycleId) {
         throw new CycleMismatchError(event.eventId, request.cycleId);
       }
-      if (this.#eventPostings.has(event.eventId) || remaining === 0) {
+    }
+
+    const key = cycleKey(request.memberId, request.cycleId);
+    let statement = this.#statements.get(key);
+    if (detectRepeat && statement) {
+      const existing = statement.batches.find(
+        (batch) => batch.idempotencyKey === request.idempotencyKey,
+      );
+      if (existing) {
+        return copy(existing.outcome);
+      }
+    }
+
+    if (!statement) {
+      const openingBalance = this.#openingBalances.get(request.memberId);
+      statement = {
+        statementId: `statement:${key}`,
+        memberId: request.memberId,
+        cycleId: request.cycleId,
+        openingBalance,
+        cyclePoints: 0,
+        closingBalance: openingBalance,
+        batches: [],
+      };
+      this.#statements.set(key, statement);
+    }
+
+    const previouslyFolded = new Set(
+      statement.batches.flatMap((batch) => batch.allocations.map((item) => item.eventId)),
+    );
+    let remaining = this.#policy.remaining(statement.cyclePoints);
+    const allocations = [];
+    for (const event of request.events) {
+      if (previouslyFolded.has(event.eventId) || remaining === 0) {
         continue;
       }
       const awarded = Math.min(event.points, remaining);
-      const posting = {
-        eventId: event.eventId,
-        memberId: request.memberId,
-        cycleId: request.cycleId,
-        points: awarded,
-      };
-      this.#eventPostings.set(event.eventId, posting);
       allocations.push({ eventId: event.eventId, points: awarded });
       remaining -= awarded;
     }
 
     const pointsAwarded = allocations.reduce((total, item) => total + item.points, 0);
-    const balanceAfter = this.#balances.get(request.memberId) + pointsAwarded;
-    this.#balances.set(request.memberId, balanceAfter);
-    this.#cycleTotals.set(key, used + pointsAwarded);
-
-    const receipt = {
-      status: "accrued",
-      receiptId: `cycle-receipt-${this.#nextReceipt}`,
+    statement.cyclePoints += pointsAwarded;
+    statement.closingBalance += pointsAwarded;
+    const outcome = {
+      status: "posted",
+      statementId: statement.statementId,
       memberId: request.memberId,
       cycleId: request.cycleId,
       pointsAwarded,
       allocations,
-      balanceAfter,
+      cyclePointsAfter: statement.cyclePoints,
+      balanceAfter: statement.closingBalance,
     };
-    this.#nextReceipt += 1;
-    this.#receipts.push(copy(receipt));
-    return copy(receipt);
+    statement.batches.push({
+      idempotencyKey: request.idempotencyKey,
+      allocations: copy(allocations),
+      outcome: copy(outcome),
+    });
+    return copy(outcome);
   }
 
   snapshot() {
     return {
-      balances: [...this.#balances.entries()].sort(([left], [right]) => left.localeCompare(right)),
-      cycleTotals: [...this.#cycleTotals.entries()].sort(([left], [right]) => left.localeCompare(right)),
-      eventPostings: [...this.#eventPostings.values()].map(copy).sort((left, right) => left.eventId.localeCompare(right.eventId)),
-      receipts: this.#receipts.map(copy),
-      receiptsByKey: [...this.#receiptsByKey.entries()].map(([key, value]) => [key, copy(value)]).sort(([left], [right]) => left.localeCompare(right)),
-      nextReceipt: this.#nextReceipt,
+      statements: [...this.#statements.values()]
+        .map(copy)
+        .sort((left, right) => left.statementId.localeCompare(right.statementId)),
     };
   }
 }

@@ -17,6 +17,7 @@ export function loyaltyFixture({ maxPoints = 100 } = {}) {
       { value: "token-current", tokenId: "current", memberId: "member-41", status: "active", cycles: ["2026-W32"], signature: "trusted" },
       { value: "token-rotated", tokenId: "rotated", memberId: "member-41", status: "active", cycles: ["2026-W32"], signature: "trusted" },
       { value: "token-outsider", tokenId: "outsider", memberId: "member-99", status: "active", cycles: ["2026-W32"], signature: "trusted" },
+      { value: "token-forged", tokenId: "forged", memberId: "member-41", status: "active", cycles: ["2026-W32"], signature: "untrusted" },
     ]),
   };
 }

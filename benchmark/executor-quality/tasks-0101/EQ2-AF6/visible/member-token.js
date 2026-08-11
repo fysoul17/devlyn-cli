@@ -25,24 +25,24 @@ export class MemberTokenRegistry {
     };
   }
 
-  authorizeClaims(claims, { memberId, cycleId }) {
+  authenticateMember({ value, memberId }) {
+    const inspected = this.inspect(value);
+    if (!inspected.verified) {
+      return denied(inspected.reason);
+    }
+    if (inspected.claims.memberId !== memberId) {
+      return denied("token_member_mismatch");
+    }
+    return { authorized: true, claims: inspected.claims };
+  }
+
+  authorizeAccrual(claims, cycleId) {
     if (claims.status !== "active") {
       return denied(`token_${claims.status}`);
-    }
-    if (claims.memberId !== memberId) {
-      return denied("token_member_mismatch");
     }
     if (!claims.cycles.includes(cycleId)) {
       return denied("token_cycle_mismatch");
     }
     return { authorized: true, tokenId: claims.tokenId };
-  }
-
-  authorize({ value, memberId, cycleId }) {
-    const inspected = this.inspect(value);
-    if (!inspected.verified) {
-      return denied(inspected.reason);
-    }
-    return this.authorizeClaims(inspected.claims, { memberId, cycleId });
   }
 }

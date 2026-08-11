@@ -1,12 +1,16 @@
 export function postAccrual(store, tokenRegistry, request, token) {
-  const accrued = store.aggregate(request);
-  const decision = tokenRegistry.authorize({
+  const member = tokenRegistry.authenticateMember({
     value: token,
     memberId: request.memberId,
-    cycleId: request.cycleId,
   });
-  if (!decision.authorized) {
-    return { status: "denied", reason: decision.reason };
+  if (!member.authorized) {
+    return { status: "denied", reason: member.reason };
   }
-  return accrued;
+
+  const posted = store.appendToStatement(request);
+  const scope = tokenRegistry.authorizeAccrual(member.claims, request.cycleId);
+  if (!scope.authorized) {
+    return { status: "denied", reason: scope.reason };
+  }
+  return posted;
 }

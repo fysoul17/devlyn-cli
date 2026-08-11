@@ -1,23 +1,15 @@
 --- a/accrual-service.js
 +++ b/accrual-service.js
-@@ -1,12 +1,19 @@
- export function postAccrual(store, tokenRegistry, request, token) {
--  const accrued = store.aggregate(request);
-   const decision = tokenRegistry.authorize({
-     value: token,
-     memberId: request.memberId,
-     cycleId: request.cycleId,
-   });
-   if (!decision.authorized) {
-     return { status: "denied", reason: decision.reason };
+@@ -7,10 +7,10 @@
+     return { status: "denied", reason: member.reason };
    }
+
+-  const posted = store.appendToStatement(request);
+   const scope = tokenRegistry.authorizeAccrual(member.claims, request.cycleId);
+   if (!scope.authorized) {
+     return { status: "denied", reason: scope.reason };
+   }
+-  return posted;
 +
-+  const replayed = store.replay(request.idempotencyKey);
-+  if (replayed) {
-+    return replayed;
-+  }
-+
-+  const accrued = store.aggregate(request);
-+  store.remember(request.idempotencyKey, accrued);
-   return accrued;
++  return store.postStatementBatch(request);
  }

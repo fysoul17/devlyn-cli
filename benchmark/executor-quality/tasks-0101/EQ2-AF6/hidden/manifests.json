@@ -2,52 +2,52 @@
   "manifestations": [
     {
       "id": "axis1-a",
-      "invariant": "Authorized loyalty accrual batches sharing an idempotency key must replay one cycle receipt without reapplying event points or consuming the member's cycle cap, complete member-token authorization (status plus member and cycle scopes) must occur before the accrual store reads or writes receipt state, and when identical periodic accrual attempts span expired and rotated tokens only authorized calls may create or reveal the receipt so denied calls leave balances, cap usage, and idempotency state unchanged.",
+      "invariant": "Within each member cycle, authorized loyalty accrual batches sharing an idempotency key must occupy one statement entry and fold their event points into the cycle total and cap exactly once, complete member-token authorization (signature, member, status, and cycle scope) must finish before the accrual store folds any batch into that statement, and when an expired token is followed by a rotated authorized token for the same cap-closing batch the denial must leave the aggregate untouched so only the authorized retry records the entry and consumes the remaining cap.",
       "class": "absent_failure_mode",
       "contract_excerpt": {
         "file": "visible/CONTRACT.md",
-        "sha256": "307393755e9bc9d0834a1bedeb7b72e950691110d625cd9c6da9a23f33ab1919",
-        "quote": "Authorized loyalty accrual batches sharing an idempotency key must replay one cycle receipt without reapplying event points or consuming the member's cycle cap, complete member-token authorization (status plus member and cycle scopes) must occur before the accrual store reads or writes receipt state, and when identical periodic accrual attempts span expired and rotated tokens only authorized calls may create or reveal the receipt so denied calls leave balances, cap usage, and idempotency state unchanged."
+        "sha256": "a08dca7d87227d3e3faf4f91b57c0bd33c85b0dafaaf57def32ea79a5b9f5dc3",
+        "quote": "Within each member cycle, authorized loyalty accrual batches sharing an idempotency key must occupy one statement entry and fold their event points into the cycle total and cap exactly once, complete member-token authorization (signature, member, status, and cycle scope) must finish before the accrual store folds any batch into that statement, and when an expired token is followed by a rotated authorized token for the same cap-closing batch the denial must leave the aggregate untouched so only the authorized retry records the entry and consumes the remaining cap."
       }
     },
     {
       "id": "axis1-b",
-      "invariant": "Authorized loyalty accrual batches sharing an idempotency key must replay one cycle receipt without reapplying event points or consuming the member's cycle cap, complete member-token authorization (status plus member and cycle scopes) must occur before the accrual store reads or writes receipt state, and when identical periodic accrual attempts span expired and rotated tokens only authorized calls may create or reveal the receipt so denied calls leave balances, cap usage, and idempotency state unchanged.",
+      "invariant": "Within each member cycle, authorized loyalty accrual batches sharing an idempotency key must occupy one statement entry and fold their event points into the cycle total and cap exactly once, complete member-token authorization (signature, member, status, and cycle scope) must finish before the accrual store folds any batch into that statement, and when an expired token is followed by a rotated authorized token for the same cap-closing batch the denial must leave the aggregate untouched so only the authorized retry records the entry and consumes the remaining cap.",
       "class": "absent_failure_mode",
       "contract_excerpt": {
         "file": "visible/CONTRACT.md",
-        "sha256": "307393755e9bc9d0834a1bedeb7b72e950691110d625cd9c6da9a23f33ab1919",
-        "quote": "Authorized loyalty accrual batches sharing an idempotency key must replay one cycle receipt without reapplying event points or consuming the member's cycle cap, complete member-token authorization (status plus member and cycle scopes) must occur before the accrual store reads or writes receipt state, and when identical periodic accrual attempts span expired and rotated tokens only authorized calls may create or reveal the receipt so denied calls leave balances, cap usage, and idempotency state unchanged."
+        "sha256": "a08dca7d87227d3e3faf4f91b57c0bd33c85b0dafaaf57def32ea79a5b9f5dc3",
+        "quote": "Within each member cycle, authorized loyalty accrual batches sharing an idempotency key must occupy one statement entry and fold their event points into the cycle total and cap exactly once, complete member-token authorization (signature, member, status, and cycle scope) must finish before the accrual store folds any batch into that statement, and when an expired token is followed by a rotated authorized token for the same cap-closing batch the denial must leave the aggregate untouched so only the authorized retry records the entry and consumes the remaining cap."
       }
     },
     {
       "id": "axis2-a",
-      "invariant": "Authorized loyalty accrual batches sharing an idempotency key must replay one cycle receipt without reapplying event points or consuming the member's cycle cap, complete member-token authorization (status plus member and cycle scopes) must occur before the accrual store reads or writes receipt state, and when identical periodic accrual attempts span expired and rotated tokens only authorized calls may create or reveal the receipt so denied calls leave balances, cap usage, and idempotency state unchanged.",
+      "invariant": "Within each member cycle, authorized loyalty accrual batches sharing an idempotency key must occupy one statement entry and fold their event points into the cycle total and cap exactly once, complete member-token authorization (signature, member, status, and cycle scope) must finish before the accrual store folds any batch into that statement, and when an expired token is followed by a rotated authorized token for the same cap-closing batch the denial must leave the aggregate untouched so only the authorized retry records the entry and consumes the remaining cap.",
       "class": "absent_failure_mode",
       "contract_excerpt": {
         "file": "visible/CONTRACT.md",
-        "sha256": "307393755e9bc9d0834a1bedeb7b72e950691110d625cd9c6da9a23f33ab1919",
-        "quote": "Authorized loyalty accrual batches sharing an idempotency key must replay one cycle receipt without reapplying event points or consuming the member's cycle cap, complete member-token authorization (status plus member and cycle scopes) must occur before the accrual store reads or writes receipt state, and when identical periodic accrual attempts span expired and rotated tokens only authorized calls may create or reveal the receipt so denied calls leave balances, cap usage, and idempotency state unchanged."
+        "sha256": "a08dca7d87227d3e3faf4f91b57c0bd33c85b0dafaaf57def32ea79a5b9f5dc3",
+        "quote": "Within each member cycle, authorized loyalty accrual batches sharing an idempotency key must occupy one statement entry and fold their event points into the cycle total and cap exactly once, complete member-token authorization (signature, member, status, and cycle scope) must finish before the accrual store folds any batch into that statement, and when an expired token is followed by a rotated authorized token for the same cap-closing batch the denial must leave the aggregate untouched so only the authorized retry records the entry and consumes the remaining cap."
       }
     },
     {
       "id": "axis2-b",
-      "invariant": "Authorized loyalty accrual batches sharing an idempotency key must replay one cycle receipt without reapplying event points or consuming the member's cycle cap, complete member-token authorization (status plus member and cycle scopes) must occur before the accrual store reads or writes receipt state, and when identical periodic accrual attempts span expired and rotated tokens only authorized calls may create or reveal the receipt so denied calls leave balances, cap usage, and idempotency state unchanged.",
+      "invariant": "Within each member cycle, authorized loyalty accrual batches sharing an idempotency key must occupy one statement entry and fold their event points into the cycle total and cap exactly once, complete member-token authorization (signature, member, status, and cycle scope) must finish before the accrual store folds any batch into that statement, and when an expired token is followed by a rotated authorized token for the same cap-closing batch the denial must leave the aggregate untouched so only the authorized retry records the entry and consumes the remaining cap.",
       "class": "absent_failure_mode",
       "contract_excerpt": {
         "file": "visible/CONTRACT.md",
-        "sha256": "307393755e9bc9d0834a1bedeb7b72e950691110d625cd9c6da9a23f33ab1919",
-        "quote": "Authorized loyalty accrual batches sharing an idempotency key must replay one cycle receipt without reapplying event points or consuming the member's cycle cap, complete member-token authorization (status plus member and cycle scopes) must occur before the accrual store reads or writes receipt state, and when identical periodic accrual attempts span expired and rotated tokens only authorized calls may create or reveal the receipt so denied calls leave balances, cap usage, and idempotency state unchanged."
+        "sha256": "a08dca7d87227d3e3faf4f91b57c0bd33c85b0dafaaf57def32ea79a5b9f5dc3",
+        "quote": "Within each member cycle, authorized loyalty accrual batches sharing an idempotency key must occupy one statement entry and fold their event points into the cycle total and cap exactly once, complete member-token authorization (signature, member, status, and cycle scope) must finish before the accrual store folds any batch into that statement, and when an expired token is followed by a rotated authorized token for the same cap-closing batch the denial must leave the aggregate untouched so only the authorized retry records the entry and consumes the remaining cap."
       }
     },
     {
       "id": "interaction",
-      "invariant": "Authorized loyalty accrual batches sharing an idempotency key must replay one cycle receipt without reapplying event points or consuming the member's cycle cap, complete member-token authorization (status plus member and cycle scopes) must occur before the accrual store reads or writes receipt state, and when identical periodic accrual attempts span expired and rotated tokens only authorized calls may create or reveal the receipt so denied calls leave balances, cap usage, and idempotency state unchanged.",
+      "invariant": "Within each member cycle, authorized loyalty accrual batches sharing an idempotency key must occupy one statement entry and fold their event points into the cycle total and cap exactly once, complete member-token authorization (signature, member, status, and cycle scope) must finish before the accrual store folds any batch into that statement, and when an expired token is followed by a rotated authorized token for the same cap-closing batch the denial must leave the aggregate untouched so only the authorized retry records the entry and consumes the remaining cap.",
       "class": "absent_failure_mode",
       "contract_excerpt": {
         "file": "visible/CONTRACT.md",
-        "sha256": "307393755e9bc9d0834a1bedeb7b72e950691110d625cd9c6da9a23f33ab1919",
-        "quote": "Authorized loyalty accrual batches sharing an idempotency key must replay one cycle receipt without reapplying event points or consuming the member's cycle cap, complete member-token authorization (status plus member and cycle scopes) must occur before the accrual store reads or writes receipt state, and when identical periodic accrual attempts span expired and rotated tokens only authorized calls may create or reveal the receipt so denied calls leave balances, cap usage, and idempotency state unchanged."
+        "sha256": "a08dca7d87227d3e3faf4f91b57c0bd33c85b0dafaaf57def32ea79a5b9f5dc3",
+        "quote": "Within each member cycle, authorized loyalty accrual batches sharing an idempotency key must occupy one statement entry and fold their event points into the cycle total and cap exactly once, complete member-token authorization (signature, member, status, and cycle scope) must finish before the accrual store folds any batch into that statement, and when an expired token is followed by a rotated authorized token for the same cap-closing batch the denial must leave the aggregate untouched so only the authorized retry records the entry and consumes the remaining cap."
       }
     }
   ]
