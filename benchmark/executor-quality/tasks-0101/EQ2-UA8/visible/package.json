@@ -1,0 +1,8 @@
+{
+  "name": "poll-ballot-intake-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

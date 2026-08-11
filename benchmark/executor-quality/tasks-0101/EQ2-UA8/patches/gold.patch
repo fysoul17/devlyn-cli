@@ -1,0 +1,37 @@
+--- a/ballot-box.js
++++ b/ballot-box.js
+@@ -4,7 +4,7 @@
+   #outcomes = new Map();
+ 
+   #key(ballot) {
+-    return `${ballot.receiptId}:${ballot.voterId}`;
++    return ballot.receiptId;
+   }
+ 
+   find(ballot) {
+--- a/intake.js
++++ b/intake.js
+@@ -6,6 +6,11 @@
+     return accepted;
+   }
+ 
++  const rejected = rejectionLog.find(ballot.receiptId);
++  if (rejected !== null) {
++    return rejected;
++  }
++
+   const rejection = chooseRejection(poll.rejectionsFor(ballot));
+   if (rejection !== null) {
+     return rejectionLog.append({
+--- a/rejection-policy.js
++++ b/rejection-policy.js
+@@ -7,7 +7,8 @@
+ 
+ export function rankRejections(rejections) {
+   return [...rejections].sort(
+-    (left, right) => left.arrivalIndex - right.arrivalIndex,
++    (left, right) => REASON_PRIORITY[left.reason] - REASON_PRIORITY[right.reason]
++      || left.arrivalIndex - right.arrivalIndex,
+   );
+ }
+ 

@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Ballot receipts must admit at most one accepted ballot or rejection record across changed duplicate envelopes, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with arrival order breaking equal-reason ties, and when duplicate envelopes would fail for different reasons the first envelope's ranked rejection must remain the only outcome without another log append or ballot-box side effect.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "a23cc524305171cd8b262a1d9466606ea36fa55aad55b0ebb2eeb0c1ef22ea09",
+        "quote": "Ballot receipts must admit at most one accepted ballot or rejection record across changed duplicate envelopes, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with arrival order breaking equal-reason ties, and when duplicate envelopes would fail for different reasons the first envelope's ranked rejection must remain the only outcome without another log append or ballot-box side effect."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Ballot receipts must admit at most one accepted ballot or rejection record across changed duplicate envelopes, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with arrival order breaking equal-reason ties, and when duplicate envelopes would fail for different reasons the first envelope's ranked rejection must remain the only outcome without another log append or ballot-box side effect.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "a23cc524305171cd8b262a1d9466606ea36fa55aad55b0ebb2eeb0c1ef22ea09",
+        "quote": "Ballot receipts must admit at most one accepted ballot or rejection record across changed duplicate envelopes, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with arrival order breaking equal-reason ties, and when duplicate envelopes would fail for different reasons the first envelope's ranked rejection must remain the only outcome without another log append or ballot-box side effect."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Ballot receipts must admit at most one accepted ballot or rejection record across changed duplicate envelopes, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with arrival order breaking equal-reason ties, and when duplicate envelopes would fail for different reasons the first envelope's ranked rejection must remain the only outcome without another log append or ballot-box side effect.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "a23cc524305171cd8b262a1d9466606ea36fa55aad55b0ebb2eeb0c1ef22ea09",
+        "quote": "Ballot receipts must admit at most one accepted ballot or rejection record across changed duplicate envelopes, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with arrival order breaking equal-reason ties, and when duplicate envelopes would fail for different reasons the first envelope's ranked rejection must remain the only outcome without another log append or ballot-box side effect."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Ballot receipts must admit at most one accepted ballot or rejection record across changed duplicate envelopes, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with arrival order breaking equal-reason ties, and when duplicate envelopes would fail for different reasons the first envelope's ranked rejection must remain the only outcome without another log append or ballot-box side effect.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "a23cc524305171cd8b262a1d9466606ea36fa55aad55b0ebb2eeb0c1ef22ea09",
+        "quote": "Ballot receipts must admit at most one accepted ballot or rejection record across changed duplicate envelopes, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with arrival order breaking equal-reason ties, and when duplicate envelopes would fail for different reasons the first envelope's ranked rejection must remain the only outcome without another log append or ballot-box side effect."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Ballot receipts must admit at most one accepted ballot or rejection record across changed duplicate envelopes, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with arrival order breaking equal-reason ties, and when duplicate envelopes would fail for different reasons the first envelope's ranked rejection must remain the only outcome without another log append or ballot-box side effect.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "a23cc524305171cd8b262a1d9466606ea36fa55aad55b0ebb2eeb0c1ef22ea09",
+        "quote": "Ballot receipts must admit at most one accepted ballot or rejection record across changed duplicate envelopes, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with arrival order breaking equal-reason ties, and when duplicate envelopes would fail for different reasons the first envelope's ranked rejection must remain the only outcome without another log append or ballot-box side effect."
+      }
+    }
+  ]
+}

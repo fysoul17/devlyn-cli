@@ -1,0 +1,23 @@
+{
+  "id": "EQ2-UA8",
+  "class": "unsupported_assumption",
+  "invariant": "Ballot receipts must admit at most one accepted ballot or rejection record across changed duplicate envelopes, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with arrival order breaking equal-reason ties, and when duplicate envelopes would fail for different reasons the first envelope's ranked rejection must remain the only outcome without another log append or ballot-box side effect.",
+  "goal": "Repair receiveBallot in intake.js so poll submissions satisfy CONTRACT.md. Run `node --test`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/ballot-box.js",
+    "visible/eligibility-roll.js",
+    "visible/intake.js",
+    "visible/package.json",
+    "visible/poll.js",
+    "visible/rejection-log.js",
+    "visible/rejection-policy.js",
+    "visible/tests/intake.test.js"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "a23cc524305171cd8b262a1d9466606ea36fa55aad55b0ebb2eeb0c1ef22ea09",
+    "quote": "Ballot receipts must admit at most one accepted ballot or rejection record across changed duplicate envelopes, rejection reasons rank poll-closed before ineligible before overvote before unknown-choice with arrival order breaking equal-reason ties, and when duplicate envelopes would fail for different reasons the first envelope's ranked rejection must remain the only outcome without another log append or ballot-box side effect."
+  }
+}
