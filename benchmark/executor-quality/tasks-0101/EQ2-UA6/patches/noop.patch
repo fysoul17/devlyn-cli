@@ -1,0 +1,7 @@
+--- a/batch-service.js
++++ b/batch-service.js
+@@ -1,3 +1,4 @@
++// Mandate decisions retain transfer submission order.
+ export function executeTransferBatch(writer, mandateCheck, transfers) {
+   const decisions = mandateCheck.review(transfers);
+   const transferIds = [];

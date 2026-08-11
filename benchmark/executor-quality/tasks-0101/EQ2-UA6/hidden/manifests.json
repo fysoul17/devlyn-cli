@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "When a transfer batch mixes authorized and unauthorized instructions, all mandate decisions must be collected and the batch authorized before the ledger writer records any debit or credit, the denied instruction must abort the whole batch with balances, posting journal, and sequence exactly at their pre-batch values, and any ledger posting or journal failure must roll back that same complete ledger state.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "1ebcef0d10acc4f58445b8b4e21a37c9d7fccae126abe7608685a7ffaed7cd99",
+        "quote": "When a transfer batch mixes authorized and unauthorized instructions, all mandate decisions must be collected and the batch authorized before the ledger writer records any debit or credit, the denied instruction must abort the whole batch with balances, posting journal, and sequence exactly at their pre-batch values, and any ledger posting or journal failure must roll back that same complete ledger state."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "When a transfer batch mixes authorized and unauthorized instructions, all mandate decisions must be collected and the batch authorized before the ledger writer records any debit or credit, the denied instruction must abort the whole batch with balances, posting journal, and sequence exactly at their pre-batch values, and any ledger posting or journal failure must roll back that same complete ledger state.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "1ebcef0d10acc4f58445b8b4e21a37c9d7fccae126abe7608685a7ffaed7cd99",
+        "quote": "When a transfer batch mixes authorized and unauthorized instructions, all mandate decisions must be collected and the batch authorized before the ledger writer records any debit or credit, the denied instruction must abort the whole batch with balances, posting journal, and sequence exactly at their pre-batch values, and any ledger posting or journal failure must roll back that same complete ledger state."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "When a transfer batch mixes authorized and unauthorized instructions, all mandate decisions must be collected and the batch authorized before the ledger writer records any debit or credit, the denied instruction must abort the whole batch with balances, posting journal, and sequence exactly at their pre-batch values, and any ledger posting or journal failure must roll back that same complete ledger state.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "1ebcef0d10acc4f58445b8b4e21a37c9d7fccae126abe7608685a7ffaed7cd99",
+        "quote": "When a transfer batch mixes authorized and unauthorized instructions, all mandate decisions must be collected and the batch authorized before the ledger writer records any debit or credit, the denied instruction must abort the whole batch with balances, posting journal, and sequence exactly at their pre-batch values, and any ledger posting or journal failure must roll back that same complete ledger state."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "When a transfer batch mixes authorized and unauthorized instructions, all mandate decisions must be collected and the batch authorized before the ledger writer records any debit or credit, the denied instruction must abort the whole batch with balances, posting journal, and sequence exactly at their pre-batch values, and any ledger posting or journal failure must roll back that same complete ledger state.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "1ebcef0d10acc4f58445b8b4e21a37c9d7fccae126abe7608685a7ffaed7cd99",
+        "quote": "When a transfer batch mixes authorized and unauthorized instructions, all mandate decisions must be collected and the batch authorized before the ledger writer records any debit or credit, the denied instruction must abort the whole batch with balances, posting journal, and sequence exactly at their pre-batch values, and any ledger posting or journal failure must roll back that same complete ledger state."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "When a transfer batch mixes authorized and unauthorized instructions, all mandate decisions must be collected and the batch authorized before the ledger writer records any debit or credit, the denied instruction must abort the whole batch with balances, posting journal, and sequence exactly at their pre-batch values, and any ledger posting or journal failure must roll back that same complete ledger state.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "1ebcef0d10acc4f58445b8b4e21a37c9d7fccae126abe7608685a7ffaed7cd99",
+        "quote": "When a transfer batch mixes authorized and unauthorized instructions, all mandate decisions must be collected and the batch authorized before the ledger writer records any debit or credit, the denied instruction must abort the whole batch with balances, posting journal, and sequence exactly at their pre-batch values, and any ledger posting or journal failure must roll back that same complete ledger state."
+      }
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "EQ2-UA6",
+  "class": "unsupported_assumption",
+  "invariant": "When a transfer batch mixes authorized and unauthorized instructions, all mandate decisions must be collected and the batch authorized before the ledger writer records any debit or credit, the denied instruction must abort the whole batch with balances, posting journal, and sequence exactly at their pre-batch values, and any ledger posting or journal failure must roll back that same complete ledger state.",
+  "goal": "Fix executeTransferBatch in batch-service.js so bank transfer batches satisfy CONTRACT.md. Run `node --test`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/account-book.js",
+    "visible/batch-service.js",
+    "visible/errors.js",
+    "visible/ledger-journal.js",
+    "visible/ledger-writer.js",
+    "visible/mandate-check.js",
+    "visible/package.json",
+    "visible/tests/batch-service.test.js",
+    "visible/tests/ledger-writer.test.js",
+    "visible/transfer.js"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "1ebcef0d10acc4f58445b8b4e21a37c9d7fccae126abe7608685a7ffaed7cd99",
+    "quote": "When a transfer batch mixes authorized and unauthorized instructions, all mandate decisions must be collected and the batch authorized before the ledger writer records any debit or credit, the denied instruction must abort the whole batch with balances, posting journal, and sequence exactly at their pre-batch values, and any ledger posting or journal failure must roll back that same complete ledger state."
+  }
+}
