@@ -1,0 +1,39 @@
+--- a/rotation.py
++++ b/rotation.py
+@@ -4,9 +4,26 @@
+ 
+ def apply_rotation(store, catalog, plan):
+     """Apply a retention plan to physical slots and the catalog."""
++    if catalog.is_completed(plan.token):
++        return RotationResult(
++            True,
++            True,
++            (),
++            tuple(draft.snapshot_id for draft in plan.drafts),
++            None,
++        )
++
++    slots_before = store.slots_snapshot()
++    allocation_before = store.allocation_mark()
++    catalog_before = catalog.snapshot()
+     applied = []
+     skipped = []
++    seen = set()
+     try:
+         for draft in plan.drafts:
++            if draft.snapshot_id in seen or catalog.contains(draft.snapshot_id):
++                skipped.append(draft.snapshot_id)
++                continue
++            seen.add(draft.snapshot_id)
+             victim = catalog.oldest() if len(catalog) >= plan.retain else None
+             slot = apply_snapshot(store, draft)
+@@ -18,5 +35,8 @@
+         catalog.complete(plan.token)
+         return RotationResult(True, False, tuple(applied), tuple(skipped), None)
+     except Exception as error:
++        store.restore_slots(slots_before)
++        store.rewind_allocation(allocation_before)
++        catalog.restore(catalog_before)
+         return RotationResult(
+             False, False, tuple(applied), tuple(skipped), str(error)
+         )

@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "A failed rotation restores every physical snapshot slot and catalog entry to its pre-rotation value, completed rotation tokens and snapshot identifiers take effect at most once, and retrying the same plan after that rollback resumes at the clean allocation position so the retention chain and physical slot ownership advance exactly once.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "41a6c890eda11342e27a0d0c13bdae9703b91a3166eaf4ab62d65fcf139f2198",
+        "quote": "A failed rotation restores every physical snapshot slot and catalog entry to its pre-rotation value, completed rotation tokens and snapshot identifiers take effect at most once, and retrying the same plan after that rollback resumes at the clean allocation position so the retention chain and physical slot ownership advance exactly once."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "A failed rotation restores every physical snapshot slot and catalog entry to its pre-rotation value, completed rotation tokens and snapshot identifiers take effect at most once, and retrying the same plan after that rollback resumes at the clean allocation position so the retention chain and physical slot ownership advance exactly once.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "41a6c890eda11342e27a0d0c13bdae9703b91a3166eaf4ab62d65fcf139f2198",
+        "quote": "A failed rotation restores every physical snapshot slot and catalog entry to its pre-rotation value, completed rotation tokens and snapshot identifiers take effect at most once, and retrying the same plan after that rollback resumes at the clean allocation position so the retention chain and physical slot ownership advance exactly once."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "A failed rotation restores every physical snapshot slot and catalog entry to its pre-rotation value, completed rotation tokens and snapshot identifiers take effect at most once, and retrying the same plan after that rollback resumes at the clean allocation position so the retention chain and physical slot ownership advance exactly once.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "41a6c890eda11342e27a0d0c13bdae9703b91a3166eaf4ab62d65fcf139f2198",
+        "quote": "A failed rotation restores every physical snapshot slot and catalog entry to its pre-rotation value, completed rotation tokens and snapshot identifiers take effect at most once, and retrying the same plan after that rollback resumes at the clean allocation position so the retention chain and physical slot ownership advance exactly once."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "A failed rotation restores every physical snapshot slot and catalog entry to its pre-rotation value, completed rotation tokens and snapshot identifiers take effect at most once, and retrying the same plan after that rollback resumes at the clean allocation position so the retention chain and physical slot ownership advance exactly once.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "41a6c890eda11342e27a0d0c13bdae9703b91a3166eaf4ab62d65fcf139f2198",
+        "quote": "A failed rotation restores every physical snapshot slot and catalog entry to its pre-rotation value, completed rotation tokens and snapshot identifiers take effect at most once, and retrying the same plan after that rollback resumes at the clean allocation position so the retention chain and physical slot ownership advance exactly once."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "A failed rotation restores every physical snapshot slot and catalog entry to its pre-rotation value, completed rotation tokens and snapshot identifiers take effect at most once, and retrying the same plan after that rollback resumes at the clean allocation position so the retention chain and physical slot ownership advance exactly once.",
+      "class": "unsupported_assumption",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "41a6c890eda11342e27a0d0c13bdae9703b91a3166eaf4ab62d65fcf139f2198",
+        "quote": "A failed rotation restores every physical snapshot slot and catalog entry to its pre-rotation value, completed rotation tokens and snapshot identifiers take effect at most once, and retrying the same plan after that rollback resumes at the clean allocation position so the retention chain and physical slot ownership advance exactly once."
+      }
+    }
+  ]
+}

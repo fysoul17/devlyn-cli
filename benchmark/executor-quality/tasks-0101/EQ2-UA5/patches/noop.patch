@@ -1,0 +1,11 @@
+--- a/rotation.py
++++ b/rotation.py
+@@ -3,7 +3,7 @@
+ 
+ 
+ def apply_rotation(store, catalog, plan):
+-    """Apply a retention plan to physical slots and the catalog."""
++    """Apply one retention plan to physical slots and the catalog."""
+     applied = []
+     skipped = []
+     try:

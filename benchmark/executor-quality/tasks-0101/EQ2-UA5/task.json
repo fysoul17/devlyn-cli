@@ -1,0 +1,23 @@
+{
+  "id": "EQ2-UA5",
+  "class": "unsupported_assumption",
+  "invariant": "A failed rotation restores every physical snapshot slot and catalog entry to its pre-rotation value, completed rotation tokens and snapshot identifiers take effect at most once, and retrying the same plan after that rollback resumes at the clean allocation position so the retention chain and physical slot ownership advance exactly once.",
+  "goal": "Fix apply_rotation in rotation.py so backup rotation satisfies CONTRACT.md. Run `python3 -m unittest discover -s tests -v`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/catalog.py",
+    "visible/errors.py",
+    "visible/models.py",
+    "visible/rotation.py",
+    "visible/snapshot_applier.py",
+    "visible/snapshot_store.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_rotation.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "41a6c890eda11342e27a0d0c13bdae9703b91a3166eaf4ab62d65fcf139f2198",
+    "quote": "A failed rotation restores every physical snapshot slot and catalog entry to its pre-rotation value, completed rotation tokens and snapshot identifiers take effect at most once, and retrying the same plan after that rollback resumes at the clean allocation position so the retention chain and physical slot ownership advance exactly once."
+  }
+}
