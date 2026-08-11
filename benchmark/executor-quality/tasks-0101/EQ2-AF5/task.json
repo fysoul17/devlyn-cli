@@ -1,0 +1,23 @@
+{
+  "id": "EQ2-AF5",
+  "class": "absent_failure_mode",
+  "invariant": "When a mid-cycle plan-change batch contains an operation outside the actor's plan entitlement, the charge writer must abort the entire batch by restoring both charge records and entitlement windows to their exact pre-batch state, and every entitlement decision must occur before any batch write becomes visible.",
+  "goal": "Harden the mid-cycle subscription plan-change path in proration/processor.py so it meets the repository contract while preserving the public API. Work from the visible documentation and tests, add focused tests as needed, and run python3 -m unittest discover -s tests -v from the fixture root.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/proration/__init__.py",
+    "visible/proration/authorization.py",
+    "visible/proration/charge_writer.py",
+    "visible/proration/entitlement_store.py",
+    "visible/proration/errors.py",
+    "visible/proration/models.py",
+    "visible/proration/processor.py",
+    "visible/tests/test_proration.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "37d3695da6deb7143b61d5ce2781c017643186bc8b3a655f047d72f42c53b229",
+    "quote": "When a mid-cycle plan-change batch contains an operation outside the actor's plan entitlement, the charge writer must abort the entire batch by restoring both charge records and entitlement windows to their exact pre-batch state, and every entitlement decision must occur before any batch write becomes visible."
+  }
+}

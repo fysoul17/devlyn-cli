@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "When a mid-cycle plan-change batch contains an operation outside the actor's plan entitlement, the charge writer must abort the entire batch by restoring both charge records and entitlement windows to their exact pre-batch state, and every entitlement decision must occur before any batch write becomes visible.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "37d3695da6deb7143b61d5ce2781c017643186bc8b3a655f047d72f42c53b229",
+        "quote": "When a mid-cycle plan-change batch contains an operation outside the actor's plan entitlement, the charge writer must abort the entire batch by restoring both charge records and entitlement windows to their exact pre-batch state, and every entitlement decision must occur before any batch write becomes visible."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "When a mid-cycle plan-change batch contains an operation outside the actor's plan entitlement, the charge writer must abort the entire batch by restoring both charge records and entitlement windows to their exact pre-batch state, and every entitlement decision must occur before any batch write becomes visible.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "37d3695da6deb7143b61d5ce2781c017643186bc8b3a655f047d72f42c53b229",
+        "quote": "When a mid-cycle plan-change batch contains an operation outside the actor's plan entitlement, the charge writer must abort the entire batch by restoring both charge records and entitlement windows to their exact pre-batch state, and every entitlement decision must occur before any batch write becomes visible."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "When a mid-cycle plan-change batch contains an operation outside the actor's plan entitlement, the charge writer must abort the entire batch by restoring both charge records and entitlement windows to their exact pre-batch state, and every entitlement decision must occur before any batch write becomes visible.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "37d3695da6deb7143b61d5ce2781c017643186bc8b3a655f047d72f42c53b229",
+        "quote": "When a mid-cycle plan-change batch contains an operation outside the actor's plan entitlement, the charge writer must abort the entire batch by restoring both charge records and entitlement windows to their exact pre-batch state, and every entitlement decision must occur before any batch write becomes visible."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "When a mid-cycle plan-change batch contains an operation outside the actor's plan entitlement, the charge writer must abort the entire batch by restoring both charge records and entitlement windows to their exact pre-batch state, and every entitlement decision must occur before any batch write becomes visible.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "37d3695da6deb7143b61d5ce2781c017643186bc8b3a655f047d72f42c53b229",
+        "quote": "When a mid-cycle plan-change batch contains an operation outside the actor's plan entitlement, the charge writer must abort the entire batch by restoring both charge records and entitlement windows to their exact pre-batch state, and every entitlement decision must occur before any batch write becomes visible."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "When a mid-cycle plan-change batch contains an operation outside the actor's plan entitlement, the charge writer must abort the entire batch by restoring both charge records and entitlement windows to their exact pre-batch state, and every entitlement decision must occur before any batch write becomes visible.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "37d3695da6deb7143b61d5ce2781c017643186bc8b3a655f047d72f42c53b229",
+        "quote": "When a mid-cycle plan-change batch contains an operation outside the actor's plan entitlement, the charge writer must abort the entire batch by restoring both charge records and entitlement windows to their exact pre-batch state, and every entitlement decision must occur before any batch write becomes visible."
+      }
+    }
+  ]
+}

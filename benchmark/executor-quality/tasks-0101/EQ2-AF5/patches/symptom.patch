@@ -1,0 +1,50 @@
+--- a/proration/processor.py
++++ b/proration/processor.py
+@@ -3,6 +3,7 @@
+ from .authorization import PlanEntitlement
+ from .charge_writer import ChargeWriter
+ from .entitlement_store import EntitlementStore
++from .errors import ChargeWriteError, EntitlementWriteError
+ from .models import PlanChange, prorated_delta_cents
+ 
+ 
+@@ -13,18 +14,25 @@
+     changes: list[PlanChange],
+ ) -> list[dict[str, object]]:
+     """Apply one plan-change batch and return its new charge rows."""
++    charge_snapshot = charges.snapshot()
++    entitlement_snapshot = entitlements.snapshot()
+     written: list[dict[str, object]] = []
+-    for change in changes:
+-        authorizer.require(change)
+-        current_plan = entitlements.current_plan(change.subscription_id)
+-        row = {
+-            "subscription_id": change.subscription_id,
+-            "from_plan": current_plan,
+-            "to_plan": change.new_plan,
+-            "effective_day": change.effective_day,
+-            "amount_cents": prorated_delta_cents(current_plan, change),
+-        }
+-        charges.append(row)
+-        entitlements.replace_tail(change.subscription_id, change.new_plan, change.effective_day)
+-        written.append(row)
+-    return written
++    try:
++        for change in changes:
++            authorizer.require(change)
++            current_plan = entitlements.current_plan(change.subscription_id)
++            row = {
++                "subscription_id": change.subscription_id,
++                "from_plan": current_plan,
++                "to_plan": change.new_plan,
++                "effective_day": change.effective_day,
++                "amount_cents": prorated_delta_cents(current_plan, change),
++            }
++            charges.append(row)
++            entitlements.replace_tail(change.subscription_id, change.new_plan, change.effective_day)
++            written.append(row)
++        return written
++    except (ChargeWriteError, EntitlementWriteError):
++        charges.restore(charge_snapshot)
++        entitlements.restore(entitlement_snapshot)
++        raise

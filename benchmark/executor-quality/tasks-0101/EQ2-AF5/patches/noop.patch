@@ -1,0 +1,14 @@
+--- a/proration/processor.py
++++ b/proration/processor.py
+@@ -12,7 +12,10 @@
+     authorizer: PlanEntitlement,
+     changes: list[PlanChange],
+ ) -> list[dict[str, object]]:
+-    """Apply one plan-change batch and return its new charge rows."""
++    """Apply one plan-change batch and return its new charge rows.
++
++    Storage semantics are defined by CONTRACT.md.
++    """
+     written: list[dict[str, object]] = []
+     for change in changes:
+         authorizer.require(change)
