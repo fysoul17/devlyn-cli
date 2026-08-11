@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Artifact publication must authorize an active publish token for the target namespace before schema inspection, schema failures rank unsupported-version before missing-field before wrong-type with declaration order breaking same-reason ties, and an unauthorized malformed publication must return the authorization failure without appending a schema diagnostic or registry version.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "5997729a6879715bb95594f8fbeb097fbfebd6b5ce537481cf3ff6c434d45a89",
+        "quote": "Artifact publication must authorize an active publish token for the target namespace before schema inspection, schema failures rank unsupported-version before missing-field before wrong-type with declaration order breaking same-reason ties, and an unauthorized malformed publication must return the authorization failure without appending a schema diagnostic or registry version."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Artifact publication must authorize an active publish token for the target namespace before schema inspection, schema failures rank unsupported-version before missing-field before wrong-type with declaration order breaking same-reason ties, and an unauthorized malformed publication must return the authorization failure without appending a schema diagnostic or registry version.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "5997729a6879715bb95594f8fbeb097fbfebd6b5ce537481cf3ff6c434d45a89",
+        "quote": "Artifact publication must authorize an active publish token for the target namespace before schema inspection, schema failures rank unsupported-version before missing-field before wrong-type with declaration order breaking same-reason ties, and an unauthorized malformed publication must return the authorization failure without appending a schema diagnostic or registry version."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Artifact publication must authorize an active publish token for the target namespace before schema inspection, schema failures rank unsupported-version before missing-field before wrong-type with declaration order breaking same-reason ties, and an unauthorized malformed publication must return the authorization failure without appending a schema diagnostic or registry version.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "5997729a6879715bb95594f8fbeb097fbfebd6b5ce537481cf3ff6c434d45a89",
+        "quote": "Artifact publication must authorize an active publish token for the target namespace before schema inspection, schema failures rank unsupported-version before missing-field before wrong-type with declaration order breaking same-reason ties, and an unauthorized malformed publication must return the authorization failure without appending a schema diagnostic or registry version."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Artifact publication must authorize an active publish token for the target namespace before schema inspection, schema failures rank unsupported-version before missing-field before wrong-type with declaration order breaking same-reason ties, and an unauthorized malformed publication must return the authorization failure without appending a schema diagnostic or registry version.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "5997729a6879715bb95594f8fbeb097fbfebd6b5ce537481cf3ff6c434d45a89",
+        "quote": "Artifact publication must authorize an active publish token for the target namespace before schema inspection, schema failures rank unsupported-version before missing-field before wrong-type with declaration order breaking same-reason ties, and an unauthorized malformed publication must return the authorization failure without appending a schema diagnostic or registry version."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Artifact publication must authorize an active publish token for the target namespace before schema inspection, schema failures rank unsupported-version before missing-field before wrong-type with declaration order breaking same-reason ties, and an unauthorized malformed publication must return the authorization failure without appending a schema diagnostic or registry version.",
+      "class": "missed_repo_invariant",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "5997729a6879715bb95594f8fbeb097fbfebd6b5ce537481cf3ff6c434d45a89",
+        "quote": "Artifact publication must authorize an active publish token for the target namespace before schema inspection, schema failures rank unsupported-version before missing-field before wrong-type with declaration order breaking same-reason ties, and an unauthorized malformed publication must return the authorization failure without appending a schema diagnostic or registry version."
+      }
+    }
+  ]
+}

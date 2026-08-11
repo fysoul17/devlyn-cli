@@ -1,0 +1,34 @@
+--- a/schema-check.js
++++ b/schema-check.js
+@@ -54,7 +54,10 @@
+ }
+ 
+ export function rankSchemaIssues(issues) {
+-  return [...issues].sort((left, right) => left.arrivalIndex - right.arrivalIndex);
++  return [...issues].sort(
++    (left, right) => REASON_PRIORITY[left.reason] - REASON_PRIORITY[right.reason]
++      || left.arrivalIndex - right.arrivalIndex,
++  );
+ }
+ 
+ export class SchemaDiagnosticJournal {
+--- a/publisher.js
++++ b/publisher.js
+@@ -1,13 +1,13 @@
+ export function publishArtifact({ tokenGate, schemaCheck, registry }, request) {
++  const authorization = tokenGate.authorize(request.tokenId, request.namespace);
++  if (!authorization.ok) {
++    return authorization;
++  }
+   const issue = schemaCheck.inspect(
+     request.namespace,
+     request.artifactVersion,
+     request.manifest,
+   );
+-  const authorization = tokenGate.authorize(request.tokenId, request.namespace);
+-  if (!authorization.ok) {
+-    return authorization;
+-  }
+   if (issue !== null) {
+     return {
+       ok: false,

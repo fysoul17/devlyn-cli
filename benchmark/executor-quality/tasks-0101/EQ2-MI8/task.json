@@ -1,0 +1,23 @@
+{
+  "id": "EQ2-MI8",
+  "class": "missed_repo_invariant",
+  "invariant": "Artifact publication must authorize an active publish token for the target namespace before schema inspection, schema failures rank unsupported-version before missing-field before wrong-type with declaration order breaking same-reason ties, and an unauthorized malformed publication must return the authorization failure without appending a schema diagnostic or registry version.",
+  "goal": "Repair the artifact publication flow so it satisfies CONTRACT.md. Run `node --test`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/fixtures.js",
+    "visible/package.json",
+    "visible/publisher.js",
+    "visible/registry-store.js",
+    "visible/schema-check.js",
+    "visible/tests/components.test.js",
+    "visible/tests/publisher.test.js",
+    "visible/token-gate.js"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "5997729a6879715bb95594f8fbeb097fbfebd6b5ce537481cf3ff6c434d45a89",
+    "quote": "Artifact publication must authorize an active publish token for the target namespace before schema inspection, schema failures rank unsupported-version before missing-field before wrong-type with declaration order breaking same-reason ties, and an unauthorized malformed publication must return the authorization failure without appending a schema diagnostic or registry version."
+  }
+}
