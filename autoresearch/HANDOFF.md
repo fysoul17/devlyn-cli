@@ -93,42 +93,34 @@ band evaluation (Fraction-exact mean AND frozen even-n median ∈
 terminal, no retuning; difficulty-oracle prohibition during
 authoring), 128-run matrix opus-5 vs fable-5, δ=0.15, P-0101-1
 single prediction.
-**EXECUTION IN PROGRESS (2026-08-09→10 session; § Execution log in
-the iteration file is authoritative)**: batches 01-03 CLOSED PASS —
-all four scripts landed (validate-hard-task.py 1f809e33…,
-score-calibration.py 418f3738…, score-cohort N=32 amendment
-5af3c1bd…; validate-task.py byte-frozen) + 12/32 EQ2 tasks admitted;
-every batch needed exactly one primary-codex-found fix round
-(recurring classes: same-pair structural copies ×5, oracle workdir
-mutation, tie-break coverage gaps, strawman symptom branches — bake
-these into batch 05-08 dispatch prompts). Batch-01 spec sol-reviewed
-(REVISE ×4); batch-02 spec sol-reviewed as the 03-08 TEMPLATE
-(REVISE ×7); batches 03-08 specs committed, row-substituted +
-mechanically verified vs the frozen table (`76657bd`). **ALL EIGHT
-BATCHES CLOSED PASS + CANDIDATE SEALED (2026-08-11 session — codex
-seat recovered early, before the posted 08-16 reset)**: batch-04
-close-out (primary judge re-run on `dc53576...1e40f67`, 204s, 0
-findings, merge PASS 3/3); batch-05 PASS r0-clean; batch-06 PASS at
-outer iter 2 (structural-copy HIGHs UA6/BD6 then AF6 closed by
-re-authors); batch-07 PASS r0-clean; batch-08 PASS at outer iter 2
-(MI8↔BD8 then UA8 copies + patch lone-space class closed) —
-**32/32 admitted, freeze step 1+2 complete**, candidate tree
-`2685fa07…` at `cc23209` (receipts
-`~/.local/share/nx01/iter0101/{build,freeze}/`). NEXT (new session;
-never fire arms near 12am KST): calibration apparatus freeze →
-64-run sonnet calibration → ONE band evaluation → matrix launcher
-freeze → both-seat pre-arm audit → 128-run matrix detached (recipe
-in the iteration file § Execution log). NEW product finding
-candidate: `path_matches_surface()` silently ignores brace-glob
-surface entries (false scope CRITICALs + empty
-`--print-authorized-surface`). THREE harness product findings registered in
-the iteration file (verify-merge PRIMARY fail-open — a batch-04
-iter-2 state `verify: PASS` is evidence-invalid; stale
-verify.judge.summary.json survives archive; collector/merge parser
-mismatch). Remaining after batch-04: batches 05-08 → candidate seal
-→ calibration apparatus freeze → 64-run sonnet calibration → ONE
-band evaluation → both-seat pre-arm audit → 128-run matrix detached
-(2-4 lanes, never near 12am KST). PARALLEL, independent:
+**iter-0101 CLOSED — TERMINAL = CALIBRATION_MISS (2026-08-12
+session; § Execution log in the iteration file is authoritative)**.
+Corpus build COMPLETE 32/32 admitted across 8 resolve batches +
+candidate SEALED (tree `2685fa07…` at `cc23209`; scripts
+validate-hard-task 1f809e33… / score-calibration 418f3738… /
+score-cohort N=32 5af3c1bd… / validate-task byte-frozen 769a1826…).
+Calibration apparatus FROZEN (FREEZE-ARM ×2 after adjudicated split:
+grok R0 FREEZE-ARM vs sol R0 REVISE; sol H3 receipt-binding + L4 D6
+adopted, H1/H2 lexical-taxonomy residuals held byte-frozen with two
+pre-committed operational rules — `calfrz-adjudication.md`). ONE
+valid 64-run sonnet evaluation `cal1-20260811T150824Z`: attested
+64/64, cat/inc/infra 0/0/0, **band = MISS** — mean 1/40, median 0,
+interior 5/32 (bar ≥22) → registration terminates, matrix (steps
+⑥-⑧) never fired; the easy-regime screen saved the 128-run cost
+0100 paid to learn the same shape. Successor design data: only
+UA5 3/10, AF4 1/5, AF1/MI8/UA7 1/10 touched the calibrator; BD class
+0/8. A revised registration needs a qualitatively harder mechanism
+than two-axis compound invariants on small fixtures (repo-scale
+surface / long-horizon chains / non-local invariants — adjudicate at
+registration). Receipts `~/.local/share/nx01/iter0101/`
+(build/freeze/calibration incl. matrix apparatus DRAFTS, never
+frozen). FOUR harness product findings registered, not fixed
+(verify-merge PRIMARY fail-open; stale verify.judge.summary.json
+survives archive; collector/merge parser mismatch;
+`path_matches_surface()` silently ignores brace-glob surface
+entries) + lexical failure-taxonomy modernization (AUTH substring
+class, sol H1/H2) as next-registration follow-up.
+PARALLEL, independent:
 0100 § Matrix integration fold-in — recert-seats.sh
 `executor_quality` suite + seat-matrix.py `main_ai_executor`
 recording the SATURATED cell (own /devlyn:resolve run). H2

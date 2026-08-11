@@ -2,7 +2,7 @@
 id: "0101-executor-quality-hard-corpus"
 title: "Executor-quality discrimination-regime cell — multi-invariant interaction corpus N=32, opus-5 vs fable-5 (iter-0100 SATURATED successor)"
 kind: instrument
-status: DESIGN-FROZEN 2026-08-09 — sol R0 REVISE ×8 adopted (R0-0101-LIVE-sol) + grok R1 REVISE ×5 adopted (R1-0101-LIVE-grok; grok additionally VERIFIED the 32-row table counts and the CI-touch bootstrap arithmetic by direct execution); EXECUTION DEFERRED to a new session per user directive — resume recipe in HANDOFF § iter-0101
+status: CLOSED 2026-08-12 — TERMINAL CALIBRATION_MISS (frozen-rule-automatic). Corpus build COMPLETE 32/32 + sealed (tree 2685fa07…); calibration apparatus FROZEN (FREEZE-ARM ×2 after adjudicated split); ONE valid 64-run sonnet evaluation cal1-20260811T150824Z scored band=MISS — mean 1/40, median 0, interior 5/32 (bar ≥22), total-fail 0; ledger clean (attested 64/64, cat/inc/infra 0/0/0, byte-deterministic verdict). Registration terminates per § Difficulty calibration gate: no hardening/softening/re-run; steps ⑥-⑧ (matrix) never fire. Successor = REVISED registration with a substantially harder corpus design — see § Execution log close-out
 complexity: high
 depends_on: ["0100-main-ai-executor-quality"]
 ---
@@ -449,9 +449,42 @@ replacement launch, (ii) MISS + any success-subtype/empty-attestation row
 RECHECK convergence: sol FREEZE-ARM + grok FREEZE-ARM (liveness
 RECHECK-CALFRZ-LIVE-sol-b8c88b56 / -grok-7ab88b86). Taxonomy
 modernization (structured CLI status classification) registered as
-next-registration harness follow-up. Remaining: ④ 64-run sonnet
-calibration (detached, post-midnight-KST window) → ⑤ ONE band evaluation
-(PASS → candidate digest promoted UNCHANGED; MISS → CALIBRATION_MISS
-stop) → ⑥ matrix launcher freeze → ⑦ both-seat pre-arm audit (sol +
-grok, liveness, synthetic-ledger proofs incl. the four 0100 repro
-classes) → ⑧ 128-run matrix detached (2-4 lanes).
+next-registration harness follow-up.
+
+**STEPS ④+⑤ EXECUTED — TERMINAL = CALIBRATION_MISS (2026-08-12,
+frozen-rule-automatic)**. Launch `cal1-20260811T150824Z` (attempt 1/3,
+detached pid 41315 via launch-detached.py, fired 00:08 KST — just past
+the midnight boundary with a fresh quota window; launch-receipt.json
+binds apparatus shas + tree digest + attempt ordinal). Run: 64/64 rows
+in ~93 min (2 lanes), wall min/med/max 25/57/151s, engine_attested
+`claude-sonnet-5` 64/64, catastrophic/incomplete/infra 0/0/0 — VALID
+launch, no replacement slot burned, neither pre-committed operational
+rule triggered (0 vocab-infra rows; 0 success-subtype/empty-attestation
+rows → no CONTESTED escalation). ONE band evaluation
+(score-calibration.py 418f3738…, ledger sha 386bd004…): **band = MISS,
+exit 2** — mean **1/40** (bar ≥ 1/5), frozen even-n median **0** (bar
+≥ 1/5), interior count **5/32** (bar ≥ 22), total-fail 0 (≤2 OK).
+Verdict re-run byte-identical (`band-verdict.json` ==
+`band-verdict.second.json`). Receipts:
+`~/.local/share/nx01/iter0101/calibration/attempt-cal1-20260811T150824Z/`.
+
+**Close-out reading**: the easy-regime screen did exactly its job — the
+calibrator solves the sealed N=32 compound-invariant corpus nearly
+clean (q_cal = 0 on 27/32 tasks), so the corpus cannot discriminate
+opus-5 vs fable-5 at this difficulty; the screen caught it BEFORE the
+128-run matrix (the cost the calibration gate exists to save; 0100
+learned this only after 48 scored runs). Steps ⑥-⑧ never fire; matrix
+apparatus drafts (`matrix/apparatus-draft/`, 128-cell coverage + ABBA
+verified at 2/4 lanes) are staged for the successor and were never
+frozen. Only 5 tasks produced ANY sonnet failure signal — successor
+design data: EQ2-UA5 3/10, EQ2-AF4 1/5, EQ2-AF1 / EQ2-MI8 / EQ2-UA7
+each 1/10 (classes: UA 3, AF 2, MI 1, BD **0** — the BD class never
+touched the calibrator). A revised registration needs a difficulty
+mechanism qualitatively beyond two-axis compound invariants on 5-file
+fixtures (candidates for the successor round: repo-scale interaction
+surface, longer-horizon multi-file dependency chains, or
+non-local-invariant classes; adjudicate at registration time).
+Harness follow-ups carried forward: 4 registered product findings
+(verify-merge primary fail-open; stale verify.judge.summary.json;
+collector/merge parser mismatch; path_matches_surface brace-glob) +
+lexical failure-taxonomy modernization from this session's freeze round.
