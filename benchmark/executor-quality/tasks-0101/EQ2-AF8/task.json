@@ -1,0 +1,27 @@
+{
+  "id": "EQ2-AF8",
+  "class": "absent_failure_mode",
+  "invariant": "Certificate renewal must authorize certificate ownership and an open renewal window before CSR review, CSR defects rank unsupported-key before identity-change before missing-DNS-name before malformed-DNS-name with CSR source order breaking same-reason ties, and an unauthorized malformed renewal must return the renewal denial without recording a CSR rejection, reserving a serial, or storing a certificate.",
+  "goal": "Repair the certificate renewal issuance flow so it satisfies CONTRACT.md. Run `node --test`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/authorization.js",
+    "visible/certificate-issuer.js",
+    "visible/certificate-store.js",
+    "visible/csr-policy.js",
+    "visible/csr-review.js",
+    "visible/fixtures.js",
+    "visible/issuance-gate.js",
+    "visible/package.json",
+    "visible/renewal-service.js",
+    "visible/serial-pool.js",
+    "visible/tests/components.test.js",
+    "visible/tests/renewal.test.js"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "bc12d7c4743b2c325e67d2477fe10d78064a7fdce30a59f42b6f559dd2ab2c7c",
+    "quote": "Certificate renewal must authorize certificate ownership and an open renewal window before CSR review, CSR defects rank unsupported-key before identity-change before missing-DNS-name before malformed-DNS-name with CSR source order breaking same-reason ties, and an unauthorized malformed renewal must return the renewal denial without recording a CSR rejection, reserving a serial, or storing a certificate."
+  }
+}

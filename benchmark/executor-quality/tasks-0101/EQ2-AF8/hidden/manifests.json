@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Certificate renewal must authorize certificate ownership and an open renewal window before CSR review, CSR defects rank unsupported-key before identity-change before missing-DNS-name before malformed-DNS-name with CSR source order breaking same-reason ties, and an unauthorized malformed renewal must return the renewal denial without recording a CSR rejection, reserving a serial, or storing a certificate.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "bc12d7c4743b2c325e67d2477fe10d78064a7fdce30a59f42b6f559dd2ab2c7c",
+        "quote": "Certificate renewal must authorize certificate ownership and an open renewal window before CSR review, CSR defects rank unsupported-key before identity-change before missing-DNS-name before malformed-DNS-name with CSR source order breaking same-reason ties, and an unauthorized malformed renewal must return the renewal denial without recording a CSR rejection, reserving a serial, or storing a certificate."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Certificate renewal must authorize certificate ownership and an open renewal window before CSR review, CSR defects rank unsupported-key before identity-change before missing-DNS-name before malformed-DNS-name with CSR source order breaking same-reason ties, and an unauthorized malformed renewal must return the renewal denial without recording a CSR rejection, reserving a serial, or storing a certificate.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "bc12d7c4743b2c325e67d2477fe10d78064a7fdce30a59f42b6f559dd2ab2c7c",
+        "quote": "Certificate renewal must authorize certificate ownership and an open renewal window before CSR review, CSR defects rank unsupported-key before identity-change before missing-DNS-name before malformed-DNS-name with CSR source order breaking same-reason ties, and an unauthorized malformed renewal must return the renewal denial without recording a CSR rejection, reserving a serial, or storing a certificate."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Certificate renewal must authorize certificate ownership and an open renewal window before CSR review, CSR defects rank unsupported-key before identity-change before missing-DNS-name before malformed-DNS-name with CSR source order breaking same-reason ties, and an unauthorized malformed renewal must return the renewal denial without recording a CSR rejection, reserving a serial, or storing a certificate.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "bc12d7c4743b2c325e67d2477fe10d78064a7fdce30a59f42b6f559dd2ab2c7c",
+        "quote": "Certificate renewal must authorize certificate ownership and an open renewal window before CSR review, CSR defects rank unsupported-key before identity-change before missing-DNS-name before malformed-DNS-name with CSR source order breaking same-reason ties, and an unauthorized malformed renewal must return the renewal denial without recording a CSR rejection, reserving a serial, or storing a certificate."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Certificate renewal must authorize certificate ownership and an open renewal window before CSR review, CSR defects rank unsupported-key before identity-change before missing-DNS-name before malformed-DNS-name with CSR source order breaking same-reason ties, and an unauthorized malformed renewal must return the renewal denial without recording a CSR rejection, reserving a serial, or storing a certificate.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "bc12d7c4743b2c325e67d2477fe10d78064a7fdce30a59f42b6f559dd2ab2c7c",
+        "quote": "Certificate renewal must authorize certificate ownership and an open renewal window before CSR review, CSR defects rank unsupported-key before identity-change before missing-DNS-name before malformed-DNS-name with CSR source order breaking same-reason ties, and an unauthorized malformed renewal must return the renewal denial without recording a CSR rejection, reserving a serial, or storing a certificate."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Certificate renewal must authorize certificate ownership and an open renewal window before CSR review, CSR defects rank unsupported-key before identity-change before missing-DNS-name before malformed-DNS-name with CSR source order breaking same-reason ties, and an unauthorized malformed renewal must return the renewal denial without recording a CSR rejection, reserving a serial, or storing a certificate.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "bc12d7c4743b2c325e67d2477fe10d78064a7fdce30a59f42b6f559dd2ab2c7c",
+        "quote": "Certificate renewal must authorize certificate ownership and an open renewal window before CSR review, CSR defects rank unsupported-key before identity-change before missing-DNS-name before malformed-DNS-name with CSR source order breaking same-reason ties, and an unauthorized malformed renewal must return the renewal denial without recording a CSR rejection, reserving a serial, or storing a certificate."
+      }
+    }
+  ]
+}

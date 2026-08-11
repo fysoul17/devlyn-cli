@@ -1,0 +1,66 @@
+--- a/authorization.js
++++ b/authorization.js
+@@ -10,14 +10,6 @@
+     );
+   }
+ 
+-  subjectFor(certificateId) {
+-    const certificate = this.#certificates.get(certificateId);
+-    if (certificate === undefined) {
+-      return { dnsNames: [] };
+-    }
+-    return { dnsNames: [...certificate.dnsNames] };
+-  }
+-
+   authorize(certificateId, accountId, requestDay) {
+     const certificate = this.#certificates.get(certificateId);
+     const allowed = certificate?.status === "active"
+--- a/csr-policy.js
++++ b/csr-policy.js
+@@ -48,7 +48,7 @@
+ 
+ export function rankCsrDefects(defects) {
+   return [...defects].sort(
+-    (left, right) => left.reason.localeCompare(right.reason)
+-      || right.position - left.position,
++    (left, right) => DEFECT_PRIORITY[left.reason] - DEFECT_PRIORITY[right.reason]
++      || left.position - right.position,
+   );
+ }
+--- a/issuance-gate.js
++++ b/issuance-gate.js
+@@ -1,11 +1,12 @@
+ export class IssuanceGate {
+-  continue(authorization, assessment, issue) {
++  continue(authorization, operations) {
+     if (!authorization.ok) {
+       return authorization;
+     }
++    const assessment = operations.review(authorization.subject);
+     if (!assessment.ok) {
+       return assessment;
+     }
+-    return issue();
++    return operations.issue(authorization);
+   }
+ }
+--- a/renewal-service.js
++++ b/renewal-service.js
+@@ -5,12 +5,10 @@
+     request.accountId,
+     request.requestDay,
+   );
+-  const assessment = state.csrReviewer.review(
+-    request.csr,
+-    state.authority.subjectFor(request.certificateId),
+-  );
+   return state.issuanceGate.continue(
+     authorization,
+-    assessment,
+-    () => state.issuer.issue(authorization, request.csr, request.requestDay),
++    {
++      review: (subject) => state.csrReviewer.review(request.csr, subject),
++      issue: (permit) => state.issuer.issue(permit, request.csr, request.requestDay),
++    },
+   );
+ }
