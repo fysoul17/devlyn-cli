@@ -1,0 +1,10 @@
+--- a/conflict_policy.py
++++ b/conflict_policy.py
+@@ -20 +20,6 @@
+-    return tuple(sorted(conflicts, key=lambda item: item.source_index))
++    return tuple(
++        sorted(
++            conflicts,
++            key=lambda item: (REASON_PRIORITY[item.reason], item.source_index),
++        )
++    )

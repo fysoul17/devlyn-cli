@@ -1,0 +1,26 @@
+{
+  "id": "EQ2-AF7",
+  "class": "absent_failure_mode",
+  "invariant": "Slot retries sharing a request id must replay the first conflict report without emitting another notification, conflict reasons rank outside before attendee before room with source order breaking equal-reason ties, and when the calendar changes so an identical retry would now lose to a different conflict the original ranked report must remain sealed without another report or booking side effect.",
+  "goal": "Repair the meeting slot request flow so it satisfies the behavior documented in CONTRACT.md. Run `python3 -m unittest discover -s tests -v`.",
+  "visible_files": [
+    "visible/CONTRACT.md",
+    "visible/README.md",
+    "visible/calendar_store.py",
+    "visible/conflict_policy.py",
+    "visible/conflict_reporter.py",
+    "visible/fixtures.py",
+    "visible/models.py",
+    "visible/scheduler.py",
+    "visible/tests/__init__.py",
+    "visible/tests/test_calendar_store.py",
+    "visible/tests/test_conflict_policy.py",
+    "visible/tests/test_conflict_reporter.py",
+    "visible/tests/test_scheduler.py"
+  ],
+  "contract_excerpt": {
+    "file": "visible/CONTRACT.md",
+    "sha256": "9b81636c5286ff36c1a80124d20a27a6d7c5b143179a3f4d9253176f0348e62e",
+    "quote": "Slot retries sharing a request id must replay the first conflict report without emitting another notification, conflict reasons rank outside before attendee before room with source order breaking equal-reason ties, and when the calendar changes so an identical retry would now lose to a different conflict the original ranked report must remain sealed without another report or booking side effect."
+  }
+}

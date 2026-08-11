@@ -1,0 +1,54 @@
+{
+  "manifestations": [
+    {
+      "id": "axis1-a",
+      "invariant": "Slot retries sharing a request id must replay the first conflict report without emitting another notification, conflict reasons rank outside before attendee before room with source order breaking equal-reason ties, and when the calendar changes so an identical retry would now lose to a different conflict the original ranked report must remain sealed without another report or booking side effect.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "9b81636c5286ff36c1a80124d20a27a6d7c5b143179a3f4d9253176f0348e62e",
+        "quote": "Slot retries sharing a request id must replay the first conflict report without emitting another notification, conflict reasons rank outside before attendee before room with source order breaking equal-reason ties, and when the calendar changes so an identical retry would now lose to a different conflict the original ranked report must remain sealed without another report or booking side effect."
+      }
+    },
+    {
+      "id": "axis1-b",
+      "invariant": "Slot retries sharing a request id must replay the first conflict report without emitting another notification, conflict reasons rank outside before attendee before room with source order breaking equal-reason ties, and when the calendar changes so an identical retry would now lose to a different conflict the original ranked report must remain sealed without another report or booking side effect.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "9b81636c5286ff36c1a80124d20a27a6d7c5b143179a3f4d9253176f0348e62e",
+        "quote": "Slot retries sharing a request id must replay the first conflict report without emitting another notification, conflict reasons rank outside before attendee before room with source order breaking equal-reason ties, and when the calendar changes so an identical retry would now lose to a different conflict the original ranked report must remain sealed without another report or booking side effect."
+      }
+    },
+    {
+      "id": "axis2-a",
+      "invariant": "Slot retries sharing a request id must replay the first conflict report without emitting another notification, conflict reasons rank outside before attendee before room with source order breaking equal-reason ties, and when the calendar changes so an identical retry would now lose to a different conflict the original ranked report must remain sealed without another report or booking side effect.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "9b81636c5286ff36c1a80124d20a27a6d7c5b143179a3f4d9253176f0348e62e",
+        "quote": "Slot retries sharing a request id must replay the first conflict report without emitting another notification, conflict reasons rank outside before attendee before room with source order breaking equal-reason ties, and when the calendar changes so an identical retry would now lose to a different conflict the original ranked report must remain sealed without another report or booking side effect."
+      }
+    },
+    {
+      "id": "axis2-b",
+      "invariant": "Slot retries sharing a request id must replay the first conflict report without emitting another notification, conflict reasons rank outside before attendee before room with source order breaking equal-reason ties, and when the calendar changes so an identical retry would now lose to a different conflict the original ranked report must remain sealed without another report or booking side effect.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "9b81636c5286ff36c1a80124d20a27a6d7c5b143179a3f4d9253176f0348e62e",
+        "quote": "Slot retries sharing a request id must replay the first conflict report without emitting another notification, conflict reasons rank outside before attendee before room with source order breaking equal-reason ties, and when the calendar changes so an identical retry would now lose to a different conflict the original ranked report must remain sealed without another report or booking side effect."
+      }
+    },
+    {
+      "id": "interaction",
+      "invariant": "Slot retries sharing a request id must replay the first conflict report without emitting another notification, conflict reasons rank outside before attendee before room with source order breaking equal-reason ties, and when the calendar changes so an identical retry would now lose to a different conflict the original ranked report must remain sealed without another report or booking side effect.",
+      "class": "absent_failure_mode",
+      "contract_excerpt": {
+        "file": "visible/CONTRACT.md",
+        "sha256": "9b81636c5286ff36c1a80124d20a27a6d7c5b143179a3f4d9253176f0348e62e",
+        "quote": "Slot retries sharing a request id must replay the first conflict report without emitting another notification, conflict reasons rank outside before attendee before room with source order breaking equal-reason ties, and when the calendar changes so an identical retry would now lose to a different conflict the original ranked report must remain sealed without another report or booking side effect."
+      }
+    }
+  ]
+}

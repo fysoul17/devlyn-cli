@@ -1,0 +1,24 @@
+--- a/conflict_policy.py
++++ b/conflict_policy.py
+@@ -20 +20,6 @@
+-    return tuple(sorted(conflicts, key=lambda item: item.source_index))
++    return tuple(
++        sorted(
++            conflicts,
++            key=lambda item: (REASON_PRIORITY[item.reason], item.source_index),
++        )
++    )
+--- a/conflict_reporter.py
++++ b/conflict_reporter.py
+@@ -14,9 +14,7 @@
+     def find(self, request_id: str, calendar_revision: int) -> ConflictReport | None:
+-        """Find a report published against this calendar snapshot."""
+-
+-        for revision, report in self._threads.get(request_id, ()):
+-            if revision == calendar_revision:
+-                return report
+-        return None
++        """Find the sealed report for this request across calendar revisions."""
++
++        thread = self._threads.get(request_id)
++        return thread[0][1] if thread else None
