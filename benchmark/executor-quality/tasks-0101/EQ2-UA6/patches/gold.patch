@@ -11,7 +11,7 @@
      return deniedResult(batchId, denied);
 @@ -20,9 +20,7 @@
    }
- 
+
 -  for (const decision of decisions) {
 -    writer.postBatch(`${batchId}:${decision.transfer.id}`, [decision.transfer]);
 -  }
