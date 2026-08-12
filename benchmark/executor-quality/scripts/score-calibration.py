@@ -15,7 +15,7 @@ from pathlib import Path
 ENGINE = "claude-sonnet-5"
 REPS = {1, 2}
 FROZEN_TASKS = {
-    f"EQ2-{prefix}{index}"
+    f"EQ3-{prefix}{index}"
     for prefix in ("UA", "MI", "AF", "BD")
     for index in range(1, 9)
 }

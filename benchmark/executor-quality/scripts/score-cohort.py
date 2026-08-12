@@ -18,7 +18,7 @@ RESAMPLES = 100_000
 REPS = {1, 2}
 ENGINES = ("claude-opus-5", "claude-fable-5")
 FROZEN_TASKS = {
-    f"EQ2-{prefix}{index}"
+    f"EQ3-{prefix}{index}"
     for prefix in ("UA", "MI", "AF", "BD")
     for index in range(1, 9)
 }
@@ -392,8 +392,8 @@ def self_test() -> None:
         substituted = root / "substituted.jsonl"
         substituted_rows = synthetic_rows([Fraction(1, 10)] * task_count)
         for row in substituted_rows:
-            if row["task"] == "EQ2-UA1":
-                row["task"] = "EQ2-UA99"
+            if row["task"] == "EQ3-UA1":
+                row["task"] = "EQ3-UA99"
         write_ledger(substituted, substituted_rows)
         verdict, exit_code = evaluate(substituted, task_count)
         if exit_code != 3 or verdict["terminal"] != "UNSCORED":
