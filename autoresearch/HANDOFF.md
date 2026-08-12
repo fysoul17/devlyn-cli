@@ -135,27 +135,34 @@ reading only `~/.local/share/nx01/iter0102/pilot/DECISION`),
 calibration gate verbatim from 0101, apparatus lineage sha-pinned
 (cal f7347a72…/719ea0f1…, mx drafts 6a4c88cf…/bbc4b2f7…,
 launch-detached 30b630d5…, run-bounded db9ed383…, CLI 013a1cf1…).
-EXECUTION (same session): step 2 DONE — all 9 specs sealed
-`01d414d` before pilot (sol spec review REVISE ×4 adopted,
-SPEC-0102-LIVE-sol-a127eab9; scorer re-pin = byte-pinned
-`sed s/EQ2-/EQ3-/g`, outputs 58d726f3…/399b0691…). Step 3 pilot
-resolve run `rs-20260812T014859Z-82384472fde5` **HALTED
-BLOCKED:codex-unavailable at VERIFY round-1 primary judge (codex
-seat usage limit; posted reset 2026-08-18 10:19 — 0101 saw the same
-posted reset recover early)**. Green before halt: IMPLEMENT 5/5
-(both scripts + 4 EQ3P fixtures, `7caa03d..d8b0d44`; phase-3 fix
-respawn root-caused the validator relative-path patch bug),
-BUILD_GATE 11/11 + 3 probes, CLEANUP empty, VERIFY r0 primary
-NEEDS_WORK ×7 → fix round `4f55118` re-authored UA1/AF1/MI1 real
-runtime behavior (VJ-1/2 adjudicated skips per frozen
-complementarity law), VERIFY r1 mechanical + pair claude PASS.
-**verify span left OPEN; merge NOT run (registered PRIMARY
-fail-open defect would fabricate PASS). RESUME = iteration file
-§ Execution log resume recipe** (re-fire primary judge on frozen
-`.devlyn/cumulative.patch` → collect → merge → close → pilot seal →
-apparatus freeze → sol+grok audit → 8-run sonnet → DECISION → corpus
-in a FRESH session). `.devlyn/` is LIVE state — writer check before
-touching; do not archive until the judge re-run completes.
+EXECUTION COMPLETE THROUGH THE PILOT (2026-08-12; § Execution log in
+the iteration file is authoritative): ① 9 specs sealed `01d414d`
+before pilot (sol REVISE ×4; scorer re-pin = byte-pinned
+`sed s/EQ2-/EQ3-/g` → 58d726f3…/399b0691…) ② pilot resolve run
+TERMINAL PASS at outer iter 3 (`rs-20260812T100115Z`; mid-way
+codex-seat-limit halt recovered same day; 14 judge findings closed
+across 3 iterations — hollow oracles, hardcoded restores, token-salad
+invariants, vacuous self-tests, stdlib-walk fail-open,
+namespace-package false-positive, semantic single-artifact leakage;
+final VERIFY 3/3 + finish-gate clean; scripts pin `5e95a58`) ③ pilot
+sealed (4 tasks/139 files, tree `c6ac78fd…`) ④ apparatus FREEZE-ARM
+convergence after adjudicated split (launch-gate hardened: 6-entry
+REQUIRED inventory, atomic ordinal locks; tamper cases live) ⑤ 8-run
+sonnet arm `pilot1-20260812T105601Z` attempt 1/3 clean (8/8 attested,
+0/0/0) → **ONE evaluation: DECISION = PROCEED — mean 13/40, q_pilot
+2/5·2/5·1/2·0/1, interior 3/4, byte-deterministic**. The discovery
+mechanism lands sonnet at 32.5% mean fail vs 2.5% on 0101 —
+band-region difficulty confirmed at prototype scale. Receipts
+`~/.local/share/nx01/iter0102/pilot/` (per-task outcomes SEALED;
+carriers DECISION + DECISION.receipt.sha256 = b1f77615…).
+**NEXT = FRESH SESSION (binding R1-2b — this session saw pilot
+details and must NOT author the corpus): read the two carrier files
+only, then batches 01-08 serially on the sealed specs
+(`/devlyn:resolve --spec docs/specs/iter0102-executor-quality-batch-0N/spec.md
+--pair-verify`, executor codex, outer loop ≤3/batch, dispatch prompts
+pre-inject the 0101 failure classes) → candidate seal → calibration
+apparatus freeze → 64-run sonnet → ONE band evaluation → matrix
+(never near 12am KST).**
 PARALLEL, independent:
 0100 § Matrix integration fold-in — recert-seats.sh
 `executor_quality` suite + seat-matrix.py `main_ai_executor`
