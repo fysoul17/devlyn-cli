@@ -291,8 +291,8 @@ def leakage_and_topology(task_dir: Path, task: dict[str, object], paths: list[Pa
                 else:
                     continue
                 for module in imported_modules:
-                    if module and module.split(".", 1)[0] not in sys.stdlib_module_names and not visible_local_module(visible, module):
-                        raise ValidationError(f"topology: edit-site Python imports non-stdlib non-local module {module!r}")
+                    if module and module.split(".", 1)[0] not in sys.stdlib_module_names and not visible_local_module(visible, paths, module):
+                        raise ValidationError(f"topology: visible Python imports non-stdlib non-local module {module!r}")
     elif not edit_code or any(path.suffix not in {".js", ".mjs", ".cjs"} for path in edit_code):
         raise ValidationError("topology: even task edit site must contain only Node code")
     elif not any(path.name == "package.json" for path in paths) or any(path.suffix == ".py" for path in paths):
@@ -332,9 +332,13 @@ def is_under(path: Path, root: Path) -> bool:
         return False
 
 
-def visible_local_module(visible: Path, module: str) -> bool:
+def visible_local_module(visible: Path, paths: list[Path], module: str) -> bool:
     location = visible.joinpath(*module.split("."))
-    return location.with_suffix(".py").is_file() or (location / "__init__.py").is_file()
+    return (
+        location.with_suffix(".py").is_file()
+        or (location / "__init__.py").is_file()
+        or (location.is_dir() and any(path.suffix == ".py" and is_under(path, location) for path in paths))
+    )
 
 
 def directory_distance(left: Path, right: Path) -> int:
@@ -531,6 +535,12 @@ def self_test() -> None:
             _, errors = validate(root, self_test=True)
             if errors:
                 raise AssertionError(f"{name}: expected green, got {errors}")
+        namespace_package = Path(temporary) / "namespace-package" / base.name
+        shutil.copytree(base, namespace_package)
+        namespace_package_import(namespace_package)
+        _, errors = validate(namespace_package, self_test=True)
+        if errors:
+            raise AssertionError(f"namespace-package: expected green, got {errors}")
         # The named scenarios are deliberately independent copies: each has to fail closed.
         scenarios = {
             "missing-required": lambda root: (root / "patches" / "gold.patch").unlink(),
@@ -540,7 +550,7 @@ def self_test() -> None:
             "incomplete-visible-files": lambda root: json_update(root / "task.json", lambda data: data["visible_files"].pop()),
             "binding-hash": lambda root: json_update(root / "hidden" / "manifests.json", lambda data: data["manifestations"][0]["contract_bindings"][0].update({"sha256": "0" * 64})),
             "wrong-roles": lambda root: json_update(root / "hidden" / "manifests.json", lambda data: data["manifestations"].__setitem__(0, {**data["manifestations"][0], "id": "wrong"})),
-            "divergent-bindings": lambda root: json_update(root / "hidden" / "manifests.json", lambda data: data["manifestations"][1]["contract_bindings"].reverse()),
+            "divergent-bindings": lambda root: json_update(root / "hidden" / "manifests.json", lambda data: data["manifestations"][1]["contract_bindings"][0].update({"quote": "azurine"})),
             "goal-token-leakage": lambda root: json_update(root / "task.json", lambda data: data.update({"goal": "azurine leaked"})),
             "oracle-non-json": lambda root: (root / "hidden" / "oracle.py").write_text("print('not json')\n", encoding="utf-8"),
             "oracle-nonzero": lambda root: (root / "hidden" / "oracle.py").write_text("raise SystemExit(2)\n", encoding="utf-8"),
@@ -560,14 +570,42 @@ def self_test() -> None:
             "oracle-mutation": lambda root: (root / "hidden" / "oracle.py").write_text("import pathlib,sys,json\np=pathlib.Path(sys.argv[1]);(p/'changed').write_text('x');print(json.dumps({'manifestations':[{'id':x,'passed':False} for x in ['local-a','local-b','remote-a','remote-b','restore']]}))\n", encoding="utf-8"),
             "complementarity": lambda root: defeat_complementarity(root),
         }
-        language_diagnostics = {
+        diagnostics = {
+            "missing-required": "required files missing",
+            "bad-schema": "task.json: fields must exactly match the discovery schema",
+            "path-escape": "task.json visible_files: unsafe path",
+            "symlink": "unsafe symlink in task tree",
+            "incomplete-visible-files": "task.json: visible_files must exhaust visible regular files",
+            "binding-hash": "sha256 mismatch",
+            "wrong-roles": "roles must be the five registered roles in order",
+            "divergent-bindings": "contract_bindings diverge from the ordered shared set",
+            "goal-token-leakage": "contract token leaked into goal or edit-site path/content",
+            "oracle-non-json": "oracle output is not one JSON object",
+            "oracle-nonzero": "oracle execution failed",
+            "patch-apply": "patch application failed for gold.patch",
+            "file-count": "visible file count must be 24-60",
+            "modules": "at least four top-level modules are required",
+            "distance": "contract artifact directory distance must be at least 2",
+            "byte-share": "edit-site byte share exceeds 30%",
             "language-parity": "odd task edit site must contain only Python code",
             "language-decoy": "odd task edit site must contain only Python code",
             "third-party-import": "imports non-stdlib non-local module",
             "nested-third-party-import": "imports non-stdlib non-local module",
             "even-python-leak": "even task visible tree requires package.json and excludes Python",
+            "token-path-scan": "contract token leaked into goal or edit-site path/content",
+            "symptom-locality": "symptom.patch modifies outside edit_site_dir",
+            "artifact-role-order": "roles must be the five registered roles in order",
+            "oracle-mutation": "oracle mutation residue in workdir",
+            "complementarity": "token sets must each retain a token absent from the other artifact",
+            "gold-vector": "pass-vector: gold.patch must be TTTTT",
+            "symptom-vector": "pass-vector: symptom.patch must be TTFFF",
+            "pristine-vector": "pass-vector: no-patch must fail both local roles",
+            "noop-vector": "pass-vector: noop must fail both local roles",
         }
         for name, change in scenarios.items():
+            expected_diagnostic = diagnostics.get(name)
+            if expected_diagnostic is None:
+                raise AssertionError(f"{name}: self-test is missing an expected diagnostic")
             source = node if name == "even-python-leak" else base
             root = Path(temporary) / name / source.name
             shutil.copytree(source, root)
@@ -575,10 +613,13 @@ def self_test() -> None:
             _, errors = validate(root, self_test=True)
             if not errors:
                 raise AssertionError(f"{name}: expected a fail-closed diagnostic")
-            if name in language_diagnostics and not any(language_diagnostics[name] in error for error in errors):
-                raise AssertionError(f"{name}: expected language diagnostic, got {errors}")
+            if not any(expected_diagnostic in error for error in errors):
+                raise AssertionError(f"{name}: expected {expected_diagnostic!r}, got {errors}")
         # Vector failures exercise the individual gold, symptom, pristine, and noop clauses.
         for name, replacement in (("gold-vector", "level >= 3"), ("symptom-vector", "level >= 0"), ("pristine-vector", "level >= 0"), ("noop-vector", "level >= 0")):
+            expected_diagnostic = diagnostics.get(name)
+            if expected_diagnostic is None:
+                raise AssertionError(f"{name}: self-test is missing an expected diagnostic")
             root = Path(temporary) / name / base.name
             shutil.copytree(base, root)
             oracle = root / "hidden" / "oracle.py"
@@ -595,6 +636,8 @@ def self_test() -> None:
             _, errors = validate(root, self_test=True)
             if not errors:
                 raise AssertionError(f"{name}: expected a pass-vector failure")
+            if not any(expected_diagnostic in error for error in errors):
+                raise AssertionError(f"{name}: expected {expected_diagnostic!r}, got {errors}")
 
 
 def json_update(path: Path, update: object) -> None:
@@ -608,7 +651,9 @@ def json_update(path: Path, update: object) -> None:
 def move_artifact_near_edit(root: Path) -> None:
     source, target = root / "visible" / "contracts" / "alpha.md", root / "visible" / "edit" / "alpha.md"
     source.rename(target)
+    source.write_text("ordinary support record\n", encoding="utf-8")
     json_update(root / "task.json", lambda data: data["contract_artifacts"].__setitem__(0, "visible/edit/alpha.md"))
+    refresh_files(root)
     json_update(root / "hidden" / "manifests.json", lambda data: [entry["contract_bindings"][0].update({"file": "visible/edit/alpha.md", "sha256": sha256(target)}) for entry in data["manifestations"]])
 
 
@@ -658,6 +703,17 @@ def language_decoy(root: Path) -> None:
 def nested_third_party_import(root: Path) -> None:
     (root / "visible" / "support" / "helper.py").write_text(
         "def request_data():\n    import requests\n",
+        encoding="utf-8",
+    )
+    refresh_files(root)
+
+
+def namespace_package_import(root: Path) -> None:
+    namespace = root / "visible" / "nsdir"
+    namespace.mkdir()
+    (namespace / "mod.py").write_text("VALUE = 1\n", encoding="utf-8")
+    (root / "visible" / "support" / "consumer.py").write_text(
+        "from nsdir import mod\n",
         encoding="utf-8",
     )
     refresh_files(root)
