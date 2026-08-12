@@ -603,6 +603,27 @@ primary's stdout — bypassed by renaming to a non-glob path with the
 canonical findings already collected, logged in
 `.devlyn/operator-deviations.log`.
 
+**RESUMED + PILOT RESOLVE CLOSED PASS (2026-08-12 evening session — codex
+seat recovered same day, 6 days before the posted reset)**. Outer loop ran
+the full 3 iterations: iter-1 verify-exhausted (r0 ×7 fixture-quality
+HIGHs fixed — hollow oracles/hardcoded restores/token-salad invariants;
+r1 ×4 new: parity fail-open, run_checks defects); iter-2
+`rs-20260812T091733Z` verify-exhausted (r0 VJ-12 vacuous parity self-test
+fixed; r1 ×3: VJ-13 residual vacuity, VJ-14 stdlib-walk fail-open —
+proven live by a bug-exposing probe, VJ-15 semantic single-artifact
+leakage); iter-3 `rs-20260812T100115Z` **TERMINAL PASS 3/3** (r0 VJ-16/17/18
+fixed — every self-test scenario diagnostic-bound, namespace-package
+false-positive closed, diagnostic reworded; r1 primary PASS + pair PASS,
+finish-gate clean). 14 judge findings closed total; scripts pin file
+committed `5e95a58`. **Pilot SEALED**: manifest 4 tasks/139 files, tree
+`c6ac78fddae680d75f25b8481c42fab48c982ac2477f4be7e3b640bc512d996c` @
+`6fdc1ed`. **Pilot apparatus FROZEN-pending-audit**: pilot-driver
+ef75adbc… (cal-driver f7347a72… + 4 constants), pilot-launcher 0735e5a2…
+(719ea0f1… + TASKS/ledger name; 8-cell schedule verified), launch-detached
+lineage with 5-pin freeze file; integrity gates live 4/4. Two-seat scoped
+audit (sol PILOTFRZ-…-sol-e031d2a1 / grok …-grok-a7a23444) dispatched;
+on FREEZE-ARM ×2 → 8-run sonnet pilot detached → score-pilot → DECISION.
+
 **RESUME RECIPE (cold-start, after codex seat recovery)**: ① writer
 check ② re-render the VERIFY r1 primary prompt (context at
 `.devlyn/verify.task-context`, body `references/phases/verify.md`,
