@@ -6,6 +6,8 @@ This corpus-build stage retains the complete 12-task iteration 0100 corpus: thre
 
 The iteration 0102 pilot stage in `tasks-0102-pilot/` admits `EQ3P-UA1`, `EQ3P-MI1`, `EQ3P-AF1`, and `EQ3P-BD1`; standalone `validate-discovery-task.py` validates its prototypes, and `score-pilot.py` scores its pilot ledger. These prototypes are discarded instruments; the corpus lives in `tasks-0102/`, authored by later batches.
 
+The iteration 0102 corpus stage in `tasks-0102/` currently admits `EQ3-UA1`, `EQ3-MI1`, `EQ3-AF1`, and `EQ3-BD1`; standalone `validate-discovery-task.py` validates its tasks, and `score-calibration.py` and `score-cohort.py` gate the EQ3 set.
+
 ## Validate the instrument
 
 Run the validator self-test and admit each exemplar from the repository root:
