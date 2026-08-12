@@ -2,7 +2,7 @@
 id: "0102-executor-quality-discovery-corpus"
 title: "Executor-quality discrimination cell, take 3 — non-local unstated-contract discovery corpus N=32, opus-5 vs fable-5 (iter-0101 CALIBRATION_MISS successor)"
 kind: instrument
-status: DRAFT+R0-ADOPTED — sol R0 REVISE ×8 REQUIRED + 2 RECOMMENDED all adopted in-text (R0-0102-LIVE-sol-c42dd8ef, 2026-08-12); grok R1 pending before DESIGN-FROZEN
+status: DESIGN-FROZEN 2026-08-12 — sol R0 REVISE ×8 adopted (R0-0102-LIVE-sol-c42dd8ef) + grok R1 REVISE ×5 REQUIRED + REC-1/2/4 adopted (R1-0102-LIVE-grok-28409c8b; grok VERIFIED the 32-row table by execution: 32/32 unique tuples, 8/class, 16/16 language parity, zero collisions vs 0101 + prototypes). Execution order: pre-author batch specs → pilot → corpus → calibration → matrix (§ Freeze protocol)
 complexity: high
 depends_on: ["0100-main-ai-executor-quality", "0101-executor-quality-hard-corpus"]
 ---
@@ -55,7 +55,9 @@ reading is insufficient; whether whole-fixture reading still
 saturates the shape is exactly what the pilot and the ONE
 calibration evaluation measure. A second CALIBRATION_MISS is a
 priced-in possible outcome; the pilot bounds its cost to 1 resolve
-run + 8 sonnet runs instead of 8 batches.
+run + 8 sonnet runs instead of 8 batches. (Arm tool surface is the
+byte-preserved lineage `TOOLS = "Read,Grep,Glob,Edit,Write,Bash"` —
+R1-5 correction of an earlier abbreviation in this clause.)
 
 ## Decisive criterion: ORACLE-IDENTIFIED SEPARATION AFTER AN EASY-REGIME SCREEN
 
@@ -123,13 +125,27 @@ table):
   regular files under `edit_site_dir` ÷ raw bytes of ALL registered
   visible files (denominator must be nonzero). This is layout
   telemetry constraining fixture shape, NOT difficulty evidence.
-- **`task.json` exact schema (R0-8)**: `id`, `class`, `goal`,
+- **`task.json` exact schema (R0-8, R1-1)**: `id`, `class`, `goal`,
   `invariant` (the composed contract sentence — hidden-side binding
   only), `visible_files`, `edit_site_dir`, `contract_artifacts`
   (ordered array, length exactly 2), `contract_tokens_a`,
-  `contract_tokens_b` (each ≥3 unique non-generic tokens; stored in
-  `task.json`, checked against the frozen per-task table in the
-  validator). No `contract_excerpt` field exists in this shape.
+  `contract_tokens_b` (each ≥3 unique non-generic tokens),
+  `outcome_tokens_a`, `outcome_tokens_b` (nonempty, disjoint;
+  union ≥3 unique tokens — the complementarity partition, R1-1).
+  All token sets stored in `task.json`, checked against the frozen
+  per-task table in the validator. No `contract_excerpt` field
+  exists in this shape.
+- **Complementarity law (R1-1, mechanical)**: every token of
+  `outcome_tokens_a` appears in artifact A and every token of
+  `outcome_tokens_b` in artifact B; at least one token of
+  `outcome_tokens_a` is ABSENT from artifact B and at least one of
+  `outcome_tokens_b` ABSENT from artifact A; NEITHER artifact's
+  UTF-8 text contains ALL tokens of the union; every union token
+  appears in the composed `invariant` sentence. Same
+  casefold/whole-token matching as the contract-token laws. This is
+  the named mechanical check that "neither artifact alone implies
+  the composed outcome" — it forces the outcome vocabulary to be
+  split across the two artifacts.
 - **Distance law**: for each contract artifact, directory distance =
   edge count between `edit_site_dir` and `parent(artifact)` through
   their lowest common ancestor, after normalized safe resolution
@@ -181,8 +197,9 @@ and stated-excerpt laws are incompatible). It must implement ALL of:
 7. Every manifestation matches the task invariant, class, and the
    SAME ordered two-binding set.
 8. Leakage scanning of manifestation ids, hidden filename stems, and
-   long assertion/comparison literals against relative visible
-   paths, visible UTF-8 contents, and goal text.
+   assertion/comparison literals of **≥12 characters** (the 0101
+   lineage threshold, `validate-task.py:181` — R1 REC-1) against
+   relative visible paths, visible UTF-8 contents, and goal text.
 9. Oracle exit 0 within a fixed timeout; exactly one JSON object;
    exact root/result fields; boolean `passed`; count, ids, and
    invariants exactly matching manifests, no duplicates.
@@ -198,9 +215,24 @@ and stated-excerpt laws are incompatible). It must implement ALL of:
 14. **NEW 0102 law (not inherited — R0-4 correction: no such guard
     exists in the 0101 validators)**: filesystem snapshot
     before/after EVERY oracle invocation; any created, deleted, or
-    modified path (incl. `__pycache__`) fails validation.
-15. Fail-closed self-tests for every law above plus one valid
-    end-to-end Python task and one valid Node task.
+    modified path (incl. `__pycache__`) fails validation. Oracle
+    invocations in validator self-tests set
+    `PYTHONDONTWRITEBYTECODE=1` (or equivalent) so valid Python
+    tasks do not false-fail on `__pycache__` (R1 REC-2).
+15. **Complementarity law** (R1-1; defined under Task shape):
+    outcome-token partition presence/absence checks across the two
+    artifacts and the invariant sentence.
+16. Fail-closed self-tests for every law above, with at minimum one
+    named fail-closed scenario per law family (R1-4): missing
+    required file; bad schema; path escape/symlink; incomplete
+    `visible_files`; binding hash mismatch; wrong role set;
+    divergent two-binding set; goal/token leakage; oracle
+    non-zero-exit/non-JSON; patch apply failure; wrong pass-vector
+    for each of gold/symptom/no-patch/noop; each topology clause
+    (file count, modules, distance, byte-share, language parity,
+    token path scan, symptom locality, artifact-role order);
+    oracle mutation residue; complementarity-law violation; PLUS one
+    valid end-to-end Python task and one valid Node task green path.
 
 ### Authoring table (frozen at DESIGN-FREEZE; fixture internals IMPLEMENT-creative)
 
@@ -226,10 +258,10 @@ or executable doc); neither alone implies the composed outcome.
 | EQ3-MI1 | court docket / filing clerk | amendment slots in anywhere | hearing scheduler enforces min notice from LAST amended filing | continuance test: continuance rollback restores hearing chain | amendment inside notice window → rejected amendment restores docket sequence |
 | EQ3-MI2 | food dispatch / courier assigner | assignments stay editable | batch optimizer locks assignments at batch lock | refused-order test: refusal re-pools order at original priority | refusal after batch lock → order re-pooled exactly once; batch integrity kept |
 | EQ3-MI3 | water metering / reading ingester | corrections overwrite readings | billing tierer requires monotonic cumulative series | misread test: correction = compensating delta entry | correction below prior reading → tiers recomputed from compensated series exactly once |
-| EQ3-MI4 | school bus routing / stop editor | stop edits apply immediately | route balancer requires per-segment capacity on the ACTIVE plan | snow-day test: emergency swap restores regular plan byte-identical | stop edit during snow-day plan → edit queued; regular plan restored intact |
+| EQ3-MI4 | school bus routing / stop editor | stop edits apply immediately | route balancer requires per-segment capacity on the ACTIVE plan | snow-day test: swap-back replays the edit queue in submission order | stop edit during snow-day plan → edit queued; regular plan restored byte-identical with queued edits replayed exactly once |
 | EQ3-MI5 | pharmacy refill / refill intake | each fill is independent | interaction checker gates on active list INCLUDING pending fills | partial-fill test: partial fill debits authorization exactly once | second partial while first pends → failed fill releases authorization units |
 | EQ3-MI6 | election supplies / precinct allocator | any precinct may donate stock | shortfall redistributor draws only from surplus precincts | recount-hold test: hold freezes precinct inventory | transfer touching held precinct → aborted transfer restores both precinct counts |
-| EQ3-MI7 | ski lift passes / pass issuer | refund = simple reversal | gate scanner ledger marks passes single-use per window | weather-refund test: refund restores day-credit exactly once | refund after partial usage → prorated credit from scan ledger; pass invalidated exactly once |
+| EQ3-MI7 | ski lift passes / pass issuer | refund = simple reversal | gate scanner ledger marks passes single-use per window | weather-refund test: refund amounts prorate from scanned windows | refund after partial usage → prorated credit from scan ledger; pass invalidated exactly once |
 | EQ3-MI8 | harbor pilots / assignment desk | pilot and berth book separately | tide-window planner co-reserves pilot+berth atomically | abort-return test: abort returns pilot AND releases berth | abort at tide-window close → both resources released; next assignment starts fresh |
 | EQ3-AF1 | blood bank / donation intake | reserved units stay valid | crossmatch reserver holds units against orders | expiry-release test: expiry releases the order back to matching | unit expires while reserved → order re-queued; unit quarantined exactly once |
 | EQ3-AF2 | fleet fueling / fuel-log writer | entries are append-only facts | consumption auditor flags variance vs odometer series | misfuel test: misfuel reversed by compensating record | misfuel then service → audit series stays consistent; reversal exactly once |
@@ -278,23 +310,40 @@ pre-registered mechanism screen, NOT corpus tuning.
   run whose authorized surface includes those scripts). Then 8
   sonnet attempts (4 tasks × 2 reps) on the frozen apparatus
   lineage; receipts sealed under `~/.local/share/nx01/iter0102/pilot/`.
-- **Scoring (frozen; `score-pilot.py`, exact-Fraction)**: per-task
-  `q_pilot` = two-rep mean of the scored estimator f; catastrophic
-  or incomplete VALID attempts contribute f=1; any
+- **Scoring (frozen; `score-pilot.py`, exact-Fraction; R1-3)**:
+  per-run `f = Fraction(manifestations_failed,
+  manifestations_total)` with `manifestations_total` required equal
+  to 5; if `catastrophic` or `incomplete` on a VALID attempt,
+  `f = 1`. `q_pilot[t]` = exact two-rep mean of f. Any
   infrastructure-invalid row → launch UNSCORED, replaceable ONLY on
   byte-identical prototype+apparatus digests (max 3 launches, same
-  as calibration). **Decision rule**: PROCEED iff mean(q_pilot) ≥
-  1/10 AND mean(q_pilot) ≤ 3/5 AND ≥3 of 4 prototypes have
+  as calibration). All decision comparisons use exact
+  `fractions.Fraction`. **Decision rule**: PROCEED iff mean(q_pilot)
+  ≥ 1/10 AND mean(q_pilot) ≤ 3/5 AND ≥3 of 4 prototypes have
   0 < q_pilot < 1 AND no prototype has q_pilot = 1. Otherwise
   MECHANISM_REJECTED terminal — no corpus build, no second pilot,
-  return to design under a new registration revision.
-- **Information boundary (frozen)**: corpus authoring sees ONLY the
-  mechanical PROCEED bit and the decision-receipt hash. Per-task
-  pilot outcomes, transcripts, oracle results, patches, and role
-  failures stay SEALED until the candidate corpus is sealed.
-  Receipt schema: `{decision, mean, q_pilot per id, ledger_sha256,
-  apparatus_sha256s, launched_at_utc, attempt}` — the receipt file
-  itself is sealed; only its sha256 and `decision` are quoted.
+  return to design under a new registration revision. (R1 REC-4:
+  the 1/10 pilot floor is an intentionally WEAKER nested screen
+  than the calibration floor 1/5; PROCEED at mean ∈ [1/10, 1/5)
+  does not predict calibration PASS.)
+- **Information boundary (frozen; R1-2 operationalization)**:
+  (a) ALL NINE corpus specs
+  (`docs/specs/iter0102-executor-quality-batch-01..08/spec.md` +
+  the pilot spec) are pre-authored from the frozen authoring table
+  ONLY and committed BEFORE the pilot fires; batch specs MUST NOT
+  be rewritten after the pilot (the only post-pilot branch is
+  MECHANISM_REJECTED → no corpus). Pilot outcomes cannot influence
+  batch prose because the prose is already sealed in git.
+  (b) Corpus batch resolve runs execute in a FRESH orchestrator
+  session whose only pilot inputs are the one-line decision file
+  `~/.local/share/nx01/iter0102/pilot/DECISION` (exact content
+  `{"decision": "PROCEED"}` or `{"decision": "REJECT"}`) and the
+  decision-receipt sha256. Per-task pilot outcomes, transcripts,
+  oracle results, patches, and role failures stay SEALED until the
+  candidate corpus is sealed. Receipt schema: `{decision, mean,
+  q_pilot per id, ledger_sha256, apparatus_sha256s,
+  launched_at_utc, attempt}` — the receipt file itself is sealed;
+  only its sha256 and the DECISION file are quoted.
 - The 0101 difficulty-oracle prohibition carries verbatim for the
   corpus window (batch-01 start → candidate seal): no
   sonnet/opus/fable invocation on any EQ3 corpus workdir or partial
@@ -324,11 +373,16 @@ task rejection, unexpected-field (`driver_sha256`) rejection, exact
 3/20 boundary, duplicate run-id rejection, 63/64 SATURATED proof,
 attestation and prompt-hash controls.
 
-**Drivers/launchers** (0101-frozen lineage sources:
-`~/.local/share/nx01/iter0101/calibration/apparatus/{cal-driver.py
-(f7347a72…), cal-launcher.py (719ea0f1…)}` and the never-frozen 0101
-`matrix/apparatus-draft/{mx-driver.py, mx-launcher.py}`). Enumerated
-changes ONLY, per instrument:
+**Drivers/launchers** (0101 lineage sources, all sha-pinned as
+re-pin bases — R1-5:
+`~/.local/share/nx01/iter0101/calibration/apparatus/cal-driver.py`
+f7347a72…, `cal-launcher.py` 719ea0f1…, the never-frozen 0101
+drafts `matrix/apparatus-draft/mx-driver.py` 6a4c88cf… /
+`mx-launcher.py` bbc4b2f7…, and
+`~/.local/share/nx01/iter0101/calibration/launch-detached.py`
+30b630d5…). Each instrument's freeze directory co-locates
+`run-bounded.py` at db9ed383… (copy from the cal apparatus).
+Enumerated changes ONLY, per instrument:
 
 - pilot driver: `TASKS_ROOT_PILOT`; task set = the exact 4 EQ3P IDs;
   `ALLOWED_ENGINES={claude-sonnet-5}`; manifest constants → the
@@ -348,13 +402,17 @@ changes ONLY, per instrument:
   `ALLOWED_ENGINES={claude-opus-5, claude-fable-5}`; 128 attempts,
   2-4 lanes (`--lanes` at launch discretion, recorded in the cohort
   receipt), ABBA interleave.
-- launch tooling: `launch-detached.py` lineage — fail-closed digest
-  gate against the per-instrument freeze file + launch-receipt.json
-  binding apparatus shas, tree digest, engine, attempt ordinal
-  (1..3), run id, UTC timestamp, pid.
+- launch tooling: `launch-detached.py` lineage (30b630d5… base) —
+  fail-closed digest gate against the per-instrument freeze file +
+  launch-receipt.json binding apparatus shas, tree digest, engine,
+  attempt ordinal (1..3), run id, UTC timestamp, pid.
 - schedule proofs (mechanical, pre-launch): 8/64/128-cell exactness,
   lane balance, unknown/tampered/extra-file/symlink rejection,
   emitted-row field set == scorer REQUIRED∪OPTIONAL.
+- `freeze/scripts.sha256` (R1-5) lists: `validate-discovery-task.py`,
+  `score-pilot.py`, `score-calibration.py` (EQ3), `score-cohort.py`
+  (EQ3); each arm's freeze file additionally lists that arm's
+  driver, launcher, `run-bounded.py`, and `launch-detached.py`.
 
 **Seat audits (R0-6)**: two-seat FREEZE-ARM (sol + grok, liveness,
 residual attack rights) before EACH arm: pilot launch (scoped),
@@ -385,33 +443,37 @@ UNCHANGED — no new ledger fields, no second decision rule.
 ## Freeze protocol
 
 1. 3-seat design round: sol R0 (DONE — REVISE ×8 adopted) → grok R1
-   → adopt → DESIGN-FROZEN (this file amended in place; liveness
-   markers recorded in frontmatter).
-2. Pilot resolve run (`docs/specs/iter0102-pilot/spec.md`): 4
+   (DONE — REVISE ×5 + REC-1/2/4 adopted) → DESIGN-FROZEN (this
+   file; liveness markers in frontmatter).
+2. **Pre-author ALL NINE specs** (pilot +
+   `iter0102-executor-quality-batch-01..08`) from the frozen table
+   only; commit BEFORE the pilot fires (R1-2a — batch prose sealed
+   in git ahead of any pilot outcome).
+3. Pilot resolve run (`docs/specs/iter0102-pilot/spec.md`): 4
    prototypes + `validate-discovery-task.py` + `score-pilot.py`
    land; pilot manifest sealed (canonical JSON, compact-JSON tree
    digest); scoped two-seat freeze audit; 8-run sonnet pilot
-   detached; `score-pilot.py` decision. MECHANISM_REJECTED → stop.
-   PROCEED → pilot per-task receipts sealed (only the bit + receipt
-   hash exposed).
-3. Corpus lands via **8 `/devlyn:resolve --pair-verify` runs**
-   (executor pin codex; specs
-   `docs/specs/iter0102-executor-quality-batch-01..08/spec.md`),
-   batch i = `EQ3-UAi → MIi → AFi → BDi`, one task per exec phase,
-   `validate-discovery-task.py` green per phase gate; batch-01
-   additionally lands both scorer re-pins. Dispatch prompts
-   pre-inject the 0101 failure classes: same-pair structural copies,
-   oracle workdir mutation, tie-break gaps, strawman symptom
-   branches, patch lone-space hygiene (cumulative `git diff
-   --check`).
-4. Candidate seal: canonical JSON manifest (`{file_count, git_head,
+   detached; `score-pilot.py` decision → DECISION file. 
+   MECHANISM_REJECTED → stop. PROCEED → pilot per-task receipts
+   sealed (only the DECISION file + receipt hash exposed).
+4. Corpus lands via **8 `/devlyn:resolve --pair-verify` runs**
+   (executor pin codex; the pre-authored sealed specs), executed in
+   a FRESH orchestrator session per R1-2b (pilot inputs = DECISION
+   file + receipt hash only). Batch i = `EQ3-UAi → MIi → AFi →
+   BDi`, one task per exec phase, `validate-discovery-task.py`
+   green per phase gate; batch-01 additionally lands both scorer
+   re-pins. Dispatch prompts pre-inject the 0101 failure classes:
+   same-pair structural copies, oracle workdir mutation, tie-break
+   gaps, strawman symptom branches, patch lone-space hygiene
+   (cumulative `git diff --check`).
+5. Candidate seal: canonical JSON manifest (`{file_count, git_head,
    sealed_at_utc, task_count, tasks, tree_sha256}`; tree =
    sha256(compact sort_keys JSON of `tasks`)) + script-pin file
    `freeze/scripts.sha256`.
-5. Calibration apparatus freeze (enumerated deltas) → two-seat
+6. Calibration apparatus freeze (enumerated deltas) → two-seat
    freeze audit → 64-run sonnet calibration detached → ONE band
    evaluation.
-6. Band PASS → candidate manifest + tree digest promoted BYTE-
+7. Band PASS → candidate manifest + tree digest promoted BYTE-
    IDENTICAL into the matrix apparatus constants → matrix launcher
    freeze → two-seat pre-arm audit (incl. 0100 repro classes) →
    128-run matrix detached (fresh cohort ID). Band MISS →
@@ -460,3 +522,27 @@ verbatim; (8) cold-start naming (pilot IDs/domains, schemas, spec
 paths, receipt schema, promotion rule). Strongest counter accepted
 into § Scope (whole-fixture reading residual; second MISS is a
 priced-in outcome the pilot bounds).
+
+grok R1 (R1-0102-LIVE-grok-28409c8b, 2026-08-12) — REVISE; table
+audit EXECUTED and PASSED (32/32 unique distinctness tuples, 8 per
+class, 16/16 language parity, zero exact collisions vs 0101 domains
+and the 4 prototypes; soft n-gram overlaps ruled non-collisions,
+REC-3 no rewrite). Adopted: R1-1 mechanical complementarity law
+(outcome-token partition; task.json `outcome_tokens_a/b`; validator
+law 15; MI4/MI7 fragment-B rewrites killing the alone-implies
+counterexamples); R1-2 information-boundary operationalization
+(all nine specs pre-authored+committed before pilot; corpus batches
+in a fresh session; DECISION file path named); R1-3 pilot estimator
+f defined verbatim (Fraction(failed, total), total required =5,
+catastrophic/incomplete valid → f=1); R1-4 validator self-test
+scenario inventory (one fail-closed case per law family + two green
+paths); R1-5 apparatus pin completion (mx-driver 6a4c88cf… /
+mx-launcher bbc4b2f7… / launch-detached 30b630d5… — all three
+hashes independently re-verified by the orchestrator — + per-arm
+run-bounded co-location + TOOLS byte-preservation correction +
+scripts.sha256 inventory); REC-1 ≥12-char literal threshold
+(lineage value verified at validate-task.py:181); REC-2
+PYTHONDONTWRITEBYTECODE under law 14; REC-4 pilot-floor caveat.
+Pilot decision-rule arithmetic verified sound by grok (q_pilot ∈
+multiples of 1/10; all four conjuncts independently reachable and
+decidable under exact Fractions).
