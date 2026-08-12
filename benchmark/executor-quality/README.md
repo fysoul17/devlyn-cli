@@ -4,6 +4,8 @@ This instrument measures design and implementation failures made by the main-AI 
 
 This corpus-build stage retains the complete 12-task iteration 0100 corpus: three tasks per taxonomy class. The iteration 0101 hard corpus in `tasks-0101/` currently admits `EQ2-UA1`, `EQ2-UA2`, `EQ2-UA3`, `EQ2-UA4`, `EQ2-UA5`, `EQ2-UA6`, `EQ2-UA7`, `EQ2-UA8`, `EQ2-MI1`, `EQ2-MI2`, `EQ2-MI3`, `EQ2-MI4`, `EQ2-MI5`, `EQ2-MI6`, `EQ2-MI7`, `EQ2-MI8`, `EQ2-AF1`, `EQ2-AF2`, `EQ2-AF3`, `EQ2-AF4`, `EQ2-AF5`, `EQ2-AF6`, `EQ2-AF7`, `EQ2-AF8`, `EQ2-BD1`, `EQ2-BD2`, `EQ2-BD3`, `EQ2-BD4`, `EQ2-BD5`, `EQ2-BD6`, `EQ2-BD7`, and `EQ2-BD8`; `validate-hard-task.py` wraps the frozen validator, and `score-calibration.py` scores the calibration band. It does not run scored arms, seal either complete corpus, or integrate the cell with seat recertification.
 
+The iteration 0102 pilot stage in `tasks-0102-pilot/` admits `EQ3P-UA1`, `EQ3P-MI1`, `EQ3P-AF1`, and `EQ3P-BD1`; standalone `validate-discovery-task.py` validates its prototypes, and `score-pilot.py` scores its pilot ledger. These prototypes are discarded instruments; the corpus lives in `tasks-0102/`, authored by later batches.
+
 ## Validate the instrument
 
 Run the validator self-test and admit each exemplar from the repository root:
