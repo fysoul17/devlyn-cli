@@ -624,6 +624,32 @@ lineage with 5-pin freeze file; integrity gates live 4/4. Two-seat scoped
 audit (sol PILOTFRZ-…-sol-e031d2a1 / grok …-grok-a7a23444) dispatched;
 on FREEZE-ARM ×2 → 8-run sonnet pilot detached → score-pilot → DECISION.
 
+**PILOT ARM EXECUTED — DECISION = PROCEED (2026-08-12 ~20:00 KST)**.
+Two-seat freeze audit converged after an adjudicated split (grok
+FREEZE-ARM ×2 with live probes; sol REVISE ×2 → launch-gate hardening:
+6-entry REQUIRED freeze-file inventory incl. launch-detached self-pin,
+atomic O_CREAT|O_EXCL ordinal locks, run-id-reuse refusal — all six
+tamper cases executed live → sol FINAL FREEZE-ARM; liveness
+PILOTFRZ/RECHECK/FINAL-…-sol-e031d2a1/d48c8e39, grok-a7a23444/f2b6cad5).
+Launch `pilot1-20260812T105601Z` attempt 1/3: 8/8 rows, attested
+sonnet 8/8, cat/inc/infra 0/0/0, walls 39-60 s. ONE decision
+evaluation (score-pilot 781af703…, ledger 5ae5dca3…): **PROCEED —
+mean 13/40, q_pilot UA1 2/5 · MI1 2/5 · AF1 1/2 · BD1 0/1 (interior
+3/4, no total-fail), byte-deterministic ×2**. The discovery mechanism
+lands sonnet at 32.5% mean fail vs 2.5% on the 0101 stated-contract
+corpus — first empirical evidence the unstated two-fragment shape
+produces band-region difficulty. DECISION carrier written (exact
+bytes verified against the sealed batch-spec gates) + sealed
+decision-receipt sha b1f77615…; per-task outcomes SEALED under
+`attempt-pilot1-…/`. **NEXT = corpus batches 01-08 in a FRESH session
+(binding R1-2b)**: that session reads ONLY
+`~/.local/share/nx01/iter0102/pilot/DECISION` +
+`DECISION.receipt.sha256`, then runs the sealed specs
+batch-01→08 serially (each `/devlyn:resolve --spec
+docs/specs/iter0102-executor-quality-batch-0N/spec.md --pair-verify`,
+outer loop ≤3 per batch), then candidate seal → calibration →
+matrix per the freeze protocol.
+
 **RESUME RECIPE (cold-start, after codex seat recovery)**: ① writer
 check ② re-render the VERIFY r1 primary prompt (context at
 `.devlyn/verify.task-context`, body `references/phases/verify.md`,
