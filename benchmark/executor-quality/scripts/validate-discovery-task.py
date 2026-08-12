@@ -278,18 +278,19 @@ def leakage_and_topology(task_dir: Path, task: dict[str, object], paths: list[Pa
             raise ValidationError("topology: odd task edit site must contain only Python code")
         if any(path.suffix in {".js", ".mjs", ".cjs"} or path.name == "package.json" for path in paths):
             raise ValidationError("topology: odd task visible tree must exclude Node files")
-        for path in edit_code:
+        for path in [path for path in paths if path.suffix == ".py"]:
             try:
                 tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             except SyntaxError as exc:
-                raise ValidationError(f"topology: edit-site Python cannot parse: {path.relative_to(visible)}") from exc
-            for statement in tree.body:
-                modules = []
+                raise ValidationError(f"topology: visible Python cannot parse: {path.relative_to(visible)}") from exc
+            for statement in ast.walk(tree):
                 if isinstance(statement, ast.Import):
-                    modules = [alias.name for alias in statement.names]
-                elif isinstance(statement, ast.ImportFrom):
-                    modules = [statement.module] if statement.module else []
-                for module in modules:
+                    imported_modules = [alias.name for alias in statement.names]
+                elif isinstance(statement, ast.ImportFrom) and statement.level == 0 and statement.module:
+                    imported_modules = [statement.module]
+                else:
+                    continue
+                for module in imported_modules:
                     if module and module.split(".", 1)[0] not in sys.stdlib_module_names and not visible_local_module(visible, module):
                         raise ValidationError(f"topology: edit-site Python imports non-stdlib non-local module {module!r}")
     elif not edit_code or any(path.suffix not in {".js", ".mjs", ".cjs"} for path in edit_code):
@@ -551,6 +552,7 @@ def self_test() -> None:
             "language-parity": lambda root: rename_engine(root),
             "language-decoy": lambda root: language_decoy(root),
             "third-party-import": lambda root: (root / "visible" / "edit" / "engine.py").write_text("import requests\nSTATE = 0\n", encoding="utf-8"),
+            "nested-third-party-import": lambda root: nested_third_party_import(root),
             "even-python-leak": lambda root: even_python_leak(root),
             "token-path-scan": lambda root: rename_token_path(root),
             "symptom-locality": lambda root: (root / "patches" / "symptom.patch").write_text(patch("x\n", "y\n", "support/record0.txt"), encoding="utf-8"),
@@ -559,8 +561,10 @@ def self_test() -> None:
             "complementarity": lambda root: defeat_complementarity(root),
         }
         language_diagnostics = {
+            "language-parity": "odd task edit site must contain only Python code",
             "language-decoy": "odd task edit site must contain only Python code",
             "third-party-import": "imports non-stdlib non-local module",
+            "nested-third-party-import": "imports non-stdlib non-local module",
             "even-python-leak": "even task visible tree requires package.json and excludes Python",
         }
         for name, change in scenarios.items():
@@ -648,6 +652,14 @@ def rename_engine(root: Path) -> None:
 def language_decoy(root: Path) -> None:
     (root / "visible" / "edit" / "engine.py").rename(root / "visible" / "edit" / "engine.js")
     (root / "visible" / "support" / "decoy.py").write_text("STATE = 0\n", encoding="utf-8")
+    refresh_files(root)
+
+
+def nested_third_party_import(root: Path) -> None:
+    (root / "visible" / "support" / "helper.py").write_text(
+        "def request_data():\n    import requests\n",
+        encoding="utf-8",
+    )
     refresh_files(root)
 
 
