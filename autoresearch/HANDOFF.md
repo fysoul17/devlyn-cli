@@ -135,12 +135,27 @@ reading only `~/.local/share/nx01/iter0102/pilot/DECISION`),
 calibration gate verbatim from 0101, apparatus lineage sha-pinned
 (cal f7347a72…/719ea0f1…, mx drafts 6a4c88cf…/bbc4b2f7…,
 launch-detached 30b630d5…, run-bounded db9ed383…, CLI 013a1cf1…).
-NEXT (order is frozen-protocol law): ① pre-author + commit all 9
-specs from the frozen table ② pilot resolve run (4 prototypes +
-validate-discovery-task.py + score-pilot.py) → scoped 2-seat audit
-→ 8-run sonnet pilot → DECISION ③ MECHANISM_REJECTED → stop /
-PROCEED → corpus batches 01-08 in a fresh session → seal →
-calibration → matrix (never near 12am KST).
+EXECUTION (same session): step 2 DONE — all 9 specs sealed
+`01d414d` before pilot (sol spec review REVISE ×4 adopted,
+SPEC-0102-LIVE-sol-a127eab9; scorer re-pin = byte-pinned
+`sed s/EQ2-/EQ3-/g`, outputs 58d726f3…/399b0691…). Step 3 pilot
+resolve run `rs-20260812T014859Z-82384472fde5` **HALTED
+BLOCKED:codex-unavailable at VERIFY round-1 primary judge (codex
+seat usage limit; posted reset 2026-08-18 10:19 — 0101 saw the same
+posted reset recover early)**. Green before halt: IMPLEMENT 5/5
+(both scripts + 4 EQ3P fixtures, `7caa03d..d8b0d44`; phase-3 fix
+respawn root-caused the validator relative-path patch bug),
+BUILD_GATE 11/11 + 3 probes, CLEANUP empty, VERIFY r0 primary
+NEEDS_WORK ×7 → fix round `4f55118` re-authored UA1/AF1/MI1 real
+runtime behavior (VJ-1/2 adjudicated skips per frozen
+complementarity law), VERIFY r1 mechanical + pair claude PASS.
+**verify span left OPEN; merge NOT run (registered PRIMARY
+fail-open defect would fabricate PASS). RESUME = iteration file
+§ Execution log resume recipe** (re-fire primary judge on frozen
+`.devlyn/cumulative.patch` → collect → merge → close → pilot seal →
+apparatus freeze → sol+grok audit → 8-run sonnet → DECISION → corpus
+in a FRESH session). `.devlyn/` is LIVE state — writer check before
+touching; do not archive until the judge re-run completes.
 PARALLEL, independent:
 0100 § Matrix integration fold-in — recert-seats.sh
 `executor_quality` suite + seat-matrix.py `main_ai_executor`
