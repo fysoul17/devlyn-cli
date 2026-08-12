@@ -1,0 +1,25 @@
+--- a/billing/damage_biller.py
++++ b/billing/damage_biller.py
+@@ -4,7 +4,6 @@
+ def review_damage(record, photos):
+     if not photos:
+-        record["bill"] = "final"
+         return record
+     record["bill"] = "final"
+     record["status"] = "settled"
+     return record
+--- a/intake/return_intake.py
++++ b/intake/return_intake.py
+@@ -8,6 +8,8 @@
+ def record_return(record, early, pending):
+-    record["status"] = "closed"
+-    record["bill"] = "final"
+-    record["block"] = "free"
+-    record["released"] += 1
++    if pending:
++        record["status"] = "review"
++        record["bill"] = "open"
++    if early and record["block"] == "held":
++        record["block"] = "free"
++        record["released"] += 1
+     return record

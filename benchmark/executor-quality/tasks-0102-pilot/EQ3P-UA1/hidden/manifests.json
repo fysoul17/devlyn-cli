@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "unsupported_assumption",
+      "invariant": "After a cross-class move then cancellation, deposit, availability, ledger, and reversal are restored exactly once.",
+      "contract_bindings": [
+        {"file": "visible/pricing/seasonal_rates.py", "sha256": "67e6f387bc3bbaf5f354ea1d50be4099e70661b64501429313e9a1095eafb86f", "quote": "The seasonal tariff delta is charged whenever a party changes site class."},
+        {"file": "visible/qa/cancel_regression.py", "sha256": "54bde07da60283f0c188068cd14140b01ce29fc30dde4b333d74f36674fc852c", "quote": "On cancellation, capacity and escrow are reconciled."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "unsupported_assumption",
+      "invariant": "After a cross-class move then cancellation, deposit, availability, ledger, and reversal are restored exactly once.",
+      "contract_bindings": [
+        {"file": "visible/pricing/seasonal_rates.py", "sha256": "67e6f387bc3bbaf5f354ea1d50be4099e70661b64501429313e9a1095eafb86f", "quote": "The seasonal tariff delta is charged whenever a party changes site class."},
+        {"file": "visible/qa/cancel_regression.py", "sha256": "54bde07da60283f0c188068cd14140b01ce29fc30dde4b333d74f36674fc852c", "quote": "On cancellation, capacity and escrow are reconciled."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "unsupported_assumption",
+      "invariant": "After a cross-class move then cancellation, deposit, availability, ledger, and reversal are restored exactly once.",
+      "contract_bindings": [
+        {"file": "visible/pricing/seasonal_rates.py", "sha256": "67e6f387bc3bbaf5f354ea1d50be4099e70661b64501429313e9a1095eafb86f", "quote": "The seasonal tariff delta is charged whenever a party changes site class."},
+        {"file": "visible/qa/cancel_regression.py", "sha256": "54bde07da60283f0c188068cd14140b01ce29fc30dde4b333d74f36674fc852c", "quote": "On cancellation, capacity and escrow are reconciled."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "unsupported_assumption",
+      "invariant": "After a cross-class move then cancellation, deposit, availability, ledger, and reversal are restored exactly once.",
+      "contract_bindings": [
+        {"file": "visible/pricing/seasonal_rates.py", "sha256": "67e6f387bc3bbaf5f354ea1d50be4099e70661b64501429313e9a1095eafb86f", "quote": "The seasonal tariff delta is charged whenever a party changes site class."},
+        {"file": "visible/qa/cancel_regression.py", "sha256": "54bde07da60283f0c188068cd14140b01ce29fc30dde4b333d74f36674fc852c", "quote": "On cancellation, capacity and escrow are reconciled."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "unsupported_assumption",
+      "invariant": "After a cross-class move then cancellation, deposit, availability, ledger, and reversal are restored exactly once.",
+      "contract_bindings": [
+        {"file": "visible/pricing/seasonal_rates.py", "sha256": "67e6f387bc3bbaf5f354ea1d50be4099e70661b64501429313e9a1095eafb86f", "quote": "The seasonal tariff delta is charged whenever a party changes site class."},
+        {"file": "visible/qa/cancel_regression.py", "sha256": "54bde07da60283f0c188068cd14140b01ce29fc30dde4b333d74f36674fc852c", "quote": "On cancellation, capacity and escrow are reconciled."}
+      ]
+    }
+  ]
+}

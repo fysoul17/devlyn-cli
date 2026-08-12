@@ -636,7 +636,7 @@ def main() -> int:
             return 1
         print("SELF-TEST: PASS")
         return 0
-    task, errors = validate(args.task)
+    task, errors = validate(args.task.resolve())
     if errors:
         for error in errors:
             print(f"INVALID: {error}", file=sys.stderr)

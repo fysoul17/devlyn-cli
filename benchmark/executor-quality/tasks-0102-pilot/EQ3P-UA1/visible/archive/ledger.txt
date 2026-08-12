@@ -1,0 +1,1 @@
+Archive entries are read only in this fixture.

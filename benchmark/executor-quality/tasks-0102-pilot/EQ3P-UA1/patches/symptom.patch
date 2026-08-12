@@ -1,0 +1,10 @@
+--- a/assigner/site_assigner.py
++++ b/assigner/site_assigner.py
+@@ -1,6 +1,6 @@
+ """Assign booking sites; the ticket assumes a site move has no charge."""
+ 
+-LEVEL = 0
++LEVEL = 1
+ 
+ 
+ def move_site(booking, target):

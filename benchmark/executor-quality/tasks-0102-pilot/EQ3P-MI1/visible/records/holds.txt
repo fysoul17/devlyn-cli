@@ -1,0 +1,1 @@
+Reservation holds prevent duplicate allocation during a live rental.

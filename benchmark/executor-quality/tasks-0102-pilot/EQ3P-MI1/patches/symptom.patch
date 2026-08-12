@@ -1,0 +1,11 @@
+--- a/intake/return_intake.py
++++ b/intake/return_intake.py
+@@ -8,6 +8,4 @@
+ def record_return(record, early, pending):
+-    record["status"] = "closed"
+-    record["bill"] = "final"
+-    record["block"] = "free"
+-    record["released"] += 1
++    record["status"] = "review"
++    record["bill"] = "open"
+     return record
