@@ -523,6 +523,7 @@ paths, receipt schema, promotion rule). Strongest counter accepted
 into § Scope (whole-fixture reading residual; second MISS is a
 priced-in outcome the pilot bounds).
 
+
 grok R1 (R1-0102-LIVE-grok-28409c8b, 2026-08-12) — REVISE; table
 audit EXECUTED and PASSED (32/32 unique distinctness tuples, 8 per
 class, 16/16 language parity, zero exact collisions vs 0101 domains
@@ -546,3 +547,76 @@ PYTHONDONTWRITEBYTECODE under law 14; REC-4 pilot-floor caveat.
 Pilot decision-rule arithmetic verified sound by grok (q_pilot ∈
 multiples of 1/10; all four conjuncts independently reachable and
 decidable under exact Fractions).
+
+## Execution log (2026-08-12 session)
+
+**Step 2 COMPLETE**: all nine specs pre-authored from the frozen table
+and SEALED at `01d414d` BEFORE the pilot fired (info-boundary R1-2a).
+sol pre-commit spec review REVISE ×4 all adopted
+(SPEC-0102-LIVE-sol-a127eab9): post-repin sha gates (the scorer
+re-pin = the single transformation `sed 's/EQ2-/EQ3-/g'`, outputs
+byte-pinned 58d726f3…/399b0691… — sol-computed, orchestrator-
+reproduced), pins-inventory prechecks, byte-exact DECISION +
+receipt-hash carrier (gates executed against pass+tamper cases),
+score-pilot boundary controls (k)/(l); the pilot spec's NEW
+pilot-scoped blind-authoring prohibition adjudicated LEGAL.
+
+**Step 3 IN PROGRESS — pilot resolve run
+`rs-20260812T014859Z-82384472fde5` HALTED `BLOCKED:codex-unavailable`
+at VERIFY round 1 (codex seat usage limit, posted reset 2026-08-18
+10:19; the 0101 session saw the same posted-reset recover early)**.
+Completed before the halt: PLAN PASS (5 exec phases; brace-globs
+expanded to literal entries per the registered
+`path_matches_surface` finding); RISK_PROBES 3 probes valid
+(digest-bound); IMPLEMENT 5/5 phase gates green — `7caa03d..d8b0d44`,
+142 files +1884 (validate-discovery-task.py + score-pilot.py + four
+EQ3P fixtures + README 2-line edit), one fix respawn (phase 3: the
+worker itself caught the validator's relative-`--task` patch-path
+bug, refused out-of-phase edit, root-cause-fixed on respawn);
+BUILD_GATE PASS (all 11 spec commands + 3 risk probes + scope, zero
+findings); CLEANUP empty PASS; VERIFY round 0: mechanical PASS +
+pair claude PASS (perturbation probes fail-closed: artifact-order
+swap and symptom-locality tamper both rejected; score-pilot edge
+ledgers exact) + primary codex (sol) NEEDS_WORK ×7 — real
+fixture-quality catches: UA1 semantically hollow level-dial oracle,
+AF1 hardcoded-input restore + prose-only refund, MI1 token-salad
+invariant + missing test command (VJ-3..7, ALL FIXED in round 2 —
+re-authored runtime behavior, BD1 swept clean, gates green
+`4f55118`); VJ-1/VJ-2 ADJUDICATED SKIP (frozen registration:
+outcome-token partition IS the complementarity check; non-genericity
+deliberately unregistered). VERIFY round 1: mechanical PASS + pair
+claude PASS (re-authored fixtures execute real domain behavior;
+gold/symptom vectors exact) + **primary codex judge PENDING — seat
+limit hit at spawn; the verify span is left OPEN and the merge was
+NOT run** (running it without primary findings would trip the
+registered verify-merge PRIMARY fail-open defect and fabricate a
+PASS). Live receipts: repo `.devlyn/` (state snapshot + operator
+deviations copied to `~/.local/share/nx01/iter0102/pilot/`).
+
+**Operator deviations (logged)**: judge emission-format
+normalization (bare `VERDICT:` line → `{"verdict":…}` summary line;
+0101 bare-token precedent — my judge prompts specified the wrong
+carrier); `pair_trigger` written as array then corrected to the
+schema object; the registered verify-merge seat-inversion crosscheck
+(`*-judge.stdout` all treated as pair-side) fired falsely on the
+primary's stdout — bypassed by renaming to a non-glob path with the
+canonical findings already collected, logged in
+`.devlyn/operator-deviations.log`.
+
+**RESUME RECIPE (cold-start, after codex seat recovery)**: ① writer
+check ② re-render the VERIFY r1 primary prompt (context at
+`.devlyn/verify.task-context`, body `references/phases/verify.md`,
+codex adapter) and fire via codex-monitored read-only, sol default
+model, effort medium, on the frozen `.devlyn/cumulative.patch`
+③ normalize verdict line if needed → `collect-codex-findings.py
+--stdout-file codex-judge.stdout` (write to `codex-judge.stdout`;
+rename after collection if the seat-inversion crosscheck fires) →
+`verify-merge-findings.py --write-state` ④ NEEDS_WORK → one more fix
+round is legal (rounds.global 2 of max 4); PASS → FINAL_REPORT +
+archive ⑤ then pilot manifest seal → pilot apparatus freeze
+(cal-driver lineage: TASKS_ROOT_PILOT, 4-ID set, sonnet gate,
+manifest constants) → scoped sol+grok freeze audit → 8-run sonnet
+pilot detached (launch-detached lineage, never near 12am KST) →
+`score-pilot.py` → DECISION file + receipt hash → batches in a FRESH
+session per R1-2b.
+
