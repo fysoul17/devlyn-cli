@@ -558,16 +558,24 @@ def self_test() -> None:
             "oracle-mutation": lambda root: (root / "hidden" / "oracle.py").write_text("import pathlib,sys,json\np=pathlib.Path(sys.argv[1]);(p/'changed').write_text('x');print(json.dumps({'manifestations':[{'id':x,'passed':False} for x in ['local-a','local-b','remote-a','remote-b','restore']]}))\n", encoding="utf-8"),
             "complementarity": lambda root: defeat_complementarity(root),
         }
+        language_diagnostics = {
+            "language-decoy": "odd task edit site must contain only Python code",
+            "third-party-import": "imports non-stdlib non-local module",
+            "even-python-leak": "even task visible tree requires package.json and excludes Python",
+        }
         for name, change in scenarios.items():
-            root = Path(temporary) / name
-            shutil.copytree(base, root)
+            source = node if name == "even-python-leak" else base
+            root = Path(temporary) / name / source.name
+            shutil.copytree(source, root)
             change(root)
             _, errors = validate(root, self_test=True)
             if not errors:
                 raise AssertionError(f"{name}: expected a fail-closed diagnostic")
+            if name in language_diagnostics and not any(language_diagnostics[name] in error for error in errors):
+                raise AssertionError(f"{name}: expected language diagnostic, got {errors}")
         # Vector failures exercise the individual gold, symptom, pristine, and noop clauses.
         for name, replacement in (("gold-vector", "level >= 3"), ("symptom-vector", "level >= 0"), ("pristine-vector", "level >= 0"), ("noop-vector", "level >= 0")):
-            root = Path(temporary) / name
+            root = Path(temporary) / name / base.name
             shutil.copytree(base, root)
             oracle = root / "hidden" / "oracle.py"
             text = oracle.read_text(encoding="utf-8")
