@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "unsupported_assumption",
+      "invariant": "For a refused renewal, the original fee clock and due date remain, the hold position is preserved, and fee is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/circulation/fee_escalator.py", "sha256": "920fd3608cf1a0f67a0851ff779e739d25143b8e0a1f556f71eb68f99e25c186", "quote": "The arrears chronology is a continuation through each renewal."},
+        {"file": "visible/checks/hold_expiry_case.py", "sha256": "6d04781cdc82a06dc5cbc9764e050c9ba63d41ed87cabc0e1d06c8ccfbb3f8be", "quote": "At expiration, the waitlist keeps its existing ordinal."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "unsupported_assumption",
+      "invariant": "For a refused renewal, the original fee clock and due date remain, the hold position is preserved, and fee is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/circulation/fee_escalator.py", "sha256": "920fd3608cf1a0f67a0851ff779e739d25143b8e0a1f556f71eb68f99e25c186", "quote": "The arrears chronology is a continuation through each renewal."},
+        {"file": "visible/checks/hold_expiry_case.py", "sha256": "6d04781cdc82a06dc5cbc9764e050c9ba63d41ed87cabc0e1d06c8ccfbb3f8be", "quote": "At expiration, the waitlist keeps its existing ordinal."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "unsupported_assumption",
+      "invariant": "For a refused renewal, the original fee clock and due date remain, the hold position is preserved, and fee is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/circulation/fee_escalator.py", "sha256": "920fd3608cf1a0f67a0851ff779e739d25143b8e0a1f556f71eb68f99e25c186", "quote": "The arrears chronology is a continuation through each renewal."},
+        {"file": "visible/checks/hold_expiry_case.py", "sha256": "6d04781cdc82a06dc5cbc9764e050c9ba63d41ed87cabc0e1d06c8ccfbb3f8be", "quote": "At expiration, the waitlist keeps its existing ordinal."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "unsupported_assumption",
+      "invariant": "For a refused renewal, the original fee clock and due date remain, the hold position is preserved, and fee is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/circulation/fee_escalator.py", "sha256": "920fd3608cf1a0f67a0851ff779e739d25143b8e0a1f556f71eb68f99e25c186", "quote": "The arrears chronology is a continuation through each renewal."},
+        {"file": "visible/checks/hold_expiry_case.py", "sha256": "6d04781cdc82a06dc5cbc9764e050c9ba63d41ed87cabc0e1d06c8ccfbb3f8be", "quote": "At expiration, the waitlist keeps its existing ordinal."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "unsupported_assumption",
+      "invariant": "For a refused renewal, the original fee clock and due date remain, the hold position is preserved, and fee is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/circulation/fee_escalator.py", "sha256": "920fd3608cf1a0f67a0851ff779e739d25143b8e0a1f556f71eb68f99e25c186", "quote": "The arrears chronology is a continuation through each renewal."},
+        {"file": "visible/checks/hold_expiry_case.py", "sha256": "6d04781cdc82a06dc5cbc9764e050c9ba63d41ed87cabc0e1d06c8ccfbb3f8be", "quote": "At expiration, the waitlist keeps its existing ordinal."}
+      ]
+    }
+  ]
+}

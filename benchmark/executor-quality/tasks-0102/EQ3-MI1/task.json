@@ -1,0 +1,41 @@
+{
+  "id": "EQ3-MI1",
+  "class": "missed_repo_invariant",
+  "goal": "A late amended packet is being listed like a normal filing even after the deputy rejects it. Preserve the counter's rejection result and run python3 visible/checks/run_checks.py after the repair.",
+  "invariant": "When an amendment is rejected inside the notice window, the latest docket sequence is restored after a continuance rollback and its hearing chain is intact.",
+  "visible_files": [
+    "visible/calendar/hearing_scheduler.py",
+    "visible/calendar/notice_policy.txt",
+    "visible/calendar/venue_calendar.py",
+    "visible/checks/continuance_rollback_test.py",
+    "visible/checks/run_checks.py",
+    "visible/checks/smoke_notes.txt",
+    "visible/clerk/amendment_intake.py",
+    "visible/clerk/counter_forms.py",
+    "visible/clerk/counter_notes.txt",
+    "visible/clerk/intake_hours.txt",
+    "visible/docket/case_labels.txt",
+    "visible/docket/continuance.py",
+    "visible/docket/seal_log.txt",
+    "visible/registry/archive.txt",
+    "visible/registry/captions.py",
+    "visible/registry/case_numbers.py",
+    "visible/reports/calendar_digest.txt",
+    "visible/reports/hearing_summary.py",
+    "visible/reports/service_report.txt",
+    "visible/support/contacts.txt",
+    "visible/support/desk_map.txt",
+    "visible/support/forms_index.txt",
+    "visible/support/messages.txt",
+    "visible/support/training.txt"
+  ],
+  "edit_site_dir": "visible/clerk",
+  "contract_artifacts": [
+    "visible/calendar/hearing_scheduler.py",
+    "visible/checks/continuance_rollback_test.py"
+  ],
+  "contract_tokens_a": ["circuitglass", "intervalgate", "lastfolio"],
+  "contract_tokens_b": ["horizonfold", "docketweave", "rewindcase"],
+  "outcome_tokens_a": ["notice", "latest"],
+  "outcome_tokens_b": ["continuance", "chain"]
+}

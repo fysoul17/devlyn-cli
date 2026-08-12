@@ -1,0 +1,2 @@
+The weekly digest lists desk activity totals for supervisors.
+It is generated after regular circulation processing has finished.

@@ -1,0 +1,2 @@
+Counter staff verify the caption, case number, and service receipt before routing.
+Rejected packets remain available to the deputy who received them.

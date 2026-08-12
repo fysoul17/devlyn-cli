@@ -1,0 +1,2 @@
+Calendar staff hold a hearing date until the required service interval is available.
+The clerk sends a corrected date when the interval cannot be met.

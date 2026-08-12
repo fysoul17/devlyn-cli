@@ -1,0 +1,17 @@
+--- a/clerk/amendment_intake.py
++++ b/clerk/amendment_intake.py
+@@ -14,9 +14,14 @@
+ def file_amendment(docket, packet):
+     record = {
+         "caption": packet["caption"],
+         "submitted_on": packet["submitted_on"],
+     }
++    if packet["submitted_on"] > docket["accept_until"]:
++        docket["filings"].append(record)
++        docket["status"] = "rejected"
++        docket["trail"].append("rejected")
++        return False
+     docket["filings"].append(record)
+     docket["status"] = "accepted"
+     docket["trail"].append("amendment")
+     return True

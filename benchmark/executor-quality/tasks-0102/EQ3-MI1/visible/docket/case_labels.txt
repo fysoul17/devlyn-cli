@@ -1,0 +1,2 @@
+Civil calendar labels use the caption supplied by the filing counter.
+The public display omits protected party contact information.

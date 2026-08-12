@@ -1,0 +1,2 @@
+Service receipts are attached to the outgoing notice report.
+The report identifies the party and mailing destination for each packet.

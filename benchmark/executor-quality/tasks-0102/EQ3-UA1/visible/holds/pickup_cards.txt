@@ -1,0 +1,2 @@
+Pickup cards name the requested copy and the desk where it is collected.
+Staff retain the card until the next circulation decision is recorded.

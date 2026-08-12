@@ -1,0 +1,2 @@
+The smoke check covers one timely packet and one late correction.
+It leaves the docket ready for the calendar desk to inspect.

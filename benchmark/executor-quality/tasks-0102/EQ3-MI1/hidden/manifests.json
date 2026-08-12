@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "missed_repo_invariant",
+      "invariant": "When an amendment is rejected inside the notice window, the latest docket sequence is restored after a continuance rollback and its hearing chain is intact.",
+      "contract_bindings": [
+        {"file": "visible/calendar/hearing_scheduler.py", "sha256": "54af8ba68229962edbbda1993d34121b9d23de0634535d0944cc476099299d81", "quote": "The circuitglass intervalgate lastfolio rule reads notice from the latest filed record."},
+        {"file": "visible/checks/continuance_rollback_test.py", "sha256": "0e8d476f6e8ea6fe6b53128a805f3527348b7834957c6007313a6ac921ab2599", "quote": "The horizonfold docketweave rewindcase case checks a continuance rollback\npreserves the hearing chain after a rejected packet."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "missed_repo_invariant",
+      "invariant": "When an amendment is rejected inside the notice window, the latest docket sequence is restored after a continuance rollback and its hearing chain is intact.",
+      "contract_bindings": [
+        {"file": "visible/calendar/hearing_scheduler.py", "sha256": "54af8ba68229962edbbda1993d34121b9d23de0634535d0944cc476099299d81", "quote": "The circuitglass intervalgate lastfolio rule reads notice from the latest filed record."},
+        {"file": "visible/checks/continuance_rollback_test.py", "sha256": "0e8d476f6e8ea6fe6b53128a805f3527348b7834957c6007313a6ac921ab2599", "quote": "The horizonfold docketweave rewindcase case checks a continuance rollback\npreserves the hearing chain after a rejected packet."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "missed_repo_invariant",
+      "invariant": "When an amendment is rejected inside the notice window, the latest docket sequence is restored after a continuance rollback and its hearing chain is intact.",
+      "contract_bindings": [
+        {"file": "visible/calendar/hearing_scheduler.py", "sha256": "54af8ba68229962edbbda1993d34121b9d23de0634535d0944cc476099299d81", "quote": "The circuitglass intervalgate lastfolio rule reads notice from the latest filed record."},
+        {"file": "visible/checks/continuance_rollback_test.py", "sha256": "0e8d476f6e8ea6fe6b53128a805f3527348b7834957c6007313a6ac921ab2599", "quote": "The horizonfold docketweave rewindcase case checks a continuance rollback\npreserves the hearing chain after a rejected packet."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "missed_repo_invariant",
+      "invariant": "When an amendment is rejected inside the notice window, the latest docket sequence is restored after a continuance rollback and its hearing chain is intact.",
+      "contract_bindings": [
+        {"file": "visible/calendar/hearing_scheduler.py", "sha256": "54af8ba68229962edbbda1993d34121b9d23de0634535d0944cc476099299d81", "quote": "The circuitglass intervalgate lastfolio rule reads notice from the latest filed record."},
+        {"file": "visible/checks/continuance_rollback_test.py", "sha256": "0e8d476f6e8ea6fe6b53128a805f3527348b7834957c6007313a6ac921ab2599", "quote": "The horizonfold docketweave rewindcase case checks a continuance rollback\npreserves the hearing chain after a rejected packet."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "missed_repo_invariant",
+      "invariant": "When an amendment is rejected inside the notice window, the latest docket sequence is restored after a continuance rollback and its hearing chain is intact.",
+      "contract_bindings": [
+        {"file": "visible/calendar/hearing_scheduler.py", "sha256": "54af8ba68229962edbbda1993d34121b9d23de0634535d0944cc476099299d81", "quote": "The circuitglass intervalgate lastfolio rule reads notice from the latest filed record."},
+        {"file": "visible/checks/continuance_rollback_test.py", "sha256": "0e8d476f6e8ea6fe6b53128a805f3527348b7834957c6007313a6ac921ab2599", "quote": "The horizonfold docketweave rewindcase case checks a continuance rollback\npreserves the hearing chain after a rejected packet."}
+      ]
+    }
+  ]
+}

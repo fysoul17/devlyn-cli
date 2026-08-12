@@ -1,0 +1,2 @@
+Training examples use made-up copy identifiers and fixed day numbers.
+They let a clerk rehearse the keyboard sequence without a live account.

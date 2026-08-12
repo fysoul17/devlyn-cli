@@ -1,0 +1,2 @@
+The closing clerk reviews unsettled desk requests before ending a shift.
+The log is informational and does not change loan values.

@@ -1,0 +1,2 @@
+Loan-desk staff enter extension requests before returning a copy to the shelf.
+The terminal records the result before printing a receipt for the patron.

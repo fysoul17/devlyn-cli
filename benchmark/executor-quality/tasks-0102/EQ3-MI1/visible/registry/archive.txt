@@ -1,0 +1,2 @@
+Archived matters retain their docket number and final disposition date.
+New packets are never added to an archived matter at the counter.

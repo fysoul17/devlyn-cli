@@ -1,0 +1,2 @@
+Day counts are retained with a late-charge entry for the daily summary.
+No charge is added after a record has already been marked charged.

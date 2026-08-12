@@ -1,0 +1,6 @@
+--- a/reports/digest.txt
++++ b/reports/digest.txt
+@@ -1,2 +1,3 @@
+ The weekly digest lists desk activity totals for supervisors.
+ It is generated after regular circulation processing has finished.
++Daily counts are reviewed before the digest is sent.

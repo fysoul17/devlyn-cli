@@ -1,0 +1,2 @@
+Reference, fiction, and local-history copies use the same desk workflow.
+Catalogue metadata is not changed when a patron requests more time.

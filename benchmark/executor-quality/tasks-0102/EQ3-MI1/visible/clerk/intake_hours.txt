@@ -1,0 +1,2 @@
+The filing counter accepts walk-in packets during posted business hours.
+Deputies record each attempted submission in the case activity log.
