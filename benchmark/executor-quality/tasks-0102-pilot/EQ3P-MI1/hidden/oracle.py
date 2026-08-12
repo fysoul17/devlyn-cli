@@ -14,6 +14,7 @@ review_damage = billing["review_damage"]
 
 
 first = record_return(new_record(), True, True)
+record_return(first, True, True)
 second = record_return(new_record(), True, True)
 review_damage(second, False)
 third = record_return(new_record(), True, True)

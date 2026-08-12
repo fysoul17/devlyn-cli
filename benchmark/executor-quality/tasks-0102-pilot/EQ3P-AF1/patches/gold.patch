@@ -1,23 +1,31 @@
 --- a/editor/combo_editor.py
 +++ b/editor/combo_editor.py
-@@ -6,10 +6,18 @@
- 
- 
+@@ -16,2 +16,9 @@
  def reserve_combo(shift):
-+    shift["stock"]["corn"] -= 1
-+    shift["stock"]["fizz"] -= 1
++    components = shift["component_map"]["matinee"]
++    if any(shift["stock"][component] <= 0 for component in components):
++        return shift
++    for component in components:
++        shift["stock"][component] -= 1
++    shift["reservations"].append({"components": components, "active": True})
 +    shift["reserved"] += 1
      return shift
- 
- 
+@@ -20,4 +27,14 @@
  def expire_component(shift, component):
--    shift["expired"].add(component)
--    shift["spoilage"] += 1
 +    if component in shift["expired"]:
 +        return shift
-+    shift["expired"].add(component)
-+    shift["spoilage"] += 1
-+    if component == "fizz" and shift["reserved"]:
-+        shift["reserved"] -= 1
-+        shift["stock"]["corn"] += 1
+     shift["expired"].add(component)
+     shift["spoilage"] += 1
++    for reservation in shift["reservations"]:
++        if reservation["active"] and component in reservation["components"]:
++            reservation["active"] = False
++            shift["reserved"] -= 1
++            shift["refunds"] += 1
++            for reserved_component in reservation["components"]:
++                if reserved_component != component:
++                    shift["stock"][reserved_component] += 1
      return shift
+@@ -26,2 +43,2 @@
+ def combo_available(shift):
+-    return shift["stock"]["corn"] > 0 and shift["stock"]["fizz"] > 0
++    return all(shift["stock"][component] > 0 for component in shift["component_map"]["matinee"])

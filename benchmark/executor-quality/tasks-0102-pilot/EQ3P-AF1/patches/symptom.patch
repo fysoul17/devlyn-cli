@@ -1,12 +1,10 @@
 --- a/editor/combo_editor.py
 +++ b/editor/combo_editor.py
-@@ -6,7 +6,10 @@
- 
- 
+@@ -16,2 +16,7 @@
  def reserve_combo(shift):
-+    shift["stock"]["corn"] -= 1
-+    shift["stock"]["fizz"] -= 1
++    components = shift["component_map"]["matinee"]
++    for component in components:
++        shift["stock"][component] -= 1
++    shift["reservations"].append({"components": components, "active": True})
 +    shift["reserved"] += 1
      return shift
- 
- 

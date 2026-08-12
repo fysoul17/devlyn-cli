@@ -2,7 +2,15 @@
 
 
 def open_shift():
-    return {"stock": {"corn": 2, "fizz": 1}, "reserved": 0, "expired": set(), "spoilage": 0}
+    return {
+        "stock": {"corn": 2, "fizz": 1},
+        "component_map": {"matinee": ("corn", "fizz")},
+        "reservations": [],
+        "reserved": 0,
+        "expired": set(),
+        "spoilage": 0,
+        "refunds": 0,
+    }
 
 
 def reserve_combo(shift):

@@ -1,7 +1,5 @@
 """Assign booking sites; the ticket assumes a site move has no charge."""
 
-LEVEL = 0
-
 
 def move_site(booking, target):
     booking["site"] = target

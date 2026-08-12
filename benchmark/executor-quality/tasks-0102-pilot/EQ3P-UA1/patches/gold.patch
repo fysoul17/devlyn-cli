@@ -1,10 +1,28 @@
 --- a/assigner/site_assigner.py
 +++ b/assigner/site_assigner.py
-@@ -1,6 +1,6 @@
- """Assign booking sites; the ticket assumes a site move has no charge."""
- 
--LEVEL = 0
-+LEVEL = 2
- 
- 
+@@ -4,3 +4,12 @@
  def move_site(booking, target):
++    previous = booking["site"]
++    if previous == target:
++        return {"site": target, "notice": "move recorded"}
++    delta = booking["rates"][target] - booking["rates"][previous]
++    booking["availability"][previous] += 1
++    booking["availability"][target] -= 1
++    booking["deposit"] += delta
++    booking["ledger"].append(("move", previous, target, delta))
+     booking["site"] = target
++    booking["move"] = (previous, target, delta)
+     return {"site": target, "notice": "move recorded"}
+@@ -9,3 +18,12 @@
+ def cancel_booking(booking):
++    if booking.get("cancelled"):
++        return {"cancelled": True}
++    previous, target, delta = booking.get("move", (booking["site"], booking["site"], 0))
++    if previous != target:
++        booking["availability"][target] += 1
++        booking["availability"][previous] -= 1
++        booking["deposit"] -= delta
++        booking["ledger"].append(("reversal", target, previous, -delta))
++        booking["reversals"] += 1
+     booking["cancelled"] = True
+     return {"cancelled": True}
