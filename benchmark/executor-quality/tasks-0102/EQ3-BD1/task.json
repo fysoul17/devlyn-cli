@@ -39,8 +39,8 @@
     "visible/stowage/deck_load_balancer.py",
     "visible/verification/bumped_vehicle_test.py"
   ],
-  "contract_tokens_a": ["keelvector", "deckledger", "weightrelay"],
-  "contract_tokens_b": ["queuepin", "sailingrank", "bumpreplay"],
+  "contract_tokens_a": ["deferred", "capacity", "recomputed"],
+  "contract_tokens_b": ["retains", "position", "moved"],
   "outcome_tokens_a": ["reserve", "units"],
   "outcome_tokens_b": ["position", "fare"]
 }

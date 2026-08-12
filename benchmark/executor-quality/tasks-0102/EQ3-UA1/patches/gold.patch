@@ -1,14 +1,12 @@
 --- a/loan_desk/renewal_intake.py
 +++ b/loan_desk/renewal_intake.py
-@@ -7,3 +7,9 @@
+@@ -7,3 +7,7 @@
  def renew_loan(loan, today, record_fee):
 -    loan["due"] = today + TERM_DAYS
 -    return {"accepted": True}
-+    previous_due = loan["due"]
-+    loan["renewed"] = True
 +    if loan["hold"]["pending"]:
-+        loan["due"] = previous_due
 +        record_fee(loan, today)
-+        return {"accepted": False, "renewed": True}
++        return {"accepted": False, "renewed": False}
++    loan["renewed"] = True
 +    loan["due"] = today + TERM_DAYS
 +    return {"accepted": True, "renewed": True}

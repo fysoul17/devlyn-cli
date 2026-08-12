@@ -5,8 +5,8 @@
       "class": "broken_dependency",
       "invariant": "After an overweight bump at gate close, reserve units and next sailing position are preserved while fare posts exactly once.",
       "contract_bindings": [
-        {"file": "visible/stowage/deck_load_balancer.py", "sha256": "da0fa045157595e9d14df52785dd0d883b81e0dffb628107ebf786dcd43d4d2e", "quote": "keelvector deckledger weightrelay"},
-        {"file": "visible/verification/bumped_vehicle_test.py", "sha256": "ad918aa3d788a8f0327442294a376950fa49a4b525d20a71612ce9e28f60fe97", "quote": "queuepin sailingrank bumpreplay"}
+        {"file": "visible/stowage/deck_load_balancer.py", "sha256": "64df887460bfe45bbc205ebe5feb5b2fd26a2573b51cf8cbe5bca9cd329b8ff5", "quote": "Deferred capacity is recomputed from the recorded weight classes of bumped vehicles."},
+        {"file": "visible/verification/bumped_vehicle_test.py", "sha256": "e724201574c5b0017bea8d313eddcb0fb2e87508d3525b0fbd01efbbe6ba5ccf", "quote": "A bumped vehicle retains its queue position when it is moved to the next sailing."}
       ]
     },
     {
@@ -14,8 +14,8 @@
       "class": "broken_dependency",
       "invariant": "After an overweight bump at gate close, reserve units and next sailing position are preserved while fare posts exactly once.",
       "contract_bindings": [
-        {"file": "visible/stowage/deck_load_balancer.py", "sha256": "da0fa045157595e9d14df52785dd0d883b81e0dffb628107ebf786dcd43d4d2e", "quote": "keelvector deckledger weightrelay"},
-        {"file": "visible/verification/bumped_vehicle_test.py", "sha256": "ad918aa3d788a8f0327442294a376950fa49a4b525d20a71612ce9e28f60fe97", "quote": "queuepin sailingrank bumpreplay"}
+        {"file": "visible/stowage/deck_load_balancer.py", "sha256": "64df887460bfe45bbc205ebe5feb5b2fd26a2573b51cf8cbe5bca9cd329b8ff5", "quote": "Deferred capacity is recomputed from the recorded weight classes of bumped vehicles."},
+        {"file": "visible/verification/bumped_vehicle_test.py", "sha256": "e724201574c5b0017bea8d313eddcb0fb2e87508d3525b0fbd01efbbe6ba5ccf", "quote": "A bumped vehicle retains its queue position when it is moved to the next sailing."}
       ]
     },
     {
@@ -23,8 +23,8 @@
       "class": "broken_dependency",
       "invariant": "After an overweight bump at gate close, reserve units and next sailing position are preserved while fare posts exactly once.",
       "contract_bindings": [
-        {"file": "visible/stowage/deck_load_balancer.py", "sha256": "da0fa045157595e9d14df52785dd0d883b81e0dffb628107ebf786dcd43d4d2e", "quote": "keelvector deckledger weightrelay"},
-        {"file": "visible/verification/bumped_vehicle_test.py", "sha256": "ad918aa3d788a8f0327442294a376950fa49a4b525d20a71612ce9e28f60fe97", "quote": "queuepin sailingrank bumpreplay"}
+        {"file": "visible/stowage/deck_load_balancer.py", "sha256": "64df887460bfe45bbc205ebe5feb5b2fd26a2573b51cf8cbe5bca9cd329b8ff5", "quote": "Deferred capacity is recomputed from the recorded weight classes of bumped vehicles."},
+        {"file": "visible/verification/bumped_vehicle_test.py", "sha256": "e724201574c5b0017bea8d313eddcb0fb2e87508d3525b0fbd01efbbe6ba5ccf", "quote": "A bumped vehicle retains its queue position when it is moved to the next sailing."}
       ]
     },
     {
@@ -32,8 +32,8 @@
       "class": "broken_dependency",
       "invariant": "After an overweight bump at gate close, reserve units and next sailing position are preserved while fare posts exactly once.",
       "contract_bindings": [
-        {"file": "visible/stowage/deck_load_balancer.py", "sha256": "da0fa045157595e9d14df52785dd0d883b81e0dffb628107ebf786dcd43d4d2e", "quote": "keelvector deckledger weightrelay"},
-        {"file": "visible/verification/bumped_vehicle_test.py", "sha256": "ad918aa3d788a8f0327442294a376950fa49a4b525d20a71612ce9e28f60fe97", "quote": "queuepin sailingrank bumpreplay"}
+        {"file": "visible/stowage/deck_load_balancer.py", "sha256": "64df887460bfe45bbc205ebe5feb5b2fd26a2573b51cf8cbe5bca9cd329b8ff5", "quote": "Deferred capacity is recomputed from the recorded weight classes of bumped vehicles."},
+        {"file": "visible/verification/bumped_vehicle_test.py", "sha256": "e724201574c5b0017bea8d313eddcb0fb2e87508d3525b0fbd01efbbe6ba5ccf", "quote": "A bumped vehicle retains its queue position when it is moved to the next sailing."}
       ]
     },
     {
@@ -41,8 +41,8 @@
       "class": "broken_dependency",
       "invariant": "After an overweight bump at gate close, reserve units and next sailing position are preserved while fare posts exactly once.",
       "contract_bindings": [
-        {"file": "visible/stowage/deck_load_balancer.py", "sha256": "da0fa045157595e9d14df52785dd0d883b81e0dffb628107ebf786dcd43d4d2e", "quote": "keelvector deckledger weightrelay"},
-        {"file": "visible/verification/bumped_vehicle_test.py", "sha256": "ad918aa3d788a8f0327442294a376950fa49a4b525d20a71612ce9e28f60fe97", "quote": "queuepin sailingrank bumpreplay"}
+        {"file": "visible/stowage/deck_load_balancer.py", "sha256": "64df887460bfe45bbc205ebe5feb5b2fd26a2573b51cf8cbe5bca9cd329b8ff5", "quote": "Deferred capacity is recomputed from the recorded weight classes of bumped vehicles."},
+        {"file": "visible/verification/bumped_vehicle_test.py", "sha256": "e724201574c5b0017bea8d313eddcb0fb2e87508d3525b0fbd01efbbe6ba5ccf", "quote": "A bumped vehicle retains its queue position when it is moved to the next sailing."}
       ]
     }
   ]

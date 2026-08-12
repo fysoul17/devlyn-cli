@@ -26,7 +26,8 @@ if __name__ == "__main__":
     assert renew_loan(normal, 20, record_overdue_fee) == {"accepted": True, "renewed": True}
     assert normal["due"] == 34 and normal["fee_day"] == 10
     blocked = sample(True)
-    assert renew_loan(blocked, 20, record_overdue_fee) == {"accepted": False, "renewed": True}
+    assert renew_loan(blocked, 20, record_overdue_fee) == {"accepted": False, "renewed": False}
+    assert not blocked.get("renewed")
     assert blocked["due"] == 18 and blocked["hold"]["slot"] == 4
     assert blocked["events"] == [("late", 10)]
     print("loan-desk checks complete")

@@ -30,7 +30,7 @@ second = renew_loan(blocked, 20, record_overdue_fee)
 renew_loan(blocked, 20, record_overdue_fee)
 values = (
     ("local-a", first["accepted"] and bool(normal.get("renewed")) and normal["due"] == 34),
-    ("local-b", not second["accepted"] and bool(blocked.get("renewed")) and blocked["due"] == 18),
+    ("local-b", not second["accepted"] and not blocked.get("renewed") and blocked["due"] == 18),
     ("remote-a", normal["fee_day"] == 10 and normal["events"] == [("late", 13)]),
     ("remote-b", blocked["due"] == 18 and blocked["hold"]["slot"] == 4 and blocked["hold"]["requeued"] == 0),
     ("restore", blocked["due"] == 18 and blocked["hold"]["slot"] == 4 and blocked["events"] == [("late", 10)]),

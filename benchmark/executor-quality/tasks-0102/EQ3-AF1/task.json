@@ -34,8 +34,8 @@
     "visible/matching/crossmatch_reserver.py",
     "visible/qa/expiry_release.py"
   ],
-  "contract_tokens_a": ["sanguinewire", "claimcradle", "compatibloom"],
-  "contract_tokens_b": ["expiryfold", "queueharbor", "isolationmark"],
+  "contract_tokens_a": ["crossmatchclasp", "orderanchor", "holdlink"],
+  "contract_tokens_b": ["reconseal", "expiryqueue", "ledgerkey"],
   "outcome_tokens_a": ["holding"],
   "outcome_tokens_b": ["matching", "quarantine"]
 }

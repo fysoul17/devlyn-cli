@@ -5,8 +5,8 @@
       "class": "absent_failure_mode",
       "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
       "contract_bindings": [
-        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "f2882205fccf7e354eb9ebceef9d3fdf1a0024ca7214ccf3a05c34354b9713bd", "quote": "sanguinewire claimcradle compatibloom: a crossmatch holding keeps the chosen unit linked to its order."},
-        {"file": "visible/qa/expiry_release.py", "sha256": "602dcbe09b4b563fbe8d232f7857e27ae065c3a7ebf09edc33bcd4d61389f526", "quote": "expiryfold queueharbor isolationmark: expiry returns the order to matching and marks the unit for quarantine."}
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "97d2909a6f22477ba90c4b8145eef0467e5452958c80bc3b82b78d72697dc8db", "quote": "crossmatchclasp orderanchor holdlink: a crossmatch holding keeps the chosen unit linked to its order."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "979081c5df80e2d9527082005127e309b79f11ec12e1b761ae3ac16847e22994", "quote": "reconseal expiryqueue ledgerkey: a screened expiry reconciliation returns the order to matching and records quarantine through a unit-event ledger."}
       ]
     },
     {
@@ -14,8 +14,8 @@
       "class": "absent_failure_mode",
       "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
       "contract_bindings": [
-        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "f2882205fccf7e354eb9ebceef9d3fdf1a0024ca7214ccf3a05c34354b9713bd", "quote": "sanguinewire claimcradle compatibloom: a crossmatch holding keeps the chosen unit linked to its order."},
-        {"file": "visible/qa/expiry_release.py", "sha256": "602dcbe09b4b563fbe8d232f7857e27ae065c3a7ebf09edc33bcd4d61389f526", "quote": "expiryfold queueharbor isolationmark: expiry returns the order to matching and marks the unit for quarantine."}
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "97d2909a6f22477ba90c4b8145eef0467e5452958c80bc3b82b78d72697dc8db", "quote": "crossmatchclasp orderanchor holdlink: a crossmatch holding keeps the chosen unit linked to its order."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "979081c5df80e2d9527082005127e309b79f11ec12e1b761ae3ac16847e22994", "quote": "reconseal expiryqueue ledgerkey: a screened expiry reconciliation returns the order to matching and records quarantine through a unit-event ledger."}
       ]
     },
     {
@@ -23,8 +23,8 @@
       "class": "absent_failure_mode",
       "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
       "contract_bindings": [
-        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "f2882205fccf7e354eb9ebceef9d3fdf1a0024ca7214ccf3a05c34354b9713bd", "quote": "sanguinewire claimcradle compatibloom: a crossmatch holding keeps the chosen unit linked to its order."},
-        {"file": "visible/qa/expiry_release.py", "sha256": "602dcbe09b4b563fbe8d232f7857e27ae065c3a7ebf09edc33bcd4d61389f526", "quote": "expiryfold queueharbor isolationmark: expiry returns the order to matching and marks the unit for quarantine."}
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "97d2909a6f22477ba90c4b8145eef0467e5452958c80bc3b82b78d72697dc8db", "quote": "crossmatchclasp orderanchor holdlink: a crossmatch holding keeps the chosen unit linked to its order."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "979081c5df80e2d9527082005127e309b79f11ec12e1b761ae3ac16847e22994", "quote": "reconseal expiryqueue ledgerkey: a screened expiry reconciliation returns the order to matching and records quarantine through a unit-event ledger."}
       ]
     },
     {
@@ -32,8 +32,8 @@
       "class": "absent_failure_mode",
       "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
       "contract_bindings": [
-        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "f2882205fccf7e354eb9ebceef9d3fdf1a0024ca7214ccf3a05c34354b9713bd", "quote": "sanguinewire claimcradle compatibloom: a crossmatch holding keeps the chosen unit linked to its order."},
-        {"file": "visible/qa/expiry_release.py", "sha256": "602dcbe09b4b563fbe8d232f7857e27ae065c3a7ebf09edc33bcd4d61389f526", "quote": "expiryfold queueharbor isolationmark: expiry returns the order to matching and marks the unit for quarantine."}
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "97d2909a6f22477ba90c4b8145eef0467e5452958c80bc3b82b78d72697dc8db", "quote": "crossmatchclasp orderanchor holdlink: a crossmatch holding keeps the chosen unit linked to its order."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "979081c5df80e2d9527082005127e309b79f11ec12e1b761ae3ac16847e22994", "quote": "reconseal expiryqueue ledgerkey: a screened expiry reconciliation returns the order to matching and records quarantine through a unit-event ledger."}
       ]
     },
     {
@@ -41,8 +41,8 @@
       "class": "absent_failure_mode",
       "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
       "contract_bindings": [
-        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "f2882205fccf7e354eb9ebceef9d3fdf1a0024ca7214ccf3a05c34354b9713bd", "quote": "sanguinewire claimcradle compatibloom: a crossmatch holding keeps the chosen unit linked to its order."},
-        {"file": "visible/qa/expiry_release.py", "sha256": "602dcbe09b4b563fbe8d232f7857e27ae065c3a7ebf09edc33bcd4d61389f526", "quote": "expiryfold queueharbor isolationmark: expiry returns the order to matching and marks the unit for quarantine."}
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "97d2909a6f22477ba90c4b8145eef0467e5452958c80bc3b82b78d72697dc8db", "quote": "crossmatchclasp orderanchor holdlink: a crossmatch holding keeps the chosen unit linked to its order."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "979081c5df80e2d9527082005127e309b79f11ec12e1b761ae3ac16847e22994", "quote": "reconseal expiryqueue ledgerkey: a screened expiry reconciliation returns the order to matching and records quarantine through a unit-event ledger."}
       ]
     }
   ]

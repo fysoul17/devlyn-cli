@@ -2,10 +2,7 @@
 
 
 CLASS_UNITS = {"compact": 1, "freight": 2, "overweight": 3}
-CONTRACT = (
-    "keelvector deckledger weightrelay: reserve units are recalculated "
-    "from recorded weight classes."
-)
+CONTRACT = "Deferred capacity is recomputed from the recorded weight classes of bumped vehicles."
 
 
 def recompute_reserve(manifest):

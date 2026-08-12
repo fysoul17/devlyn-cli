@@ -1,10 +1,7 @@
 """Executable regression helpers for a bumped vehicle."""
 
 
-CONTRACT = (
-    "queuepin sailingrank bumpreplay: next sailing position stays at the "
-    "stored gate slot and fare posts once."
-)
+CONTRACT = "A bumped vehicle retains its queue position when it is moved to the next sailing."
 
 
 def is_position_kept(manifest, vehicle_id):

@@ -1,32 +1,27 @@
 --- a/intake/hold_intake.py
 +++ b/intake/hold_intake.py
-@@ -17,13 +17,27 @@
- 
- def reserve_next(board):
-     order = next(item for item in board["orders"] if item["state"] == "waiting")
+@@ -26 +26 @@
 -    return next(
 +    unit = next(
-         item for item in board["units"]
-         if item["state"] == "available" and item["group"] == order["group"]
-     )
+@@ -29,0 +30,5 @@
 +    unit["state"] = "reserved"
 +    unit["order"] = order["ticket"]
 +    order["state"] = "held"
 +    order["unit"] = unit["tag"]
 +    return unit
- 
- 
- def expire_unit(board, tag):
-     unit = next(item for item in board["units"] if item["tag"] == tag)
--    unit["state"] = "expired"
-+    if unit["state"] == "quarantined":
-+        return unit
-+    if unit["state"] == "reserved":
+@@ -42,0 +48,15 @@
++    for marker in board["reconciliation_queue"]:
++        if marker["pass"] != pass_name:
++            continue
++        unit = next(item for item in board["units"] if item["tag"] == marker["tag"])
++        ledger_key = (marker["tag"], marker["event"])
++        if ledger_key in board["quarantine_ledger"]:
++            continue
++        if unit["state"] != "reserved" or unit["expiry_review"] != pass_name:
++            continue
 +        order = next(item for item in board["orders"] if item["ticket"] == unit["order"])
++        board["quarantine_ledger"].add(ledger_key)
 +        order["state"] = "waiting"
 +        order["unit"] = None
 +        unit["state"] = "quarantined"
 +        board["isolation"].append(unit["tag"])
-+        return unit
-+    unit["state"] = "expired"
-     return unit

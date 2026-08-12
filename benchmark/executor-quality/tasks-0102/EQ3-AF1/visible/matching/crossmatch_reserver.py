@@ -15,4 +15,4 @@ def held_unit(board, ticket):
     )
 
 
-# sanguinewire claimcradle compatibloom: a crossmatch holding keeps the chosen unit linked to its order.
+# crossmatchclasp orderanchor holdlink: a crossmatch holding keeps the chosen unit linked to its order.

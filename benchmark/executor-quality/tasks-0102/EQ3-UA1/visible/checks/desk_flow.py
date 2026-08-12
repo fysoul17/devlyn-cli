@@ -2,4 +2,4 @@
 
 
 def rejected(receipt):
-    return receipt == {"accepted": False, "renewed": True}
+    return receipt == {"accepted": False, "renewed": False}
