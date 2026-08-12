@@ -650,6 +650,22 @@ docs/specs/iter0102-executor-quality-batch-0N/spec.md --pair-verify`,
 outer loop ≤3 per batch), then candidate seal → calibration →
 matrix per the freeze protocol.
 
+**REGISTRATION AMENDMENT — USER-ADJUDICATED (2026-08-12 corpus session,
+pre-batch-01)**: all eight sealed batch specs carried an over-limit
+`timeout_sec` (batch-01: 900 on the cumulative validation loop; batches
+02-08: 1200) violating the pre-pilot harness contract
+`spec-verify-check.py:615` (1..600, iter-0093 DECISIONS 0093.1);
+`resolve-bootstrap.py` fails closed → `BLOCKED:invalid-flags`, no batch
+runnable. Amendment = the single transformation `timeout_sec 900|1200 →
+600`, one value per file, nothing else. Outcome-independence: the fix
+derives entirely from a contract sealed 2026-08-05 (before pilot design)
+and is identical under any pilot outcome; runtime safety: measured
+validate-discovery-task 0.26 s/task → full 32-task sweep ≈10 s, ~70×
+headroom under 600. Adjudicated by the user (option: amend-to-600) after
+BLOCKED surfaced per the outer-loop invalid-input rule; batch fixture
+prose, tables, and laws byte-unchanged. Info-boundary R1-2b intact: the
+session read only DECISION + receipt hash.
+
 **RESUME RECIPE (cold-start, after codex seat recovery)**: ① writer
 check ② re-render the VERIFY r1 primary prompt (context at
 `.devlyn/verify.task-context`, body `references/phases/verify.md`,

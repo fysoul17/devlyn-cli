@@ -180,7 +180,7 @@ edits; reading sealed pilot artifacts.
     {
       "cmd": "for task in benchmark/executor-quality/tasks-0102/EQ3-*; do python3 benchmark/executor-quality/scripts/validate-discovery-task.py --task \"$task\" || exit 1; done",
       "exit_code": 0,
-      "timeout_sec": 1200
+      "timeout_sec": 600
     }
   ]
 }
