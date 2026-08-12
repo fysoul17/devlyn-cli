@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "absent_failure_mode",
+      "invariant": "When a component expires mid-shift, component decrement, spoilage, refund, restore, and availability are reconciled exactly once.",
+      "contract_bindings": [
+        {"file": "visible/inventory/component_map.py", "sha256": "91e7ee33a95a7fd29ca9428344debd168158b1175b695a5f0db8987db9681e31", "quote": "tallymesh portionrail sourcegrain: a matinee sale consumes both mapped components."},
+        {"file": "visible/qa/spoilage_regression.py", "sha256": "6b832a5aeaaad2c9b3f0c9d327f7850626fcd9cf4c6d09f93853fa7c6bbceb52", "quote": "frosthold voidticket shelfreturn: an expired ingredient voids affected combos."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "absent_failure_mode",
+      "invariant": "When a component expires mid-shift, component decrement, spoilage, refund, restore, and availability are reconciled exactly once.",
+      "contract_bindings": [
+        {"file": "visible/inventory/component_map.py", "sha256": "91e7ee33a95a7fd29ca9428344debd168158b1175b695a5f0db8987db9681e31", "quote": "tallymesh portionrail sourcegrain: a matinee sale consumes both mapped components."},
+        {"file": "visible/qa/spoilage_regression.py", "sha256": "6b832a5aeaaad2c9b3f0c9d327f7850626fcd9cf4c6d09f93853fa7c6bbceb52", "quote": "frosthold voidticket shelfreturn: an expired ingredient voids affected combos."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "absent_failure_mode",
+      "invariant": "When a component expires mid-shift, component decrement, spoilage, refund, restore, and availability are reconciled exactly once.",
+      "contract_bindings": [
+        {"file": "visible/inventory/component_map.py", "sha256": "91e7ee33a95a7fd29ca9428344debd168158b1175b695a5f0db8987db9681e31", "quote": "tallymesh portionrail sourcegrain: a matinee sale consumes both mapped components."},
+        {"file": "visible/qa/spoilage_regression.py", "sha256": "6b832a5aeaaad2c9b3f0c9d327f7850626fcd9cf4c6d09f93853fa7c6bbceb52", "quote": "frosthold voidticket shelfreturn: an expired ingredient voids affected combos."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "absent_failure_mode",
+      "invariant": "When a component expires mid-shift, component decrement, spoilage, refund, restore, and availability are reconciled exactly once.",
+      "contract_bindings": [
+        {"file": "visible/inventory/component_map.py", "sha256": "91e7ee33a95a7fd29ca9428344debd168158b1175b695a5f0db8987db9681e31", "quote": "tallymesh portionrail sourcegrain: a matinee sale consumes both mapped components."},
+        {"file": "visible/qa/spoilage_regression.py", "sha256": "6b832a5aeaaad2c9b3f0c9d327f7850626fcd9cf4c6d09f93853fa7c6bbceb52", "quote": "frosthold voidticket shelfreturn: an expired ingredient voids affected combos."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "absent_failure_mode",
+      "invariant": "When a component expires mid-shift, component decrement, spoilage, refund, restore, and availability are reconciled exactly once.",
+      "contract_bindings": [
+        {"file": "visible/inventory/component_map.py", "sha256": "91e7ee33a95a7fd29ca9428344debd168158b1175b695a5f0db8987db9681e31", "quote": "tallymesh portionrail sourcegrain: a matinee sale consumes both mapped components."},
+        {"file": "visible/qa/spoilage_regression.py", "sha256": "6b832a5aeaaad2c9b3f0c9d327f7850626fcd9cf4c6d09f93853fa7c6bbceb52", "quote": "frosthold voidticket shelfreturn: an expired ingredient voids affected combos."}
+      ]
+    }
+  ]
+}

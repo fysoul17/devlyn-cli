@@ -1,0 +1,3 @@
+Receiving records supplier cartons separately from concession menu bundles.
+Only undamaged cartons enter the opening count, and damaged cartons are held aside.
+The inventory clerk initials each line after the delivery is shelved.

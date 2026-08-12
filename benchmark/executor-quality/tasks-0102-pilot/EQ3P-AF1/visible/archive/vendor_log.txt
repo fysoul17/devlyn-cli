@@ -1,0 +1,3 @@
+Vendor delivery tickets list carton counts and receiving initials.
+The archive does not alter live counter quantities.
+Accounting retains the ticket with the invoice.

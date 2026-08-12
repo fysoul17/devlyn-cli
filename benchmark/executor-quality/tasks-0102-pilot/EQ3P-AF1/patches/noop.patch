@@ -1,0 +1,5 @@
+--- a/support/weather.txt
++++ b/support/weather.txt
+@@ -1 +1,2 @@
+ Rainy weather can increase lobby traffic before evening shows.
++The lobby forecast is unchanged.

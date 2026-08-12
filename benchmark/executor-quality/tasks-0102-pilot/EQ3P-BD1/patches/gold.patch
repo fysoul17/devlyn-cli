@@ -1,0 +1,16 @@
+--- a/assignments/plot_assigner.py
++++ b/assignments/plot_assigner.py
+@@ -6,4 +6,13 @@
+ 
+ 
+ def abandon_plot(season, plot):
++    assignment = season["plots"][plot]
++    if assignment["available"]:
++        return season
++    owner = assignment["holder"]
++    assignment["available"] = True
++    assignment["holder"] = None
++    season["water"].pop(owner, None)
++    season["lottery"].append(plot)
++    season["released"] += 1
+     return season

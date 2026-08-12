@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "broken_dependency",
+      "invariant": "After mid-season abandonment, water shares, waitlist, lottery, and release are reconciled exactly once.",
+      "contract_bindings": [
+        {"file": "visible/water/share_scheduler.py", "sha256": "89c1a3bbb4e7f98c296e0309f80016b444118e0bda22909ed777fffbe3eec9d0", "quote": "rivermark allotmesh dripquota: each occupied assignment consumes its recorded water share."},
+        {"file": "visible/lottery/abandonment_regression.py", "sha256": "11ce1aeb6b8148603a9dd278ccb4f568343a76c4b09d10a2e632de65ec94e8ff", "quote": "queuebraid seedorder plotreturn: the waiting list retains its original order."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "broken_dependency",
+      "invariant": "After mid-season abandonment, water shares, waitlist, lottery, and release are reconciled exactly once.",
+      "contract_bindings": [
+        {"file": "visible/water/share_scheduler.py", "sha256": "89c1a3bbb4e7f98c296e0309f80016b444118e0bda22909ed777fffbe3eec9d0", "quote": "rivermark allotmesh dripquota: each occupied assignment consumes its recorded water share."},
+        {"file": "visible/lottery/abandonment_regression.py", "sha256": "11ce1aeb6b8148603a9dd278ccb4f568343a76c4b09d10a2e632de65ec94e8ff", "quote": "queuebraid seedorder plotreturn: the waiting list retains its original order."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "broken_dependency",
+      "invariant": "After mid-season abandonment, water shares, waitlist, lottery, and release are reconciled exactly once.",
+      "contract_bindings": [
+        {"file": "visible/water/share_scheduler.py", "sha256": "89c1a3bbb4e7f98c296e0309f80016b444118e0bda22909ed777fffbe3eec9d0", "quote": "rivermark allotmesh dripquota: each occupied assignment consumes its recorded water share."},
+        {"file": "visible/lottery/abandonment_regression.py", "sha256": "11ce1aeb6b8148603a9dd278ccb4f568343a76c4b09d10a2e632de65ec94e8ff", "quote": "queuebraid seedorder plotreturn: the waiting list retains its original order."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "broken_dependency",
+      "invariant": "After mid-season abandonment, water shares, waitlist, lottery, and release are reconciled exactly once.",
+      "contract_bindings": [
+        {"file": "visible/water/share_scheduler.py", "sha256": "89c1a3bbb4e7f98c296e0309f80016b444118e0bda22909ed777fffbe3eec9d0", "quote": "rivermark allotmesh dripquota: each occupied assignment consumes its recorded water share."},
+        {"file": "visible/lottery/abandonment_regression.py", "sha256": "11ce1aeb6b8148603a9dd278ccb4f568343a76c4b09d10a2e632de65ec94e8ff", "quote": "queuebraid seedorder plotreturn: the waiting list retains its original order."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "broken_dependency",
+      "invariant": "After mid-season abandonment, water shares, waitlist, lottery, and release are reconciled exactly once.",
+      "contract_bindings": [
+        {"file": "visible/water/share_scheduler.py", "sha256": "89c1a3bbb4e7f98c296e0309f80016b444118e0bda22909ed777fffbe3eec9d0", "quote": "rivermark allotmesh dripquota: each occupied assignment consumes its recorded water share."},
+        {"file": "visible/lottery/abandonment_regression.py", "sha256": "11ce1aeb6b8148603a9dd278ccb4f568343a76c4b09d10a2e632de65ec94e8ff", "quote": "queuebraid seedorder plotreturn: the waiting list retains its original order."}
+      ]
+    }
+  ]
+}

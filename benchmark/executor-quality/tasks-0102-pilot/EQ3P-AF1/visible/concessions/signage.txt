@@ -1,0 +1,3 @@
+The concessions board lists ingredients for allergy questions.
+Staff direct refund questions to the manager on duty.
+The display is replaced when a scheduled feature changes.

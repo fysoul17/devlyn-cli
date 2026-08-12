@@ -1,0 +1,9 @@
+--- a/assignments/plot_assigner.py
++++ b/assignments/plot_assigner.py
+@@ -6,4 +6,6 @@
+ 
+ 
+ def abandon_plot(season, plot):
++    season["plots"][plot]["available"] = True
++    season["released"] += 1
+     return season

@@ -1,0 +1,3 @@
+Prior shift notes are stored by date and auditorium schedule.
+The archive is read-only during the active counter shift.
+Managers retrieve it for reconciliation questions.

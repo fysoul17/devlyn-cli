@@ -1,0 +1,3 @@
+Opening counts are counted by component, never by the menu label.
+The counter verifies popcorn, fountain syrup, cups, and wrappers before doors open.
+The shift lead files the count sheet with the night cashier after cleanup.

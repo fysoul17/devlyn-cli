@@ -1,0 +1,3 @@
+Auditorium attendants report intermission demand to the lobby lead.
+The lead may stage cups before a popular feature begins.
+No sales data is stored in this attendance note.

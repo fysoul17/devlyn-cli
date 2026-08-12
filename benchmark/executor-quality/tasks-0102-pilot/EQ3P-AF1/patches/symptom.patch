@@ -1,0 +1,12 @@
+--- a/editor/combo_editor.py
++++ b/editor/combo_editor.py
+@@ -6,7 +6,10 @@
+ 
+ 
+ def reserve_combo(shift):
++    shift["stock"]["corn"] -= 1
++    shift["stock"]["fizz"] -= 1
++    shift["reserved"] += 1
+     return shift
+ 
+ 

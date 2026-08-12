@@ -1,0 +1,3 @@
+The garden records rainfall before opening shared taps.
+Volunteer crews inspect hoses each Monday morning.
+The log is informational and does not alter plot ownership.

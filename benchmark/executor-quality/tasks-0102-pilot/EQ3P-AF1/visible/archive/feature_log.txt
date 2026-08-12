@@ -1,0 +1,3 @@
+Feature schedules help estimate lobby traffic before doors open.
+The schedule is informational and not a sales instruction.
+Archived schedules remain available for programming review.

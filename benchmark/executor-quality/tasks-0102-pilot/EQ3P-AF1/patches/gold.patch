@@ -1,0 +1,23 @@
+--- a/editor/combo_editor.py
++++ b/editor/combo_editor.py
+@@ -6,10 +6,18 @@
+ 
+ 
+ def reserve_combo(shift):
++    shift["stock"]["corn"] -= 1
++    shift["stock"]["fizz"] -= 1
++    shift["reserved"] += 1
+     return shift
+ 
+ 
+ def expire_component(shift, component):
+-    shift["expired"].add(component)
+-    shift["spoilage"] += 1
++    if component in shift["expired"]:
++        return shift
++    shift["expired"].add(component)
++    shift["spoilage"] += 1
++    if component == "fizz" and shift["reserved"]:
++        shift["reserved"] -= 1
++        shift["stock"]["corn"] += 1
+     return shift

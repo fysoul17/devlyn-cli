@@ -1,0 +1,15 @@
+{
+  "id": "EQ3P-BD1",
+  "class": "broken_dependency",
+  "goal": "A gardener abandons a north plot during the season, but the assignment screen leaves the departure unfinished. Update the plot assigner so the plot is released consistently, then run python3 visible/lottery/run_checks.py to exercise the fixture.",
+  "invariant": "After mid-season abandonment, water shares, waitlist, lottery, and release are reconciled exactly once.",
+  "visible_files": [
+    "visible/archive/contacts.txt", "visible/archive/events.txt", "visible/archive/minutes.txt", "visible/assignments/plot_assigner.py", "visible/lottery/abandonment_regression.py", "visible/lottery/draw_rules.txt", "visible/lottery/run_checks.py", "visible/operations/closing.py", "visible/operations/opening.py", "visible/operations/volunteer_notes.txt", "visible/plots/map.py", "visible/plots/north_bed.txt", "visible/plots/south_bed.txt", "visible/reports/harvest.txt", "visible/reports/maintenance.txt", "visible/reports/weekly.py", "visible/support/clock.py", "visible/support/formatting.py", "visible/support/identifiers.py", "visible/support/messages.py", "visible/support/paths.py", "visible/support/queue.py", "visible/support/serializers.py", "visible/support/times.py", "visible/support/version.txt", "visible/support/weather.txt", "visible/water/meter_notes.txt", "visible/water/rain_log.txt", "visible/water/share_scheduler.py"
+  ],
+  "edit_site_dir": "visible/assignments",
+  "contract_artifacts": ["visible/water/share_scheduler.py", "visible/lottery/abandonment_regression.py"],
+  "contract_tokens_a": ["rivermark", "allotmesh", "dripquota"],
+  "contract_tokens_b": ["queuebraid", "seedorder", "plotreturn"],
+  "outcome_tokens_a": ["water", "shares"],
+  "outcome_tokens_b": ["waitlist", "lottery"]
+}

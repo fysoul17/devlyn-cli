@@ -1,0 +1,3 @@
+Cashiers compare drawer totals with approved void receipts.
+The manager signs the count when the lobby is closed.
+Any variance is entered into the next-day report.

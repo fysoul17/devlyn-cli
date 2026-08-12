@@ -1,0 +1,15 @@
+{
+  "id": "EQ3P-AF1",
+  "class": "absent_failure_mode",
+  "goal": "A matinee combo is accepted at the counter but the component count drifts during a busy shift. Update the combo editor so the sale is tracked consistently, then run python3 visible/qa/run_checks.py to exercise the fixture.",
+  "invariant": "When a component expires mid-shift, component decrement, spoilage, refund, restore, and availability are reconciled exactly once.",
+  "visible_files": [
+    "visible/archive/feature_log.txt", "visible/archive/shift_log.txt", "visible/archive/vendor_log.txt", "visible/concessions/menu.py", "visible/concessions/prices.txt", "visible/concessions/signage.txt", "visible/editor/combo_editor.py", "visible/inventory/component_map.py", "visible/inventory/count_sheet.txt", "visible/inventory/receiving.txt", "visible/operations/closing.py", "visible/operations/opening.py", "visible/operations/shift_notes.txt", "visible/qa/counter_cases.txt", "visible/qa/run_checks.py", "visible/qa/spoilage_regression.py", "visible/reports/auditorium.txt", "visible/reports/cashier.txt", "visible/reports/nightly.py", "visible/support/clock.py", "visible/support/formatting.py", "visible/support/identifiers.py", "visible/support/messages.py", "visible/support/paths.py", "visible/support/queue.py", "visible/support/serializers.py", "visible/support/times.py", "visible/support/version.txt", "visible/support/weather.txt"
+  ],
+  "edit_site_dir": "visible/editor",
+  "contract_artifacts": ["visible/inventory/component_map.py", "visible/qa/spoilage_regression.py"],
+  "contract_tokens_a": ["tallymesh", "portionrail", "sourcegrain"],
+  "contract_tokens_b": ["frosthold", "voidticket", "shelfreturn"],
+  "outcome_tokens_a": ["component", "decrement"],
+  "outcome_tokens_b": ["spoilage", "refund"]
+}
