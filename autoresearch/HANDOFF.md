@@ -120,6 +120,27 @@ survives archive; collector/merge parser mismatch;
 `path_matches_surface()` silently ignores brace-glob surface
 entries) + lexical failure-taxonomy modernization (AUTH substring
 class, sol H1/H2) as next-registration follow-up.
+**iter-0102 DESIGN-FROZEN same session (2026-08-12)** —
+`iterations/0102-executor-quality-discovery-corpus.md` is the
+complete cold-start authority (sol R0 REVISE ×8 + grok R1 REVISE ×5
++ REC-1/2/4 all adopted; liveness R0-0102-LIVE-sol-c42dd8ef /
+R1-0102-LIVE-grok-28409c8b; grok verified the 32-row table by
+execution). Design core: non-local UNSTATED two-fragment
+complementary contract + stateful restore (mechanism replacing
+0101's stated compound invariants), N=32 `EQ3-*`, mechanical
+complementarity law (outcome-token partition), 4-prototype
+PRE-CORPUS PILOT with frozen information boundary (all nine specs
+pre-committed BEFORE pilot; corpus batches in a FRESH session
+reading only `~/.local/share/nx01/iter0102/pilot/DECISION`),
+calibration gate verbatim from 0101, apparatus lineage sha-pinned
+(cal f7347a72…/719ea0f1…, mx drafts 6a4c88cf…/bbc4b2f7…,
+launch-detached 30b630d5…, run-bounded db9ed383…, CLI 013a1cf1…).
+NEXT (order is frozen-protocol law): ① pre-author + commit all 9
+specs from the frozen table ② pilot resolve run (4 prototypes +
+validate-discovery-task.py + score-pilot.py) → scoped 2-seat audit
+→ 8-run sonnet pilot → DECISION ③ MECHANISM_REJECTED → stop /
+PROCEED → corpus batches 01-08 in a fresh session → seal →
+calibration → matrix (never near 12am KST).
 PARALLEL, independent:
 0100 § Matrix integration fold-in — recert-seats.sh
 `executor_quality` suite + seat-matrix.py `main_ai_executor`
