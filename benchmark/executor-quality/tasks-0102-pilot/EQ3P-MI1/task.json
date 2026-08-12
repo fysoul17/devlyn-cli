@@ -2,7 +2,7 @@
   "id": "EQ3P-MI1",
   "class": "missed_repo_invariant",
   "goal": "An early vehicle handoff with a damage review marks the rental as closed and issues a final bill too soon. Keep the intake state useful to the counter, and run python3 visible/qa/run_checks.py after the repair.",
-  "invariant": "For a pending early return, releasecheck confirms the reservation block is freed exactly once; invoiceafter requires singlegate final billing only after damage review.",
+  "invariant": "For a pending early return, the reservation block is released exactly once, and the final invoice is issued only after the damage review.",
   "visible_files": [
     "visible/billing/damage_biller.py",
     "visible/billing/invoice_notes.txt",
@@ -42,6 +42,6 @@
   ],
   "contract_tokens_a": ["cobaltic", "shutterproof", "claimmark"],
   "contract_tokens_b": ["hearthward", "unlockonce", "revisionlane"],
-  "outcome_tokens_a": ["releasecheck", "invoiceafter"],
-  "outcome_tokens_b": ["singlegate"]
+  "outcome_tokens_a": ["invoice", "review"],
+  "outcome_tokens_b": ["released"]
 }

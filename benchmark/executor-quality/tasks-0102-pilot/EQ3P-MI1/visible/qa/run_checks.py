@@ -8,3 +8,11 @@ from intake.return_intake import new_record, record_return
 
 def smoke():
     return record_return(new_record(), True, True)
+
+
+if __name__ == "__main__":
+    record = smoke()
+    assert record["status"] == "review"
+    assert record["bill"] == "open"
+    assert record["block"] == "free"
+    assert record["released"] == 1

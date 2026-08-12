@@ -271,11 +271,31 @@ def leakage_and_topology(task_dir: Path, task: dict[str, object], paths: list[Pa
     if len(modules) < 4:
         raise ValidationError("topology: at least four top-level modules are required")
     index = task_index(str(task["id"]))
-    names = [path.name for path in paths]
-    if index % 2 and not any(name.endswith(".py") for name in names):
-        raise ValidationError("topology: odd task ids require Python")
-    if not index % 2 and ("package.json" not in names or not any(name.endswith((".js", ".mjs", ".cjs")) for name in names)):
-        raise ValidationError("topology: even task ids require Node")
+    code_suffixes = {".py", ".js", ".mjs", ".cjs"}
+    edit_code = [path for path in paths if is_under(path, edit_site) and path.suffix in code_suffixes]
+    if index % 2:
+        if not edit_code or any(path.suffix != ".py" for path in edit_code):
+            raise ValidationError("topology: odd task edit site must contain only Python code")
+        if any(path.suffix in {".js", ".mjs", ".cjs"} or path.name == "package.json" for path in paths):
+            raise ValidationError("topology: odd task visible tree must exclude Node files")
+        for path in edit_code:
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            except SyntaxError as exc:
+                raise ValidationError(f"topology: edit-site Python cannot parse: {path.relative_to(visible)}") from exc
+            for statement in tree.body:
+                modules = []
+                if isinstance(statement, ast.Import):
+                    modules = [alias.name for alias in statement.names]
+                elif isinstance(statement, ast.ImportFrom):
+                    modules = [statement.module] if statement.module else []
+                for module in modules:
+                    if module and module.split(".", 1)[0] not in sys.stdlib_module_names and not visible_local_module(visible, module):
+                        raise ValidationError(f"topology: edit-site Python imports non-stdlib non-local module {module!r}")
+    elif not edit_code or any(path.suffix not in {".js", ".mjs", ".cjs"} for path in edit_code):
+        raise ValidationError("topology: even task edit site must contain only Node code")
+    elif not any(path.name == "package.json" for path in paths) or any(path.suffix == ".py" for path in paths):
+        raise ValidationError("topology: even task visible tree requires package.json and excludes Python")
     artifacts = [visible_file(task_dir, item, "contract artifact") for item in task["contract_artifacts"]]
     for artifact in artifacts:
         if directory_distance(edit_site, artifact.parent) < 2:
@@ -309,6 +329,11 @@ def is_under(path: Path, root: Path) -> bool:
         return True
     except ValueError:
         return False
+
+
+def visible_local_module(visible: Path, module: str) -> bool:
+    location = visible.joinpath(*module.split("."))
+    return location.with_suffix(".py").is_file() or (location / "__init__.py").is_file()
 
 
 def directory_distance(left: Path, right: Path) -> int:
@@ -524,6 +549,9 @@ def self_test() -> None:
             "distance": lambda root: move_artifact_near_edit(root),
             "byte-share": lambda root: (root / "visible" / "edit" / "engine.py").write_text("STATE = 0\n" * 10000, encoding="utf-8"),
             "language-parity": lambda root: rename_engine(root),
+            "language-decoy": lambda root: language_decoy(root),
+            "third-party-import": lambda root: (root / "visible" / "edit" / "engine.py").write_text("import requests\nSTATE = 0\n", encoding="utf-8"),
+            "even-python-leak": lambda root: even_python_leak(root),
             "token-path-scan": lambda root: rename_token_path(root),
             "symptom-locality": lambda root: (root / "patches" / "symptom.patch").write_text(patch("x\n", "y\n", "support/record0.txt"), encoding="utf-8"),
             "artifact-role-order": lambda root: json_update(root / "hidden" / "manifests.json", lambda data: data["manifestations"].__setitem__(2, {**data["manifestations"][2], "id": "remote-b"})),
@@ -606,6 +634,17 @@ def collapse_module(root: Path) -> None:
 
 def rename_engine(root: Path) -> None:
     (root / "visible" / "edit" / "engine.py").rename(root / "visible" / "edit" / "engine.txt")
+    refresh_files(root)
+
+
+def language_decoy(root: Path) -> None:
+    (root / "visible" / "edit" / "engine.py").rename(root / "visible" / "edit" / "engine.js")
+    (root / "visible" / "support" / "decoy.py").write_text("STATE = 0\n", encoding="utf-8")
+    refresh_files(root)
+
+
+def even_python_leak(root: Path) -> None:
+    (root / "visible" / "support" / "stray.py").write_text("STATE = 0\n", encoding="utf-8")
     refresh_files(root)
 
 

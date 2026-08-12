@@ -3,46 +3,46 @@
     {
       "id": "local-a",
       "class": "missed_repo_invariant",
-      "invariant": "For a pending early return, releasecheck confirms the reservation block is freed exactly once; invoiceafter requires singlegate final billing only after damage review.",
+      "invariant": "For a pending early return, the reservation block is released exactly once, and the final invoice is issued only after the damage review.",
       "contract_bindings": [
-        {"file": "visible/billing/invoice_notes.txt", "sha256": "dd50633195913e8187cd5ebecb0df03fd852b0abd5635019a2296a9ad701402b", "quote": "The cobaltic shutterproof claimmark sequence keeps photo evidence ahead of closure."},
-        {"file": "visible/qa/early_return_test.py", "sha256": "373db8be839bef73bc0e433553fdecb4548a75af22f0c9963e784f4a313862df", "quote": "The hearthward unlockonce revisionlane singlegate case expects an early return to free its block once."}
+        {"file": "visible/billing/invoice_notes.txt", "sha256": "9cfa722f3c1d98153acd0c00e73a2d0c5eacbb211bdc3ce362e07f13782be103", "quote": "The cobaltic shutterproof claimmark sequence keeps photo evidence ahead of closure."},
+        {"file": "visible/qa/early_return_test.py", "sha256": "bc58317c3f5e61c88a57777a43fc52b4282e3b9e2ae831137d3d04dc7f52680c", "quote": "The hearthward unlockonce revisionlane case expects an early return to be released once."}
       ]
     },
     {
       "id": "local-b",
       "class": "missed_repo_invariant",
-      "invariant": "For a pending early return, releasecheck confirms the reservation block is freed exactly once; invoiceafter requires singlegate final billing only after damage review.",
+      "invariant": "For a pending early return, the reservation block is released exactly once, and the final invoice is issued only after the damage review.",
       "contract_bindings": [
-        {"file": "visible/billing/invoice_notes.txt", "sha256": "dd50633195913e8187cd5ebecb0df03fd852b0abd5635019a2296a9ad701402b", "quote": "The cobaltic shutterproof claimmark sequence keeps photo evidence ahead of closure."},
-        {"file": "visible/qa/early_return_test.py", "sha256": "373db8be839bef73bc0e433553fdecb4548a75af22f0c9963e784f4a313862df", "quote": "The hearthward unlockonce revisionlane singlegate case expects an early return to free its block once."}
+        {"file": "visible/billing/invoice_notes.txt", "sha256": "9cfa722f3c1d98153acd0c00e73a2d0c5eacbb211bdc3ce362e07f13782be103", "quote": "The cobaltic shutterproof claimmark sequence keeps photo evidence ahead of closure."},
+        {"file": "visible/qa/early_return_test.py", "sha256": "bc58317c3f5e61c88a57777a43fc52b4282e3b9e2ae831137d3d04dc7f52680c", "quote": "The hearthward unlockonce revisionlane case expects an early return to be released once."}
       ]
     },
     {
       "id": "remote-a",
       "class": "missed_repo_invariant",
-      "invariant": "For a pending early return, releasecheck confirms the reservation block is freed exactly once; invoiceafter requires singlegate final billing only after damage review.",
+      "invariant": "For a pending early return, the reservation block is released exactly once, and the final invoice is issued only after the damage review.",
       "contract_bindings": [
-        {"file": "visible/billing/invoice_notes.txt", "sha256": "dd50633195913e8187cd5ebecb0df03fd852b0abd5635019a2296a9ad701402b", "quote": "The cobaltic shutterproof claimmark sequence keeps photo evidence ahead of closure."},
-        {"file": "visible/qa/early_return_test.py", "sha256": "373db8be839bef73bc0e433553fdecb4548a75af22f0c9963e784f4a313862df", "quote": "The hearthward unlockonce revisionlane singlegate case expects an early return to free its block once."}
+        {"file": "visible/billing/invoice_notes.txt", "sha256": "9cfa722f3c1d98153acd0c00e73a2d0c5eacbb211bdc3ce362e07f13782be103", "quote": "The cobaltic shutterproof claimmark sequence keeps photo evidence ahead of closure."},
+        {"file": "visible/qa/early_return_test.py", "sha256": "bc58317c3f5e61c88a57777a43fc52b4282e3b9e2ae831137d3d04dc7f52680c", "quote": "The hearthward unlockonce revisionlane case expects an early return to be released once."}
       ]
     },
     {
       "id": "remote-b",
       "class": "missed_repo_invariant",
-      "invariant": "For a pending early return, releasecheck confirms the reservation block is freed exactly once; invoiceafter requires singlegate final billing only after damage review.",
+      "invariant": "For a pending early return, the reservation block is released exactly once, and the final invoice is issued only after the damage review.",
       "contract_bindings": [
-        {"file": "visible/billing/invoice_notes.txt", "sha256": "dd50633195913e8187cd5ebecb0df03fd852b0abd5635019a2296a9ad701402b", "quote": "The cobaltic shutterproof claimmark sequence keeps photo evidence ahead of closure."},
-        {"file": "visible/qa/early_return_test.py", "sha256": "373db8be839bef73bc0e433553fdecb4548a75af22f0c9963e784f4a313862df", "quote": "The hearthward unlockonce revisionlane singlegate case expects an early return to free its block once."}
+        {"file": "visible/billing/invoice_notes.txt", "sha256": "9cfa722f3c1d98153acd0c00e73a2d0c5eacbb211bdc3ce362e07f13782be103", "quote": "The cobaltic shutterproof claimmark sequence keeps photo evidence ahead of closure."},
+        {"file": "visible/qa/early_return_test.py", "sha256": "bc58317c3f5e61c88a57777a43fc52b4282e3b9e2ae831137d3d04dc7f52680c", "quote": "The hearthward unlockonce revisionlane case expects an early return to be released once."}
       ]
     },
     {
       "id": "restore",
       "class": "missed_repo_invariant",
-      "invariant": "For a pending early return, releasecheck confirms the reservation block is freed exactly once; invoiceafter requires singlegate final billing only after damage review.",
+      "invariant": "For a pending early return, the reservation block is released exactly once, and the final invoice is issued only after the damage review.",
       "contract_bindings": [
-        {"file": "visible/billing/invoice_notes.txt", "sha256": "dd50633195913e8187cd5ebecb0df03fd852b0abd5635019a2296a9ad701402b", "quote": "The cobaltic shutterproof claimmark sequence keeps photo evidence ahead of closure."},
-        {"file": "visible/qa/early_return_test.py", "sha256": "373db8be839bef73bc0e433553fdecb4548a75af22f0c9963e784f4a313862df", "quote": "The hearthward unlockonce revisionlane singlegate case expects an early return to free its block once."}
+        {"file": "visible/billing/invoice_notes.txt", "sha256": "9cfa722f3c1d98153acd0c00e73a2d0c5eacbb211bdc3ce362e07f13782be103", "quote": "The cobaltic shutterproof claimmark sequence keeps photo evidence ahead of closure."},
+        {"file": "visible/qa/early_return_test.py", "sha256": "bc58317c3f5e61c88a57777a43fc52b4282e3b9e2ae831137d3d04dc7f52680c", "quote": "The hearthward unlockonce revisionlane case expects an early return to be released once."}
       ]
     }
   ]
