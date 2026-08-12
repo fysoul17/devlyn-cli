@@ -1,0 +1,3 @@
+Weather notes are copied into the courier handoff when transport conditions
+could affect the expected arrival window. They are not used to make matching
+or intake decisions in this small example.

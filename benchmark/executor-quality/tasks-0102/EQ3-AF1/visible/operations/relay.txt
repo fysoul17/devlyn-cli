@@ -1,0 +1,3 @@
+The overnight relay keeps a count of labels, orders, and pending paperwork.
+It does not change the matching board. Supervisors use it when checking that
+the training exercise starts with a known amount of ordinary background data.

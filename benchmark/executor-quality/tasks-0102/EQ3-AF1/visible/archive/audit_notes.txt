@@ -1,0 +1,3 @@
+Archive notes retain the supervisor's review date, worksheet count, and a
+short description of routine intake training. This file is static supporting
+material used to make the fixture resemble a small maintained repository.

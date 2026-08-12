@@ -1,0 +1,2 @@
+The fixture uses a single terminal and a short daytime sailing list.
+All sample identifiers are synthetic and used for regression checks.

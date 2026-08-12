@@ -1,0 +1,2 @@
+Receipt printers retain the vehicle identifier and terminal date.
+The clerk can reprint a receipt from the daily ledger.

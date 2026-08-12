@@ -1,0 +1,3 @@
+Dispatch records list the receiving site, courier window, and sealed-container
+count. They are retained after the exercise so that operations staff can
+compare the morning handoff with the previous day's paperwork.

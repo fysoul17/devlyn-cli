@@ -1,0 +1,19 @@
+--- a/intake/hold_intake.py
++++ b/intake/hold_intake.py
+@@ -17,10 +17,15 @@
+ 
+ def reserve_next(board):
+     order = next(item for item in board["orders"] if item["state"] == "waiting")
+-    return next(
++    unit = next(
+         item for item in board["units"]
+         if item["state"] == "available" and item["group"] == order["group"]
+     )
++    unit["state"] = "reserved"
++    unit["order"] = order["ticket"]
++    order["state"] = "held"
++    order["unit"] = unit["tag"]
++    return unit
+ 
+ 
+ def expire_unit(board, tag):

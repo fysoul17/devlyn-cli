@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "absent_failure_mode",
+      "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "f2882205fccf7e354eb9ebceef9d3fdf1a0024ca7214ccf3a05c34354b9713bd", "quote": "sanguinewire claimcradle compatibloom: a crossmatch holding keeps the chosen unit linked to its order."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "602dcbe09b4b563fbe8d232f7857e27ae065c3a7ebf09edc33bcd4d61389f526", "quote": "expiryfold queueharbor isolationmark: expiry returns the order to matching and marks the unit for quarantine."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "absent_failure_mode",
+      "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "f2882205fccf7e354eb9ebceef9d3fdf1a0024ca7214ccf3a05c34354b9713bd", "quote": "sanguinewire claimcradle compatibloom: a crossmatch holding keeps the chosen unit linked to its order."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "602dcbe09b4b563fbe8d232f7857e27ae065c3a7ebf09edc33bcd4d61389f526", "quote": "expiryfold queueharbor isolationmark: expiry returns the order to matching and marks the unit for quarantine."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "absent_failure_mode",
+      "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "f2882205fccf7e354eb9ebceef9d3fdf1a0024ca7214ccf3a05c34354b9713bd", "quote": "sanguinewire claimcradle compatibloom: a crossmatch holding keeps the chosen unit linked to its order."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "602dcbe09b4b563fbe8d232f7857e27ae065c3a7ebf09edc33bcd4d61389f526", "quote": "expiryfold queueharbor isolationmark: expiry returns the order to matching and marks the unit for quarantine."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "absent_failure_mode",
+      "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "f2882205fccf7e354eb9ebceef9d3fdf1a0024ca7214ccf3a05c34354b9713bd", "quote": "sanguinewire claimcradle compatibloom: a crossmatch holding keeps the chosen unit linked to its order."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "602dcbe09b4b563fbe8d232f7857e27ae065c3a7ebf09edc33bcd4d61389f526", "quote": "expiryfold queueharbor isolationmark: expiry returns the order to matching and marks the unit for quarantine."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "absent_failure_mode",
+      "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "f2882205fccf7e354eb9ebceef9d3fdf1a0024ca7214ccf3a05c34354b9713bd", "quote": "sanguinewire claimcradle compatibloom: a crossmatch holding keeps the chosen unit linked to its order."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "602dcbe09b4b563fbe8d232f7857e27ae065c3a7ebf09edc33bcd4d61389f526", "quote": "expiryfold queueharbor isolationmark: expiry returns the order to matching and marks the unit for quarantine."}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+Fixture revision 1. The exercise is self-contained and uses only the Python
+standard library so it can run in an isolated evaluator worktree.

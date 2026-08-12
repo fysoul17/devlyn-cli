@@ -1,0 +1,3 @@
+The donor summary reports aggregate collection activity without names or
+medical details. It is present only as repository context and is never read by
+the executable intake demonstration.

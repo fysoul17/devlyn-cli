@@ -1,0 +1,5 @@
+Matching staff consult the group table before a unit is selected. The table in
+this miniature fixture has only two labels because it exists to provide
+realistic surrounding material, not to model a complete laboratory workflow.
+
+O+ recipients use the O+ row in this demonstration. A+ recipients use A+.

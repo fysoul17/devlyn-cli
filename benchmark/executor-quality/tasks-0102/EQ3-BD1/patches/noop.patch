@@ -1,0 +1,6 @@
+--- a/support/weather.txt
++++ b/support/weather.txt
+@@ -1,2 +1,3 @@
+ Harbor winds can delay the afternoon departure.
+ The dispatch desk updates the notice board after each forecast.
++The printed forecast has not changed.

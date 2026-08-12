@@ -1,0 +1,6 @@
+The visible check starts with an O+ request and verifies that intake records
+the chosen label against the request. A second scenario is kept in the hidden
+evaluation so the ticket remains a realistic symptom report rather than a
+complete implementation guide.
+
+Run the check from the task root with the command named in the ticket.

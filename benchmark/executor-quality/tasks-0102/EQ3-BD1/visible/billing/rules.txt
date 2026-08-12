@@ -1,0 +1,2 @@
+Regular vehicle tickets are sold before the ramp opens.
+The cashier records each terminal sale in the shift log.

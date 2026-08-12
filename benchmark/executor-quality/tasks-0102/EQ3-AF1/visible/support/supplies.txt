@@ -1,0 +1,3 @@
+Supply notes list labels, collection tubes, seals, and transport containers.
+They provide ordinary repository context while keeping the behavioral path in
+the intake module compact and easy to run locally.

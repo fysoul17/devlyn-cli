@@ -1,0 +1,2 @@
+Bay cards list vehicle identifiers beside their embarkation lane.
+Cards are refreshed when the gate opens each morning.

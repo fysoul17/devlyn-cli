@@ -1,0 +1,41 @@
+{
+  "id": "EQ3-AF1",
+  "class": "absent_failure_mode",
+  "goal": "A selected O+ label appears at the intake desk, but the selection is not retained on the workboard after submission. Update the intake recording path so it keeps the selected unit and request, then run python3 visible/qa/run_checks.py.",
+  "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
+  "visible_files": [
+    "visible/archive/audit_notes.txt",
+    "visible/archive/dispatch_log.txt",
+    "visible/archive/donor_summary.txt",
+    "visible/intake/desk_notes.txt",
+    "visible/intake/hold_intake.py",
+    "visible/intake/screening_rules.txt",
+    "visible/matching/bench_notes.txt",
+    "visible/matching/compatibility_table.txt",
+    "visible/matching/crossmatch_reserver.py",
+    "visible/operations/intake_open.py",
+    "visible/operations/overnight.py",
+    "visible/operations/relay.txt",
+    "visible/qa/expiry_release.py",
+    "visible/qa/run_checks.py",
+    "visible/qa/scenarios.txt",
+    "visible/reports/daily.py",
+    "visible/reports/status.txt",
+    "visible/reports/variance.txt",
+    "visible/support/paths.py",
+    "visible/support/queue.py",
+    "visible/support/staff.txt",
+    "visible/support/supplies.txt",
+    "visible/support/version.txt",
+    "visible/support/weather.txt"
+  ],
+  "edit_site_dir": "visible/intake",
+  "contract_artifacts": [
+    "visible/matching/crossmatch_reserver.py",
+    "visible/qa/expiry_release.py"
+  ],
+  "contract_tokens_a": ["sanguinewire", "claimcradle", "compatibloom"],
+  "contract_tokens_b": ["expiryfold", "queueharbor", "isolationmark"],
+  "outcome_tokens_a": ["holding"],
+  "outcome_tokens_b": ["matching", "quarantine"]
+}

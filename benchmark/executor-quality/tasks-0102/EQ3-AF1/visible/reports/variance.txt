@@ -1,0 +1,3 @@
+Variance notes explain why a training shift can contain fewer labels than the
+previous day. Examples include a delayed courier, a donor cancellation, or a
+late worksheet. None of these notes changes the live workboard.

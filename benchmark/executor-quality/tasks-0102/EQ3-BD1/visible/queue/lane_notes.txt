@@ -1,0 +1,2 @@
+The terminal keeps a separate waiting lane beside the vehicle scale.
+Drivers remain with their vehicles until the ramp signal appears.

@@ -1,0 +1,3 @@
+The daily status report lists counts only. It is intentionally separate from
+the operational board so that a reader can distinguish reporting material
+from the intake path that accepts a new request.

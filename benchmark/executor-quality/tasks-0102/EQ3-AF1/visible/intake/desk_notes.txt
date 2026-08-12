@@ -1,0 +1,6 @@
+Morning intake uses a two-stage desk check. The first clerk records the
+donation label, blood group, screening status, and collection window. The
+second clerk verifies the label before the board is handed to matching.
+
+The training fixture keeps the desk routines deliberately small so that a
+reader can run the visible check without a database or network service.

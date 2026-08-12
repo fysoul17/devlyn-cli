@@ -1,0 +1,15 @@
+--- a/gate/vehicle_checkin.py
++++ b/gate/vehicle_checkin.py
+@@ -21,6 +21,12 @@
+     if record["state"] != "queued":
+         return manifest
+     if record["weight_class"] == "overweight":
++        record["state"] = "bumped"
++        manifest["current_sailing"].remove(vehicle_id)
++        manifest["next_sailing"].insert(record["queue_slot"], vehicle_id)
++        manifest["bumped"].append(vehicle_id)
++        manifest["fare_ledger"].append(vehicle_id)
++        return manifest
+         return manifest
+     record["state"] = "boarded"
+     return manifest

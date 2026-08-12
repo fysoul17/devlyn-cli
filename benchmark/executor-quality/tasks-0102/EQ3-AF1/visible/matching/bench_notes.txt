@@ -1,0 +1,3 @@
+The crossmatch bench receives the prepared workboard after intake completes.
+Technicians compare the requested group with the label and document any
+exception in the daily log. The bench note is informational fixture context.

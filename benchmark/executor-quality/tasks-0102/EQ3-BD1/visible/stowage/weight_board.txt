@@ -1,0 +1,2 @@
+The gate scale reports compact, freight, or overweight classifications.
+The deck sheet is printed before the loading ramp opens.
