@@ -739,4 +739,18 @@ fragment-A booking) REFUTED on bytes — registered outcome tokens
 (clock-continuity, fee-waived-once) both carried in restore, fragment
 A carried live by remote-a; fable tiebreak, 2-of-3 PASS. R2 README
 2-line list extension applied by orchestrator. Batch-05 = COMPLETE
-(corpus 20/32). Next: batch-06, same pattern.
+(corpus 20/32).
+Batch-06 SHIPPED `7ab6518` (same session, index-6 Node). Trio r0 = 11
+raised → 7 byte-confirmed valid: vacuous local-b ×2 (UA6/BD6) + NEW
+DOMINANT CLASS oracle self-reference (expectations derived from
+post-trigger state: UA6 identity, AF6 thermal snapshot + winner-first
+candidate ordering let a first-pick scheduler pass, BD6 post-revocation
+waitlist sort) + MI6 target-held transfer absent + UA6 literal-input
+restore. 2 refuted with named criteria (AF6 visible-ledger contract =
+legitimate observable carrier; MI6 restore composition = batch-05
+registered-outcome-token criterion). r1 = 7/7 RESOLVED both judges,
+grok PASS; sol nit (engines.node undeclared) refuted as law (admitted
+corpus mixed) but closed via 1-line within-batch consistency edit.
+Batch-06 = COMPLETE (corpus 24/32). Next: batch-07 — add oracle
+self-reference (pre-trigger snapshot + adversarial candidate order) to
+the author-template quality bars.
