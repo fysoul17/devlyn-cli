@@ -5,8 +5,8 @@
       "class": "unsupported_assumption",
       "invariant": "A late timesheet import leaves the closed pay period immutable and creates one reversal and one repost in the next open cycle; a failed import restores the ledger to its pre-import state.",
       "contract_bindings": [
-        {"file": "visible/payrun/pay_run_splitter.js", "sha256": "58c96db5c658edfcf5a74c28d303c1f0bb4e90c02c23957fc5ee67159640c05e", "quote": "A payroll cutoff is a final boundary: the pay-run splitter keeps a closed period immutable and directs adjustments to the next open cycle."},
-        {"file": "visible/checks/retro_adjustment_test.js", "sha256": "895b9cf0c7f46e8756785b452ed2d50fdf2b54fcc281ed5f9cddfeea93e6fa18", "quote": "This retro-adjustment test expects a valid late sheet to create a reversal and a repost for the next cycle."}
+        {"file": "visible/payrun/pay_run_splitter.js", "sha256": "a36533ce94e280b70d80b8fe6d40a7fb41789c2d68cd7bd72d5a34c821cb059b", "quote": "payroll cutoff keeps this pay run immutable until the next open cycle"},
+        {"file": "visible/checks/retro_adjustment_test.js", "sha256": "10a0a788b9a1bd6fa19bad89852bf0fb13a55429d286b466ede9f2a0d5c948de", "quote": "A retro adjustment records a reversal and a repost with their exact values."}
       ]
     },
     {
@@ -14,8 +14,8 @@
       "class": "unsupported_assumption",
       "invariant": "A late timesheet import leaves the closed pay period immutable and creates one reversal and one repost in the next open cycle; a failed import restores the ledger to its pre-import state.",
       "contract_bindings": [
-        {"file": "visible/payrun/pay_run_splitter.js", "sha256": "58c96db5c658edfcf5a74c28d303c1f0bb4e90c02c23957fc5ee67159640c05e", "quote": "A payroll cutoff is a final boundary: the pay-run splitter keeps a closed period immutable and directs adjustments to the next open cycle."},
-        {"file": "visible/checks/retro_adjustment_test.js", "sha256": "895b9cf0c7f46e8756785b452ed2d50fdf2b54fcc281ed5f9cddfeea93e6fa18", "quote": "This retro-adjustment test expects a valid late sheet to create a reversal and a repost for the next cycle."}
+        {"file": "visible/payrun/pay_run_splitter.js", "sha256": "a36533ce94e280b70d80b8fe6d40a7fb41789c2d68cd7bd72d5a34c821cb059b", "quote": "payroll cutoff keeps this pay run immutable until the next open cycle"},
+        {"file": "visible/checks/retro_adjustment_test.js", "sha256": "10a0a788b9a1bd6fa19bad89852bf0fb13a55429d286b466ede9f2a0d5c948de", "quote": "A retro adjustment records a reversal and a repost with their exact values."}
       ]
     },
     {
@@ -23,8 +23,8 @@
       "class": "unsupported_assumption",
       "invariant": "A late timesheet import leaves the closed pay period immutable and creates one reversal and one repost in the next open cycle; a failed import restores the ledger to its pre-import state.",
       "contract_bindings": [
-        {"file": "visible/payrun/pay_run_splitter.js", "sha256": "58c96db5c658edfcf5a74c28d303c1f0bb4e90c02c23957fc5ee67159640c05e", "quote": "A payroll cutoff is a final boundary: the pay-run splitter keeps a closed period immutable and directs adjustments to the next open cycle."},
-        {"file": "visible/checks/retro_adjustment_test.js", "sha256": "895b9cf0c7f46e8756785b452ed2d50fdf2b54fcc281ed5f9cddfeea93e6fa18", "quote": "This retro-adjustment test expects a valid late sheet to create a reversal and a repost for the next cycle."}
+        {"file": "visible/payrun/pay_run_splitter.js", "sha256": "a36533ce94e280b70d80b8fe6d40a7fb41789c2d68cd7bd72d5a34c821cb059b", "quote": "payroll cutoff keeps this pay run immutable until the next open cycle"},
+        {"file": "visible/checks/retro_adjustment_test.js", "sha256": "10a0a788b9a1bd6fa19bad89852bf0fb13a55429d286b466ede9f2a0d5c948de", "quote": "A retro adjustment records a reversal and a repost with their exact values."}
       ]
     },
     {
@@ -32,8 +32,8 @@
       "class": "unsupported_assumption",
       "invariant": "A late timesheet import leaves the closed pay period immutable and creates one reversal and one repost in the next open cycle; a failed import restores the ledger to its pre-import state.",
       "contract_bindings": [
-        {"file": "visible/payrun/pay_run_splitter.js", "sha256": "58c96db5c658edfcf5a74c28d303c1f0bb4e90c02c23957fc5ee67159640c05e", "quote": "A payroll cutoff is a final boundary: the pay-run splitter keeps a closed period immutable and directs adjustments to the next open cycle."},
-        {"file": "visible/checks/retro_adjustment_test.js", "sha256": "895b9cf0c7f46e8756785b452ed2d50fdf2b54fcc281ed5f9cddfeea93e6fa18", "quote": "This retro-adjustment test expects a valid late sheet to create a reversal and a repost for the next cycle."}
+        {"file": "visible/payrun/pay_run_splitter.js", "sha256": "a36533ce94e280b70d80b8fe6d40a7fb41789c2d68cd7bd72d5a34c821cb059b", "quote": "payroll cutoff keeps this pay run immutable until the next open cycle"},
+        {"file": "visible/checks/retro_adjustment_test.js", "sha256": "10a0a788b9a1bd6fa19bad89852bf0fb13a55429d286b466ede9f2a0d5c948de", "quote": "A retro adjustment records a reversal and a repost with their exact values."}
       ]
     },
     {
@@ -41,8 +41,8 @@
       "class": "unsupported_assumption",
       "invariant": "A late timesheet import leaves the closed pay period immutable and creates one reversal and one repost in the next open cycle; a failed import restores the ledger to its pre-import state.",
       "contract_bindings": [
-        {"file": "visible/payrun/pay_run_splitter.js", "sha256": "58c96db5c658edfcf5a74c28d303c1f0bb4e90c02c23957fc5ee67159640c05e", "quote": "A payroll cutoff is a final boundary: the pay-run splitter keeps a closed period immutable and directs adjustments to the next open cycle."},
-        {"file": "visible/checks/retro_adjustment_test.js", "sha256": "895b9cf0c7f46e8756785b452ed2d50fdf2b54fcc281ed5f9cddfeea93e6fa18", "quote": "This retro-adjustment test expects a valid late sheet to create a reversal and a repost for the next cycle."}
+        {"file": "visible/payrun/pay_run_splitter.js", "sha256": "a36533ce94e280b70d80b8fe6d40a7fb41789c2d68cd7bd72d5a34c821cb059b", "quote": "payroll cutoff keeps this pay run immutable until the next open cycle"},
+        {"file": "visible/checks/retro_adjustment_test.js", "sha256": "10a0a788b9a1bd6fa19bad89852bf0fb13a55429d286b466ede9f2a0d5c948de", "quote": "A retro adjustment records a reversal and a repost with their exact values."}
       ]
     }
   ]

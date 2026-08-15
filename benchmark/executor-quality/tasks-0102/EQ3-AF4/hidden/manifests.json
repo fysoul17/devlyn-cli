@@ -5,8 +5,8 @@
       "class": "absent_failure_mode",
       "invariant": "After a partial grade, a rejected lot has its accepted settlement voided exactly once and every returned bin is present in field inventory.",
       "contract_bindings": [
-        {"file": "visible/grading/grader_ledger.js", "sha256": "a4bf58fe3df87d043132291a4a7fd9e13144d4ff830aa67c313de74b9aac320f", "quote": "The grader ledger reconciles each lot's accepted weight before settlement."},
-        {"file": "visible/checks/rejected_lot_test.js", "sha256": "f7003d3e8f2b7f882d2c2e0319d4489c61c0f6bfc6308ca45ba6274c594011d8", "quote": "The rejected-lot test checks that field inventory contains returned bins after rejection, while recorded grade entries are voided."}
+        {"file": "visible/grading/grader_ledger.js", "sha256": "f8d4bf9955cbe141121097b95289aad858b85d0b60df3178ada119ad8091bda6", "quote": "The grader ledger reconciles each lot's accepted weight before settlement."},
+        {"file": "visible/checks/rejected_lot_test.js", "sha256": "484ed79ce9ef9118254f94c91f73c8d9344a1a8e0adff29f5d077e7b980cdc39", "quote": "The rejected-lot test checks that field inventory contains returned bins after rejection, while recorded grade entries are voided."}
       ]
     },
     {
@@ -14,8 +14,8 @@
       "class": "absent_failure_mode",
       "invariant": "After a partial grade, a rejected lot has its accepted settlement voided exactly once and every returned bin is present in field inventory.",
       "contract_bindings": [
-        {"file": "visible/grading/grader_ledger.js", "sha256": "a4bf58fe3df87d043132291a4a7fd9e13144d4ff830aa67c313de74b9aac320f", "quote": "The grader ledger reconciles each lot's accepted weight before settlement."},
-        {"file": "visible/checks/rejected_lot_test.js", "sha256": "f7003d3e8f2b7f882d2c2e0319d4489c61c0f6bfc6308ca45ba6274c594011d8", "quote": "The rejected-lot test checks that field inventory contains returned bins after rejection, while recorded grade entries are voided."}
+        {"file": "visible/grading/grader_ledger.js", "sha256": "f8d4bf9955cbe141121097b95289aad858b85d0b60df3178ada119ad8091bda6", "quote": "The grader ledger reconciles each lot's accepted weight before settlement."},
+        {"file": "visible/checks/rejected_lot_test.js", "sha256": "484ed79ce9ef9118254f94c91f73c8d9344a1a8e0adff29f5d077e7b980cdc39", "quote": "The rejected-lot test checks that field inventory contains returned bins after rejection, while recorded grade entries are voided."}
       ]
     },
     {
@@ -23,8 +23,8 @@
       "class": "absent_failure_mode",
       "invariant": "After a partial grade, a rejected lot has its accepted settlement voided exactly once and every returned bin is present in field inventory.",
       "contract_bindings": [
-        {"file": "visible/grading/grader_ledger.js", "sha256": "a4bf58fe3df87d043132291a4a7fd9e13144d4ff830aa67c313de74b9aac320f", "quote": "The grader ledger reconciles each lot's accepted weight before settlement."},
-        {"file": "visible/checks/rejected_lot_test.js", "sha256": "f7003d3e8f2b7f882d2c2e0319d4489c61c0f6bfc6308ca45ba6274c594011d8", "quote": "The rejected-lot test checks that field inventory contains returned bins after rejection, while recorded grade entries are voided."}
+        {"file": "visible/grading/grader_ledger.js", "sha256": "f8d4bf9955cbe141121097b95289aad858b85d0b60df3178ada119ad8091bda6", "quote": "The grader ledger reconciles each lot's accepted weight before settlement."},
+        {"file": "visible/checks/rejected_lot_test.js", "sha256": "484ed79ce9ef9118254f94c91f73c8d9344a1a8e0adff29f5d077e7b980cdc39", "quote": "The rejected-lot test checks that field inventory contains returned bins after rejection, while recorded grade entries are voided."}
       ]
     },
     {
@@ -32,8 +32,8 @@
       "class": "absent_failure_mode",
       "invariant": "After a partial grade, a rejected lot has its accepted settlement voided exactly once and every returned bin is present in field inventory.",
       "contract_bindings": [
-        {"file": "visible/grading/grader_ledger.js", "sha256": "a4bf58fe3df87d043132291a4a7fd9e13144d4ff830aa67c313de74b9aac320f", "quote": "The grader ledger reconciles each lot's accepted weight before settlement."},
-        {"file": "visible/checks/rejected_lot_test.js", "sha256": "f7003d3e8f2b7f882d2c2e0319d4489c61c0f6bfc6308ca45ba6274c594011d8", "quote": "The rejected-lot test checks that field inventory contains returned bins after rejection, while recorded grade entries are voided."}
+        {"file": "visible/grading/grader_ledger.js", "sha256": "f8d4bf9955cbe141121097b95289aad858b85d0b60df3178ada119ad8091bda6", "quote": "The grader ledger reconciles each lot's accepted weight before settlement."},
+        {"file": "visible/checks/rejected_lot_test.js", "sha256": "484ed79ce9ef9118254f94c91f73c8d9344a1a8e0adff29f5d077e7b980cdc39", "quote": "The rejected-lot test checks that field inventory contains returned bins after rejection, while recorded grade entries are voided."}
       ]
     },
     {
@@ -41,8 +41,8 @@
       "class": "absent_failure_mode",
       "invariant": "After a partial grade, a rejected lot has its accepted settlement voided exactly once and every returned bin is present in field inventory.",
       "contract_bindings": [
-        {"file": "visible/grading/grader_ledger.js", "sha256": "a4bf58fe3df87d043132291a4a7fd9e13144d4ff830aa67c313de74b9aac320f", "quote": "The grader ledger reconciles each lot's accepted weight before settlement."},
-        {"file": "visible/checks/rejected_lot_test.js", "sha256": "f7003d3e8f2b7f882d2c2e0319d4489c61c0f6bfc6308ca45ba6274c594011d8", "quote": "The rejected-lot test checks that field inventory contains returned bins after rejection, while recorded grade entries are voided."}
+        {"file": "visible/grading/grader_ledger.js", "sha256": "f8d4bf9955cbe141121097b95289aad858b85d0b60df3178ada119ad8091bda6", "quote": "The grader ledger reconciles each lot's accepted weight before settlement."},
+        {"file": "visible/checks/rejected_lot_test.js", "sha256": "484ed79ce9ef9118254f94c91f73c8d9344a1a8e0adff29f5d077e7b980cdc39", "quote": "The rejected-lot test checks that field inventory contains returned bins after rejection, while recorded grade entries are voided."}
       ]
     }
   ]

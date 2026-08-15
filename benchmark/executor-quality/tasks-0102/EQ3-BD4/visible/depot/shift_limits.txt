@@ -1,0 +1,3 @@
+Each intake bay has a published daily limit and a maintenance reserve.
+The dispatch lead uses the reserve only after a scale operator confirms it.
+End-of-day totals are retained for the following morning's loading plan.

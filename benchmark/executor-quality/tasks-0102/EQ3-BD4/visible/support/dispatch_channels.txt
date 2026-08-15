@@ -1,0 +1,3 @@
+Drivers receive board changes over the dispatch handset and in the printed manifest.
+If radio traffic is unavailable, the dispatcher records the change for call-back.
+The route desk keeps an operator name beside each manual board update.

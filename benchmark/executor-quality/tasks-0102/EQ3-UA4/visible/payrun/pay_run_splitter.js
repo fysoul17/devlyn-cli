@@ -7,6 +7,11 @@ function splitForPayment(periods) {
   }));
 }
 
-// A payroll cutoff is a final boundary: the pay-run splitter keeps a closed period immutable and directs adjustments to the next open cycle.
+function appendToPayRun(period, entry) {
+  if (period.closed) {
+    throw new Error("payroll cutoff keeps this pay run immutable until the next open cycle");
+  }
+  period.entries.push(entry);
+}
 
-module.exports = { splitForPayment };
+module.exports = { appendToPayRun, splitForPayment };

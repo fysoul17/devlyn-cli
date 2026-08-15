@@ -5,7 +5,7 @@
 -    status: "waiting",
 +    status: "picked",
    });
-@@ -43,2 +43,18 @@
+@@ -43,2 +43,19 @@
    }
 +  if (lot.rejected) {
 +    return state;
@@ -21,6 +21,7 @@
 +  for (const entry of state.gradeEntries) {
 +    if (entry.lotId === lotId) {
 +      entry.voided = true;
++      state.voidRecords.push({ lotId, binId: entry.binId });
 +    }
 +  }
    lot.rejected = true;

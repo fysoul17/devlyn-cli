@@ -1,0 +1,4 @@
+PAP: mixed paper and cardboard loads.
+GLS: sorted container glass loads.
+MET: cans and household metal loads.
+Codes are printed on driver sheets and used during weighing.

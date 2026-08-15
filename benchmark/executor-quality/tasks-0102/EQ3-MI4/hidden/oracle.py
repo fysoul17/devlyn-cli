@@ -27,20 +27,25 @@ const remoteA = routes.hasBalancedCurrentPlan(capacityCase);
 
 const queueCase = fresh();
 editor.submitStopEdit(queueCase, helpers.oakEdit());
+editor.submitStopEdit(queueCase, { id: "entry-18", leg: "north", stop: { id: "pine" }, passengers: 2 });
 const queueReceipt = editor.swapBack(queueCase);
-const remoteB = queueReceipt.applied.length === 1 && queueReceipt.applied[0] === "entry-17";
+const remoteB = JSON.stringify(queueReceipt.applied) === JSON.stringify(["entry-17", "entry-18"])
+  && queueCase.currentPlan.legs[0].stops.map((stop) => stop.id).join(",") === "river,oak,pine"
+  && routes.hasBalancedCurrentPlan(queueCase);
 
 const restoreCase = fresh();
 const original = JSON.stringify(restoreCase.regularPlan);
 editor.submitStopEdit(restoreCase, helpers.oakEdit());
+editor.submitStopEdit(restoreCase, { id: "entry-18", leg: "north", stop: { id: "pine" }, passengers: 2 });
 const firstReturn = editor.swapBack(restoreCase);
 const secondReturn = editor.swapBack(restoreCase);
 const returnedStopCount = restoreCase.currentPlan.legs[0].stops.filter((stop) => stop.id === "oak").length;
 const restore = firstReturn.baseline === original
   && JSON.stringify(restoreCase.regularPlan) === original
-  && firstReturn.applied.length === 1
+  && JSON.stringify(firstReturn.applied) === JSON.stringify(["entry-17", "entry-18"])
   && secondReturn.applied.length === 0
-  && returnedStopCount === 1;
+  && returnedStopCount === 1
+  && routes.hasBalancedCurrentPlan(restoreCase);
 
 console.log(JSON.stringify([localA, localB, remoteA, remoteB, restore]));
 '''

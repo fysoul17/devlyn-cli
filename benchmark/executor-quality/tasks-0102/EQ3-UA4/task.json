@@ -1,7 +1,7 @@
 {
   "id": "EQ3-UA4",
   "class": "unsupported_assumption",
-  "goal": "Late timecards submitted after payroll was finalized are rejected and the employee's correction never reaches the ledger. Record the adjustment and run node checks/run_checks.js after the repair.",
+  "goal": "Late timecards submitted after payroll was finalized are rejected and the employee's correction never reaches the ledger. Record the adjustment and run node visible/checks/run_checks.js after the repair.",
   "invariant": "A late timesheet import leaves the closed pay period immutable and creates one reversal and one repost in the next open cycle; a failed import restores the ledger to its pre-import state.",
   "visible_files": [
     "visible/checks/late_import_test.js",

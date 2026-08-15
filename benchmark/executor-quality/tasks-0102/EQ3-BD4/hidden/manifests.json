@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "broken_dependency",
+      "invariant": "Removing a stop with pending makeup leaves each category-preserving makeup reassigned to a compatible remaining stop and leaves the depot forecast balanced exactly once.",
+      "contract_bindings": [
+        {"file": "visible/forecasting/depot_intake_forecaster.js", "sha256": "e42e7d65be67a3f0be43f418c35e143ced790cc5ff7413b906f03381603e90ff", "quote": "The depot forecast stays balanced across material categories after route changes."},
+        {"file": "visible/checks/missed_pickup_policy.js", "sha256": "c699a4510daa1efb766488018c9b710c73487d63fcdf2e9e9ea1ff03375a4069", "quote": "A missed collection schedules category-preserving makeup, reassigned to a compatible live stop."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "broken_dependency",
+      "invariant": "Removing a stop with pending makeup leaves each category-preserving makeup reassigned to a compatible remaining stop and leaves the depot forecast balanced exactly once.",
+      "contract_bindings": [
+        {"file": "visible/forecasting/depot_intake_forecaster.js", "sha256": "e42e7d65be67a3f0be43f418c35e143ced790cc5ff7413b906f03381603e90ff", "quote": "The depot forecast stays balanced across material categories after route changes."},
+        {"file": "visible/checks/missed_pickup_policy.js", "sha256": "c699a4510daa1efb766488018c9b710c73487d63fcdf2e9e9ea1ff03375a4069", "quote": "A missed collection schedules category-preserving makeup, reassigned to a compatible live stop."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "broken_dependency",
+      "invariant": "Removing a stop with pending makeup leaves each category-preserving makeup reassigned to a compatible remaining stop and leaves the depot forecast balanced exactly once.",
+      "contract_bindings": [
+        {"file": "visible/forecasting/depot_intake_forecaster.js", "sha256": "e42e7d65be67a3f0be43f418c35e143ced790cc5ff7413b906f03381603e90ff", "quote": "The depot forecast stays balanced across material categories after route changes."},
+        {"file": "visible/checks/missed_pickup_policy.js", "sha256": "c699a4510daa1efb766488018c9b710c73487d63fcdf2e9e9ea1ff03375a4069", "quote": "A missed collection schedules category-preserving makeup, reassigned to a compatible live stop."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "broken_dependency",
+      "invariant": "Removing a stop with pending makeup leaves each category-preserving makeup reassigned to a compatible remaining stop and leaves the depot forecast balanced exactly once.",
+      "contract_bindings": [
+        {"file": "visible/forecasting/depot_intake_forecaster.js", "sha256": "e42e7d65be67a3f0be43f418c35e143ced790cc5ff7413b906f03381603e90ff", "quote": "The depot forecast stays balanced across material categories after route changes."},
+        {"file": "visible/checks/missed_pickup_policy.js", "sha256": "c699a4510daa1efb766488018c9b710c73487d63fcdf2e9e9ea1ff03375a4069", "quote": "A missed collection schedules category-preserving makeup, reassigned to a compatible live stop."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "broken_dependency",
+      "invariant": "Removing a stop with pending makeup leaves each category-preserving makeup reassigned to a compatible remaining stop and leaves the depot forecast balanced exactly once.",
+      "contract_bindings": [
+        {"file": "visible/forecasting/depot_intake_forecaster.js", "sha256": "e42e7d65be67a3f0be43f418c35e143ced790cc5ff7413b906f03381603e90ff", "quote": "The depot forecast stays balanced across material categories after route changes."},
+        {"file": "visible/checks/missed_pickup_policy.js", "sha256": "c699a4510daa1efb766488018c9b710c73487d63fcdf2e9e9ea1ff03375a4069", "quote": "A missed collection schedules category-preserving makeup, reassigned to a compatible live stop."}
+      ]
+    }
+  ]
+}

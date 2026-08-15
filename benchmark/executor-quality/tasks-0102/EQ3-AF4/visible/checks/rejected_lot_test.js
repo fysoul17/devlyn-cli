@@ -10,6 +10,7 @@ function rejectedLotScenario() {
     lots: { "L-7": { rejected: false } },
     binRecords: [],
     gradeEntries: [],
+    voidRecords: [],
   };
   recordPick(state, { id: "B-17", lotId: "L-7", expectedWeight: 16 });
   recordPick(state, { id: "B-18", lotId: "L-7", expectedWeight: 15 });

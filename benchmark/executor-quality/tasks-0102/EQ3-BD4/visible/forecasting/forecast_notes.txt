@@ -1,0 +1,3 @@
+Forecast snapshots are delivered to depot managers before each afternoon route.
+Drivers report actual loads at the scale; dispatch uses the next snapshot.
+The fixture keeps load quantities small so route changes are easy to inspect.

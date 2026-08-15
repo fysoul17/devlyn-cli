@@ -5,3 +5,17 @@
 -    status: "waiting",
 +    status: "picked",
    });
+@@ -43,2 +43,13 @@
+   }
++  if (lot.rejected) {
++    return state;
++  }
++  for (const bin of state.binRecords) {
++    if (bin.lotId === lotId) {
++      if (!state.fieldInventory.includes(bin.id)) {
++        state.fieldInventory.push(bin.id);
++      }
++      bin.status = "field";
++    }
++  }
+   lot.rejected = true;

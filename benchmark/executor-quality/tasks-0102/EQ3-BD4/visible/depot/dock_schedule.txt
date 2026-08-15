@@ -1,0 +1,3 @@
+Dock one handles paper before noon and glass after the inspection interval.
+Dock two keeps metal cages available for collection vehicles returning early.
+Supervisors compare scale tickets with the driver handoff sheet at close.

@@ -1,0 +1,1 @@
+{"name":"recycling-route-fixture","private":true,"version":"1.0.0","scripts":{"check":"node checks/run_checks.js"}}

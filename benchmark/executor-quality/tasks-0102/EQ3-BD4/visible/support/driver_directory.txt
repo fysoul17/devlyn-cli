@@ -1,0 +1,3 @@
+Route 12: Mei Park, vehicle R-12, morning collection district.
+Route 18: Tomas Reed, vehicle R-18, river collection district.
+Route 21: Asha Khan, vehicle R-21, market collection district.

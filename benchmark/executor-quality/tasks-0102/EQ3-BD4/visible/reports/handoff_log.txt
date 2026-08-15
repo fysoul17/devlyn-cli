@@ -1,0 +1,3 @@
+Drivers sign the route handoff after the board is printed.
+Dispatch records late changes in the log before radioing the vehicle.
+The evening supervisor keeps the signed sheet with the daily paperwork.

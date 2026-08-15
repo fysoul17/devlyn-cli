@@ -1,0 +1,43 @@
+{
+  "id": "EQ3-BD4",
+  "class": "broken_dependency",
+  "goal": "Deleting a pickup point makes it disappear from the editor, but dispatch still shows it on the driver's route. Make the route update stick and run node visible/checks/run_checks.js after the repair.",
+  "invariant": "Removing a stop with pending makeup leaves each category-preserving makeup reassigned to a compatible remaining stop and leaves the depot forecast balanced exactly once.",
+  "visible_files": [
+    "visible/checks/manual_cases.md",
+    "visible/checks/missed_pickup_policy.js",
+    "visible/checks/remove_stop_test.js",
+    "visible/checks/run_checks.js",
+    "visible/depot/accepted_loads.js",
+    "visible/depot/daily_notes.txt",
+    "visible/depot/dock_schedule.txt",
+    "visible/depot/material_codes.txt",
+    "visible/depot/shift_limits.txt",
+    "visible/forecasting/depot_intake_forecaster.js",
+    "visible/forecasting/forecast_notes.txt",
+    "visible/forecasting/forecast_printer.js",
+    "visible/forecasting/material_totals.js",
+    "visible/package.json",
+    "visible/reports/handoff_log.txt",
+    "visible/reports/route_layout.txt",
+    "visible/reports/route_summary.js",
+    "visible/reports/supervisor_notes.txt",
+    "visible/route/route_board.js",
+    "visible/route/route_editor.js",
+    "visible/route/stop_index.js",
+    "visible/support/dispatch_channels.txt",
+    "visible/support/driver_directory.txt",
+    "visible/support/fixtures.js",
+    "visible/support/vehicle_roster.txt",
+    "visible/support/weather_notes.txt"
+  ],
+  "edit_site_dir": "visible/route",
+  "contract_artifacts": [
+    "visible/forecasting/depot_intake_forecaster.js",
+    "visible/checks/missed_pickup_policy.js"
+  ],
+  "contract_tokens_a": ["depot", "forecast", "categories"],
+  "contract_tokens_b": ["missed", "makeup", "category"],
+  "outcome_tokens_a": ["forecast", "balanced"],
+  "outcome_tokens_b": ["makeup", "reassigned"]
+}

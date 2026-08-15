@@ -1,0 +1,7 @@
+--- a/support/weather_notes.txt
++++ b/support/weather_notes.txt
+@@ -1,3 +1,4 @@
+ Heavy rain can delay collection but does not change the route board format.
+ Supervisors may postpone a street when access is unsafe for the vehicle.
+ The next dispatch call confirms any updated point list with the driver.
++The morning desk keeps this weather note beside the driver roster.

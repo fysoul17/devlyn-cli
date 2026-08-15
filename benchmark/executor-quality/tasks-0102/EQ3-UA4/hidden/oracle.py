@@ -33,21 +33,25 @@ const totalBefore = active.periods.reduce((sum, period) => sum + period.entries.
 const first = importTimesheet(active, sheet("REG"));
 const totalAfter = active.periods.reduce((sum, period) => sum + period.entries.length, 0);
 const nextEntries = active.periods[1].entries;
+const pairAfterFirst = JSON.stringify(nextEntries);
 const repeat = importTimesheet(active, sheet("REG"));
+const pairAfterRepeat = JSON.stringify(nextEntries);
 const bad = ledger();
 const badBefore = JSON.stringify(bad.periods[0]);
 const badSheet = sheet("REG");
 delete badSheet.replaces;
 const badResult = importTimesheet(bad, badSheet);
 const sourceKey = "source" + "Timesheet";
-const pairIsOnce = nextEntries.length === 2 && repeat.accepted && nextEntries.length === 2;
+const pairIsOnce = repeat.accepted && pairAfterRepeat === pairAfterFirst;
 const pairHasSource = nextEntries.every((entry) => entry[sourceKey] === "sheet-august-correction");
+const pairHasValues = nextEntries.length === 2 && nextEntries[0].hours === -8 && nextEntries[0].amount === -240
+  && nextEntries[1].hours === 10 && nextEntries[1].amount === 300;
 
 console.log(JSON.stringify({
   localA: first.accepted === true,
   localB: totalAfter > totalBefore,
   remoteA: JSON.stringify(active.periods[0]) === before,
-  remoteB: pairIsOnce && pairHasSource && nextEntries[0].kind === "undo" && nextEntries[1].kind === "replacement",
+  remoteB: pairIsOnce && pairHasSource && pairHasValues && nextEntries[0].kind === "undo" && nextEntries[1].kind === "replacement",
   restore: badResult.accepted === false && JSON.stringify(bad.periods[0]) === badBefore && bad.periods[1].entries.length === 0,
 }));
 '''

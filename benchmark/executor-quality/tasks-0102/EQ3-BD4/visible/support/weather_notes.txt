@@ -1,0 +1,3 @@
+Heavy rain can delay collection but does not change the route board format.
+Supervisors may postpone a street when access is unsafe for the vehicle.
+The next dispatch call confirms any updated point list with the driver.

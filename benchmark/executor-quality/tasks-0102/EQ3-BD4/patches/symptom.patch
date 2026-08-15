@@ -1,0 +1,16 @@
+--- a/route/route_editor.js
++++ b/route/route_editor.js
+@@ -1,7 +1,12 @@
+ "use strict";
+ 
+ function removeStop(route, stopId) {
+-  return { removed: false, stopId };
++  const index = route.stops.findIndex((stop) => stop.id === stopId);
++  if (index === -1) {
++    return { removed: false, stopId };
++  }
++  route.stops.splice(index, 1);
++  return { removed: true, stopId };
+ }
+ 
+ module.exports = { removeStop };

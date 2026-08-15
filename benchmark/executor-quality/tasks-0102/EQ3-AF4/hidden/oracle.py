@@ -18,6 +18,7 @@ function state() {
     lots: { "L-7": { rejected: false } },
     binRecords: [],
     gradeEntries: [],
+    voidRecords: [],
   };
 }
 
@@ -44,14 +45,18 @@ function localTwo() {
 
 function remoteA() {
   const value = partial();
+  const mismatchBeforeRejection = ledger.reconcilesLotWeight(value, "L-7") === false;
   recorder.rejectLot(value, "L-7");
-  return ledger.acceptedWeight(value, "L-7") === 0;
+  return mismatchBeforeRejection && ledger.reconcilesLotWeight(value, "L-7")
+    && ledger.acceptedWeight(value, "L-7") === 0;
 }
 
 function remoteB() {
   const value = partial();
   recorder.rejectLot(value, "L-7");
-  return value.fieldInventory.slice().sort().join(",") === "B-17,B-18" && value.gradeEntries[0].voided;
+  return value.fieldInventory.slice().sort().join(",") === "B-17,B-18"
+    && value.gradeEntries[0].voided
+    && JSON.stringify(value.voidRecords) === JSON.stringify([{ lotId: "L-7", binId: "B-17" }]);
 }
 
 function restore() {
@@ -61,7 +66,8 @@ function restore() {
   return value.fieldInventory.slice().sort().join(",") === "B-17,B-18"
     && value.binRecords.every((bin) => bin.status === "field")
     && value.gradeEntries.length === 1
-    && value.gradeEntries[0].voided;
+    && value.gradeEntries[0].voided
+    && JSON.stringify(value.voidRecords) === JSON.stringify([{ lotId: "L-7", binId: "B-17" }]);
 }
 
 process.stdout.write(JSON.stringify({

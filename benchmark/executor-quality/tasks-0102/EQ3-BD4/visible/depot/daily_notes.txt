@@ -1,0 +1,3 @@
+Morning receipts are checked against route sheets before compactors open.
+Scale staff record material families separately because each bay has a limit.
+Dispatch may revise the driver board while trucks are still at the depot.
