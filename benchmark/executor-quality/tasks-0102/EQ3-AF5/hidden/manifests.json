@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "absent_failure_mode",
+      "invariant": "After the second noaccess visit, the SLA clock maintains continuity through the tenant window and a waived fee is written once.",
+      "contract_bindings": [
+        {"file": "visible/dispatch/tenant_window_dispatcher.py", "sha256": "5d7a46fe7138eb54e85098f08f25a66fc62f29503ed12221065206b602c5ddb6", "quote": "def contractor_window(order):"},
+        {"file": "visible/checks/no_access_regression.py", "sha256": "8bbc77f8dd0ebc3effe1f6d5619901a5e364587063b5921c4e39d69ca1b78c72", "quote": "def noaccess_clock_has_continuity(order, original):"}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "absent_failure_mode",
+      "invariant": "After the second noaccess visit, the SLA clock maintains continuity through the tenant window and a waived fee is written once.",
+      "contract_bindings": [
+        {"file": "visible/dispatch/tenant_window_dispatcher.py", "sha256": "5d7a46fe7138eb54e85098f08f25a66fc62f29503ed12221065206b602c5ddb6", "quote": "def contractor_window(order):"},
+        {"file": "visible/checks/no_access_regression.py", "sha256": "8bbc77f8dd0ebc3effe1f6d5619901a5e364587063b5921c4e39d69ca1b78c72", "quote": "def noaccess_clock_has_continuity(order, original):"}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "absent_failure_mode",
+      "invariant": "After the second noaccess visit, the SLA clock maintains continuity through the tenant window and a waived fee is written once.",
+      "contract_bindings": [
+        {"file": "visible/dispatch/tenant_window_dispatcher.py", "sha256": "5d7a46fe7138eb54e85098f08f25a66fc62f29503ed12221065206b602c5ddb6", "quote": "def contractor_window(order):"},
+        {"file": "visible/checks/no_access_regression.py", "sha256": "8bbc77f8dd0ebc3effe1f6d5619901a5e364587063b5921c4e39d69ca1b78c72", "quote": "def noaccess_clock_has_continuity(order, original):"}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "absent_failure_mode",
+      "invariant": "After the second noaccess visit, the SLA clock maintains continuity through the tenant window and a waived fee is written once.",
+      "contract_bindings": [
+        {"file": "visible/dispatch/tenant_window_dispatcher.py", "sha256": "5d7a46fe7138eb54e85098f08f25a66fc62f29503ed12221065206b602c5ddb6", "quote": "def contractor_window(order):"},
+        {"file": "visible/checks/no_access_regression.py", "sha256": "8bbc77f8dd0ebc3effe1f6d5619901a5e364587063b5921c4e39d69ca1b78c72", "quote": "def noaccess_clock_has_continuity(order, original):"}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "absent_failure_mode",
+      "invariant": "After the second noaccess visit, the SLA clock maintains continuity through the tenant window and a waived fee is written once.",
+      "contract_bindings": [
+        {"file": "visible/dispatch/tenant_window_dispatcher.py", "sha256": "5d7a46fe7138eb54e85098f08f25a66fc62f29503ed12221065206b602c5ddb6", "quote": "def contractor_window(order):"},
+        {"file": "visible/checks/no_access_regression.py", "sha256": "8bbc77f8dd0ebc3effe1f6d5619901a5e364587063b5921c4e39d69ca1b78c72", "quote": "def noaccess_clock_has_continuity(order, original):"}
+      ]
+    }
+  ]
+}

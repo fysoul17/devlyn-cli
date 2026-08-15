@@ -1,0 +1,20 @@
+--- a/checkout/checkout_desk.py
++++ b/checkout/checkout_desk.py
+@@ -14,7 +14,16 @@ def open_show():
+ 
+ 
+ def report_damage(show, prop, scene):
+-    return {"swapped": False, "replacement": None, "scene": scene}
++    replacement = show["understudies"].get(prop)
++    if replacement is None:
++        return {"swapped": False, "replacement": None, "scene": scene}
++    for entry in show["ledger"]:
++        if entry["scene"] == scene and entry["prop"] == prop:
++            entry["prop"] = replacement
++    event = {"prop": prop, "replacement": replacement, "scene": scene}
++    if event not in show["damage_log"]:
++        show["damage_log"].append(event)
++    return {"swapped": True, "replacement": replacement, "scene": scene}
+ 
+ 
+ def checked_out_props(show, scene):

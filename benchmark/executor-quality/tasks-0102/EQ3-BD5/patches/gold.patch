@@ -1,0 +1,33 @@
+--- a/checkout/checkout_desk.py
++++ b/checkout/checkout_desk.py
+@@ -8,13 +8,29 @@ def open_show():
+             {"id": "r-12", "scene": "act-2", "prop": "book-red"},
+             {"id": "r-13", "scene": "act-3", "prop": "clock-main"},
+         ],
++        "checkout_chains": {
++            "act-2": [{"id": "r-11", "prop": "clock-main"}, {"id": "r-12", "prop": "book-red"}],
++            "act-3": [{"id": "r-13", "prop": "clock-main"}],
++        },
+         "understudies": {"clock-main": "clock-understudy"},
+         "damage_log": [],
+     }
+ 
+ 
+ def report_damage(show, prop, scene):
+-    return {"swapped": False, "replacement": None, "scene": scene}
++    replacement = show["understudies"].get(prop)
++    if replacement is None:
++        return {"swapped": False, "replacement": None, "scene": scene}
++    for entry in show["ledger"]:
++        if entry["scene"] == scene and entry["prop"] == prop:
++            entry["prop"] = replacement
++    for entry in show["checkout_chains"][scene]:
++        if entry["prop"] == prop:
++            entry["prop"] = replacement
++    event = {"prop": prop, "replacement": replacement, "scene": scene}
++    if event not in show["damage_log"]:
++        show["damage_log"].append(event)
++    return {"swapped": True, "replacement": replacement, "scene": scene}
+ 
+ 
+ def checked_out_props(show, scene):

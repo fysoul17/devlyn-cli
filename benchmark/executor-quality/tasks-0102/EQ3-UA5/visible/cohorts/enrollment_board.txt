@@ -1,0 +1,2 @@
+The study coordinator reviews the enrollment board before the weekly meeting.
+Slots are displayed by trial block and participant identifier.

@@ -1,0 +1,2 @@
+The stage manager compares props with the preset before each act.
+Reports are informational until a desk action is entered.

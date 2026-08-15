@@ -1,0 +1,3 @@
+PLN-A: standard community plan
+PLN-B: review required before release
+PLN-C: manual override only

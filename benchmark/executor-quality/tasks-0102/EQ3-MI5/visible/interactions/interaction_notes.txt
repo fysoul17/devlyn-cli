@@ -1,0 +1,2 @@
+Clinical review keeps the profile current while refill work is waiting.
+Escalate any pair that is marked for pharmacist review.

@@ -1,0 +1,2 @@
+Exports list the participant identifier, site, and visit date.
+The layout is checked before a monitoring review.

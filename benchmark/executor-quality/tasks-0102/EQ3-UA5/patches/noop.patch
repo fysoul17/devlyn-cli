@@ -1,0 +1,6 @@
+--- a/reports/daily_digest.txt
++++ b/reports/daily_digest.txt
+@@ -1,2 +1,3 @@
+ The daily digest lists completed visits and pending contact calls.
+ Investigators review the digest before the afternoon clinic session.
++The report is prepared at the close of the desk shift.

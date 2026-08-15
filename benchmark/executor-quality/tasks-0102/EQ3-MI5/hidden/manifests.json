@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "missed_repo_invariant",
+      "invariant": "When a second refill meets a pending-fill conflict, its clinical screen rejects it, the authorization debit is released, and the accepted fill is debited once.",
+      "contract_bindings": [
+        {"file": "visible/interactions/pending_gate.py", "sha256": "63e6a8d42b15436bf5ac1623d38821b3cf9650f82d83d0f4314162eeaa39b288", "quote": "The interaction screen evaluates the active profile together with pending"},
+        {"file": "visible/checks/partial_fill_test.py", "sha256": "d2299da790344aeae285a7684776c31d0713923972dd63a77995b24e1799fc20", "quote": "A partial fill debit is written once for an accepted identifier."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "missed_repo_invariant",
+      "invariant": "When a second refill meets a pending-fill conflict, its clinical screen rejects it, the authorization debit is released, and the accepted fill is debited once.",
+      "contract_bindings": [
+        {"file": "visible/interactions/pending_gate.py", "sha256": "63e6a8d42b15436bf5ac1623d38821b3cf9650f82d83d0f4314162eeaa39b288", "quote": "The interaction screen evaluates the active profile together with pending"},
+        {"file": "visible/checks/partial_fill_test.py", "sha256": "d2299da790344aeae285a7684776c31d0713923972dd63a77995b24e1799fc20", "quote": "A partial fill debit is written once for an accepted identifier."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "missed_repo_invariant",
+      "invariant": "When a second refill meets a pending-fill conflict, its clinical screen rejects it, the authorization debit is released, and the accepted fill is debited once.",
+      "contract_bindings": [
+        {"file": "visible/interactions/pending_gate.py", "sha256": "63e6a8d42b15436bf5ac1623d38821b3cf9650f82d83d0f4314162eeaa39b288", "quote": "The interaction screen evaluates the active profile together with pending"},
+        {"file": "visible/checks/partial_fill_test.py", "sha256": "d2299da790344aeae285a7684776c31d0713923972dd63a77995b24e1799fc20", "quote": "A partial fill debit is written once for an accepted identifier."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "missed_repo_invariant",
+      "invariant": "When a second refill meets a pending-fill conflict, its clinical screen rejects it, the authorization debit is released, and the accepted fill is debited once.",
+      "contract_bindings": [
+        {"file": "visible/interactions/pending_gate.py", "sha256": "63e6a8d42b15436bf5ac1623d38821b3cf9650f82d83d0f4314162eeaa39b288", "quote": "The interaction screen evaluates the active profile together with pending"},
+        {"file": "visible/checks/partial_fill_test.py", "sha256": "d2299da790344aeae285a7684776c31d0713923972dd63a77995b24e1799fc20", "quote": "A partial fill debit is written once for an accepted identifier."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "missed_repo_invariant",
+      "invariant": "When a second refill meets a pending-fill conflict, its clinical screen rejects it, the authorization debit is released, and the accepted fill is debited once.",
+      "contract_bindings": [
+        {"file": "visible/interactions/pending_gate.py", "sha256": "63e6a8d42b15436bf5ac1623d38821b3cf9650f82d83d0f4314162eeaa39b288", "quote": "The interaction screen evaluates the active profile together with pending"},
+        {"file": "visible/checks/partial_fill_test.py", "sha256": "d2299da790344aeae285a7684776c31d0713923972dd63a77995b24e1799fc20", "quote": "A partial fill debit is written once for an accepted identifier."}
+      ]
+    }
+  ]
+}

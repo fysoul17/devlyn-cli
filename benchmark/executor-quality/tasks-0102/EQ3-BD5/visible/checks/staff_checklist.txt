@@ -1,0 +1,2 @@
+Run the desk checks after changing a damage-report action.
+The short script is intended for stage-management training fixtures.

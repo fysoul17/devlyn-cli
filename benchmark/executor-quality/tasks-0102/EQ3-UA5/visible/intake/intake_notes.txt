@@ -1,0 +1,2 @@
+Staff confirm the participant identity before entering a signed form.
+The desk shows the currently accepted form after the visit is saved.

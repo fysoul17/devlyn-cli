@@ -1,0 +1,1 @@
+Counter smoke cases use a plan with ten units available before intake.

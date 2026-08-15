@@ -1,0 +1,4 @@
+naproxen: anti-inflammatory
+ibuprofen: anti-inflammatory
+lisinopril: cardiovascular
+clarithromycin: antimicrobial

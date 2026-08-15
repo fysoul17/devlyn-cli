@@ -1,0 +1,10 @@
+--- a/intake/consent_recorder.py
++++ b/intake/consent_recorder.py
+@@ -14,7 +14,5 @@
+ def record_consent(participant, form_version, reserve, trial):
+-    if participant["current_form"] is not None:
+-        return {"accepted": False, "reason": "previous form remains"}
+     participant["current_form"] = form_version
+     participant["active"] = True
+     participant["slot"] = reserve(trial, participant["id"], form_version)
+     return {"accepted": True, "form": form_version}

@@ -1,0 +1,2 @@
+The transition board lists the next scene and the crew captain.
+Calls are acknowledged before the scenery moves.

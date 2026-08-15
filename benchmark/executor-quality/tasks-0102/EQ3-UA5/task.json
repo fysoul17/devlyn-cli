@@ -1,0 +1,41 @@
+{
+  "id": "EQ3-UA5",
+  "class": "unsupported_assumption",
+  "goal": "A coordinator can enter a second signed form after a withdrawn participant returns, but the desk refuses it as an existing record. Allow the current form and status to be recorded after the return, then run python3 visible/checks/run_checks.py.",
+  "invariant": "After a withdrawal, the cohort baseline marker remains in use, the held slot vacates exactly once, and re-enrolment draws a fresh slot.",
+  "visible_files": [
+    "visible/checks/check_notes.txt",
+    "visible/checks/consent_reentry_test.py",
+    "visible/checks/fixture_data.py",
+    "visible/checks/run_checks.py",
+    "visible/checks/withdrawal_release_test.py",
+    "visible/cohorts/allocator_notes.txt",
+    "visible/cohorts/block_map.py",
+    "visible/cohorts/cohort_randomizer.py",
+    "visible/cohorts/enrollment_board.txt",
+    "visible/consents/form_archive.py",
+    "visible/consents/retention_notes.txt",
+    "visible/consents/signature_log.py",
+    "visible/consents/version_catalog.txt",
+    "visible/intake/consent_recorder.py",
+    "visible/intake/form_parser.py",
+    "visible/intake/intake_notes.txt",
+    "visible/registry/clinic_directory.py",
+    "visible/registry/contacts.txt",
+    "visible/registry/eligibility.py",
+    "visible/registry/participant_record.py",
+    "visible/reports/audit_report.py",
+    "visible/reports/daily_digest.txt",
+    "visible/reports/export_layout.txt",
+    "visible/reports/stats.py"
+  ],
+  "edit_site_dir": "visible/intake",
+  "contract_artifacts": [
+    "visible/cohorts/cohort_randomizer.py",
+    "visible/checks/withdrawal_release_test.py"
+  ],
+  "contract_tokens_a": ["cohort", "baseline", "marker"],
+  "contract_tokens_b": ["withdrawal", "vacates", "allocation"],
+  "outcome_tokens_a": ["baseline", "marker"],
+  "outcome_tokens_b": ["withdrawal", "vacates"]
+}

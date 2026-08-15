@@ -1,0 +1,2 @@
+Production notes collect weather, audience, and staffing observations.
+They do not alter the desk state.

@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "broken_dependency",
+      "invariant": "After damage during a scene change, checkout chain order is restored with the understudy while the damage event is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/scheduler/scene_change_scheduler.py", "sha256": "f5523d5819248a37a529ca9edf268b28e6239c72e3faa04e984d1ce0eb3e8294", "quote": "The scheduler follows the recorded cue sequence and order in each checkout\nchain before it releases a scene-change call."},
+        {"file": "visible/checks/damaged_prop_test.py", "sha256": "1ddb542d9698e26176868695ece3096faffef37dd000d9ca866e12fd6986ce9a", "quote": "A rehearsal log identifies the standby substitute used after a damage event\nduring a scene change."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "broken_dependency",
+      "invariant": "After damage during a scene change, checkout chain order is restored with the understudy while the damage event is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/scheduler/scene_change_scheduler.py", "sha256": "f5523d5819248a37a529ca9edf268b28e6239c72e3faa04e984d1ce0eb3e8294", "quote": "The scheduler follows the recorded cue sequence and order in each checkout\nchain before it releases a scene-change call."},
+        {"file": "visible/checks/damaged_prop_test.py", "sha256": "1ddb542d9698e26176868695ece3096faffef37dd000d9ca866e12fd6986ce9a", "quote": "A rehearsal log identifies the standby substitute used after a damage event\nduring a scene change."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "broken_dependency",
+      "invariant": "After damage during a scene change, checkout chain order is restored with the understudy while the damage event is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/scheduler/scene_change_scheduler.py", "sha256": "f5523d5819248a37a529ca9edf268b28e6239c72e3faa04e984d1ce0eb3e8294", "quote": "The scheduler follows the recorded cue sequence and order in each checkout\nchain before it releases a scene-change call."},
+        {"file": "visible/checks/damaged_prop_test.py", "sha256": "1ddb542d9698e26176868695ece3096faffef37dd000d9ca866e12fd6986ce9a", "quote": "A rehearsal log identifies the standby substitute used after a damage event\nduring a scene change."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "broken_dependency",
+      "invariant": "After damage during a scene change, checkout chain order is restored with the understudy while the damage event is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/scheduler/scene_change_scheduler.py", "sha256": "f5523d5819248a37a529ca9edf268b28e6239c72e3faa04e984d1ce0eb3e8294", "quote": "The scheduler follows the recorded cue sequence and order in each checkout\nchain before it releases a scene-change call."},
+        {"file": "visible/checks/damaged_prop_test.py", "sha256": "1ddb542d9698e26176868695ece3096faffef37dd000d9ca866e12fd6986ce9a", "quote": "A rehearsal log identifies the standby substitute used after a damage event\nduring a scene change."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "broken_dependency",
+      "invariant": "After damage during a scene change, checkout chain order is restored with the understudy while the damage event is recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/scheduler/scene_change_scheduler.py", "sha256": "f5523d5819248a37a529ca9edf268b28e6239c72e3faa04e984d1ce0eb3e8294", "quote": "The scheduler follows the recorded cue sequence and order in each checkout\nchain before it releases a scene-change call."},
+        {"file": "visible/checks/damaged_prop_test.py", "sha256": "1ddb542d9698e26176868695ece3096faffef37dd000d9ca866e12fd6986ce9a", "quote": "A rehearsal log identifies the standby substitute used after a damage event\nduring a scene change."}
+      ]
+    }
+  ]
+}

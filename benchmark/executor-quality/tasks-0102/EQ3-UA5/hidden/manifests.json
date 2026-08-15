@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "unsupported_assumption",
+      "invariant": "After a withdrawal, the cohort baseline marker remains in use, the held slot vacates exactly once, and re-enrolment draws a fresh slot.",
+      "contract_bindings": [
+        {"file": "visible/cohorts/cohort_randomizer.py", "sha256": "d2300b43c4af7d15fcc0fd0ad8f9a7475ddcce7b8bf357000ae7256803a8b103", "quote": "Each cohort draw keeps the original baseline marker supplied for the\nparticipant, so later paperwork does not change the cohort's seed."},
+        {"file": "visible/checks/withdrawal_release_test.py", "sha256": "3b0aadd58a1707a26888f1dea9e982c4ed2d8fad3692028f05c74f548813e45e", "quote": "A withdrawal vacates the allocation held by the participant."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "unsupported_assumption",
+      "invariant": "After a withdrawal, the cohort baseline marker remains in use, the held slot vacates exactly once, and re-enrolment draws a fresh slot.",
+      "contract_bindings": [
+        {"file": "visible/cohorts/cohort_randomizer.py", "sha256": "d2300b43c4af7d15fcc0fd0ad8f9a7475ddcce7b8bf357000ae7256803a8b103", "quote": "Each cohort draw keeps the original baseline marker supplied for the\nparticipant, so later paperwork does not change the cohort's seed."},
+        {"file": "visible/checks/withdrawal_release_test.py", "sha256": "3b0aadd58a1707a26888f1dea9e982c4ed2d8fad3692028f05c74f548813e45e", "quote": "A withdrawal vacates the allocation held by the participant."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "unsupported_assumption",
+      "invariant": "After a withdrawal, the cohort baseline marker remains in use, the held slot vacates exactly once, and re-enrolment draws a fresh slot.",
+      "contract_bindings": [
+        {"file": "visible/cohorts/cohort_randomizer.py", "sha256": "d2300b43c4af7d15fcc0fd0ad8f9a7475ddcce7b8bf357000ae7256803a8b103", "quote": "Each cohort draw keeps the original baseline marker supplied for the\nparticipant, so later paperwork does not change the cohort's seed."},
+        {"file": "visible/checks/withdrawal_release_test.py", "sha256": "3b0aadd58a1707a26888f1dea9e982c4ed2d8fad3692028f05c74f548813e45e", "quote": "A withdrawal vacates the allocation held by the participant."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "unsupported_assumption",
+      "invariant": "After a withdrawal, the cohort baseline marker remains in use, the held slot vacates exactly once, and re-enrolment draws a fresh slot.",
+      "contract_bindings": [
+        {"file": "visible/cohorts/cohort_randomizer.py", "sha256": "d2300b43c4af7d15fcc0fd0ad8f9a7475ddcce7b8bf357000ae7256803a8b103", "quote": "Each cohort draw keeps the original baseline marker supplied for the\nparticipant, so later paperwork does not change the cohort's seed."},
+        {"file": "visible/checks/withdrawal_release_test.py", "sha256": "3b0aadd58a1707a26888f1dea9e982c4ed2d8fad3692028f05c74f548813e45e", "quote": "A withdrawal vacates the allocation held by the participant."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "unsupported_assumption",
+      "invariant": "After a withdrawal, the cohort baseline marker remains in use, the held slot vacates exactly once, and re-enrolment draws a fresh slot.",
+      "contract_bindings": [
+        {"file": "visible/cohorts/cohort_randomizer.py", "sha256": "d2300b43c4af7d15fcc0fd0ad8f9a7475ddcce7b8bf357000ae7256803a8b103", "quote": "Each cohort draw keeps the original baseline marker supplied for the\nparticipant, so later paperwork does not change the cohort's seed."},
+        {"file": "visible/checks/withdrawal_release_test.py", "sha256": "3b0aadd58a1707a26888f1dea9e982c4ed2d8fad3692028f05c74f548813e45e", "quote": "A withdrawal vacates the allocation held by the participant."}
+      ]
+    }
+  ]
+}

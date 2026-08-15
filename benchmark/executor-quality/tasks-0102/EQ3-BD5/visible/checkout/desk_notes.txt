@@ -1,0 +1,2 @@
+The checkout desk confirms a prop and the next scene before logging an incident.
+The display refreshes after a stage manager completes an action.

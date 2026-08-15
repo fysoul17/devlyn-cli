@@ -1,0 +1,2 @@
+Run the enrollment check after correcting a desk-entry issue.
+The scenario uses a previously withdrawn participant.

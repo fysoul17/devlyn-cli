@@ -1,0 +1,15 @@
+diff --git a/intake/work_order.py b/intake/work_order.py
+--- a/intake/work_order.py
++++ b/intake/work_order.py
+@@ -13,7 +13,10 @@ def new_order(order_id, tenant, requested_date):
+ 
+ def reschedule_order(order, requested_date):
+     order["requested_date"] = requested_date
+-    return False
++    order["status"] = "scheduled"
++    order["no_access_visits"] = []
++    order["access_bookings"] = []
++    return True
+ 
+ 
+ def record_no_access(order, happened_at):

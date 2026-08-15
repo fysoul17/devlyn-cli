@@ -1,0 +1,14 @@
+--- a/intake/refill_intake.py
++++ b/intake/refill_intake.py
+@@ -14,2 +14,10 @@
+ def submit_refill(state, fill_id, medication, units):
+-    return {"accepted": False, "fill_id": fill_id, "reason": "not-recorded"}
++    existing = state["holds"].get(fill_id)
++    if existing:
++        return {"accepted": True, "duplicate": True, "fill_id": fill_id}
++    if units <= 0 or state["units_left"] < units:
++        return {"accepted": False, "fill_id": fill_id, "reason": "units"}
++    state["units_left"] -= units
++    state["holds"][fill_id] = {"medication": medication, "units": units}
++    state["debits"].append({"fill_id": fill_id, "units": units})
++    return {"accepted": True, "duplicate": False, "fill_id": fill_id}

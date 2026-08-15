@@ -1,0 +1,3 @@
+Window 1: new prescriptions
+Window 2: refill pickup
+Window 3: pharmacist consultation

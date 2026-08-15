@@ -1,0 +1,1 @@
+Confirm patient identity, plan code, and requested quantity before intake.

@@ -1,0 +1,6 @@
+diff --git a/support/hours.txt b/support/hours.txt
+--- a/support/hours.txt
++++ b/support/hours.txt
+@@ -1 +1,2 @@
+ Desk hours: 08:00 through 18:00.
++Call the desk before arrival.

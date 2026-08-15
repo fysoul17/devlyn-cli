@@ -1,0 +1,2 @@
+Daily close compares submitted identifiers with the authorization journal.
+Any reversal requires a reviewer note before reconciliation.

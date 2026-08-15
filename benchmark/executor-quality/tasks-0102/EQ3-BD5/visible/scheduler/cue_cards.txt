@@ -1,0 +1,2 @@
+Cue cards list entrances, exits, and scene-change calls for the crew.
+The calling desk reads the next card before a blackout.

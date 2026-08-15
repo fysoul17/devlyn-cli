@@ -1,0 +1,22 @@
+diff --git a/intake/work_order.py b/intake/work_order.py
+--- a/intake/work_order.py
++++ b/intake/work_order.py
+@@ -13,11 +13,13 @@ def new_order(order_id, tenant, requested_date):
+ 
+ def reschedule_order(order, requested_date):
+     order["requested_date"] = requested_date
+-    return False
++    order["status"] = "scheduled"
++    return True
+ 
+ 
+ def record_no_access(order, happened_at):
+-    order["clock_opened_at"] = happened_at
+-    order["no_access_visits"].append(happened_at)
+-    order["status"] = "access_missed"
+-    return False
++    order["no_access_visits"].append(happened_at)
++    if len(order["no_access_visits"]) >= 2 and not order["fee_waivers"]:
++        order["fee_waivers"].append({"order": order["id"], "amount": 75})
++    order["status"] = "access_missed"
++    return len(order["no_access_visits"]) >= 2
