@@ -270,6 +270,84 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# 5b. Every completed managed-skills install writes its own version marker.
+# ---------------------------------------------------------------------------
+section "Check 5b: Installed skill roots carry exact version markers"
+if make_temp_dir tmp_install_marker /tmp/devlyn-install-marker.XXXXXX; then
+  marker_home="$tmp_install_marker/home"
+  marker_project="$tmp_install_marker/project"
+  installer="$PWD/bin/devlyn.js"
+  mkdir -p "$marker_home" "$marker_project"
+
+  if (cd "$marker_project" \
+      && HOME="$marker_home" node "$installer" -y >"$tmp_install_marker/claude.log" 2>&1 \
+      && HOME="$marker_home" node "$installer" agents all >"$tmp_install_marker/agents.log" 2>&1); then
+    if python3 - "$installer" "$marker_home" "$marker_project" <<'PY'
+import json
+import pathlib
+import stat
+import sys
+
+installer = pathlib.Path(sys.argv[1])
+home = pathlib.Path(sys.argv[2])
+project = pathlib.Path(sys.argv[3])
+package = json.loads((installer.parent.parent / "package.json").read_text())
+expected = {"schemaVersion": 1, "package": package["name"], "version": package["version"]}
+roots = [
+    project / ".claude" / "skills",
+    home / ".codex" / "skills",
+    home / ".agents" / "skills",
+    home / ".grok" / "skills",
+]
+for root in roots:
+    marker = root / ".devlyn-install.json"
+    actual = json.loads(marker.read_text())
+    if actual != expected:
+        raise SystemExit(f"{marker}: expected {expected}, got {actual}")
+    if stat.S_IMODE(marker.stat().st_mode) != 0o600:
+        raise SystemExit(f"{marker}: expected mode 0600")
+    if list(root.glob(".devlyn-install.json.*.tmp")):
+        raise SystemExit(f"{root}: stale marker temp file")
+PY
+    then
+      if grep -Fxq '.claude/skills/.devlyn-install.json' "$marker_project/.gitignore"; then
+        ok "Claude, Codex, shared-agent, and Grok roots have exact 0600 markers; project marker is ignored"
+      else
+        bad "Claude project install must ignore its local marker"
+      fi
+    else
+      bad "completed installs must write the exact per-root marker"
+    fi
+  else
+    bad "isolated managed-skills install failed"
+  fi
+
+  incomplete="$tmp_install_marker/incomplete"
+  mkdir -p "$incomplete/package" "$incomplete/home/.codex/skills" "$incomplete/claude/.claude/skills" "$incomplete/codex"
+  cp -R bin config package.json "$incomplete/package/"
+  rm -rf "$incomplete/package/config/skills/devlyn:queue"
+  printf '{"version":"stale"}\n' > "$incomplete/home/.codex/skills/.devlyn-install.json"
+  printf '{"version":"stale"}\n' > "$incomplete/claude/.claude/skills/.devlyn-install.json"
+  if ! (cd "$incomplete/claude" \
+      && HOME="$incomplete/home" node "$incomplete/package/bin/devlyn.js" -y >"$incomplete/claude.log" 2>&1) \
+      && ! (cd "$incomplete/codex" \
+      && HOME="$incomplete/home" node "$incomplete/package/bin/devlyn.js" agents codex >"$incomplete/codex.log" 2>&1) \
+      && grep -Fq 'Incomplete devlyn skill install; missing: devlyn:queue' "$incomplete/claude.log" \
+      && grep -Fq 'Incomplete devlyn skill install; missing: devlyn:queue' "$incomplete/codex.log" \
+      && [ -d "$incomplete/claude/.claude/skills/devlyn:resolve" ] \
+      && [ -d "$incomplete/home/.codex/skills/devlyn:resolve" ] \
+      && [ ! -e "$incomplete/claude/.claude/skills/.devlyn-install.json" ] \
+      && [ ! -e "$incomplete/home/.codex/skills/.devlyn-install.json" ]; then
+    ok "incomplete Claude and Codex copies fail visibly without stale or replacement markers"
+  else
+    bad "incomplete Claude and Codex copies must fail visibly without an install marker"
+  fi
+  rm -rf "$tmp_install_marker"
+else
+  bad "could not allocate install-marker smoke directory"
+fi
+
+# ---------------------------------------------------------------------------
 # 6. Source ↔ installed mirror parity on critical path.
 # Only runs if .claude/skills exists (i.e. installer has been run).
 # ---------------------------------------------------------------------------
