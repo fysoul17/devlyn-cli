@@ -16,6 +16,7 @@ const PKG = require('../package.json');
 // ui-*) stay Claude-core-only, matching the pre-existing Codex bundle.
 const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', 'devlyn:queue', '_shared'];
 const DEVLYN_SKILL_DIR_STAMP = '__DEVLYN_SKILL_DIR__';
+const DEVLYN_INSTALL_MARKER = '.devlyn-install.json';
 
 // Cross-agent shared skills directory read by BOTH oh-my-pi and Pi. Verified
 // from the omp binary's skill-provider strings ("skills from .agents/skills —
@@ -354,6 +355,39 @@ function copyRecursive(src, dest, baseDir) {
   }
 }
 
+function clearInstallMarker(skillsDir) {
+  fs.rmSync(path.join(skillsDir, DEVLYN_INSTALL_MARKER), { force: true });
+}
+
+function assertCompleteSkillInstall(sourceSkillsDir, skillsDir, skillNames) {
+  const missing = skillNames.filter((skillName) =>
+    !fs.existsSync(path.join(sourceSkillsDir, skillName))
+      || !fs.existsSync(path.join(skillsDir, skillName)));
+  if (missing.length > 0) {
+    throw new Error(`Incomplete devlyn skill install; missing: ${missing.join(', ')}`);
+  }
+}
+
+function writeInstallMarker(skillsDir) {
+  const markerPath = path.join(skillsDir, DEVLYN_INSTALL_MARKER);
+  const tempPath = `${markerPath}.${process.pid}.tmp`;
+  const marker = {
+    schemaVersion: 1,
+    package: PKG.name,
+    version: PKG.version,
+  };
+  try {
+    fs.writeFileSync(tempPath, JSON.stringify(marker, null, 2) + '\n', {
+      encoding: 'utf8',
+      flag: 'wx',
+      mode: 0o600,
+    });
+    fs.renameSync(tempPath, markerPath);
+  } finally {
+    fs.rmSync(tempPath, { force: true });
+  }
+}
+
 function shellDoubleQuoteDefault(value) {
   if (value.includes('\n')) {
     throw new Error(`Cannot stamp skill path with newline: ${value}`);
@@ -594,10 +628,10 @@ function installSkillsForCLI(cliKey) {
   if (!cli || !cli.skillsDir || !cli.skillsToInstall) return 0;
 
   const sourceSkillsDir = path.join(CONFIG_SOURCE, 'skills');
-  if (!fs.existsSync(sourceSkillsDir)) return 0;
   if (!fs.existsSync(cli.skillsDir)) {
     fs.mkdirSync(cli.skillsDir, { recursive: true });
   }
+  clearInstallMarker(cli.skillsDir);
 
   const removed = cleanupDeprecated(path.dirname(cli.skillsDir));
   if (removed > 0) {
@@ -619,6 +653,8 @@ function installSkillsForCLI(cliKey) {
     copied++;
     log(`  → ${cli.skillsDir.replace(os.homedir(), '~')}/${skillName}`, 'dim');
   }
+  assertCompleteSkillInstall(sourceSkillsDir, cli.skillsDir, cli.skillsToInstall);
+  writeInstallMarker(cli.skillsDir);
   return copied;
 }
 
@@ -726,15 +762,20 @@ function installAgentsForAllDetected() {
 // is chosen. Behavior is unchanged from the previous unconditional core install.
 function installClaudeCore() {
   const targetDir = getTargetDir();
+  const skillsDir = path.join(targetDir, 'skills');
   log('\n📁 Installing Claude Code config to .claude/', 'green');
+  if (!fs.existsSync(skillsDir)) fs.mkdirSync(skillsDir, { recursive: true });
+  clearInstallMarker(skillsDir);
   const refreshed = cleanManagedSkillDirs(
     path.join(CONFIG_SOURCE, 'skills'),
-    path.join(targetDir, 'skills'),
+    skillsDir,
   );
   if (refreshed > 0) {
     log(`  🔄 Refreshing ${refreshed} managed skill director${refreshed === 1 ? 'y' : 'ies'}`, 'dim');
   }
   copyRecursive(CONFIG_SOURCE, targetDir, targetDir);
+  assertCompleteSkillInstall(path.join(CONFIG_SOURCE, 'skills'), skillsDir, DEVLYN_CORE_SKILLS);
+  writeInstallMarker(skillsDir);
 
   // Remove deprecated files from previous versions
   const removed = cleanupDeprecated(targetDir);
@@ -751,17 +792,21 @@ function installClaudeCore() {
     log('  → CLAUDE.md', 'dim');
   }
 
-  // Add .devlyn/ (pipeline state directory) to .gitignore
+  // Keep installer-managed pipeline state and install metadata out of git.
   const gitignorePath = path.join(process.cwd(), '.gitignore');
-  const gitignoreEntry = '.devlyn/';
+  const gitignoreEntries = ['.devlyn/', '.claude/skills/.devlyn-install.json'];
   let gitignoreContent = fs.existsSync(gitignorePath)
     ? fs.readFileSync(gitignorePath, 'utf8')
     : '';
-  if (!gitignoreContent.split('\n').some((line) => line.trim() === gitignoreEntry || line.trim() === '.devlyn')) {
+  const gitignoreLines = gitignoreContent.split('\n').map((line) => line.trim());
+  const missingGitignoreEntries = gitignoreEntries.filter((entry) =>
+    !gitignoreLines.includes(entry) && !(entry === '.devlyn/' && gitignoreLines.includes('.devlyn')));
+  if (missingGitignoreEntries.length > 0) {
     const prefix = gitignoreContent && !gitignoreContent.endsWith('\n') ? '\n' : '';
-    const header = gitignoreContent ? '\n# devlyn-cli pipeline state\n' : '# devlyn-cli pipeline state\n';
-    fs.writeFileSync(gitignorePath, gitignoreContent + prefix + header + gitignoreEntry + '\n');
-    log('  → .gitignore (added .devlyn/)', 'dim');
+    const hasManagedHeader = gitignoreLines.includes('# devlyn-cli pipeline state');
+    const header = hasManagedHeader ? '' : gitignoreContent ? '\n# devlyn-cli pipeline state\n' : '# devlyn-cli pipeline state\n';
+    fs.writeFileSync(gitignorePath, gitignoreContent + prefix + header + missingGitignoreEntries.join('\n') + '\n');
+    log(`  → .gitignore (added ${missingGitignoreEntries.join(', ')})`, 'dim');
   }
 
   // Enable agent teams in project settings
