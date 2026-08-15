@@ -34,8 +34,8 @@
     "visible/calendar/hearing_scheduler.py",
     "visible/checks/continuance_rollback_test.py"
   ],
-  "contract_tokens_a": ["circuitglass", "intervalgate", "lastfolio"],
-  "contract_tokens_b": ["horizonfold", "docketweave", "rewindcase"],
+  "contract_tokens_a": ["calendar", "scheduler", "interval"],
+  "contract_tokens_b": ["continuance", "rollback", "chain"],
   "outcome_tokens_a": ["notice", "latest"],
   "outcome_tokens_b": ["continuance", "chain"]
 }

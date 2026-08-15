@@ -6,11 +6,11 @@
          "caption": packet["caption"],
          "submitted_on": packet["submitted_on"],
      }
-+    if packet["submitted_on"] > docket["accept_until"] and not docket["filings"]:
+     docket["filings"].append(record)
++    if packet["submitted_on"] > docket["accept_until"]:
 +        docket["status"] = "rejected"
 +        docket["trail"].append("rejected")
 +        return False
-     docket["filings"].append(record)
      docket["status"] = "accepted"
      docket["trail"].append("amendment")
      return True

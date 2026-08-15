@@ -5,8 +5,8 @@
       "class": "absent_failure_mode",
       "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
       "contract_bindings": [
-        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "97d2909a6f22477ba90c4b8145eef0467e5452958c80bc3b82b78d72697dc8db", "quote": "crossmatchclasp orderanchor holdlink: a crossmatch holding keeps the chosen unit linked to its order."},
-        {"file": "visible/qa/expiry_release.py", "sha256": "979081c5df80e2d9527082005127e309b79f11ec12e1b761ae3ac16847e22994", "quote": "reconseal expiryqueue ledgerkey: a screened expiry reconciliation returns the order to matching and records quarantine through a unit-event ledger."}
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5", "quote": "Crossmatch holding keeps a selected unit linked to its order until the hold is released."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5", "quote": "During the expiry review, the matching worklist accepts the order and the transfusion service logs the unit's quarantine disposition."}
       ]
     },
     {
@@ -14,8 +14,8 @@
       "class": "absent_failure_mode",
       "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
       "contract_bindings": [
-        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "97d2909a6f22477ba90c4b8145eef0467e5452958c80bc3b82b78d72697dc8db", "quote": "crossmatchclasp orderanchor holdlink: a crossmatch holding keeps the chosen unit linked to its order."},
-        {"file": "visible/qa/expiry_release.py", "sha256": "979081c5df80e2d9527082005127e309b79f11ec12e1b761ae3ac16847e22994", "quote": "reconseal expiryqueue ledgerkey: a screened expiry reconciliation returns the order to matching and records quarantine through a unit-event ledger."}
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5", "quote": "Crossmatch holding keeps a selected unit linked to its order until the hold is released."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5", "quote": "During the expiry review, the matching worklist accepts the order and the transfusion service logs the unit's quarantine disposition."}
       ]
     },
     {
@@ -23,8 +23,8 @@
       "class": "absent_failure_mode",
       "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
       "contract_bindings": [
-        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "97d2909a6f22477ba90c4b8145eef0467e5452958c80bc3b82b78d72697dc8db", "quote": "crossmatchclasp orderanchor holdlink: a crossmatch holding keeps the chosen unit linked to its order."},
-        {"file": "visible/qa/expiry_release.py", "sha256": "979081c5df80e2d9527082005127e309b79f11ec12e1b761ae3ac16847e22994", "quote": "reconseal expiryqueue ledgerkey: a screened expiry reconciliation returns the order to matching and records quarantine through a unit-event ledger."}
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5", "quote": "Crossmatch holding keeps a selected unit linked to its order until the hold is released."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5", "quote": "During the expiry review, the matching worklist accepts the order and the transfusion service logs the unit's quarantine disposition."}
       ]
     },
     {
@@ -32,8 +32,8 @@
       "class": "absent_failure_mode",
       "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
       "contract_bindings": [
-        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "97d2909a6f22477ba90c4b8145eef0467e5452958c80bc3b82b78d72697dc8db", "quote": "crossmatchclasp orderanchor holdlink: a crossmatch holding keeps the chosen unit linked to its order."},
-        {"file": "visible/qa/expiry_release.py", "sha256": "979081c5df80e2d9527082005127e309b79f11ec12e1b761ae3ac16847e22994", "quote": "reconseal expiryqueue ledgerkey: a screened expiry reconciliation returns the order to matching and records quarantine through a unit-event ledger."}
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5", "quote": "Crossmatch holding keeps a selected unit linked to its order until the hold is released."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5", "quote": "During the expiry review, the matching worklist accepts the order and the transfusion service logs the unit's quarantine disposition."}
       ]
     },
     {
@@ -41,8 +41,8 @@
       "class": "absent_failure_mode",
       "invariant": "When a reserved unit expires, holding ends, matching resumes, and quarantine is recorded exactly once.",
       "contract_bindings": [
-        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "97d2909a6f22477ba90c4b8145eef0467e5452958c80bc3b82b78d72697dc8db", "quote": "crossmatchclasp orderanchor holdlink: a crossmatch holding keeps the chosen unit linked to its order."},
-        {"file": "visible/qa/expiry_release.py", "sha256": "979081c5df80e2d9527082005127e309b79f11ec12e1b761ae3ac16847e22994", "quote": "reconseal expiryqueue ledgerkey: a screened expiry reconciliation returns the order to matching and records quarantine through a unit-event ledger."}
+        {"file": "visible/matching/crossmatch_reserver.py", "sha256": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5", "quote": "Crossmatch holding keeps a selected unit linked to its order until the hold is released."},
+        {"file": "visible/qa/expiry_release.py", "sha256": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5", "quote": "During the expiry review, the matching worklist accepts the order and the transfusion service logs the unit's quarantine disposition."}
       ]
     }
   ]

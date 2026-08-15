@@ -1,5 +1,5 @@
-"""The horizonfold docketweave rewindcase case checks a continuance rollback
-preserves the hearing chain after a rejected packet.
+"""This continuance rollback test confirms that a rejected packet preserves
+the hearing chain.
 """
 
 

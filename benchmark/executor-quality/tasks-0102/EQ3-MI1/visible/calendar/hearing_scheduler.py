@@ -1,6 +1,6 @@
 """Calendar staff verify required notice before confirming a hearing.
 
-The circuitglass intervalgate lastfolio rule reads notice from the latest filed record.
+The calendar scheduler measures the required notice interval from the latest filed document.
 """
 
 

@@ -19,4 +19,4 @@ def isolated_once(board, tag):
     )
 
 
-# reconseal expiryqueue ledgerkey: a screened expiry reconciliation returns the order to matching and records quarantine through a unit-event ledger.
+# During the expiry review, the matching worklist accepts the order and the transfusion service logs the unit's quarantine disposition.

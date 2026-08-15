@@ -29,7 +29,7 @@ Task validation checks structure, visible-contract bindings, hidden-ground-truth
 python3 benchmark/executor-quality/scripts/score-cohort.py --ledger <ledger.jsonl>
 ```
 
-The default validity gate requires the frozen 128-row matrix: two exact engine IDs, 32 EQ2 tasks, and two reps. For a pilot ledger, pass `--expected-tasks N`; all other validity and attestation rules remain binding. A valid cohort prints one deterministic JSON verdict. An invalid or infrastructure-invalid cohort prints `UNSCORED` and exits 3.
+The default validity gate requires the frozen 128-row matrix: two exact engine IDs, 32 EQ3 tasks, and two reps. For a pilot ledger, pass `--expected-tasks N`; all other validity and attestation rules remain binding. A valid cohort prints one deterministic JSON verdict. An invalid or infrastructure-invalid cohort prints `UNSCORED` and exits 3.
 
 ## Binding rules
 

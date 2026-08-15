@@ -15,4 +15,4 @@ def held_unit(board, ticket):
     )
 
 
-# crossmatchclasp orderanchor holdlink: a crossmatch holding keeps the chosen unit linked to its order.
+# Crossmatch holding keeps a selected unit linked to its order until the hold is released.
