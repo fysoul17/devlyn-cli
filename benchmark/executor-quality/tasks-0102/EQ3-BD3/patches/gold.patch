@@ -1,0 +1,9 @@
+--- a/booking/cancellation.py
++++ b/booking/cancellation.py
+@@ -25 +25 @@
+-    session["settled"] = session["booked_members"]
++    session["settled"] = list(session["booked_members"])
+@@ -31,0 +32,3 @@
++    session["booked_members"].remove(member)
++    if cancelled_at >= session["award_after"] and member not in session["credits"]:
++        session["credits"].append(member)

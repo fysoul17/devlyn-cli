@@ -1,0 +1,2 @@
+Utility office: extension 204. Route dispatch: extension 118. The after-hours
+line accepts outage reports but does not alter a service packet.

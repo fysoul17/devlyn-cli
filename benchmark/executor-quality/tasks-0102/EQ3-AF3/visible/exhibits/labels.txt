@@ -1,0 +1,2 @@
+Gallery labels are checked against the object register before opening.
+Each display case has a location label used by visitor services.

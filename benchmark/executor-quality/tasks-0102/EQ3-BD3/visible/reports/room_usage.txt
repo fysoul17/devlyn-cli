@@ -1,0 +1,2 @@
+Room usage is grouped by studio and weekday.
+The source list is refreshed after the evening desk shift.

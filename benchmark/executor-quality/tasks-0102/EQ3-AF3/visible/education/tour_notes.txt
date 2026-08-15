@@ -1,0 +1,2 @@
+Docent tours pause at the west gallery during object rotations.
+Visitor services posts the revised route before opening time.

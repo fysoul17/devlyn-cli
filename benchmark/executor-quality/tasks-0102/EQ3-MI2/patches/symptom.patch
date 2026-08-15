@@ -1,7 +1,6 @@
 --- a/dispatch/courier_assigner.js
 +++ b/dispatch/courier_assigner.js
-@@ -32,7 +32,9 @@ function declineAssignment(state, orderId) {
-   if (!assignment) {
+@@ -33,5 +33,7 @@
      throw new Error(`unknown order ${orderId}`);
    }
 -  assignment.status = "declined";

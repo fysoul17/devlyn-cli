@@ -1,0 +1,42 @@
+{
+  "id": "EQ3-MI3",
+  "class": "missed_repo_invariant",
+  "goal": "A corrected meter read can be lower than the preceding accepted read, but the day summary now drops backwards. Keep the correction usable by operations and run python3 visible/checks/run_checks.py after the repair.",
+  "invariant": "When a correction falls below the prior cumulative reading, the compensated ledger keeps tier bands ordered and recalculates the billing cycle exactly once.",
+  "visible_files": [
+    "visible/billing/billing_notes.txt",
+    "visible/billing/rate_card.txt",
+    "visible/billing/settlement.py",
+    "visible/billing/tierer.py",
+    "visible/checks/misread_regression.py",
+    "visible/checks/operator_checklist.txt",
+    "visible/checks/run_checks.py",
+    "visible/checks/smoke_notes.txt",
+    "visible/field/calibration_notes.txt",
+    "visible/field/collection_rounds.py",
+    "visible/field/device_roster.txt",
+    "visible/field/dispatch_board.txt",
+    "visible/ingester/reading_ingester.py",
+    "visible/ingester/intake_notes.txt",
+    "visible/ingester/meter_aliases.py",
+    "visible/ledger/audit_trail.txt",
+    "visible/ledger/correction_forms.txt",
+    "visible/ledger/daily_register.py",
+    "visible/ledger/route_log.py",
+    "visible/reports/exception_report.txt",
+    "visible/reports/handoff_notes.txt",
+    "visible/reports/monthly_close.txt",
+    "visible/reports/usage_summary.py",
+    "visible/support/contact_sheet.txt",
+    "visible/support/training_card.txt"
+  ],
+  "edit_site_dir": "visible/ingester",
+  "contract_artifacts": [
+    "visible/billing/tierer.py",
+    "visible/checks/misread_regression.py"
+  ],
+  "contract_tokens_a": ["tierer", "ordered", "bands"],
+  "contract_tokens_b": ["misread", "regression", "ledger"],
+  "outcome_tokens_a": ["tier", "bands"],
+  "outcome_tokens_b": ["billing", "cycle"]
+}

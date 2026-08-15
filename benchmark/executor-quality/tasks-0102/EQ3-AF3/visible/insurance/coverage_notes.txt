@@ -1,0 +1,2 @@
+Transit coverage is confirmed against the lender's declared value.
+The broker receives the packing date and courier reference.

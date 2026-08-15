@@ -1,0 +1,20 @@
+--- a/ingester/reading_ingester.py
++++ b/ingester/reading_ingester.py
+@@ -6,3 +6,7 @@
+-    for index, reading in enumerate(batch["readings"]):
+-        if reading["meter_id"] == meter_id:
+-            batch["readings"][index] = {
++    for reading in reversed(batch["readings"]):
++        if reading["meter_id"] == meter_id and "cumulative" in reading:
++            rebill_key = f"{meter_id}:{reading['recorded_at']}"
++            if any(entry.get("rebill_key") == rebill_key for entry in batch["readings"]):
++                return True
++            batch["readings"].append({
++                "kind": "adjustment",
+@@ -10 +14 @@
+-                "cumulative": observed,
++                "usage_delta": observed - reading["cumulative"],
+@@ -12 +16,2 @@
+-            }
++                "rebill_key": rebill_key,
++            })

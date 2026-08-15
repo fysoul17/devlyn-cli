@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "unsupported_assumption",
+      "invariant": "When one declaration line cannot be classified, its heading assessment is unwound before bonded clearance, and a corrected resubmission is assessed exactly once.",
+      "contract_bindings": [
+        {"file": "visible/assessment/duty_assessor.py", "sha256": "55338d113b240fe23992fd1bfc18fc22fdf456f9c8a99a3155fc48d91a45f841", "quote": "The duty assessor consolidates each heading into a declaration assessment."},
+        {"file": "visible/checks/bonded_release_contract.txt", "sha256": "32923751d61ac3743207130562be9ce54cbbb8ecf83e1de296b589ff429ef413", "quote": "A bonded release may clear only after every declared line has a confirmed\nclassification."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "unsupported_assumption",
+      "invariant": "When one declaration line cannot be classified, its heading assessment is unwound before bonded clearance, and a corrected resubmission is assessed exactly once.",
+      "contract_bindings": [
+        {"file": "visible/assessment/duty_assessor.py", "sha256": "55338d113b240fe23992fd1bfc18fc22fdf456f9c8a99a3155fc48d91a45f841", "quote": "The duty assessor consolidates each heading into a declaration assessment."},
+        {"file": "visible/checks/bonded_release_contract.txt", "sha256": "32923751d61ac3743207130562be9ce54cbbb8ecf83e1de296b589ff429ef413", "quote": "A bonded release may clear only after every declared line has a confirmed\nclassification."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "unsupported_assumption",
+      "invariant": "When one declaration line cannot be classified, its heading assessment is unwound before bonded clearance, and a corrected resubmission is assessed exactly once.",
+      "contract_bindings": [
+        {"file": "visible/assessment/duty_assessor.py", "sha256": "55338d113b240fe23992fd1bfc18fc22fdf456f9c8a99a3155fc48d91a45f841", "quote": "The duty assessor consolidates each heading into a declaration assessment."},
+        {"file": "visible/checks/bonded_release_contract.txt", "sha256": "32923751d61ac3743207130562be9ce54cbbb8ecf83e1de296b589ff429ef413", "quote": "A bonded release may clear only after every declared line has a confirmed\nclassification."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "unsupported_assumption",
+      "invariant": "When one declaration line cannot be classified, its heading assessment is unwound before bonded clearance, and a corrected resubmission is assessed exactly once.",
+      "contract_bindings": [
+        {"file": "visible/assessment/duty_assessor.py", "sha256": "55338d113b240fe23992fd1bfc18fc22fdf456f9c8a99a3155fc48d91a45f841", "quote": "The duty assessor consolidates each heading into a declaration assessment."},
+        {"file": "visible/checks/bonded_release_contract.txt", "sha256": "32923751d61ac3743207130562be9ce54cbbb8ecf83e1de296b589ff429ef413", "quote": "A bonded release may clear only after every declared line has a confirmed\nclassification."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "unsupported_assumption",
+      "invariant": "When one declaration line cannot be classified, its heading assessment is unwound before bonded clearance, and a corrected resubmission is assessed exactly once.",
+      "contract_bindings": [
+        {"file": "visible/assessment/duty_assessor.py", "sha256": "55338d113b240fe23992fd1bfc18fc22fdf456f9c8a99a3155fc48d91a45f841", "quote": "The duty assessor consolidates each heading into a declaration assessment."},
+        {"file": "visible/checks/bonded_release_contract.txt", "sha256": "32923751d61ac3743207130562be9ce54cbbb8ecf83e1de296b589ff429ef413", "quote": "A bonded release may clear only after every declared line has a confirmed\nclassification."}
+      ]
+    }
+  ]
+}

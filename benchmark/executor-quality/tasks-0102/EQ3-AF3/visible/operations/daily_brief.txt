@@ -1,0 +1,2 @@
+The morning brief lists outgoing crates and loading bay times.
+Collections management confirms the route sequence with security.

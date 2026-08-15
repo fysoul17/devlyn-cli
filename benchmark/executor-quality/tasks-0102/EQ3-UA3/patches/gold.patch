@@ -1,0 +1,16 @@
+--- a/declarations/parser.py
++++ b/declarations/parser.py
+@@ -18,9 +18,12 @@
+     for position, raw_line in enumerate(raw_lines, start=1):
+         line, error = classify_line(raw_line)
+         if error:
+             preview["errors"].append({"line": position, "message": error})
+-            return preview
++            continue
+         preview["accepted_lines"].append(line)
++    if preview["errors"]:
++        return preview
++    for line in preview["accepted_lines"]:
+         assessor.record_line(reference, line)
+     preview["release_requested"] = True
+     return preview

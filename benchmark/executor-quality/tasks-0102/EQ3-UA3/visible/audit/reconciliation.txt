@@ -1,0 +1,2 @@
+Reconciliation compares the assessment journal with the broker's daily
+submission list before the shift closes.

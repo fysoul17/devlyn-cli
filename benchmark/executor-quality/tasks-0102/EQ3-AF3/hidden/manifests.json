@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "absent_failure_mode",
+      "invariant": "When a loan is recalled during outbound transit, its original slot is restored and its insurance rider is released exactly once, and treatment blocks any outbound departure.",
+      "contract_bindings": [
+        {"file": "visible/conservation/treatment_gate.py", "sha256": "442e8531d6a9d7c037bcd7f2c69e6e8bcafb21b8f76e1038274779650ab76d39", "quote": "The conservation registrar allows outbound movement only after treatment clearance has been recorded."},
+        {"file": "visible/checks/recall_transit_test.py", "sha256": "52da842ae759eb840b84f68455c62d98de37f73f62b4defe8b22a4ea87a389e0", "quote": "The recall acceptance test identifies the exhibit slot that was occupied before dispatch and records the insurance rider involved in the case."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "absent_failure_mode",
+      "invariant": "When a loan is recalled during outbound transit, its original slot is restored and its insurance rider is released exactly once, and treatment blocks any outbound departure.",
+      "contract_bindings": [
+        {"file": "visible/conservation/treatment_gate.py", "sha256": "442e8531d6a9d7c037bcd7f2c69e6e8bcafb21b8f76e1038274779650ab76d39", "quote": "The conservation registrar allows outbound movement only after treatment clearance has been recorded."},
+        {"file": "visible/checks/recall_transit_test.py", "sha256": "52da842ae759eb840b84f68455c62d98de37f73f62b4defe8b22a4ea87a389e0", "quote": "The recall acceptance test identifies the exhibit slot that was occupied before dispatch and records the insurance rider involved in the case."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "absent_failure_mode",
+      "invariant": "When a loan is recalled during outbound transit, its original slot is restored and its insurance rider is released exactly once, and treatment blocks any outbound departure.",
+      "contract_bindings": [
+        {"file": "visible/conservation/treatment_gate.py", "sha256": "442e8531d6a9d7c037bcd7f2c69e6e8bcafb21b8f76e1038274779650ab76d39", "quote": "The conservation registrar allows outbound movement only after treatment clearance has been recorded."},
+        {"file": "visible/checks/recall_transit_test.py", "sha256": "52da842ae759eb840b84f68455c62d98de37f73f62b4defe8b22a4ea87a389e0", "quote": "The recall acceptance test identifies the exhibit slot that was occupied before dispatch and records the insurance rider involved in the case."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "absent_failure_mode",
+      "invariant": "When a loan is recalled during outbound transit, its original slot is restored and its insurance rider is released exactly once, and treatment blocks any outbound departure.",
+      "contract_bindings": [
+        {"file": "visible/conservation/treatment_gate.py", "sha256": "442e8531d6a9d7c037bcd7f2c69e6e8bcafb21b8f76e1038274779650ab76d39", "quote": "The conservation registrar allows outbound movement only after treatment clearance has been recorded."},
+        {"file": "visible/checks/recall_transit_test.py", "sha256": "52da842ae759eb840b84f68455c62d98de37f73f62b4defe8b22a4ea87a389e0", "quote": "The recall acceptance test identifies the exhibit slot that was occupied before dispatch and records the insurance rider involved in the case."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "absent_failure_mode",
+      "invariant": "When a loan is recalled during outbound transit, its original slot is restored and its insurance rider is released exactly once, and treatment blocks any outbound departure.",
+      "contract_bindings": [
+        {"file": "visible/conservation/treatment_gate.py", "sha256": "442e8531d6a9d7c037bcd7f2c69e6e8bcafb21b8f76e1038274779650ab76d39", "quote": "The conservation registrar allows outbound movement only after treatment clearance has been recorded."},
+        {"file": "visible/checks/recall_transit_test.py", "sha256": "52da842ae759eb840b84f68455c62d98de37f73f62b4defe8b22a4ea87a389e0", "quote": "The recall acceptance test identifies the exhibit slot that was occupied before dispatch and records the insurance rider involved in the case."}
+      ]
+    }
+  ]
+}

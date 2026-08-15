@@ -1,0 +1,2 @@
+Managers compare room use with the published timetable each morning.
+The report is informational and does not change class assignments.

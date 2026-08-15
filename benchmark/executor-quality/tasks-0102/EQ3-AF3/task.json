@@ -1,0 +1,41 @@
+{
+  "id": "EQ3-AF3",
+  "class": "absent_failure_mode",
+  "goal": "Approved records stay marked ready when the loan-out desk attempts dispatch. A condition change needs to keep the object at the desk, and returning an already-sent object leaves the desk state incomplete. Repair the flow and run python3 visible/checks/run_checks.py after the change.",
+  "invariant": "When a loan is recalled during outbound transit, its original slot is restored and its insurance rider is released exactly once, and treatment blocks any outbound departure.",
+  "visible_files": [
+    "visible/catalog/accessions.py",
+    "visible/catalog/lender_profiles.txt",
+    "visible/catalog/object_labels.txt",
+    "visible/checks/dispatch_smoke.py",
+    "visible/checks/recall_transit_test.py",
+    "visible/checks/run_checks.py",
+    "visible/checks/smoke_notes.txt",
+    "visible/conservation/bench_notes.txt",
+    "visible/conservation/stable_lists.txt",
+    "visible/conservation/treatment_gate.py",
+    "visible/desk/desk_notes.txt",
+    "visible/desk/handover_log.txt",
+    "visible/desk/loan_out.py",
+    "visible/education/programs.txt",
+    "visible/education/tour_notes.txt",
+    "visible/exhibits/labels.txt",
+    "visible/exhibits/layout.py",
+    "visible/exhibits/rotation.txt",
+    "visible/insurance/claims_contacts.txt",
+    "visible/insurance/coverage_notes.txt",
+    "visible/insurance/rider_register.py",
+    "visible/operations/courier_notes.txt",
+    "visible/operations/daily_brief.txt",
+    "visible/operations/packing.py"
+  ],
+  "edit_site_dir": "visible/desk",
+  "contract_artifacts": [
+    "visible/conservation/treatment_gate.py",
+    "visible/checks/recall_transit_test.py"
+  ],
+  "contract_tokens_a": ["conservation", "treatment", "clearance"],
+  "contract_tokens_b": ["recall", "exhibit", "rider"],
+  "outcome_tokens_a": ["treatment", "outbound"],
+  "outcome_tokens_b": ["slot", "rider"]
+}

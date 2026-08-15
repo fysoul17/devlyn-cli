@@ -1,0 +1,18 @@
+--- a/ingester/reading_ingester.py
++++ b/ingester/reading_ingester.py
+@@ -5,10 +5,13 @@
+ def submit_correction(batch, meter_id, observed):
+-    for index, reading in enumerate(batch["readings"]):
++    for index in range(len(batch["readings"]) - 1, -1, -1):
++        reading = batch["readings"][index]
+         if reading["meter_id"] == meter_id:
+-            batch["readings"][index] = {
++            corrected = {
+                 "meter_id": meter_id,
+                 "cumulative": observed,
+                 "recorded_at": reading["recorded_at"],
+             }
++            batch["readings"][index] = corrected
++            batch["readings"].append(dict(reading))
+             return True
+     return False

@@ -1,0 +1,2 @@
+The release clerk records the warehouse location, the broker reference, and
+the receiving carrier on the bonded release form.

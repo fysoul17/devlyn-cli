@@ -1,0 +1,2 @@
+Warehouse staff may stage sealed goods before a release request is accepted.
+The staging log is not a release authorization.

@@ -1,0 +1,3 @@
+Broker intake staff should keep the source invoice beside the declaration
+while entering values. A correction may be submitted after the broker has
+confirmed the revised commodity description.

@@ -1,0 +1,2 @@
+Busan, Incheon, and Pyeongtaek are listed here for training examples.
+Port selection does not change the declared commodity value.

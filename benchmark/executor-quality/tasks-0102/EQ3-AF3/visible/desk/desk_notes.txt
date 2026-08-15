@@ -1,0 +1,2 @@
+The loan-out desk checks approval records before arranging a courier handoff.
+Desk staff keep the receiving venue's contact sheet with the case folder.

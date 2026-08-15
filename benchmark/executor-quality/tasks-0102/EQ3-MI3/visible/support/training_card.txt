@@ -1,0 +1,2 @@
+New readers practice route returns using sample cards before they handle a
+live account. Supervisors sign the training card at the end of the shift.

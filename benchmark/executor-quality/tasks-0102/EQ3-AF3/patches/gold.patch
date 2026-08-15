@@ -1,0 +1,22 @@
+--- a/desk/loan_out.py
++++ b/desk/loan_out.py
+@@ -14 +14,6 @@
+-    return False
++    if not loan["approved"] or loan["care_pending"]:
++        return False
++    loan["state"] = "in_transit"
++    loan["position"] = None
++    loan["coverage_open"] = True
++    return True
+@@ -18 +23,10 @@
+-    return False
++    if loan["state"] == "closed":
++        return True
++    if loan["state"] != "in_transit":
++        return False
++    loan["state"] = "closed"
++    loan["position"] = loan["home_position"]
++    if loan["coverage_open"]:
++        loan["coverage_open"] = False
++        loan["coverage_releases"] += 1
++    return True

@@ -1,0 +1,2 @@
+Contact preferences are confirmed before sending class reminders.
+The desk records only the member identifier in a booking action.

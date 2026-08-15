@@ -1,0 +1,13 @@
+--- a/desk/loan_out.py
++++ b/desk/loan_out.py
+@@ -13,0 +14,4 @@
++    if loan["approved"]:
++        loan["state"] = "in_transit"
++        loan["position"] = None
++        return True
+@@ -18 +22,4 @@
+-    return False
++    if loan["state"] != "in_transit":
++        return False
++    loan["state"] = "closed"
++    return True

@@ -1,0 +1,2 @@
+Ask the broker for a corrected description when a commodity code is unclear.
+Do not promise release timing in a message template.

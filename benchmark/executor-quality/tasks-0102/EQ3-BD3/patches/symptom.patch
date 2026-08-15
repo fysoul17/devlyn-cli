@@ -1,0 +1,8 @@
+--- a/booking/cancellation.py
++++ b/booking/cancellation.py
+@@ -29,4 +29,5 @@
+     if member not in session["attendees"]:
+         return False
+     session["attendees"].remove(member)
++    session["booked_members"].remove(member)
+     return True

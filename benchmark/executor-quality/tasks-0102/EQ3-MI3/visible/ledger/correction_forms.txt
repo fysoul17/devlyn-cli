@@ -1,0 +1,2 @@
+A correction form identifies the route, meter, original card, and the newly
+observed number. It is retained with the daily register for audit review.

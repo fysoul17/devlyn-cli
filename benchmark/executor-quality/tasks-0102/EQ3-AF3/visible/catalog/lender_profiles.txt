@@ -1,0 +1,2 @@
+Lender profiles list handling restrictions and courier preferences.
+The collections office confirms contact details before dispatch.

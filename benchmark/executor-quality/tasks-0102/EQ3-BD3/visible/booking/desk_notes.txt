@@ -1,0 +1,2 @@
+Front-desk staff confirm the class and member before removing a booking.
+Capacity displays refresh after a desk action is complete.

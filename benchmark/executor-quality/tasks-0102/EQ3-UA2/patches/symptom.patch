@@ -1,6 +1,7 @@
 --- a/housekeeping/room_state_updater.js
 +++ b/housekeeping/room_state_updater.js
 @@ -3,7 +3,7 @@
+     return {
        room: {
          ...room,
 -        state: "dirty",

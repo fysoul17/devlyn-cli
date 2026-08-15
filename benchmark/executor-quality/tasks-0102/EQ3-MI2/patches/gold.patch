@@ -1,9 +1,6 @@
 --- a/planning/batch_optimizer.js
 +++ b/planning/batch_optimizer.js
-@@ -11,7 +11,19 @@ function lockedOrderIds(state) {
-   return orderIds;
- }
- 
+@@ -13,0 +14,11 @@
 +function completeDecline(state, assignment) {
 +  if (!isAssignmentLocked(state, assignment.orderId)) {
 +    return null;
@@ -15,15 +12,11 @@
 +  return { orderId: assignment.orderId, rank: assignment.rank };
 +}
 +
- function sealWave(state, waveId, orderIds) {
+@@ -14,0 +26 @@
 +  state.declineHandler = (assignment) => completeDecline(state, assignment);
-   const assignments = orderIds.map((orderId) => {
-     const assignment = state.assignments.get(orderId);
-     if (!assignment) {
 --- a/dispatch/courier_assigner.js
 +++ b/dispatch/courier_assigner.js
-@@ -32,7 +32,13 @@ function declineAssignment(state, orderId) {
-   if (!assignment) {
+@@ -33,5 +33,11 @@
      throw new Error(`unknown order ${orderId}`);
    }
 -  assignment.status = "declined";

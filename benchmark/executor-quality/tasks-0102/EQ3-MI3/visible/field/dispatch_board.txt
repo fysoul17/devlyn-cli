@@ -1,0 +1,2 @@
+Dispatch posts route departures, return times, and equipment swaps. Billing
+staff use the board only to answer customer timing questions.

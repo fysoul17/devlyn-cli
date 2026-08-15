@@ -1,0 +1,2 @@
+Couriers receive a sealed handoff sheet and a route contact number.
+Packing staff record crate condition before the vehicle leaves.

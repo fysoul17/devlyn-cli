@@ -1,0 +1,2 @@
+Assessment staff compare declared value with the commercial invoice before
+posting a duty amount. A tariff rate is selected from the confirmed heading.

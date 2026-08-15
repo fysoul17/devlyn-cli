@@ -1,0 +1,2 @@
+Residential water is billed in three usage bands. The monthly close process
+keeps the published rate card separate from route-level meter intake.

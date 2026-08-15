@@ -1,0 +1,6 @@
+--- a/reference/ports.txt
++++ b/reference/ports.txt
+@@ -1,2 +1,3 @@
+ Busan, Incheon, and Pyeongtaek are listed here for training examples.
+ Port selection does not change the declared commodity value.
++The examples are reviewed with the broker training pack.

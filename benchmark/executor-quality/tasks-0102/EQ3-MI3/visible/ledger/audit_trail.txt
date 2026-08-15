@@ -1,0 +1,2 @@
+The audit trail records who accepted a field change and when it was received.
+It does not replace the technician's original route card.

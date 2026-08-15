@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "broken_dependency",
+      "invariant": "When a member cancels inside the cutoff, the booked-seat count is decremented, a class credit is issued exactly once instead of a refund, and the locked payroll roster remains unchanged.",
+      "contract_bindings": [
+        {"file": "visible/payroll/instructor_payroll.py", "sha256": "7ec9aebd2ea5ee64c7c619337c13457dbbe7c25010ba15a728899121a6f5cca1", "quote": "Instructor payroll uses the locked roster captured at attendance finalization."},
+        {"file": "visible/checks/late_cancel_policy.py", "sha256": "9a3b16e43cf0480590ceed7620de616619d197fc79a8d06dbde554c8ad5396d2", "quote": "The late-cancel policy issues a class credit once, rather than a refund,\nwhen a member cancels inside the published cutoff."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "broken_dependency",
+      "invariant": "When a member cancels inside the cutoff, the booked-seat count is decremented, a class credit is issued exactly once instead of a refund, and the locked payroll roster remains unchanged.",
+      "contract_bindings": [
+        {"file": "visible/payroll/instructor_payroll.py", "sha256": "7ec9aebd2ea5ee64c7c619337c13457dbbe7c25010ba15a728899121a6f5cca1", "quote": "Instructor payroll uses the locked roster captured at attendance finalization."},
+        {"file": "visible/checks/late_cancel_policy.py", "sha256": "9a3b16e43cf0480590ceed7620de616619d197fc79a8d06dbde554c8ad5396d2", "quote": "The late-cancel policy issues a class credit once, rather than a refund,\nwhen a member cancels inside the published cutoff."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "broken_dependency",
+      "invariant": "When a member cancels inside the cutoff, the booked-seat count is decremented, a class credit is issued exactly once instead of a refund, and the locked payroll roster remains unchanged.",
+      "contract_bindings": [
+        {"file": "visible/payroll/instructor_payroll.py", "sha256": "7ec9aebd2ea5ee64c7c619337c13457dbbe7c25010ba15a728899121a6f5cca1", "quote": "Instructor payroll uses the locked roster captured at attendance finalization."},
+        {"file": "visible/checks/late_cancel_policy.py", "sha256": "9a3b16e43cf0480590ceed7620de616619d197fc79a8d06dbde554c8ad5396d2", "quote": "The late-cancel policy issues a class credit once, rather than a refund,\nwhen a member cancels inside the published cutoff."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "broken_dependency",
+      "invariant": "When a member cancels inside the cutoff, the booked-seat count is decremented, a class credit is issued exactly once instead of a refund, and the locked payroll roster remains unchanged.",
+      "contract_bindings": [
+        {"file": "visible/payroll/instructor_payroll.py", "sha256": "7ec9aebd2ea5ee64c7c619337c13457dbbe7c25010ba15a728899121a6f5cca1", "quote": "Instructor payroll uses the locked roster captured at attendance finalization."},
+        {"file": "visible/checks/late_cancel_policy.py", "sha256": "9a3b16e43cf0480590ceed7620de616619d197fc79a8d06dbde554c8ad5396d2", "quote": "The late-cancel policy issues a class credit once, rather than a refund,\nwhen a member cancels inside the published cutoff."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "broken_dependency",
+      "invariant": "When a member cancels inside the cutoff, the booked-seat count is decremented, a class credit is issued exactly once instead of a refund, and the locked payroll roster remains unchanged.",
+      "contract_bindings": [
+        {"file": "visible/payroll/instructor_payroll.py", "sha256": "7ec9aebd2ea5ee64c7c619337c13457dbbe7c25010ba15a728899121a6f5cca1", "quote": "Instructor payroll uses the locked roster captured at attendance finalization."},
+        {"file": "visible/checks/late_cancel_policy.py", "sha256": "9a3b16e43cf0480590ceed7620de616619d197fc79a8d06dbde554c8ad5396d2", "quote": "The late-cancel policy issues a class credit once, rather than a refund,\nwhen a member cancels inside the published cutoff."}
+      ]
+    }
+  ]
+}

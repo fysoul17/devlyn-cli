@@ -1,0 +1,2 @@
+Run the desk checks after changing a cancellation path.
+The short script is intended for staff-training fixtures.

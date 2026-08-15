@@ -1,0 +1,2 @@
+Weekday templates define the class title, room, and start time.
+The desk may close a class when its displayed count reaches zero.

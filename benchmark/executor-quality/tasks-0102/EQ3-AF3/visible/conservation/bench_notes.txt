@@ -1,0 +1,2 @@
+Condition staff record handling observations before a loan is packed.
+The registrar reviews any active care flag at the start of each shift.

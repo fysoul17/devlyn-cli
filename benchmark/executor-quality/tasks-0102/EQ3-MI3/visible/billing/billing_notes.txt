@@ -1,0 +1,2 @@
+The billing desk reviews exceptions before statements are mailed. A route
+supervisor may attach an intake note to the daily close packet.

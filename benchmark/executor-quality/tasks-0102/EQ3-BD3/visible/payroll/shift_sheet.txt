@@ -1,0 +1,2 @@
+The shift sheet lists the room, coach, and scheduled start time.
+Desk notes are reconciled before the weekly pay run is prepared.

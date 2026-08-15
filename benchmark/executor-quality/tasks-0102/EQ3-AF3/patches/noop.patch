@@ -1,0 +1,6 @@
+--- a/catalog/object_labels.txt
++++ b/catalog/object_labels.txt
+@@ -1,2 +1,3 @@
+ Object labels use the accession number and short public title.
+ Loan paperwork uses the same internal collection reference.
++Collection labels were reviewed at the desk.

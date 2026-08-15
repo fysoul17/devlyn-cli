@@ -1,0 +1,2 @@
+Run the desk smoke check after changing the release decision.
+The acceptance case starts with an approved object and a clear condition record.

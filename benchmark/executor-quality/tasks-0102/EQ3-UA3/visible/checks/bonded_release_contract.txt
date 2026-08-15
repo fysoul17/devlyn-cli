@@ -1,0 +1,2 @@
+A bonded release may clear only after every declared line has a confirmed
+classification. The release desk records the broker's clearance decision.

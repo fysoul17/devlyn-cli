@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "missed_repo_invariant",
+      "invariant": "When a correction falls below the prior cumulative reading, the compensated ledger keeps tier bands ordered and recalculates the billing cycle exactly once.",
+      "contract_bindings": [
+        {"file": "visible/billing/tierer.py", "sha256": "fbdc17befed7c8df1af809f5efe4350b99913fd8852e62aa954bb9d7b336510c", "quote": "The tierer reads an ordered cumulative ledger before it assigns tier bands."},
+        {"file": "visible/checks/misread_regression.py", "sha256": "76a3f8c9ff5f3521a806b326f8884b267ce8450af76a44aec7df9523d1671fc1", "quote": "This misread regression starts a billing cycle from a corrected meter ledger, where each correction is a compensating delta entry rather than an overwritten reading."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "missed_repo_invariant",
+      "invariant": "When a correction falls below the prior cumulative reading, the compensated ledger keeps tier bands ordered and recalculates the billing cycle exactly once.",
+      "contract_bindings": [
+        {"file": "visible/billing/tierer.py", "sha256": "fbdc17befed7c8df1af809f5efe4350b99913fd8852e62aa954bb9d7b336510c", "quote": "The tierer reads an ordered cumulative ledger before it assigns tier bands."},
+        {"file": "visible/checks/misread_regression.py", "sha256": "76a3f8c9ff5f3521a806b326f8884b267ce8450af76a44aec7df9523d1671fc1", "quote": "This misread regression starts a billing cycle from a corrected meter ledger, where each correction is a compensating delta entry rather than an overwritten reading."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "missed_repo_invariant",
+      "invariant": "When a correction falls below the prior cumulative reading, the compensated ledger keeps tier bands ordered and recalculates the billing cycle exactly once.",
+      "contract_bindings": [
+        {"file": "visible/billing/tierer.py", "sha256": "fbdc17befed7c8df1af809f5efe4350b99913fd8852e62aa954bb9d7b336510c", "quote": "The tierer reads an ordered cumulative ledger before it assigns tier bands."},
+        {"file": "visible/checks/misread_regression.py", "sha256": "76a3f8c9ff5f3521a806b326f8884b267ce8450af76a44aec7df9523d1671fc1", "quote": "This misread regression starts a billing cycle from a corrected meter ledger, where each correction is a compensating delta entry rather than an overwritten reading."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "missed_repo_invariant",
+      "invariant": "When a correction falls below the prior cumulative reading, the compensated ledger keeps tier bands ordered and recalculates the billing cycle exactly once.",
+      "contract_bindings": [
+        {"file": "visible/billing/tierer.py", "sha256": "fbdc17befed7c8df1af809f5efe4350b99913fd8852e62aa954bb9d7b336510c", "quote": "The tierer reads an ordered cumulative ledger before it assigns tier bands."},
+        {"file": "visible/checks/misread_regression.py", "sha256": "76a3f8c9ff5f3521a806b326f8884b267ce8450af76a44aec7df9523d1671fc1", "quote": "This misread regression starts a billing cycle from a corrected meter ledger, where each correction is a compensating delta entry rather than an overwritten reading."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "missed_repo_invariant",
+      "invariant": "When a correction falls below the prior cumulative reading, the compensated ledger keeps tier bands ordered and recalculates the billing cycle exactly once.",
+      "contract_bindings": [
+        {"file": "visible/billing/tierer.py", "sha256": "fbdc17befed7c8df1af809f5efe4350b99913fd8852e62aa954bb9d7b336510c", "quote": "The tierer reads an ordered cumulative ledger before it assigns tier bands."},
+        {"file": "visible/checks/misread_regression.py", "sha256": "76a3f8c9ff5f3521a806b326f8884b267ce8450af76a44aec7df9523d1671fc1", "quote": "This misread regression starts a billing cycle from a corrected meter ledger, where each correction is a compensating delta entry rather than an overwritten reading."}
+      ]
+    }
+  ]
+}

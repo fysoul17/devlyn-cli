@@ -1,0 +1,2 @@
+Object labels use the accession number and short public title.
+Loan paperwork uses the same internal collection reference.

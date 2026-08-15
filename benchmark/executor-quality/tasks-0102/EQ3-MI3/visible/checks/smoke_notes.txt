@@ -1,0 +1,2 @@
+Run the route checks before cutting a demonstration statement. The examples
+use a short day so operators can inspect each accepted observation.

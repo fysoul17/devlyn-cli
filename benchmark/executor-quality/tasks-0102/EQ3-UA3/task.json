@@ -1,0 +1,41 @@
+{
+  "id": "EQ3-UA3",
+  "class": "unsupported_assumption",
+  "goal": "A broker says that a declaration preview stops at the first rejected commodity and hides later valid entries. Keep the preview useful for the broker and run python3 visible/checks/run_checks.py after the repair.",
+  "invariant": "When one declaration line cannot be classified, its heading assessment is unwound before bonded clearance, and a corrected resubmission is assessed exactly once.",
+  "visible_files": [
+    "visible/assessment/assessment_journal.py",
+    "visible/assessment/assessor_notes.txt",
+    "visible/assessment/duty_assessor.py",
+    "visible/assessment/tariff_schedule.py",
+    "visible/audit/audit_log.py",
+    "visible/audit/history.txt",
+    "visible/audit/reconciliation.txt",
+    "visible/audit/retention.txt",
+    "visible/checks/bonded_release_contract.txt",
+    "visible/checks/operator_notes.txt",
+    "visible/checks/parser_preview_test.py",
+    "visible/checks/run_checks.py",
+    "visible/declarations/intake_notes.txt",
+    "visible/declarations/line_format.py",
+    "visible/declarations/models.py",
+    "visible/declarations/parser.py",
+    "visible/reference/broker_contacts.txt",
+    "visible/reference/commodity_guidance.txt",
+    "visible/reference/message_templates.txt",
+    "visible/reference/ports.txt",
+    "visible/release/bonded_release.py",
+    "visible/release/gate_policy.py",
+    "visible/release/release_forms.txt",
+    "visible/release/warehouse_notes.txt"
+  ],
+  "edit_site_dir": "visible/declarations",
+  "contract_artifacts": [
+    "visible/assessment/duty_assessor.py",
+    "visible/checks/bonded_release_contract.txt"
+  ],
+  "contract_tokens_a": ["consolidates", "heading", "assessment"],
+  "contract_tokens_b": ["bonded", "clear", "classification"],
+  "outcome_tokens_a": ["heading", "assessment"],
+  "outcome_tokens_b": ["bonded", "clearance"]
+}

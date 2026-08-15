@@ -1,0 +1,2 @@
+Confirm the route identifier, account assignment, and close date before
+handing the packet to the utility office.
