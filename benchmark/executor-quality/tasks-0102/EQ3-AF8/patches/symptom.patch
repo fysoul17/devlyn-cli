@@ -1,0 +1,14 @@
+--- a/editor/setpoint_editor.js
++++ b/editor/setpoint_editor.js
+@@ -9,7 +9,10 @@
+ }
+ 
+ function updateSetpoint(greenhouse, zoneId, profileId) {
+-  return { updated: false, zoneId, profileId };
++  const zone = findZone(greenhouse, zoneId);
++  zone.profileId = profileId;
++  greenhouse.editReceipts.push({ zoneId, profileId });
++  return { updated: true, zoneId, profileId };
+ }
+ 
+ module.exports = { findZone, updateSetpoint };

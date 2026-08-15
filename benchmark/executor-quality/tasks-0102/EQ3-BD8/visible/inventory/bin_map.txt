@@ -1,0 +1,2 @@
+North bench: heritage packets. East bench: dwarf packets. South bench: trial lots.
+Record the bin and bag count before a lot enters the intake queue.

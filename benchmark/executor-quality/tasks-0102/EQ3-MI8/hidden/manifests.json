@@ -1,0 +1,89 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "missed_repo_invariant",
+      "invariant": "At tide-window closure, the pilot and berth release once so a fresh assignment begins with both resources free.",
+      "contract_bindings": [
+        {
+          "file": "visible/tide/tide_window_planner.js",
+          "sha256": "c433ab5eb28ff6757a31652834c689f394b245526af937795ea3032ea45fff53",
+          "quote": "// The tide window planner makes one reservation only after a pilot and berth are both ready."
+        },
+        {
+          "file": "visible/checks/abort_return_test.js",
+          "sha256": "38daf7a3c958539169ecbc99bc3879ce036f8f5af1c1c6e6428f0b7169bc13ad",
+          "quote": "// This closure handoff check confirms that a released berth is clear for a fresh arrival."
+        }
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "missed_repo_invariant",
+      "invariant": "At tide-window closure, the pilot and berth release once so a fresh assignment begins with both resources free.",
+      "contract_bindings": [
+        {
+          "file": "visible/tide/tide_window_planner.js",
+          "sha256": "c433ab5eb28ff6757a31652834c689f394b245526af937795ea3032ea45fff53",
+          "quote": "// The tide window planner makes one reservation only after a pilot and berth are both ready."
+        },
+        {
+          "file": "visible/checks/abort_return_test.js",
+          "sha256": "38daf7a3c958539169ecbc99bc3879ce036f8f5af1c1c6e6428f0b7169bc13ad",
+          "quote": "// This closure handoff check confirms that a released berth is clear for a fresh arrival."
+        }
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "missed_repo_invariant",
+      "invariant": "At tide-window closure, the pilot and berth release once so a fresh assignment begins with both resources free.",
+      "contract_bindings": [
+        {
+          "file": "visible/tide/tide_window_planner.js",
+          "sha256": "c433ab5eb28ff6757a31652834c689f394b245526af937795ea3032ea45fff53",
+          "quote": "// The tide window planner makes one reservation only after a pilot and berth are both ready."
+        },
+        {
+          "file": "visible/checks/abort_return_test.js",
+          "sha256": "38daf7a3c958539169ecbc99bc3879ce036f8f5af1c1c6e6428f0b7169bc13ad",
+          "quote": "// This closure handoff check confirms that a released berth is clear for a fresh arrival."
+        }
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "missed_repo_invariant",
+      "invariant": "At tide-window closure, the pilot and berth release once so a fresh assignment begins with both resources free.",
+      "contract_bindings": [
+        {
+          "file": "visible/tide/tide_window_planner.js",
+          "sha256": "c433ab5eb28ff6757a31652834c689f394b245526af937795ea3032ea45fff53",
+          "quote": "// The tide window planner makes one reservation only after a pilot and berth are both ready."
+        },
+        {
+          "file": "visible/checks/abort_return_test.js",
+          "sha256": "38daf7a3c958539169ecbc99bc3879ce036f8f5af1c1c6e6428f0b7169bc13ad",
+          "quote": "// This closure handoff check confirms that a released berth is clear for a fresh arrival."
+        }
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "missed_repo_invariant",
+      "invariant": "At tide-window closure, the pilot and berth release once so a fresh assignment begins with both resources free.",
+      "contract_bindings": [
+        {
+          "file": "visible/tide/tide_window_planner.js",
+          "sha256": "c433ab5eb28ff6757a31652834c689f394b245526af937795ea3032ea45fff53",
+          "quote": "// The tide window planner makes one reservation only after a pilot and berth are both ready."
+        },
+        {
+          "file": "visible/checks/abort_return_test.js",
+          "sha256": "38daf7a3c958539169ecbc99bc3879ce036f8f5af1c1c6e6428f0b7169bc13ad",
+          "quote": "// This closure handoff check confirms that a released berth is clear for a fresh arrival."
+        }
+      ]
+    }
+  ]
+}

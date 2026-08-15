@@ -1,0 +1,5 @@
+{
+  "name": "container-yard-restack-fixture",
+  "private": true,
+  "engines": { "node": ">=20" }
+}

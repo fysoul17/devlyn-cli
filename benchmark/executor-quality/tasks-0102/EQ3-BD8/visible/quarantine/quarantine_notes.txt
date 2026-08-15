@@ -1,0 +1,2 @@
+Hold notices name the lot, affected shipment portions, result date, and bench.
+The shipping desk receives each recall notice in the order it was recorded.

@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "absent_failure_mode",
+      "invariant": "During an active probe fault, a requested setpoint restores its last-good prior profile, shared air zones remain aligned, and the retry journal records the request exactly once.",
+      "contract_bindings": [
+        {"file": "visible/interlock/zone_interlock.js", "sha256": "78e9f9799cdc9c8a70149f58889e0f2208b35148d4a81ca6d6103df28c2389b3", "quote": "The interlock compares shared air neighbors before accepting a compatible profile."},
+        {"file": "visible/checks/sensor_fault_test.js", "sha256": "5abfdf8e19aa29253a0d6d9c231b5339614f096a91dec57d33e85e302ddcc52c", "quote": "The probe reading fallback retains the prior profile for retry."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "absent_failure_mode",
+      "invariant": "During an active probe fault, a requested setpoint restores its last-good prior profile, shared air zones remain aligned, and the retry journal records the request exactly once.",
+      "contract_bindings": [
+        {"file": "visible/interlock/zone_interlock.js", "sha256": "78e9f9799cdc9c8a70149f58889e0f2208b35148d4a81ca6d6103df28c2389b3", "quote": "The interlock compares shared air neighbors before accepting a compatible profile."},
+        {"file": "visible/checks/sensor_fault_test.js", "sha256": "5abfdf8e19aa29253a0d6d9c231b5339614f096a91dec57d33e85e302ddcc52c", "quote": "The probe reading fallback retains the prior profile for retry."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "absent_failure_mode",
+      "invariant": "During an active probe fault, a requested setpoint restores its last-good prior profile, shared air zones remain aligned, and the retry journal records the request exactly once.",
+      "contract_bindings": [
+        {"file": "visible/interlock/zone_interlock.js", "sha256": "78e9f9799cdc9c8a70149f58889e0f2208b35148d4a81ca6d6103df28c2389b3", "quote": "The interlock compares shared air neighbors before accepting a compatible profile."},
+        {"file": "visible/checks/sensor_fault_test.js", "sha256": "5abfdf8e19aa29253a0d6d9c231b5339614f096a91dec57d33e85e302ddcc52c", "quote": "The probe reading fallback retains the prior profile for retry."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "absent_failure_mode",
+      "invariant": "During an active probe fault, a requested setpoint restores its last-good prior profile, shared air zones remain aligned, and the retry journal records the request exactly once.",
+      "contract_bindings": [
+        {"file": "visible/interlock/zone_interlock.js", "sha256": "78e9f9799cdc9c8a70149f58889e0f2208b35148d4a81ca6d6103df28c2389b3", "quote": "The interlock compares shared air neighbors before accepting a compatible profile."},
+        {"file": "visible/checks/sensor_fault_test.js", "sha256": "5abfdf8e19aa29253a0d6d9c231b5339614f096a91dec57d33e85e302ddcc52c", "quote": "The probe reading fallback retains the prior profile for retry."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "absent_failure_mode",
+      "invariant": "During an active probe fault, a requested setpoint restores its last-good prior profile, shared air zones remain aligned, and the retry journal records the request exactly once.",
+      "contract_bindings": [
+        {"file": "visible/interlock/zone_interlock.js", "sha256": "78e9f9799cdc9c8a70149f58889e0f2208b35148d4a81ca6d6103df28c2389b3", "quote": "The interlock compares shared air neighbors before accepting a compatible profile."},
+        {"file": "visible/checks/sensor_fault_test.js", "sha256": "5abfdf8e19aa29253a0d6d9c231b5339614f096a91dec57d33e85e302ddcc52c", "quote": "The probe reading fallback retains the prior profile for retry."}
+      ]
+    }
+  ]
+}

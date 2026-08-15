@@ -1,0 +1,27 @@
+--- a/receiver/lot_receiver.js
++++ b/receiver/lot_receiver.js
+@@ -3,3 +3,18 @@
++const { openTray } = require("../sampling/germination_sampler");
++const { closeFailedLot } = require("../quarantine/failed_lot_test");
++const { receiptId } = require("../support/receipt_ids");
+ function receiveLot(warehouse, lotId, receivedAt) {
+-  return { accepted: false, lotId, receivedAt };
++  const lot = warehouse.lots.find((item) => item.id === lotId);
++  if (!lot || lot.status !== "pending") {
++    return { accepted: false, lotId, receivedAt };
++  }
++  const tray = openTray(warehouse, lot);
++  if (!tray) {
++    return { accepted: false, lotId, receivedAt };
++  }
++  const receipt = { id: receiptId(lotId), lotId, receivedAt };
++  warehouse.receipts.push(receipt);
++  lot.status = "received";
++  lot.receivedAt = receivedAt;
++  return { accepted: true, lotId, receivedAt, receiptId: receipt.id, trayId: tray.id };
+ }
+@@ -7,3 +22,3 @@
+ function recordSampleFailure(warehouse, lotId, failedAt) {
+-  return { closed: false, lotId, failedAt };
++  return closeFailedLot(warehouse, lotId, failedAt);
+ }

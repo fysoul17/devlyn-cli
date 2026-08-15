@@ -1,0 +1,7 @@
+Yard stack rules
+
+Containers leave a stack from its top edge. A destination stack advertises a
+capacity, but safety screening can reject a particular container after the
+transfer begins. Dispatchers use operation identifiers to distinguish a retry from
+a separate instruction. A failed instruction must leave an understandable
+result at the desk instead of throwing an uncaught exception.

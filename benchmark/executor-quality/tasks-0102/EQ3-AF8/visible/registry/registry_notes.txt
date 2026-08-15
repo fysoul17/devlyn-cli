@@ -1,0 +1,2 @@
+The retry register is reviewed before an operator repeats a deferred request.
+Historical entries remain available to the morning climate report.

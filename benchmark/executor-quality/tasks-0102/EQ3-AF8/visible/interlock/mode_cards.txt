@@ -1,0 +1,2 @@
+Dry profiles share a circulation path with other dry profiles.
+Humid profiles require the matching circulation mode in a joined bay.

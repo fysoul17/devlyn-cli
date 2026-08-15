@@ -1,0 +1,6 @@
+Container yard layout
+
+Stacks A-01 and D-02 are feeder stacks. B-04 and E-06 are their designated
+destinations during the afternoon reshuffle. The fixture keeps a historical
+movement in the yard record so a repair must preserve existing operational
+entries rather than rebuilding the record from scratch.

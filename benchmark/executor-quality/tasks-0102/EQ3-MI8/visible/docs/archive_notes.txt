@@ -1,0 +1,2 @@
+Archive reports after the harbor master has reviewed the daily board.
+Do not remove active records from the operational register.

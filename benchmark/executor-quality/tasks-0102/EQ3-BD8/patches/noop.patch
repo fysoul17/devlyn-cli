@@ -1,0 +1,6 @@
+--- a/reports/shift_summary.txt
++++ b/reports/shift_summary.txt
+@@ -1,2 +1,3 @@
+ The end-of-shift summary lists received bags, dispatched portions, and holds.
+ Supervisors compare the summary with the paper intake ledger before sign-off.
++Checked at shift close.

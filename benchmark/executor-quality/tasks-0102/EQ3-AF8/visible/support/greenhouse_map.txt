@@ -1,0 +1,2 @@
+East bay: A1, B2.
+South bay: reserved for propagation.

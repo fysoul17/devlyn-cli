@@ -1,0 +1,7 @@
+--- a/support/harbor_codes.txt
++++ b/support/harbor_codes.txt
+@@ -1,3 +1,4 @@
+ South channel: H-02
+ North channel: H-07
+ Outer dock: H-11
++Archive channel: H-19

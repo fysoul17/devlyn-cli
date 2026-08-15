@@ -1,0 +1,2 @@
+Confirm bag labels, attendant initials, and the arrival timestamp at intake.
+Repeat scans are recorded as existing receipts instead of new arrivals.

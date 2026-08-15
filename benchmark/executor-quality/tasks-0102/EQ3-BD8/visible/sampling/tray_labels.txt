@@ -1,0 +1,2 @@
+Tray labels include the lot identifier, seed class, bench, and review date.
+Keep the original label with the lot record when a result is reported.

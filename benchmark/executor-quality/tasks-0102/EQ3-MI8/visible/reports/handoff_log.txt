@@ -1,0 +1,2 @@
+The operations handoff includes the vessel queue, staffing notes, and dock status.
+Review the log before the next watch begins.

@@ -1,0 +1,6 @@
+Re-stack journal test
+
+A failed placement creates one compensating journal move. The entry names the
+container, the recorded source, the requested destination, and the lift that
+was reversed. Operators use that entry to reconcile the stack layout after a
+screening rejection without changing unrelated journal history.

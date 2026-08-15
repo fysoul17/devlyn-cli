@@ -1,0 +1,26 @@
+--- a/desk/assignment_desk.js
++++ b/desk/assignment_desk.js
+@@ -15,7 +15,22 @@
+ }
+ 
+ function closeAssignment(harbor, assignmentId, closedAt) {
+-  return { closed: false, assignmentId, closedAt };
++  const assignment = harbor.assignments.find((item) => item.id === assignmentId);
++  if (!assignment || assignment.status === "closed") {
++    return { closed: false, alreadyClosed: true, assignmentId, closedAt };
++  }
++  if (assignment.abortState !== "awaiting-window-close" || assignment.abortAt !== closedAt) {
++    return { closed: false, assignmentId, closedAt };
++  }
++  const pilot = harbor.pilots.find((item) => item.id === assignment.pilotId);
++  if (!pilot) {
++    return { closed: false, assignmentId, closedAt };
++  }
++  pilot.status = "ready";
++  pilot.assignmentId = null;
++  assignment.status = "closed";
++  harbor.releaseLog.push({ assignmentId, pilotId: pilot.id, berthId: assignment.berthId, closedAt });
++  return { closed: true, assignmentId, closedAt };
+ }
+ 
+ function activeAssignments(harbor) {

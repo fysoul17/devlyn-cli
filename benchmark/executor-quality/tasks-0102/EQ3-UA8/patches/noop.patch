@@ -1,0 +1,9 @@
+diff --git a/planner/stack_planner.js b/planner/stack_planner.js
+--- a/planner/stack_planner.js
++++ b/planner/stack_planner.js
+@@ -1,5 +1,5 @@
+ "use strict";
+ 
+ const { stackById } = require("../yard/stack_lookup");
+ const { canPlace, placeContainer } = require("../yard/placement_rules");
+ 

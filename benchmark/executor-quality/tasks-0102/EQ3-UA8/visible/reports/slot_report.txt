@@ -1,0 +1,3 @@
+Slot reports list lift identifiers, container identifiers, and route endpoints.
+The reporting process does not infer movements from stack capacity because a
+screening rejection can occur after capacity has already been checked.

@@ -1,0 +1,43 @@
+diff --git a/planner/stack_planner.js b/planner/stack_planner.js
+--- a/planner/stack_planner.js
++++ b/planner/stack_planner.js
+@@ -2,6 +2,8 @@
+ 
+ const { stackById } = require("../yard/stack_lookup");
+ const { canPlace, placeContainer } = require("../yard/placement_rules");
++const { debitCraneSlot } = require("../crane/crane_sequencer");
++const { compensateFailedPlacement } = require("../journal/restack_journal");
+ 
+ function restackContainer(yard, request) {
+   const source = stackById(yard, request.sourceStackId);
+@@ -10,17 +12,30 @@ function restackContainer(yard, request) {
+     return { moved: false, reason: "unknown-stack", operationId: request.operationId };
+   }
+ 
++  const completed = yard.completedRestacks.find((entry) => entry.operationId === request.operationId);
++  if (completed) {
++    return { moved: false, reason: "placement-rejected", operationId: request.operationId, repeated: true };
++  }
++
+   const containerId = source.containers[source.containers.length - 1];
+   if (containerId !== request.containerId) {
+     return { moved: false, reason: "not-on-top", operationId: request.operationId };
+   }
+ 
++  if (!canPlace(target)) {
++    return { moved: false, reason: "placement-rejected", operationId: request.operationId };
++  }
++
+   source.containers.pop();
++  const lift = debitCraneSlot(yard, request);
+   try {
+     placeContainer(target, containerId);
++    yard.completedRestacks.push({ operationId: request.operationId, result: "moved" });
+     return { moved: true, operationId: request.operationId };
+   } catch (error) {
++    compensateFailedPlacement(yard, request, lift);
++    yard.completedRestacks.push({ operationId: request.operationId, result: "placement-rejected" });
+     return { moved: false, reason: "placement-rejected", operationId: request.operationId };
+   }
+ }
+ 

@@ -1,0 +1,3 @@
+Dawn uses a dry circulation plan for early cooling.
+Mist uses a humid circulation plan for propagation benches.
+Shade uses a dry circulation plan for afternoon cooling.

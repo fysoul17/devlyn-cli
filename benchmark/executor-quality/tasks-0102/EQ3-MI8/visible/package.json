@@ -1,0 +1,5 @@
+{
+  "name": "harbor-assignment-fixture",
+  "private": true,
+  "engines": { "node": ">=20" }
+}

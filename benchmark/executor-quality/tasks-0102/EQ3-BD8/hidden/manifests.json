@@ -1,0 +1,89 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "broken_dependency",
+      "invariant": "When a germination sampling result fails after its tray is sealed and shipment portions exist, the lot is quarantined, the portions are recalled, and its class quota is released exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/sampling/germination_sampler.js",
+          "sha256": "3675f472e77542ad82d388bfca1c3b7949c9a8d07230480b58d7131821b200bf",
+          "quote": "Each germination sampler reservation consumes a class quota before the sampling tray is sealed."
+        },
+        {
+          "file": "visible/quarantine/failed_lot_test.js",
+          "sha256": "d8226b34c8b8494f49cfec58ca9c5257206936201492a18e75a61e46031fbc1b",
+          "quote": "A failed lot enters quarantine; the recall record lists recalled shipment portions after its class slot is released."
+        }
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "broken_dependency",
+      "invariant": "When a germination sampling result fails after its tray is sealed and shipment portions exist, the lot is quarantined, the portions are recalled, and its class quota is released exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/sampling/germination_sampler.js",
+          "sha256": "3675f472e77542ad82d388bfca1c3b7949c9a8d07230480b58d7131821b200bf",
+          "quote": "Each germination sampler reservation consumes a class quota before the sampling tray is sealed."
+        },
+        {
+          "file": "visible/quarantine/failed_lot_test.js",
+          "sha256": "d8226b34c8b8494f49cfec58ca9c5257206936201492a18e75a61e46031fbc1b",
+          "quote": "A failed lot enters quarantine; the recall record lists recalled shipment portions after its class slot is released."
+        }
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "broken_dependency",
+      "invariant": "When a germination sampling result fails after its tray is sealed and shipment portions exist, the lot is quarantined, the portions are recalled, and its class quota is released exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/sampling/germination_sampler.js",
+          "sha256": "3675f472e77542ad82d388bfca1c3b7949c9a8d07230480b58d7131821b200bf",
+          "quote": "Each germination sampler reservation consumes a class quota before the sampling tray is sealed."
+        },
+        {
+          "file": "visible/quarantine/failed_lot_test.js",
+          "sha256": "d8226b34c8b8494f49cfec58ca9c5257206936201492a18e75a61e46031fbc1b",
+          "quote": "A failed lot enters quarantine; the recall record lists recalled shipment portions after its class slot is released."
+        }
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "broken_dependency",
+      "invariant": "When a germination sampling result fails after its tray is sealed and shipment portions exist, the lot is quarantined, the portions are recalled, and its class quota is released exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/sampling/germination_sampler.js",
+          "sha256": "3675f472e77542ad82d388bfca1c3b7949c9a8d07230480b58d7131821b200bf",
+          "quote": "Each germination sampler reservation consumes a class quota before the sampling tray is sealed."
+        },
+        {
+          "file": "visible/quarantine/failed_lot_test.js",
+          "sha256": "d8226b34c8b8494f49cfec58ca9c5257206936201492a18e75a61e46031fbc1b",
+          "quote": "A failed lot enters quarantine; the recall record lists recalled shipment portions after its class slot is released."
+        }
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "broken_dependency",
+      "invariant": "When a germination sampling result fails after its tray is sealed and shipment portions exist, the lot is quarantined, the portions are recalled, and its class quota is released exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/sampling/germination_sampler.js",
+          "sha256": "3675f472e77542ad82d388bfca1c3b7949c9a8d07230480b58d7131821b200bf",
+          "quote": "Each germination sampler reservation consumes a class quota before the sampling tray is sealed."
+        },
+        {
+          "file": "visible/quarantine/failed_lot_test.js",
+          "sha256": "d8226b34c8b8494f49cfec58ca9c5257206936201492a18e75a61e46031fbc1b",
+          "quote": "A failed lot enters quarantine; the recall record lists recalled shipment portions after its class slot is released."
+        }
+      ]
+    }
+  ]
+}

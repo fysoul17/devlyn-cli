@@ -1,0 +1,2 @@
+The morning board lists vessels expected at each dock.
+The evening board records completed assignments for the harbor master.

@@ -1,0 +1,33 @@
+--- a/editor/setpoint_editor.js
++++ b/editor/setpoint_editor.js
+@@ -1,5 +1,7 @@
+ "use strict";
+ 
++const { recordRetry } = require("../registry/retry_journal");
++
+ function findZone(greenhouse, zoneId) {
+   const zone = greenhouse.zones.find((entry) => entry.id === zoneId);
+   if (!zone) {
+@@ -9,7 +11,21 @@
+ }
+ 
+ function updateSetpoint(greenhouse, zoneId, profileId) {
+-  return { updated: false, zoneId, profileId };
++  const zone = findZone(greenhouse, zoneId);
++  const profile = greenhouse.profiles.find((entry) => entry.id === profileId);
++  if (!profile) {
++    return { updated: false, zoneId, profileId };
++  }
++  if (zone.sensorState === "fault") {
++    recordRetry(greenhouse, zone, profileId);
++    zone.profileId = zone.lastGoodProfileId;
++    greenhouse.editReceipts.push({ zoneId, profileId });
++    return { updated: true, zoneId, profileId, deferred: true };
++  }
++  zone.profileId = profile.id;
++  zone.lastGoodProfileId = profile.id;
++  greenhouse.editReceipts.push({ zoneId, profileId });
++  return { updated: true, zoneId, profileId, deferred: false };
+ }
+ 
+ module.exports = { findZone, updateSetpoint };

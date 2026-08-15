@@ -1,0 +1,2 @@
+Receiving records identify the arrival, attendant, and sealed bag count.
+An already recorded arrival keeps its original receipt number.

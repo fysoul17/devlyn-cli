@@ -1,0 +1,2 @@
+Assignment desk staff record a departure when the vessel clears the harbor.
+Use the assignment identifier from the harbor board when closing a record.

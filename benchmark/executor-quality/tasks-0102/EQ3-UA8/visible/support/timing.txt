@@ -1,0 +1,3 @@
+Dispatch identifiers are supplied by the terminal before a crane begins work.
+Retries can arrive after a radio acknowledgment is lost, while separate
+instructions use separate identifiers even when they concern adjacent stacks.

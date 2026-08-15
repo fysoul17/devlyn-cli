@@ -1,0 +1,2 @@
+The end-of-shift summary lists received bags, dispatched portions, and holds.
+Supervisors compare the summary with the paper intake ledger before sign-off.

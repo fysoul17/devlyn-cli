@@ -1,0 +1,42 @@
+{
+  "id": "EQ3-UA8",
+  "class": "unsupported_assumption",
+  "goal": "A yard dispatcher sees a rejected restack leave the source stack incomplete when the destination is already full. Update the stack planner so the dispatch receipt remains stable, then run node visible/checks/run_checks.js.",
+  "invariant": "After a rejected placement during restack, the layout is restored through a journal and crane slots are debited once per lift.",
+  "visible_files": [
+    "visible/checks/manual_cases.md",
+    "visible/checks/repeat_local_test.js",
+    "visible/checks/restack_local_test.js",
+    "visible/checks/run_checks.js",
+    "visible/crane/crane_notes.txt",
+    "visible/crane/crane_sequencer.js",
+    "visible/crane/slot_ledger.js",
+    "visible/journal/journal_notes.txt",
+    "visible/journal/restack_journal.js",
+    "visible/journal/restack_journal_test.js",
+    "visible/package.json",
+    "visible/planner/planner_notes.md",
+    "visible/planner/stack_planner.js",
+    "visible/planner/stack_rules.txt",
+    "visible/reports/handoff.md",
+    "visible/reports/movement_report.js",
+    "visible/reports/slot_report.txt",
+    "visible/support/deep_copy.js",
+    "visible/support/fixtures.js",
+    "visible/support/ids.js",
+    "visible/support/timing.txt",
+    "visible/yard/placement_rules.js",
+    "visible/yard/stack_lookup.js",
+    "visible/yard/yard_layout.txt",
+    "visible/yard/yard_state.js"
+  ],
+  "edit_site_dir": "visible/planner",
+  "contract_artifacts": [
+    "visible/crane/crane_sequencer.js",
+    "visible/journal/restack_journal_test.js"
+  ],
+  "contract_tokens_a": ["crane", "sequencer", "lift"],
+  "contract_tokens_b": ["journal", "compensating", "reconciliation"],
+  "outcome_tokens_a": ["crane", "lift"],
+  "outcome_tokens_b": ["layout", "journal"]
+}

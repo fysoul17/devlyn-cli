@@ -1,0 +1,19 @@
+--- a/receiver/lot_receiver.js
++++ b/receiver/lot_receiver.js
+@@ -1,7 +1,15 @@
+ "use strict";
+ 
+ function receiveLot(warehouse, lotId, receivedAt) {
+-  return { accepted: false, lotId, receivedAt };
++  const lot = warehouse.lots.find((item) => item.id === lotId);
++  if (!lot || lot.status !== "pending") {
++    return { accepted: false, lotId, receivedAt };
++  }
++  const receipt = { id: `RCPT-${lotId}`, lotId, receivedAt };
++  warehouse.receipts.push(receipt);
++  lot.status = "received";
++  lot.receivedAt = receivedAt;
++  return { accepted: true, lotId, receivedAt, receiptId: receipt.id };
+ }
+ 
+ function recordSampleFailure(warehouse, lotId, failedAt) {

@@ -1,0 +1,2 @@
+Operators select a profile from the zone card before confirming the edit.
+The confirmation receipt identifies the selected profile for the shift log.

@@ -1,0 +1,43 @@
+{
+  "id": "EQ3-MI8",
+  "class": "missed_repo_invariant",
+  "goal": "An aborted harbor assignment reports as closed while its local booking remains active. Update the assignment desk so the aborted record clears the local booking, then run node visible/checks/run_checks.js after the repair.",
+  "invariant": "At tide-window closure, the pilot and berth release once so a fresh assignment begins with both resources free.",
+  "visible_files": [
+    "visible/checks/abort_return_test.js",
+    "visible/checks/checklist.txt",
+    "visible/checks/local_receipts_test.js",
+    "visible/checks/manual_cases.md",
+    "visible/checks/run_checks.js",
+    "visible/desk/assignment_desk.js",
+    "visible/desk/desk_summary.js",
+    "visible/desk/operator_notes.txt",
+    "visible/docs/archive_notes.txt",
+    "visible/docs/operations_guide.md",
+    "visible/package.json",
+    "visible/registry/assignment_log.js",
+    "visible/registry/berth_register.js",
+    "visible/registry/harbor_state.js",
+    "visible/registry/pilot_roster.js",
+    "visible/reports/assignment_report.js",
+    "visible/reports/daily_board.txt",
+    "visible/reports/handoff_log.txt",
+    "visible/support/clock.js",
+    "visible/support/fixtures.js",
+    "visible/support/harbor_codes.txt",
+    "visible/support/identifiers.js",
+    "visible/support/test_data.txt",
+    "visible/tide/navigation_board.js",
+    "visible/tide/tide_rules.txt",
+    "visible/tide/tide_window_planner.js"
+  ],
+  "edit_site_dir": "visible/desk",
+  "contract_artifacts": [
+    "visible/tide/tide_window_planner.js",
+    "visible/checks/abort_return_test.js"
+  ],
+  "contract_tokens_a": ["tide", "window", "planner"],
+  "contract_tokens_b": ["closure", "handoff", "arrival"],
+  "outcome_tokens_a": ["pilot"],
+  "outcome_tokens_b": ["berth", "fresh"]
+}

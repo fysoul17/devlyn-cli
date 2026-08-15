@@ -1,0 +1,2 @@
+Dispatch records retain lot portions after a truck leaves the receiving dock.
+The desk uses those portions to prepare any later customer notification.

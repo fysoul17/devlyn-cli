@@ -1,0 +1,6 @@
+Crane sequencer contract
+
+Every lift is entered against one crane slot before a destination receives the
+container. A repeated dispatch identifier resolves to its existing entry, so
+the sequencer does not debit the same lift twice. Dispatch records retain the
+source and destination identifiers for the shift report.

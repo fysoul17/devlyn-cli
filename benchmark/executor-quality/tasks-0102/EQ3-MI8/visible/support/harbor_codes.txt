@@ -1,0 +1,3 @@
+South channel: H-02
+North channel: H-07
+Outer dock: H-11

@@ -1,0 +1,2 @@
+Each seed class has a daily tray limit. A tray stays assigned until the
+germination review closes or a failed result returns the class slot.

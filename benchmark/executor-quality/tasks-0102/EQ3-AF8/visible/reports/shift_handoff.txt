@@ -1,0 +1,2 @@
+The evening operator records pending climate requests in the handoff notebook.
+The morning operator checks the board before applying any new profile.

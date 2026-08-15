@@ -1,0 +1,2 @@
+Morning outside temperature: 11C.
+Vent status is recorded at the start of each shift.

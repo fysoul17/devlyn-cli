@@ -1,0 +1,2 @@
+Joined bays use the profile mode when the operations board compares neighbors.
+The controller lists compatible choices in the requested order.

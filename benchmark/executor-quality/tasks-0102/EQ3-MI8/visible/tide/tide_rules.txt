@@ -1,0 +1,2 @@
+Harbor operations publish a water-level interval before a vessel may enter.
+The planning team records the vessel sequence against that interval.

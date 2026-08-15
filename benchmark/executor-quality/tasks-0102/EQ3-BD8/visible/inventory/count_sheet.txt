@@ -1,0 +1,2 @@
+The count sheet is a warehouse reference, not a substitute for receipt records.
+Daily totals separate unopened bags from portions sent to shipment staging.

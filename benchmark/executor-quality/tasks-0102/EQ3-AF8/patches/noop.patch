@@ -1,0 +1,6 @@
+--- a/reports/weather_board.txt
++++ b/reports/weather_board.txt
+@@ -1,2 +1,3 @@
+ Morning outside temperature: 11C.
+ Vent status is recorded at the start of each shift.
++Afternoon outside temperature is recorded before handoff.

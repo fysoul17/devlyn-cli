@@ -1,0 +1,22 @@
+diff --git a/planner/stack_planner.js b/planner/stack_planner.js
+--- a/planner/stack_planner.js
++++ b/planner/stack_planner.js
+@@ -13,14 +13,18 @@ function restackContainer(yard, request) {
+   const containerId = source.containers[source.containers.length - 1];
+   if (containerId !== request.containerId) {
+     return { moved: false, reason: "not-on-top", operationId: request.operationId };
+   }
+ 
++  if (!canPlace(target)) {
++    return { moved: false, reason: "placement-rejected", operationId: request.operationId };
++  }
++
+   source.containers.pop();
+   try {
+     placeContainer(target, containerId);
+     return { moved: true, operationId: request.operationId };
+   } catch (error) {
+     return { moved: false, reason: "placement-rejected", operationId: request.operationId };
+   }
+ }
+ 
