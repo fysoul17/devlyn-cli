@@ -1,0 +1,2 @@
+Counter receipts identify the pass and the amount returned by the close action.
+The desk keeps its own record of counter transactions for daily reconciliation.

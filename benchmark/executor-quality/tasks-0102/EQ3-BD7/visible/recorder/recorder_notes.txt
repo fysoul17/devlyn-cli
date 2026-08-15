@@ -1,0 +1,2 @@
+Record the inspector name and the finding identifier on each field visit.
+The shift lead uses the case display to decide whether work may resume.

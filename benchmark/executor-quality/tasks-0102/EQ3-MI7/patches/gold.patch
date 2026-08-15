@@ -1,0 +1,22 @@
+--- a/issuer/pass_issuer.py
++++ b/issuer/pass_issuer.py
+@@ -14,4 +14,18 @@ def issue_pass(pass_id, price, scheduled_windows):
+ 
+ 
+ def close_pass(pass_record):
+-    return {"closed": False, "amount": 0, "pass_id": pass_record["id"]}
++    if pass_record["refunds"]:
++        return dict(pass_record["refunds"][0], closed=True)
++    used_windows = [entry["window"] for entry in pass_record["uses"]]
++    amount = pass_record["price"] * (
++        pass_record["scheduled_windows"] - len(used_windows)
++    ) // pass_record["scheduled_windows"]
++    refund = {
++        "pass_id": pass_record["id"],
++        "amount": amount,
++        "used_windows": used_windows,
++    }
++    pass_record["refunds"].append(refund)
++    pass_record["invalidations"].append({"pass_id": pass_record["id"]})
++    pass_record["active"] = False
++    return dict(refund, closed=True)

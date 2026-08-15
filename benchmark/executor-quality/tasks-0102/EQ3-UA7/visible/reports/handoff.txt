@@ -1,0 +1,2 @@
+The handoff lists cases that changed during the shift and their current owner.
+It supports the supervisor's next-morning review of pending evidence.

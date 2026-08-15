@@ -1,0 +1,2 @@
+Host households call the coordinator before moving an animal between homes.
+The board is refreshed at the beginning and end of each day.

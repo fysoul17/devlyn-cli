@@ -1,0 +1,25 @@
+--- a/intake/adoption_intake.py
++++ b/intake/adoption_intake.py
+@@ -16,8 +16,20 @@
+ 
+ 
+ def adopt(case, receipt):
+-    return False
++    if not case["ready"] or case["outside"] or case["medical_hold"] is not None:
++        return False
++    case["state"] = "adopted"
++    return True
+ 
+ 
+ def return_to_shelter(case):
+-    return False
++    if not case["returned"]:
++        case["returned"] = True
++        case["outside"] = False
++        case["state"] = "intake"
++        case["medical_hold"] = case["history"]["hold"]
++    payment = case["adoptions"][0]
++    refund = {"receipt": payment["receipt"], "fee_cents": payment["fee_cents"]}
++    if refund not in case["refunds"]:
++        case["refunds"].append(refund)
++    return True

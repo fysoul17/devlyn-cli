@@ -1,0 +1,2 @@
+Review forms list the case identifier, evidence confidence, and proposed severity.
+The desk keeps the selected review identifier with the closed case.

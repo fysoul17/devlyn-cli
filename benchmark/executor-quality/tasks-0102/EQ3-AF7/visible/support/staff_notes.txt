@@ -1,0 +1,2 @@
+Staff initials appear on paper records only after a desk action completes.
+The sample fixture does not contact external services.

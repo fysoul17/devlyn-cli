@@ -1,0 +1,2 @@
+The intake template includes loss date, claimant reference, and initial band.
+It is a desk aid and does not decide the later review outcome.

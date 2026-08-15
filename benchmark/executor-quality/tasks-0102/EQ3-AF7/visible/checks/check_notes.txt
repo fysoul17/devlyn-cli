@@ -1,0 +1,2 @@
+Run the desk check after changing the adoption decision path.
+The fixture keeps its sample identifiers intentionally short.

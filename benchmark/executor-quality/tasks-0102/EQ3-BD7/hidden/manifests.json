@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "broken_dependency",
+      "invariant": "After a partial clearance in a multi-finding closure, status returns at the final clearance and escalation stops exactly once.",
+      "contract_bindings": [
+        {"file": "visible/closure/escalation.py", "sha256": "07e936f68b151fe4db5f571153d68594c9c2098edc1e9b9f00e5af83291cfa56", "quote": "linked severity escalator ranks open findings"},
+        {"file": "visible/checks/reinspection_test.py", "sha256": "32d7be9436f19dcd606fc0ece134533f6149d576696fcf9e9433258f9ca192e9", "quote": "The reinspection sequence keeps each clearance on the field sheet"}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "broken_dependency",
+      "invariant": "After a partial clearance in a multi-finding closure, status returns at the final clearance and escalation stops exactly once.",
+      "contract_bindings": [
+        {"file": "visible/closure/escalation.py", "sha256": "07e936f68b151fe4db5f571153d68594c9c2098edc1e9b9f00e5af83291cfa56", "quote": "linked severity escalator ranks open findings"},
+        {"file": "visible/checks/reinspection_test.py", "sha256": "32d7be9436f19dcd606fc0ece134533f6149d576696fcf9e9433258f9ca192e9", "quote": "The reinspection sequence keeps each clearance on the field sheet"}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "broken_dependency",
+      "invariant": "After a partial clearance in a multi-finding closure, status returns at the final clearance and escalation stops exactly once.",
+      "contract_bindings": [
+        {"file": "visible/closure/escalation.py", "sha256": "07e936f68b151fe4db5f571153d68594c9c2098edc1e9b9f00e5af83291cfa56", "quote": "linked severity escalator ranks open findings"},
+        {"file": "visible/checks/reinspection_test.py", "sha256": "32d7be9436f19dcd606fc0ece134533f6149d576696fcf9e9433258f9ca192e9", "quote": "The reinspection sequence keeps each clearance on the field sheet"}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "broken_dependency",
+      "invariant": "After a partial clearance in a multi-finding closure, status returns at the final clearance and escalation stops exactly once.",
+      "contract_bindings": [
+        {"file": "visible/closure/escalation.py", "sha256": "07e936f68b151fe4db5f571153d68594c9c2098edc1e9b9f00e5af83291cfa56", "quote": "linked severity escalator ranks open findings"},
+        {"file": "visible/checks/reinspection_test.py", "sha256": "32d7be9436f19dcd606fc0ece134533f6149d576696fcf9e9433258f9ca192e9", "quote": "The reinspection sequence keeps each clearance on the field sheet"}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "broken_dependency",
+      "invariant": "After a partial clearance in a multi-finding closure, status returns at the final clearance and escalation stops exactly once.",
+      "contract_bindings": [
+        {"file": "visible/closure/escalation.py", "sha256": "07e936f68b151fe4db5f571153d68594c9c2098edc1e9b9f00e5af83291cfa56", "quote": "linked severity escalator ranks open findings"},
+        {"file": "visible/checks/reinspection_test.py", "sha256": "32d7be9436f19dcd606fc0ece134533f6149d576696fcf9e9433258f9ca192e9", "quote": "The reinspection sequence keeps each clearance on the field sheet"}
+      ]
+    }
+  ]
+}

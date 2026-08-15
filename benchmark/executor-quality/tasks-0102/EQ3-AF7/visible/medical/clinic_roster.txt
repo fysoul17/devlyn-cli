@@ -1,0 +1,2 @@
+The clinic roster is printed for the morning examination round.
+Each entry links a case number to the assigned technician.

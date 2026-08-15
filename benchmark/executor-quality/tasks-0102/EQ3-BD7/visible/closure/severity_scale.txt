@@ -1,0 +1,3 @@
+Severity 7 requires the area to remain suspended until the closure board changes it.
+Severity 5 requires a roof inspection before the shift can continue.
+Severity 2 is tracked in the ventilation follow-up log.

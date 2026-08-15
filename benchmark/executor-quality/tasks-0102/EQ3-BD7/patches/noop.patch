@@ -1,0 +1,7 @@
+diff --git a/support/staff.txt b/support/staff.txt
+--- a/support/staff.txt
++++ b/support/staff.txt
+@@ -1,2 +1,3 @@
+ Samira is the reinspection recorder for the west heading.
+ Joon is the closure board supervisor for the morning shift.
++The staff contact list remains available for the incoming shift.

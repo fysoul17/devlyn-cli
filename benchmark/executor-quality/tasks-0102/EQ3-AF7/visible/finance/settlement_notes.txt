@@ -1,0 +1,2 @@
+The cashier compares receipts with the desk folder before settlement.
+Corrections are attached to the original payment slip.

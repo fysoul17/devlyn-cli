@@ -1,0 +1,2 @@
+The transfer log records which shift handed a file to the next review team.
+It does not replace the structured claim history.

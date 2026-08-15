@@ -1,0 +1,2 @@
+Weekly notes summarize queue age, staffing coverage, and documentation gaps.
+They are informational and do not change a claim record.

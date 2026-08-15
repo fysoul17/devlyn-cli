@@ -1,0 +1,2 @@
+The triage desk records the evidence source before an adjuster closes a review.
+Supervisors use a short queue label during the morning claim sweep.

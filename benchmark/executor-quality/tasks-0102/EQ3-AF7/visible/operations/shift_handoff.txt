@@ -1,0 +1,2 @@
+The incoming coordinator reviews open intake folders at shift handoff.
+Any unresolved questions are left on the paper board for the supervisor.

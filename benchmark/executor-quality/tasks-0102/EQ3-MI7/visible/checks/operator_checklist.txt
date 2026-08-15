@@ -1,0 +1,2 @@
+Counter staff verify that the issued pass identifier matches the receipt.
+They also confirm that a closed pass no longer opens the turnstile.

@@ -1,0 +1,42 @@
+{
+  "id": "EQ3-BD7",
+  "class": "broken_dependency",
+  "goal": "Safety findings at west heading now show as resolved on the recorder after the inspector submits them, but the safety case remains suspended later in the shift. Update the finding recorder so an inspector can submit the same finding safely, then run python3 visible/checks/run_checks.py to exercise the fixture.",
+  "invariant": "After a partial clearance in a multi-finding closure, status returns at the final clearance and escalation stops exactly once.",
+  "visible_files": [
+    "visible/checks/crew_notes.txt",
+    "visible/checks/fixture_helpers.py",
+    "visible/checks/local_clearance_test.py",
+    "visible/checks/reinspection_test.py",
+    "visible/checks/run_checks.py",
+    "visible/closure/closure_notes.txt",
+    "visible/closure/closure_register.py",
+    "visible/closure/escalation.py",
+    "visible/closure/severity_scale.txt",
+    "visible/operations/drill_notes.txt",
+    "visible/operations/permit_log.txt",
+    "visible/operations/shift_board.py",
+    "visible/operations/ventilation_watch.py",
+    "visible/recorder/finding_codes.py",
+    "visible/recorder/finding_recorder.py",
+    "visible/recorder/intake_count.py",
+    "visible/recorder/recorder_notes.txt",
+    "visible/reports/closure_summary.py",
+    "visible/reports/handover.txt",
+    "visible/reports/regulator_export.py",
+    "visible/reports/shift_log.txt",
+    "visible/support/dates.py",
+    "visible/support/equipment.txt",
+    "visible/support/ids.py",
+    "visible/support/staff.txt"
+  ],
+  "edit_site_dir": "visible/recorder",
+  "contract_artifacts": [
+    "visible/closure/escalation.py",
+    "visible/checks/reinspection_test.py"
+  ],
+  "contract_tokens_a": ["ranked", "escalator", "board"],
+  "contract_tokens_b": ["reinspection", "clearance", "sequence"],
+  "outcome_tokens_a": ["escalation", "stops"],
+  "outcome_tokens_b": ["status", "returns"]
+}

@@ -1,0 +1,18 @@
+--- a/triage/severity_tagger.py
++++ b/triage/severity_tagger.py
+@@ -21,10 +21,12 @@ def tag_severity(case, reviews):
+     selected = choose_supported_review(reviews)
+     requested = selected["severity"]
+-    if LEVELS[requested] < LEVELS[case["severity"]]:
++    if requested == case["severity"]:
+         return {"changed": False, "severity": case["severity"], "review_id": selected["id"]}
++    prior = case["severity"]
++    case["pre_close_severity"] = prior
+     case["severity"] = requested
+     case["state"] = "closed"
+     case["review_id"] = selected["id"]
+     case["transitions"].append({"kind": "close", "review": selected["id"]})
+     return {"changed": True, "severity": requested, "review_id": selected["id"]}
+ 
+ 
+ def reopen_case(case):

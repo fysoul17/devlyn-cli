@@ -1,0 +1,15 @@
+--- a/intake/adoption_intake.py
++++ b/intake/adoption_intake.py
+@@ -16,8 +16,11 @@
+ 
+ 
+ def adopt(case, receipt):
+-    return False
++    if not case["ready"]:
++        return False
++    case["state"] = "adopted"
++    return True
+ 
+ 
+ def return_to_shelter(case):
+     return False

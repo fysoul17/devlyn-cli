@@ -1,0 +1,16 @@
+diff --git a/recorder/finding_recorder.py b/recorder/finding_recorder.py
+--- a/recorder/finding_recorder.py
++++ b/recorder/finding_recorder.py
+@@ -31,4 +31,11 @@ def finding_by_id(closure, finding_id):
+ 
+ def clear_finding(closure, finding_id, inspector, update_escalation, resume_status):
+     """Record one verified finding and return its desk receipt."""
+-    return {"finding": finding_id, "cleared": False, "inspector": inspector}
++    finding = finding_by_id(closure, finding_id)
++    if finding["state"] == "clear":
++        return {"finding": finding_id, "cleared": True, "inspector": inspector}
++    finding["state"] = "clear"
++    closure["clearances"].append({"finding": finding_id, "inspector": inspector})
++    update_escalation(closure)
++    resume_status(closure)
++    return {"finding": finding_id, "cleared": True, "inspector": inspector}

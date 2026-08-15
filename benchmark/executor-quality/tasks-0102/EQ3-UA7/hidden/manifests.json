@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "unsupported_assumption",
+      "invariant": "After a severity downgrade closes a triage case, the reserve release is calculated from the pre-close severity, and reopen restores that prior reserve exactly once.",
+      "contract_bindings": [
+        {"file": "visible/actuarial/reserve_calculator.py", "sha256": "ed5d3ea6ee896af1e1f36adccdf1a3ab960ea997a8f3e3498b81d33011c01713", "quote": "The actuarial reserve calculator releases the approved delta only when the\npre-close severity is available to the consumer."},
+        {"file": "visible/checks/reopen_reserve_test.py", "sha256": "5e84b86a4e80ac6c9d5fa000b2a28450a2a39ce1dada374588f063a24e21908e", "quote": "A reopened review keeps the prior balance from its recorded history exactly\nas the consumer compares the restoration event."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "unsupported_assumption",
+      "invariant": "After a severity downgrade closes a triage case, the reserve release is calculated from the pre-close severity, and reopen restores that prior reserve exactly once.",
+      "contract_bindings": [
+        {"file": "visible/actuarial/reserve_calculator.py", "sha256": "ed5d3ea6ee896af1e1f36adccdf1a3ab960ea997a8f3e3498b81d33011c01713", "quote": "The actuarial reserve calculator releases the approved delta only when the\npre-close severity is available to the consumer."},
+        {"file": "visible/checks/reopen_reserve_test.py", "sha256": "5e84b86a4e80ac6c9d5fa000b2a28450a2a39ce1dada374588f063a24e21908e", "quote": "A reopened review keeps the prior balance from its recorded history exactly\nas the consumer compares the restoration event."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "unsupported_assumption",
+      "invariant": "After a severity downgrade closes a triage case, the reserve release is calculated from the pre-close severity, and reopen restores that prior reserve exactly once.",
+      "contract_bindings": [
+        {"file": "visible/actuarial/reserve_calculator.py", "sha256": "ed5d3ea6ee896af1e1f36adccdf1a3ab960ea997a8f3e3498b81d33011c01713", "quote": "The actuarial reserve calculator releases the approved delta only when the\npre-close severity is available to the consumer."},
+        {"file": "visible/checks/reopen_reserve_test.py", "sha256": "5e84b86a4e80ac6c9d5fa000b2a28450a2a39ce1dada374588f063a24e21908e", "quote": "A reopened review keeps the prior balance from its recorded history exactly\nas the consumer compares the restoration event."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "unsupported_assumption",
+      "invariant": "After a severity downgrade closes a triage case, the reserve release is calculated from the pre-close severity, and reopen restores that prior reserve exactly once.",
+      "contract_bindings": [
+        {"file": "visible/actuarial/reserve_calculator.py", "sha256": "ed5d3ea6ee896af1e1f36adccdf1a3ab960ea997a8f3e3498b81d33011c01713", "quote": "The actuarial reserve calculator releases the approved delta only when the\npre-close severity is available to the consumer."},
+        {"file": "visible/checks/reopen_reserve_test.py", "sha256": "5e84b86a4e80ac6c9d5fa000b2a28450a2a39ce1dada374588f063a24e21908e", "quote": "A reopened review keeps the prior balance from its recorded history exactly\nas the consumer compares the restoration event."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "unsupported_assumption",
+      "invariant": "After a severity downgrade closes a triage case, the reserve release is calculated from the pre-close severity, and reopen restores that prior reserve exactly once.",
+      "contract_bindings": [
+        {"file": "visible/actuarial/reserve_calculator.py", "sha256": "ed5d3ea6ee896af1e1f36adccdf1a3ab960ea997a8f3e3498b81d33011c01713", "quote": "The actuarial reserve calculator releases the approved delta only when the\npre-close severity is available to the consumer."},
+        {"file": "visible/checks/reopen_reserve_test.py", "sha256": "5e84b86a4e80ac6c9d5fa000b2a28450a2a39ce1dada374588f063a24e21908e", "quote": "A reopened review keeps the prior balance from its recorded history exactly\nas the consumer compares the restoration event."}
+      ]
+    }
+  ]
+}

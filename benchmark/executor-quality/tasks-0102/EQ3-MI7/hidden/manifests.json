@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "missed_repo_invariant",
+      "invariant": "After a weather closure, each gate entry leaves a scanned pass with prorated credit and an invalidation recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/gates/gate_scanner.py", "sha256": "34147529626f3cf2b1839f4fab58c40340b30b71e1bac6685dc3c1c3d9237117", "quote": "The gate scanner writes one ledger entry for a pass in each lift window. A\nsecond tap in the same window is refused, while a later window remains valid."},
+        {"file": "visible/checks/weather_refund_test.py", "sha256": "ae96894298de3e7d74e74833ea58d9052cf12100470bee2ba8426534f16be8e6", "quote": "The weather closure table uses the scanned windows to determine a prorated\ncredit for the unused part of a pass."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "missed_repo_invariant",
+      "invariant": "After a weather closure, each gate entry leaves a scanned pass with prorated credit and an invalidation recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/gates/gate_scanner.py", "sha256": "34147529626f3cf2b1839f4fab58c40340b30b71e1bac6685dc3c1c3d9237117", "quote": "The gate scanner writes one ledger entry for a pass in each lift window. A\nsecond tap in the same window is refused, while a later window remains valid."},
+        {"file": "visible/checks/weather_refund_test.py", "sha256": "ae96894298de3e7d74e74833ea58d9052cf12100470bee2ba8426534f16be8e6", "quote": "The weather closure table uses the scanned windows to determine a prorated\ncredit for the unused part of a pass."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "missed_repo_invariant",
+      "invariant": "After a weather closure, each gate entry leaves a scanned pass with prorated credit and an invalidation recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/gates/gate_scanner.py", "sha256": "34147529626f3cf2b1839f4fab58c40340b30b71e1bac6685dc3c1c3d9237117", "quote": "The gate scanner writes one ledger entry for a pass in each lift window. A\nsecond tap in the same window is refused, while a later window remains valid."},
+        {"file": "visible/checks/weather_refund_test.py", "sha256": "ae96894298de3e7d74e74833ea58d9052cf12100470bee2ba8426534f16be8e6", "quote": "The weather closure table uses the scanned windows to determine a prorated\ncredit for the unused part of a pass."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "missed_repo_invariant",
+      "invariant": "After a weather closure, each gate entry leaves a scanned pass with prorated credit and an invalidation recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/gates/gate_scanner.py", "sha256": "34147529626f3cf2b1839f4fab58c40340b30b71e1bac6685dc3c1c3d9237117", "quote": "The gate scanner writes one ledger entry for a pass in each lift window. A\nsecond tap in the same window is refused, while a later window remains valid."},
+        {"file": "visible/checks/weather_refund_test.py", "sha256": "ae96894298de3e7d74e74833ea58d9052cf12100470bee2ba8426534f16be8e6", "quote": "The weather closure table uses the scanned windows to determine a prorated\ncredit for the unused part of a pass."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "missed_repo_invariant",
+      "invariant": "After a weather closure, each gate entry leaves a scanned pass with prorated credit and an invalidation recorded exactly once.",
+      "contract_bindings": [
+        {"file": "visible/gates/gate_scanner.py", "sha256": "34147529626f3cf2b1839f4fab58c40340b30b71e1bac6685dc3c1c3d9237117", "quote": "The gate scanner writes one ledger entry for a pass in each lift window. A\nsecond tap in the same window is refused, while a later window remains valid."},
+        {"file": "visible/checks/weather_refund_test.py", "sha256": "ae96894298de3e7d74e74833ea58d9052cf12100470bee2ba8426534f16be8e6", "quote": "The weather closure table uses the scanned windows to determine a prorated\ncredit for the unused part of a pass."}
+      ]
+    }
+  ]
+}

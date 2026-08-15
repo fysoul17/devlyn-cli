@@ -1,0 +1,2 @@
+The clinic summary lists case numbers scheduled for follow-up.
+It is separate from the cashier's settlement worksheet.

@@ -1,0 +1,2 @@
+Lift attendants record a successful entry only after the turnstile opens.
+Each lane submits a small end-of-window activity list to operations.

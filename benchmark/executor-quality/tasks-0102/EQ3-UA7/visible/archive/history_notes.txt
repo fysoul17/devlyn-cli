@@ -1,0 +1,2 @@
+Historical files preserve the sequence of desk actions for later audit.
+Archived material is read-only to the daily queue view.

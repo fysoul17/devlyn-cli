@@ -1,0 +1,2 @@
+The closure board receives the current open findings from the recorder.
+Supervisors read the board at each reinspection handoff.

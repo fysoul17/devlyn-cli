@@ -1,0 +1,2 @@
+Lift supervisors call lane changes to the gate teams during busy periods.
+The counter receives a closing bulletin when service stops early.

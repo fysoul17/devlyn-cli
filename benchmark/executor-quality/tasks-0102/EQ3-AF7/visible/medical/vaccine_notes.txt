@@ -1,0 +1,2 @@
+Clinical staff record dose dates and next-review dates on the animal card.
+An expired dose is reviewed before a new placement can be approved.

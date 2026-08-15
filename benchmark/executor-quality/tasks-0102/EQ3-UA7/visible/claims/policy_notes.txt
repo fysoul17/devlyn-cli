@@ -1,0 +1,2 @@
+Claim files retain the origin of each severity recommendation.
+Adjusters check supporting evidence before closing a review.

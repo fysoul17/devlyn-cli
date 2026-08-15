@@ -1,0 +1,89 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "absent_failure_mode",
+      "invariant": "When a returned animal has a lapsed clinical vaccination, it is unavailable, the hold is reinstated, and the adoption fee is refunded exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/foster/foster_sync.py",
+          "sha256": "7b9ac93396065155435d1a9cafde7b586974f5050474700118d3620465984a3c",
+          "quote": "Foster synchronization keeps availability unavailable while a placement is away."
+        },
+        {
+          "file": "visible/checks/returned_animal_test.py",
+          "sha256": "797433e4c7cb0e1e487484a91e718568f963bbaf02130e364ec7217149ea53d4",
+          "quote": "Clinical vaccination history is reinstated before the adoption fee is refunded."
+        }
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "absent_failure_mode",
+      "invariant": "When a returned animal has a lapsed clinical vaccination, it is unavailable, the hold is reinstated, and the adoption fee is refunded exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/foster/foster_sync.py",
+          "sha256": "7b9ac93396065155435d1a9cafde7b586974f5050474700118d3620465984a3c",
+          "quote": "Foster synchronization keeps availability unavailable while a placement is away."
+        },
+        {
+          "file": "visible/checks/returned_animal_test.py",
+          "sha256": "797433e4c7cb0e1e487484a91e718568f963bbaf02130e364ec7217149ea53d4",
+          "quote": "Clinical vaccination history is reinstated before the adoption fee is refunded."
+        }
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "absent_failure_mode",
+      "invariant": "When a returned animal has a lapsed clinical vaccination, it is unavailable, the hold is reinstated, and the adoption fee is refunded exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/foster/foster_sync.py",
+          "sha256": "7b9ac93396065155435d1a9cafde7b586974f5050474700118d3620465984a3c",
+          "quote": "Foster synchronization keeps availability unavailable while a placement is away."
+        },
+        {
+          "file": "visible/checks/returned_animal_test.py",
+          "sha256": "797433e4c7cb0e1e487484a91e718568f963bbaf02130e364ec7217149ea53d4",
+          "quote": "Clinical vaccination history is reinstated before the adoption fee is refunded."
+        }
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "absent_failure_mode",
+      "invariant": "When a returned animal has a lapsed clinical vaccination, it is unavailable, the hold is reinstated, and the adoption fee is refunded exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/foster/foster_sync.py",
+          "sha256": "7b9ac93396065155435d1a9cafde7b586974f5050474700118d3620465984a3c",
+          "quote": "Foster synchronization keeps availability unavailable while a placement is away."
+        },
+        {
+          "file": "visible/checks/returned_animal_test.py",
+          "sha256": "797433e4c7cb0e1e487484a91e718568f963bbaf02130e364ec7217149ea53d4",
+          "quote": "Clinical vaccination history is reinstated before the adoption fee is refunded."
+        }
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "absent_failure_mode",
+      "invariant": "When a returned animal has a lapsed clinical vaccination, it is unavailable, the hold is reinstated, and the adoption fee is refunded exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/foster/foster_sync.py",
+          "sha256": "7b9ac93396065155435d1a9cafde7b586974f5050474700118d3620465984a3c",
+          "quote": "Foster synchronization keeps availability unavailable while a placement is away."
+        },
+        {
+          "file": "visible/checks/returned_animal_test.py",
+          "sha256": "797433e4c7cb0e1e487484a91e718568f963bbaf02130e364ec7217149ea53d4",
+          "quote": "Clinical vaccination history is reinstated before the adoption fee is refunded."
+        }
+      ]
+    }
+  ]
+}

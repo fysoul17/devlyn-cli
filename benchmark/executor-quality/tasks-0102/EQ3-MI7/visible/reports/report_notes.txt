@@ -1,0 +1,2 @@
+Operations compares end-of-day counter totals with the activity summaries.
+Guest messages are retained with the desk's closing paperwork.

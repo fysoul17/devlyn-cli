@@ -1,0 +1,6 @@
+--- a/reports/placement_summary.txt
++++ b/reports/placement_summary.txt
+@@ -1,2 +1,3 @@
+ The daily report lists completed placements and open intake folders.
+ Supervisors compare the report with the shift handoff sheet.
++The report is filed with the supervisor at the end of the shift.

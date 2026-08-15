@@ -1,0 +1,2 @@
+Night shift receives the current closure number and inspector assignments.
+The regulator export is prepared after the board review.

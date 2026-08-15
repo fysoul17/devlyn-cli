@@ -1,0 +1,2 @@
+Confirm the evidence source was attached before escalating a claim review.
+The desk run is intended for the daily operations handoff.
