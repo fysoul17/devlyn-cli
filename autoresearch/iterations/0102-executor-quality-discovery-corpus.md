@@ -713,9 +713,17 @@ corpus-wide patch-hygiene sweep: hunk-count mismatches + lone-space
 context lines in 8 files, 4 regenerated deterministically by
 orchestrator script — validator fuzz had masked them; hygiene auditor
 now part of the per-batch mechanical pass).
-Batch-04 IN PROGRESS at session checkpoint: EQ3-UA4/MI4/AF4 authored
-+ per-task validator green; REMAINING: EQ3-BD4, R2 README edit,
-batch-04 mechanical suite, trio judge round, commit. Resume recipe:
-scratchpad templates are session-local — regenerate from this file's
-batch 02-03 pattern (author-task template + judge prompts + hygiene
-auditor) or re-derive from spec §§ Sequencing/R1/R2.
+Batch-04 SHIPPED `9e5dbac` (2026-08-16 session). BD4 authored by
+terra; trio r0 = 9 byte-confirmed findings (sol HIGH ×7 / grok HIGH
+×1 + MED ×3: hollow contract artifacts UA4, vacuous order + missing
+byte-identity carriage MI4, strawman symptom + boolean-void
+exactly-once + hollow reconciliation AF4, prose-only rebalance-once
+BD4), all fixed; orchestrator hygiene audit caught BD4 gold.patch
+truncated trailing context (fuzz-masked class, 2nd receipt after
+batch-03) — regenerated deterministically; r1 = 9/9 RESOLVED + 2 new
+HIGH (MI4 post-swap-back capacity carriage; AF4 single-artifact
+leakage, VJ-15 class), fixed; r2 = sol PASS + grok PASS. Operator
+note: the sealed batch-04 spec's "Authorized surface" line carries a
+batch-02 template artifact (`EQ3-{UA2,…}`); R1 table + verification
+commands (index 4) are authoritative — spec left unedited. Batch-04
+= COMPLETE. Next: batch-05 per the same direct-drive pattern.
