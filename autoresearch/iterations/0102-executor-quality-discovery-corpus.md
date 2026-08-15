@@ -683,3 +683,20 @@ pilot detached (launch-detached lineage, never near 12am KST) →
 `score-pilot.py` → DECISION file + receipt hash → batches in a FRESH
 session per R1-2b.
 
+
+## Execution log — batch-01 (2026-08-15 session)
+
+Batch-01 resolve run `rs-20260812T121333Z-bf431fde9e82` (executor
+terra, pair-verify) died 2026-08-12 after VERIFY round 1 NEEDS_WORK
+(4 HIGH: token-salad ×2 EQ3-MI1/EQ3-AF1, symptom-strawman EQ3-MI1,
+stale README "32 EQ2"). This session closed the run terminally
+(NEEDS_WORK, archived) and — per user direction — ran outer iter 2
+WITHOUT resolve: orchestrator adjudicated (all 4 valid, evidence
+byte-confirmed), fixes authored by gpt-5.6-terra in two depth-first
+dispatches (EQ3-MI1 scope; EQ3-AF1+README scope), verified 3-way
+(fable mechanical: scope/residue/sha-pins clean; gpt-5.6-sol and
+grok 4.6 targeted re-judge: 4/4 RESOLVED, NEW-ISSUES NONE).
+Discovery validator green on all 4 batch-01 tasks. Corpus fix commit:
+`fix(benchmark): close batch-01 verify findings VJ-1..VJ-4`.
+Batch-01 = COMPLETE. Next: batches 02-08 (lane — resolve-per-batch
+per frozen recipe vs direct terra+trio drive — pending user call).
