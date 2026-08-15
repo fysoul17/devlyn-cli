@@ -726,4 +726,17 @@ leakage, VJ-15 class), fixed; r2 = sol PASS + grok PASS. Operator
 note: the sealed batch-04 spec's "Authorized surface" line carries a
 batch-02 template artifact (`EQ3-{UA2,…}`); R1 table + verification
 commands (index 4) are authoritative — spec left unedited. Batch-04
-= COMPLETE. Next: batch-05 per the same direct-drive pattern.
+= COMPLETE.
+Batch-05 SHIPPED `04a7992` (same session). Author template now carries
+the batch-01..04 judge-caught classes as explicit self-check bars
+(a)-(g); MI5 passed both judges clean on first authoring. Trio r0 = 5
+byte-confirmed findings (AF5 gold SLA-clock reset masked by 100/100
+timestamp coincidence + hardcoded dispatcher booking; BD5 nonce
+token-salad — grok proved via cross-corpus token sweep — +
+incomplete-event strawman symptom; UA5 canned slot-id assertion), all
+fixed; r1 = 5/5 RESOLVED, sol PASS, grok dissent (restore omits
+fragment-A booking) REFUTED on bytes — registered outcome tokens
+(clock-continuity, fee-waived-once) both carried in restore, fragment
+A carried live by remote-a; fable tiebreak, 2-of-3 PASS. R2 README
+2-line list extension applied by orchestrator. Batch-05 = COMPLETE
+(corpus 20/32). Next: batch-06, same pattern.
