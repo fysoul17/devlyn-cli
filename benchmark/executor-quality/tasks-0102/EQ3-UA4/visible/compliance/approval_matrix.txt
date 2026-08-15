@@ -1,0 +1,2 @@
+An attendance correction requires a manager approval before payroll posts it.
+The payroll desk records the approval reference with the submitted timecard.

@@ -1,0 +1,2 @@
+The audit export is retained with the payroll packet for the statutory retention period.
+Its rows are reviewed by the payroll operations team each quarter.

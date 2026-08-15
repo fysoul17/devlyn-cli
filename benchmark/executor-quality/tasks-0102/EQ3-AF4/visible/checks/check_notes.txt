@@ -1,0 +1,2 @@
+Run this folder's checks after changing a receiving rule. The fixtures model a
+single harvest shift and keep their examples small enough for a foreperson to read.

@@ -1,0 +1,2 @@
+The daily sheet lists each crew's first scan, last scan, and number of bins
+loaded. Supervisors use it to compare the row tally with the truck manifest.

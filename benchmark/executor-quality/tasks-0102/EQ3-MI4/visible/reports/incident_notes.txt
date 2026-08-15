@@ -1,0 +1,1 @@
+Record road closures and school-specific pickup changes in the incident log.

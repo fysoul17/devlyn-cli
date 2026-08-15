@@ -1,0 +1,42 @@
+{
+  "id": "EQ3-AF4",
+  "class": "absent_failure_mode",
+  "goal": "Rejecting a lot after the crew has recorded a few grades leaves its bins marked in circulation. Return the bins when the lot is rejected and run node visible/checks/run_checks.js after the repair.",
+  "invariant": "After a partial grade, a rejected lot has its accepted settlement voided exactly once and every returned bin is present in field inventory.",
+  "visible_files": [
+    "visible/checks/check_notes.txt",
+    "visible/checks/pick_recorder_test.js",
+    "visible/checks/rejected_lot_test.js",
+    "visible/checks/run_checks.js",
+    "visible/grading/grade_scale.js",
+    "visible/grading/grader_ledger.js",
+    "visible/grading/lot_tags.txt",
+    "visible/grading/scale_notes.txt",
+    "visible/inventory/bin_counts.txt",
+    "visible/inventory/field_bins.js",
+    "visible/inventory/inventory_notes.txt",
+    "visible/inventory/yard_map.txt",
+    "visible/picking/bin_labels.txt",
+    "visible/picking/pick_recorder.js",
+    "visible/picking/picker_notes.txt",
+    "visible/picking/scan_queue.js",
+    "visible/reports/daily_sheet.txt",
+    "visible/reports/harvest_summary.js",
+    "visible/reports/supervisor_notes.txt",
+    "visible/reports/weight_log.txt",
+    "visible/support/package.json",
+    "visible/support/radio_codes.txt",
+    "visible/support/shift_contacts.txt",
+    "visible/support/training_card.txt",
+    "visible/support/weather_board.txt"
+  ],
+  "edit_site_dir": "visible/picking",
+  "contract_artifacts": [
+    "visible/grading/grader_ledger.js",
+    "visible/checks/rejected_lot_test.js"
+  ],
+  "contract_tokens_a": ["grader", "ledger", "reconciles"],
+  "contract_tokens_b": ["field", "inventory", "rejection"],
+  "outcome_tokens_a": ["accepted", "settlement"],
+  "outcome_tokens_b": ["returned", "voided"]
+}

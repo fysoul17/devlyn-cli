@@ -1,0 +1,1 @@
+Editors should confirm a stop request before it appears on the dispatch board.

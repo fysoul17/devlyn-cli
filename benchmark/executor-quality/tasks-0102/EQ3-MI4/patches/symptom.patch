@@ -1,0 +1,5 @@
+--- a/editor/stop_editor.js
++++ b/editor/stop_editor.js
+@@ -26 +26 @@
+-  return { accepted: false, queued: false };
++  return { accepted: applyStopEdit(session.currentPlan, edit), queued: false };

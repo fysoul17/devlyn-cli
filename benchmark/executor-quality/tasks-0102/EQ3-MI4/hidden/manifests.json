@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "missed_repo_invariant",
+      "invariant": "When a stop edit is submitted during a snow-day plan, the regular plan is restored byte-identical with active capacity intact, and the queued replay is applied exactly once in submission order.",
+      "contract_bindings": [
+        {"file": "visible/operations/capacity_policy.txt", "sha256": "5152c2c8f91ba4e4c60a83fc96955d9a0592d22fc370bf9a6a8d63599eadad83", "quote": "The route balancer compares each leg's rider load with the capacity set on the active schedule."},
+        {"file": "visible/tests/snow_day_swapback.test.js", "sha256": "392f102e31fa66edce832c6b526466066dda814fbeb89440c7bfb9ee61ee0740", "quote": "The snow-day swap-back test verifies a replay of queued stops in submission order."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "missed_repo_invariant",
+      "invariant": "When a stop edit is submitted during a snow-day plan, the regular plan is restored byte-identical with active capacity intact, and the queued replay is applied exactly once in submission order.",
+      "contract_bindings": [
+        {"file": "visible/operations/capacity_policy.txt", "sha256": "5152c2c8f91ba4e4c60a83fc96955d9a0592d22fc370bf9a6a8d63599eadad83", "quote": "The route balancer compares each leg's rider load with the capacity set on the active schedule."},
+        {"file": "visible/tests/snow_day_swapback.test.js", "sha256": "392f102e31fa66edce832c6b526466066dda814fbeb89440c7bfb9ee61ee0740", "quote": "The snow-day swap-back test verifies a replay of queued stops in submission order."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "missed_repo_invariant",
+      "invariant": "When a stop edit is submitted during a snow-day plan, the regular plan is restored byte-identical with active capacity intact, and the queued replay is applied exactly once in submission order.",
+      "contract_bindings": [
+        {"file": "visible/operations/capacity_policy.txt", "sha256": "5152c2c8f91ba4e4c60a83fc96955d9a0592d22fc370bf9a6a8d63599eadad83", "quote": "The route balancer compares each leg's rider load with the capacity set on the active schedule."},
+        {"file": "visible/tests/snow_day_swapback.test.js", "sha256": "392f102e31fa66edce832c6b526466066dda814fbeb89440c7bfb9ee61ee0740", "quote": "The snow-day swap-back test verifies a replay of queued stops in submission order."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "missed_repo_invariant",
+      "invariant": "When a stop edit is submitted during a snow-day plan, the regular plan is restored byte-identical with active capacity intact, and the queued replay is applied exactly once in submission order.",
+      "contract_bindings": [
+        {"file": "visible/operations/capacity_policy.txt", "sha256": "5152c2c8f91ba4e4c60a83fc96955d9a0592d22fc370bf9a6a8d63599eadad83", "quote": "The route balancer compares each leg's rider load with the capacity set on the active schedule."},
+        {"file": "visible/tests/snow_day_swapback.test.js", "sha256": "392f102e31fa66edce832c6b526466066dda814fbeb89440c7bfb9ee61ee0740", "quote": "The snow-day swap-back test verifies a replay of queued stops in submission order."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "missed_repo_invariant",
+      "invariant": "When a stop edit is submitted during a snow-day plan, the regular plan is restored byte-identical with active capacity intact, and the queued replay is applied exactly once in submission order.",
+      "contract_bindings": [
+        {"file": "visible/operations/capacity_policy.txt", "sha256": "5152c2c8f91ba4e4c60a83fc96955d9a0592d22fc370bf9a6a8d63599eadad83", "quote": "The route balancer compares each leg's rider load with the capacity set on the active schedule."},
+        {"file": "visible/tests/snow_day_swapback.test.js", "sha256": "392f102e31fa66edce832c6b526466066dda814fbeb89440c7bfb9ee61ee0740", "quote": "The snow-day swap-back test verifies a replay of queued stops in submission order."}
+      ]
+    }
+  ]
+}

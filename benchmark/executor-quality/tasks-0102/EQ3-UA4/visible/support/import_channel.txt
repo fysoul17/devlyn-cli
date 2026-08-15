@@ -1,0 +1,2 @@
+Timecards arrive from the attendance service in a signed daily batch.
+The intake channel rejects malformed records before operator review.

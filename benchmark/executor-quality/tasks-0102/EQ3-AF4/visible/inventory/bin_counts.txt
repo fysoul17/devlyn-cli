@@ -1,0 +1,2 @@
+Block A starts with forty bins, Block B starts with thirty-six, and the cider
+row starts with twelve. The count sheet records bin tags rather than estimates.

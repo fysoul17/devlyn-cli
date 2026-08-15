@@ -1,0 +1,2 @@
+The warehouse manager approves attendance corrections for the evening shift.
+Escalate an unresolved timecard to payroll operations after one business day.

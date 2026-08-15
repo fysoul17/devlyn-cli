@@ -1,0 +1,26 @@
+--- a/picking/pick_recorder.js	2026-08-15 23:43:13
++++ b/picking/pick_recorder.js	2026-08-15 23:43:35
+@@ -20,3 +20,3 @@
+     gradeWeight: 0,
+-    status: "waiting",
++    status: "picked",
+   });
+@@ -43,2 +43,18 @@
+   }
++  if (lot.rejected) {
++    return state;
++  }
++  for (const bin of state.binRecords) {
++    if (bin.lotId === lotId) {
++      if (!state.fieldInventory.includes(bin.id)) {
++        state.fieldInventory.push(bin.id);
++      }
++      bin.status = "field";
++    }
++  }
++  for (const entry of state.gradeEntries) {
++    if (entry.lotId === lotId) {
++      entry.voided = true;
++    }
++  }
+   lot.rejected = true;

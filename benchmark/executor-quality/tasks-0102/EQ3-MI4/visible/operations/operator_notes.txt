@@ -1,0 +1,2 @@
+Route coordinators use the temporary weather plan only while roads require it.
+Regular service information remains available for the next return to normal operations.

@@ -1,0 +1,2 @@
+The adjustment register groups supervisor approvals by employee and submission date.
+Payroll analysts use it to compare entered hours with the approved correction form.

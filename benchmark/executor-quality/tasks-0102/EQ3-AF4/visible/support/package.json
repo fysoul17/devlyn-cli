@@ -1,0 +1,5 @@
+{
+  "name": "orchard-harvest-fixture",
+  "private": true,
+  "engines": { "node": ">=20" }
+}

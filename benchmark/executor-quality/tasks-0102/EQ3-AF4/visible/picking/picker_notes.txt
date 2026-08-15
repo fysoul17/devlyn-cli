@@ -1,0 +1,2 @@
+Pickers scan every bin before it leaves the row. A scan is tied to one lot,
+one bin tag, and the estimated orchard weight written on the tote slip.

@@ -1,0 +1,2 @@
+Payroll records are retained according to the company retention schedule.
+Authorized staff may inspect the ledger during an internal review.

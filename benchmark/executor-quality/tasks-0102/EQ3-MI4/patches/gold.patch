@@ -1,0 +1,27 @@
+--- a/editor/stop_editor.js
++++ b/editor/stop_editor.js
+@@ -26 +26,8 @@
+-  return { accepted: false, queued: false };
++  if (session.mode !== "weather") {
++    return { accepted: applyStopEdit(session.currentPlan, edit), queued: false };
++  }
++  if (session.queuedEdits.some((item) => item.id === edit.id)) {
++    return { accepted: false, queued: true };
++  }
++  session.queuedEdits.push(copy(edit));
++  return { accepted: true, queued: true };
+@@ -34,0 +42,3 @@
++  if (session.mode === "regular") {
++    return { baseline: JSON.stringify(session.regularPlan), applied: [] };
++  }
+@@ -37,0 +48,7 @@
++  const applied = [];
++  for (const edit of session.queuedEdits) {
++    if (applyStopEdit(session.currentPlan, edit)) {
++      applied.push(edit.id);
++    }
++  }
++  session.queuedEdits = [];
+@@ -39 +56 @@
+-  return { baseline, applied: [] };
++  return { baseline, applied };

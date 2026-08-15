@@ -1,0 +1,5 @@
+--- a/support/weather_board.txt	2026-08-15 23:43:13
++++ b/support/weather_board.txt	2026-08-15 23:43:42
+@@ -2 +2,2 @@
+ pause loading when lightning is reported within the farm safety boundary.
++The check desk keeps printed copies for the morning briefing.

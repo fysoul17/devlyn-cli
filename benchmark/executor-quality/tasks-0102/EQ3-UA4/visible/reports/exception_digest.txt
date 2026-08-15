@@ -1,0 +1,2 @@
+The exception digest lists rejected imports and identifies the clerk who should follow up.
+It is reviewed before the next payroll review meeting.

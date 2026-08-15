@@ -1,0 +1,2 @@
+Worker w-7 belongs to the warehouse shift and reports corrections to the payroll desk.
+The directory is refreshed from the human resources roster each weekday.

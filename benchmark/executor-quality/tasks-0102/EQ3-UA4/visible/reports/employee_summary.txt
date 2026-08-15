@@ -1,0 +1,2 @@
+Employee summaries show current-period hours, deductions, and approved corrections.
+They are generated after payroll staff complete their desk review.

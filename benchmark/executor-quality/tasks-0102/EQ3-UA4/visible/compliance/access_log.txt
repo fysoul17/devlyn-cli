@@ -1,0 +1,2 @@
+The access log records the payroll role that opened a correction request.
+It does not include employee compensation amounts.

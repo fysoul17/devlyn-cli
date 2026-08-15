@@ -1,0 +1,2 @@
+The receiving scale is zeroed at the start of each block. A supervisor signs
+the weight sheet whenever a basket is reweighed after a damaged tag is found.

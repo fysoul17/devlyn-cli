@@ -1,0 +1,2 @@
+The weather board records rain starts, heat advisories, and wind holds. Crews
+pause loading when lightning is reported within the farm safety boundary.

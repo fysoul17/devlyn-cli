@@ -1,0 +1,2 @@
+The field count is taken before the first crew leaves and again after the last
+tote is unloaded. Damaged bins are set aside for repair and excluded from count.

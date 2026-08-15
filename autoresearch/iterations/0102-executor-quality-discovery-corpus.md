@@ -700,3 +700,22 @@ Discovery validator green on all 4 batch-01 tasks. Corpus fix commit:
 `fix(benchmark): close batch-01 verify findings VJ-1..VJ-4`.
 Batch-01 = COMPLETE. Next: batches 02-08 (lane — resolve-per-batch
 per frozen recipe vs direct terra+trio drive — pending user call).
+
+## Execution log — batches 02-04 direct-drive (2026-08-15 session, cont.)
+
+User-directed lane change: batches 02-08 run DIRECT-DRIVE (no resolve)
+— terra authors depth-first per task, trio verify per batch (fable
+mechanical + sol + grok), fable adjudicates splits with byte evidence.
+Batch-02 SHIPPED `ed5398d` (2 sol HIGH fixed: MI2 lock-machinery
+localization, BD2 vacuous local-b; fable tiebreak on BD2 re-judge).
+Batch-03 SHIPPED `d4a8997` (6 findings fixed incl. unanimous AF3;
+corpus-wide patch-hygiene sweep: hunk-count mismatches + lone-space
+context lines in 8 files, 4 regenerated deterministically by
+orchestrator script — validator fuzz had masked them; hygiene auditor
+now part of the per-batch mechanical pass).
+Batch-04 IN PROGRESS at session checkpoint: EQ3-UA4/MI4/AF4 authored
++ per-task validator green; REMAINING: EQ3-BD4, R2 README edit,
+batch-04 mechanical suite, trio judge round, commit. Resume recipe:
+scratchpad templates are session-local — regenerate from this file's
+batch 02-03 pattern (author-task template + judge prompts + hygiene
+auditor) or re-derive from spec §§ Sequencing/R1/R2.

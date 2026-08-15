@@ -1,0 +1,2 @@
+The pay-run review records the approved hours before payroll is issued.
+Supervisors investigate corrections from the adjustment queue the next morning.

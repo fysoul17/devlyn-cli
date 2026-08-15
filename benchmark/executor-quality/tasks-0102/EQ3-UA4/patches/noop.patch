@@ -1,0 +1,5 @@
+--- a/support/import_channel.txt	2026-08-15 23:26:14
++++ b/support/import_channel.txt	2026-08-15 23:27:48
+@@ -2 +2,2 @@
+ The intake channel rejects malformed records before operator review.
++Payroll staff review its daily transmission note before starting work.

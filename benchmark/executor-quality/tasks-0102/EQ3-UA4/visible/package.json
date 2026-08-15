@@ -1,0 +1,5 @@
+{
+  "name": "payroll-ledger-fixture",
+  "private": true,
+  "engines": { "node": ">=20" }
+}

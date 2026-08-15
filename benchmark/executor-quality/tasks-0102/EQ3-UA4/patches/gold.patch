@@ -1,0 +1,41 @@
+--- a/importer/timesheet_importer.js	2026-08-15 23:26:14
++++ b/importer/timesheet_importer.js	2026-08-15 23:27:15
+@@ -16,5 +16,37 @@
+   const period = ledger.periods.find((item) => item.id === sheet.periodId);
+-  if (!period || period.closed || !ledger.earningCodes.includes(sheet.earningCode)) {
++  if (!period || !ledger.earningCodes.includes(sheet.earningCode)) {
+     return { accepted: false, reason: "period unavailable" };
+   }
++  if (period.closed) {
++    const openPeriod = ledger.periods.find((item) => !item.closed);
++    const priorEntry = period.entries.find((entry) => entry.id === sheet.replaces);
++    if (!openPeriod || !priorEntry) {
++      return { accepted: false, reason: "adjustment unavailable" };
++    }
++    const alreadyImported = openPeriod.entries.some(
++      (entry) => entry.sourceTimesheet === sheet.id
++    );
++    if (alreadyImported) {
++      return { accepted: true, id: sheet.id, duplicate: true };
++    }
++    openPeriod.entries.push(createEntry({
++      id: `${sheet.id}-undo`,
++      workerId: priorEntry.workerId,
++      hours: -priorEntry.hours,
++      amount: -priorEntry.amount,
++      earningCode: priorEntry.earningCode,
++      sourceTimesheet: sheet.id,
++      kind: "undo",
++    }));
++    openPeriod.entries.push(createEntry({
++      id: `${sheet.id}-replacement`,
++      workerId: sheet.workerId,
++      hours: sheet.hours,
++      amount: sheet.hours * ledger.hourlyRate,
++      earningCode: sheet.earningCode,
++      sourceTimesheet: sheet.id,
++      kind: "replacement",
++    }));
++    return { accepted: true, id: sheet.id };
++  }
+   period.entries.push(createEntry({

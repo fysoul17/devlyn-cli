@@ -1,0 +1,2 @@
+New pickers practice scanning a tag, checking the lot card, and handing the tote
+to the runner. A trainer watches the first five scans before releasing the crew.

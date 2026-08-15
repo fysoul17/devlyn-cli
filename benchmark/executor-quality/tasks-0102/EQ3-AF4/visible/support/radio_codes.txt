@@ -1,0 +1,2 @@
+Radio code seven means the field lane is clear. Radio code nine requests a bin
+runner. Emergency calls use the farm office channel, not the harvest channel.

@@ -1,0 +1,2 @@
+Weather service may consolidate stops when a road is closed.
+The standard plan remains the source for the next normal-day schedule.

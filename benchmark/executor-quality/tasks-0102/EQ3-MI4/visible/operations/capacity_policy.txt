@@ -1,0 +1,2 @@
+Dispatchers set a capacity for each service leg before the morning route is released.
+The route balancer compares each leg's rider load with the capacity set on the active schedule.

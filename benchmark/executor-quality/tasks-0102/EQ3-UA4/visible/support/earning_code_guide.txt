@@ -1,0 +1,2 @@
+REG identifies ordinary worked time, while OT identifies approved overtime.
+Payroll staff should ask a manager before selecting a different earning code.

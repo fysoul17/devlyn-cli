@@ -1,0 +1,7 @@
+--- a/picking/pick_recorder.js	2026-08-15 23:43:13
++++ b/picking/pick_recorder.js	2026-08-15 23:43:35
+@@ -20,3 +20,3 @@
+     gradeWeight: 0,
+-    status: "waiting",
++    status: "picked",
+   });

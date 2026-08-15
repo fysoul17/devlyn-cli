@@ -1,0 +1,43 @@
+{
+  "id": "EQ3-UA4",
+  "class": "unsupported_assumption",
+  "goal": "Late timecards submitted after payroll was finalized are rejected and the employee's correction never reaches the ledger. Record the adjustment and run node checks/run_checks.js after the repair.",
+  "invariant": "A late timesheet import leaves the closed pay period immutable and creates one reversal and one repost in the next open cycle; a failed import restores the ledger to its pre-import state.",
+  "visible_files": [
+    "visible/checks/late_import_test.js",
+    "visible/checks/manual_cases.md",
+    "visible/checks/retro_adjustment_test.js",
+    "visible/checks/run_checks.js",
+    "visible/compliance/access_log.txt",
+    "visible/compliance/approval_matrix.txt",
+    "visible/compliance/retention_policy.txt",
+    "visible/importer/entry_builder.js",
+    "visible/importer/timesheet_importer.js",
+    "visible/ledger/entry_types.js",
+    "visible/ledger/ledger_store.js",
+    "visible/ledger/period_status.js",
+    "visible/ledger/wage_codes.js",
+    "visible/package.json",
+    "visible/payrun/cycle_rollup.js",
+    "visible/payrun/pay_run_notes.txt",
+    "visible/payrun/pay_run_splitter.js",
+    "visible/reports/adjustment_register.txt",
+    "visible/reports/audit_export.txt",
+    "visible/reports/employee_summary.txt",
+    "visible/reports/exception_digest.txt",
+    "visible/support/earning_code_guide.txt",
+    "visible/support/employee_directory.txt",
+    "visible/support/import_channel.txt",
+    "visible/support/manager_contacts.txt",
+    "visible/support/payroll_calendar.txt"
+  ],
+  "edit_site_dir": "visible/importer",
+  "contract_artifacts": [
+    "visible/payrun/pay_run_splitter.js",
+    "visible/checks/retro_adjustment_test.js"
+  ],
+  "contract_tokens_a": ["cutoff", "immutable", "cycle"],
+  "contract_tokens_b": ["retro", "reversal", "repost"],
+  "outcome_tokens_a": ["closed", "immutable"],
+  "outcome_tokens_b": ["reversal", "repost"]
+}

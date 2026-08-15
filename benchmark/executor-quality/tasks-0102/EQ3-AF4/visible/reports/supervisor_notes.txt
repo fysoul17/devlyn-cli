@@ -1,0 +1,2 @@
+The supervisor notes weather delays, equipment swaps, and any row that needed
+an extra runner. These notes are planning aids and are not receiving records.

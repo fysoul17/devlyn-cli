@@ -1,0 +1,9 @@
+--- a/importer/timesheet_importer.js	2026-08-15 23:26:14
++++ b/importer/timesheet_importer.js	2026-08-15 23:26:46
+@@ -15,5 +15,5 @@
+   }
+   const period = ledger.periods.find((item) => item.id === sheet.periodId);
+-  if (!period || period.closed || !ledger.earningCodes.includes(sheet.earningCode)) {
++  if (!period || !ledger.earningCodes.includes(sheet.earningCode)) {
+     return { accepted: false, reason: "period unavailable" };
+   }
