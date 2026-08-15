@@ -1,0 +1,42 @@
+{
+  "id": "EQ3-UA2",
+  "class": "unsupported_assumption",
+  "goal": "Completed rooms are still left dirty after housekeeping finishes, so the front desk cannot use them. Update the room-state updater and run node visible/checks/run_checks.js after the repair.",
+  "invariant": "After a failed inspection, a room returns to dirty without another linen debit; that linen debit remains recorded exactly once, and inventory publication waits for an inspection signoff.",
+  "visible_files": [
+    "visible/checks/linen_scenario_test.js",
+    "visible/checks/room_state_updater_test.js",
+    "visible/checks/run_checks.js",
+    "visible/checks/smoke_notes.txt",
+    "visible/front_desk/arrival_board.js",
+    "visible/front_desk/guest_messages.txt",
+    "visible/front_desk/key_log.txt",
+    "visible/front_desk/reservation_notes.txt",
+    "visible/housekeeping/room_state_updater.js",
+    "visible/housekeeping/shift_notes.txt",
+    "visible/housekeeping/supplies.js",
+    "visible/housekeeping/turnover_queue.js",
+    "visible/maintenance/equipment_notes.txt",
+    "visible/maintenance/inspection_board.js",
+    "visible/maintenance/shift_handoff.txt",
+    "visible/maintenance/work_orders.txt",
+    "visible/night_audit/audit_notes.txt",
+    "visible/night_audit/audit_reconciler.js",
+    "visible/night_audit/audit_schedule.txt",
+    "visible/night_audit/publication_log.txt",
+    "visible/package.json",
+    "visible/reference/property_guide.txt",
+    "visible/reference/room_types.txt",
+    "visible/reference/service_standards.txt",
+    "visible/reference/training_notes.txt"
+  ],
+  "edit_site_dir": "visible/housekeeping",
+  "contract_artifacts": [
+    "visible/night_audit/audit_reconciler.js",
+    "visible/checks/linen_scenario_test.js"
+  ],
+  "contract_tokens_a": ["reconciler", "publication", "signoff"],
+  "contract_tokens_b": ["linen", "ledger", "debit"],
+  "outcome_tokens_a": ["inspection", "signoff"],
+  "outcome_tokens_b": ["linen", "debit", "once"]
+}

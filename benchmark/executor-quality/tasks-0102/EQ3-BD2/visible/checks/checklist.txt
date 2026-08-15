@@ -1,0 +1,2 @@
+Run the assignment checks after changing reviewer-slot handling. Record the
+paper identifier and reviewer identifiers in the maintenance note.

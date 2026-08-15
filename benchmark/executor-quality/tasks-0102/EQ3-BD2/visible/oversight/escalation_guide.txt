@@ -1,0 +1,2 @@
+Escalate a scheduling discrepancy to the review chair with the paper number,
+reviewer identifier, and the time the discrepancy was observed.

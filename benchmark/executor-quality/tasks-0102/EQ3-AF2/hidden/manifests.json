@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "absent_failure_mode",
+      "invariant": "After a reported fuel-entry error followed by service, the fuel series remains consistent and the reversal is recorded once.",
+      "contract_bindings": [
+        {"file": "visible/audit/odometer_auditor.js", "sha256": "efcf5e99375c6584d1a959fee1cea7e4972233a3b62b5e927cbee8347ecd8a07", "quote": "The consumption auditor compares each settled fuel series to the odometer distance and records a variance when the series is no longer consistent."},
+        {"file": "visible/checks/misfuel_reversal_test.js", "sha256": "e37f45dbe0c7d1f5d548a2a6f6a1e420e8e81d89170f9bfeac5ca4bed77369f2", "quote": "The misfuel regression test expects one reversal as a compensating record, appended exactly once for each corrected delivery."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "absent_failure_mode",
+      "invariant": "After a reported fuel-entry error followed by service, the fuel series remains consistent and the reversal is recorded once.",
+      "contract_bindings": [
+        {"file": "visible/audit/odometer_auditor.js", "sha256": "efcf5e99375c6584d1a959fee1cea7e4972233a3b62b5e927cbee8347ecd8a07", "quote": "The consumption auditor compares each settled fuel series to the odometer distance and records a variance when the series is no longer consistent."},
+        {"file": "visible/checks/misfuel_reversal_test.js", "sha256": "e37f45dbe0c7d1f5d548a2a6f6a1e420e8e81d89170f9bfeac5ca4bed77369f2", "quote": "The misfuel regression test expects one reversal as a compensating record, appended exactly once for each corrected delivery."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "absent_failure_mode",
+      "invariant": "After a reported fuel-entry error followed by service, the fuel series remains consistent and the reversal is recorded once.",
+      "contract_bindings": [
+        {"file": "visible/audit/odometer_auditor.js", "sha256": "efcf5e99375c6584d1a959fee1cea7e4972233a3b62b5e927cbee8347ecd8a07", "quote": "The consumption auditor compares each settled fuel series to the odometer distance and records a variance when the series is no longer consistent."},
+        {"file": "visible/checks/misfuel_reversal_test.js", "sha256": "e37f45dbe0c7d1f5d548a2a6f6a1e420e8e81d89170f9bfeac5ca4bed77369f2", "quote": "The misfuel regression test expects one reversal as a compensating record, appended exactly once for each corrected delivery."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "absent_failure_mode",
+      "invariant": "After a reported fuel-entry error followed by service, the fuel series remains consistent and the reversal is recorded once.",
+      "contract_bindings": [
+        {"file": "visible/audit/odometer_auditor.js", "sha256": "efcf5e99375c6584d1a959fee1cea7e4972233a3b62b5e927cbee8347ecd8a07", "quote": "The consumption auditor compares each settled fuel series to the odometer distance and records a variance when the series is no longer consistent."},
+        {"file": "visible/checks/misfuel_reversal_test.js", "sha256": "e37f45dbe0c7d1f5d548a2a6f6a1e420e8e81d89170f9bfeac5ca4bed77369f2", "quote": "The misfuel regression test expects one reversal as a compensating record, appended exactly once for each corrected delivery."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "absent_failure_mode",
+      "invariant": "After a reported fuel-entry error followed by service, the fuel series remains consistent and the reversal is recorded once.",
+      "contract_bindings": [
+        {"file": "visible/audit/odometer_auditor.js", "sha256": "efcf5e99375c6584d1a959fee1cea7e4972233a3b62b5e927cbee8347ecd8a07", "quote": "The consumption auditor compares each settled fuel series to the odometer distance and records a variance when the series is no longer consistent."},
+        {"file": "visible/checks/misfuel_reversal_test.js", "sha256": "e37f45dbe0c7d1f5d548a2a6f6a1e420e8e81d89170f9bfeac5ca4bed77369f2", "quote": "The misfuel regression test expects one reversal as a compensating record, appended exactly once for each corrected delivery."}
+      ]
+    }
+  ]
+}

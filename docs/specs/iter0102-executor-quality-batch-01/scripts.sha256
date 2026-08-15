@@ -1,0 +1,4 @@
+5f458d5c0be1f458b94a8a9469afe59ea37cd280a159c6c4c9d4fbdede36e45b  benchmark/executor-quality/scripts/validate-discovery-task.py
+781af703ed4c3f04481d84a547aec373d92579af34f775540b335042b0e0db36  benchmark/executor-quality/scripts/score-pilot.py
+58d726f378f6fd7f2c72cdc871d242eefdd4156cfe3cdcb72519b5933339cd74  benchmark/executor-quality/scripts/score-calibration.py
+399b06917ad85eb6abf12a83852b3a029790fa16cb93b58d1b7efa8242da0cc9  benchmark/executor-quality/scripts/score-cohort.py

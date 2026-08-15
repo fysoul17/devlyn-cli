@@ -1,0 +1,2 @@
+Keys are counted at the start and end of every desk shift.
+Lost keys are recorded with the room number and time reported.

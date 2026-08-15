@@ -1,0 +1,6 @@
+{
+  "name": "harbor-hotel-turnover-fixture",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" }
+}

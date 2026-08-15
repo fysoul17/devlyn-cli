@@ -1,0 +1,2 @@
+The program committee reviews potential conflicts before sending new review
+offers. Capacity information is refreshed from the assignment service.

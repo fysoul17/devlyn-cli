@@ -1,0 +1,2 @@
+The publication log records the time an inventory list was released.
+An incomplete turnover stays off the released list.

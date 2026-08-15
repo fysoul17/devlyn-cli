@@ -1,0 +1,2 @@
+Run the check script from the fixture root with a current Node runtime.
+The checks cover the handoff made when a room leaves the dirty queue.

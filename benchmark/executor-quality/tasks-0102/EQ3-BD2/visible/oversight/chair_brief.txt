@@ -1,0 +1,2 @@
+Chair briefs summarize the number of open offers, pending decisions, and
+reviewers who need a workload adjustment before the next invitation round.

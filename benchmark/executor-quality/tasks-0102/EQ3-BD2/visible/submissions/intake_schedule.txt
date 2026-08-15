@@ -1,0 +1,2 @@
+The intake desk checks new submissions each weekday before reviewer invitations
+are prepared for the following review cycle.

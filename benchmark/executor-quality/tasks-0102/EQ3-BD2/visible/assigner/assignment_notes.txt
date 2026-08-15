@@ -1,0 +1,2 @@
+Reviewer assignments are released through the submission workflow. The roster
+uses available slots to decide whether another review can be offered.

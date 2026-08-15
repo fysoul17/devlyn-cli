@@ -1,0 +1,12 @@
+--- a/dispatch/courier_assigner.js
++++ b/dispatch/courier_assigner.js
+@@ -32,7 +32,9 @@ function declineAssignment(state, orderId) {
+   if (!assignment) {
+     throw new Error(`unknown order ${orderId}`);
+   }
+-  assignment.status = "declined";
++  assignment.courierId = null;
++  assignment.status = "waiting";
++  state.waitingOrders.push({ orderId: assignment.orderId, rank: assignment.rank });
+   return { orderId: assignment.orderId, rank: assignment.rank };
+ }

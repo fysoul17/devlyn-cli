@@ -1,0 +1,43 @@
+{
+  "id": "EQ3-AF2",
+  "class": "absent_failure_mode",
+  "goal": "A fuel entry is being changed in place when the driver reports the wrong product. Keep the receipt history intact after the correction and run node visible/checks/run_checks.js after the repair.",
+  "invariant": "After a reported fuel-entry error followed by service, the fuel series remains consistent and the reversal is recorded once.",
+  "visible_files": [
+    "visible/audit/consumption_notes.txt",
+    "visible/audit/odometer_auditor.js",
+    "visible/audit/variance_thresholds.txt",
+    "visible/catalog/grade_codes.txt",
+    "visible/catalog/maintenance_codes.txt",
+    "visible/catalog/pump_labels.txt",
+    "visible/checks/append_only_test.js",
+    "visible/checks/correction_shape_test.js",
+    "visible/checks/misfuel_reversal_test.js",
+    "visible/checks/run_checks.js",
+    "visible/checks/smoke_notes.txt",
+    "visible/fuel-log/fuel_log_writer.js",
+    "visible/fuel-log/storage_notes.txt",
+    "visible/operations/route_board.txt",
+    "visible/operations/service_intake.js",
+    "visible/operations/shift_handoff.txt",
+    "visible/operations/vehicle_status.txt",
+    "visible/package.json",
+    "visible/reports/daily_summary.js",
+    "visible/reports/driver_digest.txt",
+    "visible/reports/fuel_exception_log.txt",
+    "visible/reports/weekly_notes.txt",
+    "visible/support/depot_map.txt",
+    "visible/support/dispatch_numbers.txt",
+    "visible/support/forms_index.txt",
+    "visible/support/training_notes.txt"
+  ],
+  "edit_site_dir": "visible/fuel-log",
+  "contract_artifacts": [
+    "visible/audit/odometer_auditor.js",
+    "visible/checks/misfuel_reversal_test.js"
+  ],
+  "contract_tokens_a": ["auditor", "odometer", "variance"],
+  "contract_tokens_b": ["misfuel", "compensating", "exactly"],
+  "outcome_tokens_a": ["series", "consistent"],
+  "outcome_tokens_b": ["reversal", "once"]
+}

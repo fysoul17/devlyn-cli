@@ -1,0 +1,38 @@
+--- a/planning/batch_optimizer.js
++++ b/planning/batch_optimizer.js
+@@ -11,7 +11,19 @@ function lockedOrderIds(state) {
+   return orderIds;
+ }
+ 
++function completeDecline(state, assignment) {
++  if (!isAssignmentLocked(state, assignment.orderId)) {
++    return null;
++  }
++  if (!state.repooledOrderIds.has(assignment.orderId)) {
++    state.waitingOrders.push({ orderId: assignment.orderId, rank: assignment.rank });
++    state.repooledOrderIds.add(assignment.orderId);
++  }
++  return { orderId: assignment.orderId, rank: assignment.rank };
++}
++
+ function sealWave(state, waveId, orderIds) {
++  state.declineHandler = (assignment) => completeDecline(state, assignment);
+   const assignments = orderIds.map((orderId) => {
+     const assignment = state.assignments.get(orderId);
+     if (!assignment) {
+--- a/dispatch/courier_assigner.js
++++ b/dispatch/courier_assigner.js
+@@ -32,7 +32,13 @@ function declineAssignment(state, orderId) {
+   if (!assignment) {
+     throw new Error(`unknown order ${orderId}`);
+   }
+-  assignment.status = "declined";
++  const result = state.declineHandler?.(assignment);
++  if (result) {
++    return result;
++  }
++  assignment.courierId = null;
++  assignment.status = "waiting";
++  state.waitingOrders.push({ orderId: assignment.orderId, rank: assignment.rank });
+   return { orderId: assignment.orderId, rank: assignment.rank };
+ }

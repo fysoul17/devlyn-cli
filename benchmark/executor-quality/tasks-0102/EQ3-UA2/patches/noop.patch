@@ -1,0 +1,6 @@
+--- a/front_desk/guest_messages.txt
++++ b/front_desk/guest_messages.txt
+@@ -1,2 +1,3 @@
+ Guest messages are delivered with the afternoon departure packet.
+ Do not leave a message at an occupied room without consent.
++The desk log remains available for the evening shift.

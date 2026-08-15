@@ -1,0 +1,2 @@
+The operations dashboard counts delivery offers and completed handoffs.
+The daily summary groups results by delivery area.

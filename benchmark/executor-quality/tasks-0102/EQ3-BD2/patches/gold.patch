@@ -1,0 +1,19 @@
+--- a/assigner/reviewer_assigner.js
++++ b/assigner/reviewer_assigner.js
+@@ -22,6 +22,16 @@
+   if (!paper || paper.removed) {
+     return state;
+   }
++  for (const reviewerId of paper.reviewerIds) {
++    const reviewer = state.reviewers.find((item) => item.id === reviewerId);
++    reviewer.availableSlots += 1;
++    state.loadCounts[reviewerId] -= 1;
++  }
++  for (const review of paper.reviews) {
++    if (review.status === "submitted") {
++      state.reviewHistory.push(review);
++    }
++  }
+   paper.removed = true;
+   return state;
+ }

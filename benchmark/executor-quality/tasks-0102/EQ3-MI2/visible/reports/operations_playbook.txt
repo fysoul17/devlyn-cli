@@ -1,0 +1,9 @@
+Dispatch shift handoff
+
+At the start of a shift, the dispatcher reviews the courier roster, delivery areas, and the orders waiting for an offer. The board is a working record for the operations desk: it shows which courier is handling each delivery and which orders still need attention.
+
+When a courier calls the desk about a delivery, the dispatcher records the reason in the incident log and checks whether another courier is available in the same area. The next offer should use the rank captured when the order first entered the board, so a busy shift does not quietly reshuffle customer promises.
+
+Route waves are published before the field team leaves the depot. The planning desk retains the published route sheet for the daily summary, while the dispatcher handles operational changes that arrive after publication. A courier change is communicated to the replacement courier and noted in the handoff record.
+
+At close, the shift lead compares delivery offers with completed handoffs, confirms that all open orders have an owner or a follow-up note, and archives the report for the next day. This routine gives the morning team enough context to continue service without reconstructing the prior shift from terminal messages.

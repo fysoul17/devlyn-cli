@@ -1,0 +1,2 @@
+King rooms occupy the east wing. Twin rooms occupy the west wing.
+Accessible rooms are held to the desk assignment procedure.

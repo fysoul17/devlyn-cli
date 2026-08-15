@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "missed_repo_invariant",
+      "invariant": "When a courier declines an assignment after the batch lock, the locked snapshot retains its integrity while the order is recorded once at its original priority.",
+      "contract_bindings": [
+        {"file": "visible/planning/batch_optimizer.js", "sha256": "dc365e04b4be89f7e017891325e7c8dd8c8d231bdf51aad881c22547f2a1f311", "quote": "The batch optimizer keeps its locked-assignment snapshot unchanged at batch lock so its integrity accounting stays reliable."},
+        {"file": "visible/checks/refusal_case_test.js", "sha256": "76d7e2cfabf986a028c44cf016f75b83716fb35d292fa660bfa4dc0a6f61bf48", "quote": "The refusal regression requires the ready queue to record the order once at its original priority."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "missed_repo_invariant",
+      "invariant": "When a courier declines an assignment after the batch lock, the locked snapshot retains its integrity while the order is recorded once at its original priority.",
+      "contract_bindings": [
+        {"file": "visible/planning/batch_optimizer.js", "sha256": "dc365e04b4be89f7e017891325e7c8dd8c8d231bdf51aad881c22547f2a1f311", "quote": "The batch optimizer keeps its locked-assignment snapshot unchanged at batch lock so its integrity accounting stays reliable."},
+        {"file": "visible/checks/refusal_case_test.js", "sha256": "76d7e2cfabf986a028c44cf016f75b83716fb35d292fa660bfa4dc0a6f61bf48", "quote": "The refusal regression requires the ready queue to record the order once at its original priority."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "missed_repo_invariant",
+      "invariant": "When a courier declines an assignment after the batch lock, the locked snapshot retains its integrity while the order is recorded once at its original priority.",
+      "contract_bindings": [
+        {"file": "visible/planning/batch_optimizer.js", "sha256": "dc365e04b4be89f7e017891325e7c8dd8c8d231bdf51aad881c22547f2a1f311", "quote": "The batch optimizer keeps its locked-assignment snapshot unchanged at batch lock so its integrity accounting stays reliable."},
+        {"file": "visible/checks/refusal_case_test.js", "sha256": "76d7e2cfabf986a028c44cf016f75b83716fb35d292fa660bfa4dc0a6f61bf48", "quote": "The refusal regression requires the ready queue to record the order once at its original priority."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "missed_repo_invariant",
+      "invariant": "When a courier declines an assignment after the batch lock, the locked snapshot retains its integrity while the order is recorded once at its original priority.",
+      "contract_bindings": [
+        {"file": "visible/planning/batch_optimizer.js", "sha256": "dc365e04b4be89f7e017891325e7c8dd8c8d231bdf51aad881c22547f2a1f311", "quote": "The batch optimizer keeps its locked-assignment snapshot unchanged at batch lock so its integrity accounting stays reliable."},
+        {"file": "visible/checks/refusal_case_test.js", "sha256": "76d7e2cfabf986a028c44cf016f75b83716fb35d292fa660bfa4dc0a6f61bf48", "quote": "The refusal regression requires the ready queue to record the order once at its original priority."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "missed_repo_invariant",
+      "invariant": "When a courier declines an assignment after the batch lock, the locked snapshot retains its integrity while the order is recorded once at its original priority.",
+      "contract_bindings": [
+        {"file": "visible/planning/batch_optimizer.js", "sha256": "dc365e04b4be89f7e017891325e7c8dd8c8d231bdf51aad881c22547f2a1f311", "quote": "The batch optimizer keeps its locked-assignment snapshot unchanged at batch lock so its integrity accounting stays reliable."},
+        {"file": "visible/checks/refusal_case_test.js", "sha256": "76d7e2cfabf986a028c44cf016f75b83716fb35d292fa660bfa4dc0a6f61bf48", "quote": "The refusal regression requires the ready queue to record the order once at its original priority."}
+      ]
+    }
+  ]
+}

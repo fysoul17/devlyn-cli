@@ -1,0 +1,2 @@
+Courier changes are recorded by the dispatcher before the next delivery wave is sent.
+An order that returns to the waiting board keeps its dispatch rank for the next offer.

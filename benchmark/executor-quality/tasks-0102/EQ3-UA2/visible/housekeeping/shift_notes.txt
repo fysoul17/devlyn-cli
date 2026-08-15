@@ -1,0 +1,2 @@
+The morning team marks each completed turnover before the supervisor walk.
+Rooms awaiting a walk remain assigned to the same attendant.

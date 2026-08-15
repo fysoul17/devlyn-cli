@@ -1,0 +1,1 @@
+Each pump label identifies the bay, product, and attendant initials.

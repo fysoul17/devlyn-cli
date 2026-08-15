@@ -1,0 +1,2 @@
+Available slots represent room for future offers. Assigned-review totals are
+used by scheduling reports and committee oversight.

@@ -1,0 +1,2 @@
+Maintenance work is scheduled between invitation batches. The on-call chair
+records start and finish times in the program operations log.

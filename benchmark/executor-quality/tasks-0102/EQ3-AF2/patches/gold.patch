@@ -1,0 +1,18 @@
+--- a/fuel-log/fuel_log_writer.js
++++ b/fuel-log/fuel_log_writer.js
+@@ -18,2 +18,13 @@
+-      delivery.liters = 0;
+-      return delivery;
++      const existing = entries.find((entry) => entry.kind === "reversal" && entry.reversalOf === deliveryId);
++      if (existing) {
++        return existing;
++      }
++      const correction = {
++        kind: "reversal",
++        id: `correction:${deliveryId}`,
++        reversalOf: deliveryId,
++        liters: -delivery.liters,
++        odometer: delivery.odometer,
++      };
++      entries.push(correction);
++      return correction;

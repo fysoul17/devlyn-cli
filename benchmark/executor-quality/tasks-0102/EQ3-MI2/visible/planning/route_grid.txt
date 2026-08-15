@@ -1,0 +1,2 @@
+The dispatch lead groups nearby deliveries into a wave before courier handoff.
+Each wave records the courier selected at the moment the route is published.

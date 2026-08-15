@@ -1,0 +1,1 @@
+Fuel receipts are retained with the vehicle packet for the end-of-shift clerk.

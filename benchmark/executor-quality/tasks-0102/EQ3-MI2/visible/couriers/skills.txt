@@ -1,0 +1,2 @@
+Courier-4 carries standard delivery bags.
+Courier-8 is cleared for insulated deliveries.

@@ -1,0 +1,2 @@
+The dispatcher uses a single board for delivery assignments during a shift.
+Courier changes are shown to the next available dispatcher.

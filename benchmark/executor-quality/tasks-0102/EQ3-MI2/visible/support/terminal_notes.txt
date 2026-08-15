@@ -1,0 +1,2 @@
+The field terminal confirms deliveries after the courier arrives at the address.
+Dispatch notes are visible only to the operations team.

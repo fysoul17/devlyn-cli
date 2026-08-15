@@ -1,0 +1,6 @@
+--- a/support/operations_log.txt
++++ b/support/operations_log.txt
+@@ -1,2 +1,3 @@
+ Operations notes should describe observed behavior, the affected program number,
+ and the verification command used after the repair.
++The next review cycle starts after the chair confirms the log entry.

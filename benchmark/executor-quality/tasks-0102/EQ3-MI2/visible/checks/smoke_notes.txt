@@ -1,0 +1,2 @@
+Run the checks from the fixture root with node visible/checks/run_checks.js.
+The checks use only the Node standard library.

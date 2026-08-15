@@ -1,0 +1,2 @@
+Orders are grouped by delivery area before they are offered to a courier.
+The dispatcher records a rank for each order when it enters the board.

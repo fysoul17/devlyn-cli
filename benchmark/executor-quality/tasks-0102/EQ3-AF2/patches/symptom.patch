@@ -1,0 +1,13 @@
+--- a/fuel-log/fuel_log_writer.js
++++ b/fuel-log/fuel_log_writer.js
+@@ -18,2 +18,8 @@
+-      delivery.liters = 0;
+-      return delivery;
++      const correction = {
++        kind: "reversal",
++        id: `correction:${deliveryId}:${entries.length}`,
++        liters: -delivery.liters,
++        odometer: delivery.odometer,
++      };
++      entries.push(correction);
++      return correction;

@@ -1,0 +1,2 @@
+New attendants shadow a supervisor during their first turnover round.
+The desk calls the floor only after a supervisor update is recorded.

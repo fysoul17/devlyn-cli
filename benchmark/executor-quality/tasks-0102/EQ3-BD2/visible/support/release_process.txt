@@ -1,0 +1,2 @@
+Before a release, run the fixture checks with node and capture the command
+output in the change request. No external services are required for this fixture.

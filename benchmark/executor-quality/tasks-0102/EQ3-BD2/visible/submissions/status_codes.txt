@@ -1,0 +1,2 @@
+Program records use active, removed, and decision-pending status values. The
+status label is for workflow display and is not a reviewer recommendation.

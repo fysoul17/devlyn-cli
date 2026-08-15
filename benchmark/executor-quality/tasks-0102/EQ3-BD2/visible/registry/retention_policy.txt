@@ -1,0 +1,2 @@
+Submitted evaluations remain available to chairs after a submission leaves the
+active program. Draft evaluations stay with the reviewer work queue.

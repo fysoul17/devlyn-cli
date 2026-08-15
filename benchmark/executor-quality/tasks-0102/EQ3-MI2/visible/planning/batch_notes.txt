@@ -1,0 +1,2 @@
+The planning desk reviews delivery coverage before a wave is sent to the field.
+Later adjustments are tracked by the dispatcher rather than by rewriting the published route sheet.

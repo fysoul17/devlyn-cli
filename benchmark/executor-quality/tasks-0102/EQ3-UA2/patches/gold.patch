@@ -1,0 +1,34 @@
+--- a/housekeeping/room_state_updater.js
++++ b/housekeeping/room_state_updater.js
+@@ -1,13 +1,28 @@
+ export function applyRoomEvent(room, accounts, event) {
+   if (event.type === "cleaned") {
++    const charge = room.alreadyCharged ? 0 : 1;
+     return {
+       room: {
+         ...room,
+-        state: "dirty",
++        state: "awaiting-inspection",
+         cleanedAt: event.at,
+-        inspection: "not-required",
+-        alreadyCharged: false,
++        inspection: "pending",
++        alreadyCharged: true,
+       },
++      accounts: { ...accounts, supplyCharges: accounts.supplyCharges + charge },
++    };
++  }
++
++  if (event.type === "inspection") {
++    if (event.passed) {
++      return {
++        room: { ...room, state: "bookable", inspection: "signed-off" },
++        accounts: { ...accounts },
++      };
++    }
++
++    return {
++      room: { ...room, state: "dirty", inspection: "failed" },
+       accounts: { ...accounts },
+     };
+   }

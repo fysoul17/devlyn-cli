@@ -1,0 +1,5 @@
+{
+  "name": "fleet-fuel-log-fixture",
+  "private": true,
+  "engines": { "node": ">=20" }
+}

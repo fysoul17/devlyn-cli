@@ -1,0 +1,2 @@
+Operations notes should describe observed behavior, the affected program number,
+and the verification command used after the repair.

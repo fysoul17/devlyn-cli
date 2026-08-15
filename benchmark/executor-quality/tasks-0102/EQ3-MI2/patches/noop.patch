@@ -1,0 +1,6 @@
+--- a/support/metrics.txt
++++ b/support/metrics.txt
+@@ -1,2 +1,3 @@
+ The operations dashboard counts delivery offers and completed handoffs.
+ The daily summary groups results by delivery area.
++The dashboard refreshes after the dispatcher closes a shift.

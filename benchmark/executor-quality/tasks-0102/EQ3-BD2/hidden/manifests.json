@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "broken_dependency",
+      "invariant": "When a submission is withdrawn after partial reviews, reviewer capacity is restored, scheduling conflicts are recalculated, and completed reviews are archived exactly once.",
+      "contract_bindings": [
+        {"file": "visible/oversight/conflict_detector.js", "sha256": "a346e6975a3aa7f3779fe7e52d4e2f5237a819606324387d06f4791aa23ce485", "quote": "The conflict detector reads the current reviewer load counts before permitting a competing allocation."},
+        {"file": "visible/checks/withdrawn_paper_test.js", "sha256": "a28be35645e0b4d2beeaf8418ca621494a600b4b5e1c2129c96a6d8d97f724b9", "quote": "This withdrawal regression test checks the archive and ensures completed reviews are archived once."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "broken_dependency",
+      "invariant": "When a submission is withdrawn after partial reviews, reviewer capacity is restored, scheduling conflicts are recalculated, and completed reviews are archived exactly once.",
+      "contract_bindings": [
+        {"file": "visible/oversight/conflict_detector.js", "sha256": "a346e6975a3aa7f3779fe7e52d4e2f5237a819606324387d06f4791aa23ce485", "quote": "The conflict detector reads the current reviewer load counts before permitting a competing allocation."},
+        {"file": "visible/checks/withdrawn_paper_test.js", "sha256": "a28be35645e0b4d2beeaf8418ca621494a600b4b5e1c2129c96a6d8d97f724b9", "quote": "This withdrawal regression test checks the archive and ensures completed reviews are archived once."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "broken_dependency",
+      "invariant": "When a submission is withdrawn after partial reviews, reviewer capacity is restored, scheduling conflicts are recalculated, and completed reviews are archived exactly once.",
+      "contract_bindings": [
+        {"file": "visible/oversight/conflict_detector.js", "sha256": "a346e6975a3aa7f3779fe7e52d4e2f5237a819606324387d06f4791aa23ce485", "quote": "The conflict detector reads the current reviewer load counts before permitting a competing allocation."},
+        {"file": "visible/checks/withdrawn_paper_test.js", "sha256": "a28be35645e0b4d2beeaf8418ca621494a600b4b5e1c2129c96a6d8d97f724b9", "quote": "This withdrawal regression test checks the archive and ensures completed reviews are archived once."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "broken_dependency",
+      "invariant": "When a submission is withdrawn after partial reviews, reviewer capacity is restored, scheduling conflicts are recalculated, and completed reviews are archived exactly once.",
+      "contract_bindings": [
+        {"file": "visible/oversight/conflict_detector.js", "sha256": "a346e6975a3aa7f3779fe7e52d4e2f5237a819606324387d06f4791aa23ce485", "quote": "The conflict detector reads the current reviewer load counts before permitting a competing allocation."},
+        {"file": "visible/checks/withdrawn_paper_test.js", "sha256": "a28be35645e0b4d2beeaf8418ca621494a600b4b5e1c2129c96a6d8d97f724b9", "quote": "This withdrawal regression test checks the archive and ensures completed reviews are archived once."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "broken_dependency",
+      "invariant": "When a submission is withdrawn after partial reviews, reviewer capacity is restored, scheduling conflicts are recalculated, and completed reviews are archived exactly once.",
+      "contract_bindings": [
+        {"file": "visible/oversight/conflict_detector.js", "sha256": "a346e6975a3aa7f3779fe7e52d4e2f5237a819606324387d06f4791aa23ce485", "quote": "The conflict detector reads the current reviewer load counts before permitting a competing allocation."},
+        {"file": "visible/checks/withdrawn_paper_test.js", "sha256": "a28be35645e0b4d2beeaf8418ca621494a600b4b5e1c2129c96a6d8d97f724b9", "quote": "This withdrawal regression test checks the archive and ensures completed reviews are archived once."}
+      ]
+    }
+  ]
+}

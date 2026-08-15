@@ -1,0 +1,43 @@
+{
+  "id": "EQ3-MI2",
+  "class": "missed_repo_invariant",
+  "goal": "Couriers can decline an assignment, but the order disappears from the dispatcher and cannot be offered again. Repair the courier assigner and run node visible/checks/run_checks.js after the change.",
+  "invariant": "When a courier declines an assignment after the batch lock, the locked snapshot retains its integrity while the order is recorded once at its original priority.",
+  "visible_files": [
+    "visible/checks/courier_assigner_test.js",
+    "visible/checks/refusal_case_test.js",
+    "visible/checks/run_checks.js",
+    "visible/checks/smoke_notes.txt",
+    "visible/couriers/availability.txt",
+    "visible/couriers/roster.js",
+    "visible/couriers/skills.txt",
+    "visible/dispatch/assignment_store.js",
+    "visible/dispatch/courier_assigner.js",
+    "visible/dispatch/shift_notes.txt",
+    "visible/orders/menu_queue.js",
+    "visible/orders/order_notes.txt",
+    "visible/orders/priority_cards.txt",
+    "visible/package.json",
+    "visible/planning/batch_notes.txt",
+    "visible/planning/batch_optimizer.js",
+    "visible/planning/route_grid.txt",
+    "visible/reports/day_summary.txt",
+    "visible/reports/dispatch_report.js",
+    "visible/reports/incident_log.txt",
+    "visible/reports/operations_playbook.txt",
+    "visible/support/clock.js",
+    "visible/support/config.txt",
+    "visible/support/ids.js",
+    "visible/support/metrics.txt",
+    "visible/support/terminal_notes.txt"
+  ],
+  "edit_site_dir": "visible/dispatch",
+  "contract_artifacts": [
+    "visible/planning/batch_optimizer.js",
+    "visible/checks/refusal_case_test.js"
+  ],
+  "contract_tokens_a": ["batch", "optimizer", "lock"],
+  "contract_tokens_b": ["refusal", "regression", "ready"],
+  "outcome_tokens_a": ["locked", "integrity"],
+  "outcome_tokens_b": ["original", "priority", "once"]
+}

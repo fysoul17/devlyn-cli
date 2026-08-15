@@ -1,0 +1,1 @@
+Exception notes travel with the fleet folder so supervisors can follow up on the next shift.

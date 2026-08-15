@@ -1,0 +1,2 @@
+Engineering handles reported leaks before cosmetic repairs.
+Open work orders include the room number and a short description.

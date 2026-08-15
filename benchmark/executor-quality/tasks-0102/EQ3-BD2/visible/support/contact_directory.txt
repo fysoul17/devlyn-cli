@@ -1,0 +1,2 @@
+The program chair, review coordinator, and platform operator share a monitored
+address for issues that affect reviewer invitations or author notices.
