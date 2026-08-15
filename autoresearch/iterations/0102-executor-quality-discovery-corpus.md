@@ -775,6 +775,31 @@ regenerated deterministically. r1 = 7/7 RESOLVED, sol PASS + grok
 PASS. **CORPUS COMPLETE 32/32** (batches 01-08 all trio-sealed).
 Author-template lineage (a)-(l) now encodes every judge-caught class;
 per-batch trio r0 still found real defects through batch-08 —
-self-check bars reduce but do not replace the judge gate. Next per
-freeze protocol: candidate seal → calibration (64-run sonnet band,
-never near 12am KST) → matrix.
+self-check bars reduce but do not replace the judge gate.
+
+**CANDIDATE SEALED + CALIBRATION BAND PASS (2026-08-16 morning KST
+session, same session).** Candidate seal:
+`~/.local/share/nx01/iter0102/freeze/candidate-manifest.json` — 32
+tasks / 1045 files, git_head `f6e0f24`, tree `294eeadea37889e99f…`,
+manifest sha `80f0a12d…`, scripts.sha256 4/4. Calibration apparatus
+frozen from 0101 lineage (terra byte-surgery, enumerated deltas only,
+fable full-diff review; driver 2bc68e03… launcher d914e7a3…
+launch-detached 6764324d… from the pilot-hardened gate; 6-entry
+inventory), 6/6 sandbox tamper probes fail-closed, two-seat audit
+FREEZE-ARM ×2 (sol + grok, zero findings, grok independently
+recomputed seal tree + re-ran probes). Launch
+`cal-20260815T220457Z` attempt 1/3 @ ~07:05 KST: 64/64 rows in ~35
+min (walls 20-238 s, median 55 s), cat/inc/infra 0/0/0, attested
+sonnet 64/64. ONE band evaluation (scorer 58d726f3…, ledger
+0fdeb984…): **PASS — mean 39/80, median 1/2, interior 30/32,
+total-fail 1** (band-verdict.json 6fa1b4bc…). Contrast 0101
+CALIBRATION_MISS (mean 1/40, interior 5/32): the discovery mechanism
+holds at corpus scale, sonnet lands mid-band. Next per freeze
+protocol step 7: candidate tree promoted byte-identical into matrix
+apparatus (mx drafts 6a4c88cf…/bbc4b2f7…,
+ALLOWED_ENGINES={claude-opus-5, claude-fable-5}, 128 runs ABBA) →
+matrix pre-arm audit (incl. 0100 repro synthetic-ledger proofs) →
+launch pending user adjudication of the fable-5 arm vs the
+2026-08-15 fable-token-economy directive (registration froze the
+seat 08-12, directive postdates it — surfaced, not silently
+resolved).
