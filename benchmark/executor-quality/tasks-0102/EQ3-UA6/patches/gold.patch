@@ -1,0 +1,30 @@
+diff --git a/porting/port_in_intake.js b/porting/port_in_intake.js
+--- a/porting/port_in_intake.js
++++ b/porting/port_in_intake.js
+@@ -1,7 +1,25 @@
+ "use strict";
+ 
+ function resubmitPortIn(state, correction, notify) {
+-  return { accepted: false, correctionId: correction.id };
++  const request = state.requests.find((item) => item.id === correction.replaces);
++  if (!request || state.clock > request.rollbackUntil) {
++    return { accepted: false, correctionId: correction.id };
++  }
++
++  request.status = "resubmitted";
++  request.desiredCarrier = correction.desiredCarrier;
++  request.correctionIds ||= [];
++  if (!request.correctionIds.includes(correction.id)) {
++    request.correctionIds.push(correction.id);
++  }
++  const mapped = state.numberMap[request.number];
++  if (mapped.subscriptionId !== request.originalMapping.subscriptionId
++    || mapped.carrier !== request.originalMapping.carrier
++    || mapped.route !== request.originalMapping.route) {
++    state.numberMap[request.number] = { ...request.originalMapping };
++  }
++  notify(state, request);
++  return { accepted: true, correctionId: correction.id };
+ }
+ 
+ module.exports = { resubmitPortIn };

@@ -1,0 +1,2 @@
+Vehicles record departure time, receiving location, and driver initials.
+The logistics desk files completed route slips after delivery.

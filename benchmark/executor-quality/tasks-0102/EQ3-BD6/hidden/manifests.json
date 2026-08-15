@@ -1,0 +1,89 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "broken_dependency",
+      "invariant": "After setup day, revoking a permit releases its pitch to the ordered waitlist and records a credit entry exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/allocation/pitch_map_allocator.js",
+          "sha256": "bf9157bd0c3bbcdb25786ca75b96699faf2d7d06a5134c8e6d265c8a80375faa",
+          "quote": "The candidate choice follows ordered approval records for a released pitch."
+        },
+        {
+          "file": "visible/finance/refund_register.js",
+          "sha256": "1ac7c25a637a270747e43dbb7c38c40295fda33725dd1e0817b63a4da7d2dca3",
+          "quote": "Finance derives each remittance from the unused calendar proportion, then stores one credit entry."
+        }
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "broken_dependency",
+      "invariant": "After setup day, revoking a permit releases its pitch to the ordered waitlist and records a credit entry exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/allocation/pitch_map_allocator.js",
+          "sha256": "bf9157bd0c3bbcdb25786ca75b96699faf2d7d06a5134c8e6d265c8a80375faa",
+          "quote": "The candidate choice follows ordered approval records for a released pitch."
+        },
+        {
+          "file": "visible/finance/refund_register.js",
+          "sha256": "1ac7c25a637a270747e43dbb7c38c40295fda33725dd1e0817b63a4da7d2dca3",
+          "quote": "Finance derives each remittance from the unused calendar proportion, then stores one credit entry."
+        }
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "broken_dependency",
+      "invariant": "After setup day, revoking a permit releases its pitch to the ordered waitlist and records a credit entry exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/allocation/pitch_map_allocator.js",
+          "sha256": "bf9157bd0c3bbcdb25786ca75b96699faf2d7d06a5134c8e6d265c8a80375faa",
+          "quote": "The candidate choice follows ordered approval records for a released pitch."
+        },
+        {
+          "file": "visible/finance/refund_register.js",
+          "sha256": "1ac7c25a637a270747e43dbb7c38c40295fda33725dd1e0817b63a4da7d2dca3",
+          "quote": "Finance derives each remittance from the unused calendar proportion, then stores one credit entry."
+        }
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "broken_dependency",
+      "invariant": "After setup day, revoking a permit releases its pitch to the ordered waitlist and records a credit entry exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/allocation/pitch_map_allocator.js",
+          "sha256": "bf9157bd0c3bbcdb25786ca75b96699faf2d7d06a5134c8e6d265c8a80375faa",
+          "quote": "The candidate choice follows ordered approval records for a released pitch."
+        },
+        {
+          "file": "visible/finance/refund_register.js",
+          "sha256": "1ac7c25a637a270747e43dbb7c38c40295fda33725dd1e0817b63a4da7d2dca3",
+          "quote": "Finance derives each remittance from the unused calendar proportion, then stores one credit entry."
+        }
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "broken_dependency",
+      "invariant": "After setup day, revoking a permit releases its pitch to the ordered waitlist and records a credit entry exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/allocation/pitch_map_allocator.js",
+          "sha256": "bf9157bd0c3bbcdb25786ca75b96699faf2d7d06a5134c8e6d265c8a80375faa",
+          "quote": "The candidate choice follows ordered approval records for a released pitch."
+        },
+        {
+          "file": "visible/finance/refund_register.js",
+          "sha256": "1ac7c25a637a270747e43dbb7c38c40295fda33725dd1e0817b63a4da7d2dca3",
+          "quote": "Finance derives each remittance from the unused calendar proportion, then stores one credit entry."
+        }
+      ]
+    }
+  ]
+}

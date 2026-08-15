@@ -1,0 +1,2 @@
+MSISDN history retains the prior subscription reference for audit lookup.
+Customer-service may inspect the last completed routing update.

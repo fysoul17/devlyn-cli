@@ -1,0 +1,2 @@
+North, South, East, and West locations use the same supply label format.
+Each location submits a count sheet at the close of each handoff.

@@ -1,0 +1,8 @@
+diff --git a/support/region_codes.txt b/support/region_codes.txt
+--- a/support/region_codes.txt
++++ b/support/region_codes.txt
+@@ -1,3 +1,4 @@
+ 01 North region
+ 02 Central region
+ 03 Coastal region
++04 Inland region

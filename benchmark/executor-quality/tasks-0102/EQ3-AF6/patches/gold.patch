@@ -1,0 +1,33 @@
+--- a/planner/batch_planner.js
++++ b/planner/batch_planner.js
+@@ -9,8 +9,28 @@ function findBatch(day, batchId) {
+ }
+ 
+ function failRise(day, batchId) {
+-  findBatch(day, batchId);
+-  return { requeued: false, batchId };
++  const batch = findBatch(day, batchId);
++  if (day.failureLedger.some((entry) => entry.batchId === batchId)) {
++    return { requeued: true, batchId };
++  }
++  batch.riseState = "failed";
++  batch.status = "queued";
++  day.retryQueue.push(batch.id);
++  const slot = day.ovenSlots.find((entry) => entry.lockedBy === batchId && entry.locked);
++  if (slot) {
++    slot.locked = false;
++    slot.lockedBy = null;
++    day.slotReleaseLedger.push({ batchId, slotId: slot.id });
++  }
++  for (const item of day.ingredients) {
++    item.available += item.committed - item.loss;
++    item.committed = 0;
++  }
++  day.failureLedger.push({
++    batchId,
++    losses: day.ingredients.map((item) => ({ name: item.name, amount: item.loss })),
++  });
++  return { requeued: true, batchId };
+ }
+ 
+ module.exports = { failRise, findBatch };

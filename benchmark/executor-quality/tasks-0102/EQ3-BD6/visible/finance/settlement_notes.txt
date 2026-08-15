@@ -1,0 +1,2 @@
+Cash desk notes are retained with the daily close packet.
+The vendor receipt is matched to its permit reference.

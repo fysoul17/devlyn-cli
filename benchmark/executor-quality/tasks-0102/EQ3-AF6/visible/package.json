@@ -1,0 +1,5 @@
+{
+  "name": "bakery-batch-planner-fixture",
+  "private": true,
+  "engines": { "node": ">=20" }
+}

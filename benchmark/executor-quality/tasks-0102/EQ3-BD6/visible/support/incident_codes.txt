@@ -1,0 +1,2 @@
+RVK permit revoked
+SET setup delay

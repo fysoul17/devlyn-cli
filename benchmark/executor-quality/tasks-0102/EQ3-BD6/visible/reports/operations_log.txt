@@ -1,0 +1,2 @@
+Setup day begins after vendor utility checks are complete.
+The operations desk tracks site access changes.

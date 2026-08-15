@@ -1,0 +1,2 @@
+The issuer desk confirms a revocation before the setup coordinator closes the case.
+Staff retain the vendor reference when a permit is no longer current.

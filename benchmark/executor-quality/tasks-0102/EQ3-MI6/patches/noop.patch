@@ -1,0 +1,6 @@
+--- a/support/training_notes.txt
++++ b/support/training_notes.txt
+@@ -1,2 +1,3 @@
+ Workers verify source and receiving count sheets before loading supplies.
+ Do not discard a signed route slip.
++No operational rule changes in this note.

@@ -1,0 +1,2 @@
+Butter dough needs a full cabinet cooling interval before a lean dough can enter.
+The deck lead records the finish minute on each occupied oven position.

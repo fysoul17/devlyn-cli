@@ -1,0 +1,5 @@
+{
+  "name": "festival-permit-fixture",
+  "private": true,
+  "engines": { "node": ">=20" }
+}

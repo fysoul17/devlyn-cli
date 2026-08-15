@@ -1,0 +1,1 @@
+Flour and butter cards show the open quantity and the quantity set aside for each lot.

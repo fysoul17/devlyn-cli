@@ -1,0 +1,2 @@
+Representatives confirm the mobile number and destination carrier before
+submitting a correction. Do not expose internal escalation references.

@@ -1,0 +1,3 @@
+NorthLink escalation desk: ports@northlink.example
+MetroWave escalation desk: ports@metrowave.example
+Carrier notices are delivered after the intake desk accepts a request.

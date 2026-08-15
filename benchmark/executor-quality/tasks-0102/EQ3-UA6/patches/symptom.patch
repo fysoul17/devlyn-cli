@@ -1,0 +1,19 @@
+diff --git a/porting/port_in_intake.js b/porting/port_in_intake.js
+--- a/porting/port_in_intake.js
++++ b/porting/port_in_intake.js
+@@ -1,7 +1,14 @@
+ "use strict";
+ 
+ function resubmitPortIn(state, correction, notify) {
+-  return { accepted: false, correctionId: correction.id };
++  const prior = state.requests.find((item) => item.id === correction.replaces);
++  if (!prior) {
++    return { accepted: false, correctionId: correction.id };
++  }
++  const replacement = { ...prior, ...correction, status: "resubmitted" };
++  state.requests = state.requests.map((item) => item.id === correction.replaces ? replacement : item);
++  notify(state, replacement);
++  return { accepted: true, correctionId: correction.id };
+ }
+ 
+ module.exports = { resubmitPortIn };

@@ -1,0 +1,49 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "absent_failure_mode",
+      "invariant": "When a rise failure follows a locked oven slot, the thermal sequence is preserved, stock is adjusted for loss, and the slot is released exactly once.",
+      "contract_bindings": [
+        {"file": "visible/oven/oven_scheduler.js", "sha256": "a1c9f079532e2857d127a0ac139923ebcdfb463a439f1500481a06ecbbdd0483", "quote": "The oven scheduler preserves thermal changeover between pastry families before it selects the next unlocked slot."},
+        {"file": "visible/checks/failed_proof_policy.js", "sha256": "d1750e28e9e03356fccf6e6ad8e2344c0f8f05af9f02e98f2e29d1984a23d882", "quote": "A failed proof returns committed stock adjusted for waste and records a released oven slot."}
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "absent_failure_mode",
+      "invariant": "When a rise failure follows a locked oven slot, the thermal sequence is preserved, stock is adjusted for loss, and the slot is released exactly once.",
+      "contract_bindings": [
+        {"file": "visible/oven/oven_scheduler.js", "sha256": "a1c9f079532e2857d127a0ac139923ebcdfb463a439f1500481a06ecbbdd0483", "quote": "The oven scheduler preserves thermal changeover between pastry families before it selects the next unlocked slot."},
+        {"file": "visible/checks/failed_proof_policy.js", "sha256": "d1750e28e9e03356fccf6e6ad8e2344c0f8f05af9f02e98f2e29d1984a23d882", "quote": "A failed proof returns committed stock adjusted for waste and records a released oven slot."}
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "absent_failure_mode",
+      "invariant": "When a rise failure follows a locked oven slot, the thermal sequence is preserved, stock is adjusted for loss, and the slot is released exactly once.",
+      "contract_bindings": [
+        {"file": "visible/oven/oven_scheduler.js", "sha256": "a1c9f079532e2857d127a0ac139923ebcdfb463a439f1500481a06ecbbdd0483", "quote": "The oven scheduler preserves thermal changeover between pastry families before it selects the next unlocked slot."},
+        {"file": "visible/checks/failed_proof_policy.js", "sha256": "d1750e28e9e03356fccf6e6ad8e2344c0f8f05af9f02e98f2e29d1984a23d882", "quote": "A failed proof returns committed stock adjusted for waste and records a released oven slot."}
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "absent_failure_mode",
+      "invariant": "When a rise failure follows a locked oven slot, the thermal sequence is preserved, stock is adjusted for loss, and the slot is released exactly once.",
+      "contract_bindings": [
+        {"file": "visible/oven/oven_scheduler.js", "sha256": "a1c9f079532e2857d127a0ac139923ebcdfb463a439f1500481a06ecbbdd0483", "quote": "The oven scheduler preserves thermal changeover between pastry families before it selects the next unlocked slot."},
+        {"file": "visible/checks/failed_proof_policy.js", "sha256": "d1750e28e9e03356fccf6e6ad8e2344c0f8f05af9f02e98f2e29d1984a23d882", "quote": "A failed proof returns committed stock adjusted for waste and records a released oven slot."}
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "absent_failure_mode",
+      "invariant": "When a rise failure follows a locked oven slot, the thermal sequence is preserved, stock is adjusted for loss, and the slot is released exactly once.",
+      "contract_bindings": [
+        {"file": "visible/oven/oven_scheduler.js", "sha256": "a1c9f079532e2857d127a0ac139923ebcdfb463a439f1500481a06ecbbdd0483", "quote": "The oven scheduler preserves thermal changeover between pastry families before it selects the next unlocked slot."},
+        {"file": "visible/checks/failed_proof_policy.js", "sha256": "d1750e28e9e03356fccf6e6ad8e2344c0f8f05af9f02e98f2e29d1984a23d882", "quote": "A failed proof returns committed stock adjusted for waste and records a released oven slot."}
+      ]
+    }
+  ]
+}

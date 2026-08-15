@@ -1,0 +1,5 @@
+Port-in desk notes
+
+Corrections arrive after a cancellation and should show a useful accepted
+result to the representative. Preserve the customer number and the requested
+destination network in the desk record.

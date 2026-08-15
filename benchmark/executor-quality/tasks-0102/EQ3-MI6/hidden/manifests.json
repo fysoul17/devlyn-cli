@@ -1,0 +1,89 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "missed_repo_invariant",
+      "invariant": "When a shortfall is redistributed, only surplus precincts may donate; a recount hold keeps affected precinct inventory frozen to preserve both counts, and each completed transfer is recorded once in the ledger.",
+      "contract_bindings": [
+        {
+          "file": "visible/redistribution/shortfall_redistributor.js",
+          "sha256": "f1207ab495a9f97770fb3c1cc12602c074d917e62e5aac3760f4b158a4656658",
+          "quote": "function redistributeShortfall(state, moveSupply, targetId, requests) {"
+        },
+        {
+          "file": "visible/checks/recount_hold_test.js",
+          "sha256": "83cb521421d6422b6882baf29db2e50e28c5230bc250f12c85db665113391345",
+          "quote": "function recountHoldFreezesInventory(moveSupply, markLocked, state, sourceId, targetId, quantity) {"
+        }
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "missed_repo_invariant",
+      "invariant": "When a shortfall is redistributed, only surplus precincts may donate; a recount hold keeps affected precinct inventory frozen to preserve both counts, and each completed transfer is recorded once in the ledger.",
+      "contract_bindings": [
+        {
+          "file": "visible/redistribution/shortfall_redistributor.js",
+          "sha256": "f1207ab495a9f97770fb3c1cc12602c074d917e62e5aac3760f4b158a4656658",
+          "quote": "function redistributeShortfall(state, moveSupply, targetId, requests) {"
+        },
+        {
+          "file": "visible/checks/recount_hold_test.js",
+          "sha256": "83cb521421d6422b6882baf29db2e50e28c5230bc250f12c85db665113391345",
+          "quote": "function recountHoldFreezesInventory(moveSupply, markLocked, state, sourceId, targetId, quantity) {"
+        }
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "missed_repo_invariant",
+      "invariant": "When a shortfall is redistributed, only surplus precincts may donate; a recount hold keeps affected precinct inventory frozen to preserve both counts, and each completed transfer is recorded once in the ledger.",
+      "contract_bindings": [
+        {
+          "file": "visible/redistribution/shortfall_redistributor.js",
+          "sha256": "f1207ab495a9f97770fb3c1cc12602c074d917e62e5aac3760f4b158a4656658",
+          "quote": "function redistributeShortfall(state, moveSupply, targetId, requests) {"
+        },
+        {
+          "file": "visible/checks/recount_hold_test.js",
+          "sha256": "83cb521421d6422b6882baf29db2e50e28c5230bc250f12c85db665113391345",
+          "quote": "function recountHoldFreezesInventory(moveSupply, markLocked, state, sourceId, targetId, quantity) {"
+        }
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "missed_repo_invariant",
+      "invariant": "When a shortfall is redistributed, only surplus precincts may donate; a recount hold keeps affected precinct inventory frozen to preserve both counts, and each completed transfer is recorded once in the ledger.",
+      "contract_bindings": [
+        {
+          "file": "visible/redistribution/shortfall_redistributor.js",
+          "sha256": "f1207ab495a9f97770fb3c1cc12602c074d917e62e5aac3760f4b158a4656658",
+          "quote": "function redistributeShortfall(state, moveSupply, targetId, requests) {"
+        },
+        {
+          "file": "visible/checks/recount_hold_test.js",
+          "sha256": "83cb521421d6422b6882baf29db2e50e28c5230bc250f12c85db665113391345",
+          "quote": "function recountHoldFreezesInventory(moveSupply, markLocked, state, sourceId, targetId, quantity) {"
+        }
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "missed_repo_invariant",
+      "invariant": "When a shortfall is redistributed, only surplus precincts may donate; a recount hold keeps affected precinct inventory frozen to preserve both counts, and each completed transfer is recorded once in the ledger.",
+      "contract_bindings": [
+        {
+          "file": "visible/redistribution/shortfall_redistributor.js",
+          "sha256": "f1207ab495a9f97770fb3c1cc12602c074d917e62e5aac3760f4b158a4656658",
+          "quote": "function redistributeShortfall(state, moveSupply, targetId, requests) {"
+        },
+        {
+          "file": "visible/checks/recount_hold_test.js",
+          "sha256": "83cb521421d6422b6882baf29db2e50e28c5230bc250f12c85db665113391345",
+          "quote": "function recountHoldFreezesInventory(moveSupply, markLocked, state, sourceId, targetId, quantity) {"
+        }
+      ]
+    }
+  ]
+}

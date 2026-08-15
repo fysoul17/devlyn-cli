@@ -1,0 +1,37 @@
+--- a/allocator/stock_transfer.js
++++ b/allocator/stock_transfer.js
+@@ -3,7 +3,33 @@
+ const { makeReceipt } = require("./receipt_format");
+ 
+ function moveSupply(state, sourceId, targetId, quantity) {
+-  return makeReceipt(false, sourceId, targetId, quantity, "pending");
++  const sourceBefore = state.counts[sourceId];
++  const targetBefore = state.counts[targetId];
++  if (!Number.isInteger(quantity) || quantity <= 0) {
++    return makeReceipt(false, sourceId, targetId, quantity, "quantity");
++  }
++  if (sourceBefore === undefined || targetBefore === undefined) {
++    return makeReceipt(false, sourceId, targetId, quantity, "location");
++  }
++  if (state.lockedPrecincts.has(sourceId) || state.lockedPrecincts.has(targetId)) {
++    return makeReceipt(false, sourceId, targetId, quantity, "locked");
++  }
++  if (sourceBefore < quantity) {
++    return makeReceipt(false, sourceId, targetId, quantity, "count");
++  }
++  if (sourceBefore - quantity < state.minimumCount) {
++    return makeReceipt(false, sourceId, targetId, quantity, "floor");
++  }
++  state.counts[sourceId] = sourceBefore - quantity;
++  state.counts[targetId] = targetBefore + quantity;
++  state.transferLedger.push({
++    sourceId,
++    targetId,
++    quantity,
++    sourceBefore,
++    targetBefore,
++  });
++  return makeReceipt(true, sourceId, targetId, quantity);
+ }
+ 
+ module.exports = { moveSupply };

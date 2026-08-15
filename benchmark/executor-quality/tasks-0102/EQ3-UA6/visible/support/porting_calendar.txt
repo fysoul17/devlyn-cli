@@ -1,0 +1,2 @@
+Carrier intake window: 08:00-18:00 local time.
+Weekend corrections are placed in the next staffed review queue.

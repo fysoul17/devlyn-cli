@@ -1,0 +1,22 @@
+--- a/issuer/permit_issuer.js
++++ b/issuer/permit_issuer.js
+@@ -1,7 +1,18 @@
+ "use strict";
+ 
++const { assignReleasedPitch } = require("../allocation/pitch_map_allocator");
++const { recordCredit } = require("../finance/refund_register");
++
+ function revokePermit(festival, permitId, revokedAt) {
+-  return { revoked: false, permitId, revokedAt };
++  const permit = festival.permits.find((item) => item.id === permitId);
++  if (!permit || permit.status === "revoked") {
++    return { revoked: false, permitId, revokedAt };
++  }
++  permit.status = "revoked";
++  permit.revokedAt = revokedAt;
++  const placement = assignReleasedPitch(festival, permit);
++  const credit = recordCredit(festival, permit, revokedAt);
++  return { revoked: true, permitId, revokedAt, replacementId: placement && placement.permitId, creditId: credit.id };
+ }
+ 
+ module.exports = { revokePermit };

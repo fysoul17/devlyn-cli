@@ -1,0 +1,2 @@
+Food pitches require the same utility hook-up class as the released site.
+Craft pitches use the west lawn service map.

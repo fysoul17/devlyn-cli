@@ -1,0 +1,2 @@
+Morning handoff: review cancelled port-ins before the representative calls back.
+Escalate failed carrier messages through the normal queue.

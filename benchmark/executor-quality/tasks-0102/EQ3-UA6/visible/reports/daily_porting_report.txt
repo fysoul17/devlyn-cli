@@ -1,0 +1,4 @@
+Daily porting report
+
+List intake corrections, carrier responses, and subscriber contacts for the
+shift. The report is informational and does not change request routing.

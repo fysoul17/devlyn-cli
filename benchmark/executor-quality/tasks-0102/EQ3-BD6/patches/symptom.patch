@@ -1,0 +1,16 @@
+--- a/issuer/permit_issuer.js
++++ b/issuer/permit_issuer.js
+@@ -1,7 +1,12 @@
+ "use strict";
+ 
+ function revokePermit(festival, permitId, revokedAt) {
+-  return { revoked: false, permitId, revokedAt };
++  const index = festival.permits.findIndex((item) => item.id === permitId);
++  if (index === -1) {
++    return { revoked: false, permitId, revokedAt };
++  }
++  festival.permits.splice(index, 1);
++  return { revoked: true, permitId, revokedAt };
+ }
+ 
+ module.exports = { revokePermit };

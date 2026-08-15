@@ -1,0 +1,2 @@
+Audit export fields: request reference, subscriber reference, cancellation time,
+representative queue, destination carrier, and resolution code.

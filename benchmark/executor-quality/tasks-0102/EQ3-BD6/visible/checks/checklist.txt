@@ -1,0 +1,2 @@
+Confirm the issuer list no longer shows an inactive vendor.
+Run the local check command from the fixture root.

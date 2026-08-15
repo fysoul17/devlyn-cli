@@ -1,0 +1,1 @@
+Cabinet readings are copied at the end of every bake cycle.

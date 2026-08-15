@@ -1,0 +1,2 @@
+Workers verify source and receiving count sheets before loading supplies.
+Do not discard a signed route slip.

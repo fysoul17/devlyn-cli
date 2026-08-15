@@ -1,0 +1,43 @@
+{
+  "id": "EQ3-MI6",
+  "class": "missed_repo_invariant",
+  "goal": "A supply move that begins during a review is leaving both polling locations with changed counts. Update the precinct allocator so an abandoned move keeps both counts intact, then run node visible/checks/run_checks.js.",
+  "invariant": "When a shortfall is redistributed, only surplus precincts may donate; a recount hold keeps affected precinct inventory frozen to preserve both counts, and each completed transfer is recorded once in the ledger.",
+  "visible_files": [
+    "visible/allocator/allocation_state.js",
+    "visible/allocator/receipt_format.js",
+    "visible/allocator/stock_transfer.js",
+    "visible/checks/basic_transfer_test.js",
+    "visible/checks/invalid_quantity_test.js",
+    "visible/checks/manual_cases.md",
+    "visible/checks/recount_hold_test.js",
+    "visible/checks/run_checks.js",
+    "visible/package.json",
+    "visible/precincts/ballot_labels.txt",
+    "visible/precincts/closing_report.js",
+    "visible/precincts/opening_checklist.txt",
+    "visible/precincts/precinct_directory.js",
+    "visible/redistribution/dispatch_notes.txt",
+    "visible/redistribution/district_totals.js",
+    "visible/redistribution/request_queue.js",
+    "visible/redistribution/shortfall_redistributor.js",
+    "visible/reports/county_digest.txt",
+    "visible/reports/incident_summary.js",
+    "visible/reports/transfer_report.js",
+    "visible/reports/vehicle_log.txt",
+    "visible/support/clock.js",
+    "visible/support/contact_list.txt",
+    "visible/support/count_sheet.js",
+    "visible/support/formatting.js",
+    "visible/support/training_notes.txt"
+  ],
+  "edit_site_dir": "visible/allocator",
+  "contract_artifacts": [
+    "visible/redistribution/shortfall_redistributor.js",
+    "visible/checks/recount_hold_test.js"
+  ],
+  "contract_tokens_a": ["shortfall", "redistributor", "surplus"],
+  "contract_tokens_b": ["recount", "hold", "frozen"],
+  "outcome_tokens_a": ["surplus", "redistributed"],
+  "outcome_tokens_b": ["frozen", "preserve", "ledger"]
+}
