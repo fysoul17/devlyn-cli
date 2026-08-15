@@ -751,6 +751,18 @@ legitimate observable carrier; MI6 restore composition = batch-05
 registered-outcome-token criterion). r1 = 7/7 RESOLVED both judges,
 grok PASS; sol nit (engines.node undeclared) refuted as law (admitted
 corpus mixed) but closed via 1-line within-batch consistency edit.
-Batch-06 = COMPLETE (corpus 24/32). Next: batch-07 — add oracle
-self-reference (pre-trigger snapshot + adversarial candidate order) to
-the author-template quality bars.
+Batch-06 = COMPLETE (corpus 24/32).
+Batch-07 SHIPPED `4771f7c` (same session, index-7 Python; template bar
+(j) anti-self-reference added). Trio r0 = 7 valid: dominant class =
+single-instance oracles admitting hardcoded implementations (UA7 one
+dataset / AF7 one literal case / BD7 one fixed order) + MI7 post-close
+price self-reference + unexercised single-use + BD7 goal-commanded
+visible test asserting the FULL composed contract (discovery
+short-circuit — new class, grok proved vs BD1-BD6). r1 grok PASS; sol
+2 residuals both byte-confirmed (alias snapshots not deep copies;
+permuted order lacked stop-once coverage) → r2 fixes → sol PASS with
+live probe vectors + grok PASS. Batch-07 = COMPLETE (corpus 28/32).
+Next: batch-08 — fold single-instance-oracle (≥2 differently-shaped
+datasets, relationship-bound assertions, deep-copy snapshots,
+permuted-order exactly-once) and local-runner-leak (goal-commanded
+visible test = local receipts only) into the template bars.
