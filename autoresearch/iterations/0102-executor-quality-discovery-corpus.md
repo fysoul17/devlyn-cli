@@ -762,7 +762,19 @@ short-circuit — new class, grok proved vs BD1-BD6). r1 grok PASS; sol
 2 residuals both byte-confirmed (alias snapshots not deep copies;
 permuted order lacked stop-once coverage) → r2 fixes → sol PASS with
 live probe vectors + grok PASS. Batch-07 = COMPLETE (corpus 28/32).
-Next: batch-08 — fold single-instance-oracle (≥2 differently-shaped
-datasets, relationship-bound assertions, deep-copy snapshots,
-permuted-order exactly-once) and local-runner-leak (goal-commanded
-visible test = local receipts only) into the template bars.
+Batch-08 SHIPPED `4e99c5f` (same session, index-8 Node; template bars
+(k) generality + (l) local-runner-only). Trio r0 = the largest split
+of the corpus: grok PASS 0 findings vs sol NEEDS_WORK 7 — fable
+byte-confirmed ALL 7 sol findings (split resolved to sol; grok miss):
+fake-generality (identifier-renamed twins / fixed index / one
+topology — literal (k) compliance without structural difference) ×4,
+MI8 goal revealing the remote composed contract + prose-only
+tide-window trigger, BD8 over-authored symptom branch. AF8 patches
+had empty-context-line corruption (hygiene auditor 3rd receipt) —
+regenerated deterministically. r1 = 7/7 RESOLVED, sol PASS + grok
+PASS. **CORPUS COMPLETE 32/32** (batches 01-08 all trio-sealed).
+Author-template lineage (a)-(l) now encodes every judge-caught class;
+per-batch trio r0 still found real defects through batch-08 —
+self-check bars reduce but do not replace the judge gate. Next per
+freeze protocol: candidate seal → calibration (64-run sonnet band,
+never near 12am KST) → matrix.
