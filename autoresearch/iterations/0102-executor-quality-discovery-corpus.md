@@ -2,7 +2,7 @@
 id: "0102-executor-quality-discovery-corpus"
 title: "Executor-quality discrimination cell, take 3 — non-local unstated-contract discovery corpus N=32, opus-5 vs fable-5 (iter-0101 CALIBRATION_MISS successor)"
 kind: instrument
-status: DESIGN-FROZEN 2026-08-12 — sol R0 REVISE ×8 adopted (R0-0102-LIVE-sol-c42dd8ef) + grok R1 REVISE ×5 REQUIRED + REC-1/2/4 adopted (R1-0102-LIVE-grok-28409c8b; grok VERIFIED the 32-row table by execution: 32/32 unique tuples, 8/class, 16/16 language parity, zero collisions vs 0101 + prototypes). Execution order: pre-author batch specs → pilot → corpus → calibration → matrix (§ Freeze protocol)
+status: CLOSED 2026-08-17 — TERMINAL H1_MATERIAL_GAP_REFUTED (P-0102-1 REFUTED; Δ=fail(opus-5)−fail(fable-5)=−0.047, CI [−0.116,+0.016]; 128/128 attested, cohort mx-20260817T121817Z attempt 2 after attempt 1 infra-invalid). Design history: DESIGN-FROZEN 2026-08-12 — sol R0 REVISE ×8 adopted (R0-0102-LIVE-sol-c42dd8ef) + grok R1 REVISE ×5 REQUIRED + REC-1/2/4 adopted (R1-0102-LIVE-grok-28409c8b; grok VERIFIED the 32-row table by execution: 32/32 unique tuples, 8/class, 16/16 language parity, zero collisions vs 0101 + prototypes). Execution order: pre-author batch specs → pilot → corpus → calibration → matrix (§ Freeze protocol)
 complexity: high
 depends_on: ["0100-main-ai-executor-quality", "0101-executor-quality-hard-corpus"]
 ---
@@ -834,3 +834,31 @@ fable-5 OK). Registered follow-up (no frozen-byte change; 0103
 inherits the driver): structural 429/session-limit → `infra_invalid`
 in the post-0103 taxonomy modernization; residual 0103 risk = quota
 recurrence, mitigated by fresh-window exclusive launch only.
+
+**DECISION (2026-08-17 22:45 KST) — TERMINAL `H1_MATERIAL_GAP_REFUTED`,
+P-0102-1 REFUTED.** Attempt 2 `mx-20260817T121817Z` completed 128/128
+at 22:38 KST (80 min, 2 lanes): attested 128/128 exact-ID, cat 1 (one
+opus-5 engine-caused oracle-crash row, empty `oracle.json` after a
+completed run — same class both seats classified engine-attributable
+in the attempt-1 adjudication) / inc 0 / infra 0, session-limit rows
+0, walls 27/67/193 s. ONE evaluation with the frozen scorer
+(`score-cohort.py` 399b0691…, ledger cd6b33a6…, verdict 49e3756e…,
+receipts `matrix/attempt-mx-20260817T121817Z/`): R(opus-5) = 0.306,
+R(fable-5) = 0.353, Δ = fail(opus-5) − fail(fable-5) = **−0.047**,
+bootstrap CI **[−0.116, +0.016]** (upper < 3/20) → terminal
+`H1_MATERIAL_GAP_REFUTED`; completion opus-5 63/64, fable-5 64/64;
+per-task d: opus-5 worse on 5 tasks, better on 11, tie 16 (largest
+|d| AF2 −0.6, AF4 +0.4). Failed-task classes near-identical (fable
+8/8/6/6 vs opus 7/7/5/5 across AF/MI/BD/UA). Narrative per the frozen
+prediction: a live-signal-sized discovery-load gap between opus-5 and
+fable-5 is **excluded at this shape**; remaining candidates (true repo
+scale, session-horizon effects) are NEW registrations. Instrument
+note: both frontier engines land interior (~0.31-0.35 fail) on a
+corpus where sonnet calibrated 39/80 — the discovery mechanism
+discriminates across three tiers without saturating. Executor-seat
+consequence: no evidence to route the executor toward fable-5 on
+discovery load; the seat question is decided by the user (pin
+unchanged: `executor: codex`). Next per user go-ahead 2026-08-16:
+iter-0103 (opus-4.8 vs opus-5 on this sealed corpus) — the
+regression-attribution cell this result cannot answer alone.
+
