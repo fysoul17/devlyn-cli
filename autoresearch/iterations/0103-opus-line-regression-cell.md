@@ -202,3 +202,15 @@ gate learns driver/launcher/self hashes from the mutable freeze file):
   (infrastructure-invalid launch), never scored.
 - Sol R1 F2 (launcher docstring index convention) CONVERGED-REFUTED:
   `enumerate` 0-based index, base convention preserved.
+
+**Two-seat FREEZE-ARM ×2 ACHIEVED (2026-08-17 23:20 KST).** grok R0
+FREEZE-ARM (zero findings; synthetic-ledger proofs a-f against the
+derived scorer, terminal bijection, information boundary, ops). sol
+R0 REVISE ×2 → R1: F2 (launcher docstring index) CONVERGED-REFUTED;
+F1 (gate learns driver/launcher/self hashes from the mutable freeze
+file — coordinated tamper class) HELD with a valid falsifier against
+my 8-hex committed pins → closed by committing the full inventory +
+R-A/R-B above (`6ec8e5e`) → sol R2 FREEZE-ARM (zero findings).
+Record + logs: `~/.local/share/nx01/iter0103/FREEZE-ARM-RECORD.md`.
+Launch = attempt 1 (`mx3-<UTCSTAMP>Z`) after 01:00 KST under the
+recorded conditions (exclusive account, exact-ID smoke, R-A).
