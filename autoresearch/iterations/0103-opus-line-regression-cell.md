@@ -145,3 +145,32 @@ here by enumerated delta 3.
 
 `~/.local/share/nx01/iter0103/` — apparatus/ (incl. derived scorer),
 freeze file, attempt dirs, cohort receipts, evaluation output.
+
+## Execution log
+
+**Sequencing 2 DONE (2026-08-17 22:45 KST)** — 0102 CLOSED
+`H1_MATERIAL_GAP_REFUTED` (attempt 2 `mx-20260817T121817Z`; attempt 1
+infra-invalid by account session limit, both-seat adjudicated — see
+0102 § Execution log). Information boundary held: this file was
+untouched between its FREEZE commit `c3af2a8` and this entry; the
+first 0102 row content read by the orchestrator was 2026-08-17 21:00
+KST, after freeze.
+
+**Sequencing 3 — apparatus build (2026-08-17 22:42-22:50 KST, terra
+byte-surgery, `~/.local/share/nx01/iter0103/BUILD-SPEC.md` →
+`BUILD-REPORT.md`; orchestrator full-diff review PASS: every hunk is
+an enumerated delta).** Byte pins (candidate freeze inventory
+`frozen-0103-apparatus.sha256`):
+`mx-driver.py` 955979e2… (base 49f30de8… + `ALLOWED_ENGINES` member +
+docstring) · `mx-launcher.py` ee8b2f69… (base 2123c400… + `ENGINES`
+tuple + docstring) · `run-bounded.py` db9ed383… (byte copy) ·
+**derived scorer `score-cohort-0103.py` cc9f6068facc9a3b17ae059b572ddb9fd1584d568f5878687ce3906a6962be28**
+(= repo 399b0691… with the single `"claude-fable-5"` literal →
+`"claude-opus-4-8"`, sha recomputed independently by orchestrator via
+sed; `--self-test` SELF_TEST_OK; repo scorer + `scripts.sha256`
+untouched) · `launch-detached.py` 15446c06… (base 759be106… + delta 3;
+`SCRIPTS` constant left unreferenced — unenumerated deletion not
+allowed) · `candidate-manifest.json` 80f0a12d… (inherited by absolute
+reference). Sandbox tamper probes 6/6 fail-closed + `--attempt 4`
+range control refused (BUILD-REPORT § 5). Two-seat FREEZE-ARM audit
+(sol + grok, packet `freeze-audit-packet.md`) dispatched 22:58 KST.
