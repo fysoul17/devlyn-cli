@@ -2,7 +2,7 @@
 id: "0103-opus-line-regression-cell"
 title: "Opus-line regression cell — opus-4.8 vs opus-5 on the sealed 0102 discovery corpus"
 kind: instrument
-status: DESIGN-FROZEN 2026-08-16 — R0 sol REVISE ×5 + grok REVISE ×5 all adopted; R2 sol FREEZE + grok FREEZE (zero findings). Derived-scorer byte pin recorded at apparatus freeze (§ Sequencing 3)
+status: CLOSED 2026-08-18 — TERMINAL H1_MATERIAL_GAP_REFUTED (P-0103-1 REFUTED; narrative alias OPUS_LINE_MATERIAL_GAP_REFUTED): Δ=fail(opus-5)−fail(opus-4-8)=−0.181, CI [−0.256,−0.109] — opus-5 fails LESS than opus-4-8 on the sealed 0102 corpus; attempt 1 mx3-20260817T160208Z 128/128 attested. Design history: DESIGN-FROZEN 2026-08-16 — R0 sol REVISE ×5 + grok REVISE ×5 all adopted; R2 sol FREEZE + grok FREEZE (zero findings). Derived-scorer byte pin recorded at apparatus freeze (§ Sequencing 3)
 complexity: medium
 depends_on: ["0102-executor-quality-discovery-corpus"]
 ---
@@ -214,3 +214,40 @@ R-A/R-B above (`6ec8e5e`) → sol R2 FREEZE-ARM (zero findings).
 Record + logs: `~/.local/share/nx01/iter0103/FREEZE-ARM-RECORD.md`.
 Launch = attempt 1 (`mx3-<UTCSTAMP>Z`) after 01:00 KST under the
 recorded conditions (exclusive account, exact-ID smoke, R-A).
+
+**LAUNCH + DECISION (2026-08-18 01:02-02:40 KST).** Preflight
+`prelaunch-and-arm.sh` (window, exclusive account, R-A 6/6 vs
+`6ec8e5e`, exact-ID smoke opus-5 + opus-4-8 OK) → gate attempt 1
+`mx3-20260817T160208Z` 01:02 KST, receipt `engines`
+["claude-opus-5","claude-opus-4-8"]. Cohort complete 02:35 KST (93
+min, 2 lanes): 128/128 exact-ID attested, session-limit rows 0, cat 4
+(all engine-attributable: opus-5 BD6 r2 + AF2 r2 and opus-4-8 BD6 r2 =
+completed run + empty `oracle.json` oracle-crash class; opus-5 BD8 r2
+= safeguards refusal, same task as the 0102 BD8 r1 refusal) / inc 0 /
+infra 0, walls 32/83/225 s. R-B PASS (receipt `apparatus_sha256` ==
+committed inventory 6/6). ONE evaluation, derived scorer
+`score-cohort-0103.py` cc9f6068… on ledger aff26f4e… → verdict
+012a4a68… (`attempt-mx3-20260817T160208Z/cohort-verdict.json`):
+R(opus-5) = 0.294, R(opus-4-8) = 0.475, **Δ = fail(opus-5) −
+fail(opus-4-8) = −0.181, bootstrap CI [−0.256, −0.109]** (upper <
+3/20) → **terminal `H1_MATERIAL_GAP_REFUTED`, P-0103-1 REFUTED**;
+completion opus-5 61/64, opus-4-8 63/64; per-task d: opus-5 worse on
+2 tasks (AF7 +0.1, BD8 +0.2), better on 18, tie 12; failed-task
+classes opus-4-8 8/7/7/8 vs opus-5 8/5/6/4 (AF/BD/MI/UA).
+
+Narrative per the frozen bijection: a live-signal-sized opus-line
+REGRESSION is excluded at this shape (`OPUS_LINE_MATERIAL_GAP_REFUTED`,
+scorer token authoritative). Non-decisional diagnostics: (a) the CI
+lies entirely below zero — on the discovery corpus opus-5 fails
+materially LESS than opus-4-8 (the felt "4.8 did well, 5 got strange"
+is not reproduced by this instrument; the direction is the opposite);
+(b) cross-cohort opus-5 consistency: R = 0.306 (0102 cohort) vs 0.294
+(this cohort) — the corpus + apparatus are stable across two
+independent cohorts; (c) three-tier ordering on one sealed corpus:
+sonnet 0.49 (calibration) · opus-4-8 0.475 · fable-5 0.353 · opus-5
+0.294-0.306. Remaining candidates for the live signal (true repo
+scale, session-horizon/long-context effects, pair-loop deference H2,
+the user's actual workload shape) are NEW registrations. Registered
+follow-up carried: structural 429/session-limit → `infra_invalid`
+(taxonomy modernization; this cohort hit none).
+
