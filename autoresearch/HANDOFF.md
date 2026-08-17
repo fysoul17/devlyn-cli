@@ -14,7 +14,29 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-09
+## 🚦 START-HERE — state after 2026-08-18
+
+**Executor-quality lineage 0100→0103 CLOSED (2026-08-18).** Authority:
+`DECISIONS.md` 0102.1 / 0103.1 + `iterations/0102-*.md` / `0103-*.md`
+DECISION paragraphs. On the sealed 0102 discovery corpus (32 tasks,
+sonnet-calibrated mid-band 0.49): **opus-5 ≈ fable-5** (0102, Δ=−0.047,
+CI [−0.116,+0.016]) and **opus-5 fails materially LESS than opus-4-8**
+(0103, Δ=−0.181, CI [−0.256,−0.109]; 18 tasks better / 2 worse). The
+felt "opus-5 regression" is not reproduced by any instrument
+(0100 SATURATED, 0102, 0103). Next registration is the user's call —
+candidates: true repo scale (>100 files), session-horizon/long-context,
+pair-loop deference (H2), the user's live workload shape. Harness
+follow-ups registered, not applied: driver `AUTH_FAILURE` structural
+429/session-limit → `infra_invalid` (0102 attempt 1 was killed by an
+account session limit and mis-taxonomized; both-seat adjudicated
+INFRA_INVALID_REPLACE); operator rule — never launch a matrix arm
+while other Claude sessions/headless reviews share the account, and
+pre-commit full 64-hex freeze inventories + R-A/R-B digest rules in
+the registration (0103 sol F1 closure). Receipts
+`~/.local/share/nx01/iter0102/`, `iter0103/`. Everything below this
+paragraph is history.
+
+### History — state after 2026-08-09
 
 **iter-0100 REGISTERED (2026-08-09) — main-AI executor quality cell
 (`iterations/0100-main-ai-executor-quality.md`).** Origin: user live
