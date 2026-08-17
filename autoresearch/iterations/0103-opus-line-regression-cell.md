@@ -174,3 +174,31 @@ allowed) · `candidate-manifest.json` 80f0a12d… (inherited by absolute
 reference). Sandbox tamper probes 6/6 fail-closed + `--attempt 4`
 range control refused (BUILD-REPORT § 5). Two-seat FREEZE-ARM audit
 (sol + grok, packet `freeze-audit-packet.md`) dispatched 22:58 KST.
+
+**FREEZE INVENTORY (immutable root; full digests — sol R1 F1 closure).**
+The candidate `frozen-0103-apparatus.sha256` byte-for-byte:
+
+```
+955979e2941a61c8136b11335ca863edd0c94aa17c758d9c4a8d80787e8cd394  mx-driver.py
+ee8b2f691619d5213e638605e2814f0baffa7ae55bad35231196814680564b3a  mx-launcher.py
+db9ed3832e444449263a5ca3bdeccba41d91722ef2070115107b6caf82424ca5  run-bounded.py
+80f0a12ddb6df006c4137ecbc96c557742f8bbe74b0cacf65466c3af6dcd8887  candidate-manifest.json
+cc9f6068facc9a3b17ae059b572ddb9fd1584d568f5878687ce3906a6962be28  score-cohort-0103.py
+15446c0608e0d4eee379bc1fb3b07388f7393bce73b7f0d964f37e707142bcbf  launch-detached.py
+```
+
+Pre-committed operational rules (zero apparatus byte change; close the
+coordinated {apparatus, freeze-file} tamper class sol raised — the
+gate learns driver/launcher/self hashes from the mutable freeze file):
+- **R-A (pre-launch)**: immediately before the gate runs, the live
+  `frozen-0103-apparatus.sha256` must equal the six 64-hex entries
+  above (exact full-digest comparison against `git show` of this
+  file at its committing revision), AND the six live files must hash
+  to them; any mismatch → no launch.
+- **R-B (pre-score)**: before the derived scorer runs, the launch
+  receipt `apparatus_sha256` map (driver, launcher, run-bounded,
+  candidate-manifest, score-cohort-0103.py, launch-detached.py) must
+  equal the same six full digests; mismatch → cohort UNSCORED
+  (infrastructure-invalid launch), never scored.
+- Sol R1 F2 (launcher docstring index convention) CONVERGED-REFUTED:
+  `enumerate` 0-based index, base convention preserved.
