@@ -803,3 +803,34 @@ launch pending user adjudication of the fable-5 arm vs the
 2026-08-15 fable-token-economy directive (registration froze the
 seat 08-12, directive postdates it — surfaced, not silently
 resolved).
+
+**MATRIX attempt 1 INFRASTRUCTURE-INVALID → attempt 2 launched
+(2026-08-17 session).** Attempt 1 `mx-20260815T234335Z` (launched
+08:43 KST 08-16, seat as registered) printed "matrix complete: 128
+rows" at 09:37 KST, but 45/128 rows were killed by the account
+session limit (HTTP 429 "You've hit your session limit · resets
+10:50am (Asia/Seoul)", first at ~09:36 KST — the same window carried
+the orchestrator session + the 64-run calibration): 44 zero-turn
+zero-token null-attestation rows (last 22 of each lane, 22 opus-5 +
+22 fable-5) + 1 attested mid-run 429 (lane1 opus-5 MI2 r2). Frozen
+driver `AUTH_FAILURE` regex (login|auth|quota|credit|billing) does not
+match "session limit"/429 → rows landed `catastrophic`,
+`infra_invalid=false`, which the frozen scorer scores as f=1 —
+scoring attempt 1 would have been an invalid measurement. Per the
+carried operational rule, both-seat infra-authenticity adjudication
+was recorded BEFORE burning the replacement: sol + grok unanimous
+`INFRA_INVALID_REPLACE` (liveness SOL-ADJ-0102A1-7f3e9c /
+GROK-ADJ-0102A1-b21d84; both independently recomputed 44+1 rows, 0
+falsifiers; BD8 r1 opus-5 safeguards refusal + BD6 r1 engine-caused
+oracle crash classified engine-attributable, moot for the unscored
+attempt), fable concur — record + logs + shas in
+`~/.local/share/nx01/iter0102/matrix/adjudication-attempt1/`. Attempt
+1 preserved unscored/unmerged (Attestation-Result Fidelity). Attempt
+2 `mx-20260817T121817Z` launched 21:18 KST 08-17 through the frozen
+gate (attempt ordinal 2/3, all 6 apparatus pins byte-identical
+rechecked, lanes 2, outside 23:00-01:00 KST, account quiet — no
+concurrent claude -p/codex exec, 1-turn exact-ID smoke opus-5 +
+fable-5 OK). Registered follow-up (no frozen-byte change; 0103
+inherits the driver): structural 429/session-limit → `infra_invalid`
+in the post-0103 taxonomy modernization; residual 0103 risk = quota
+recurrence, mitigated by fresh-window exclusive launch only.
