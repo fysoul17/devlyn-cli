@@ -102,7 +102,8 @@ autoresearch/
 ├── baselines/
 │   └── <label>.json    — frozen `summary.json` from each shipped run
 └── playbooks/
-    └── iteration-loop.md  — propose / run / analyze / ship-or-revert
+    ├── iteration-loop.md   — propose / run / analyze / ship-or-revert
+    └── model-checkup.md    — standing model-checkup loop: new model ID → one-page verdict + re-pin recommendation
 ```
 
 Files we deliberately did NOT create:

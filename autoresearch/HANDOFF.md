@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent closed: [`iterations/0102-executor-quality-discovery-corpus.md`](iterations/0102-executor-quality-discovery-corpus.md) + [`iterations/0103-opus-line-regression-cell.md`](iterations/0103-opus-line-regression-cell.md) (lineage 0100→0103 CLOSED — see START-HERE). Next registration (0104 model-checkup loop v1) is defined in START-HERE below; older context in the iteration index + `DECISIONS.md`.
+5. Most recent closed: [`iterations/0102-executor-quality-discovery-corpus.md`](iterations/0102-executor-quality-discovery-corpus.md) + [`iterations/0103-opus-line-regression-cell.md`](iterations/0103-opus-line-regression-cell.md) (lineage 0100→0103 CLOSED — see START-HERE). Next registration (0105 repo-scale corpus) is defined in START-HERE below; older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -16,23 +16,16 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ## 🚦 START-HERE — state after 2026-08-18 (session 2)
 
-**NEXT = iter-0104: MODEL-CHECKUP LOOP v1 (user-reordered 2026-08-18;
-supersedes the earlier repo-scale-first pick).** Rationale (user): model
-releases are a RECURRING event — the product is the standing loop
-"new model → measure on the harness → tighten from findings → re-pin",
-not any single hypothesis. 0103 proved the marginal cost is already low
-(frozen 0102 corpus reused, opus-4-8 vs opus-5 in ONE attempt); what
-remains manual is registration docs, freeze audits, launch gates, and
-adjudication. iter-0104 binds the existing instruments into one
-standing checkup: ① seat recert exact-ID (`benchmark/seats/`) →
-② violation matrix → ③ frozen 0102 discovery-corpus band (0103-style
-reuse) → one-page verdict + re-pin recommendation, with a frozen
-registration template (freeze inventory + R-A/R-B digest rules
-pre-baked, 0103 sol F1) and the batch-B findings-closure lane (terra +
-trio verify) as the tightening arm. **iter-0105 = repo-scale corpus
-(>100 files, multi-file dependency chains) as the loop's first coverage
-module** — top suspect for the felt-vs-measured gap the 5-file corpora
-cannot discriminate; built AFTER the loop so it is reusable per model.
+**NEXT = iter-0105: REPO-SCALE CORPUS (>100 files, multi-file
+dependency chains) — the checkup loop's first coverage module.** Top
+suspect for the felt-vs-measured gap the 5-file corpora cannot
+discriminate; built to be reusable per model.
+
+**iter-0104 model-checkup loop v1 SHIPPED 2026-08-18.** The standing
+"new model ID → one-page verdict + re-pin recommendation" loop lives in
+[`playbooks/model-checkup.md`](playbooks/model-checkup.md); closure in
+`DECISIONS.md` 0104.1 + `iterations/0104-model-checkup-loop.md`.
+
 Session operating rules (BINDING): fable = design / adjudication /
 verification / planning ONLY — token economy HARD
 (`feedback_fable_token_economy`; prior bust precedent); corpus
