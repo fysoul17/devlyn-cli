@@ -40,6 +40,8 @@ def collect_text(
     text: str, source: pathlib.Path
 ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
     findings, summary = PARSER["collect_text"](text, source)
+    if findings and summary is None:
+        raise SystemExit("error: findings without terminal verdict")
     if summary is not None and summary["verdict"] == "PASS" and any(finding_rank(finding) == 2 for finding in findings):
         raise SystemExit("error: verdict-binding finding cannot have a PASS verdict")
     if not findings and (summary is None or summary.get("verdict") != "PASS"):
@@ -49,6 +51,8 @@ def collect_text(
 
 def collect_stdout(stdout_path: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
     findings, summary = PARSER["collect_stdout"](stdout_path)
+    if findings and summary is None:
+        raise SystemExit("error: findings without terminal verdict")
     if summary is not None and summary["verdict"] == "PASS" and any(finding_rank(finding) == 2 for finding in findings):
         raise SystemExit("error: verdict-binding finding cannot have a PASS verdict")
     if not findings and (summary is None or summary.get("verdict") != "PASS"):
@@ -93,6 +97,7 @@ def self_test() -> int:
         )
         rejection_cases = (
             ("", "no verdict line", "non-PASS verdict without JSONL findings"),
+            (json.dumps(plain_finding) + "\n", "finding without terminal verdict", "findings without terminal verdict"),
             ('{"verdict":"pass"}\n', "lowercase pass", "finding missing valid severity"),
             ('{"verdict":"UNKNOWN"}\n', "unknown verdict", "finding missing valid severity"),
         )

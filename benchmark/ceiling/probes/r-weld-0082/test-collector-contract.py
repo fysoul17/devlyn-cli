@@ -45,6 +45,24 @@ INTENTIONAL_ACCEPTANCE_OVERRIDES = {
     "benchmark/ceiling/results/nodeg-20260721e/DR-atomic-state-f11-batch-import/A1/devlyn-snapshot/runs/rs-20260721T065728Z-3138278bd76a/claude-judge.stdout": {"exit": 0, "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "verdict": "PASS"},
     "benchmark/ceiling/results/nodeg-20260721e/DR-shape-compound-rules-f25-cart/A1/devlyn-snapshot/verify.judge.raw.stdout": {"exit": 0, "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "verdict": "PASS"},
 }
+TERMINAL_VERDICT_REQUIRED_OVERRIDES_2026_08_18 = {
+    "benchmark/ceiling/results/iter0078a2-probe-a/DR-auth-signature-f12-webhook/A1/devlyn-snapshot/runs/rs-20260722T102122Z-68dfad3ca202/codex-primary-judge.round2.stdout": {
+        "expected": {"exit": 1, "findings_sha256": None, "verdict": None},
+        "rationale": "terminal-verdict required per user ruling 2026-08-18",
+    },
+    "benchmark/ceiling/results/nodeg-20260719g/DR-shape-compound-rules-f25-cart/A1/devlyn-snapshot/runs/rs-20260719T103916Z-60b9f2c446f0/codex-judge.stdout": {
+        "expected": {"exit": 1, "findings_sha256": None, "verdict": None},
+        "rationale": "terminal-verdict required per user ruling 2026-08-18",
+    },
+    "benchmark/ceiling/results/nodeg-20260720a/FS1-schedule-max-runs/A1/devlyn-snapshot/runs/rs-20260720T040421Z-4402cc885dcc/verify.primary-judge.raw.stdout": {
+        "expected": {"exit": 1, "findings_sha256": None, "verdict": None},
+        "rationale": "terminal-verdict required per user ruling 2026-08-18",
+    },
+    "benchmark/ceiling/results/nodeg-20260721e/DR-auth-signature-f12-webhook/A1/devlyn-snapshot/runs/rs-20260721T072845Z-400f808ec06b/codex-judge.stdout": {
+        "expected": {"exit": 1, "findings_sha256": None, "verdict": None},
+        "rationale": "terminal-verdict required per user ruling 2026-08-18",
+    },
+}
 LEGACY_OBJECT_VERDICTS = frozenset({
     "env-weld-0081-run1.json", "env-weld-0081-run2.json", "env-weld-0081-run3.json",
     "env-weld-0081-run4.json", "env-weld-0081-run5.json", "env-weld-0081-run6.json",
@@ -122,6 +140,10 @@ NEGATIVES = [
      f"```json trailing {CRIT}\n{NW}\n", ALL_PATHS),
     ("N11b fence token + trailing bytes, on its own line",
      f"```json trailing\n{CRIT}\n{NW}\n", ALL_PATHS),
+    # Terminal verdicts are mandatory after findings on every ingress path;
+    # N13's envelope path is the registered-envelope fixture.
+    ("N13 findings then EOF", f"{HIGH}\n", ALL_PATHS),
+    ("N14 findings then fence then EOF", f"{HIGH}\n```\n", ALL_PATHS),
 ]
 
 # N12 is a rejection rule: a #-commented finding must fail collection.
@@ -244,7 +266,12 @@ def main():
         if rel in LEGACY_COMMENTED_OUTPUTS:
             want = {"exit": 1, "findings_sha256": None, "verdict": None}
         else:
-            want = INTENTIONAL_ACCEPTANCE_OVERRIDES.get(rel, want)
+            terminal_verdict_override = TERMINAL_VERDICT_REQUIRED_OVERRIDES_2026_08_18.get(rel)
+            want = (
+                terminal_verdict_override["expected"]
+                if terminal_verdict_override is not None
+                else INTENTIONAL_ACCEPTANCE_OVERRIDES.get(rel, want)
+            )
         if got != want:
             failures.append(f"  tracked regression {rel}: {got} != baseline {want}")
 
