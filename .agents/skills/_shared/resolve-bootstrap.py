@@ -265,13 +265,28 @@ def init_spec_source(
     }, staged_path.read_bytes() if staged_path.is_file() else None)
 
 
-def git_text(cwd: pathlib.Path, *args: str, allow_empty: bool = False) -> str:
+def git_text(cwd: pathlib.Path, *args: str) -> str:
     proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
     text = proc.stdout.strip()
-    if proc.returncode != 0 or (not allow_empty and not text):
+    if proc.returncode != 0 or not text:
         detail = (proc.stderr or proc.stdout).strip() or "git command failed"
         block("BLOCKED:invalid-flags", detail)
     return text
+
+
+def base_branch(cwd: pathlib.Path) -> str | None:
+    proc = subprocess.run(
+        ["git", "symbolic-ref", "--short", "-q", "HEAD"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode == 1 and not proc.stdout.strip() and not proc.stderr.strip():
+        return None
+    if proc.returncode != 0 or not proc.stdout.strip():
+        detail = (proc.stderr or proc.stdout).strip() or "git symbolic-ref failed"
+        block("BLOCKED:invalid-flags", detail)
+    return proc.stdout.strip()
 
 
 def capture_external_diff(cwd: pathlib.Path, ref: str) -> bytes:
@@ -349,7 +364,7 @@ def bootstrap(
         },
         "risk_probes_digest": None,
         "base_ref": {
-            "branch": git_text(cwd, "symbolic-ref", "--short", "-q", "HEAD", allow_empty=True) or "HEAD",
+            "branch": base_branch(cwd),
             "sha": git_text(cwd, "rev-parse", "HEAD"),
         },
         "rounds": {"max_rounds": parsed["max_rounds"], "global": 0},
@@ -414,7 +429,7 @@ def self_test() -> int:
             },
             "risk_probes_digest": None,
             "base_ref": {
-                "branch": git_text(work, "symbolic-ref", "--short", "-q", "HEAD"),
+                "branch": base_branch(work),
                 "sha": git_text(work, "rev-parse", "HEAD"),
             },
             "rounds": {"max_rounds": 4, "global": 0},
@@ -441,6 +456,16 @@ def self_test() -> int:
         assert not (work / ".devlyn" / "untracked.baseline").exists()
         assert set(result) == {"ok", "run_id", "mode", "source", "state_path", "state_sha256"}
         print("PASS bootstrap self-test state-init byte contract: schema v3.0 exact, slim result")
+
+        detached = root / "detached-repo"
+        init_repo(detached)
+        subprocess.run(["git", "checkout", "--detach", "-q"], cwd=detached, check=True)
+        detached_result = bootstrap(["fix", "app.py"], detached, script_shared)
+        detached_state = strict_json((detached / ".devlyn" / "pipeline.state.json").read_text())
+        assert detached_result["ok"] is True
+        assert detached_state["base_ref"]["branch"] is None
+        assert detached_state["base_ref"]["sha"] == git_text(detached, "rev-parse", "HEAD")
+        print("PASS bootstrap self-test detached HEAD: branch null with exact HEAD sha")
 
         os.environ[session_key] = "session-self-test"
         bootstrap(["--engine", "raw-engine", "--pair-verify", "fix", "app.py"], work, script_shared)

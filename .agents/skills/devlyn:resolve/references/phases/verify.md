@@ -164,10 +164,7 @@ When eligible and the orchestrator spawns a second VERIFY agent with the OTHER e
   `.codex/skills`, `CLAUDE.md`, `AGENTS.md`, or other harness docs unless the
   orchestrator pasted a specific excerpt into the prompt. Use only the spec,
   diff, implementation files, tests, and the repo's CLI/API/test runner.
-  Execute at most two targeted probes before first output. Stop immediately
-  after the first verdict-binding finding and emit JSONL. If both probes pass
-  and static scope/dependency checks show no blocker, emit PASS; do not continue
-  exhaustive exploration.
+  Execute at most two targeted probes before first output. Pair-JUDGE output: emit JSONL findings then a bare terminal verdict line, or emit only `PASS` when clean. `_shared/judge-output-parser.py` is the single acceptance rule for pair output: JSONL findings, then a `# SUMMARY {json}` line or a bare verdict line (`PASS` alone when clean); it ignores bare code-fence lines and unwraps the registered Codex JSON envelope including its narrated-preamble recovery (iter-0082); every other non-empty line blocks the pair source. Do not continue exhaustive exploration.
   If the spec includes a solo-headroom hypothesis, one of the two targeted
   probes must exercise that hypothesis with the visible command/input shape and
   compare the full externally visible result. The probe must use the

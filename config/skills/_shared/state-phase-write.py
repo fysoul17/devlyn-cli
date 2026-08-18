@@ -235,6 +235,24 @@ def ensure_surface_clean_baseline(work: pathlib.Path, devlyn: pathlib.Path, stat
         raise SystemExit(f"BLOCKED:surface-close-preexisting-delta: {detail}")
 
 
+def validate_surface_brace_glob(entry: str) -> str | None:
+    if "{" not in entry and "}" not in entry:
+        return None
+    brace = re.search(r"\{([^{}]*)\}", entry)
+    alternatives = brace.group(1).split(",") if brace else []
+    if (
+        entry.count("{") != 1
+        or entry.count("}") != 1
+        or len(alternatives) < 2
+        or any(not value or any(char in value for char in "{},/*") for value in alternatives)
+    ):
+        return (
+            f"unsupported brace glob {entry!r}; supported form is {{alt1,alt2,...}} "
+            "with at least two non-empty plain alternatives"
+        )
+    return None
+
+
 def validate_authorized_surface(raw: str) -> list[str]:
     surface = parse_string_list(raw, "--authorized-surface-json")
     if not surface:
@@ -247,21 +265,40 @@ def validate_authorized_surface(raw: str) -> list[str]:
             or pathlib.PurePosixPath(path).is_absolute() or ".." in parts
         ):
             raise SystemExit(f"error: invalid authorized_surface entry: {entry!r}")
+        brace_error = validate_surface_brace_glob(entry)
+        if brace_error is not None:
+            raise SystemExit(f"error: {brace_error}")
     return surface
 
 
 def path_matches_surface(path: str, surface: list[str]) -> bool:
-    parsed = pathlib.PurePosixPath(path)
-    if parsed.is_absolute() or ".." in parsed.parts:
-        return False
     for entry in surface:
-        if entry.endswith("/**"):
-            prefix = entry[:-3].rstrip("/")
-            if path == prefix or path.startswith(f"{prefix}/"):
+        brace_error = validate_surface_brace_glob(entry)
+        if brace_error is not None:
+            raise ValueError(brace_error)
+        if "{" in entry:
+            brace = re.search(r"\{([^{}]*)\}", entry)
+            assert brace is not None
+            alternatives = brace.group(1).split(",")
+            entries = tuple(
+                entry[:brace.start()] + value + entry[brace.end():]
+                for value in alternatives
+            )
+        else:
+            entries = (entry,)
+        for expanded in entries:
+            if expanded.endswith("/**"):
+                prefix = expanded[:-3].rstrip("/")
+                if path == prefix or path.startswith(f"{prefix}/"):
+                    return True
+            elif path == expanded:
                 return True
-        elif path == entry:
-            return True
     return False
+
+
+def safe_path_matches_surface(path: str, surface: list[str]) -> bool:
+    parsed = pathlib.PurePosixPath(path)
+    return not (parsed.is_absolute() or ".." in parsed.parts) and path_matches_surface(path, surface)
 
 
 def worktree_file_exists(work: pathlib.Path, path: str) -> bool:
@@ -296,17 +333,17 @@ def resolve_na_surface_citation(
         if path in surface and not path.endswith("/**"):
             return True
         return worktree_file_exists(work, path) and any(
-            entry.endswith("/**") and path_matches_surface(path, [entry])
+            entry.endswith("/**") and safe_path_matches_surface(path, [entry])
             for entry in surface
         )
 
     if proven(raw):
         return raw, None
-    if worktree_path_exists(work, raw) and not path_matches_surface(raw, surface):
+    if worktree_path_exists(work, raw) and not safe_path_matches_surface(raw, surface):
         raise SystemExit(f"BLOCKED:surface-close-adjudication-out-of-surface: {raw}")
     if (
         worktree_path_exists(work, parsed_path)
-        and not path_matches_surface(parsed_path, surface)
+        and not safe_path_matches_surface(parsed_path, surface)
     ):
         raise SystemExit(f"BLOCKED:surface-close-adjudication-out-of-surface: {raw}")
     for split in range(len(raw) - 1, -1, -1):
@@ -324,7 +361,7 @@ def resolve_na_surface_citation(
 def surface_offenders(work: pathlib.Path, devlyn: pathlib.Path, state: dict,
                       surface: list[str]) -> list[str]:
     tracked, untracked = surface_delta_paths(work, devlyn, state)
-    return sorted(path for path in set(tracked + untracked) if not path_matches_surface(path, surface))
+    return sorted(path for path in set(tracked + untracked) if not safe_path_matches_surface(path, surface))
 
 
 def path_exists_at_commit(work: pathlib.Path, sha: str, path: str) -> bool:
@@ -416,7 +453,7 @@ def validate_surface_adjudication(
                 work, citation, path, line_number, surface,
             )
             citation = path if line_number is None else f"{path}:{line_number}"
-        if not path_matches_surface(path, surface):
+        if not safe_path_matches_surface(path, surface):
             raise SystemExit(
                 f"BLOCKED:surface-close-adjudication-out-of-surface: {citation}"
             )
@@ -539,7 +576,7 @@ def validate_surface_write_audit(
                     "BLOCKED:surface-close-write-audit-violation: "
                     f"line {line_number}: {raw_target!r}"
                 ) from exc
-            if not path_matches_surface(relative, surface):
+            if not safe_path_matches_surface(relative, surface):
                 raise SystemExit(
                     "BLOCKED:surface-close-write-audit-violation: "
                     f"line {line_number}: {relative!r}"
@@ -2213,10 +2250,45 @@ def self_test() -> int:
         validate_surface_inputs(work, work_devlyn, surface_state)
         validate_surface_prompt(work_devlyn, surface_state)
         ensure_surface_clean_baseline(work, work_devlyn, surface_state)
+        (work_devlyn / "pipeline.state.json").write_text(
+            json.dumps(surface_state), encoding="utf-8",
+        )
+        for entry in ("src/{a,b", "src/{a,}/**", "src/{a,{b,c}}", "src/{a,**}"):
+            surface_check = subprocess.run(
+                [
+                    sys.executable, str(pathlib.Path(__file__).resolve()),
+                    "--devlyn-dir", ".devlyn", "--phase", "surface_close", "surface-check",
+                    "--authorized-surface-json", json.dumps([entry]),
+                ],
+                cwd=work, capture_output=True, text=True,
+            )
+            if (
+                surface_check.returncode == 0
+                or "error: unsupported brace glob" not in surface_check.stderr
+                or "supported form" not in surface_check.stderr
+                or "Traceback" in surface_check.stderr
+            ):
+                raise AssertionError(f"surface-check did not fail closed for {entry}: {surface_check.stderr}")
         surface = validate_authorized_surface(
             '["allowed.txt", "branchbase", "exact-link", "exact:1", "schedule/**", '
             '"test_schedule.py", "tests/**", "x.ts"]'
         )
+        assert path_matches_surface("src/a/example.py", ["src/{a,b}/**"])
+        assert path_matches_surface("src/b/example.py", ["src/{a,b}/**"])
+        assert not path_matches_surface("src/c/example.py", ["src/{a,b}/**"])
+        for entry in ("src/{a,b", "src/{a,}/**", "src/{a,{b,c}}", "src/{a,**}"):
+            try:
+                validate_authorized_surface(json.dumps([entry]))
+            except SystemExit as exc:
+                assert str(exc).startswith("error: unsupported brace glob") and "supported form" in str(exc)
+            else:
+                raise AssertionError(f"malformed brace glob passed validation: {entry}")
+            try:
+                path_matches_surface("src/a/example.py", [entry])
+            except ValueError as exc:
+                assert entry in str(exc) and "supported form" in str(exc)
+            else:
+                raise AssertionError(f"malformed brace glob accepted: {entry}")
         outside = devlyn / "outside.txt"
         outside.write_text("outside\n", encoding="utf-8")
         (work / "outside-link").symlink_to(outside)

@@ -24,6 +24,12 @@ import tempfile
 
 PER_RUN_PATTERNS = (
     "pipeline.state.json",
+    "untracked.baseline",
+    "external-diff.patch",
+    "plan.task-context",
+    "plan.prompt",
+    "probe-derive.stdout",
+    "probe-derive.stderr",
     "*.findings.jsonl",
     "*.log.md",
     "fix-batch.round-*.json",
@@ -53,6 +59,7 @@ PER_RUN_PATTERNS = (
     "spec-verify.results.json",
     "spec-verify-findings.jsonl",
     "verify-merge.summary.json",
+    "verify.pair.timeout.json",
     "finish-gate.summary.json",
     # iter-0033a/2026-04-30 archive-fix iter: NEW /devlyn:resolve emits
     # plan.md (PLAN output) + final-report.md (PHASE 6 render) +
@@ -182,6 +189,13 @@ def self_test() -> int:
             "resolve-stop-hook.run-1.123.456.json",
             "verify.pair.findings.jsonl",
             "verify-merge.summary.json",
+            "untracked.baseline",
+            "external-diff.patch",
+            "plan.task-context",
+            "plan.prompt",
+            "probe-derive.stdout",
+            "probe-derive.stderr",
+            "verify.pair.timeout.json",
             "codex-judge.stdout",
             "codex-judge.summary.json",
             "claude-judge.stdout",
@@ -211,12 +225,20 @@ def self_test() -> int:
             "probes/P1.py",
             "verify.pair.findings.jsonl",
             "verify-merge.summary.json",
+            "untracked.baseline",
+            "external-diff.patch",
+            "plan.task-context",
+            "plan.prompt",
+            "probe-derive.stdout",
+            "probe-derive.stderr",
+            "verify.pair.timeout.json",
             "codex-judge.stdout",
             "codex-judge.summary.json",
             "claude-judge.stdout",
             "claude-judge.stderr",
         ):
             assert (devlyn / "runs" / run_id / name).is_file(), name
+            assert not (devlyn / name).exists(), name
         assert global_rollout.is_file(), "engine-global session files must stay untouched"
         assert not (devlyn / "runs" / run_id / global_rollout.name).exists()
 

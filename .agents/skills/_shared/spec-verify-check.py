@@ -1360,6 +1360,24 @@ def expected_contract_findings(
     return (findings, seq)
 
 
+def validate_surface_brace_glob(entry: str) -> str | None:
+    if "{" not in entry and "}" not in entry:
+        return None
+    brace = re.search(r"\{([^{}]*)\}", entry)
+    alternatives = brace.group(1).split(",") if brace else []
+    if (
+        entry.count("{") != 1
+        or entry.count("}") != 1
+        or len(alternatives) < 2
+        or any(not value or any(char in value for char in "{},/*") for value in alternatives)
+    ):
+        return (
+            f"unsupported brace glob {entry!r}; supported form is {{alt1,alt2,...}} "
+            "with at least two non-empty plain alternatives"
+        )
+    return None
+
+
 def validate_authorized_surface_shape(data: object) -> str | None:
     if not isinstance(data, dict):
         return "top-level must be a JSON object"
@@ -1384,17 +1402,34 @@ def validate_authorized_surface_shape(data: object) -> str | None:
             return f"authorized_surface directory grant needs a non-empty prefix before '/**': {entry!r}"
         if ".." in stem.split("/"):
             return f"authorized_surface entry must not contain '..': {entry!r}"
+        brace_error = validate_surface_brace_glob(entry)
+        if brace_error is not None:
+            return brace_error
     return None
 
 
 def path_matches_surface(path: str, surface: list[str]) -> bool:
     for entry in surface:
-        if entry.endswith("/**"):
-            prefix = entry[:-3]
-            if path == prefix or path.startswith(prefix + "/"):
+        brace_error = validate_surface_brace_glob(entry)
+        if brace_error is not None:
+            raise ValueError(brace_error)
+        if "{" in entry:
+            brace = re.search(r"\{([^{}]*)\}", entry)
+            assert brace is not None
+            alternatives = brace.group(1).split(",")
+            entries = tuple(
+                entry[:brace.start()] + value + entry[brace.end():]
+                for value in alternatives
+            )
+        else:
+            entries = (entry,)
+        for expanded in entries:
+            if expanded.endswith("/**"):
+                prefix = expanded[:-3].rstrip("/")
+                if path == prefix or path.startswith(f"{prefix}/"):
+                    return True
+            elif path == expanded:
                 return True
-        elif path == entry:
-            return True
     return False
 
 
@@ -1765,6 +1800,16 @@ def run_self_test() -> int:
         work = Path(td)
         devlyn = work / ".devlyn"
         devlyn.mkdir()
+        assert path_matches_surface("src/a/example.py", ["src/{a,b}/**"])
+        assert path_matches_surface("src/b/example.py", ["src/{a,b}/**"])
+        assert not path_matches_surface("src/c/example.py", ["src/{a,b}/**"])
+        for entry in ("src/{a,b", "src/{a,}/**", "src/{a,{b,c}}", "src/{a,**}"):
+            try:
+                path_matches_surface("src/a/example.py", [entry])
+            except ValueError as exc:
+                assert entry in str(exc) and "supported form" in str(exc)
+            else:
+                raise AssertionError(f"malformed brace glob accepted: {entry}")
         spec_md = work / "spec.md"
         spec_md.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- probe must pass visible marker.\n")
         (devlyn / "pipeline.state.json").write_text(json.dumps({
@@ -3975,6 +4020,32 @@ def run_self_test() -> int:
             print("--print-authorized-surface accepted malformed plan.md", file=sys.stderr)
             return 1
 
+        for entry in ("src/{a,b", "src/{a,}/**", "src/{a,{b,c}}", "src/{a,**}"):
+            (scope_devlyn / "plan.md").write_text(
+                "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## 1. Files to touch\n\n"
+                "```json\n"
+                + json.dumps({"authorized_surface": [entry]}) + "\n```\n"
+            )
+            brace_build_gate = subprocess.run(
+                [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
+                capture_output=True, text=True,
+            )
+            brace_print_surface = subprocess.run(
+                [sys.executable, script_path, "--print-authorized-surface"], cwd=scope_root,
+                capture_output=True, text=True,
+            )
+            findings_text = scope_findings_path.read_text(encoding="utf-8")
+            if (
+                brace_build_gate.returncode == 0
+                or brace_print_surface.returncode == 0
+                or "scope.authorized-surface-malformed" not in findings_text
+                or "supported form" not in findings_text
+                or "supported form" not in brace_print_surface.stderr
+                or "Traceback" in brace_build_gate.stderr + brace_print_surface.stderr
+            ):
+                print(f"malformed brace glob escaped the authorized-surface carrier: {entry}", file=sys.stderr)
+                return 1
+
         # Test 3: valid surface, in-scope-only diff -> no scope findings, exit 0.
         (scope_devlyn / "plan.md").write_text(
             "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## 1. Files to touch\n\n"
@@ -4107,12 +4178,16 @@ def run_self_test() -> int:
             print(verify_mech_findings, file=sys.stderr)
             return 1
 
-        # Test 7: shape validation rejects absolute paths, `..`, and duplicates.
+        # Test 7: shape validation rejects absolute paths, `..`, duplicates, and malformed braces.
         for bad_surface in (
             {"authorized_surface": ["/etc/passwd"]},
             {"authorized_surface": ["bin/../etc/passwd"]},
             {"authorized_surface": ["bin/cli.js", "bin/cli.js"]},
             {"authorized_surface": []},
+            {"authorized_surface": ["src/{a,b"]},
+            {"authorized_surface": ["src/{a,}/**"]},
+            {"authorized_surface": ["src/{a,{b,c}}"]},
+            {"authorized_surface": ["src/{a,**}"]},
         ):
             err = validate_authorized_surface_shape(bad_surface)
             if err is None:

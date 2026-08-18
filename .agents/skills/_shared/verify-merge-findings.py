@@ -15,7 +15,11 @@ import pathlib
 import re
 import sys
 import tempfile
+import runpy
 from typing import Any
+
+
+JUDGE_OUTPUT_PARSER = runpy.run_path(pathlib.Path(__file__).with_name("judge-output-parser.py"))
 
 
 SOURCE_FILES = (
@@ -24,6 +28,10 @@ SOURCE_FILES = (
     ("pair_judge", "verify.pair.findings.jsonl"),
     ("pair_judge", "verify.pair-judge.findings.jsonl"),
 )
+REQUIRED_SOURCE_FILES = {
+    "mechanical": "verify-mechanical.findings.jsonl",
+    "judge": "verify.findings.jsonl",
+}
 
 VERDICT_RANK = {
     "PASS": 0,
@@ -135,6 +143,25 @@ def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str,
     for source, name in SOURCE_FILES:
         path = devlyn / name
         if not path.is_file():
+            # A verdict-binding mechanical result contractually skips both
+            # judges. Its absent primary carrier is therefore not evidence a
+            # dispatched primary judge failed to produce.
+            if source == "judge" and rank(source_verdicts.get("mechanical")) >= 2:
+                source_verdicts[source] = None
+                continue
+            if REQUIRED_SOURCE_FILES.get(source) == name:
+                findings.append({
+                    "id": f"verify-merge-required-source-missing-{source}",
+                    "rule_id": "verify.findings.required-source-missing",
+                    "severity": "CRITICAL",
+                    "confidence": "high",
+                    "file": name,
+                    "line": 1,
+                    "message": f"Required VERIFY {source} findings file is missing: {name}",
+                    "criterion_ref": "verify-merge",
+                    "source": source,
+                })
+                source_verdicts[source] = "BLOCKED"
             continue
         if source_verdicts[source] is None:
             source_verdicts[source] = "PASS"
@@ -384,12 +411,38 @@ def risk_profile_contract_violation(devlyn: pathlib.Path) -> dict[str, Any] | No
 def verify_state_contract_violation(devlyn: pathlib.Path) -> dict[str, Any] | None:
     state_path = devlyn / "pipeline.state.json"
     if not state_path.is_file():
-        return None
+        return {
+            "id": "verify-state-missing",
+            "rule_id": "verify.state.missing",
+            "message": "pipeline.state.json is required before VERIFY merge.",
+            "file": "pipeline.state.json",
+        }
     try:
         state = loads_strict_json(state_path.read_text(encoding="utf-8"))
     except ValueError:
-        return None
-    if not isinstance(state, dict) or not state_uses_default_pair_contract(state):
+        return {
+            "id": "verify-pair-trigger-state-malformed",
+            "rule_id": "verify.pair.emission-contract",
+            "message": "pipeline.state.json is malformed; cannot verify pair_trigger contract.",
+            "file": "pipeline.state.json",
+        }
+    if not isinstance(state, dict):
+        return {
+            "id": "verify-state-malformed",
+            "rule_id": "verify.state.malformed",
+            "message": "pipeline.state.json must be a JSON object before VERIFY merge.",
+            "file": "pipeline.state.json",
+        }
+    engine = state.get("engine")
+    if not isinstance(engine, str) or not engine.strip():
+        rule = "verify.state.engine-malformed"
+        return {
+            "id": rule,
+            "rule_id": rule,
+            "message": "pipeline.state.json requires engine as a non-empty string before VERIFY merge.",
+            "file": "pipeline.state.json",
+        }
+    if not state_uses_default_pair_contract(state):
         return None
     source = state.get("source")
     if not isinstance(source, dict) or source.get("type") != "generated":
@@ -810,10 +863,8 @@ def detect_pair_stdout_contract_violations(
     devlyn: pathlib.Path,
     source_verdicts: dict[str, str | None],
 ) -> list[dict[str, Any]]:
-    # *-judge.stdout: any engine's pair-judge capture (codex-judge.stdout,
-    # claude-judge.stdout — adapters/claude.md ## Invocation). The emission
-    # contract is engine-neutral.
-    stdout_paths = sorted(devlyn.glob("*-judge.stdout"))
+    # The primary uses the executor engine name; only the OTHER engine's
+    # capture is pair evidence.
     timeout_marker, timeout_violation = read_pair_timeout_marker(devlyn)
     if timeout_violation is not None:
         source_verdicts["pair_judge"] = "BLOCKED"
@@ -865,6 +916,14 @@ def detect_pair_stdout_contract_violations(
                 state_violation["rule_id"],
             )
         ]
+    state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
+    assert isinstance(state, dict)
+    engine = state["engine"]
+    assert isinstance(engine, str) and engine.strip()
+    primary_stdout = f"{engine}-judge.stdout"
+    stdout_paths = sorted(
+        path for path in devlyn.glob("*-judge.stdout") if path.name != primary_stdout
+    )
     if not required and not pair_trigger_present(devlyn):
         missing_violation = pair_trigger_missing_contract_violation(devlyn, source_verdicts)
         if missing_violation is not None:
@@ -915,8 +974,7 @@ def detect_pair_stdout_contract_violations(
     if source_verdicts["pair_judge"] is None and timeout_marker is None:
         source_verdicts["pair_judge"] = "PASS"
     for stdout_path in stdout_paths:
-        raw_text = stdout_path.read_text(encoding="utf-8")
-        if not raw_text.strip():
+        if not stdout_path.read_text(encoding="utf-8").strip():
             if timeout_marker is not None:
                 continue
             source_verdicts["pair_judge"] = "BLOCKED"
@@ -927,41 +985,25 @@ def detect_pair_stdout_contract_violations(
                     stdout_path.name,
                 )
             ]
-        has_jsonl_finding = False
-        has_nonpass_summary = False
-        for line in raw_text.splitlines():
-            raw = line.strip()
-            if not raw:
-                continue
-            if raw.startswith("# SUMMARY "):
-                try:
-                    summary = loads_strict_json(raw.removeprefix("# SUMMARY ").strip())
-                except ValueError:
-                    continue
-                if summary.get("verdict") in {"NEEDS_WORK", "FAIL", "BLOCKED"}:
-                    has_nonpass_summary = True
-                continue
-            if raw.startswith("#"):
-                continue
-            try:
-                item = loads_strict_json(raw)
-            except ValueError:
-                continue
-            if isinstance(item, dict) and str(item.get("severity") or "").upper() in {
-                "CRITICAL",
-                "HIGH",
-                "MEDIUM",
-                "LOW",
-            }:
-                has_jsonl_finding = True
-        if has_jsonl_finding or has_nonpass_summary:
+        try:
+            stdout_findings, stdout_summary = JUDGE_OUTPUT_PARSER["collect_stdout"](stdout_path)
+        except SystemExit as exc:
+            source_verdicts["pair_judge"] = "BLOCKED"
+            return [
+                pair_blocker(
+                    "verify-pair-emission-contract-violated",
+                    f"pair-JUDGE stdout {stdout_path.name} violates the shared emission parser: {exc}",
+                    stdout_path.name,
+                )
+            ]
+        if stdout_findings or stdout_summary is None or stdout_summary["verdict"] != "PASS":
             source_verdicts["pair_judge"] = "BLOCKED"
             return [
                 pair_blocker(
                     "verify-pair-emission-contract-violated",
                     (
                         f"pair-JUDGE stdout {stdout_path.name} contained findings or a non-PASS "
-                        "summary, but the canonical pair findings JSONL file was empty."
+                        "verdict, but the canonical pair findings JSONL file was empty."
                     ),
                     stdout_path.name,
                 )
@@ -1037,12 +1079,17 @@ def self_test() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         devlyn = pathlib.Path(tmp)
 
+        # Every completed VERIFY has deterministic mechanical and primary
+        # judge carriers.  Missing either one is an evidence failure, not PASS.
+        (devlyn / "verify-mechanical.findings.jsonl").write_text("", encoding="utf-8")
+
         # state-phase-write.py's spawn always writes sub_verdicts: null (the
         # per-round reset contract, state-schema.md#write-protocol) — this is
         # the real shape write_state() sees on every VERIFY completion, not
         # the pre-populated {} the other scenarios below seed for brevity.
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": None,
@@ -1066,11 +1113,23 @@ def self_test() -> int:
             "judge": 23, "pair_judge": 31,
         }, state
 
+        (devlyn / "verify.findings.jsonl").unlink()
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "BLOCKED", summary
+        assert summary["source_verdicts"]["judge"] == "BLOCKED", summary
+        assert any(
+            finding["id"] == "verify-merge-required-source-missing-judge"
+            for finding in findings
+        ), findings
+        (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
+
         # iter-0072 Amendment 3: generated schema-v3 runs mechanically prove
         # raw-goal persistence and required SURFACE_CLOSE dispatch.
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
                 "version": "3.0",
+                "engine": "claude",
                 "complexity": "large",
                 "source": {"type": "generated"},
                 "phases": {"verify": {"verdict": None, "sub_verdicts": None}},
@@ -1089,6 +1148,7 @@ def self_test() -> int:
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
                 "version": "3.0",
+                "engine": "claude",
                 "complexity": "large",
                 "source": {"type": "generated", "goal_path": "", "goal_sha256": "A" * 64},
             }),
@@ -1106,6 +1166,7 @@ def self_test() -> int:
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
                 "version": "3.0",
+                "engine": "claude",
                 "complexity": "medium",
                 "source": generated_source,
                 "phases": {
@@ -1134,6 +1195,7 @@ def self_test() -> int:
             (devlyn / "pipeline.state.json").write_text(
                 json.dumps({
                     "version": "3.0",
+                    "engine": "claude",
                     "complexity": "medium",
                     "source": generated_source,
                     "phases": {"surface_close": surface_entry},
@@ -1145,6 +1207,7 @@ def self_test() -> int:
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
                 "version": "3.0",
+                "engine": "claude",
                 "complexity": "medium",
                 "source": generated_source,
                 "phases": {
@@ -1161,15 +1224,15 @@ def self_test() -> int:
 
         for state_shape in (
             {
-                "version": "3.0", "complexity": "medium",
+                "version": "3.0", "engine": "claude", "complexity": "medium",
                 "source": {"type": "spec"}, "phases": {"surface_close": None},
             },
             {
-                "version": "3.0", "complexity": "large",
+                "version": "3.0", "engine": "claude", "complexity": "large",
                 "source": generated_source, "phases": {"surface_close": None},
             },
             {
-                "version": "2.0", "complexity": "medium",
+                "version": "2.0", "engine": "claude", "complexity": "medium",
                 "source": {"type": "generated"}, "phases": {"surface_close": None},
             },
         ):
@@ -1184,6 +1247,7 @@ def self_test() -> int:
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
                 "version": "3.0",
+                "engine": "claude",
                 "mode": "spec",
                 "risk_profile": {"pair_default_enabled": True},
                 "phases": {
@@ -1211,7 +1275,7 @@ def self_test() -> int:
         # A non-null, non-dict sub_verdicts is corrupted state, not a legal
         # placeholder — write_state() must fail loud, not silently coerce it.
         (devlyn / "pipeline.state.json").write_text(
-            json.dumps({"phases": {"verify": {"verdict": None, "sub_verdicts": "corrupt"}}}),
+            json.dumps({"engine": "claude", "phases": {"verify": {"verdict": None, "sub_verdicts": "corrupt"}}}),
             encoding="utf-8",
         )
         findings, source_verdicts = read_findings(devlyn)
@@ -1225,6 +1289,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -1268,7 +1333,7 @@ def self_test() -> int:
             for finding in findings
         ), findings
         (devlyn / "pipeline.state.json").write_text(
-            json.dumps({"phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
+            json.dumps({"engine": "claude", "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
             encoding="utf-8",
         )
         (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
@@ -1296,6 +1361,10 @@ def self_test() -> int:
         # Engine-neutral stdout contract (iter-0060): a Claude pair-judge
         # capture (claude-judge.stdout, adapters/claude.md ## Invocation)
         # binds the same emission contract as the Codex one.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({"engine": "codex", "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
+            encoding="utf-8",
+        )
         (devlyn / "claude-judge.stdout").write_text(
             json.dumps({"id": "clj1", "severity": "HIGH"}) + "\n",
             encoding="utf-8",
@@ -1314,6 +1383,7 @@ def self_test() -> int:
         # records TIMEOUT and leaves the merged verdict to mechanical+primary.
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "codex",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -1353,7 +1423,7 @@ def self_test() -> int:
 
         # iter-0065 case 2: canonical pair findings still bind after timeout.
         (devlyn / "pipeline.state.json").write_text(
-            json.dumps({"phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
+            json.dumps({"engine": "codex", "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
             encoding="utf-8",
         )
         (devlyn / "verify.pair.findings.jsonl").write_text(
@@ -1375,7 +1445,7 @@ def self_test() -> int:
         # iter-0065 case 2b: stdout-only HIGH still blocks on emission contract;
         # timeout never converts an observed finding into a solo pass.
         (devlyn / "pipeline.state.json").write_text(
-            json.dumps({"phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
+            json.dumps({"engine": "claude", "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
             encoding="utf-8",
         )
         (devlyn / "codex-judge.stdout").write_text(
@@ -1400,6 +1470,7 @@ def self_test() -> int:
         # iter-0065 case 3: without a marker, required empty pair output remains BLOCKED.
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "codex",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -1426,7 +1497,7 @@ def self_test() -> int:
 
         # iter-0065 malformed timeout markers fail closed as a CRITICAL pair blocker.
         (devlyn / "pipeline.state.json").write_text(
-            json.dumps({"phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
+            json.dumps({"engine": "claude", "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
             encoding="utf-8",
         )
         (devlyn / "verify.pair.timeout.json").write_text(
@@ -1445,6 +1516,7 @@ def self_test() -> int:
         (devlyn / "verify.pair.timeout.json").unlink()
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -1472,6 +1544,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "mode": "spec",
                 "risk_profile": {
                     "high_risk": True,
@@ -1492,6 +1565,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "mode": "spec",
                 "risk_profile": "enabled",
                 "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}},
@@ -1509,6 +1583,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "mode": "spec",
                 "risk_profile": {
                     "high_risk": True,
@@ -1530,6 +1605,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "mode": "spec",
                 "risk_profile": {
                     "high_risk": True,
@@ -1552,6 +1628,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "mode": "spec",
                 "pair_verify": True,
                 "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}},
@@ -1569,6 +1646,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "mode": "spec",
                 "complexity": "large",
                 "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}},
@@ -1591,6 +1669,7 @@ def self_test() -> int:
         )
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "mode": "spec",
                 "source": {"spec_path": str(spec_path)},
                 "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}},
@@ -1628,6 +1707,7 @@ def self_test() -> int:
         ) is False
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "mode": "spec",
                 "source": {"spec_path": str(spec_path)},
                 "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}},
@@ -1676,6 +1756,7 @@ def self_test() -> int:
         ) is True
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "mode": "spec",
                 "source": {"spec_path": str(spec_path)},
                 "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}},
@@ -1693,6 +1774,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "mode": "spec",
                 "source": {"spec_path": str(spec_path)},
                 "risk_profile": {
@@ -1733,6 +1815,7 @@ def self_test() -> int:
         ) is True
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "mode": "free-form",
                 "source": {"criteria_path": str(criteria_path)},
                 "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}},
@@ -1763,6 +1846,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -1787,6 +1871,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -1811,6 +1896,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -1836,6 +1922,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -1861,6 +1948,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -1886,6 +1974,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -1910,6 +1999,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -1934,6 +2024,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -1958,6 +2049,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -1982,6 +2074,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "mode": "spec",
                 "risk_profile": {
                     "high_risk": True,
@@ -2013,6 +2106,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "mode": "spec",
                 "risk_profile": {
                     "high_risk": True,
@@ -2044,6 +2138,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "pair_verify": True,
                 "risk_profile": {
                     "high_risk": True,
@@ -2074,6 +2169,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "mode": "spec",
                 "risk_profile": {
                     "high_risk": True,
@@ -2104,6 +2200,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -2128,6 +2225,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -2152,6 +2250,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -2185,10 +2284,34 @@ def self_test() -> int:
             finding.get("id") == "verify-pair-trigger-mechanical-blocker-unsupported"
             for finding in findings
         ), findings
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "engine": "claude",
+                "phases": {
+                    "verify": {
+                        "verdict": None,
+                        "sub_verdicts": None,
+                        "judge_durations_ms": {"judge": None, "pair_judge": None},
+                    }
+                }
+            }),
+            encoding="utf-8",
+        )
+        (devlyn / "verify.findings.jsonl").unlink()
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        write_state(devlyn, summary)
+        state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
+        assert summary["verdict"] == "NEEDS_WORK", summary
+        assert summary["source_verdicts"]["judge"] is None, summary
+        assert state["phases"]["verify"]["verdict"] == "NEEDS_WORK", state
+        assert state["phases"]["verify"]["sub_verdicts"]["judge"] is None, state
+        (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
         (devlyn / "verify-mechanical.findings.jsonl").write_text("", encoding="utf-8")
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {
                     "verify": {
                         "verdict": "PASS",
@@ -2220,6 +2343,7 @@ def self_test() -> int:
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
                 "version": "2.0",
+                "engine": "claude",
                 "mode": "spec",
                 "pair_verify": True,
                 "phases": {
@@ -2249,6 +2373,7 @@ def self_test() -> int:
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
                 "version": "3.0",
+                "engine": "claude",
                 "mode": "spec",
                 "pair_verify": True,
                 "phases": {
@@ -2294,6 +2419,7 @@ def self_test() -> int:
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
                 "version": "2.0",
+                "engine": "claude",
                 "mode": "spec",
                 "phases": {
                     "verify": {
@@ -2336,6 +2462,7 @@ def self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
+                "engine": "claude",
                 "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}},
                 "verify": {
                     "pair_trigger": {
@@ -2359,7 +2486,7 @@ def self_test() -> int:
         # PASS stdout from a claude judge promotes pair_judge null -> PASS.
         (devlyn / "verify.pair.findings.jsonl").unlink()
         (devlyn / "pipeline.state.json").write_text(
-            json.dumps({"phases": {"verify": {"verdict": None, "sub_verdicts": None}}}),
+            json.dumps({"engine": "codex", "phases": {"verify": {"verdict": None, "sub_verdicts": None}}}),
             encoding="utf-8",
         )
         (devlyn / "claude-judge.stdout").write_text("PASS\n", encoding="utf-8")
@@ -2369,6 +2496,47 @@ def self_test() -> int:
         state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
         assert summary["verdict"] == "PASS", summary
         assert state["phases"]["verify"]["sub_verdicts"]["pair_judge"] == "PASS", state
+        (devlyn / "claude-judge.stdout").unlink()
+
+        # The primary capture must not be misattributed to the OTHER-engine
+        # pair seat merely because both adapters use *-judge.stdout names.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({"engine": "claude", "phases": {"verify": {"verdict": None, "sub_verdicts": None}}}),
+            encoding="utf-8",
+        )
+        (devlyn / "claude-judge.stdout").write_text("primary prose\n", encoding="utf-8")
+        (devlyn / "codex-judge.stdout").write_text("PASS\n", encoding="utf-8")
+        findings, source_verdicts = read_findings(devlyn)
+        assert source_verdicts["pair_judge"] == "PASS", source_verdicts
+        assert not any(finding["source"] == "pair_judge" for finding in findings), findings
+        (devlyn / "codex-judge.stdout").write_text("pair prose\n", encoding="utf-8")
+        findings, source_verdicts = read_findings(devlyn)
+        assert source_verdicts["pair_judge"] == "BLOCKED", source_verdicts
+        assert any(finding["id"] == "verify-pair-emission-contract-violated" for finding in findings)
+        (devlyn / "claude-judge.stdout").unlink()
+        (devlyn / "codex-judge.stdout").unlink()
+
+        # A primary capture cannot become pair evidence when the state needed
+        # to identify the primary seat is absent, incomplete, or malformed.
+        (devlyn / "claude-judge.stdout").write_text("primary prose\n", encoding="utf-8")
+        (devlyn / "pipeline.state.json").unlink()
+        findings, source_verdicts = read_findings(devlyn)
+        assert source_verdicts["pair_judge"] == "BLOCKED", source_verdicts
+        assert any(finding["id"] == "verify-state-missing" for finding in findings), findings
+        assert not any(finding.get("file") == "claude-judge.stdout" for finding in findings), findings
+
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({"version": "3.0", "phases": {"verify": {}}}), encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        assert source_verdicts["pair_judge"] == "BLOCKED", source_verdicts
+        assert any(finding.get("rule_id") == "verify.state.engine-malformed" for finding in findings), findings
+
+        (devlyn / "pipeline.state.json").write_text("{", encoding="utf-8")
+        findings, source_verdicts = read_findings(devlyn)
+        assert source_verdicts["pair_judge"] == "BLOCKED", source_verdicts
+        assert any(finding["id"] == "verify-pair-trigger-state-malformed" for finding in findings), findings
+        (devlyn / "claude-judge.stdout").unlink()
 
         # iter-0083: canonical summary verdict conservation.
         iter_0083_paths = (
@@ -2398,6 +2566,11 @@ def self_test() -> int:
             timeout: bool = False,
         ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
             iter_0083_reset()
+            (devlyn / "pipeline.state.json").write_text(
+                json.dumps({"engine": "claude", "phases": {"verify": {}}}), encoding="utf-8",
+            )
+            (devlyn / "verify-mechanical.findings.jsonl").write_text("", encoding="utf-8")
+            (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
             if carrier is not None:
                 content = (
                     json.dumps({"id": "iter-0083", "severity": severity}) + "\n"

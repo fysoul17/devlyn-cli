@@ -32,6 +32,8 @@ python3 benchmark/executor-quality/scripts/score-cohort.py --ledger <ledger.json
 
 The default validity gate requires the frozen 128-row matrix: two exact engine IDs, 32 EQ3 tasks, and two reps. For a pilot ledger, pass `--expected-tasks N`; all other validity and attestation rules remain binding. A valid cohort prints one deterministic JSON verdict. An invalid or infrastructure-invalid cohort prints `UNSCORED` and exits 3.
 
+`scripts/mx-driver.py` is the canonical seed for future matrix registrations: copy it into the iteration's frozen apparatus and record that copied file's sha256 before execution; the frozen copy, not later source edits, is the run receipt.
+
 ## Binding rules
 
 The preregistered corpus, arm-isolation, metric, bootstrap, terminal-precedence, freeze, and rerun rules are canonical in [iteration 0100](../../autoresearch/iterations/0100-main-ai-executor-quality.md) and [iteration 0101](../../autoresearch/iterations/0101-executor-quality-hard-corpus.md). This guide summarizes operation only; changes to the instrument must preserve those registrations.

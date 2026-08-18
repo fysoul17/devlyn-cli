@@ -476,7 +476,8 @@ else
   bad "collector contract failed — run benchmark/ceiling/probes/r-weld-0082/test-collector-contract.py"
 fi
 if ! grep -Fq 'def reject_json_constant' config/skills/_shared/collect-codex-findings.py \
-  || ! grep -Fq 'loads_strict_json(raw)' config/skills/_shared/collect-codex-findings.py \
+  || ! grep -Fq 'PARSER["collect_stdout"]' config/skills/_shared/collect-codex-findings.py \
+  || ! grep -Fq 'parse_constant=reject_json_constant' config/skills/_shared/judge-output-parser.py \
   || ! grep -Fq 'NaN pair-JUDGE stdout finding' config/skills/_shared/collect-codex-findings.py; then
   bad "collect-codex-findings.py must reject non-standard JSON constants in pair-JUDGE stdout"
 fi
@@ -505,6 +506,39 @@ if python3 config/skills/_shared/state-phase-write.py --self-test >/dev/null 2>&
   ok "SURFACE_CLOSE state/envelope/adjudication/audit/rollback self-test passed"
 else
   bad "state-phase-write.py SURFACE_CLOSE self-test failed"
+fi
+if python3 - <<'PY'
+import ast
+import runpy
+
+entries = ["src/{a,b}/**"]
+paths = ("src/a/example.py", "src/b/example.py", "src/c/example.py")
+expected = (True, True, False)
+sources = {"path_matches_surface": [], "validate_surface_brace_glob": []}
+for name in ("state-phase-write.py", "spec-verify-check.py"):
+    path = f"config/skills/_shared/{name}"
+    module = runpy.run_path(path)
+    actual = tuple(module["path_matches_surface"](path, entries) for path in paths)
+    assert actual == expected, (name, actual)
+    tree = ast.parse(open(path, encoding="utf-8").read())
+    text = open(path, encoding="utf-8").read()
+    for function_name in sources:
+        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == function_name)
+        sources[function_name].append(ast.get_source_segment(text, function))
+    for invalid in ("src/{a,b", "src/{a,}/**", "src/{a,{b,c}}", "src/{a,**}"):
+        try:
+            module["path_matches_surface"]("src/a/example.py", [invalid])
+        except ValueError as exc:
+            assert invalid in str(exc) and "supported form" in str(exc)
+        else:
+            raise AssertionError((name, invalid))
+for function_name, bodies in sources.items():
+    assert bodies[0] == bodies[1], f"{function_name} bodies differ"
+PY
+then
+  ok "brace-glob surface matching and errors are byte-parity checked in both consumers"
+else
+  bad "brace-glob surface matching or errors drifted between state and spec checks"
 fi
 if ! grep -Fq 'rollback_surface_delta' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'validate_surface_adjudication' config/skills/_shared/state-phase-write.py \
