@@ -5,30 +5,41 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent: [`iterations/0095-plan-delivery-byte-fidelity-STUB.md`](iterations/0095-plan-delivery-byte-fidelity-STUB.md) (**NEXT — delivery byte-fidelity, design round held + falsifier-adjudicated, not yet registered**) and [`iterations/0094-r5-regate.md`](iterations/0094-r5-regate.md) (**CLOSED 2026-08-05, DECISIONS 0094.1 — matrix ran, first past controls; NO SHIP CREDIT: candidate-discovery delivered the PLAN prompt minus its terminal LF; R1 not refuted**) and [`iterations/0092-plan-native-foreground-dispatch.md`](iterations/0092-plan-native-foreground-dispatch.md) (**implementation verified GREEN 2026-08-05; R5 CLOSED-UNSCORED protocol-failed-at-controls; DECISIONS 0092.1**). Context: iter-0093 authorable verification timeout SHIPPED (DECISIONS 0093.1); [`iterations/0091-plan-dispatch-boundary-identity.md`](iterations/0091-plan-dispatch-boundary-identity.md) (Stage A SHIPPED `7c446c1`; Stage B closed-fail, B1 reverted `1e7da13`); 0088-0090 in their iteration files. Older context remains in the iteration index and `DECISIONS.md`. Ladder: [`iterations/0070-loop-architecture-STUB.md`](iterations/0070-loop-architecture-STUB.md). Entry point in START-HERE below.
+5. Most recent closed: [`iterations/0102-executor-quality-discovery-corpus.md`](iterations/0102-executor-quality-discovery-corpus.md) + [`iterations/0103-opus-line-regression-cell.md`](iterations/0103-opus-line-regression-cell.md) (lineage 0100→0103 CLOSED — see START-HERE). Next registration (0104 model-checkup loop v1) is defined in START-HERE below; older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
 
-Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07-14, and 2026-07-20 (user cleanup directives; Blocks 2-6 verbatim + prior full history recoverable from git + iteration files + DECISIONS.md; superseded memory-file narratives moved to memory/archive/).
+Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07-14, 2026-07-20, and 2026-08-18 (user cleanup directives; prior full history recoverable from git + iteration files + DECISIONS.md).
 
 ---
 
 ## 🚦 START-HERE — state after 2026-08-18 (session 2)
 
-**NEXT = iter-0104 registration: repo-scale executor-quality cell
-(user-selected 2026-08-18).** Question: does the felt opus-5 regression
-reproduce at true repo scale (>100 files, multi-file dependency
-chains), which the 5-file corpora (0101/0102) cannot discriminate?
-0101 close-out already named this the first successor mechanism.
+**NEXT = iter-0104: MODEL-CHECKUP LOOP v1 (user-reordered 2026-08-18;
+supersedes the earlier repo-scale-first pick).** Rationale (user): model
+releases are a RECURRING event — the product is the standing loop
+"new model → measure on the harness → tighten from findings → re-pin",
+not any single hypothesis. 0103 proved the marginal cost is already low
+(frozen 0102 corpus reused, opus-4-8 vs opus-5 in ONE attempt); what
+remains manual is registration docs, freeze audits, launch gates, and
+adjudication. iter-0104 binds the existing instruments into one
+standing checkup: ① seat recert exact-ID (`benchmark/seats/`) →
+② violation matrix → ③ frozen 0102 discovery-corpus band (0103-style
+reuse) → one-page verdict + re-pin recommendation, with a frozen
+registration template (freeze inventory + R-A/R-B digest rules
+pre-baked, 0103 sol F1) and the batch-B findings-closure lane (terra +
+trio verify) as the tightening arm. **iter-0105 = repo-scale corpus
+(>100 files, multi-file dependency chains) as the loop's first coverage
+module** — top suspect for the felt-vs-measured gap the 5-file corpora
+cannot discriminate; built AFTER the loop so it is reusable per model.
 Session operating rules (BINDING): fable = design / adjudication /
-verification ONLY — token economy HARD (`feedback_fable_token_economy`;
-prior bust precedent); corpus authoring, apparatus builds, and
-repetitive runs → terra direct-drive lane (0102-proven: terra authors,
-trio verifies per batch) or opus/sonnet; verification trio = fable +
-sol(5.6) + grok; matrix arms only on a quiet account outside
-23:00–01:00 KST; pre-commit full 64-hex freeze inventories + R-A/R-B
-digest rules in the registration (0103 sol F1). Driver seed =
+verification / planning ONLY — token economy HARD
+(`feedback_fable_token_economy`; prior bust precedent); corpus
+authoring, apparatus builds, runbook scripting, and repetitive runs →
+terra direct-drive lane (0102-proven) or opus/sonnet; verification trio
+= fable + sol(5.6) + grok; matrix arms only on a quiet account outside
+23:00–01:00 KST. Driver seed =
 `benchmark/executor-quality/scripts/mx-driver.py` (canonical since
 batch B: structural infra taxonomy 429/529, replay-proven 45/45 on the
 0102 attempt-1 rows).
@@ -42,10 +53,10 @@ surface grammar fail-closed at load; detached-HEAD `base_ref.branch:
 null`; canonical mx-driver seed. Terra implemented (4 rounds), trio
 verified (R0 REVISE ×3 → R1 REVISE ×2 → grok FREEZE / sol residuals
 applied). Receipts `~/.local/share/nx01/harness-batchB-20260818/`.
-OPEN (user decision): collector accepts findings-without-terminal-
-verdict (`collect-codex-findings.py:90`, pre-existing at HEAD) —
-tighten-vs-keep briefed to user 2026-08-18; fold the ruling into the
-0104 session.
+**Collector terminal-verdict ruling CLOSED (`a75c2ee`)**: user ruled
+TIGHTEN — findings without a terminal verdict line now reject
+(`error: findings without terminal verdict`); 4 tracked captures flip
+via dated overrides; contract test 114 checks green.
 
 ### History — state after 2026-08-18 (session 1)
 
@@ -64,517 +75,12 @@ matrix arm while other Claude sessions/headless reviews share the
 account; pre-commit freeze inventories + digest rules (0103 sol F1).
 Receipts `~/.local/share/nx01/iter0102/`, `iter0103/`.
 
-### History — state after 2026-08-09
+### Deep history (0037–0103) — repo is the authority
 
-**iter-0100 REGISTERED (2026-08-09) — main-AI executor quality cell
-(`iterations/0100-main-ai-executor-quality.md`).** Origin: user live
-signal "opus-5 almost always concedes to codex sol in pair; fable draws
-only minor objections" — user adjudicated the concessions were
-CODE-VERIFIED real errors → H1 (main-AI design/coding defect rate)
-leads; the deference probe is a demoted pre-named successor. H3 first
-bound IS IN: judge_quality re-run under CURRENT codex identity
-(`results-ckf0809-sol/`, codex-cli 0.146.1 / gpt-5.6-sol
-banner-attested): recall 16/16 · FP 0/8 · parse 0/24. R1 freeze review
-REVISE ×2 (sol + grok, liveness markers), all edits adopted; contested
-estimand adjudicated to paired-Δ (named criterion PAIRED-DESIGN
-FIDELITY + EXHAUSTIVE TERMINALS, Grok residual attack right at the
-post-build audit). **Fable baseline = user-directed SCOPED exception**
-to test-engine tiering (seat-certification only; fable never enters
-shared recert `--engines` arrays). Next: corpus build via
-/devlyn:resolve (12 tasks, 3 per taxonomy class, multi-manifestation
-oracles + smoke gates) → post-build pre-arm freeze audit (both seats;
-dry arm + synthetic-ledger scorer proof) → 48-run detached matrix.
-Receipts: `~/.local/share/nx01/pair-calibration-r0/`.
-**Corpus build A LANDED 2026-08-09** (run `rs-20260809T044614Z-58fec95f19be`
-PASS; spec `docs/specs/iter0100-executor-quality-corpus-a/`): scripts
-validate-task.py (smoke+conformance gate, 5 fail-closed self-tests) +
-score-cohort.py (frozen paired-Δ scorer, 4-terminal self-test) + tasks
-EQ-UA1/EQ-MI1/EQ-AF1 admitted. VERIFY r0 primary-codex HIGH
-same-binding-equality gap → fixed `78d1334` → r1 PASS 3/3. Operator
-finds: spec needs `<!-- devlyn:verification -->` sentinel BEFORE probe
-phase (run 1 died on it); stale `.devlyn/external-diff.patch` from a
-prior run poisons spec-verify `changed_files()` (BUILD_GATE root-caused,
-quarantined to attic — bootstrap-clear follow-up); claude-side pair
-judge must EMIT collector format (JSONL + `# SUMMARY`) — a written
-findings file alone merges as BLOCKED fail-closed; verify verdict is
-merge-owned (never pass --verdict to verify complete/transition).
-**Corpus build B LANDED 2026-08-09** (run
-`rs-20260809T064222Z-a36f4bcfdf8e` PASS; spec `1c8cca8`
-`docs/specs/iter0100-executor-quality-corpus-b/`): 9 tasks
-EQ-UA2/UA3 MI2/MI3 AF2/AF3 BD1/BD2/BD3 admitted — **corpus complete,
-12 tasks, exactly 3 per class**. Spec was pair-reviewed pre-commit by
-codex sol (REVISE ×3 adopted: validator-overclaim rewording,
-behavioral-tuple distinctness law, corpus-topology mechanical gate;
-README scoped edit KEPT under CHANGE-CREATED TRUTHFULNESS;
-R1-0100B-LIVE-sol). VERIFY round 0 PASS (mechanical 16/16 +
-primary codex + pair claude, 0 findings). Operator finds this run:
-Claude-Code orchestrator Bash caps codex phase calls at 600s — a
-2-task authoring call measures ~785s, so phase-gated IMPLEMENT hits
-the wall; remedy = depth-first per-task sequencing in the phase
-prompt ("complete task A + its gate BEFORE touching task B") + the
-contract's one-fix-respawn-per-phase (consumed 3 of max_rounds 4;
-kills landed during wrap-up, completed work survived every time).
-**PRE-ARM AUDIT + 48-RUN MATRIX BOTH CLOSED same day (2026-08-09
-evening)**. Audit: both seats REVISE round 0 (grok 3 falsifiers all
-CONFIRMED by repro — exact-δ float false H1_CONFIRMED, shared-run_id
-UNSCORED, timeout-row rejection; sol added stdin contamination
-(launcher heredoc bytes appended to goal prompt, transcript-proven)
-+ task-id whitelist + integrity pins) → fixes via codex sol (scorer
-`5072ccd` exact-Fraction terminalization; driver stdin=DEVNULL +
-prompt/driver attestation + triple-digest fail-closed) → dry arm
-rerun clean → grok RECHECK FREEZE-ARM + sol FINAL FREEZE-ARM.
-Matrix cohort `mx-20260809T1210Z`: 48/48, attestation 48/48, zero
-catastrophic/infra — **TERMINAL = SATURATED** (both engines 24/24
-all-clean, Δ=0.0; corpus does not discriminate at this difficulty;
-NO routing change; P-0100-1/2 refuted on this corpus; sol adjudicated
-the driver_sha256 schema projection PROJECTION-LEGAL,
-POSTMX-0100-LIVE-sol). Receipts `~/.local/share/nx01/iter0100-prearm/`.
-**iter-0101 DESIGN-FROZEN same day (2026-08-09 night)** —
-`iterations/0101-executor-quality-hard-corpus.md` is the COMPLETE
-cold-start-executable authority (sol R0 REVISE ×8 + grok R1 REVISE
-×5 both adopted with liveness markers; grok verified the 32-row
-table and CI-touch bootstrap arithmetic by execution). Design core:
-N=32 two-axis compound-invariant tasks (8/class, frozen 32-row
-authoring table + 10 axis-pair templates + frozen axis role order),
-frozen `validate-task.py` + NEW `validate-hard-task.py` wrapper +
-NEW `score-calibration.py`, sonnet 2-rep calibration with ONE valid
-band evaluation (Fraction-exact mean AND frozen even-n median ∈
-[1/5,3/5], ≥22/32 interior, ≤2 total-fail; miss = CALIBRATION_MISS
-terminal, no retuning; difficulty-oracle prohibition during
-authoring), 128-run matrix opus-5 vs fable-5, δ=0.15, P-0101-1
-single prediction.
-**iter-0101 CLOSED — TERMINAL = CALIBRATION_MISS (2026-08-12
-session; § Execution log in the iteration file is authoritative)**.
-Corpus build COMPLETE 32/32 admitted across 8 resolve batches +
-candidate SEALED (tree `2685fa07…` at `cc23209`; scripts
-validate-hard-task 1f809e33… / score-calibration 418f3738… /
-score-cohort N=32 5af3c1bd… / validate-task byte-frozen 769a1826…).
-Calibration apparatus FROZEN (FREEZE-ARM ×2 after adjudicated split:
-grok R0 FREEZE-ARM vs sol R0 REVISE; sol H3 receipt-binding + L4 D6
-adopted, H1/H2 lexical-taxonomy residuals held byte-frozen with two
-pre-committed operational rules — `calfrz-adjudication.md`). ONE
-valid 64-run sonnet evaluation `cal1-20260811T150824Z`: attested
-64/64, cat/inc/infra 0/0/0, **band = MISS** — mean 1/40, median 0,
-interior 5/32 (bar ≥22) → registration terminates, matrix (steps
-⑥-⑧) never fired; the easy-regime screen saved the 128-run cost
-0100 paid to learn the same shape. Successor design data: only
-UA5 3/10, AF4 1/5, AF1/MI8/UA7 1/10 touched the calibrator; BD class
-0/8. A revised registration needs a qualitatively harder mechanism
-than two-axis compound invariants on small fixtures (repo-scale
-surface / long-horizon chains / non-local invariants — adjudicate at
-registration). Receipts `~/.local/share/nx01/iter0101/`
-(build/freeze/calibration incl. matrix apparatus DRAFTS, never
-frozen). FOUR harness product findings registered, not fixed
-(verify-merge PRIMARY fail-open; stale verify.judge.summary.json
-survives archive; collector/merge parser mismatch;
-`path_matches_surface()` silently ignores brace-glob surface
-entries) + lexical failure-taxonomy modernization (AUTH substring
-class, sol H1/H2) as next-registration follow-up.
-**iter-0102 DESIGN-FROZEN same session (2026-08-12)** —
-`iterations/0102-executor-quality-discovery-corpus.md` is the
-complete cold-start authority (sol R0 REVISE ×8 + grok R1 REVISE ×5
-+ REC-1/2/4 all adopted; liveness R0-0102-LIVE-sol-c42dd8ef /
-R1-0102-LIVE-grok-28409c8b; grok verified the 32-row table by
-execution). Design core: non-local UNSTATED two-fragment
-complementary contract + stateful restore (mechanism replacing
-0101's stated compound invariants), N=32 `EQ3-*`, mechanical
-complementarity law (outcome-token partition), 4-prototype
-PRE-CORPUS PILOT with frozen information boundary (all nine specs
-pre-committed BEFORE pilot; corpus batches in a FRESH session
-reading only `~/.local/share/nx01/iter0102/pilot/DECISION`),
-calibration gate verbatim from 0101, apparatus lineage sha-pinned
-(cal f7347a72…/719ea0f1…, mx drafts 6a4c88cf…/bbc4b2f7…,
-launch-detached 30b630d5…, run-bounded db9ed383…, CLI 013a1cf1…).
-EXECUTION COMPLETE THROUGH THE PILOT (2026-08-12; § Execution log in
-the iteration file is authoritative): ① 9 specs sealed `01d414d`
-before pilot (sol REVISE ×4; scorer re-pin = byte-pinned
-`sed s/EQ2-/EQ3-/g` → 58d726f3…/399b0691…) ② pilot resolve run
-TERMINAL PASS at outer iter 3 (`rs-20260812T100115Z`; mid-way
-codex-seat-limit halt recovered same day; 14 judge findings closed
-across 3 iterations — hollow oracles, hardcoded restores, token-salad
-invariants, vacuous self-tests, stdlib-walk fail-open,
-namespace-package false-positive, semantic single-artifact leakage;
-final VERIFY 3/3 + finish-gate clean; scripts pin `5e95a58`) ③ pilot
-sealed (4 tasks/139 files, tree `c6ac78fd…`) ④ apparatus FREEZE-ARM
-convergence after adjudicated split (launch-gate hardened: 6-entry
-REQUIRED inventory, atomic ordinal locks; tamper cases live) ⑤ 8-run
-sonnet arm `pilot1-20260812T105601Z` attempt 1/3 clean (8/8 attested,
-0/0/0) → **ONE evaluation: DECISION = PROCEED — mean 13/40, q_pilot
-2/5·2/5·1/2·0/1, interior 3/4, byte-deterministic**. The discovery
-mechanism lands sonnet at 32.5% mean fail vs 2.5% on 0101 —
-band-region difficulty confirmed at prototype scale. Receipts
-`~/.local/share/nx01/iter0102/pilot/` (per-task outcomes SEALED;
-carriers DECISION + DECISION.receipt.sha256 = b1f77615…).
-**NEXT = FRESH SESSION (binding R1-2b — this session saw pilot
-details and must NOT author the corpus): read the two carrier files
-only, then batches 01-08 serially on the sealed specs
-(`/devlyn:resolve --spec docs/specs/iter0102-executor-quality-batch-0N/spec.md
---pair-verify`, executor codex, outer loop ≤3/batch, dispatch prompts
-pre-inject the 0101 failure classes) → candidate seal → calibration
-apparatus freeze → 64-run sonnet → ONE band evaluation → matrix
-(never near 12am KST).**
-PARALLEL, independent:
-0100 § Matrix integration fold-in — recert-seats.sh
-`executor_quality` suite + seat-matrix.py `main_ai_executor`
-recording the SATURATED cell (own /devlyn:resolve run). H2
-deference probe + H4-beyond-this-shape remain demoted frontier. Operator lessons this round: orchestrator
-Bash 600s wall vs codex 2-task authoring (~785s) → depth-first
-per-task sequencing in phase prompts; NEVER launch a detached driver
-with heredoc stdin (claude -p appends stdin to the prompt — use
-stdin=DEVNULL); post-audit apparatus edits must re-run the
-extra-field tolerance proof for EVERY new ledger field. Fable scoped
-exception = user directive 2026-08-09 (recorded in
-`feedback_test_engine_tiering` memory); fable never enters shared
-recert `--engines`.
-
-**iter-0099 CLOSED — context-engineering item 2 (C/K/F contract
-placement): KEEP_CURRENT, no product change (DECISIONS 0099.1;
-`b152feb` registration → `a89a7ea` close → `23d9cec` queue).** Prereq
-SHIPPED: recert chain exact Claude model-ID support (`c0a3b20` +
-`d824d6b`, verify-only PASS 3/3) — the 2026-07-28 instrument gap is
-closed and both seats are certified (`ckf0099-recert`: claude-opus-4-8
-10/24 drift violations, **claude-opus-5 3/24**, judges recall 1.0 /
-FP 0.0; seat matrix committed `462b752`). Matrix ran 216/216
-attested-valid. **F (flip to a CLAUDE.md pointer) is OUT — it
-regressed claude-opus-4-8 on the bare surface (B4 cell 1→4, above
-band); P-0099-3 and P-0099-4 both REFUTED.** K was safety-neutral on
-all four combos but its registered benefit measured ~12× smaller than
-claimed (0 bytes/run gen-4, ~1.2k tokens/run gen-5), so the frozen
-treatment-validity conjunct blocked adoption. **TWO ITEMS AWAIT THE
-USER** (recorded in `docs/specs/queue.md` item 2 and the iteration
-file, never silently applied): (a) the queue's own rule 2 ("K passes
-while F regresses → adopt K") was SATISFIED on the raw matrix and was
-blocked only by the conjunct the orchestrator added at R1; (b) the
-adjudication is CONTESTED — the frozen text conflicts internally
-(treatment clause "outcome routes to rule 4" vs precedence "total
-order, no cancellation"), giving Reading A = KEEP_CURRENT and Reading
-B = ADAPTER_CONDITIONAL_F; both converge on no product change under
-the named criterion REMEDY REACHABILITY (F's failure is on the bare
-surface, where no adapter exists). **Strongest evidence-backed next
-step: the generic phase-body reread is DEAD TEXT** — consumed 0 times
-in 12 gen-4 pipeline runs (4 in 12 on gen-5) — so deleting it for all
-engines is pure subtraction and needs none of K's engine-conditional
-machinery; that is a NEW registration, and this iter already supplies
-its safety evidence. **Codex R-final PENDING** (seat usage limit,
-resets 2026-08-10); grok 4.5 served as the substitute third seat and
-found the precedence gap. Nothing ships, so the pending round blocks
-nothing. Receipts: `~/.local/share/nx01/iter0099/receipts/`.
-**Also still open from the parallel track: 0098 (LF-run-insensitive
-compare) registration DRAFT is committed and its resolve run was never
-re-fired** — see the 0098 block below for its resume order.
-Operator rules added this round: long unattended matrices must be
-detached with `python os.setsid()` (macOS has no `setsid`; a
-harness-tracked background driver was killed three times), and an
-adjudication scorer must be frozen and pair-audited BEFORE its inputs
-complete (five codex rounds caught a reversed retry precedence that
-would have scored invalid runs, among ten-plus real defects).
-
-### (superseded START-HERE from 2026-08-05 — iter-0095 context)
-
-**iter-0095 registration update (2026-08-05, supersedes the paragraph
-below where they conflict).** The registration is FROZEN
-(`iterations/0095-plan-delivery-byte-fidelity.md`, 3-seat FREEZE: R0
-Codex REVISE + Grok REVISE with an F1 split — Codex fired F1 with 2.1.222
-no-message hook-attachment bytes; adjudicated to the minimal
-orphan-correlation rule with a named delta — R1 FREEZE ×2 with liveness
-markers). Landed through TWO /devlyn:resolve outer loops (executor pin
-codex + --pair-verify): ① the one-sentence Claude PLAN-delivery Read-cue
-instruction (`8f99b51`, PASS 3/3) ② the oracle evidence-scoping +
-subagent_type absent-key + orphan-correlation change (`e72bd1d`; run 1
-BLOCKED:verify-exhausted on a payload-boundary dedup collapse both judges
-converged on, spec amended, run 2 PASS 3/3; self-test 299). Freeze gate
-executed green on landed bytes: C1 COMPLETE/0 · C2 violation conserved ·
-0094 candidate-simple COMPLETE `ff7bda46…` · candidate-discovery
-violation conserved `c9d8a32e…`. Scorer artifacts clause fixed +2
-selftests (16/16). Receipts `~/.local/share/nx01/iter0095-reg/` (git).
-Session operator finds: codex-cli 0.146.0 workspace-write hard-denies
-`.agents/` (fix: `-c 'sandbox_workspace_write.writable_roots=[…/.agents]'`;
-codex-config.md follow-up registered); verify-merge flipped-seat false
-BLOCKED fired live (primary capture renamed `codex-primary.stdout`
-in-run; product follow-up stands); judge prompt files do not survive
-mid-run maintenance — rebuild at every dispatch; oracle writes its JSON
-INTO the result dir and `sessions/` is result's SIBLING — replay retained
-receipts on full-arm COPIES only. **MATRIX RAN AND CLOSED (same day):
-CLOSED-UNSCORED protocol-failed-at-controls at arm 1/4** (DECISIONS
-0095.1) — the control-simple Sonnet parent completed PLAN via STANDALONE
-`plan complete` (no atomic transition verb; session `:181`),
-`implement=null` at `plan.completed_at`, the exact fail-closed class the
-frozen watcher catches; after in-window PLAN use → no replacement;
-R-final Codex CONFIRM. Candidate arms unscored; R1 + the LF instruction
-NOT refuted; both product edits stay landed on formal verification.
-**0096 RAN AND CLOSED same day (DECISIONS
-0096.1)**: SPW effective-verdict transition guard SHIPPED (3-seat FREEZE
-incl. Codex R1 EFFECTIVE-VERDICT CONSERVATION delta; two resolve outer
-loops; verify-only PASS 3/3 twice — two pipeline runs closed BLOCKED on
-concurrent user queue.md edits contaminating the scope baseline, learned
-route = bookkeeping commit + verify-only) and LIVE-VALIDATED: fresh
-four-arm matrix ran 4/4 past the watcher (0095 death class closed),
-dispatch_clean 4/4 + oracle 0 evidence issues (both 0094 instrument
-defects closed live), tripwires 0.895×. DECIDING BAR FAILED 1/2:
-candidate-discovery stripped the SAME single terminal LF (12,150/12,151)
-WITH the Read-cue instruction in-tree; candidate-simple byte-exact.
-Controls both digest-mismatched (third both-conditions variance
-receipt). Blind bar not executed (non-restorative; nonce retained;
-logged). **0097 RAN AND CLOSED (DECISIONS 0097.1)**: canonicalization
-SHIPPED `5dcd6fc` (renderer no-terminal-LF + cue deletion, R0/R1
-convergent freeze); matrix infra-confounded at arm 3/4 (external
-session-quota kill mid-PLAN; Codex strict-text ruling — no replacement,
-rerun = new registration). DECISIVE non-scoring diagnostic:
-candidate-simple ADDED a trailing LF to the canonicalized no-LF
-artifact while control-simple delivered byte-exact — with 0094 (strip)
-and 0096 (strip despite cue), the terminal-LF byte is BIDIRECTIONALLY
-model-unstable at the Read→transcribe boundary; artifact- and
-instruction-side remedies are both measured-insufficient. **0098 (LF-run-insensitive
-compare) IN FLIGHT, PAUSED ON A SESSION COLLISION (2026-08-06 00:4x
-KST)**: design round CONVERGED (Codex+Grok AGREE-WITH-EDITS; TWO-BRANCH
-predicate adopted — `recorded == raw` FIRST, OR `recorded ==
-terminal-LF-run-stripped`; named criterion RETAINED-RECEIPT
-CONSERVATION beat Grok's single stripped compare; receipts
-`~/.local/share/nx01/iter0098-design/`), registration DRAFT committed
-(`iterations/0098-lf-run-insensitive-compare.md`), oracle spec
-committed (`docs/specs/iter0098-lf-run-insensitive-compare/spec.md`),
-PLAN completed on run rs-20260805T153428Z — then HALTED: a SECOND
-orchestrator session had bootstrapped run rs-20260805T153016Z (spec
-`docs/specs/iter0098-recert-exact-model-id/spec.md`, recert exact
-model-ID — the Opus-5 A/B prerequisite) four minutes earlier, and its
-codex IMPLEMENT (xhigh) was still in flight; the Fable bootstrap
-clobbered that run's .devlyn state (bidirectional violation of the
-writer-check rule). Fable's run was halted BLOCKED + archived; the
-recert codex was left untouched. **RESUME ORDER FOR THE NEXT SESSION**:
-① check the recert diff landed (5-file surface) and shepherd it via
-`--verify-only` against its spec (recovery pack:
-`~/.local/share/nx01/recert-run-recovery/` — RECOVERY.md +
-plan-verbatim.md recovered from the live process args; do NOT resume
-its dead pipeline state); if it needs an autoresearch number use 0099.
-② re-launch the 0098-oracle resolve run
-(`--spec docs/specs/iter0098-lf-run-insensitive-compare/spec.md
---pair-verify`, executor codex) AFTER confirming no live .devlyn
-writer. ③ 0098 freeze gate: oracle self-test + retained replays ON
-COPIES (0091 C1 + 0094 cs COMPLETE via raw branch; 0094 cd + 0091 C2
-violations conserved; NEW satisfiability receipt = 0097
-candidate-simple full-dir replay must score COMPLETE via the stripped
-branch) → R1 both seats (liveness) → fresh bases/tokens/nonce →
-matrix. **NEW BINDING OPERATOR RULE: before ANY resolve bootstrap,
-verify no live process is writing the repo's `.devlyn` (ps for claude
--p/codex exec/resolve-bootstrap + state run_id sanity) — two collisions
-today (queue.md contamination twice + this state clobber).** Old
-frontier: **0098 design round** (both sides strip the terminal 0x0a run
-pre-compare, raw digests retained forensically, all other bytes exact —
-the 0095-rejected F4 re-opened with its premise falsified). Old
-frontier text: **register iter-0097: artifact canonicalization** (renderer emits `plan.prompt` WITHOUT the
-terminal LF — digest self-consistent; DELETE the 8f99b51 cue sentence,
-subtractive; fresh controls/nonce/bases per 0088.3). Receipts:
-`~/.local/share/nx01/iter0096-{reg,matrix}/`. Old frontier text below
-superseded: **register the successor (0096)**
-(condition-independent parent variance in shared contract text — the
-0094 control-delivery-variance family; fresh controls + nonce + sibling
-bases at the then-current SHA per 0088.3). Matrix receipts:
-`~/.local/share/nx01/iter0095-matrix/`.
-
-### (superseded registration context from 0094 close below)
-
-**Where the loop stands (one paragraph).** iter-0094 re-gated 0092's R1
-(native foreground PLAN dispatch, landed `83b275e`, formally verified
-green) through a fresh 3-seat FREEZE (R0 deltas all adopted: frozen
-`--no-risk-probes` invocation, opaque arm tokens + neutral sibling base
-commits, execution-shape dispatch scorer, judge schema, sha-anchored
-receipts; R1 FREEZE ×3 — one Codex stale re-emission ruled invalid on
-seat-liveness and re-run with a liveness marker) and ran the four-arm
-Sonnet 5 ABBA matrix to completion — the first time this line got past
-controls (4/4 watcher PASS, SIGINT-only at 5000 ms grace, 0092's
-implement.task-context boundary crossed cleanly). Terminal: **NO SHIP
-CREDIT** (DECISIONS 0094.1) — candidate-discovery delivered the PLAN
-prompt minus the render's single terminal LF (10,015 vs 10,016 bytes;
-serialization strip ruled out by candidate-simple's byte-exact delivery in
-the same matrix), failing the tested, satisfiable digest conjunct 1/2 vs
-the pre-committed 2/2 bar. R1 is NOT refuted — candidate-simple proved the
-native shape delivers byte-perfectly with mode absent/rib:false/ACCEPTED —
-and candidate arms were FASTER (0.866× summed). Adjudication: Grok CONFIRM
-+ Codex AMEND (precision only). **Next action = register the successor
-iter (0095): PLAN delivery byte-fidelity** (0089/0090 lineage in the
-native structured-field shape; bonus live evidence: control arms' own
-delivery varied — mode omitted in one, digest-mismatched too). Instrument
-follow-ups from first contact (scored against no one): oracle
-evidence-completeness caps every live current-format session at INCOMPLETE
-(retained 0091 C1 full-dir replay = INCOMPLETE/82 — the frozen "C1 stays
-COMPLETE" gate holds only on the curated self-test fixture) + subagent_type
-absent-key vs no-key-pin prose; dispatch-scorer artifacts clause vs the
-watcher's spawn-skeleton allowlist. Blind quality for the record: Fable
-tie/tie; Grok discovery emitted A=control but with 5/5 mechanically-proven
-inverted attributions (`judges-crosscheck.md`). Receipts:
-`~/.local/share/nx01/iter0094-reg/` (git: seats/, replay/, unblinding),
-`~/.local/share/nx01/iter0094-r5/` (arms/driver/goals); 0092 receipts
-unchanged. Context: iter-0093 shipped (DECISIONS 0093.1); iter-0092
-implementation green, its R5 closed unscored (DECISIONS 0092.1).
-
-**Current frontier and just shipped — context, do not re-derive**:
-
-- **iter-0091 PLAN dispatch-boundary identity — STAGE A SHIPPED; STAGE B
-  CLOSED-FAIL 1/2 AND REVERTED (2026-08-03/04, `c99f3da` + `1818b85` +
-  `7c446c1`, then B1 rollback `1e7da13`; DECISIONS 0091.1–0091.3).** The
-  outcome-independent schema-2 oracle conserves all seven
-  retained arms and closes reversed-window, duplicate-id, and overflowing-time
-  edges with 137 assertions. Fable 5/Grok 4.5 preserved frozen P-0091-A3 when a
-  formal carrier dropped its outside-window qualifier. Final formal VERIFY
-  `rs-20260803T164146Z-2b9ad898cc76` passed mechanical/Codex/Sonnet with zero
-  findings. Stage B's C1 was byte-equal `COMPLETE`; C2's invalid native Agent
-  mode caused two exact-prompt tool uses in one receipt window, violating the
-  cardinality gate. B1 did not survive; Stage A stays.
-
-- **iter-0090 PLAN delivery compliance — IMPLEMENTED `f273877`, NO SHIP
-  CREDIT (2026-08-03, DECISIONS 0090.1).** The scoped renderer treatment and
-  verification gates are green; the live outcome is 1/2. Canary 1's sole
-  `Agent` tool use delivered a 68-byte literal path indirection instead of the
-  9,196-byte render; Canary 2 was byte-identical and oracle COMPLETE. Both
-  judgment seats classify Canary 1 NONCOMPLIANT and unreplaceable. The
-  iteration file's implementation/adjudication section and external canary
-  receipts are authoritative.
-
-- **iter-0089 PLAN authority — D1-D3 IMPLEMENTED `6795976` + `830f886`, NO
-  SHIP CREDIT (2026-08-03, DECISIONS 0089.2).** Ledger, state-derived cap,
-  renderer digest, and all-dispatch oracle landed; two baseline Sonnet
-  deliveries both pruned worker-irrelevant judge invocation content, so live
-  delivery compliance was 0/2 and transferred to 0090.
-
-- **iter-0088 plan-route + startup dedup — STAGE A SHIPPED (`1312cb7` + D4
-  locus `454bc34`), STAGE B CLOSED-FAIL protocol-failed-at-controls
-  (2026-08-02, DECISIONS 0088.3).**
-  `iterations/0088-plan-route-startup-dedup.md` § "STAGE B EXECUTED" is
-  authoritative (control table, both INCOMPLETE adjudications with named
-  criteria, stop-all verdict, frozen advisories for the next registration;
-  durable receipts `~/.local/share/nx01/iter0088-stage{a,b}/`). H1-v3
-  UNSCORED, never resumed inside 0088 — a new registration + new controls
-  required. Remaining named residual: `devlyn:engines/SKILL.md` absent from
-  lint `critical_path_files` (follow-up; README residual was RESOLVED
-  2026-08-02 on user directive).
-
-- **iter-0087 startup semantic dedup — CLOSED-FAIL, REVERTED, NOT SHIPPED
-  (2026-07-30).**
-  H1-v3 deletes parent-side semantic repository discovery and makes the actual
-  Sonnet PLAN worker write immutable criteria before its plan in one return.
-  R0/R1 Codex, Fable 5, and Grok 4.5 converged; Terra's F12 canary recovered all
-  required fields. Frozen control envelopes are F7 356,260/376,450 ms and F12
-  527,257/492,483 ms; each treatment must be <=85% of its matched control and
-  must not increase startup. Candidate `24686ec` plus correction `313304c`
-  passed implementation review, but F7/T1 and T1R exhausted the single
-  incomplete replacement. No ratio was scored and remaining arms did not run.
-  `695ef12` reverted the unshipped candidate. A preflight manifest hash field
-  was also corrected by the neutral external closeout ledger: raw control and
-  treatment engine bytes match at `5c05302a...`; the old `9e028f...` value was
-  the spaced source file, not an arm snapshot.
-
-- **Shipped 2026-07-28/29 (one line each; iteration files are authoritative,
-  full narratives in git history of this file):** iter-0086 Claude primary
-  model attestation (three-seat gate; fixes auxiliary-call false attestation
-  only). iter-0085 VERIFY envelope anatomy (post-judge finalization median
-  138,631 ms / 25.1% share registered; no dispatcher authorized). iter-0084
-  Node lint applicability (observed F7 false-lint trigger closed; nothing
-  broader claimed). iter-0083 R-summary-verdict-not-merged (pair-judge
-  verdict conservation; emission still uncertified, no durable `pair grok`
-  pin). iter-0082 R-weld (collection only; W1 losslessness only; corpus
-  `benchmark/ceiling/probes/r-weld-0082/` — regenerate `tracked-baseline.json`
-  from the pre-change collector or the tier is decorative). iter-0081
-  R-allow-scope (gate part 2 only; v1 FAILED — § GATE RESULTS is the
-  instructive record).
-
-**Binding operator lessons from 0081-0083 — all orchestrator failures**: never
-handicap a gate seat (a read-only seat cannot run the collector); score the frozen
-conjunct, never a proxy; **a bar must not conjoin an independently registered
-residual NOR an unsatisfiable conjunct**; **a freeze is not frozen until a seat has
-tried to satisfy every conjunct by execution** (asserting the check was run is not
-running it — a verifier pointed only at satisfiability caught what two design seats
-read past, three iters running); every seat prompt granting a shell must forbid
-modifying tracked files; **a wrong claim in a seat packet propagates into the
-seat's answer**, so packets get the same verification bar as findings. Do not
-duplicate a repository-wide gate inside a fixed per-command literal verifier:
-0083's first build gate passed full lint directly but blocked when the same
-358-second suite was replayed under a 60-second budget. VERIFY interaction checks
-must compose transport state with authenticated summaries; isolated rows missed
-the TIMEOUT suppression that fresh Codex found.
-
-**Next work (in order)**:
-1. **Register iter-0095 (PLAN delivery byte-fidelity)** from
-   [`iterations/0095-plan-delivery-byte-fidelity-STUB.md`](iterations/0095-plan-delivery-byte-fidelity-STUB.md).
-   Design round DONE (2026-08-05, receipts `~/.local/share/nx01/iter0095-design/`):
-   orchestrator's "invisible byte" position refuted by its own falsifier F2
-   (Read shows terminal LF as a final empty numbered line — verified in both
-   retained 0094 sessions); adopted synthesis = keep byte-exact gate + 0094
-   verdict, amend ONLY the Claude PLAN-delivery instruction (Read
-   final-empty-numbered-line cue → reproduce the LF), canonicalization only
-   as a pre-named successor path if a live 2/2 bar still fails. Product edit
-   routes through /devlyn:resolve; instrument follow-ups (oracle evidence
-   scoping + full-dir canary gating + subagent_type ruling; scorer artifacts
-   clause) fold into the registration per the STUB. Registered product follow-ups to schedule separately:
-   `resolve-bootstrap.py` `git_text` ignores `allow_empty` on nonzero exit
-   (detached-HEAD unbootstrappable); `verify-merge-findings.py` crosschecks
-   every `*judge.stdout` as pair-side evidence (flipped-seat false BLOCKED);
-   `devlyn:engines/SKILL.md` absent from lint `critical_path_files`. H1-v3
-   stays blocked until the successor gate earns delivery credit.
-2. **Blind-quality axis**: `-22c` A_win 8 / B_win 47 vs `-22a` A_win 19
-   / B_win 36 — single-cohort variance vs. real hook-cohort effect is
-   unresolved; the next hook-bearing cohort reads it before any quality
-   lever is registered.
-3. Cell 1 bare-fails admission gate (terra-conditional, last 0070a item).
-
-Still registered, none conjoined: **R-merge-envelope**, **R-comment-finding**,
-**R-verdict-default**, **R-rawstream-weld**, **R-envelope-severity-bypass**, and
-**R-backtick-preamble**. Their measured boundaries remain in iter-0082; 0083
-closed only R-summary-verdict-not-merged.
-
-**Cohort operator rule (new, binding)**: never run `/login` or anything
-that rotates the host OAuth token while a cohort is in flight — seeded
-arm credentials get revoked mid-row (`-22c` FS1 receipt: invoke_exit 1,
-`OAuth access token has been revoked`).
-
-**Cohort/row mechanics (binding, updated 2026-07-20)**: full cohort =
-`git worktree add --detach <path> <SHA>` (runner-SHA integrity —
-nodeg-cell.py dies if HEAD moves after cell init; inner-loop commits on
-main stay safe), then from the worktree
-`CEILING_TEST_CLAUDE_BIN=<run-owned copy> CEILING_TEST_NODE_BIN=/Users/aipalm/.nvm/versions/node/v20.19.0/bin/node
-nohup bash benchmark/ceiling/scripts/run-nodeg-cell.sh --run-id <fresh>
---tasks "F7,F25,F26,F11,F12,F23,FS1"` (explicit CSV REQUIRED — C2 draw
-filter activates only under --tasks; F7 FIRST so a pre8/cmds=0 draw
-abort exit-86 is cheap; diagnostic-draw rate ≈ 1/3, relaunch fresh id).
-**CODEX PIN = VENDOR BINARY (mandatory)**: CEILING_TEST_CODEX_BIN must
-point at the npm vendor Mach-O (`~/.local/share/nx01/pins/codex-0.144.5/bin/codex`,
-provenance.json + sha receipt) — NEVER `command -v codex` (Superset
-wrapper script; broke under arm isolation and killed cohort
-nodeg-20260721a, DECISIONS 0076.4). **UPDATER-PROOF PIN (mandatory)**: `cp` the pinned claude binary to a
-run-owned path BEFORE launch (`~/.local/share/nx01/pins/…`) — the
-auto-updater deletes old versions from `~/.local/share/claude/versions/`.
-**Deleted-version RESTORE recipe (established 2026-07-20)**: fetch
-`https://downloads.claude.ai/claude-code-releases/<version>/<platform>/claude`
-(darwin-arm64 here), verify sha256 against `<version>/manifest.json`,
-chmod +x at the run-owned path; NEVER reinstall into the live versions
-store. Treatment-Seat Identity Fidelity (0074.2 (f)): judge-only CLI
-drift never licenses a cross-version treatment arm — restore the exact
-CLI or label the row a successor row. **Worktree-dirty gotcha**: the
-runner refuses cell init while prior run results sit untracked in the
-worktree — move them to main-repo `benchmark/ceiling/results/` (their
-archival home) before the next launch. **Judge haiku flake**: sonnet
-judge attestation can fail on a nondeterministic haiku auxiliary call
-in modelUsage — one `--resume` retry passed clean (-20260720b
-precedent). Empty-transcript timeout rows (invoke_exit=124) use the
-`a-runtime-attestation-source` deviation (0071 F25 precedent);
-judge-runner-sha deviation is REJECTED when HEAD matches. Post-hoc
-instruments (deterministic, run from main against result dirs):
-`attribution.py <attempt_dir>`, `isolation-payload.py --post-hoc
-<attempt_dir>` — needed only for worktrees predating the instrument
-fixes (pre-294d828); a post-0074 cohort SHA ends this deviation class.
-The A-arm worktrees SURVIVE at `~/.local/share/nx01/w/…`; PHASE-6
-archive prunes root .devlyn into runs/. Dead run-ids: -20260718f/g/h,
--20260719a-e. Codex builds detached + one retry on silent hang (a
-killed-at-report-stage build may be complete on disk — verify + finish
-gates yourself before rebuilding; two live hangs observed: 35-min and
-66-min zero-output; codex sandbox cannot write .git — orchestrator
-commits builds, surfaced in the message).
-
-**Seat standing lessons (per-session scorecards live in the iteration
-files)**: verify liveness before gating; synthetic self-tests must be
-generated from REAL receipts (two live counterexamples); seat packets get
-the same verification bar as findings — 0088 Stage B alone recorded three
-orchestrator reversals on named criteria plus one self-caught packet error.
-
+Closed-iteration narratives live in `DECISIONS.md` + `iterations/<n>-*.md`
+(+ memory archive). Superseded START-HERE blocks (0094/0095/0100–0103
+registration detail) were removed from this file 2026-08-18 — recover via
+`git log -p -- autoresearch/HANDOFF.md` if ever needed.
 
 ---
 
@@ -586,7 +92,8 @@ orchestrator reversals on named criteria plus one self-caught packet error.
 4. **Explain simply** (Korean, decision-maker view) — conclusion + options + recommendation; no internal label walls in user-facing summaries.
 5. **Greenfield interface, NOT mechanisms** — any redesign edit must justify why a learned mechanism changes (not just relocates).
 6. **Measurement-gated pair policy** — pair ships per-phase only on pre-registered L1-vs-L2 evidence; "no evidence pair needed" ≠ "evidence solo wins"; honest label is "unmeasured".
-7. **Measurement tiering — do NOT gate every improvement on the ceiling full-run** (user directive 2026-07-11). Iterate on the fast behavioral instruments as the inner loop: self-tests + token gauge + lint (seconds), then `violation-matrix` / drift-bait bare probes / compliance cells (minutes), then a resolve-framed probe (~10-20 min). The ceiling 3-arm full run (`run-ceiling-tranche.sh`, hours) is a PERIODIC background exam only — run it detached, keep improving in parallel, never block design/impl work waiting on it. Need a quick directional ceiling read → `--tasks <1-2 rows>` (+ `--resume`), not the full corpus. Full-run stays the moat gate for 세계최고 claims (ops #17); it is not the iteration loop.
+7. **Detached long runs + pre-frozen scorers** (0102 operator rules): long unattended matrices detach via `python os.setsid()` (macOS has no `setsid`; harness-tracked drivers were killed 3×); any adjudication/scoring apparatus is frozen and pair-audited BEFORE its inputs complete.
+8. **Measurement tiering — do NOT gate every improvement on the ceiling full-run** (user directive 2026-07-11). Iterate on the fast behavioral instruments as the inner loop: self-tests + token gauge + lint (seconds), then `violation-matrix` / drift-bait bare probes / compliance cells (minutes), then a resolve-framed probe (~10-20 min). The ceiling 3-arm full run (`run-ceiling-tranche.sh`, hours) is a PERIODIC background exam only — run it detached, keep improving in parallel, never block design/impl work waiting on it. Need a quick directional ceiling read → `--tasks <1-2 rows>` (+ `--resume`), not the full corpus. Full-run stays the moat gate for 세계최고 claims (ops #17); it is not the iteration loop.
 
 ---
 
@@ -712,7 +219,7 @@ Working instruments: violation matrix (`run-violation-matrix.sh`), compliance ce
 
 ## 📍 Project state (verify before editing)
 
-- **Branch**: `main`, pushed through `a05a262` + this HANDOFF commit (2026-07-20 evening). Run `git log --oneline -10`. Release/installer surface (README/bin publish commits) is USER territory, hands off.
+- **Branch**: `main`, pushed through `a75c2ee` + this HANDOFF commit (2026-08-18). Run `git log --oneline -10`. Release/installer surface (README/bin publish commits) is USER territory, hands off.
 - **Engine pins**: `.devlyn/engines.json` = `{"executor": "codex"}` (machine-local; orchestrator passes `--pair-verify` on resolve runs per `feedback_executor_codex_always_pair_verify.md`).
 - Housekeeping (deferred per user 2026-04-30, unchanged): 4 dirty `.claude/worktrees/agent-*` — save patches before any removal; NOT in iter scope.
 
@@ -732,7 +239,7 @@ python3 config/skills/_shared/spec-verify-check.py --self-test && echo "spec-ver
 python3 config/skills/_shared/state-phase-write.py --self-test && echo "phase-write (L-D) ✓"
 python3 config/skills/_shared/terminal-claim-check.py --self-test && echo "terminal-claim ✓"   # moved to _shared in 0078 Stage A (5339e41)
 python3 config/skills/_shared/collect-codex-findings.py --self-test && echo "collector (0080 envelope gate) ✓"
-python3 benchmark/ceiling/probes/r-weld-0082/test-collector-contract.py   # 110 checks incl. 12 real captures + 61 tracked non-regression (iter-0082)
+python3 benchmark/ceiling/probes/r-weld-0082/test-collector-contract.py   # 114 checks incl. 12 real captures + 61 tracked non-regression (iter-0082; batch B + verdict ruling 2026-08-18)
 python3 benchmark/ceiling/scripts/attribution.py --self-test >/dev/null && echo "attribution ✓"
 python3 benchmark/ceiling/scripts/isolation-payload.py --self-test >/dev/null 2>&1 && echo "isolation-payload ✓"
 command -v codex && codex --version 2>&1 | head -1
