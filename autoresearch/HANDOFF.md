@@ -39,6 +39,23 @@ batch) → R4 README → pilot manifest seal + freeze audit → detached
 8-run sonnet pilot → DECISION → batches 01-08 → sealing →
 calibration → FREEZE-ARM → ONE matrix.
 
+**Pilot R1 re-entry (session closed 2026-08-20 ~20:00 KST)**: the
+first EQ4P-UA1 terra dispatch was STOPPED mid-flight at session
+close (single-writer race rule — never leave a live delegated
+writer across sessions); its partial fixture was deleted, repo
+clean. Re-dispatch FRESH from the preserved brief
+`~/.local/share/nx01/iter0105/authoring/TERRA-BRIEF-PROTO-UA1.md`
+(digest pins inside are current at `28ccfbf`; UA1 is the
+shape-setter — its report's SHAPE-SETTER NOTES section feeds the
+MI1/AF1/BD1 briefs). Before dispatching: verify no other writer
+(`pgrep -fl gpt-5.6-terra`, `git status` clean). Seat recipes:
+terra = `codex-monitored.sh -s workspace-write -m gpt-5.6-terra
+-c model_reasoning_effort=xhigh`; sol = same wrapper read-only,
+default model; grok = `grok -p "<prompt>" --allow read_file --allow
+grep --allow list_dir --no-memory --reasoning-effort high`; every
+seat prompt carries digest pins; review packets + all round logs in
+the receipts dir.
+
 **iter-0104 model-checkup loop v1 SHIPPED 2026-08-18.** The standing
 "new model ID → one-page verdict + re-pin recommendation" loop lives in
 [`playbooks/model-checkup.md`](playbooks/model-checkup.md); closure in
