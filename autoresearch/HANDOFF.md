@@ -41,14 +41,25 @@ iteration file § Execution log 2026-08-21; reports + round logs in
 `~/.local/share/nx01/iter0105/authoring/`.
 
 **NEXT = pilot launch lane**: pilot manifest seal + scoped freeze
-audit → **detached 8-run sonnet pilot** — LAUNCH CONDITIONS: quiet
-account (no other Claude sessions/headless reviews), outside
-23:00-01:00 KST, detach via `python os.setsid()` (Hard rule 7);
-mirror the 0102 pilot recipe (`0102-*.md:287-352`) at repo-scale
-parameters with frozen `score-pilot-0105.py`; DECISION exposure to
-authoring is ONE LINE (PROCEED/REJECT) + receipt digest — per-task
-outcomes sealed → then batches 01-08 → sealing → calibration →
-FREEZE-ARM → ONE matrix. Seat recipes: terra =
+audit → **detached 8-run sonnet pilot** (4 tasks × 2 reps) — LAUNCH
+CONDITIONS: quiet account (no other Claude sessions/headless
+reviews), outside 23:00-01:00 KST, detach via `python os.setsid()`
+(Hard rule 7); recipe authority = `0102-*.md:287-352` (decision
+rule: PROCEED iff mean(q_pilot) ∈ [1/10, 3/5] AND ≥3/4 interior AND
+none = 1; max 3 launches on byte-identical digests) with frozen
+`score-pilot-0105.py`. **In-kind templates from the executed 0102
+pilot live at `~/.local/share/nx01/iter0102/pilot/`**:
+`launch-detached.py`, `apparatus/pilot-driver.py`,
+`pilot-manifest.json` + `pilot-tree.sha256` (seal format),
+`frozen-pilot-apparatus.sha256` + `pilot-freeze-audit-packet.md`
+(freeze-audit shape), `DECISION` + `DECISION.receipt.sha256`
+(boundary emission) — derive the 0105 analogs into
+`~/.local/share/nx01/iter0105/pilot/`, trio-audit the derived
+apparatus BEFORE launch (Hard rule 7: scorers/drivers frozen before
+inputs). DECISION exposure to authoring is ONE LINE
+(PROCEED/REJECT) + receipt digest — per-task outcomes sealed →
+then batches 01-08 → sealing → calibration → FREEZE-ARM → ONE
+matrix. Seat recipes: terra =
 `codex-monitored.sh -s workspace-write -m gpt-5.6-terra -c
 model_reasoning_effort=xhigh`; sol = same wrapper read-only,
 default model; grok = `grok -p "<prompt>" --allow read_file --allow
