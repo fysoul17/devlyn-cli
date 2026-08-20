@@ -25,12 +25,19 @@ discovery mechanism + repo-scale mechanical laws L-R1..R4
 opus-5 vs opus-4-8. **Sequencing step 2 COMPLETE 2026-08-20**:
 authoring table (32 EQ4 + 4 EQ4P rows) + `gen-repo-skeleton.py`
 trio-FROZEN (terra single-writer, r0→r2, sol+grok FREEZE tokens;
-generator digest `213594c6…`; receipts
-`~/.local/share/nx01/iter0105/authoring/`). **NEXT = § Sequencing
-step 3**: pre-author ALL NINE specs (pilot + batch 01-08) from the
-frozen table, commit BEFORE the pilot fires, pilot lane lands 4
-prototypes + derived `validate-repo-task.py`, 8 sonnet runs →
-batches → sealing → calibration → FREEZE-ARM → ONE matrix.
+generator digest `213594c6…`). **Step 3a COMPLETE (`0a71f66`)**: all
+NINE specs sealed pre-pilot. **Step 3b apparatus COMPLETE
+(`eeac6bc`)**: `validate-repo-task.py` (digest `f88474ca…`) +
+`score-pilot-0105.py` (`31916d00…`, registration-gap amendment)
+trio-frozen; **L-R2 pre-committed distance-only FALLBACK FIRED**
+(both seats DERIVER-FAILS-BAR ×2 on unbounded dynamic-load class;
+module claim narrowed to "distance + distractor-mass discovery";
+pin file `docs/specs/iter0105-pilot/scripts.sha256`; receipts
+`~/.local/share/nx01/iter0105/authoring/`). **NEXT = pilot R1**: 4
+EQ4P prototypes (terra direct-drive, validator-green, trio per
+batch) → R4 README → pilot manifest seal + freeze audit → detached
+8-run sonnet pilot → DECISION → batches 01-08 → sealing →
+calibration → FREEZE-ARM → ONE matrix.
 
 **iter-0104 model-checkup loop v1 SHIPPED 2026-08-18.** The standing
 "new model ID → one-page verdict + re-pin recommendation" loop lives in
