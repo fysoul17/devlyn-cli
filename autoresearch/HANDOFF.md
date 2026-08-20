@@ -22,9 +22,15 @@ DESIGN-FROZEN 2026-08-20**
 the checkup loop's first coverage module — N=32×2 EQ4 band, 0102
 discovery mechanism + repo-scale mechanical laws L-R1..R4
 (Python-only, import-graph derivation per user ruling), matrix pair
-opus-5 vs opus-4-8. **NEXT = its § Sequencing step 2**: authoring
-table (all 32 specs) + generator freeze → pilot → batches → sealing →
-calibration → FREEZE-ARM → ONE matrix.
+opus-5 vs opus-4-8. **Sequencing step 2 COMPLETE 2026-08-20**:
+authoring table (32 EQ4 + 4 EQ4P rows) + `gen-repo-skeleton.py`
+trio-FROZEN (terra single-writer, r0→r2, sol+grok FREEZE tokens;
+generator digest `213594c6…`; receipts
+`~/.local/share/nx01/iter0105/authoring/`). **NEXT = § Sequencing
+step 3**: pre-author ALL NINE specs (pilot + batch 01-08) from the
+frozen table, commit BEFORE the pilot fires, pilot lane lands 4
+prototypes + derived `validate-repo-task.py`, 8 sonnet runs →
+batches → sealing → calibration → FREEZE-ARM → ONE matrix.
 
 **iter-0104 model-checkup loop v1 SHIPPED 2026-08-18.** The standing
 "new model ID → one-page verdict + re-pin recommendation" loop lives in

@@ -2,7 +2,7 @@
 id: "0105-repo-scale-discovery-corpus"
 title: "Repo-scale discovery corpus — checkup coverage module"
 kind: instrument
-status: DESIGN-FROZEN 2026-08-20 — R0+R1 folded, trio freeze complete (grok FREEZE, sol FREEZE, fable adjudication; final digest 77f3b10e…). User rulings 2026-08-20: L-R2 = import-graph derivation with pre-committed distance-only fallback; matrix pair = opus-5 vs opus-4-8; registration approved
+status: DESIGN-FROZEN 2026-08-20 — R0+R1 folded, trio freeze complete (grok FREEZE, sol FREEZE, fable adjudication; final digest 77f3b10e…). User rulings 2026-08-20: L-R2 = import-graph derivation with pre-committed distance-only fallback; matrix pair = opus-5 vs opus-4-8; registration approved. Sequencing step 2 (authoring table + generator) FROZEN 2026-08-20 (trio; see Execution log)
 complexity: high
 depends_on: ["0102-executor-quality-discovery-corpus", "0103-opus-line-regression-cell", "0104-model-checkup-loop"]
 ---
@@ -146,6 +146,77 @@ and a NEW derived-validator law rejects the task if any inventory path
 lies under `edit_site_dir`, is a contract artifact, appears in
 `decoy_artifacts`, or is a node of any `contract_paths` entry. The
 inventory is sealed with the corpus.
+
+### Authoring table (frozen 2026-08-20; fixture internals IMPLEMENT-creative)
+
+Language: **Python-only** (registered; Apparatus deltas item 2 deletes the
+0102 language-parity law and retires its odd/even convention). Distinctness
+tuple = (edit-site component, failure trigger, restore outcome) — all 32
+distinct after entity renaming, and vs 0100 (12), 0101 (32), 0102 (32 + 4
+prototypes), and the 4 EQ4P prototypes below. Column key: **local premise**
+is the class anchor (UA assumption / MI missed invariant / AF absent failure
+transition / BD breaking change); **fragment A** lives in
+`contract_artifacts[0]` (consumer module), **fragment B** in
+`contract_artifacts[1]` (test or executable doc); neither alone implies the
+composed outcome.
+
+Repo-scale fitness: every domain is plausible as a ≥120-file Python codebase
+(L-R1; the skeleton generator supplies non-treatment mass). Every named
+fragment A/B is a subsystem-crossing contract artifact planned at import-graph
+distance ≥ 4 edges from the edit site (L-R2), rather than a same-package
+neighbor.
+
+| id | domain / edit site | local premise (class anchor) | fragment A (consumer) | fragment B (test/doc) | trigger → composed restore outcome |
+|---|---|---|---|---|---|
+| EQ4-UA1 | biobank logistics / aliquot-relocation confirmer | UA assumption: a relabelled aliquot replaces its source custody leg | `chain_of_custody/reconcile/ledger_consumer.py` — reconciler consumes relocation legs as append-only custody segments | `quality/system/test_duplicate_barcode.py` — system test asserts duplicate-barcode rejection restores the source rack without another custody event | duplicate barcode during relocation → source rack AND custody sequence restored; one custody event remains |
+| EQ4-UA2 | satellite operations / maneuver-window editor | UA assumption: a late maneuver simply supersedes the booked burn window | `propellant/reservations/window_ledger.py` — reservation ledger retains the booked burn window until its replacement is accepted | `mission/acceptance/test_protected_pass.py` — acceptance test asserts a protected-pass collision releases the provisional propellant allocation | collision with protected pass → prior maneuver plan restored; provisional propellant allocation released once |
+| EQ4-UA3 | municipal bond trustee / coupon-correction intake | UA assumption: a coupon correction overwrites the prior accrual | `tax/yield/accrual_consumer.py` — accrual consumer reads the confirmed coupon schedule as the authoritative yield basis | `servicing/settlement/test_invalid_cusip.py` — settlement test asserts an invalid CUSIP records one exposure memorandum | invalid CUSIP after accrual staging → original coupon schedule restored; exposure memorandum recorded once |
+| EQ4-UA4 | semiconductor fabrication / recipe-revision issuer | UA assumption: a revised recipe is production-ready when staged | `genealogy/wafer/revision_consumer.py` — wafer genealogy exposes a recipe to production only after qualification accepts it | `qualification/system/test_rejected_recipe.py` — qualification test asserts rejection removes the staged wafer links | qualification rejection after staging → active recipe restored; staged wafer links removed once |
+| EQ4-UA5 | land-title registry / easement-amendment clerk | UA assumption: an amendment may replace the title abstract | `lien_priority/graph/index_consumer.py` — priority index consumes only the confirmed title abstract when deriving lien order | `adjudication/appeals/test_counterclaim.py` — appeals test asserts a counterclaim keeps the filing fee in escrow | counterclaim against amendment → prior priority graph restored; escrowed filing fee retained once |
+| EQ4-UA6 | polar field logistics / cargo-manifest reprioritizer | UA assumption: an itinerary substitution overwrites the existing manifest | `survival_cache/allocation/load_consumer.py` — load consumer assigns survival-cache reservations from the accepted itinerary | `airlift/safety/test_weight_rejection.py` — safety test asserts a weight rejection rolls the cache reservation back | aircraft weight rejection → original manifest restored; cache reservation rolled back once |
+| EQ4-UA7 | wind-farm curtailment / dispatch-override intake | UA assumption: a new override clears the prior curtailment window | `certificates/accrual/window_consumer.py` — certificate consumer accrues against the settled curtailment window | `grid/interconnect/test_conflicting_limit.py` — interconnect test asserts a conflicting limit preserves accrued certificates | conflicting grid limit → prior curtailment restored; certificate accrual preserved once |
+| EQ4-UA8 | archaeological collections / provenance-merge controller | UA assumption: a merged record discards source ordering | `exhibit_loans/provenance/chain_consumer.py` — provenance consumer retains source-catalogue order for an active loan chain | `repatriation/review/test_contested_origin.py` — review test asserts a contested origin keeps the active loan lock | contested origin during merge → source catalogues restored; active loan lock retained once |
+| EQ4-MI1 | meteorological reanalysis / observation-backfill merger | MI missed invariant: post-publication backfill must retain the external revision identity | `forecast/baselines/revision_consumer.py` — baseline consumer keys reanalysis by the external revision identity | `publication/system/test_station_correction.py` — publication test asserts a duplicate correction leaves one superseding issue | duplicate station correction → revision lineage restored; one superseding issue remains |
+| EQ4-MI2 | university endowment / valuation-roll-forward service | MI missed invariant: a valuation after lock date cannot change official unit history | `custody/units/official_ledger.py` — official ledger accepts valuation changes only before the lock date | `governance/close/test_rejected_valuation.py` — close test asserts rejection removes the provisional allocation | rejected valuation at close → official units restored; provisional allocation erased once |
+| EQ4-MI3 | wildfire mutual aid / resource-reassignment broker | MI missed invariant: demobilization releases a resource before another incident can claim it | `availability/resources/status_consumer.py` — status consumer permits a new claim only after the prior demobilization is recorded | `incident/command/test_cancelled_dispatch.py` — command test asserts a cancelled dispatch emits one mutual-aid notice | cancellation after dispatch → prior resource status restored; mutual-aid notice emitted once |
+| EQ4-MI4 | medicinal cold-chain / excursion-adjudication service | MI missed invariant: a batch-release lock survives a corrected temperature excursion | `batch_release/controls/hold_consumer.py` — hold consumer releases a batch only while its corrected excursion remains audit-free | `audit/system/test_external_flag.py` — audit test asserts an external flag keeps the downstream order blocked | external audit flag after correction → release hold reinstated; downstream order remains blocked once |
+| EQ4-MI5 | digital preservation / retention-policy migrator | MI missed invariant: a legal hold precedes a new retention-compression profile | `worm_index/retention/hold_consumer.py` — retention consumer selects a compressed manifest only after the legal hold is satisfied | `records/compliance/test_overlapping_hold.py` — compliance test asserts an overlapping hold retains the storage reservation | overlapping hold during migration → prior archive manifest restored; storage reservation retained once |
+| EQ4-MI6 | geotechnical monitoring / threshold-rule publisher | MI missed invariant: alert thresholds advance as a monotonic versioned sequence | `alerts/acknowledgement/version_consumer.py` — acknowledgement consumer accepts alerts only for the current threshold version | `calibration/system/test_failed_threshold.py` — calibration test asserts failure preserves the acknowledgement state | failed calibration → prior threshold rule remains active; acknowledgement state preserved once |
+| EQ4-MI7 | maritime rescue coordination / incident-merge worker | MI missed invariant: command handoff order is retained in a merged incident timeline | `command_timeline/handoff/order_consumer.py` — timeline consumer preserves command-handoff order when resolving incident history | `operations/system/test_out_of_order_handoff.py` — operations test asserts an out-of-order handoff consumes one notification token | out-of-order handoff → original incidents restored; notification token consumed once |
+| EQ4-MI8 | research compliance / protocol-amendment router | MI missed invariant: disbursement authority is bound to the approved protocol version | `funding/disbursement/version_consumer.py` — disbursement consumer authorizes funds only for the approved protocol version | `oversight/system/test_withdrawn_amendment.py` — oversight test asserts withdrawal keeps disbursement frozen | amendment withdrawal → prior protocol version restored; disbursement remains frozen once |
+| EQ4-AF1 | additive manufacturing / powder-blend release | AF absent failure transition: contamination after staging has no quarantine transition | `material_control/quarantine/lot_consumer.py` — lot consumer blocks material release until the contamination state is cleared | `release/system/test_contaminant_flag.py` — release test asserts a contaminant flag restores the material reservation | contaminant flag mid-release → powder lots quarantined; material reservation restored once |
+| EQ4-AF2 | fisheries quota exchange / transfer confirmer | AF absent failure transition: a disputed catch report has no transfer-reversal transition | `quota_ledger/settlement/balance_consumer.py` — balance consumer treats a quota transfer as provisional until its report is undisputed | `disputes/system/test_report_challenge.py` — disputes test asserts a challenged report closes the transfer record | catch report challenged after transfer → both quota balances restored; transfer record closed once |
+| EQ4-AF3 | regional rail signalling / route-authorisation updater | AF absent failure transition: interlocking acknowledgement timeout has no route rollback | `interlocking/locks/route_consumer.py` — route consumer accepts authority only after interlocking acknowledgement | `control/system/test_ack_timeout.py` — control test asserts an acknowledgement timeout releases the track lock | acknowledgement timeout → prior route authority restored; track lock released once |
+| EQ4-AF4 | public pension administration / survivor-benefit recalculator | AF absent failure transition: revoked beneficiary evidence has no staged-award withdrawal | `payments/instructions/award_consumer.py` — award consumer issues payment instructions only from final beneficiary evidence | `eligibility/system/test_document_revocation.py` — eligibility test asserts evidence revocation voids the payment instruction | evidence revoked after staging → prior award state restored; payment instruction voided once |
+| EQ4-AF5 | film restoration archive / reel-handoff coordinator | AF absent failure transition: a corrupt source scan has no checkout reversal | `preservation/copies/reel_consumer.py` — reel consumer retains the booking slot until the source scan passes integrity checks | `vault/system/test_corrupt_source_scan.py` — vault test asserts a corrupt scan discards the preservation copy | corruption after checkout → booking slot restored; preservation copy discarded once |
+| EQ4-AF6 | emergency shelter operations / family-reunification intake | AF absent failure transition: a failed guardian match has no provisional-placement unwind | `bed_management/assignments/family_consumer.py` — assignment consumer commits a bed only after the guardian match succeeds | `safeguarding/system/test_guardian_mismatch.py` — safeguarding test asserts a mismatch consumes one case token | guardian mismatch after placement → previous bed assignment restored; case token consumed once |
+| EQ4-AF7 | high-voltage grid maintenance / transformer-outage scheduler | AF absent failure transition: emergency pre-emption has no reserved-outage restoration | `switching/crews/callout_consumer.py` — callout consumer retains the reserved outage until the emergency state clears | `reliability/system/test_weather_preemption.py` — reliability test asserts weather pre-emption cancels the crew callout | weather emergency pre-empts outage → prior switching plan restored; crew callout cancelled once |
+| EQ4-AF8 | bridge inspection authority / disposition updater | AF absent failure transition: revoked sensor evidence has no closure-notice rescind path | `asset_status/closures/notice_consumer.py` — notice consumer derives a closure only from currently valid sensor evidence | `engineering/system/test_revoked_sensor_evidence.py` — engineering test asserts evidence revocation rescinds the closure notice | sensor evidence revoked after staging → prior inspection disposition restored; closure notice rescinded once |
+| EQ4-BD1 | nuclear-waste logistics / container-label updater | BD breaking change: reclassifying a label changes the transport-eligibility consumer's state | `transport_eligibility/certificates/label_consumer.py` — eligibility consumer reads transport state from the currently classified label | `safeguards/system/test_manifest_reclassification.py` — safeguards test asserts reclassification retains the route certificate | reclassification after manifest draft → prior label restored; route certificate retained once |
+| EQ4-BD2 | social-housing allocation / household-priority normalizer | BD breaking change: normalizing priority changes the subsidy calculator's quoted state | `rent_support/quotes/priority_consumer.py` — quote consumer derives subsidy only from the official waitlist priority | `appeals/system/test_withdrawn_household_appeal.py` — appeals test asserts withdrawal removes the subsidy quote | appeal withdrawn after quote → waitlist priority restored; subsidy quote withdrawn once |
+| EQ4-BD3 | analytical laboratory / calibration-coefficient publisher | BD breaking change: publishing a coefficient changes the assay signer's accepted version | `assay_signing/certificates/coefficient_consumer.py` — signing consumer accepts certificates only for the registered calibration coefficient | `metrology/system/test_invalid_coefficient.py` — metrology test asserts an invalid coefficient leaves issuance singular | invalid coefficient after publication → prior calibration restored; certificate issuance remains singular |
+| EQ4-BD4 | urban forestry permits / species-correction registrar | BD breaking change: correcting species changes the mitigation-credit ledger's category | `mitigation_credits/ledger/species_consumer.py` — credit ledger derives category from the approved species record | `survey/system/test_voided_species_record.py` — survey test asserts a voided record releases the reserved credits | survey void after partial approval → original species record restored; reserved credits released once |
+| EQ4-BD5 | research-compute platform / budget-allocation modifier | BD breaking change: changing an allocation alters the grant-billing reporter's committed usage | `grant_billing/reports/allocation_consumer.py` — billing consumer reports only the committed budget allocation | `sponsorship/system/test_expired_grant.py` — sponsorship test asserts expiry does not advance the invoice checkpoint | grant expiry during allocation → prior budget state restored; invoice checkpoint does not advance |
+| EQ4-BD6 | road-toll concession / exemption-rule importer | BD breaking change: an imported exemption changes the dependent invoice processor's toll class | `invoicing/charges/exemption_consumer.py` — invoice consumer maps toll class only from a valid exemption rule | `ordinance/system/test_malformed_exemption.py` — ordinance test asserts a malformed rule emits one correction notice | malformed ordinance → prior toll class restored; correction notice emitted once |
+| EQ4-BD7 | refugee resettlement / placement-priority reassessor | BD breaking change: reassessment changes the case-allocation service's offer ordering | `case_allocation/offers/priority_consumer.py` — offer consumer orders placements by the active eligibility priority | `eligibility/system/test_reversed_status.py` — eligibility test asserts reversal reopens the housing offer | eligibility reversal after offer → previous placement priority restored; housing offer reopens once |
+| EQ4-BD8 | national-park ecology / habitat-survey merger | BD breaking change: merging habitat status changes the permit-quota engine's available capacity | `permit_quotas/capacity/habitat_consumer.py` — capacity engine sums source observations from the active habitat revision | `field_review/system/test_erroneous_merge.py` — field-review test asserts an erroneous merge recomputes quota capacity | erroneous survey merge → source observations restored; quota capacity recomputed once |
+
+### Pilot prototype rows (frozen; domains and tuples banned from the corpus)
+
+- **Prototype rows** — IDs, domains, class anchors, and behavioral
+  tuples are pre-registered here; same shape laws as corpus tasks;
+  `TASKS_ROOT_PILOT = benchmark/executor-quality/tasks-0105-pilot`:
+
+| id | domain / edit site | local premise (class anchor) | fragment A (consumer) | fragment B (test/doc) | trigger → composed restore outcome |
+|---|---|---|---|---|---|
+| EQ4P-UA1 | space-launch range / payload-window allocator | UA assumption: a payload swap frees the prior trajectory slot | `range_safety/trajectory/reservation_consumer.py` — reservation consumer retains the trajectory slot until range safety accepts the swap | `launch/operations/test_weather_hold.py` — operations test asserts a weather hold retains the hazard notice | weather hold after payload swap → original launch allocation restored; hazard notice retained once |
+| EQ4P-MI1 | currency circulation / note-fitness policy editor | MI missed invariant: destruction eligibility follows the signed fitness-policy version | `destruction_ledger/authorizations/policy_consumer.py` — authorization consumer permits destruction only for the signed fitness-policy version | `vault/system/test_unsigned_policy.py` — vault test asserts an unsigned replacement leaves authorization unused | unsigned policy replacement → prior fitness policy restored; destruction authorization remains unused |
+| EQ4P-AF1 | heritage preservation / facade-permit change processor | AF absent failure transition: a withdrawn structural report has no permit-hold transition | `inspection_holds/permits/report_consumer.py` — permit consumer keeps a provisional facade approval contingent on the structural report | `conservation/system/test_withdrawn_report.py` — conservation test asserts withdrawal releases the inspection appointment | report withdrawn after provisional approval → permit state restored; inspection appointment released once |
+| EQ4P-BD1 | remote examination services / accommodation allocator | BD breaking change: changing an accommodation alters the proctor-scheduling consumer's seat plan | `proctor_scheduling/seats/accommodation_consumer.py` — seat consumer assigns proctors from the currently approved accommodation | `accessibility/system/test_expired_accommodation.py` — accessibility test asserts expiry reopens the proctor seat | accommodation expiry after seat assignment → prior accommodation restored; proctor seat reopens once |
+
+Fresh judges at VERIFY review semantic distinctness of fixtures against 0100,
+0101, 0102, and the prototypes; the derived validator checks
+id/class/bindings/topology mechanically.
 
 ## Apparatus deltas (COMPLETE list — sol F2 / grok F2-F3 closure; nothing else changes)
 
@@ -332,3 +403,36 @@ kind; cohort id `mx<n>-<UTCSTAMP>Z`.
   transformation closure") + grok FREEZE (pre-insertion file
   hash-reconstructed; delta = exactly the insertion). Status →
   DESIGN-FROZEN.
+- **2026-08-20 — Sequencing step 2 COMPLETE: authoring table + generator
+  FROZEN (trio).** Terra (single writer, digest-pinned briefs) authored
+  the 32-row EQ4 table + 4 EQ4P pilot rows (§ Authoring table) and
+  `benchmark/executor-quality/scripts/gen-repo-skeleton.py`. Trio rounds:
+  r0 — sol REVISE (5 fable findings upheld + new r0-6) / grok REVISE
+  (all 6); F-T3 split resolved 2-of-3 (LABEL-CONTENT FIDELITY). r1 —
+  terra fixes verified; sol NOT-RESOLVED residual on F-G1 (one-grep
+  provenance markers = 95.0% of visible bytes) ADOPTED over grok's
+  RESOLVED — named criterion EXACT-MARKER vs STATISTICAL-REGULARITY;
+  new evidence rule satisfied. r2 — in-band provenance constants
+  deleted (the sealed inventory is the sole provenance carrier),
+  per-module docstring/prefix/symbol variation, NEW line-level
+  shared-exact-marker self-test arm (proven to FAIL on the pre-fix
+  content class); F-R1 stale header sentence replaced (3-0). Final
+  micro-pass: sol FREEZE (`FREEZE-0105-STEP2-SOL`) + grok FREEZE
+  (`FREEZE-0105-STEP2-GROK`, digests independently recomputed).
+  Frozen digests: generator `213594c6…`; this file at freeze
+  `addeb27a…` (diff vs `97c975e` = one +71/−0 hunk, registration
+  bytes untouched). Distinctness: 36/36 vs the 80 prior tuples
+  (0100/0101/0102 + prototypes), mechanical + manual sweep, fable
+  re-swept. **sol r0-6 adjudication (binding on step 3)**: the
+  § Authoring inventory clause "per emitted file" reads "per emitted
+  payload file" — the inventory cannot contain its own digest and is
+  the SOLE exclusion; mechanically enforced at `verify_inventory`;
+  the derived validator MUST enforce the same exclusion.
+  **Stopping rule (frozen)**: the generator self-similarity bar is
+  the line-level arm; substring-level template regularity is conceded
+  — post-freeze filler-realism findings require a self-advertising
+  exact marker or pilot-observed pruning evidence. Receipts:
+  `~/.local/share/nx01/iter0105/authoring/`. NEXT = Sequencing
+  step 3: pre-author ALL NINE specs (pilot + batch 01-08) from the
+  frozen table and commit BEFORE the pilot fires; pilot lane lands
+  the 4 prototypes + derived `validate-repo-task.py`; 8 sonnet runs.
