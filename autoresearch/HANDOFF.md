@@ -37,7 +37,10 @@ verification / planning ONLY — token economy HARD
 authoring, apparatus builds, runbook scripting, and repetitive runs →
 terra direct-drive lane (0102-proven) or opus/sonnet; verification trio
 = fable + sol(5.6) + grok; matrix arms only on a quiet account outside
-23:00–01:00 KST. Driver seed =
+23:00–01:00 KST; delegated file edits = ONE writer at a time + digest
+pins in seat/verify prompts (0105 registration race, 2026-08-20 — a
+"dead" resumed subagent executed late against a replacement).
+Driver seed =
 `benchmark/executor-quality/scripts/mx-driver.py` (canonical since
 batch B: structural infra taxonomy 429/529, replay-proven 45/45 on the
 0102 attempt-1 rows).
