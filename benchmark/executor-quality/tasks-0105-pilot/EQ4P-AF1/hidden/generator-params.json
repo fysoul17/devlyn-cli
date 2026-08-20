@@ -1,0 +1,54 @@
+{
+  "task_id": "EQ4P-AF1",
+  "seed": 10503,
+  "package_roots": [
+    "visible/heritage_records",
+    "visible/survey_registry",
+    "visible/archive_office",
+    "visible/preservation_services"
+  ],
+  "package_count": 10,
+  "modules_per_package": 10,
+  "module_bytes": 20500,
+  "data_file_count": 0,
+  "data_file_bytes": 0,
+  "edit_site_dir": "visible/facade_permits/processor",
+  "contract_artifacts": [
+    "visible/inspection_holds/permits/report_consumer.py",
+    "visible/conservation/system/test_withdrawn_report.py"
+  ],
+  "decoy_artifacts": [
+    "visible/facade_permits/field_records/archive_calendar.py",
+    "visible/facade_permits/field_records/brickwork_log.py",
+    "visible/facade_permits/field_records/case_register.py",
+    "visible/facade_permits/field_records/drawing_index.py",
+    "visible/facade_permits/field_records/elevation_board.py",
+    "visible/facade_permits/field_records/facade_docket.py",
+    "visible/facade_permits/field_records/heritage_queue.py",
+    "visible/facade_permits/field_records/masonry_review.py",
+    "visible/facade_permits/field_records/permit_ledger.py",
+    "visible/facade_permits/field_records/survey_notes.py",
+    "visible/facade_permits/field_records/treatment_record.py",
+    "visible/facade_permits/field_records/work_order.py"
+  ],
+  "contract_paths": [
+    [
+      "visible/facade_permits/processor/permit_change.py",
+      "visible/facade_permits/services/permit_dispatch.py",
+      "visible/inspection_holds/permits/report_consumer.py"
+    ],
+    [
+      "visible/facade_permits/processor/permit_change.py",
+      "visible/facade_permits/services/permit_dispatch.py",
+      "visible/conservation/system/test_withdrawn_report.py"
+    ]
+  ],
+  "banned_tokens": [
+    "inspection",
+    "structural",
+    "contingent",
+    "conservation",
+    "withdrawn",
+    "appointment"
+  ]
+}

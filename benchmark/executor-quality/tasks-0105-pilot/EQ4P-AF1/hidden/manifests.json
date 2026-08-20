@@ -1,0 +1,89 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "absent_failure_mode",
+      "invariant": "After withdrawal, the prior facade state returns, the appointment is released once, and the live facade result remains prior.",
+      "contract_bindings": [
+        {
+          "file": "visible/inspection_holds/permits/report_consumer.py",
+          "sha256": "923df663ddb695369cd448284525c14cd0f4e3e6d52d5db3f59d7b05272507c4",
+          "quote": "An inspection hold keeps the facade approval contingent on a structural report\nand requires the prior facade state to return after withdrawal."
+        },
+        {
+          "file": "visible/conservation/system/test_withdrawn_report.py",
+          "sha256": "80e3512716cf5aab1c33a4ff1df82043767ddbd2c4997eb3f701008f88f48f41",
+          "quote": "The conservation test asserts a withdrawn report releases the inspection appointment once."
+        }
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "absent_failure_mode",
+      "invariant": "After withdrawal, the prior facade state returns, the appointment is released once, and the live facade result remains prior.",
+      "contract_bindings": [
+        {
+          "file": "visible/inspection_holds/permits/report_consumer.py",
+          "sha256": "923df663ddb695369cd448284525c14cd0f4e3e6d52d5db3f59d7b05272507c4",
+          "quote": "An inspection hold keeps the facade approval contingent on a structural report\nand requires the prior facade state to return after withdrawal."
+        },
+        {
+          "file": "visible/conservation/system/test_withdrawn_report.py",
+          "sha256": "80e3512716cf5aab1c33a4ff1df82043767ddbd2c4997eb3f701008f88f48f41",
+          "quote": "The conservation test asserts a withdrawn report releases the inspection appointment once."
+        }
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "absent_failure_mode",
+      "invariant": "After withdrawal, the prior facade state returns, the appointment is released once, and the live facade result remains prior.",
+      "contract_bindings": [
+        {
+          "file": "visible/inspection_holds/permits/report_consumer.py",
+          "sha256": "923df663ddb695369cd448284525c14cd0f4e3e6d52d5db3f59d7b05272507c4",
+          "quote": "An inspection hold keeps the facade approval contingent on a structural report\nand requires the prior facade state to return after withdrawal."
+        },
+        {
+          "file": "visible/conservation/system/test_withdrawn_report.py",
+          "sha256": "80e3512716cf5aab1c33a4ff1df82043767ddbd2c4997eb3f701008f88f48f41",
+          "quote": "The conservation test asserts a withdrawn report releases the inspection appointment once."
+        }
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "absent_failure_mode",
+      "invariant": "After withdrawal, the prior facade state returns, the appointment is released once, and the live facade result remains prior.",
+      "contract_bindings": [
+        {
+          "file": "visible/inspection_holds/permits/report_consumer.py",
+          "sha256": "923df663ddb695369cd448284525c14cd0f4e3e6d52d5db3f59d7b05272507c4",
+          "quote": "An inspection hold keeps the facade approval contingent on a structural report\nand requires the prior facade state to return after withdrawal."
+        },
+        {
+          "file": "visible/conservation/system/test_withdrawn_report.py",
+          "sha256": "80e3512716cf5aab1c33a4ff1df82043767ddbd2c4997eb3f701008f88f48f41",
+          "quote": "The conservation test asserts a withdrawn report releases the inspection appointment once."
+        }
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "absent_failure_mode",
+      "invariant": "After withdrawal, the prior facade state returns, the appointment is released once, and the live facade result remains prior.",
+      "contract_bindings": [
+        {
+          "file": "visible/inspection_holds/permits/report_consumer.py",
+          "sha256": "923df663ddb695369cd448284525c14cd0f4e3e6d52d5db3f59d7b05272507c4",
+          "quote": "An inspection hold keeps the facade approval contingent on a structural report\nand requires the prior facade state to return after withdrawal."
+        },
+        {
+          "file": "visible/conservation/system/test_withdrawn_report.py",
+          "sha256": "80e3512716cf5aab1c33a4ff1df82043767ddbd2c4997eb3f701008f88f48f41",
+          "quote": "The conservation test asserts a withdrawn report releases the inspection appointment once."
+        }
+      ]
+    }
+  ]
+}

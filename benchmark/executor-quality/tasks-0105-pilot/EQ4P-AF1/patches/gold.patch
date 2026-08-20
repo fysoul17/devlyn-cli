@@ -1,0 +1,18 @@
+--- a/facade_permits/processor/permit_change.py
++++ b/facade_permits/processor/permit_change.py
+@@ -6,7 +6,15 @@
+ def process_facade_change(case):
+     previous = case["state"]
++    case.setdefault("prior", previous)
+     case["state"] = case["replacement"]
+     record_change(case, previous)
++    if case["gone"]:
++        case["state"] = case["prior"]
++        case["approved"] = False
++        case["visit"] = "open"
++        if "released" not in case["events"]:
++            case["events"].append("released")
++        return {"approved": False, "released": True}
+     case["approved"] = True
+     case["visit"] = "held"
+     return {"approved": True, "released": False}

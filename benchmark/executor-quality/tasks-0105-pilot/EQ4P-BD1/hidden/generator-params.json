@@ -1,0 +1,54 @@
+{
+  "task_id": "EQ4P-BD1",
+  "seed": 10504,
+  "package_roots": [
+    "visible/exam_records",
+    "visible/candidate_registry",
+    "visible/session_archive",
+    "visible/delivery_services"
+  ],
+  "package_count": 10,
+  "modules_per_package": 10,
+  "module_bytes": 20500,
+  "data_file_count": 0,
+  "data_file_bytes": 0,
+  "edit_site_dir": "visible/accommodation_allocator/allocator",
+  "contract_artifacts": [
+    "visible/proctor_scheduling/seats/accommodation_consumer.py",
+    "visible/accessibility/system/test_expired_accommodation.py"
+  ],
+  "decoy_artifacts": [
+    "visible/accommodation_allocator/field_records/candidate_log.py",
+    "visible/accommodation_allocator/field_records/checkin_board.py",
+    "visible/accommodation_allocator/field_records/exam_calendar.py",
+    "visible/accommodation_allocator/field_records/form_register.py",
+    "visible/accommodation_allocator/field_records/intake_queue.py",
+    "visible/accommodation_allocator/field_records/location_docket.py",
+    "visible/accommodation_allocator/field_records/materials_record.py",
+    "visible/accommodation_allocator/field_records/roster_index.py",
+    "visible/accommodation_allocator/field_records/session_ledger.py",
+    "visible/accommodation_allocator/field_records/support_note.py",
+    "visible/accommodation_allocator/field_records/timing_archive.py",
+    "visible/accommodation_allocator/field_records/venue_list.py"
+  ],
+  "contract_paths": [
+    [
+      "visible/accommodation_allocator/allocator/accommodation_change.py",
+      "visible/accommodation_allocator/services/allocation_dispatch.py",
+      "visible/proctor_scheduling/seats/accommodation_consumer.py"
+    ],
+    [
+      "visible/accommodation_allocator/allocator/accommodation_change.py",
+      "visible/accommodation_allocator/services/allocation_dispatch.py",
+      "visible/accessibility/system/test_expired_accommodation.py"
+    ]
+  ],
+  "banned_tokens": [
+    "proctor",
+    "scheduling",
+    "current",
+    "accessibility",
+    "expired",
+    "reopens"
+  ]
+}

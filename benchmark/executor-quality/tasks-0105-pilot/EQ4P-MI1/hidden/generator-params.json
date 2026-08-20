@@ -1,0 +1,54 @@
+{
+  "task_id": "EQ4P-MI1",
+  "seed": 10502,
+  "package_roots": [
+    "visible/currency_reports",
+    "visible/note_catalog",
+    "visible/mint_operations",
+    "visible/archive_services"
+  ],
+  "package_count": 10,
+  "modules_per_package": 10,
+  "module_bytes": 20500,
+  "data_file_count": 0,
+  "data_file_bytes": 0,
+  "edit_site_dir": "visible/fitness_policy/editor",
+  "contract_artifacts": [
+    "visible/destruction_ledger/authorizations/policy_consumer.py",
+    "visible/vault/system/test_unsigned_policy.py"
+  ],
+  "decoy_artifacts": [
+    "visible/fitness_policy/field_records/circulation_log.py",
+    "visible/fitness_policy/field_records/condition_register.py",
+    "visible/fitness_policy/field_records/counterfeit_review.py",
+    "visible/fitness_policy/field_records/denomination_index.py",
+    "visible/fitness_policy/field_records/issue_calendar.py",
+    "visible/fitness_policy/field_records/mint_intake.py",
+    "visible/fitness_policy/field_records/note_ledger.py",
+    "visible/fitness_policy/field_records/quality_docket.py",
+    "visible/fitness_policy/field_records/reserve_record.py",
+    "visible/fitness_policy/field_records/serial_archive.py",
+    "visible/fitness_policy/field_records/sorting_board.py",
+    "visible/fitness_policy/field_records/tender_queue.py"
+  ],
+  "contract_paths": [
+    [
+      "visible/fitness_policy/editor/note_policy.py",
+      "visible/fitness_policy/services/policy_dispatch.py",
+      "visible/destruction_ledger/authorizations/policy_consumer.py"
+    ],
+    [
+      "visible/fitness_policy/editor/note_policy.py",
+      "visible/fitness_policy/services/policy_dispatch.py",
+      "visible/vault/system/test_unsigned_policy.py"
+    ]
+  ],
+  "banned_tokens": [
+    "destruction",
+    "authorization",
+    "signed",
+    "vault",
+    "unsigned",
+    "unused"
+  ]
+}

@@ -1,0 +1,13 @@
+--- a/facade_permits/processor/permit_change.py
++++ b/facade_permits/processor/permit_change.py
+@@ -7,6 +7,10 @@
+     previous = case["state"]
+     case["state"] = case["replacement"]
+     record_change(case, previous)
++    if case["gone"]:
++        case["approved"] = False
++        case["visit"] = "open"
++        return {"approved": False, "released": True}
+     case["approved"] = True
+     case["visit"] = "held"
+     return {"approved": True, "released": False}

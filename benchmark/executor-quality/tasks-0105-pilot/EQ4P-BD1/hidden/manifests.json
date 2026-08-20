@@ -1,0 +1,89 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "broken_dependency",
+      "invariant": "After expiry, the prior accommodation and dependent seat plan return, the proctor seat is reopened once, and the live accommodation plan remains prior.",
+      "contract_bindings": [
+        {
+          "file": "visible/proctor_scheduling/seats/accommodation_consumer.py",
+          "sha256": "7403a3bc88c23e88fcc12fabf1cb3a6c68b914eb0d4cfbaf59939797ecdec508",
+          "quote": "The proctor-scheduling consumer assigns proctors from the current approved\naccommodation and requires the prior accommodation and seat plan to return\nafter expiry."
+        },
+        {
+          "file": "visible/accessibility/system/test_expired_accommodation.py",
+          "sha256": "c824d9ea152e1ec06a375556ecfd4c66029d51616abcd38441164f3be19baaca",
+          "quote": "The accessibility test asserts an expired accommodation reopens the proctor seat once."
+        }
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "broken_dependency",
+      "invariant": "After expiry, the prior accommodation and dependent seat plan return, the proctor seat is reopened once, and the live accommodation plan remains prior.",
+      "contract_bindings": [
+        {
+          "file": "visible/proctor_scheduling/seats/accommodation_consumer.py",
+          "sha256": "7403a3bc88c23e88fcc12fabf1cb3a6c68b914eb0d4cfbaf59939797ecdec508",
+          "quote": "The proctor-scheduling consumer assigns proctors from the current approved\naccommodation and requires the prior accommodation and seat plan to return\nafter expiry."
+        },
+        {
+          "file": "visible/accessibility/system/test_expired_accommodation.py",
+          "sha256": "c824d9ea152e1ec06a375556ecfd4c66029d51616abcd38441164f3be19baaca",
+          "quote": "The accessibility test asserts an expired accommodation reopens the proctor seat once."
+        }
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "broken_dependency",
+      "invariant": "After expiry, the prior accommodation and dependent seat plan return, the proctor seat is reopened once, and the live accommodation plan remains prior.",
+      "contract_bindings": [
+        {
+          "file": "visible/proctor_scheduling/seats/accommodation_consumer.py",
+          "sha256": "7403a3bc88c23e88fcc12fabf1cb3a6c68b914eb0d4cfbaf59939797ecdec508",
+          "quote": "The proctor-scheduling consumer assigns proctors from the current approved\naccommodation and requires the prior accommodation and seat plan to return\nafter expiry."
+        },
+        {
+          "file": "visible/accessibility/system/test_expired_accommodation.py",
+          "sha256": "c824d9ea152e1ec06a375556ecfd4c66029d51616abcd38441164f3be19baaca",
+          "quote": "The accessibility test asserts an expired accommodation reopens the proctor seat once."
+        }
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "broken_dependency",
+      "invariant": "After expiry, the prior accommodation and dependent seat plan return, the proctor seat is reopened once, and the live accommodation plan remains prior.",
+      "contract_bindings": [
+        {
+          "file": "visible/proctor_scheduling/seats/accommodation_consumer.py",
+          "sha256": "7403a3bc88c23e88fcc12fabf1cb3a6c68b914eb0d4cfbaf59939797ecdec508",
+          "quote": "The proctor-scheduling consumer assigns proctors from the current approved\naccommodation and requires the prior accommodation and seat plan to return\nafter expiry."
+        },
+        {
+          "file": "visible/accessibility/system/test_expired_accommodation.py",
+          "sha256": "c824d9ea152e1ec06a375556ecfd4c66029d51616abcd38441164f3be19baaca",
+          "quote": "The accessibility test asserts an expired accommodation reopens the proctor seat once."
+        }
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "broken_dependency",
+      "invariant": "After expiry, the prior accommodation and dependent seat plan return, the proctor seat is reopened once, and the live accommodation plan remains prior.",
+      "contract_bindings": [
+        {
+          "file": "visible/proctor_scheduling/seats/accommodation_consumer.py",
+          "sha256": "7403a3bc88c23e88fcc12fabf1cb3a6c68b914eb0d4cfbaf59939797ecdec508",
+          "quote": "The proctor-scheduling consumer assigns proctors from the current approved\naccommodation and requires the prior accommodation and seat plan to return\nafter expiry."
+        },
+        {
+          "file": "visible/accessibility/system/test_expired_accommodation.py",
+          "sha256": "c824d9ea152e1ec06a375556ecfd4c66029d51616abcd38441164f3be19baaca",
+          "quote": "The accessibility test asserts an expired accommodation reopens the proctor seat once."
+        }
+      ]
+    }
+  ]
+}

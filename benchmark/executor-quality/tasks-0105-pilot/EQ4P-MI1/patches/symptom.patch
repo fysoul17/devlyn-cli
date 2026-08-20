@@ -1,0 +1,12 @@
+--- a/fitness_policy/editor/note_policy.py
++++ b/fitness_policy/editor/note_policy.py
+@@ -7,6 +7,9 @@
+     previous = ledger["policy"]
+     ledger["policy"] = ledger["replacement"]
+     record_policy(ledger, previous)
+     ledger["used"] = True
++    if not ledger["seal"]:
++        ledger["allowed"] = False
++        return {"applied": False, "blocked": True}
+     ledger["allowed"] = True
+     return {"applied": True, "blocked": False}
