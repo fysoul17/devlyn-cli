@@ -484,3 +484,37 @@ kind; cohort id `mx<n>-<UTCSTAMP>Z`.
   verification) → R4 README → pilot manifest seal + scoped freeze audit
   → detached 8-run sonnet pilot (quiet account, outside 23:00-01:00 KST)
   → DECISION.
+- **2026-08-21 — pilot R1 COMPLETE: all four EQ4P prototypes
+  trio-FROZEN + R4 README landed (`426df93` + `6f073b1` + `3e2a365`).**
+  Terra single-writer, fable mechanical + sol/grok adversarial per
+  round. **UA1 (shape-setter, 3 rounds)**: r0 REVISE ×2 (5 adjudicated
+  bars — real import chain, realistic decoys, two-phase AFTER, real
+  `test_*`+assert, de-singleton discovery) → micro-pass REVISE ×2
+  (converged HIGH: allocation-restore unenforced — BOTH seats executed
+  a bookkeeping-only cheat scoring TTTTT; fixed via consumer live-field
+  conjunct) → freeze `FREEZE-0105-PROTO-UA1-{SOL,GROK}` with two-file
+  delta reversal proof; tree `453093a6…`. **MI1/AF1/BD1 (batch, 2
+  rounds)**: r0 REVISE ×3 both seats (goal-word unique locators ×3;
+  MI1 exactly-once+`used` vacuous — grok executed TTTTT cheat; BD1
+  dependent-output class failure, AF1-isomorphic — both seats) →
+  adjudicated split: MI1/AF1 class-fidelity rework REJECTED (named
+  delta: the sealed rows themselves mandate the common
+  restore/exactly-once outcome (spec :86-87), so post-rename repair
+  similarity is not the classifier; the named-local-premise test
+  governs and passes at bytes) / BD1 rework REQUIRED → freeze
+  `FREEZE-0105-PROTO-{MI1,AF1,BD1}-{SOL,GROK}` 6/6 with independent
+  cheat replays (bookkeeping TTFTF ×3, uncond-append TTTFF, hardcoded
+  seat-plan TTFFF); trees MI1 `40b6db84…` / AF1 `0d567197…` / BD1
+  `ad69e711…`. **R4 README**: 2-line sealed-scope addition; trio round
+  waived for the doc delta (fable spec-conformance check; pre-pilot
+  freeze audit re-verifies) — logged, not silent. Operational gotchas
+  recorded: whole-tree digest recipe must pin cwd + `LC_ALL=C` (terra
+  round-1 false pin abort); `grok -p` WRITES FILES even with read-only
+  allows — a freeze run overwrote the micropass receipt (restored from
+  orchestrator context; receipts now orchestrator-owned, seat prompts
+  forbid file writes). Reports + all round logs in
+  `~/.local/share/nx01/iter0105/authoring/`. NEXT = pilot manifest
+  seal + scoped freeze audit → detached 8-run sonnet pilot (quiet
+  account — no other Claude sessions/headless reviews, outside
+  23:00-01:00 KST) → DECISION (ONE LINE PROCEED/REJECT + receipt
+  digest crosses to authoring; per-task outcomes stay sealed).

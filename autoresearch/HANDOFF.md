@@ -29,32 +29,35 @@ generator digest `213594c6…`). **Step 3a COMPLETE (`0a71f66`)**: all
 NINE specs sealed pre-pilot. **Step 3b apparatus COMPLETE
 (`eeac6bc`)**: `validate-repo-task.py` (digest `f88474ca…`) +
 `score-pilot-0105.py` (`31916d00…`, registration-gap amendment)
-trio-frozen; **L-R2 pre-committed distance-only FALLBACK FIRED**
-(both seats DERIVER-FAILS-BAR ×2 on unbounded dynamic-load class;
-module claim narrowed to "distance + distractor-mass discovery";
-pin file `docs/specs/iter0105-pilot/scripts.sha256`; receipts
-`~/.local/share/nx01/iter0105/authoring/`). **NEXT = pilot R1**: 4
-EQ4P prototypes (terra direct-drive, validator-green, trio per
-batch) → R4 README → pilot manifest seal + freeze audit → detached
-8-run sonnet pilot → DECISION → batches 01-08 → sealing →
-calibration → FREEZE-ARM → ONE matrix.
+trio-frozen; **L-R2 distance-only FALLBACK FIRED** (module claim
+narrowed to "distance + distractor-mass discovery"; pin file
+`docs/specs/iter0105-pilot/scripts.sha256`). **Pilot R1 COMPLETE
+2026-08-21 (`426df93`+`6f073b1`+`3e2a365`)**: all four EQ4P
+prototypes trio-FROZEN (UA1 3 rounds / MI1-AF1-BD1 batch 2 rounds;
+freeze tokens ×8; trees UA1 `453093a6…` · MI1 `40b6db84…` · AF1
+`0d567197…` · BD1 `ad69e711…`) + R4 README landed. Narrative +
+adjudications (incl. the MI1/AF1 class-split ruling) in the
+iteration file § Execution log 2026-08-21; reports + round logs in
+`~/.local/share/nx01/iter0105/authoring/`.
 
-**Pilot R1 re-entry (session closed 2026-08-20 ~20:00 KST)**: the
-first EQ4P-UA1 terra dispatch was STOPPED mid-flight at session
-close (single-writer race rule — never leave a live delegated
-writer across sessions); its partial fixture was deleted, repo
-clean. Re-dispatch FRESH from the preserved brief
-`~/.local/share/nx01/iter0105/authoring/TERRA-BRIEF-PROTO-UA1.md`
-(digest pins inside are current at `28ccfbf`; UA1 is the
-shape-setter — its report's SHAPE-SETTER NOTES section feeds the
-MI1/AF1/BD1 briefs). Before dispatching: verify no other writer
-(`pgrep -fl gpt-5.6-terra`, `git status` clean). Seat recipes:
-terra = `codex-monitored.sh -s workspace-write -m gpt-5.6-terra
--c model_reasoning_effort=xhigh`; sol = same wrapper read-only,
+**NEXT = pilot launch lane**: pilot manifest seal + scoped freeze
+audit → **detached 8-run sonnet pilot** — LAUNCH CONDITIONS: quiet
+account (no other Claude sessions/headless reviews), outside
+23:00-01:00 KST, detach via `python os.setsid()` (Hard rule 7);
+mirror the 0102 pilot recipe (`0102-*.md:287-352`) at repo-scale
+parameters with frozen `score-pilot-0105.py`; DECISION exposure to
+authoring is ONE LINE (PROCEED/REJECT) + receipt digest — per-task
+outcomes sealed → then batches 01-08 → sealing → calibration →
+FREEZE-ARM → ONE matrix. Seat recipes: terra =
+`codex-monitored.sh -s workspace-write -m gpt-5.6-terra -c
+model_reasoning_effort=xhigh`; sol = same wrapper read-only,
 default model; grok = `grok -p "<prompt>" --allow read_file --allow
-grep --allow list_dir --no-memory --reasoning-effort high`; every
-seat prompt carries digest pins; review packets + all round logs in
-the receipts dir.
+grep --allow list_dir --no-memory --reasoning-effort high` —
+**grok gotcha: `-p` can WRITE files despite read-only allows; seat
+prompts must say STDOUT-only (a freeze run clobbered a receipt,
+since restored)**. Whole-tree digest pins: always `cd <task root>
+&& find . -type f -print0 | LC_ALL=C sort -z | xargs -0 shasum -a
+256 | shasum -a 256` (cwd + locale are part of the recipe).
 
 **iter-0104 model-checkup loop v1 SHIPPED 2026-08-18.** The standing
 "new model ID → one-page verdict + re-pin recommendation" loop lives in
