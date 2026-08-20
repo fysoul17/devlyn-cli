@@ -455,3 +455,32 @@ kind; cohort id `mx<n>-<UTCSTAMP>Z`.
   R3 `score-pilot-0105.py` (registration-gap amendment adjudicated in the
   step-2 entry pattern) → EQ4P prototypes ×4 validator-green → R4 README
   → pilot apparatus freeze audit → detached 8-run sonnet pilot → DECISION.
+- **2026-08-20 — step 3b pilot apparatus FROZEN (trio) + L-R2
+  PRE-COMMITTED FALLBACK FIRED.** `validate-repo-task.py` +
+  `score-pilot-0105.py` landed (terra single writer). The pilot scorer is
+  a REGISTRATION-GAP AMENDMENT — unenumerated in Apparatus deltas yet
+  mechanically forced by Sequencing step 3's in-kind mirror; scope proven
+  two-ID-deltas-only by sed-reversal byte-exactness; trio reviewed.
+  Trio r0 REVISE (sol ×3 HIGH: deriver silently incomplete / non-.py
+  rejection contradicted the frozen generator / neutralization-token
+  collision; grok ×2 HIGH +1 MED with full-validator fools) → fable
+  adjudicated ONE fail-closed completion attempt (USER-RULED-AXIS
+  PRESERVATION) → terra closed every enumerated shape → RE-BAR: both
+  seats DERIVER-FAILS-BAR again on FRESH unbounded-class fools
+  (alias/attribute/getattr/globals()/runpy/pkgutil dynamic loads) →
+  fable final adjudication: the registration :76-80 fallback FIRES
+  (named delta: unbounded-class evidence after complete enumeration
+  closure). **L-R2 = directory-distance-only (≥4); the module claim is
+  NARROWED to "distance + distractor-mass discovery"; schema keeps the
+  three frozen fields with structural-shape validation only.** Validator
+  1359→1011 lines (−348). The sealed pilot/batch specs carried this
+  conditional expressly ("If and only if the freeze-round graph-deriver
+  self-test bar fails…") — the branch is exercised, reported, never
+  silent; no sealed byte changed. Freeze: sol `FREEZE-0105-PILOTAPP-SOL`
+  + grok `FREEZE-0105-PILOTAPP-GROK`. Digests: validator `f88474ca…`,
+  scorer `31916d00…`, pinned at `docs/specs/iter0105-pilot/scripts.sha256`.
+  Receipts `~/.local/share/nx01/iter0105/authoring/`. NEXT = pilot R1:
+  4 EQ4P prototypes (terra direct-drive, validator-green each, trio
+  verification) → R4 README → pilot manifest seal + scoped freeze audit
+  → detached 8-run sonnet pilot (quiet account, outside 23:00-01:00 KST)
+  → DECISION.
