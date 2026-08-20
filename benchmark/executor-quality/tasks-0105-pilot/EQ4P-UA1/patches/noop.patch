@@ -1,0 +1,6 @@
+--- a/payload_window/services/swap_dispatch.py
++++ b/payload_window/services/swap_dispatch.py
+@@ -7,2 +7,3 @@
+ def record_swap(launch, previous):
++    # The dispatch record is retained for the launch activity trace.
+     launch["events"].append(("swap", previous))

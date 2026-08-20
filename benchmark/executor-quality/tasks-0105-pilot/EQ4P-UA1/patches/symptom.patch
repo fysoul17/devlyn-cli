@@ -1,0 +1,13 @@
+--- a/payload_window/allocator/swap_allocator.py
++++ b/payload_window/allocator/swap_allocator.py
+@@ -6,6 +6,10 @@
+ def apply_payload_swap(launch):
+     previous = launch["allocation"]
+     launch["allocation"] = launch["replacement"]
+     record_swap(launch, previous)
++    if launch["hold"]:
++        launch["allocation"] = previous
++        launch["slot_open"] = False
++        return {"accepted": False, "held": True}
+     launch["slot_open"] = True
+     return {"accepted": True, "held": False}

@@ -1,0 +1,54 @@
+{
+  "task_id": "EQ4P-UA1",
+  "seed": 10501,
+  "package_roots": [
+    "visible/avionics",
+    "visible/flight_data",
+    "visible/ground_systems",
+    "visible/mission_tools"
+  ],
+  "package_count": 10,
+  "modules_per_package": 10,
+  "module_bytes": 20500,
+  "data_file_count": 0,
+  "data_file_bytes": 0,
+  "edit_site_dir": "visible/payload_window/allocator",
+  "contract_artifacts": [
+    "visible/range_safety/trajectory/reservation_consumer.py",
+    "visible/launch/operations/test_weather_hold.py"
+  ],
+  "decoy_artifacts": [
+    "visible/payload_window/field_notes/acceptance_archive.py",
+    "visible/payload_window/field_notes/allocation_calendar.py",
+    "visible/payload_window/field_notes/crew_log.py",
+    "visible/payload_window/field_notes/handoff_register.py",
+    "visible/payload_window/field_notes/payload_intake.py",
+    "visible/payload_window/field_notes/release_board.py",
+    "visible/payload_window/field_notes/review_docket.py",
+    "visible/payload_window/field_notes/shift_ledger.py",
+    "visible/payload_window/field_notes/slot_planner.py",
+    "visible/payload_window/field_notes/status_brief.py",
+    "visible/payload_window/field_notes/transfer_log.py",
+    "visible/payload_window/field_notes/window_queue.py"
+  ],
+  "contract_paths": [
+    [
+      "visible/payload_window/allocator/swap_allocator.py",
+      "visible/payload_window/services/swap_dispatch.py",
+      "visible/range_safety/trajectory/reservation_consumer.py"
+    ],
+    [
+      "visible/payload_window/allocator/swap_allocator.py",
+      "visible/payload_window/services/swap_dispatch.py",
+      "visible/launch/operations/test_weather_hold.py"
+    ]
+  ],
+  "banned_tokens": [
+    "acceptance",
+    "hazard",
+    "notice",
+    "reservation",
+    "trajectory",
+    "weather"
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "unsupported_assumption",
+      "invariant": "Under the hold transition, the original allocation is restored and the hazard notice is retained exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/range_safety/trajectory/reservation_consumer.py",
+          "sha256": "acdcdaf4cc484cf0e8c75b153e86fd91d2fd3b583d6d46b4b1bbfff2d8de0cc5",
+          "quote": "A trajectory reservation remains active until range acceptance records the\nswapped payload."
+        },
+        {
+          "file": "visible/launch/operations/test_weather_hold.py",
+            "sha256": "47cd2bd260fbdb26e207ce6038d0aaf61f67c642b19caf09bd32ebeafa33a9aa",
+          "quote": "A weather hold retains the hazard notice once while the swapped payload is paused."
+        }
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "unsupported_assumption",
+      "invariant": "Under the hold transition, the original allocation is restored and the hazard notice is retained exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/range_safety/trajectory/reservation_consumer.py",
+          "sha256": "acdcdaf4cc484cf0e8c75b153e86fd91d2fd3b583d6d46b4b1bbfff2d8de0cc5",
+          "quote": "A trajectory reservation remains active until range acceptance records the\nswapped payload."
+        },
+        {
+          "file": "visible/launch/operations/test_weather_hold.py",
+            "sha256": "47cd2bd260fbdb26e207ce6038d0aaf61f67c642b19caf09bd32ebeafa33a9aa",
+          "quote": "A weather hold retains the hazard notice once while the swapped payload is paused."
+        }
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "unsupported_assumption",
+      "invariant": "Under the hold transition, the original allocation is restored and the hazard notice is retained exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/range_safety/trajectory/reservation_consumer.py",
+          "sha256": "acdcdaf4cc484cf0e8c75b153e86fd91d2fd3b583d6d46b4b1bbfff2d8de0cc5",
+          "quote": "A trajectory reservation remains active until range acceptance records the\nswapped payload."
+        },
+        {
+          "file": "visible/launch/operations/test_weather_hold.py",
+            "sha256": "47cd2bd260fbdb26e207ce6038d0aaf61f67c642b19caf09bd32ebeafa33a9aa",
+          "quote": "A weather hold retains the hazard notice once while the swapped payload is paused."
+        }
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "unsupported_assumption",
+      "invariant": "Under the hold transition, the original allocation is restored and the hazard notice is retained exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/range_safety/trajectory/reservation_consumer.py",
+          "sha256": "acdcdaf4cc484cf0e8c75b153e86fd91d2fd3b583d6d46b4b1bbfff2d8de0cc5",
+          "quote": "A trajectory reservation remains active until range acceptance records the\nswapped payload."
+        },
+        {
+          "file": "visible/launch/operations/test_weather_hold.py",
+            "sha256": "47cd2bd260fbdb26e207ce6038d0aaf61f67c642b19caf09bd32ebeafa33a9aa",
+          "quote": "A weather hold retains the hazard notice once while the swapped payload is paused."
+        }
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "unsupported_assumption",
+      "invariant": "Under the hold transition, the original allocation is restored and the hazard notice is retained exactly once.",
+      "contract_bindings": [
+        {
+          "file": "visible/range_safety/trajectory/reservation_consumer.py",
+          "sha256": "acdcdaf4cc484cf0e8c75b153e86fd91d2fd3b583d6d46b4b1bbfff2d8de0cc5",
+          "quote": "A trajectory reservation remains active until range acceptance records the\nswapped payload."
+        },
+        {
+          "file": "visible/launch/operations/test_weather_hold.py",
+            "sha256": "47cd2bd260fbdb26e207ce6038d0aaf61f67c642b19caf09bd32ebeafa33a9aa",
+          "quote": "A weather hold retains the hazard notice once while the swapped payload is paused."
+        }
+      ]
+    }
+  ]
+}
