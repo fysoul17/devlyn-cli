@@ -436,3 +436,22 @@ kind; cohort id `mx<n>-<UTCSTAMP>Z`.
   step 3: pre-author ALL NINE specs (pilot + batch 01-08) from the
   frozen table and commit BEFORE the pilot fires; pilot lane lands
   the 4 prototypes + derived `validate-repo-task.py`; 8 sonnet runs.
+- **2026-08-20 — Sequencing step 3a COMPLETE: ALL NINE specs pre-authored
+  and SEALED (trio).** `docs/specs/iter0105-pilot/` +
+  `iter0105-repo-scale-batch-01..08/` authored by terra (single writer)
+  from the frozen table ONLY; fable mechanical sweep (36/36 rows verbatim,
+  ID consistency, zero stale mid-scale constants) + SP-1 (cumulative
+  ID-set equality command restored, 0102 in-kind) + trio r1: sol REVISE ×3
+  (timeout_sec 1..600 canonical cap — all nine carriers invalid, iter-0093
+  law; receipt digest ungated in 02-08; frozen pins unchecked) / grok
+  REVISE ×2 (receipt DIRECTORY pointer = information-boundary leak vector;
+  compressed law gloss WEAKENED L-R3 + no binding-by-reference) — all five
+  adopted, terra fixed; canonical `spec-verify-check.py --check` PASS 9/9
+  (fable re-ran); freeze micro-pass sol FREEZE (`FREEZE-0105-SPECS-SOL`) +
+  grok FREEZE (`FREEZE-0105-SPECS-GROK`). Spec digests in
+  `~/.local/share/nx01/iter0105/authoring/FREEZE-MICROPASS-SPECS.md`.
+  Batch specs MUST NOT be rewritten after the pilot fires (0102 boundary
+  (a) carried). NEXT = step 3b pilot lane: R2 `validate-repo-task.py` +
+  R3 `score-pilot-0105.py` (registration-gap amendment adjudicated in the
+  step-2 entry pattern) → EQ4P prototypes ×4 validator-green → R4 README
+  → pilot apparatus freeze audit → detached 8-run sonnet pilot → DECISION.
