@@ -8,6 +8,8 @@ The iteration 0102 pilot stage in `tasks-0102-pilot/` admits `EQ3P-UA1`, `EQ3P-M
 
 The iteration 0102 corpus stage in `tasks-0102/` currently admits `EQ3-UA1`, `EQ3-UA2`, `EQ3-UA3`, `EQ3-UA4`, `EQ3-UA5`, `EQ3-UA6`, `EQ3-UA7`, `EQ3-UA8`, `EQ3-MI1`, `EQ3-MI2`, `EQ3-MI3`, `EQ3-MI4`, `EQ3-MI5`, `EQ3-MI6`, `EQ3-MI7`, `EQ3-MI8`, `EQ3-AF1`, `EQ3-AF2`, `EQ3-AF3`, `EQ3-AF4`, `EQ3-AF5`, `EQ3-AF6`, `EQ3-AF7`, `EQ3-AF8`, `EQ3-BD1`, `EQ3-BD2`, `EQ3-BD3`, `EQ3-BD4`, `EQ3-BD5`, `EQ3-BD6`, `EQ3-BD7`, and `EQ3-BD8`; standalone `validate-discovery-task.py` validates its tasks, and `score-calibration.py` and `score-cohort.py` gate the EQ3 set.
 
+The iteration 0105 repo-scale pilot stage in `tasks-0105-pilot/` admits `EQ4P-UA1`, `EQ4P-MI1`, `EQ4P-AF1`, and `EQ4P-BD1`; derived `validate-repo-task.py` validates its prototypes, and `score-pilot-0105.py` scores its pilot ledger. These four prototypes are discarded instruments, never corpus members: their domains and tuples are banned from corpus authoring; the later corpus will live in `tasks-0105/`.
+
 ## Validate the instrument
 
 Run the validator self-test and admit each exemplar from the repository root:
