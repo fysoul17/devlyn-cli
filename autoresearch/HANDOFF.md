@@ -16,10 +16,15 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ## 🚦 START-HERE — state after 2026-08-18 (session 2)
 
-**NEXT = iter-0105: REPO-SCALE CORPUS (>100 files, multi-file
-dependency chains) — the checkup loop's first coverage module.** Top
-suspect for the felt-vs-measured gap the 5-file corpora cannot
-discriminate; built to be reusable per model.
+**iter-0105 repo-scale discovery corpus REGISTERED + trio
+DESIGN-FROZEN 2026-08-20**
+([`iterations/0105-repo-scale-discovery-corpus.md`](iterations/0105-repo-scale-discovery-corpus.md)):
+the checkup loop's first coverage module — N=32×2 EQ4 band, 0102
+discovery mechanism + repo-scale mechanical laws L-R1..R4
+(Python-only, import-graph derivation per user ruling), matrix pair
+opus-5 vs opus-4-8. **NEXT = its § Sequencing step 2**: authoring
+table (all 32 specs) + generator freeze → pilot → batches → sealing →
+calibration → FREEZE-ARM → ONE matrix.
 
 **iter-0104 model-checkup loop v1 SHIPPED 2026-08-18.** The standing
 "new model ID → one-page verdict + re-pin recommendation" loop lives in

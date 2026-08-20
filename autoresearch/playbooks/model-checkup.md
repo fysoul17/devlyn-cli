@@ -424,8 +424,7 @@ integer after the last entry in `autoresearch/iterations/`
 (`playbooks/iteration-loop.md:11`) — then a **reservation tie-break**: also scan
 `HANDOFF.md` START-HERE and the `DECISIONS.md` tail for next-iteration numbers
 reserved in prose, and take the lowest integer that is neither used by a file
-nor reserved. (Live today: the file scan alone yields 0105, but `HANDOFF.md:32-35`
-reserves 0105 for the repo-scale module, so a checkup registered now takes 0106.)
+nor reserved.
 The slug is kebab-cased lowercase words; for a checkup it is FROZEN, leaving no
 naming choice:
 
