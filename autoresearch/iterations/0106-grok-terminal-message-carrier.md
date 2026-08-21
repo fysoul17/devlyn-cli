@@ -182,7 +182,7 @@ matched for the parser, collector, merge, and Grok adapter.
 Deterministic closure:
 
 - collector and merge self-tests exit 0;
-- the additive 0082 regression executable passes 132 checks, including two
+- the additive 0082 regression executable passes 133 checks, including two
   valid whole-message streams and 16 stream negatives;
 - all config / `.claude` / `.agents` critical mirrors are byte-identical;
 - `bash scripts/lint-skills.sh` exits 0 with all checks passed.
@@ -198,6 +198,13 @@ merge intentionally blocked when a non-seat diagnostic was named
 `opus5-judge.stdout`; removing that derived naming collision left the single
 standard pair carrier `grok-judge.stdout` and proved seat-attributed scanning
 remains fail-closed rather than silently ignoring ambiguous stdout.
+
+The final Opus 5 audit found one valid R4 compatibility edge: a plain first
+finding may legally carry an unrelated `"type":"system"` field. Stream
+detection now yields to any first object with a valid finding severity, and a
+fifth plain positive control pins that behavior without weakening compact or
+unknown stream rejection. The 133-check suite and mirrors passed again; final
+Opus 5 and Grok 4.6 re-verification closed with zero findings.
 
 No production deployment was performed: pyx-cloud still requires the owner to
 provide current payment-method attestations for the immutable-image rotation

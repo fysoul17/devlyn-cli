@@ -22,7 +22,7 @@ pyx-cloud pair blocker was the aggregate Grok transport welding narration to
 terminal PASS. The adapter now uses whole-message NDJSON; the shared parser
 binds only a unique terminal `end_turn` assistant plus an agreeing successful
 result, while a registered result-less partial stream remains TIMEOUT. Existing
-Codex envelope behavior is unchanged. Collector regression: 132 checks; full
+Codex envelope behavior is unchanged. Collector regression: 133 checks; full
 skill lint and all critical mirrors PASS. Fresh isolated Grok 4.6 collection
 PASS; pyx-cloud HEAD `18f4259` final verification converged mechanical PASS +
 Opus 5 PASS + Grok 4.6 PASS, deterministic merge zero findings. Root runtime

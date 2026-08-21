@@ -93,7 +93,11 @@ def collect_message_stream(
         first = loads_strict_json(lines[0][1])
     except ValueError:
         return None
-    if not isinstance(first, dict) or first.get("type") != "system":
+    if (
+        not isinstance(first, dict)
+        or first.get("type") != "system"
+        or str(first.get("severity") or "").upper() in FINDING_SEVERITIES
+    ):
         return None
     if first.get("subtype") != "init":
         raise SystemExit(f"error: stream must open with system/init at {source}:{lines[0][0]}")

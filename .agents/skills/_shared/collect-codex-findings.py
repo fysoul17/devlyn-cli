@@ -196,6 +196,17 @@ def self_test() -> int:
         assert findings == []
         assert summary == clean_summary
 
+        # R4: a valid plain finding may carry an unrelated `type` field. A
+        # first-line `type: system` finding is not a stream discriminator.
+        system_finding = {"id": "system-finding", "severity": "LOW", "type": "system"}
+        stdout_path.write_text(
+            json.dumps(system_finding) + "\n" + clean_summary["verdict"] + "\n",
+            encoding="utf-8",
+        )
+        findings, summary = collect_stdout(stdout_path)
+        assert findings == [system_finding]
+        assert summary == clean_summary
+
         # iter-0106 — Grok whole-message NDJSON carrier (R2/R3).
         def init_record(session: str = "s1") -> dict[str, Any]:
             return {"type": "system", "subtype": "init", "session_id": session, "model": "grok-build"}

@@ -162,6 +162,9 @@ POSITIVES = [
     # Guards the exact regression v1's gate caught: a real LOW/INFO advisory
     # alongside a PASS summary is legitimate and lives in the tracked corpus.
     ("advisory INFO finding with a PASS summary", f"{INFO}\n{PASS}\n", {}, 1, "PASS"),
+    ("plain finding with an unrelated type=system field",
+     json.dumps({"id": "system-finding", "severity": "LOW", "type": "system"})
+     + f"\n{PASS}\n", {}, 1, "PASS"),
 ]
 
 FENCE_SHAPES = [
