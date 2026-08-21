@@ -180,6 +180,252 @@ def self_test() -> int:
         findings, summary = collect_stdout(stdout_path)
         assert findings == []
         assert summary == clean_summary
+        stdout_path.write_text(
+            json.dumps(
+                {
+                    "type": "system",
+                    "text": clean_summary["verdict"] + "\n",
+                    "stopReason": "EndTurn",
+                    "sessionId": "session",
+                    "requestId": "request",
+                }
+            ),
+            encoding="utf-8",
+        )
+        findings, summary = collect_stdout(stdout_path)
+        assert findings == []
+        assert summary == clean_summary
+
+        # iter-0106 — Grok whole-message NDJSON carrier (R2/R3).
+        def init_record(session: str = "s1") -> dict[str, Any]:
+            return {"type": "system", "subtype": "init", "session_id": session, "model": "grok-build"}
+
+        def assistant_record(
+            blocks: list[Any], stop_reason: str = "end_turn", session: str = "s1"
+        ) -> dict[str, Any]:
+            return {
+                "type": "assistant",
+                "message": {"id": "msg", "role": "assistant", "content": blocks, "stop_reason": stop_reason},
+                "parent_tool_use_id": None,
+                "session_id": session,
+            }
+
+        def result_record(
+            text: str,
+            session: str = "s1",
+            subtype: str = "success",
+            is_error: Any = False,
+            stop_reason: str = "end_turn",
+        ) -> dict[str, Any]:
+            return {
+                "type": "result",
+                "subtype": subtype,
+                "is_error": is_error,
+                "result": text,
+                "stop_reason": stop_reason,
+                "session_id": session,
+            }
+
+        def text_block(value: str) -> dict[str, Any]:
+            return {"type": "text", "text": value}
+
+        def stream(*records: Any) -> str:
+            return "".join(json.dumps(record) + "\n" for record in records)
+
+        pass_text = "PASS\n"
+        stdout_path.write_text(
+            stream(init_record(), assistant_record([text_block(pass_text)]), result_record(pass_text)),
+            encoding="utf-8",
+        )
+        findings, summary = collect_stdout(stdout_path)
+        assert findings == []
+        assert summary == {"verdict": "PASS"}
+
+        # A real tool turn precedes the contract, and the terminal message arrives
+        # as two text blocks whose in-order concatenation is the result text.
+        stream_finding = {"id": "stream-finding", "severity": "HIGH"}
+        head = json.dumps(stream_finding) + "\n"
+        tail = "# SUMMARY " + json.dumps({"verdict": "NEEDS_WORK"}) + "\n"
+        contract = head + tail
+        narration = assistant_record(
+            [
+                text_block("Let me read the file."),
+                {"type": "tool_use", "id": "call_1", "name": "read_file", "input": {"path": "src/main.rs"}},
+            ],
+            stop_reason="tool_use",
+        )
+        tool_result = {
+            "type": "user",
+            "message": {
+                "role": "user",
+                "content": [{"type": "tool_result", "tool_use_id": "call_1", "content": "fn main() {}"}],
+            },
+            "parent_tool_use_id": None,
+            "session_id": "s1",
+        }
+        stdout_path.write_text(
+            stream(
+                init_record(),
+                narration,
+                tool_result,
+                assistant_record([text_block(head), text_block(tail)]),
+                result_record(contract),
+            ),
+            encoding="utf-8",
+        )
+        findings, summary = collect_stdout(stdout_path)
+        assert findings == [stream_finding]
+        assert summary == {"verdict": "NEEDS_WORK"}
+
+        # The welded body is exactly the shape envelope recovery accepts, so this
+        # also proves the stream branch never falls through to that recovery.
+        welded = "I reviewed the diff.\n" + contract
+        stream_rejections = (
+            (
+                stream(init_record(), assistant_record([text_block(welded)]), result_record(welded)),
+                "narration welded into the terminal message",
+                "invalid JSONL",
+            ),
+            (
+                stream(
+                    init_record(),
+                    assistant_record([text_block(contract)]),
+                    assistant_record([text_block(contract)]),
+                    result_record(contract),
+                ),
+                "two terminal end_turn messages",
+                "exactly one final end_turn assistant message",
+            ),
+            (
+                stream(
+                    init_record(),
+                    assistant_record([text_block(contract)]),
+                    assistant_record([text_block("more")], stop_reason="tool_use"),
+                    result_record(contract),
+                ),
+                "end_turn message that is not the final assistant message",
+                "exactly one final end_turn assistant message",
+            ),
+            (
+                # The malformed line is the only defect: skipping it leaves a valid stream.
+                stream(init_record(), assistant_record([text_block(pass_text)]))
+                + '{"type":"assistant"\n'
+                + stream(result_record(pass_text)),
+                "malformed stream NDJSON inside an otherwise valid stream",
+                "invalid stream NDJSON",
+            ),
+            (
+                stream(init_record(), assistant_record([text_block(pass_text)])),
+                "stream without a terminal result",
+                "exactly one terminal result",
+            ),
+            (
+                stream(
+                    init_record(),
+                    assistant_record([text_block(pass_text)]),
+                    result_record(pass_text),
+                    tool_result,
+                ),
+                "data after the terminal result",
+                "exactly one terminal result",
+            ),
+            (
+                stream(
+                    init_record(),
+                    assistant_record([text_block(pass_text)]),
+                    tool_result,
+                    result_record(pass_text),
+                ),
+                "data between the terminal assistant and result",
+                "exactly one final end_turn assistant message",
+            ),
+            (
+                stream(
+                    init_record(),
+                    assistant_record([text_block(pass_text)]),
+                    result_record(pass_text, subtype="error_during_execution"),
+                ),
+                "error result subtype",
+                "not a successful end_turn",
+            ),
+            (
+                stream(
+                    init_record(),
+                    assistant_record([text_block(pass_text)]),
+                    result_record(pass_text, stop_reason="cancelled"),
+                ),
+                "cancelled result",
+                "not a successful end_turn",
+            ),
+            (
+                stream(
+                    init_record(),
+                    assistant_record([text_block(pass_text)]),
+                    result_record(pass_text, is_error=True),
+                ),
+                "error-flagged result",
+                "not a successful end_turn",
+            ),
+            (
+                stream(
+                    init_record(),
+                    assistant_record([text_block(pass_text)]),
+                    result_record("NEEDS_WORK\n"),
+                ),
+                "result text that disagrees with the terminal message",
+                "result text does not match the terminal message",
+            ),
+            (
+                stream(
+                    init_record(),
+                    assistant_record([text_block(pass_text)]),
+                    result_record(pass_text, session="s2"),
+                ),
+                "result from another session",
+                "session identity does not agree",
+            ),
+            (
+                stream(
+                    init_record(),
+                    {"type": "stream_event", "event": {"type": "content_block_delta"}, "session_id": "s1"},
+                    assistant_record([text_block(pass_text)]),
+                    result_record(pass_text),
+                ),
+                "partial-message frame",
+                "unknown stream record",
+            ),
+            (
+                stream(
+                    init_record(),
+                    {"type": "system", "subtype": "compact_boundary", "session_id": "s1"},
+                    assistant_record([text_block(pass_text)]),
+                    result_record(pass_text),
+                ),
+                "compact boundary",
+                "second system record",
+            ),
+            (
+                stream(
+                    init_record(),
+                    {"type": "unknown", "session_id": "s1"},
+                    assistant_record([text_block(pass_text)]),
+                    result_record(pass_text),
+                ),
+                "unknown record type",
+                "unknown stream record",
+            ),
+            (
+                stream(
+                    {"type": "system", "subtype": "compact_boundary", "session_id": "s1"},
+                    assistant_record([text_block(pass_text)]),
+                    result_record(pass_text),
+                ),
+                "stream that does not open with system/init",
+                "must open with system/init",
+            ),
+        )
+        for text, label, message in stream_rejections:
+            assert_rejected(text, label, message)
     return 0
 
 

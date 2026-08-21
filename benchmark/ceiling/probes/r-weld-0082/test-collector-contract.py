@@ -16,6 +16,9 @@ Two tiers, both required by the frozen bar:
 Plus a non-regression sweep over the git-TRACKED judge captures (61 — not the 125
 on disk; 64 of those are untracked and cannot be part of a bar that must stay
 reproducible from a clean clone).
+
+iter-0106 appends one separate section for the Grok whole-message NDJSON carrier.
+It is additive: the matrices, corpus expectations, and overrides above are frozen.
 """
 import hashlib
 import json
@@ -167,6 +170,108 @@ FENCE_SHAPES = [
     ("closing-only", f"{CRIT}\n{NW}\n```\n"),
 ]
 
+# --- iter-0106 stream section. Separate from the frozen matrices above. --------
+# The Grok carrier is whole-message NDJSON: one system/init, whole assistant/user
+# messages, one terminal result. Adjudication binds only to a uniquely attested
+# final end_turn assistant message that the successful result reproduces exactly.
+CONTRACT = f"{HIGH}\n{NW}\n"
+# Exactly the shape envelope recovery accepts, so its rejection here is the proof
+# that a declared stream never falls through to that recovery.
+WELDED = "I reviewed the diff.\n" + CONTRACT
+
+
+def s_init(session="s1", subtype="init"):
+    return {"type": "system", "subtype": subtype, "session_id": session, "model": "grok-build"}
+
+
+def s_assistant(blocks, stop_reason="end_turn", session="s1"):
+    return {"type": "assistant", "parent_tool_use_id": None, "session_id": session,
+            "message": {"id": "msg", "role": "assistant", "content": blocks,
+                        "stop_reason": stop_reason}}
+
+
+def s_result(text, session="s1", subtype="success", is_error=False, stop_reason="end_turn"):
+    return {"type": "result", "subtype": subtype, "is_error": is_error, "result": text,
+            "stop_reason": stop_reason, "session_id": session}
+
+
+def s_text(value):
+    return {"type": "text", "text": value}
+
+
+def stream(*records):
+    return "".join(json.dumps(record) + "\n" for record in records)
+
+
+TOOL_TURN = s_assistant(
+    [s_text("Let me read the file."),
+     {"type": "tool_use", "id": "call_1", "name": "read_file", "input": {"path": "src/main.rs"}}],
+    stop_reason="tool_use",
+)
+TOOL_RESULT = {"type": "user", "parent_tool_use_id": None, "session_id": "s1",
+               "message": {"role": "user", "content": [
+                   {"type": "tool_result", "tool_use_id": "call_1", "content": "fn main() {}"}]}}
+
+STREAM_POSITIVES = [
+    ("stream PASS, no findings",
+     stream(s_init(), s_assistant([s_text(f"{PASS}\n")]), s_result(f"{PASS}\n")),
+     0, "PASS"),
+    # Narration and its tool result precede the contract and must not reach the
+    # finding parser; the terminal text arrives as two blocks concatenated in order.
+    ("stream findings after a real tool turn, terminal text in two blocks",
+     stream(s_init(), TOOL_TURN, TOOL_RESULT,
+            s_assistant([s_text(f"{HIGH}\n"), s_text(f"{NW}\n")]), s_result(CONTRACT)),
+     1, "NEEDS_WORK"),
+]
+
+STREAM_NEGATIVES = [
+    ("S1 narration welded into the terminal message",
+     stream(s_init(), s_assistant([s_text(WELDED)]), s_result(WELDED))),
+    ("S2 two terminal end_turn messages",
+     stream(s_init(), s_assistant([s_text(CONTRACT)]), s_assistant([s_text(CONTRACT)]),
+            s_result(CONTRACT))),
+    ("S3 end_turn message is not the final assistant message",
+     stream(s_init(), s_assistant([s_text(CONTRACT)]),
+            s_assistant([s_text("more")], stop_reason="tool_use"), s_result(CONTRACT))),
+    # The malformed line is the only defect: skipping it would leave a valid stream.
+    ("S4 malformed NDJSON record inside an otherwise valid stream",
+     stream(s_init(), s_assistant([s_text(f"{PASS}\n")])) + '{"type":"assistant"\n'
+     + stream(s_result(f"{PASS}\n"))),
+    ("S5 no terminal result",
+     stream(s_init(), s_assistant([s_text(f"{PASS}\n")]))),
+    ("S6 data after the terminal result",
+     stream(s_init(), s_assistant([s_text(f"{PASS}\n")]), s_result(f"{PASS}\n"), TOOL_RESULT)),
+    ("S7 error result subtype",
+     stream(s_init(), s_assistant([s_text(f"{PASS}\n")]),
+            s_result(f"{PASS}\n", subtype="error_during_execution"))),
+    ("S8 cancelled result",
+     stream(s_init(), s_assistant([s_text(f"{PASS}\n")]),
+            s_result(f"{PASS}\n", stop_reason="cancelled"))),
+    ("S9 error-flagged result",
+     stream(s_init(), s_assistant([s_text(f"{PASS}\n")]),
+            s_result(f"{PASS}\n", is_error=True))),
+    ("S10 result text disagrees with the terminal message",
+     stream(s_init(), s_assistant([s_text(f"{PASS}\n")]), s_result(f"{NW}\n"))),
+    ("S11 result from another session",
+     stream(s_init(), s_assistant([s_text(f"{PASS}\n")]), s_result(f"{PASS}\n", session="s2"))),
+    ("S12 partial-message frame",
+     stream(s_init(), {"type": "stream_event", "event": {"type": "content_block_delta"},
+                       "session_id": "s1"},
+            s_assistant([s_text(f"{PASS}\n")]), s_result(f"{PASS}\n"))),
+    ("S13 compact boundary",
+     stream(s_init(), s_init(subtype="compact_boundary"),
+            s_assistant([s_text(f"{PASS}\n")]), s_result(f"{PASS}\n"))),
+    ("S14 unknown record type",
+     stream(s_init(), {"type": "unknown", "session_id": "s1"},
+            s_assistant([s_text(f"{PASS}\n")]), s_result(f"{PASS}\n"))),
+    ("S15 stream does not open with system/init",
+     stream(s_init(subtype="compact_boundary"), s_assistant([s_text(f"{PASS}\n")]),
+            s_result(f"{PASS}\n"))),
+    ("S16 data separates the terminal assistant from its result",
+     stream(s_init(), s_assistant([s_text(f"{PASS}\n")]), TOOL_RESULT,
+            s_result(f"{PASS}\n"))),
+]
+
 
 def main():
     failures = []
@@ -203,6 +308,21 @@ def main():
                 f"  positive '{name}': got {len(findings)} findings / "
                 f"{(summary or {}).get('verdict')}, want {n_findings} / {verdict}"
             )
+
+    # Tier 1d — iter-0106 stream section, through the same collector binary.
+    for name, body, n_findings, verdict in STREAM_POSITIVES:
+        code, findings, summary = collect(body)
+        if code != 0:
+            failures.append(f"  stream positive '{name}': REJECTED, must accept")
+        elif len(findings) != n_findings or (summary or {}).get("verdict") != verdict:
+            failures.append(
+                f"  stream positive '{name}': got {len(findings)} findings / "
+                f"{(summary or {}).get('verdict')}, want {n_findings} / {verdict}"
+            )
+    for name, body in STREAM_NEGATIVES:
+        code, _, _ = collect(body)
+        if code == 0:
+            failures.append(f"  {name}: ACCEPTED, must reject")
 
     # Tier 2 — the real-capture corpus.
     manifest = json.loads((HERE / "manifest.json").read_text())
@@ -280,10 +400,12 @@ def main():
         return 1
 
     checks = (sum(len(paths) for _, _, paths in NEGATIVES) + len(PATHS) + len(FENCE_SHAPES)
-              + len(POSITIVES) + len(manifest["captures"]) + len(baseline["captures"]))
+              + len(POSITIVES) + len(STREAM_POSITIVES) + len(STREAM_NEGATIVES)
+              + len(manifest["captures"]) + len(baseline["captures"]))
     print(f"collector contract ✓ ({checks} checks: "
           f"{len(NEGATIVES)} negatives across ingress paths, N12 rejection x{len(PATHS)}, "
           f"{len(FENCE_SHAPES)} fence shapes, {len(POSITIVES)} positive controls, "
+          f"{len(STREAM_POSITIVES)} stream positives, {len(STREAM_NEGATIVES)} stream negatives, "
           f"{len(manifest['captures'])} real captures (W1 rows also replayed through the real merge), "
           f"{len(baseline['captures'])} tracked non-regression)")
     return 0
