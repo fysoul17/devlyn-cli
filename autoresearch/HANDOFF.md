@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent closed: [`iterations/0105-repo-scale-discovery-corpus.md`](iterations/0105-repo-scale-discovery-corpus.md) (TERMINAL MECHANISM_REJECTED — see START-HERE) + the 0100→0103 lineage (`iterations/0102-*.md` / `0103-*.md`). Next registration is user-gated; candidates in START-HERE. Older context in the iteration index + `DECISIONS.md`.
+5. Most recent closed: [`iterations/0106-grok-terminal-message-carrier.md`](iterations/0106-grok-terminal-message-carrier.md) (SHIPPED harness fix) and [`iterations/0105-repo-scale-discovery-corpus.md`](iterations/0105-repo-scale-discovery-corpus.md) (TERMINAL MECHANISM_REJECTED — see START-HERE). Next research registration is user-gated; candidates remain in START-HERE. Older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,7 +14,20 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-21 (session 3)
+## 🚦 START-HERE — state after 2026-08-21 (session 4)
+
+**iter-0106 Grok terminal-message carrier SHIPPED 2026-08-21
+(`59df4d3` + `15cba6c` + `3820023`, DECISIONS 0106.1).** The observed
+pyx-cloud pair blocker was the aggregate Grok transport welding narration to
+terminal PASS. The adapter now uses whole-message NDJSON; the shared parser
+binds only a unique terminal `end_turn` assistant plus an agreeing successful
+result, while a registered result-less partial stream remains TIMEOUT. Existing
+Codex envelope behavior is unchanged. Collector regression: 132 checks; full
+skill lint and all critical mirrors PASS. Fresh isolated Grok 4.6 collection
+PASS; pyx-cloud HEAD `18f4259` final verification converged mechanical PASS +
+Opus 5 PASS + Grok 4.6 PASS, deterministic merge zero findings. Root runtime
+installed with source-identical hashes. Production rollout remains correctly
+blocked on current owner payment-method attestations, not on code or harness.
 
 **iter-0105 repo-scale discovery corpus REGISTERED + trio
 DESIGN-FROZEN 2026-08-20**
