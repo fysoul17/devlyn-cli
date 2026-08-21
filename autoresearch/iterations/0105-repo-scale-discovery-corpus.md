@@ -518,3 +518,63 @@ kind; cohort id `mx<n>-<UTCSTAMP>Z`.
   account — no other Claude sessions/headless reviews, outside
   23:00-01:00 KST) → DECISION (ONE LINE PROCEED/REJECT + receipt
   digest crosses to authoring; per-task outcomes stay sealed).
+- **2026-08-21 (session 2) — pilot LAUNCH apparatus TRIO-FROZEN
+  (3-round adversarial lane); LAUNCH DEFERRED by user pending quota
+  reset.** The in-kind derivation from the executed 0102 pilot was
+  found already on disk at session start — authored minutes earlier by
+  this same terminal's prior Opus incarnation (model mis-pick, user
+  restarted as fable); single-writer ownership transferred, the
+  orphaned read-only sol audit process was left to finish and its
+  STDOUT adopted as the r1 sol seat. **r1**: sol REVISE ×2 HIGH —
+  (1) mutable freeze-root: launch gate trusted driver/launcher digests
+  from the adjacent inventory file (coordinated 2-file drift passed);
+  (2) session-limit/429 rows scored as engine f=1 (the 0102 attempt-1
+  class; canonical mx taxonomy missing from the pilot-driver lineage).
+  Fable adopted both, HIGH-2 constrained DRIVER-ONLY (named criterion
+  TAXONOMY-OWNERSHIP; scorer stays frozen 31916d00…). terra fix r1:
+  canonical `INFRA_FAILURE` + `classify_cli_result` port + hardcoded
+  gate pins + dead-fallback deletion. **r2 SPLIT**: grok FREEZE (same
+  residuals as MED, non-blocking) vs sol REVISE ×2 HIGH with NEW
+  end-to-end evidence — stdout-only session-limit text AND
+  success+empty-modelUsage both reached `decision=PROCEED` with
+  `row_errors=[]` (the r1 port passed stderr-only to the classifier vs
+  the canonical combined failure_text; the empty-attestation "success"
+  class falsified the unreachability premise), and rc=124 classified
+  replaceable-infra contradicting the frozen registration (§ Apparatus
+  5: "A pilot ceiling hit is a terminal mechanism failure, not a
+  knob"). Fable adjudicated SOL ADOPTED over grok's FREEZE (named
+  deltas: the two demonstrations + the registration citation; criteria
+  DRIVER→SCORER REACHABILITY / REGISTERED CENSORING SEMANTICS). terra
+  fix r2: (A) canonical combined stdout+stderr call site restored;
+  (B) explicit `returncode == 124` → catastrophic, NOT infra —
+  registered censoring, scores f=1; (C) `infra_invalid = zero_turn or
+  (failure and infra_signal)` — no-attestation rows are never
+  attributable to model quality (0089 ATTESTATION-RESULT FIDELITY
+  precedent), rc=124 exempt via (B), textual signals stay
+  failure-gated (false-flag guard verified). **r3 trio FREEZE**:
+  `FREEZE-0105-PILOTLAUNCH-SOL` (0 findings; 72-case equivalence
+  sweep — scorable null-attested rows exist ONLY via rc=124) +
+  `FREEZE-0105-PILOTLAUNCH-GROK` (re-freeze; no new mis-attribution
+  class; 124+wrong-engine backstopped by the scorer's
+  attested≠requested reject at `score-pilot-0105.py:86-87`); fable
+  mechanical green each round (digests, delta-only diffs, independent
+  classifier probes 8/8). Frozen digests — inventory
+  `frozen-pilot-apparatus.sha256` = `1251241f…`, audit packet
+  `78c7e683…`; rows: pilot-driver `77ae280f…` · launch-detached
+  `cfbda3af…` · pilot-launcher `e86d8b38…` · run-bounded `db9ed383…`
+  · pilot-manifest `78d153da…` (canonical tree `ff97a3e4…`; manifest
+  `git_head` 706732a is the seal-time record) · scorer `31916d00…`
+  byte-untouched. Declared delta lists now 9 (driver) / 2 (launcher)
+  / 7 (gate), reversal-proven against the 0102 bases by terra + both
+  seats. **Follow-up registered for the MATRIX-derivation step (item
+  5), not now**: the canonical mx-driver seed carries the same two
+  taxonomy corners at classifier level (success+empty-modelUsage →
+  scorable f=1; no rc=124 censoring branch — grok traced both) — the
+  (B)/(C) delta question must be decided when the 0105 matrix driver
+  is derived. Receipts: `~/.local/share/nx01/iter0105/pilot/audit/`
+  (sol r1/r2/r3, grok r1/r2, terra fix r1/r2). **LAUNCH NOT FIRED**:
+  at the ready check the account was live (a second interactive
+  Claude session + two headless `claude -p` spawns from other
+  projects' codex/superset tabs, observed 10:00 KST) — user deferred
+  the launch to a fresh session after quota reset. Turnkey pre-launch
+  checklist pinned in HANDOFF § START-HERE.
