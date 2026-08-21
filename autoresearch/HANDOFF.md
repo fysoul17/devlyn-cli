@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent closed: [`iterations/0102-executor-quality-discovery-corpus.md`](iterations/0102-executor-quality-discovery-corpus.md) + [`iterations/0103-opus-line-regression-cell.md`](iterations/0103-opus-line-regression-cell.md) (lineage 0100→0103 CLOSED — see START-HERE). Next registration (0105 repo-scale corpus) is defined in START-HERE below; older context in the iteration index + `DECISIONS.md`.
+5. Most recent closed: [`iterations/0105-repo-scale-discovery-corpus.md`](iterations/0105-repo-scale-discovery-corpus.md) (TERMINAL MECHANISM_REJECTED — see START-HERE) + the 0100→0103 lineage (`iterations/0102-*.md` / `0103-*.md`). Next registration is user-gated; candidates in START-HERE. Older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,7 +14,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-18 (session 2)
+## 🚦 START-HERE — state after 2026-08-21 (session 3)
 
 **iter-0105 repo-scale discovery corpus REGISTERED + trio
 DESIGN-FROZEN 2026-08-20**
@@ -40,41 +40,29 @@ adjudications (incl. the MI1/AF1 class-split ruling) in the
 iteration file § Execution log 2026-08-21; reports + round logs in
 `~/.local/share/nx01/iter0105/authoring/`.
 
-**NEXT = FIRE THE PILOT — turnkey; apparatus TRIO-FROZEN 2026-08-21,
-do NOT re-derive or re-audit.** The launch lane at
-`~/.local/share/nx01/iter0105/pilot/` is sealed: inventory
-`frozen-pilot-apparatus.sha256` (file sha256 `1251241f…`), audit
-packet `78c7e683…`, freeze tokens `FREEZE-0105-PILOTLAUNCH-{SOL,GROK}`
-— full digest table + 3-round narrative (sol 2×REVISE→FREEZE, grok
-FREEZE ×2, terra taxonomy/gate fixes) in the iteration file
-§ Execution log 2026-08-21 session 2; receipts in `pilot/audit/`.
-Pre-launch, ALL mechanical and fail-closed (any mismatch = STOP):
-(1) quiet account — no second interactive Claude session, no headless
-`claude -p` (other projects' codex/superset tabs spawn them; observed
-2026-08-21 10:00), outside 23:00-01:00 KST; (2) verify the six
-inventory rows against disk bytes + the four task-tree digests
-(§ pins in the audit packet) + git clean + zero
-`attempt-*`/`*.lock`/`DECISION*` — NOTE: `pilot-manifest.json`
-`git_head` 706732a is the SEAL-TIME record and differs from live HEAD
-(docs commits landed after); the binding checks are file digests, not
-HEAD; (3) same-day one-turn exact-ID sonnet smoke with the pinned CLI
-(`~/.local/share/nx01/pins/claude-2.1.226-iter0100/claude`) in a
-neutral non-EQ4P dir, require `modelUsage == {claude-sonnet-5}`;
-(4) fire `cd ~/.local/share/nx01/iter0105/pilot && python3
-launch-detached.py --run-id pilot1-<UTCSTAMP>Z --attempt 1` (gate
-re-verifies everything, detaches via `start_new_session`; 8 rows ≈
-10-120 min, BOUND_SEC 1800, no repo/task/pilot writers until done);
-(5) read ONLY `DECISION` + `DECISION.receipt.sha256` (decision rule
-frozen in `score-pilot-0105.py`: PROCEED iff mean(q_pilot) ∈
-[1/10, 3/5] AND ≥3/4 interior AND none = 1; per-task outcomes stay
-SEALED from corpus authoring). PROCEED → batches 01-08 → sealing →
-calibration → FREEZE-ARM → ONE matrix; REJECT → terminal
-MECHANISM_REJECTED; UNSCORED (infra rows) → relaunch ONLY on
-byte-identical digests, max 3 attempts, quieter window. Registered
-follow-up at MATRIX-derivation (not before): mx-driver seed carries
-the pilot's two fixed taxonomy corners (success+empty-modelUsage f=1;
-no rc=124 censoring branch) — decide the (B)/(C) deltas then.
-Seat recipes: terra =
+**PILOT FIRED + REJECTED 2026-08-21 (session 3) — iter-0105 CLOSED,
+TERMINAL `MECHANISM_REJECTED` (DECISIONS 0105.1).** The turnkey launch
+ran clean: pre-launch gates green (digests, git clean, sonnet smoke),
+quiet-account condition user-overridden (other sessions live; zero
+infra anomalies materialized anyway), run `pilot1-20260821T050420Z`
+8/8 valid rows in ~64 min, frozen scorer REJECT (receipt `e825df07…`),
+post-run digests byte-identical, trio verify sol PASS S1-S8 + grok
+PASS G1-G5. Converged abstract trigger (sealed numerics withheld):
+mean ABOVE the upper bound + interior count below threshold + one
+prototype at the unit ceiling — the EQ4P repo-scale band is TOO HARD
+for the sonnet calibration engine. Per the registered rule: no
+retuning; batches/sealing/calibration/matrix do not run. **NEXT =
+user-gated successor registration** — candidates: repo-scale band
+with a fresh (easier) difficulty derivation, session-horizon, or
+pair-deference (0103 closure list). Standing follow-up: the canonical
+mx-driver seed still carries two taxonomy corners
+(success+empty-modelUsage → scorable f=1; no rc=124 censoring
+branch) — decide at any successor's matrix derivation. Narrative:
+iteration file § Execution log 2026-08-21 session 3; receipts
+`~/.local/share/nx01/iter0105/pilot/` (attempt dir + DECISION +
+audit/).
+
+Standing seat recipes: terra =
 `codex-monitored.sh -s workspace-write -m gpt-5.6-terra -c
 model_reasoning_effort=xhigh`; sol = same wrapper read-only,
 default model; grok = `grok -p "<prompt>" --allow read_file --allow

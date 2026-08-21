@@ -2,7 +2,7 @@
 id: "0105-repo-scale-discovery-corpus"
 title: "Repo-scale discovery corpus — checkup coverage module"
 kind: instrument
-status: DESIGN-FROZEN 2026-08-20 — R0+R1 folded, trio freeze complete (grok FREEZE, sol FREEZE, fable adjudication; final digest 77f3b10e…). User rulings 2026-08-20: L-R2 = import-graph derivation with pre-committed distance-only fallback; matrix pair = opus-5 vs opus-4-8; registration approved. Sequencing step 2 (authoring table + generator) FROZEN 2026-08-20 (trio; see Execution log)
+status: CLOSED 2026-08-21 — TERMINAL MECHANISM_REJECTED (pilot REJECT; DECISIONS 0105.1). Prior: DESIGN-FROZEN 2026-08-20 (trio; final digest 77f3b10e…; user rulings L-R2 fallback + matrix pair opus-5 vs opus-4-8)
 complexity: high
 depends_on: ["0102-executor-quality-discovery-corpus", "0103-opus-line-regression-cell", "0104-model-checkup-loop"]
 ---
@@ -578,3 +578,41 @@ kind; cohort id `mx<n>-<UTCSTAMP>Z`.
   projects' codex/superset tabs, observed 10:00 KST) — user deferred
   the launch to a fresh session after quota reset. Turnkey pre-launch
   checklist pinned in HANDOFF § START-HERE.
+- **2026-08-21 session 3 — PILOT FIRED + REJECT; iter CLOSED TERMINAL
+  `MECHANISM_REJECTED`.** Pre-launch mechanical gates green: six
+  inventory rows + 4 task-tree digests + CLI pin byte-verified, git
+  clean, zero `attempt-*`/lock/DECISION artifacts, same-day sonnet
+  smoke `modelUsage == {claude-sonnet-5}` (pinned CLI, neutral dir).
+  Quiet-account condition NOT met (second interactive Claude session
+  + other projects' codex tabs live); the user explicitly overrode
+  and fired — risk accepted and recorded. Run
+  `pilot1-20260821T050420Z` attempt 1, detached; 8/8 rows completed
+  in ~64 min with zero infra anomalies (timeouts 0, retries 0, rc124
+  0, error lines 0) — the account noise never materialized. Frozen
+  scorer double-run byte-identical, exit 2 →
+  `DECISION {"decision": "REJECT"}`; receipt chain
+  decision-receipt `e825df07…` / ledger `d07de5b6…` / verdict
+  `905129f8…`; per-task outcomes remain SEALED per the frozen
+  information boundary. Post-run integrity: all 10 digests + git
+  clean re-verified byte-identical. Trio verification (fresh
+  adversarial seats on the completed run): sol
+  `VERIFY-0105-PILOTRUN-SOL: PASS` S1-S8 (pins 6/6 + trees 4/4,
+  ledger schema 12/12 keys + 0 extra fields, scorer re-run hash
+  match, receipt chain, launch-receipt binding, infra_invalid none,
+  lane anomalies none, rule-faithful) and grok
+  `VERIFY-0105-PILOTRUN-GROK: PASS` G1-G5 (pin-table honesty vs
+  on-disk freeze files, receipt chain, independent in-memory scorer
+  double-run byte-identical, wrote-nothing). Both seats converge on
+  the abstract trigger, stated without sealed numerics: mean ABOVE
+  the upper bound + interior count below threshold + one prototype
+  at the unit ceiling — the EQ4P repo-scale band is too hard for the
+  sonnet calibration engine at this shape. Registered rule (§
+  Sequencing item 3) applies verbatim: REJECT = terminal
+  `MECHANISM_REJECTED`, no retuning; batches, sealing, calibration,
+  and the matrix do not run. Any successor is a NEW registration
+  with a fresh difficulty derivation, user-gated. The mx-driver
+  taxonomy-corner follow-up (success+empty-modelUsage f=1; no
+  rc=124 censoring branch) loses its 0105 trigger point and carries
+  forward to any successor's matrix derivation. Receipts:
+  `~/.local/share/nx01/iter0105/pilot/` (attempt dir + DECISION +
+  audit/ incl. `{sol,grok}-pilotrun-verify.log` + seat prompts).
