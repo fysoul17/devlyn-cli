@@ -57,6 +57,7 @@ fi
 # mirror parity checks cover the same files.
 critical_path_files=$(cat <<'EOF'
 _shared/spec-verify-check.py
+_shared/judge-output-parser.py
 _shared/collect-codex-findings.py
 _shared/verify-merge-findings.py
 _shared/state-phase-write.py

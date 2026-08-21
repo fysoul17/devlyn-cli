@@ -859,6 +859,41 @@ def read_pair_timeout_marker(devlyn: pathlib.Path) -> tuple[dict[str, Any] | Non
     return {"engine": engine, "budget_seconds": budget_seconds}, None
 
 
+def is_result_less_message_stream(stdout_text: str) -> bool:
+    """True when a declared whole-message stream stops before its terminal result.
+
+    The timeout marker attests the killed process. This classifier admits only a
+    valid stream prefix, optionally ending in one truncated JSON record.
+    """
+    lines = [raw for line in stdout_text.splitlines() if (raw := line.strip())]
+    if not lines:
+        return False
+    try:
+        first = JUDGE_OUTPUT_PARSER["loads_strict_json"](lines[0])
+    except ValueError:
+        return False
+    if (
+        not isinstance(first, dict)
+        or first.get("type") != "system"
+        or first.get("subtype") != "init"
+        or not isinstance(first.get("session_id"), str)
+    ):
+        return False
+    session_id = first["session_id"]
+    for index, raw in enumerate(lines[1:], 1):
+        try:
+            item = JUDGE_OUTPUT_PARSER["loads_strict_json"](raw)
+        except ValueError:
+            return index == len(lines) - 1 and raw.startswith("{") and not raw.endswith("}")
+        if (
+            not isinstance(item, dict)
+            or item.get("type") not in {"assistant", "user"}
+            or item.get("session_id") != session_id
+        ):
+            return False
+    return True
+
+
 def detect_pair_stdout_contract_violations(
     devlyn: pathlib.Path,
     source_verdicts: dict[str, str | None],
@@ -974,7 +1009,8 @@ def detect_pair_stdout_contract_violations(
     if source_verdicts["pair_judge"] is None and timeout_marker is None:
         source_verdicts["pair_judge"] = "PASS"
     for stdout_path in stdout_paths:
-        if not stdout_path.read_text(encoding="utf-8").strip():
+        stdout_text = stdout_path.read_text(encoding="utf-8")
+        if not stdout_text.strip():
             if timeout_marker is not None:
                 continue
             source_verdicts["pair_judge"] = "BLOCKED"
@@ -988,6 +1024,8 @@ def detect_pair_stdout_contract_violations(
         try:
             stdout_findings, stdout_summary = JUDGE_OUTPUT_PARSER["collect_stdout"](stdout_path)
         except SystemExit as exc:
+            if timeout_marker is not None and is_result_less_message_stream(stdout_text):
+                continue
             source_verdicts["pair_judge"] = "BLOCKED"
             return [
                 pair_blocker(
@@ -1466,6 +1504,121 @@ def self_test() -> int:
         ), findings
         (devlyn / "codex-judge.stdout").unlink()
         (devlyn / "verify.pair.timeout.json").unlink()
+
+        # iter-0106: a budget abort can truncate the whole-message stream before
+        # its terminal result. With a valid marker that capture stays TIMEOUT.
+        (devlyn / "pipeline.state.json").write_text(
+            json.dumps({
+                "engine": "claude",
+                "phases": {
+                    "verify": {
+                        "verdict": "PASS",
+                        "sub_verdicts": {},
+                        "pair_trigger": {
+                            "eligible": True,
+                            "reasons": ["judge.warning"],
+                            "skipped_reason": None,
+                        },
+                    }
+                }
+            }),
+            encoding="utf-8",
+        )
+        partial_stream = (
+            '{"type":"system","subtype":"init","session_id":"s106"}\n'
+            '{"type":"assistant","session_id":"s106","message":{"stop_reason":null,'
+            '"content":[{"type":"text","text":"reading the diff"}]}}\n'
+        )
+        (devlyn / "grok-judge.stdout").write_text(partial_stream, encoding="utf-8")
+        (devlyn / "verify.pair.timeout.json").write_text(
+            json.dumps({"engine": "grok", "budget_seconds": 600}),
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "PASS", summary
+        assert summary["source_verdicts"]["pair_judge"] == "TIMEOUT", summary
+        assert summary["pair_timeout"] == {"engine": "grok", "budget_seconds": 600}, summary
+        assert not findings, findings
+
+        # A kill may cut the final JSON record mid-write; one malformed tail is
+        # still a valid prefix, while malformed/unknown complete records are not.
+        (devlyn / "grok-judge.stdout").write_text(
+            partial_stream + '{"type":"assistant","session_id":"s106"',
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["source_verdicts"]["pair_judge"] == "TIMEOUT", summary
+        assert not findings, findings
+
+        for invalid_prefix in (
+            '{"type":"system","subtype":"init"}\n',
+            partial_stream + "trailing narration\n",
+            partial_stream
+            + '{"type":"user","session_id":"other"}\n',
+            partial_stream
+            + '{"type":"stream_event","session_id":"s106"}\n',
+            partial_stream
+            + '{"type":"system","subtype":"compact_boundary","session_id":"s106"}\n',
+            partial_stream
+            + '{"type":"assistant"\n'
+            + '{"type":"user","session_id":"s106"}\n',
+        ):
+            (devlyn / "grok-judge.stdout").write_text(invalid_prefix, encoding="utf-8")
+            findings, source_verdicts = read_findings(devlyn)
+            summary = write_outputs(devlyn, findings, source_verdicts)
+            assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", summary
+            assert any(
+                finding.get("id") == "verify-pair-emission-contract-violated"
+                for finding in findings
+            ), findings
+
+        # iter-0106 control: the marker conserves TIMEOUT only for that shape. A
+        # stream that reached its result but welded narration into the terminal
+        # message stays BLOCKED on the emission contract.
+        (devlyn / "grok-judge.stdout").write_text(
+            '{"type":"system","subtype":"init","session_id":"s106"}\n'
+            + json.dumps({
+                "type": "assistant",
+                "session_id": "s106",
+                "message": {
+                    "stop_reason": "end_turn",
+                    "content": [{"type": "text", "text": "I reviewed the diff.\nPASS"}],
+                },
+            }) + "\n"
+            + json.dumps({
+                "type": "result",
+                "subtype": "success",
+                "is_error": False,
+                "stop_reason": "end_turn",
+                "session_id": "s106",
+                "result": "I reviewed the diff.\nPASS",
+            }) + "\n",
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "BLOCKED", summary
+        assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", summary
+        assert any(
+            finding.get("id") == "verify-pair-emission-contract-violated"
+            for finding in findings
+        ), findings
+        (devlyn / "verify.pair.timeout.json").unlink()
+
+        # iter-0106 control: without a marker the same truncated stream is a
+        # plain emission-contract violation.
+        (devlyn / "grok-judge.stdout").write_text(partial_stream, encoding="utf-8")
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "BLOCKED", summary
+        assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", summary
+        assert any(
+            finding.get("id") == "verify-pair-emission-contract-violated"
+            for finding in findings
+        ), findings
+        (devlyn / "grok-judge.stdout").unlink()
 
         # iter-0065 case 3: without a marker, required empty pair output remains BLOCKED.
         (devlyn / "pipeline.state.json").write_text(

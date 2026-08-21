@@ -44,7 +44,7 @@ python3 "$DEVLYN_SHARED_DIR/run-bounded.py" 600 -- grok -p "<judge prompt>" \
   --disallowed-tools "Agent,use_tool,search_tool" \
   --allow 'Bash(<the bare anchor>)' \
   --reasoning-effort medium \
-  --output-format json \
+  --output-format streaming-messages-json \
   > "$REPO/.devlyn/grok-judge.stdout" 2> "$REPO/.devlyn/grok-judge.stderr"
 ```
 
@@ -96,4 +96,6 @@ python3 "$DEVLYN_SHARED_DIR/collect-codex-findings.py" \
 ```
 
 On exit 124, write `.devlyn/verify.pair.timeout.json` with
-`{"engine": "grok", "budget_seconds": 600}` before merge.
+`{"engine": "grok", "budget_seconds": 600}` before merge. A budget abort can
+leave the stream truncated before its terminal `result` record; that capture
+stays `TIMEOUT` at merge, never a pair PASS.
