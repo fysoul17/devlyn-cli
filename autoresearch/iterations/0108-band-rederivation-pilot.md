@@ -523,3 +523,35 @@ carrier — is PROHIBITED for every seat and writer in this lane.
   (r0/r1/micro1/micro2, packets + seat logs). NEXT = Sequencing
   step 2: terra single-writer apparatus derivation + tree
   re-geometry, trio freeze audit.
+- **2026-08-22 — apparatus derived + fix round 1 + LAUNCH APPARATUS
+  TRIO-FROZEN.** Terra single-writer derivation in four continuations
+  (two lawful STOPs honored: lane-root sandbox permission →
+  orchestrator-created root + writable-root grant; A3-before-B
+  ordering defect in the orchestrator brief → B-first order
+  authorized; A3 taxonomy fixture source → authorized inline from
+  `0107-*.md:162-167`). All base digests verified; reversal proofs
+  driver/validator/scorer PASS; four EQ4R trees validator-green with
+  oracle parity FFFFF/FFFFF/TTFFF/TTTTT vs the EQ4P bases. Freeze
+  audit r1: sol REVISE ×8 (BLOCKER freeze-digest mismatch;
+  receipt-after-effect; launch.log symlink-alias mutable-freeze-root
+  — probe-demonstrated; banner; reason grammar; two self-test
+  isolation defects; manifest `tree_sha256` deletion; UA1 formatting
+  deltas) / grok REVISE ×2 (banner — CONVERGENT with sol; test-12
+  vector shape). Terra fix round F1-F8: banner → per-artifact natural
+  prose weave (hits 12 ≥ 12 ≥ 10 re-measured by the validator);
+  receipt fsync BEFORE Popen; per-run logs O_CREAT|O_EXCL|O_NOFOLLOW;
+  digest chain rebuilt bottom-up; exact reason grammar; test 12 =
+  one combined-transient ledger + membership-isolated wrong-engine;
+  manifest `tree_sha256` restored; UA1 base formatting restored.
+  Re-freeze: sol `FREEZE-0108-PILOTLAUNCH-SOL` (symlink probe re-run
+  in temp, 584-file compile sweep) + grok `FREEZE-0108-PILOTLAUNCH-GROK`
+  (static full walk). Final pins: validator `343ae7d0…` · scorer
+  `1037bba3…` (repo pin `docs/specs/iter0108-pilot/scripts.sha256`) ·
+  driver/launcher/gate + 14-row inventory `18a772e1…` in-lane · trees
+  UA1 `ad9c364c…` MI1 `366470ef…` AF1 `e6e8415a…` BD1 `f453b957…` ·
+  manifest `7f70b17a…` (tree_sha256 `a4424e80…`) · schedule
+  `d02c08c0…`. Audit receipts:
+  `~/.local/share/nx01/iter0108/pilot/audit/`. **LAUNCH HELD** at
+  peer request: the pyx-memory-v1 session's X24 benchmark (~2.5-3h,
+  shared account) — same protocol as 0107's X23 hold; its all-clear
+  doubles as our quiet-account window.

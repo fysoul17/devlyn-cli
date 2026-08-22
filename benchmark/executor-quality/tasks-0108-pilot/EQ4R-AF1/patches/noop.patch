@@ -1,0 +1,6 @@
+--- a/facade_permits/services/permit_dispatch.py
++++ b/facade_permits/services/permit_dispatch.py
+@@ -7,2 +7,3 @@
+ def record_change(case, previous):
++    # The facade-change trace remains available for the review archive.
+     case["events"].append(("change", previous))

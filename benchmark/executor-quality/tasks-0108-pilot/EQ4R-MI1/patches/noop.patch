@@ -1,0 +1,6 @@
+--- a/fitness_policy/services/policy_dispatch.py
++++ b/fitness_policy/services/policy_dispatch.py
+@@ -7,2 +7,3 @@
+ def record_policy(ledger, previous):
++    # The circulation record remains available for the audit trace.
+     ledger["events"].append(("policy", previous))

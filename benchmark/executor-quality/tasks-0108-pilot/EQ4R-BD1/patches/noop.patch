@@ -1,0 +1,6 @@
+--- a/accommodation_allocator/services/allocation_dispatch.py
++++ b/accommodation_allocator/services/allocation_dispatch.py
+@@ -7,2 +7,3 @@
+ def record_allocation(case, previous):
++    # The examination allocation record stays with its session trace.
+     case["events"].append(("allocation", previous))
