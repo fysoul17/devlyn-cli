@@ -2,7 +2,7 @@
 id: "0107-frontier-anchor-pilot"
 title: "Frontier-anchor pilot — re-anchor the repo-scale band on the matrix engines"
 kind: instrument
-status: R1-FOLDED 2026-08-22 — grok FREEZE-0107-REG-GROK; sol R1 REVISE ×3 (ABBA formula literal + exact self-test vectors + Principles contract shape) folded; sol re-confirmation pending
+status: REGISTERED-FROZEN 2026-08-22 — trio freeze complete (FREEZE-0107-REG-GROK + FREEZE-0107-REG-SOL after r1b/r1c residual folds; fable adjudication); next = apparatus derivation (terra single-writer)
 complexity: medium
 depends_on: ["0105-repo-scale-discovery-corpus"]
 ---
@@ -303,3 +303,9 @@ prohibition above).
   closed; residual 3 re-opened on contract shape (statuses missing on
   pre-flight 0/#7, bare ✅, merged #4/#5) → folded: every entry now
   carries `✅ Passes`, #4/#5 split. Second re-confirmation below.
+- **2026-08-22 — sol r1c FREEZE-0107-REG-SOL.** Residual 3 closed
+  (all eight entries `✅ Passes`, #4/#5 split, order verified against
+  `PRINCIPLES.md:150`); no fold-introduced contradiction.
+  **REGISTRATION TRIO-FROZEN** — grok FREEZE (r1) + sol FREEZE (r1c)
+  + fable adjudication. Logs archived at
+  `~/.local/share/nx01/iter0107/registration/` (r0/r1/r1b/r1c).
