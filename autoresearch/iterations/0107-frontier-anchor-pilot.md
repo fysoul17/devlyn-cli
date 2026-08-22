@@ -309,3 +309,28 @@ prohibition above).
   **REGISTRATION TRIO-FROZEN** — grok FREEZE (r1) + sol FREEZE (r1c)
   + fable adjudication. Logs archived at
   `~/.local/share/nx01/iter0107/registration/` (r0/r1/r1b/r1c).
+- **2026-08-22 — apparatus derived + TRIO-FROZEN.** Terra single-writer
+  derivation (six digest-pinned 0105 sources only; reversal proof
+  6/6; taxonomy fixtures 11 cases × both exact IDs; schedule digest
+  `f3c08953…`; scorer relocated to repo byte-identical `74077f40…`,
+  pin `docs/specs/iter0107-pilot/scripts.sha256`, commit e62bff5).
+  Freeze audit r1: grok FREEZE (boundary inclusivity code-verified,
+  docstring residue judged benign) / sol REVISE ×4. Fable
+  adjudication: all four sol findings ADOPTED — lane scorer into gate
+  FROZEN (MIRROR-PIN-CONSISTENCY), run-id grammar + strict HERE
+  containment (INPUT-ENFORCED-CONFINEMENT), receipt-failure killpg
+  (RECEIPT-BEFORE-EFFECT), driver docstring identity
+  (FROZEN-IDENTITY-CONSISTENCY; grok's benign call overruled at
+  near-zero cost inside the open fix round). Terra fix-round 1
+  applied A1-A4; re-freeze: sol FREEZE (probes re-run, 29 gate
+  categories) + grok FREEZE (static-only per new rule below).
+  Final pins: driver `e531f1bf…` · launcher `225889a0…` · gate
+  `cba26f9d…` · scorer `74077f40…` · copies byte-identical.
+  **Operational notes**: grok's r1 audit accidentally spawned a real
+  launcher from a throwaway probe copy (killed; live lane verified
+  clean, digests intact, no attempt/lock artifacts) — grok probe
+  rounds are now STATIC-ONLY by prompt rule. Launch is HELD at peer
+  request: the pyx-memory-v1 session's X23 benchmark runs a no-retry
+  50-call sonnet pass on this account (~1-1.5h; hold expires 3h) —
+  its completion also gives us the quiet window. Audit receipts:
+  `~/.local/share/nx01/iter0107/pilot/audit/`.
