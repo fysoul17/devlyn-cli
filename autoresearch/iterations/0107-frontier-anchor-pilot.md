@@ -2,7 +2,7 @@
 id: "0107-frontier-anchor-pilot"
 title: "Frontier-anchor pilot — re-anchor the repo-scale band on the matrix engines"
 kind: instrument
-status: REGISTERED-FROZEN 2026-08-22 — trio freeze complete (FREEZE-0107-REG-GROK + FREEZE-0107-REG-SOL after r1b/r1c residual folds; fable adjudication); next = apparatus derivation (terra single-writer)
+status: CLOSED 2026-08-22 — TERMINAL BAND_REANCHOR_REJECTED (pilot REJECT, all three gates, both engines; DECISIONS 0107.1). P-0107-1 FALSIFIED
 complexity: medium
 depends_on: ["0105-repo-scale-discovery-corpus"]
 ---
@@ -334,3 +334,30 @@ prohibition above).
   50-call sonnet pass on this account (~1-1.5h; hold expires 3h) —
   its completion also gives us the quiet window. Audit receipts:
   `~/.local/share/nx01/iter0107/pilot/audit/`.
+- **2026-08-22 — PILOT FIRED + REJECT; iter CLOSED TERMINAL
+  `BAND_REANCHOR_REJECTED`.** Launch was HELD ~1h at the pyx-memory-v1
+  session's request (its X23 no-retry sonnet pass on the shared
+  account), then fired on its all-clear — the first launch in the
+  lineage under a genuinely quiet account (time window 11:03 KST,
+  zero headless `claude -p`, lane clean, git clean, sequential
+  exact-ID smokes PASS for both opus IDs). Run
+  `pilot1-20260822T020329Z` attempt 1: 16/16 valid rows in ~95 min,
+  infra_invalid 0, rc=124 0, attestation 16/16, catastrophic 1
+  (scored f=1 per the carried taxonomy). Frozen scorer double-run
+  byte-identical, exit 2 → `DECISION {"decision": "REJECT"}`;
+  receipt chain decision-receipt `353686df…` / ledger `811b7417…` /
+  verdict `cda2ad1c…`; per-task outcomes sealed. Trio verification:
+  sol `VERIFY-0107-PILOTRUN-SOL: PASS` S1-S8 + grok
+  `VERIFY-0107-PILOTRUN-GROK: PASS` G1-G5, fully convergent on the
+  permitted abstract diagnosis: **claude-opus-5 — mean above upper
+  bound + interior below minimum; claude-opus-4-8 — mean above upper
+  bound + interior below minimum; shared-task both-ceiling present**
+  — all three registered gates fail for the pair. **P-0107-1 (the
+  user hypothesis "frontier lands interior") is FALSIFIED by a valid
+  scored REJECT.** Combined with 0105: the frozen EQ4P difficulty is
+  now EVIDENCED (not extrapolated) as above-band for sonnet AND for
+  both frontier matrix engines. Per the registered verdict domain:
+  terminal, no retuning in-lane; the evidenced next step is
+  difficulty re-derivation under a NEW registration (user-gated).
+  Receipts: `~/.local/share/nx01/iter0107/pilot/` (attempt dir +
+  DECISION + audit/ 8 logs).

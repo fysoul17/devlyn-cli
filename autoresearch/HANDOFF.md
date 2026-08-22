@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent closed: [`iterations/0106-grok-terminal-message-carrier.md`](iterations/0106-grok-terminal-message-carrier.md) (SHIPPED harness fix) and [`iterations/0105-repo-scale-discovery-corpus.md`](iterations/0105-repo-scale-discovery-corpus.md) (TERMINAL MECHANISM_REJECTED — see START-HERE). Next research registration is user-gated; candidates remain in START-HERE. Older context in the iteration index + `DECISIONS.md`.
+5. Most recent closed: [`iterations/0107-frontier-anchor-pilot.md`](iterations/0107-frontier-anchor-pilot.md) (TERMINAL BAND_REANCHOR_REJECTED — see START-HERE) + 0105/0106. Next research registration is user-gated; evidenced candidate in START-HERE. Older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,7 +14,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-21 (session 4)
+## 🚦 START-HERE — state after 2026-08-22 (session 5)
 
 **iter-0106 Grok terminal-message carrier SHIPPED 2026-08-21
 (`59df4d3` + `15cba6c` + `3820023`, DECISIONS 0106.1).** The observed
@@ -53,27 +53,35 @@ adjudications (incl. the MI1/AF1 class-split ruling) in the
 iteration file § Execution log 2026-08-21; reports + round logs in
 `~/.local/share/nx01/iter0105/authoring/`.
 
-**PILOT FIRED + REJECTED 2026-08-21 (session 3) — iter-0105 CLOSED,
-TERMINAL `MECHANISM_REJECTED` (DECISIONS 0105.1).** The turnkey launch
-ran clean: pre-launch gates green (digests, git clean, sonnet smoke),
-quiet-account condition user-overridden (other sessions live; zero
-infra anomalies materialized anyway), run `pilot1-20260821T050420Z`
-8/8 valid rows in ~64 min, frozen scorer REJECT (receipt `e825df07…`),
-post-run digests byte-identical, trio verify sol PASS S1-S8 + grok
-PASS G1-G5. Converged abstract trigger (sealed numerics withheld):
-mean ABOVE the upper bound + interior count below threshold + one
-prototype at the unit ceiling — the EQ4P repo-scale band is TOO HARD
-for the sonnet calibration engine. Per the registered rule: no
-retuning; batches/sealing/calibration/matrix do not run. **NEXT =
-user-gated successor registration** — candidates: repo-scale band
-with a fresh (easier) difficulty derivation, session-horizon, or
-pair-deference (0103 closure list). Standing follow-up: the canonical
-mx-driver seed still carries two taxonomy corners
-(success+empty-modelUsage → scorable f=1; no rc=124 censoring
-branch) — decide at any successor's matrix derivation. Narrative:
-iteration file § Execution log 2026-08-21 session 3; receipts
-`~/.local/share/nx01/iter0105/pilot/` (attempt dir + DECISION +
-audit/).
+**iter-0107 frontier-anchor pilot CLOSED 2026-08-22 — TERMINAL
+`BAND_REANCHOR_REJECTED` (DECISIONS 0107.1).** Same-day full lane:
+registration trio-frozen (2 fable-adjudicated splits: ABBA
+TIME-SYMMETRY, P-0107-2 deletion EXPOSURE-MINIMALITY) → terra 16-run
+two-engine apparatus, double trio-FREEZE (sol REVISE ×4 adopted:
+lane-scorer FROZEN pin, run-id confinement, receipt-before-effect,
+driver identity) → launch held ~1h for the pyx-memory-v1 X23 window
+then fired QUIET → 16/16 valid rows (~95 min, infra 0) → frozen
+scorer REJECT (receipt `353686df…`) → trio verify PASS ×2.
+Convergent abstract diagnosis: BOTH `claude-opus-5` and
+`claude-opus-4-8` fail mean-above-upper-bound AND
+interior-below-minimum, plus a shared-task both-ceiling — all three
+gates. **The frozen EQ4P difficulty is now EVIDENCED above-band for
+sonnet (0105) AND the frontier pair (0107)** — the user hypothesis
+"frontier lands interior" was measured and falsified, per-task
+outcomes stay sealed. **NEXT = user-gated new registration**;
+evidenced candidate: repo-scale corpus with difficulty RE-DERIVED
+easier (both anchors now license it), or the 0103 alternatives
+(session-horizon, pair-deference). The mx-driver taxonomy corners
+(success+empty-modelUsage f=1; no rc=124 censoring) still decide at
+any successor's matrix derivation. Narratives: iteration files
+0105/0107 § Execution log; receipts
+`~/.local/share/nx01/iter0105/pilot/` + `iter0107/pilot/`.
+
+**iter-0105 CLOSED 2026-08-21 — TERMINAL `MECHANISM_REJECTED`
+(DECISIONS 0105.1)**: sonnet pilot REJECT (mean above upper bound +
+interior < 3 + one prototype at q=1), 8/8 valid rows, trio-verified;
+prototypes/apparatus stayed frozen and were reused byte-identical by
+0107.
 
 Standing seat recipes: terra =
 `codex-monitored.sh -s workspace-write -m gpt-5.6-terra -c
