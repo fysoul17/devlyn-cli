@@ -38,33 +38,36 @@ anchor decision.
 
 ## Principles check
 
-- **Pre-flight 0** (FIRST): this iter exists because it unblocks the
-  go-no-go decision for the repo-scale corpus successor — whether
-  the frozen EQ4P difficulty advances or difficulty re-derivation is
-  evidenced — after 0105's terminal REJECT left that question
-  unmeasured.
-- **#7 Mission-bound** (SECOND): this iter serves Mission 1's
-  ceiling-instrument track because it decides whether the unchanged
-  EQ4P difficulty can advance to a separately registered opus-5 vs
-  opus-4-8 repo-scale matrix corpus.
-- **#1 No workaround** ✅ — fail-closed gates carried (launch gate
-  digest pins, ordinal locks, three-route verdict domain; no config
-  bypass).
-- **#2 No overengineering** ✅ — anchor decision only; no corpus
-  stage, no new flags, no adaptive control flow; `APPARATUS_INVALID`
-  token and receipt-bound quiet-account attestation declined for
-  lack of a learned failure.
-- **#3 No guesswork** ✅ — this iter IS the measurement; both
+- **Pre-flight 0** (FIRST) ✅ Passes — this iter exists because it
+  unblocks the go-no-go decision for the repo-scale corpus
+  successor — whether the frozen EQ4P difficulty advances or
+  difficulty re-derivation is evidenced — after 0105's terminal
+  REJECT left that question unmeasured.
+- **#7 Mission-bound** (SECOND) ✅ Passes — this iter serves
+  Mission 1's ceiling-instrument track because it decides whether
+  the unchanged EQ4P difficulty can advance to a separately
+  registered opus-5 vs opus-4-8 repo-scale matrix corpus.
+- **#1 No workaround** ✅ Passes — fail-closed gates carried (launch
+  gate digest pins, ordinal locks, three-route verdict domain; no
+  config bypass).
+- **#2 No overengineering** ✅ Passes — anchor decision only; no
+  corpus stage, no new flags, no adaptive control flow;
+  `APPARATUS_INVALID` token and receipt-bound quiet-account
+  attestation declined for lack of a learned failure.
+- **#3 No guesswork** ✅ Passes — this iter IS the measurement; both
   direction hypotheses are named as unmeasured extrapolations in
   pre-flight 0.
-- **#4 Worldclass / #5 Best practice** ✅ — 0103 ABBA two-engine
-  shape and 0105 freeze/derivation discipline carried in kind; exact
-  `Fraction` arithmetic; clause-isolated self-tests.
-- **#6 Optimized** ✅ — 16 fixed runs at peak concurrency 2 close
-  the question in one detached launch (~2× the measured 0105 pilot
-  wall); the adaptive opus-5-first alternative was rejected at R0
-  because its saved runs do not pay for its added control flow and
-  temporal asymmetry (BILATERAL DECISION SUFFICIENCY).
+- **#4 Worldclass** ✅ Passes — 0105 freeze/derivation discipline
+  carried in kind (digest pins, reversal proofs, sealed boundary,
+  trio audit before launch).
+- **#5 Best practice** ✅ Passes — 0103 ABBA two-engine shape as the
+  established precedent; exact `Fraction` arithmetic; standard
+  clause-isolated self-tests.
+- **#6 Optimized** ✅ Passes — 16 fixed runs at peak concurrency 2
+  close the question in one detached launch (~2× the measured 0105
+  pilot wall); the adaptive opus-5-first alternative was rejected at
+  R0 because its saved runs do not pay for its added control flow
+  and temporal asymmetry (BILATERAL DECISION SUFFICIENCY).
 
 ## Registered treatment
 
@@ -296,3 +299,7 @@ prohibition above).
   #1-#6 statused) + the decisive criterion added as its own
   section. R1 logs archived at
   `~/.local/share/nx01/iter0107/registration/`.
+- **2026-08-22 — sol re-confirmation r1b.** Residuals 1-2 confirmed
+  closed; residual 3 re-opened on contract shape (statuses missing on
+  pre-flight 0/#7, bare ✅, merged #4/#5) → folded: every entry now
+  carries `✅ Passes`, #4/#5 split. Second re-confirmation below.
