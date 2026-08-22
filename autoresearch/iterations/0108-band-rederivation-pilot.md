@@ -555,3 +555,41 @@ carrier — is PROHIBITED for every seat and writer in this lane.
   peer request: the pyx-memory-v1 session's X24 benchmark (~2.5-3h,
   shared account) — same protocol as 0107's X23 hold; its all-clear
   doubles as our quiet-account window.
+- **2026-08-22 — LAUNCH + REJECT + trio verify → CLOSED, TERMINAL
+  `BAND_REDERIVATION_REJECTED`.** Peer X24 all-clear 20:41 KST
+  (close record `12f6a1b` on its side); the user overrode the
+  remaining window hold and directed immediate fire (quiet-window
+  rule is registered user-overridable; launch 20:44:57 KST satisfied
+  the 23:00-01:00 exclusion at launch time, and the ~28-min wall kept
+  every row before 23:00, mooting the tail-crossing concern).
+  Preconditions green: zero headless engines, git clean `5ba0205`,
+  lane clean; sequential exact-ID smokes 3/3 PASS (sonnet-5 /
+  opus-5 / opus-4-8, pinned CLI, neutral dir). Run
+  `pilot1-20260822T114457Z` attempt 1: 24/24 valid rows in ~28 min
+  (wall verified authentic by both seats against concurrency-2 block
+  arithmetic — fast wall = fast FAILURE, not vacuous rows),
+  infra_invalid 0, rc=124 0, catastrophic 4, exact-ID attestation
+  24/24. Scorer self-test 15/15; frozen double-run byte-identical,
+  exit 2/2 → `DECISION {"decision": "REJECT"}`; receipt chain
+  decision-receipt `72df7c45…` / ledger `b7a93132…` / verdict
+  `c32ff783…`; per-task outcomes sealed. Trio verification:
+  sol `VERIFY-0108-PILOTRUN-SOL: PASS` S1-S8 + grok
+  `VERIFY-0108-PILOTRUN-GROK: PASS` G1-G5, fully convergent
+  permitted abstract diagnosis: **claude-sonnet-5 mean 4/5 ABOVE the
+  3/5 upper bound, interior 1/4; claude-opus-5 mean 7/10 ABOVE,
+  interior 1/4; claude-opus-4-8 mean 7/8 ABOVE, interior 2/4; MATRIX
+  both-ceiling PRESENT** — every applicable gate fails for every
+  engine, all on the TOO-HARD side. **P-0108-1 is FALSIFIED by a
+  valid scored REJECT**: the registered easing (exact-distance-3 +
+  decoy non-dominance over the 0105 geometry) did NOT move any
+  anchor engine into band — repo mass + non-local placement remains
+  above-band even at the eased knobs, now evidenced across sonnet
+  (0105), the frontier pair (0107), and all three at eased geometry
+  (0108). Terminal: no in-lane retuning of trees, laws, or taxonomy;
+  any successor is a NEW user-gated registration — the evidenced
+  candidate directions are a stronger easing of the SAME mechanism
+  (e.g. distance-2 with a registered answer to the non-locality
+  degeneracy fable adjudicated at R0, or decoy-mass reduction) or a
+  pivot off the 0103 alternatives (session-horizon, pair-deference).
+  Receipts: `~/.local/share/nx01/iter0108/pilot/` (attempt dir +
+  DECISION + audit/ verify-packet + sol/grok logs).

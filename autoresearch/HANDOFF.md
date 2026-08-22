@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Most recent closed: [`iterations/0107-frontier-anchor-pilot.md`](iterations/0107-frontier-anchor-pilot.md) (TERMINAL BAND_REANCHOR_REJECTED — see START-HERE) + 0105/0106. Next research registration is user-gated; evidenced candidate in START-HERE. Older context in the iteration index + `DECISIONS.md`.
+5. Most recent closed: [`iterations/0108-band-rederivation-pilot.md`](iterations/0108-band-rederivation-pilot.md) (TERMINAL BAND_REDERIVATION_REJECTED — see START-HERE) + 0107/0106/0105. Next research registration is user-gated; evidenced candidates in START-HERE. Older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,7 +14,33 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-22 (session 5)
+## 🚦 START-HERE — state after 2026-08-22 (session 6)
+
+**iter-0108 band-rederivation pilot CLOSED 2026-08-22 — TERMINAL
+`BAND_REDERIVATION_REJECTED` (DECISIONS 0108.1).** Second same-day
+full lane: registration trio-frozen (R0 folded, R1 sol-router
+adoption over grok FREEZE, micro ×2 convergent seven-cause infra
+contract) → terra 24-run three-engine apparatus, double trio-FREEZE
+after fix round F1-F8 → launch held for the peer X24 window, then
+user-directed immediate fire 20:44 KST → smokes 3/3 exact-ID, 24/24
+valid rows in ~28 min (infra 0, rc=124 0, attestation 24/24; fast
+wall verified authentic = fast failure) → frozen scorer double-run
+byte-identical REJECT (receipt `72df7c45…`) → trio verify sol S1-S8
++ grok G1-G5 PASS, fully convergent diagnosis: **ALL THREE engines
+mean ABOVE the 3/5 upper bound (sonnet 4/5 · opus-5 7/10 · opus-4-8
+7/8), interior below minimum (1/4 · 1/4 · 2/4), matrix both-ceiling
+present.** P-0108-1 falsified by a valid scored REJECT: the eased
+geometry (exact-distance-3 + decoy non-dominance) is STILL
+above-band for every anchor — three registrations now bound the
+repo-scale mechanism from the too-hard side (0105 sonnet, 0107
+frontier pair, 0108 all three at eased knobs). **NEXT = user-gated
+new registration**; evidenced directions: stronger same-mechanism
+easing (distance-2 with a registered answer to the non-locality
+degeneracy adjudicated at 0108 R0, or decoy-mass reduction) or the
+0103 alternatives (session-horizon, pair-deference). The mx-driver
+taxonomy corners still decide at any successor's matrix derivation.
+Narratives: iteration file 0108 § Execution log; receipts
+`~/.local/share/nx01/iter0108/`.
 
 **iter-0106 Grok terminal-message carrier SHIPPED 2026-08-21
 (`59df4d3` + `15cba6c` + `3820023`, DECISIONS 0106.1).** The observed
@@ -68,12 +94,8 @@ interior-below-minimum, plus a shared-task both-ceiling — all three
 gates. **The frozen EQ4P difficulty is now EVIDENCED above-band for
 sonnet (0105) AND the frontier pair (0107)** — the user hypothesis
 "frontier lands interior" was measured and falsified, per-task
-outcomes stay sealed. **NEXT = user-gated new registration**;
-evidenced candidate: repo-scale corpus with difficulty RE-DERIVED
-easier (both anchors now license it), or the 0103 alternatives
-(session-horizon, pair-deference). The mx-driver taxonomy corners
-(success+empty-modelUsage f=1; no rc=124 censoring) still decide at
-any successor's matrix derivation. Narratives: iteration files
+outcomes stay sealed. The evidenced RE-DERIVED-easier candidate was
+executed as iter-0108 (REJECT — see above). Narratives: iteration files
 0105/0107 § Execution log; receipts
 `~/.local/share/nx01/iter0105/pilot/` + `iter0107/pilot/`.
 
