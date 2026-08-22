@@ -2,7 +2,7 @@
 id: "0107-frontier-anchor-pilot"
 title: "Frontier-anchor pilot — re-anchor the repo-scale band on the matrix engines"
 kind: instrument
-status: R0-FOLDED 2026-08-22 — sol GO-WITH-EDITS ×11 + grok GO-WITH-EDITS ×13 folded (2 splits fable-adjudicated); R1 freeze review pending
+status: R1-FOLDED 2026-08-22 — grok FREEZE-0107-REG-GROK; sol R1 REVISE ×3 (ABBA formula literal + exact self-test vectors + Principles contract shape) folded; sol re-confirmation pending
 complexity: medium
 depends_on: ["0105-repo-scale-discovery-corpus"]
 ---
@@ -27,16 +27,44 @@ ordering (sonnet 0.49 · opus-4-8 0.475 · opus-5 0.29-0.31 at 32-file
 shape). No guesswork: measure the anchor engines directly on the
 frozen prototypes. Change the QUESTION, not the trees.
 
-**Mission-bound**: serves Mission 1's ceiling-instrument track by
-deciding whether the unchanged EQ4P difficulty can advance to a
-separately registered opus-5 vs opus-4-8 repo-scale matrix corpus.
+## Decisive criterion
 
-**Principles check**: no workaround (fail-closed gates carried); no
-overengineering (anchor decision only, no corpus stage, no new
-flags); no guesswork (this iter IS the measurement); worldclass /
-best practice (0103 ABBA + 0105 freeze discipline carried); optimized
-(16 fixed runs, 2 lanes, no adaptive control flow); production-ready
-(three-route verdict domain, § Decision rule).
+The registration is FROZEN-worthy iff a fresh session could execute
+it mechanically and its PROCEED/REJECT answers exactly one
+question — "is the frozen EQ4P difficulty usable for an opus-5 vs
+opus-4-8 repo-scale matrix?" — with no unscored ambiguity, no
+leakage of sealed 0105 outcomes into design, and no scope beyond the
+anchor decision.
+
+## Principles check
+
+- **Pre-flight 0** (FIRST): this iter exists because it unblocks the
+  go-no-go decision for the repo-scale corpus successor — whether
+  the frozen EQ4P difficulty advances or difficulty re-derivation is
+  evidenced — after 0105's terminal REJECT left that question
+  unmeasured.
+- **#7 Mission-bound** (SECOND): this iter serves Mission 1's
+  ceiling-instrument track because it decides whether the unchanged
+  EQ4P difficulty can advance to a separately registered opus-5 vs
+  opus-4-8 repo-scale matrix corpus.
+- **#1 No workaround** ✅ — fail-closed gates carried (launch gate
+  digest pins, ordinal locks, three-route verdict domain; no config
+  bypass).
+- **#2 No overengineering** ✅ — anchor decision only; no corpus
+  stage, no new flags, no adaptive control flow; `APPARATUS_INVALID`
+  token and receipt-bound quiet-account attestation declined for
+  lack of a learned failure.
+- **#3 No guesswork** ✅ — this iter IS the measurement; both
+  direction hypotheses are named as unmeasured extrapolations in
+  pre-flight 0.
+- **#4 Worldclass / #5 Best practice** ✅ — 0103 ABBA two-engine
+  shape and 0105 freeze/derivation discipline carried in kind; exact
+  `Fraction` arithmetic; clause-isolated self-tests.
+- **#6 Optimized** ✅ — 16 fixed runs at peak concurrency 2 close
+  the question in one detached launch (~2× the measured 0105 pilot
+  wall); the adaptive opus-5-first alternative was rejected at R0
+  because its saved runs do not pay for its added control flow and
+  temporal asymmetry (BILATERAL DECISION SUFFICIENCY).
 
 ## Registered treatment
 
@@ -67,9 +95,12 @@ this lane (0105 per-task outcomes stay sealed and are not an input).
   already exists in the base). **No opus-specific taxonomy delta**:
   the classifier is engine-agnostic; auxiliary/helper `modelUsage`
   handling must NOT be "fixed" in this lane.
-- **launcher**: `ENGINE` → ordered `ENGINES` tuple; schedule = the
-  0103 two-lane ABBA formula carried in kind
-  (`iter0103/apparatus/mx-launcher.py:22-33`), instantiated for
+- **launcher**: `ENGINE` → ordered `ENGINES` tuple; docstring
+  (base's "0105 8-run sonnet … single engine" description →
+  0107 16-run two-engine); schedule = the 0103 two-lane ABBA
+  formula frozen EXACTLY as `ENGINES[(i + rep + group) % 2]` with
+  the 2-lane task split (source precedent
+  `iter0103/apparatus/mx-launcher.py:22-33`), instantiated for
   4 tasks × 2 reps × 2 engines = 16 rows — every `(engine, task,
   rep)` cell exactly once, engine order balanced across lanes and
   reps, peak concurrency 2 (unchanged from 0105). No `--lanes` flag.
@@ -78,7 +109,9 @@ this lane (0105 per-task outcomes stay sealed and are not an input).
   shape on this account — the 0102 attempt-1 session-limit failure
   was account noise, refuted as a schedule property by the clean
   same-shape attempt 2 and 0103 attempt 1).
-- **launch gate**: `ENGINE` → ordered `ENGINES`; receipt field
+- **launch gate**: `ENGINE` → ordered `ENGINES`; docstring/contract
+  text (base's "exact sonnet identity" line → two-engine identity);
+  receipt field
   `engine` → `engines` (exact ordered list) + schedule digest;
   `FROZEN` map → derived driver/launcher digests +
   `score-pilot-0107.py`; freeze-inventory filenames. Ordinal locks,
@@ -102,18 +135,23 @@ env, opaque workdir copytree, manifest/tree pins.
 
 ### Scorer self-tests (all clause-isolating, reachable, synthetic 16-row)
 
-1. both-ceiling: both engines `[1, 2/5, 2/5, 2/5]` — gates 1-2 pass,
-   ONLY gate 3 rejects.
-2. single-ceiling: one engine `[1, 2/5, 2/5, 2/5]`, other `[2/5]×4` —
-   PROCEED (replaces 0105 `e-total-prototype`).
-3. different-task dual ceiling: e0 ceilings task A, e1 ceilings task
-   B, else interior — PROCEED (not a both-ceiling).
-4. per-engine band isolation: e0 all `4/5`, e1 all `1/5` — REJECT
-   (pooled mean `1/2` must not rescue).
-5. per-engine interior isolation: one engine interior < 3, other
-   clean — REJECT.
-6. both-floor tolerated: one prototype `q == 0` for BOTH engines,
-   rest interior — PROCEED.
+1. both-ceiling: both engines `[1, 2/5, 2/5, 2/5]` (mean `11/20`,
+   interior 3) — gates 1-2 pass, ONLY gate 3 rejects.
+2. single-ceiling: e0 `[1, 2/5, 2/5, 2/5]`, e1
+   `[2/5, 2/5, 2/5, 2/5]` — PROCEED (replaces 0105
+   `e-total-prototype`).
+3. different-task dual ceiling: e0 `[1, 2/5, 2/5, 2/5]`, e1
+   `[2/5, 1, 2/5, 2/5]` (both means `11/20`, interiors 3, no shared
+   ceiling task) — PROCEED (not a both-ceiling).
+4. per-engine band isolation: e0 `[4/5, 4/5, 4/5, 4/5]` (mean `4/5`
+   out of band, interior 4), e1 `[1/5, 1/5, 1/5, 1/5]` — REJECT via
+   gate 1 only (pooled mean `1/2` must not rescue).
+5. per-engine interior isolation: e0 `[1, 0, 2/5, 2/5]` (mean
+   `9/20` in band, interior 2 < 3), e1 `[2/5, 2/5, 2/5, 2/5]` —
+   REJECT via gate 2 only (no shared-task ceiling, so gate 3 is not
+   triggered).
+6. both-floor tolerated: both engines `[0, 2/5, 2/5, 2/5]` (mean
+   `3/10` in band, interior 3) — PROCEED.
 7. catastrophic carry per engine (0105 `h`: total=0 cat ⇒ f=1).
 8. complete-cell validation: missing/duplicate `(engine, task, rep)`
    ⇒ UNSCORED; wrong engine id ⇒ UNSCORED.
@@ -244,4 +282,17 @@ prohibition above).
   quiet-account attestation declined: operator rule, user-overridable
   (2026-08-21 override produced zero anomalies), no learned failure
   to mechanize. R0 logs: `/tmp/r0-0107/{sol,grok}.log` → archived at
+  `~/.local/share/nx01/iter0107/registration/`.
+- **2026-08-22 — R1.** grok `FREEZE-0107-REG-GROK` (13/13 folded or
+  declined-accepted; fold-defect scan clean; both adjudicated splits
+  verified un-refuted with the named criteria). sol REVISE ×3, all
+  fold-precision (no adjudication contested): ABBA formula frozen
+  literally as `ENGINES[(i + rep + group) % 2]` + stale
+  launcher/gate docstring-identity deltas enumerated; self-test
+  vectors pinned to exact fractions (tests 2-6 completed; sol's
+  arithmetic verified — the prior "else interior" glosses would have
+  broken gate isolation); Principles check rewritten to the
+  PRINCIPLES.md contract shape (pre-flight 0 first, #7 second,
+  #1-#6 statused) + the decisive criterion added as its own
+  section. R1 logs archived at
   `~/.local/share/nx01/iter0107/registration/`.
