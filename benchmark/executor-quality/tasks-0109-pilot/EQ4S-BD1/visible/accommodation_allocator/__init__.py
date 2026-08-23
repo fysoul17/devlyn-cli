@@ -1,0 +1,1 @@
+"""Remote-examination arrangement package."""

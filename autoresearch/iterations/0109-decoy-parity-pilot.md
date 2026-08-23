@@ -543,3 +543,28 @@ every seat and writer.
   `~/.local/share/nx01/iter0109/registration/`. NEXT = Sequencing
   step 2: terra single-writer apparatus derivation + tree
   re-geometry, trio freeze audit.
+- **2026-08-23 — apparatus derived + fix round 1 + LAUNCH APPARATUS
+  TRIO-FROZEN.** Terra single-writer derivation in ONE continuation
+  (31 min; the 0108 STOP classes pre-empted by orchestrator-created
+  lane root + writable-root grant): all base digests verified;
+  reversal proofs for every derived script byte-match the 0108
+  bases; four EQ4S trees re-geometried by the canonical rule (12
+  decoys per tree → `visible/<fn>/`; BD1 non-decoy remainder in
+  place) and validator-green with conservation proofs (12=12 hits,
+  L-R1 no-shrink, decoy bytes identical, import-graph no-op, oracle
+  parity FFFFF/FFFFF/TTFFF/TTTTT); NEW `finalize-decision-0109.py`
+  implements the full frozen contract. Freeze audit r1: sol REVISE
+  ×4 (HIGH finalizer argv grammar — `=` form + duplicate options
+  accepted, probe-demonstrated; 3 LOW stale docstring identities) /
+  grok FREEZE (static full walk; checklist 7/7). Terra fix round
+  F1-F4 + bottom-up chain re-pin; re-audit double FREEZE:
+  `FREEZE-0109-PILOTLAUNCH-SOL` (argv rejection re-exercised in
+  temp) + `FREEZE-0109-PILOTLAUNCH-GROK`. Final pins: validator
+  `4be94c41…` · scorer `3d84d3c8…` (repo pin
+  `docs/specs/iter0109-pilot/scripts.sha256`) · finalizer
+  `94494e51…` · driver `50140a3a…` · launcher `27daee35…` · gate
+  `cd04c405…` · 15-row inventory `ce6c3b6e…` · manifest `f46bdd2f…`
+  (tree_sha256 `8ff48c3a…`) · trees UA1 `99adbf6b…` MI1 `b6ba7a36…`
+  AF1 `904c771d…` BD1 `e89dfb25…`. Audit receipts:
+  `~/.local/share/nx01/iter0109/pilot/audit/`. NEXT = launch
+  (quiet account, outside 23:00-01:00 KST, three-engine smokes).

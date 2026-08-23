@@ -1,0 +1,89 @@
+{
+  "manifestations": [
+    {
+      "id": "local-a",
+      "class": "missed_repo_invariant",
+      "invariant": "Under an unsigned replacement, the prior fitness policy is restored, the destruction authorization remains unused once, and the live policy matches the prior version.",
+      "contract_bindings": [
+        {
+          "file": "visible/destruction_ledger/policy_consumer.py",
+          "sha256": "7cb8ce70bcd67613b2a9e60745d5da57a6d9f2121a0993745f62b0c40d700409",
+          "quote": "A destruction authorization permits retirement only for the signed fitness-policy\nversion and requires the prior fitness policy to remain live after rejection."
+        },
+        {
+          "file": "visible/vault/test_unsigned_policy.py",
+          "sha256": "f73a61fd8c102767a74f579d84f1b2f10bfeb5538814a5cee78d7fc844d342bf",
+          "quote": "The vault test asserts an unsigned replacement leaves the authorization unused once."
+        }
+      ]
+    },
+    {
+      "id": "local-b",
+      "class": "missed_repo_invariant",
+      "invariant": "Under an unsigned replacement, the prior fitness policy is restored, the destruction authorization remains unused once, and the live policy matches the prior version.",
+      "contract_bindings": [
+        {
+          "file": "visible/destruction_ledger/policy_consumer.py",
+          "sha256": "7cb8ce70bcd67613b2a9e60745d5da57a6d9f2121a0993745f62b0c40d700409",
+          "quote": "A destruction authorization permits retirement only for the signed fitness-policy\nversion and requires the prior fitness policy to remain live after rejection."
+        },
+        {
+          "file": "visible/vault/test_unsigned_policy.py",
+          "sha256": "f73a61fd8c102767a74f579d84f1b2f10bfeb5538814a5cee78d7fc844d342bf",
+          "quote": "The vault test asserts an unsigned replacement leaves the authorization unused once."
+        }
+      ]
+    },
+    {
+      "id": "remote-a",
+      "class": "missed_repo_invariant",
+      "invariant": "Under an unsigned replacement, the prior fitness policy is restored, the destruction authorization remains unused once, and the live policy matches the prior version.",
+      "contract_bindings": [
+        {
+          "file": "visible/destruction_ledger/policy_consumer.py",
+          "sha256": "7cb8ce70bcd67613b2a9e60745d5da57a6d9f2121a0993745f62b0c40d700409",
+          "quote": "A destruction authorization permits retirement only for the signed fitness-policy\nversion and requires the prior fitness policy to remain live after rejection."
+        },
+        {
+          "file": "visible/vault/test_unsigned_policy.py",
+          "sha256": "f73a61fd8c102767a74f579d84f1b2f10bfeb5538814a5cee78d7fc844d342bf",
+          "quote": "The vault test asserts an unsigned replacement leaves the authorization unused once."
+        }
+      ]
+    },
+    {
+      "id": "remote-b",
+      "class": "missed_repo_invariant",
+      "invariant": "Under an unsigned replacement, the prior fitness policy is restored, the destruction authorization remains unused once, and the live policy matches the prior version.",
+      "contract_bindings": [
+        {
+          "file": "visible/destruction_ledger/policy_consumer.py",
+          "sha256": "7cb8ce70bcd67613b2a9e60745d5da57a6d9f2121a0993745f62b0c40d700409",
+          "quote": "A destruction authorization permits retirement only for the signed fitness-policy\nversion and requires the prior fitness policy to remain live after rejection."
+        },
+        {
+          "file": "visible/vault/test_unsigned_policy.py",
+          "sha256": "f73a61fd8c102767a74f579d84f1b2f10bfeb5538814a5cee78d7fc844d342bf",
+          "quote": "The vault test asserts an unsigned replacement leaves the authorization unused once."
+        }
+      ]
+    },
+    {
+      "id": "restore",
+      "class": "missed_repo_invariant",
+      "invariant": "Under an unsigned replacement, the prior fitness policy is restored, the destruction authorization remains unused once, and the live policy matches the prior version.",
+      "contract_bindings": [
+        {
+          "file": "visible/destruction_ledger/policy_consumer.py",
+          "sha256": "7cb8ce70bcd67613b2a9e60745d5da57a6d9f2121a0993745f62b0c40d700409",
+          "quote": "A destruction authorization permits retirement only for the signed fitness-policy\nversion and requires the prior fitness policy to remain live after rejection."
+        },
+        {
+          "file": "visible/vault/test_unsigned_policy.py",
+          "sha256": "f73a61fd8c102767a74f579d84f1b2f10bfeb5538814a5cee78d7fc844d342bf",
+          "quote": "The vault test asserts an unsigned replacement leaves the authorization unused once."
+        }
+      ]
+    }
+  ]
+}

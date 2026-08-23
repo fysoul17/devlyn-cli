@@ -1,0 +1,19 @@
+--- a/accommodation_allocator/allocator/accommodation_change.py
++++ b/accommodation_allocator/allocator/accommodation_change.py
+@@ -6,7 +6,16 @@
+ def apply_accommodation_change(case):
+     previous = case["accommodation"]
++    case.setdefault("prior_accommodation", previous)
++    case.setdefault("seat_snapshot", dict(case["seat_plan"]))
+     case["accommodation"] = case["replacement"]
+     case["seat_plan"] = seat_plan_for(case["accommodation"], "assigned")
+     record_allocation(case, previous)
++    if case["stale"]:
++        case["accommodation"] = case["prior_accommodation"]
++        case["seat_plan"] = case["seat_snapshot"]
++        case["seat_open"] = True
++        if "reopened" not in case["events"]:
++            case["events"].append("reopened")
++        return {"allocated": False, "available": True}
+     case["seat_open"] = False
+     return {"allocated": True, "available": False}

@@ -1,0 +1,1 @@
+"""Arrangement allocation routines."""

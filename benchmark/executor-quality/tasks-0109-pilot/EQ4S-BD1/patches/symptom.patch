@@ -1,0 +1,12 @@
+--- a/accommodation_allocator/allocator/accommodation_change.py
++++ b/accommodation_allocator/allocator/accommodation_change.py
+@@ -8,5 +8,9 @@
+     case["accommodation"] = case["replacement"]
+     case["seat_plan"] = seat_plan_for(case["accommodation"], "assigned")
+     record_allocation(case, previous)
++    if case["stale"]:
++        case["seat_open"] = True
++        case["seat_plan"]["seat_status"] = "available"
++        return {"allocated": False, "available": True}
+     case["seat_open"] = False
+     return {"allocated": True, "available": False}
