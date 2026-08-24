@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (REGISTERED-FROZEN, apparatus frozen, LAUNCH DEFERRED — resume recipe in START-HERE). Most recent closed: 0108 (TERMINAL BAND_REDERIVATION_REJECTED) + 0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
+5. No active iter — next is a USER-GATED successor registration (see START-HERE). Most recent closed: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED) + 0108/0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,50 +14,34 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-23 (session 7)
+## 🚦 START-HERE — state after 2026-08-25 (session 8)
 
-**iter-0109 proximity-parity pilot — REGISTERED-FROZEN + LAUNCH
-APPARATUS TRIO-FROZEN 2026-08-23; LAUNCH DEFERRED by the user
-(usage-limit economy).** Direction was user-delegated ("best
-practice") and fable-adjudicated: ease the LAST uneased 0105
-hardness axis — decoy PROXIMITY parity (12 decoys per tree relocate
-to `visible/<fn>/`, parent-distance exactly 3, same shell as the
-contract artifacts) — before any pivot to the 0103 alternatives
-(criteria LAST-AXIS COMPLETION / IDENTITY PRESERVATION / APPARATUS
-REUSE ECONOMY, recorded in the iteration file). Registration
-trio-frozen after R0+R1+micro×6 (findings 9→7→5→2+2→1+1→0, double
-FREEZE, `d71e51f`); NEW frozen `finalize-decision-0109.py`
-mechanizes DECISION authorship (the 0108 hand-authoring gap) with a
-positive-witness (`ABORTED`) retry ladder at the gate. Terra
-single-continuation derivation + fix F1-F4 + double
-`FREEZE-0109-PILOTLAUNCH-{SOL,GROK}` (`9617150`). Final pins:
-validator `4be94c41…` · scorer `3d84d3c8…` (repo
-`docs/specs/iter0109-pilot/scripts.sha256`) · finalizer `94494e51…`
-· driver `50140a3a…` · launcher `27daee35…` · gate `cd04c405…` ·
-inventory 15 rows `ce6c3b6e…` · manifest `f46bdd2f…` · trees UA1
-`99adbf6b…` MI1 `b6ba7a36…` AF1 `904c771d…` BD1 `e89dfb25…`.
-**RESUME RECIPE (next session, on user go-ahead):** (1) account
-must be QUIET — zero headless engines, git clean, no live
-pyx-memory-v1 X-window (those sessions announce QUIET-FROM /
-all-clear over cross-session messages; ListAgents + ask before
-firing; X27 was live at handoff using ~305 sonnet calls on the
-shared quota) — and outside 23:00-01:00 KST; (2) sequential
-exact-ID smokes for ALL THREE engines (pinned CLI
-`~/.local/share/nx01/pins/claude-2.1.226-iter0100/claude`, neutral
-dir, `modelUsage` keys == exact ID); (3) `python3
-~/.local/share/nx01/iter0109/pilot/launch-detached.py --run-id
-pilot1-<UTC-ts> --attempt 1` (gate self-audits all 15 pins); (4) on
-"pilot complete" (24 rows, wall 0.5-3 h): `python3
-~/.local/share/nx01/iter0109/pilot/apparatus/finalize-decision-0109.py
---attempt-dir <lane>/attempt-<run_id>` — argv EXACTLY two tokens;
-stdout literal `TERMINAL` → read ONLY `DECISION` +
-`DECISION.receipt.sha256`; `RETRY_ALLOWED` → relaunch per gate
-ladder; (5) trio verification (fresh adversarial sol S-checks +
-grok G-checks as in 0108; grok STATIC-ONLY, small packet +
-file-path driven — grok CLI truncates ~100KB+ prompts); abstract
-per-engine diagnosis is the only exposure; (6) record verdict +
-DECISIONS entry + commit. Per-task outcomes stay SEALED; prior-lane
-receipt carriers (0105/0107/0108 attempt-*/DECISION*) PROHIBITED.
+**iter-0109 proximity-parity pilot CLOSED 2026-08-25 — TERMINAL
+`PROXIMITY_PARITY_REJECTED` (DECISIONS 0109.1).** Launch resumed on
+user go-ahead after the 08-23 deferral. Full lane: cross-session
+launch coordination (pyx-memory-v1 X27 window HOLD ~40 min → close
+commit + all-clear; pyx-www resolve pipeline held between phases;
+user pre-adjudicated wait-for-all-clear) → smokes 3/3 exact-ID →
+fired `pilot1-20260824T164713Z` 01:47 KST, gate self-audit 15/15
+pins → 24/24 valid rows in ~24 min (infra 0, rc=124 0, attestation
+24/24; fast wall verified authentic) → frozen finalizer stdout
+`TERMINAL`, DECISION REJECT (receipt `ecf2b587…`, scorer double-run
+byte-identical exit 2) → trio verify sol S1-S8 + grok G1-G5 PASS,
+fully convergent diagnosis: **sonnet mean 37/40 ABOVE the 3/5 bound
++ interior 1/4; opus-5 mean EXACTLY 3/5 IN-BAND (inclusive) +
+interior 3/4 — the FIRST in-band anchor in the 0105 lineage,
+failing ONLY the matrix both-ceiling conjunct; opus-4-8 7/8 ABOVE +
+interior 2/4; both-ceiling PRESENT.** P-0109-1 falsified by a valid
+scored REJECT — fourth consecutive too-hard-side bound
+(0105/0107/0108/0109). Orchestrator exposure deviation disclosed in
+the iteration file (successor derivation isolation must weigh it).
+**NEXT ACTION = USER GATE — successor registration choice:** the
+registered preferred research-efficiency reading is the
+0103-alternative pivot (session-horizon / pair-deference shapes);
+the unmeasured same-mechanism knobs are decoy-count reduction and
+distance-2, and opus-5's first in-band landing is the new evidence
+FOR one more same-mechanism easing. Narratives: iteration file
+§ Execution log; receipts `~/.local/share/nx01/iter0109/pilot/`.
 
 **iter-0108 band-rederivation pilot CLOSED 2026-08-22 — TERMINAL
 `BAND_REDERIVATION_REJECTED` (DECISIONS 0108.1).** Second same-day

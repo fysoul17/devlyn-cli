@@ -568,3 +568,64 @@ every seat and writer.
   AF1 `904c771d…` BD1 `e89dfb25…`. Audit receipts:
   `~/.local/share/nx01/iter0109/pilot/audit/`. NEXT = launch
   (quiet account, outside 23:00-01:00 KST, three-engine smokes).
+- **2026-08-25 — LAUNCH + pilot complete + TERMINAL (session 8).**
+  Launch deferred 2026-08-23 by the user (usage-limit economy);
+  resumed on user go-ahead. Cross-session coordination per
+  START-HERE: 4 peer sessions live at resume; pyx-memory-v1 X27
+  window ACTIVE → user pre-adjudicated wait-for-all-clear over
+  immediate fire → HOLD ~40 min until the X27 close packet commit
+  + all-clear message; pyx-www resolve pipeline held between
+  phases on request (resumed after matrix completion); final
+  headless scan clean; git clean; 01:47 KST (outside the
+  23:00-01:00 window). Smokes 3/3 exact-ID (pinned CLI, neutral
+  dir, `modelUsage` keys exact). Fired `pilot1-20260824T164713Z`
+  attempt 1 detached; gate self-audit passed — launch receipt
+  apparatus map byte-matches all 15 frozen pins. 24/24 valid rows
+  in ~24 min (infra 0, rc=124 0, attestation 24/24 exact-ID;
+  fast wall verified authentic = fast failure, 0108 precedent).
+  Frozen finalizer: argv exactly two tokens, stdout literal
+  `TERMINAL`; lane-root `DECISION` = `{"decision": "REJECT"}`,
+  receipt `ecf2b587…`; decision-receipt: scorer double-run
+  byte-identical exit 2, ledger `e5c408eb…`, verdict `904d5a10…`,
+  attempt 1, route null. Trio verification:
+  `VERIFY-0109-PILOTRUN-SOL: PASS` (S1-S8; scratch scorer replay
+  ×2 byte-identical to BOTH verdict files, independent
+  exact-Fraction recomputation licenses REJECT, at-bound mean
+  in-band under rule text AND scorer, row authenticity vs fast
+  wall confirmed at 2-lane concurrency) +
+  `VERIFY-0109-PILOTRUN-GROK: PASS` (G1-G5 static; digest strings
+  fully consistent, independent fraction arithmetic, per-row wall
+  65-188s sums consistent, 24/24 real CLI payloads with unique
+  session ids). Convergent abstract diagnosis: sonnet mean 37/40
+  ABOVE 3/5 + interior 1/4; **opus-5 mean exactly 3/5 = IN-BAND
+  (inclusive bound) + interior 3/4 — the first in-band anchor in
+  the 0105 lineage — failing ONLY the matrix both-ceiling
+  conjunct**; opus-4-8 mean 7/8 ABOVE + interior 2/4; matrix
+  both-ceiling PRESENT; catastrophic rows 5 (count only). One
+  seat relaunch (sol first attempt died on the known non-git-cwd
+  codex trust refusal; scratch `git init` + relaunch). EXPOSURE
+  DEVIATION (disclosed): while locating the DECISION artifacts
+  the orchestrator read `decision-receipt.json` and
+  `pilot-decision-verdict.json`, and the completion watcher's log
+  tail surfaced 4 ledger rows — exceeding the registered post-run
+  exposure (finalizer stdout + DECISION + digest). Per-task
+  mappings are excluded from every narrative surface; any
+  successor registration must weigh this orchestrator exposure at
+  derivation isolation (0105-seal precedent).
+- **DECISION (terminal): `PROXIMITY_PARITY_REJECTED`.** P-0109-1
+  falsified by a valid scored REJECT — the registered point
+  (exact-3 + proximity parity + 12 decoys + identity mass) is
+  unusable; no in-lane retuning. Fourth consecutive too-hard-side
+  bound in the lineage (0105 sonnet / 0107 frontier pair / 0108
+  all three at eased knobs / 0109 proximity parity). NEW
+  information vs 0108: the proximity easing moved opus-5 IN-BAND
+  for the first time (at-bound mean + interior 3/4, blocked only
+  by one shared both-ceiling prototype) while sonnet's mean moved
+  FURTHER above (37/40 vs 0108's 4/5) — reading (interpretation,
+  not measurement): the axis is live for the frontier anchor but
+  not monotone across anchors; trees differ between registrations
+  so cross-lane deltas are directional only. Successor is a NEW
+  user-gated registration — registered preferred
+  research-efficiency reading is the 0103-alternative pivot;
+  count reduction and distance-2 remain the unmeasured
+  same-mechanism knobs.
