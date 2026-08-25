@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Next: [`iterations/0110-session-horizon-STUB.md`](iterations/0110-session-horizon-STUB.md) (direction DECIDED 2026-08-25 — session-horizon pivot; STUB is the registration seed). Most recent closed: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED) + 0108/0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
+5. Next: [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md) (REGISTERED-FROZEN 2026-08-25 — session-horizon interference cell; next phase = apparatus). Most recent closed: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED) + 0108/0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -44,11 +44,37 @@ delta); B (fifth easing) rejected with a registered resurrection
 falsifier, C (pair-scoped band) rejected convergently — full
 decision record + open R0 design questions in
 [`iterations/0110-session-horizon-STUB.md`](iterations/0110-session-horizon-STUB.md).
-**NEXT SESSION ENTRY: cold start per read order → run the 0110
-registration R0 three-way design round (fable + sol + grok) from
-the STUB's open questions (a)-(d).** Narratives: 0109 iteration
-file § Execution log; receipts `~/.local/share/nx01/iter0109/pilot/`;
-direction logs `~/.local/share/nx01/iter0110-direction/`.
+Narratives: 0109 iteration file § Execution log; receipts
+`~/.local/share/nx01/iter0109/pilot/`; direction logs
+`~/.local/share/nx01/iter0110-direction/`.
+
+**iter-0110 REGISTERED-FROZEN 2026-08-25 (same day, sitting 2).**
+Three-way registration lane complete on the STUB's open questions
+(a)-(d): R0 (sol `a=AMEND b=AMEND c=REVISE d=ADOPT` / grok `a=AMEND
+b=AMEND c=AMEND d=ADOPT`; fable flipped (a) single-invocation →
+resume-primary with a named delta) → R1 REVISE ×2, all findings
+folded (sol S1-S3: request-level attestation over the misleading
+terminal aggregate, rotation-aware resume-chain custody, G0
+correlation envelope; grok B1-B3 + M4-M7: falsifier remedy,
+compact_boundary unimplementable on the JSON envelope,
+complete-replicate resampling unit, citation fixes) → micro ×2
+CONVERGENT catch of a mixed-invocation receipt (rebound at the
+bytes: worker session `6018fb9a…` cumulative 193,126 vs
+request-deduplicated peak 43,685) → double FREEZE (sol `9f3c7a1d` +
+grok `b8e4c1a3`). The frozen cell: sealed 0102 corpus serialized
+into driver-fed resume-chain sessions (real accumulated work, no
+filler), request-level horizon attestation with registered
+thresholds, counterbalanced crossover in complete replicates +
+replicate bootstrap, decision = opus-5 vs opus-4-8 late-minus-early
+interaction ΔH, sonnet demoted to transport validator, no judge,
+pair held out. Full contract:
+[`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md);
+receipts `~/.local/share/nx01/iter0110-reg/`.
+**NEXT SESSION ENTRY: 0110 apparatus phase (terra direct-drive
+lane, single-writer + digest pins) — resume smoke → schedule
+derivation + G0 correlation-envelope power proof → boundary-ledger
+collector + derived scorer → trio double-FREEZE. Launch stays
+USER-GATED (quiet account, outside 23:00–01:00 KST).**
 
 **iter-0108 band-rederivation pilot CLOSED 2026-08-22 — TERMINAL
 `BAND_REDERIVATION_REJECTED` (DECISIONS 0108.1).** Second same-day
