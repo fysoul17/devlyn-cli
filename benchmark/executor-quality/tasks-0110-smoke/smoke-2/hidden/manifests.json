@@ -1,0 +1,7 @@
+{
+  "manifestations": [
+    {"id": "earliest-open-first"},
+    {"id": "closed-case-excluded"},
+    {"id": "operator-summary"}
+  ]
+}

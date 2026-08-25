@@ -1,0 +1,3 @@
+{
+  "goal": "The morning handoff queue is presenting open cases in the wrong deadline order. Work only on this small synthetic fixture: fix queue.py so open cases are ordered from the earliest deadline to the latest, then create summary.txt explaining the change and naming the first case in the supplied sample. You may run the local checks if useful."
+}

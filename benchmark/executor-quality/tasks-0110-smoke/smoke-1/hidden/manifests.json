@@ -1,0 +1,9 @@
+{
+  "manifestations": [
+    {"id": "approved-only-total"},
+    {"id": "empty-approved-total"},
+    {"id": "operator-summary"},
+    {"id": "visible-file-inventory"},
+    {"id": "operational-record-summary"}
+  ]
+}

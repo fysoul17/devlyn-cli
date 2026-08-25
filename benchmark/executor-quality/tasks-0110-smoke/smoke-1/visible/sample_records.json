@@ -1,0 +1,6 @@
+[
+  {"id": "D-14", "state": "approved", "amount": 8},
+  {"id": "D-15", "state": "pending", "amount": 5},
+  {"id": "D-16", "state": "cancelled", "amount": 3},
+  {"id": "D-17", "state": "approved", "amount": 4}
+]

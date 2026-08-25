@@ -1,6 +1,6 @@
 ---
 title: "Session-horizon interference cell — opus-5 vs opus-4-8 under accumulated-context horizon"
-status: REGISTERED-FROZEN 2026-08-25 (double FREEZE on r4 — sol 9f3c7a1d + grok b8e4c1a3; R0 + R1 REVISE ×2 + micro ×2 lineage in § records)
+status: REGISTERED-FROZEN 2026-08-25 (double FREEZE on r4 — sol 9f3c7a1d + grok b8e4c1a3) + AMENDMENT 1 double ADOPT + APPARATUS TRIO-FROZEN 2026-08-26 (final double FREEZE a7b8eab7 sol+grok on identical bytes; launch USER-GATED)
 depends_on: ["0109-decoy-parity-pilot", "0103-opus-line-regression-cell", "0102-executor-quality-discovery-corpus"]
 ---
 
@@ -357,3 +357,103 @@ sibling `surface-close.output.json` `modelUsage` aggregate). This
 registration text is FROZEN; any change requires a new registration.
 Receipts: `~/.local/share/nx01/iter0110-reg/` (r0-packet, r0/r1/micro/
 freeze logs ×2 each).
+
+## AMENDMENT 1 (2026-08-25, apparatus freeze round — double seat-ADOPT)
+
+Raised as sol freeze-round finding S2 (the T-r1 block-scoped schedule
+narrowed the frozen replicate clause's "every task"); adjudicated in a
+focused micro round, CONVERGENT `MICRO-0110-AMEND-SOL: ADOPT` +
+`MICRO-0110-AMEND-GROK: ADOPT`
+(`~/.local/share/nx01/iter0110-apparatus/micro-sol.log` / `micro-grok.log`):
+
+> "every task" in the replicate clause is scoped to the replicate's task
+> block: each sweep partitions the 32 sealed tasks into 32/k blocks; one
+> COMPLETE REPLICATE = one block's forward + swapped-halves crossover
+> session pair per engine. The resampling unit for the registered bootstrap
+> is this block-crossover replicate. The estimand, schedule, and per-task
+> d values are unchanged by this scoping.
+
+Named synthesis criterion (sol): **REGISTERED-DEPENDENCE CLOSURE** — the
+unit must be the finest one containing every dependence the registered
+correlation envelope models (within-session shocks only; g0-power's
+simulator draws one shock per session) plus the complete matched early/late
+contrast; any coarser unit was shown empirically to lose decision
+reachability without protecting a registered dependence (sol regrouped the
+identical S=4 simulated values into full-corpus units: minimum coverage
+0.7935/0.7820/0.7985 across ρ={0,0.25,0.5}, all below the 0.90 gate; grok:
+within-sweep block-mean dependence is a finite-population partition —
+zero/negative covariance, overcovers). Grok's condition folded: the change
+is an EXPLICIT amendment (0105 registration-gap precedent), not a claim the
+frozen sentence already licensed it. Interacting lane rule, convergent
+`MICRO-0110-LANES-*: BLOCK-SERIAL-OK` ×2: the launcher preserves strict
+schedule order WITHIN each block's session group (the ABBA-checked unit);
+distinct blocks may run on parallel lanes; sonnet fills lanes freely —
+full-schedule serial would reimpose the engine-time confound that 0107's
+TIME-SYMMETRY adjudication rejected.
+
+## Apparatus phase record (2026-08-25/26, fable-orchestrated terra lane)
+
+Full adjudication log + every seat/terra receipt:
+`~/.local/share/nx01/iter0110-apparatus/` (ADJUDICATIONS.md is the
+narrative authority). Apparatus files: `benchmark/executor-quality/scripts/
+{sh-driver,boundary-ledger,smoke-gate,derive-schedule,g0-power,score,
+launch}-0110.py`, `tasks-0110-smoke/`, `docs/specs/iter0110/{schedule.json,
+registered-params.json,scripts.sha256,README.md}`.
+
+- **Resume smoke (registration §(a) gate)**: attempt 1 FAILED the
+  registered peak-to-peak growth formula (2,238 < 4,096) while custody /
+  attestation / harvest passed; diagnosis at the bytes showed carry PROVEN
+  (first-of-boundary-2 45,008 ≥ last-of-boundary-1 44,788) and the formula
+  measuring task-2's own footprint — NAMED DELTA, formula revised to
+  first-to-first + a mechanical discriminability precondition
+  (footprint ≥ 2×margin else INVALID), margin 4,096 unchanged, fixture
+  enlarged. Attempt 2 GATE PASS (footprint 17,662; 61,013 ≥ 43,025+4,096;
+  same-id resume; exact-ID sonnet). **PRIMARY (driver-fed resume chain)
+  CONFIRMED; stream-json alternate unpromoted.**
+- **Seeded-defect audit (§(d) falsifier)**: cross-task damage and
+  wrong-dir work both oracle-visible; in-scope failure modes are
+  mechanically identifiable → falsifier (d) does not fire.
+- **Registered numbers**: k=8; **S=5 sweeps → 20 block-crossover
+  replicates, 120 sessions / 960 attempts (320 per engine)** — the
+  smallest S passing all four G0 criteria at EVERY envelope member
+  (worst member ρ=0: P(C|S-large)=.517, P(R|S-null)=.5385, coverage
+  .928, false-C 0); δH=0.15; G1 tolerances .115/.100/.110; horizon
+  thresholds 90,000 abs + 0.45×200k (operator window attestation required
+  at launch); G2 crossing strictly at a PRIOR boundary; G3 ≥47 non-tied
+  pairs/engine (S=5 grid, conservative p2.5); launcher = serial A5 gate
+  phase (sweep 1's first block alone; a clean matrix session below
+  threshold → immediate sticky `FAIL_FAST_THRESHOLD_UNREACHED`; gate
+  block complete with an unrecorded engine → `A5_SUBJECT_UNAVAILABLE`)
+  then block-serial lanes; every terminal derived from the persisted
+  manifest before any session start (`derive_terminal`).
+- **Trio verification**: round 1 sol REVISE 11 (headline S1: G0 evaluated
+  only at ρ=0.5 while ρ=0 is the reachability worst case — S=4 was NOT
+  G0-passing; S2 replicate-clause narrowing → micro round → AMENDMENT 1
+  double ADOPT) / grok FREEZE + 2 minors; all folded by terra T-r3 (+T-r3F
+  G3 re-derivation); six launcher re-freeze rounds (sol 5+2+3+2+2
+  findings, all adopted; grok converged with sol at round 3; round 5
+  ruled a SUBTRACTIVE redesign → serial A5 gate phase +
+  persisted-state `derive_terminal`) → double FREEZE 73654c88 →
+  **fable-caught packaging defect at commit time** (both smoke-tree
+  pins computed with gitignored `__pycache__/*.pyc` present — one
+  inside `visible/`, which the driver copies into the engine
+  workspace; plus a gitignored `*.log` fixture — missed by all seven
+  seat rounds) → artifacts deleted, pins recomputed on clean trees,
+  `*.log` fixture force-tracked, zero code change → **FINAL double
+  FREEZE on identical bytes: sol `FREEZE-0110-APP8-SOL: a7b8eab7` +
+  grok `FREEZE-0110-APP8-GROK: a7b8eab7`** (pin file
+  `docs/specs/iter0110/scripts.sha256`).
+- **Pre-registered predictions** (before freeze): P-0110-1 G1 passes all
+  engines; P-0110-2 every custody-unbroken session crosses both thresholds
+  before the first LATE position (A5 never fires; riskiest — rests on the
+  12,288-token corpus-footprint estimate); P-0110-3 the pilot does NOT emit
+  CONFIRMED (0102/0103 lineage).
+- **Deviation disclosed**: terra T-r3 attempt 1 routed the fold through a
+  nested worker that cannot initialize under the wrapper sandbox → honest
+  BLOCKED, no apparatus bytes changed, relaunched with direct
+  implementation.
+- **Launch = USER-GATED** (quiet account, outside 23:00–01:00 KST; other
+  Claude sessions idle). Recipe: `launch-0110.py --sweep N --lanes 3 --out
+  <root> --run-id <id> --window-attestation <operator json>` per sweep
+  (5 sweeps, each 24 sessions / 192 attempts, independently stageable),
+  then `score-0110.py --results-root <root> --schedule … --params …`.

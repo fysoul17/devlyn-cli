@@ -1,0 +1,3 @@
+{
+  "goal": "The evening dispatch report is including pending and cancelled requests in its approved total. Work only in this synthetic fixture: fix the calculation in records.py so it totals approved requests only, then create summary.txt explaining the correction and the expected approved total for the supplied sample data. Before writing the summary, read every file in this directory. The summary must cover every visible file: name README.md, records.py, report.py, and sample_records.json with each file's role, then for each of the five operational records state its control ID and recorded finding: allocation_review.md, capacity_window.log, exception_register.md, handoff_notes.md, and reconciliation_ledger.md. You may run the local checks if useful."
+}

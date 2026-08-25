@@ -1,0 +1,6 @@
+[
+  {"id": "case-bravo", "status": "open", "deadline": "2026-08-26"},
+  {"id": "case-closed", "status": "closed", "deadline": "2026-08-24"},
+  {"id": "case-alpha", "status": "open", "deadline": "2026-08-25"},
+  {"id": "case-charlie", "status": "open", "deadline": "2026-08-28"}
+]

@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Next: [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md) (REGISTERED-FROZEN 2026-08-25 — session-horizon interference cell; next phase = apparatus). Most recent closed: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED) + 0108/0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
+5. Next: [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md) (REGISTERED-FROZEN 2026-08-25 + APPARATUS TRIO-FROZEN 2026-08-26 — session-horizon interference cell; next = launch, USER-GATED). Most recent closed: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED) + 0108/0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,7 +14,7 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-25 (session 8)
+## 🚦 START-HERE — state after 2026-08-26 (session 9)
 
 **iter-0109 proximity-parity pilot CLOSED 2026-08-25 — TERMINAL
 `PROXIMITY_PARITY_REJECTED` (DECISIONS 0109.1).** Launch resumed on
@@ -70,11 +70,36 @@ interaction ΔH, sonnet demoted to transport validator, no judge,
 pair held out. Full contract:
 [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md);
 receipts `~/.local/share/nx01/iter0110-reg/`.
-**NEXT SESSION ENTRY: 0110 apparatus phase (terra direct-drive
-lane, single-writer + digest pins) — resume smoke → schedule
-derivation + G0 correlation-envelope power proof → boundary-ledger
-collector + derived scorer → trio double-FREEZE. Launch stays
-USER-GATED (quiet account, outside 23:00–01:00 KST).**
+**iter-0110 APPARATUS TRIO-FROZEN 2026-08-26 (session 9, one
+sitting).** Terra direct-drive lane (T-r0 → r0F/r0G → T-r1 → T-r2/r2F
+→ T-r3/r3F): resume smoke attempt 1 FAILED the registered growth
+formula → named-delta revision (first-to-first + discriminability
+precondition) → attempt 2 GATE PASS = **PRIMARY resume-chain
+CONFIRMED**; seeded-defect audit clean; G0 proof; scorer + launcher
++ pins. Trio round 1: sol REVISE 11 (S1 — G0 evaluated only at ρ=0.5,
+ρ=0 is the true worst case → **S=4 NOT passing; re-derived S=5 = 120
+sessions / 960 attempts**; S2 → micro round → **AMENDMENT 1 double
+ADOPT**: block-crossover replicate = registered resampling unit,
+block-serial lanes) / grok FREEZE + 2 minors; all folded (T-r3/r3F)
+→ six re-freeze rounds on the launcher (sol 5+2+3+2+2 more findings,
+all adopted; grok converged with sol at round 3; round 5 ruled a
+SUBTRACTIVE redesign: serial A5 gate phase + persisted-state
+`derive_terminal`) → double FREEZE 73654c88 → fable caught a
+packaging defect at commit time that all seven seat rounds missed
+(smoke-tree pins computed with gitignored `__pycache__` artifacts
+present; one gitignored `*.log` fixture) → artifacts deleted, pins
+recomputed, zero code change → **FINAL double FREEZE on identical
+bytes: sol `FREEZE-0110-APP8-SOL: a7b8eab7` + grok
+`FREEZE-0110-APP8-GROK: a7b8eab7`.** Registered numbers, predictions P-0110-1..3, recipe:
+iteration file § Apparatus phase record; receipts
+`~/.local/share/nx01/iter0110-apparatus/` (ADJUDICATIONS.md).
+**NEXT SESSION ENTRY: LAUNCH — USER-GATED** (quiet account, outside
+23:00–01:00 KST, no other Claude sessions/headless reviews on the
+account; operator writes the `--window-attestation` JSON at launch
+time; 5 sweeps independently stageable, 24 sessions each; sweep 1's
+first block runs alone as the serial A5 gate — a clean matrix
+session below the horizon threshold aborts the launch before any
+further session is spent).
 
 **iter-0108 band-rederivation pilot CLOSED 2026-08-22 — TERMINAL
 `BAND_REDERIVATION_REJECTED` (DECISIONS 0108.1).** Second same-day

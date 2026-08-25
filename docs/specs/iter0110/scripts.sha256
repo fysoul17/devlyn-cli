@@ -1,0 +1,13 @@
+# iter-0110 apparatus freeze inventory
+# Whole-tree recipe: cd <task root> && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 shasum -a 256 | shasum -a 256
+0b79da8352ce5672b826c0ddca4fe5d95d8260e43867332f238cbf46966fe8fe  benchmark/executor-quality/scripts/sh-driver-0110.py
+0447293559b223880fc84db86bbcae57ec35fc86b94c2d86e3d776725180da87  benchmark/executor-quality/scripts/boundary-ledger-0110.py
+deb80d934de146f699b29baa6b204cb0707105b7aadce4e453b94a1b5bd3338f  benchmark/executor-quality/scripts/smoke-gate-0110.py
+c1ac83d4a49539dd712b055301d5a236dc568cc8cce0838fe703b3136f4e9e56  benchmark/executor-quality/scripts/derive-schedule-0110.py
+b1be2b31243806fbcb2575aa04580eb4847d1cb5e679b896f11e2b3c1977ab0e  benchmark/executor-quality/scripts/g0-power-0110.py
+1bc7fcbeefe63daa2eecb181814f1e578fcfa4df904dd91d30987cdda7389948  benchmark/executor-quality/scripts/score-0110.py
+0acc6a6973e4c4f17a470a0c67a87e7ea77e5a018636da0ba15d8faafed30f24  benchmark/executor-quality/scripts/launch-0110.py
+3b319cf6324e4a19d6b42c74d14b915f4e11d500c35456ce5008ce7802044554  docs/specs/iter0110/schedule.json
+85b623dd472b6461b6131c31cd7a89e336a81492418e4a2025407b6ae2064c26  docs/specs/iter0110/registered-params.json
+bab0da423320ae6392978aa67c842b050b9af59c5c763a4bf11d39b3a873dbe9  benchmark/executor-quality/tasks-0110-smoke/smoke-1 (whole tree)
+22b40fe626d79fcd067a4b21157ae8ec1c3ab9c43f2c953121d30c0700808354  benchmark/executor-quality/tasks-0110-smoke/smoke-2 (whole tree)

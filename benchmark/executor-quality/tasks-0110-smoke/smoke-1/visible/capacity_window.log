@@ -1,0 +1,79 @@
+2026-08-25T16:00:00+09:00 capacity-review start window=evening owner=route-desk
+2026-08-25T16:05:00+09:00 capacity-review source=route-board snapshot=stable
+2026-08-25T16:10:00+09:00 route=D-04 reserved_slots=1 scanned=true disposition=retain
+2026-08-25T16:15:00+09:00 route=D-05 reserved_slots=1 scanned=true disposition=retain
+2026-08-25T16:20:00+09:00 route=D-06 reserved_slots=1 scanned=true disposition=retain
+2026-08-25T16:25:00+09:00 route=D-07 reserved_slots=1 scanned=true disposition=retain
+2026-08-25T16:30:00+09:00 route=D-08 reserved_slots=1 scanned=true disposition=retain
+2026-08-25T16:35:00+09:00 route=D-09 reserved_slots=1 scanned=true disposition=retain
+2026-08-25T16:40:00+09:00 route=D-10 reserved_slots=1 scanned=true disposition=retain
+2026-08-25T16:45:00+09:00 route=D-11 reserved_slots=1 scanned=true disposition=retain
+2026-08-25T16:50:00+09:00 route=D-12 reserved_slots=1 scanned=true disposition=retain
+2026-08-25T16:55:00+09:00 route=D-13 reserved_slots=1 scanned=true disposition=retain
+2026-08-25T17:00:00+09:00 route=D-14 reserved_slots=1 state=approved amount=8
+2026-08-25T17:05:00+09:00 route=D-15 reserved_slots=0 state=pending amount=5 action=wait
+2026-08-25T17:10:00+09:00 route=D-16 reserved_slots=0 state=cancelled amount=3 action=exclude
+2026-08-25T17:15:00+09:00 route=D-17 reserved_slots=1 state=approved amount=4
+2026-08-25T17:20:00+09:00 route=D-18 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T17:25:00+09:00 route=D-19 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T17:30:00+09:00 route=D-20 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T17:35:00+09:00 route=D-21 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T17:40:00+09:00 route=D-22 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T17:45:00+09:00 route=D-23 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T17:50:00+09:00 route=D-24 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T17:55:00+09:00 route=D-25 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T18:00:00+09:00 checkpoint=hold queue=evening-dispatch approved_only=true
+2026-08-25T18:05:00+09:00 route=D-26 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T18:10:00+09:00 route=D-27 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T18:15:00+09:00 route=D-28 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T18:20:00+09:00 route=D-29 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T18:25:00+09:00 route=D-30 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T18:30:00+09:00 route=D-31 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T18:35:00+09:00 route=D-32 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T18:40:00+09:00 route=D-33 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T18:45:00+09:00 route=D-34 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T18:50:00+09:00 route=D-35 reserved_slots=1 scan=matched disposition=retain
+2026-08-25T18:55:00+09:00 route=D-36 reserved_slots=1 scan=matched disposition=retain
+
+control=CAP-31
+recorded_finding="three reserve slots remain after route D-17"
+method="reserve slots are counted after approved routing and before pending or cancelled rows"
+note="the capacity finding supports the handoff only; it does not change the report rule"
+
+2026-08-25T19:00:00+09:00 capacity-review reserve_slots=3 status=confirmed
+2026-08-25T19:05:00+09:00 capacity-review pending_rows=1 excluded_from_approved_total=true
+2026-08-25T19:10:00+09:00 capacity-review cancelled_rows=1 excluded_from_approved_total=true
+2026-08-25T19:15:00+09:00 capacity-review approved_rows=2 approved_units=12
+2026-08-25T19:20:00+09:00 capacity-review report-preview="Approved dispatch amount: 12"
+2026-08-25T19:25:00+09:00 capacity-review handoff=ready reviewer=route-desk
+2026-08-25T19:30:00+09:00 audit=capacity source=route-board check=slot-ledger result=matched
+2026-08-25T19:35:00+09:00 audit=capacity source=route-board check=hold-queue result=pending-and-cancelled-retained
+2026-08-25T19:40:00+09:00 audit=capacity source=route-board check=report-classification result=approved-only
+2026-08-25T19:45:00+09:00 audit=capacity route=D-04 reservation=stable note=historical-route
+2026-08-25T19:50:00+09:00 audit=capacity route=D-05 reservation=stable note=historical-route
+2026-08-25T19:55:00+09:00 audit=capacity route=D-06 reservation=stable note=historical-route
+2026-08-25T20:00:00+09:00 audit=capacity route=D-07 reservation=stable note=historical-route
+2026-08-25T20:05:00+09:00 audit=capacity route=D-08 reservation=stable note=historical-route
+2026-08-25T20:10:00+09:00 audit=capacity route=D-09 reservation=stable note=historical-route
+2026-08-25T20:15:00+09:00 audit=capacity route=D-10 reservation=stable note=historical-route
+2026-08-25T20:20:00+09:00 audit=capacity route=D-11 reservation=stable note=historical-route
+2026-08-25T20:25:00+09:00 audit=capacity route=D-12 reservation=stable note=historical-route
+2026-08-25T20:30:00+09:00 audit=capacity route=D-13 reservation=stable note=historical-route
+2026-08-25T20:35:00+09:00 audit=capacity route=D-14 reservation=stable report_amount=8
+2026-08-25T20:40:00+09:00 audit=capacity route=D-15 reservation=none report_amount=0 state=pending
+2026-08-25T20:45:00+09:00 audit=capacity route=D-16 reservation=none report_amount=0 state=cancelled
+2026-08-25T20:50:00+09:00 audit=capacity route=D-17 reservation=stable report_amount=4
+2026-08-25T20:55:00+09:00 audit=capacity route=D-18 reservation=stable note=late-route
+2026-08-25T21:00:00+09:00 audit=capacity route=D-19 reservation=stable note=final-scan
+2026-08-25T21:05:00+09:00 audit=capacity route=D-20 reservation=stable note=handoff-complete
+2026-08-25T21:10:00+09:00 audit=capacity route=D-21 reservation=stable note=exception-free
+2026-08-25T21:15:00+09:00 audit=capacity route=D-22 reservation=stable note=reserve-positive
+2026-08-25T21:20:00+09:00 audit=capacity route=D-23 reservation=stable note=reserve-positive
+2026-08-25T21:25:00+09:00 audit=capacity route=D-24 reservation=stable note=reserve-positive
+2026-08-25T21:30:00+09:00 audit=capacity route=D-25 reservation=stable note=reserve-positive
+2026-08-25T21:35:00+09:00 audit=capacity route=D-26 reservation=stable note=reserve-positive
+2026-08-25T21:40:00+09:00 audit=capacity route=D-27 reservation=stable note=reserve-positive
+2026-08-25T21:45:00+09:00 audit=capacity route=D-28 reservation=stable note=reserve-positive
+2026-08-25T21:50:00+09:00 audit=capacity route=D-29 reservation=stable note=reserve-positive
+2026-08-25T21:55:00+09:00 audit=capacity route=D-30 reservation=stable note=reserve-positive
+2026-08-25T22:00:00+09:00 audit=capacity final_reserve_slots=3 classification=approved-only status=closed
