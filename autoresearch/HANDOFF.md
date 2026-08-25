@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. No active iter — next is a USER-GATED successor registration (see START-HERE). Most recent closed: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED) + 0108/0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
+5. Next: [`iterations/0110-session-horizon-STUB.md`](iterations/0110-session-horizon-STUB.md) (direction DECIDED 2026-08-25 — session-horizon pivot; STUB is the registration seed). Most recent closed: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED) + 0108/0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -35,13 +35,20 @@ interior 2/4; both-ceiling PRESENT.** P-0109-1 falsified by a valid
 scored REJECT — fourth consecutive too-hard-side bound
 (0105/0107/0108/0109). Orchestrator exposure deviation disclosed in
 the iteration file (successor derivation isolation must weigh it).
-**NEXT ACTION = USER GATE — successor registration choice:** the
-registered preferred research-efficiency reading is the
-0103-alternative pivot (session-horizon / pair-deference shapes);
-the unmeasured same-mechanism knobs are decoy-count reduction and
-distance-2, and opus-5's first in-band landing is the new evidence
-FOR one more same-mechanism easing. Narratives: iteration file
-§ Execution log; receipts `~/.local/share/nx01/iter0109/pilot/`.
+**SUCCESSOR DIRECTION DECIDED 2026-08-25 (user-delegated "best
+practice", fable+sol R0 convergent): PIVOT — iter-0110
+session-horizon/long-context instrument (H1-shaped, pair held
+out).** Decisive criterion PROSPECTIVE GATE-CROSSING SUFFICIENCY
+(sol, adopted over fable's knob-response reading with a named
+delta); B (fifth easing) rejected with a registered resurrection
+falsifier, C (pair-scoped band) rejected convergently — full
+decision record + open R0 design questions in
+[`iterations/0110-session-horizon-STUB.md`](iterations/0110-session-horizon-STUB.md).
+**NEXT SESSION ENTRY: cold start per read order → run the 0110
+registration R0 three-way design round (fable + sol + grok) from
+the STUB's open questions (a)-(d).** Narratives: 0109 iteration
+file § Execution log; receipts `~/.local/share/nx01/iter0109/pilot/`;
+direction logs `~/.local/share/nx01/iter0110-direction/`.
 
 **iter-0108 band-rederivation pilot CLOSED 2026-08-22 — TERMINAL
 `BAND_REDERIVATION_REJECTED` (DECISIONS 0108.1).** Second same-day
