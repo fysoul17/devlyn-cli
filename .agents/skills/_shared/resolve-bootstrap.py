@@ -45,8 +45,21 @@ def reject_json_constant(token: str) -> None:
     raise ValueError(f"invalid JSON numeric constant: {token}")
 
 
+def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def strict_json(text: str):
-    return json.loads(text, parse_constant=reject_json_constant)
+    return json.loads(
+        text,
+        parse_constant=reject_json_constant,
+        object_pairs_hook=reject_duplicate_keys,
+    )
 
 
 def json_bytes(value: object) -> bytes:
@@ -430,6 +443,12 @@ def bootstrap(
 
 def self_test() -> int:
     script_shared = pathlib.Path(__file__).resolve().parent
+    try:
+        strict_json('{"run_id":"a","run_id":"b"}')
+    except ValueError as exc:
+        assert "duplicate JSON key" in str(exc)
+    else:
+        raise AssertionError("duplicate bootstrap state key was accepted")
 
     def init_repo(path: pathlib.Path) -> None:
         path.mkdir()

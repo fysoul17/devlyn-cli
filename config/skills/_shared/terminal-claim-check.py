@@ -60,6 +60,15 @@ def reject_json_constant(token: str) -> None:
     raise ValueError(f"invalid JSON numeric constant: {token}")
 
 
+def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def malformed(reason: str, run_id: str | None = None) -> Classification:
     return Classification("MALFORMED", None, reason, run_id, True)
 
@@ -132,6 +141,7 @@ def classify_state_bytes(
         state = json.loads(
             state_bytes.decode("utf-8"),
             parse_constant=reject_json_constant,
+            object_pairs_hook=reject_duplicate_keys,
         )
     except (UnicodeError, ValueError):
         return malformed(f"run state unreadable or invalid: {state_path}"), None
@@ -349,6 +359,11 @@ def write_archived_state(root: pathlib.Path, state: dict[str, object]) -> None:
 
 def self_test() -> int:
     tests = 0
+    classification, _state = classify_state_bytes(
+        pathlib.Path("."), pathlib.Path("pipeline.state.json"),
+        b'{"run_id":"a","run_id":"b","phases":{}}', archived=False,
+    )
+    assert classification.status == "MALFORMED"
     with tempfile.TemporaryDirectory() as tmp:
         base = pathlib.Path(tmp)
 

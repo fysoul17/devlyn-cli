@@ -214,6 +214,29 @@ def declared_obligations(work: pathlib.Path, state: dict, phase: str) -> list[di
     return [item for item in obligations if item["phase"] == phase]
 
 
+def mechanical_evidence_required(work: pathlib.Path, state: dict) -> bool:
+    """Return whether BUILD_GATE/VERIFY has declared executable obligations."""
+    expected_path = _source_expected_path(work, state)
+    if expected_path is not None:
+        expected = _read_json(expected_path)
+        commands = expected.get("verification_commands") if isinstance(expected, dict) else None
+        if commands is not None and not isinstance(commands, list):
+            raise EvidenceError("verification_commands must be an array")
+        if commands:
+            return True
+    devlyn = work / ".devlyn"
+    staged_path = devlyn / "spec-verify.json"
+    if staged_path.is_file():
+        staged = _read_json(staged_path)
+        commands = staged.get("verification_commands") if isinstance(staged, dict) else None
+        if commands is not None and not isinstance(commands, list):
+            raise EvidenceError("staged verification_commands must be an array")
+        if commands:
+            return True
+    probes = devlyn / "risk-probes.jsonl"
+    return probes.is_file() and bool(probes.read_text(encoding="utf-8").strip())
+
+
 def phase_round(state: dict, phase: str) -> int:
     entry = (state.get("phases") or {}).get(phase)
     round_ = entry.get("round") if isinstance(entry, dict) else None
@@ -517,6 +540,111 @@ def validate_bound_carrier(work: pathlib.Path, carrier: object) -> None:
         raise EvidenceError("bound process evidence stream binding mismatch")
 
 
+def bound_carrier_outcome(work: pathlib.Path, carrier: object) -> dict:
+    """Derive the verdict floor from the bytes already authenticated by carrier."""
+    validate_bound_carrier(work, carrier)
+    manifest = carrier["manifest"]
+    document = _read_json(
+        _checked_file(work, manifest["path"], "bound process evidence manifest")
+    )
+    failed_ids = []
+    capability_denials = []
+    for entry in document["entries"]:
+        if entry["classification"]["kind"] == "capability_denied":
+            capability_denials.append({
+                "id": entry["id"],
+                "operation": entry["classification"]["operation"],
+                "execution": entry["execution"],
+            })
+        elif not entry["expectation_met"]:
+            failed_ids.append(entry["id"])
+    verdict = (
+        "BLOCKED" if capability_denials else
+        "NEEDS_WORK" if failed_ids else
+        "PASS"
+    )
+    return {
+        "verdict": verdict,
+        "failed_ids": failed_ids,
+        "capability_denials": capability_denials,
+    }
+
+
+def bound_carrier_summary_commands(work: pathlib.Path, carrier: object) -> list[dict]:
+    """Derive the canonical MECHANICAL summary from sealed manifest bytes."""
+    validate_bound_carrier(work, carrier)
+    manifest = carrier["manifest"]
+    document = _read_json(
+        _checked_file(work, manifest["path"], "bound process evidence manifest")
+    )
+    summaries = []
+    for index, entry in enumerate(document["entries"]):
+        stdout = _checked_file(
+            work, entry["stdout"]["path"], f"process evidence entry {index} stdout",
+        ).read_bytes()
+        stderr = _checked_file(
+            work, entry["stderr"]["path"], f"process evidence entry {index} stderr",
+        ).read_bytes()
+        expectation = entry["expectation"]
+        outcome = entry["outcome"]
+        classification = entry["classification"]
+        combined = stdout + stderr
+        actual_exit = outcome["exit_code"] if outcome["kind"] == "exit" else None
+        if classification["kind"] == "capability_denied":
+            reason = "capability_denied"
+        elif entry["expectation_met"]:
+            reason = None
+        elif outcome["kind"] == "timeout":
+            reason = "timeout"
+        elif outcome["kind"] != "exit" or actual_exit != expectation["exit_code"]:
+            reason = "exit"
+        elif not all(
+            marker.encode("utf-8") in combined
+            for marker in expectation["stdout_contains"]
+        ):
+            reason = "missing_contains"
+        else:
+            reason = "unexpected_text"
+        summaries.append({
+            "index": index,
+            "cmd": entry["execution"]["command"],
+            "expected_exit": expectation["exit_code"],
+            "actual_exit": actual_exit,
+            "timeout_sec": expectation["timeout_sec"],
+            "stdout_contains": expectation["stdout_contains"],
+            "stdout_not_contains": expectation["stdout_not_contains"],
+            "pass": entry["expectation_met"],
+            "reason": reason,
+            "evidence_id": entry["id"],
+            "outcome": outcome,
+            "classification": classification,
+            "stdout": entry["stdout"],
+            "stderr": entry["stderr"],
+        })
+    return summaries
+
+
+def validate_summary_commands(
+    work: pathlib.Path, commands: object, carrier: object,
+) -> dict:
+    """Cross-check the mutable MECHANICAL summary against sealed manifest bytes."""
+    if not isinstance(commands, list):
+        raise EvidenceError("spec-verify.results.json commands must be an array")
+    expected_commands = bound_carrier_summary_commands(work, carrier)
+    if len(commands) != len(expected_commands):
+        raise EvidenceError(
+            "spec-verify.results.json command count disagrees with sealed process evidence"
+        )
+    for index, (summary, expected) in enumerate(zip(commands, expected_commands)):
+        if not isinstance(summary, dict):
+            raise EvidenceError(f"spec-verify.results.json command {index} is not an object")
+        if summary != expected:
+            raise EvidenceError(
+                f"spec-verify.results.json command {index} disagrees with sealed process evidence"
+            )
+    return bound_carrier_outcome(work, carrier)
+
+
 def _load_state(devlyn: pathlib.Path) -> dict:
     state = _read_json(devlyn / "pipeline.state.json")
     if not isinstance(state, dict):
@@ -532,6 +660,12 @@ def _declared_by_id(work: pathlib.Path, state: dict, phase: str, evidence_id: st
 
 
 def self_test() -> int:
+    try:
+        loads_strict_json('{"run_id":"a","run_id":"b"}')
+    except ValueError as exc:
+        assert "duplicate JSON key" in str(exc)
+    else:
+        raise AssertionError("duplicate process-evidence JSON key was accepted")
     with tempfile.TemporaryDirectory() as raw_tmp:
         work = pathlib.Path(raw_tmp)
         devlyn = work / ".devlyn"
@@ -566,6 +700,15 @@ def self_test() -> int:
             work, manifest_rel, state["run_id"], "implement", 0, [obligation, empty],
         )
         assert carrier["manifest"]["sha256"] == _sha256(manifest.read_bytes())
+        summaries = bound_carrier_summary_commands(work, carrier)
+        assert validate_summary_commands(work, summaries, carrier)["verdict"] == "PASS"
+        summaries[0]["pass"] = False
+        try:
+            validate_summary_commands(work, summaries, carrier)
+        except EvidenceError as exc:
+            assert "command 0 disagrees" in str(exc)
+        else:
+            raise AssertionError("mutable command summary contradicted sealed process evidence")
         try:
             capture_process(work, manifest, state["run_id"], "implement", 0, obligation)
         except EvidenceError as exc:
@@ -640,6 +783,15 @@ def self_test() -> int:
             assert "expectation mismatch" in str(exc)
         else:
             raise AssertionError("expectation-mismatched evidence was accepted")
+        mismatch_carrier = validate_manifest(
+            work, manifest_rel, state["run_id"], "implement", 0,
+            require_expectations=False,
+        )
+        assert bound_carrier_outcome(work, mismatch_carrier) == {
+            "verdict": "NEEDS_WORK",
+            "failed_ids": ["mismatch"],
+            "capability_denials": [],
+        }
         signaled = normalize_obligation({
             "id": "signaled", "phase": "implement",
             "argv": [
@@ -682,10 +834,17 @@ def self_test() -> int:
         assert denied_entry["classification"] == {
             "kind": "capability_denied", "operation": "subprocess",
         }
-        validate_manifest(
+        denied_carrier = validate_manifest(
             work, manifest_rel, state["run_id"], "build_gate", 0,
             require_expectations=False,
         )
+        denied_outcome = bound_carrier_outcome(work, denied_carrier)
+        assert denied_outcome["verdict"] == "BLOCKED"
+        assert denied_outcome["capability_denials"] == [{
+            "id": "denied",
+            "operation": "subprocess",
+            "execution": {"command": "python3 -m pytest", "argv": None},
+        }]
         print("PASS process evidence explicit capability classification without stderr heuristics")
     return 0
 

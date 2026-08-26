@@ -24,6 +24,11 @@ required operation before the command can produce product output:
 3. Do not emit a product finding, run a substitute command, narrow the command,
    retry it on another route, or treat the denial as test/lint output.
 
+The state writer derives the phase verdict floor from this sealed manifest. A
+capability denial can complete only as `BLOCKED`; a failed product expectation
+cannot complete as `PASS` or `PASS_WITH_ISSUES` even if a mutable results or
+findings file claims otherwise.
+
 An executed command that exits nonzero remains a genuine product result even if
 its stdout/stderr contains text such as `permission denied` or `operation not
 permitted`. Preserve the existing finding rules below. Only explicit route/tool

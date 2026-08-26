@@ -14,6 +14,7 @@ archive behavior is identical across every invocation.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import pathlib
 import re
@@ -45,9 +46,9 @@ PER_RUN_PATTERNS = (
     "surface-close.stdout",
     # Mutation workers retain the exact session JSONL identified by their
     # dispatch receipt. Round-scoped root files avoid engine-global scans.
-    "implement.worker-session.*.jsonl",
-    "surface-close.worker-session.*.jsonl",
-    "cleanup.worker-session.*.jsonl",
+    "*.worker-session.*.jsonl",
+    "*.invocation.*.json",
+    "*.prompt.*",
     "risk-probes.jsonl",
     # Probe scripts referenced by risk-probes.jsonl preserve probes/<file>
     # layout through the common preflight/move plan below.
@@ -110,12 +111,29 @@ def process_evidence_module():
     return runpy.run_path(pathlib.Path(__file__).with_name("process-evidence.py"))
 
 
+def invocation_receipt_module():
+    return runpy.run_path(pathlib.Path(__file__).with_name("invocation-receipt.py"))
+
+
 def reject_json_constant(token: str) -> None:
     raise ValueError(f"invalid JSON numeric constant: {token}")
 
 
+def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def loads_strict_json(text: str):
-    return json.loads(text, parse_constant=reject_json_constant)
+    return json.loads(
+        text,
+        parse_constant=reject_json_constant,
+        object_pairs_hook=reject_duplicate_keys,
+    )
 
 
 def read_state(devlyn: pathlib.Path) -> dict:
@@ -221,7 +239,70 @@ def dynamic_evidence_artifacts(devlyn: pathlib.Path, state: dict) -> list[pathli
     return sorted(found)
 
 
+def dynamic_invocation_artifacts(devlyn: pathlib.Path, state: dict) -> list[pathlib.Path]:
+    phases = state.get("phases")
+    if not isinstance(phases, dict):
+        return []
+    work = devlyn.parent.resolve()
+    found: dict[pathlib.Path, None] = {}
+    for phase_name, phase in phases.items():
+        if not isinstance(phase, dict):
+            continue
+        records = [phase]
+        history = phase.get("history")
+        if isinstance(history, list):
+            records.extend(record for record in history if isinstance(record, dict))
+        for record in records:
+            receipt = record.get("invocation_receipt")
+            if receipt is None:
+                continue
+            if not isinstance(receipt, dict) or set(receipt) != {
+                "path", "sha256", "sandbox", "argv_sha256", "exit_code",
+            }:
+                raise ArchiveError(f"phases.{phase_name} invocation receipt binding is invalid")
+            relative_text = receipt["path"]
+            if not isinstance(relative_text, str):
+                raise ArchiveError(f"phases.{phase_name} invocation receipt path is invalid")
+            relative = pathlib.PurePosixPath(relative_text)
+            if (
+                relative.is_absolute()
+                or ".." in relative.parts
+                or relative.parts[:1] != (".devlyn",)
+            ):
+                raise ArchiveError(f"invocation receipt escapes .devlyn: {relative_text}")
+            source = work.joinpath(*relative.parts)
+            try:
+                resolved = source.resolve(strict=True)
+                resolved.relative_to(work)
+                if source.is_symlink() or not resolved.is_file():
+                    raise ArchiveError(
+                        f"bound invocation receipt is not a regular worktree file: {relative_text}"
+                    )
+                raw = source.read_bytes()
+            except (OSError, ValueError) as exc:
+                raise ArchiveError(f"bound invocation receipt is missing: {relative_text}") from exc
+            if receipt["sha256"] != hashlib.sha256(raw).hexdigest():
+                raise ArchiveError(f"bound invocation receipt digest mismatch: {relative_text}")
+            try:
+                _document, receipt_file, prompt_file, session_file = (
+                    invocation_receipt_module()["validate_receipt_artifacts"](
+                        work, source, run_id=state["run_id"], phase=phase_name,
+                    )
+                )
+            except (OSError, UnicodeError, ValueError) as exc:
+                raise ArchiveError(f"invalid bound invocation receipt: {exc}") from exc
+            for artifact in (receipt_file, prompt_file, session_file):
+                if artifact in found:
+                    raise ArchiveError(
+                        f"duplicate state-bound invocation artifact: {artifact.relative_to(work)}"
+                    )
+                found[artifact] = None
+    return sorted(found)
+
+
 def archive_plan(devlyn: pathlib.Path, dest: pathlib.Path, state: dict) -> list[tuple[pathlib.Path, pathlib.Path]]:
+    devlyn = devlyn.resolve()
+    dest = dest.resolve(strict=False)
     moves: list[tuple[pathlib.Path, pathlib.Path]] = []
     sources: set[pathlib.Path] = set()
     targets: set[pathlib.Path] = set()
@@ -231,12 +312,12 @@ def archive_plan(devlyn: pathlib.Path, dest: pathlib.Path, state: dict) -> list[
             return
         if target in targets:
             raise ArchiveError(f"archive destination is ambiguous: {target}")
-        if target.exists():
+        if target.exists() or target.is_symlink():
             raise ArchiveError(f"archive destination collision: {target}")
         parent = target.parent
         while parent != dest.parent:
-            if parent.exists() and not parent.is_dir():
-                raise ArchiveError(f"archive destination parent is not a directory: {parent}")
+            if parent.exists() and (parent.is_symlink() or not parent.is_dir()):
+                raise ArchiveError(f"archive destination parent is unsafe: {parent}")
             if parent == dest:
                 break
             parent = parent.parent
@@ -249,6 +330,8 @@ def archive_plan(devlyn: pathlib.Path, dest: pathlib.Path, state: dict) -> list[
         target = dest / relative if relative.parts[0] == "probes" else dest / source.name
         add(source, target)
     for source in dynamic_evidence_artifacts(devlyn, state):
+        add(source, dest / source.relative_to(devlyn))
+    for source in dynamic_invocation_artifacts(devlyn, state):
         add(source, dest / source.relative_to(devlyn))
     return moves
 
@@ -310,14 +393,58 @@ def prune(runs_dir: pathlib.Path, keep: int = 10) -> int:
 
 
 def self_test() -> int:
+    try:
+        loads_strict_json('{"run_id":"a","run_id":"b"}')
+    except ValueError as exc:
+        assert "duplicate JSON key" in str(exc)
+    else:
+        raise AssertionError("duplicate archive state key was accepted")
     with tempfile.TemporaryDirectory() as tmp:
         work = pathlib.Path(tmp)
         devlyn = pathlib.Path(tmp) / ".devlyn"
         devlyn.mkdir()
+        invocation = invocation_receipt_module()
+        prior_prompt = devlyn / "build_gate.prompt.1"
+        prior_prompt.write_text("verify prior archive\n", encoding="utf-8")
+        prior_session = devlyn / "build_gate.worker-session.1.jsonl"
+        prior_session.write_text('{"type":"thread.started","round":1}\n', encoding="utf-8")
+        prior_receipt = devlyn / "build_gate.invocation.1.json"
+        invocation["start_receipt"](
+            work, prior_receipt, "run-1", "build_gate", 1,
+            str(prior_prompt), str(prior_session),
+            ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test", "verify prior archive"],
+        )
+        invocation["finish_receipt"](work, prior_receipt, 0)
+        prior_binding = invocation["validate_receipt"](
+            work, prior_receipt, run_id="run-1", phase="build_gate", round_=1,
+            model="gpt-test", prompt_sha256=hashlib.sha256(prior_prompt.read_bytes()).hexdigest(),
+            session_path=prior_session,
+        )
+        build_prompt = devlyn / "build_gate.prompt.2"
+        build_prompt.write_text("verify archive\n", encoding="utf-8")
+        build_session = devlyn / "build_gate.worker-session.2.jsonl"
+        build_session.write_text('{"type":"thread.started"}\n', encoding="utf-8")
+        build_receipt = devlyn / "build_gate.invocation.2.json"
+        invocation["start_receipt"](
+            work, build_receipt, "run-1", "build_gate", 2,
+            str(build_prompt), str(build_session),
+            ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test", "verify archive"],
+        )
+        invocation["finish_receipt"](work, build_receipt, 0)
+        receipt_binding = invocation["validate_receipt"](
+            work, build_receipt, run_id="run-1", phase="build_gate", round_=2,
+            model="gpt-test", prompt_sha256=hashlib.sha256(build_prompt.read_bytes()).hexdigest(),
+            session_path=build_session,
+        )
         state = {
             "run_id": "run-1",
             "phases": {
                 "verify": {"round": 2},
+                "build_gate": {
+                    "round": 2,
+                    "history": [{"invocation_receipt": prior_binding}],
+                    "invocation_receipt": receipt_binding,
+                },
                 "final_report": {"verdict": "PASS"},
             },
             "process_evidence": None,
@@ -378,6 +505,30 @@ def self_test() -> int:
         global_rollout.write_text("{}\n", encoding="utf-8")
         run_id = read_run_id(devlyn)
         assert run_id == "run-1", run_id
+        original_session = build_session.read_bytes()
+        build_session.write_bytes(original_session + b"altered\n")
+        try:
+            archive_plan(devlyn, devlyn / "runs" / run_id, state)
+        except ArchiveError as exc:
+            assert "worker-session digest mismatch" in str(exc)
+        else:
+            raise AssertionError("archive accepted a mutated invocation worker session")
+        build_session.write_bytes(original_session)
+
+        escape = work / "archive-escape"
+        escape.mkdir()
+        unsafe_dest = devlyn / "runs" / run_id
+        unsafe_dest.mkdir(parents=True)
+        unsafe_parent = unsafe_dest / "process-evidence"
+        unsafe_parent.symlink_to(escape, target_is_directory=True)
+        try:
+            move_artifacts(devlyn, unsafe_dest)
+        except ArchiveError as exc:
+            assert "archive destination parent is unsafe" in str(exc)
+        else:
+            raise AssertionError("archive followed a symlinked destination parent")
+        unsafe_parent.unlink()
+        unsafe_dest.rmdir()
         moved = move_artifacts(devlyn, devlyn / "runs" / run_id)
         assert moved >= 12, moved
         for name in (
@@ -390,7 +541,13 @@ def self_test() -> int:
             "surface-close.stdout",
             "implement.worker-session.0.jsonl",
             "surface-close.worker-session.0.jsonl",
+            "build_gate.prompt.1",
+            "build_gate.worker-session.1.jsonl",
+            "build_gate.invocation.1.json",
+            "build_gate.prompt.2",
+            "build_gate.worker-session.2.jsonl",
             "cleanup.worker-session.1.jsonl",
+            "build_gate.invocation.2.json",
             "probes/P1.py",
             "verify.pair.findings.jsonl",
             "verify-merge.summary.json",

@@ -25,6 +25,19 @@ sys.dont_write_bytecode = True
 RECEIPT_PATTERN = "resolve-stop-hook.*.json"
 
 
+def reject_json_constant(token: str) -> None:
+    raise ValueError(f"invalid JSON numeric constant: {token}")
+
+
+def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def load_module(path: pathlib.Path, name: str) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
@@ -41,7 +54,11 @@ def allow(reason: str) -> int:
 
 
 def parse_hook_input(raw: bytes) -> dict[str, Any]:
-    value = json.loads(raw.decode("utf-8"))
+    value = json.loads(
+        raw.decode("utf-8"),
+        parse_constant=reject_json_constant,
+        object_pairs_hook=reject_duplicate_keys,
+    )
     if not isinstance(value, dict):
         raise ValueError("hook input must be a JSON object")
     if value.get("hook_event_name") != "Stop":
@@ -176,6 +193,21 @@ def tree_snapshot(root: pathlib.Path) -> dict[str, str]:
 
 
 def self_test() -> int:
+    try:
+        parse_hook_input(
+            b'{"hook_event_name":"Stop","stop_hook_active":true,'
+            b'"stop_hook_active":false}'
+        )
+    except ValueError as exc:
+        assert "duplicate JSON key" in str(exc)
+    else:
+        raise AssertionError("duplicate stop-hook input key was accepted")
+    try:
+        parse_hook_input(b'{"hook_event_name":"Stop","stop_hook_active":NaN}')
+    except ValueError as exc:
+        assert "invalid JSON numeric constant" in str(exc)
+    else:
+        raise AssertionError("non-standard stop-hook JSON constant was accepted")
     repo = pathlib.Path(__file__).resolve().parents[3]
     k2a_source = repo / (
         "benchmark/ceiling/results/iter0077-probe-a/"

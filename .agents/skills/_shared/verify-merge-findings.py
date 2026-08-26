@@ -95,8 +95,21 @@ def reject_json_constant(token: str) -> None:
     raise ValueError(f"invalid JSON numeric constant: {token}")
 
 
+def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def loads_strict_json(text: str) -> Any:
-    return json.loads(text, parse_constant=reject_json_constant)
+    return json.loads(
+        text,
+        parse_constant=reject_json_constant,
+        object_pairs_hook=reject_duplicate_keys,
+    )
 
 
 def rank(verdict: str | None) -> int:
@@ -134,9 +147,19 @@ def finding_rank(finding: dict[str, Any]) -> int:
     return 0
 
 
+def mechanical_evidence_required(devlyn: pathlib.Path, state: dict[str, Any]) -> bool:
+    return PROCESS_EVIDENCE["mechanical_evidence_required"](devlyn.parent.resolve(), state)
+
+
 def mechanical_evidence_carrier(devlyn: pathlib.Path) -> dict[str, Any] | None:
+    state_path = devlyn / "pipeline.state.json"
+    state = loads_strict_json(state_path.read_text(encoding="utf-8"))
+    if not isinstance(state, dict):
+        raise ValueError("pipeline.state.json must contain a JSON object")
     results_path = devlyn / "spec-verify.results.json"
     if not results_path.is_file():
+        if state.get("version") == "3.0" and mechanical_evidence_required(devlyn, state):
+            raise ValueError("spec-verify.results.json is required for VERIFY MECHANICAL evidence")
         return None
     results = loads_strict_json(results_path.read_text(encoding="utf-8"))
     if not isinstance(results, dict):
@@ -148,11 +171,20 @@ def mechanical_evidence_carrier(devlyn: pathlib.Path) -> dict[str, Any] | None:
     if carrier is None:
         if commands:
             raise ValueError("MECHANICAL commands exist without a process-evidence carrier")
+        if mechanical_evidence_required(devlyn, state):
+            raise ValueError("required VERIFY MECHANICAL evidence has no process-evidence carrier")
+        run_id = state.get("run_id")
+        phases = state.get("phases")
+        verify_phase = phases.get("verify") if isinstance(phases, dict) else None
+        round_ = verify_phase.get("round") if isinstance(verify_phase, dict) else None
+        if isinstance(run_id, str) and isinstance(round_, int) and not isinstance(round_, bool):
+            manifest_path = (
+                devlyn / "process-evidence" / run_id / "verify"
+                / f"round-{round_}" / "manifest.json"
+            )
+            if manifest_path.exists():
+                raise ValueError("VERIFY manifest exists without a process-evidence carrier")
         return None
-    state_path = devlyn / "pipeline.state.json"
-    state = loads_strict_json(state_path.read_text(encoding="utf-8"))
-    if not isinstance(state, dict):
-        raise ValueError("pipeline.state.json must contain a JSON object")
     run_id = state.get("run_id")
     phases = state.get("phases")
     verify_phase = phases.get("verify") if isinstance(phases, dict) else None
@@ -163,7 +195,9 @@ def mechanical_evidence_carrier(devlyn: pathlib.Path) -> dict[str, Any] | None:
         raise ValueError("phases.verify.round is required for sealed MECHANICAL evidence")
     if not isinstance(carrier, dict) or carrier.get("phase") != "verify" or carrier.get("round") != round_:
         raise ValueError("MECHANICAL process-evidence carrier does not match the VERIFY round")
-    PROCESS_EVIDENCE["validate_bound_carrier"](devlyn.parent.resolve(), carrier)
+    PROCESS_EVIDENCE["validate_summary_commands"](
+        devlyn.parent.resolve(), commands, carrier,
+    )
     expected_prefix = f".devlyn/process-evidence/{run_id}/verify/round-{round_}/"
     manifest = carrier.get("manifest")
     if not isinstance(manifest, dict) or not str(manifest.get("path", "")).startswith(expected_prefix):
@@ -200,6 +234,13 @@ def mechanical_evidence_violation(devlyn: pathlib.Path) -> dict[str, Any] | None
             "source": "mechanical",
         }
     return None
+
+
+def mechanical_evidence_outcome(devlyn: pathlib.Path) -> dict[str, Any] | None:
+    carrier = mechanical_evidence_carrier(devlyn)
+    if carrier is None:
+        return None
+    return PROCESS_EVIDENCE["bound_carrier_outcome"](devlyn.parent.resolve(), carrier)
 
 
 def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, str | None]]:
@@ -268,6 +309,37 @@ def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str,
     if evidence_violation is not None:
         findings.append(evidence_violation)
         source_verdicts["mechanical"] = "BLOCKED"
+    else:
+        outcome = mechanical_evidence_outcome(devlyn)
+        if outcome is not None and outcome["verdict"] != "PASS":
+            blocked = outcome["verdict"] == "BLOCKED"
+            ids = (
+                [item["id"] for item in outcome["capability_denials"]]
+                if blocked else outcome["failed_ids"]
+            )
+            findings.append({
+                "id": (
+                    "verify-mechanical-capability-denied"
+                    if blocked else "verify-mechanical-expectation-mismatch"
+                ),
+                "rule_id": (
+                    "invariant.build-env-underprovisioned"
+                    if blocked else "invariant.mechanical-expectation-mismatch"
+                ),
+                "severity": "CRITICAL" if blocked else "HIGH",
+                "confidence": "high",
+                "file": "spec-verify.results.json",
+                "line": 1,
+                "message": (
+                    "Sealed VERIFY MECHANICAL evidence records a capability denial: "
+                    if blocked else
+                    "Sealed VERIFY MECHANICAL evidence records failed expectations: "
+                ) + ",".join(ids),
+                "criterion_ref": "process-evidence://mechanical",
+                "source": "mechanical",
+                "verdict_binding": True,
+            })
+            source_verdicts["mechanical"] = outcome["verdict"]
     findings.extend(detect_pair_stdout_contract_violations(devlyn, source_verdicts))
     pair_summary_path = devlyn / "pair-judge.summary.json"
     pair_carrier_exists = any(
@@ -1268,6 +1340,12 @@ def write_state(devlyn: pathlib.Path, summary: dict[str, Any]) -> None:
 
 
 def self_test() -> int:
+    try:
+        loads_strict_json('{"verdict":"PASS","verdict":"BLOCKED"}')
+    except ValueError as exc:
+        assert "duplicate JSON key" in str(exc)
+    else:
+        raise AssertionError("duplicate VERIFY authority key was accepted")
     with tempfile.TemporaryDirectory() as tmp:
         devlyn = pathlib.Path(tmp)
 
@@ -1320,8 +1398,11 @@ def self_test() -> int:
         (sealed_devlyn / "pipeline.state.json").write_text(
             json.dumps(sealed_state), encoding="utf-8",
         )
+        sealed_commands = PROCESS_EVIDENCE["bound_carrier_summary_commands"](
+            sealed_work, carrier,
+        )
         (sealed_devlyn / "spec-verify.results.json").write_text(
-            json.dumps({"commands": [{"pass": True}], "process_evidence": carrier}),
+            json.dumps({"commands": sealed_commands, "process_evidence": carrier}),
             encoding="utf-8",
         )
         (sealed_devlyn / "verify-mechanical.findings.jsonl").write_text("", encoding="utf-8")
@@ -1334,6 +1415,71 @@ def self_test() -> int:
             (sealed_devlyn / "pipeline.state.json").read_text(encoding="utf-8")
         )
         assert bound_state["process_evidence"] == [carrier], bound_state
+
+        failed_work = pathlib.Path(tmp) / "failed-work"
+        failed_devlyn = failed_work / ".devlyn"
+        failed_devlyn.mkdir(parents=True)
+        failed_state = {
+            "version": "3.0",
+            "run_id": "rs-failed-mechanical",
+            "engine": "claude",
+            "source": {"type": "spec", "spec_path": "docs/failed/spec.md"},
+            "process_evidence": None,
+            "phases": {"verify": {"round": 0, "verdict": None, "sub_verdicts": None}},
+        }
+        failed_spec = failed_work / "docs" / "failed"
+        failed_spec.mkdir(parents=True)
+        (failed_spec / "spec.md").write_text("# failed fixture\n", encoding="utf-8")
+        (failed_spec / "spec.expected.json").write_text(json.dumps({
+            "verification_commands": [{"cmd": "exit 7", "exit_code": 0}],
+        }) + "\n", encoding="utf-8")
+        failed_obligation = PROCESS_EVIDENCE["normalize_obligation"]({
+            "id": "verification-command-0001",
+            "phase": "verify",
+            "cmd": "exit 7",
+        })
+        failed_manifest = PROCESS_EVIDENCE["manifest_relative_path"](failed_state, "verify")
+        PROCESS_EVIDENCE["capture_process"](
+            failed_work, failed_work / failed_manifest, failed_state["run_id"],
+            "verify", 0, failed_obligation,
+        )
+        failed_carrier = PROCESS_EVIDENCE["validate_manifest"](
+            failed_work, failed_manifest, failed_state["run_id"], "verify", 0,
+            [failed_obligation], require_expectations=False,
+        )
+        (failed_devlyn / "pipeline.state.json").write_text(
+            json.dumps(failed_state), encoding="utf-8",
+        )
+        # Exact laundering attempt: mutable derivatives say PASS/empty while
+        # the state-identical sealed manifest still records the failed command.
+        laundered_commands = PROCESS_EVIDENCE["bound_carrier_summary_commands"](
+            failed_work, failed_carrier,
+        )
+        laundered_commands[0]["pass"] = True
+        (failed_devlyn / "spec-verify.results.json").write_text(json.dumps({
+            "commands": laundered_commands, "process_evidence": failed_carrier,
+        }), encoding="utf-8")
+        (failed_devlyn / "verify-mechanical.findings.jsonl").write_text("", encoding="utf-8")
+        (failed_devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
+        failed_findings, failed_verdicts = read_findings(failed_devlyn)
+        assert failed_verdicts["mechanical"] == "BLOCKED", failed_verdicts
+        assert any(
+            item.get("id") == "verify-mechanical-evidence-invalid"
+            for item in failed_findings
+        ), failed_findings
+        assert write_outputs(failed_devlyn, failed_findings, failed_verdicts)["verdict"] == "BLOCKED"
+
+        (failed_devlyn / "spec-verify.results.json").write_text(json.dumps({
+            "commands": [], "process_evidence": None,
+        }), encoding="utf-8")
+        removed_findings, removed_verdicts = read_findings(failed_devlyn)
+        assert removed_verdicts["mechanical"] == "BLOCKED", removed_verdicts
+        assert any(
+            item.get("id") == "verify-mechanical-evidence-invalid"
+            for item in removed_findings
+        ), removed_findings
+        print("PASS iter-0112 sealed VERIFY outcome resists mutable-derivative laundering")
+
         sealed_stdout = sealed_work / carrier["streams"][0]["stdout"]["path"]
         sealed_stdout.write_bytes(sealed_stdout.read_bytes() + b"altered")
         altered_findings, altered_verdicts = read_findings(sealed_devlyn)

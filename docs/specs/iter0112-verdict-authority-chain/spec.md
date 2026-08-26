@@ -56,43 +56,46 @@ that authority chain.
 
 ## Requirements
 
-- [ ] R1 — Sealed process outcomes own the verdict floor. BUILD_GATE completion rejects
+- [x] R1 — Sealed process outcomes own the verdict floor. BUILD_GATE completion rejects
   `PASS`/`PASS_WITH_ISSUES` when any bound product-result expectation failed and accepts
   only `BLOCKED` when a bound entry is `capability_denied`. VERIFY merge independently
   derives `mechanical` from the bound manifest: a product mismatch is `NEEDS_WORK`, a
   capability denial is `BLOCKED`, and all expectations met is `PASS`. Mutating or
   deleting findings/results cannot improve that derived verdict while the same manifest
   remains. The manifest and raw bytes are still archived for non-PASS outcomes.
-- [ ] R2 — Every JSON authority boundary touched by resolve bootstrap, expected-contract
+- [x] R2 — Every JSON authority boundary touched by resolve bootstrap, expected-contract
   execution, phase state, judge collection/merge, stop/finish checks, and archive rejects
   duplicate object keys as well as NaN/Infinity. Duplicate-key input fails visibly and
   cannot be rewritten into an apparently canonical state.
-- [ ] R3 — PLAN output is immutable after completion. PLAN completion binds the exact
+- [x] R3 — PLAN output is immutable after completion. PLAN completion binds the exact
   `.devlyn/plan.md` bytes to `pipeline.state.json`; every later spawn, completion, and
   transition rehashes them before changing state. A legal PLAN respawn replaces the
   receipt only through PLAN completion. Mid-flight plan widening blocks before the next
   state change.
-- [ ] R4 — Model/session provenance is phase- and round-owned. Mutation phases and
-  BUILD_GATE accept only their canonical retained worker session, never an arbitrary
-  supplied path or plaintext `model:` header. Codex execution also retains a canonical
+- [x] R4 — Model/session provenance is phase- and round-owned. Codex-routed IMPLEMENT,
+  BUILD_GATE, and CLEANUP accept only their canonical retained worker session, never an
+  arbitrary supplied path or plaintext `model:` header. Codex execution also retains a canonical
   invocation receipt produced by `codex-monitored.sh`, binds its digest into phase state,
   and cross-checks run id, phase, round, requested model, prompt, sandbox, terminal exit,
-  and session path. Missing, synthesized, mismatched, or unfinished receipts block.
-- [ ] R5 — Execution authority cannot widen inside a phase. `codex-monitored.sh` rejects
-  `--dangerously-bypass-approvals-and-sandbox`/`--yolo`. A canonical invocation receipt
-  records the actual sandbox argument. After a capability-denied manifest entry exists,
+  and session path. Prompt and session carriers are round-scoped so a retry cannot erase
+  prior provenance, and completion cannot replace the spawn engine/model. Missing,
+  synthesized, mismatched, or unfinished receipts block.
+- [x] R5 — Execution authority cannot widen inside a phase. `codex-monitored.sh` rejects
+  `--dangerously-bypass-approvals-and-sandbox`/`--yolo` and any sandbox other than
+  `workspace-write`. A canonical invocation receipt records the actual sandbox argument.
+  After a capability-denied manifest entry exists,
   the same phase/round cannot launch another invocation or complete as product failure or
   PASS; it terminates as `BLOCKED:build-env-underprovisioned`.
-- [ ] R6 — Archive ownership covers canonical worker sessions and invocation receipts
+- [x] R6 — Archive ownership covers canonical worker sessions and invocation receipts
   for every phase, including BUILD_GATE and round-suffixed variants. Bootstrap archives
   or blocks these artifacts under prior authenticated ownership, and final archive leaves
   none flat while preserving unrelated `.devlyn` data.
-- [ ] R7 — Self-tests reproduce the exact counterexamples above: failed BUILD_GATE plus
+- [x] R7 — Self-tests reproduce the exact counterexamples above: failed BUILD_GATE plus
   requested PASS, failed VERIFY plus emptied derivatives, capability denial plus widened
   retry, duplicate keys at each authority reader, PLAN mutation, plaintext/arbitrary
   model log, missing/mismatched invocation receipt, bypass flag, and BUILD_GATE worker
   archive. Every former false-PASS path must fail red before the fix and fail closed after.
-- [ ] R8 — Canonical `config/skills` and tracked `.agents` mirrors remain byte-identical,
+- [x] R8 — Canonical `config/skills` and tracked `.agents` mirrors remain byte-identical,
   the full skill lint passes, no dependency or user-facing flag is added, and existing
   legacy archived runs remain readable without granting them schema-v3 execution rights.
 

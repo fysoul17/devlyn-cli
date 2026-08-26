@@ -57,6 +57,7 @@ fi
 # mirror parity checks cover the same files.
 critical_path_files=$(cat <<'EOF'
 _shared/process-evidence.py
+_shared/invocation-receipt.py
 _shared/spec-verify-check.py
 _shared/judge-output-parser.py
 _shared/collect-codex-findings.py
@@ -471,8 +472,22 @@ else
 fi
 if ! grep -Fq 'PHASES = {"implement", "build_gate", "verify"}' config/skills/_shared/process-evidence.py \
   || ! grep -Fq 'classification' config/skills/_shared/process-evidence.py \
-  || ! grep -Fq 'validate_bound_carrier' config/skills/_shared/process-evidence.py; then
+  || ! grep -Fq 'validate_bound_carrier' config/skills/_shared/process-evidence.py \
+  || ! grep -Fq 'validate_summary_commands' config/skills/_shared/process-evidence.py; then
   bad "process-evidence.py must preserve phase identity, capability classification, and bound-byte validation"
+fi
+
+section "Check 6b2: Codex invocation receipts are phase-owned"
+if python3 config/skills/_shared/invocation-receipt.py --self-test >/dev/null 2>&1; then
+  ok "invocation-receipt.py self-test passed"
+else
+  bad "invocation-receipt.py self-test failed"
+fi
+if ! grep -Fq 'sandbox must remain workspace-write' config/skills/_shared/invocation-receipt.py \
+  || ! grep -Fq 'forbidden Codex bypass flag' config/skills/_shared/invocation-receipt.py \
+  || ! grep -Fq 'forbidden Codex sandbox: danger-full-access' config/skills/_shared/codex-monitored.sh \
+  || ! grep -Fq 'DEVLYN_INVOCATION_RECEIPT' config/skills/_shared/codex-monitored.sh; then
+  bad "Codex invocation receipts must bind phase identity and reject authority widening"
 fi
 
 section "Check 6c: Codex stdout collection writes canonical pair findings"

@@ -104,8 +104,21 @@ def reject_json_constant(token: str) -> None:
     raise ValueError(f"invalid JSON numeric constant: {token}")
 
 
+def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def loads_strict_json(text: str):
-    return json.loads(text, parse_constant=reject_json_constant)
+    return json.loads(
+        text,
+        parse_constant=reject_json_constant,
+        object_pairs_hook=reject_duplicate_keys,
+    )
 
 
 def output_phase() -> str:
@@ -1882,6 +1895,12 @@ def run_check_expected_mode(expected_path: Path) -> int:
 
 
 def run_self_test() -> int:
+    try:
+        loads_strict_json('{"verification_commands":[],"verification_commands":[{}]}')
+    except ValueError as exc:
+        assert "duplicate JSON key" in str(exc)
+    else:
+        raise AssertionError("duplicate expected-contract key was accepted")
     # Hermeticity: a pipeline replay exports BENCH_WORKDIR at the live repo;
     # inherited into scenario children it wins over their tmp cwd (the
     # default-mode work resolution below) and re-executes the LIVE
@@ -4849,6 +4868,7 @@ def main() -> int:
                 work, manifest_relative, evidence_run_id, evidence_phase,
                 evidence_round, obligations, require_expectations=False,
             )
+            results = runner.bound_carrier_summary_commands(work, evidence_carrier)
         except (runner.EvidenceError, OSError, UnicodeError, ValueError) as exc:
             evidence_error = str(exc)
             findings.append({

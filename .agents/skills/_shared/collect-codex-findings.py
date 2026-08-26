@@ -22,8 +22,21 @@ def reject_json_constant(token: str) -> None:
     raise ValueError(f"invalid JSON numeric constant: {token}")
 
 
+def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def loads_strict_json(text: str) -> Any:
-    return json.loads(text, parse_constant=reject_json_constant)
+    return json.loads(
+        text,
+        parse_constant=reject_json_constant,
+        object_pairs_hook=reject_duplicate_keys,
+    )
 
 
 def atomic_write(path: pathlib.Path, text: str) -> None:
@@ -61,6 +74,12 @@ def collect_stdout(stdout_path: pathlib.Path) -> tuple[list[dict[str, Any]], dic
 
 
 def self_test() -> int:
+    try:
+        loads_strict_json('{"verdict":"PASS","verdict":"BLOCKED"}')
+    except ValueError as exc:
+        assert "duplicate JSON key" in str(exc)
+    else:
+        raise AssertionError("duplicate judge result key was accepted")
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         stdout_path = root / "pair-judge.stdout"
@@ -94,6 +113,11 @@ def self_test() -> int:
             '{"id":"nan","severity":NaN}\n',
             "NaN pair-JUDGE stdout finding",
             "invalid JSON numeric constant: NaN",
+        )
+        assert_rejected(
+            '# SUMMARY {"verdict":"PASS","verdict":"BLOCKED"}\n',
+            "duplicate pair-JUDGE summary verdict",
+            "duplicate JSON key: verdict",
         )
         rejection_cases = (
             ("", "no verdict line", "non-PASS verdict without JSONL findings"),

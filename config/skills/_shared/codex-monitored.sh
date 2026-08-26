@@ -54,6 +54,10 @@
 #   CODEX_MONITORED_ALLOW_PIPED    — set non-empty to skip the pipe-stdout
 #                                     refusal. Reserved for tests; don't use
 #                                     in skill prompts.
+#   DEVLYN_INVOCATION_*             — run/phase/round/workdir/prompt/session/
+#                                     receipt identity. When any is set, all
+#                                     are required and the wrapper seals a
+#                                     canonical invocation receipt.
 
 set -uo pipefail
 
@@ -75,6 +79,19 @@ CODEX_BIN="${CODEX_BIN:-${CODEX_REAL_BIN:-codex}}"
 START=$(date +%s)
 TIMEOUT_FLAG=""
 CODEX_ARGS=("$@")
+
+for codex_arg in "${CODEX_ARGS[@]}"; do
+  case "$codex_arg" in
+    --dangerously-bypass-approvals-and-sandbox|--yolo)
+      printf '[codex-monitored] error: forbidden Codex bypass flag: %s\n' "$codex_arg" >&2
+      exit 64
+      ;;
+    danger-full-access|-s=danger-full-access|--sandbox=danger-full-access)
+      printf '[codex-monitored] error: forbidden Codex sandbox: danger-full-access\n' >&2
+      exit 64
+      ;;
+  esac
+done
 
 require_nonnegative_int() {
   local name="$1"
@@ -101,6 +118,34 @@ require_positive_int() {
 
 require_positive_int CODEX_MONITORED_HEARTBEAT "$HEARTBEAT_SEC"
 require_nonnegative_int CODEX_MONITORED_TIMEOUT_SEC "$TIMEOUT_SEC"
+
+RECEIPT_ENABLED=""
+for receipt_value in \
+  "${DEVLYN_INVOCATION_RUN_ID:-}" \
+  "${DEVLYN_INVOCATION_PHASE:-}" \
+  "${DEVLYN_INVOCATION_ROUND:-}" \
+  "${DEVLYN_INVOCATION_WORKDIR:-}" \
+  "${DEVLYN_INVOCATION_PROMPT_FILE:-}" \
+  "${DEVLYN_INVOCATION_SESSION_FILE:-}" \
+  "${DEVLYN_INVOCATION_RECEIPT:-}"; do
+  if [ -n "$receipt_value" ]; then
+    RECEIPT_ENABLED=1
+  fi
+done
+if [ -n "$RECEIPT_ENABLED" ]; then
+  for receipt_name in \
+    DEVLYN_INVOCATION_RUN_ID DEVLYN_INVOCATION_PHASE DEVLYN_INVOCATION_ROUND \
+    DEVLYN_INVOCATION_WORKDIR DEVLYN_INVOCATION_PROMPT_FILE \
+    DEVLYN_INVOCATION_SESSION_FILE DEVLYN_INVOCATION_RECEIPT; do
+    eval "receipt_value=\${$receipt_name:-}"
+    if [ -z "$receipt_value" ]; then
+      printf '[codex-monitored] error: %s is required for invocation receipt\n' \
+        "$receipt_name" >&2
+      exit 64
+    fi
+  done
+  require_nonnegative_int DEVLYN_INVOCATION_ROUND "$DEVLYN_INVOCATION_ROUND"
+fi
 
 if [ -n "${CODEX_MONITORED_ISOLATED:-}" ]; then
   CODEX_ARGS=(
@@ -215,6 +260,19 @@ if [ -n "${CODEX_MONITORED_ISOLATED:-}" ]; then
   printf '[codex-monitored] isolated=1\n' >&2
 fi
 
+if [ -n "$RECEIPT_ENABLED" ]; then
+  RECEIPT_HELPER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/invocation-receipt.py"
+  python3 "$RECEIPT_HELPER" start \
+    --workdir "$DEVLYN_INVOCATION_WORKDIR" \
+    --receipt "$DEVLYN_INVOCATION_RECEIPT" \
+    --run-id "$DEVLYN_INVOCATION_RUN_ID" \
+    --phase "$DEVLYN_INVOCATION_PHASE" \
+    --round "$DEVLYN_INVOCATION_ROUND" \
+    --prompt-file "$DEVLYN_INVOCATION_PROMPT_FILE" \
+    --session-file "$DEVLYN_INVOCATION_SESSION_FILE" \
+    -- "${CODEX_ARGS[@]}" || exit 64
+fi
+
 # Launch codex with stdin closed; output streams directly to OUR stdout/stderr.
 set -m
 "$CODEX_BIN" exec "${CODEX_ARGS[@]}" < /dev/null &
@@ -244,6 +302,13 @@ if [ -n "${WATCHDOG_PID:-}" ]; then
 fi
 if [ -n "$TIMEOUT_FLAG" ] && [ -f "$TIMEOUT_FLAG" ]; then
   EXIT=124
+fi
+
+if [ -n "$RECEIPT_ENABLED" ]; then
+  python3 "$RECEIPT_HELPER" finish \
+    --workdir "$DEVLYN_INVOCATION_WORKDIR" \
+    --receipt "$DEVLYN_INVOCATION_RECEIPT" \
+    --exit-code "$EXIT" || exit 64
 fi
 
 printf '[codex-monitored] codex exited: code=%d elapsed=%ds\n' \
