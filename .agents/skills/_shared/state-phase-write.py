@@ -27,6 +27,7 @@ import copy
 import datetime
 import difflib
 import hashlib
+import importlib.util
 import json
 import os
 import pathlib
@@ -77,6 +78,7 @@ PLAN_COMPLETION_RECEIPT_FIELDS = (
     "completed_at", "duration_ms", "verdict", "model_effective",
 )
 PLAN_RECEIPT_FIELDS = PLAN_SPAWN_RECEIPT_FIELDS + PLAN_COMPLETION_RECEIPT_FIELDS
+_PROCESS_EVIDENCE_MODULE = None
 
 
 def reject_json_constant(token: str) -> None:
@@ -127,6 +129,74 @@ def write_state(state_path: pathlib.Path, state: dict) -> None:
     except BaseException:
         pathlib.Path(tmp_name).unlink(missing_ok=True)
         raise
+
+
+def process_evidence_module():
+    global _PROCESS_EVIDENCE_MODULE
+    if _PROCESS_EVIDENCE_MODULE is None:
+        module_path = pathlib.Path(__file__).with_name("process-evidence.py")
+        spec = importlib.util.spec_from_file_location("devlyn_process_evidence", module_path)
+        if spec is None or spec.loader is None:
+            raise SystemExit(f"BLOCKED:process-evidence-invalid: cannot load {module_path}")
+        module = importlib.util.module_from_spec(spec)
+        previous_bytecode_setting = sys.dont_write_bytecode
+        sys.dont_write_bytecode = True
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.dont_write_bytecode = previous_bytecode_setting
+        _PROCESS_EVIDENCE_MODULE = module
+    return _PROCESS_EVIDENCE_MODULE
+
+
+def bind_implement_process_evidence(
+    state: dict, verdict: str | None, work: pathlib.Path | None,
+) -> None:
+    if verdict not in {"PASS", "PASS_WITH_ISSUES"}:
+        return
+    source = state.get("source")
+    if work is None:
+        if isinstance(source, dict) and source.get("type") == "spec":
+            raise SystemExit(
+                "BLOCKED:process-evidence-invalid: worktree is required for spec evidence validation"
+            )
+        state.setdefault("process_evidence", None)
+        return
+    runner = process_evidence_module()
+    try:
+        obligations = runner.declared_obligations(work, state, "implement")
+        if not obligations:
+            state.setdefault("process_evidence", None)
+            return
+        run_id = state.get("run_id")
+        round_ = runner.phase_round(state, "implement")
+        manifest_path = runner.manifest_relative_path(state, "implement")
+        carrier = runner.validate_manifest(
+            work, manifest_path, run_id, "implement", round_, obligations,
+        )
+    except runner.EvidenceError as exc:
+        raise SystemExit(f"BLOCKED:process-evidence-invalid: {exc}") from exc
+    existing = state.get("process_evidence")
+    if existing is None:
+        existing = []
+    if not isinstance(existing, list):
+        raise SystemExit("BLOCKED:process-evidence-invalid: state.process_evidence must be null or an array")
+    try:
+        for prior in existing:
+            runner.validate_bound_carrier(work, prior)
+    except runner.EvidenceError as exc:
+        raise SystemExit(f"BLOCKED:process-evidence-invalid: {exc}") from exc
+    if any(
+        isinstance(item, dict)
+        and item.get("phase") == carrier["phase"]
+        and item.get("round") == carrier["round"]
+        for item in existing
+    ):
+        raise SystemExit(
+            "BLOCKED:process-evidence-invalid: duplicate state carrier for "
+            f"implement round {carrier['round']}"
+        )
+    state["process_evidence"] = [*existing, carrier]
 
 
 def parse_string_list(raw: str, label: str) -> list[str]:
@@ -1432,7 +1502,8 @@ def do_complete(state: dict, phase: str, verdict: str | None,
                  post_sha: str | None, findings_file: str | None, log_file: str | None,
                  engine: str | None, model: str | None,
                  engine_session_log: str | None = None,
-                 devlyn: pathlib.Path | None = None) -> str | None:
+                 devlyn: pathlib.Path | None = None,
+                 work: pathlib.Path | None = None) -> str | None:
     phases = state.setdefault("phases", {})
     entry = phases.get(phase)
     if not isinstance(entry, dict) or not entry.get("started_at"):
@@ -1447,6 +1518,8 @@ def do_complete(state: dict, phase: str, verdict: str | None,
             raise SystemExit("error: phases.plan completion cannot replace spawn engine")
         if model is not None and model != entry["model_requested"]:
             raise SystemExit("error: phases.plan completion cannot replace requested model")
+    if phase == "implement":
+        bind_implement_process_evidence(state, verdict, work)
     started = parse_iso(entry["started_at"])
     now = now_ms()
     entry["completed_at"] = now_iso(now)
@@ -1537,6 +1610,7 @@ def do_transition(
     next_prompt_sha256: str | None = None,
     next_untracked_before: list[str] | None = None,
     between=None,
+    work: pathlib.Path | None = None,
 ) -> dict:
     """Validate complete + caller-selected spawn against a copy of state.
 
@@ -1550,7 +1624,7 @@ def do_transition(
     candidate = copy.deepcopy(state)
     attestation_error = do_complete(
         candidate, phase, verdict, post_sha, findings_file, log_file,
-        engine, model, engine_session_log, devlyn,
+        engine, model, engine_session_log, devlyn, work,
     )
     if attestation_error is not None:
         raise SystemExit(attestation_error)
@@ -1822,9 +1896,97 @@ def self_test() -> int:
         write_state(state_path, state)
         final = read_state(state_path)["phases"]["implement"]
         assert final["verdict"] == "PASS"
+        assert read_state(state_path)["process_evidence"] is None
         assert parse_iso(final["started_at"]) == parse_iso(respawned["started_at"])
         assert parse_iso(final["completed_at"]) >= parse_iso(final["started_at"])
         assert final["artifacts"]["findings_file"] == ".devlyn/x.jsonl"
+
+        # Iter-0111 R2: successful IMPLEMENT completion and transition both
+        # validate declared evidence before any lifecycle mutation, then bind
+        # the exact manifest and stream digests into state. Legacy runs with no
+        # declaration remain legal through the null carrier asserted above.
+        evidence_work = devlyn / "process-evidence-state"
+        evidence_devlyn = evidence_work / ".devlyn"
+        evidence_spec_dir = evidence_work / "docs" / "evidence"
+        evidence_devlyn.mkdir(parents=True)
+        evidence_spec_dir.mkdir(parents=True)
+        (evidence_spec_dir / "spec.md").write_text("# Evidence fixture\n", encoding="utf-8")
+        (evidence_spec_dir / "spec.expected.json").write_text(json.dumps({
+            "verification_commands": [],
+            "process_evidence": [{
+                "id": "red-first",
+                "phase": "implement",
+                "cmd": "printf red-before-fix >&2; exit 7",
+                "exit_code": 7,
+                "stdout_contains": ["red-before-fix"],
+            }],
+        }) + "\n", encoding="utf-8")
+        evidence_state = {
+            "run_id": "rs-state-evidence",
+            "source": {"type": "spec", "spec_path": "docs/evidence/spec.md"},
+            "phases": {"implement": None, "build_gate": None},
+        }
+        do_spawn(evidence_state, "implement", 0, None, None, "codex", None)
+        evidence_state_path = evidence_devlyn / "pipeline.state.json"
+        write_state(evidence_state_path, evidence_state)
+        evidence_script = str(pathlib.Path(__file__).resolve())
+
+        def evidence_state_cli(event: str, *event_args: str) -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [
+                    sys.executable, evidence_script, "--devlyn-dir", ".devlyn",
+                    "--phase", "implement", event, *event_args,
+                ],
+                cwd=evidence_work, capture_output=True, text=True, check=False,
+            )
+
+        for event_args in (
+            ("complete", "--verdict", "PASS"),
+            (
+                "transition", "--verdict", "PASS", "--next-phase", "build_gate",
+                "--next-round", "0",
+            ),
+        ):
+            before = evidence_state_path.read_bytes()
+            result = evidence_state_cli(event_args[0], *event_args[1:])
+            assert result.returncode != 0
+            assert "BLOCKED:process-evidence-invalid" in result.stderr
+            assert "missing" in result.stderr
+            assert evidence_state_path.read_bytes() == before
+
+        runner_script = str(pathlib.Path(__file__).with_name("process-evidence.py").resolve())
+        captured = subprocess.run(
+            [
+                sys.executable, runner_script, "--devlyn-dir", ".devlyn", "run",
+                "--phase", "implement", "--id", "red-first",
+            ],
+            cwd=evidence_work, capture_output=True, text=True, check=False,
+        )
+        assert captured.returncode == 0, captured.stderr
+        manifest_rel = loads_strict_json(captured.stdout)["manifest_path"]
+        manifest = evidence_work / manifest_rel
+        stderr_path = manifest.parent / "red-first.stderr"
+        original_stderr = stderr_path.read_bytes()
+        stderr_path.write_bytes(b"altered")
+        before = evidence_state_path.read_bytes()
+        altered = evidence_state_cli("complete", "--verdict", "PASS")
+        assert altered.returncode != 0
+        assert "digest or byte count mismatch" in altered.stderr
+        assert evidence_state_path.read_bytes() == before
+        stderr_path.write_bytes(original_stderr)
+        transitioned = evidence_state_cli(
+            "transition", "--verdict", "PASS", "--next-phase", "build_gate",
+            "--next-round", "0",
+        )
+        assert transitioned.returncode == 0, transitioned.stderr
+        sealed_state = read_state(evidence_state_path)
+        carrier = sealed_state["process_evidence"][0]
+        assert carrier["phase"] == "implement" and carrier["round"] == 0
+        assert carrier["manifest"]["path"] == manifest_rel
+        assert carrier["manifest"]["sha256"] == hashlib.sha256(manifest.read_bytes()).hexdigest()
+        assert sealed_state["phases"]["implement"]["verdict"] == "PASS"
+        assert sealed_state["phases"]["build_gate"]["started_at"] is not None
+        print("PASS iter-0111 process evidence: completion/transition gate and state digest binding")
 
         # complete() before spawn() must fail loudly, not silently invent data.
         write_state(state_path, {"phases": {}})
@@ -3421,6 +3583,7 @@ def main() -> int:
                 next_input_patch_sha256=args.next_input_patch_sha256,
                 next_prompt_sha256=args.next_prompt_sha256,
                 next_untracked_before=next_untracked_before,
+                work=pathlib.Path.cwd(),
             )
         if spawn_phase == "surface_close":
             validate_surface_inputs(pathlib.Path.cwd(), devlyn, state)
@@ -3452,6 +3615,7 @@ def main() -> int:
         attestation_error = do_complete(
             state, args.phase, args.verdict, args.post_sha, args.findings_file,
             args.log_file, args.engine, args.model, args.engine_session_log, devlyn,
+            pathlib.Path.cwd(),
         )
         if (
             args.phase == "plan"
