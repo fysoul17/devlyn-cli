@@ -1,0 +1,25 @@
+{
+  "run_id": "20260507-f10-f11-tier1-full-pipeline",
+  "rule": "at least 2 candidate fixtures; each must satisfy bare <= 60 and solo_claude <= 80, with both arms clean",
+  "verdict": "FAIL",
+  "fixtures_total": 2,
+  "fixtures_passed": 0,
+  "min_fixtures": 2,
+  "fixture_count_ok": true,
+  "rows": [
+    {
+      "fixture": "F10-persist-write-collision",
+      "status": "FAIL",
+      "bare_score": 75,
+      "solo_score": 94,
+      "reason": "bare score 75 > 60; solo_claude score 94 > 80"
+    },
+    {
+      "fixture": "F11-batch-import-all-or-nothing",
+      "status": "FAIL",
+      "bare_score": 98,
+      "solo_score": 97,
+      "reason": "bare score 98 > 60; solo_claude score 97 > 80"
+    }
+  ]
+}

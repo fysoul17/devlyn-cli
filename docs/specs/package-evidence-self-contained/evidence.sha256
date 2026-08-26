@@ -30,3 +30,7 @@ f6c35b76a81b2fdff597cdfaeb011dad9cad7f3074ad04c4d84215036422c6c6  benchmark/auto
 3f7edef96f1df2db721aa485a1947a5c0b4c81ea255c5e237dda2150f6f48353  benchmark/auto-resolve/results/20260512-f31-seat-rebalance-headroom/headroom-gate.md
 ac219702d47ecd5601a5d65f30ad5b73afb3c7bc3adbed10d8b8cdefd9bb2669  benchmark/auto-resolve/results/20260512-f32-subscription-renewal-headroom/headroom-gate.json
 d4474f513aca4980378bda43b905da24cbf251c6e29231d51e1dfcafbddcd319  benchmark/auto-resolve/results/20260512-f32-subscription-renewal-headroom/headroom-gate.md
+edfedd0fa7b540155ae0bb9827bdcbf7bc095727c29a4ab4930dcda4d7107bf1  benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F16-cli-quote-tax-rules/l2_risk_probes/result.json
+f03a8bf7ffc9a2b129a3c6bb58584f9672d3e23e8249c1f69013aa7579d34e3d  benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F23-cli-fulfillment-wave/l2_risk_probes/result.json
+253f46756e3ed97ccd966ee7436deb37969bbcb109a1c4e5353fb9a90f17f74e  benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F25-cli-cart-promotion-rules/l2_risk_probes/result.json
+1f85ea9411982433bf943564ee7ee4430545922e5951467aa4b5a8f8be7fa262  benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/F21-cli-scheduler-priority/l2_risk_probes/result.json
