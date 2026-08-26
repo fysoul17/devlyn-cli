@@ -75,12 +75,12 @@
     "conservative_corpus_task_footprint_estimate_tokens": 12288,
     "absolute_threshold_tokens": 90000,
     "context_window_denominator_tokens": {
-      "claude-opus-5": 200000,
-      "claude-opus-4-8": 200000,
-      "claude-sonnet-5": 200000
+      "claude-opus-5": 1000000,
+      "claude-opus-4-8": 1000000,
+      "claude-sonnet-5": 1000000
     },
-    "context_window_fraction_threshold": 0.45,
-    "derivation": "12,288 is three smoke margins and remains below the observed 17,662 enlarged-smoke footprint. At the first LATE position of k=8, four such early footprints project 43,025 + 4*12,288 = 92,177 effective tokens, above both 90,000 and 0.45*200,000. The baseline alone is below both thresholds. The 200,000 denominator is the registered pinned-CLI planning window and must be fail-closed re-attested before launch."
+    "context_window_fraction_threshold": 0.0,
+    "derivation": "12,288 is three smoke margins and remains below the observed 17,662 enlarged-smoke footprint. At the first LATE position of k=8, four such early footprints project 43,025 + 4*12,288 = 92,177 effective tokens, above 90,000. The baseline alone is below the registered threshold. The fraction leg is retired (0.0 = retired). 1,000,000 is the measured modelUsage.contextWindow of pinned CLI 2.1.226 for claude-opus-5, claude-opus-4-8, and claude-sonnet-5 (the registered smoke and ctxprobe receipts); it is recorded, not a gate input."
   },
   "frozen_source_sha256": {
     "mx_driver": "e683a00d529a6427683399e5f36f218db59f4e654f92bc3da2ed74d036e857c3",

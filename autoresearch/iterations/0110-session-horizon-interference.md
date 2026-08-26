@@ -1,6 +1,6 @@
 ---
 title: "Session-horizon interference cell — opus-5 vs opus-4-8 under accumulated-context horizon"
-status: REGISTERED-FROZEN 2026-08-25 (double FREEZE on r4 — sol 9f3c7a1d + grok b8e4c1a3) + AMENDMENT 1 double ADOPT + APPARATUS TRIO-FROZEN 2026-08-26 (final double FREEZE a7b8eab7 sol+grok on identical bytes; launch USER-GATED)
+status: REGISTERED-FROZEN 2026-08-25 (double FREEZE on r4 — sol 9f3c7a1d + grok b8e4c1a3) + AMENDMENT 1 double ADOPT + APPARATUS TRIO-FROZEN 2026-08-26 (final double FREEZE a7b8eab7 sol+grok on identical bytes; launch USER-GATED) + AMENDMENT 2 2026-08-26 (launch preflight)
 depends_on: ["0109-decoy-parity-pilot", "0103-opus-line-regression-cell", "0102-executor-quality-discovery-corpus"]
 ---
 
@@ -131,9 +131,12 @@ be narrated as closing "H1 design quality at long horizon" in full.
   (effective-context drop between consecutive boundaries and/or a
   recorded id-rotation link) and recorded as a marker; the stream
   `compact_boundary` event is the ALTERNATE-shape attestor.
-- **Thresholds**: BOTH an absolute effective-context threshold AND a
-  context-window-fraction threshold, frozen before launch, derived at
-  apparatus time from measured early-boundary values.
+- **Thresholds**: the registered horizon threshold is the sole absolute
+  effective-context threshold (90,000, derived at apparatus time from measured
+  early-boundary values); the context-window-fraction leg is RETIRED by
+  AMENDMENT 2 (encoded `context_window_fraction_threshold: 0.0` = retired,
+  NOT 0 % occupancy); denominators are recorded measured `contextWindow`
+  values (1,000,000 for all three engines), no longer gate inputs.
 - **Compaction** is measured engine behavior — recorded, never a
   reset exemption: a late cell qualifies if its unbroken custody
   chain crossed the registered threshold at any prior boundary, even
@@ -418,8 +421,9 @@ registered-params.json,scripts.sha256,README.md}`.
   smallest S passing all four G0 criteria at EVERY envelope member
   (worst member ρ=0: P(C|S-large)=.517, P(R|S-null)=.5385, coverage
   .928, false-C 0); δH=0.15; G1 tolerances .115/.100/.110; horizon
-  thresholds 90,000 abs + 0.45×200k (operator window attestation required
-  at launch); G2 crossing strictly at a PRIOR boundary; G3 ≥47 non-tied
+  thresholds 90,000 abs (fraction leg retired by AMENDMENT 2; measured window
+  1,000,000 ×3 recorded) (operator window attestation required at launch); G2
+  crossing strictly at a PRIOR boundary; G3 ≥47 non-tied
   pairs/engine (S=5 grid, conservative p2.5); launcher = serial A5 gate
   phase (sweep 1's first block alone; a clean matrix session below
   threshold → immediate sticky `FAIL_FAST_THRESHOLD_UNREACHED`; gate
@@ -442,9 +446,12 @@ registered-params.json,scripts.sha256,README.md}`.
   `*.log` fixture force-tracked, zero code change → **FINAL double
   FREEZE on identical bytes: sol `FREEZE-0110-APP8-SOL: a7b8eab7` +
   grok `FREEZE-0110-APP8-GROK: a7b8eab7`** (pin file
-  `docs/specs/iter0110/scripts.sha256`).
+  `docs/specs/iter0110/scripts.sha256`). Superseded by AMENDMENT 2 re-freeze:
+  double FREEZE on identical bytes, sol `FREEZE-0110-AMEND2-SOL: 7e67c1cd` +
+  grok `FREEZE-0110-AMEND2-GROK: 7e67c1cd` (pin file sha256
+  `7e67c1cdcecb368ce54201eb8214d17e502374fc4905dddd561d8b59df7b73b8`).
 - **Pre-registered predictions** (before freeze): P-0110-1 G1 passes all
-  engines; P-0110-2 every custody-unbroken session crosses both thresholds
+  engines; P-0110-2 every custody-unbroken session crosses the registered 90,000 threshold
   before the first LATE position (A5 never fires; riskiest — rests on the
   12,288-token corpus-footprint estimate); P-0110-3 the pilot does NOT emit
   CONFIRMED (0102/0103 lineage).
@@ -457,3 +464,12 @@ registered-params.json,scripts.sha256,README.md}`.
   <root> --run-id <id> --window-attestation <operator json>` per sweep
   (5 sweeps, each 24 sessions / 192 attempts, independently stageable),
   then `score-0110.py --results-root <root> --schedule … --params …`.
+
+## AMENDMENT 2 (2026-08-26, launch preflight — sol+grok micro round, fable adjudication)
+
+The registered `context_window_denominator_tokens = 200,000` was false at the bytes: all four smoke receipts at `~/.local/share/nx01/iter0110-apparatus/smoke*/claude-sonnet-5.smoke.r1/t*/cli.stdout`, fresh `~/.local/share/nx01/iter0110/launch/ctxprobe/probe-*.json` probes with and without `CLAUDE_CODE_MAX_CONTEXT_TOKENS=200000`, and the pin's model table report `context:{window:1e6}` for all three registered engines.
+With the truthful 1,000,000 denominator, `max(90,000, 0.45×D)` would be 450,000 and is unreachable at k=8 (registered LATE-1 projection: 92,177); the fraction leg was tautological (`0.45×200,000 = 90,000`) and never entered the absolute derivation `43,025 + 4×12,288`.
+The trio-convergent criterion is TRUTHFUL-DENOMINATOR CLAIM PRESERVATION: launch only under a denominator true at the bytes, preserving the claim and every gate with the smallest delta.
+Rejected options: A launches to a pre-derivable FAIL_FAST; C reverse-engineers 0.09; D forces 200k despite inert env behavior on first-party IDs, driver env scrubbing, and a treatment-changing compaction change.
+Fable registered B′ as a FOLLOW-UP (not a launch gate): after retirement the denominator binds no gate, so a per-request `contextWindow` guard is recurrence detection; operator attestation `source` cites the receipts, satisfying MEASURED-GATE PROVENANCE.
+Byte list: record the retirement and measured windows in this registration, params, and README; update launcher self-test literals, scorer params pin, and exactly three inventory digests. Fable fills the re-freeze token and writes the operator attestation.

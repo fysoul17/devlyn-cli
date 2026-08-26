@@ -751,9 +751,9 @@ def self_test() -> None:
                 {
                     "attested_by": "self-test",
                     "source": "self-test",
-                    "claude-opus-5": 200000,
-                    "claude-opus-4-8": 200000,
-                    "claude-sonnet-5": 200000,
+                    "claude-opus-5": 1000000,
+                    "claude-opus-4-8": 1000000,
+                    "claude-sonnet-5": 1000000,
                 }
             ),
             encoding="utf-8",

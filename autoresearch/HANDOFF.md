@@ -14,7 +14,34 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-26 (session 9)
+## 🚦 START-HERE — state after 2026-08-26 (session 10)
+
+**iter-0110 AMENDMENT 2 double-FROZEN 2026-08-26 (session 10, launch
+preflight) — LAUNCH HELD on the quiet-account rule.** The pre-launch
+window re-attestation fired: the registered denominator 200,000
+("pinned-CLI planning window") is FALSE at the bytes — pinned CLI 2.1.226
+reports `modelUsage.contextWindow` 1,000,000 for opus-5 / opus-4-8 /
+sonnet-5 (4/4 smoke receipts + 4 fresh probes; `CLAUDE_CODE_MAX_CONTEXT_TOKENS`
+inert on first-party IDs; pin model table `window:1e6`), and all seven
+seat rounds + the t3 attestation missed it while every receipt carried
+the value. Micro round sol AMEND + grok AMEND → B adopted (truthful 1M
+recorded, tautological fraction leg retired = `0.0`, absolute 90,000 the
+sole gate; seat catches folded: launcher self-test literals, scorer
+`PARAMS_SHA256`, README/registration loci); B′ (per-request ledger
+`contextWindow` guard) ruled a REGISTERED FOLLOW-UP (LOAD-BEARING-INPUT
+CLOSURE) — the follow-up must choose B′ vs deleting the attestation
+plumbing. Terra T-r10 (6 files, +36/−22) → fable verify (7/7 self-tests,
+pins 11/11, dry-run ±) → **double FREEZE sol+grok `7e67c1cd`**. Receipts
+`~/.local/share/nx01/iter0110/launch/` (ADJUDICATIONS.md, attestation
+JSON, `launch-detached-0110.py`). **RESUME RECIPE**: account quiet (the
+ai-rag-hub codex superset session PPID 35300 spawns opus-5 headless
+workers — it must be paused, or the user overrides) → `python3
+~/.local/share/nx01/iter0110/launch/launch-detached-0110.py --sweep 1
+--run-id s1-<utcstamp> --out ~/.local/share/nx01/iter0110/matrix/s1-<utcstamp>
+--pin-sha256 7e67c1cdcecb368ce54201eb8214d17e502374fc4905dddd561d8b59df7b73b8`
+(Phase A gate block runs alone first) → sweeps 2–5 likewise (≈2.3 h each,
+3 lanes; whole matrix ≈ 11 h) → `score-0110.py --results-root … --schedule
+… --params …` → trio verify → record. Never fire across 23:00–01:00 KST.
 
 **iter-0109 proximity-parity pilot CLOSED 2026-08-25 — TERMINAL
 `PROXIMITY_PARITY_REJECTED` (DECISIONS 0109.1).** Launch resumed on

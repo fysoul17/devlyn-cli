@@ -16,7 +16,7 @@ G0 evaluates every criterion at each correlation-envelope member (ρ = 0,
 five independently stageable sweeps: 120 sessions and 960 task attempts total
 (24 and 192 per sweep). Phase A runs the first sweep-1 block alone, one
 session at a time in schedule order, and persists A5 after each clean matrix
-session. A5 requires unbroken custody plus both horizon thresholds by boundary
+session. A5 requires unbroken custody plus the registered 90,000-token horizon threshold by boundary
 4 (strictly before the first LATE position 5); a clean subject below threshold writes `FAIL_FAST_THRESHOLD_UNREACHED`; a completed gate block lacking a clean matrix subject writes `A5_SUBJECT_UNAVAILABLE`. Once both
 matrix engines have passing A5 records, Phase B runs the remaining block work:
 each block stays serial on one lane to preserve its ABBA matrix unit, while
@@ -25,7 +25,7 @@ distinct blocks may occupy parallel lanes. Three consecutive sessions with any
 continuation requires a fresh run root and run id.
 
 Every launch requires an operator-authored `--window-attestation` JSON that
-re-attests the three registered 200,000-token denominators, records its exact
+re-attests the three recorded 1,000,000-token measured planning windows, records its exact
 bytes in the manifest, and verifies the complete `scripts.sha256` inventory
 before a session starts. Build artifacts (`__pycache__`) are not fixture bytes
 — remove them before preflight; the pin refuses trees that carry them. The
