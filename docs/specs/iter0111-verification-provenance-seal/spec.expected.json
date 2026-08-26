@@ -1,0 +1,52 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "python3 config/skills/_shared/resolve-bootstrap.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 180
+    },
+    {
+      "cmd": "python3 config/skills/_shared/process-evidence.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 180
+    },
+    {
+      "cmd": "python3 config/skills/_shared/spec-verify-check.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 300
+    },
+    {
+      "cmd": "python3 config/skills/_shared/state-phase-write.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 300
+    },
+    {
+      "cmd": "python3 config/skills/_shared/verify-merge-findings.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 180
+    },
+    {
+      "cmd": "python3 config/skills/_shared/archive_run.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 180
+    },
+    {
+      "cmd": "diff -qr config/skills .agents/skills",
+      "exit_code": 0
+    },
+    {
+      "cmd": "bash scripts/lint-skills.sh",
+      "exit_code": 0,
+      "timeout_sec": 300
+    },
+    {
+      "cmd": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "required_files": [
+    "config/skills/_shared/process-evidence.py",
+    ".agents/skills/_shared/process-evidence.py"
+  ],
+  "max_deps_added": 0
+}
