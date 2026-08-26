@@ -20,6 +20,7 @@ from typing import Any
 
 
 JUDGE_OUTPUT_PARSER = runpy.run_path(pathlib.Path(__file__).with_name("judge-output-parser.py"))
+PROCESS_EVIDENCE = runpy.run_path(pathlib.Path(__file__).with_name("process-evidence.py"))
 
 
 SOURCE_FILES = (
@@ -133,6 +134,74 @@ def finding_rank(finding: dict[str, Any]) -> int:
     return 0
 
 
+def mechanical_evidence_carrier(devlyn: pathlib.Path) -> dict[str, Any] | None:
+    results_path = devlyn / "spec-verify.results.json"
+    if not results_path.is_file():
+        return None
+    results = loads_strict_json(results_path.read_text(encoding="utf-8"))
+    if not isinstance(results, dict):
+        raise ValueError("spec-verify.results.json must contain a JSON object")
+    commands = results.get("commands")
+    if not isinstance(commands, list):
+        raise ValueError("spec-verify.results.json commands must be an array")
+    carrier = results.get("process_evidence")
+    if carrier is None:
+        if commands:
+            raise ValueError("MECHANICAL commands exist without a process-evidence carrier")
+        return None
+    state_path = devlyn / "pipeline.state.json"
+    state = loads_strict_json(state_path.read_text(encoding="utf-8"))
+    if not isinstance(state, dict):
+        raise ValueError("pipeline.state.json must contain a JSON object")
+    run_id = state.get("run_id")
+    phases = state.get("phases")
+    verify_phase = phases.get("verify") if isinstance(phases, dict) else None
+    round_ = verify_phase.get("round") if isinstance(verify_phase, dict) else None
+    if not isinstance(run_id, str) or not run_id:
+        raise ValueError("state.run_id is required for sealed MECHANICAL evidence")
+    if isinstance(round_, bool) or not isinstance(round_, int) or round_ < 0:
+        raise ValueError("phases.verify.round is required for sealed MECHANICAL evidence")
+    if not isinstance(carrier, dict) or carrier.get("phase") != "verify" or carrier.get("round") != round_:
+        raise ValueError("MECHANICAL process-evidence carrier does not match the VERIFY round")
+    PROCESS_EVIDENCE["validate_bound_carrier"](devlyn.parent.resolve(), carrier)
+    expected_prefix = f".devlyn/process-evidence/{run_id}/verify/round-{round_}/"
+    manifest = carrier.get("manifest")
+    if not isinstance(manifest, dict) or not str(manifest.get("path", "")).startswith(expected_prefix):
+        raise ValueError("MECHANICAL process-evidence carrier does not match state.run_id")
+
+    bound = state.get("process_evidence")
+    if bound is not None:
+        if not isinstance(bound, list):
+            raise ValueError("state.process_evidence must be null or an array")
+        same_round = [
+            item for item in bound
+            if isinstance(item, dict)
+            and item.get("phase") == "verify"
+            and item.get("round") == round_
+        ]
+        if same_round and same_round != [carrier]:
+            raise ValueError("state-bound VERIFY evidence disagrees with MECHANICAL results")
+    return carrier
+
+
+def mechanical_evidence_violation(devlyn: pathlib.Path) -> dict[str, Any] | None:
+    try:
+        mechanical_evidence_carrier(devlyn)
+    except (PROCESS_EVIDENCE["EvidenceError"], OSError, UnicodeError, ValueError) as exc:
+        return {
+            "id": "verify-mechanical-evidence-invalid",
+            "rule_id": "invariant.process-evidence-invalid",
+            "severity": "CRITICAL",
+            "confidence": "high",
+            "file": "spec-verify.results.json",
+            "line": 1,
+            "message": f"Sealed VERIFY MECHANICAL evidence failed rehash before merge: {exc}",
+            "criterion_ref": "process-evidence://mechanical",
+            "source": "mechanical",
+        }
+    return None
+
+
 def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, str | None]]:
     findings: list[dict[str, Any]] = []
     source_verdicts: dict[str, str | None] = {source: "PASS" for source, _ in SOURCE_FILES}
@@ -195,6 +264,10 @@ def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str,
                 source_verdicts[source] = worse(
                     source_verdicts[source], RANK_VERDICT[finding_rank(item)]
                 )
+    evidence_violation = mechanical_evidence_violation(devlyn)
+    if evidence_violation is not None:
+        findings.append(evidence_violation)
+        source_verdicts["mechanical"] = "BLOCKED"
     findings.extend(detect_pair_stdout_contract_violations(devlyn, source_verdicts))
     pair_summary_path = devlyn / "pair-judge.summary.json"
     pair_carrier_exists = any(
@@ -243,6 +316,29 @@ def has_pair_findings(devlyn: pathlib.Path) -> bool:
         if path.is_file() and path.read_text(encoding="utf-8").strip():
             return True
     return False
+
+
+def canonical_other_judge_stdout(devlyn: pathlib.Path, primary_engine: str) -> list[pathlib.Path]:
+    adapters = pathlib.Path(__file__).with_name("adapters")
+    engine_names = {
+        path.stem for path in adapters.glob("*.md")
+        if path.stem != "README"
+    }
+    return sorted(
+        devlyn / f"{engine}-judge.stdout"
+        for engine in engine_names
+        if engine != primary_engine and (devlyn / f"{engine}-judge.stdout").is_file()
+    )
+
+
+def pair_capture_exists(devlyn: pathlib.Path, stdout_paths: list[pathlib.Path]) -> bool:
+    return bool(stdout_paths) or has_pair_findings(devlyn) or any(
+        (devlyn / name).is_file()
+        for name in (
+            "verify.pair.timeout.json",
+            "pair-judge.summary.json",
+        )
+    )
 
 
 def pair_trigger_status(devlyn: pathlib.Path) -> tuple[bool, dict[str, Any] | None]:
@@ -955,10 +1051,7 @@ def detect_pair_stdout_contract_violations(
     assert isinstance(state, dict)
     engine = state["engine"]
     assert isinstance(engine, str) and engine.strip()
-    primary_stdout = f"{engine}-judge.stdout"
-    stdout_paths = sorted(
-        path for path in devlyn.glob("*-judge.stdout") if path.name != primary_stdout
-    )
+    stdout_paths = canonical_other_judge_stdout(devlyn, engine)
     if not required and not pair_trigger_present(devlyn):
         missing_violation = pair_trigger_missing_contract_violation(devlyn, source_verdicts)
         if missing_violation is not None:
@@ -990,21 +1083,59 @@ def detect_pair_stdout_contract_violations(
                 reason_violation["file"],
             )
         ]
-    if has_pair_findings(devlyn):
+    trigger_present = pair_trigger_present(devlyn)
+    if trigger_present and not required:
+        if pair_capture_exists(devlyn, stdout_paths):
+            source_verdicts["pair_judge"] = "BLOCKED"
+            return [
+                pair_blocker(
+                    "verify-pair-skipped-output-present",
+                    "Pair state is skipped or ineligible, but a canonical OTHER-judge carrier exists.",
+                    stdout_paths[0].name if stdout_paths else "verify.pair.findings.jsonl",
+                    "verify.pair.state-capture-contradiction",
+                )
+            ]
+        source_verdicts["pair_judge"] = None
         return []
+    if len(stdout_paths) > 1:
+        source_verdicts["pair_judge"] = "BLOCKED"
+        return [
+            pair_blocker(
+                "verify-pair-output-ambiguous",
+                "Multiple canonical OTHER-engine stdout carriers exist: "
+                + ", ".join(path.name for path in stdout_paths),
+                stdout_paths[0].name,
+            )
+        ]
+    if timeout_marker is not None:
+        expected_timeout_stdout = f"{timeout_marker['engine']}-judge.stdout"
+        if timeout_marker["engine"] == engine or (
+            stdout_paths and stdout_paths[0].name != expected_timeout_stdout
+        ):
+            source_verdicts["pair_judge"] = "BLOCKED"
+            return [
+                pair_blocker(
+                    "verify-pair-timeout-engine-mismatch",
+                    "Pair timeout engine does not match the canonical OTHER-engine carrier.",
+                    "verify.pair.timeout.json",
+                )
+            ]
     if not stdout_paths:
         if timeout_marker is not None:
-            source_verdicts["pair_judge"] = "TIMEOUT"
+            if rank(source_verdicts["pair_judge"]) <= rank("TIMEOUT"):
+                source_verdicts["pair_judge"] = "TIMEOUT"
             return []
         if required:
             source_verdicts["pair_judge"] = "BLOCKED"
             return [
                 pair_blocker(
                     "verify-pair-required-output-missing",
-                    "Pair-mode was required, but the pair-JUDGE produced no stdout or canonical findings file.",
+                    "Pair-mode was required, but the pair-JUDGE produced no canonical OTHER-engine stdout.",
                     "verify.pair.findings.jsonl",
                 )
             ]
+        return []
+    if has_pair_findings(devlyn):
         return []
     if source_verdicts["pair_judge"] is None and timeout_marker is None:
         source_verdicts["pair_judge"] = "PASS"
@@ -1084,6 +1215,29 @@ def write_state(devlyn: pathlib.Path, summary: dict[str, Any]) -> None:
     if not state_path.is_file():
         raise SystemExit(f"error: {state_path} not found")
     state = loads_strict_json(state_path.read_text(encoding="utf-8"))
+    try:
+        carrier = mechanical_evidence_carrier(devlyn)
+    except (PROCESS_EVIDENCE["EvidenceError"], OSError, UnicodeError, ValueError) as exc:
+        if summary.get("source_verdicts", {}).get("mechanical") != "BLOCKED":
+            raise SystemExit(f"error: invalid MECHANICAL process evidence: {exc}") from exc
+        carrier = None
+    if carrier is not None:
+        bound = state.get("process_evidence")
+        if bound is None:
+            bound = []
+        elif not isinstance(bound, list):
+            raise SystemExit("error: state.process_evidence must be null or an array")
+        same_round = [
+            item for item in bound
+            if isinstance(item, dict)
+            and item.get("phase") == carrier["phase"]
+            and item.get("round") == carrier["round"]
+        ]
+        if same_round and same_round != [carrier]:
+            raise SystemExit("error: state-bound VERIFY evidence disagrees with MECHANICAL results")
+        if not same_round:
+            bound.append(carrier)
+        state["process_evidence"] = bound
     phases = state.setdefault("phases", {})
     verify = phases.get("verify")
     if not isinstance(verify, dict):
@@ -1139,6 +1293,84 @@ def self_test() -> int:
             encoding="utf-8",
         )
         (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
+
+        sealed_work = pathlib.Path(tmp) / "sealed-work"
+        sealed_devlyn = sealed_work / ".devlyn"
+        sealed_devlyn.mkdir(parents=True)
+        sealed_state = {
+            "run_id": "rs-sealed-mechanical",
+            "engine": "claude",
+            "process_evidence": None,
+            "phases": {"verify": {"round": 2, "verdict": None, "sub_verdicts": None}},
+        }
+        obligation = PROCESS_EVIDENCE["normalize_obligation"]({
+            "id": "mechanical-0",
+            "phase": "verify",
+            "argv": [sys.executable, "-c", "print('sealed')"],
+        })
+        manifest_rel = PROCESS_EVIDENCE["manifest_relative_path"](sealed_state, "verify")
+        PROCESS_EVIDENCE["capture_process"](
+            sealed_work, sealed_work / manifest_rel, sealed_state["run_id"],
+            "verify", 2, obligation,
+        )
+        carrier = PROCESS_EVIDENCE["validate_manifest"](
+            sealed_work, manifest_rel, sealed_state["run_id"], "verify", 2,
+            [obligation], require_expectations=False,
+        )
+        (sealed_devlyn / "pipeline.state.json").write_text(
+            json.dumps(sealed_state), encoding="utf-8",
+        )
+        (sealed_devlyn / "spec-verify.results.json").write_text(
+            json.dumps({"commands": [{"pass": True}], "process_evidence": carrier}),
+            encoding="utf-8",
+        )
+        (sealed_devlyn / "verify-mechanical.findings.jsonl").write_text("", encoding="utf-8")
+        (sealed_devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
+        sealed_findings, sealed_verdicts = read_findings(sealed_devlyn)
+        assert sealed_verdicts["mechanical"] == "PASS", sealed_findings
+        sealed_summary = write_outputs(sealed_devlyn, sealed_findings, sealed_verdicts)
+        write_state(sealed_devlyn, sealed_summary)
+        bound_state = loads_strict_json(
+            (sealed_devlyn / "pipeline.state.json").read_text(encoding="utf-8")
+        )
+        assert bound_state["process_evidence"] == [carrier], bound_state
+        sealed_stdout = sealed_work / carrier["streams"][0]["stdout"]["path"]
+        sealed_stdout.write_bytes(sealed_stdout.read_bytes() + b"altered")
+        altered_findings, altered_verdicts = read_findings(sealed_devlyn)
+        assert altered_verdicts["mechanical"] == "BLOCKED", altered_verdicts
+        assert any(
+            finding.get("id") == "verify-mechanical-evidence-invalid"
+            for finding in altered_findings
+        ), altered_findings
+
+        skipped_work = pathlib.Path(tmp) / "skipped-work"
+        skipped_work.mkdir()
+        (skipped_work / "pipeline.state.json").write_text(json.dumps({
+            "engine": "claude",
+            "risk_profile": {"pair_default_enabled": False},
+            "phases": {"verify": {"pair_trigger": {
+                "eligible": False,
+                "reasons": [],
+                "skipped_reason": "user_no_pair",
+            }}},
+        }), encoding="utf-8")
+        (skipped_work / "verify-mechanical.findings.jsonl").write_text("", encoding="utf-8")
+        (skipped_work / "verify.findings.jsonl").write_text("", encoding="utf-8")
+        generic_primary = skipped_work / "verify-judge.stdout"
+        for generic_output in ("PASS\n", "NEEDS_WORK\n"):
+            generic_primary.write_text(generic_output, encoding="utf-8")
+            generic_findings, generic_verdicts = read_findings(skipped_work)
+            assert generic_verdicts["pair_judge"] is None, generic_verdicts
+            assert not any(
+                finding.get("file") == generic_primary.name for finding in generic_findings
+            ), generic_findings
+        (skipped_work / "codex-judge.stdout").write_text("PASS\n", encoding="utf-8")
+        contradiction_findings, contradiction_verdicts = read_findings(skipped_work)
+        assert contradiction_verdicts["pair_judge"] == "BLOCKED", contradiction_verdicts
+        assert any(
+            finding.get("id") == "verify-pair-skipped-output-present"
+            for finding in contradiction_findings
+        ), contradiction_findings
         findings, source_verdicts = read_findings(devlyn)
         summary = write_outputs(devlyn, findings, source_verdicts)
         write_state(devlyn, summary)
@@ -1350,6 +1582,7 @@ def self_test() -> int:
             json.dumps({"id": "p1", "severity": "HIGH"}) + "\n",
             encoding="utf-8",
         )
+        (devlyn / "codex-judge.stdout").write_text("PASS\n", encoding="utf-8")
         findings, source_verdicts = read_findings(devlyn)
         summary = write_outputs(devlyn, findings, source_verdicts)
         write_state(devlyn, summary)
@@ -1358,6 +1591,7 @@ def self_test() -> int:
         assert state["phases"]["verify"]["verdict"] == "NEEDS_WORK", state
         assert state["phases"]["verify"]["sub_verdicts"]["pair_judge"] == "NEEDS_WORK", state
         assert (devlyn / "verify-merged.findings.jsonl").read_text(encoding="utf-8")
+        (devlyn / "codex-judge.stdout").unlink()
         (devlyn / "verify.findings.jsonl").write_text(
             '{"id":"nan","severity":NaN}\n',
             encoding="utf-8",
@@ -1461,7 +1695,7 @@ def self_test() -> int:
 
         # iter-0065 case 2: canonical pair findings still bind after timeout.
         (devlyn / "pipeline.state.json").write_text(
-            json.dumps({"engine": "codex", "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
+            json.dumps({"engine": "claude", "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
             encoding="utf-8",
         )
         (devlyn / "verify.pair.findings.jsonl").write_text(
@@ -2547,6 +2781,7 @@ def self_test() -> int:
             json.dumps({"id": "p-preknown", "severity": "LOW"}) + "\n",
             encoding="utf-8",
         )
+        (devlyn / "codex-judge.stdout").write_text("PASS\n", encoding="utf-8")
         findings, source_verdicts = read_findings(devlyn)
         summary = write_outputs(devlyn, findings, source_verdicts)
         assert summary["verdict"] == "BLOCKED", summary
@@ -2566,6 +2801,7 @@ def self_test() -> int:
         assert '"id":"p-preknown"' in (
             devlyn / "verify-merged.findings.jsonl"
         ).read_text(encoding="utf-8"), findings
+        (devlyn / "codex-judge.stdout").unlink()
 
         # Self-test: archived-v2 sequential primary blocker remains legal.
         (devlyn / "verify.pair.findings.jsonl").unlink()
@@ -2744,7 +2980,7 @@ def self_test() -> int:
                 )
             if timeout:
                 (devlyn / "verify.pair.timeout.json").write_text(
-                    json.dumps({"engine": "claude", "budget_seconds": 600}),
+                    json.dumps({"engine": "codex", "budget_seconds": 600}),
                     encoding="utf-8",
                 )
             case_findings, case_source_verdicts = read_findings(devlyn)

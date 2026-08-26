@@ -8,6 +8,7 @@ import importlib.util
 import json
 import os
 import pathlib
+import runpy
 import secrets
 import stat
 import subprocess
@@ -178,9 +179,26 @@ def parse_flags(argv: list[str]) -> dict:
 
 
 def validate_shared_dir(shared_dir: pathlib.Path) -> None:
-    required = shared_dir / "spec-verify-check.py"
-    if not required.is_file():
-        block("BLOCKED:shared-dir-unresolved", str(required))
+    for name in ("spec-verify-check.py", "archive_run.py", "process-evidence.py"):
+        required = shared_dir / name
+        if not required.is_file():
+            block("BLOCKED:shared-dir-unresolved", str(required))
+
+
+def archive_prior_run(devlyn: pathlib.Path, shared_dir: pathlib.Path) -> None:
+    archive = runpy.run_path(shared_dir / "archive_run.py")
+    if not archive["has_owned_artifacts"](devlyn):
+        return
+    try:
+        state = archive["read_state"](devlyn)
+    except (archive["ArchiveError"], OSError, UnicodeError, ValueError) as exc:
+        block("BLOCKED:prior-run-ownership-unverified", str(exc))
+    run_id = state["run_id"]
+    try:
+        archive["move_artifacts"](devlyn, devlyn / "runs" / run_id)
+        archive["prune"](devlyn / "runs", keep=10)
+    except (archive["ArchiveError"], OSError, UnicodeError, ValueError) as exc:
+        block("BLOCKED:prior-run-archive-failed", str(exc))
 
 
 def safe_goal_file(cwd: pathlib.Path, raw_path: str) -> bytes:
@@ -383,6 +401,7 @@ def bootstrap(
             "pair_default_enabled": True,
         },
         "risk_probes_digest": None,
+        "process_evidence": None,
         "base_ref": {
             "branch": base_branch(cwd),
             "sha": git_text(cwd, "rev-parse", "HEAD"),
@@ -397,6 +416,7 @@ def bootstrap(
     }
     state_raw = json_bytes(state)
     outputs[devlyn / "pipeline.state.json"] = state_raw
+    archive_prior_run(devlyn, shared_dir)
     atomic_write_batch(outputs, writer)
     return {
         "ok": True,
@@ -455,6 +475,7 @@ def self_test() -> int:
                 "pair_default_enabled": True,
             },
             "risk_probes_digest": None,
+            "process_evidence": None,
             "base_ref": {
                 "branch": base_branch(work),
                 "sha": git_text(work, "rev-parse", "HEAD"),
@@ -677,6 +698,61 @@ def self_test() -> int:
         (untracked_work / "untracked.txt").write_text("allowed\n")
         assert bootstrap(["untracked", "allowed"], untracked_work, script_shared)["ok"] is True
         print("PASS bootstrap self-test honest baseline: dirty owner blocked; .devlyn/untracked allowed")
+
+        prior_work = root / "prior-run-repo"
+        init_repo(prior_work)
+        prior = bootstrap(["prior", "run"], prior_work, script_shared)
+        prior_devlyn = prior_work / ".devlyn"
+        for name in (
+            "implement.task-context",
+            "implement.prompt",
+            "implement.stdout",
+            "implement.stderr",
+            "implement.events.jsonl",
+            "implement.retry.1.stdout",
+        ):
+            (prior_devlyn / name).write_text(f"prior {name}\n", encoding="utf-8")
+        (prior_devlyn / "engines.json").write_text('{"executor":"codex"}\n', encoding="utf-8")
+        (prior_devlyn / "unrelated.data").write_text("preserve\n", encoding="utf-8")
+        replacement = bootstrap(["replacement", "run"], prior_work, script_shared)
+        prior_archive = prior_devlyn / "runs" / prior["run_id"]
+        assert replacement["run_id"] != prior["run_id"]
+        for name in (
+            "pipeline.state.json",
+            "goal.raw.txt",
+            "implement.task-context",
+            "implement.prompt",
+            "implement.stdout",
+            "implement.stderr",
+            "implement.events.jsonl",
+            "implement.retry.1.stdout",
+        ):
+            assert (prior_archive / name).is_file(), name
+            if name not in {"pipeline.state.json", "goal.raw.txt"}:
+                assert not (prior_devlyn / name).exists(), name
+        assert strict_json((prior_devlyn / "pipeline.state.json").read_text())["run_id"] == replacement["run_id"]
+        assert (prior_archive / "goal.raw.txt").read_bytes() == b"prior run"
+        assert (prior_devlyn / "goal.raw.txt").read_bytes() == b"replacement run"
+        assert (prior_devlyn / "engines.json").read_text() == '{"executor":"codex"}\n'
+        assert (prior_devlyn / "unrelated.data").read_text() == "preserve\n"
+
+        for label, state_raw in (("missing", None), ("malformed", b"{\n")):
+            unauthenticated = root / f"unauthenticated-{label}"
+            init_repo(unauthenticated)
+            unauthenticated_devlyn = unauthenticated / ".devlyn"
+            unauthenticated_devlyn.mkdir()
+            (unauthenticated_devlyn / "implement.stdout").write_bytes(b"owned bytes\n")
+            if state_raw is not None:
+                (unauthenticated_devlyn / "pipeline.state.json").write_bytes(state_raw)
+            before = snapshot(unauthenticated_devlyn)
+            try:
+                bootstrap(["must", "block"], unauthenticated, script_shared)
+            except BootstrapBlocked as exc:
+                assert exc.reason == "BLOCKED:prior-run-ownership-unverified", exc.reason
+            else:
+                raise AssertionError(f"{label} prior-run ownership was accepted")
+            assert snapshot(unauthenticated_devlyn) == before
+        print("PASS bootstrap self-test prior-run ownership: archive before replace; unauthenticated bytes stable")
 
         malformed_work = root / "malformed-spec-repo"
         init_repo(malformed_work)
