@@ -1,5 +1,5 @@
 ---
-complexity: small
+complexity: trivial
 ---
 
 # Archive prune null-state safety
