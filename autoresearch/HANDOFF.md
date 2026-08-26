@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Next: [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md) (REGISTERED-FROZEN 2026-08-25 + APPARATUS TRIO-FROZEN 2026-08-26; launch fired 2026-08-26 → A5 gate `FAIL_FAST_THRESHOLD_UNREACHED` → AMENDMENT 3 (T=64,000) + AMENDMENT 4 (monotone prefix-attestation launch rule) double-FROZEN the same evening; next = RELAUNCH after 01:00 KST 08-27 per the resume recipe). Most recent closed: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED) + 0108/0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
+5. Next: [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md) (REGISTERED-FROZEN 2026-08-25 + APPARATUS TRIO-FROZEN 2026-08-26; two gate FAIL_FASTs → AMENDMENTS 3–5 trio-frozen (T=48,000, monotone prefix-attestation launch rule, pin `981c4c83`); next = LAUNCH ONLY per START-HERE recipe, fresh root m3-*). Most recent closed: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED) + 0108/0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,66 +14,76 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-26 (session 11)
+## 🚦 START-HERE — state after 2026-08-27 (session 11 close)
 
-**iter-0110 LAUNCH FIRED 17:53 KST (session 11) → serial A5 gate
-`FAIL_FAST_THRESHOLD_UNREACHED` after ONE clean opus-5 session (~14.5
-min); AMENDMENT 3 = USER-GATED.** Gate session boundary peaks 43,173 /
-55,682 / 65,514 / **77,972** / 95,015 … 135,394 — the registered 90,000
-was crossed at boundary 5, one boundary late for the prior-boundary
-predicate; P-0110-2 falsified at the gate, zero matrix sessions spent
-beyond it. Root cause trio-verified (grok CONFIRM / sol REVISE → two-factor
-adopted): the 2,177 margin survived neither (1) the SONNET-smoke baseline
-43,025 applied to opus subjects whose pinned-CLI overhead is ~11.2k
-smaller (ctxprobe: sonnet-5 41,203 / opus-5 29,993 / opus-4-8 29,022 —
-receipts on disk since 09:00, read by all three seats, connected by
-nobody) nor (2) the footprint overestimate (measured 11,611/task vs
-12,288). Successor ranking A first ×2: re-derive T from per-engine
-geometry, everything else unchanged. **User ruled A ("추천대로") →
-AMENDMENT 3 REGISTERED + double-FROZEN the same evening: T = 64,000**
-(rule floor₁₀₀₀((31,527 − 971) + 4×9,724 − 1,074 − 4,096); trio R0 sol
-AMEND ×3 folded + grok ADOPT; terra T-r11 5 files +29/−16; fable verify
-self-tests ×2 / pins 11/11 / dry-run; re-freeze `FREEZE-0110-AMEND3-SOL:
-bc85bde2` + `FREEZE-0110-AMEND3-GROK: bc85bde2`, pin file
-`bc85bde2c19774ecdc0d3d4a69708e41a34a0d4481ba2d325da273d4703cfa99`;
-falsifiers OUTCOME-RETUNING + restated P-0110-2; iteration file
-§ AMENDMENT 3). **AMENDMENT 4 (same evening, after the X31 all-clear
-20:24 KST)**: AMENDMENT 3's exact-reproduction rule was FALSIFIED at
-first use — driver-equivalent probes measured opus-5 34,486 / opus-4-8
-33,513 (Δ 973) vs the 29,993 / 29,022 receipts (+4.5k; cwd ruled out by
-control; cause not pinned — HOME-state-dependent system prompt; the
-09:08 receipts carry no argv/env/exe metadata). Trio (sol AMEND + grok
-AMEND, folded): **T stays 64,000** (lower floor is the safer floor under
-G2 EXCLUSION SAFETY; re-derivation would give 68,000); launch rule
-replaced by the MONOTONE prefix attestation `prefix_e =
-cacheCreation+cacheRead ≥ baseline_e (29,993 / 29,022)` for both matrix
-engines, smaller ⇒ BLOCK ⇒ new amendment; drift receipts (content-hash
-manifests of `~/.claude/plugins/**`, `sessions/*.json`, `settings.json`,
-`CLAUDE.md`, `skills/**`, pinned exe) at launch + after the last sweep;
-isolation of the driver's HOME inputs = registered FOLLOW-UP, not a gate.
-Terra T-r12 5 files +27/−8 → fable verify → **pin file
-`025149c68598d12c376b30d0cb5514e880df0509b3b959904be5829980ea1e27`**
-(re-freeze tokens in the iteration file § AMENDMENT 4). **RESUME RECIPE
-(relaunch)**: (1) AMENDMENT 4 prefix attestation — one fixed `Reply OK`
-probe per matrix engine in the driver's exact shape (`sh-driver-0110.py`
-constants + `scrubbed_env()`, cwd `/private/tmp/nx0110-<12hex>/ws`),
-argv/cwd/env keys+TERM/exe sha256/JSON recorded in `launch/ctxprobe/` +
-`ADJUDICATIONS.md`; launch iff opus-5 ≥ 29,993 AND opus-4-8 ≥ 29,022;
-(2) drift manifest → `launch/drift-manifest-launch.txt`; (3) account
-quiet (no `claude --print` workers, peer sessions idle, no new peer
-HOLD), outside 23:00–01:00 KST; (4) FRESH run root + run id
-`m2-<utcstamp>`: `python3
-~/.local/share/nx01/iter0110/launch/launch-detached-0110.py --sweep 1
---run-id m2-<utcstamp> --out
-~/.local/share/nx01/iter0110/matrix/m2-<utcstamp> --pin-sha256
-025149c68598d12c376b30d0cb5514e880df0509b3b959904be5829980ea1e27` (gate
-block alone first) → **sweeps 2–5 into the SAME `--out` and `--run-id`**
-(scorer reads one manifest for all 120 sessions) → drift manifest again
-(`drift-manifest-end.txt`) → `score-0110.py --results-root <root>` →
-trio verify → record. Session-only cron wakeup 01:07 KST 08-27 exists in
-session 11; a fresh session follows this recipe by hand. Receipts `~/.local/share/nx01/iter0110/launch/` (ADJUDICATIONS.md
-18:08 block, packet + pins, gate-sol/grok logs) and
-`~/.local/share/nx01/iter0110/matrix/s1-20260826T085326Z/`.
+**iter-0110: two launches each stopped at the serial A5 gate; the
+threshold was re-derived twice and the launch rule once (AMENDMENTS 3–5,
+each trio-frozen the same day); NEXT SESSION = LAUNCH ONLY, recipe
+below.** Chronology (all 2026-08-26/27, receipts
+`~/.local/share/nx01/iter0110/launch/ADJUDICATIONS.md` + the iteration
+file §§ Launch record / AMENDMENT 3–5):
+- Launch 1 (17:53, `s1-…`): opus-5 gate session clean but boundary-4
+  peak 77,972 < 90,000 → FAIL_FAST. Trio root cause: sonnet-smoke
+  baseline applied to opus (pinned-CLI overhead sonnet 41,203 / opus-5
+  29,993 / opus-4-8 29,022) + footprint overestimate. **AMENDMENT 3**
+  (user ruled A): T = 64,000; falsifier OUTCOME-RETUNING; FREEZE
+  `bc85bde2` (commit `b90dc16`).
+- **AMENDMENT 4**: A3's exact-reproduction launch rule falsified at
+  first use (bare prefix drifted +4.5k under a HOME-state-dependent
+  system prompt) → MONOTONE prefix attestation: launch iff probe
+  prefix_e ≥ 29,993 (opus-5) AND ≥ 29,022 (opus-4-8); drift-manifest
+  receipts at launch + end; HOME isolation = registered follow-up.
+  FREEZE `025149c6` (commit `91f9481`).
+- Launch 2 (23:06, user override "지금 quota 넉넉", `m2-…`, attestation
+  PASS 34,425/33,424): **opus-5 A5 PASS** (crossed 64k at boundary 3)
+  but **opus-4-8 boundary-4 peak 57,871 < 64,000** → second FAIL_FAST
+  (A4-4 falsifier fired, 2 sessions spent). Cause: per-task footprints
+  are ENGINE-dependent — same tasks cost opus-4-8 5,545–9,849 vs opus-5
+  9,724–12,717 (~59%); grok's 8/32-footprints warning confirmed.
+- **AMENDMENT 5** (user ruled the recommendation): **T = 48,000** =
+  floor₁₀₀₀(30,525 + 4×5,545 − 576 − 4,096), derived from BOTH gate
+  sessions' ledgers; both cross it by boundary ≤3. Exposure recorded
+  (sub-5,545 footprints possible; a low non-gate session loses position
+  5+ LATE cells to G2 exclusion, never aborts). **A THIRD gate
+  FAIL_FAST falsifies the fixed-absolute-threshold design — successor
+  redesigns the gate semantics, does not re-derive the constant.**
+  Scored record must report per-engine LATE-cell qualifying-boundary
+  peak distributions from the pinned ledgers (record-step duty; scorer
+  stays PARAMS-pin-only). Trio sol+grok AMEND folded → terra T-r13 →
+  **double FREEZE sol+grok `981c4c83`, pin file
+  `981c4c834ca907bce2a7347b1980c7cf798d5c8a32092635904b9726449791f3`.**
+
+**LAUNCH RECIPE (fresh session; everything else is done)**:
+1. Quiet account (no `claude --print` workers, peer sessions idle, no
+   peer HOLD); avoid 23:00–01:00 KST unless the user overrides.
+2. AMENDMENT 4 prefix attestation: one fixed `Reply OK` probe per
+   matrix engine in the driver's exact shape (import `sh-driver-0110.py`
+   constants PIN/RUN_BOUNDED/BOUND_SEC/EFFORT/TOOLS + `scrubbed_env()`;
+   cwd `/private/tmp/nx0110-<12hex>/ws`; record argv/cwd/env keys+TERM/
+   exe sha256/JSON in `launch/ctxprobe/` + ADJUDICATIONS.md). Launch iff
+   opus-5 prefix ≥ 29,993 AND opus-4-8 ≥ 29,022 (prefix = cacheCreation
+   + cacheRead), else BLOCK → new amendment.
+3. Drift manifest → `launch/drift-manifest-launch.txt` (recipe in
+   ADJUDICATIONS 23:05 entry).
+4. FRESH run root + run id (abort terminals sticky; s1/m2 are dead):
+   `python3 ~/.local/share/nx01/iter0110/launch/launch-detached-0110.py
+   --sweep 1 --run-id m3-<utcstamp> --out
+   ~/.local/share/nx01/iter0110/matrix/m3-<utcstamp> --pin-sha256
+   981c4c834ca907bce2a7347b1980c7cf798d5c8a32092635904b9726449791f3`
+   (gate block runs alone first; expect A5 PASS ×2 — both engines'
+   gate ledgers cross 48k by boundary ≤3).
+5. After sweep-1 `LAUNCH_COMPLETE`: sweeps 2–5 **into the SAME `--out`
+   and `--run-id`**, back-to-back (scorer reads ONE manifest for all
+   120 sessions; ≈2.3 h/sweep, ≈11 h total, 3 lanes).
+6. End: drift manifest again (`drift-manifest-end.txt`) →
+   `score-0110.py --results-root <root>` → trio verify (sol+grok; also
+   report the per-engine LATE-cell context distributions from the
+   ledgers) → record (iteration file DECISION + DECISIONS.md + memory).
+Operational gotchas (bound this lane): seat prompts = literal strings
+only (zsh `${var/pat/rep}` glob-group silently no-ops — misprompted grok
+twice); watch seat completion via the wrapper's final
+`[codex-monitored] codex exited` line, not token strings (seats echo the
+packet).
 
 **iter-0110 AMENDMENT 2 double-FROZEN 2026-08-26 (session 10, launch
 preflight) — launch was then HELD on the quiet-account rule.** The pre-launch

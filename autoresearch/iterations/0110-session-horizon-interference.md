@@ -1,6 +1,6 @@
 ---
 title: "Session-horizon interference cell — opus-5 vs opus-4-8 under accumulated-context horizon"
-status: REGISTERED-FROZEN 2026-08-25 (double FREEZE on r4 — sol 9f3c7a1d + grok b8e4c1a3) + AMENDMENT 1 double ADOPT + APPARATUS TRIO-FROZEN 2026-08-26 (final double FREEZE a7b8eab7 sol+grok on identical bytes; launch USER-GATED) + AMENDMENT 2 2026-08-26 (launch preflight) + AMENDMENT 3 2026-08-26 (threshold re-derived 64,000 after the A5 gate FAIL_FAST; double FREEZE sol+grok bc85bde2; relaunch USER-GATED → scheduled after 01:00 KST 08-27) + AMENDMENT 4 2026-08-26 (exact-reproduction launch rule falsified at first use → monotone prefix attestation; T unchanged; double FREEZE pending)
+status: REGISTERED-FROZEN 2026-08-25 (double FREEZE on r4 — sol 9f3c7a1d + grok b8e4c1a3) + AMENDMENT 1 double ADOPT + APPARATUS TRIO-FROZEN 2026-08-26 (final double FREEZE a7b8eab7 sol+grok on identical bytes; launch USER-GATED) + AMENDMENT 2 2026-08-26 (launch preflight) + AMENDMENT 3 2026-08-26 (threshold re-derived 64,000 after the A5 gate FAIL_FAST; double FREEZE sol+grok bc85bde2; relaunch USER-GATED → scheduled after 01:00 KST 08-27) + AMENDMENT 4 2026-08-26 (exact-reproduction launch rule falsified at first use → monotone prefix attestation; T unchanged; double FREEZE sol+grok 025149c6) + AMENDMENT 5 2026-08-27 (second FAIL_FAST — engine-dependent footprints; T 48,000; double FREEZE sol+grok 981c4c83; relaunch = fresh session, root m3-*)
 depends_on: ["0109-decoy-parity-pilot", "0103-opus-line-regression-cell", "0102-executor-quality-discovery-corpus"]
 ---
 
@@ -132,7 +132,7 @@ be narrated as closing "H1 design quality at long horizon" in full.
   recorded id-rotation link) and recorded as a marker; the stream
   `compact_boundary` event is the ALTERNATE-shape attestor.
 - **Thresholds**: the registered horizon threshold is the sole absolute
-  effective-context threshold (64,000 by AMENDMENT 3, re-derived from the opus-5 gate-session ledger + per-engine overhead; tested on the boundary-4 PEAK at any prior boundary); the context-window-fraction leg is RETIRED by
+  effective-context threshold (48,000 by AMENDMENT 5, re-derived from BOTH matrix engines' gate-session ledgers — per-task footprints are engine-dependent; tested on the boundary-4 PEAK at any prior boundary); the context-window-fraction leg is RETIRED by
   AMENDMENT 2 (encoded `context_window_fraction_threshold: 0.0` = retired,
   NOT 0 % occupancy); denominators are recorded measured `contextWindow`
   values (1,000,000 for all three engines), no longer gate inputs.
@@ -420,7 +420,7 @@ registered-params.json,scripts.sha256,README.md}`.
   smallest S passing all four G0 criteria at EVERY envelope member
   (worst member ρ=0: P(C|S-large)=.517, P(R|S-null)=.5385, coverage
   .928, false-C 0); δH=0.15; G1 tolerances .115/.100/.110; horizon
-  thresholds 64,000 abs (AMENDMENT 3; 90,000 fired FAIL_FAST at the gate; fraction leg retired by AMENDMENT 2; measured window
+  thresholds 48,000 abs (AMENDMENT 5; 90,000 and 64,000 each fired FAIL_FAST at the gate; fraction leg retired by AMENDMENT 2; measured window
   1,000,000 ×3 recorded) (operator window attestation required at launch); G2
   crossing strictly at a PRIOR boundary; G3 ≥47 non-tied
   pairs/engine (S=5 grid, conservative p2.5); launcher = serial A5 gate
@@ -450,7 +450,7 @@ registered-params.json,scripts.sha256,README.md}`.
   grok `FREEZE-0110-AMEND2-GROK: 7e67c1cd` (pin file sha256
   `7e67c1cdcecb368ce54201eb8214d17e502374fc4905dddd561d8b59df7b73b8`).
 - **Pre-registered predictions** (before freeze): P-0110-1 G1 passes all
-  engines; P-0110-2 (restated by AMENDMENT 3; the 90,000 form was FALSIFIED at the gate 2026-08-26) every custody-unbroken matrix session crosses 64,000 at a boundary ≤ 4 — A5 never fires and G2 threshold-unreached exclusions = 0; P-0110-3 the pilot does NOT emit
+  engines; P-0110-2 (restated by AMENDMENT 5; the 90,000 and 64,000 forms were FALSIFIED at the gate 2026-08-26) every custody-unbroken matrix session crosses 48,000 at a boundary ≤ 4 — A5 never fires and G2 threshold-unreached exclusions = 0; P-0110-3 the pilot does NOT emit
   CONFIRMED (0102/0103 lineage).
 - **Deviation disclosed**: terra T-r3 attempt 1 routed the fold through a
   nested worker that cannot initialize under the wrapper sandbox → honest
@@ -504,3 +504,13 @@ A4-3 Drift receipts (recording only): at launch and after the last sweep, conten
 A4-4 P-0110-2 unchanged; falsifier: any matrix-engine gate session with boundary-4 peak < 64,000, or any G2 threshold-unreached exclusion.
 Byte list applied (terra T-r12): registered-params.json (source clause, `amendment4_attestation`, derivation), scorer PARAMS pin, two inventory digests, README, this registration; HANDOFF.md by fable.
 Re-freeze on the final bytes (2026-08-26 21:5x KST, both seats F1 exact byte list / F2 confirmed; sol F3 = expected HANDOFF change in the tree, grok F3 NONE): `FREEZE-0110-AMEND4-SOL: 025149c6` · `FREEZE-0110-AMEND4-GROK: 025149c6` (pin file sha256 `025149c68598d12c376b30d0cb5514e880df0509b3b959904be5829980ea1e27`; receipts `~/.local/share/nx01/iter0110/launch/refreeze-amend4-{sol,grok}.log`).
+
+## AMENDMENT 5 (2026-08-27 — A4-4 falsifier fired: second gate FAIL_FAST; sol AMEND + grok AMEND folded, fable adjudication; user ruled the recommendation)
+
+Facts: m2 `m2-20260826T140616Z` (fresh root, pin 025149c6, prefix attestation PASS 34,425/33,424, fired 23:06 KST on user override): opus-5 gate session A5 PASS (peaks 42,973/57,803/67,618/79,440 — crossed 64,000 at boundary 3); opus-4-8 gate session CLEAN (custody unbroken, 8/8 rows valid) but boundary-4 peak 57,871 < 64,000 (crossed at boundary 5, 67,084) → sticky FAIL_FAST, 2 sessions spent. Same b01 tasks: opus-4-8 footprints 9,849/6,761/5,767/5,545 vs opus-5 12,422/12,717/9,724/12,656 — **per-task accumulated-context footprints are ENGINE-dependent (~59%)**; AMENDMENT 3's minimum came from the opus-5 session only. grok's freeze-round warning (8/32 footprints known) is the confirmed mechanism; A4-4 licensed this amendment.
+Rule: T = floor₁₀₀₀(opus-4-8 gate first request 30,525 + 4 × min footprint 5,545 − boundary-4 tail 576 − margin 4,096) = **48,000**. Checks: opus-4-8 crosses at boundary 3 (52,298), m2 opus-5 at boundary 2 (57,803), sonnet prefix 41,203 trivially. AMENDMENT 4 prefix-attestation baselines 29,993/29,022 unchanged.
+Exposure (recorded, not gated; sol wording): a non-gate session with boundary-4 peak < 48,000 excludes position 5 AND every later LATE cell until a prior boundary crosses (G2 `threshold-unreached`, G3 erosion), never an abort; an observed LATE-position footprint of 5,292 (< 5,545) marks the exposure class. **A THIRD gate FAIL_FAST falsifies the fixed-absolute-threshold design itself — the successor redesigns the gate semantics (growth-based or per-engine), it does not re-derive the constant.**
+Claim wording (sol): 48,000 is a total-effective-context floor; the prefix is HOME-state-dependent, so no fixed ≥18k real-work decomposition is guaranteed. The scored record reports, from the pinned boundary ledgers, the per-engine distribution of each LATE cell's qualifying prior-boundary peak (descriptive; frozen decision inputs unchanged — fable split ruling FROZEN-DECISION-SURFACE MINIMALITY over sol's in-scorer implementation).
+P-0110-2 restated: every custody-unbroken matrix session crosses 48,000 at a boundary ≤ 4; A5 never fires; G2 threshold-unreached exclusions = 0.
+Byte list applied (terra T-r13): registered-params.json (threshold, amendment5_inputs, A4 supersede note, derivation), scorer PARAMS pin, two inventory digests, README, this registration; HANDOFF by fable.
+Re-freeze on the final bytes (2026-08-27 00:5x KST, both seats F1 exact byte list / F2 confirmed / F3 NONE): `FREEZE-0110-AMEND5-SOL: 981c4c83` · `FREEZE-0110-AMEND5-GROK: 981c4c83` (pin file sha256 `981c4c834ca907bce2a7347b1980c7cf798d5c8a32092635904b9726449791f3`; receipts `~/.local/share/nx01/iter0110/launch/refreeze-amend5-{sol,grok}.log`).
