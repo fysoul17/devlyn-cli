@@ -14,12 +14,19 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-27 (session 11 close)
+## 🚦 START-HERE — state after 2026-08-27 (session 12)
 
-**iter-0110: two launches each stopped at the serial A5 gate; the
-threshold was re-derived twice and the launch rule once (AMENDMENTS 3–5,
-each trio-frozen the same day); NEXT SESSION = LAUNCH ONLY, recipe
-below.** Chronology (all 2026-08-26/27, receipts
+**iter-0110: the m3 launch (session 12) PASSED the serial A5 gate on
+BOTH engines — first gate pass in three launches, T=48,000 validated —
+but sweep 1 ended `LAUNCH_PARTIAL`: the 24th session hit the
+shared-account session limit (429, "You've hit your session limit",
+~04:0x KST, inside a disclosed peer-overlap window) → one `infra_invalid`
+row → the frozen scorer unscores the whole root (registered fail-closed,
+README:12), recorded sessions are immutable → m3 is dead for scoring;
+sweeps 2–5 were HELD. Trio CONVERGENT (sol+grok `CONFIRM OPTION A`,
+`m3infra-{sol,grok}.log`): no apparatus change, successor = fresh root
+m4 relaunch, USER-GATED. Recipe below (m4 safeguards added).** Prior
+chronology (2026-08-26/27, receipts
 `~/.local/share/nx01/iter0110/launch/ADJUDICATIONS.md` + the iteration
 file §§ Launch record / AMENDMENT 3–5):
 - Launch 1 (17:53, `s1-…`): opus-5 gate session clean but boundary-4
@@ -53,7 +60,15 @@ file §§ Launch record / AMENDMENT 3–5):
   **double FREEZE sol+grok `981c4c83`, pin file
   `981c4c834ca907bce2a7347b1980c7cf798d5c8a32092635904b9726449791f3`.**
 
-**LAUNCH RECIPE (fresh session; everything else is done)**:
+**LAUNCH RECIPE (m4; USER-GATED; everything else is done)**:
+0. m4 safeguards (trio 2026-08-27, frozen bytes only): fire each sweep
+   only with credible account headroom — sweeps are registered as
+   independently stageable, back-to-back is an option not a mandate;
+   agree an explicit no-X-unit window with peer sessions BEFORE firing;
+   OPERATOR HALT on the FIRST `infra_invalid`/429 in any session (the
+   launcher's 3-consecutive abort is too late — one row already makes
+   the root unscoreable), then fresh root; monitor per-session
+   `is_error` in `cli.stdout` + manifest `infra_affected`.
 1. Quiet account (no `claude --print` workers, peer sessions idle, no
    peer HOLD); avoid 23:00–01:00 KST unless the user overrides.
 2. AMENDMENT 4 prefix attestation: one fixed `Reply OK` probe per
@@ -65,16 +80,18 @@ file §§ Launch record / AMENDMENT 3–5):
    + cacheRead), else BLOCK → new amendment.
 3. Drift manifest → `launch/drift-manifest-launch.txt` (recipe in
    ADJUDICATIONS 23:05 entry).
-4. FRESH run root + run id (abort terminals sticky; s1/m2 are dead):
+4. FRESH run root + run id (abort terminals sticky; s1/m2/m3 are dead —
+   m3 by one infra row, not by the gate):
    `python3 ~/.local/share/nx01/iter0110/launch/launch-detached-0110.py
-   --sweep 1 --run-id m3-<utcstamp> --out
-   ~/.local/share/nx01/iter0110/matrix/m3-<utcstamp> --pin-sha256
+   --sweep 1 --run-id m4-<utcstamp> --out
+   ~/.local/share/nx01/iter0110/matrix/m4-<utcstamp> --pin-sha256
    981c4c834ca907bce2a7347b1980c7cf798d5c8a32092635904b9726449791f3`
-   (gate block runs alone first; expect A5 PASS ×2 — both engines'
-   gate ledgers cross 48k by boundary ≤3).
+   (gate block runs alone first; expect A5 PASS ×2 — proven on m3:
+   opus-5 crossed 02:27, opus-4-8 02:36).
 5. After sweep-1 `LAUNCH_COMPLETE`: sweeps 2–5 **into the SAME `--out`
-   and `--run-id`**, back-to-back (scorer reads ONE manifest for all
-   120 sessions; ≈2.3 h/sweep, ≈11 h total, 3 lanes).
+   and `--run-id`** (scorer reads ONE manifest for all 120 sessions;
+   ≈2.3 h/sweep, ≈11 h total, 3 lanes), each fired per safeguard 0's
+   headroom check.
 6. End: drift manifest again (`drift-manifest-end.txt`) →
    `score-0110.py --results-root <root>` → trio verify (sol+grok; also
    report the per-engine LATE-cell context distributions from the
