@@ -20,6 +20,9 @@ fi
 DEVLYN_SHARED_DIR="$(cd "$DEVLYN_SKILL_DIR/../_shared" && pwd)"
 ```
 
+Before processing the first item, read and obey
+`../devlyn:resolve/references/outer-loop.md`. Its scoped-commit order is binding.
+
 ## No args — status
 
 Read `docs/specs/queue.md` (absent → report "queue empty — nothing staged" and how to add). Print pending `[ ]`, done `[x]`, and blocked `[F]` counts, the next item up, and one usage line per subcommand.
@@ -28,11 +31,11 @@ Read `docs/specs/queue.md` (absent → report "queue empty — nothing staged" a
 
 - `add <intent text>` — append `- [ ] <intent>` to `docs/specs/queue.md` (create the file with its header if missing). If the intent came out of a conversation that already produced a spec, link it: `- [ ] (spec: docs/specs/<id>/spec.md) <intent>`.
 - `drain` — serial drain per the project-instructions contract. For each pending item, in order:
-  1. Spec it if unspecced (the queue entry is the user's go-ahead). Unattended assumptions may only take scope-narrowing, reversible, non-user-visible defaults; material ambiguity (user-visible behavior, data/state semantics, new files/scripts/flags, implementation surface) → mark `[F] needs-review: <question>` and continue to the next item.
-  2. Run `/devlyn:resolve --spec <path>` hands-free.
+  1. Spec it if unspecced (the queue entry is the user's go-ahead). Unattended assumptions may only take scope-narrowing, reversible, non-user-visible defaults; material ambiguity (user-visible behavior, data/state semantics, new files/scripts/flags, implementation surface) → mark `[F] needs-review: <question>`, commit that queue transition, and continue.
+  2. Commit the current queue-item delta and linked spec bundle as the scoped owner baseline, then run `/devlyn:resolve --spec <path>` hands-free.
      After every resolve invocation, run `python3 "$DEVLYN_SHARED_DIR/terminal-claim-check.py" .`; exit 79 marks `[F] FAILED-INCOMPLETE` from the predicate, never from the session self-report.
-  3. Outer loop on the terminal verdict: PASS → mark `[x]`. Findings-backed verdicts (NEEDS_WORK, verify/build-gate exhaustion) → amend the spec (recorded in the spec file), re-run — at most 3 outer iterations. Infrastructure / invalid-input / engine-availability / implement-empty BLOCKED verdicts are not spec-amendable → mark `[F] <verdict>` immediately.
-  4. A blocked item never halts the queue; continue.
+  3. Outer loop on the terminal verdict: PASS → mark `[x]`. Findings-backed verdicts (NEEDS_WORK, verify/build-gate exhaustion) → amend the spec, commit that scoped amendment, then re-run — at most 3 outer iterations. Infrastructure / invalid-input / engine-availability / implement-empty BLOCKED verdicts are not spec-amendable → mark `[F] <verdict>` immediately.
+  4. Commit each terminal `[x]` / `[F]` queue transition before advancing. A blocked item never halts the queue.
   5. When the queue is drained (or the session must stop), emit the drain report: per-item verdict, every logged assumption, and the commit range produced.
 
 Strictly SERIAL — one `/devlyn:resolve` run at a time, never parallel. Never invent queue items, never reorder them, and never delete an item — only mark `[x]` / `[F]`.

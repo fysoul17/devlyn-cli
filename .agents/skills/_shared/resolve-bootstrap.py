@@ -302,6 +302,24 @@ def capture_external_diff(cwd: pathlib.Path, ref: str) -> bytes:
     return raw
 
 
+def require_clean_tracked_baseline(cwd: pathlib.Path) -> None:
+    changed: list[bytes] = []
+    for args in (("diff",), ("diff", "--cached")):
+        proc = subprocess.run(
+            ["git", *args, "--no-renames", "--name-only", "-z"],
+            cwd=cwd,
+            capture_output=True,
+        )
+        if proc.returncode != 0:
+            block("BLOCKED:invalid-flags", os.fsdecode(proc.stderr or proc.stdout).strip())
+        changed.extend(path for path in proc.stdout.split(b"\0") if path)
+    if any(path != b".devlyn" and not path.startswith(b".devlyn/") for path in changed):
+        block(
+            "BLOCKED:worktree-dirty",
+            "Commit or stash tracked changes outside .devlyn before starting a full resolve.",
+        )
+
+
 def bootstrap(
     argv: list[str],
     cwd: pathlib.Path,
@@ -313,8 +331,10 @@ def bootstrap(
     cwd = cwd.resolve()
     validate_shared_dir(shared_dir)
     parsed = parse_flags(argv)
+    if parsed["mode"] != "verify-only":
+        require_clean_tracked_baseline(cwd)
     devlyn = cwd / ".devlyn"
-    outputs: dict[pathlib.Path, bytes | None] = {}
+    outputs: dict[pathlib.Path, bytes | None] = {devlyn / "external-diff.patch": None}
     if parsed["mode"] == "free-form":
         raw_goal = (
             safe_goal_file(cwd, parsed["goal_file"])
@@ -399,6 +419,13 @@ def self_test() -> int:
         (path / "app.py").write_text("print('base')\n")
         subprocess.run(["git", "add", "app.py"], cwd=path, check=True)
         subprocess.run(["git", "commit", "-qm", "base"], cwd=path, check=True)
+
+    def snapshot(path: pathlib.Path) -> dict[str, bytes]:
+        return {
+            str(file.relative_to(path)): file.read_bytes()
+            for file in path.rglob("*")
+            if file.is_file()
+        }
 
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
@@ -588,10 +615,16 @@ def self_test() -> int:
             "## Verification\n\n```json\n{\"verification_commands\":[{\"cmd\":\"printf ok\",\"stdout_contains\":[\"ok\"]}]}\n```\n"
         )
         spec_raw = spec_path.read_bytes()
+        external_patch = work / ".devlyn" / "external-diff.patch"
+        external_patch.write_bytes(b"stale spec patch\n")
         spec_result = bootstrap(["--spec", str(spec_path.relative_to(work))], work, script_shared)
+        assert not external_patch.exists()
         staged = strict_json((work / ".devlyn" / "spec-verify.json").read_text())
         assert staged["verification_commands"][0]["cmd"] == "printf ok"
         assert spec_result["source"]["spec_sha256"] == sha256(spec_raw)
+        external_patch.write_bytes(b"stale free-form patch\n")
+        bootstrap(["fresh", "goal"], work, script_shared)
+        assert not external_patch.exists()
         (spec_dir / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [{"cmd": "printf expected", "stdout_contains": ["expected"]}],
         }) + "\n")
@@ -600,12 +633,50 @@ def self_test() -> int:
         assert staged["verification_commands"][0]["cmd"] == "printf expected"
         patch_raw = b"diff --git a/app.py b/app.py\nexact external bytes\x00\n"
         (work / "external.patch").write_bytes(patch_raw)
+        (work / "app.py").write_text("print('dirty verify-only input')\n")
         verify_result = bootstrap([
             "--verify-only", "external.patch", "--spec", str(spec_path.relative_to(work)),
         ], work, script_shared)
         assert verify_result["mode"] == "verify-only"
-        assert (work / ".devlyn" / "external-diff.patch").read_bytes() == patch_raw
-        print("PASS bootstrap self-test spec staging + verify-only capture: exact source/diff bytes")
+        assert external_patch.read_bytes() == patch_raw
+        subprocess.run(["git", "restore", "app.py"], cwd=work, check=True)
+        print("PASS bootstrap self-test patch lifecycle: full-mode removal + dirty verify-only exact capture")
+
+        dirty_work = root / "dirty-repo"
+        init_repo(dirty_work)
+        bootstrap(["clean", "baseline"], dirty_work, script_shared)
+        before_dirty = snapshot(dirty_work / ".devlyn")
+        (dirty_work / "app.py").write_text("print('unstaged')\n")
+        for label in ("unstaged", "staged"):
+            if label == "staged":
+                subprocess.run(["git", "add", "app.py"], cwd=dirty_work, check=True)
+            try:
+                bootstrap(["blocked", label], dirty_work, script_shared)
+            except BootstrapBlocked as exc:
+                assert exc.reason == "BLOCKED:worktree-dirty"
+                assert "commit or stash" in exc.detail.lower()
+            else:
+                raise AssertionError(f"{label} tracked owner change accepted")
+            assert snapshot(dirty_work / ".devlyn") == before_dirty
+        subprocess.run(["git", "restore", "--staged", "app.py"], cwd=dirty_work, check=True)
+        subprocess.run(["git", "restore", "app.py"], cwd=dirty_work, check=True)
+
+        devlyn_work = root / "devlyn-dirty-repo"
+        init_repo(devlyn_work)
+        (devlyn_work / ".devlyn").mkdir()
+        owner_file = devlyn_work / ".devlyn" / "owner.txt"
+        owner_file.write_text("base\n")
+        subprocess.run(["git", "add", ".devlyn/owner.txt"], cwd=devlyn_work, check=True)
+        subprocess.run(["git", "commit", "-qm", "track devlyn owner"], cwd=devlyn_work, check=True)
+        owner_file.write_text("dirty allowed\n")
+        assert bootstrap(["devlyn", "allowed"], devlyn_work, script_shared)["ok"] is True
+        assert owner_file.read_text() == "dirty allowed\n"
+
+        untracked_work = root / "untracked-repo"
+        init_repo(untracked_work)
+        (untracked_work / "untracked.txt").write_text("allowed\n")
+        assert bootstrap(["untracked", "allowed"], untracked_work, script_shared)["ok"] is True
+        print("PASS bootstrap self-test honest baseline: dirty owner blocked; .devlyn/untracked allowed")
 
         malformed_work = root / "malformed-spec-repo"
         init_repo(malformed_work)
