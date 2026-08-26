@@ -1,0 +1,23 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "python3 config/skills/_shared/archive_run.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 180
+    },
+    {
+      "cmd": "diff -q config/skills/_shared/archive_run.py .agents/skills/_shared/archive_run.py",
+      "exit_code": 0
+    },
+    {
+      "cmd": "bash scripts/lint-skills.sh",
+      "exit_code": 0,
+      "timeout_sec": 300
+    },
+    {
+      "cmd": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "max_deps_added": 0
+}
