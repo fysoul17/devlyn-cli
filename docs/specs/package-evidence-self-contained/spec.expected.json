@@ -1,0 +1,22 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "shasum -a 256 -c docs/specs/package-evidence-self-contained/evidence.sha256",
+      "exit_code": 0
+    },
+    {
+      "cmd": "cut -c 67- docs/specs/package-evidence-self-contained/evidence.sha256 | xargs git ls-files --error-unmatch",
+      "exit_code": 0
+    },
+    {
+      "cmd": "bash scripts/lint-skills.sh",
+      "exit_code": 0,
+      "timeout_sec": 300
+    },
+    {
+      "cmd": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "max_deps_added": 0
+}
