@@ -31,10 +31,11 @@ Default mode (BUILD_GATE invocation, no args):
       mis-config). Real-user mode silent no-op + drops any stale
       pre-staged file (preserves iter-0019.6 backward compat for
       handwritten specs without the carrier).
-- For each verification_commands entry, runs the command in the work-dir,
-  captures combined stdout+stderr, and asserts exit_code matches +
-  stdout_contains all required literals + stdout_not_contains none of the
-  forbidden literals. Mirrors run-fixture.sh's post-run verifier semantics.
+- For each verification_commands entry and included risk probe, routes the
+  command through the sibling `process-evidence.py` runner. Raw stdout/stderr,
+  execution outcome, classification, and byte digests are written under the
+  authenticated run/phase/round manifest; expectations retain
+  run-fixture.sh's combined-stream matching semantics.
 
 Check mode (`--check <markdown_path>`):
 - Used by /devlyn:ideate after writing each item spec to validate that the
@@ -60,6 +61,8 @@ Output routing:
   `SPEC_VERIFY_FINDINGS_FILE=verify-mechanical.findings.jsonl`, and
   `SPEC_VERIFY_FINDING_PREFIX=VERIFY-MECH` so `verify-merge-findings.py` consumes
   deterministic blockers directly.
+- `.devlyn/spec-verify.results.json` points each result at its sealed raw
+  streams and includes the validated process-evidence carrier.
 
 Why: iter-0018.5's prompt-only contract enforcement was empirically dead
 (F9 verify=0.4 across all engines in iter-0019). Same lesson as iter-0008
@@ -80,11 +83,13 @@ Exit codes:
   `SPEC_VERIFY_FINDINGS_FILE` (for example, VERIFY uses
   `.devlyn/verify-mechanical.findings.jsonl`).
 - 2: invocation error (unreadable spec-verify.json, missing markdown in
-  --check mode, etc.)
+  --check mode, etc.) or explicit evidence-backed
+  `BLOCKED:build-env-underprovisioned` capability denial.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import hashlib
 import os
@@ -113,6 +118,95 @@ def output_findings_name() -> str:
 
 def output_finding_prefix() -> str:
     return os.environ.get("SPEC_VERIFY_FINDING_PREFIX", "BGATE")
+
+
+_PROCESS_EVIDENCE_MODULE = None
+RUNNER_ENV_KEYS = (
+    "SPEC_VERIFY_PHASE",
+    "SPEC_VERIFY_FINDINGS_FILE",
+    "SPEC_VERIFY_FINDING_PREFIX",
+)
+
+
+def process_evidence_module():
+    global _PROCESS_EVIDENCE_MODULE
+    if _PROCESS_EVIDENCE_MODULE is None:
+        module_path = Path(__file__).with_name("process-evidence.py")
+        spec = importlib.util.spec_from_file_location("devlyn_process_evidence", module_path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError(f"cannot load process evidence runner: {module_path}")
+        module = importlib.util.module_from_spec(spec)
+        previous_bytecode_setting = sys.dont_write_bytecode
+        sys.dont_write_bytecode = True
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.dont_write_bytecode = previous_bytecode_setting
+        _PROCESS_EVIDENCE_MODULE = module
+    return _PROCESS_EVIDENCE_MODULE
+
+
+def mechanical_evidence_identity(state: dict, runner) -> tuple[str, str, int, str]:
+    phase = "verify" if output_phase() == "verify_mechanical" else "build_gate"
+    run_id = state.get("run_id")
+    phase_state = (state.get("phases") or {}).get(phase)
+    round_ = phase_state.get("round") if isinstance(phase_state, dict) else None
+    invalid_identity = (
+        not isinstance(run_id, str)
+        or runner.ID_RE.fullmatch(run_id) is None
+        or isinstance(round_, bool)
+        or not isinstance(round_, int)
+        or round_ < 0
+    )
+    if invalid_identity and state.get("version") == "3.0":
+        raise runner.EvidenceError(
+            f"schema-v3 MECHANICAL evidence identity is invalid for phase {phase}"
+        )
+    if invalid_identity:
+        # Standalone/benchmark invocations predate pipeline run identity. Keep
+        # them evidence-backed without letting one process reuse another's
+        # manifest. Real pipeline runs always take the authenticated branch.
+        run_id = f"standalone-{os.getpid()}"
+        round_ = 0
+    identity = {"run_id": run_id, "phases": {phase: {"round": round_}}}
+    return phase, run_id, round_, runner.manifest_relative_path(identity, phase)
+
+
+def mechanical_obligation(vc: dict, idx: int, phase: str) -> dict:
+    evidence_id = (
+        f"risk-probe-{idx + 1:04d}"
+        if vc.get("_risk_probe")
+        else f"verification-command-{idx + 1:04d}"
+    )
+    return {
+        "id": evidence_id,
+        "phase": phase,
+        "cmd": vc["cmd"],
+        "exit_code": vc.get("exit_code", 0),
+        "timeout_sec": verification_timeout_sec(vc),
+        "stdout_contains": vc.get("stdout_contains", []) or [],
+        "stdout_not_contains": vc.get("stdout_not_contains", []) or [],
+    }
+
+
+def capture_mechanical_command(
+    runner, work: Path, manifest_path: Path, run_id: str, phase: str,
+    round_: int, obligation: dict,
+) -> dict:
+    saved = {key: os.environ.get(key) for key in (*RUNNER_ENV_KEYS, "BENCH_WORKDIR")}
+    for key in RUNNER_ENV_KEYS:
+        os.environ.pop(key, None)
+    os.environ["BENCH_WORKDIR"] = str(work)
+    try:
+        return runner.capture_process(
+            work, manifest_path, run_id, phase, round_, obligation,
+        )
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
 
 VERIFICATION_SECTION_RE = re.compile(
@@ -1796,6 +1890,13 @@ def run_self_test() -> int:
     # (observed 2026-08-03, iter-0089 canary).
     os.environ.pop("BENCH_WORKDIR", None)
     script_path = str(Path(__file__).resolve())
+    runner = process_evidence_module()
+    try:
+        mechanical_evidence_identity({"version": "3.0", "phases": {}}, runner)
+    except runner.EvidenceError as exc:
+        assert "schema-v3 MECHANICAL evidence identity is invalid" in str(exc)
+    else:
+        raise AssertionError("schema-v3 MECHANICAL evidence accepted missing run identity")
     with tempfile.TemporaryDirectory() as td:
         work = Path(td)
         devlyn = work / ".devlyn"
@@ -1960,13 +2061,18 @@ def run_self_test() -> int:
                         "cmd": "python3 -c \"import time; time.sleep(1)\"",
                         "timeout_sec": 5,
                     },
+                    {
+                        "cmd": "printf 'Operation not permitted' >&2; exit 1",
+                    },
                 ]
             })
             + "\n```\n",
             encoding="utf-8",
         )
         (timeout_run_devlyn / "pipeline.state.json").write_text(json.dumps({
-            "source": {"type": "spec", "spec_path": str(timeout_run_spec)}
+            "run_id": "rs-timeout-run",
+            "source": {"type": "spec", "spec_path": str(timeout_run_spec)},
+            "phases": {"build_gate": {"round": 2}},
         }))
         timeout_run = subprocess.run(
             [sys.executable, script_path],
@@ -1977,9 +2083,10 @@ def run_self_test() -> int:
         if timeout_run.returncode == 0:
             print("declared one-second timeout did not fail", file=sys.stderr)
             return 1
-        timeout_results = loads_strict_json(
+        timeout_document = loads_strict_json(
             (timeout_run_devlyn / "spec-verify.results.json").read_text()
-        )["commands"]
+        )
+        timeout_results = timeout_document["commands"]
         timeout_findings = [
             loads_strict_json(line)
             for line in (timeout_run_devlyn / output_findings_name()).read_text().splitlines()
@@ -1989,9 +2096,36 @@ def run_self_test() -> int:
             timeout_results[0].get("reason") != "timeout"
             or timeout_results[0].get("timeout_sec") != 1
             or not timeout_results[1].get("pass")
+            or timeout_results[2].get("reason") != "exit"
+            or timeout_results[2].get("classification") != {
+                "kind": "product_result", "operation": None,
+            }
         ):
             print("declared timeout budgets were not honored", file=sys.stderr)
             print(timeout_results, file=sys.stderr)
+            return 1
+        timeout_carrier = timeout_document.get("process_evidence") or {}
+        timeout_manifest_path = (
+            ".devlyn/process-evidence/rs-timeout-run/build_gate/round-2/manifest.json"
+        )
+        timeout_manifest = loads_strict_json(
+            (timeout_run_root / timeout_manifest_path).read_text()
+        )
+        if (
+            timeout_carrier.get("manifest", {}).get("path") != timeout_manifest_path
+            or [entry.get("id") for entry in timeout_manifest.get("entries", [])] != [
+                "verification-command-0001",
+                "verification-command-0002",
+                "verification-command-0003",
+            ]
+            or any(
+                not (timeout_run_root / entry[stream]["path"]).is_file()
+                for entry in timeout_manifest.get("entries", [])
+                for stream in ("stdout", "stderr")
+            )
+        ):
+            print("literal commands did not emit sealed BUILD_GATE evidence", file=sys.stderr)
+            print(timeout_document, file=sys.stderr)
             return 1
         timeout_finding = timeout_findings[0] if timeout_findings else {}
         if (
@@ -2002,6 +2136,17 @@ def run_self_test() -> int:
         ):
             print("timeout finding did not carry the distinct budget contract", file=sys.stderr)
             print(timeout_finding, file=sys.stderr)
+            return 1
+        if (
+            not any(
+                finding.get("rule_id") == "correctness.spec-literal-mismatch"
+                for finding in timeout_findings
+            )
+            or "BLOCKED:build-env-underprovisioned" in timeout_run.stderr
+        ):
+            print("ordinary restricted-looking stderr did not remain a product finding", file=sys.stderr)
+            print(timeout_findings, file=sys.stderr)
+            print(timeout_run.stderr, file=sys.stderr)
             return 1
 
         runner_env_root = work / "runner-env-isolation"
@@ -2025,7 +2170,9 @@ def run_self_test() -> int:
             encoding="utf-8",
         )
         (runner_env_devlyn / "pipeline.state.json").write_text(json.dumps({
-            "source": {"type": "spec", "spec_path": str(runner_env_spec)}
+            "run_id": "rs-runner-env",
+            "source": {"type": "spec", "spec_path": str(runner_env_spec)},
+            "phases": {"verify": {"round": 3}},
         }))
         runner_env = os.environ.copy()
         runner_env.update({
@@ -2040,12 +2187,19 @@ def run_self_test() -> int:
             capture_output=True,
             text=True,
         )
-        runner_env_results = loads_strict_json(
+        runner_env_document = loads_strict_json(
             (runner_env_devlyn / "spec-verify.results.json").read_text()
-        )["commands"]
+        )
+        runner_env_results = runner_env_document["commands"]
         if runner_env_run.returncode != 0 or not runner_env_results[0].get("pass"):
             print("runner-directed environment leaked into a verification command", file=sys.stderr)
             print(runner_env_run.stderr, file=sys.stderr)
+            return 1
+        if runner_env_document.get("process_evidence", {}).get("manifest", {}).get("path") != (
+            ".devlyn/process-evidence/rs-runner-env/verify/round-3/manifest.json"
+        ):
+            print("VERIFY MECHANICAL evidence used the wrong phase identity", file=sys.stderr)
+            print(runner_env_document, file=sys.stderr)
             return 1
         env = os.environ.copy()
         env["BENCH_WORKDIR"] = str(work)
@@ -2077,9 +2231,11 @@ def run_self_test() -> int:
             print(repr(digest_run.stdout), file=sys.stderr)
             return 1
         (devlyn / "pipeline.state.json").write_text(json.dumps({
+            "run_id": "rs-risk-probes",
             "source": {"type": "spec", "spec_path": str(spec_md)},
             "risk_profile": {"risk_probes_enabled": True},
             "risk_probes_digest": risk_digest,
+            "phases": {"build_gate": {"round": 4}},
         }))
         good = subprocess.run(
             [sys.executable, script_path, "--include-risk-probes"],
@@ -2090,6 +2246,24 @@ def run_self_test() -> int:
         )
         if good.returncode != 0:
             print(good.stderr, file=sys.stderr)
+            return 1
+        good_document = loads_strict_json(
+            (devlyn / "spec-verify.results.json").read_text()
+        )
+        good_manifest_path = good_document.get("process_evidence", {}).get("manifest", {}).get("path")
+        good_manifest = (
+            loads_strict_json((work / good_manifest_path).read_text())
+            if isinstance(good_manifest_path, str)
+            else {}
+        )
+        if (
+            good_manifest_path != ".devlyn/process-evidence/rs-risk-probes/build_gate/round-4/manifest.json"
+            or [entry.get("id") for entry in good_manifest.get("entries", [])] != [
+                "verification-command-0001", "risk-probe-0002",
+            ]
+        ):
+            print("literal command and risk probe did not share the sealed manifest", file=sys.stderr)
+            print(good_document, file=sys.stderr)
             return 1
 
         probe_script.write_text("print('mutated-probe')\n", encoding="utf-8")
@@ -4447,18 +4621,17 @@ def main() -> int:
     results_path = devlyn_dir / "spec-verify.results.json"
     findings_path = devlyn_dir / output_findings_name()
 
-    verify_env = os.environ.copy()
-    for runner_key in (
-        "SPEC_VERIFY_PHASE",
-        "SPEC_VERIFY_FINDINGS_FILE",
-        "SPEC_VERIFY_FINDING_PREFIX",
-    ):
-        verify_env.pop(runner_key, None)
-    verify_env["BENCH_WORKDIR"] = str(work)
-
     results: list[dict] = []
     findings: list[dict] = []
     finding_seq = 1
+    runner = process_evidence_module()
+    evidence_phase, evidence_run_id, evidence_round, manifest_relative = (
+        mechanical_evidence_identity(state, runner)
+    )
+    manifest_path = work / manifest_relative
+    obligations: list[dict] = []
+    capability_denials: list[dict] = []
+    evidence_error: str | None = None
 
     for idx, vc in enumerate(commands):
         cmd = vc.get("cmd")
@@ -4472,116 +4645,102 @@ def main() -> int:
         stdout_contains = vc.get("stdout_contains", []) or []
         stdout_not_contains = vc.get("stdout_not_contains", []) or []
         timeout_sec = verification_timeout_sec(vc)
+        obligation = mechanical_obligation(vc, idx, evidence_phase)
+        obligations.append(obligation)
+        criterion_ref = (
+            f"risk-probe:{vc.get('id')}"
+            if is_risk_probe
+            else f"spec-verify://verification_commands/{idx}"
+        )
+        file_ref = (
+            ".devlyn/risk-probes.jsonl"
+            if is_risk_probe
+            else ".devlyn/spec-verify.json"
+        )
 
         try:
-            proc = subprocess.run(
-                cmd,
-                cwd=str(work),
-                shell=True,
-                env=verify_env,
-                capture_output=True,
-                text=True,
-                timeout=timeout_sec,
+            entry = capture_mechanical_command(
+                runner, work, manifest_path, evidence_run_id, evidence_phase,
+                evidence_round, obligation,
             )
-            # Mirror run-fixture.sh post-run verifier: combined stdout+stderr.
-            out = (proc.stdout or "") + (proc.stderr or "")
-            ok_exit = proc.returncode == expected_exit
-            ok_contains = all(s in out for s in stdout_contains)
-            ok_not = not any(s in out for s in stdout_not_contains)
-            passed = bool(ok_exit and ok_contains and ok_not)
-
-            if passed:
-                reason = None
-            elif not ok_exit:
-                reason = "exit"
-            elif not ok_contains:
-                reason = "missing_contains"
-            else:
-                reason = "unexpected_text"
-
+            stdout = (work / entry["stdout"]["path"]).read_bytes()
+            stderr = (work / entry["stderr"]["path"]).read_bytes()
+        except (runner.EvidenceError, OSError, UnicodeError, ValueError) as exc:
+            evidence_error = str(exc)
             results.append({
                 "index": idx,
                 "cmd": cmd,
-                "expected_exit": expected_exit,
-                "actual_exit": proc.returncode,
-                "stdout_contains": stdout_contains,
-                "stdout_not_contains": stdout_not_contains,
-                "pass": passed,
-                "reason": reason,
-                "stdout_tail": out[-500:],
+                "pass": False,
+                "reason": "process_evidence_invalid",
             })
+            findings.append({
+                "id": f"{output_finding_prefix()}-{finding_seq:04d}",
+                "rule_id": "invariant.process-evidence-invalid",
+                "level": "error",
+                "severity": "CRITICAL",
+                "confidence": 1.0,
+                "message": f"MECHANICAL process evidence is invalid: {exc}.",
+                "file": manifest_relative,
+                "line": 1,
+                "phase": output_phase(),
+                "criterion_ref": "process-evidence://mechanical",
+                "fix_hint": (
+                    "Preserve the existing manifest and raw streams, then fix the "
+                    "runner identity or evidence mutation before rerunning this phase."
+                ),
+                "blocking": True,
+                "status": "open",
+            })
+            finding_seq += 1
+            break
 
-            if not passed:
-                # Construct fine-grained message naming the specific failure.
-                if not ok_exit:
-                    msg = (
-                        f"Verification command #{idx + 1} failed: expected exit "
-                        f"{expected_exit}, got {proc.returncode}."
-                    )
-                elif not ok_contains:
-                    missing = [s for s in stdout_contains if s not in out]
-                    msg = (
-                        f"Verification command #{idx + 1} failed: expected "
-                        f"output to contain {missing!r}."
-                    )
-                else:
-                    forbidden = [s for s in stdout_not_contains if s in out]
-                    msg = (
-                        f"Verification command #{idx + 1} failed: output "
-                        f"contained forbidden literal(s) {forbidden!r}."
-                    )
+        outcome = entry["outcome"]
+        classification = entry["classification"]
+        combined = stdout + stderr
+        actual_exit = outcome["exit_code"] if outcome["kind"] == "exit" else None
+        ok_exit = outcome["kind"] == "exit" and actual_exit == expected_exit
+        ok_contains = all(s.encode("utf-8") in combined for s in stdout_contains)
+        ok_not = not any(s.encode("utf-8") in combined for s in stdout_not_contains)
+        passed = entry["expectation_met"]
+        if classification["kind"] == "capability_denied":
+            reason = "capability_denied"
+            capability_denials.append({
+                "cmd": cmd,
+                "operation": classification["operation"],
+                "evidence_id": entry["id"],
+            })
+        elif passed:
+            reason = None
+        elif outcome["kind"] == "timeout":
+            reason = "timeout"
+        elif not ok_exit:
+            reason = "exit"
+        elif not ok_contains:
+            reason = "missing_contains"
+        else:
+            reason = "unexpected_text"
 
-                fix_hint = (
-                    f"See .devlyn/spec-verify.results.json for the captured "
-                    f"output. Update implementation so `{cmd}` matches the "
-                    f"contract (exit_code={expected_exit}, "
-                    f"contains={stdout_contains}, not_contains={stdout_not_contains})."
-                )
+        results.append({
+            "index": idx,
+            "cmd": cmd,
+            "expected_exit": expected_exit,
+            "actual_exit": actual_exit,
+            "timeout_sec": timeout_sec,
+            "stdout_contains": stdout_contains,
+            "stdout_not_contains": stdout_not_contains,
+            "pass": passed,
+            "reason": reason,
+            "evidence_id": entry["id"],
+            "outcome": outcome,
+            "classification": classification,
+            "stdout": entry["stdout"],
+            "stderr": entry["stderr"],
+        })
 
-                rule_id = (
-                    "correctness.risk-probe-failed"
-                    if is_risk_probe
-                    else "correctness.spec-literal-mismatch"
-                )
-                criterion_ref = (
-                    f"risk-probe:{vc.get('id')}"
-                    if is_risk_probe
-                    else f"spec-verify://verification_commands/{idx}"
-                )
-                file_ref = (
-                    ".devlyn/risk-probes.jsonl"
-                    if is_risk_probe
-                    else ".devlyn/spec-verify.json"
-                )
-                if is_risk_probe:
-                    fix_hint = (
-                        f"Risk probe `{vc.get('id')}` derived from "
-                        f"{vc.get('derived_from')!r} failed. See "
-                        ".devlyn/spec-verify.results.json for captured output "
-                        "and update the implementation to satisfy the visible "
-                        "verification bullet."
-                    )
+        if classification["kind"] == "capability_denied" or passed:
+            continue
 
-                findings.append({
-                    "id": f"{output_finding_prefix()}-{finding_seq:04d}",
-                    "rule_id": rule_id,
-                    "level": "error",
-                    "severity": "CRITICAL",
-                    "confidence": 1.0,
-                    "message": msg,
-                    "file": file_ref,
-                    "line": 1,
-                    "phase": output_phase(),
-                    "criterion_ref": criterion_ref,
-                    "fix_hint": fix_hint,
-                    "blocking": True,
-                    "status": "open",
-                })
-                finding_seq += 1
-
-        except subprocess.TimeoutExpired:
-            results.append({"index": idx, "cmd": cmd, "pass": False,
-                            "reason": "timeout", "timeout_sec": timeout_sec})
+        if outcome["kind"] == "timeout":
             findings.append({
                 "id": f"{output_finding_prefix()}-{finding_seq:04d}",
                 "rule_id": "correctness.verification-timeout",
@@ -4592,14 +4751,10 @@ def main() -> int:
                     f"Verification command #{idx + 1} timed out after {timeout_sec}s "
                     f"(timeout_sec={timeout_sec}, maximum 600)."
                 ),
-                "file": ".devlyn/risk-probes.jsonl" if vc.get("_risk_probe") else ".devlyn/spec-verify.json",
+                "file": file_ref,
                 "line": 1,
                 "phase": output_phase(),
-                "criterion_ref": (
-                    f"risk-probe:{vc.get('id')}"
-                    if vc.get("_risk_probe")
-                    else f"spec-verify://verification_commands/{idx}"
-                ),
+                "criterion_ref": criterion_ref,
                 "fix_hint": (
                     f"Command `{cmd}` exceeded its {timeout_sec}s timeout_sec budget. "
                     "Increase timeout_sec up to 600 when the verification legitimately "
@@ -4609,40 +4764,66 @@ def main() -> int:
                 "status": "open",
             })
             finding_seq += 1
-        except Exception as e:  # noqa: BLE001 — surface any harness error explicitly
-            results.append({"index": idx, "cmd": cmd, "pass": False,
-                            "reason": f"error:{e.__class__.__name__}:{e}"})
-            rule_id = (
-                "correctness.risk-probe-failed"
-                if vc.get("_risk_probe")
-                else "correctness.spec-literal-mismatch"
+            continue
+
+        if not ok_exit:
+            actual = (
+                str(actual_exit)
+                if outcome["kind"] == "exit"
+                else f"{outcome['kind']}"
+                + (f" signal {outcome['signal']}" if outcome["kind"] == "signal" else "")
             )
-            findings.append({
-                "id": f"{output_finding_prefix()}-{finding_seq:04d}",
-                "rule_id": rule_id,
-                "level": "error",
-                "severity": "CRITICAL",
-                "confidence": 1.0,
-                "message": (
-                    f"Verification command #{idx + 1} raised "
-                    f"{e.__class__.__name__}: {e}."
-                ),
-                "file": ".devlyn/risk-probes.jsonl" if vc.get("_risk_probe") else ".devlyn/spec-verify.json",
-                "line": 1,
-                "phase": output_phase(),
-                "criterion_ref": (
-                    f"risk-probe:{vc.get('id')}"
-                    if vc.get("_risk_probe")
-                    else f"spec-verify://verification_commands/{idx}"
-                ),
-                "fix_hint": (
-                    f"Command `{cmd}` could not be executed. Check the work-dir "
-                    f"state and any environment setup the command requires."
-                ),
-                "blocking": True,
-                "status": "open",
-            })
-            finding_seq += 1
+            msg = (
+                f"Verification command #{idx + 1} failed: expected exit "
+                f"{expected_exit}, got {actual}."
+            )
+        elif not ok_contains:
+            missing = [s for s in stdout_contains if s.encode("utf-8") not in combined]
+            msg = (
+                f"Verification command #{idx + 1} failed: expected "
+                f"output to contain {missing!r}."
+            )
+        else:
+            forbidden = [s for s in stdout_not_contains if s.encode("utf-8") in combined]
+            msg = (
+                f"Verification command #{idx + 1} failed: output "
+                f"contained forbidden literal(s) {forbidden!r}."
+            )
+
+        rule_id = (
+            "correctness.risk-probe-failed"
+            if is_risk_probe
+            else "correctness.spec-literal-mismatch"
+        )
+        fix_hint = (
+            f"Inspect `{manifest_relative}` entry `{entry['id']}` and its sealed raw "
+            f"streams. Update implementation so `{cmd}` matches the contract "
+            f"(exit_code={expected_exit}, contains={stdout_contains}, "
+            f"not_contains={stdout_not_contains})."
+        )
+        if is_risk_probe:
+            fix_hint = (
+                f"Risk probe `{vc.get('id')}` derived from {vc.get('derived_from')!r} "
+                f"failed. Inspect `{manifest_relative}` entry `{entry['id']}` and "
+                "update the implementation to satisfy the visible verification bullet."
+            )
+
+        findings.append({
+            "id": f"{output_finding_prefix()}-{finding_seq:04d}",
+            "rule_id": rule_id,
+            "level": "error",
+            "severity": "CRITICAL",
+            "confidence": 1.0,
+            "message": msg,
+            "file": file_ref,
+            "line": 1,
+            "phase": output_phase(),
+            "criterion_ref": criterion_ref,
+            "fix_hint": fix_hint,
+            "blocking": True,
+            "status": "open",
+        })
+        finding_seq += 1
 
     expected_findings, finding_seq = expected_contract_findings(
         expected_data,
@@ -4661,7 +4842,39 @@ def main() -> int:
         )
         findings.extend(surface_findings)
 
-    results_path.write_text(json.dumps({"commands": results}, indent=2) + "\n")
+    evidence_carrier = None
+    if evidence_error is None and obligations:
+        try:
+            evidence_carrier = runner.validate_manifest(
+                work, manifest_relative, evidence_run_id, evidence_phase,
+                evidence_round, obligations, require_expectations=False,
+            )
+        except (runner.EvidenceError, OSError, UnicodeError, ValueError) as exc:
+            evidence_error = str(exc)
+            findings.append({
+                "id": f"{output_finding_prefix()}-{finding_seq:04d}",
+                "rule_id": "invariant.process-evidence-invalid",
+                "level": "error",
+                "severity": "CRITICAL",
+                "confidence": 1.0,
+                "message": f"MECHANICAL process evidence validation failed: {exc}.",
+                "file": manifest_relative,
+                "line": 1,
+                "phase": output_phase(),
+                "criterion_ref": "process-evidence://mechanical",
+                "fix_hint": (
+                    "Preserve the manifest and raw streams, then correct the "
+                    "missing, altered, or path-escaping evidence before rerunning."
+                ),
+                "blocking": True,
+                "status": "open",
+            })
+            finding_seq += 1
+
+    results_path.write_text(json.dumps({
+        "commands": results,
+        "process_evidence": evidence_carrier,
+    }, indent=2) + "\n")
 
     # Append findings (jsonl). BUILD_GATE merge step concatenates this onto
     # build_gate.findings.jsonl; never overwrite the orchestrator's own gate
@@ -4672,6 +4885,15 @@ def main() -> int:
 
     failed = [r for r in results if r.get("pass") is False]
     blocking_findings = [f for f in findings if f.get("severity") in {"CRITICAL", "HIGH"}]
+    if capability_denials:
+        denial = capability_denials[0]
+        print(
+            "BLOCKED:build-env-underprovisioned: "
+            f"{denial['operation']} denied for `{denial['cmd']}`; "
+            f"evidence {manifest_relative}#{denial['evidence_id']}",
+            file=sys.stderr,
+        )
+        return 2
     if failed or blocking_findings:
         print(
             f"[spec-verify] {len(failed)}/{len(results)} command(s) failed; "
