@@ -1,0 +1,28 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "python3 config/skills/_shared/resolve-bootstrap.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 180
+    },
+    {
+      "cmd": "python3 config/skills/_shared/spec-verify-check.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 300
+    },
+    {
+      "cmd": "diff -q config/skills/_shared/resolve-bootstrap.py .agents/skills/_shared/resolve-bootstrap.py && diff -q config/skills/_shared/resolve-bootstrap.py .claude/skills/_shared/resolve-bootstrap.py && diff -q config/skills/devlyn:queue/SKILL.md .agents/skills/devlyn:queue/SKILL.md && diff -q config/skills/devlyn:queue/SKILL.md .claude/skills/devlyn:queue/SKILL.md && diff -q config/skills/devlyn:resolve/references/outer-loop.md .agents/skills/devlyn:resolve/references/outer-loop.md && diff -q config/skills/devlyn:resolve/references/outer-loop.md .claude/skills/devlyn:resolve/references/outer-loop.md",
+      "exit_code": 0
+    },
+    {
+      "cmd": "bash scripts/lint-skills.sh",
+      "exit_code": 0,
+      "timeout_sec": 300
+    },
+    {
+      "cmd": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "max_deps_added": 0
+}
