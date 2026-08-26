@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Next: [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md) (REGISTERED-FROZEN 2026-08-25 + APPARATUS TRIO-FROZEN 2026-08-26; launch fired 2026-08-26 → A5 gate `FAIL_FAST_THRESHOLD_UNREACHED`; next = AMENDMENT 3, USER-GATED). Most recent closed: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED) + 0108/0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
+5. Next: [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md) (REGISTERED-FROZEN 2026-08-25 + APPARATUS TRIO-FROZEN 2026-08-26; launch fired 2026-08-26 → A5 gate `FAIL_FAST_THRESHOLD_UNREACHED` → AMENDMENT 3 (T=64,000) + AMENDMENT 4 (monotone prefix-attestation launch rule) double-FROZEN the same evening; next = RELAUNCH after 01:00 KST 08-27 per the resume recipe). Most recent closed: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED) + 0108/0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -37,20 +37,41 @@ self-tests ×2 / pins 11/11 / dry-run; re-freeze `FREEZE-0110-AMEND3-SOL:
 bc85bde2` + `FREEZE-0110-AMEND3-GROK: bc85bde2`, pin file
 `bc85bde2c19774ecdc0d3d4a69708e41a34a0d4481ba2d325da273d4703cfa99`;
 falsifiers OUTCOME-RETUNING + restated P-0110-2; iteration file
-§ AMENDMENT 3). **RESUME RECIPE (relaunch)**: (1) reproducibility receipts
-— 2-token probes for opus-5 / opus-4-8 through the pinned CLI (exe sha256
-`013a1cf1…`), argv + env recorded in `launch/ADJUDICATIONS.md`; BLOCK
-unless 29,993 / 29,022 reproduce exactly (mismatch ⇒ new amendment, never
-silent substitution); (2) account quiet (no `claude --print` workers,
-peer sessions idle, pyx-memory-v1 X31 all-clear received), outside
-23:00–01:00 KST; (3) FRESH run root + run id `m2-<utcstamp>`:
-`python3 ~/.local/share/nx01/iter0110/launch/launch-detached-0110.py
---sweep 1 --run-id m2-<utcstamp> --out
+§ AMENDMENT 3). **AMENDMENT 4 (same evening, after the X31 all-clear
+20:24 KST)**: AMENDMENT 3's exact-reproduction rule was FALSIFIED at
+first use — driver-equivalent probes measured opus-5 34,486 / opus-4-8
+33,513 (Δ 973) vs the 29,993 / 29,022 receipts (+4.5k; cwd ruled out by
+control; cause not pinned — HOME-state-dependent system prompt; the
+09:08 receipts carry no argv/env/exe metadata). Trio (sol AMEND + grok
+AMEND, folded): **T stays 64,000** (lower floor is the safer floor under
+G2 EXCLUSION SAFETY; re-derivation would give 68,000); launch rule
+replaced by the MONOTONE prefix attestation `prefix_e =
+cacheCreation+cacheRead ≥ baseline_e (29,993 / 29,022)` for both matrix
+engines, smaller ⇒ BLOCK ⇒ new amendment; drift receipts (content-hash
+manifests of `~/.claude/plugins/**`, `sessions/*.json`, `settings.json`,
+`CLAUDE.md`, `skills/**`, pinned exe) at launch + after the last sweep;
+isolation of the driver's HOME inputs = registered FOLLOW-UP, not a gate.
+Terra T-r12 5 files +27/−8 → fable verify → **pin file
+`025149c68598d12c376b30d0cb5514e880df0509b3b959904be5829980ea1e27`**
+(re-freeze tokens in the iteration file § AMENDMENT 4). **RESUME RECIPE
+(relaunch)**: (1) AMENDMENT 4 prefix attestation — one fixed `Reply OK`
+probe per matrix engine in the driver's exact shape (`sh-driver-0110.py`
+constants + `scrubbed_env()`, cwd `/private/tmp/nx0110-<12hex>/ws`),
+argv/cwd/env keys+TERM/exe sha256/JSON recorded in `launch/ctxprobe/` +
+`ADJUDICATIONS.md`; launch iff opus-5 ≥ 29,993 AND opus-4-8 ≥ 29,022;
+(2) drift manifest → `launch/drift-manifest-launch.txt`; (3) account
+quiet (no `claude --print` workers, peer sessions idle, no new peer
+HOLD), outside 23:00–01:00 KST; (4) FRESH run root + run id
+`m2-<utcstamp>`: `python3
+~/.local/share/nx01/iter0110/launch/launch-detached-0110.py --sweep 1
+--run-id m2-<utcstamp> --out
 ~/.local/share/nx01/iter0110/matrix/m2-<utcstamp> --pin-sha256
-bc85bde2c19774ecdc0d3d4a69708e41a34a0d4481ba2d325da273d4703cfa99` (gate
+025149c68598d12c376b30d0cb5514e880df0509b3b959904be5829980ea1e27` (gate
 block alone first) → **sweeps 2–5 into the SAME `--out` and `--run-id`**
-(scorer reads one manifest for all 120 sessions) → `score-0110.py
---results-root <root>` → trio verify → record. Receipts `~/.local/share/nx01/iter0110/launch/` (ADJUDICATIONS.md
+(scorer reads one manifest for all 120 sessions) → drift manifest again
+(`drift-manifest-end.txt`) → `score-0110.py --results-root <root>` →
+trio verify → record. Session-only cron wakeup 01:07 KST 08-27 exists in
+session 11; a fresh session follows this recipe by hand. Receipts `~/.local/share/nx01/iter0110/launch/` (ADJUDICATIONS.md
 18:08 block, packet + pins, gate-sol/grok logs) and
 `~/.local/share/nx01/iter0110/matrix/s1-20260826T085326Z/`.
 

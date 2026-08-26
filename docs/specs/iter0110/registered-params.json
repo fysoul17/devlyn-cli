@@ -77,7 +77,15 @@
       "min_first_to_first_footprint_tokens": 9724,
       "boundary4_tail_tokens": 1074,
       "first_request_definition": "first usage_entries effective_context of the boundary (chronological; .requests is sorted by request id)",
-      "source": "gate session ~/.local/share/nx01/iter0110/matrix/s1-20260826T085326Z/claude-opus-5.s01-b01-claude-opus-5-fwd.r1/boundary-ledger.json (exact-ID opus-5, custody unbroken; first requests p1..p5 31527/43949/56666/66390/79046; boundary-4 peak 77972); engine delta from ~/.local/share/nx01/iter0110/launch/ctxprobe/probe-claude-opus-{5,4-8}.json cacheCreationInputTokens 29993/29022, reproduced fail-closed by the pre-launch reproducibility receipts (AMENDMENT 3)"
+      "source": "gate session ~/.local/share/nx01/iter0110/matrix/s1-20260826T085326Z/claude-opus-5.s01-b01-claude-opus-5-fwd.r1/boundary-ledger.json (exact-ID opus-5, custody unbroken; first requests p1..p5 31527/43949/56666/66390/79046; boundary-4 peak 77972); engine delta from ~/.local/share/nx01/iter0110/launch/ctxprobe/probe-claude-opus-{5,4-8}.json cacheCreationInputTokens 29993/29022, launch gated by AMENDMENT 4: the attested prefix (cacheCreation+cacheRead of a fixed 2-token probe in the driver's exact shape) must be >= this baseline for both matrix engines"
+    },
+    "amendment4_attestation": {
+      "measured_utc": "2026-08-26T11:26Z",
+      "probe_shape": "run-bounded.py 1800 -- <PIN> -p 'Reply OK' --model <engine> --effort high --output-format json --dangerously-skip-permissions --strict-mcp-config --mcp-config '{\"mcpServers\":{}}' --allowedTools Read,Grep,Glob,Edit,Write,Bash; scrubbed_env() (TERM=dumb); cwd /private/tmp/nx0110-<12hex>/ws; argv, cwd, env keys, executable sha256 and JSON recorded per probe",
+      "claude-opus-5_prefix_tokens": 34486,
+      "claude-opus-4-8_prefix_tokens": 33513,
+      "rule": "launch iff prefix_e >= baseline_e for both matrix engines (claude-opus-5 29993, claude-opus-4-8 29022); a smaller prefix BLOCKS and requires a new amendment from the attested numbers; no tolerance; T stays 64000",
+      "drift_note": "20:27 KST driver-equivalent probes were +4493 / +4491 versus the 09:08 KST receipt values (which carry no argv/env/executable metadata); the 17:53 gate first request 31527 (= 29993 + 1534 workspace/cwd context + prompt) corroborates intervening growth but used a different prompt/cwd; cause not pinned (HOME-state-dependent system prompt); content-hash drift manifests recorded at launch and after the last sweep"
     },
     "absolute_threshold_tokens": 64000,
     "context_window_denominator_tokens": {
@@ -86,7 +94,7 @@
       "claude-sonnet-5": 1000000
     },
     "context_window_fraction_threshold": 0.0,
-    "derivation": "AMENDMENT 3 (2026-08-26): the AMENDMENT 2 threshold 90,000 (sonnet-smoke baseline 43,025 + 4*12,288, margin 2,177) fired FAIL_FAST_THRESHOLD_UNREACHED on the first clean opus-5 gate session (boundary-4 peak 77,972; crossed at boundary 5) because the pinned-CLI overhead is engine-dependent (sonnet 41,203 / opus-5 29,993 / opus-4-8 29,022 cacheCreation tokens on a 2-token prompt) and the measured footprint (11,611 mean) was below 12,288. Re-derived from context geometry only: T = floor_1000((31,527 - 971) + 4*9,724 - 1,074 - 4,096) = 64,000, i.e. the worst matrix engine with four minimum-footprint tasks still reaches a boundary-4 PEAK >= 64,000 with the registered 4,096 margin. The gate and G2 test the boundary-4 PEAK (any prior boundary), not the LATE-1 first request. The fraction leg stays retired (0.0 = retired). 1,000,000 is the measured modelUsage.contextWindow of pinned CLI 2.1.226 for the three engines; recorded, not a gate input."
+    "derivation": "AMENDMENT 3 (2026-08-26): the AMENDMENT 2 threshold 90,000 (sonnet-smoke baseline 43,025 + 4*12,288, margin 2,177) fired FAIL_FAST_THRESHOLD_UNREACHED on the first clean opus-5 gate session (boundary-4 peak 77,972; crossed at boundary 5) because the pinned-CLI overhead is engine-dependent (sonnet 41,203 / opus-5 29,993 / opus-4-8 29,022 cacheCreation tokens on a 2-token prompt) and the measured footprint (11,611 mean) was below 12,288. Re-derived from context geometry only: T = floor_1000((31,527 - 971) + 4*9,724 - 1,074 - 4,096) = 64,000, i.e. the worst matrix engine with four minimum-footprint tasks still reaches a boundary-4 PEAK >= 64,000 with the registered 4,096 margin. The gate and G2 test the boundary-4 PEAK (any prior boundary), not the LATE-1 first request. The fraction leg stays retired (0.0 = retired). 1,000,000 is the measured modelUsage.contextWindow of pinned CLI 2.1.226 for the three engines; recorded, not a gate input. AMENDMENT 4 (2026-08-26 20:27 KST): the AMENDMENT 3 exact-reproduction rule was falsified at first use (driver-equivalent probes measured 34,486 / 33,513 against the 29,993 / 29,022 receipts); replaced by the monotone launch-time attestation prefix_e >= baseline_e; T unchanged at 64,000 (the lower floor is the safer floor under G2 EXCLUSION SAFETY; re-deriving from the 20:27 inputs would give 68,000)."
   },
   "frozen_source_sha256": {
     "mx_driver": "e683a00d529a6427683399e5f36f218db59f4e654f92bc3da2ed74d036e857c3",
