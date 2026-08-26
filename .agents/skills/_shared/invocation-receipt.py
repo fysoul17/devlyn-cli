@@ -13,7 +13,7 @@ import tempfile
 
 
 SCHEMA_VERSION = "1.0"
-PHASES = {"implement", "build_gate", "cleanup"}
+PHASES = {"plan", "implement", "build_gate", "cleanup"}
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 DANGEROUS_FLAGS = {"--dangerously-bypass-approvals-and-sandbox", "--yolo"}
@@ -349,6 +349,26 @@ def self_test() -> int:
             model="gpt-test", prompt_sha256=sha256(prompt.read_bytes()), session_path=session,
         )
         assert bound["sandbox"] == "workspace-write" and bound["exit_code"] == 0
+        plan_prompt = devlyn / "plan.prompt.0"
+        plan_prompt.write_text("plan exactly\n", encoding="utf-8")
+        plan_session = devlyn / "plan.worker-session.0.jsonl"
+        plan_session.write_text('{"type":"thread.started"}\n', encoding="utf-8")
+        plan_receipt = devlyn / "plan.invocation.0.json"
+        plan_argv = [
+            "--json", "-C", str(work), "-s", "workspace-write",
+            "-m", "gpt-plan", "plan exactly",
+        ]
+        start_receipt(
+            work, plan_receipt, "rs-receipt", "plan", 0,
+            str(plan_prompt), str(plan_session), plan_argv,
+        )
+        finish_receipt(work, plan_receipt, 0)
+        plan_bound = validate_receipt(
+            work, plan_receipt, run_id="rs-receipt", phase="plan", round_=0,
+            model="gpt-plan", prompt_sha256=sha256(plan_prompt.read_bytes()),
+            session_path=plan_session,
+        )
+        assert plan_bound["sandbox"] == "workspace-write"
         try:
             loads_strict_json('{"run_id":"a","run_id":"b"}')
         except ValueError as exc:
@@ -456,9 +476,49 @@ def self_test() -> int:
             session_path=build_session,
         )
         assert wrapper_bound["exit_code"] == 0
+
+        wrapped_plan_prompt = devlyn / "plan.prompt.1"
+        wrapped_plan_prompt.write_text("plan through wrapper\n", encoding="utf-8")
+        wrapped_plan_session = devlyn / "plan.worker-session.1.jsonl"
+        wrapped_plan_receipt = devlyn / "plan.invocation.1.json"
+        plan_env = os.environ.copy()
+        plan_env.update({
+            "CODEX_BIN": str(fake_codex),
+            "CODEX_MONITORED_HEARTBEAT": "1",
+            "DEVLYN_INVOCATION_RUN_ID": "rs-plan-wrapper",
+            "DEVLYN_INVOCATION_PHASE": "plan",
+            "DEVLYN_INVOCATION_ROUND": "1",
+            "DEVLYN_INVOCATION_WORKDIR": str(work),
+            "DEVLYN_INVOCATION_PROMPT_FILE": str(wrapped_plan_prompt),
+            "DEVLYN_INVOCATION_SESSION_FILE": str(wrapped_plan_session),
+            "DEVLYN_INVOCATION_RECEIPT": str(wrapped_plan_receipt),
+        })
+        with wrapped_plan_session.open("wb") as stdout:
+            wrapped_plan = subprocess.run(
+                [
+                    "bash", str(wrapper), "--json", "-C", str(work),
+                    "-s", "workspace-write", "-m", "gpt-plan-wrapper",
+                    "plan through wrapper",
+                ],
+                cwd=work,
+                env=plan_env,
+                stdout=stdout,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+        assert wrapped_plan.returncode == 0, wrapped_plan.stderr.decode(
+            "utf-8", errors="replace",
+        )
+        plan_wrapper_bound = validate_receipt(
+            work, wrapped_plan_receipt, run_id="rs-plan-wrapper", phase="plan",
+            round_=1, model="gpt-plan-wrapper",
+            prompt_sha256=sha256(wrapped_plan_prompt.read_bytes()),
+            session_path=wrapped_plan_session,
+        )
+        assert plan_wrapper_bound["exit_code"] == 0
         print(
             "PASS invocation receipt identity, prompt/session digest, bypass guard, "
-            "and monitored-wrapper integration"
+            "and monitored-wrapper integration including PLAN"
         )
     return 0
 

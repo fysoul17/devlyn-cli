@@ -437,9 +437,30 @@ def self_test() -> int:
             model="gpt-test", prompt_sha256=hashlib.sha256(build_prompt.read_bytes()).hexdigest(),
             session_path=build_session,
         )
+        plan_prompt = devlyn / "plan.prompt.0"
+        plan_prompt.write_text("plan archive\n", encoding="utf-8")
+        plan_session = devlyn / "plan.worker-session.0.jsonl"
+        plan_session.write_text('{"type":"thread.started"}\n', encoding="utf-8")
+        plan_receipt = devlyn / "plan.invocation.0.json"
+        invocation["start_receipt"](
+            work, plan_receipt, "run-1", "plan", 0,
+            str(plan_prompt), str(plan_session),
+            ["--json", "-C", str(work), "-s", "workspace-write",
+             "-m", "gpt-test", "plan archive"],
+        )
+        invocation["finish_receipt"](work, plan_receipt, 0)
+        plan_binding = invocation["validate_receipt"](
+            work, plan_receipt, run_id="run-1", phase="plan", round_=0,
+            model="gpt-test", prompt_sha256=hashlib.sha256(plan_prompt.read_bytes()).hexdigest(),
+            session_path=plan_session,
+        )
         state = {
             "run_id": "run-1",
             "phases": {
+                "plan": {
+                    "round": 1,
+                    "history": [{"invocation_receipt": plan_binding}],
+                },
                 "verify": {"round": 2},
                 "build_gate": {
                     "round": 2,
@@ -552,6 +573,9 @@ def self_test() -> int:
             "build_gate.worker-session.2.jsonl",
             "cleanup.worker-session.1.jsonl",
             "build_gate.invocation.2.json",
+            "plan.prompt.0",
+            "plan.worker-session.0.jsonl",
+            "plan.invocation.0.json",
             "probes/P1.py",
             "verify.pair.findings.jsonl",
             "verify-merge.summary.json",

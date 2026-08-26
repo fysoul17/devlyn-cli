@@ -52,6 +52,7 @@ LEGAL_TRANSITIONS = {
     "final_report": set(),
 }
 WORKER_SESSION_ARTIFACT_PHASES = {
+    "plan": "plan",
     "implement": "implement",
     "surface_close": "surface-close",
     "build_gate": "build_gate",
@@ -1505,7 +1506,9 @@ def append_phase_history(entry: dict, phase: str) -> None:
     if not isinstance(history, list):
         history = []
     if phase == "plan" and is_plan_dispatch_receipt(entry):
-        fields = PLAN_RECEIPT_FIELDS
+        fields = PLAN_RECEIPT_FIELDS + (
+            ("invocation_receipt",) if "invocation_receipt" in entry else ()
+        )
     elif phase in WORKER_SESSION_ARTIFACT_PHASES and "invocation_receipt" in entry:
         fields = (
             "started_at", "verdict", "completed_at", "duration_ms",
@@ -1610,6 +1613,8 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
             f"error: phases.{phase} has an open span — complete it before respawn"
         )
     append_phase_history(entry, phase)
+    if phase in WORKER_SESSION_ARTIFACT_PHASES:
+        entry.pop("invocation_receipt", None)
     entry["started_at"] = now_iso()
     entry["completed_at"] = None
     entry["duration_ms"] = None
@@ -3535,6 +3540,71 @@ def self_test() -> int:
         assert receipt_entry["model_effective"] == receipt_model
         assert receipt_entry["invocation_receipt"]["path"] == (
             ".devlyn/implement.invocation.0.json"
+        )
+
+        plan_prompt = receipt_devlyn / "plan.prompt.0"
+        plan_prompt.write_text("plan exactly\n", encoding="utf-8")
+        plan_session = receipt_devlyn / "plan.worker-session.0.jsonl"
+        plan_session.write_text('{"type":"thread.started"}\n', encoding="utf-8")
+        plan_path = receipt_devlyn / "plan.invocation.0.json"
+        (receipt_devlyn / "plan.md").write_text("## Files to touch\n", encoding="utf-8")
+        plan_model = "gpt-5.6-sol"
+        plan_prompt_sha = hashlib.sha256(plan_prompt.read_bytes()).hexdigest()
+        plan_state = {
+            "version": "3.0",
+            "run_id": "rs-plan-invocation",
+            "engine": "codex",
+            "phases": {"plan": None},
+        }
+        do_spawn(
+            plan_state, "plan", 0, None, None, "codex", plan_model,
+            prompt_sha256=plan_prompt_sha, devlyn=receipt_devlyn,
+        )
+        receipt_runner.start_receipt(
+            receipt_work, plan_path, plan_state["run_id"], "plan", 0,
+            str(plan_prompt), str(plan_session),
+            ["--json", "-C", str(receipt_work), "-s", "workspace-write",
+             "-m", plan_model, "plan exactly"],
+        )
+        receipt_runner.finish_receipt(receipt_work, plan_path, 0)
+        assert do_complete(
+            plan_state, "plan", "PASS", None, None, None, None, None,
+            str(plan_session), devlyn=receipt_devlyn, work=receipt_work,
+        ) is None
+        plan_entry = plan_state["phases"]["plan"]
+        assert plan_entry["model_effective"] == plan_model
+        assert plan_entry["invocation_receipt"]["path"] == ".devlyn/plan.invocation.0.json"
+        assert plan_entry["output_sha256"] == hashlib.sha256(
+            (receipt_devlyn / "plan.md").read_bytes()
+        ).hexdigest()
+        plan_prompt_1 = receipt_devlyn / "plan.prompt.1"
+        plan_prompt_1.write_text("replan exactly\n", encoding="utf-8")
+        plan_session_1 = receipt_devlyn / "plan.worker-session.1.jsonl"
+        plan_session_1.write_text('{"type":"thread.started"}\n', encoding="utf-8")
+        plan_path_1 = receipt_devlyn / "plan.invocation.1.json"
+        plan_prompt_sha_1 = hashlib.sha256(plan_prompt_1.read_bytes()).hexdigest()
+        do_spawn(
+            plan_state, "plan", 1, "plan", None, "codex", plan_model,
+            prompt_sha256=plan_prompt_sha_1, devlyn=receipt_devlyn,
+        )
+        plan_history = plan_state["phases"]["plan"]["history"]
+        assert plan_history[0]["invocation_receipt"]["path"] == (
+            ".devlyn/plan.invocation.0.json"
+        )
+        assert "invocation_receipt" not in plan_state["phases"]["plan"]
+        receipt_runner.start_receipt(
+            receipt_work, plan_path_1, plan_state["run_id"], "plan", 1,
+            str(plan_prompt_1), str(plan_session_1),
+            ["--json", "-C", str(receipt_work), "-s", "workspace-write",
+             "-m", plan_model, "replan exactly"],
+        )
+        receipt_runner.finish_receipt(receipt_work, plan_path_1, 0)
+        assert do_complete(
+            plan_state, "plan", "PASS", None, None, None, None, None,
+            str(plan_session_1), devlyn=receipt_devlyn, work=receipt_work,
+        ) is None
+        assert plan_state["phases"]["plan"]["invocation_receipt"]["path"] == (
+            ".devlyn/plan.invocation.1.json"
         )
 
         confused_state = {
