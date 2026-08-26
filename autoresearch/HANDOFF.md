@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Next: [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md) (REGISTERED-FROZEN 2026-08-25 + APPARATUS TRIO-FROZEN 2026-08-26 — session-horizon interference cell; next = launch, USER-GATED). Most recent closed: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED) + 0108/0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
+5. Next: [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md) (REGISTERED-FROZEN 2026-08-25 + APPARATUS TRIO-FROZEN 2026-08-26; launch fired 2026-08-26 → A5 gate `FAIL_FAST_THRESHOLD_UNREACHED`; next = AMENDMENT 3, USER-GATED). Most recent closed: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED) + 0108/0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,10 +14,36 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-26 (session 10)
+## 🚦 START-HERE — state after 2026-08-26 (session 11)
+
+**iter-0110 LAUNCH FIRED 17:53 KST (session 11) → serial A5 gate
+`FAIL_FAST_THRESHOLD_UNREACHED` after ONE clean opus-5 session (~14.5
+min); AMENDMENT 3 = USER-GATED.** Gate session boundary peaks 43,173 /
+55,682 / 65,514 / **77,972** / 95,015 … 135,394 — the registered 90,000
+was crossed at boundary 5, one boundary late for the prior-boundary
+predicate; P-0110-2 falsified at the gate, zero matrix sessions spent
+beyond it. Root cause trio-verified (grok CONFIRM / sol REVISE → two-factor
+adopted): the 2,177 margin survived neither (1) the SONNET-smoke baseline
+43,025 applied to opus subjects whose pinned-CLI overhead is ~11.2k
+smaller (ctxprobe: sonnet-5 41,203 / opus-5 29,993 / opus-4-8 29,022 —
+receipts on disk since 09:00, read by all three seats, connected by
+nobody) nor (2) the footprint overestimate (measured 11,611/task vs
+12,288). Successor ranking A first ×2: re-derive T from per-engine
+geometry, everything else unchanged; fable's candidate **T = 64,000**
+(derivation + falsifier OUTCOME-RETUNING in the iteration file § Launch
+record). **RESUME RECIPE (after the user rules A/B/C)**: register
+AMENDMENT 3 (terra byte list = AMENDMENT 2's shape; trio freeze; also
+"boundary-4 peak" wording + probe provenance) → FRESH run root + run id
+(abort terminals sticky) → quiet account, outside 23:00–01:00 KST →
+`launch-detached-0110.py --sweep 1 …` (gate block alone first) → **sweeps
+2–5 into the SAME `--out` and `--run-id`** (scorer reads one manifest for
+all 120 sessions) → `score-0110.py --results-root <root>` → trio verify →
+record. Receipts `~/.local/share/nx01/iter0110/launch/` (ADJUDICATIONS.md
+18:08 block, packet + pins, gate-sol/grok logs) and
+`~/.local/share/nx01/iter0110/matrix/s1-20260826T085326Z/`.
 
 **iter-0110 AMENDMENT 2 double-FROZEN 2026-08-26 (session 10, launch
-preflight) — LAUNCH HELD on the quiet-account rule.** The pre-launch
+preflight) — launch was then HELD on the quiet-account rule.** The pre-launch
 window re-attestation fired: the registered denominator 200,000
 ("pinned-CLI planning window") is FALSE at the bytes — pinned CLI 2.1.226
 reports `modelUsage.contextWindow` 1,000,000 for opus-5 / opus-4-8 /
