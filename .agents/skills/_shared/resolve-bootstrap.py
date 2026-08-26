@@ -729,6 +729,7 @@ def self_test() -> int:
             "implement.stderr",
             "implement.events.jsonl",
             "implement.retry.1.stdout",
+            "verify.primary.timeout.json",
         ):
             (prior_devlyn / name).write_text(f"prior {name}\n", encoding="utf-8")
         (prior_devlyn / "engines.json").write_text('{"executor":"codex"}\n', encoding="utf-8")
@@ -745,6 +746,7 @@ def self_test() -> int:
             "implement.stderr",
             "implement.events.jsonl",
             "implement.retry.1.stdout",
+            "verify.primary.timeout.json",
         ):
             assert (prior_archive / name).is_file(), name
             if name not in {"pipeline.state.json", "goal.raw.txt"}:

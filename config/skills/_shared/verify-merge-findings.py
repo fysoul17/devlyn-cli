@@ -243,9 +243,80 @@ def mechanical_evidence_outcome(devlyn: pathlib.Path) -> dict[str, Any] | None:
     return PROCESS_EVIDENCE["bound_carrier_outcome"](devlyn.parent.resolve(), carrier)
 
 
+def primary_timeout_blocker(id_: str, message: str) -> dict[str, Any]:
+    return {
+        "id": id_,
+        "rule_id": "verify.primary.timeout-contract",
+        "severity": "CRITICAL",
+        "confidence": "high",
+        "file": "verify.primary.timeout.json",
+        "line": 1,
+        "message": message,
+        "criterion_ref": "verify.primary.timeout",
+        "source": "judge",
+    }
+
+
+def read_primary_timeout_marker(
+    devlyn: pathlib.Path,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    path = devlyn / "verify.primary.timeout.json"
+    if not path.is_file():
+        return None, None
+    try:
+        marker = loads_strict_json(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError) as exc:
+        return None, primary_timeout_blocker(
+            "verify-primary-timeout-marker-malformed",
+            f"verify.primary.timeout.json is malformed: {exc}",
+        )
+    if not isinstance(marker, dict) or set(marker) != {"engine", "budget_seconds"}:
+        return None, primary_timeout_blocker(
+            "verify-primary-timeout-marker-malformed",
+            "verify.primary.timeout.json must contain exactly engine and budget_seconds.",
+        )
+    engine = marker["engine"]
+    budget_seconds = marker["budget_seconds"]
+    if not isinstance(engine, str) or not engine:
+        return None, primary_timeout_blocker(
+            "verify-primary-timeout-marker-malformed",
+            "verify.primary.timeout.json engine must be a non-empty string.",
+        )
+    if (
+        not isinstance(budget_seconds, int)
+        or isinstance(budget_seconds, bool)
+        or budget_seconds != 600
+    ):
+        return None, primary_timeout_blocker(
+            "verify-primary-timeout-budget-mismatch",
+            "verify.primary.timeout.json budget_seconds must equal 600.",
+        )
+    try:
+        state = loads_strict_json(
+            (devlyn / "pipeline.state.json").read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeError, ValueError) as exc:
+        return None, primary_timeout_blocker(
+            "verify-primary-timeout-engine-mismatch",
+            f"Cannot authenticate the primary timeout engine from pipeline.state.json: {exc}",
+        )
+    expected_engine = state.get("engine") if isinstance(state, dict) else None
+    if (
+        not isinstance(expected_engine, str)
+        or not expected_engine
+        or engine != expected_engine
+    ):
+        return None, primary_timeout_blocker(
+            "verify-primary-timeout-engine-mismatch",
+            "Primary timeout engine does not match state.engine.",
+        )
+    return {"engine": engine, "budget_seconds": budget_seconds}, None
+
+
 def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, str | None]]:
     findings: list[dict[str, Any]] = []
     source_verdicts: dict[str, str | None] = {source: "PASS" for source, _ in SOURCE_FILES}
+    primary_timeout_marker, primary_timeout_violation = read_primary_timeout_marker(devlyn)
     # A verdict must come from a judge that ran: pair_judge stays null until
     # spawn evidence exists (a pair findings file or pair stdout). verify.md's
     # pair contract records null when no second agent is spawned.
@@ -258,6 +329,8 @@ def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str,
             # dispatched primary judge failed to produce.
             if source == "judge" and rank(source_verdicts.get("mechanical")) >= 2:
                 source_verdicts[source] = None
+                continue
+            if source == "judge" and primary_timeout_marker is not None:
                 continue
             if REQUIRED_SOURCE_FILES.get(source) == name:
                 findings.append({
@@ -340,6 +413,15 @@ def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str,
                 "verdict_binding": True,
             })
             source_verdicts["mechanical"] = outcome["verdict"]
+    if primary_timeout_violation is not None:
+        findings.append(primary_timeout_violation)
+        source_verdicts["judge"] = "BLOCKED"
+    elif primary_timeout_marker is not None:
+        findings.append(primary_timeout_blocker(
+            "verify-primary-timeout",
+            "Primary JUDGE exceeded its authenticated 600-second wall budget.",
+        ))
+        source_verdicts["judge"] = "BLOCKED"
     findings.extend(detect_pair_stdout_contract_violations(devlyn, source_verdicts))
     pair_summary_path = devlyn / "pair-judge.summary.json"
     pair_carrier_exists = any(
@@ -1538,6 +1620,52 @@ def self_test() -> int:
             finding["id"] == "verify-merge-required-source-missing-judge"
             for finding in findings
         ), findings
+
+        # iter-0113: a valid primary timeout is an explicit BLOCKED source,
+        # never the generic missing-source path or pair-style TIMEOUT.
+        (devlyn / "verify.primary.timeout.json").write_text(
+            json.dumps({"engine": "claude", "budget_seconds": 600}) + "\n",
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        summary = write_outputs(devlyn, findings, source_verdicts)
+        assert summary["verdict"] == "BLOCKED", summary
+        assert summary["source_verdicts"]["judge"] == "BLOCKED", summary
+        assert any(
+            finding["id"] == "verify-primary-timeout"
+            for finding in findings
+        ), findings
+        assert not any(
+            finding["id"] == "verify-merge-required-source-missing-judge"
+            for finding in findings
+        ), findings
+
+        (devlyn / "verify.findings.jsonl").write_text(
+            json.dumps({"id": "primary-timeout-high", "severity": "HIGH"}) + "\n",
+            encoding="utf-8",
+        )
+        findings, source_verdicts = read_findings(devlyn)
+        assert source_verdicts["judge"] == "BLOCKED", source_verdicts
+        assert {finding["id"] for finding in findings} >= {
+            "primary-timeout-high", "verify-primary-timeout",
+        }, findings
+
+        for marker, expected_id in (
+            ("{\n", "verify-primary-timeout-marker-malformed"),
+            (
+                json.dumps({"engine": "codex", "budget_seconds": 600}) + "\n",
+                "verify-primary-timeout-engine-mismatch",
+            ),
+            (
+                json.dumps({"engine": "claude", "budget_seconds": 601}) + "\n",
+                "verify-primary-timeout-budget-mismatch",
+            ),
+        ):
+            (devlyn / "verify.primary.timeout.json").write_text(marker, encoding="utf-8")
+            findings, source_verdicts = read_findings(devlyn)
+            assert source_verdicts["judge"] == "BLOCKED", source_verdicts
+            assert any(finding["id"] == expected_id for finding in findings), findings
+        (devlyn / "verify.primary.timeout.json").unlink()
         (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
 
         # iter-0072 Amendment 3: generated schema-v3 runs mechanically prove

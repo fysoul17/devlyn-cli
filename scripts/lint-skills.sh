@@ -62,6 +62,7 @@ _shared/spec-verify-check.py
 _shared/judge-output-parser.py
 _shared/collect-codex-findings.py
 _shared/verify-merge-findings.py
+_shared/archive_run.py
 _shared/state-phase-write.py
 _shared/terminal-claim-check.py
 _shared/resolve-stop-hook.py
@@ -524,6 +525,7 @@ if ! grep -Fq 'SAFE_RUN_ID_RE' config/skills/_shared/archive_run.py \
   || ! grep -Fq 'invalid JSON numeric constant: NaN' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"verify.pair.findings.jsonl"' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"verify-merge.summary.json"' config/skills/_shared/archive_run.py \
+  || ! grep -Fq '"verify.primary.timeout.json"' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"surface-close.output.json"' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"*-judge.*"' config/skills/_shared/archive_run.py; then
   bad "archive_run.py must safely archive pair/risk-probe evidence and reject unsafe run ids"
@@ -1510,6 +1512,74 @@ fi
 #      The wrapper owns the flag expansion; skill docs own requiring
 #      CODEX_MONITORED_ISOLATED=1 for probe-derive and pair-JUDGE.
 # ---------------------------------------------------------------------------
+section "Check 10a0: Codex primary VERIFY budget is bounded and mirrored"
+primary_verify_missing=0
+primary_verify_route='CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600 bash "$CODEX_MONITORED_PATH" -C "$PWD" -s read-only -c model_reasoning_effort=high "<primary prompt>" >.devlyn/codex-judge.stdout 2>.devlyn/codex-judge.stderr'
+for file in \
+  config/skills/devlyn:resolve/SKILL.md \
+  .agents/skills/devlyn:resolve/SKILL.md \
+  config/skills/devlyn:resolve/references/phases/verify.md \
+  .agents/skills/devlyn:resolve/references/phases/verify.md
+do
+  if ! grep -Fq "$primary_verify_route" "$file" \
+    || ! grep -Fq '.devlyn/verify.primary.timeout.json' "$file" \
+    || ! grep -Fq 'pair-style `TIMEOUT`' "$file"; then
+    bad "$file — Codex primary-JUDGE route/timeout authority missing"
+    primary_verify_missing=1
+  fi
+  if grep -F "$primary_verify_route" "$file" | grep -E -- '(^| )-m( |$)|bypass|danger-full-access' >/dev/null 2>&1; then
+    bad "$file — Codex primary-JUDGE route pins a model or widens authority"
+    primary_verify_missing=1
+  fi
+done
+for file in \
+  config/skills/devlyn:resolve/references/phases/verify.md \
+  .agents/skills/devlyn:resolve/references/phases/verify.md
+do
+  for needle in \
+    'one broad pass over the' \
+    'one targeted interaction pass over the clauses' \
+    'Before any third pass' \
+    'verdict-binding BLOCKED coverage finding'
+  do
+    if ! grep -Fq "$needle" "$file"; then
+      bad "$file — bounded primary review instruction missing: $needle"
+      primary_verify_missing=1
+    fi
+  done
+done
+for file in \
+  config/skills/_shared/adapters/codex.md \
+  .agents/skills/_shared/adapters/codex.md
+do
+  for needle in \
+    'batch related reads' \
+    'sealed parity proves' \
+    'Open self-test bodies or MECHANICAL raw streams only for a'
+  do
+    if ! grep -Fq "$needle" "$file"; then
+      bad "$file — Codex bounded retrieval tactic missing: $needle"
+      primary_verify_missing=1
+    fi
+  done
+done
+for file in \
+  config/skills/_shared/verify-merge-findings.py \
+  .agents/skills/_shared/verify-merge-findings.py \
+  config/skills/_shared/archive_run.py \
+  .agents/skills/_shared/archive_run.py \
+  config/skills/_shared/resolve-bootstrap.py \
+  .agents/skills/_shared/resolve-bootstrap.py
+do
+  if ! grep -Fq 'verify.primary.timeout.json' "$file"; then
+    bad "$file — primary timeout deterministic/archive contract missing"
+    primary_verify_missing=1
+  fi
+done
+if [ $primary_verify_missing -eq 0 ]; then
+  ok "Codex primary VERIFY is bounded, fail-closed, archived, and mirrored"
+fi
+
 section "Check 10a: Bounded Codex calls use isolated wrapper mode"
 isolation_missing=0
 for needle in \

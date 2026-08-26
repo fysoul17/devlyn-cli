@@ -43,6 +43,14 @@ Grade the diff against the spec on rubric axes:
 - **Quality** — does the implementation follow the framework's idiomatic patterns, or are there hand-rolled helpers replacing standard primitives? `design.unidiomatic-pattern` MEDIUM if so.
 - **Consistency** — internal style (naming, error shape, module boundaries) consistent with the surrounding code.
 
+**Bounded primary review**: the primary JUDGE makes one broad pass over the
+source contract, sealed MECHANICAL carrier, and cumulative diff, covering all
+four rubric axes and every binding Requirement clause. It then makes one
+targeted interaction pass over the clauses the broad pass left unresolved.
+Before any third pass, emit the required terminal result. If R1–R8 or another
+spec axis remains uncovered, emit a verdict-binding BLOCKED coverage finding
+instead of continuing or assuming PASS.
+
 For each finding, write file:line evidence. Do not paraphrase code; quote it.
 
 **Clause-level check**: split each Requirement into its binding clauses before
@@ -63,8 +71,9 @@ coexist, compose them in the stated order instead of inventing a stronger global
 ordering. A finding based on a widened invariant is a false positive and must
 not drive the fix loop.
 
-**Interaction check**: for high-complexity specs, one-axis examples are not
-enough. Construct at least one adversarial scenario that combines two or more
+**Targeted interaction pass**: trace interactions among the clauses the broad
+pass left unresolved. For high-complexity specs, one-axis examples are not
+enough: construct at least one adversarial scenario that combines two or more
 explicit verification bullets. Prioritize combinations such as
 ordering/priority + blocked interval/failure, ordering/priority +
 all-or-nothing rollback + later entity state, validation/error-priority +
@@ -202,7 +211,23 @@ When eligible and the orchestrator spawns a second VERIFY agent with the OTHER e
 
 Both resolved JUDGEs are read-only. Capture the primary reply as
 `.devlyn/<primary-engine>-judge.stdout` and its stderr sibling; never write the
-generic `.devlyn/verify-judge.stdout`. Codex pair-JUDGE keeps the monitored
+generic `.devlyn/verify-judge.stdout`. When the primary engine is Codex, invoke
+it only through this distinct monitored route:
+
+```bash
+CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600 bash "$CODEX_MONITORED_PATH" -C "$PWD" -s read-only -c model_reasoning_effort=high "<primary prompt>" >.devlyn/codex-judge.stdout 2>.devlyn/codex-judge.stderr
+```
+
+Omit `-m` and every bypass flag; do not pipe either stream. On primary exit
+124, write `.devlyn/verify.primary.timeout.json` with exactly
+`{"engine": "<state.engine>", "budget_seconds": 600}` before merge. The
+marker is primary-only authority: malformed, wrong-engine, or wrong-budget
+content BLOCKs; a valid marker preserves all canonical primary findings and
+floors `judge` at `BLOCKED`, including when findings/stdout are empty. It never
+produces `PASS`, a solo verdict, or pair-style `TIMEOUT`; without the marker,
+existing missing/invalid primary-output behavior remains fail-closed.
+
+Codex pair-JUDGE keeps the monitored
 `codex-monitored.sh` route with
 `CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600` and
 `-c model_reasoning_effort=medium`; isolation blocks user config, AGENTS.md,

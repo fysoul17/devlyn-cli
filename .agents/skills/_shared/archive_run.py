@@ -62,6 +62,7 @@ PER_RUN_PATTERNS = (
     "spec-verify.results.json",
     "spec-verify-findings.jsonl",
     "verify-merge.summary.json",
+    "verify.primary.timeout.json",
     "verify.pair.timeout.json",
     "finish-gate.summary.json",
     # iter-0033a/2026-04-30 archive-fix iter: NEW /devlyn:resolve emits
@@ -485,6 +486,7 @@ def self_test() -> int:
             "plan.prompt",
             "probe-derive.stdout",
             "probe-derive.stderr",
+            "verify.primary.timeout.json",
             "verify.pair.timeout.json",
             "codex-judge.stdout",
             "codex-judge.summary.json",
@@ -503,6 +505,8 @@ def self_test() -> int:
         global_rollout = devlyn / "engine-sessions" / "rollout-global.jsonl"
         global_rollout.parent.mkdir()
         global_rollout.write_text("{}\n", encoding="utf-8")
+        unrelated = devlyn / "unrelated.data"
+        unrelated.write_text("preserve\n", encoding="utf-8")
         run_id = read_run_id(devlyn)
         assert run_id == "run-1", run_id
         original_session = build_session.read_bytes()
@@ -557,6 +561,7 @@ def self_test() -> int:
             "plan.prompt",
             "probe-derive.stdout",
             "probe-derive.stderr",
+            "verify.primary.timeout.json",
             "verify.pair.timeout.json",
             "codex-judge.stdout",
             "codex-judge.summary.json",
@@ -576,6 +581,8 @@ def self_test() -> int:
             assert not (devlyn / name).exists(), name
         assert global_rollout.is_file(), "engine-global session files must stay untouched"
         assert not (devlyn / "runs" / run_id / global_rollout.name).exists()
+        assert unrelated.read_text(encoding="utf-8") == "preserve\n"
+        assert not (devlyn / "runs" / run_id / unrelated.name).exists()
         assert not (devlyn / "process-evidence" / run_id).exists()
 
         for label in ("digest", "missing", "unsafe", "unbound", "collision"):
