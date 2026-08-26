@@ -67,9 +67,9 @@ seeding and aggregate project closure remain the next feature.
 2. After a terminal item result, its '[x]' or '[F]' queue transition is committed before
    the next pending item starts.
 3. A failed verification amendment is committed before rerunning that item.
-4. Apply the contract consistently to canonical 'config/skills' sources and installed
-   '.agents'/'.claude' mirrors, plus top-level 'AGENTS.md' and 'CLAUDE.md' where the
-   repository workflow is defined.
+4. Apply the contract consistently to canonical 'config/skills' sources and the tracked
+   '.agents' mirror, plus top-level 'AGENTS.md' and 'CLAUDE.md' where the repository
+   workflow is defined. Do not edit ignored '.claude/skills' installation output.
 5. Do not add queue parallelism, plan parsing, automatic commits in bootstrap, or a
    project-level closure judge.
 
@@ -92,12 +92,9 @@ and rerun green.
 
 - 'config/skills/_shared/resolve-bootstrap.py'
 - '.agents/skills/_shared/resolve-bootstrap.py'
-- '.claude/skills/_shared/resolve-bootstrap.py'
 - 'config/skills/devlyn:queue/SKILL.md'
 - '.agents/skills/devlyn:queue/SKILL.md'
-- '.claude/skills/devlyn:queue/SKILL.md'
 - 'config/skills/devlyn:resolve/references/outer-loop.md'
 - '.agents/skills/devlyn:resolve/references/outer-loop.md'
-- '.claude/skills/devlyn:resolve/references/outer-loop.md'
 - 'AGENTS.md'
 - 'CLAUDE.md'
