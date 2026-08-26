@@ -2798,7 +2798,7 @@ if ! grep -Fq 'solo_claude beats bare' benchmark/auto-resolve/scripts/build-pair
   || ! grep -Fq 'wrong mapping' benchmark/auto-resolve/scripts/test-build-pair-eligible-manifest.sh; then
   offenders="${offenders}"$'\n'"build-pair-eligible-manifest.py must use arm-mapped clean scores for F9 and L1<=L0 promotion"
 fi
-if [ -d benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F16-cli-quote-tax-rules ] \
+if [ -f benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F16-cli-quote-tax-rules/judge.json ] \
   && ! python3 benchmark/auto-resolve/scripts/full-pipeline-pair-gate.py \
     --run-id 20260510-f16-f23-f25-combined-proof \
     --pair-arm l2_risk_probes \
@@ -2809,7 +2809,7 @@ if [ -d benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F16-c
     --out-md /tmp/devlyn-lint-f16-f23-f25-pair-gate.md >/dev/null 2>&1; then
   offenders="${offenders}"$'\n'"current local artifacts for 20260510-f16-f23-f25-combined-proof must re-gate as PASS"
 fi
-if [ -d benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/F21-cli-scheduler-priority ] \
+if [ -f benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/F21-cli-scheduler-priority/judge.json ] \
   && ! python3 benchmark/auto-resolve/scripts/full-pipeline-pair-gate.py \
     --run-id 20260511-f21-current-riskprobes-v1 \
     --pair-arm l2_risk_probes \
@@ -3693,10 +3693,14 @@ const required = [
   "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/headroom-gate.json",
   "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/full-pipeline-pair-gate.md",
   "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/full-pipeline-pair-gate.json",
+  "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F16-cli-quote-tax-rules/l2_risk_probes/result.json",
+  "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F23-cli-fulfillment-wave/l2_risk_probes/result.json",
+  "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F25-cli-cart-promotion-rules/l2_risk_probes/result.json",
   "benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/headroom-gate.md",
   "benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/headroom-gate.json",
   "benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/full-pipeline-pair-gate.md",
   "benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/full-pipeline-pair-gate.json",
+  "benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/F21-cli-scheduler-priority/l2_risk_probes/result.json",
   "benchmark/auto-resolve/results/20260512-f2-medium-headroom/headroom-gate.json",
   "benchmark/auto-resolve/results/20260512-f31-seat-rebalance-headroom/headroom-gate.json",
   "benchmark/auto-resolve/results/20260512-f32-subscription-renewal-headroom/headroom-gate.json",
