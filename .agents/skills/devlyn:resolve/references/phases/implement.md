@@ -14,7 +14,8 @@ You execute the plan. Constrained design judgment within PLAN's invariants — w
 
 <output>
 - Code changes implementing every Requirement. Verify with `git diff`.
-- Tests added or updated for changed behavior. Run the full test suite before stopping.
+- Tests added or updated for changed behavior. Run the focused development tests needed to establish that behavior; BUILD_GATE and VERIFY own the post-implementation full suite.
+- For every sibling `spec.expected.json.process_evidence[]` item whose `phase` is `implement`, run `python3 "$DEVLYN_SHARED_DIR/process-evidence.py" --devlyn-dir .devlyn run --phase implement --id '<id>'`. The runner must report `expectation_met: true`; cite its manifest path in the phase reply.
 - For each criterion satisfied, set `state.criteria[i].status: "implemented"` with an `evidence` record `{"file": "...", "line": N, "note": "brief"}`.
 - Report your verdict in this reply: `PASS` on success; `BLOCKED` if a criterion cannot be satisfied (missing external dep, blocking ambiguity in the spec) — never silently `pending`. Do not edit `pipeline.state.json` yourself — the orchestrator records it via `state-phase-write.py`.
 </output>
@@ -22,7 +23,7 @@ You execute the plan. Constrained design judgment within PLAN's invariants — w
 <quality_bar>
 - Spec is the contract. The plan is the path. If they disagree, surface the conflict and follow the spec.
 - Bugs: write the failing test first, then fix. Features: follow existing patterns, then write tests. Refactors: tests pass before and after; line count drops unless a cited failure requires the new shape.
-- Verification commands are literal. Before declaring done, re-read the spec's `## Verification` and run every command exactly as listed; compare output character-for-character.
+- Do not execute the spec's `verification_commands` in IMPLEMENT; VERIFY MECHANICAL executes those literal commands once after CLEANUP. Declared IMPLEMENT process obligations, including red-first commands, run only through the shared evidence runner above.
 - Tooling-generated artifacts (`test-results/`, `playwright-report/`, `.last-run.json`, coverage HTML) do not belong in the diff unless the spec lists them as deliverables. Configure tools to emit to gitignored paths.
 - Existing tests are contract. Do not replace real HTTP / filesystem / subprocess calls with mocks. Do not skip or disable tests. Do not reduce assertion count on behavior still in scope.
 - Files not in PLAN's list are off-limits. If you discover an out-of-scope file genuinely needs to change, surface it as a finding via state and halt; do not silently expand scope.

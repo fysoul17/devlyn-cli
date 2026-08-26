@@ -33,9 +33,26 @@ SHELL_TOOLS = {"run_terminal_command", "run_terminal_cmd", "Bash"}
 FORBIDDEN = set(";&|`$()<>") | {"\n", "\r"}
 
 
+def reject_json_constant(token):
+    raise ValueError(f"invalid JSON numeric constant: {token}")
+
+
+def reject_duplicate_keys(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def main():
     anchor = os.environ.get("DEVLYN_PROBE_ANCHOR", "")
-    payload = json.load(sys.stdin)
+    payload = json.load(
+        sys.stdin,
+        parse_constant=reject_json_constant,
+        object_pairs_hook=reject_duplicate_keys,
+    )
 
     if payload.get("toolName") not in SHELL_TOOLS or not anchor:
         print(json.dumps({"decision": "allow"}))

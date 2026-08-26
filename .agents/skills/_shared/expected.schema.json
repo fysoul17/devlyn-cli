@@ -6,6 +6,67 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "process_evidence": {
+      "type": "array",
+      "description": "Declared process obligations captured during implementation. Each id is unique within its phase; the shared process-evidence runner records raw streams and validates the expectation before IMPLEMENT can pass.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "phase"],
+        "oneOf": [
+          { "required": ["cmd"], "not": { "required": ["argv"] } },
+          { "required": ["argv"], "not": { "required": ["cmd"] } }
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "description": "Stable evidence id, unique within its phase and safe as one path component."
+          },
+          "phase": {
+            "const": "implement",
+            "description": "The phase that must produce this expected-contract obligation."
+          },
+          "cmd": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact shell command executed by the shared runner."
+          },
+          "argv": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" },
+            "description": "Exact argv executed without a shell; argv[0] must be non-empty."
+          },
+          "exit_code": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Required exit code. Default 0 if omitted.",
+            "default": 0
+          },
+          "timeout_sec": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 600,
+            "description": "Per-command timeout in seconds. Default 60 if omitted.",
+            "default": 60
+          },
+          "stdout_contains": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "description": "Each UTF-8 substring must occur in the concatenated raw stdout and stderr bytes.",
+            "default": []
+          },
+          "stdout_not_contains": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "description": "No UTF-8 substring may occur in the concatenated raw stdout and stderr bytes.",
+            "default": []
+          }
+        }
+      },
+      "default": []
+    },
     "verification_commands": {
       "type": "array",
       "description": "Each command is executed against the post-BUILD code. Each pass/fail contributes to verify_score. At least one entry is required when the spec has any observable runtime check (CLI, test command, HTTP request).",

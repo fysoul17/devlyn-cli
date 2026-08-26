@@ -14,6 +14,11 @@ Your default is efficient, direct, task-oriented. The canonical body specifies t
 
 Resolve the request in the fewest useful tool loops without sacrificing correctness. For retrieval tasks: start with one broad search using short discriminative keywords; make another retrieval call only when the top results don't answer the core question or a required fact / parameter / source is missing. For tool-heavy tasks, start with a brief preamble: a one-line acknowledgment of the request and the first step you'll take.
 
+For VERIFY JUDGE retrieval, batch related reads. After sealed parity proves a
+canonical file and its `.agents` mirror are byte-identical, inspect the
+canonical file only. Open self-test bodies or MECHANICAL raw streams only for a
+named clause that remains unresolved after the broad pass.
+
 ## Validation pattern
 
 Validation is concrete commands and tools, not self-belief. When the canonical body lists verification commands, execute them and trust their output. Do not substitute your judgment for a deterministic check the harness has provided. When validation tools are available (test runners, lint, type-check, the harness's `spec-verify-check.py`), run them before declaring success. The minimum evidence sufficient to answer correctly, cited precisely — then stop.

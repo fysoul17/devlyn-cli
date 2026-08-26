@@ -8,6 +8,7 @@ import importlib.util
 import json
 import os
 import pathlib
+import runpy
 import secrets
 import stat
 import subprocess
@@ -44,8 +45,21 @@ def reject_json_constant(token: str) -> None:
     raise ValueError(f"invalid JSON numeric constant: {token}")
 
 
+def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def strict_json(text: str):
-    return json.loads(text, parse_constant=reject_json_constant)
+    return json.loads(
+        text,
+        parse_constant=reject_json_constant,
+        object_pairs_hook=reject_duplicate_keys,
+    )
 
 
 def json_bytes(value: object) -> bytes:
@@ -178,9 +192,26 @@ def parse_flags(argv: list[str]) -> dict:
 
 
 def validate_shared_dir(shared_dir: pathlib.Path) -> None:
-    required = shared_dir / "spec-verify-check.py"
-    if not required.is_file():
-        block("BLOCKED:shared-dir-unresolved", str(required))
+    for name in ("spec-verify-check.py", "archive_run.py", "process-evidence.py"):
+        required = shared_dir / name
+        if not required.is_file():
+            block("BLOCKED:shared-dir-unresolved", str(required))
+
+
+def archive_prior_run(devlyn: pathlib.Path, shared_dir: pathlib.Path) -> None:
+    archive = runpy.run_path(shared_dir / "archive_run.py")
+    if not archive["has_owned_artifacts"](devlyn):
+        return
+    try:
+        state = archive["read_state"](devlyn)
+    except (archive["ArchiveError"], OSError, UnicodeError, ValueError) as exc:
+        block("BLOCKED:prior-run-ownership-unverified", str(exc))
+    run_id = state["run_id"]
+    try:
+        archive["move_artifacts"](devlyn, devlyn / "runs" / run_id)
+        archive["prune"](devlyn / "runs", keep=10)
+    except (archive["ArchiveError"], OSError, UnicodeError, ValueError) as exc:
+        block("BLOCKED:prior-run-archive-failed", str(exc))
 
 
 def safe_goal_file(cwd: pathlib.Path, raw_path: str) -> bytes:
@@ -302,6 +333,24 @@ def capture_external_diff(cwd: pathlib.Path, ref: str) -> bytes:
     return raw
 
 
+def require_clean_tracked_baseline(cwd: pathlib.Path) -> None:
+    changed: list[bytes] = []
+    for args in (("diff",), ("diff", "--cached")):
+        proc = subprocess.run(
+            ["git", *args, "--no-renames", "--name-only", "-z"],
+            cwd=cwd,
+            capture_output=True,
+        )
+        if proc.returncode != 0:
+            block("BLOCKED:invalid-flags", os.fsdecode(proc.stderr or proc.stdout).strip())
+        changed.extend(path for path in proc.stdout.split(b"\0") if path)
+    if any(path != b".devlyn" and not path.startswith(b".devlyn/") for path in changed):
+        block(
+            "BLOCKED:worktree-dirty",
+            "Commit or stash tracked changes outside .devlyn before starting a full resolve.",
+        )
+
+
 def bootstrap(
     argv: list[str],
     cwd: pathlib.Path,
@@ -313,8 +362,10 @@ def bootstrap(
     cwd = cwd.resolve()
     validate_shared_dir(shared_dir)
     parsed = parse_flags(argv)
+    if parsed["mode"] != "verify-only":
+        require_clean_tracked_baseline(cwd)
     devlyn = cwd / ".devlyn"
-    outputs: dict[pathlib.Path, bytes | None] = {}
+    outputs: dict[pathlib.Path, bytes | None] = {devlyn / "external-diff.patch": None}
     if parsed["mode"] == "free-form":
         raw_goal = (
             safe_goal_file(cwd, parsed["goal_file"])
@@ -363,6 +414,7 @@ def bootstrap(
             "pair_default_enabled": True,
         },
         "risk_probes_digest": None,
+        "process_evidence": None,
         "base_ref": {
             "branch": base_branch(cwd),
             "sha": git_text(cwd, "rev-parse", "HEAD"),
@@ -377,6 +429,7 @@ def bootstrap(
     }
     state_raw = json_bytes(state)
     outputs[devlyn / "pipeline.state.json"] = state_raw
+    archive_prior_run(devlyn, shared_dir)
     atomic_write_batch(outputs, writer)
     return {
         "ok": True,
@@ -390,6 +443,12 @@ def bootstrap(
 
 def self_test() -> int:
     script_shared = pathlib.Path(__file__).resolve().parent
+    try:
+        strict_json('{"run_id":"a","run_id":"b"}')
+    except ValueError as exc:
+        assert "duplicate JSON key" in str(exc)
+    else:
+        raise AssertionError("duplicate bootstrap state key was accepted")
 
     def init_repo(path: pathlib.Path) -> None:
         path.mkdir()
@@ -399,6 +458,13 @@ def self_test() -> int:
         (path / "app.py").write_text("print('base')\n")
         subprocess.run(["git", "add", "app.py"], cwd=path, check=True)
         subprocess.run(["git", "commit", "-qm", "base"], cwd=path, check=True)
+
+    def snapshot(path: pathlib.Path) -> dict[str, bytes]:
+        return {
+            str(file.relative_to(path)): file.read_bytes()
+            for file in path.rglob("*")
+            if file.is_file()
+        }
 
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
@@ -428,6 +494,7 @@ def self_test() -> int:
                 "pair_default_enabled": True,
             },
             "risk_probes_digest": None,
+            "process_evidence": None,
             "base_ref": {
                 "branch": base_branch(work),
                 "sha": git_text(work, "rev-parse", "HEAD"),
@@ -588,10 +655,16 @@ def self_test() -> int:
             "## Verification\n\n```json\n{\"verification_commands\":[{\"cmd\":\"printf ok\",\"stdout_contains\":[\"ok\"]}]}\n```\n"
         )
         spec_raw = spec_path.read_bytes()
+        external_patch = work / ".devlyn" / "external-diff.patch"
+        external_patch.write_bytes(b"stale spec patch\n")
         spec_result = bootstrap(["--spec", str(spec_path.relative_to(work))], work, script_shared)
+        assert not external_patch.exists()
         staged = strict_json((work / ".devlyn" / "spec-verify.json").read_text())
         assert staged["verification_commands"][0]["cmd"] == "printf ok"
         assert spec_result["source"]["spec_sha256"] == sha256(spec_raw)
+        external_patch.write_bytes(b"stale free-form patch\n")
+        bootstrap(["fresh", "goal"], work, script_shared)
+        assert not external_patch.exists()
         (spec_dir / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [{"cmd": "printf expected", "stdout_contains": ["expected"]}],
         }) + "\n")
@@ -600,12 +673,107 @@ def self_test() -> int:
         assert staged["verification_commands"][0]["cmd"] == "printf expected"
         patch_raw = b"diff --git a/app.py b/app.py\nexact external bytes\x00\n"
         (work / "external.patch").write_bytes(patch_raw)
+        (work / "app.py").write_text("print('dirty verify-only input')\n")
         verify_result = bootstrap([
             "--verify-only", "external.patch", "--spec", str(spec_path.relative_to(work)),
         ], work, script_shared)
         assert verify_result["mode"] == "verify-only"
-        assert (work / ".devlyn" / "external-diff.patch").read_bytes() == patch_raw
-        print("PASS bootstrap self-test spec staging + verify-only capture: exact source/diff bytes")
+        assert external_patch.read_bytes() == patch_raw
+        subprocess.run(["git", "restore", "app.py"], cwd=work, check=True)
+        print("PASS bootstrap self-test patch lifecycle: full-mode removal + dirty verify-only exact capture")
+
+        dirty_work = root / "dirty-repo"
+        init_repo(dirty_work)
+        bootstrap(["clean", "baseline"], dirty_work, script_shared)
+        before_dirty = snapshot(dirty_work / ".devlyn")
+        (dirty_work / "app.py").write_text("print('unstaged')\n")
+        for label in ("unstaged", "staged"):
+            if label == "staged":
+                subprocess.run(["git", "add", "app.py"], cwd=dirty_work, check=True)
+            try:
+                bootstrap(["blocked", label], dirty_work, script_shared)
+            except BootstrapBlocked as exc:
+                assert exc.reason == "BLOCKED:worktree-dirty"
+                assert "commit or stash" in exc.detail.lower()
+            else:
+                raise AssertionError(f"{label} tracked owner change accepted")
+            assert snapshot(dirty_work / ".devlyn") == before_dirty
+        subprocess.run(["git", "restore", "--staged", "app.py"], cwd=dirty_work, check=True)
+        subprocess.run(["git", "restore", "app.py"], cwd=dirty_work, check=True)
+
+        devlyn_work = root / "devlyn-dirty-repo"
+        init_repo(devlyn_work)
+        (devlyn_work / ".devlyn").mkdir()
+        owner_file = devlyn_work / ".devlyn" / "owner.txt"
+        owner_file.write_text("base\n")
+        subprocess.run(["git", "add", ".devlyn/owner.txt"], cwd=devlyn_work, check=True)
+        subprocess.run(["git", "commit", "-qm", "track devlyn owner"], cwd=devlyn_work, check=True)
+        owner_file.write_text("dirty allowed\n")
+        assert bootstrap(["devlyn", "allowed"], devlyn_work, script_shared)["ok"] is True
+        assert owner_file.read_text() == "dirty allowed\n"
+
+        untracked_work = root / "untracked-repo"
+        init_repo(untracked_work)
+        (untracked_work / "untracked.txt").write_text("allowed\n")
+        assert bootstrap(["untracked", "allowed"], untracked_work, script_shared)["ok"] is True
+        print("PASS bootstrap self-test honest baseline: dirty owner blocked; .devlyn/untracked allowed")
+
+        prior_work = root / "prior-run-repo"
+        init_repo(prior_work)
+        prior = bootstrap(["prior", "run"], prior_work, script_shared)
+        prior_devlyn = prior_work / ".devlyn"
+        for name in (
+            "implement.task-context",
+            "implement.prompt",
+            "implement.stdout",
+            "implement.stderr",
+            "implement.events.jsonl",
+            "implement.retry.1.stdout",
+            "verify.primary.timeout.json",
+        ):
+            (prior_devlyn / name).write_text(f"prior {name}\n", encoding="utf-8")
+        (prior_devlyn / "engines.json").write_text('{"executor":"codex"}\n', encoding="utf-8")
+        (prior_devlyn / "unrelated.data").write_text("preserve\n", encoding="utf-8")
+        replacement = bootstrap(["replacement", "run"], prior_work, script_shared)
+        prior_archive = prior_devlyn / "runs" / prior["run_id"]
+        assert replacement["run_id"] != prior["run_id"]
+        for name in (
+            "pipeline.state.json",
+            "goal.raw.txt",
+            "implement.task-context",
+            "implement.prompt",
+            "implement.stdout",
+            "implement.stderr",
+            "implement.events.jsonl",
+            "implement.retry.1.stdout",
+            "verify.primary.timeout.json",
+        ):
+            assert (prior_archive / name).is_file(), name
+            if name not in {"pipeline.state.json", "goal.raw.txt"}:
+                assert not (prior_devlyn / name).exists(), name
+        assert strict_json((prior_devlyn / "pipeline.state.json").read_text())["run_id"] == replacement["run_id"]
+        assert (prior_archive / "goal.raw.txt").read_bytes() == b"prior run"
+        assert (prior_devlyn / "goal.raw.txt").read_bytes() == b"replacement run"
+        assert (prior_devlyn / "engines.json").read_text() == '{"executor":"codex"}\n'
+        assert (prior_devlyn / "unrelated.data").read_text() == "preserve\n"
+
+        for label, state_raw in (("missing", None), ("malformed", b"{\n")):
+            unauthenticated = root / f"unauthenticated-{label}"
+            init_repo(unauthenticated)
+            unauthenticated_devlyn = unauthenticated / ".devlyn"
+            unauthenticated_devlyn.mkdir()
+            (unauthenticated_devlyn / "implement.stdout").write_bytes(b"owned bytes\n")
+            if state_raw is not None:
+                (unauthenticated_devlyn / "pipeline.state.json").write_bytes(state_raw)
+            before = snapshot(unauthenticated_devlyn)
+            try:
+                bootstrap(["must", "block"], unauthenticated, script_shared)
+            except BootstrapBlocked as exc:
+                assert exc.reason == "BLOCKED:prior-run-ownership-unverified", exc.reason
+            else:
+                raise AssertionError(f"{label} prior-run ownership was accepted")
+            assert snapshot(unauthenticated_devlyn) == before
+        print("PASS bootstrap self-test prior-run ownership: archive before replace; unauthenticated bytes stable")
 
         malformed_work = root / "malformed-spec-repo"
         init_repo(malformed_work)

@@ -1,0 +1,28 @@
+{
+  "run_id": "20260511-f12-webhook-headroom",
+  "rule": "at least 1 candidate fixtures; each must satisfy bare <= 60 with headroom >= 5, solo_claude <= 80 with headroom >= 5, with both baseline arms evidence-complete",
+  "verdict": "FAIL",
+  "fixtures_total": 1,
+  "fixtures_passed": 0,
+  "min_fixtures": 1,
+  "bare_max": 60,
+  "solo_max": 80,
+  "min_bare_headroom_required": 5,
+  "min_solo_headroom_required": 5,
+  "fixture_count_ok": true,
+  "avg_bare_headroom": -25.0,
+  "min_bare_headroom": -25,
+  "avg_solo_headroom": -19.0,
+  "min_solo_headroom": -19,
+  "rows": [
+    {
+      "fixture": "F12-webhook-raw-body-signature",
+      "status": "FAIL",
+      "bare_score": 85,
+      "solo_score": 99,
+      "bare_headroom": -25,
+      "solo_headroom": -19,
+      "reason": "bare score 85 > 60; solo_claude score 99 > 80"
+    }
+  ]
+}

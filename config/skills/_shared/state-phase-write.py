@@ -27,6 +27,7 @@ import copy
 import datetime
 import difflib
 import hashlib
+import importlib.util
 import json
 import os
 import pathlib
@@ -53,9 +54,9 @@ LEGAL_TRANSITIONS = {
 WORKER_SESSION_ARTIFACT_PHASES = {
     "implement": "implement",
     "surface_close": "surface-close",
+    "build_gate": "build_gate",
     "cleanup": "cleanup",
 }
-MODEL_HEADER_RE = re.compile(r"(?m)^[ \t]*model:[ \t]*(\S+)[ \t]*$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 SURFACE_ROW_RE = re.compile(
     r"^(?P<obligation>UVR-STALE|PATH-TEST): (?:"
@@ -74,17 +75,32 @@ PLAN_SPAWN_RECEIPT_FIELDS = (
     "round", "started_at", "triggered_by", "engine", "model_requested", "prompt_sha256",
 )
 PLAN_COMPLETION_RECEIPT_FIELDS = (
-    "completed_at", "duration_ms", "verdict", "model_effective",
+    "completed_at", "duration_ms", "verdict", "model_effective", "output_sha256",
 )
 PLAN_RECEIPT_FIELDS = PLAN_SPAWN_RECEIPT_FIELDS + PLAN_COMPLETION_RECEIPT_FIELDS
+_PROCESS_EVIDENCE_MODULE = None
+_INVOCATION_RECEIPT_MODULE = None
 
 
 def reject_json_constant(token: str) -> None:
     raise ValueError(f"invalid JSON numeric constant: {token}")
 
 
+def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def loads_strict_json(text: str):
-    return json.loads(text, parse_constant=reject_json_constant)
+    return json.loads(
+        text,
+        parse_constant=reject_json_constant,
+        object_pairs_hook=reject_duplicate_keys,
+    )
 
 
 def now_ms() -> datetime.datetime:
@@ -127,6 +143,189 @@ def write_state(state_path: pathlib.Path, state: dict) -> None:
     except BaseException:
         pathlib.Path(tmp_name).unlink(missing_ok=True)
         raise
+
+
+def validate_plan_output(state: dict, devlyn: pathlib.Path | None) -> None:
+    plan = (state.get("phases") or {}).get("plan")
+    if not isinstance(plan, dict) or plan.get("completed_at") is None:
+        return
+    expected = plan.get("output_sha256")
+    if expected is None and state.get("version") != "3.0":
+        return
+    if not isinstance(expected, str) or SHA256_RE.fullmatch(expected) is None:
+        raise SystemExit("BLOCKED:plan-integrity-invalid: phases.plan.output_sha256 is missing")
+    if devlyn is None:
+        raise SystemExit("BLOCKED:plan-integrity-invalid: .devlyn is required to rehash PLAN output")
+    plan_path = devlyn / "plan.md"
+    try:
+        actual = hashlib.sha256(plan_path.read_bytes()).hexdigest()
+    except OSError as exc:
+        raise SystemExit(f"BLOCKED:plan-integrity-invalid: cannot read {plan_path}: {exc}") from exc
+    if actual != expected:
+        raise SystemExit(
+            "BLOCKED:plan-integrity-mismatch: "
+            f"expected={expected} actual={actual} path={plan_path}"
+        )
+
+
+def bind_plan_output(state: dict, devlyn: pathlib.Path | None) -> None:
+    if devlyn is None:
+        raise SystemExit("BLOCKED:plan-integrity-invalid: .devlyn is required to bind PLAN output")
+    plan_path = devlyn / "plan.md"
+    try:
+        digest = hashlib.sha256(plan_path.read_bytes()).hexdigest()
+    except OSError as exc:
+        raise SystemExit(f"BLOCKED:plan-integrity-invalid: cannot read {plan_path}: {exc}") from exc
+    state["phases"]["plan"]["output_sha256"] = digest
+
+
+def process_evidence_module():
+    global _PROCESS_EVIDENCE_MODULE
+    if _PROCESS_EVIDENCE_MODULE is None:
+        module_path = pathlib.Path(__file__).with_name("process-evidence.py")
+        spec = importlib.util.spec_from_file_location("devlyn_process_evidence", module_path)
+        if spec is None or spec.loader is None:
+            raise SystemExit(f"BLOCKED:process-evidence-invalid: cannot load {module_path}")
+        module = importlib.util.module_from_spec(spec)
+        previous_bytecode_setting = sys.dont_write_bytecode
+        sys.dont_write_bytecode = True
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.dont_write_bytecode = previous_bytecode_setting
+        _PROCESS_EVIDENCE_MODULE = module
+    return _PROCESS_EVIDENCE_MODULE
+
+
+def invocation_receipt_module():
+    global _INVOCATION_RECEIPT_MODULE
+    if _INVOCATION_RECEIPT_MODULE is None:
+        module_path = pathlib.Path(__file__).with_name("invocation-receipt.py")
+        spec = importlib.util.spec_from_file_location("devlyn_invocation_receipt", module_path)
+        if spec is None or spec.loader is None:
+            raise SystemExit(f"BLOCKED:invocation-receipt-invalid: cannot load {module_path}")
+        module = importlib.util.module_from_spec(spec)
+        previous_bytecode_setting = sys.dont_write_bytecode
+        sys.dont_write_bytecode = True
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.dont_write_bytecode = previous_bytecode_setting
+        _INVOCATION_RECEIPT_MODULE = module
+    return _INVOCATION_RECEIPT_MODULE
+
+
+def bind_process_evidence(
+    state: dict, phase: str, verdict: str | None,
+    devlyn: pathlib.Path | None, work: pathlib.Path | None,
+) -> None:
+    if phase == "implement" and verdict not in {"PASS", "PASS_WITH_ISSUES"}:
+        return
+    if phase not in {"implement", "build_gate"}:
+        return
+    source = state.get("source")
+    if work is None or devlyn is None:
+        if isinstance(source, dict) and source.get("type") == "spec":
+            raise SystemExit(
+                "BLOCKED:process-evidence-invalid: worktree is required for spec evidence validation"
+            )
+        state.setdefault("process_evidence", None)
+        return
+    runner = process_evidence_module()
+    try:
+        if phase == "implement":
+            obligations = runner.declared_obligations(work, state, phase)
+            if not obligations:
+                state.setdefault("process_evidence", None)
+                return
+            round_ = runner.phase_round(state, phase)
+            manifest_path = runner.manifest_relative_path(state, phase)
+            carrier = runner.validate_manifest(
+                work, manifest_path, state.get("run_id"), phase, round_, obligations,
+            )
+        else:
+            results_path = devlyn / "spec-verify.results.json"
+            if not results_path.is_file():
+                raise runner.EvidenceError(
+                    "spec-verify.results.json is missing for BUILD_GATE completion"
+                )
+            results = loads_strict_json(results_path.read_text(encoding="utf-8"))
+            if not isinstance(results, dict):
+                raise runner.EvidenceError(
+                    "spec-verify.results.json must contain a JSON object"
+                )
+            commands = results.get("commands")
+            if not isinstance(commands, list):
+                raise runner.EvidenceError(
+                    "spec-verify.results.json commands must be an array"
+                )
+            carrier = results.get("process_evidence")
+            if carrier is None:
+                if commands:
+                    raise runner.EvidenceError(
+                        "BUILD_GATE commands exist without a process-evidence carrier"
+                    )
+                manifest_path = work / runner.manifest_relative_path(state, phase)
+                if manifest_path.exists():
+                    raise runner.EvidenceError(
+                        "BUILD_GATE manifest exists without a process-evidence carrier"
+                    )
+                if runner.mechanical_evidence_required(work, state):
+                    raise runner.EvidenceError(
+                        "required BUILD_GATE evidence has no process-evidence carrier"
+                    )
+                state.setdefault("process_evidence", None)
+                return
+            round_ = runner.phase_round(state, phase)
+            manifest = carrier.get("manifest") if isinstance(carrier, dict) else None
+            if (
+                not isinstance(carrier, dict)
+                or carrier.get("phase") != phase
+                or carrier.get("round") != round_
+                or not isinstance(manifest, dict)
+                or manifest.get("path") != runner.manifest_relative_path(state, phase)
+            ):
+                raise runner.EvidenceError(
+                    "BUILD_GATE process-evidence carrier does not match the active run/round"
+                )
+            outcome = runner.validate_summary_commands(work, commands, carrier)
+            if outcome["verdict"] == "BLOCKED" and verdict != "BLOCKED":
+                denial = outcome["capability_denials"][0]
+                raise runner.EvidenceError(
+                    "BUILD_GATE capability denial requires BLOCKED verdict: "
+                    f"{denial['id']}:{denial['operation']}"
+                )
+            if (
+                outcome["verdict"] == "NEEDS_WORK"
+                and verdict in {"PASS", "PASS_WITH_ISSUES"}
+            ):
+                raise runner.EvidenceError(
+                    "BUILD_GATE process evidence mismatch cannot complete as "
+                    f"{verdict}: {','.join(outcome['failed_ids'])}"
+                )
+    except (runner.EvidenceError, OSError, UnicodeError, ValueError) as exc:
+        raise SystemExit(f"BLOCKED:process-evidence-invalid: {exc}") from exc
+    existing = state.get("process_evidence")
+    if existing is None:
+        existing = []
+    if not isinstance(existing, list):
+        raise SystemExit("BLOCKED:process-evidence-invalid: state.process_evidence must be null or an array")
+    try:
+        for prior in existing:
+            runner.validate_bound_carrier(work, prior)
+    except runner.EvidenceError as exc:
+        raise SystemExit(f"BLOCKED:process-evidence-invalid: {exc}") from exc
+    if any(
+        isinstance(item, dict)
+        and item.get("phase") == carrier["phase"]
+        and item.get("round") == carrier["round"]
+        for item in existing
+    ):
+        raise SystemExit(
+            "BLOCKED:process-evidence-invalid: duplicate state carrier for "
+            f"{phase} round {carrier['round']}"
+        )
+    state["process_evidence"] = [*existing, carrier]
 
 
 def parse_string_list(raw: str, label: str) -> list[str]:
@@ -659,10 +858,6 @@ def parse_effective_model(session_log: pathlib.Path) -> str:
         text = session_log.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         raise ValueError(f"cannot read engine session log {session_log}: {exc}") from exc
-
-    header = MODEL_HEADER_RE.search(text)
-    if header:
-        return header.group(1)
 
     models: set[str] = set()
     if session_log.suffix == ".jsonl":
@@ -1309,10 +1504,15 @@ def append_phase_history(entry: dict, phase: str) -> None:
     history = entry.get("history")
     if not isinstance(history, list):
         history = []
-    fields = (
-        PLAN_RECEIPT_FIELDS if phase == "plan" and is_plan_dispatch_receipt(entry)
-        else ("started_at", "verdict", "completed_at", "duration_ms")
-    )
+    if phase == "plan" and is_plan_dispatch_receipt(entry):
+        fields = PLAN_RECEIPT_FIELDS
+    elif phase in WORKER_SESSION_ARTIFACT_PHASES and "invocation_receipt" in entry:
+        fields = (
+            "started_at", "verdict", "completed_at", "duration_ms",
+            "invocation_receipt",
+        )
+    else:
+        fields = ("started_at", "verdict", "completed_at", "duration_ms")
     history.append({field: entry.get(field) for field in fields})
     entry["history"] = history
 
@@ -1321,11 +1521,13 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
              pre_sha: str | None, engine: str | None, model: str | None, *,
              input_patch_sha256: str | None = None,
              prompt_sha256: str | None = None,
-             untracked_before: list[str] | None = None) -> None:
+             untracked_before: list[str] | None = None,
+             devlyn: pathlib.Path | None = None) -> None:
     # Merge, don't replace: a phase-gated large run's `exec` progress (or any
     # other field this script doesn't own) survives a fix-loop respawn.
     phases_value = state.get("phases")
     entry = phases_value.get(phase) if isinstance(phases_value, dict) else None
+    validate_plan_output(state, devlyn)
     if phase == "plan":
         history = entry.get("history", []) if isinstance(entry, dict) else []
         if not isinstance(history, list):
@@ -1367,8 +1569,38 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     elif phase == "plan":
         if input_patch_sha256 is not None or untracked_before is not None:
             raise SystemExit("error: SURFACE_CLOSE metadata is invalid for this phase")
-    elif input_patch_sha256 is not None or prompt_sha256 is not None or untracked_before is not None:
-        raise SystemExit("error: SURFACE_CLOSE metadata is invalid for this phase")
+    else:
+        if input_patch_sha256 is not None or untracked_before is not None:
+            raise SystemExit("error: SURFACE_CLOSE metadata is invalid for this phase")
+        if prompt_sha256 is not None and SHA256_RE.fullmatch(prompt_sha256) is None:
+            raise SystemExit("error: --prompt-sha256 must be a lowercase SHA-256 digest")
+        requested_engine = (
+            engine if isinstance(engine, str) and engine else
+            entry.get("engine") if isinstance(entry, dict) else
+            state.get("engine")
+        )
+        if (
+            state.get("version") == "3.0"
+            and requested_engine == "codex"
+            and phase in WORKER_SESSION_ARTIFACT_PHASES
+            and prompt_sha256 is None
+        ):
+            raise SystemExit(
+                f"error: schema-v3 Codex phases.{phase} spawn requires --prompt-sha256"
+            )
+        requested_model = (
+            model if isinstance(model, str) and model else
+            entry.get("model_requested") if isinstance(entry, dict) else None
+        )
+        if (
+            state.get("version") == "3.0"
+            and requested_engine == "codex"
+            and phase in WORKER_SESSION_ARTIFACT_PHASES
+            and not requested_model
+        ):
+            raise SystemExit(
+                f"error: schema-v3 Codex phases.{phase} spawn requires --model"
+            )
     phases = state.setdefault("phases", {})
     if not isinstance(entry, dict):
         entry = {}
@@ -1390,6 +1622,13 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
         entry["judge_durations_ms"] = None
     if engine is not None:
         entry["engine"] = engine
+    elif (
+        state.get("version") == "3.0"
+        and "engine" not in entry
+        and isinstance(state.get("engine"), str)
+        and state["engine"]
+    ):
+        entry["engine"] = state["engine"]
     if model is not None:
         entry["model_requested"] = model
     else:
@@ -1398,7 +1637,7 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     entry["model_effective"] = None
     if pre_sha is not None:
         entry["pre_sha"] = pre_sha
-    if phase in {"plan", "surface_close"}:
+    if prompt_sha256 is not None:
         entry["prompt_sha256"] = prompt_sha256
     if phase == "surface_close":
         entry["input_patch_sha256"] = input_patch_sha256
@@ -1432,11 +1671,23 @@ def do_complete(state: dict, phase: str, verdict: str | None,
                  post_sha: str | None, findings_file: str | None, log_file: str | None,
                  engine: str | None, model: str | None,
                  engine_session_log: str | None = None,
-                 devlyn: pathlib.Path | None = None) -> str | None:
+                 devlyn: pathlib.Path | None = None,
+                 work: pathlib.Path | None = None) -> str | None:
     phases = state.setdefault("phases", {})
     entry = phases.get(phase)
     if not isinstance(entry, dict) or not entry.get("started_at"):
         raise SystemExit(f"error: phases.{phase} was never spawned (no started_at) — cannot complete")
+    if phase == "verify" and verdict is not None:
+        raise SystemExit(
+            "error: phases.verify.verdict is owned by verify-merge-findings.py "
+            "--write-state; do not pass --verdict to complete for this phase"
+        )
+    if entry.get("completed_at") is not None:
+        raise SystemExit(
+            f"error: phases.{phase} already completed — respawn before completing again"
+        )
+    if phase != "plan":
+        validate_plan_output(state, devlyn)
     if phase == "plan" and entry.get("prompt_sha256") is not None:
         missing = [field for field in PLAN_SPAWN_RECEIPT_FIELDS if field not in entry]
         if missing:
@@ -1447,16 +1698,19 @@ def do_complete(state: dict, phase: str, verdict: str | None,
             raise SystemExit("error: phases.plan completion cannot replace spawn engine")
         if model is not None and model != entry["model_requested"]:
             raise SystemExit("error: phases.plan completion cannot replace requested model")
+    if state.get("version") == "3.0" and phase != "plan":
+        if engine is not None and engine != entry.get("engine"):
+            raise SystemExit(f"error: phases.{phase} completion cannot replace spawn engine")
+        if model is not None and model != entry.get("model_requested"):
+            raise SystemExit(
+                f"error: phases.{phase} completion cannot replace requested model"
+            )
+    bind_process_evidence(state, phase, verdict, devlyn, work)
     started = parse_iso(entry["started_at"])
     now = now_ms()
     entry["completed_at"] = now_iso(now)
     entry["duration_ms"] = max(0, round((now - started).total_seconds() * 1000))
     if phase == "verify":
-        if verdict is not None:
-            raise SystemExit(
-                "error: phases.verify.verdict is owned by verify-merge-findings.py "
-                "--write-state; do not pass --verdict to complete for this phase"
-            )
         if entry.get("verdict") is None:
             raise SystemExit(
                 "error: phases.verify.verdict is still null — run "
@@ -1466,6 +1720,11 @@ def do_complete(state: dict, phase: str, verdict: str | None,
         entry["verdict"] = verdict
     else:
         raise SystemExit(f"error: --verdict is required to complete phases.{phase}")
+    if phase == "plan":
+        if state.get("version") == "3.0":
+            bind_plan_output(state, devlyn)
+        else:
+            entry.setdefault("output_sha256", None)
     if findings_file is not None or log_file is not None:
         artifacts = entry.setdefault("artifacts", {"findings_file": None, "log_file": None})
         if findings_file is not None:
@@ -1488,13 +1747,61 @@ def do_complete(state: dict, phase: str, verdict: str | None,
             retained_session = candidate
 
     attestation_error = None
-    if engine_session_log is None:
+    schema_v3_worker = (
+        state.get("version") == "3.0"
+        and artifact_phase is not None
+        and entry.get("engine") == "codex"
+    )
+    if schema_v3_worker and retained_session is None:
+        expected_session = (
+            devlyn / f"{artifact_phase}.worker-session.{entry.get('round')}.jsonl"
+            if devlyn is not None else
+            pathlib.Path(".devlyn") / f"{artifact_phase}.worker-session.{entry.get('round')}.jsonl"
+        )
+        attestation_error = (
+            "BLOCKED:model-attestation-failed: canonical retained worker session is missing: "
+            f"{expected_session}"
+        )
+    if (
+        attestation_error is None
+        and schema_v3_worker
+        and engine_session_log is not None
+        and pathlib.Path(engine_session_log).resolve() != retained_session.resolve()
+    ):
+        attestation_error = (
+            "BLOCKED:model-attestation-failed: --engine-session-log must be the canonical "
+            f"phase/round session {retained_session}"
+        )
+    if attestation_error is not None:
+        entry["model_effective"] = None
+    elif engine_session_log is None:
         entry["model_effective"] = None
         if retained_session is not None:
             attestation_error = (
                 "BLOCKED:model-attestation-failed: --engine-session-log is required because "
                 f"retained worker session exists: {retained_session}"
             )
+    elif schema_v3_worker:
+        receipt_path = devlyn / f"{artifact_phase}.invocation.{entry.get('round')}.json"
+        try:
+            receipt = invocation_receipt_module().validate_receipt(
+                work.resolve(), receipt_path,
+                run_id=state.get("run_id"),
+                phase=phase,
+                round_=entry.get("round"),
+                model=entry.get("model_requested"),
+                prompt_sha256=entry.get("prompt_sha256"),
+                session_path=retained_session,
+            )
+            if receipt["exit_code"] != 0:
+                raise invocation_receipt_module().ReceiptError(
+                    f"Codex invocation exited {receipt['exit_code']}"
+                )
+            entry["model_effective"] = entry.get("model_requested")
+            entry["invocation_receipt"] = receipt
+        except (OSError, UnicodeError, ValueError) as exc:
+            entry["model_effective"] = None
+            attestation_error = f"BLOCKED:invocation-receipt-invalid: {exc}"
     else:
         try:
             entry["model_effective"] = parse_effective_model(pathlib.Path(engine_session_log))
@@ -1537,6 +1844,7 @@ def do_transition(
     next_prompt_sha256: str | None = None,
     next_untracked_before: list[str] | None = None,
     between=None,
+    work: pathlib.Path | None = None,
 ) -> dict:
     """Validate complete + caller-selected spawn against a copy of state.
 
@@ -1550,7 +1858,7 @@ def do_transition(
     candidate = copy.deepcopy(state)
     attestation_error = do_complete(
         candidate, phase, verdict, post_sha, findings_file, log_file,
-        engine, model, engine_session_log, devlyn,
+        engine, model, engine_session_log, devlyn, work,
     )
     if attestation_error is not None:
         raise SystemExit(attestation_error)
@@ -1562,6 +1870,7 @@ def do_transition(
         input_patch_sha256=next_input_patch_sha256,
         prompt_sha256=next_prompt_sha256,
         untracked_before=next_untracked_before,
+        devlyn=devlyn,
     )
     return candidate
 
@@ -1583,6 +1892,13 @@ def do_surface_adjudication_recovery(state: dict, devlyn: pathlib.Path) -> str |
 
 def self_test() -> int:
     import time
+
+    try:
+        loads_strict_json('{"process_evidence":null,"process_evidence":[]}')
+    except ValueError as exc:
+        assert "duplicate JSON key" in str(exc)
+    else:
+        raise AssertionError("duplicate pipeline state key was accepted")
 
     with tempfile.TemporaryDirectory() as tmp:
         devlyn = pathlib.Path(tmp)
@@ -1723,6 +2039,43 @@ def self_test() -> int:
         }
         assert not is_plan_dispatch_receipt(old_receipt)
         assert is_plan_dispatch_receipt(read_state(state_path)["phases"]["plan"])
+
+        # Iter-0112: schema-v3 PLAN output is an immutable authority receipt.
+        plan_output = devlyn / "plan.md"
+        plan_output.write_text("# Authorized plan\n- config/skills/x.py\n", encoding="utf-8")
+        write_state(state_path, {"version": "3.0", "phases": {}})
+        result = plan_cli(*required_spawn)
+        assert result.returncode == 0, result.stderr
+        result = plan_cli(
+            "transition", "--verdict", "PASS", "--next-phase", "implement",
+            "--next-round", "0", "--next-engine", "claude",
+        )
+        assert result.returncode == 0, result.stderr
+        sealed_plan_state = read_state(state_path)
+        assert sealed_plan_state["phases"]["plan"]["output_sha256"] == hashlib.sha256(
+            plan_output.read_bytes()
+        ).hexdigest()
+        plan_output.write_text(
+            "# Authorized plan\n- config/skills/x.py\n- unapproved.py\n",
+            encoding="utf-8",
+        )
+        before = state_path.read_bytes()
+        blocked_plan_mutation = subprocess.run(
+            [
+                sys.executable, script, "--devlyn-dir", str(devlyn),
+                "--phase", "build_gate", "spawn", "--round", "0",
+            ],
+            capture_output=True, text=True, check=False,
+        )
+        assert blocked_plan_mutation.returncode != 0
+        assert "BLOCKED:plan-integrity-mismatch" in blocked_plan_mutation.stderr
+        assert state_path.read_bytes() == before
+        assert_plan_rejected_unchanged(
+            "error: phases.plan already completed — respawn before completing again",
+            "complete", "--verdict", "NEEDS_WORK",
+        )
+        print("PASS iter-0112 PLAN output digest blocks mid-flight widening")
+
         write_state(state_path, {
             "phases": {
                 "plan": {
@@ -1822,9 +2175,265 @@ def self_test() -> int:
         write_state(state_path, state)
         final = read_state(state_path)["phases"]["implement"]
         assert final["verdict"] == "PASS"
+        assert read_state(state_path)["process_evidence"] is None
         assert parse_iso(final["started_at"]) == parse_iso(respawned["started_at"])
         assert parse_iso(final["completed_at"]) >= parse_iso(final["started_at"])
         assert final["artifacts"]["findings_file"] == ".devlyn/x.jsonl"
+
+        # Iter-0111 R2: successful IMPLEMENT completion and transition both
+        # validate declared evidence before any lifecycle mutation, then bind
+        # the exact manifest and stream digests into state. Legacy runs with no
+        # declaration remain legal through the null carrier asserted above.
+        evidence_work = devlyn / "process-evidence-state"
+        evidence_devlyn = evidence_work / ".devlyn"
+        evidence_spec_dir = evidence_work / "docs" / "evidence"
+        evidence_devlyn.mkdir(parents=True)
+        evidence_spec_dir.mkdir(parents=True)
+        (evidence_spec_dir / "spec.md").write_text("# Evidence fixture\n", encoding="utf-8")
+        (evidence_spec_dir / "spec.expected.json").write_text(json.dumps({
+            "verification_commands": [{"cmd": "printf build-gate"}],
+            "process_evidence": [{
+                "id": "red-first",
+                "phase": "implement",
+                "cmd": "printf red-before-fix >&2; exit 7",
+                "exit_code": 7,
+                "stdout_contains": ["red-before-fix"],
+            }],
+        }) + "\n", encoding="utf-8")
+        evidence_state = {
+            "run_id": "rs-state-evidence",
+            "source": {"type": "spec", "spec_path": "docs/evidence/spec.md"},
+            "phases": {"implement": None, "build_gate": None},
+        }
+        do_spawn(evidence_state, "implement", 0, None, None, "codex", None)
+        evidence_state_path = evidence_devlyn / "pipeline.state.json"
+        write_state(evidence_state_path, evidence_state)
+        evidence_script = str(pathlib.Path(__file__).resolve())
+
+        def evidence_state_cli(event: str, *event_args: str) -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [
+                    sys.executable, evidence_script, "--devlyn-dir", ".devlyn",
+                    "--phase", "implement", event, *event_args,
+                ],
+                cwd=evidence_work, capture_output=True, text=True, check=False,
+            )
+
+        for event_args in (
+            ("complete", "--verdict", "PASS"),
+            (
+                "transition", "--verdict", "PASS", "--next-phase", "build_gate",
+                "--next-round", "0",
+            ),
+        ):
+            before = evidence_state_path.read_bytes()
+            result = evidence_state_cli(event_args[0], *event_args[1:])
+            assert result.returncode != 0
+            assert "BLOCKED:process-evidence-invalid" in result.stderr
+            assert "missing" in result.stderr
+            assert evidence_state_path.read_bytes() == before
+
+        runner_script = str(pathlib.Path(__file__).with_name("process-evidence.py").resolve())
+        captured = subprocess.run(
+            [
+                sys.executable, runner_script, "--devlyn-dir", ".devlyn", "run",
+                "--phase", "implement", "--id", "red-first",
+            ],
+            cwd=evidence_work, capture_output=True, text=True, check=False,
+        )
+        assert captured.returncode == 0, captured.stderr
+        manifest_rel = loads_strict_json(captured.stdout)["manifest_path"]
+        manifest = evidence_work / manifest_rel
+        stderr_path = manifest.parent / "red-first.stderr"
+        original_stderr = stderr_path.read_bytes()
+        stderr_path.write_bytes(b"altered")
+        before = evidence_state_path.read_bytes()
+        altered = evidence_state_cli("complete", "--verdict", "PASS")
+        assert altered.returncode != 0
+        assert "digest or byte count mismatch" in altered.stderr
+        assert evidence_state_path.read_bytes() == before
+        stderr_path.write_bytes(original_stderr)
+        transitioned = evidence_state_cli(
+            "transition", "--verdict", "PASS", "--next-phase", "build_gate",
+            "--next-round", "0",
+        )
+        assert transitioned.returncode == 0, transitioned.stderr
+        sealed_state = read_state(evidence_state_path)
+        carrier = sealed_state["process_evidence"][0]
+        assert carrier["phase"] == "implement" and carrier["round"] == 0
+        assert carrier["manifest"]["path"] == manifest_rel
+        assert carrier["manifest"]["sha256"] == hashlib.sha256(manifest.read_bytes()).hexdigest()
+        assert sealed_state["phases"]["implement"]["verdict"] == "PASS"
+        assert sealed_state["phases"]["build_gate"]["started_at"] is not None
+        print("PASS iter-0111 process evidence: completion/transition gate and state digest binding")
+
+        # Gate-discovered iter-0111 regression: BUILD_GATE MECHANICAL emitted
+        # sealed process evidence, but completion left it outside the state
+        # binding and archive_run.py correctly rejected the orphaned files.
+        def build_gate_state_cli(
+            event: str, *event_args: str,
+        ) -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [
+                    sys.executable, evidence_script, "--devlyn-dir", ".devlyn",
+                    "--phase", "build_gate", event, *event_args,
+                ],
+                cwd=evidence_work, capture_output=True, text=True, check=False,
+            )
+
+        results_path = evidence_devlyn / "spec-verify.results.json"
+        results_path.write_text(json.dumps({
+            "commands": [{"pass": True}], "process_evidence": None,
+        }) + "\n", encoding="utf-8")
+        before = evidence_state_path.read_bytes()
+        missing = build_gate_state_cli("complete", "--verdict", "PASS")
+        assert missing.returncode != 0
+        assert "commands exist without a process-evidence carrier" in missing.stderr
+        assert evidence_state_path.read_bytes() == before
+        results_path.write_text(json.dumps({
+            "commands": [], "process_evidence": None,
+        }) + "\n", encoding="utf-8")
+        removed = build_gate_state_cli("complete", "--verdict", "PASS")
+        assert removed.returncode != 0
+        assert "required BUILD_GATE evidence has no process-evidence carrier" in removed.stderr
+        assert evidence_state_path.read_bytes() == before
+
+        runner = process_evidence_module()
+
+        def write_build_gate_results() -> dict:
+            current = read_state(evidence_state_path)
+            round_ = runner.phase_round(current, "build_gate")
+            obligation = runner.normalize_obligation({
+                "id": "verification-command-0001",
+                "phase": "build_gate",
+                "argv": [sys.executable, "-c", "print('sealed build gate')"],
+            })
+            relative = runner.manifest_relative_path(current, "build_gate")
+            runner.capture_process(
+                evidence_work, evidence_work / relative, current["run_id"],
+                "build_gate", round_, obligation,
+            )
+            build_carrier = runner.validate_manifest(
+                evidence_work, relative, current["run_id"], "build_gate", round_,
+                [obligation], require_expectations=False,
+            )
+            results_path.write_text(json.dumps({
+                "commands": runner.bound_carrier_summary_commands(
+                    evidence_work, build_carrier,
+                ),
+                "process_evidence": build_carrier,
+            }) + "\n", encoding="utf-8")
+            return build_carrier
+
+        build_carrier_0 = write_build_gate_results()
+        completed = build_gate_state_cli("complete", "--verdict", "PASS")
+        assert completed.returncode == 0, completed.stderr
+        completed_state = read_state(evidence_state_path)
+        assert completed_state["process_evidence"] == [carrier, build_carrier_0]
+
+        spawned = build_gate_state_cli(
+            "spawn", "--round", "1", "--triggered-by", "build_gate",
+        )
+        assert spawned.returncode == 0, spawned.stderr
+        build_carrier_1 = write_build_gate_results()
+        transitioned = build_gate_state_cli(
+            "transition", "--verdict", "PASS", "--next-phase", "cleanup",
+            "--next-round", "0",
+        )
+        assert transitioned.returncode == 0, transitioned.stderr
+        build_bound_state = read_state(evidence_state_path)
+        assert build_bound_state["process_evidence"] == [
+            carrier, build_carrier_0, build_carrier_1,
+        ]
+        assert build_bound_state["phases"]["cleanup"]["started_at"] is not None
+        print("PASS iter-0111 BUILD_GATE evidence: completion/transition state binding")
+
+        # Iter-0112 audit counterexample: a valid carrier previously authenticated
+        # bytes only, so a failed entry or capability denial could still be completed
+        # with caller-supplied PASS.
+        build_bound_state["phases"]["build_gate"] = None
+        do_spawn(build_bound_state, "build_gate", 2, "build_gate", None, None, None)
+        write_state(evidence_state_path, build_bound_state)
+        mismatch = runner.normalize_obligation({
+            "id": "verification-command-0001",
+            "phase": "build_gate",
+            "argv": [sys.executable, "-c", "raise SystemExit(7)"],
+        })
+        mismatch_rel = runner.manifest_relative_path(build_bound_state, "build_gate")
+        runner.capture_process(
+            evidence_work, evidence_work / mismatch_rel, build_bound_state["run_id"],
+            "build_gate", 2, mismatch,
+        )
+        mismatch_carrier = runner.validate_manifest(
+            evidence_work, mismatch_rel, build_bound_state["run_id"], "build_gate", 2,
+            [mismatch], require_expectations=False,
+        )
+        mismatch_commands = runner.bound_carrier_summary_commands(
+            evidence_work, mismatch_carrier,
+        )
+        mismatch_commands[0]["pass"] = True
+        results_path.write_text(json.dumps({
+            "commands": mismatch_commands, "process_evidence": mismatch_carrier,
+        }) + "\n", encoding="utf-8")
+        before = evidence_state_path.read_bytes()
+        laundered = build_gate_state_cli("complete", "--verdict", "PASS")
+        assert laundered.returncode != 0
+        assert "command 0 disagrees with sealed process evidence" in laundered.stderr
+        assert evidence_state_path.read_bytes() == before
+        results_path.write_text(json.dumps({
+            "commands": [], "process_evidence": None,
+        }) + "\n", encoding="utf-8")
+        removed_after_capture = build_gate_state_cli("complete", "--verdict", "PASS")
+        assert removed_after_capture.returncode != 0
+        assert "manifest exists without a process-evidence carrier" in removed_after_capture.stderr
+        assert evidence_state_path.read_bytes() == before
+        results_path.write_text(json.dumps({
+            "commands": runner.bound_carrier_summary_commands(
+                evidence_work, mismatch_carrier,
+            ),
+            "process_evidence": mismatch_carrier,
+        }) + "\n", encoding="utf-8")
+        failed = build_gate_state_cli("complete", "--verdict", "FAIL")
+        assert failed.returncode == 0, failed.stderr
+
+        failed_state = read_state(evidence_state_path)
+        do_spawn(failed_state, "build_gate", 3, "build_gate", None, None, None)
+        write_state(evidence_state_path, failed_state)
+        denied = runner.normalize_obligation({
+            "id": "verification-command-0001",
+            "phase": "build_gate",
+            "cmd": "python3 -m pytest",
+        })
+        denied_rel = runner.manifest_relative_path(failed_state, "build_gate")
+        runner.record_capability_denial(
+            evidence_work, evidence_work / denied_rel, failed_state["run_id"],
+            "build_gate", 3, denied, "subprocess", b"parent denied",
+        )
+        denied_carrier = runner.validate_manifest(
+            evidence_work, denied_rel, failed_state["run_id"], "build_gate", 3,
+            [denied], require_expectations=False,
+        )
+        denied_commands = runner.bound_carrier_summary_commands(
+            evidence_work, denied_carrier,
+        )
+        denied_commands[0]["pass"] = True
+        results_path.write_text(json.dumps({
+            "commands": denied_commands, "process_evidence": denied_carrier,
+        }) + "\n", encoding="utf-8")
+        before = evidence_state_path.read_bytes()
+        denial_laundered = build_gate_state_cli("complete", "--verdict", "PASS")
+        assert denial_laundered.returncode != 0
+        assert "command 0 disagrees with sealed process evidence" in denial_laundered.stderr
+        assert evidence_state_path.read_bytes() == before
+        results_path.write_text(json.dumps({
+            "commands": runner.bound_carrier_summary_commands(
+                evidence_work, denied_carrier,
+            ),
+            "process_evidence": denied_carrier,
+        }) + "\n", encoding="utf-8")
+        blocked = build_gate_state_cli("complete", "--verdict", "BLOCKED")
+        assert blocked.returncode == 0, blocked.stderr
+        print("PASS iter-0112 BUILD_GATE sealed outcome owns the verdict floor")
 
         # complete() before spawn() must fail loudly, not silently invent data.
         write_state(state_path, {"phases": {}})
@@ -1897,7 +2506,9 @@ def self_test() -> int:
         attestation_state = copy.deepcopy(transition_state)
         attestation_state["phases"]["plan"]["model_requested"] = "wanted-model"
         attestation_log = devlyn / "transition-attestation.log"
-        attestation_log.write_text("model: other-model\n", encoding="utf-8")
+        attestation_log.write_text(json.dumps({
+            "modelUsage": {"other-model": {"inputTokens": 1}},
+        }) + "\n", encoding="utf-8")
         write_state(state_path, attestation_state)
         attestation_before = state_path.read_bytes()
         try:
@@ -2639,10 +3250,16 @@ def self_test() -> int:
         assert skipped["verdict"] is None
         assert skipped["skipped_reason"] == SURFACE_SKIP_REASON
 
-        # Effective model evidence: engine header line and rollout JSONL.
+        # Effective model evidence: handwritten headers are not provenance;
+        # canonical rollout JSONL and Claude wrapper output remain accepted.
         header_log = devlyn / "codex-build.log"
         header_log.write_text("session\nmodel: gpt-5.6-sol\n", encoding="utf-8")
-        assert parse_effective_model(header_log) == "gpt-5.6-sol"
+        try:
+            parse_effective_model(header_log)
+        except ValueError as exc:
+            assert "no effective-model evidence" in str(exc)
+        else:
+            raise AssertionError("plaintext model header was accepted as provenance")
         rollout_log = devlyn / "rollout.jsonl"
         rollout_log.write_text(json.dumps({
             "type": "turn_context", "payload": {"model": "gpt-5.6-terra"},
@@ -2861,6 +3478,118 @@ def self_test() -> int:
         ) is None
         assert state["phases"]["implement"]["model_effective"] == "gpt-5.6-terra"
         assert state["phases"]["implement"]["verdict"] == "PASS"
+
+        receipt_work = devlyn / "receipt-work"
+        receipt_devlyn = receipt_work / ".devlyn"
+        receipt_devlyn.mkdir(parents=True)
+        receipt_prompt = receipt_devlyn / "implement.prompt.0"
+        receipt_prompt.write_text("implement exactly\n", encoding="utf-8")
+        receipt_session = receipt_devlyn / "implement.worker-session.0.jsonl"
+        receipt_session.write_text('{"type":"thread.started"}\n', encoding="utf-8")
+        receipt_path = receipt_devlyn / "implement.invocation.0.json"
+        receipt_model = "gpt-5.6-sol"
+        receipt_prompt_sha = hashlib.sha256(receipt_prompt.read_bytes()).hexdigest()
+        inherited_engine_state = {
+            "version": "3.0",
+            "run_id": "rs-inherited-engine",
+            "engine": "codex",
+            "phases": {"implement": None},
+        }
+        try:
+            do_spawn(
+                inherited_engine_state, "implement", 0, None, None, None, None,
+                prompt_sha256=receipt_prompt_sha, devlyn=receipt_devlyn,
+            )
+        except SystemExit as exc:
+            assert "spawn requires --model" in str(exc)
+        else:
+            raise AssertionError("schema-v3 inherited Codex engine accepted no model")
+        do_spawn(
+            inherited_engine_state, "implement", 0, None, None, None, receipt_model,
+            prompt_sha256=receipt_prompt_sha, devlyn=receipt_devlyn,
+        )
+        assert inherited_engine_state["phases"]["implement"]["engine"] == "codex"
+        receipt_state = {
+            "version": "3.0",
+            "run_id": "rs-invocation-state",
+            "engine": "codex",
+            "phases": {"implement": None},
+        }
+        do_spawn(
+            receipt_state, "implement", 0, None, None, "codex", receipt_model,
+            prompt_sha256=receipt_prompt_sha, devlyn=receipt_devlyn,
+        )
+        receipt_runner = invocation_receipt_module()
+        receipt_runner.start_receipt(
+            receipt_work, receipt_path, receipt_state["run_id"], "implement", 0,
+            str(receipt_prompt), str(receipt_session),
+            ["-C", str(receipt_work), "-s", "workspace-write", "-m", receipt_model,
+             "implement exactly"],
+        )
+        receipt_runner.finish_receipt(receipt_work, receipt_path, 0)
+        assert do_complete(
+            receipt_state, "implement", "PASS", None, None, None, None, None,
+            str(receipt_session), devlyn=receipt_devlyn, work=receipt_work,
+        ) is None
+        receipt_entry = receipt_state["phases"]["implement"]
+        assert receipt_entry["model_effective"] == receipt_model
+        assert receipt_entry["invocation_receipt"]["path"] == (
+            ".devlyn/implement.invocation.0.json"
+        )
+
+        confused_state = {
+            "version": "3.0",
+            "run_id": "rs-invocation-confused",
+            "engine": "codex",
+            "phases": {"implement": None},
+        }
+        do_spawn(
+            confused_state, "implement", 0, None, None, "codex", receipt_model,
+            prompt_sha256=receipt_prompt_sha, devlyn=receipt_devlyn,
+        )
+        confused_before = copy.deepcopy(confused_state)
+        try:
+            do_complete(
+                confused_state, "implement", "PASS", None, None, None,
+                "claude", receipt_model, str(receipt_session),
+                devlyn=receipt_devlyn, work=receipt_work,
+            )
+        except SystemExit as exc:
+            assert "cannot replace spawn engine" in str(exc)
+        else:
+            raise AssertionError("completion replaced a Codex spawn with Claude attestation")
+        assert confused_state == confused_before
+        try:
+            do_complete(
+                confused_state, "implement", "PASS", None, None, None,
+                None, "other-model", str(receipt_session),
+                devlyn=receipt_devlyn, work=receipt_work,
+            )
+        except SystemExit as exc:
+            assert "cannot replace requested model" in str(exc)
+        else:
+            raise AssertionError("completion replaced the requested Codex model")
+        assert confused_state == confused_before
+
+        wrong_path_state = {
+            "version": "3.0",
+            "run_id": "rs-invocation-wrong-path",
+            "engine": "codex",
+            "phases": {"implement": None},
+        }
+        do_spawn(
+            wrong_path_state, "implement", 0, None, None, "codex", receipt_model,
+            prompt_sha256=receipt_prompt_sha, devlyn=receipt_devlyn,
+        )
+        arbitrary_log = receipt_devlyn / "handwritten.log"
+        arbitrary_log.write_text(f"model: {receipt_model}\n", encoding="utf-8")
+        wrong_path_error = do_complete(
+            wrong_path_state, "implement", "PASS", None, None, None, None, None,
+            str(arbitrary_log), devlyn=receipt_devlyn, work=receipt_work,
+        )
+        assert wrong_path_error and "canonical phase/round session" in wrong_path_error
+        assert wrong_path_state["phases"]["implement"]["verdict"] == "BLOCKED"
+        print("PASS iter-0112 canonical Codex invocation receipt and session ownership")
 
         retained_log.unlink()
         write_state(state_path, {"phases": {}})
@@ -3404,6 +4133,7 @@ def main() -> int:
                 input_patch_sha256=args.input_patch_sha256,
                 prompt_sha256=args.prompt_sha256,
                 untracked_before=untracked_before,
+                devlyn=devlyn,
             )
         else:
             next_untracked_before = (
@@ -3421,6 +4151,7 @@ def main() -> int:
                 next_input_patch_sha256=args.next_input_patch_sha256,
                 next_prompt_sha256=args.next_prompt_sha256,
                 next_untracked_before=next_untracked_before,
+                work=pathlib.Path.cwd(),
             )
         if spawn_phase == "surface_close":
             validate_surface_inputs(pathlib.Path.cwd(), devlyn, state)
@@ -3452,6 +4183,7 @@ def main() -> int:
         attestation_error = do_complete(
             state, args.phase, args.verdict, args.post_sha, args.findings_file,
             args.log_file, args.engine, args.model, args.engine_session_log, devlyn,
+            pathlib.Path.cwd(),
         )
         if (
             args.phase == "plan"

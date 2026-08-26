@@ -14,10 +14,13 @@ archive behavior is identical across every invocation.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import pathlib
 import re
+import runpy
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -43,12 +46,12 @@ PER_RUN_PATTERNS = (
     "surface-close.stdout",
     # Mutation workers retain the exact session JSONL identified by their
     # dispatch receipt. Round-scoped root files avoid engine-global scans.
-    "implement.worker-session.*.jsonl",
-    "surface-close.worker-session.*.jsonl",
-    "cleanup.worker-session.*.jsonl",
+    "*.worker-session.*.jsonl",
+    "*.invocation.*.json",
+    "*.prompt.*",
     "risk-probes.jsonl",
-    # Probe scripts referenced by risk-probes.jsonl are archived by
-    # move_probe_scripts() to preserve probes/<file> layout.
+    # Probe scripts referenced by risk-probes.jsonl preserve probes/<file>
+    # layout through the common preflight/move plan below.
     # iter-0019.8: spec-verify carrier artifacts get archived alongside
     # other per-run state. Killed mid-run cleanup is enforced separately
     # by spec-verify-check.py main() — when source markdown has no json
@@ -59,6 +62,7 @@ PER_RUN_PATTERNS = (
     "spec-verify.results.json",
     "spec-verify-findings.jsonl",
     "verify-merge.summary.json",
+    "verify.primary.timeout.json",
     "verify.pair.timeout.json",
     "finish-gate.summary.json",
     # iter-0033a/2026-04-30 archive-fix iter: NEW /devlyn:resolve emits
@@ -81,62 +85,285 @@ PER_RUN_PATTERNS = (
     # *-judge.*: every engine's pair-judge stdout/stderr capture
     # (codex-judge.*, claude-judge.* — adapters/claude.md ## Invocation).
     "*-judge.*",
+    # Phase-owned prompt, context, raw-stream, event, and retry carriers use
+    # a phase prefix. Keep the ownership surface here so bootstrap and final
+    # archive cannot drift onto separate cleanup lists.
+)
+PER_RUN_PATTERNS += tuple(
+    f"{phase}.{suffix}"
+    for phase in (
+        "plan", "probe-derive", "implement", "surface-close", "build_gate",
+        "build-gate", "cleanup", "verify", "final-report", "finish-gate",
+    )
+    for suffix in (
+        "task-context", "prompt", "stdout", "stderr", "events.jsonl",
+        "event-stream.jsonl", "retry.*",
+    )
 )
 
 SAFE_RUN_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+class ArchiveError(Exception):
+    pass
+
+
+def process_evidence_module():
+    return runpy.run_path(pathlib.Path(__file__).with_name("process-evidence.py"))
+
+
+def invocation_receipt_module():
+    return runpy.run_path(pathlib.Path(__file__).with_name("invocation-receipt.py"))
 
 
 def reject_json_constant(token: str) -> None:
     raise ValueError(f"invalid JSON numeric constant: {token}")
 
 
+def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def loads_strict_json(text: str):
-    return json.loads(text, parse_constant=reject_json_constant)
+    return json.loads(
+        text,
+        parse_constant=reject_json_constant,
+        object_pairs_hook=reject_duplicate_keys,
+    )
+
+
+def read_state(devlyn: pathlib.Path) -> dict:
+    state_path = devlyn / "pipeline.state.json"
+    if not state_path.is_file():
+        raise ArchiveError(f"{state_path} not found")
+    try:
+        state = loads_strict_json(state_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise ArchiveError(f"{state_path} is not valid JSON: {exc}") from exc
+    if not isinstance(state, dict):
+        raise ArchiveError(f"{state_path} must contain a JSON object")
+    run_id = state.get("run_id")
+    if not isinstance(run_id, str) or not run_id:
+        raise ArchiveError(f"{state_path} has no run_id")
+    if not SAFE_RUN_ID_RE.fullmatch(run_id):
+        raise ArchiveError(f"{state_path} run_id must match [A-Za-z0-9_.-]+")
+    return state
 
 
 def read_run_id(devlyn: pathlib.Path) -> str:
-    state_path = devlyn / "pipeline.state.json"
-    if not state_path.is_file():
-        raise SystemExit(f"error: {state_path} not found")
     try:
-        state = loads_strict_json(state_path.read_text(encoding="utf-8"))
-    except ValueError as e:
-        raise SystemExit(f"error: {state_path} is not valid JSON: {e}")
-    run_id = state.get("run_id")
-    if not isinstance(run_id, str) or not run_id:
-        raise SystemExit(f"error: {state_path} has no run_id")
-    if not SAFE_RUN_ID_RE.fullmatch(run_id):
-        raise SystemExit(f"error: {state_path} run_id must match [A-Za-z0-9_.-]+")
-    return run_id
+        return read_state(devlyn)["run_id"]
+    except ArchiveError as exc:
+        raise SystemExit(f"error: {exc}") from exc
+
+
+def static_artifacts(devlyn: pathlib.Path) -> list[pathlib.Path]:
+    found: dict[pathlib.Path, None] = {}
+    for pattern in PER_RUN_PATTERNS:
+        for path in devlyn.glob(pattern):
+            if path.is_file():
+                found[path] = None
+    probes = devlyn / "probes"
+    if probes.is_dir():
+        for path in probes.rglob("*"):
+            if path.is_file():
+                found[path] = None
+    return sorted(found)
+
+
+def has_owned_artifacts(devlyn: pathlib.Path) -> bool:
+    if not devlyn.is_dir():
+        return False
+    if static_artifacts(devlyn):
+        return True
+    evidence = devlyn / "process-evidence"
+    return evidence.is_dir() and any(path.is_file() for path in evidence.rglob("*"))
+
+
+def dynamic_evidence_artifacts(devlyn: pathlib.Path, state: dict) -> list[pathlib.Path]:
+    carriers = state.get("process_evidence")
+    evidence_root = devlyn / "process-evidence"
+    if carriers is None:
+        if evidence_root.is_dir() and any(path.is_file() for path in evidence_root.rglob("*")):
+            raise ArchiveError("process-evidence files exist without state bindings")
+        return []
+    if not isinstance(carriers, list):
+        raise ArchiveError("state.process_evidence must be null or an array")
+
+    runner = process_evidence_module()
+    work = devlyn.parent.resolve()
+    run_id = state["run_id"]
+    expected_root = pathlib.PurePosixPath(".devlyn") / "process-evidence" / run_id
+    found: dict[pathlib.Path, None] = {}
+    for carrier in carriers:
+        try:
+            runner["validate_bound_carrier"](work, carrier)
+        except (runner["EvidenceError"], OSError, UnicodeError, ValueError) as exc:
+            raise ArchiveError(f"invalid bound process evidence: {exc}") from exc
+        manifest = carrier["manifest"]
+        paths = [manifest["path"]]
+        for stream in carrier["streams"]:
+            paths.extend((stream["stdout"]["path"], stream["stderr"]["path"]))
+        for relative_text in paths:
+            relative = pathlib.PurePosixPath(relative_text)
+            try:
+                relative.relative_to(expected_root)
+            except ValueError as exc:
+                raise ArchiveError(
+                    f"process evidence is not owned by state.run_id {run_id}: {relative_text}"
+                ) from exc
+            source = work.joinpath(*relative.parts)
+            if source in found:
+                raise ArchiveError(f"duplicate state-bound process-evidence path: {relative_text}")
+            found[source] = None
+
+    actual = {
+        path.resolve()
+        for path in evidence_root.rglob("*")
+        if path.is_file()
+    } if evidence_root.is_dir() else set()
+    bound = {path.resolve() for path in found}
+    unbound = []
+    for path in actual - bound:
+        try:
+            unbound.append(path.relative_to(work).as_posix())
+        except ValueError as exc:
+            raise ArchiveError(f"process-evidence file escapes the worktree: {path}") from exc
+    unbound.sort()
+    if unbound:
+        raise ArchiveError("unbound process-evidence file(s): " + ",".join(unbound))
+    return sorted(found)
+
+
+def dynamic_invocation_artifacts(devlyn: pathlib.Path, state: dict) -> list[pathlib.Path]:
+    phases = state.get("phases")
+    if not isinstance(phases, dict):
+        return []
+    work = devlyn.parent.resolve()
+    found: dict[pathlib.Path, None] = {}
+    for phase_name, phase in phases.items():
+        if not isinstance(phase, dict):
+            continue
+        records = [phase]
+        history = phase.get("history")
+        if isinstance(history, list):
+            records.extend(record for record in history if isinstance(record, dict))
+        for record in records:
+            receipt = record.get("invocation_receipt")
+            if receipt is None:
+                continue
+            if not isinstance(receipt, dict) or set(receipt) != {
+                "path", "sha256", "sandbox", "argv_sha256", "exit_code",
+            }:
+                raise ArchiveError(f"phases.{phase_name} invocation receipt binding is invalid")
+            relative_text = receipt["path"]
+            if not isinstance(relative_text, str):
+                raise ArchiveError(f"phases.{phase_name} invocation receipt path is invalid")
+            relative = pathlib.PurePosixPath(relative_text)
+            if (
+                relative.is_absolute()
+                or ".." in relative.parts
+                or relative.parts[:1] != (".devlyn",)
+            ):
+                raise ArchiveError(f"invocation receipt escapes .devlyn: {relative_text}")
+            source = work.joinpath(*relative.parts)
+            try:
+                resolved = source.resolve(strict=True)
+                resolved.relative_to(work)
+                if source.is_symlink() or not resolved.is_file():
+                    raise ArchiveError(
+                        f"bound invocation receipt is not a regular worktree file: {relative_text}"
+                    )
+                raw = source.read_bytes()
+            except (OSError, ValueError) as exc:
+                raise ArchiveError(f"bound invocation receipt is missing: {relative_text}") from exc
+            if receipt["sha256"] != hashlib.sha256(raw).hexdigest():
+                raise ArchiveError(f"bound invocation receipt digest mismatch: {relative_text}")
+            try:
+                _document, receipt_file, prompt_file, session_file = (
+                    invocation_receipt_module()["validate_receipt_artifacts"](
+                        work, source, run_id=state["run_id"], phase=phase_name,
+                    )
+                )
+            except (OSError, UnicodeError, ValueError) as exc:
+                raise ArchiveError(f"invalid bound invocation receipt: {exc}") from exc
+            for artifact in (receipt_file, prompt_file, session_file):
+                if artifact in found:
+                    raise ArchiveError(
+                        f"duplicate state-bound invocation artifact: {artifact.relative_to(work)}"
+                    )
+                found[artifact] = None
+    return sorted(found)
+
+
+def archive_plan(devlyn: pathlib.Path, dest: pathlib.Path, state: dict) -> list[tuple[pathlib.Path, pathlib.Path]]:
+    devlyn = devlyn.resolve()
+    dest = dest.resolve(strict=False)
+    moves: list[tuple[pathlib.Path, pathlib.Path]] = []
+    sources: set[pathlib.Path] = set()
+    targets: set[pathlib.Path] = set()
+
+    def add(source: pathlib.Path, target: pathlib.Path) -> None:
+        if source in sources:
+            return
+        if target in targets:
+            raise ArchiveError(f"archive destination is ambiguous: {target}")
+        if target.exists() or target.is_symlink():
+            raise ArchiveError(f"archive destination collision: {target}")
+        parent = target.parent
+        while parent != dest.parent:
+            if parent.exists() and (parent.is_symlink() or not parent.is_dir()):
+                raise ArchiveError(f"archive destination parent is unsafe: {parent}")
+            if parent == dest:
+                break
+            parent = parent.parent
+        sources.add(source)
+        targets.add(target)
+        moves.append((source, target))
+
+    for source in static_artifacts(devlyn):
+        relative = source.relative_to(devlyn)
+        target = dest / relative if relative.parts[0] == "probes" else dest / source.name
+        add(source, target)
+    for source in dynamic_evidence_artifacts(devlyn, state):
+        add(source, dest / source.relative_to(devlyn))
+    for source in dynamic_invocation_artifacts(devlyn, state):
+        add(source, dest / source.relative_to(devlyn))
+    return moves
 
 
 def move_artifacts(devlyn: pathlib.Path, dest: pathlib.Path) -> int:
-    dest.mkdir(parents=True, exist_ok=True)
-    moved = 0
-    for pat in PER_RUN_PATTERNS:
-        for src in devlyn.glob(pat):
-            if src.is_file():
-                shutil.move(str(src), str(dest / src.name))
-                moved += 1
-    moved += move_probe_scripts(devlyn, dest)
-    return moved
-
-
-def move_probe_scripts(devlyn: pathlib.Path, dest: pathlib.Path) -> int:
-    probes = devlyn / "probes"
-    if not probes.is_dir():
-        return 0
-    moved = 0
-    for src in sorted(probes.rglob("*")):
-        if not src.is_file():
-            continue
-        target = dest / src.relative_to(devlyn)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(src), str(target))
-        moved += 1
-    if probes.exists():
-        shutil.rmtree(probes, ignore_errors=False)
-    return moved
+    devlyn = devlyn.resolve()
+    dest = dest.resolve()
+    state = read_state(devlyn)
+    if dest.name != state["run_id"] or dest.parent != devlyn / "runs":
+        raise ArchiveError("archive destination does not match authenticated state.run_id")
+    moves = archive_plan(devlyn, dest, state)
+    completed: list[tuple[pathlib.Path, pathlib.Path]] = []
+    try:
+        for source, target in moves:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(source), str(target))
+            completed.append((source, target))
+    except BaseException:
+        for source, target in reversed(completed):
+            source.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(target), str(source))
+        raise
+    for root in (devlyn / "probes", devlyn / "process-evidence" / state["run_id"]):
+        if root.is_dir():
+            for directory in sorted(
+                (path for path in root.rglob("*") if path.is_dir()),
+                key=lambda path: len(path.parts), reverse=True,
+            ):
+                directory.rmdir()
+            root.rmdir()
+    return len(completed)
 
 
 def prune(runs_dir: pathlib.Path, keep: int = 10) -> int:
@@ -151,8 +378,9 @@ def prune(runs_dir: pathlib.Path, keep: int = 10) -> int:
         except ValueError:
             # Can't decide flight-state safely; skip (never prune)
             continue
-        verdict = s.get("phases", {}).get("final_report", {}).get("verdict")
-        if verdict is None:
+        phases = s.get("phases") if isinstance(s, dict) else None
+        final_report = phases.get("final_report") if isinstance(phases, dict) else None
+        if not isinstance(final_report, dict) or final_report.get("verdict") is None:
             continue  # in-flight
         candidates.append(d)
     over = len(candidates) - keep
@@ -166,15 +394,78 @@ def prune(runs_dir: pathlib.Path, keep: int = 10) -> int:
 
 
 def self_test() -> int:
+    try:
+        loads_strict_json('{"run_id":"a","run_id":"b"}')
+    except ValueError as exc:
+        assert "duplicate JSON key" in str(exc)
+    else:
+        raise AssertionError("duplicate archive state key was accepted")
     with tempfile.TemporaryDirectory() as tmp:
+        work = pathlib.Path(tmp)
         devlyn = pathlib.Path(tmp) / ".devlyn"
         devlyn.mkdir()
+        invocation = invocation_receipt_module()
+        prior_prompt = devlyn / "build_gate.prompt.1"
+        prior_prompt.write_text("verify prior archive\n", encoding="utf-8")
+        prior_session = devlyn / "build_gate.worker-session.1.jsonl"
+        prior_session.write_text('{"type":"thread.started","round":1}\n', encoding="utf-8")
+        prior_receipt = devlyn / "build_gate.invocation.1.json"
+        invocation["start_receipt"](
+            work, prior_receipt, "run-1", "build_gate", 1,
+            str(prior_prompt), str(prior_session),
+            ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test", "verify prior archive"],
+        )
+        invocation["finish_receipt"](work, prior_receipt, 0)
+        prior_binding = invocation["validate_receipt"](
+            work, prior_receipt, run_id="run-1", phase="build_gate", round_=1,
+            model="gpt-test", prompt_sha256=hashlib.sha256(prior_prompt.read_bytes()).hexdigest(),
+            session_path=prior_session,
+        )
+        build_prompt = devlyn / "build_gate.prompt.2"
+        build_prompt.write_text("verify archive\n", encoding="utf-8")
+        build_session = devlyn / "build_gate.worker-session.2.jsonl"
+        build_session.write_text('{"type":"thread.started"}\n', encoding="utf-8")
+        build_receipt = devlyn / "build_gate.invocation.2.json"
+        invocation["start_receipt"](
+            work, build_receipt, "run-1", "build_gate", 2,
+            str(build_prompt), str(build_session),
+            ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test", "verify archive"],
+        )
+        invocation["finish_receipt"](work, build_receipt, 0)
+        receipt_binding = invocation["validate_receipt"](
+            work, build_receipt, run_id="run-1", phase="build_gate", round_=2,
+            model="gpt-test", prompt_sha256=hashlib.sha256(build_prompt.read_bytes()).hexdigest(),
+            session_path=build_session,
+        )
+        state = {
+            "run_id": "run-1",
+            "phases": {
+                "verify": {"round": 2},
+                "build_gate": {
+                    "round": 2,
+                    "history": [{"invocation_receipt": prior_binding}],
+                    "invocation_receipt": receipt_binding,
+                },
+                "final_report": {"verdict": "PASS"},
+            },
+            "process_evidence": None,
+        }
+        runner = process_evidence_module()
+        obligation = runner["normalize_obligation"]({
+            "id": "mechanical-0",
+            "phase": "verify",
+            "argv": [sys.executable, "-c", "import sys;sys.stdout.buffer.write(b'raw\\x00out')"],
+        })
+        manifest_rel = runner["manifest_relative_path"](state, "verify")
+        runner["capture_process"](
+            work, work / manifest_rel, state["run_id"], "verify", 2, obligation,
+        )
+        state["process_evidence"] = [runner["validate_manifest"](
+            work, manifest_rel, state["run_id"], "verify", 2,
+            [obligation], require_expectations=False,
+        )]
         (devlyn / "pipeline.state.json").write_text(
-            json.dumps({
-                "run_id": "run-1",
-                "phases": {"final_report": {"verdict": "PASS"}},
-            }) + "\n",
-            encoding="utf-8",
+            json.dumps(state) + "\n", encoding="utf-8",
         )
         for name in (
             "risk-probes.jsonl",
@@ -195,11 +486,18 @@ def self_test() -> int:
             "plan.prompt",
             "probe-derive.stdout",
             "probe-derive.stderr",
+            "verify.primary.timeout.json",
             "verify.pair.timeout.json",
             "codex-judge.stdout",
             "codex-judge.summary.json",
             "claude-judge.stdout",
             "claude-judge.stderr",
+            "implement.task-context",
+            "implement.prompt",
+            "implement.stdout",
+            "implement.stderr",
+            "implement.events.jsonl",
+            "implement.retry.1.stdout",
         ):
             (devlyn / name).write_text("{}\n", encoding="utf-8")
         (devlyn / "probes").mkdir()
@@ -207,8 +505,34 @@ def self_test() -> int:
         global_rollout = devlyn / "engine-sessions" / "rollout-global.jsonl"
         global_rollout.parent.mkdir()
         global_rollout.write_text("{}\n", encoding="utf-8")
+        unrelated = devlyn / "unrelated.data"
+        unrelated.write_text("preserve\n", encoding="utf-8")
         run_id = read_run_id(devlyn)
         assert run_id == "run-1", run_id
+        original_session = build_session.read_bytes()
+        build_session.write_bytes(original_session + b"altered\n")
+        try:
+            archive_plan(devlyn, devlyn / "runs" / run_id, state)
+        except ArchiveError as exc:
+            assert "worker-session digest mismatch" in str(exc)
+        else:
+            raise AssertionError("archive accepted a mutated invocation worker session")
+        build_session.write_bytes(original_session)
+
+        escape = work / "archive-escape"
+        escape.mkdir()
+        unsafe_dest = devlyn / "runs" / run_id
+        unsafe_dest.mkdir(parents=True)
+        unsafe_parent = unsafe_dest / "process-evidence"
+        unsafe_parent.symlink_to(escape, target_is_directory=True)
+        try:
+            move_artifacts(devlyn, unsafe_dest)
+        except ArchiveError as exc:
+            assert "archive destination parent is unsafe" in str(exc)
+        else:
+            raise AssertionError("archive followed a symlinked destination parent")
+        unsafe_parent.unlink()
+        unsafe_dest.rmdir()
         moved = move_artifacts(devlyn, devlyn / "runs" / run_id)
         assert moved >= 12, moved
         for name in (
@@ -221,7 +545,13 @@ def self_test() -> int:
             "surface-close.stdout",
             "implement.worker-session.0.jsonl",
             "surface-close.worker-session.0.jsonl",
+            "build_gate.prompt.1",
+            "build_gate.worker-session.1.jsonl",
+            "build_gate.invocation.1.json",
+            "build_gate.prompt.2",
+            "build_gate.worker-session.2.jsonl",
             "cleanup.worker-session.1.jsonl",
+            "build_gate.invocation.2.json",
             "probes/P1.py",
             "verify.pair.findings.jsonl",
             "verify-merge.summary.json",
@@ -231,16 +561,117 @@ def self_test() -> int:
             "plan.prompt",
             "probe-derive.stdout",
             "probe-derive.stderr",
+            "verify.primary.timeout.json",
             "verify.pair.timeout.json",
             "codex-judge.stdout",
             "codex-judge.summary.json",
             "claude-judge.stdout",
             "claude-judge.stderr",
+            "implement.task-context",
+            "implement.prompt",
+            "implement.stdout",
+            "implement.stderr",
+            "implement.events.jsonl",
+            "implement.retry.1.stdout",
+            f"process-evidence/{run_id}/verify/round-2/manifest.json",
+            f"process-evidence/{run_id}/verify/round-2/mechanical-0.stdout",
+            f"process-evidence/{run_id}/verify/round-2/mechanical-0.stderr",
         ):
             assert (devlyn / "runs" / run_id / name).is_file(), name
             assert not (devlyn / name).exists(), name
         assert global_rollout.is_file(), "engine-global session files must stay untouched"
         assert not (devlyn / "runs" / run_id / global_rollout.name).exists()
+        assert unrelated.read_text(encoding="utf-8") == "preserve\n"
+        assert not (devlyn / "runs" / run_id / unrelated.name).exists()
+        assert not (devlyn / "process-evidence" / run_id).exists()
+
+        for label in ("digest", "missing", "unsafe", "unbound", "collision"):
+            isolated_work = pathlib.Path(tmp) / f"{label}-work"
+            isolated_devlyn = isolated_work / ".devlyn"
+            isolated_devlyn.mkdir(parents=True)
+            isolated_state = {
+                "run_id": f"run-{label}",
+                "phases": {"verify": {"round": 0}},
+                "process_evidence": None,
+            }
+            isolated_manifest_rel = runner["manifest_relative_path"](isolated_state, "verify")
+            runner["capture_process"](
+                isolated_work,
+                isolated_work / isolated_manifest_rel,
+                isolated_state["run_id"],
+                "verify",
+                0,
+                obligation,
+            )
+            isolated_state["process_evidence"] = [runner["validate_manifest"](
+                isolated_work,
+                isolated_manifest_rel,
+                isolated_state["run_id"],
+                "verify",
+                0,
+                [obligation],
+                require_expectations=False,
+            )]
+            (isolated_devlyn / "pipeline.state.json").write_text(
+                json.dumps(isolated_state) + "\n", encoding="utf-8",
+            )
+            target = isolated_devlyn / "runs" / isolated_state["run_id"]
+            if label == "digest":
+                stream = isolated_work / isolated_state["process_evidence"][0]["streams"][0]["stdout"]["path"]
+                stream.write_bytes(stream.read_bytes() + b"altered")
+            elif label == "missing":
+                stream = isolated_work / isolated_state["process_evidence"][0]["streams"][0]["stderr"]["path"]
+                stream.unlink()
+            elif label == "unsafe":
+                isolated_state["process_evidence"][0]["manifest"]["path"] = "../escape/manifest.json"
+                (isolated_devlyn / "pipeline.state.json").write_text(
+                    json.dumps(isolated_state) + "\n", encoding="utf-8",
+                )
+            elif label == "unbound":
+                extra = isolated_devlyn / "process-evidence" / isolated_state["run_id"] / "verify" / "round-0" / "extra.stdout"
+                extra.write_text("not state-bound\n", encoding="utf-8")
+            else:
+                collision = target / pathlib.PurePosixPath(isolated_manifest_rel).relative_to(".devlyn")
+                collision.parent.mkdir(parents=True)
+                collision.write_text("occupied\n", encoding="utf-8")
+            before = {
+                str(path.relative_to(isolated_devlyn)): path.read_bytes()
+                for path in isolated_devlyn.rglob("*") if path.is_file()
+            }
+            try:
+                move_artifacts(isolated_devlyn, target)
+            except ArchiveError:
+                pass
+            else:
+                raise AssertionError(f"{label} archive violation was accepted")
+            after = {
+                str(path.relative_to(isolated_devlyn)): path.read_bytes()
+                for path in isolated_devlyn.rglob("*") if path.is_file()
+            }
+            assert after == before, label
+
+        null_states = {
+            "run-0-final-report-null": {"phases": {"final_report": None}},
+            "run-0-phases-null": {"phases": None},
+            "run-0-root-null": None,
+        }
+        for name, state in null_states.items():
+            null_run = devlyn / "runs" / name
+            null_run.mkdir()
+            (null_run / "pipeline.state.json").write_text(
+                json.dumps(state) + "\n",
+                encoding="utf-8",
+            )
+        newest_run = devlyn / "runs" / "run-2"
+        newest_run.mkdir()
+        (newest_run / "pipeline.state.json").write_text(
+            json.dumps({"phases": {"final_report": {"verdict": "PASS"}}}) + "\n",
+            encoding="utf-8",
+        )
+        assert prune(devlyn / "runs", keep=1) == 1
+        assert all((devlyn / "runs" / name).is_dir() for name in null_states)
+        assert not (devlyn / "runs" / run_id).exists(), "oldest completed archive must be pruned"
+        assert newest_run.is_dir(), "newest completed archive must remain"
 
         bad = pathlib.Path(tmp) / "bad"
         bad.mkdir()
@@ -251,6 +682,14 @@ def self_test() -> int:
             assert "run_id must match" in str(exc)
         else:
             raise AssertionError("unsafe archive run_id was accepted")
+        blocked_cli = subprocess.run(
+            [sys.executable, str(pathlib.Path(__file__).resolve()), "--devlyn-dir", str(bad)],
+            capture_output=True,
+            text=True,
+        )
+        assert blocked_cli.returncode == 1
+        assert "error: archive blocked:" in blocked_cli.stderr
+        assert "Traceback" not in blocked_cli.stderr
 
         nan = pathlib.Path(tmp) / "nan"
         nan.mkdir()
@@ -278,10 +717,15 @@ def main() -> int:
         sys.stderr.write(f"error: {devlyn} is not a directory\n")
         return 1
 
-    run_id = read_run_id(devlyn)
-    dest = devlyn / "runs" / run_id
-    moved = move_artifacts(devlyn, dest)
-    pruned = prune(devlyn / "runs", keep=args.keep)
+    try:
+        state = read_state(devlyn)
+        run_id = state["run_id"]
+        dest = devlyn / "runs" / run_id
+        moved = move_artifacts(devlyn, dest)
+        pruned = prune(devlyn / "runs", keep=args.keep)
+    except (ArchiveError, OSError, UnicodeError, ValueError) as exc:
+        sys.stderr.write(f"error: archive blocked: {exc}\n")
+        return 1
 
     sys.stdout.write(f"archived run_id={run_id} files={moved} pruned={pruned}\n")
     return 0

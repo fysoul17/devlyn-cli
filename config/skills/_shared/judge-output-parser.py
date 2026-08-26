@@ -23,8 +23,21 @@ def reject_json_constant(token: str) -> None:
     raise ValueError(f"invalid JSON numeric constant: {token}")
 
 
+def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def loads_strict_json(text: str) -> Any:
-    return json.loads(text, parse_constant=reject_json_constant)
+    return json.loads(
+        text,
+        parse_constant=reject_json_constant,
+        object_pairs_hook=reject_duplicate_keys,
+    )
 
 
 def collect_text(text: str, source: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
