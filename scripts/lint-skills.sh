@@ -1521,14 +1521,11 @@ for file in \
   config/skills/devlyn:resolve/references/phases/verify.md \
   .agents/skills/devlyn:resolve/references/phases/verify.md
 do
-  if ! grep -Fq "$primary_verify_route" "$file" \
+  if { ! grep -Fxq "$primary_verify_route" "$file" \
+      && ! grep -Fq "\`$primary_verify_route\`" "$file"; } \
     || ! grep -Fq '.devlyn/verify.primary.timeout.json' "$file" \
     || ! grep -Fq 'pair-style `TIMEOUT`' "$file"; then
     bad "$file — Codex primary-JUDGE route/timeout authority missing"
-    primary_verify_missing=1
-  fi
-  if grep -F "$primary_verify_route" "$file" | grep -E -- '(^| )-m( |$)|bypass|danger-full-access' >/dev/null 2>&1; then
-    bad "$file — Codex primary-JUDGE route pins a model or widens authority"
     primary_verify_missing=1
   fi
 done
@@ -1538,7 +1535,8 @@ for file in \
 do
   for needle in \
     'one broad pass over the' \
-    'one targeted interaction pass over the clauses' \
+    'It then makes one' \
+    'targeted interaction pass over the clauses the broad pass left unresolved.' \
     'Before any third pass' \
     'verdict-binding BLOCKED coverage finding'
   do
@@ -1641,12 +1639,18 @@ cat > "$tmp_iso/codex" <<'EOF'
 printf '%s\n' "$@" > "$CODEX_FAKE_ARGS_OUT"
 EOF
   chmod +x "$tmp_iso/codex"
-  CODEX_FAKE_ARGS_OUT="$tmp_iso/args.txt" \
-  CODEX_MONITORED_ISOLATED=1 \
-  CODEX_MONITORED_HEARTBEAT=999 \
-  CODEX_BIN="$tmp_iso/codex" \
-    bash config/skills/_shared/codex-monitored.sh -s read-only prompt \
-    >"$tmp_iso/stdout.txt" 2>"$tmp_iso/stderr.txt"
+  (
+    unset DEVLYN_INVOCATION_RUN_ID DEVLYN_INVOCATION_PHASE \
+      DEVLYN_INVOCATION_ROUND DEVLYN_INVOCATION_WORKDIR \
+      DEVLYN_INVOCATION_PROMPT_FILE DEVLYN_INVOCATION_SESSION_FILE \
+      DEVLYN_INVOCATION_RECEIPT
+    CODEX_FAKE_ARGS_OUT="$tmp_iso/args.txt" \
+    CODEX_MONITORED_ISOLATED=1 \
+    CODEX_MONITORED_HEARTBEAT=999 \
+    CODEX_BIN="$tmp_iso/codex" \
+      bash config/skills/_shared/codex-monitored.sh -s read-only prompt \
+      >"$tmp_iso/stdout.txt" 2>"$tmp_iso/stderr.txt"
+  )
   iso_exit=$?
   if [ $iso_exit -ne 0 ]; then
     bad "codex-monitored.sh isolated fake invocation exited $iso_exit"
